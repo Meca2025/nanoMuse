@@ -28,8 +28,9 @@ Upstream is a mirror of a private tree, squashed roughly monthly, and does not t
 1. **Do not rename the Kotlin package** `com.openminis.app` or the Gradle `namespace`. Only the `applicationId` (`io.github.nanomuse.app`) is ours.
 2. **Do not rename sandbox paths or CLI names** inside the root file system (`/var/minis`, `minis-global`, `minis-open`, `minis-mcp-cli`, `android-*`). They are upstream's contract with itself.
 3. **New code goes in new files** — package `io.github.nanomuse.*` or a new file next to the upstream one. When an upstream file must change, add a `// nanoMuse:` comment at the spot, and make one change per spot.
-4. **Rebranding is a script, not hand edits.** `scripts/rebrand.py` (names, ids, colours, links) and `scripts/gen-android-icons.py` (launcher icons) are idempotent; run them after every upstream pull. Do not fix a rebranding miss by hand — fix the script.
+4. **Rebranding is a script, not hand edits.** `scripts/rebrand.py` (names, ids, colours, links — Android and iOS), `scripts/gen-android-icons.py` and `scripts/gen-ios-icons.py` (icons) are idempotent; run them after every upstream pull. Do not fix a rebranding miss by hand — fix the script.
 5. **Binary resources** (icon PNGs) are overwritten under the upstream name; on a pull conflict take ours (`git checkout --ours`).
+6. **iOS follows the same rules.** The iOS half of upstream lives at `android/src/ios` (see [docs/ios.md](docs/ios.md)); our Swift goes in `android/src/ios/NanoMuse/`, an edit inside an upstream Swift file carries a `// nanoMuse:` comment.
 
 Build steps are in [android/BUILDING.md](android/BUILDING.md) (upstream) and, for the toolchain this repository is built with, in `scripts/android/` — JDK 21, SDK CMake 3.22.1, NDK r27c, Go 1.25+, `gomobile`; `deps/build_proot.sh` builds proot from the `android/deps/proot` submodule (our fork; portable `awk`, no gawk needed) and must run before `scripts/prepare_android_sandbox.sh`.
 
@@ -38,9 +39,9 @@ Build steps are in [android/BUILDING.md](android/BUILDING.md) (upstream) and, fo
 ```bash
 git fetch openminis --tags
 git subtree pull --prefix=android openminis 1.14 -m "Merge OpenMinis 1.14"
-git rm -r -q android/src/ios android/deps/ish ...        # modify/delete conflicts: iOS is gone here
-git checkout --ours -- 'android/src/android/app/src/main/res/mipmap-*'
-python scripts/rebrand.py && python scripts/gen-android-icons.py
+git checkout --ours -- 'android/src/android/app/src/main/res/mipmap-*' \
+    'android/src/ios/Assets.xcassets/AppIcon.appiconset' 'android/src/ios/Resources/AlternateIcons'
+python scripts/rebrand.py && python scripts/gen-android-icons.py && python scripts/gen-ios-icons.py
 # resolve the remaining conflicts at the `// nanoMuse:` marks, build, run the smoke list
 ```
 

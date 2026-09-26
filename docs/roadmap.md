@@ -52,7 +52,7 @@ Kept from the plan's fine print: the Kotlin package stays `com.openminis.app` so
 Each one adds a pair of hands and a way in for the same agent; the order can change with what people ask for.
 
 - **Desktop.** An app for the computer you sit at, in two roles: an agent of its own — its files, its browser, its screen, asking you there — and a client of the phone's, so a task started on the phone can be watched, taken over and finished at a desk. The one-way link of 0.1.13 becomes two-way here.
-- **iOS.** OpenMinis already runs there; nanoMuse's shape and the pairing follow.
+- **iOS.** The iOS half of OpenMinis is back in the tree under nanoMuse's name, with the nanoMuse Cloud sign-in, and goes to TestFlight from CI ([docs/ios.md](ios.md)); nanoMuse's shape, the avatar and the pairing follow.
 - **The web, on a machine of your own.** A nanoMuse that runs on a VM or a home server of yours and is reachable from any browser — a server of yours instead of a vendor's VM. The Python line and the showcase gateway (`demo/showcase/`), which already starts a private agent per visitor, are the seed. The phone and the desktop become clients of it as well as agents of their own.
 - **Glasses.** The shortest front door: a sentence in, a sentence back, the hands elsewhere.
 

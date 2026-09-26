@@ -128,7 +128,7 @@ One small version per stage, each a GitHub release with an APK. The plan and its
 
 ## Contribute
 
-Use it for a real task, report what broke, then pick something focused. [CONTRIBUTING.md](CONTRIBUTING.md) has the build setup ([android/BUILDING.md](android/BUILDING.md) and the toolchain scripts in `scripts/android/`), the conventions (`com.openminis.app` stays, new code in `io.github.nanomuse.*`, `// nanoMuse:` on upstream edits, `Signed-off-by` on commits) and how releases are cut. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Pull requests](https://github.com/nano-muse/nanoMuse/pulls).
+Use it for a real task, report what broke, then pick something focused. [CONTRIBUTING.md](CONTRIBUTING.md) has the build setup ([android/BUILDING.md](android/BUILDING.md) and the toolchain scripts in `scripts/android/`), the conventions (`com.openminis.app` stays, new code in `io.github.nanomuse.*`, `// nanoMuse:` on upstream edits, `Signed-off-by` on commits) and how releases are cut. The iOS app is built from the same tree and handed to TestFlight by CI — [docs/ios.md](docs/ios.md). [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Pull requests](https://github.com/nano-muse/nanoMuse/pulls).
 
 ## Acknowledgements
 
