@@ -4,11 +4,12 @@ nanoMuse on the iPhone is the iOS half of OpenMinis 1.13 under nanoMuse's name, 
 Mac runner and handed to TestFlight. This page says what is in the tree, how it is built, what
 the TestFlight pipeline needs, and what is still to be ported from the Android app.
 
-**Status.** The tree, the branding, the nanoMuse Cloud sign-in and the pipeline were written on a
-Linux machine, where nothing of this can be compiled. Until the first green run of the workflow
-below, treat every iOS file as unverified: the first build on a Mac will most likely surface a
-handful of compile errors in `android/src/ios/NanoMuse/` and signing questions in App Store
-Connect. Fix them in place; the design does not need to change.
+**Status.** The tree, the branding, the nanoMuse Cloud sign-in, the hub client and the pipeline
+were written on a Linux machine. The app **compiles** — the *iOS · build check* workflow below
+builds it unsigned for a device on a Mac runner, and is green as of the trial branch — but it has
+not run on an iPhone or gone through TestFlight yet, so the sign-in flow, the Devices section and
+notifications from other devices are untested at runtime. Expect signing questions in App Store
+Connect on the first TestFlight run, not compile errors.
 
 ## Where it lives
 
