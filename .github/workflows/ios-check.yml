@@ -39,7 +39,7 @@ jobs:
           cache-dependency-path: android/deps/rclone-mobile/go.sum
 
       - name: Homebrew packages (iSH kernel and rootfs tooling)
-        run: brew install ninja meson llvm libarchive pkg-config
+        run: brew install ninja meson llvm lld libarchive pkg-config
 
       - name: Build-time configuration
         working-directory: android/src/ios

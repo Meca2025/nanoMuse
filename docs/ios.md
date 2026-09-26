@@ -71,7 +71,7 @@ Ours, in `NanoMuse/`:
 ## Building on a Mac
 
 Requirements are upstream's, in [android/BUILDING.md](../android/BUILDING.md): a recent Xcode
-(the project is on the iOS 26 SDK), Homebrew `ninja meson llvm libarchive pkg-config`, Go 1.25
+(the project is on the iOS 26 SDK), Homebrew `ninja meson llvm lld libarchive pkg-config`, Go 1.25
 for rclone.
 
 ```bash
