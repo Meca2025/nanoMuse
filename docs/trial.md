@@ -14,7 +14,7 @@ until it ships in the public one.
 | A way to send codes: SMTP credentials (e-mail sign-in) and/or Aliyun SMS (mainland numbers) — or `CODE_SENDER=log` and read codes from the server log while it is only you | sign-in |
 | Android phone: the arm64 debug APK from `./gradlew :app:assembleDebug` (sideload) | the phone's Muse |
 | Computers: the installer for each from the `desktop` workflow artifacts — *Actions → desktop → Run workflow* builds all four (Windows `-setup.exe`, macOS `.pkg` for Apple silicon and Intel, Linux `.deb`); a `desktop-v*` tag also publishes them as a release | the computers' Muses |
-| iPhone (optional): TestFlight through the `ios-testflight` workflow — needs an Apple Developer account and App Store Connect API key in the repo secrets | the iPhone's Muse |
+| iPhone (optional): TestFlight through the `ios-testflight` workflow — needs an Apple Developer account and App Store Connect API key in the repo secrets; run *iOS · build check* first, it needs neither | the iPhone on the hub (it answers `info`, `open`, `notify`; shell, files and tasks on the iPhone are still to come) |
 
 ## 1. The relay
 
@@ -108,7 +108,9 @@ Verified on the development machine: relay + hub, Linux desktop, Android
 emulator and the web console on one account — phone→PC (`devices`, `run`,
 `ls`, `notify`, `task`), PC→phone (`info`, `notify`, `task`, natural-language
 notify + delegate), web→phone and web→PC (tasks, approval cards), rename and
-forget. The macOS and Windows packages come out of CI (the `desktop` workflow,
-all four targets green) and were not run on real machines here; the iOS app builds only on a Mac / in the
-`ios-testflight` workflow. Shell and files on the phone use the Linux sandbox,
+forget (also from the console). The macOS and Windows packages come out of CI
+(the `desktop` workflow, all four targets green) and were not run on real
+machines here. The iOS side — sign-in and the hub client — is written without
+a Mac; the `ios-check` workflow is the compile test, the `ios-testflight`
+workflow the delivery. Shell and files on the phone use the Linux sandbox,
 which exists on arm64 phones (the emulator build has none).
