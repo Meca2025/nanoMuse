@@ -72,6 +72,15 @@ docker compose up -d    # Caddy fetches the TLS certificate
 (SMTP for e-mail, Aliyun SMS for mainland phones), the admin endpoints for
 topping up, and the test suite.
 
+A relay for one person, or a few: `ALLOWED_IDENTIFIERS=139…, me@example.com`
+lets only those numbers and addresses sign in; everyone else gets
+`not_invited` before any code is sent. The trial deployments run this way.
+
+The relay is also the meeting point for the account's devices — the **hub** at
+`/v1/hub` and the web console at `/app`; see [hub.md](hub.md). `HUB_ENABLED`
+turns it off, `HUB_FRAME_LIMIT` caps one frame (files and screenshots travel
+inside frames, 16 MB by default).
+
 The Android app talks to `https://cloud.nanomuse.cn` by default. A debug build
 shows a *Relay* field on the sign-in screen for pointing at another one (on the
 emulator, the host machine is `http://10.0.2.2:8787`). Making the relay address
@@ -93,3 +102,7 @@ modalities so the picture model is recognisable), `POST /v1/chat/completions`
 with streaming, `POST /v1/images/generations` and `/v1/images/edits`. Errors
 are `{"error": {"message", "type": "nanomuse_cloud", "code"}}` with a stable
 `code` the app turns into a sentence.
+
+Devices: `GET /v1/devices` lists the account's devices (online or last seen),
+`DELETE /v1/devices/{id}` forgets an offline one, and `WS /v1/hub` is the hub
+itself — the frames are in [hub.md](hub.md).

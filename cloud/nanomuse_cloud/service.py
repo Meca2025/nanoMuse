@@ -63,7 +63,21 @@ class Cloud:
 
     # -- sign-up -------------------------------------------------------------------
 
+    def allowed(self, ident: Identifier) -> bool:
+        raw = self.s.allowed_identifiers.strip()
+        if not raw:
+            return True
+        for item in raw.split(","):
+            try:
+                if parse(item).value == ident.value:
+                    return True
+            except BadIdentifier:
+                continue
+        return False
+
     def request_code(self, ident: Identifier, ip: str) -> None:
+        if not self.allowed(ident):
+            raise CloudError(403, "not_invited", "This relay is private; that number or address is not on its list")
         t = now()
         if self.db.codes_recent_for(ident.hash(self.s.hmac_key), t - 600) >= self.s.code_per_identifier_10m:
             raise CloudError(429, "code_too_often", "Too many codes for this number; wait a few minutes")

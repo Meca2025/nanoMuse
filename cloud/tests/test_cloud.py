@@ -289,3 +289,25 @@ async def test_unconfigured_upstream_answers_503(stack):
                           json={"model": "qwen3.7-plus", "messages": []})
     assert r.status_code == 503 and r.json()["error"]["code"] == "upstream_unconfigured"
     assert (await client.get("/healthz")).json()["ok"] is True
+
+
+async def test_private_relay_only_lets_listed_identifiers_in():
+    up = fake_upstream()
+    settings = Settings(
+        database=":memory:", secret="test-secret", admin_token="admin",
+        upstream_base="http://upstream/compat/v1", upstream_key="sk-upstream",
+        dashscope_base="http://upstream/ds/api/v1", public_base="http://cloud.test",
+        allowed_identifiers="139 0000 1111, Me@Example.com",
+    )
+    sender = LogSender()
+    cloud = Cloud(settings, Database(":memory:"), sender)
+    app = create_app(settings, cloud, upstream_transport=httpx.ASGITransport(app=up))
+    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://cloud.test")
+    r = await client.post("/v1/auth/code", json={"identifier": "13800138000"})
+    assert r.status_code == 403 and r.json()["error"]["code"] == "not_invited"
+    assert sender.sent == []
+    for ok in ("13900001111", "+8613900001111", "me@example.com"):
+        r = await client.post("/v1/auth/code", json={"identifier": ok})
+        assert r.status_code == 204, (ok, r.text)
+    data = await sign_up(client, sender, identifier="me@example.com", device="desk")
+    assert data["account"]["hint"] == "m***@example.com"

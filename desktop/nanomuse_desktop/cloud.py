@@ -25,6 +25,7 @@ MESSAGES = {
     "code_wrong": "That code is not right.",
     "code_expired": "That code has expired; ask for a new one.",
     "code_too_often": "Too many codes were sent; wait a few minutes.",
+    "not_invited": "This relay is private; that number or address is not on its list.",
     "send_failed": "The code could not be sent; try again in a moment.",
     "bad_key": "Sign in again.",
     "out_of_tokens": "This account has used its tokens.",

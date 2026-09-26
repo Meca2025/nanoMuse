@@ -133,6 +133,9 @@ class Settings:
 
     code_ttl_s: int = field(default_factory=lambda: _int("CODE_TTL_S", 600))
     code_per_identifier_10m: int = field(default_factory=lambda: _int("CODE_PER_IDENTIFIER_10M", 3))
+    # A private relay: only these phone numbers / e-mail addresses may sign in (comma-separated;
+    # empty means anyone). Normalised like the identifiers themselves, so "139 0000 1111" works.
+    allowed_identifiers: str = field(default_factory=lambda: _env("ALLOWED_IDENTIFIERS"))
     code_per_ip_hour: int = field(default_factory=lambda: _int("CODE_PER_IP_HOUR", 10))
     code_max_attempts: int = field(default_factory=lambda: _int("CODE_MAX_ATTEMPTS", 5))
     # One phone/e-mail = one grant; a second device signing in with the same

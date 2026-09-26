@@ -21,7 +21,7 @@
     busy: (n) => `${n} 正在处理…`, sentFrom: "来自网页", waitingPhone: "手机上的 Muse 正在处理，完成后会把结果发回来。",
     lastSeen: "上次在线", justNow: "刚刚", minAgo: (m) => `${m} 分钟前`, hAgo: (h) => `${h} 小时前`, dAgo: (d) => `${d} 天前`,
     risks: { destructive: "会删除或改写", outbound: "会向外发送", system: "系统级操作", install: "安装软件", money: "涉及付款" },
-    errors: { bad_identifier: "请输入手机号或邮箱地址。", code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁，稍等几分钟。", send_failed: "验证码发送失败，请稍后再试。", bad_key: "登录已失效，请重新登录。", offline: "连不上服务器。" },
+    errors: { bad_identifier: "请输入手机号或邮箱地址。", code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁，稍等几分钟。", not_invited: "这是一台私人中转，这个号码或邮箱不在名单上。", send_failed: "验证码发送失败，请稍后再试。", bad_key: "登录已失效，请重新登录。", offline: "连不上服务器。" },
   } : {
     tagline: "Every device you own, a Muse of yours.",
     identifier: "Phone number or e-mail", code: "Verification code", sendCode: "Send code", signIn: "Sign in", another: "Use another number or address",
@@ -37,7 +37,7 @@
     busy: (n) => `${n} is working…`, sentFrom: "from the web", waitingPhone: "The Muse on the phone is working; the answer comes back here when it is done.",
     lastSeen: "last seen", justNow: "just now", minAgo: (m) => `${m} min ago`, hAgo: (h) => `${h} h ago`, dAgo: (d) => `${d} d ago`,
     risks: { destructive: "removes or rewrites", outbound: "sends something out", system: "system-level", install: "installs software", money: "a payment" },
-    errors: { bad_identifier: "Enter a mobile number or an e-mail address.", code_wrong: "That code is not right.", code_expired: "That code has expired; send a new one.", code_too_often: "Too many codes; wait a few minutes.", send_failed: "The code could not be sent; try again shortly.", bad_key: "Your sign-in has expired; sign in again.", offline: "Cannot reach the server." },
+    errors: { bad_identifier: "Enter a mobile number or an e-mail address.", code_wrong: "That code is not right.", code_expired: "That code has expired; send a new one.", code_too_often: "Too many codes; wait a few minutes.", not_invited: "This relay is private; that number or address is not on its list.", send_failed: "The code could not be sent; try again shortly.", bad_key: "Your sign-in has expired; sign in again.", offline: "Cannot reach the server." },
   };
 
   // ── state ───────────────────────────────────────────────────────

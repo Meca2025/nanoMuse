@@ -216,6 +216,7 @@ object NanoMuseCloud {
             "code_wrong" -> context.getString(R.string.nm_cloud_err_code_wrong)
             "code_expired" -> context.getString(R.string.nm_cloud_err_code_expired)
             "code_too_often" -> context.getString(R.string.nm_cloud_err_code_too_often)
+            "not_invited" -> context.getString(R.string.nm_cloud_err_not_invited)
             "send_failed" -> context.getString(R.string.nm_cloud_err_send_failed)
             "account_disabled" -> context.getString(R.string.nm_cloud_err_disabled)
             "bad_key" -> context.getString(R.string.nm_cloud_err_bad_key)

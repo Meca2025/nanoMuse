@@ -573,6 +573,7 @@
     <string name="nm_cloud_err_code_wrong">驗證碼不對。</string>
     <string name="nm_cloud_err_code_expired">驗證碼已過期，請重新發送。</string>
     <string name="nm_cloud_err_code_too_often">發送太頻繁了，請過幾分鐘再試。</string>
+    <string name="nm_cloud_err_not_invited">這是一台私人中轉，這個號碼或信箱不在名單上。</string>
     <string name="nm_cloud_err_send_failed">驗證碼沒發出去，請稍後再試。</string>
     <string name="nm_cloud_err_disabled">這個帳號已被停用。</string>
     <string name="nm_cloud_err_bad_key">伺服器已不認識這台手機，請重新登入。</string>

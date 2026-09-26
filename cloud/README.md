@@ -90,6 +90,9 @@ for the full list. The ones that matter:
 | `PER_MINUTE_REQUESTS` | 30 | per account |
 | `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` |
 | `CLOUD_MODELS` | four Qwen models | JSON list to replace the menu |
+| `ALLOWED_IDENTIFIERS` | empty (anyone) | comma-separated numbers / addresses that may sign in — a private relay |
+| `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
+| `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
 
 The default menu: `qwen3.7-plus` (recommended; text and images in),
 `qwen3.7-flash` (charged at 0.3×), `qwen3-vl-plus`, and `qwen-image-3.0-pro`

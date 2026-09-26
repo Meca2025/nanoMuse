@@ -580,6 +580,7 @@
     <string name="nm_cloud_err_code_wrong">Wrong code.</string>
     <string name="nm_cloud_err_code_expired">That code has expired — send a new one.</string>
     <string name="nm_cloud_err_code_too_often">Too many codes in a row. Wait a few minutes.</string>
+    <string name="nm_cloud_err_not_invited">This relay is private; that number or address is not on its list.</string>
     <string name="nm_cloud_err_send_failed">The code could not be sent. Try again in a moment.</string>
     <string name="nm_cloud_err_disabled">This account has been disabled.</string>
     <string name="nm_cloud_err_bad_key">The relay no longer recognises this phone. Sign in again.</string>
