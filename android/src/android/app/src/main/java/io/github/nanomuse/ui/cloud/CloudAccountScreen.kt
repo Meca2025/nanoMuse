@@ -195,6 +195,8 @@ fun CloudAccountScreen(
                     MuseRow(title = stringResource(R.string.settings_model_groups), onClick = onOpenModelGroups)
                 }
                 MuseGap()
+                DevicesSection()
+                MuseGap()
                 MuseCard {
                     MuseRow(
                         title = stringResource(R.string.nm_cloud_sign_out),

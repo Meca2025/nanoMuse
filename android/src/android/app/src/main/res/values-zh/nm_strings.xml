@@ -586,4 +586,38 @@
     <string name="nm_cloud_err_rate_limited">请求太快了，稍等一下。</string>
     <string name="nm_cloud_err_unreachable">连不上 nanoMuse 云，请检查网络。</string>
     <string name="nm_cloud_err_generic">出了点问题。</string>
+    <!-- nanoMuse: devices on the hub -->
+    <string name="nm_hub_channel">来自你其他设备的消息</string>
+    <string name="nm_hub_service_channel">与你的设备保持连接</string>
+    <string name="nm_hub_service_title">nanoMuse · 你的其他设备可以找到这台手机</string>
+    <string name="nm_hub_service_connecting">正在连接 nanoMuse Cloud…</string>
+    <string name="nm_hub_service_alone">目前没有其他设备在线</string>
+    <plurals name="nm_hub_service_devices">
+        <item quantity="other">%d 台设备在线</item>
+    </plurals>
+    <string name="nm_hub_service_stop">关闭</string>
+    <string name="nm_hub_task_from">来自 %1$s 的任务</string>
+    <string name="nm_hub_task_prefix">下面这件事是用户在 %1$s（用户的另一台设备）上交代的。在这台手机上完成，并用用户的语言回答。</string>
+    <string name="nm_hub_session_title">来自 %1$s</string>
+
+    <string name="nm_devices_title">设备</string>
+    <string name="nm_devices_intro">登录同一账号的每台设备都是一个 Muse：这台手机、装了 nanoMuse 桌面版的电脑、网页控制台。它们之间可以互相交代事情——不必在同一个网络，经由 nanoMuse Cloud 中转。</string>
+    <string name="nm_devices_join">让其他设备能找到这台手机</string>
+    <string name="nm_devices_join_sub">保持手机与云端连接，其他设备才能给它交代事情。开着时会有一条安静的常驻通知。</string>
+    <string name="nm_devices_remote_control">允许其他设备操作这台手机</string>
+    <string name="nm_devices_remote_control_sub">包括 Shell、文件、截屏，以及交给这台手机的智能体去做的任务。关掉后，这台手机仍能看到并操作其他设备。</string>
+    <string name="nm_devices_name">这台手机的名字</string>
+    <string name="nm_devices_connected">已连接</string>
+    <string name="nm_devices_connecting">连接中…</string>
+    <string name="nm_devices_off">已关闭</string>
+    <string name="nm_devices_none">还没有其他设备。在电脑上安装 nanoMuse 桌面版并用同一账号登录，几秒后就会出现在这里。</string>
+    <string name="nm_devices_online">在线</string>
+    <string name="nm_devices_offline">离线</string>
+    <string name="nm_devices_web">网页控制台</string>
+    <string name="nm_devices_web_sub">在任何浏览器里打开 %1$s，用同一账号登录，就能在网页上指挥你的设备。</string>
+    <string name="nm_devices_web_copy">复制链接</string>
+    <string name="nm_devices_web_copied">链接已复制</string>
+    <string name="nm_devices_forget">移除</string>
+    <string name="nm_devices_forget_sub">把这台设备从列表里去掉。它下次用这个账号登录时会重新出现。</string>
+    <string name="nm_devices_how">在聊天里直接说就行：「在我 Mac 上列一下下载文件夹」「让电脑把项目编译一遍，把日志发给我」。需要确认的事会在这台手机上弹卡片。</string>
 </resources>

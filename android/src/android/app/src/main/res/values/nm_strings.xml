@@ -588,4 +588,39 @@
     <string name="nm_cloud_err_rate_limited">Too many requests at once. A moment, please.</string>
     <string name="nm_cloud_err_unreachable">Could not reach nanoMuse Cloud. Check the connection.</string>
     <string name="nm_cloud_err_generic">Something went wrong.</string>
+    <!-- nanoMuse: devices on the hub -->
+    <string name="nm_hub_channel">Messages from your devices</string>
+    <string name="nm_hub_service_channel">Connected to your devices</string>
+    <string name="nm_hub_service_title">nanoMuse · reachable from your devices</string>
+    <string name="nm_hub_service_connecting">Connecting to nanoMuse Cloud…</string>
+    <string name="nm_hub_service_alone">No other device is online right now</string>
+    <plurals name="nm_hub_service_devices">
+        <item quantity="one">%d device online</item>
+        <item quantity="other">%d devices online</item>
+    </plurals>
+    <string name="nm_hub_service_stop">Turn off</string>
+    <string name="nm_hub_task_from">Task from %1$s</string>
+    <string name="nm_hub_task_prefix">The following was asked from %1$s, one of the user\'s other devices. Do it on this phone and answer in the user\'s language.</string>
+    <string name="nm_hub_session_title">From %1$s</string>
+
+    <string name="nm_devices_title">Devices</string>
+    <string name="nm_devices_intro">Every device signed in to this account is a Muse: this phone, your computers running nanoMuse Desktop, the web console. Each can ask the others for things — on any network, through nanoMuse Cloud.</string>
+    <string name="nm_devices_join">Reachable from your devices</string>
+    <string name="nm_devices_join_sub">Keeps this phone connected so your other devices can ask it for things. A quiet notification shows while it is on.</string>
+    <string name="nm_devices_remote_control">Let other devices operate this phone</string>
+    <string name="nm_devices_remote_control_sub">Shell, files, screen and tasks for this phone\'s agent. Off, this phone still sees the others and can operate them.</string>
+    <string name="nm_devices_name">This phone\'s name</string>
+    <string name="nm_devices_connected">Connected</string>
+    <string name="nm_devices_connecting">Connecting…</string>
+    <string name="nm_devices_off">Off</string>
+    <string name="nm_devices_none">No other device yet. On your computer, install nanoMuse Desktop and sign in with the same account; it appears here within seconds.</string>
+    <string name="nm_devices_online">online</string>
+    <string name="nm_devices_offline">offline</string>
+    <string name="nm_devices_web">Web console</string>
+    <string name="nm_devices_web_sub">Open %1$s in any browser, sign in with the same account, and drive your devices from there.</string>
+    <string name="nm_devices_web_copy">Copy link</string>
+    <string name="nm_devices_web_copied">Link copied</string>
+    <string name="nm_devices_forget">Forget</string>
+    <string name="nm_devices_forget_sub">Take this device off the list. It comes back the next time it signs in with this account.</string>
+    <string name="nm_devices_how">In a chat, just ask: “on my Mac, list the downloads folder”, “tell my PC to build the project and send me the log”. Approvals show on this phone.</string>
 </resources>

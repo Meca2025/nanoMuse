@@ -549,8 +549,10 @@ class MinisApp : Application(), ImageLoaderFactory {
         NativeOffloadServer.register("nanomuse-media", io.github.nanomuse.media.MediaOffloadHandler(this))
         // nanoMuse: nanomuse-hands — the phone's screen as a hand (screenshot → screen model → gesture).
         NativeOffloadServer.register("nanomuse-hands", io.github.nanomuse.hands.HandsOffloadHandler(this))
-        // nanoMuse: nanomuse-pc — the phone drives a paired computer (shell, files, browser, screen).
+        // nanoMuse: nanomuse-pc — the phone drives the user's other devices (shell, files, browser, screen, tasks).
         NativeOffloadServer.register("nanomuse-pc", io.github.nanomuse.reach.ReachOffloadHandler(this))
+        // nanoMuse: join the hub, so the user's other devices can reach this phone and it can reach them.
+        io.github.nanomuse.hub.Hub.autoStart(this)
         // T-config: minis-config — agent-facing settings management
         // (read/write registered ConfigFields with audit + revert).
         // Mirrors iOS `config_offload_register()` in ISHKernel.m.

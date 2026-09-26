@@ -105,6 +105,12 @@ object NanoMuseCloud {
         return !repo(context)?.loadApiKey(inst.id).isNullOrBlank()
     }
 
+    /** The account key this phone signed in with — the hub authenticates with it too. */
+    fun apiKey(context: Context): String? {
+        val inst = instance(context) ?: return null
+        return repo(context)?.loadApiKey(inst.id)?.takeIf { it.isNotBlank() }
+    }
+
     fun account(context: Context): Account? {
         val p = prefs(context)
         val hint = p.getString(KEY_HINT, null) ?: return null
@@ -165,6 +171,7 @@ object NanoMuseCloud {
         provisionDefaults(context, repo, inst, reply.optJSONArray("models"))
 
         saveAccount(context, reply)
+        io.github.nanomuse.hub.Hub.restart(context) // the new key joins the hub
         account(context)!!
     }
 
@@ -179,6 +186,7 @@ object NanoMuseCloud {
         } catch (e: CloudException) {
             if (e.status == 401) {
                 // Revoked elsewhere, or the relay was reset: the provider cannot answer any more.
+                io.github.nanomuse.hub.Hub.stop(context)
                 repo(context)?.removeInstance(inst.id)
                 clear(context)
                 null
@@ -196,6 +204,7 @@ object NanoMuseCloud {
         if (inst != null && key != null) {
             runCatching { call(context, "POST", "/v1/auth/sign-out", null, token = key) }
         }
+        io.github.nanomuse.hub.Hub.stop(context)
         if (inst != null) repo?.removeInstance(inst.id)
         clear(context)
     }
