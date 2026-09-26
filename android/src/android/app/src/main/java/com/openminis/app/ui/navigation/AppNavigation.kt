@@ -649,6 +649,22 @@ fun AppNavigation(
                 onOpenProviders = { navController.safeNavigate(Routes.PROVIDER_LIST) },
             )
         }
+        // nanoMuse: nanoMuse Cloud — sign in with a phone/e-mail code for a starter allowance,
+        // and the account page (balance, sign out) behind Settings.
+        composable(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) {
+            io.github.nanomuse.ui.cloud.CloudSignInScreen(
+                onBack = { navController.safePopBackStack() },
+                onSignedIn = { navController.safePopBackStack() },
+            )
+        }
+        composable(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) {
+            io.github.nanomuse.ui.cloud.CloudAccountScreen(
+                onBack = { navController.safePopBackStack() },
+                onSignIn = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
+                onOpenProvider = { id -> navController.safeNavigate(Routes.providerDetail(id)) },
+                onOpenModelGroups = { navController.safeNavigate(Routes.MODEL_GROUPS) },
+            )
+        }
         // nanoMuse: the phone's screen as a hand — the switch, what it needs, the screen model.
         composable(io.github.nanomuse.ui.hands.ROUTE_HANDS) {
             io.github.nanomuse.ui.hands.HandsScreen(
@@ -740,6 +756,7 @@ fun AppNavigation(
                 onSystemFilesClick = { navController.safeNavigate(io.github.nanomuse.ui.sysfiles.ROUTE_SYSTEM_FILES) }, // nanoMuse
                 onAvatarClick = { navController.safeNavigate(io.github.nanomuse.ui.avatar.ROUTE_AVATAR_STUDIO) }, // nanoMuse
                 onMediaModelsClick = { navController.safeNavigate(io.github.nanomuse.ui.media.ROUTE_MEDIA_MODELS) }, // nanoMuse
+                onCloudClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) }, // nanoMuse
                 onHandsClick = { navController.safeNavigate(io.github.nanomuse.ui.hands.ROUTE_HANDS) }, // nanoMuse
                 onComputersClick = { navController.safeNavigate(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) }, // nanoMuse
                 onPermissionsClick = { navController.safeNavigate(Routes.PERMISSIONS) },

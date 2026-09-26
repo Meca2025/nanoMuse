@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CloudQueue // nanoMuse: nanoMuse Cloud row
 import androidx.compose.material.icons.outlined.Computer // nanoMuse: Computers row
 import androidx.compose.material.icons.outlined.TouchApp // nanoMuse: Hands row
 import androidx.compose.material.icons.outlined.BarChart
@@ -97,6 +98,7 @@ fun SettingsScreen(
     onSystemFilesClick: () -> Unit = {}, // nanoMuse
     onAvatarClick: () -> Unit = {}, // nanoMuse
     onMediaModelsClick: () -> Unit = {}, // nanoMuse: Settings → Image & video models
+    onCloudClick: () -> Unit = {}, // nanoMuse: Settings → nanoMuse Cloud (the starter allowance)
     onHandsClick: () -> Unit = {}, // nanoMuse: Settings → Hands (the screen as a hand)
     onComputersClick: () -> Unit = {}, // nanoMuse: Settings → Computers (the phone drives a PC)
     onPermissionsClick: () -> Unit = {},
@@ -186,6 +188,17 @@ fun SettingsScreen(
                     )
                 }
                 io.github.nanomuse.ui.muse.MuseRowDivider(inset = 16.dp)
+                // nanoMuse: the relay account — signed in shows what is left of the allowance.
+                val cloudAccount = io.github.nanomuse.cloud.NanoMuseCloud.account(context)
+                io.github.nanomuse.ui.muse.MuseRow(
+                    title = stringResource(R.string.nm_cloud_title),
+                    icon = Icons.Outlined.CloudQueue,
+                    value = if (cloudAccount != null && io.github.nanomuse.cloud.NanoMuseCloud.isSignedIn(context))
+                        stringResource(R.string.nm_cloud_row_remaining, java.text.NumberFormat.getIntegerInstance().format(cloudAccount.remaining))
+                    else stringResource(R.string.nm_cloud_row_sign_in),
+                    onClick = onCloudClick,
+                )
+                io.github.nanomuse.ui.muse.MuseRowDivider()
                 io.github.nanomuse.ui.muse.MuseRow(
                     title = stringResource(R.string.settings_manage_providers),
                     icon = Icons.Outlined.Lock,

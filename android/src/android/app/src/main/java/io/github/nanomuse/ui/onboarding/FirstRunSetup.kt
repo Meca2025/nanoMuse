@@ -53,10 +53,12 @@ import io.github.nanomuse.ui.home.MuseTones
  * nanoMuse's first run, in Muse's shape: the mark, "Welcome to nanoMuse", and the three steps
  * OpenMinis needs before the agent can answer — a provider, its models, the first conversation.
  * [io.github.nanomuse.ui.home.NanoMuseHome] shows it instead of the chat until the app has a
- * model to talk to. Muse asks for a phone number on this screen; we ask for a key, and the key
- * stays on the phone.
+ * model to talk to. Muse asks for a phone number on this screen; so do we, now — *Start now*
+ * signs up with nanoMuse Cloud ([io.github.nanomuse.cloud.NanoMuseCloud]) for a starter
+ * allowance and does steps 1 and 2 in one go. Bringing one's own key is the other door on the
+ * same step, and then the key stays on the phone.
  *
- * Steps 1 and 2 are OpenMinis' own screens — `AddProviderScreen`, then
+ * On the own-key path steps 1 and 2 are OpenMinis' own screens — `AddProviderScreen`, then
  * `OnboardingModelSelectionScreen`, which lists what the provider actually serves and turns the
  * pick into the default model group — reached from here and returning here.
  */
@@ -100,6 +102,7 @@ fun FirstRunSetupScreen(
     onStart: () -> Unit,
     onSkipModels: () -> Unit,
     onSettings: () -> Unit,
+    onStartNow: () -> Unit = onAddProvider,
 ) {
     val context = LocalContext.current
     val step = FirstRunSetup.currentStep(hasProviders, hasGroups)
@@ -165,7 +168,7 @@ fun FirstRunSetupScreen(
                     title = stringResource(R.string.nm_setup_step_provider),
                     subtitle = if (hasProviders) stringResource(R.string.nm_setup_done) else stringResource(R.string.nm_setup_step_provider_sub),
                     state = if (hasProviders) StepState.DONE else StepState.CURRENT,
-                    onClick = onAddProvider,
+                    onClick = onStartNow,
                 )
                 Spacer(Modifier.height(10.dp))
                 SetupStep(
@@ -205,7 +208,7 @@ fun FirstRunSetupScreen(
                 Button(
                     onClick = {
                         when (step) {
-                            1 -> onAddProvider()
+                            1 -> onStartNow()
                             2 -> onSelectModels()
                             else -> onStart()
                         }
@@ -215,17 +218,24 @@ fun FirstRunSetupScreen(
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
                     Text(
-                        text = if (step == 3) stringResource(R.string.nm_setup_start) else stringResource(R.string.nm_setup_continue),
+                        text = when (step) {
+                            1 -> stringResource(R.string.nm_setup_start_now)
+                            2 -> stringResource(R.string.nm_setup_continue)
+                            else -> stringResource(R.string.nm_setup_start)
+                        },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                     )
                 }
-                if (step == 2) {
-                    TextButton(onClick = onSkipModels) {
+                when (step) {
+                    // The other door on step 1: a key of one's own, OpenMinis' provider screen.
+                    1 -> TextButton(onClick = onAddProvider) {
+                        Text(stringResource(R.string.nm_setup_own_key), color = MuseTones.action, fontSize = 14.sp)
+                    }
+                    2 -> TextButton(onClick = onSkipModels) {
                         Text(stringResource(R.string.nm_setup_skip_models), color = MuseTones.action, fontSize = 14.sp)
                     }
-                } else {
-                    Spacer(Modifier.height(12.dp))
+                    else -> Spacer(Modifier.height(12.dp))
                 }
                 Text(
                     text = stringResource(R.string.nm_setup_fine_print),

@@ -18,6 +18,8 @@ def main() -> None:
     ap.add_argument("--log-level", default="info")
     args = ap.parse_args()
     logging.basicConfig(level=args.log_level.upper(), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    # httpx logs every upstream URL at INFO; the relay's own line per request is enough.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = Settings()
     app = create_app(settings)
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level, proxy_headers=True, forwarded_allow_ips="*")

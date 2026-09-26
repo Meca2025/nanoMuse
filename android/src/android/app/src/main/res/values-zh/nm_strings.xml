@@ -321,9 +321,9 @@
 
     <!-- 首次运行 -->
     <string name="nm_setup_title">欢迎使用 nanoMuse</string>
-    <string name="nm_setup_subtitle">带上你自己的模型，三步之后它就住在你的手机里。</string>
-    <string name="nm_setup_step_provider">添加模型服务商</string>
-    <string name="nm_setup_step_provider_sub">填一个 API key，或用账号登录。一把阿里云百炼的 key 还能顺带画形象、生视频</string>
+    <string name="nm_setup_subtitle">三步之后，它就住在你的手机里。</string>
+    <string name="nm_setup_step_provider">接入模型</string>
+    <string name="nm_setup_step_provider_sub">手机号或邮箱注册，送一份体验额度；也可以填自己的 API key</string>
     <string name="nm_setup_step_models">选择模型</string>
     <string name="nm_setup_step_models_sub">自动列出服务商提供的模型，最多选三个</string>
     <string name="nm_setup_step_models_locked">先完成第 1 步</string>
@@ -541,4 +541,49 @@
     <!-- the approval card -->
     <string name="nm_risk_desc_on_computer">在电脑「%1$s」上，不是在这台手机上。</string>
     <string name="nm_risk_preview_computer">电脑上的命令</string>
+
+    <!-- nanoMuse Cloud：手机号/邮箱验证码登录，赠送体验额度 -->
+    <string name="nm_setup_start_now">直接开始</string>
+    <string name="nm_setup_own_key">我有自己的 API key</string>
+    <string name="nm_cloud_title">nanoMuse 云</string>
+    <string name="nm_cloud_signin_title">用 nanoMuse 云开始</string>
+    <string name="nm_cloud_signin_subtitle">手机号或邮箱，收一个验证码，就有一份体验额度。不用自己配 API key。</string>
+    <string name="nm_cloud_identifier">手机号或邮箱</string>
+    <string name="nm_cloud_identifier_hint">138 0000 0000 或 you@example.com</string>
+    <string name="nm_cloud_code">验证码</string>
+    <string name="nm_cloud_send_code">发送验证码</string>
+    <string name="nm_cloud_resend">重新发送</string>
+    <string name="nm_cloud_resend_in">%1$d 秒后可重发</string>
+    <string name="nm_cloud_verify">登录</string>
+    <string name="nm_cloud_debug_base">中转服务器（调试版）</string>
+    <string name="nm_cloud_fine_print">服务器只保存手机号或邮箱的哈希值，以及每次请求的 token 数。你的消息只转发给模型，不会存下来。随时可以换成自己的 key。</string>
+    <string name="nm_cloud_not_signed_in">尚未登录</string>
+    <string name="nm_cloud_not_signed_in_sub">用手机号或邮箱登录，送一份体验额度。你自己添加的服务商不受影响。</string>
+    <string name="nm_cloud_sign_in">登录</string>
+    <string name="nm_cloud_channel_phone">手机号</string>
+    <string name="nm_cloud_channel_email">邮箱</string>
+    <string name="nm_cloud_remaining">剩余 %1$s tokens</string>
+    <string name="nm_cloud_of_granted">共 %1$s</string>
+    <string name="nm_cloud_used_today">今天已用 %1$s，每日上限 %2$s</string>
+    <string name="nm_cloud_refresh">刷新余额</string>
+    <string name="nm_cloud_refreshing">正在刷新…</string>
+    <string name="nm_cloud_how_it_works">nanoMuse 云在这个应用里就是一个普通的服务商：它的模型列在「服务商」里，也可以和你自己的模型放进同一个模型组。</string>
+    <string name="nm_cloud_open_provider">服务商设置</string>
+    <string name="nm_cloud_sign_out">退出登录</string>
+    <string name="nm_cloud_sign_out_sub">退出会让服务器作废这台手机的 key，并移除这个服务商。额度跟着你的手机号，下次登录还在。</string>
+    <string name="nm_cloud_sign_out_confirm">会从这台手机上移除 nanoMuse 云这个服务商和它的模型。聊天记录会保留。</string>
+    <string name="nm_cloud_row_remaining">剩余 %1$s</string>
+    <string name="nm_cloud_row_sign_in">登录</string>
+    <string name="nm_cloud_err_bad_identifier">这看起来不是手机号，也不是邮箱。</string>
+    <string name="nm_cloud_err_code_wrong">验证码不对。</string>
+    <string name="nm_cloud_err_code_expired">验证码已过期，请重新发送。</string>
+    <string name="nm_cloud_err_code_too_often">发送太频繁了，请过几分钟再试。</string>
+    <string name="nm_cloud_err_send_failed">验证码没发出去，请稍后再试。</string>
+    <string name="nm_cloud_err_disabled">这个账号已被停用。</string>
+    <string name="nm_cloud_err_bad_key">服务器已不认识这台手机，请重新登录。</string>
+    <string name="nm_cloud_err_out_of_tokens">额度用完了。</string>
+    <string name="nm_cloud_err_daily_cap">今天的额度用完了，明天再来。</string>
+    <string name="nm_cloud_err_rate_limited">请求太快了，稍等一下。</string>
+    <string name="nm_cloud_err_unreachable">连不上 nanoMuse 云，请检查网络。</string>
+    <string name="nm_cloud_err_generic">出了点问题。</string>
 </resources>

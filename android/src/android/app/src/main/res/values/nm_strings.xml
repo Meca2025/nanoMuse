@@ -323,9 +323,9 @@
 
     <!-- First run (Muse-style welcome; the steps are OpenMinis' provider and model screens) -->
     <string name="nm_setup_title">Welcome to nanoMuse</string>
-    <string name="nm_setup_subtitle">Bring your own model. Three steps, and it lives on your phone.</string>
-    <string name="nm_setup_step_provider">Add a model provider</string>
-    <string name="nm_setup_step_provider_sub">An API key, or sign in with an account. One Alibaba Cloud Model Studio key also covers the avatar\'s pictures and video</string>
+    <string name="nm_setup_subtitle">Three steps, and it lives on your phone.</string>
+    <string name="nm_setup_step_provider">Connect a model</string>
+    <string name="nm_setup_step_provider_sub">A phone number or e-mail gets a starter allowance on nanoMuse Cloud; or bring your own API key</string>
     <string name="nm_setup_step_models">Choose models</string>
     <string name="nm_setup_step_models_sub">The models your provider serves are listed for you; pick up to three</string>
     <string name="nm_setup_step_models_locked">After step 1</string>
@@ -543,4 +543,49 @@
     <!-- the approval card -->
     <string name="nm_risk_desc_on_computer">On the computer “%1$s”, not on this phone.</string>
     <string name="nm_risk_preview_computer">Command on the computer</string>
+
+    <!-- nanoMuse Cloud: sign in with a phone/e-mail code for a starter allowance -->
+    <string name="nm_setup_start_now">Start now</string>
+    <string name="nm_setup_own_key">I have my own API key</string>
+    <string name="nm_cloud_title">nanoMuse Cloud</string>
+    <string name="nm_cloud_signin_title">Start with nanoMuse Cloud</string>
+    <string name="nm_cloud_signin_subtitle">A phone number or an e-mail address, a code, and you have a starter allowance of tokens. No API key needed.</string>
+    <string name="nm_cloud_identifier">Phone number or e-mail</string>
+    <string name="nm_cloud_identifier_hint">138 0000 0000 or you@example.com</string>
+    <string name="nm_cloud_code">Code</string>
+    <string name="nm_cloud_send_code">Send code</string>
+    <string name="nm_cloud_resend">Send again</string>
+    <string name="nm_cloud_resend_in">Send again in %1$ds</string>
+    <string name="nm_cloud_verify">Sign in</string>
+    <string name="nm_cloud_debug_base">Relay (debug build)</string>
+    <string name="nm_cloud_fine_print">The relay keeps only a hash of your number or address and the token count of each request. Your messages are forwarded to the model, not stored. You can add your own key at any time.</string>
+    <string name="nm_cloud_not_signed_in">Not signed in</string>
+    <string name="nm_cloud_not_signed_in_sub">Sign in with a phone number or e-mail for a starter allowance. Your own providers stay as they are.</string>
+    <string name="nm_cloud_sign_in">Sign in</string>
+    <string name="nm_cloud_channel_phone">Phone number</string>
+    <string name="nm_cloud_channel_email">E-mail</string>
+    <string name="nm_cloud_remaining">%1$s tokens left</string>
+    <string name="nm_cloud_of_granted">of %1$s</string>
+    <string name="nm_cloud_used_today">Today %1$s of a daily %2$s</string>
+    <string name="nm_cloud_refresh">Refresh balance</string>
+    <string name="nm_cloud_refreshing">Refreshing…</string>
+    <string name="nm_cloud_how_it_works">nanoMuse Cloud is an ordinary provider in this app: its models are listed under Providers and can be mixed with your own in a model group.</string>
+    <string name="nm_cloud_open_provider">Provider settings</string>
+    <string name="nm_cloud_sign_out">Sign out</string>
+    <string name="nm_cloud_sign_out_sub">Signing out revokes this phone\'s key at the relay and removes the provider. The allowance stays with your number and comes back when you sign in again.</string>
+    <string name="nm_cloud_sign_out_confirm">The nanoMuse Cloud provider and its models will be removed from this phone. Chats stay.</string>
+    <string name="nm_cloud_row_remaining">%1$s left</string>
+    <string name="nm_cloud_row_sign_in">Sign in</string>
+    <string name="nm_cloud_err_bad_identifier">That doesn\'t look like a phone number or an e-mail address.</string>
+    <string name="nm_cloud_err_code_wrong">Wrong code.</string>
+    <string name="nm_cloud_err_code_expired">That code has expired — send a new one.</string>
+    <string name="nm_cloud_err_code_too_often">Too many codes in a row. Wait a few minutes.</string>
+    <string name="nm_cloud_err_send_failed">The code could not be sent. Try again in a moment.</string>
+    <string name="nm_cloud_err_disabled">This account has been disabled.</string>
+    <string name="nm_cloud_err_bad_key">The relay no longer recognises this phone. Sign in again.</string>
+    <string name="nm_cloud_err_out_of_tokens">The allowance is used up.</string>
+    <string name="nm_cloud_err_daily_cap">Today\'s allowance is used up; more tomorrow.</string>
+    <string name="nm_cloud_err_rate_limited">Too many requests at once. A moment, please.</string>
+    <string name="nm_cloud_err_unreachable">Could not reach nanoMuse Cloud. Check the connection.</string>
+    <string name="nm_cloud_err_generic">Something went wrong.</string>
 </resources>
