@@ -2,6 +2,20 @@
 
 All notable changes to nanoMuse. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [Semantic Versioning](https://semver.org/). Unreleased changes are on `main`.
 
+## [0.1.17] - Unreleased · Doorstep
+
+Start without an API key. *Start now* on the first screen signs up with a phone number or an e-mail address and a code, and the app has a provider with a starter allowance — nanoMuse Cloud, a small open-source relay that anyone can run. Bringing your own key is unchanged.
+
+### Added
+
+- **nanoMuse Cloud in the app** (`io.github.nanomuse.cloud`). `NanoMuseCloud` speaks the relay's four calls (`/v1/auth/code`, `/v1/auth/verify`, `/v1/me`, `/v1/auth/sign-out`) and provisions the result as an ordinary OpenAI-compatible `ProviderInstance` on the relay's base URL: the issued `nm_…` key in the encrypted key store, the models fetched with the same `/v1/models` refresh every provider gets, a *nanoMuse Cloud* model group with the recommended chat model (made the default only when there is none), and the relay's picture model as the avatar's image model (only when none is set). The first-run screen's primary button is now *Start now*; *I have my own API key* is the other door on the same step. `CloudSignInScreen` (identifier, code with a 60-second resend countdown, the relay's error codes as sentences, a *Relay* field in debug builds) and `CloudAccountScreen` (masked hint, remaining of granted with a bar, today's use against the daily cap, provider settings, sign out = revoke the key at the relay and remove the provider). A *nanoMuse Cloud* row in the Settings model card shows what is left. Strings in en / zh / zh-TW.
+- **The relay** (`cloud/`, Python, FastAPI + SQLite): sign-up by SMS (Aliyun) or e-mail (SMTP) code with per-identifier and per-IP throttles; identifiers stored as HMAC-SHA256 hashes with a display hint; `nm_…` keys stored hashed; an OpenAI-shaped proxy — `/v1/models` with modalities, `/v1/chat/completions` streaming with usage forced on, `/v1/images/generations` and `/v1/images/edits` translated to DashScope's native image API — charging each request from the account grant with a daily cap and a per-minute limit; `CHAT_DEFAULTS` (`enable_thinking: false` unless the app says otherwise); admin top-up and disable by account id or identifier; Dockerfile, Caddy compose, `.env.example`, tests against a fake upstream. [docs/cloud.md](docs/cloud.md); [privacy.md](docs/privacy.md) gains a paragraph.
+
+### Changed
+
+- The first-run subtitle and step 1 no longer assume a key of your own (*Connect a model*: a phone number or e-mail for a starter allowance, or your own API key).
+- versionCode 18; installs over 0.1.16 without losing data.
+
 ## [0.1.16] - 2026-09-26 · Palette
 
 The image and video models are picked the way the chat model is — from what the key can actually use — and drawing on Alibaba Cloud Model Studio works again.

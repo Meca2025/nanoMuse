@@ -22,7 +22,7 @@
   </p>
 </div>
 
-nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每一台设备。和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一样，它是一个有名字、有自己形象的智能体：不只回答问题，而是动手做事；App 关掉了也继续干活；记得你；遇到无法撤销的操作会先停下来问你。Android App 把整个智能体跑在**手机上**：Linux 根文件系统、shell、浏览器、MCP、技能和定时任务都在 APK 里，模型由你自己带。它有一双手，能去碰那些没有 API 的 App——经你允许后，直接操作手机屏幕；也能伸到你的电脑上：在手机上说一句，事情在电脑上办好。之后是桌面 App、iOS、部署在你自己机器上的网页版，还有眼镜。没有服务器，不用注册，GPL-3.0——可以在它的基础上定制一个属于自己的 Muse。
+nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每一台设备。和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一样，它是一个有名字、有自己形象的智能体：不只回答问题，而是动手做事；App 关掉了也继续干活；记得你；遇到无法撤销的操作会先停下来问你。Android App 把整个智能体跑在**手机上**：Linux 根文件系统、shell、浏览器、MCP、技能和定时任务都在 APK 里，模型由你自己带。它有一双手，能去碰那些没有 API 的 App——经你允许后，直接操作手机屏幕；也能伸到你的电脑上：在手机上说一句，事情在电脑上办好。之后是桌面 App、iOS、部署在你自己机器上的网页版，还有眼镜。用自己的 key，或者领一份开源中转服务的体验额度；GPL-3.0——可以在它的基础上定制一个属于自己的 Muse。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="同一只小龙的五种状态：休息、工作、等你、开心、抱歉">
@@ -42,7 +42,7 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 | | |
 |---|---|
 | **Muse 风格** | 一个智能体，而不是一堆工具：有名字、有自己的形象，第一次见面先聊一聊，每天有写给你的动态，目标在后台持续推进，记忆能看也能改，无法撤销的操作前先问你。 |
-| **完全开源** | 整个仓库 GPL-3.0-or-later。没有闭源组件，不用注册账号，不用信任任何服务器，也不绑定任何模型；每个版本都从对应的 tag 构建，手动安装。Muse、豆包、千问是别人给你用的产品；nanoMuse 是你自己拥有的——可以依赖开源定制属于自己的 Muse：改名字、换形象、重写性格、接上自己的模型和工具。 |
+| **完全开源** | 整个仓库 GPL-3.0-or-later。没有闭源组件，不强制账号或服务器，也不绑定任何模型——可选的 nanoMuse 云中转服务同样在仓库里，谁都可以自己搭一个；每个版本都从对应的 tag 构建，手动安装。Muse、豆包、千问是别人给你用的产品；nanoMuse 是你自己拥有的——可以依赖开源定制属于自己的 Muse：改名字、换形象、重写性格、接上自己的模型和工具。 |
 | **通用：有没有 API 都能做** | 国内日常用的 App，大多从来没有 API。智能体会顺着一把梯子往上试：先是技能、CLI 或 MCP 服务，再是用你的登录态抓一页，再是应用内浏览器，最后在你允许之后直接操作设备屏幕，像你一样看、一样点——付款、发送、删除前照样要经你审批。默认关闭。 |
 | **多端协同** | 一个智能体，你的每台设备都是它的一双手、一个入口：在手机上说一句，事情在电脑上办好；对眼镜说，两边一起办。手机操作电脑已经能用；之后是桌面 App、iOS、部署在你自己机器上的网页版，还有眼镜。 |
 
@@ -52,7 +52,7 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 
 1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载 `nanoMuse-<版本>-arm64.apk`——Android 8.0 以上的 64 位手机。想校验就 `sha256sum -c nanoMuse-<版本>-arm64.apk.sha256`。
 2. 打开安装。Android 会问一次是否允许；每个版本都用同一把签名，直接覆盖安装升级，数据不丢。
-3. 添加一个模型：任何 OpenAI 兼容接口配你自己的 key，或者 App 自带的 OAuth 登录。第一次对话它会问你叫什么，并给自己起名字。
+3. 接入模型。「直接开始」：手机号或邮箱，收一个验证码，就有一份 [nanoMuse 云](docs/cloud.md)的体验额度，不用自己配 key。也可以用自己的：任何 OpenAI 兼容接口配你的 key，或者 App 自带的 OAuth 登录。第一次对话它会问你叫什么，并给自己起名字。
 4. 可选——「设置 → 图像与视频模型」：图像模型（阿里云百炼的 qwen-image-3.0、gpt-image-1，或任何有 OpenAI images 接口的服务商）让它能换形象、画图；视频模型（百炼上的 MiniMax-H3）让形象动起来。Muse 这两样是官方自带的，nanoMuse 用你自己的，缺哪个它会开口告诉你。
 
 App 会到本仓库的 Releases 检查更新。每个版本的说明在 [docs/releases/](docs/releases/) 和 [CHANGELOG](CHANGELOG.md)。
@@ -83,8 +83,9 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | `feed`、`sysfiles` | 每天早上把 ` ```nanomuse-feed ` 段写进 `minis-global/nanomuse/feed/` 的例程、卡片、那句指示；系统文件页和记忆导入 |
 | `avatar`、`ui/avatar` | 架在 OpenMinis 图像接口（`images/generations`、`images/edits`、DashScope 原生编辑）上的 `ImageGen`、形象页、`AvatarStore`，以及会动的 `AgentAvatar` |
 | `status` | 两级状态（形象下面是工具标题，卡片上是动作 chips）、`KeepAwake`、每个步骤的最后一帧浏览器画面 |
+| `cloud`、`ui/cloud` | `NanoMuseCloud`：对着 [`cloud/`](cloud/) 里的中转服务用手机号/邮箱验证码注册，配置成一个普通的 OpenAI 兼容服务商；登录页和账户页（[docs/cloud.md](docs/cloud.md)） |
 
-改到上游文件的地方都标着 `// nanoMuse:`；每次 subtree 拉取之后 `scripts/rebrand.py` 重新套一遍品牌。从源码构建见 [CONTRIBUTING.md](CONTRIBUTING.md)。你的消息只发给你配置的模型；文件、记忆和形象图片都在 App 的私有存储里。
+改到上游文件的地方都标着 `// nanoMuse:`；每次 subtree 拉取之后 `scripts/rebrand.py` 重新套一遍品牌。从源码构建见 [CONTRIBUTING.md](CONTRIBUTING.md)。你的消息只发给你配置的模型——走中转服务时也只是转发，不会存下来；文件、记忆和形象图片都在 App 的私有存储里。
 
 ## 版本
 
