@@ -17,7 +17,7 @@
     placeholder: (n) => `让 ${n} 做点什么…`, offlineNote: (n) => `${n} 现在不在线，消息发不过去。`,
     thinking: "思考中", running: "执行", result: "结果", asks: "转交", remote: "对方",
     approvalTitle: (d) => `${d} 想执行一个需要确认的操作`, allow: "允许", deny: "拒绝", allowed: "已允许", denied: "已拒绝", expired: "已超时", stop: "停止",
-    stopped: "已停止。", clear: "清空记录", errorOffline: "设备已离线，没有收到回答。", errorTimeout: "等太久了，没有收到回答。", errorBusy: "这台设备正在处理上一条消息。",
+    stopped: "已停止。", clear: "清空记录", forget: "移除", forgetConfirm: (n) => `把 ${n} 从列表里去掉？它下次用这个账号登录时会重新出现。`, errorOffline: "设备已离线，没有收到回答。", errorTimeout: "等太久了，没有收到回答。", errorBusy: "这台设备正在处理上一条消息。",
     busy: (n) => `${n} 正在处理…`, sentFrom: "来自网页", waitingPhone: "手机上的 Muse 正在处理，完成后会把结果发回来。",
     lastSeen: "上次在线", justNow: "刚刚", minAgo: (m) => `${m} 分钟前`, hAgo: (h) => `${h} 小时前`, dAgo: (d) => `${d} 天前`,
     risks: { destructive: "会删除或改写", outbound: "会向外发送", system: "系统级操作", install: "安装软件", money: "涉及付款" },
@@ -33,7 +33,7 @@
     placeholder: (n) => `Ask ${n} to do something…`, offlineNote: (n) => `${n} is offline; nothing can be sent.`,
     thinking: "thinking", running: "run", result: "result", asks: "asks", remote: "there",
     approvalTitle: (d) => `${d} wants to do something that needs your OK`, allow: "Allow", deny: "Don't", allowed: "allowed", denied: "declined", expired: "timed out", stop: "Stop",
-    stopped: "Stopped.", clear: "Clear history", errorOffline: "The device went offline before answering.", errorTimeout: "No answer in time.", errorBusy: "That device is still on the previous message.",
+    stopped: "Stopped.", clear: "Clear history", forget: "Forget", forgetConfirm: (n) => `Take ${n} off the list? It comes back the next time it signs in with this account.`, errorOffline: "The device went offline before answering.", errorTimeout: "No answer in time.", errorBusy: "That device is still on the previous message.",
     busy: (n) => `${n} is working…`, sentFrom: "from the web", waitingPhone: "The Muse on the phone is working; the answer comes back here when it is done.",
     lastSeen: "last seen", justNow: "just now", minAgo: (m) => `${m} min ago`, hAgo: (h) => `${h} h ago`, dAgo: (d) => `${d} d ago`,
     risks: { destructive: "removes or rewrites", outbound: "sends something out", system: "system-level", install: "installs software", money: "a payment" },
@@ -302,6 +302,7 @@
       h("div", {}, h("div", { class: "name" }, d.name), h("div", { class: "sub" }, `${kindLabel(d.kind)} · ${d.os || ""} · ${d.online ? T.online : T.offline}`)),
       h("span", { class: "spacer" }),
       h("button", { onclick: () => { const c = chat(d.id); c.messages = []; persist(d.id); LS.removeItem("nm.conv." + d.id); drawChat(); } }, T.clear),
+      d.online ? null : h("button", { onclick: () => { if (!confirm(T.forgetConfirm(d.name))) return; if (ws && wsState === "on") ws.send(JSON.stringify({ type: "forget", device_id: d.id })); LS.removeItem("nm.conv." + d.id); if (selected === d.id) { selected = ""; LS.removeItem("nm.selected"); history.replaceState(null, "", location.pathname); } devices = devices.filter((x) => x.id !== d.id); drawSide(); drawChatShell(); } }, T.forget),
     );
     const g = els.head.querySelector(".glyph svg"); if (g) { g.style.width = "18px"; g.style.height = "18px"; g.style.fill = "none"; g.style.stroke = "currentColor"; g.style.strokeWidth = "1.8"; }
     drawComposer();
