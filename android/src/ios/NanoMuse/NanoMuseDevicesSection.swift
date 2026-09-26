@@ -3,6 +3,7 @@
 // online dot (tap an offline one to forget it), and the web console's address.
 
 import SwiftUI
+import UIKit
 
 struct NanoMuseDevicesSection: View {
     @ObservedObject private var hub = NanoMuseHub.shared

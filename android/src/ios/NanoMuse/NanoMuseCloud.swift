@@ -95,7 +95,7 @@ enum NanoMuseCloud {
 
     static var isSignedIn: Bool {
         guard let inst = instance else { return false }
-        return !(ProviderConfigStore.loadAPIKey(instanceId: inst.id) ?? "").isEmpty
+        return !(ProviderKeychainHelper.loadAPIKey(instanceId: inst.id) ?? "").isEmpty
     }
 
     static var account: Account? {
@@ -149,7 +149,7 @@ enum NanoMuseCloud {
                 existing.customBaseURL = base
                 store.updateInstance(existing)
             }
-            ProviderConfigStore.saveAPIKey(apiKey, instanceId: existing.id)
+            ProviderKeychainHelper.saveAPIKey(apiKey, instanceId: existing.id)
             inst = existing
         } else {
             let fresh = ProviderInstance(
@@ -160,7 +160,7 @@ enum NanoMuseCloud {
                 appendV1Suffix: true
             )
             // Key first: addInstance fetches the model list on its own right away.
-            ProviderConfigStore.saveAPIKey(apiKey, instanceId: fresh.id)
+            ProviderKeychainHelper.saveAPIKey(apiKey, instanceId: fresh.id)
             store.addInstance(fresh)
             inst = fresh
         }
@@ -179,7 +179,7 @@ enum NanoMuseCloud {
 
     /// Re-read the balance. Returns nil (and forgets the account) when the key is gone.
     static func refresh() async throws -> Account? {
-        guard let inst = instance, let key = ProviderConfigStore.loadAPIKey(instanceId: inst.id), !key.isEmpty else {
+        guard let inst = instance, let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty else {
             return nil
         }
         do {
@@ -200,7 +200,7 @@ enum NanoMuseCloud {
         await MainActor.run { NanoMuseHub.shared.stop() }
         let store = ProviderConfigStore.shared
         if let inst = instance {
-            if let key = ProviderConfigStore.loadAPIKey(instanceId: inst.id), !key.isEmpty {
+            if let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty {
                 _ = try? await call("POST", "/v1/auth/sign-out", body: nil, token: key)
             }
             store.removeInstance(inst.id)

@@ -67,7 +67,10 @@ final class NanoMuseHub: ObservableObject {
 
     var enabled: Bool {
         get { UserDefaults.standard.object(forKey: Keys.enabled) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.enabled); newValue ? autoStart() : stop() }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Keys.enabled)
+            if newValue { autoStart() } else { stop() }
+        }
     }
 
     var remoteControl: Bool {
@@ -101,7 +104,8 @@ final class NanoMuseHub: ObservableObject {
     // Connection -----------------------------------------------------------------------
 
     private var task: URLSessionWebSocketTask?
-    private var session: URLSession?
+    /// Bumped on every connect; callbacks from an older socket compare against it and step aside.
+    private var generation = 0
     private var backoff: TimeInterval = 1
     private var stopping = false
     private var pending: [String: (Result<[String: Any], HubError>) -> Void] = [:]
@@ -115,7 +119,7 @@ final class NanoMuseHub: ObservableObject {
 
     func start() {
         guard task == nil, let inst = NanoMuseCloud.instance,
-              let key = ProviderConfigStore.loadAPIKey(instanceId: inst.id), !key.isEmpty else { return }
+              let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty else { return }
         var base = NanoMuseCloud.baseURL
         if base.hasPrefix("https://") { base = "wss://" + base.dropFirst(8) } else if base.hasPrefix("http://") { base = "ws://" + base.dropFirst(7) }
         guard let url = URL(string: base + "/v1/hub") else { return }
@@ -123,23 +127,22 @@ final class NanoMuseHub: ObservableObject {
         var request = URLRequest(url: url)
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("nanoMuse-iOS/\(Self.version)", forHTTPHeaderField: "User-Agent")
-        let session = URLSession(configuration: .default)
-        let task = session.webSocketTask(with: request)
+        let task = URLSession.shared.webSocketTask(with: request)
         task.maximumMessageSize = 16 * 1024 * 1024
-        self.session = session
+        generation += 1
         self.task = task
         detail = "connecting"
         task.resume()
         send(hello())
-        receive()
-        schedulePing()
+        receive(generation)
+        schedulePing(generation)
     }
 
     func stop() {
         stopping = true
         task?.cancel(with: .normalClosure, reason: nil)
         task = nil
-        session = nil
+        generation += 1
         connected = false
         devices = []
         failAll(HubError(code: "disconnected", message: "left the hub"))
@@ -165,21 +168,26 @@ final class NanoMuseHub: ObservableObject {
         ]
     }
 
-    private func receive() {
+    private func receive(_ gen: Int) {
         guard let task else { return }
         task.receive { [weak self] result in
-            Task { @MainActor in
-                guard let self, self.task === task else { return }
-                switch result {
-                case .success(let message):
-                    if case .string(let text) = message, let data = text.data(using: .utf8),
-                       let frame = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        self.handle(frame)
-                    }
-                    self.receive()
-                case .failure(let error):
-                    self.dropped(error.localizedDescription)
+            // Only plain values cross into the main actor: the text of the frame, or why it ended.
+            var text: String?
+            var failure: String?
+            switch result {
+            case .success(let message):
+                if case .string(let s) = message { text = s }
+            case .failure(let error):
+                failure = error.localizedDescription
+            }
+            Task { @MainActor [text, failure] in
+                guard let self, self.generation == gen else { return }
+                if let failure { self.dropped(failure); return }
+                if let text, let data = text.data(using: .utf8),
+                   let frame = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    self.handle(frame)
                 }
+                self.receive(gen)
             }
         }
     }
@@ -187,7 +195,7 @@ final class NanoMuseHub: ObservableObject {
     private func dropped(_ why: String) {
         connected = false
         task = nil
-        session = nil
+        generation += 1
         failAll(HubError(code: "disconnected", message: why))
         guard !stopping else { return }
         detail = "reconnecting"
@@ -199,13 +207,15 @@ final class NanoMuseHub: ObservableObject {
         }
     }
 
-    private func schedulePing() {
+    private func schedulePing(_ gen: Int) {
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 25_000_000_000)
-            guard let self, let task = self.task else { return }
+            guard let self, self.generation == gen, let task = self.task else { return }
             task.sendPing { [weak self] error in
+                let failure = error?.localizedDescription
                 Task { @MainActor in
-                    if let error { self?.dropped(error.localizedDescription) } else { self?.schedulePing() }
+                    guard let self, self.generation == gen else { return }
+                    if let failure { self.dropped(failure) } else { self.schedulePing(gen) }
                 }
             }
         }
@@ -213,8 +223,13 @@ final class NanoMuseHub: ObservableObject {
 
     private func send(_ frame: [String: Any]) {
         guard let task, let data = try? JSONSerialization.data(withJSONObject: frame), let text = String(data: data, encoding: .utf8) else { return }
+        let gen = generation
         task.send(.string(text)) { [weak self] error in
-            if let error { Task { @MainActor in self?.dropped(error.localizedDescription) } }
+            guard let failure = error?.localizedDescription else { return }
+            Task { @MainActor in
+                guard let self, self.generation == gen else { return }
+                self.dropped(failure)
+            }
         }
     }
 
@@ -315,7 +330,11 @@ final class NanoMuseHub: ObservableObject {
             guard let raw = (args["url"] as? String)?.trimmingCharacters(in: .whitespaces), let url = URL(string: raw) else { refuse(id, "usage", "a URL is required"); return }
             UIApplication.shared.open(url) { ok in
                 Task { @MainActor in
-                    if ok { self.reply(id, body: ["ok": true, "url": raw]) } else { self.refuse(id, "no_app", "nothing on this iPhone opens \(raw)") }
+                    if ok {
+                        self.reply(id, body: ["ok": true, "url": raw])
+                    } else {
+                        self.refuse(id, "not_opened", "this iPhone did not open \(raw): nothing handles it, or nanoMuse is not in the foreground")
+                    }
                 }
             }
         case "notify":
@@ -353,8 +372,7 @@ final class NanoMuseHub: ObservableObject {
     }
 
     private func notify(title: String, text: String, from: String, done: @escaping @Sendable (Bool) -> Void) {
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { done(false); return }
             let content = UNMutableNotificationContent()
             content.title = title
@@ -362,7 +380,7 @@ final class NanoMuseHub: ObservableObject {
             content.subtitle = from
             content.sound = .default
             let request = UNNotificationRequest(identifier: "nanomuse.hub.\(UUID().uuidString)", content: content, trigger: nil)
-            center.add(request) { error in done(error == nil) }
+            UNUserNotificationCenter.current().add(request) { error in done(error == nil) }
         }
     }
 }
