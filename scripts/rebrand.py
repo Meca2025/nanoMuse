@@ -18,11 +18,18 @@ What it changes, and only this:
 - A handful of first-run / notification strings reworded in nanoMuse's voice
   (COPY below, en + zh + zh-rTW; the other locales keep the upstream text).
 
+- iOS (android/src/ios, when present): the bundle ids (com.openminis.app* → io.github.nanomuse.app*,
+  including the app group and iCloud container), the display names, MARKETING_VERSION /
+  CURRENT_PROJECT_VERSION, "Minis" -> "nanoMuse" in Swift string literals and in
+  Localizable.xcstrings (keys renamed, every translation updated), the About links, the
+  Soul emoji, the accent colour. Icons: scripts/gen-ios-icons.py.
+
 Anything else is a hand edit marked `// nanoMuse:` in the file.
 """
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -34,6 +41,7 @@ APP = ANDROID / "app"
 MAIN = APP / "src" / "main"
 JAVA = MAIN / "java" / "com" / "openminis" / "app"
 RES = MAIN / "res"
+IOS = ROOT / "android" / "src" / "ios"
 
 APP_ID = "io.github.nanomuse.app"
 NAME = "nanoMuse"
@@ -285,6 +293,218 @@ def reword() -> None:
         )
 
 
+# --- iOS -------------------------------------------------------------------------------------
+
+IOS_ID_RULES = [
+    (r"com\.openminis\.app", APP_ID),
+    (r"com\.openminis\.MinisTests", "io.github.nanomuse.MinisTests"),
+    (r"com\.openminis\.MinisUITests", "io.github.nanomuse.MinisUITests"),
+]
+
+
+def ios_files(*suffixes: str) -> list[Path]:
+    out: list[Path] = []
+    for path in sorted(IOS.rglob("*")):
+        if path.is_file() and path.suffix in suffixes and "Vendor" not in path.parts:
+            out.append(path)
+    return out
+
+
+def ios_ids() -> None:
+    """Bundle ids, app group, iCloud container, BGTask / URL-scheme / keychain ids: the iOS side
+    has no fixed package name, so the whole family moves to ours."""
+    for path in ios_files(
+        ".swift", ".plist", ".entitlements", ".pbxproj", ".xcscheme", ".xcprivacy"
+    ):
+        edit(path, IOS_ID_RULES)
+    # Stale File Provider domains are matched by prefix; ours now start with our id.
+    edit(
+        IOS / "MinisApp.swift",
+        [(r'contains\("com\.openminis"\)', 'contains("io.github.nanomuse")')],
+    )
+
+
+def ios_project() -> None:
+    pbx = IOS / "Minis.xcodeproj" / "project.pbxproj"
+    edit(
+        pbx,
+        [
+            (r"MARKETING_VERSION = 1\.\d+;", f"MARKETING_VERSION = {VERSION_NAME};"),
+            (r"MARKETING_VERSION = 0\.\d+\.\d+;", f"MARKETING_VERSION = {VERSION_NAME};"),
+            (r"CURRENT_PROJECT_VERSION = \d+;", f"CURRENT_PROJECT_VERSION = {VERSION_CODE};"),
+            (
+                r'INFOPLIST_KEY_CFBundleDisplayName = "Share to Minis";',
+                f'INFOPLIST_KEY_CFBundleDisplayName = "Share to {NAME}";',
+            ),
+            (
+                r'INFOPLIST_KEY_CFBundleDisplayName = "Minis Files";',
+                f'INFOPLIST_KEY_CFBundleDisplayName = "{NAME} Files";',
+            ),
+            # The app target has no display name of its own (PRODUCT_NAME is the target, "Minis").
+            (
+                r'(INFOPLIST_FILE = "\$\(SRCROOT\)/Info\.plist";\n)(?!\t*INFOPLIST_KEY_CFBundleDisplayName)',
+                f"\\g<1>\t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = {NAME};\n",
+            ),
+        ],
+    )
+
+
+def ios_product_name() -> None:
+    literal = re.compile(r'"""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"')
+    for path in ios_files(".swift"):
+        if "MinisTests" in path.parts or "MinisUITests" in path.parts:
+            continue
+        text = path.read_text(encoding="utf-8")
+        new = literal.sub(lambda m: WORD.sub(NAME, m.group(0)), text)
+        if new != text:
+            path.write_text(new, encoding="utf-8")
+            changed.append(str(path.relative_to(ROOT)))
+    # Info.plist usage descriptions ("Minis uses HealthKit so…") and their per-language
+    # InfoPlist.strings / AppShortcuts.strings; the ids in the plists were handled by ios_ids.
+    for path in ios_files(".plist", ".strings"):
+        if "Vendor" in path.parts or path.name == "PrivacyInfo.xcprivacy":
+            continue
+        text = path.read_text(encoding="utf-8")
+        new = WORD.sub(NAME, text)
+        if new != text:
+            path.write_text(new, encoding="utf-8")
+            changed.append(str(path.relative_to(ROOT)))
+    # Localizable.xcstrings: the English text is the key, so keys move with the literals and
+    # every translation's "Minis" moves too (the other languages keep their wording).
+    xc = IOS / "Localizable.xcstrings"
+    if not xc.exists():
+        return
+    raw = xc.read_text(encoding="utf-8")
+    data = json.loads(raw)
+
+    def walk(node: object) -> object:
+        if isinstance(node, dict):
+            return {
+                k: (WORD.sub(NAME, v) if k == "value" and isinstance(v, str) else walk(v))
+                for k, v in node.items()
+            }
+        if isinstance(node, list):
+            return [walk(v) for v in node]
+        return node
+
+    strings = data.get("strings", {})
+    renamed: dict[str, object] = {}
+    for key, entry in strings.items():
+        new_key = WORD.sub(NAME, key)
+        if new_key in renamed and new_key != key:
+            continue  # upstream already has the nanoMuse spelling; keep theirs
+        renamed[new_key] = walk(entry)
+    if renamed != strings:
+        data["strings"] = renamed
+        xc.write_text(xcstrings_dumps(data, raw), encoding="utf-8")
+        changed.append(str(xc.relative_to(ROOT)))
+
+
+def xcstrings_dumps(data: object, like: str) -> str:
+    """Xcode's own layout (2-space indent, ` : `, empty objects spread over three lines, trailing
+    newline only if the file had one), keys in the order they were read, so the diff stays at the
+    renamed entries."""
+    out = json.dumps(data, ensure_ascii=False, indent=2, separators=(",", " : "))
+    out = re.sub(
+        r"^([ ]*)(.*)\{\}",
+        lambda m: f"{m.group(1)}{m.group(2)}{{\n\n{m.group(1)}}}",
+        out,
+        flags=re.M,
+    )
+    return out + ("\n" if like.endswith("\n") else "")
+
+
+def ios_links() -> None:
+    edit(
+        IOS / "Views" / "Settings" / "AboutView.swift",
+        [
+            (r'"https://github\.com/OpenMinis"\)', f'"{REPO_URL}")'),
+            (r'"https://github\.com/OpenMinis/OpenMinis/issues"\)', f'"{REPO_URL}/issues")'),
+            (
+                r'"(?:Minis|nanoMuse) is Your Fully Local, Fully Private On-Device Agent\."',
+                '"A fully open-source, Muse-style personal agent for every device you own."',
+            ),
+        ],
+    )
+    edit(
+        IOS / "Views" / "ContentView.swift",
+        [
+            (r'"https://openminis\.github\.io/privacy-policy\.html"', f'"{PRIVACY_URL}"'),
+            (r'"https://github\.com/OpenMinis/OpenMinis/issues/new"', f'"{REPO_URL}/issues/new"'),
+        ],
+    )
+    edit(
+        IOS / "Views" / "Providers" / "AddProviderView.swift",
+        [(r'"https://openminis\.github\.io/privacy-policy\.html"', f'"{PRIVACY_URL}"')],
+    )
+
+
+def ios_soul_defaults() -> None:
+    edit(
+        IOS / "Agent" / "Session" / "SoulStore.swift",
+        [(r'var displayEmoji: String \{ "✨" \}', 'var displayEmoji: String { "🐾" }')],
+    )
+
+
+def ios_colours() -> None:
+    """AccentColor: the iOS system blues -> the brand blue (light) and its dark-mode tint."""
+    path = IOS / "Assets.xcassets" / "AccentColor.colorset" / "Contents.json"
+    if not path.exists():
+        return
+    raw = path.read_text(encoding="utf-8")
+    data = json.loads(raw)
+    want = {
+        None: ("0.004", "0.361", "0.984"),  # #015CFB
+        "dark": ("0.345", "0.651", "1.000"),  # #58A6FF
+    }
+    touched = False
+    for entry in data.get("colors", []):
+        appearance = None
+        for a in entry.get("appearances", []):
+            if a.get("appearance") == "luminosity":
+                appearance = a.get("value")
+        r, g, b = want.get(appearance, want[None])
+        comps = entry.setdefault("color", {}).setdefault("components", {})
+        new = {"red": r, "green": g, "blue": b, "alpha": comps.get("alpha", "1.000")}
+        if comps != new:
+            comps.clear()
+            comps.update(new)
+            touched = True
+    if touched:
+        path.write_text(xcstrings_dumps(data, raw), encoding="utf-8")
+        changed.append(str(path.relative_to(ROOT)))
+
+
+def ios() -> None:
+    if not IOS.is_dir():
+        return
+    ios_ids()
+    ios_project()
+    ios_product_name()
+    ios_links()
+    ios_soul_defaults()
+    ios_colours()
+
+
+def ios_check() -> int:
+    if not IOS.is_dir():
+        return 0
+    problems = 0
+    leftovers = re.compile(
+        r"com\.openminis\.(app|Minis)|openminis\.github\.io|MARKETING_VERSION = 1\."
+    )
+    for path in ios_files(".swift", ".plist", ".entitlements", ".pbxproj"):
+        for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if leftovers.search(line):
+                print(f"  ! {path.relative_to(ROOT)}:{i}: {line.strip()[:80]}")
+                problems += 1
+    for path in ios_files(".plist", ".strings"):
+        if path.name != "PrivacyInfo.xcprivacy" and WORD.search(path.read_text(encoding="utf-8")):
+            print(f"  ! Minis left in {path.relative_to(ROOT)}")
+            problems += 1
+    return problems
+
+
 def check() -> int:
     problems = 0
     for path in sorted(RES.glob("values*/strings.xml")):
@@ -314,10 +534,11 @@ def main() -> int:
     notification_icons()
     notification_faces()
     reword()
+    ios()
     for path in sorted(set(changed)):
         print(f"  edited {path}")
     print(f"{len(set(changed))} files changed")
-    problems = check()
+    problems = check() + ios_check()
     print("clean" if problems == 0 else f"{problems} leftovers")
     return 1 if problems else 0
 
