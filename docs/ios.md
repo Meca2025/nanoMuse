@@ -125,6 +125,13 @@ No certificate and no provisioning profile is stored anywhere: `xcodebuild -allo
 with the API key ("cloud signing") creates a managed distribution certificate and the profiles for
 the app and its three extensions on the runner, in a throwaway keychain.
 
+### Does it compile?
+
+*Actions → iOS · build check → Run workflow* (`.github/workflows/ios-check.yml`) builds the app
+for a device on a Mac runner with signing turned off — no Apple account, no secrets. It shares
+the native-dependency cache with the TestFlight workflow, so run it first: a compile error costs
+minutes there, not an upload. The full `xcodebuild` log is attached to the run.
+
 ### Running it
 
 *Actions → iOS · TestFlight → Run workflow*, or push a tag `ios-<anything>`. The job builds the
