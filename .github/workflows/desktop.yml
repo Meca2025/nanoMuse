@@ -32,14 +32,18 @@ jobs:
         env:
           FULL: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/desktop-v') }}
         run: |
-          ALL='[{"os":"windows-latest","label":"windows-x64"},{"os":"macos-latest","label":"macos-arm64"},{"os":"macos-15-intel","label":"macos-x64"},{"os":"ubuntu-22.04","label":"linux-x64"}]'
-          LINUX='[{"os":"ubuntu-22.04","label":"linux-x64"}]'
+          # Linux is built inside Debian 11 (glibc 2.31) so the binary runs on Ubuntu 20.04+ and
+          # Debian 11+, not only on distributions as new as the runner.
+          LINUX_ENTRY='{"os":"ubuntu-latest","label":"linux-x64","container":"python:3.12-bullseye"}'
+          ALL="[{\"os\":\"windows-latest\",\"label\":\"windows-x64\"},{\"os\":\"macos-latest\",\"label\":\"macos-arm64\"},{\"os\":\"macos-15-intel\",\"label\":\"macos-x64\"},$LINUX_ENTRY]"
+          LINUX="[$LINUX_ENTRY]"
           if [ "$FULL" = "true" ]; then echo "matrix=$ALL" >> "$GITHUB_OUTPUT"; else echo "matrix=$LINUX" >> "$GITHUB_OUTPUT"; fi
 
   build:
     name: ${{ matrix.label }}
     needs: plan
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     strategy:
       fail-fast: false
       matrix:
@@ -47,6 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        if: ${{ !matrix.container }}
         with:
           python-version: "3.12"
       - name: Install build tools
