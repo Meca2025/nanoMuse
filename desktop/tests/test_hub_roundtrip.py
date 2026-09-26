@@ -172,8 +172,9 @@ def test_desktop_serves_actions_and_tasks(relay, tmp_path, monkeypatch):
 def test_actions_locally(tmp_path):
     r = actions.shell("echo $((6*7))" if sys.platform != "win32" else "echo 42")
     assert r["exit_code"] == 0 and "42" in r["stdout"]
-    r = actions.shell("sleep 5" if sys.platform != "win32" else "timeout 5", timeout=1)
-    assert r["timed_out"] and r["exit_code"] == 124
+    # a shell that sleeps in a subprocess: the whole tree must be gone once we time out
+    r = actions.shell("sleep 5" if sys.platform != "win32" else "ping -n 6 127.0.0.1 > nul", timeout=1)
+    assert r["timed_out"] and r["exit_code"] == 124 and r["duration_ms"] < 4000
     with pytest.raises(actions.ActionError):
         actions.files(str(tmp_path / "nope"))
     assert actions.info()["actions"] == list(actions.ACTIONS)

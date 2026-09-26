@@ -15,6 +15,7 @@ import io
 import os
 import platform
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -72,6 +73,17 @@ def _text(b: bytes) -> str:
     return s
 
 
+def _kill_tree(proc: subprocess.Popen) -> None:
+    """Stop the shell and everything it started, so a timed-out command cannot linger."""
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        proc.kill()
+
+
 def shell(command: str, cwd: str | None = None, timeout: float = 120) -> dict:
     if not command or not command.strip():
         raise ActionError("usage", "a command is required")
@@ -79,13 +91,28 @@ def shell(command: str, cwd: str | None = None, timeout: float = 120) -> dict:
     started = time.monotonic()
     timed_out = False
     try:
-        proc = subprocess.run(command, shell=True, cwd=str(expand(cwd)) if cwd else None, capture_output=True, timeout=timeout)
-        code, out, err = proc.returncode, proc.stdout, proc.stderr
-    except subprocess.TimeoutExpired as e:
-        timed_out = True
-        code, out, err = 124, e.stdout or b"", e.stderr or b""
+        proc = subprocess.Popen(
+            command,
+            shell=True,
+            cwd=str(expand(cwd)) if cwd else None,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=os.name != "nt",
+        )
     except (OSError, ValueError) as e:
-        code, out, err = 127, b"", str(e).encode()
+        return {"exit_code": 127, "stdout": "", "stderr": str(e), "timed_out": False, "duration_ms": 0}
+    try:
+        out, err = proc.communicate(timeout=timeout)
+        code = proc.returncode
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        _kill_tree(proc)
+        try:
+            out, err = proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            out, err = b"", b""
+        code = 124
     return {
         "exit_code": code,
         "stdout": _text(out),
