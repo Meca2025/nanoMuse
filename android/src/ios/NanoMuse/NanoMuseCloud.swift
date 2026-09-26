@@ -173,6 +173,7 @@ enum NanoMuseCloud {
 
         let parsed = parseAccount(reply)
         account = parsed
+        await MainActor.run { NanoMuseHub.shared.restart() } // the new key joins the hub
         return parsed
     }
 
@@ -196,6 +197,7 @@ enum NanoMuseCloud {
 
     /// Revoke this phone's key at the relay and take the provider out of the app.
     static func signOut() async {
+        await MainActor.run { NanoMuseHub.shared.stop() }
         let store = ProviderConfigStore.shared
         if let inst = instance {
             if let key = ProviderConfigStore.loadAPIKey(instanceId: inst.id), !key.isEmpty {

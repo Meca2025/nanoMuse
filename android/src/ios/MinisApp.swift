@@ -128,6 +128,8 @@ struct MinisApp: App {
         //
         // `install` is idempotent, so the later onAppLaunch() call is a no-op.
         CrashSignalHandler.install()
+        // nanoMuse: join the devices hub once the account is signed in (a no-op otherwise).
+        Task { @MainActor in NanoMuseHub.shared.autoStart() }
         // [T-auto-grouping-default-on] Auto-grouping ships ON. `bool(forKey:)`
         // returns false for an unregistered key, so the default has to be
         // registered here rather than expressed at the (multiple) read sites —

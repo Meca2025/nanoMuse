@@ -24,6 +24,7 @@ struct NanoMuseCloudView: View {
         Form {
             if signedIn {
                 accountSections
+                NanoMuseDevicesSection()
             } else {
                 signInSections
             }
