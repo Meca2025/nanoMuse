@@ -77,6 +77,7 @@ python3 scripts/build-desktop.py
 
 `desktop/dist/` then holds the binary, the archive and the platform's installer (`.exe` via Inno
 Setup when `iscc` is on the path, `.pkg` via `pkgbuild`, `.deb` via `dpkg-deb`). The `desktop`
-GitHub workflow builds all four targets and, on a `desktop-v*` tag, publishes a release.
+GitHub workflow builds Linux on every push that touches `desktop/`; *Run workflow* or a
+`desktop-v*` tag builds all four targets, and the tag also publishes a release.
 
 Tests: `python -m pytest desktop/tests`.
