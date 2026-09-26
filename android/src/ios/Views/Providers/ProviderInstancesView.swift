@@ -22,6 +22,14 @@ struct ProviderInstancesView: View {
 
     var body: some View {
         List {
+            // nanoMuse: the relay first — a phone number or an e-mail address, no key needed.
+            Section {
+                NavigationLink {
+                    NanoMuseCloudView()
+                } label: {
+                    NanoMuseCloudRow()
+                }
+            }
             // [T-mimo-shadow-voice] EVERY instance appears under its providerType
             // section now (no voice-only exclusion) — a mixed vendor like MiMo
             // shows its text models here AND a shadow voice row below ("dual

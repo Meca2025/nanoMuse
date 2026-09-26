@@ -1213,6 +1213,7 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AA0838CB2F3CA8A900049557 /* Terminal */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Terminal; sourceTree = "<group>"; };
+		4E4D0000000000000000AA01 /* NanoMuse */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = NanoMuse; sourceTree = "<group>"; };
 		AA8A568C2F6FBB7A00A3E54E /* MinisUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = MinisUITests; sourceTree = "<group>"; };
 		BB1000012F700000000000AA /* MinisTests */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (E5EXC0001 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = MinisTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -1459,6 +1460,7 @@
 				E5L000030 /* NativeOffloads */,
 				E54000030 /* Debug */,
 				E5CR00100 /* Diagnostics */,
+				4E4D0000000000000000AA01 /* NanoMuse */,
 				E51000013 /* Assets.xcassets */,
 				E51000033 /* Preview Content */,
 				AA71B0212F44BEB200A28A5E /* Launch Screen.storyboard */,
@@ -2373,6 +2375,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				AA0838CB2F3CA8A900049557 /* Terminal */,
+				4E4D0000000000000000AA01 /* NanoMuse */,
 			);
 			name = Minis;
 			packageProductDependencies = (
@@ -3188,7 +3191,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -3197,8 +3200,8 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.MinisUITests;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.MinisUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -3212,13 +3215,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.MinisUITests;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.MinisUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -3233,7 +3236,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -3249,8 +3252,8 @@
 					"$(SRCROOT)/Vendor/cppjieba/include",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.MinisTests;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.MinisTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -3266,7 +3269,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -3278,8 +3281,8 @@
 					"$(SRCROOT)/Vendor/cppjieba/include",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.MinisTests;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.MinisTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -3427,7 +3430,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Minis.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_ASSET_PATHS = "\"Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
@@ -3444,6 +3447,7 @@
 					"$(SRCROOT)/Vendor/cppjieba/include",
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = nanoMuse;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "VM requires network access for SLIRP networking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -3456,14 +3460,14 @@
 					"@executable_path/Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../../deps/libs";
-				MARKETING_VERSION = 1.13;
+				MARKETING_VERSION = 0.1.16;
 				OTHER_LDFLAGS = (
 					"-lish_emu",
 					"-lish",
 					"-lfakefs",
 				);
 				OTHER_SWIFT_FLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/MinisApp-Bridging-Header.h";
@@ -3481,7 +3485,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Minis.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_ASSET_PATHS = "\"Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
@@ -3498,6 +3502,7 @@
 					"$(SRCROOT)/Vendor/cppjieba/include",
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = nanoMuse;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "VM requires network access for SLIRP networking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -3510,14 +3515,14 @@
 					"@executable_path/Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../../deps/libs";
-				MARKETING_VERSION = 1.13;
+				MARKETING_VERSION = 0.1.16;
 				OTHER_LDFLAGS = (
 					"-lish_emu",
 					"-lish",
 					"-lfakefs",
 				);
 				OTHER_SWIFT_FLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/MinisApp-Bridging-Header.h";
@@ -3531,11 +3536,11 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Share to Minis";
+				INFOPLIST_KEY_CFBundleDisplayName = "Share to nanoMuse";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3543,8 +3548,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.13;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.ShareExtension;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.app.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -3558,11 +3563,11 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Share to Minis";
+				INFOPLIST_KEY_CFBundleDisplayName = "Share to nanoMuse";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3570,8 +3575,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.13;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.ShareExtension;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.app.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -3585,11 +3590,11 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = FileProvider/FileProvider.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FileProvider/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Minis Files";
+				INFOPLIST_KEY_CFBundleDisplayName = "nanoMuse Files";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3597,8 +3602,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.13;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.FileProvider;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.app.FileProvider;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -3612,11 +3617,11 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = FileProvider/FileProvider.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FileProvider/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Minis Files";
+				INFOPLIST_KEY_CFBundleDisplayName = "nanoMuse Files";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3624,8 +3629,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.13;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.FileProvider;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.app.FileProvider;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -3639,7 +3644,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = AgentWidget/AgentWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AgentWidget/Info.plist;
@@ -3651,8 +3656,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.13;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.AgentWidget;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.app.AgentWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -3666,7 +3671,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = AgentWidget/AgentWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 17;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AgentWidget/Info.plist;
@@ -3678,8 +3683,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.13;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.AgentWidget;
+				MARKETING_VERSION = 0.1.16;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.nanomuse.app.AgentWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;

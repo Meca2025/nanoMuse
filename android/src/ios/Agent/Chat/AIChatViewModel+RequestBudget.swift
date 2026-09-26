@@ -256,7 +256,7 @@ extension AIChatViewModel {
     /// App Group container root for FileProvider-visible directories.
     /// Everything under this path is exposed to iOS Files via the replicated
     /// FileProvider extension. Keep ONLY user-facing subdirs (shared, skills,
-    /// memory) here — anything else leaks into "On My iPhone → Minis".
+    /// memory) here — anything else leaks into "On My iPhone → nanoMuse".
     nonisolated static var minisAppGroupRoot: URL {
         FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: SharedContainerStore.appGroupID

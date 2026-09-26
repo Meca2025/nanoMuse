@@ -43,7 +43,7 @@ struct AboutView: View {
                                     .stroke(Color(UIColor.separator), lineWidth: 0.5)
                             )
                     }
-                    Text("Minis")
+                    Text("nanoMuse")
                         .font(.title2.bold())
                     Text("Version \(appVersion)")
                         .font(.subheadline)
@@ -53,7 +53,7 @@ struct AboutView: View {
                         .foregroundStyle(.tertiary)
                         // Selectable so it can be copied into a bug report.
                         .textSelection(.enabled)
-                    Text("Minis is Your Fully Local, Fully Private On-Device Agent.")
+                    Text("A fully open-source, Muse-style personal agent for every device you own.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -64,7 +64,7 @@ struct AboutView: View {
 
             // MARK: - Links
             Section("Links") {
-                Link(destination: URL(string: "https://github.com/OpenMinis")!) {
+                Link(destination: URL(string: "https://github.com/nano-muse/nanoMuse")!) {
                     Label {
                         HStack {
                             Text("GitHub Repository")
@@ -78,7 +78,7 @@ struct AboutView: View {
                         Image(systemName: "link.circle.fill")
                     }
                 }
-                Link(destination: URL(string: "https://github.com/OpenMinis/OpenMinis/issues")!) {
+                Link(destination: URL(string: "https://github.com/nano-muse/nanoMuse/issues")!) {
                     Label {
                         HStack {
                             Text("Report an Issue")
@@ -91,6 +91,33 @@ struct AboutView: View {
                     } icon: {
                         Image(systemName: "exclamationmark.circle.fill")
                     }
+                }
+            }
+
+            // nanoMuse: where this comes from, and what it is not.
+            Section(AppLocalized("Credits")) {
+                Link(destination: URL(string: "https://github.com/OpenMinis/OpenMinis")!) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(AppLocalized("Based on OpenMinis 1.13"))
+                                .foregroundStyle(Color(UIColor.label))
+                            Text(AppLocalized("GPL-3.0 · modified · source on GitHub"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "shippingbox.fill")
+                    }
+                }
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(AppLocalized("Not affiliated with Meta"))
+                        Text(AppLocalized("Muse is a trademark of Meta Platforms, Inc. nanoMuse is an independent free-software project."))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "info.circle.fill")
                 }
             }
         }
