@@ -59,6 +59,18 @@ CREATE TABLE IF NOT EXISTS ledger (
     request_id    TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS ledger_account_ts ON ledger(account_id, ts);
+CREATE TABLE IF NOT EXISTS devices (
+    account_id    TEXT NOT NULL REFERENCES accounts(id),
+    id            TEXT NOT NULL,           -- chosen by the device, stable across restarts
+    name          TEXT NOT NULL,
+    kind          TEXT NOT NULL,           -- phone | computer
+    os            TEXT NOT NULL DEFAULT '',
+    version       TEXT NOT NULL DEFAULT '',
+    actions       TEXT NOT NULL DEFAULT '[]',
+    first_seen    INTEGER NOT NULL,
+    last_seen     INTEGER NOT NULL,
+    PRIMARY KEY (account_id, id)
+);
 """
 
 
@@ -245,3 +257,32 @@ class Database:
                 "SELECT ts, kind, model, prompt_tokens, completion_tokens, charged FROM ledger WHERE account_id=? ORDER BY id DESC LIMIT ?",
                 (account_id, limit),
             ).fetchall()
+
+    # -- devices (the hub) ---------------------------------------------------------
+
+    def upsert_device(self, account_id: str, device_id: str, name: str, kind: str, os: str, version: str, actions: str) -> None:
+        t = now()
+        with self.tx() as c:
+            c.execute(
+                """INSERT INTO devices(account_id, id, name, kind, os, version, actions, first_seen, last_seen)
+                   VALUES(?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(account_id, id) DO UPDATE SET
+                     name=excluded.name, kind=excluded.kind, os=excluded.os, version=excluded.version,
+                     actions=excluded.actions, last_seen=excluded.last_seen""",
+                (account_id, device_id, name, kind, os, version, actions, t, t),
+            )
+
+    def touch_device(self, account_id: str, device_id: str) -> None:
+        with self.tx() as c:
+            c.execute("UPDATE devices SET last_seen=? WHERE account_id=? AND id=?", (now(), account_id, device_id))
+
+    def devices_for(self, account_id: str) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute(
+                "SELECT id, name, kind, os, version, actions, first_seen, last_seen FROM devices WHERE account_id=? ORDER BY last_seen DESC",
+                (account_id,),
+            ).fetchall()
+
+    def forget_device(self, account_id: str, device_id: str) -> None:
+        with self.tx() as c:
+            c.execute("DELETE FROM devices WHERE account_id=? AND id=?", (account_id, device_id))

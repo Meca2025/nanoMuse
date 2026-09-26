@@ -22,7 +22,17 @@ def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = Settings()
     app = create_app(settings)
-    uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level, proxy_headers=True, forwarded_allow_ips="*")
+    uvicorn.run(
+        app,
+        host=args.host,
+        port=args.port,
+        log_level=args.log_level,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+        ws_max_size=settings.hub_frame_limit,
+        ws_ping_interval=25.0,
+        ws_ping_timeout=60.0,
+    )
 
 
 if __name__ == "__main__":

@@ -9,6 +9,10 @@
     POST /v1/images/generations                                 → DashScope native, returned as b64_json
     POST /v1/images/edits     multipart                         → same, with the picture
     GET  /healthz
+    WS   /v1/hub                                                → the devices of one account meet (hub.py)
+    GET  /v1/devices                                            → remembered devices with presence
+    DELETE /v1/devices/{id}                                     → forget an offline device
+    GET  /app/                                                  → the web console (static)
     POST /v1/admin/grant      X-Admin-Token  {account_id | identifier, tokens}
     GET  /v1/admin/accounts   X-Admin-Token
 
@@ -27,13 +31,16 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
-from fastapi import Depends, FastAPI, File, Form, Header, Request, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, Request, Response, UploadFile, WebSocket
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .config import Settings
+from .hub import Hub
 from .identifiers import BadIdentifier, parse
 from .service import Caller, Cloud, CloudError, dumps, estimate_tokens, prompt_chars, usage_from_json
 
@@ -327,6 +334,39 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
             content={"created": int(time.time()), "data": [{"b64_json": base64.b64encode(png).decode()}], "nanomuse": {"charged": charged}},
             headers={"x-nanomuse-charged": str(charged)},
         )
+
+    # -- the hub: devices of one account, across networks ------------------------------------------
+
+    if settings.hub_enabled:
+        hub = Hub(cloud, frame_limit=settings.hub_frame_limit)
+        app.state.hub = hub
+
+        @app.websocket("/v1/hub")
+        async def hub_socket(ws: WebSocket) -> None:
+            # Header auth for apps; browsers authenticate in the hello frame instead.
+            caller: Caller | None = None
+            auth = ws.headers.get("authorization")
+            if auth and auth.lower().startswith("bearer "):
+                try:
+                    caller = cloud.authenticate(auth[7:].strip())
+                except CloudError as e:
+                    await ws.close(code=4001, reason=e.code)
+                    return
+            await hub.serve(ws, caller)
+
+        @app.get("/v1/devices")
+        async def devices(caller: Caller = Depends(caller_dep)) -> dict:
+            return {"devices": hub.devices(caller.account_id)}
+
+        @app.delete("/v1/devices/{device_id}", status_code=204)
+        async def forget_device(device_id: str, caller: Caller = Depends(caller_dep)) -> Response:
+            hub.forget(caller.account_id, device_id)
+            await hub.broadcast_devices(caller.account_id)
+            return Response(status_code=204)
+
+        console_dir = Path(__file__).parent / "console"
+        if console_dir.is_dir():
+            app.mount("/app", StaticFiles(directory=str(console_dir), html=True), name="console")
 
     # -- admin ------------------------------------------------------------------------------------
 

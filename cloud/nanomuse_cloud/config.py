@@ -125,6 +125,12 @@ class Settings:
     per_minute_requests: int = field(default_factory=lambda: _int("PER_MINUTE_REQUESTS", 30))
     max_request_bytes: int = field(default_factory=lambda: _int("MAX_REQUEST_BYTES", 6 * 1024 * 1024))
 
+    # The hub (multi-device): one WebSocket frame may carry a file or a
+    # screenshot, base64-encoded; uvicorn's own cap (--ws-max-size) must be at
+    # least this. HUB_ENABLED=0 turns the hub and the console off.
+    hub_enabled: bool = field(default_factory=lambda: _env("HUB_ENABLED", "1") not in ("0", "false", "no"))
+    hub_frame_limit: int = field(default_factory=lambda: _int("HUB_FRAME_LIMIT", 16 * 1024 * 1024))
+
     code_ttl_s: int = field(default_factory=lambda: _int("CODE_TTL_S", 600))
     code_per_identifier_10m: int = field(default_factory=lambda: _int("CODE_PER_IDENTIFIER_10M", 3))
     code_per_ip_hour: int = field(default_factory=lambda: _int("CODE_PER_IP_HOUR", 10))

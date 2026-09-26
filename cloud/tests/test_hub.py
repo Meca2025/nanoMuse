@@ -1,0 +1,209 @@
+"""The hub through the ASGI app: two devices of one account find each other and
+pass calls; a second account sees nothing of it."""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
+
+from nanomuse_cloud.api import create_app
+from nanomuse_cloud.config import Settings
+from nanomuse_cloud.db import Database
+from nanomuse_cloud.senders import LogSender
+from nanomuse_cloud.service import Cloud
+
+
+@pytest.fixture
+def client():
+    settings = Settings(database=":memory:", secret="test-secret", public_base="http://cloud.test", hub_frame_limit=4096)
+    sender = LogSender()
+    cloud = Cloud(settings, Database(":memory:"), sender)
+    app = create_app(settings, cloud)
+    with TestClient(app) as c:
+        c.sender = sender
+        yield c
+
+
+def sign_up(client: TestClient, identifier: str) -> str:
+    assert client.post("/v1/auth/code", json={"identifier": identifier}).status_code == 204
+    _, code = client.sender.sent[-1]
+    r = client.post("/v1/auth/verify", json={"identifier": identifier, "code": code, "device": "test"})
+    assert r.status_code == 200, r.text
+    return r.json()["api_key"]
+
+
+def hello(kind: str, device_id: str, name: str, key: str | None = None, actions=("info", "shell")) -> dict:
+    frame = {
+        "type": "hello",
+        "device": {"id": device_id, "name": name, "kind": kind, "os": "TestOS", "version": "0.1", "actions": list(actions)},
+    }
+    if key:
+        frame["key"] = key
+    return frame
+
+
+def connect(client: TestClient, key: str | None, **kw):
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    return client.websocket_connect("/v1/hub", headers=headers, **kw)
+
+
+def test_two_devices_route_calls_and_results(client):
+    key = sign_up(client, "13800138000")
+    with connect(client, key) as phone, connect(client, key) as pc:
+        phone.send_json(hello("phone", "phone-1", "Pixel"))
+        w1 = phone.receive_json()
+        assert w1["type"] == "welcome" and w1["device_id"] == "phone-1"
+        assert [d["id"] for d in w1["devices"]] == ["phone-1"]
+        phone.receive_json()  # the devices broadcast triggered by its own arrival
+
+        pc.send_json(hello("computer", "pc-1", "desk", actions=("info", "shell", "screen")))
+        w2 = pc.receive_json()
+        assert w2["type"] == "welcome"
+        assert {d["id"]: d["online"] for d in w2["devices"]} == {"phone-1": True, "pc-1": True}
+        pc.receive_json()  # broadcast
+        upd = phone.receive_json()
+        assert upd["type"] == "devices" and {d["id"] for d in upd["devices"]} == {"phone-1", "pc-1"}
+        pc_row = next(d for d in upd["devices"] if d["id"] == "pc-1")
+        assert pc_row["actions"] == ["info", "shell", "screen"] and pc_row["controllable"] is True
+
+        # phone → pc: a call, progress, then the result; each lands on the right side.
+        phone.send_json({"type": "call", "id": "c1", "to": "pc-1", "action": "shell", "args": {"command": "uname"}})
+        call = pc.receive_json()
+        assert call == {
+            "type": "call",
+            "id": "c1",
+            "from": {"id": "phone-1", "name": "Pixel", "kind": "phone"},
+            "action": "shell",
+            "args": {"command": "uname"},
+        }
+        pc.send_json({"type": "event", "id": "c1", "body": {"stage": "running"}})
+        ev = phone.receive_json()
+        assert ev["type"] == "event" and ev["body"] == {"stage": "running"} and ev["from"]["id"] == "pc-1"
+        pc.send_json({"type": "result", "id": "c1", "ok": True, "body": {"stdout": "Linux\n", "exit_code": 0}})
+        res = phone.receive_json()
+        assert res["type"] == "result" and res["ok"] is True and res["body"]["stdout"] == "Linux\n"
+
+        # A result for a call that is not pending is refused, once, to its sender.
+        pc.send_json({"type": "result", "id": "c1", "ok": True, "body": {}})
+        assert pc.receive_json()["code"] == "unknown_call"
+
+        # pc → phone works the same way.
+        pc.send_json({"type": "call", "id": "c2", "to": "phone-1", "action": "notify", "args": {"text": "hi"}})
+        assert phone.receive_json()["action"] == "notify"
+        phone.send_json({"type": "result", "id": "c2", "ok": False, "error": "denied", "message": "no"})
+        r2 = pc.receive_json()
+        assert r2["ok"] is False and r2["error"] == "denied"
+
+        # Calling yourself, or a device that is not there.
+        pc.send_json({"type": "call", "id": "c3", "to": "pc-1", "action": "info", "args": {}})
+        assert pc.receive_json()["code"] == "self_call"
+        pc.send_json({"type": "call", "id": "c4", "to": "nope", "action": "info", "args": {}})
+        assert pc.receive_json()["code"] == "device_offline"
+
+        pc.send_json({"type": "ping"})
+        assert pc.receive_json()["type"] == "pong"
+
+    # Both gone: remembered, offline, listable over HTTP.
+    r = client.get("/v1/devices", headers={"Authorization": f"Bearer {key}"})
+    assert r.status_code == 200
+    rows = {d["id"]: d for d in r.json()["devices"]}
+    assert set(rows) == {"phone-1", "pc-1"} and not rows["pc-1"]["online"]
+    assert client.delete("/v1/devices/pc-1", headers={"Authorization": f"Bearer {key}"}).status_code == 204
+    assert [d["id"] for d in client.get("/v1/devices", headers={"Authorization": f"Bearer {key}"}).json()["devices"]] == ["phone-1"]
+
+
+def test_target_leaving_fails_the_pending_call(client):
+    key = sign_up(client, "someone@example.com")
+    with connect(client, key) as phone, connect(client, key) as pc:
+        phone.send_json(hello("phone", "phone-1", "Pixel"))
+        phone.receive_json()
+        phone.receive_json()
+        pc.send_json(hello("computer", "pc-1", "desk"))
+        pc.receive_json()
+        pc.receive_json()
+        phone.receive_json()  # devices: pc joined
+        phone.send_json({"type": "call", "id": "c1", "to": "pc-1", "action": "shell", "args": {"command": "sleep 100"}})
+        assert pc.receive_json()["action"] == "shell"
+        # pc drops without answering (an explicit close: the test session's own
+        # exit cancels the server task before it can tell anyone).
+        pc.close(1000)
+        seen = [phone.receive_json(), phone.receive_json()]
+        kinds = {f["type"]: f for f in seen}
+        assert kinds["error"]["code"] == "device_offline" and kinds["error"]["id"] == "c1"
+        assert {d["id"]: d["online"] for d in kinds["devices"]["devices"]} == {"phone-1": True, "pc-1": False}
+
+
+def test_web_tab_authenticates_in_hello_and_cannot_be_called(client):
+    key = sign_up(client, "13800138000")
+    with connect(client, None) as web, connect(client, key) as pc:
+        web.send_json(hello("web", "", "Chrome", key=key))
+        w = web.receive_json()
+        assert w["type"] == "welcome" and w["device_id"].startswith("web-")
+        web.receive_json()
+        pc.send_json(hello("computer", "pc-1", "desk"))
+        pc.receive_json()
+        pc.receive_json()
+        upd = web.receive_json()
+        tab = next(d for d in upd["devices"] if d["kind"] == "web")
+        assert tab["controllable"] is False
+
+        pc.send_json({"type": "call", "id": "x", "to": w["device_id"], "action": "info", "args": {}})
+        assert pc.receive_json()["code"] == "not_controllable"
+
+        web.send_json({"type": "call", "id": "t1", "to": "pc-1", "action": "task", "args": {"text": "open the calendar"}})
+        assert pc.receive_json()["args"] == {"text": "open the calendar"}
+        pc.send_json({"type": "result", "id": "t1", "ok": True, "body": {"text": "done"}})
+        assert web.receive_json()["body"] == {"text": "done"}
+
+    # Browser tabs are not remembered.
+    assert [d["kind"] for d in client.get("/v1/devices", headers={"Authorization": f"Bearer {key}"}).json()["devices"]] == ["computer"]
+
+
+def test_bad_key_and_bad_hello(client):
+    with connect(client, None) as ws:
+        ws.send_json(hello("phone", "p", "x", key="nm_nothing"))
+        assert ws.receive_json()["code"] == "bad_key"
+    key = sign_up(client, "13800138000")
+    with connect(client, key) as ws:
+        ws.send_json(hello("toaster", "t-1", "x"))
+        assert ws.receive_json()["code"] == "bad_device"
+    with connect(client, key) as ws:
+        ws.send_json({"type": "call"})
+        with pytest.raises(WebSocketDisconnect):
+            ws.receive_json()  # closed: hello expected
+
+
+def test_accounts_are_separate_and_frames_are_capped(client):
+    a = sign_up(client, "13800138000")
+    b = sign_up(client, "13900139000")
+    with connect(client, a) as pa, connect(client, b) as pb:
+        pa.send_json(hello("phone", "phone-1", "A's"))
+        pa.receive_json()
+        pa.receive_json()
+        pb.send_json(hello("computer", "pc-1", "B's"))
+        w = pb.receive_json()
+        assert [d["id"] for d in w["devices"]] == ["pc-1"]
+        pb.receive_json()
+        pa.send_json({"type": "call", "id": "c1", "to": "pc-1", "action": "info", "args": {}})
+        assert pa.receive_json()["code"] == "device_offline"
+        pa.send_text(json.dumps({"type": "ping", "pad": "x" * 5000}))
+        assert pa.receive_json()["code"] == "too_large"
+
+
+def test_reconnect_replaces_the_older_socket(client):
+    key = sign_up(client, "13800138000")
+    with connect(client, key) as first:
+        first.send_json(hello("computer", "pc-1", "desk"))
+        first.receive_json()
+        first.receive_json()
+        with connect(client, key) as second:
+            second.send_json(hello("computer", "pc-1", "desk"))
+            w = second.receive_json()
+            assert [d["id"] for d in w["devices"]] == ["pc-1"]
+            second.send_json({"type": "devices"})
+            frames = [second.receive_json(), second.receive_json()]
+            assert all(f["type"] == "devices" for f in frames)
+            assert all(len(f["devices"]) == 1 for f in frames)
