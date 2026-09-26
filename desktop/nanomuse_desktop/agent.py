@@ -366,7 +366,13 @@ class Agent:
             )
         if risk.asks and self.cfg.approvals != "allow":
             if not approve(preview, risk):
-                return json.dumps({"error": "denied", "message": "The user did not allow it.", "tell_user": "Tell the user in one line, addressing them directly, that it was not done because they declined; do not try another way."})
+                return json.dumps(
+                    {
+                        "error": "denied",
+                        "message": "The user did not allow it.",
+                        "tell_user": "Tell the user in one line, addressing them directly, that it was not done because they declined; do not try another way.",
+                    }
+                )
         return None
 
     def _local(self, name: str, args: dict, emit: Emit, approve: Approve) -> tuple[str, dict | None]:

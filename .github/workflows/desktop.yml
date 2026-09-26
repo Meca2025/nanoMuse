@@ -1,0 +1,75 @@
+# nanoMuse Desktop: one binary per platform, wrapped the way each platform installs things.
+#
+#   Windows  …-windows-x64-setup.exe (Inno Setup) + .zip
+#   macOS    …-macos-arm64.pkg / …-macos-x64.pkg + .tar.gz
+#   Linux    …-linux-x64.deb + .tar.gz
+#
+# Runs on every push that touches desktop/, on demand, and on tags `desktop-v*`, which also
+# publish a GitHub release with all the packages attached. Nothing is code-signed.
+name: desktop
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["desktop/**", "scripts/build-desktop.py", "assets/brand/**", ".github/workflows/desktop.yml"]
+    tags: ["desktop-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, label: windows-x64 }
+          - { os: macos-latest, label: macos-arm64 }
+          - { os: macos-15-intel, label: macos-x64 }
+          - { os: ubuntu-22.04, label: linux-x64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: python -m pip install --upgrade pip pyinstaller pillow mss
+      - name: Tests
+        run: |
+          python -m pip install pytest "fastapi>=0.110" "httpx>=0.27" "uvicorn[standard]>=0.29" websockets
+          python -m pytest -q desktop/tests
+      - name: Build
+        run: python scripts/build-desktop.py
+      - name: Smoke test
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then ./desktop/dist/nanomuse-desktop.exe --help; else ./desktop/dist/nanomuse-desktop --help; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nanomuse-desktop-${{ matrix.label }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.zip
+            desktop/dist/*.pkg
+            desktop/dist/*.tar.gz
+            desktop/dist/*.deb
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          name: nanoMuse Desktop ${{ github.ref_name }}
+          files: packages/*
+          generate_release_notes: true

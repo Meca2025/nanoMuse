@@ -36,8 +36,16 @@ def console_url(cfg: Config) -> str:
 def sign_in(cfg: Config, cloud_base: str | None = None) -> bool:
     if cloud_base:
         cfg.cloud_base = cloud_base.rstrip("/")
+    else:
+        # The trial relay is not the default one; Enter keeps whatever is configured.
+        try:
+            typed = input(f"nanoMuse Cloud server [{cfg.cloud_base}]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return False
+        if typed:
+            cfg.cloud_base = (typed if "://" in typed else "https://" + typed).rstrip("/")
     cloud = Cloud(cfg.cloud_base)
-    print(f"nanoMuse Cloud at {cfg.cloud_base}")
     try:
         identifier = input("Phone number or e-mail address: ").strip()
     except (EOFError, KeyboardInterrupt):
