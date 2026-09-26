@@ -63,3 +63,6 @@ android/native/build/
 
 # uv lockfile: the project installs with `uv pip install -e .`, not `uv sync`
 uv.lock
+
+# nanoMuse Cloud relay runtime data
+cloud/data/
