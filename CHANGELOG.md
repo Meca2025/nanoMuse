@@ -2,6 +2,24 @@
 
 All notable changes to nanoMuse. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [Semantic Versioning](https://semver.org/). Unreleased changes are on `main`.
 
+## [Unreleased] · Every device
+
+Every device is a Muse: the computer gets the same shape as the phone — a face, one main chat and side chats, Devices, approvals in tiers, hands on its own screen — and the devices of one account give each other work. Developed and tested locally; nothing here is packaged or released yet. [docs/every-device.md](docs/every-device.md).
+
+### Added
+
+- **The runtime on the hub** (`nanomuse/cloud.py`, `nanomuse/hub/`). `nanomuse serve` signs in to nanoMuse Cloud with an e-mail code (the key in the vault, optionally as the model provider), keeps one socket to the hub, answers `info`, `shell`, `files`, `file.get`, `file.put`, `open`, `screen`, `notify` for the account's other devices (`[hub] remote_control` turns that off), and runs an incoming `task` in a visible side chat *From <device>* whose approvals travel back to the asker. Outgoing: `devices`, `device_shell`, `device_files`, `device_open`, `device_screen`, `device_notify`, `delegate` — the model reaches the other devices with the same tools it has for this one. Progress frames both ways: `tool`, `tool_result`, `approval`, `approval_result`, `text`, `image`, `file`. Settings `[cloud]`, `[hub]`; `/api/cloud/*`, `/api/hub/*`. Tests with a fake relay.
+- **Hands on this computer** (`nanomuse/computer/`). The phone operator loop over a computer: `mss` for the screen, `pyautogui` or `xdotool` for the mouse and keyboard, the active window's title, Qwen's `computer_use` dialect; tools `computer_screen`, `computer_act`, `computer_task`, judged by the Sentinel like everything else; `[hands]` settings, off by default; live `hands` events for the stage.
+- **The web app in the Android shape** (`web/`). A Devices page (this device's name, *Join the hub*, *My other devices may operate it*, the other devices with online dots, *Ask*, *Forget*; Hands with its driver and Stop), side chats addressed to a device with an *on <device>* chip, relayed tool chips and approval cards with a device pill, a live Hands card, the Cloud sign-in in the first run and under Connections, the dragon as the default face. On screens 1024 px and wider a sidebar takes over from the tab bar and the chats sheet: the agent and its status, the sections, the chats and the devices a chat can be addressed to, Settings.
+- **nanoMuse for the desktop, the window** (`desktop/app/`, Electron via electron-vite). Attaches to `nanomuse serve` or starts it, loads the web app from `127.0.0.1` with the token, keeps the runtime alive from the tray, registers `Ctrl/Cmd+Shift+Esc` as a global Stop, and draws the **stage** — a transparent, click-through window over the display with the ring and ripple where the hands are about to click, a drag line, and a pill with the step and how to stop (UI-TARS-desktop's ScreenMarker, Android's `HandsStage`). `--screenshot` and `--stage-demo` for checks without a person at the screen. Not packaged.
+
+### Fixed
+
+- A remote approval answered from the web app over the WebSocket went to the local gate instead of the hub; it now travels back to the device that asked, and the card closes on both sides.
+- A delegated task's final answer was lost when the target's chat finished before the caller read it; the relay now keeps the last assistant text of the run.
+- `.webp` avatars were served as `application/octet-stream` on systems without the type registered.
+- A Cloud key kept in the vault showed as *missing* under Connections.
+
 ## [0.1.18] - 2026-09-29 · Open
 
 Sign-up is open to everyone, and the app says what it is before asking for anything: a fully open-source, non-profit community project that will never charge — an e-mail address and a code give about ¥25 (≈ $3.5) a day of model use, paid by the developer. This version also carries everything built since 0.1.16 that had not shipped: nanoMuse Cloud itself (drafted as 0.1.17 "Doorstep", never released), the hub that lets the devices of one account meet, nanoMuse Desktop, video through the relay, and the iOS tree brought back to compiling.

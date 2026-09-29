@@ -23,11 +23,12 @@ system commands ask first, with the risk named.
 It is not a windowed app. `nanomuse-desktop run --open` opens the web
 console next to it, which is where the devices sit side by side. The windowed
 desktop — the Python runtime with the hub, the Cloud account and hands on this
-computer's screen, the web app in an Electron shell — is being built next to
-it and is described in [every-device.md](every-device.md); this binary stays
-the zero-install fallback. `serve` keeps it connected in the background
-without a terminal chat, so the phone can reach the computer while you are
-away from it.
+computer's screen, the web app in an Electron shell under
+[`desktop/app/`](../desktop/app/) (a window, a tray, a global Stop and the
+stage that shows where the hands click; development only, not packaged yet) —
+is described in [every-device.md](every-device.md); this binary stays the
+zero-install fallback. `serve` keeps it connected in the background without a
+terminal chat, so the phone can reach the computer while you are away from it.
 
 ## Two directions
 

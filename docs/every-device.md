@@ -195,8 +195,62 @@ the hands elsewhere — the hub is already enough for them.
 | Screen as a hand | Hands (0.1.12) | **this stage**: `computer_*` | — | — |
 | Drives other devices | `nanomuse-pc`, hub | **this stage**: `device_*`, `delegate` in the runtime (in the binary since 0.1.17) | picks a device, sends a task | — |
 | Answers other devices | yes | **this stage**: in a visible side chat | — | info / open / notify |
-| GUI in the Android shape | reference | **this stage**: web app + window | console | later |
-| Stage while the hands work | `HandsStage` | **this stage**: Hands card; overlay in the window | — | — |
+| GUI in the Android shape | reference | **this stage**: web app (sidebar on wide screens) + window | console | later |
+| Stage while the hands work | `HandsStage` | **this stage**: Hands card; the stage overlay in the window | — | — |
 
 Everything in this stage is developed and tested locally — `nanomuse serve`,
 `npm run dev` in `web/` and `desktop/app/` — and nothing is released from it.
+
+## Debugging it all on one machine
+
+Two runtimes and a relay on `127.0.0.1` are enough to walk a task from one
+device to another and back. Nothing here needs a real account, an e-mail
+provider or a phone.
+
+```bash
+# 1. the relay, in dev mode: no CLOUD_SECRET, codes go to the log; sign-up and the
+#    hub are on by default. Without UPSTREAM_KEY the proxy answers 503 while sign-up
+#    and the hub still work; give the relay a real key (from the environment, never
+#    on the command line) if you want the Cloud model to answer.
+mkdir -p /tmp/nm-dev/cloud
+CLOUD_DB=/tmp/nm-dev/cloud/cloud.db CODE_SENDER=log PUBLIC_BASE=http://127.0.0.1:8790 \
+  PYTHONPATH=cloud .venv/bin/python -m nanomuse_cloud --host 127.0.0.1 --port 8790 \
+  > /tmp/nm-dev/cloud/relay.log 2>&1 &
+
+# 2. two runtimes, each with its own data dir, workspace and port
+for d in a b; do
+  mkdir -p /tmp/nm-dev/$d/home /tmp/nm-dev/$d/ws
+  printf 'data_dir = "/tmp/nm-dev/%s/home"\nworkspace = "/tmp/nm-dev/%s/ws"\n\n[llm]\napi_key = ""\n\n[cloud]\nbase_url = "http://127.0.0.1:8790"\n\n[hub]\nname = "%s"\n' \
+    $d $d "$([ $d = a ] && echo 'Desk A' || echo 'Laptop B')" > /tmp/nm-dev/$d/config.toml
+done
+# ambient provider keys would be picked up as the model — clear them for a clean first run
+env -u OPENAI_API_KEY -u DASHSCOPE_API_KEY -u ANTHROPIC_API_KEY -u OPENAI_BASE_URL \
+  .venv/bin/nanomuse serve -c /tmp/nm-dev/a/config.toml --no-auth --no-qr --port 8799 > /tmp/nm-dev/a/serve.log 2>&1 &
+env -u OPENAI_API_KEY -u DASHSCOPE_API_KEY -u ANTHROPIC_API_KEY -u OPENAI_BASE_URL \
+  .venv/bin/nanomuse serve -c /tmp/nm-dev/b/config.toml --no-auth --no-qr --port 8798 > /tmp/nm-dev/b/serve.log 2>&1 &
+
+# 3. sign both in with the same e-mail in the first run (the code is in relay.log:
+#    grep -i code /tmp/nm-dev/cloud/relay.log), pick "Use the Cloud model" on each.
+# 4. the window over Desk A:
+cd desktop/app && npm install && npm run build && \
+  NANOMUSE_PORT=8799 NANOMUSE_HOME=/tmp/nm-dev/a/home npx electron out/main/index.js
+```
+
+Then on Desk A: *Devices* shows Laptop B online; *Ask* (or the chip under the
+chats) opens a chat *on Laptop B*; a task typed there runs on B, its tool
+chips and approval cards appear in A with the device pill, an approval decided
+in A closes the card on both sides, and B's answer lands in A's chat. Swap the
+ports and the same happens the other way. `npm run stage-demo` in
+`desktop/app/` plays a scripted hands run into the stage without moving the
+real mouse. Stop everything with `ss -ltnp | grep ':879'` and `kill`.
+
+## For the phone, later
+
+The phone already speaks the hub, but three things the computer now does are
+not yet mirrored on Android and are left for a release with an APK build: the
+`tool_result` / `approval_result` stages in the phone's hub client (today it
+only closes cards on `result`), hub `approve` frames reaching `RiskGate` so an
+approval asked on the phone can be answered from the computer, and a *Devices*
+row in the drawer next to the chats so a device chat is one tap away as it is
+in the web app's sidebar. The desk's hands events (`HandsLive`) could also be
+shown as a Hands card on the phone when the phone asked for the task.
