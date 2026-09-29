@@ -11,7 +11,8 @@ import { join, resolve } from "node:path";
  * Where things are, in order of preference:
  * - NANOMUSE_HOME — the data dir (~/.nanomuse): server_token, app-settings.json, logs
  * - NANOMUSE_PORT — the port (8787)
- * - NANOMUSE_BIN — the `nanomuse` executable; else the repo's .venv, else PATH
+ * - NANOMUSE_BIN — the `nanomuse` executable; else the runtime the packaged app carries
+ *   (resources/runtime/), else the repo's .venv, else PATH
  * - NANOMUSE_CONFIG — a config.toml to pass with -c
  */
 export class Runtime {
@@ -116,6 +117,11 @@ export class Runtime {
   private findBinary(): string | null {
     const candidates: string[] = [];
     if (process.env.NANOMUSE_BIN) candidates.push(process.env.NANOMUSE_BIN);
+    // the packaged app carries its own runtime (scripts/desktop-app/build-runtime.py) next
+    // to the app's resources; in development the same folder may sit under desktop/app
+    const exe = process.platform === "win32" ? "nanomuse.exe" : "nanomuse";
+    if (process.resourcesPath) candidates.push(join(process.resourcesPath, "runtime", exe));
+    candidates.push(resolve(__dirname, "..", "..", "runtime", exe));
     // the repo checkout this app lives in: desktop/app → ../../.venv
     const repo = resolve(__dirname, "..", "..", "..", "..");
     candidates.push(
