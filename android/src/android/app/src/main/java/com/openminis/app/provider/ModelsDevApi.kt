@@ -145,8 +145,15 @@ object ModelsDevApi {
             maxOutputTokens = devModel.maxOutputTokens ?: model.maxOutputTokens,
             supportsReasoning = devModel.reasoning ?: model.supportsReasoning,
             interleavedReasoningField = devModel.interleavedField ?: model.interleavedReasoningField,
-            inputModalities = devModel.inputModalities ?: model.inputModalities,
-            outputModalities = devModel.outputModalities ?: model.outputModalities,
+            // nanoMuse: the provider that serves the model knows what it takes
+            // better than a catalog entry published by someone else. The
+            // fallback scan above picks one of many providers listing the same
+            // id, and they disagree (one `qwen3.8-27b` entry says text-only
+            // while the rest say text+image), so a relay that declared
+            // `architecture.input_modalities` was being overruled at random.
+            // Catalog modalities fill in only when the provider said nothing.
+            inputModalities = model.inputModalities ?: devModel.inputModalities,
+            outputModalities = model.outputModalities ?: devModel.outputModalities,
             reasoningEffortValues = devModel.reasoningEffortValues ?: model.reasoningEffortValues,
             // [OpenMinis#163] Only carry the AFFIRMATIVE answer forward, so
             // enriching against an entry the catalog is silent about cannot

@@ -3,8 +3,8 @@ package io.github.nanomuse.ui.guard
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,24 +24,42 @@ import io.github.nanomuse.guard.Grant
 import io.github.nanomuse.guard.Grants
 import io.github.nanomuse.guard.RiskClass
 import io.github.nanomuse.guard.RiskText
+import io.github.nanomuse.guard.RiskTier
 import java.text.DateFormat
 import java.util.Date
 
-/** Settings → Permissions: the "always allow for X" grants, one row each, tap to revoke. */
+/**
+ * Settings → Permissions: the "always allow for X" grants, grouped by danger tier — payments
+ * that run without a card first, then deleting and sending remembered from the card, then the
+ * installs tier (which never asks; shown for completeness when something was remembered under
+ * it). One row each; tap to revoke.
+ */
 @Composable
 fun GrantsSection() {
     val context = LocalContext.current
     val grants by Grants.always.collectAsState()
     var revoking by remember { mutableStateOf<Grant?>(null) }
 
-    SettingsSection(
-        header = stringResource(R.string.nm_grants_header),
-        footer = stringResource(R.string.nm_grants_footer),
-    ) {
-        if (grants.isEmpty()) {
+    if (grants.isEmpty()) {
+        SettingsSection(
+            header = stringResource(R.string.nm_grants_header),
+            footer = stringResource(R.string.nm_grants_footer_tiers),
+        ) {
             SettingsRow(title = stringResource(R.string.nm_grants_empty), showDivider = false, showChevron = false)
-        } else {
-            grants.forEachIndexed { i, g ->
+        }
+        return
+    }
+
+    val tiers = listOf(RiskTier.HIGHEST, RiskTier.CONFIRM, RiskTier.NOTICE)
+    val grouped = grants.groupBy { it.riskClass.tier }
+    val shown = tiers.filter { grouped[it].orEmpty().isNotEmpty() }
+    shown.forEachIndexed { t, tier ->
+        val rows = grouped[tier].orEmpty().sortedByDescending { it.grantedAt }
+        SettingsSection(
+            header = if (t == 0) stringResource(R.string.nm_grants_header) + " · " + RiskText.tierLabel(context, tier) else RiskText.tierLabel(context, tier),
+            footer = if (t == shown.lastIndex) stringResource(R.string.nm_grants_footer_tiers) else null,
+        ) {
+            rows.forEachIndexed { i, g ->
                 SettingsRow(
                     title = RiskText.classLabel(context, g.riskClass) + " · " + (RiskText.targetLabel(context, g.target) ?: g.target ?: ""),
                     subtitle = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(g.grantedAt)),
@@ -53,7 +71,7 @@ fun GrantsSection() {
                     },
                     onClick = { revoking = g },
                     showChevron = false,
-                    showDivider = i < grants.size - 1,
+                    showDivider = i < rows.size - 1,
                     minHeight = 64.dp,
                 )
             }

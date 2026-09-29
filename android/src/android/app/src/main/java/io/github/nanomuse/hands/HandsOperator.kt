@@ -51,6 +51,7 @@ class HandsOperator(private val context: Context) {
     data class Options(
         val task: String,
         val appHint: String? = null,
+        /** A cap on steps for callers that want one; 0 (the default) means the run goes on until the task is done, the person stops it, or the time limit. */
         val maxSteps: Int = DEFAULT_MAX_STEPS,
         val sessionId: String? = null,
         val agentName: String = "nanoMuse",
@@ -130,7 +131,7 @@ class HandsOperator(private val context: Context) {
                 log += "open $hint → $lastResult"
             }
 
-            while (steps < opts.maxSteps) {
+            while (opts.maxSteps <= 0 || steps < opts.maxSteps) {
                 if (stop.get()) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
                 if (System.currentTimeMillis() - started > MAX_RUN_MS) {
                     return finish(Outcome.Stopped("the run hit its time limit"), steps, runId, lastScreen, traceDir, log, model.label)
@@ -212,10 +213,13 @@ class HandsOperator(private val context: Context) {
                     is HandsAction.Click, is HandsAction.DoubleTap, is HandsAction.LongPress -> {
                         val target = action.tapTarget.orEmpty()
                         val gate = approveTap(svc, opts.sessionId, target)
-                        if (gate != null) {
-                            trace(traceDir, steps, parsed.thought, reply, "refused: $gate", lastScreen)
-                            return finish(Outcome.Infeasible("the user did not allow the tap “${target.take(40)}” — $gate"), steps, runId, lastScreen, traceDir, log, model.label)
+                        if (gate.denied != null) {
+                            trace(traceDir, steps, parsed.thought, reply, "refused: ${gate.denied}", lastScreen)
+                            return finish(Outcome.Infeasible("the user did not allow the tap “${target.take(40)}” — ${gate.denied}"), steps, runId, lastScreen, traceDir, log, model.label)
                         }
+                        // A remembered approval, or a payment that ran on one: the chat model
+                        // sees it in the log and tells the user where it lives.
+                        gate.notice?.let { log += it }
                         if (stop.get()) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
                         val (px, py) = when (action) {
                             is HandsAction.Click -> action.at.toPixels(screenW, screenH)
@@ -337,13 +341,15 @@ class HandsOperator(private val context: Context) {
         return true
     }
 
+    /** Null [denied] when the tap may go ahead; [notice] is what the chat model should pass on. */
+    private data class TapGate(val denied: String? = null, val notice: String? = null)
+
     /**
-     * The approval card for a tap whose label says pay, send, post or delete. Returns null when
-     * the tap may go ahead, else the reason it may not. The app is in the background, so the
-     * request also arrives as a notification; the capsule offers Open.
+     * The approval card for a tap whose label says pay, send, post or delete. The app is in the
+     * background, so the request also arrives as a notification; the capsule offers Open.
      */
-    private fun approveTap(svc: MinisAccessibilityService, sessionId: String?, target: String): String? {
-        val cls = TapWords.classify(target) ?: return null
+    private fun approveTap(svc: MinisAccessibilityService, sessionId: String?, target: String): TapGate {
+        val cls = TapWords.classify(target) ?: return TapGate()
         val (pkg, _) = svc.foregroundPackage()
         val appLabel = HandsApps.labelOf(context, pkg)
         val short = target.take(40)
@@ -360,8 +366,8 @@ class HandsOperator(private val context: Context) {
         }
         capsule.working(0, context.getString(com.openminis.app.R.string.nm_hands_looking))
         return when (outcome) {
-            is GateOutcome.Allowed -> null
-            is GateOutcome.Denied -> outcome.message
+            is GateOutcome.Allowed -> TapGate(notice = outcome.notice)
+            is GateOutcome.Denied -> TapGate(denied = outcome.message)
         }
     }
 
@@ -532,15 +538,15 @@ class HandsOperator(private val context: Context) {
 
     companion object {
         private const val TAG = "Hands"
-        const val DEFAULT_MAX_STEPS = 25
-        const val MAX_STEPS = 60
+        /** No step cap: a task takes as many steps as it takes (the time limit and the Stop button remain). */
+        const val DEFAULT_MAX_STEPS = 0
         private const val MAX_APPS_IN_PROMPT = 120
         private const val SHOT_WIDTH = 720
         private const val JPEG_QUALITY = 78
         private const val HISTORY_IMAGES = 1
         private const val MODEL_TIMEOUT_MS = 90_000L
         private const val TAKE_OVER_TIMEOUT_MS = 5 * 60_000L
-        private const val MAX_RUN_MS = 12 * 60_000L
+        private const val MAX_RUN_MS = 30 * 60_000L
         private const val TAP_SETTLE_MS = 900L
         private const val SWIPE_SETTLE_MS = 1100L
         private const val OPEN_APP_SETTLE_MS = 1800L

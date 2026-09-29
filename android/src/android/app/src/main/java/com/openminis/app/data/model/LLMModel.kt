@@ -296,7 +296,16 @@ data class LLMModel(
         // "audio_input", models.dev spells them bare. Lowercasing alone left the
         // suffix intact, so a vision model from an OpenAI-shaped catalog was told
         // in its own system prompt that it could NOT see images.
-        val inputs = inputModalities.normalizeModalities() ?: emptyList()
+        // nanoMuse: when nothing was declared, say nothing that could be wrong.
+        // An empty list here used to read as "cannot process images, PDFs,
+        // audio, video" for every model without catalog data — which is how a
+        // sighted model came to tell people it did not support image input.
+        // The name-based guess (hasImageInput) may add the one positive line.
+        val declared = inputModalities.normalizeModalities()
+        if (declared == null) {
+            return if (hasImageInput) "You can natively process images." else null
+        }
+        val inputs = declared
         val hasImage = "image" in inputs
         val hasPdf = "pdf" in inputs
         val hasAudio = "audio" in inputs

@@ -136,13 +136,13 @@ fun MuseDisc(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 
 /** A white card of rows on Muse's grey canvas. */
 @Composable
-fun MuseCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun MuseCard(modifier: Modifier = Modifier, inset: Dp = 16.dp, content: @Composable ColumnScope.() -> Unit) {
     Surface(
         color = MuseTones.surface,
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = inset),
     ) {
         Column(content = content)
     }

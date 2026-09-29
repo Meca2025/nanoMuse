@@ -20,6 +20,8 @@
          policy, not an OS runtime check, and Minis ships as a sideload.
     -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- nanoMuse: the hub connection (this phone reachable from the user's other devices) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
     <!-- T50: PARTIAL_WAKE_LOCK held by AgentForegroundService while sessions
          are streaming so Doze + OEM CPU throttling don't stall long shell
          tools after screen-off. -->
@@ -555,6 +557,12 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/minis_accessibility_service" />
         </service>
+
+        <!-- nanoMuse: keeps the phone on the hub in the background -->
+        <service
+            android:name="io.github.nanomuse.hub.HubService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
 
     </application>
 </manifest>

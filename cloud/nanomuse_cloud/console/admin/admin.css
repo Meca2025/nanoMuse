@@ -1,0 +1,45 @@
+/* The operator's page: one table, a few buttons. Builds on app.css. */
+.admin { min-height: 100%; padding: 28px clamp(16px, 4vw, 48px) 48px; max-width: 1200px; margin: 0 auto; }
+.admin .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.admin .bar img { width: 36px; height: 36px; }
+.admin .bar h1 { font-size: 20px; margin: 0; flex: 1; }
+.admin .bar h1 small { font-weight: 400; color: var(--ink-3); font-size: 13px; margin-left: 8px; }
+.admin .bar button { padding: 8px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-size: 13px; }
+.admin .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 22px; }
+.admin .kpi { background: var(--card); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); }
+.admin .kpi .k { font-size: 12px; color: var(--ink-3); }
+.admin .kpi .v { font-size: 22px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.admin .kpi .s { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.admin .panel { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 22px; }
+.admin .panel h2 { font-size: 14px; margin: 0; padding: 14px 18px; border-bottom: 1px solid var(--line); color: var(--ink-2); display: flex; align-items: center; gap: 10px; }
+.admin .panel h2 .sp { flex: 1; }
+.admin table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.admin th, .admin td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.admin th { font-weight: 500; color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.admin tr:last-child td { border-bottom: 0; }
+.admin td.num, .admin th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.admin .id { font-weight: 600; }
+.admin .id small { display: block; font-weight: 400; color: var(--ink-3); font-size: 11.5px; margin-top: 2px; }
+.admin .tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 8px; background: rgba(1, 92, 251, 0.1); color: var(--blue); margin-right: 4px; }
+.admin .tag.off { background: rgba(214, 69, 69, 0.12); color: var(--bad); }
+.admin .tag.on { background: rgba(31, 157, 85, 0.12); color: var(--ok); }
+.admin .dev { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 12px; color: var(--ink-2); }
+.admin .dev .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); margin-right: 4px; vertical-align: middle; }
+.admin .dev .dot.on { background: var(--ok); }
+.admin .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.admin .acts button { padding: 5px 10px; border-radius: 10px; border: 1px solid var(--line); background: transparent; font-size: 12px; color: var(--ink-2); }
+.admin .acts button:hover { border-color: var(--blue); color: var(--blue); }
+.admin .acts button.danger:hover { border-color: var(--bad); color: var(--bad); }
+.admin .empty { padding: 28px 18px; color: var(--ink-3); text-align: center; }
+.admin .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; padding: 14px 18px; font-size: 13px; }
+.admin .kv b { font-weight: 500; color: var(--ink-3); }
+.admin .kv code { word-break: break-all; }
+.admin .days { display: flex; gap: 6px; align-items: flex-end; padding: 16px 18px 10px; height: 120px; }
+.admin .days .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
+.admin .days .barv { width: 100%; max-width: 32px; border-radius: 6px 6px 0 0; background: var(--blue); opacity: 0.85; min-height: 2px; }
+.admin .days .lbl { font-size: 10px; color: var(--ink-3); white-space: nowrap; }
+.admin .foot { font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+.admin .signin .card { text-align: left; }
+@media (max-width: 720px) {
+  .admin th.hide-sm, .admin td.hide-sm { display: none; }
+}

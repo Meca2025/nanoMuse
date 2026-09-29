@@ -88,6 +88,15 @@ val LLMModel.hasAudioOutput: Boolean
  * and bare "image" (models.dev) both match.
  */
 val LLMModel.hasImageInput: Boolean
+    get() = normalizedInputs?.contains("image")
+        // nanoMuse: nobody declared the modalities (a hand-typed id, a provider
+        // that lists ids only, a model newer than the catalog). Unknown used to
+        // read as "cannot see" and the model was told so in its own prompt;
+        // now the name decides (io.github.nanomuse.chat.VisionFamilies).
+        ?: io.github.nanomuse.chat.VisionFamilies.looksLikeItSees(id, displayName)
+
+/** The provider or the catalog said so; no guessing from the name. */
+val LLMModel.declaresImageInput: Boolean
     get() = normalizedInputs?.contains("image") == true
 
 /** True when this model has ANY audio modality — the "voice model" predicate

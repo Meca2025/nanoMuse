@@ -58,7 +58,7 @@ Leave `model` empty and the main model does both. The key goes into the vault li
 
 Environment overrides: `NANOMUSE_GUI_ENABLED`, `NANOMUSE_GUI_PROVIDER`, `NANOMUSE_GUI_MODEL`, `NANOMUSE_GUI_BASE_URL`, `NANOMUSE_GUI_API_KEY`.
 
-Other settings: `max_steps` (default 30, the most a single `phone_task` may take), `device_timeout_s` (default 20, how long to wait for the phone to answer one request), `sensitive_words` (the list below).
+Other settings: `max_steps` (default 0 = no cap; set a number to bound a single `phone_task`), `device_timeout_s` (default 20, how long to wait for the phone to answer one request), `sensitive_words` (the list below).
 
 ## Connecting a phone
 

@@ -32,11 +32,16 @@ data class RiskRequest(
     val createdAt: Long = System.currentTimeMillis(),
 ) {
     /**
-     * Standing grants are only offered when there is an object to bind them to and nothing
-     * alarming — and never for money: a payment is asked about every single time.
+     * What may be remembered. Nothing alarming (a warning) is ever remembered. "For this chat"
+     * is offered for deleting and sending, not for money. "Always for X" needs an object to
+     * bind to; for money it is the highest tier — offered as a deliberate choice that the card
+     * confirms with the phone's screen lock ([needsCredential]), and the first time is always
+     * asked because the grant can only come from the card.
      */
-    val canRemember: Boolean get() = assessment.warnings.isEmpty() && assessment.riskClass != RiskClass.MONEY
-    val canAlways: Boolean get() = canRemember && !assessment.target.isNullOrBlank()
+    val canSession: Boolean get() = assessment.warnings.isEmpty() && assessment.riskClass != RiskClass.MONEY
+    val canAlways: Boolean get() = assessment.warnings.isEmpty() && !assessment.target.isNullOrBlank()
+    val canRemember: Boolean get() = canSession || canAlways
+    val needsCredential: Boolean get() = assessment.riskClass == RiskClass.MONEY
 }
 
 enum class RiskDecision { ALLOW_ONCE, ALLOW_SESSION, ALLOW_ALWAYS, DENY, TIMEOUT }
@@ -167,11 +172,13 @@ object RiskGate {
                 if (assessment.riskClass == RiskClass.INSTALL) INSTALL_NOTICE else null,
             )
         }
-        if (assessment.warnings.isEmpty() && assessment.riskClass != RiskClass.MONEY &&
-            Grants.allows(assessment.riskClass, assessment.target, sessionId)
-        ) {
+        if (assessment.warnings.isEmpty() && Grants.allows(assessment.riskClass, assessment.target, sessionId)) {
             AppLogger.info(TAG, "covered by a grant: ${Grants.key(assessment.riskClass, assessment.target)}")
-            return GateOutcome.Allowed()
+            // A payment that ran on a standing grant is said out loud every time; the person
+            // chose that, and the line is how they keep track of it.
+            return GateOutcome.Allowed(
+                if (assessment.riskClass == RiskClass.MONEY) autoPaidNotice(RiskText.plainTarget(assessment.target)) else null,
+            )
         }
         val request = RiskRequest(
             sessionId = sessionId,
@@ -184,12 +191,14 @@ object RiskGate {
         return when (ask(request)) {
             RiskDecision.ALLOW_ONCE -> GateOutcome.Allowed()
             RiskDecision.ALLOW_SESSION -> {
-                Grants.grantSession(assessment.riskClass, sessionId, assessment.reason)
+                if (request.canSession) Grants.grantSession(assessment.riskClass, sessionId, assessment.reason)
                 GateOutcome.Allowed()
             }
             RiskDecision.ALLOW_ALWAYS -> {
-                assessment.target?.let { Grants.grantAlways(assessment.riskClass, it, assessment.reason) }
-                GateOutcome.Allowed()
+                val target = assessment.target?.takeIf { request.canAlways }
+                target?.let { Grants.grantAlways(assessment.riskClass, it, assessment.reason) }
+                // Point the person to where it lives, once, right after they chose it.
+                GateOutcome.Allowed(target?.let { rememberedNotice(RiskText.plainTarget(it), assessment.riskClass) })
             }
             RiskDecision.DENY -> GateOutcome.Denied(
                 "The user did not allow this (${assessment.reason}). Do not retry it or work around it; " +
@@ -204,4 +213,15 @@ object RiskGate {
 
     const val INSTALL_NOTICE =
         "[nanoMuse] This command installs software; it ran without asking. Mention it to the user in one line."
+
+    /** After "always allow for X": the model tells the user where the grant lives, once. */
+    fun rememberedNotice(target: String, riskClass: RiskClass): String =
+        "[nanoMuse] The user chose to remember this approval (${riskClass.name.lowercase()} · $target)" +
+            (if (riskClass == RiskClass.MONEY) ", confirmed with their screen lock, so payments in $target will run without a card from now on" else "") +
+            ". Tell them in one line that it is listed under Settings → Permissions → Remembered approvals, where it can be revoked."
+
+    /** A payment that ran on a standing grant: always said out loud. */
+    fun autoPaidNotice(target: String): String =
+        "[nanoMuse] This payment step ran without asking because the user remembered approvals for $target. " +
+            "Say so in one line, and remind them it can be revoked under Settings → Permissions."
 }

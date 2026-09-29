@@ -22,7 +22,7 @@
   </p>
 </div>
 
-nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每一台设备。和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一样，它是一个有名字、有自己形象的智能体：不只回答问题，而是动手做事；App 关掉了也继续干活；记得你；遇到无法撤销的操作会先停下来问你。Android App 把整个智能体跑在**手机上**：Linux 根文件系统、shell、浏览器、MCP、技能和定时任务都在 APK 里，模型由你自己带。它有一双手，能去碰那些没有 API 的 App——经你允许后，直接操作手机屏幕；也能伸到你的电脑上：在手机上说一句，事情在电脑上办好。之后是桌面 App、iOS、部署在你自己机器上的网页版，还有眼镜。没有服务器，不用注册，GPL-3.0——可以在它的基础上定制一个属于自己的 Muse。
+nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每一台设备。和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一样，它是一个有名字、有自己形象的智能体：不只回答问题，而是动手做事；App 关掉了也继续干活；记得你；遇到无法撤销的操作会先停下来问你。Android App 把整个智能体跑在**手机上**：Linux 根文件系统、shell、浏览器、MCP、技能和定时任务都在 APK 里，模型由你自己带。它有一双手，能去碰那些没有 API 的 App——经你允许后，直接操作手机屏幕；也能伸到你的电脑上：在手机上说一句，事情在电脑上办好。之后是桌面 App、iOS、部署在你自己机器上的网页版，还有眼镜。用自己的 key，或者领一份开源中转服务的体验额度；GPL-3.0——可以在它的基础上定制一个属于自己的 Muse。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="同一只小龙的五种状态：休息、工作、等你、开心、抱歉">
@@ -35,6 +35,16 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/avatar.png" width="23%" alt="形象：描述一句，你的图像模型来画，你挑一张喜欢的">
 </p>
 
+> **免费 · 开源 · 非盈利。** nanoMuse 是纯开源社区项目，目标是和社区一起做出更好的个人智能体，永远不会收取任何费用。目前这一版向社区开放体验：用邮箱登录，就能免费使用模型——现阶段每个账号每天约 ¥25（≈ $3.5），涵盖对话、图片和视频，模型费用由开发者自己承担。你的消息不会被保存，你的任何数据都不会被出售或分享；随时可以删除账号，也可以直接用自己的 API key，完全不经过中转。详情：[docs/cloud.md](docs/cloud.md) · [docs/privacy.md](docs/privacy.md)。
+
+## 动态
+
+- **2026-09-29 · 0.1.18「Open」** — 注册向所有人开放：一个邮箱、一个验证码，每天约 ¥25 的模型用量，免费（社区成员不限量）。每次请求的花费在 app 和管理后台里以 ¥ 和 $ 显示。全新的首次启动流程——欢迎页、上面这段说明、邮箱登录优先、一开始就引导开启 Hands 所需权限（可跳过）、然后是第一次对话。授权分成三个等级；付款可以对某一个应用「记住」，需要验证锁屏，「设置 → 权限」按等级列出你记住的所有授权。Hands 不再有 25 步的上限。没有声明模态的模型（qwen3.8-27b）不再说自己「看不了图」。[发布说明](docs/releases/v0.1.18.md)。
+- **2026-09-26 · 0.1.16「Palette」** — 图片与视频模型从你的 key 能用的列表里选；在百炼上通过原生接口画图；MiniMax-H3 之外加入 Wan 视频模型。[说明](docs/releases/v0.1.16.md)。
+- **2026-09-25 · 0.1.12 – 0.1.15** — **Hands**：把手机屏幕当成一只手，全程有胶囊和「停止」；**Reach**：用手机驱动你的电脑；**Stage**：看得见的操作过程。[说明](docs/releases/)。
+
+更早的版本见[下方表格](#版本)和 [CHANGELOG](CHANGELOG.md)。
+
 ## 为什么是 nanoMuse
 
 这个项目由四件事定义。
@@ -42,7 +52,7 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 | | |
 |---|---|
 | **Muse 风格** | 一个智能体，而不是一堆工具：有名字、有自己的形象，第一次见面先聊一聊，每天有写给你的动态，目标在后台持续推进，记忆能看也能改，无法撤销的操作前先问你。 |
-| **完全开源** | 整个仓库 GPL-3.0-or-later。没有闭源组件，不用注册账号，不用信任任何服务器，也不绑定任何模型；每个版本都从对应的 tag 构建，手动安装。Muse、豆包、千问是别人给你用的产品；nanoMuse 是你自己拥有的——可以依赖开源定制属于自己的 Muse：改名字、换形象、重写性格、接上自己的模型和工具。 |
+| **完全开源** | 整个仓库 GPL-3.0-or-later。没有闭源组件，不强制账号或服务器，也不绑定任何模型——可选的 nanoMuse 云中转服务同样在仓库里，谁都可以自己搭一个；每个版本都从对应的 tag 构建，手动安装。Muse、豆包、千问是别人给你用的产品；nanoMuse 是你自己拥有的——可以依赖开源定制属于自己的 Muse：改名字、换形象、重写性格、接上自己的模型和工具。 |
 | **通用：有没有 API 都能做** | 国内日常用的 App，大多从来没有 API。智能体会顺着一把梯子往上试：先是技能、CLI 或 MCP 服务，再是用你的登录态抓一页，再是应用内浏览器，最后在你允许之后直接操作设备屏幕，像你一样看、一样点——付款、发送、删除前照样要经你审批。默认关闭。 |
 | **多端协同** | 一个智能体，你的每台设备都是它的一双手、一个入口：在手机上说一句，事情在电脑上办好；对眼镜说，两边一起办。手机操作电脑已经能用；之后是桌面 App、iOS、部署在你自己机器上的网页版，还有眼镜。 |
 
@@ -52,7 +62,7 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 
 1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载 `nanoMuse-<版本>-arm64.apk`——Android 8.0 以上的 64 位手机。想校验就 `sha256sum -c nanoMuse-<版本>-arm64.apk.sha256`。
 2. 打开安装。Android 会问一次是否允许；每个版本都用同一把签名，直接覆盖安装升级，数据不丢。
-3. 添加一个模型：任何 OpenAI 兼容接口配你自己的 key，或者 App 自带的 OAuth 登录。第一次对话它会问你叫什么，并给自己起名字。
+3. 接入模型。「用邮箱登录，免费开始」：邮箱（或手机号），收一个验证码，就能在 [nanoMuse 云](docs/cloud.md)上免费使用模型——每天约 ¥25，不用配 key，不用付钱。也可以用自己的：任何 OpenAI 兼容接口配你的 key，或者 App 自带的 OAuth 登录。接着是让它操作手机所需的两项权限（可跳过），然后是第一次对话：它会问你叫什么，并给自己起名字。
 4. 可选——「设置 → 图像与视频模型」：图像模型（阿里云百炼的 qwen-image-3.0、gpt-image-1，或任何有 OpenAI images 接口的服务商）让它能换形象、画图；视频模型（百炼上的 MiniMax-H3）让形象动起来。Muse 这两样是官方自带的，nanoMuse 用你自己的，缺哪个它会开口告诉你。
 
 App 会到本仓库的 Releases 检查更新。每个版本的说明在 [docs/releases/](docs/releases/) 和 [CHANGELOG](CHANGELOG.md)。
@@ -83,8 +93,9 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | `feed`、`sysfiles` | 每天早上把 ` ```nanomuse-feed ` 段写进 `minis-global/nanomuse/feed/` 的例程、卡片、那句指示；系统文件页和记忆导入 |
 | `avatar`、`ui/avatar` | 架在 OpenMinis 图像接口（`images/generations`、`images/edits`、DashScope 原生编辑）上的 `ImageGen`、形象页、`AvatarStore`，以及会动的 `AgentAvatar` |
 | `status` | 两级状态（形象下面是工具标题，卡片上是动作 chips）、`KeepAwake`、每个步骤的最后一帧浏览器画面 |
+| `cloud`、`ui/cloud` | `NanoMuseCloud`：对着 [`cloud/`](cloud/) 里的中转服务用手机号/邮箱验证码注册，配置成一个普通的 OpenAI 兼容服务商；登录页和账户页（[docs/cloud.md](docs/cloud.md)） |
 
-改到上游文件的地方都标着 `// nanoMuse:`；每次 subtree 拉取之后 `scripts/rebrand.py` 重新套一遍品牌。从源码构建见 [CONTRIBUTING.md](CONTRIBUTING.md)。你的消息只发给你配置的模型；文件、记忆和形象图片都在 App 的私有存储里。
+改到上游文件的地方都标着 `// nanoMuse:`；每次 subtree 拉取之后 `scripts/rebrand.py` 重新套一遍品牌。从源码构建见 [CONTRIBUTING.md](CONTRIBUTING.md)。你的消息只发给你配置的模型——走中转服务时也只是转发，不会存下来；文件、记忆和形象图片都在 App 的私有存储里。
 
 ## 版本
 
@@ -108,6 +119,7 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | [0.1.14](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.14) | Home | 修复：从通知、悬浮胶囊或「动手」跑完之后回到 App，落回它自己的主页，而不是 OpenMinis 的聊天页 |
 | [0.1.15](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.15) | Stage | 看得见的动手：干活时四边有呼吸的光，要点的位置先出现带动作名的转动圆环，落指时荡开波纹，滑动时圆环沿路径滑过——参考 UI-TARS-desktop 的 ScreenMarker；胶囊让手势穿过并主动让位；图标快捷方式在主页里打开 |
 | [0.1.16](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.16) | Palette | 图像、视频模型像对话模型一样从 key 能用的里面选，推荐的有标记；百炼画图改走原生接口（404 没了）；MiniMax-H3 之外可选通义万相视频模型 |
+| [0.1.18](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.18) | Open | 注册向所有人开放，每天约 ¥25 的模型用量，免费；花费以 ¥ 和 $ 显示；全新首次启动流程——社区说明、邮箱登录优先、一开始就引导 Hands 权限；授权分三级，付款可按应用记住（需验证锁屏）；Hands 不再限步数；未声明模态的模型不再被当成纯文本 |
 | 0.2.0 | Beta | 头几周使用后的打磨；第一个 beta |
 
 **再之后**，依次：一个桌面 App，既是独立的智能体，也是手机上那个的客户端；iOS；部署在你自己机器上——一台 VM、一台家里的服务器——的网页版，任何浏览器都能打开；眼镜。每加一台设备，同一个智能体就多一双手、多一个入口。项目起步时的 Python 线——智能体和它的 Sentinel、网页 App、模拟手机——冻结在 tag [`pre-openminis`](https://github.com/nano-muse/nanoMuse/releases/tag/pre-openminis)，文档在 [docs/](docs/)，是桌面和网页这两个入口的底座。
@@ -128,7 +140,7 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 
 ## 参与
 
-拿它做一件真事，报告哪里坏了，然后挑一件小而具体的事做。[CONTRIBUTING.md](CONTRIBUTING.md) 有构建环境（[android/BUILDING.md](android/BUILDING.md) 和 `scripts/android/` 里的工具链脚本）、约定（包名 `com.openminis.app` 不动，新代码放 `io.github.nanomuse.*`，改上游处标 `// nanoMuse:`，提交带 `Signed-off-by`）和发版方式。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Pull requests](https://github.com/nano-muse/nanoMuse/pulls)。
+拿它做一件真事，报告哪里坏了，然后挑一件小而具体的事做。[CONTRIBUTING.md](CONTRIBUTING.md) 有构建环境（[android/BUILDING.md](android/BUILDING.md) 和 `scripts/android/` 里的工具链脚本）、约定（包名 `com.openminis.app` 不动，新代码放 `io.github.nanomuse.*`，改上游处标 `// nanoMuse:`，提交带 `Signed-off-by`）和发版方式。iOS 版从同一棵树构建，由 CI 交给 TestFlight，见 [docs/ios.md](docs/ios.md)。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Pull requests](https://github.com/nano-muse/nanoMuse/pulls)。
 
 ## 致谢
 
