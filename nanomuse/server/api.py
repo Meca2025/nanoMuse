@@ -57,7 +57,9 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from nanomuse.bridge.server import BridgeError
+from nanomuse.cloud import CloudError
 from nanomuse.config import Settings
+from nanomuse.hub.client import HubError
 from nanomuse.logger import logger
 from nanomuse.server.events import MAIN_THREAD
 from nanomuse.server.service import MuseService, goal_to_dict
@@ -257,6 +259,30 @@ class PushUnsubscribeBody(BaseModel):
     endpoint: str
 
 
+class CloudCodeBody(BaseModel):
+    identifier: str = Field(min_length=3, max_length=200)
+
+
+class CloudVerifyBody(BaseModel):
+    identifier: str = Field(default="", max_length=200)
+    code: str = Field(min_length=4, max_length=12)
+
+
+class CloudModelBody(BaseModel):
+    model: str = Field(default="", max_length=120)
+
+
+class HubBody(BaseModel):
+    enabled: bool | None = None
+    remote_control: bool | None = None
+    name: str | None = Field(default=None, max_length=60)
+
+
+class AskDeviceBody(BaseModel):
+    device: str = Field(min_length=1, max_length=120)
+    text: str = Field(default="", max_length=20_000)
+
+
 # ----------------------------------------------------------------------------- app factory
 def create_app(settings: Settings, service: MuseService | None = None) -> FastAPI:
     svc = service or MuseService(settings)
@@ -381,6 +407,11 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     # ------------------------------------------------------------------ approvals
     @app.post("/api/approvals/{approval_id}", dependencies=dep)
     async def decide_approval(approval_id: str, body: ApprovalBody) -> dict[str, Any]:
+        if approval_id in svc.hub.remote_approvals:
+            # a card raised by another device's run, shown in its side chat here
+            if not await svc.hub.decide_remote(approval_id, body.approved):
+                raise HTTPException(502, "the device did not take the answer")
+            return {"ok": True}
         if not svc.decide(approval_id, body.approved, body.scope, body.reason):
             raise HTTPException(404, "no pending approval with that id")
         return {"ok": True}
@@ -755,12 +786,125 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     async def test_gui() -> dict[str, Any]:
         return await svc.connections.test_gui()
 
+    @app.get("/api/hands", dependencies=dep)
+    async def hands_status() -> dict[str, Any]:
+        return svc.hands_view()
+
+    @app.put("/api/connections/hands", dependencies=dep)
+    async def set_hands(body: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return svc.connections.set_hands(body)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post("/api/hands/stop", dependencies=dep)
+    async def stop_hands() -> dict[str, Any]:
+        return {"stopped": svc.stop_hands()}
+
     @app.get("/api/phone", dependencies=dep)
     async def phone_status() -> dict[str, Any]:
         view = svc.phone_view()
         if svc.phone.last_screen is not None:
             view["screen"] = svc.phone.last_screen.to_dict()
         return view
+
+    # ------------------------------------------------------------------ cloud account & hub
+    @app.get("/api/cloud", dependencies=dep)
+    async def cloud_status() -> dict[str, Any]:
+        return svc.hub.account_view()
+
+    @app.post("/api/cloud/code", dependencies=dep)
+    async def cloud_code(body: CloudCodeBody) -> dict[str, Any]:
+        try:
+            await svc.hub.request_code(body.identifier)
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+        return {"ok": True}
+
+    @app.post("/api/cloud/verify", dependencies=dep)
+    async def cloud_verify(body: CloudVerifyBody) -> dict[str, Any]:
+        try:
+            return await svc.hub.verify(body.identifier, body.code)
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    @app.post("/api/cloud/sign-out", dependencies=dep)
+    async def cloud_sign_out() -> dict[str, Any]:
+        await svc.hub.sign_out()
+        return svc.hub.account_view()
+
+    @app.get("/api/cloud/me", dependencies=dep)
+    async def cloud_me() -> dict[str, Any]:
+        try:
+            return await svc.hub.me()
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    @app.post("/api/cloud/use-as-model", dependencies=dep)
+    async def cloud_use_as_model(body: CloudModelBody) -> dict[str, Any]:
+        try:
+            return await svc.hub.use_as_model(body.model)
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    @app.get("/api/hub", dependencies=dep)
+    async def hub_status() -> dict[str, Any]:
+        return svc.hub.view()
+
+    @app.put("/api/hub", dependencies=dep)
+    async def hub_update(body: HubBody) -> dict[str, Any]:
+        try:
+            if body.name is not None:
+                await svc.hub.rename(body.name)
+            if body.remote_control is not None:
+                svc.hub.set_remote_control(body.remote_control)
+            if body.enabled is not None:
+                await svc.hub.set_enabled(body.enabled)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        return svc.hub.view()
+
+    @app.post("/api/hub/join", dependencies=dep)
+    async def hub_join() -> dict[str, Any]:
+        if not svc.hub.signed_in:
+            raise HTTPException(401, "Sign in to nanoMuse Cloud first.")
+        await svc.hub.set_enabled(True)
+        return svc.hub.view()
+
+    @app.post("/api/hub/leave", dependencies=dep)
+    async def hub_leave() -> dict[str, Any]:
+        await svc.hub.set_enabled(False)
+        return svc.hub.view()
+
+    @app.post("/api/hub/refresh", dependencies=dep)
+    async def hub_refresh() -> dict[str, Any]:
+        if svc.hub.client is not None and svc.hub.client.connected.is_set():
+            await svc.hub.client.request_devices()
+        return svc.hub.view()
+
+    @app.delete("/api/hub/devices/{device_id}", dependencies=dep)
+    async def hub_forget(device_id: str) -> dict[str, Any]:
+        try:
+            await svc.hub.forget(device_id)
+        except HubError as exc:
+            raise HTTPException(502, exc.message) from exc
+        return svc.hub.view()
+
+    @app.post("/api/hub/ask", dependencies=dep)
+    async def hub_ask(body: AskDeviceBody) -> dict[str, Any]:
+        """The side chat addressed to a device (created if needed); with ``text``, the first
+        message in it, which runs on that device."""
+        device = svc.hub.device(body.device) or svc.hub.find(body.device)
+        if device is None:
+            raise HTTPException(404, f"no device matches '{body.device}'")
+        thread = svc.hub.ask_device(str(device["id"]))
+        event = None
+        if body.text.strip():
+            try:
+                event = svc.send(thread.id, body.text)
+            except ValueError as exc:
+                raise HTTPException(409, str(exc)) from exc
+        return {"thread": thread.meta(), "event": event}
 
     @app.put("/api/connections/browser", dependencies=dep)
     async def put_browser(body: BrowserBody) -> dict[str, Any]:
@@ -1147,6 +1291,9 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     if STATIC_DIR.is_dir():
         from fastapi.staticfiles import StaticFiles
 
+        # nanoMuse: the avatars are WebP; older Python mimetypes tables do not know it
+        mimetypes.add_type("image/webp", ".webp")
+
         assets = STATIC_DIR / "assets"
         if assets.is_dir():
             app.mount("/assets", StaticFiles(directory=assets), name="assets")
@@ -1206,8 +1353,17 @@ async def _handle_ws_message(
                 files=[str(f) for f in files][:10] if isinstance(files, list) else None,
             )
         elif kind == "approval":
+            approval_id = str(data.get("id", ""))
+            if approval_id in svc.hub.remote_approvals:
+                # nanoMuse: a card raised by another device's run — the answer goes back over the hub
+                ok = await svc.hub.decide_remote(approval_id, bool(data.get("approved")))
+                if not ok:
+                    await ws.send_json(
+                        {"kind": "error", "error": "the device did not take the answer"}
+                    )
+                return
             ok = svc.decide(
-                str(data.get("id", "")),
+                approval_id,
                 bool(data.get("approved")),
                 str(data.get("scope", "once")),
                 str(data.get("reason", "")),

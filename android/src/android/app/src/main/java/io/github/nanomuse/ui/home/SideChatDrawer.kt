@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Home
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -79,8 +81,14 @@ fun SideChatDrawer(
     onSettings: () -> Unit,
     onSetMain: (String) -> Unit,
     onSystemFiles: (() -> Unit)? = null,
+    onDevices: (() -> Unit)? = null,
 ) {
     val sessions by chatRepository.observeSessions().collectAsState(initial = emptyList())
+    // nanoMuse: the account's other devices, for the row under the main chat
+    val hubConnected by io.github.nanomuse.hub.Hub.connected.collectAsState()
+    val hubDevices by io.github.nanomuse.hub.Hub.devices.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val othersOnline = remember(hubDevices) { hubDevices.count { it.online && it.kind != "web" && it.id != io.github.nanomuse.hub.Hub.deviceId(context) } }
     var query by remember { mutableStateOf("") }
     val sideChats = remember(sessions, mainSessionId, query) {
         sessions
@@ -124,6 +132,38 @@ fun SideChatDrawer(
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+        }
+
+        // nanoMuse: Devices — the account's other Muses, one tap away like a chat (docs/every-device.md)
+        if (onDevices != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClick = onDevices)
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+            ) {
+                Icon(Icons.Outlined.Devices, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    text = stringResource(R.string.nm_devices_title),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = when {
+                        !hubConnected -> stringResource(R.string.nm_devices_off)
+                        othersOnline == 0 -> stringResource(R.string.nm_hub_service_alone_short)
+                        else -> pluralStringResource(R.plurals.nm_hub_service_devices, othersOnline, othersOnline)
+                    },
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         Row(

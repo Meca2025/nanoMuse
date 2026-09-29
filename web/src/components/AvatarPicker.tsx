@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { MASCOT, PLUSH, plushUrl } from "../avatars";
+import { DRAGON, MASCOT, PLUSH, dragonUrl, plushUrl } from "../avatars";
 import { useT } from "../i18n";
 import { cx } from "../util";
 import { RedPanda } from "./RedPanda";
@@ -21,6 +21,15 @@ export function AvatarPicker({ value, onChange }: { value: AvatarChoice; onChang
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-4 gap-3">
+        <button
+          type="button"
+          aria-label={t("The dragon")}
+          aria-pressed={value.avatar === DRAGON}
+          onClick={() => onChange({ ...value, avatar: DRAGON })}
+          className={cx("relative aspect-square overflow-hidden rounded-full bg-[#f1efeb] transition", value.avatar === DRAGON ? ring : "opacity-90 hover:opacity-100")}
+        >
+          <img src={dragonUrl(value.avatar === DRAGON ? "happy" : "idle")} alt="" draggable={false} className="h-full w-full object-cover" />
+        </button>
         <button
           type="button"
           aria-label={t("The red panda")}

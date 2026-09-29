@@ -1,14 +1,14 @@
-import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Moon, MoreHorizontal, Plus, Table2, Trash2, Wand2, X } from "lucide-react";
+import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, fileUrl } from "../api";
 import { Avatar } from "../components/Avatar";
 import { BrowserViewer } from "../components/BrowserViewer";
-import { ApprovalCard, ArtifactCard, BrowserCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
+import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
 import { Markdown } from "../components/Markdown";
 import { Sheet } from "../components/Sheet";
 import { localLabel, useT } from "../i18n";
 import { useStore } from "../store";
-import type { AttachmentInfo, SkillInfo, ThreadMeta, TimelineEvent, UserEvent } from "../types";
+import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, UserEvent } from "../types";
 import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
 
@@ -27,6 +27,8 @@ export function ChatScreen() {
   // the browser card being watched (or driven) full-screen
   const [browserView, setBrowserView] = useState<string | null>(null);
   const name = profile?.name ?? "nanoMuse";
+  // a chat addressed to another device: is that device still on the hub?
+  const deviceOnline = thread?.device ? (state.hub?.devices.find((d) => d.id === thread.device)?.online ?? null) : null;
 
   const listRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -85,7 +87,7 @@ export function ChatScreen() {
             onClick={() => setThreadsOpen(true)}
             aria-label={t("Chats")}
             className={cx(
-              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg",
+              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg lg:invisible",
               activeThread !== "main" && "text-accent",
             )}
           >
@@ -114,7 +116,20 @@ export function ChatScreen() {
               <span className="truncate">{statusLine}</span>
             </span>
             {thread && thread.id !== "main" && (
-              <span className="mt-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">{thread.title}</span>
+              <span className="mt-1 flex max-w-full items-center gap-1.5">
+                {thread.device ? (
+                  <span className="flex max-w-full items-center gap-1 rounded-full bg-accent/12 px-2.5 py-0.5 text-[11.5px] font-medium text-accent">
+                    {deviceOnline === false ? <span className="h-1.5 w-1.5 rounded-full bg-border" /> : <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                    <span className="truncate">{t("on {device}", { device: thread.device_name || thread.device })}</span>
+                  </span>
+                ) : thread.remote_from ? (
+                  <span className="flex max-w-full items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">
+                    <MonitorSmartphone size={11} /> <span className="truncate">{t("from {device}", { device: thread.remote_from.name })}</span>
+                  </span>
+                ) : (
+                  <span className="truncate rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">{thread.title}</span>
+                )}
+              </span>
             )}
           </button>
           <button
@@ -141,7 +156,9 @@ export function ChatScreen() {
             </button>
           </div>
         )}
-        {eventsLoaded && events.length === 0 && !stream && <EmptyChat name={name} onSend={(text) => void send(activeThread, text)} />}
+        {eventsLoaded && events.length === 0 && !stream && (
+          <EmptyChat name={name} device={thread?.device ? thread.device_name || thread.device : undefined} onSend={(text) => void send(activeThread, text)} />
+        )}
         {events.map((ev, i) => (
           <EventView
             key={ev.id}
@@ -243,6 +260,8 @@ function EventView({
         return <ArtifactCard event={event} onOpen={onOpenFile} />;
       case "browser":
         return <BrowserCard event={event} onOpen={onOpenBrowser} />;
+      case "hands":
+        return <HandsCard event={event} name={name} />;
       default:
         return null;
     }
@@ -271,11 +290,13 @@ function TimeDivider({ ts }: { ts?: string }) {
 }
 
 function UserBubble({ event, onOpenFile }: { event: UserEvent; onOpenFile: (path: string) => void }) {
+  const t = useT();
   const files = event.files ?? [];
   const pictures = files.filter((f) => f.kind === "image");
   const others = files.filter((f) => f.kind !== "image");
   return (
     <div className="rise flex flex-col items-end pl-12">
+      {event.via && <span className="mb-1 text-[11.5px] font-medium text-muted">{t("asked from {device}", { device: event.via })}</span>}
       {pictures.length > 0 && (
         <div className="mb-1 flex max-w-full flex-wrap justify-end gap-1.5">
           {pictures.map((f) => (
@@ -405,21 +426,25 @@ function TypingIndicator({ label }: { label?: string }) {
   );
 }
 
-function EmptyChat({ name, onSend }: { name: string; onSend: (text: string) => void }) {
+function EmptyChat({ name, device, onSend }: { name: string; device?: string; onSend: (text: string) => void }) {
   const { state } = useStore();
   const t = useT();
-  const starters = [
-    t("What can you do for me?"),
-    t("Plan my week — ask me what's on my plate"),
-    t("Research and compare two options for me"),
-    t("Set up a long-term goal and track it"),
-  ];
+  const starters = device
+    ? [t("What is on your screen right now?"), t("Which folder are you in, and what is in it?"), t("Check for updates and tell me what needs a restart")]
+    : [
+        t("What can you do for me?"),
+        t("Plan my week — ask me what's on my plate"),
+        t("Research and compare two options for me"),
+        t("Set up a long-term goal and track it"),
+      ];
   return (
     <div className="flex flex-col items-center text-center px-6 pt-8 pb-6 gap-3">
       <Avatar profile={state.profile} size={96} />
-      <div className="text-[20px] font-semibold">{t("Hi, I'm {name}.", { name })}</div>
+      <div className="text-[20px] font-semibold">{device ? t("This chat goes to {device}.", { device }) : t("Hi, I'm {name}.", { name })}</div>
       <p className="text-muted text-[14.5px] leading-snug max-w-sm">
-        {t("I don't just answer — I get things done: research, plans, files, code, email, long-running goals. Everything I do shows up here, and anything hard to undo waits for your approval.")}
+        {device
+          ? t("Whatever you ask here, the {name} on {device} does where it is — its shell, its files, its screen. Every step shows up here, and anything that needs an approval asks you here.", { name, device })
+          : t("I don't just answer — I get things done: research, plans, files, code, email, long-running goals. Everything I do shows up here, and anything hard to undo waits for your approval.")}
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         {starters.map((s) => (
@@ -671,10 +696,48 @@ function ThreadsSheet({
   active: string;
   onPick: (id: string) => void;
 }) {
-  const { toast, dispatch } = useStore();
+  const t = useT();
+  return (
+    <Sheet open={open} onClose={onClose} title={t("Chats")}>
+      <p className="text-[13px] text-muted mb-3">
+        {t("The main chat is one long conversation. Side chats keep a separate context for a project — memory, goals and approvals are shared.")}
+      </p>
+      <ThreadList threads={threads} active={active} onPick={onPick} onCleared={onClose} />
+    </Sheet>
+  );
+}
+
+/** The list of chats with the devices a chat can be addressed to and the new-chat row; the sheet on the phone, the sidebar on a wide screen. */
+export function ThreadList({
+  threads,
+  active,
+  onPick,
+  onCleared,
+  compact = false,
+}: {
+  threads: ThreadMeta[];
+  active: string;
+  onPick: (id: string) => void;
+  onCleared?: () => void;
+  compact?: boolean;
+}) {
+  const { state, toast, dispatch } = useStore();
   const t = useT();
   const [title, setTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  // devices of yours on the hub that a chat can be addressed to
+  const devices: HubDevice[] = (state.hub?.devices ?? []).filter((d) => !d.this && d.kind !== "web" && d.online);
+  const kindOf = (id: string) => state.hub?.devices.find((d) => d.id === id)?.kind ?? "phone";
+
+  const ask = async (d: HubDevice) => {
+    try {
+      const r = await api.askDevice(d.id);
+      dispatch({ type: "ws", msg: { kind: "thread", thread: r.thread } });
+      onPick(r.thread.id);
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
 
   const create = async () => {
     setCreating(true);
@@ -705,56 +768,85 @@ function ThreadsSheet({
     try {
       await api.clearThread(id);
       dispatch({ type: "ws", msg: { kind: "thread_cleared", thread: id } });
-      onClose();
+      onCleared?.();
     } catch (e) {
       toast((e as Error).message);
     }
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title={t("Chats")}>
-      <p className="text-[13px] text-muted mb-3">
-        {t("The main chat is one long conversation. Side chats keep a separate context for a project — memory, goals and approvals are shared.")}
-      </p>
-      <ul className="divide-y divide-border rounded-2xl border border-border overflow-hidden">
+    <div>
+      <ul className={cx("divide-y divide-border overflow-hidden", compact ? "rounded-xl" : "rounded-2xl border border-border")}>
         {threads.map((th) => (
-          <li key={th.id} className={cx("flex items-center gap-2 px-3 py-2.5", th.id === active && "bg-surface-2/60")}>
+          <li key={th.id} className={cx("group flex items-center gap-2 px-3", compact ? "py-2 rounded-xl hover:bg-surface-2/60" : "py-2.5", th.id === active && "bg-surface-2/60")}>
             <button type="button" onClick={() => onPick(th.id)} className="flex-1 text-left min-w-0">
-              <div className="font-medium text-[15px] truncate flex items-center gap-2">
-                {th.id === "main" ? t(th.title) : th.title}
-                {th.busy && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />}
+              <div className={cx("font-medium truncate flex items-center gap-2", compact ? "text-[13.5px]" : "text-[15px]")}>
+                {th.device ? (
+                  <span className="text-accent">{kindOf(th.device) === "computer" ? <Monitor size={14} /> : <Smartphone size={14} />}</span>
+                ) : th.remote_from ? (
+                  <MonitorSmartphone size={14} className="text-muted" />
+                ) : null}
+                <span className="truncate">{th.id === "main" ? t(th.title) : th.title}</span>
+                {th.busy && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 animate-pulse" />}
               </div>
-              <div className="text-[12px] text-muted">
+              <div className={cx("text-muted", compact ? "text-[11.5px]" : "text-[12px]")}>
                 {t("{n} events", { n: th.events })}{th.queued ? ` · ${t("{n} queued", { n: th.queued })}` : ""} · {timeShort(th.updated_at)}
               </div>
             </button>
-            <button type="button" aria-label={t("Clear")} onClick={() => void clear(th.id)} className="p-2 text-muted hover:text-fg">
+            <button type="button" aria-label={t("Clear")} onClick={() => void clear(th.id)} className={cx("p-2 text-muted hover:text-fg", compact && "opacity-0 group-hover:opacity-100 focus:opacity-100")}>
               <X size={16} />
             </button>
             {th.id !== "main" && (
-              <button type="button" aria-label={t("Delete")} onClick={() => void remove(th.id)} className="p-2 text-muted hover:text-rose-500">
+              <button
+                type="button"
+                aria-label={t("Delete")}
+                onClick={() => void remove(th.id)}
+                className={cx("p-2 text-muted hover:text-rose-500", compact && "opacity-0 group-hover:opacity-100 focus:opacity-100")}
+              >
                 <Trash2 size={16} />
               </button>
             )}
           </li>
         ))}
       </ul>
-      <div className="mt-4 flex gap-2">
+      {devices.length > 0 && (
+        <div className="mt-4">
+          <div className="mb-1.5 text-[12px] font-medium text-muted">{t("Ask one of your devices")}</div>
+          <div className="flex flex-wrap gap-2">
+            {devices.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => void ask(d)}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-[13px] font-medium hover:bg-surface-2"
+              >
+                {d.kind === "phone" ? <Smartphone size={14} className="text-accent" /> : <Monitor size={14} className="text-accent" />}
+                {d.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className={cx("flex gap-2", compact ? "mt-3" : "mt-4")}>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={t("New side chat, e.g. “Trip to Kyoto”")}
-          className="flex-1 rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-accent/40"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !creating) void create();
+          }}
+          placeholder={compact ? t("New side chat") : t("New side chat, e.g. “Trip to Kyoto”")}
+          className={cx("min-w-0 flex-1 bg-surface-2 outline-none focus:ring-2 focus:ring-accent/40", compact ? "rounded-xl px-3 py-2 text-[13px]" : "rounded-2xl px-3.5 py-2.5 text-[14px]")}
         />
         <button
           type="button"
           disabled={creating}
           onClick={() => void create()}
-          className="rounded-2xl bg-accent text-accent-fg px-3.5 py-2.5 flex items-center gap-1.5 font-medium disabled:opacity-50"
+          aria-label={t("New")}
+          className={cx("flex items-center gap-1.5 bg-accent text-accent-fg font-medium disabled:opacity-50", compact ? "rounded-xl px-2.5" : "rounded-2xl px-3.5 py-2.5")}
         >
-          <MessageSquarePlus size={18} /> {t("New")}
+          <MessageSquarePlus size={18} /> {!compact && t("New")}
         </button>
       </div>
-    </Sheet>
+    </div>
   );
 }

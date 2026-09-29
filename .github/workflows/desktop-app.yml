@@ -1,0 +1,115 @@
+# nanoMuse for the desktop — the window (desktop/app, Electron) with the runtime bundled:
+#
+#   Windows  nanoMuse-Desktop-<v>-win-x64.exe        (NSIS installer)
+#   macOS    nanoMuse-Desktop-<v>-mac-arm64.dmg / -x64.dmg  (+ .zip)
+#   Linux    nanoMuse-Desktop-<v>-linux-x64.AppImage / .deb
+#
+# Each platform first builds the runtime (scripts/desktop-app/build-runtime.py: PyInstaller,
+# one folder, started once to check /api/health), then electron-builder wraps it with the app.
+# A push that touches desktop/app builds Linux only; "Run workflow" and the release tags `v*`
+# build all four, and a tag uploads the installers to the release of the same name — the one
+# scripts/release-apk.sh creates with the APK — retrying until it exists. Nothing is signed:
+# macOS asks for right-click → Open once, Windows for "Run anyway" (docs/desktop.md).
+name: desktop app
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["desktop/app/**", "scripts/desktop-app/**", ".github/workflows/desktop-app.yml"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    name: which platforms
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        shell: bash
+        env:
+          FULL: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          LINUX='{"os":"ubuntu-22.04","label":"linux-x64"}'
+          ALL="[{\"os\":\"windows-latest\",\"label\":\"windows-x64\"},{\"os\":\"macos-latest\",\"label\":\"macos-arm64\"},{\"os\":\"macos-15-intel\",\"label\":\"macos-x64\"},$LINUX]"
+          if [ "$FULL" = "true" ]; then echo "matrix=$ALL" >> "$GITHUB_OUTPUT"; else echo "matrix=[$LINUX]" >> "$GITHUB_OUTPUT"; fi
+
+  build:
+    name: ${{ matrix.label }}
+    needs: plan
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/app/package-lock.json
+      - name: Linux packages the runtime and the installers need
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xdotool libfuse2 rpm
+      - name: The runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[hands]" pyinstaller
+          python scripts/desktop-app/build-runtime.py --check
+      - name: The app
+        working-directory: desktop/app
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: "true"
+        run: |
+          npm ci
+          npm run typecheck
+          npm run dist
+      - name: What was built
+        shell: bash
+        working-directory: desktop/app
+        run: ls -la dist | grep -Ev "^total|builder-|\.blockmap|\.yml$" || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nanomuse-desktop-app-${{ matrix.label }}
+          path: |
+            desktop/app/dist/*.AppImage
+            desktop/app/dist/*.deb
+            desktop/app/dist/*.exe
+            desktop/app/dist/*.dmg
+            desktop/app/dist/*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          # the release is created by scripts/release-apk.sh right after it pushes the tag;
+          # give it up to fifteen minutes
+          for i in $(seq 1 90); do
+            if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then break; fi
+            sleep 10
+          done
+          gh release view "$TAG" -R "$REPO" >/dev/null
+          (cd packages && sha256sum * > SHA256SUMS-desktop-app.txt && cat SHA256SUMS-desktop-app.txt)
+          gh release upload "$TAG" packages/* -R "$REPO" --clobber

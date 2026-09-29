@@ -9,6 +9,8 @@
 #
 # Sessions are started by the gateway on the `nanomuse-sessions` network, which has no way out:
 # the only thing a visitor's Muse can talk to is the gateway (and through it, the model).
+# With WEB_ENABLED=1 the gateway also runs nanoMuse Web — a kept Muse per Cloud account, on
+# the `nanomuse-web` network next to the relay (gateway/showcase_gateway/accounts.py).
 
 services:
   caddy:
@@ -58,12 +60,18 @@ services:
     networks:
       - edge
       - sessions
+      - web
 
 networks:
   edge: {}
   sessions:
     name: nanomuse-sessions
     internal: true
+  # nanoMuse Web (gateway/accounts.py): the kept, per-account containers live here, together
+  # with the Cloud relay they sign in to (cloud/deploy/nanomuse-hk joins it too). Not internal:
+  # an account's Muse may fetch pages and talk to the model like one on a phone would.
+  web:
+    name: nanomuse-web
 
 volumes:
   caddy-data: {}

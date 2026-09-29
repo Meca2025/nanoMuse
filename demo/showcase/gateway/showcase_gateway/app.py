@@ -4,10 +4,13 @@ Two kinds of host reach this process:
 
 - ``<session-id>.<SESSION_DOMAIN>`` — the phone talking to its Muse. Everything on such a host
   is relayed to that session's container (HTTP and ``/ws``).
+- ``<account-slug>.<SESSION_DOMAIN>`` — someone in the browser with their own, kept Muse
+  (nanoMuse Web, accounts.py); relayed the same way, the container woken when it slept.
 - everything else — the showcase itself: ``/api/demo/*`` to start and inspect sessions,
   ``/api/trial`` for the phone app's trial credentials, ``/llm/*`` for the containers' model
   calls (they reach us over the sessions network) and the trials' (they come from the
-  internet, through Caddy), and, in development, the built MobileGym as static files.
+  internet, through Caddy), ``/web/`` and ``/api/web/*`` for nanoMuse Web's sign-in, and,
+  in development, the built MobileGym as static files.
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from starlette.responses import Response
 from starlette.routing import Host, Route, Router, WebSocketRoute
@@ -28,11 +31,13 @@ from starlette.staticfiles import StaticFiles
 from starlette.websockets import WebSocket
 
 from . import __version__, llm
+from .accounts import AccountManager, AccountStore
 from .config import Settings
 from .proxy import proxy_http, proxy_ws
 from .runner import DockerRunner
 from .sessions import Provider, Refused, SessionManager, check_provider
 from .trials import TrialManager, TrialStore
+from .webpage import PAGE as WEB_PAGE
 
 log = logging.getLogger("showcase")
 
@@ -61,6 +66,15 @@ class SessionIn(BaseModel):
 class TrialIn(BaseModel):
     # a random id the app makes once and keeps; long enough that guessing one is not a plan
     device: str = Field(min_length=16, max_length=128, pattern=r"^[A-Za-z0-9_.:-]+$")
+
+
+class WebCodeIn(BaseModel):
+    identifier: str = Field(min_length=3, max_length=120)
+
+
+class WebVerifyIn(BaseModel):
+    identifier: str = Field(min_length=3, max_length=120)
+    code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
 
 
 def client_ip(request: Request, trust_proxy: bool) -> str:
@@ -92,6 +106,7 @@ def create_app(
     manager: SessionManager,
     client: httpx.AsyncClient | None = None,
     trials: TrialManager | None = None,
+    accounts: AccountManager | None = None,
 ) -> FastAPI:
     http = client or httpx.AsyncClient(
         timeout=httpx.Timeout(300, connect=10), follow_redirects=False
@@ -102,45 +117,74 @@ def create_app(
             TrialStore(settings.trial_db if settings.trial_enabled else ":memory:"),
             clock=manager.clock,
         )
+    if accounts is None:
+        accounts = AccountManager(
+            settings,
+            manager.runner,
+            AccountStore(settings.web_db if settings.web_enabled else ":memory:"),
+            http=http,
+            clock=manager.clock,
+        )
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI):
         await manager.startup()
-        reaper = asyncio.create_task(manager.reap_forever())
+        await accounts.startup()
+        reapers = [
+            asyncio.create_task(manager.reap_forever()),
+            asyncio.create_task(accounts.reap_forever()),
+        ]
         try:
             yield
         finally:
-            reaper.cancel()
+            for task in reapers:
+                task.cancel()
             await manager.shutdown()
             await http.aclose()
 
     app = FastAPI(title="nanoMuse showcase gateway", version=__version__, lifespan=lifespan)
 
     # ------------------------------------------------------------- the phone → its Muse
+    async def _behind(host_id: str):
+        """The session or the account behind ``<id>.<domain>``, or None. Waking a slept
+        account's container happens here, so a first request may take a few seconds."""
+        sess = manager.get(host_id)
+        if sess is not None:
+            manager.touch(sess)
+            return sess, lambda: manager.touch(sess)
+        account = await accounts.for_host(host_id)
+        if account is None:
+            return None, None
+        return account, lambda: accounts.touch(account)
+
     async def session_http(request: Request) -> Response:
-        sess = manager.get(request.path_params["sid"])
-        if sess is None:
+        try:
+            target, touch = await _behind(request.path_params["sid"])
+        except Refused as exc:
+            return _refused(exc)
+        if target is None:
             if "text/html" in request.headers.get("accept", ""):
                 return HTMLResponse(ENDED_PAGE, status_code=404)
             return JSONResponse(
                 {"error": "no_session", "message": "This demo session has ended."}, status_code=404
             )
-        manager.touch(sess)
-        return await proxy_http(request, http, sess.http_base)
+        return await proxy_http(request, http, target.http_base)
 
     async def session_ws(ws: WebSocket) -> None:
-        sess = manager.get(ws.path_params["sid"])
-        if sess is None:
+        try:
+            target, touch = await _behind(ws.path_params["sid"])
+        except Refused:
+            target, touch = None, None
+        if target is None:
             # accept first: a close before the handshake reaches the browser as a bare failure,
             # the code only travels on an open socket (the phone module reads 4404 as "gone")
             await ws.accept()
             await ws.close(code=4404, reason="this session has ended")
             return
-        manager.touch(sess)
-        url = f"{sess.ws_base}{ws.url.path}"
+        url = f"{target.ws_base}{ws.url.path}"
         if ws.url.query:
             url += f"?{ws.url.query}"
-        await proxy_ws(ws, url, lambda: manager.touch(sess))
+        await proxy_ws(ws, url, touch)
 
     session_router = Router(
         routes=[
@@ -164,7 +208,46 @@ def create_app(
             "quota": {"requests": settings.session_requests, "tokens": settings.session_tokens},
             **manager.stats(),
             "trial": trials.stats(),
+            "web": accounts.stats(),
         }
+
+    # ------------------------------------------------------------- nanoMuse Web (accounts)
+    @app.get("/web", include_in_schema=False)
+    async def web_root() -> Response:
+        return RedirectResponse("/web/", status_code=308)
+
+    @app.get("/web/", include_in_schema=False)
+    async def web_page() -> Response:
+        if not settings.web_enabled:
+            return HTMLResponse(
+                "<!doctype html><meta charset=utf-8><p>nanoMuse Web is not turned on here.",
+                status_code=404,
+            )
+        return HTMLResponse(WEB_PAGE, headers={"Cache-Control": "no-store"})
+
+    @app.get("/api/web/info")
+    async def web_info() -> dict[str, Any]:
+        return {"version": __version__, **accounts.stats()}
+
+    @app.post("/api/web/code", status_code=204)
+    async def web_code(body: WebCodeIn, request: Request) -> Response:
+        try:
+            await accounts.request_code(
+                body.identifier.strip(), client_ip(request, settings.trust_proxy)
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return Response(status_code=204)
+
+    @app.post("/api/web/verify")
+    async def web_verify(body: WebVerifyIn, request: Request) -> Response:
+        try:
+            account = await accounts.verify(
+                body.identifier.strip(), body.code, client_ip(request, settings.trust_proxy)
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return JSONResponse(account.public(settings), headers={"Cache-Control": "no-store"})
 
     @app.post("/api/demo/session", status_code=201)
     async def start(body: SessionIn, request: Request) -> Response:

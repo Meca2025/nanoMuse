@@ -155,6 +155,55 @@ class MuseAgent:
             return ""
         return prompts.DEVICE_SECTION.format(tools=", ".join(names))
 
+    def computer_section(self) -> str:
+        """This computer's screen, when the hands are on: available or not, and what is in front."""
+        task = self.tools.get("computer_task")
+        link = getattr(task, "link", None)
+        if task is None or link is None:
+            return ""
+        status = link.status() if hasattr(link, "status") else {}
+        if not status.get("available", True):
+            reason = status.get("reason") or "no backend"
+            status_line = (
+                "- The hands are turned on, but they cannot drive this computer right now "
+                f"({reason}): the `computer_*` tools will fail. Say so if a step needs the screen."
+            )
+        else:
+            last = link.last_screen
+            status_line = (
+                f"- The hands can drive this computer ({status.get('backend') or 'hands'} on "
+                f"{link.device.platform}, screen {link.device.width}×{link.device.height})."
+            )
+            if last is not None and last.title:
+                status_line += f" In front last time: {last.title}."
+        return prompts.COMPUTER_SECTION.format(status=status_line)
+
+    def devices_section(self) -> str:
+        """The user's other devices, when this computer is on the hub (the `devices` tool)."""
+        tool = self.tools.get("devices")
+        hub = getattr(tool, "hub", None)
+        if tool is None or hub is None:
+            return ""
+        others = hub.others()
+        if not getattr(hub, "client", None) or not hub.client.connected.is_set():
+            status = (
+                "- This computer is not connected to the nanoMuse hub right now, so the other "
+                "devices cannot be reached; say so if a step needs one."
+            )
+        elif not others:
+            status = (
+                f"- This computer is on the hub as “{hub.device_name}”; no other device of the "
+                "user's has joined yet."
+            )
+        else:
+            listed = ", ".join(
+                f"{d.get('name')} ({d.get('kind') or 'device'}, "
+                f"{'online' if d.get('online') else 'offline'})"
+                for d in others
+            )
+            status = f"- This computer is “{hub.device_name}”. Other devices: {listed}."
+        return prompts.DEVICES_SECTION.format(status=status)
+
     def contacts_note(self) -> str:
         """One line on the address book, when there is one (the tool does the looking up)."""
         book = self.contacts
@@ -254,6 +303,8 @@ class MuseAgent:
             + calendar
             + self.device_section()
             + self.phone_section()
+            + self.computer_section()
+            + self.devices_section()
             + self.skills_section(),
             extra=extra,
         )

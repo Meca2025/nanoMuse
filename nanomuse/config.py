@@ -351,6 +351,45 @@ class MCPSettings(BaseModel):
     servers: list[MCPServerSettings] = Field(default_factory=list)
 
 
+class HandsSettings(BaseModel):
+    """Hands on *this* computer's screen — the GUI operator with the machine it runs on
+    under it (``computer_screen``, ``computer_act``, ``computer_task``). Off by default;
+    the switch is Settings → Hands in the app. The model, the step cap and the sensitive
+    words are shared with ``[gui]`` — one vision model serves the phone and the computer.
+    """
+
+    enabled: bool = False
+    # "auto": pyautogui when installed, else xdotool on X11; or "pyautogui" / "xdotool"
+    backend: str = "auto"
+    # Widest picture handed to the model (the screen itself is operated at full size).
+    max_image_width: int = 1600
+    # A pause after each action before the next screenshot, so the screen has settled.
+    settle_s: float = 0.6
+
+
+class CloudSettings(BaseModel):
+    """nanoMuse Cloud: the relay the phone signs in to with an e-mail (or phone) code. The
+    account key lives in the vault (``NANOMUSE_CLOUD_KEY``); ``base_url`` is the relay.
+    Signed in, the relay can be the model provider and the hub is reachable."""
+
+    base_url: str = "https://cloud.nanomuse.cn"
+
+
+class HubSettings(BaseModel):
+    """The hub: this computer as one of the account's devices (see docs/hub.md).
+
+    ``enabled`` joins the hub whenever the Cloud account is signed in. ``remote_control``
+    off answers other devices with ``info`` and nothing else. ``name`` is what the other
+    devices call this one (empty: the host name). ``device_id`` is per installation and
+    normally left to the app.
+    """
+
+    enabled: bool = True
+    remote_control: bool = True
+    name: str = ""
+    device_id: str = ""
+
+
 class ServerSettings(BaseModel):
     """``nanomuse serve`` — the always-on agent behind the mobile-first web app."""
 
@@ -380,6 +419,9 @@ class Settings(BaseModel):
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
     browser: BrowserSettings = Field(default_factory=BrowserSettings)
     gui: GUISettings = Field(default_factory=GUISettings)
+    hands: HandsSettings = Field(default_factory=HandsSettings)
+    cloud: CloudSettings = Field(default_factory=CloudSettings)
+    hub: HubSettings = Field(default_factory=HubSettings)
     mcp: MCPSettings = Field(default_factory=MCPSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
     # Where the settings came from (informational).
@@ -538,6 +580,11 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
         raw.setdefault("browser", {}).setdefault("enabled", True)
     if val := os.environ.get("NANOMUSE_BROWSER_BACKEND"):
         raw.setdefault("browser", {})["backend"] = val
+    # a hosted runtime (nanoMuse Web) is told where its relay is and what to call itself
+    if val := os.environ.get("NANOMUSE_CLOUD_BASE_URL"):
+        raw.setdefault("cloud", {})["base_url"] = val.rstrip("/")
+    if val := os.environ.get("NANOMUSE_HUB_NAME"):
+        raw.setdefault("hub", {})["name"] = val[:60]
     gui = raw.setdefault("gui", {})
     if os.environ.get("NANOMUSE_GUI_ENABLED", "").strip().lower() in ("1", "true", "yes", "on"):
         gui["enabled"] = True
@@ -655,6 +702,21 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
             if key in gui and gui[key] is not None:
                 value = str(gui[key]).strip().rstrip("/")
                 setattr(settings.gui, key, value if value or key != "base_url" else None)
+    if hands := data.get("hands"):
+        if "enabled" in hands:
+            settings.hands.enabled = bool(hands["enabled"])
+        if hands.get("backend") in ("auto", "pyautogui", "xdotool"):
+            settings.hands.backend = hands["backend"]
+    if cloud := data.get("cloud"):
+        if cloud.get("base_url"):
+            settings.cloud.base_url = str(cloud["base_url"]).strip().rstrip("/")
+    if hub := data.get("hub"):
+        for key in ("enabled", "remote_control"):
+            if key in hub and hub[key] is not None:
+                setattr(settings.hub, key, bool(hub[key]))
+        for key in ("name", "device_id"):
+            if hub.get(key):
+                setattr(settings.hub, key, str(hub[key]).strip()[:60])
     for raw_server in (data.get("mcp") or {}).get("servers") or []:
         try:
             server = MCPServerSettings.model_validate(raw_server)
@@ -690,11 +752,14 @@ __all__ = [
     "BrowserSettings",
     "CalendarFeedSettings",
     "CalendarSettings",
+    "CloudSettings",
     "ContactSourceSettings",
     "ContactsSettings",
     "ConnectorSettings",
     "DEFAULT_DATA_DIR",
     "EmailSettings",
+    "HandsSettings",
+    "HubSettings",
     "LLMSettings",
     "MCPServerSettings",
     "MCPSettings",

@@ -20,6 +20,7 @@ services:
       - ./data:/srv/nanomuse-cloud/data
     networks:
       - edge
+      - web
     logging:
       driver: json-file
       options:
@@ -30,3 +31,7 @@ networks:
   edge:
     external: true
     name: showcase_edge
+  # nanoMuse Web's kept containers (demo/showcase) reach the relay here as nanomuse-relay:8787
+  web:
+    external: true
+    name: nanomuse-web

@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Ban,
+  Bell,
   Bot,
   Brain,
   CalendarDays,
@@ -8,24 +9,33 @@ import {
   ChevronDown,
   ChevronRight,
   Code2,
+  ExternalLink,
   FileText,
   Globe,
+  Hand,
   Loader2,
   Mail,
   MessageCircleQuestion,
+  Monitor,
+  MonitorSmartphone,
+  MousePointerClick,
   Search,
+  Send,
   ShieldAlert,
+  Smartphone,
+  Square,
   Target,
   Terminal,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { fileUrl, frameUrl } from "../api";
+import { api, fileUrl, frameUrl } from "../api";
 import { t, useT } from "../i18n";
 import type {
   ApprovalEvent,
   ArtifactEvent,
   BrowserEvent,
+  HandsEvent,
   NoticeEvent,
   QuestionEvent,
   RiskLevel,
@@ -58,9 +68,47 @@ export function toolIcon(tool: string, size = 15): ReactNode {
       return <Brain size={size} />;
     case "ask_user":
       return <MessageCircleQuestion size={size} />;
+    // the other devices (docs/every-device.md)
+    case "devices":
+      return <MonitorSmartphone size={size} />;
+    case "device_shell":
+      return <Terminal size={size} />;
+    case "device_files":
+    case "device_get":
+    case "device_put":
+      return <FileText size={size} />;
+    case "device_open":
+      return <ExternalLink size={size} />;
+    case "device_screen":
+      return <Monitor size={size} />;
+    case "device_notify":
+      return <Bell size={size} />;
+    case "delegate":
+      return <Send size={size} />;
+    // this computer's screen, and the phone's
+    case "computer_screen":
+      return <Monitor size={size} />;
+    case "computer_act":
+      return <MousePointerClick size={size} />;
+    case "computer_task":
+      return <Hand size={size} />;
+    case "phone_screen":
+    case "phone_act":
+    case "phone_task":
+      return <Smartphone size={size} />;
     default:
       return <Bot size={size} />;
   }
+}
+
+/** "on Pixel 8" — the small pill that marks a step or a request that ran on another device. */
+export function DevicePill({ device, className }: { device: string; className?: string }) {
+  const t = useT();
+  return (
+    <span className={cx("inline-flex max-w-full items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-medium text-accent", className)}>
+      <MonitorSmartphone size={11} className="shrink-0" /> <span className="truncate">{t("on {device}", { device })}</span>
+    </span>
+  );
 }
 
 const RISK_STYLE: Record<RiskLevel, string> = {
@@ -115,6 +163,7 @@ export function ToolChip({ event }: { event: ToolEvent }) {
         <span className="flex items-center gap-2">
           <span className="text-muted">{toolIcon(event.tool)}</span>
           <span className="truncate flex-1">{event.summary || event.tool}</span>
+          {event.device && <DevicePill device={event.device} />}
           {icon}
           {event.output ? open ? <ChevronDown size={13} /> : <ChevronRight size={13} /> : null}
         </span>
@@ -200,7 +249,10 @@ export function ApprovalCard({
             {sensitive ? <ShieldAlert size={18} /> : toolIcon(event.tool, 18)}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[12.5px] font-medium text-muted">{t("{name} wants to", { name })}</div>
+            <div className="flex flex-wrap items-center gap-1.5 text-[12.5px] font-medium text-muted">
+              <span>{event.remote ? t("{name} on {device} wants to", { name, device: event.remote.name }) : t("{name} wants to", { name })}</span>
+              {event.remote && <DevicePill device={event.remote.name} />}
+            </div>
             <div className="mt-0.5 break-words text-[15.5px] font-semibold leading-snug">{event.summary}</div>
             {host ? (
               <div className="mt-1 flex items-center gap-1 text-[13px] text-muted">
@@ -403,6 +455,104 @@ export function BrowserCard({ event, onOpen }: { event: BrowserEvent; onOpen: (i
       </button>
     </div>
   );
+}
+
+// ------------------------------------------------------------------ hands
+/**
+ * This computer's hands at work: what it is doing on the screen, the last click in words,
+ * the window in front, and a Stop that takes the mouse back. The ring around the cursor is
+ * drawn by the desktop stage (desktop/app); here the card is the account of it.
+ */
+export function HandsCard({ event, name = "nanoMuse" }: { event: HandsEvent; name?: string }) {
+  const t = useT();
+  const [stopping, setStopping] = useState(false);
+  const live = event.status === "live";
+  const last = event.last;
+  const where = [event.app, event.title].filter(Boolean).join(" · ");
+  const stop = async () => {
+    setStopping(true);
+    try {
+      await api.stopHands();
+    } catch {
+      /* the card closes when the runtime says so */
+    } finally {
+      setStopping(false);
+    }
+  };
+  return (
+    <div className="rise flex justify-start pr-8">
+      <div className={cx("w-full max-w-[360px] overflow-hidden rounded-3xl rounded-tl-lg border bg-surface shadow-sm", live ? "border-accent/50" : "border-border/70")}>
+        <div className="flex items-start gap-3 px-4 pt-3.5 pb-2">
+          <div className={cx("mt-0.5 rounded-full p-2", live ? "bg-accent/12 text-accent" : "bg-surface-2 text-fg/80")}>
+            <Hand size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 text-[12.5px] font-medium text-muted">
+              <span>{live ? t("{name} is using this computer", { name }) : event.status === "stopped" ? t("Hands stopped") : t("Hands done")}</span>
+              {live && (
+                <span className="flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[10.5px] font-semibold text-accent">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" /> {t("LIVE")}
+                </span>
+              )}
+            </div>
+            {event.text && <div className="mt-0.5 break-words text-[15px] font-semibold leading-snug">{event.text}</div>}
+            {last?.action && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-[13px] text-fg/90">
+                <MousePointerClick size={13} className="shrink-0 text-muted" />
+                <span className="truncate">{describeHandsStep(last, t)}</span>
+              </div>
+            )}
+            {where && <div className="mt-1 truncate text-[12px] text-muted">{where}</div>}
+            {event.notice && <div className="mt-1.5 rounded-2xl bg-amber-500/12 px-3 py-1.5 text-[12.5px] text-amber-700 dark:text-amber-300">{event.notice}</div>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 border-t border-border/70 px-4 py-2 text-[12px] text-muted">
+          <span>{t("{n} steps", { n: event.steps })}</span>
+          <span className="ml-auto">{timeShort(event.updated_ts ?? event.ts)}</span>
+          {live && (
+            <button
+              type="button"
+              onClick={() => void stop()}
+              disabled={stopping}
+              className="ml-1 inline-flex items-center gap-1.5 rounded-full bg-fg px-3 py-1 text-[12.5px] font-semibold text-bg transition active:scale-95 disabled:opacity-60"
+            >
+              <Square size={10} fill="currentColor" /> {t("Stop")}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** One computer action in words: "Clicked “Save”", "Typed 3 words", "Pressed ctrl+s". */
+export function describeHandsStep(last: NonNullable<HandsEvent["last"]>, t: (s: string, v?: Record<string, string | number>) => string): string {
+  const label = last.label ? `“${last.label}”` : "";
+  switch (last.action) {
+    case "click":
+      return label ? t("Clicked {label}", { label }) : t("Clicked");
+    case "double_click":
+      return label ? t("Double-clicked {label}", { label }) : t("Double-clicked");
+    case "right_click":
+    case "middle_click":
+      return label ? t("Right-clicked {label}", { label }) : t("Right-clicked");
+    case "move":
+      return label ? t("Pointed at {label}", { label }) : t("Moved the mouse");
+    case "type":
+      return t("Typed {n} characters", { n: (last.text ?? "").length });
+    case "key":
+      return t("Pressed {keys}", { keys: (last.keys ?? []).join("+") });
+    case "scroll":
+      return t("Scrolled");
+    case "drag":
+      return t("Dragged");
+    case "open_app":
+      return label ? t("Opened {label}", { label }) : t("Opened an application");
+    case "wait":
+      return t("Waited");
+    default:
+      return last.action ?? "";
+  }
 }
 
 export function ArtifactCard({ event, onOpen }: { event: ArtifactEvent; onOpen: (path: string) => void }) {

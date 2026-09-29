@@ -38,6 +38,7 @@ from nanomuse.tools import (
     WebSearch,
     playwright_available,
 )
+from nanomuse.vault.vault import VaultError
 
 if TYPE_CHECKING:
     from nanomuse.server.service import MuseService
@@ -236,7 +237,12 @@ class Connections:
         if not key:
             key_source = "none"
         elif self.vault.has_placeholders(key):
-            key_source = "vault" if self.vault.get(LLM_KEY) else "missing"
+            # nanoMuse: whichever vault entry the placeholder names (LLM_API_KEY for a key
+            # pasted here, NANOMUSE_CLOUD_KEY when the Cloud relay is the model)
+            try:
+                key_source = "vault" if self.vault.resolve(key) else "missing"
+            except VaultError:
+                key_source = "missing"
         else:
             key_source = "config"
         email = s.connectors.email
@@ -283,6 +289,7 @@ class Connections:
                 "backend": self.svc.browser_backend(),
             },
             "gui": self._gui_view(),
+            "hands": self.hands_view(),
             "mcp": [
                 {
                     "name": m.name,
@@ -998,6 +1005,37 @@ class Connections:
         self._publish()
         self.svc.publish_phone()
         return self._gui_view()
+
+    def set_hands(self, body: dict[str, Any]) -> dict[str, Any]:
+        """The switch for this computer's own screen and hands, and which backend drives them."""
+        hands = dict(self.data.get("hands") or {})
+        if body.get("enabled") is not None:
+            hands["enabled"] = bool(body["enabled"])
+        if body.get("backend") is not None:
+            backend = str(body["backend"]).strip().lower() or "auto"
+            if backend not in ("auto", "pyautogui", "xdotool"):
+                raise ValueError("backend must be 'auto', 'pyautogui' or 'xdotool'")
+            hands["backend"] = backend
+        self.data["hands"] = hands
+        self._save()
+        apply_app_settings(self.settings, {"hands": hands})
+        computer = self.svc.app.computer
+        if computer is not None and "backend" in hands:
+            computer._backend = None  # picked again on the next action
+        if "enabled" in hands:
+            self.svc.app.set_hands_enabled(bool(hands["enabled"]))
+        operator = getattr(self.svc.app, "computer_operator", None)
+        if operator is not None:
+            operator.reset_llm()
+        self._publish()
+        self.svc.publish_hands()
+        return self.hands_view()
+
+    def hands_view(self) -> dict[str, Any]:
+        computer = self.svc.app.computer
+        if computer is None:
+            return {"enabled": False, "available": False, "reason": "this runs on a phone"}
+        return computer.status()
 
     async def test_gui(self) -> dict[str, Any]:
         """One tiny call to the operator's model, so a wrong key or model shows up here."""

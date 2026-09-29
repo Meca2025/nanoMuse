@@ -12,6 +12,7 @@ import {
   Copy,
   Loader2,
   Mail,
+  MonitorSmartphone,
   Play,
   Plug,
   Repeat,
@@ -64,7 +65,7 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const go = (tab: "memory" | "skills" | "connections" | "you") => {
+  const go = (tab: "memory" | "skills" | "connections" | "devices" | "you") => {
     onClose();
     setTab(tab);
   };
@@ -100,6 +101,7 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
           onMemory={() => go("memory")}
           onSkills={() => go("skills")}
           onConnections={() => go("connections")}
+          onDevices={() => go("devices")}
           onSettings={() => go("you")}
         />
       )}
@@ -119,6 +121,7 @@ function Menu({
   onMemory,
   onSkills,
   onConnections,
+  onDevices,
   onSettings,
 }: {
   name: string;
@@ -127,9 +130,13 @@ function Menu({
   onMemory: () => void;
   onSkills: () => void;
   onConnections: () => void;
+  onDevices: () => void;
   onSettings: () => void;
 }) {
   const { state, toast } = useStore();
+  const hub = state.hub;
+  const others = hub?.devices.filter((d) => !d.this && d.kind !== "web") ?? [];
+  const online = others.filter((d) => d.online).length;
   const t = useT();
   const [stopping, setStopping] = useState(false);
   const mode = state.settings?.sentinel.mode;
@@ -197,6 +204,18 @@ function Menu({
           label={t("Connections")}
           hint={connected.length ? t("Model, {list}", { list: connected.join(", ") }) : t("Model, email, calendar, browser, MCP servers")}
           onClick={onConnections}
+        />
+        <MenuRow
+          icon={<MonitorSmartphone size={19} />}
+          label={t("Devices")}
+          hint={
+            !hub?.account.signed_in
+              ? t("Your phone and computers, working together")
+              : others.length
+                ? t("{n} other devices, {online} online", { n: others.length, online })
+                : t("Signed in as {hint}; no other device yet", { hint: hub.account.hint })
+          }
+          onClick={onDevices}
         />
         <MenuRow icon={<SlidersHorizontal size={19} />} label={t("Settings")} hint={t("Name, style, how careful it is")} onClick={onSettings} />
       </ul>

@@ -39,6 +39,39 @@ class Runner(Protocol):
         """The address of this host on the sessions network, for the containers."""
         ...
 
+    # -- the web version's kept containers (accounts.py) --------------------------------
+
+    async def start_persistent(
+        self,
+        name: str,
+        env: dict[str, str],
+        *,
+        volumes: dict[str, str],
+        network: str,
+        memory: str,
+        cpus: str,
+        pids: int,
+        image: str,
+    ) -> str:
+        """Start a container that stays: created with named volumes when there is none,
+        ``docker start``-ed when one sleeps. Returns its address."""
+        ...
+
+    async def stop_only(self, name: str) -> None:
+        """Stop it, keep it (and its volumes) for the next visit."""
+        ...
+
+    async def remove(self, name: str) -> None:
+        """Remove the container; the volumes stay."""
+        ...
+
+    async def address_of(self, name: str) -> str | None:
+        """Its address while it runs; None when it is stopped or does not exist."""
+        ...
+
+
+WEB_LABEL = "io.github.nanomuse.web"
+
 
 class DockerRunner:
     def __init__(self, settings: Settings) -> None:
@@ -125,6 +158,95 @@ class DockerRunner:
             "ps", "-aq", "--filter", f"label={LABEL}", "--format", "{{.Names}}"
         )
         return [line for line in out.splitlines() if line]
+
+    # -- kept containers -------------------------------------------------------------
+
+    _ADDRESS = (
+        "{{if .State.Running}}{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}{{end}}"
+    )
+
+    async def address_of(self, name: str) -> str | None:
+        try:
+            out = await self._docker("inspect", "-f", self._ADDRESS, name)
+        except RunnerError as exc:
+            if "No such" in str(exc):
+                return None
+            raise
+        return out or None
+
+    async def start_persistent(
+        self,
+        name: str,
+        env: dict[str, str],
+        *,
+        volumes: dict[str, str],
+        network: str,
+        memory: str,
+        cpus: str,
+        pids: int,
+        image: str,
+    ) -> str:
+        exists = True
+        try:
+            await self._docker("inspect", "-f", "{{.Id}}", name)
+        except RunnerError as exc:
+            if "No such" not in str(exc):
+                raise
+            exists = False
+        if exists:
+            await self._docker("start", name, timeout=60)
+        else:
+            cmd = [
+                "run",
+                "-d",
+                "--restart",
+                "unless-stopped",
+                "--name",
+                name,
+                "--hostname",
+                "nanomuse",
+                "--network",
+                network,
+                "--label",
+                f"{WEB_LABEL}=1",
+                "--memory",
+                memory,
+                "--cpus",
+                cpus,
+                "--pids-limit",
+                str(pids),
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges:true",
+                "--read-only",
+                "--tmpfs",
+                "/tmp:size=128m,mode=1777",
+            ]
+            for volume, path in volumes.items():
+                cmd += ["-v", f"{volume}:{path}"]
+            for key, value in env.items():
+                cmd += ["-e", f"{key}={value}"]
+            cmd.append(image)
+            await self._docker(*cmd, timeout=180)
+        address = await self.address_of(name)
+        if not address:
+            raise RunnerError(f"{name} got no address on {network}")
+        return address
+
+    async def stop_only(self, name: str) -> None:
+        try:
+            await self._docker("stop", "-t", "15", name, timeout=60)
+        except RunnerError as exc:
+            if "No such" not in str(exc):
+                raise
+
+    async def remove(self, name: str) -> None:
+        try:
+            await self._docker("rm", "-f", name, timeout=60)
+        except RunnerError as exc:
+            if "No such" not in str(exc):
+                raise
 
     async def gateway_address(self) -> str | None:
         try:

@@ -3,8 +3,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { setToken } from "./api";
 import { FileViewer } from "./components/FileViewer";
 import { RedPanda } from "./components/RedPanda";
+import { Sidebar } from "./components/Sidebar";
 import { ChatScreen } from "./screens/ChatScreen";
 import { ConnectionsScreen } from "./screens/ConnectionsScreen";
+import { DevicesScreen } from "./screens/DevicesScreen";
 import { FeedScreen } from "./screens/FeedScreen";
 import { GoalsScreen } from "./screens/GoalsScreen";
 import { IdeasScreen } from "./screens/IdeasScreen";
@@ -35,6 +37,18 @@ export default function App() {
     document.title = state.profile?.name ? `${state.profile.name} · nanoMuse` : "nanoMuse";
   }, [state.profile?.name]);
 
+  // `#devices` etc. opens a section straight away — the desktop tray menu links here.
+  useEffect(() => {
+    const jump = () => {
+      const tab = window.location.hash.slice(1) as Tab;
+      if (tab && TABS.some((x) => x.id === tab)) setTab(tab);
+      else if (tab === "devices" || tab === "you" || tab === "memory" || tab === "connections" || tab === "skills") setTab(tab);
+    };
+    jump();
+    window.addEventListener("hashchange", jump);
+    return () => window.removeEventListener("hashchange", jump);
+  }, [setTab]);
+
   if (state.authError) return <TokenGate />;
   // First run: the server has not seen setup finish and nothing has been said yet.
   if (state.loaded && state.settings && !state.settings.onboarded && !state.onboardingDismissed && !state.threads.some((t) => t.events > 0)) {
@@ -46,30 +60,37 @@ export default function App() {
   const proposals = state.goals.filter((g) => g.proposal && g.status !== "cancelled").length;
   const feedUnseen = state.pendingApprovals.filter((a) => a.ts > state.feedSeenAt).length;
 
+  // One column on the phone; on a wide screen (the desktop window, a full browser) a
+  // sidebar takes over from the tab bar and the chats sheet — same screens either side.
   return (
-    <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border">
-      {!state.connected && state.loaded && (
-        <div className="flex items-center justify-center gap-2 bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[12.5px] py-1">
-          <WifiOff size={14} /> {t("Reconnecting to your nanoMuse…")}
-        </div>
-      )}
-      {state.error && !state.loaded && (
-        <div className="m-4 rounded-2xl bg-rose-500/12 text-rose-700 dark:text-rose-300 p-3 text-[13.5px]">
-          {t("Could not reach the server: {error}", { error: state.error })}
-        </div>
-      )}
-      <main className="min-h-0 flex-1">
-        {state.tab === "chat" && <ChatScreen />}
-        {state.tab === "feed" && <FeedScreen />}
-        {state.tab === "ideas" && <IdeasScreen />}
-        {state.tab === "goals" && <GoalsScreen />}
-        {state.tab === "library" && <LibraryScreen />}
-        {state.tab === "memory" && <MemoryScreen />}
-        {state.tab === "skills" && <SkillsScreen />}
-        {state.tab === "connections" && <ConnectionsScreen />}
-        {state.tab === "you" && <SettingsScreen />}
-      </main>
-      <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5">
+    <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border lg:max-w-none lg:flex-row lg:border-x-0">
+      <div className="hidden lg:block lg:h-full">
+        <Sidebar />
+      </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {!state.connected && state.loaded && (
+          <div className="flex items-center justify-center gap-2 bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[12.5px] py-1">
+            <WifiOff size={14} /> {t("Reconnecting to your nanoMuse…")}
+          </div>
+        )}
+        {state.error && !state.loaded && (
+          <div className="m-4 rounded-2xl bg-rose-500/12 text-rose-700 dark:text-rose-300 p-3 text-[13.5px]">
+            {t("Could not reach the server: {error}", { error: state.error })}
+          </div>
+        )}
+        <main className="mx-auto min-h-0 w-full flex-1 lg:max-w-[900px]">
+          {state.tab === "chat" && <ChatScreen />}
+          {state.tab === "feed" && <FeedScreen />}
+          {state.tab === "ideas" && <IdeasScreen />}
+          {state.tab === "goals" && <GoalsScreen />}
+          {state.tab === "library" && <LibraryScreen />}
+          {state.tab === "memory" && <MemoryScreen />}
+          {state.tab === "skills" && <SkillsScreen />}
+          {state.tab === "connections" && <ConnectionsScreen />}
+          {state.tab === "devices" && <DevicesScreen />}
+          {state.tab === "you" && <SettingsScreen />}
+        </main>
+        <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 lg:hidden">
         <ul className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/70 bg-surface p-1.5 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.18)]">
           {TABS.map((tab) => {
             const active = state.tab === tab.id;
@@ -98,6 +119,7 @@ export default function App() {
           })}
         </ul>
       </nav>
+      </div>
       <FileViewer path={state.viewer} onClose={() => openFile(null)} />
       {state.toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4">

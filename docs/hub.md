@@ -51,6 +51,15 @@ Two kinds of request travel over the hub:
   card (RiskGate on the phone, the terminal prompt on the desktop, a card in the
   web console). The answer goes back as `approve {approval_id, allow}`.
 
+  While a task runs the target sends `event` frames whose `body.stage` tells
+  the caller what to draw, so the run reads the same in the caller's chat as in
+  the target's own: `tool {id, name, summary}` when a tool starts and
+  `tool_result {id, name, ok, summary}` when it ends (same `id`), `approval
+  {approval_id, preview, risk, reason, device, timeout}` and, once decided on
+  either side, `approval_result {approval_id, status}`, `text {text, interim}`
+  for what the Muse says along the way, `image` and `file` for things it made,
+  `error`. The `result` frame carries the final answer.
+
 Each device decides what it lets others do. **Remote control** off (phone:
 *Settings → nanoMuse Cloud → Devices*; desktop: `set remote_control off`) makes
 the device answer `info` and nothing else — it still sees and drives the others.
@@ -85,6 +94,10 @@ refuses frames over `HUB_FRAME_LIMIT`.
 
 ## The code
 
+How the devices' apps are shaped around these frames — the Devices page, a
+side chat addressed to a device, approvals answered on either end, the
+computer's own hands — is in [every-device.md](every-device.md).
+
 - Relay: [`cloud/nanomuse_cloud/hub.py`](../cloud/nanomuse_cloud/hub.py) —
   per-account registry, routing, `GET /v1/devices`, `DELETE /v1/devices/{id}`;
   the console under [`cloud/nanomuse_cloud/console/`](../cloud/nanomuse_cloud/console/).
@@ -93,9 +106,20 @@ refuses frames over `HUB_FRAME_LIMIT`.
   others, including `task` through the headless chat runner), `HubService`
   (foreground, `remoteMessaging`). `nanomuse-pc` reaches hub devices next to
   LAN-paired computers.
-- Desktop: [`desktop/nanomuse_desktop/hub.py`](../desktop/nanomuse_desktop/hub.py),
+- Desktop binary: [`desktop/nanomuse_desktop/hub.py`](../desktop/nanomuse_desktop/hub.py),
   `app.py` (incoming calls, approvals), `agent.py` (the `device_*` and
   `delegate` tools).
+- Runtime (the windowed desktop, `nanomuse serve`): [`nanomuse/cloud.py`](../nanomuse/cloud.py)
+  (the account), [`nanomuse/hub/client.py`](../nanomuse/hub/client.py) (the
+  socket, reconnect), [`nanomuse/hub/actions.py`](../nanomuse/hub/actions.py)
+  (what this computer does for others), [`nanomuse/hub/service.py`](../nanomuse/hub/service.py)
+  (incoming `task`s in a visible side chat, the `tool`/`tool_result`/`approval`/
+  `approval_result` stages both ways, device threads), [`nanomuse/tools/devices.py`](../nanomuse/tools/devices.py)
+  (`devices`, `device_*`, `delegate`); `/api/cloud/*` and `/api/hub/*` in
+  [`nanomuse/server/api.py`](../nanomuse/server/api.py). Tests:
+  `tests/test_hub.py` with a fake relay.
+- Web app: `DevicesScreen`, the device chats and the relayed approval cards in
+  [`web/src/`](../web/src/) — see [every-device.md](every-device.md).
 
 ## Trust
 

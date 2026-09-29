@@ -188,6 +188,9 @@ class Cloud:
         cap_cny = 0.0 if caller.member else self.s.daily_cap_cny
         return {
             "account": {
+                # an opaque id (not the identifier): what nanoMuse Web keys a person's kept
+                # Muse to, so a sign-in from another browser lands in the same one
+                "id": caller.account_id,
                 "channel": caller.channel,
                 "hint": caller.hint,
                 "created_at": caller.account_created_at,

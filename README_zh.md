@@ -39,6 +39,7 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 
 ## 动态
 
+- **2026-09-30 · 0.1.19「Ensemble」** — 每一台设备，以及一台都没有时的浏览器：Windows、macOS、Linux 的桌面 App，形状和手机版一样，运行时打包在里面（形象、对话、设备、审批、在电脑屏幕上的 Hands 和覆盖其上的 stage、全局「停止」）；电脑双向接入 hub，手机和电脑可以互相拜托，在一台上发起的审批在你手里的那台上回答；还有 **nanoMuse 网页版** [nanomuse.cn/web](https://nanomuse.cn/web/)——用邮箱或手机验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，什么都不用装。[发布说明](docs/releases/v0.1.19.md)。
 - **2026-09-29 · 0.1.18「Open」** — 注册向所有人开放：一个邮箱、一个验证码，每天约 ¥25 的模型用量，免费（社区成员不限量）。每次请求的花费在 app 和管理后台里以 ¥ 和 $ 显示。全新的首次启动流程——欢迎页、上面这段说明、邮箱登录优先、一开始就引导开启 Hands 所需权限（可跳过）、然后是第一次对话。授权分成三个等级；付款可以对某一个应用「记住」，需要验证锁屏，「设置 → 权限」按等级列出你记住的所有授权。Hands 不再有 25 步的上限。没有声明模态的模型（qwen3.8-27b）不再说自己「看不了图」。[发布说明](docs/releases/v0.1.18.md)。
 - **2026-09-26 · 0.1.16「Palette」** — 图片与视频模型从你的 key 能用的列表里选；在百炼上通过原生接口画图；MiniMax-H3 之外加入 Wan 视频模型。[说明](docs/releases/v0.1.16.md)。
 - **2026-09-25 · 0.1.12 – 0.1.15** — **Hands**：把手机屏幕当成一只手，全程有胶囊和「停止」；**Reach**：用手机驱动你的电脑；**Stage**：看得见的操作过程。[说明](docs/releases/)。
@@ -59,6 +60,8 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 和 Muse、以及 App 所基于的运行时 OpenMinis 有什么区别：[见下](#和-museopenminis-的对比)。计划和理由：[docs/roadmap.md](docs/roadmap.md)。
 
 ## 安装
+
+什么都不用装：在 [nanomuse.cn/web](https://nanomuse.cn/web/) 用邮箱或手机验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，下次来还在。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；它们怎么相遇见 [docs/desktop.md](docs/desktop.md) 和 [docs/every-device.md](docs/every-device.md)。手机上：
 
 1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载 `nanoMuse-<版本>-arm64.apk`——Android 8.0 以上的 64 位手机。想校验就 `sha256sum -c nanoMuse-<版本>-arm64.apk.sha256`。
 2. 打开安装。Android 会问一次是否允许；每个版本都用同一把签名，直接覆盖安装升级，数据不丢。
@@ -120,6 +123,7 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | [0.1.15](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.15) | Stage | 看得见的动手：干活时四边有呼吸的光，要点的位置先出现带动作名的转动圆环，落指时荡开波纹，滑动时圆环沿路径滑过——参考 UI-TARS-desktop 的 ScreenMarker；胶囊让手势穿过并主动让位；图标快捷方式在主页里打开 |
 | [0.1.16](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.16) | Palette | 图像、视频模型像对话模型一样从 key 能用的里面选，推荐的有标记；百炼画图改走原生接口（404 没了）；MiniMax-H3 之外可选通义万相视频模型 |
 | [0.1.18](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.18) | Open | 注册向所有人开放，每天约 ¥25 的模型用量，免费；花费以 ¥ 和 $ 显示；全新首次启动流程——社区说明、邮箱登录优先、一开始就引导 Hands 权限；授权分三级，付款可按应用记住（需验证锁屏）；Hands 不再限步数；未声明模态的模型不再被当成纯文本 |
+| [0.1.19](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.19) | Ensemble | 多端协同：Windows、macOS、Linux 的桌面 App（运行时打包在内）、终端版，以及什么都不用装的网页版 nanomuse.cn/web；手机和电脑互相拜托，双向，审批在你手里的设备上；任何一台上的「停止」停下所有设备 |
 | 0.2.0 | Beta | 头几周使用后的打磨；第一个 beta |
 
 **再之后**，依次：一个桌面 App，既是独立的智能体，也是手机上那个的客户端；iOS；部署在你自己机器上——一台 VM、一台家里的服务器——的网页版，任何浏览器都能打开；眼镜。每加一台设备，同一个智能体就多一双手、多一个入口。项目起步时的 Python 线——智能体和它的 Sentinel、网页 App、模拟手机——冻结在 tag [`pre-openminis`](https://github.com/nano-muse/nanoMuse/releases/tag/pre-openminis)，文档在 [docs/](docs/)，是桌面和网页这两个入口的底座。

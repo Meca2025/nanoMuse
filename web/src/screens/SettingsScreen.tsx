@@ -2,7 +2,7 @@ import { Box, Check, ChevronRight, LogOut, Moon, Shield, ShieldAlert, ShieldChec
 import { useEffect, useState, type ReactNode } from "react";
 import { androidApp, keepRunningStatus, type KeepRunningStatus } from "../android";
 import { api, setToken } from "../api";
-import { MASCOT } from "../avatars";
+import { DRAGON } from "../avatars";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
 import { BackBar } from "../components/BackBar";
@@ -11,6 +11,7 @@ import { disablePush, enablePush, pushState, type PushState } from "../push";
 import { useStore } from "../store";
 import type { Proactivity, PushInfo } from "../types";
 import { cx } from "../util";
+import { Toggle } from "../components/Form";
 
 const settingsInput = "w-full rounded-2xl bg-surface-2 px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-accent/40";
 
@@ -38,7 +39,7 @@ const MODES: Array<{ id: "ask" | "strict" | "auto"; title: string; text: string;
 export function SettingsScreen() {
   const { state, refreshSettings, setTab, toast } = useStore();
   const s = state.settings;
-  const [identity, setIdentity] = useState<Identity>(() => identityOf(state.profile, MASCOT, AVATAR_COLORS[0]));
+  const [identity, setIdentity] = useState<Identity>(() => identityOf(state.profile, DRAGON, AVATAR_COLORS[0]));
   const [saving, setSaving] = useState(false);
   const t = useT();
   const localeSetting = useLocaleSetting();
@@ -587,38 +588,3 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Toggle({
-  label,
-  hint,
-  checked,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <label className="flex items-start gap-3 cursor-pointer">
-      <div className="flex-1">
-        <div className="text-[14px]">{label}</div>
-        {hint && <div className="text-[12.5px] text-muted leading-snug">{hint}</div>}
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={cx(
-          "relative mt-0.5 h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50",
-          checked ? "bg-accent" : "bg-surface-2 border border-border",
-        )}
-      >
-        <span className={cx("absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition", checked ? "left-[22px]" : "left-0.5")} />
-      </button>
-    </label>
-  );
-}

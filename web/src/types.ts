@@ -24,6 +24,8 @@ export interface UserEvent extends BaseEvent {
   type: "user";
   text: string;
   files?: AttachmentInfo[];
+  /** the name of the device this was asked from, when another device opened this chat over the hub */
+  via?: string;
 }
 
 export interface AssistantEvent extends BaseEvent {
@@ -32,6 +34,8 @@ export interface AssistantEvent extends BaseEvent {
   reasoning?: string;
   /** A background pass that found nothing worth interrupting you for. */
   quiet?: boolean;
+  /** the device whose Muse said this (a chat addressed to a device) */
+  device?: string;
 }
 
 export interface ToolEvent extends BaseEvent {
@@ -41,6 +45,8 @@ export interface ToolEvent extends BaseEvent {
   args: Record<string, unknown>;
   status: "running" | "ok" | "error" | "blocked";
   output?: string;
+  /** the device the step ran on, when it was not this one */
+  device?: string;
 }
 
 export interface ApprovalEvent extends BaseEvent {
@@ -61,6 +67,8 @@ export interface ApprovalEvent extends BaseEvent {
   args: Record<string, unknown>;
   status: "pending" | "approved" | "denied" | "expired";
   scope?: string | null;
+  /** raised by another device's Muse (a chat addressed to it); answered here, carried back over the hub */
+  remote?: { device: string; name: string; approval_id: string };
 }
 
 export type GrantScope = "once" | "task" | "session" | "24h" | "always";
@@ -134,6 +142,22 @@ export interface BrowserEvent extends BaseEvent {
   height?: number;
 }
 
+/** The hands on this computer: one card per task on its screen, updated step by step. */
+export interface HandsEvent extends BaseEvent {
+  type: "hands";
+  /** the goal of the task ("" for a single computer_act) */
+  text: string;
+  status: "live" | "done" | "stopped";
+  steps: number;
+  /** the last action: what, the words under the cursor, where (fractions of the screen) */
+  last?: { action?: string; label?: string; fx?: number; fy?: number; fx2?: number; fy2?: number; text?: string; keys?: string[] };
+  /** the window in front when the last action ran */
+  app?: string;
+  title?: string;
+  /** what the operator wanted the person to know when it stopped to ask */
+  notice?: string;
+}
+
 export type TimelineEvent =
   | UserEvent
   | AssistantEvent
@@ -142,7 +166,8 @@ export type TimelineEvent =
   | QuestionEvent
   | NoticeEvent
   | ArtifactEvent
-  | BrowserEvent;
+  | BrowserEvent
+  | HandsEvent;
 
 export interface ThreadMeta {
   id: string;
@@ -152,6 +177,75 @@ export interface ThreadMeta {
   busy: boolean;
   queued: number;
   events: number;
+  /** a chat addressed to another device of the account: what is typed here runs there */
+  device?: string;
+  device_name?: string;
+  /** a chat another device opened here with a task over the hub */
+  remote_from?: { device: string; name: string; kind: string; conversation: string };
+}
+
+/** A device of the account on the hub (docs/hub.md). */
+export interface HubDevice {
+  id: string;
+  name: string;
+  kind: "phone" | "computer" | "web" | string;
+  os?: string;
+  version?: string;
+  online: boolean;
+  actions?: string[];
+  last_seen?: string;
+  /** this very device */
+  this?: boolean;
+}
+
+export interface CloudAccount {
+  base_url: string;
+  signed_in: boolean;
+  /** the masked identifier: "1**********11", "s***@example.com" */
+  hint: string;
+  channel: "sms" | "email" | string;
+  signed_in_at?: string | null;
+  /** the relay is the model provider right now */
+  is_model: boolean;
+}
+
+/** This device on the hub, and the other devices of the account. */
+export interface HubView {
+  enabled: boolean;
+  remote_control: boolean;
+  state: "connected" | "connecting" | "disconnected" | "refused" | "stopped" | "signed_out" | "off" | string;
+  detail: string;
+  device: { id: string; name: string; kind: string; actions: string[] };
+  devices: HubDevice[];
+  account: CloudAccount;
+}
+
+/** This computer's own screen and hands. */
+export interface HandsStatus {
+  enabled: boolean;
+  available: boolean;
+  backend?: string | null;
+  reason?: string;
+  device?: { id: string; name: string; platform: string; width: number; height: number };
+  task_active?: boolean;
+  task_text?: string;
+  last_screen?: { app: string; app_name: string; route: string; elements: number; image: string | null; taken_at: number } | null;
+}
+
+/** A live step of the hands, for the stage overlay (not persisted). */
+export interface HandsLive {
+  event: "begin" | "act" | "end" | "stop" | "notice" | string;
+  thread: string;
+  text?: string;
+  action?: string;
+  label?: string;
+  fx?: number;
+  fy?: number;
+  fx2?: number;
+  fy2?: number;
+  app?: string;
+  title?: string;
+  ts: number;
 }
 
 export interface Status {
@@ -577,6 +671,8 @@ export interface StateSnapshot {
   pending_approvals: ApprovalEvent[];
   goals: Goal[];
   settings: SettingsView;
+  hub?: HubView;
+  hands?: HandsStatus;
 }
 
 export interface AuditEntry {
@@ -735,6 +831,9 @@ export type WsMessage =
   | { kind: "profile"; profile: Profile }
   | { kind: "settings"; settings: SettingsView }
   | { kind: "phone"; phone: PhoneStatus & { gui_enabled: boolean } }
+  | { kind: "hub"; hub: HubView }
+  | { kind: "hands_state"; hands: HandsStatus }
+  | ({ kind: "hands" } & HandsLive)
   | { kind: "connections"; connections: ConnectionsData }
   | { kind: "skills"; skills: SkillsData }
   | { kind: "approvals_reset" }

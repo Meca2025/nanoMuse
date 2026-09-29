@@ -86,7 +86,25 @@ jobs:
         with:
           path: packages
           merge-multiple: true
-      - name: Publish
+      - name: Attach to the version's release, when there is one
+        id: attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          # desktop-v0.1.19 belongs to release v0.1.19 (the APK, the desktop app); the terminal
+          # binary's packages go there when it exists, into a release of their own otherwise
+          VERSION_TAG="v${TAG#desktop-v}"
+          if gh release view "$VERSION_TAG" -R "$REPO" >/dev/null 2>&1; then
+            (cd packages && sha256sum * > SHA256SUMS-desktop-terminal.txt)
+            gh release upload "$VERSION_TAG" packages/* -R "$REPO" --clobber
+            echo "attached=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "attached=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish a release of its own
+        if: steps.attach.outputs.attached == 'false'
         uses: softprops/action-gh-release@v2
         with:
           name: nanoMuse Desktop ${{ github.ref_name }}

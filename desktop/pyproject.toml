@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nanomuse-desktop"
-version = "0.1.17"
+version = "0.1.19"
 description = "nanoMuse Desktop: the computer's Muse — hands on this machine and, through the hub, on every other device of the account."
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }

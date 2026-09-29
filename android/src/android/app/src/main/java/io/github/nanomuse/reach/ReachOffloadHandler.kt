@@ -113,7 +113,18 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
                     Computers.approve(c, id, allow = gate.denied == null)
                     steps.put(JSONObject().put("approval", preview).put("allowed", gate.denied == null).apply { gate.notice?.let { put("notice", it) } })
                 }
-                "step", "thinking", "tool" -> ev.optString("text").ifBlank { ev.optString("tool") }.takeIf { it.isNotBlank() }?.let { steps.put(JSONObject().put("step", it.take(200))) }
+                // nanoMuse: the runtime's progress stages (docs/hub.md) — a tool starting, a tool
+                // done, a line of interim text; the terminal binary's older "step"/"thinking" too
+                "tool" -> (ev.optString("summary").ifBlank { ev.optString("name") }.ifBlank { ev.optString("text") }.ifBlank { ev.optString("tool") })
+                    .takeIf { it.isNotBlank() }?.let { steps.put(JSONObject().put("step", it.take(200))) }
+                "tool_result" -> {
+                    val name = ev.optString("name")
+                    val summary = ev.optString("summary")
+                    val line = (if (ev.optBoolean("ok", true)) "" else "failed: ") + listOf(name, summary).filter { it.isNotBlank() }.joinToString(" — ")
+                    if (line.isNotBlank()) steps.put(JSONObject().put("done", line.take(200)))
+                }
+                "approval_result" -> ev.optString("status").takeIf { it.isNotBlank() }?.let { steps.put(JSONObject().put("approval_result", it)) }
+                "step", "thinking", "text" -> ev.optString("text").ifBlank { ev.optString("tool") }.takeIf { it.isNotBlank() }?.let { steps.put(JSONObject().put("step", it.take(200))) }
             }
         }
         return ok(
