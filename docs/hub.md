@@ -85,6 +85,10 @@ refuses frames over `HUB_FRAME_LIMIT`.
 
 ## The code
 
+How the devices' apps are shaped around these frames — the Devices page, a
+side chat addressed to a device, approvals answered on either end, the
+computer's own hands — is in [every-device.md](every-device.md).
+
 - Relay: [`cloud/nanomuse_cloud/hub.py`](../cloud/nanomuse_cloud/hub.py) —
   per-account registry, routing, `GET /v1/devices`, `DELETE /v1/devices/{id}`;
   the console under [`cloud/nanomuse_cloud/console/`](../cloud/nanomuse_cloud/console/).
