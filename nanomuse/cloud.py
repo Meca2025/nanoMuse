@@ -35,6 +35,14 @@ MESSAGES = {
     "upstream": "The model provider did not answer.",
     "upstream_unconfigured": "nanoMuse Cloud has no model key configured.",
     "offline": "nanoMuse Cloud cannot be reached.",
+    "bad_credentials": "That number or address and password do not match.",
+    "no_password": "This account has no password yet; sign in with a code and set one under Account.",
+    "locked": "Too many wrong passwords; wait a while or sign in with a code.",
+    "password_short": "Use at least 8 characters.",
+    "password_weak": "Choose a stronger password.",
+    "password_wrong": "That is not the current password.",
+    "password_required": "Enter the current password.",
+    "no_session": "That sign-in is already gone.",
 }
 
 
@@ -56,6 +64,12 @@ def hub_url(base_url: str) -> str:
 
 def model_url(base_url: str) -> str:
     return base_url.rstrip("/") + "/v1"
+
+
+def realtime_url(base_url: str) -> str:
+    """The relay's call socket (``?model=`` is appended by the caller)."""
+    base = base_url.rstrip("/")
+    return base.replace("https://", "wss://", 1).replace("http://", "ws://", 1) + "/v1/realtime"
 
 
 class CloudClient:
@@ -127,12 +141,58 @@ class CloudClient:
             self.api_key = key
         return data
 
+    async def login(self, identifier: str, password: str, device: str) -> dict[str, Any]:
+        """The password way in, for accounts that set one; same reply as ``verify``."""
+        data = await self._request(
+            "POST",
+            "/v1/auth/login",
+            {"identifier": identifier, "password": password, "device": device},
+            token="",
+        )
+        key = str(data.get("api_key") or "")
+        if key:
+            self.api_key = key
+        return data
+
+    async def set_password(self, password: str, current: str | None = None) -> None:
+        """Set or change the account password (``current`` when one exists, unless this key
+        came from a code sign-in just now); an empty password with ``current`` removes it."""
+        body: dict[str, Any] = {"password": password}
+        if current is not None:
+            body["current"] = current
+        await self._request("POST", "/v1/auth/password", body)
+
     async def me(self) -> dict[str, Any]:
         return await self._request("GET", "/v1/me")
+
+    async def sessions(self) -> list[dict[str, Any]]:
+        data = await self._request("GET", "/v1/me/sessions")
+        sessions = data.get("sessions")
+        return sessions if isinstance(sessions, list) else []
+
+    async def revoke_session(self, prefix: str) -> None:
+        await self._request("DELETE", f"/v1/me/sessions/{prefix}")
+
+    async def sign_out_all(self, everything: bool = False) -> int:
+        data = await self._request("POST", "/v1/auth/sign-out-all", {"all": everything})
+        if everything:
+            self.api_key = ""
+        return int(data.get("signed_out") or 0)
+
+    async def events(self, limit: int = 50) -> list[dict[str, Any]]:
+        data = await self._request("GET", f"/v1/me/events?limit={int(limit)}")
+        events = data.get("events")
+        return events if isinstance(events, list) else []
 
     async def sign_out(self) -> None:
         try:
             await self._request("POST", "/v1/auth/sign-out", {})
+        finally:
+            self.api_key = ""
+
+    async def delete_account(self) -> None:
+        try:
+            await self._request("POST", "/v1/auth/delete", {})
         finally:
             self.api_key = ""
 

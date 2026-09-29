@@ -27,7 +27,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from nanomuse.cloud import CLOUD_KEY, CloudClient, CloudError, model_url
+from nanomuse.cloud import CLOUD_KEY, CloudClient, CloudError, model_url, realtime_url
 from nanomuse.hub import actions
 from nanomuse.hub.client import HubClient, HubError, IncomingCall
 from nanomuse.logger import logger
@@ -47,6 +47,8 @@ class HubService:
         self.svc = svc
         self.client: HubClient | None = None
         self.cloud = CloudClient(self.settings.cloud.base_url, self._key())
+        # the relay's last /v1/me (models with prices, usage): what the call picker reads
+        self.last_me: dict[str, Any] = {}
         # approval cards raised by *other* devices' runs, shown here: card id → (device id, approval id)
         self.remote_approvals: dict[str, tuple[str, str]] = {}
         # runs other devices asked for, by call id → the thread they run in
@@ -93,7 +95,9 @@ class HubService:
         return (self.settings.hub.name or socket.gethostname() or "computer")[:60]
 
     def _extra_actions(self) -> tuple[str, ...]:
-        return ("task", "stop", "approve")
+        from nanomuse.coding.service import ACTIONS as CODING_ACTIONS
+
+        return ("task", "stop", "approve", *CODING_ACTIONS)
 
     # ------------------------------------------------------------------ lifecycle
     async def start(self) -> None:
@@ -221,9 +225,23 @@ class HubService:
     async def verify(self, identifier: str, code: str) -> dict[str, Any]:
         identifier = identifier.strip() or self._pending_code
         data = await self.cloud.verify(identifier, code.strip(), self.device_name)
+        return await self._signed_in(data)
+
+    async def login(self, identifier: str, password: str) -> dict[str, Any]:
+        """Sign in with the account password instead of a code."""
+        identifier = identifier.strip()
+        if not identifier:
+            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address.")
+        if not password:
+            raise CloudError(400, "password_required", "Enter the password.")
+        data = await self.cloud.login(identifier, password, self.device_name)
+        return await self._signed_in(data)
+
+    async def _signed_in(self, data: dict[str, Any]) -> dict[str, Any]:
         key = str(data.get("api_key") or "")
         if not key:
             raise CloudError(502, "bad_key", "The relay returned no key.")
+        self.last_me = {k: v for k, v in data.items() if k != "api_key"}
         self.svc.app.vault.set(CLOUD_KEY, key)
         account: dict[str, Any] = data["account"] if isinstance(data.get("account"), dict) else {}
         self.data["cloud"] = {
@@ -231,6 +249,8 @@ class HubService:
             "hint": str(account.get("hint") or ""),
             "channel": str(account.get("channel") or ""),
             "signed_in_at": now_iso(),
+            "has_password": bool(account.get("has_password")),
+            "account_id": str(account.get("id") or ""),
         }
         self._save()
         self._pending_code = ""
@@ -240,13 +260,69 @@ class HubService:
         self.publish()
         return self.account_view()
 
+    async def set_password(self, password: str, current: str | None = None) -> dict[str, Any]:
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Sign in first.")
+        self.cloud.api_key = self._key()
+        await self.cloud.set_password(password, current)
+        cloud = dict(self.data.get("cloud") or {})
+        cloud["has_password"] = bool(password)
+        self.data["cloud"] = cloud
+        self._save()
+        self.publish()
+        return self.account_view()
+
+    async def sessions(self) -> list[dict[str, Any]]:
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        self.cloud.api_key = self._key()
+        return await self.cloud.sessions()
+
+    async def revoke_session(self, prefix: str) -> None:
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        self.cloud.api_key = self._key()
+        await self.cloud.revoke_session(prefix)
+
+    async def sign_out_all(self, everything: bool = False) -> int:
+        """Every other device's sign-in revoked; with ``everything`` this one too."""
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        self.cloud.api_key = self._key()
+        n = await self.cloud.sign_out_all(everything)
+        if everything:
+            await self._forget_key()
+        return n
+
+    async def events(self, limit: int = 50) -> list[dict[str, Any]]:
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        self.cloud.api_key = self._key()
+        return await self.cloud.events(limit)
+
+    async def delete_account(self) -> None:
+        """The person's own request: the relay forgets everything about them."""
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        await self.leave()
+        self.cloud.api_key = self._key()
+        try:
+            await self.cloud.delete_account()
+        finally:
+            await self._forget_key()
+
     async def sign_out(self) -> None:
         await self.leave()
         with contextlib.suppress(CloudError):
+            self.cloud.api_key = self._key()
             await self.cloud.sign_out()
+        await self._forget_key()
+
+    async def _forget_key(self) -> None:
         self.svc.app.vault.delete(CLOUD_KEY)
+        self.cloud.api_key = ""
         cloud = dict(self.data.get("cloud") or {})
-        for key in ("hint", "channel", "signed_in_at"):
+        for key in ("hint", "channel", "signed_in_at", "has_password", "account_id"):
             cloud.pop(key, None)
         self.data["cloud"] = cloud
         self._save()
@@ -257,7 +333,30 @@ class HubService:
         if not self.signed_in:
             raise CloudError(401, "bad_key", "Not signed in.")
         self.cloud.api_key = self._key()
-        return await self.cloud.me()
+        data = await self.cloud.me()
+        self.last_me = data
+        account = data.get("account") if isinstance(data.get("account"), dict) else {}
+        if account:
+            cloud = dict(self.data.get("cloud") or {})
+            changed = cloud.get("has_password") != bool(account.get("has_password"))
+            cloud["has_password"] = bool(account.get("has_password"))
+            cloud["account_id"] = str(account.get("id") or cloud.get("account_id") or "")
+            self.data["cloud"] = cloud
+            if changed:
+                self._save()
+                self.publish()
+        return data
+
+    def save_call_settings(self) -> None:
+        cloud = dict(self.data.get("cloud") or {})
+        cloud["realtime_model"] = self.settings.cloud.realtime_model
+        cloud["realtime_voice"] = self.settings.cloud.realtime_voice
+        self.data["cloud"] = cloud
+        self._save()
+        self.publish()
+
+    def call_view(self) -> dict[str, Any]:
+        return self.svc.call.view()
 
     def account_view(self) -> dict[str, Any]:
         cloud = self.data.get("cloud") or {}
@@ -265,12 +364,16 @@ class HubService:
         return {
             "base_url": self.cloud.base_url,
             "signed_in": self.signed_in,
+            "required": self.settings.cloud.required,
             "hint": str(cloud.get("hint") or ""),
             "channel": str(cloud.get("channel") or ""),
             "signed_in_at": cloud.get("signed_in_at"),
+            "has_password": bool(cloud.get("has_password")),
+            "account_id": str(cloud.get("account_id") or ""),
             "is_model": bool(
                 llm.base_url and llm.base_url.rstrip("/") == model_url(self.cloud.base_url)
             ),
+            "realtime_url": realtime_url(self.cloud.base_url),
         }
 
     async def use_as_model(self, model: str = "") -> dict[str, Any]:
@@ -382,6 +485,9 @@ class HubService:
             stopped = bool(tid) and self.svc.stop_thread(tid or "")
             await call.result({"stopped": stopped})
             return
+        if call.action.startswith("coding."):
+            await self._coding_call(call)
+            return
         if call.action in actions.ACTIONS:
             self.svc.app.audit.record(
                 "hub_call",
@@ -397,6 +503,61 @@ class HubService:
             await call.result(result)
             return
         await call.fail("unknown_action", f"this computer does not do '{call.action}'")
+
+    async def _coding_call(self, call: IncomingCall) -> None:
+        """Another device looking at, or steering, the coding agents on this computer."""
+        from nanomuse.coding.service import CodingError
+
+        coding = self.svc.coding
+        self.svc.app.audit.record(
+            "hub_call", action=call.action, sender=call.sender_name, summary=self._brief(call)
+        )
+        try:
+            if call.action == "coding.send":
+                a = call.args
+                queue = self.svc.bus.subscribe()
+                try:
+                    started = await coding.send(
+                        str(a.get("agent") or ""),
+                        str(a.get("text") or ""),
+                        session_id=str(a.get("session_id") or ""),
+                        workspace=str(a.get("workspace") or ""),
+                    )
+                    run_id = str(started.get("id") or "")
+                    if not bool(a.get("wait", True)):
+                        await call.result(started)
+                        return
+                    # follow the run on the bus; each step goes back as a task event
+                    final: dict[str, Any] = started
+                    while True:
+                        msg = await asyncio.wait_for(queue.get(), timeout=1800)
+                        if msg.get("kind") != "coding":
+                            continue
+                        run = msg.get("run") or {}
+                        ev = msg.get("event") or {}
+                        if run.get("id") != run_id and ev.get("run") != run_id:
+                            continue
+                        if ev.get("kind") in ("text", "tool", "started"):
+                            await call.event({"kind": "coding", **ev})
+                        if run.get("id") == run_id and run.get("status") in (
+                            "done",
+                            "failed",
+                            "stopped",
+                        ):
+                            final = run
+                            break
+                    await call.result(final)
+                finally:
+                    self.svc.bus.unsubscribe(queue)
+                return
+            result = await asyncio.to_thread(coding.handle, call.action, call.args)
+        except CodingError as exc:
+            await call.fail(exc.code, exc.message)
+            return
+        except TimeoutError:
+            await call.fail("timeout", "the coding agent took longer than the hub allows")
+            return
+        await call.result(result)
 
     @staticmethod
     def _brief(call: IncomingCall) -> str:
