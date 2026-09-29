@@ -167,11 +167,19 @@
     <string name="nm_risk_class_money">付款</string>
     <string name="nm_risk_class_install">安裝</string>
     <string name="nm_grants_header">nanoMuse 記住的授權</string>
-    <string name="nm_grants_footer">你在審批卡上選「總是允許」留下的授權，每條只覆蓋一種動作、一個對象。點一下即可撤銷。</string>
     <string name="nm_grants_empty">還沒有記住任何授權</string>
     <string name="nm_grants_revoke">撤銷</string>
     <string name="nm_grants_revoke_all">全部撤銷</string>
     <string name="nm_grants_revoke_confirm">撤銷這條授權？下次遇到會重新問你。</string>
+    <string name="nm_risk_remember_money">記住，下次在 %1$s 裡直接執行</string>
+    <string name="nm_risk_remember_money_note">需要驗證螢幕鎖。之後只有這一個應用程式或網站裡的付款不再彈出卡片；它會排在「設定 → 權限」的最前面，隨時可以撤銷。</string>
+    <string name="nm_risk_lock_title">確認是你本人</string>
+    <string name="nm_risk_lock_subtitle">nanoMuse 將記住 %1$s 裡的付款許可，之後不再逐次詢問。</string>
+    <string name="nm_risk_remembered_toast">已記住 · 可在「設定 → 權限」裡撤銷</string>
+    <string name="nm_risk_tier_highest">不再詢問 · 付款</string>
+    <string name="nm_risk_tier_confirm">卡片上記住的 · 刪除與傳送</string>
+    <string name="nm_risk_tier_notice">先執行再告知 · 安裝</string>
+    <string name="nm_grants_footer_tiers">按危險程度分組。付款排在最前：這些不再彈出卡片，只限你用螢幕鎖確認過的那一個應用程式或網站。刪除與傳送是你在卡片上點「一律允許」記住的。安裝從不詢問，事後告知。點任意一行即可撤銷，下次遇到會重新詢問。</string>
 
     <!-- 0.1.5: 動態 -->
     <string name="nm_tab_feed">動態</string>

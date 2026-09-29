@@ -109,9 +109,9 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
                     val id = ev.optString("approval_id")
                     val preview = ev.optString("preview").ifBlank { ev.optString("summary") }
                     val assessment = RiskAssessment(riskClass(ev.optString("risk")), ev.optString("reason").ifBlank { "asked by ${c.name}" }, "task:" + ev.optString("action").ifBlank { preview.take(60) })
-                    val denied = approve(sessionId, c, assessment, "${c.name}: $preview")
-                    Computers.approve(c, id, allow = denied == null)
-                    steps.put(JSONObject().put("approval", preview).put("allowed", denied == null))
+                    val gate = approve(sessionId, c, assessment, "${c.name}: $preview")
+                    Computers.approve(c, id, allow = gate.denied == null)
+                    steps.put(JSONObject().put("approval", preview).put("allowed", gate.denied == null).apply { gate.notice?.let { put("notice", it) } })
                 }
                 "step", "thinking", "tool" -> ev.optString("text").ifBlank { ev.optString("tool") }.takeIf { it.isNotBlank() }?.let { steps.put(JSONObject().put("step", it.take(200))) }
             }
@@ -136,13 +136,14 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         if (command.isEmpty()) return NativeOffloadResult(2, "nanomuse-pc run: a command is required\n")
         val timeout = args.get("timeout")?.toIntOrNull()?.coerceIn(1, 900) ?: 120
         val gate = approve(sessionId, c, ShellGuard.assess(command), "on ${c.name}: $command")
-        if (gate != null) return denied(gate)
+        gate.denied?.let { return denied(it) }
         val r = Computers.shell(context, c, command, args.get("cwd"), timeout)
         val exit = r.optInt("exit_code", 1)
         val body = JSONObject()
             .put("ok", exit == 0).put("computer", c.name).put("exit_code", exit)
             .put("stdout", r.optString("stdout")).put("stderr", r.optString("stderr"))
             .put("timed_out", r.optBoolean("timed_out")).put("duration_ms", r.optInt("duration_ms"))
+        gate.notice?.let { body.put("notice", it) }
         return NativeOffloadResult(if (exit == 0) 0 else 1, body.toString(2) + "\n")
     }
 
@@ -168,13 +169,15 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         val file = resolveLocal(local, sessionId) ?: return NativeOffloadResult(2, "nanomuse-pc put: cannot read '$local'\n")
         // Never overwrite quietly: an existing file needs --force, and --force needs the card.
         val exists = try { Computers.files(context, c, remote); true } catch (e: Computers.ReachException) { if (e.code == 404) false else throw e }
+        var notice: String? = null
         if (exists) {
             if (args.get("force") != "true") return refused("exists", "$remote already exists on ${c.name}; add --force to replace it.")
             val gate = approve(sessionId, c, RiskAssessment(RiskClass.DESTRUCTIVE, "replaces $remote", remote), "replace $remote on ${c.name}")
-            if (gate != null) return denied(gate)
+            gate.denied?.let { return denied(it) }
+            notice = gate.notice
         }
         val r = Computers.putFile(context, c, file, remote)
-        return ok(JSONObject().put("ok", true).put("computer", c.name).put("path", r.optString("path")).put("bytes", r.optLong("bytes")))
+        return ok(JSONObject().put("ok", true).put("computer", c.name).put("path", r.optString("path")).put("bytes", r.optLong("bytes")).apply { notice?.let { put("notice", it) } })
     }
 
     private fun open(args: MediaOffloadHandler.Args, c: Computers.Computer): NativeOffloadResult {
@@ -198,13 +201,16 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
 
     // ── approval ───────────────────────────────────────────────────────────
 
-    /** Null when the action may go ahead, else the reason it may not. Grants are kept apart from the phone's. */
-    private fun approve(sessionId: String?, c: Computers.Computer, assessment: RiskAssessment, preview: String): String? {
+    /** [denied] is null when the action may go ahead; [notice] is for the model (a remembered approval). */
+    private data class Gate(val denied: String? = null, val notice: String? = null)
+
+    /** The card for an action on the computer. Grants are kept apart from the phone's. */
+    private fun approve(sessionId: String?, c: Computers.Computer, assessment: RiskAssessment, preview: String): Gate {
         val scoped = assessment.copy(target = assessment.target?.let { "pc:$it" })
         val outcome = runBlocking { RiskGate.check(sessionId ?: "pc", GuardKind.COMPUTER, scoped, preview, pageUrl = c.name) }
         return when (outcome) {
-            is GateOutcome.Allowed -> null
-            is GateOutcome.Denied -> outcome.message
+            is GateOutcome.Allowed -> Gate(notice = outcome.notice)
+            is GateOutcome.Denied -> Gate(denied = outcome.message)
         }
     }
 

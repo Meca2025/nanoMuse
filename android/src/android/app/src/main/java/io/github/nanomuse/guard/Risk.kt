@@ -13,9 +13,29 @@ enum class RiskClass {
     DESTRUCTIVE,
     /** Sends something out: a message, a mail, a push, a form. Asks. */
     OUTBOUND,
-    /** Moves money. Asks, every object separately. */
-    MONEY,
+    /**
+     * Moves money. Asks at the moment of paying, every time — unless the user chose, on the
+     * card and confirmed with the phone's screen lock, to remember it for that one app or site.
+     */
+    MONEY;
+
+    /** The danger tier, which is how Settings → Permissions groups what was remembered. */
+    val tier: RiskTier
+        get() = when (this) {
+            SAFE, INSTALL -> RiskTier.NOTICE
+            DESTRUCTIVE, OUTBOUND -> RiskTier.CONFIRM
+            MONEY -> RiskTier.HIGHEST
+        }
 }
+
+/**
+ * Three tiers of danger, from the user's point of view:
+ * - [NOTICE]: runs, and the user is told (installs).
+ * - [CONFIRM]: asks first; "for this chat" or "always for X" may be remembered from the card.
+ * - [HIGHEST]: asks at the critical moment every time; remembering is a deliberate act — one
+ *   object only, confirmed with the screen lock — and shows first on the permissions page.
+ */
+enum class RiskTier { NOTICE, CONFIRM, HIGHEST }
 
 /** Where a request came from; the card words itself differently for each. */
 enum class GuardKind {

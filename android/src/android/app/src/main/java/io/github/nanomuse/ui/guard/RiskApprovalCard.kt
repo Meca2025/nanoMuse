@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
@@ -52,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openminis.app.R
 import com.openminis.app.ui.theme.ChatColors
+import io.github.nanomuse.guard.DeviceCredential
 import io.github.nanomuse.guard.GuardKind
 import io.github.nanomuse.guard.RiskClass
 import io.github.nanomuse.guard.RiskDecision
@@ -149,20 +151,82 @@ private fun RiskApprovalCard(request: RiskRequest) {
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = MuseTones.action, contentColor = Color.White),
             ) { Text(stringResource(R.string.nm_risk_allow_once), fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
-            if (request.canRemember) {
+            if (request.canSession) {
                 Spacer(Modifier.height(8.dp))
                 GreyPill(stringResource(R.string.nm_risk_allow_session)) { RiskGate.decide(request.id, RiskDecision.ALLOW_SESSION) }
-                if (request.canAlways) {
-                    Spacer(Modifier.height(8.dp))
-                    GreyPill(stringResource(R.string.nm_risk_allow_always, RiskText.targetLabel(context, request.assessment.target) ?: "")) {
-                        RiskGate.decide(request.id, RiskDecision.ALLOW_ALWAYS)
-                    }
+            }
+            if (request.canAlways) {
+                val target = RiskText.targetLabel(context, request.assessment.target) ?: ""
+                val remembered = stringResource(R.string.nm_risk_remembered_toast)
+                val always = {
+                    RiskGate.decide(request.id, RiskDecision.ALLOW_ALWAYS)
+                    android.widget.Toast.makeText(context, remembered, android.widget.Toast.LENGTH_LONG).show()
+                }
+                Spacer(Modifier.height(8.dp))
+                if (request.needsCredential) {
+                    // The highest tier: a deliberate choice, confirmed with the screen lock.
+                    RememberWithLockPill(
+                        label = stringResource(R.string.nm_risk_remember_money, target),
+                        title = stringResource(R.string.nm_risk_lock_title),
+                        subtitle = stringResource(R.string.nm_risk_lock_subtitle, target),
+                        onConfirmed = always,
+                    )
+                    Text(
+                        stringResource(R.string.nm_risk_remember_money_note),
+                        fontSize = 11.5.sp,
+                        lineHeight = 15.sp,
+                        color = ChatColors.secondaryText,
+                        modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp),
+                    )
+                } else {
+                    GreyPill(stringResource(R.string.nm_risk_allow_always, target), onClick = always)
                 }
             }
             Spacer(Modifier.height(8.dp))
             GreyPill(stringResource(R.string.nm_risk_deny)) { RiskGate.decide(request.id, RiskDecision.DENY) }
         }
     }
+}
+
+/**
+ * "Remember and run next time" for a payment. Tapping it asks for the phone's screen lock
+ * first (API 29+ shows the system prompt; older phones open the lock screen and come back).
+ * Only a confirmed lock turns into the grant; anything else leaves the card as it was.
+ */
+@Composable
+private fun RememberWithLockPill(label: String, title: String, subtitle: String, onConfirmed: () -> Unit) {
+    val context = LocalContext.current
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { result -> if (result.resultCode == android.app.Activity.RESULT_OK) onConfirmed() }
+    Button(
+        onClick = {
+            val activity = context.findActivity()
+            when {
+                !DeviceCredential.available(context) -> onConfirmed()
+                DeviceCredential.promptsItself() && activity != null ->
+                    DeviceCredential.confirm(activity, title, subtitle) { ok -> if (ok) onConfirmed() }
+                else -> DeviceCredential.keyguardIntent(context, title, subtitle)?.let { launcher.launch(it) } ?: onConfirmed()
+            }
+        },
+        modifier = Modifier.fillMaxWidth().height(44.dp),
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(containerColor = MuseTones.fill, contentColor = MaterialTheme.colorScheme.onSurface),
+        elevation = null,
+    ) {
+        Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private fun android.content.Context.findActivity(): android.app.Activity? {
+    var c: android.content.Context? = this
+    while (c is android.content.ContextWrapper) {
+        if (c is android.app.Activity) return c
+        c = c.baseContext
+    }
+    return null
 }
 
 @Composable

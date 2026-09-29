@@ -174,11 +174,19 @@
     <string name="nm_risk_class_money">Pay</string>
     <string name="nm_risk_class_install">Install</string>
     <string name="nm_grants_header">nanoMuse remembered approvals</string>
-    <string name="nm_grants_footer">Approvals you chose to remember from the card (“Always allow for …”). Each covers one kind of action on one object. Tap one to revoke it.</string>
     <string name="nm_grants_empty">Nothing remembered yet</string>
     <string name="nm_grants_revoke">Revoke</string>
     <string name="nm_grants_revoke_all">Revoke all</string>
     <string name="nm_grants_revoke_confirm">Revoke this approval? The next time it comes up, you will be asked again.</string>
+    <string name="nm_risk_remember_money">Remember and run next time in %1$s</string>
+    <string name="nm_risk_remember_money_note">Confirmed with your screen lock. Payments in this one app or site will then run without a card; listed first under Settings → Permissions, where you can revoke it any time.</string>
+    <string name="nm_risk_lock_title">Confirm it is you</string>
+    <string name="nm_risk_lock_subtitle">nanoMuse will remember payment approvals for %1$s and run them without asking.</string>
+    <string name="nm_risk_remembered_toast">Remembered · see Settings → Permissions to revoke</string>
+    <string name="nm_risk_tier_highest">Runs without asking · payments</string>
+    <string name="nm_risk_tier_confirm">Remembered from the card · delete and send</string>
+    <string name="nm_risk_tier_notice">Runs, then tells you · installs</string>
+    <string name="nm_grants_footer_tiers">Grouped by how much they matter. Payments come first: those run without a card, only in the one app or site you confirmed with your screen lock. Deleting and sending were remembered from the card with “Always allow for …”. Installs never ask; you are told afterwards. Tap any line to revoke it; the next time it comes up you will be asked again.</string>
 
     <!-- 0.1.5: feed -->
     <string name="nm_tab_feed">Feed</string>

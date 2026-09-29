@@ -172,11 +172,19 @@
     <string name="nm_risk_class_money">付款</string>
     <string name="nm_risk_class_install">安装</string>
     <string name="nm_grants_header">nanoMuse 记住的授权</string>
-    <string name="nm_grants_footer">你在审批卡上选「总是允许」留下的授权，每条只覆盖一种动作、一个对象。点一下即可撤销。</string>
     <string name="nm_grants_empty">还没有记住任何授权</string>
     <string name="nm_grants_revoke">撤销</string>
     <string name="nm_grants_revoke_all">全部撤销</string>
     <string name="nm_grants_revoke_confirm">撤销这条授权？下次遇到会重新问你。</string>
+    <string name="nm_risk_remember_money">记住，下次在 %1$s 里直接执行</string>
+    <string name="nm_risk_remember_money_note">需要验证锁屏。之后只在这一个应用或网站里的付款不再弹卡片；它会排在「设置 → 权限」的最前面，随时可以撤销。</string>
+    <string name="nm_risk_lock_title">确认是你本人</string>
+    <string name="nm_risk_lock_subtitle">nanoMuse 将记住 %1$s 里的付款许可，之后不再逐次询问。</string>
+    <string name="nm_risk_remembered_toast">已记住 · 可在「设置 → 权限」里撤销</string>
+    <string name="nm_risk_tier_highest">不再询问 · 付款</string>
+    <string name="nm_risk_tier_confirm">卡片上记住的 · 删除与发送</string>
+    <string name="nm_risk_tier_notice">先执行再告知 · 安装</string>
+    <string name="nm_grants_footer_tiers">按危险程度分组。付款排在最前：这些不再弹卡片，只限你用锁屏确认过的那一个应用或网站。删除与发送是你在卡片上点「总是允许」记住的。安装从不询问，事后告知。点任意一行即可撤销，下次遇到会重新询问。</string>
 
     <!-- 0.1.5: 动态 -->
     <string name="nm_tab_feed">动态</string>

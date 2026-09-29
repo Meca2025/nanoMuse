@@ -9,7 +9,17 @@ object RiskText {
         null -> null
         ShellGuard.WORKSPACE -> context.getString(R.string.nm_risk_target_workspace)
         ShellGuard.SHARED -> context.getString(R.string.nm_risk_target_shared)
-        else -> target.removePrefix("lark:").removePrefix("git:").removePrefix("pc:")
+        else -> plainTarget(target)
+    }
+
+    /** The target without its scope prefix (`app:`, `pc:`, `lark:`, `git:`), for prose. */
+    fun plainTarget(target: String?): String =
+        (target ?: "").removePrefix("lark:").removePrefix("git:").removePrefix("pc:").removePrefix("app:")
+
+    fun tierLabel(context: Context, tier: RiskTier): String = when (tier) {
+        RiskTier.HIGHEST -> context.getString(R.string.nm_risk_tier_highest)
+        RiskTier.CONFIRM -> context.getString(R.string.nm_risk_tier_confirm)
+        RiskTier.NOTICE -> context.getString(R.string.nm_risk_tier_notice)
     }
 
     fun title(context: Context, request: RiskRequest, agentName: String): String {

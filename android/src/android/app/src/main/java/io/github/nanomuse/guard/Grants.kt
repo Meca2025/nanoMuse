@@ -50,13 +50,22 @@ object Grants {
     fun key(riskClass: RiskClass, target: String?): String =
         riskClass.name.lowercase() + ":" + (target ?: "*")
 
-    /** True when a remembered approval covers this class for this target in this session. */
+    /**
+     * True when a remembered approval covers this class for this target in this session.
+     * Money is never covered by a chat-wide grant: only "always for X", chosen on the card
+     * and confirmed with the screen lock, and only for exactly X.
+     */
     @Synchronized
     fun allows(riskClass: RiskClass, target: String?, sessionId: String?): Boolean {
-        if (sessionId != null && session.any { it.sessionId == sessionId && it.riskClass == riskClass }) return true
+        if (riskClass != RiskClass.MONEY && sessionId != null &&
+            session.any { it.sessionId == sessionId && it.riskClass == riskClass }
+        ) return true
         if (target == null) return false
         return _always.value.any { it.riskClass == riskClass && it.target == target }
     }
+
+    /** "Always" grants of the highest tier — payments that run without a card. */
+    fun highest(): List<Grant> = _always.value.filter { it.riskClass.tier == RiskTier.HIGHEST }
 
     /** "Allow for this chat": this kind of action, any object, until the chat is cleared. */
     @Synchronized
