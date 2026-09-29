@@ -786,6 +786,21 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     async def test_gui() -> dict[str, Any]:
         return await svc.connections.test_gui()
 
+    @app.get("/api/hands", dependencies=dep)
+    async def hands_status() -> dict[str, Any]:
+        return svc.hands_view()
+
+    @app.put("/api/connections/hands", dependencies=dep)
+    async def set_hands(body: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return svc.connections.set_hands(body)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post("/api/hands/stop", dependencies=dep)
+    async def stop_hands() -> dict[str, Any]:
+        return {"stopped": svc.stop_hands()}
+
     @app.get("/api/phone", dependencies=dep)
     async def phone_status() -> dict[str, Any]:
         view = svc.phone_view()

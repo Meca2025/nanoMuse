@@ -12,6 +12,11 @@ schema whose coordinates live in a 999×999 space, and one ``Thought: / Action: 
 <tool_call>`` reply per step. That format is what the open Qwen-VL models were trained on
 for phone operation, so it is used as is rather than a JSON dialect of our own.
 
+The same loop drives this computer's screen (docs/every-device.md): a :class:`Dialect`
+swaps the function offered to the model — ``computer_use``, the Qwen-VL desktop dialect,
+with mouse buttons and key combinations instead of taps and system buttons — and what its
+steps become on the device (``computer_act`` through :class:`~nanomuse.computer.link.ComputerLink`).
+
 Attribution: the prompt, the user template and the parsers below are ported from
 MemGUI-Bench (https://github.com/lgy0404/MemGUI-Bench, MIT License), files
 ``src/mobile_world/agents/utils/prompts/qwen3vl.py`` and
@@ -142,6 +147,110 @@ MOBILE_USE_TOOL: dict[str, Any] = {
     },
 }
 
+COMPUTER_USE_TOOL: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "computer_use",
+        "description": (
+            "Use a mouse and keyboard to interact with a computer, and take screenshots.\n"
+            "* This is an interface to a desktop GUI. You do not have access to a terminal or "
+            "applications menu; `open` starts an application by its name, everything else is "
+            "done with the mouse and keyboard on what is on the screen.\n"
+            "* Some applications may take time to start or process actions, so you may need to "
+            "wait and take successive screenshots to see the results of your actions.\n"
+            "* The screen's resolution is 999x999.\n"
+            "* Whenever you intend to click on an element like an icon, consult the screenshot "
+            "to determine its coordinates first. Make sure to click any buttons, links, icons, "
+            "etc with the cursor tip in the center of the element. Don't click boxes on their "
+            "edges unless asked."
+        ),
+        "parameters": {
+            "properties": {
+                "action": {
+                    "description": (
+                        "The action to perform. The available actions are:\n"
+                        "* `key`: Press a key or key combination on the keyboard (in `keys`, e.g. "
+                        '["ctrl", "s"] or ["Return"]).\n'
+                        "* `type`: Type a string of text on the keyboard.\n"
+                        "* `mouse_move`: Move the cursor to the point (x, y) on the screen.\n"
+                        "* `left_click`: Click the left mouse button at (x, y).\n"
+                        "* `left_click_drag`: Click and drag the cursor from (x, y) to (x2, y2).\n"
+                        "* `right_click`: Click the right mouse button at (x, y).\n"
+                        "* `middle_click`: Click the middle mouse button at (x, y).\n"
+                        "* `double_click`: Double-click the left mouse button at (x, y).\n"
+                        "* `scroll`: Scroll the mouse wheel at (x, y) by `pixels` (negative = "
+                        "up, positive = down).\n"
+                        "* `open`: Open an application by its name (in `text`).\n"
+                        "* `wait`: Wait specified seconds for the change to happen.\n"
+                        "* `answer`: Output the answer.\n"
+                        "* `ask_user`: Ask user for clarification.\n"
+                        "* `terminate`: Terminate the current task and report its completion "
+                        "status."
+                    ),
+                    "enum": [
+                        "key",
+                        "type",
+                        "mouse_move",
+                        "left_click",
+                        "left_click_drag",
+                        "right_click",
+                        "middle_click",
+                        "double_click",
+                        "scroll",
+                        "open",
+                        "wait",
+                        "answer",
+                        "ask_user",
+                        "terminate",
+                    ],
+                    "type": "string",
+                },
+                "keys": {
+                    "description": "Required only by `action=key`: the keys pressed together.",
+                    "type": "array",
+                },
+                "text": {
+                    "description": (
+                        "Required only by `action=type`, `action=open`, `action=ask_user` and "
+                        "`action=answer`."
+                    ),
+                    "type": "string",
+                },
+                "coordinate": {
+                    "description": (
+                        "(x, y): The x (pixels from the left edge) and y (pixels from the top "
+                        "edge) coordinates to move the mouse to. Required by the click actions, "
+                        "`mouse_move`, `left_click_drag` and `scroll`."
+                    ),
+                    "type": "array",
+                },
+                "coordinate2": {
+                    "description": "(x, y): where a `left_click_drag` ends.",
+                    "type": "array",
+                },
+                "pixels": {
+                    "description": (
+                        "The amount of scrolling: negative scrolls up, positive scrolls down. "
+                        "Required only by `action=scroll`."
+                    ),
+                    "type": "number",
+                },
+                "time": {
+                    "description": "The seconds to wait. Required only by `action=wait`.",
+                    "type": "number",
+                },
+                "status": {
+                    "description": "The status of the task. Required only by `action=terminate`.",
+                    "type": "string",
+                    "enum": ["success", "failure"],
+                },
+            },
+            "required": ["action"],
+            "type": "object",
+        },
+    },
+}
+
 SYSTEM_PROMPT = """# Tools
 
 You may call one or more functions to assist with the user query.
@@ -167,7 +276,7 @@ Rules:
 - Output exactly in the order: Thought, Action, <tool_call>.
 - Be brief: one sentence for Thought, one for Action.
 - Do not output anything else outside those three parts.
-- If finishing, use mobile_use with action=terminate in the tool call.
+- If finishing, use {tool_name} with action=terminate in the tool call.
 - Never type passwords, PINs, card numbers or one-time codes, and never confirm a payment, a transfer or an order on your own: use action=ask_user before that step and describe what the screen is about to do.
 - Do only what the query asks: do not send, buy, delete or post anything it did not name.
 - When the query asks for information, put everything you read that answers it (names, times, prices, seat numbers, order state) in action=answer, exactly as shown on the screen, before terminating.
@@ -196,16 +305,18 @@ class Outcome:
     last_image: str | None = None
     actions: list[str] = field(default_factory=list)
     trace_id: str = ""
+    noun: str = "phone"  # what was operated: "phone" or "computer"
 
     def report(self) -> str:
+        n = self.noun
         head = {
-            "done": "The phone operator finished.",
-            "ask": "The phone operator stopped: it needs the user.",
-            "stopped": "The user pressed Stop on the phone.",
-            "abort": "The phone operator gave up.",
-            "blocked": "The phone operator was stopped by the Sentinel (an approval was refused).",
-            "failed": "The phone operator could not continue.",
-            "max_steps": "The phone operator ran out of steps before finishing.",
+            "done": f"The {n} operator finished.",
+            "ask": f"The {n} operator stopped: it needs the user.",
+            "stopped": f"The user pressed Stop on the {n}.",
+            "abort": f"The {n} operator gave up.",
+            "blocked": f"The {n} operator was stopped by the Sentinel (an approval was refused).",
+            "failed": f"The {n} operator could not continue.",
+            "max_steps": f"The {n} operator ran out of steps before finishing.",
         }.get(self.status, self.status)
         lines = [f"{head} ({self.steps} step{'s' if self.steps != 1 else ''})"]
         if self.message:
@@ -286,8 +397,10 @@ def parse_tagged_text(text: str) -> dict[str, Any]:
     return result
 
 
-def parse_step(text: str | None) -> Step | None:
-    """The model's reply as a :class:`Step`, or None when it is not one."""
+def parse_step(text: str | None, tool: str = "mobile_use") -> Step | None:
+    """The model's reply as a :class:`Step`, or None when it is not one. ``tool`` is the
+    function the dialect offers (``mobile_use`` / ``computer_use``): the name assumed for a
+    bare arguments object, and the one whose ``action`` must be a string."""
     if not text:
         return None
     try:
@@ -298,14 +411,14 @@ def parse_step(text: str | None) -> Step | None:
     if not isinstance(call, dict):
         return None
     if "arguments" in call and isinstance(call["arguments"], dict):
-        name = str(call.get("name") or "mobile_use")
+        name = str(call.get("name") or tool)
         arguments = dict(call["arguments"])
     elif "action" in call:
         # the bare arguments object, without the {"name":..., "arguments":...} wrapper
-        name, arguments = "mobile_use", dict(call)
+        name, arguments = tool, dict(call)
     else:
         return None
-    if name == "mobile_use" and not isinstance(arguments.get("action"), str):
+    if name == tool and not isinstance(arguments.get("action"), str):
         return None
     for key in ("coordinate", "coordinate2"):
         if key in arguments:
@@ -336,16 +449,29 @@ def _normalise_point(value: Any) -> list[float]:
 
 def _describe(arguments: dict[str, Any]) -> str:
     kind = str(arguments.get("action") or "")
-    if kind in ("click", "long_press") and "coordinate" in arguments:
+    if kind in _POINTED_KINDS and "coordinate" in arguments:
         x, y = arguments["coordinate"]
         return f"{kind} at ({x:.2f}, {y:.2f}) of the screen"
     if kind == "type":
         return f"type {str(arguments.get('text') or '')[:60]!r}"
     if kind == "system_button":
         return f"press {arguments.get('button') or '?'}"
+    if kind == "key":
+        return "press " + "+".join(str(k) for k in (arguments.get("keys") or []))
     if kind == "open":
         return f"open {arguments.get('text') or '?'}"
     return kind or "?"
+
+
+_POINTED_KINDS = (
+    "click",
+    "long_press",
+    "left_click",
+    "right_click",
+    "middle_click",
+    "double_click",
+    "mouse_move",
+)
 
 
 def to_device_action(step: Step, screen: Screen) -> dict[str, Any] | None:
@@ -393,12 +519,96 @@ def to_device_action(step: Step, screen: Screen) -> dict[str, Any] | None:
     raise ValueError(f"unknown action {kind!r}")
 
 
+def to_computer_action(step: Step, screen: Screen) -> dict[str, Any] | None:
+    """The ``computer_act`` arguments for a ``computer_use`` step; None for the ones that
+    end the loop (answer, terminate, ask_user)."""
+    a = step.arguments
+    kind = step.kind
+    w, h = screen.width or 1, screen.height or 1
+    label = step.action
+
+    def point(key: str) -> tuple[float, float]:
+        if key not in a:
+            raise ValueError(f"`{kind}` needs `{key}`")
+        fx, fy = a[key]
+        return round(fx * w, 1), round(fy * h, 1)
+
+    clicks = {
+        "left_click": "click",
+        "right_click": "right_click",
+        "middle_click": "middle_click",
+        "double_click": "double_click",
+        "mouse_move": "move",
+    }
+    if kind in clicks:
+        x, y = point("coordinate")
+        return {"action": clicks[kind], "x": x, "y": y, "label": label}
+    if kind == "left_click_drag":
+        x, y = point("coordinate")
+        x2, y2 = point("coordinate2")
+        return {"action": "drag", "x": x, "y": y, "x2": x2, "y2": y2, "label": label}
+    if kind == "scroll":
+        x, y = point("coordinate")
+        raw_pixels = a.get("pixels")
+        try:
+            pixels = float(raw_pixels) if raw_pixels is not None else 300.0
+        except (TypeError, ValueError):
+            pixels = 300.0
+        return {"action": "scroll", "x": x, "y": y, "dy": pixels, "label": label}
+    if kind == "type":
+        return {"action": "type", "text": str(a.get("text") or ""), "label": label}
+    if kind == "key":
+        keys = a.get("keys")
+        if isinstance(keys, str):
+            keys = [k for k in re.split(r"[+\s]+", keys) if k]
+        if not isinstance(keys, list) or not keys:
+            raise ValueError('`key` needs `keys`: a list such as ["ctrl", "s"]')
+        return {"action": "key", "keys": [str(k) for k in keys][:5], "label": label}
+    if kind == "wait":
+        return {"action": "wait", "seconds": _seconds(a.get("time"), default=2.0, cap=10.0)}
+    if kind == "open":
+        app = str(a.get("text") or a.get("app") or "").strip()
+        if not app:
+            raise ValueError("`open` needs the application's name in `text`")
+        return {"action": "open_app", "app": app, "label": label}
+    if kind in ("answer", "terminate", "ask_user"):
+        return None
+    raise ValueError(f"unknown action {kind!r}")
+
+
 def _seconds(value: Any, default: float, cap: float) -> float:
     try:
         seconds = float(value) if value is not None else default
     except (TypeError, ValueError):
         seconds = default
     return max(0.2, min(cap, seconds))
+
+
+@dataclass(frozen=True)
+class Dialect:
+    """How the operator's model is spoken to: the function it may call, what the actions
+    become on the device, and the word for the device in reports."""
+
+    name: str  # the function's name: mobile_use | computer_use
+    tool: dict[str, Any]
+    noun: str  # phone | computer
+    to_action: Callable[[Step, Screen], dict[str, Any] | None]
+    # one line of extra rules for the system prompt, or ""
+    rules: str = ""
+
+
+MOBILE = Dialect("mobile_use", MOBILE_USE_TOOL, "phone", to_device_action)
+COMPUTER = Dialect(
+    "computer_use",
+    COMPUTER_USE_TOOL,
+    "computer",
+    to_computer_action,
+    rules=(
+        "- Prefer the keyboard where it is exact (a shortcut, typing in a focused field) and "
+        "the mouse for what is only on the screen; after `open`, wait for the window before "
+        "clicking in it.\n"
+    ),
+)
 
 
 # ------------------------------------------------------------------ the operator
@@ -415,9 +625,11 @@ class PhoneOperator:
         make_llm: Callable[[], BaseLLM],
         language: Callable[[], str] | None = None,
         traces_dir: Path | None = None,
+        dialect: Dialect = MOBILE,
     ):
         self.link = link
         self.settings = settings
+        self.dialect = dialect
         self.sentinel = sentinel
         self.act_tool = act_tool
         self.ui = ui
@@ -438,13 +650,16 @@ class PhoneOperator:
         self._llm = None
 
     def system_prompt(self) -> str:
-        return SYSTEM_PROMPT.format(
-            tool=json.dumps(MOBILE_USE_TOOL, ensure_ascii=False), language=self._language()
+        prompt = SYSTEM_PROMPT.format(
+            tool=json.dumps(self.dialect.tool, ensure_ascii=False),
+            tool_name=self.dialect.name,
+            language=self._language(),
         )
+        return prompt.rstrip("\n") + "\n" + self.dialect.rules if self.dialect.rules else prompt
 
     # ------------------------------------------------------------------ the loop
     async def run(self, goal: str, context: str = "", app: str = "") -> Outcome:
-        outcome = Outcome(status="failed")
+        outcome = Outcome(status="failed", noun=self.dialect.noun)
         instruction = goal.strip()
         if context.strip():
             instruction += f"\n(Known already: {context.strip()})"
@@ -491,7 +706,7 @@ class PhoneOperator:
             outcome.last_image = screen.image_path
             if not screen.image_path:
                 outcome.status = "failed"
-                outcome.message = "the phone sent no screenshot; the operator cannot see the screen"
+                outcome.message = f"the {self.dialect.noun} sent no screenshot; the operator cannot see the screen"
                 break
 
             step, raw, latency_ms = await self._decide(instruction, steps, screen)
@@ -501,10 +716,12 @@ class PhoneOperator:
                 trace.step(step_no, screen, raw=raw, latency_ms=latency_ms, error=outcome.message)
                 break
             entry = step.action.replace("\n", " ").replace('"', "")
-            logger.info("phone step {}: {} — {}", step_no, step.action, step.arguments)
+            logger.info(
+                "{} step {}: {} — {}", self.dialect.noun, step_no, step.action, step.arguments
+            )
 
-            if step.name != "mobile_use":
-                steps.append(f"{entry}; Result: only the mobile_use function is available")
+            if step.name != self.dialect.name:
+                steps.append(f"{entry}; Result: only the {self.dialect.name} function is available")
                 trace.step(step_no, screen, step=step, raw=raw, latency_ms=latency_ms)
                 continue
 
@@ -523,7 +740,7 @@ class PhoneOperator:
                 break
 
             try:
-                params = to_device_action(step, screen)
+                params = self.dialect.to_action(step, screen)
             except ValueError as exc:
                 steps.append(f"{entry}; Result: {exc}")
                 trace.step(
@@ -610,7 +827,7 @@ class PhoneOperator:
         for attempt in range(self.parse_retries):
             response = await self.llm.ask_complete(messages)
             raw = response.content or ""
-            step = parse_step(raw)
+            step = parse_step(raw, tool=self.dialect.name)
             if step is not None:
                 return step, raw, int((time.monotonic() - started) * 1000)
             logger.debug("phone step: reply was not a step (try {}): {!r}", attempt + 1, raw[:600])
@@ -619,7 +836,7 @@ class PhoneOperator:
                     Message.assistant(content=raw),
                     Message.user(
                         "That was not in the response format. Reply with Thought, Action and one "
-                        "<tool_call> block calling mobile_use."
+                        f"<tool_call> block calling {self.dialect.name}."
                     ),
                 ]
         return None, raw, int((time.monotonic() - started) * 1000)
@@ -631,25 +848,30 @@ class PhoneOperator:
             )
         )
         summary = self.act_tool.assess(params).summary
-        outcome.actions.append(summary.removeprefix("phone_act: "))
+        outcome.actions.append(summary.removeprefix(f"{self.act_tool.name}: "))
         self.ui.on_tool_call(call, summary)
         result = await self.sentinel.guard(call, self.act_tool)
         self.ui.on_tool_result(call, result)
         if result.error:
-            logger.info("phone step failed: {}", result.error)
+            logger.info("{} step failed: {}", self.dialect.noun, result.error)
         return result
 
 
 __all__ = [
+    "COMPUTER",
+    "COMPUTER_USE_TOOL",
+    "MOBILE",
     "MOBILE_USE_TOOL",
     "NODES_TEMPLATE",
     "SCALE_FACTOR",
     "SYSTEM_PROMPT",
     "USER_TEMPLATE",
+    "Dialect",
     "Outcome",
     "PhoneOperator",
     "Step",
     "parse_step",
     "parse_tagged_text",
+    "to_computer_action",
     "to_device_action",
 ]

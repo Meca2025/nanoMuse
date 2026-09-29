@@ -361,6 +361,18 @@ class MuseService:
     def publish_phone(self) -> None:
         self.bus.publish({"kind": "phone", "phone": self.phone_view()})
 
+    def hands_view(self) -> dict[str, Any]:
+        return self.connections.hands_view()
+
+    def publish_hands(self) -> None:
+        self.bus.publish({"kind": "hands_state", "hands": self.hands_view()})
+
+    def stop_hands(self) -> bool:
+        """The Stop button of the Hands card: the task on this computer's screen ends at its
+        next step, like the phone's Stop pill."""
+        computer = self.app.computer
+        return computer.stop() if computer is not None else False
+
     # ------------------------------------------------------------------ lifecycle
     async def start(self) -> None:
         if self._started:
@@ -534,7 +546,7 @@ class MuseService:
         for ev in running:
             timeline.update(ev["id"], status="error", output="interrupted by a restart")
         for ev in timeline.events:
-            if ev.get("type") == "browser" and ev.get("status") == "live":
+            if ev.get("type") in ("browser", "hands") and ev.get("status") == "live":
                 timeline.update(ev["id"], status="done")
         session_file = self.threads_dir / f"{thread_id}.session.json"
         agent = MuseAgent(
@@ -1903,6 +1915,7 @@ class MuseService:
                 "contacts": s.connectors.contacts.enabled and self.app.contacts.configured,
                 "browser": s.browser.enabled,
                 "gui": s.gui.enabled,
+                "hands": s.hands.enabled,
                 "mcp": [m.name for m in s.mcp.servers],
             },
             "phone": self.phone_view(),
@@ -1960,6 +1973,8 @@ class MuseService:
             "device": self.app.device.to_dict() if self.app.device is not None else None,
             # this device on the hub: the account, the other devices
             "hub": self.hub.view(),
+            # this computer's own screen and hands
+            "hands": self.hands_view(),
         }
 
 

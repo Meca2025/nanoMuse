@@ -155,6 +155,29 @@ class MuseAgent:
             return ""
         return prompts.DEVICE_SECTION.format(tools=", ".join(names))
 
+    def computer_section(self) -> str:
+        """This computer's screen, when the hands are on: available or not, and what is in front."""
+        task = self.tools.get("computer_task")
+        link = getattr(task, "link", None)
+        if task is None or link is None:
+            return ""
+        status = link.status() if hasattr(link, "status") else {}
+        if not status.get("available", True):
+            reason = status.get("reason") or "no backend"
+            status_line = (
+                "- The hands are turned on, but they cannot drive this computer right now "
+                f"({reason}): the `computer_*` tools will fail. Say so if a step needs the screen."
+            )
+        else:
+            last = link.last_screen
+            status_line = (
+                f"- The hands can drive this computer ({status.get('backend') or 'hands'} on "
+                f"{link.device.platform}, screen {link.device.width}×{link.device.height})."
+            )
+            if last is not None and last.title:
+                status_line += f" In front last time: {last.title}."
+        return prompts.COMPUTER_SECTION.format(status=status_line)
+
     def devices_section(self) -> str:
         """The user's other devices, when this computer is on the hub (the `devices` tool)."""
         tool = self.tools.get("devices")
@@ -280,6 +303,7 @@ class MuseAgent:
             + calendar
             + self.device_section()
             + self.phone_section()
+            + self.computer_section()
             + self.devices_section()
             + self.skills_section(),
             extra=extra,

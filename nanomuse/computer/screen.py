@@ -55,12 +55,18 @@ class Shot:
         }
 
 
+def _mss_grabber(mss: Any) -> Any:
+    """``mss.MSS()`` on mss ≥ 10, ``mss.mss()`` before it (the old name is deprecated)."""
+    factory = getattr(mss, "MSS", None) or mss.mss
+    return factory()
+
+
 def screen_size() -> tuple[int, int]:
     """The physical size of the main screen, (0, 0) when there is no display."""
     try:
         import mss  # type: ignore[import-not-found]
 
-        with mss.mss() as sct:
+        with _mss_grabber(mss) as sct:
             mon = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
             return int(mon["width"]), int(mon["height"])
     except Exception:  # noqa: BLE001 — no display, no mss
@@ -84,7 +90,7 @@ def take_screenshot(max_width: int = DEFAULT_MAX_WIDTH) -> Shot | None:
         import mss  # type: ignore[import-not-found]
         from PIL import Image
 
-        with mss.mss() as sct:
+        with _mss_grabber(mss) as sct:
             mon = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
             grab = sct.grab(mon)
             img = Image.frombytes("RGB", grab.size, grab.bgra, "raw", "BGRX")

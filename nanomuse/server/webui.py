@@ -59,6 +59,10 @@ _READ_ONLY_TOOLS = {
     "terminate",
     "read_emails",
     "send_email",
+    # looks at this computer's screen land in screenshots/; they are not the agent's work
+    "computer_screen",
+    "computer_act",
+    "computer_task",
 }
 # the browser's persistent profile lives in the workspace too (cookies, caches) — never an artifact
 _SKIP_DIRS = {"node_modules", "__pycache__", ".venv", "venv", ".git", "browser-profile"}
@@ -117,6 +121,8 @@ class WebUI:
         # card of the current run, which is updated in place frame after frame
         self.browser_frames: dict[str, OrderedDict[str, bytes]] = {}
         self._browser_card: dict[str, str] = {}
+        # the hands on this computer: the card of the current task, updated step by step
+        self._hands_card: dict[str, str] = {}
 
     # ------------------------------------------------------------------ run lifecycle
     def begin_run(self, thread: str, background: str | None = None) -> None:
@@ -174,6 +180,63 @@ class WebUI:
             return
         ev = self.emit({"type": "browser", "thread": thread, "frames": 1, **fields})
         self._browser_card[thread] = ev["id"]
+
+    def on_hands(self, body: dict[str, Any]) -> None:
+        """A step of the hands on this computer (see ``ComputerLink.on_event``): one *Hands*
+        card per task, updated in place, plus a live message for the stage overlay."""
+        event = str(body.get("event") or "")
+        thread = self.thread()
+        self.bus.publish({"kind": "hands", "thread": thread, **body})
+        if event == "begin":
+            ev = self.emit(
+                {
+                    "type": "hands",
+                    "thread": thread,
+                    "text": str(body.get("text") or ""),
+                    "status": "live",
+                    "steps": 0,
+                    "updated_ts": now_iso(),
+                }
+            )
+            self._hands_card[thread] = ev["id"]
+            return
+        card = self._hands_card.get(thread)
+        if event == "act":
+            fields: dict[str, Any] = {
+                "last": {
+                    k: body.get(k)
+                    for k in ("action", "label", "fx", "fy", "fx2", "fy2", "text", "keys")
+                    if body.get(k) is not None
+                },
+                "app": body.get("app") or "",
+                "title": body.get("title") or "",
+                "updated_ts": now_iso(),
+            }
+            if card is None:
+                # a single computer_act outside a task: its own small card
+                ev = self.emit(
+                    {
+                        "type": "hands",
+                        "thread": thread,
+                        "text": "",
+                        "status": "done",
+                        "steps": 1,
+                        **fields,
+                    }
+                )
+                return
+            existing = self.get_timeline(thread).get(card) or {}
+            self.patch(thread, card, steps=int(existing.get("steps", 0)) + 1, **fields)
+        elif event in ("end", "stop", "notice"):
+            if card is None:
+                return
+            status = "stopped" if event == "stop" else "done"
+            fields = {"status": status, "updated_ts": now_iso()}
+            if event == "notice" and body.get("text"):
+                fields["notice"] = str(body["text"])
+            self.patch(thread, card, **fields)
+            if event != "notice":
+                self._hands_card.pop(thread, None)
 
     def browser_frame(self, thread: str, fid: str) -> bytes | None:
         frames = self.browser_frames.get(thread)

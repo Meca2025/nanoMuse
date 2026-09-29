@@ -11,6 +11,7 @@ from pathlib import Path
 from nanomuse import prompts
 from nanomuse.agent import MuseAgent
 from nanomuse.calendar import CalendarFeeds
+from nanomuse.computer.link import ComputerLink
 from nanomuse.config import LLMSettings, Settings
 from nanomuse.contacts import ContactBook
 from nanomuse.goals import GoalStore
@@ -18,7 +19,7 @@ from nanomuse.llm import BaseLLM, create_llm
 from nanomuse.logger import logger, setup_logging
 from nanomuse.memory import Embedder, MemoryIndex, MemoryStore
 from nanomuse.phone import PhoneLink
-from nanomuse.phone.operator import PhoneOperator
+from nanomuse.phone.operator import COMPUTER, PhoneOperator
 from nanomuse.reminders import ReminderStore
 from nanomuse.runtime import device, device_mcp_server
 from nanomuse.sandbox import Sandbox
@@ -49,6 +50,7 @@ from nanomuse.tools import (
     WebSearch,
     playwright_available,
 )
+from nanomuse.tools.computer import ComputerAct, ComputerScreen, ComputerTask
 from nanomuse.tools.phone import PhoneAct, PhoneScreen, PhoneTask
 from nanomuse.triggers import TriggerStore
 from nanomuse.ui import UI
@@ -111,6 +113,15 @@ class NanoMuseApp:
             if mcp_servers
             else None
         )
+        # This computer's own screen and hands (docs/every-device.md); the link exists when
+        # there is a display to look at, the tools only while [hands] is on.
+        self.computer: ComputerLink | None = None
+        if self.device is None:
+            self.computer = ComputerLink(
+                settings.hands,
+                shots_dir=settings.agent.workspace / "screenshots",
+                on_event=getattr(ui, "on_hands", None),
+            )
         self.tools = self._build_tools()
         self.agent = MuseAgent(
             settings=settings,
@@ -242,6 +253,8 @@ class NanoMuseApp:
             tools.add(Skills(library=self.skills))
         if s.gui.enabled and self.phone is not None:
             tools.add(*self.phone_tools())
+        if s.hands.enabled and self.computer is not None:
+            tools.add(*self.computer_tools())
         if s.browser.enabled:
             tools.add(self.browser_tool())
         return tools
@@ -286,6 +299,47 @@ class NanoMuseApp:
         )
         self.phone_operator = operator
         return [PhoneScreen(link=self.phone), act, PhoneTask(link=self.phone, operator=operator)]
+
+    def computer_tools(self) -> list[ComputerScreen | ComputerAct | ComputerTask]:
+        """The three tools for this computer's screen, sharing one link and one operator
+        (the phone's operator loop, speaking the `computer_use` dialect)."""
+        assert self.computer is not None
+        gui = self.settings.gui
+        act = ComputerAct(link=self.computer, gui=gui)
+
+        def language() -> str:
+            lang = self.settings.agent.language
+            return "the language of the query" if lang in ("", "auto") else lang
+
+        operator = PhoneOperator(
+            self.computer,  # type: ignore[arg-type]  # the same face as the phone link
+            gui,
+            self.sentinel,
+            act,
+            self.ui,
+            make_llm=self.make_gui_llm,
+            language=language,
+            traces_dir=self.settings.data_dir / "computer-traces",
+            dialect=COMPUTER,
+        )
+        self.computer_operator = operator
+        return [
+            ComputerScreen(link=self.computer),
+            act,
+            ComputerTask(link=self.computer, operator=operator),
+        ]
+
+    def set_hands_enabled(self, enabled: bool) -> None:
+        """Turn this computer's screen tools on or off while running (the switch in the app)."""
+        self.settings.hands.enabled = bool(enabled)
+        if self.computer is None:
+            return
+        present = "computer_act" in self.tools
+        if enabled and not present:
+            self.tools.add(*self.computer_tools())
+        elif not enabled and present:
+            for name in ("computer_screen", "computer_act", "computer_task"):
+                self.tools.remove(name)
 
     def set_gui_enabled(self, enabled: bool) -> None:
         """Turn the phone tools on or off while running (the switch in the app)."""
