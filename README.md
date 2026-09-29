@@ -61,7 +61,7 @@ How this compares with Muse and with OpenMinis, the runtime the app is built on:
 
 ## Install
 
-Nothing to install: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/) with an e-mail or a phone code and you get a nanoMuse of your own on the project's server, kept between visits. For your own devices — the [downloads](https://nanomuse.cn/#download): the Android APK, the desktop app for Windows, macOS and Linux (`nanoMuse-Desktop-<version>-…`), the terminal binary (`nanomuse-desktop-<version>-…`), or `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+; [docs/desktop.md](docs/desktop.md) and [docs/every-device.md](docs/every-device.md) say how they meet. On the phone:
+Nothing to install: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/) with an e-mail or a phone code and you get a nanoMuse of your own on the project's server, kept between visits. For your own devices — the [downloads](https://nanomuse.cn/#download): the Android APK, the desktop app for Windows, macOS and Linux (`nanoMuse-Desktop-<version>-…`), the terminal binary (`nanomuse-desktop-terminal-<version>-…`), or `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+; [docs/desktop.md](docs/desktop.md) and [docs/every-device.md](docs/every-device.md) say how they meet. On the phone:
 
 1. Download `nanoMuse-<version>-arm64.apk` from the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 or newer, a 64-bit phone. Verify with `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` if you like.
 2. Open it. Android asks once to allow the install; every version is signed with the same key, so updates install over the previous one and keep your data.

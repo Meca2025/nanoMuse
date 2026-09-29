@@ -1,8 +1,8 @@
 # nanoMuse Desktop: one binary per platform, wrapped the way each platform installs things.
 #
-#   Windows  …-windows-x64-setup.exe (Inno Setup) + .zip
-#   macOS    …-macos-arm64.pkg / …-macos-x64.pkg + .tar.gz
-#   Linux    …-linux-x64.deb + .tar.gz
+#   Windows  nanomuse-desktop-terminal-<v>-windows-x64-setup.exe (Inno Setup) + .zip
+#   macOS    nanomuse-desktop-terminal-<v>-macos-arm64.pkg / -macos-x64.pkg + .tar.gz
+#   Linux    nanomuse-desktop-terminal-<v>-linux-x64.deb + .tar.gz
 #
 # A push that touches desktop/ builds Linux only (cheap, catches most mistakes). "Run workflow"
 # and tags `desktop-v*` build all four; the tag also publishes a GitHub release with every
