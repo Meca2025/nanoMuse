@@ -410,6 +410,25 @@ def test_start_run_streams_and_falls_back_to_a_new_chat(
     assert run.status == "failed" and "not installed" in run.error
 
 
+def test_a_helper_left_behind_does_not_keep_the_run_open(
+    fake_cursor: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The real `cursor-agent` leaves a worker running after it answers, and under some
+    event loops (uvloop) that worker inherits our pipes, so EOF never comes. The run has to
+    finish on the agent's final message, not on EOF."""
+    fake_cursor.write_text(
+        "#!/bin/sh\n"
+        'echo \'{"type":"system","subtype":"init","session_id":"S-new","model":"m"}\'\n'
+        'echo \'{"type":"result","subtype":"success","result":"ok","session_id":"S-new","duration_ms":3}\'\n'
+        "sleep 30 &\n"  # keeps our stdout open long after the CLI itself has exited
+        "exit 0\n"
+    )
+    t0 = time.monotonic()
+    run = asyncio.run(start_run("cursor", "hi", timeout_s=20))
+    assert run.status == "done" and run.output == "ok" and run.result_session_id == "S-new"
+    assert time.monotonic() - t0 < 10
+
+
 # ----------------------------------------------------------------------------- the runtime API
 @pytest.fixture()
 def server(

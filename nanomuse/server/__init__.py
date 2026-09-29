@@ -62,8 +62,17 @@ def serve(
     if service.token:
         url += f"?token={service.token}"
     _print_banner(url, service, print_qr)
+    # The standard loop, not uvloop: uvloop leaves extra copies of a child's stdout/stderr
+    # open in the child, so anything it leaves running in the background (Cursor's CLI keeps a
+    # worker alive, `nohup … &` in the shell tool) holds our pipes and the read never ends.
     uvicorn.run(
-        app, host=host, port=port, log_level=log_level, ws_ping_interval=20, ws_ping_timeout=20
+        app,
+        host=host,
+        port=port,
+        log_level=log_level,
+        loop="asyncio",
+        ws_ping_interval=20,
+        ws_ping_timeout=20,
     )
 
 

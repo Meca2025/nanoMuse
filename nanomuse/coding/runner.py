@@ -14,6 +14,7 @@ A run is one process; ``Run.stop()`` kills its process group.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import signal
@@ -396,7 +397,19 @@ async def start_run(
                             stderr_tail = (stderr_tail + "\n" + line)[-2000:]
 
                 err_task = asyncio.create_task(read_err(proc.stderr))
-                async for raw in proc.stdout:
+                while True:
+                    # After the agent's final message we stop waiting for EOF: a helper the
+                    # CLI leaves running in the background may keep our pipe open forever.
+                    if saw_done:
+                        patience = 0.5 if proc.returncode is not None else 5
+                        try:
+                            raw = await asyncio.wait_for(proc.stdout.readline(), patience)
+                        except TimeoutError:
+                            break
+                    else:
+                        raw = await proc.stdout.readline()
+                    if not raw:
+                        break
                     line = raw.decode("utf-8", "replace").strip()
                     if not line or not line.startswith("{"):
                         continue
@@ -412,8 +425,12 @@ async def start_run(
                         elif ev.kind == "error" and ev.text:
                             last_error = ev.text
                         await emit(ev)
-                await proc.wait()
-                await err_task
+                await _wait_exit(proc, grace_s=15 if saw_done else 60)
+                await asyncio.wait({err_task}, timeout=2)
+                if not err_task.done():
+                    err_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await err_task
         except TimeoutError:
             run.stop()
             run.status, run.error, run.ended_at = "failed", "the agent took too long", time.time()
@@ -459,6 +476,26 @@ async def start_run(
         await emit(RunEvent("error", run.error, extra={"final": True}))
         return run
     return run
+
+
+async def _wait_exit(proc: asyncio.subprocess.Process, grace_s: float) -> None:
+    """Wait for the CLI to exit without depending on its pipes reaching EOF (a background
+    helper it leaves behind may hold them); kill it if it is still around after ``grace_s``."""
+    deadline = time.monotonic() + grace_s
+    while proc.returncode is None and time.monotonic() < deadline:
+        await asyncio.sleep(0.1)
+    if proc.returncode is None:
+        with contextlib.suppress(ProcessLookupError):
+            proc.kill()
+        deadline = time.monotonic() + 5
+        while proc.returncode is None and time.monotonic() < deadline:
+            await asyncio.sleep(0.1)
+    # Release our ends of the pipes now; the transport would otherwise keep them until
+    # every inheritor is gone.
+    transport = getattr(proc, "_transport", None)
+    if transport is not None:
+        with contextlib.suppress(Exception):
+            transport.close()
 
 
 def _looks_like_unknown_session(text: str) -> bool:
