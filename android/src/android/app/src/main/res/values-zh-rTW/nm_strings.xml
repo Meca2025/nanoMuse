@@ -324,16 +324,10 @@
 
     <!-- 首次執行 -->
     <string name="nm_setup_title">歡迎使用 nanoMuse</string>
-    <string name="nm_setup_subtitle">三步之後，它就住在你的手機裡。</string>
-    <string name="nm_setup_step_provider">接入模型</string>
-    <string name="nm_setup_step_provider_sub">手機號或信箱註冊，送一份體驗額度；也可以填自己的 API key</string>
     <string name="nm_setup_step_models">選擇模型</string>
     <string name="nm_setup_step_models_sub">自動列出服務商提供的模型，最多選三個</string>
-    <string name="nm_setup_step_models_locked">先完成第 1 步</string>
     <string name="nm_setup_step_start">認識 %1$s</string>
     <string name="nm_setup_step_start_sub">第一次對話：它問怎麼稱呼你，也給自己取個名字</string>
-    <string name="nm_setup_step_start_locked">先完成第 2 步</string>
-    <string name="nm_setup_done">已完成</string>
     <string name="nm_setup_continue">繼續</string>
     <string name="nm_setup_start">開始</string>
     <string name="nm_setup_skip_models">先跳過</string>
@@ -546,13 +540,29 @@
     <string name="nm_risk_preview_computer">電腦上的命令</string>
 
     <!-- nanoMuse Cloud：手機號/信箱驗證碼登入，贈送體驗額度 -->
-    <string name="nm_setup_start_now">直接開始</string>
     <string name="nm_setup_own_key">我有自己的 API key</string>
+    <!-- nanoMuse: the first-run pages -->
+    <string name="nm_welcome_tagline">一個完全開源、Muse 風格的個人智慧體，裝在你的每一台裝置上。會聊天、畫圖、生成影片；會操作手機裡的應用程式；也能幫你使用電腦。</string>
+    <string name="nm_welcome_email">用電子郵件登入，免費開始</string>
+    <string name="nm_welcome_fine_print">登入會為這台手機建立一個 nanoMuse Cloud 帳號。現在和以後都不會收費。</string>
+    <string name="nm_welcome_feat_chat">對話、圖片、影片</string>
+    <string name="nm_welcome_feat_chat_sub">能力不錯的模型，圖片與影片生成，工具、技能和記憶，都在你的手機上</string>
+    <string name="nm_welcome_feat_hands">Hands：替你操作手機</string>
+    <string name="nm_welcome_feat_hands_sub">訂車票、點外送、在應用程式裡查東西——你全程看著，隨時可以停</string>
+    <string name="nm_welcome_feat_reach">Reach：從手機使用你的電腦</string>
+    <string name="nm_welcome_feat_reach_sub">配對一台 Mac、Windows 或 Linux 電腦，在手機上派工作給它</string>
+    <string name="nm_welcome_notice">nanoMuse 是純開源社群專案，非營利，永遠不會收取任何費用。目前這一版向社群開放體驗：用電子郵件登入即可免費使用模型——現階段每個帳號每天約 ¥25（≈ $3.5），涵蓋對話、圖片和影片，模型費用由開發者承擔。你的訊息不會被保存，資料不會被出售或分享；隨時可以刪除帳號，也可以改用自己的 API key。</string>
+    <string name="nm_welcome_hands_title">讓它替你操作手機</string>
+    <string name="nm_welcome_hands_sub">開啟兩項權限後，nanoMuse 就能替你打開應用程式、點按和輸入。操作期間螢幕上始終有一個顯示目前步驟和「停止」按鈕的膠囊；登入、密碼和驗證碼永遠由你自己來。</string>
+    <string name="nm_welcome_hands_turn_on">去開啟</string>
+    <string name="nm_welcome_skip">暫時跳過</string>
+    <string name="nm_welcome_hands_fine_print">不開也不影響其他功能。之後隨時可以在「設定 → Hands」裡開啟。</string>
+    <string name="nm_welcome_meet_fine_print">凡是無法撤回的事——刪除、傳送、付款——它都會先停下來問你。</string>
     <string name="nm_cloud_title">nanoMuse 雲</string>
     <string name="nm_cloud_signin_title">用 nanoMuse 雲開始</string>
-    <string name="nm_cloud_signin_subtitle">手機號或信箱，收一個驗證碼，就有一份體驗額度。不用自己設定 API key。</string>
-    <string name="nm_cloud_identifier">手機號或信箱</string>
-    <string name="nm_cloud_identifier_hint">138 0000 0000 或 you@example.com</string>
+    <string name="nm_cloud_signin_subtitle">信箱（或手機號），收一個驗證碼，就能免費使用模型：每天約 ¥25，費用由開發者承擔。不用自己設定 API key。</string>
+    <string name="nm_cloud_identifier">信箱或手機號</string>
+    <string name="nm_cloud_identifier_hint">you@example.com</string>
     <string name="nm_cloud_code">驗證碼</string>
     <string name="nm_cloud_send_code">發送驗證碼</string>
     <string name="nm_cloud_resend">重新發送</string>

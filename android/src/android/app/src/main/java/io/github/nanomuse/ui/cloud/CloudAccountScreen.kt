@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.openminis.app.R
 import io.github.nanomuse.cloud.NanoMuseCloud
@@ -333,8 +334,8 @@ private fun resetTime(epochSeconds: Long): String {
  * on the sign-in and first-run screens.
  */
 @Composable
-fun CommunityNoticeCard() {
-    MuseCard {
+fun CommunityNoticeCard(inset: Dp = 16.dp) {
+    MuseCard(inset = inset) {
         Column(Modifier.padding(16.dp)) {
             Text(stringResource(R.string.nm_cloud_notice_title), style = MaterialTheme.typography.titleSmall)
             Text(

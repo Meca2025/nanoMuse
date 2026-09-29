@@ -280,6 +280,9 @@ fun CloudSignInScreen(
             TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CLOUD_DOC_URL))) }) {
                 Text(stringResource(R.string.nm_setup_learn_more), color = MuseTones.action, fontSize = 12.sp)
             }
+            // What signing in is, and is not: free, community, non-profit — said where the
+            // decision is made, not only on the account page afterwards.
+            CommunityNoticeCard(inset = 0.dp)
             Spacer(Modifier.height(24.dp))
         }
     }

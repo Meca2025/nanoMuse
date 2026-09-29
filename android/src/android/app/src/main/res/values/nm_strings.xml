@@ -331,16 +331,10 @@
 
     <!-- First run (Muse-style welcome; the steps are OpenMinis' provider and model screens) -->
     <string name="nm_setup_title">Welcome to nanoMuse</string>
-    <string name="nm_setup_subtitle">Three steps, and it lives on your phone.</string>
-    <string name="nm_setup_step_provider">Connect a model</string>
-    <string name="nm_setup_step_provider_sub">A phone number or e-mail gets a starter allowance on nanoMuse Cloud; or bring your own API key</string>
     <string name="nm_setup_step_models">Choose models</string>
     <string name="nm_setup_step_models_sub">The models your provider serves are listed for you; pick up to three</string>
-    <string name="nm_setup_step_models_locked">After step 1</string>
     <string name="nm_setup_step_start">Meet %1$s</string>
     <string name="nm_setup_step_start_sub">A first conversation: it asks what to call you and picks its own name</string>
-    <string name="nm_setup_step_start_locked">After step 2</string>
-    <string name="nm_setup_done">Done</string>
     <string name="nm_setup_continue">Continue</string>
     <string name="nm_setup_start">Start</string>
     <string name="nm_setup_skip_models">Skip for now</string>
@@ -553,13 +547,29 @@
     <string name="nm_risk_preview_computer">Command on the computer</string>
 
     <!-- nanoMuse Cloud: sign in with a phone/e-mail code for a starter allowance -->
-    <string name="nm_setup_start_now">Start now</string>
     <string name="nm_setup_own_key">I have my own API key</string>
+    <!-- nanoMuse: the first-run pages -->
+    <string name="nm_welcome_tagline">A fully open-source, Muse-style personal agent for every device you own. It talks, draws and films; it uses your phone\'s apps; it reaches your computers.</string>
+    <string name="nm_welcome_email">Sign in with e-mail — free</string>
+    <string name="nm_welcome_fine_print">Signing in creates a nanoMuse Cloud account for this phone. Nothing is charged, now or later.</string>
+    <string name="nm_welcome_feat_chat">Chat, pictures, video</string>
+    <string name="nm_welcome_feat_chat_sub">A capable model, image and video generation, tools, skills and memory — on your phone</string>
+    <string name="nm_welcome_feat_hands">Hands: it uses your phone</string>
+    <string name="nm_welcome_feat_hands_sub">Books the train, orders the meal, looks something up in an app — you watch, and can stop it any time</string>
+    <string name="nm_welcome_feat_reach">Reach: your computers, from here</string>
+    <string name="nm_welcome_feat_reach_sub">Pair a Mac, Windows or Linux machine and give it work from the phone</string>
+    <string name="nm_welcome_notice">nanoMuse is an open-source community project, non-profit, and will never charge for anything. This version is open for the community to try: signing in with an e-mail gives free model access — about ¥25 (≈ $3.5) a day per account, across chat, pictures and video — and the developer pays the model bill. Your messages are not stored and your data is never sold or shared; you can delete the account at any time, or use your own API key instead.</string>
+    <string name="nm_welcome_hands_title">Let it use your phone</string>
+    <string name="nm_welcome_hands_sub">With two permissions, nanoMuse can open apps, tap and type on your behalf. A capsule with each step and a Stop button stays on the screen the whole time; logins, passwords and codes are always yours.</string>
+    <string name="nm_welcome_hands_turn_on">Turn on</string>
+    <string name="nm_welcome_skip">Skip for now</string>
+    <string name="nm_welcome_hands_fine_print">Everything else works without these. They live under Settings → Hands whenever you want them.</string>
+    <string name="nm_welcome_meet_fine_print">Before anything it cannot take back — deleting, sending, paying — it stops and asks you first.</string>
     <string name="nm_cloud_title">nanoMuse Cloud</string>
     <string name="nm_cloud_signin_title">Start with nanoMuse Cloud</string>
-    <string name="nm_cloud_signin_subtitle">A phone number or an e-mail address, a code, and you have a starter allowance of tokens. No API key needed.</string>
-    <string name="nm_cloud_identifier">Phone number or e-mail</string>
-    <string name="nm_cloud_identifier_hint">138 0000 0000 or you@example.com</string>
+    <string name="nm_cloud_signin_subtitle">An e-mail address (or phone number), a code — and you have free model access: about ¥25 a day, paid by the developer. No API key needed.</string>
+    <string name="nm_cloud_identifier">E-mail or phone number</string>
+    <string name="nm_cloud_identifier_hint">you@example.com</string>
     <string name="nm_cloud_code">Code</string>
     <string name="nm_cloud_send_code">Send code</string>
     <string name="nm_cloud_resend">Send again</string>

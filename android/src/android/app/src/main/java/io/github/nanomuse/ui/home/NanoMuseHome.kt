@@ -452,7 +452,6 @@ fun NanoMuseHome(
                 onStartNow = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
                 onSelectModels = { navController.safeNavigate(Routes.ONBOARDING_MODELS) },
                 onStart = { FirstRunSetup.markDone(context); setupDone = true },
-                onSkipModels = { FirstRunSetup.markDone(context); setupDone = true },
                 onSettings = { navController.safeNavigate(Routes.SETTINGS) },
             )
             HomePhase.HOME -> homeShell()
