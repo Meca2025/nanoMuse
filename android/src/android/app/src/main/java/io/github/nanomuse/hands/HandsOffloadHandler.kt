@@ -16,7 +16,7 @@ import java.util.Locale
  *
  *     nanomuse-hands status
  *     nanomuse-hands apps
- *     nanomuse-hands run --task "<one clear task>" [--app "<app name>"] [--max-steps 25]
+ *     nanomuse-hands run --task "<one clear task>" [--app "<app name>"] [--max-steps N]
  *
  * `run` blocks for the whole task (minutes) and answers with one JSON object. Off by default;
  * with the switch off or a prerequisite missing it exits 3 with the reason and the settings
@@ -72,7 +72,9 @@ class HandsOffloadHandler(private val context: Context) : NativeOffloadHandler {
             return refused("not_ready", missing.joinToString("; ") + ".")
         }
         if (Hands.active.value) return refused("busy", "The hands are already working on something; wait for it to finish or stop it.")
-        val maxSteps = args.get("max-steps")?.toIntOrNull()?.coerceIn(1, HandsOperator.MAX_STEPS) ?: HandsOperator.DEFAULT_MAX_STEPS
+        // No cap unless the caller asks for one: the run ends when the task is done, the person
+        // stops it, or the time limit is hit.
+        val maxSteps = args.get("max-steps")?.toIntOrNull()?.coerceAtLeast(0) ?: HandsOperator.DEFAULT_MAX_STEPS
         val opts = HandsOperator.Options(
             task = task,
             appHint = args.get("app")?.trim()?.takeIf { it.isNotEmpty() },
@@ -127,7 +129,7 @@ class HandsOffloadHandler(private val context: Context) : NativeOffloadHandler {
 Usage:
   nanomuse-hands status
   nanomuse-hands apps
-  nanomuse-hands run --task "<one clear task, with every detail the hands need>" [--app "<app name>"] [--max-steps 25]
+  nanomuse-hands run --task "<one clear task, with every detail the hands need>" [--app "<app name>"] [--max-steps N]
   nanomuse-hands stop
 
 The screen model sees screenshots only. It never types passwords or codes (the user takes over), and taps that

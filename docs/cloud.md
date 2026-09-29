@@ -17,9 +17,9 @@ sends a six-digit code. After the code the app has:
 - the relay's picture model as the avatar's image model, if none was set.
 
 *Settings → nanoMuse Cloud* shows who is signed in (a masked hint, never the
-number), how much of the allowance is left, today's use against the daily cap,
-and *Sign out*, which revokes this phone's key at the relay and removes the
-provider. The allowance belongs to the phone number or address: signing in
+number), today's spend against the daily allowance in ¥ and $, the tokens
+used, and *Sign out*, which revokes this phone's key at the relay and removes
+the provider. The allowance belongs to the phone number or address: signing in
 again, on this phone or another, gives a new key for the same account and does
 not grant a second allowance.
 
@@ -49,20 +49,31 @@ account (`POST /v1/auth/delete` with the account's key) removes all of it. See
 
 ## Allowance
 
-| | default |
-|---|---|
-| starter grant | 1 000 000 tokens per phone number / address |
-| daily cap | 300 000 tokens per rolling 24 h |
-| rate | 30 requests per minute |
-| chat | charged from the upstream's own usage; `qwen3.8-flash` at 0.3× |
-| a picture | 30 000 tokens |
-| a clip | 200 000 tokens (`MiniMax/MiniMax-H3`, relayed through DashScope's video API) |
+nanoMuse is a community project and charges nothing. The public relay at
+`cloud.nanomuse.cn` is paid for by the developer, so it has a daily cap:
 
-These are the relay's defaults; an operator may set others. When the grant is
-used up the app says so (`out_of_tokens`); switch to your own key, or ask for a
-top-up. A relay run for a few invited people may have no ceiling at all
-(`SIGNUP_TOKENS=0`): the account page then shows 「不限」 and what was used,
-and nothing is refused for lack of tokens.
+| | `cloud.nanomuse.cn` |
+|---|---|
+| sign-up | open to anyone with an e-mail address or a mainland mobile number |
+| daily allowance | **¥25 a day** per account (about $3.5), across chat, pictures and clips |
+| the day turns | midnight Beijing time (UTC+8) |
+| members | the developer and the people they list have no cap |
+| rate | 30 requests per minute |
+| tokens | no ceiling; usage is metered and shown |
+
+Spend is counted at the model provider's list prices (Alibaba Cloud Model
+Studio, Beijing region, September 2026): `qwen3.8-27b` ¥3 in / ¥12 out per
+million tokens, `qwen3.8-flash` ¥0.8 / ¥2.7, `qwen-image-3.0-pro` ¥0.25 a
+picture (¥0.5 at 2k), `MiniMax/MiniMax-H3` about ¥0.5 a second of video. A
+typical day of chatting costs a few fen; ¥25 is roughly two million tokens of
+the 27B model, a hundred pictures or fifty seconds of video.
+
+*Settings → nanoMuse Cloud* shows today's spend against the cap in ¥ and $, and
+the total so far. When the day's allowance is used up the app says so
+(`daily_cap`); switch to your own key under *Settings → Providers* to keep
+going right away, or wait for midnight. Other relays may set other rules
+(`DAILY_CAP_CNY`, `SIGNUP_OPEN`, `ALLOWED_IDENTIFIERS`; see
+[`cloud/README.md`](../cloud/README.md)).
 
 ## Running your own
 
@@ -80,9 +91,11 @@ docker compose up -d    # Caddy fetches the TLS certificate
 (SMTP for e-mail, Aliyun SMS for mainland phones), the admin endpoints for
 topping up, and the test suite.
 
-A relay for one person, or a few: `ALLOWED_IDENTIFIERS=139…, me@example.com`
-lets only those numbers and addresses sign in; everyone else gets
-`not_invited` before any code is sent. The trial deployments run this way.
+A relay for one person, or a few: `SIGNUP_OPEN=0` with
+`ALLOWED_IDENTIFIERS=139…, me@example.com` lets only those numbers and
+addresses sign in; everyone else gets `not_invited` before any code is sent.
+The trial deployments ran this way. With sign-up open, the same list names
+the members who have no daily cap; the admin page can add more.
 
 The relay is also the meeting point for the account's devices — the **hub** at
 `/v1/hub` and the web console at `/app`; see [hub.md](hub.md). `HUB_ENABLED`

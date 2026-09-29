@@ -2,7 +2,7 @@
 
     POST /v1/auth/code        {identifier}                      → 204
     POST /v1/auth/verify      {identifier, code, device}        → {api_key, base_url, account, tokens, models}
-    GET  /v1/me                                                 → account, tokens, models, recent usage
+    GET  /v1/me                                                 → account, tokens, spend (¥ today / cap / $), models, recent usage
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
     POST /v1/auth/delete                                        → 204 (the whole account, every key)
     GET  /v1/models                                             → OpenAI list, with modalities
@@ -20,9 +20,10 @@
     GET  /app/admin/                                            → the operator's page (static; asks for the admin token)
     POST /v1/admin/grant      X-Admin-Token  {account_id | identifier, tokens}
     POST /v1/admin/disable    X-Admin-Token  {account_id | identifier, disabled}
+    POST /v1/admin/unlimited  X-Admin-Token  {account_id | identifier, unlimited}  → a member: no daily cap
     POST /v1/admin/delete     X-Admin-Token  {account_id | identifier}
-    GET  /v1/admin/accounts   X-Admin-Token                     → with identifiers in clear
-    GET  /v1/admin/usage      X-Admin-Token  ?days=14           → charged tokens per day and kind
+    GET  /v1/admin/accounts   X-Admin-Token                     → with identifiers in clear, tokens and money
+    GET  /v1/admin/usage      X-Admin-Token  ?days=14           → charged tokens and yuan per day and kind
 
 The video paths mirror the provider's own so the app's VideoGen, which
 already speaks that API, only needs to point its host at the relay.
@@ -306,18 +307,19 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
     async def images_generations(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         body = await _json(request)
         spec = cloud.model_for(str(body.get("model", "")), "image")
-        cloud.check_budget(caller, minimum=spec.per_image)
+        size = _size_param(body.get("size"))
+        cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(size))
         prompt = str(body.get("prompt", "")).strip()
         if not prompt:
             raise CloudError(400, "bad_request", "prompt is required")
         n = int(body.get("n") or 1)
         if n != 1:
             raise CloudError(400, "bad_request", "nanoMuse Cloud draws one picture per request")
-        params = {"size": _size_param(body.get("size")), "watermark": False}
+        params = {"size": size, "watermark": False}
         if spec.upstream.startswith("qwen-image"):
             params["prompt_extend"] = False
         png = await _dashscope_image(spec.upstream, [{"text": prompt}], params)
-        charged = cloud.charge_image(caller, spec, 1, uuid.uuid4().hex[:16])
+        charged = cloud.charge_image(caller, spec, 1, uuid.uuid4().hex[:16], size=size)
         return JSONResponse(
             content={"created": int(time.time()), "data": [{"b64_json": base64.b64encode(png).decode()}], "nanomuse": {"charged": charged}},
             headers={"x-nanomuse-charged": str(charged)},
@@ -333,7 +335,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         image: UploadFile = File(...),
     ) -> Response:
         spec = cloud.model_for(model, "image")
-        cloud.check_budget(caller, minimum=spec.per_image)
+        cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(_size_param(size)))
         if n != 1:
             raise CloudError(400, "bad_request", "nanoMuse Cloud draws one picture per request")
         data = await image.read()
@@ -348,7 +350,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         params = {"size": _size_param(size), "prompt_extend": False, "watermark": False} if three_x else {"n": 1, "watermark": False}
         content = [{"image": f"data:{mime};base64," + base64.b64encode(data).decode()}, {"text": prompt}]
         png = await _dashscope_image(edit_model, content, params)
-        charged = cloud.charge_image(caller, spec, 1, uuid.uuid4().hex[:16])
+        charged = cloud.charge_image(caller, spec, 1, uuid.uuid4().hex[:16], size=_size_param(size))
         return JSONResponse(
             content={"created": int(time.time()), "data": [{"b64_json": base64.b64encode(png).decode()}], "nanomuse": {"charged": charged}},
             headers={"x-nanomuse-charged": str(charged)},
@@ -375,11 +377,22 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         media = r.headers.get("content-type", "application/json")
         return Response(status_code=r.status_code, content=r.content, media_type=media.split(";")[0])
 
+    def _clip_seconds(body: dict) -> float:
+        """The seconds the app asked for (`parameters.duration`), else the shortest
+        clip MiniMax makes; the provider bills per output second."""
+        params = body.get("parameters") if isinstance(body.get("parameters"), dict) else {}
+        try:
+            return float(params.get("duration") or 4)
+        except (TypeError, ValueError):
+            return 4.0
+
     @app.post("/api/v1" + VIDEO_PATH)
     async def video_synthesis(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         body = await _json(request)
         spec = cloud.model_for(str(body.get("model", "")), "video")
-        cloud.check_budget(caller, minimum=spec.per_clip)
+        # A probe (no input) costs nothing upstream and is not priced here either.
+        clip_cost = spec.video_cost_uy(_clip_seconds(body)) if body.get("input") else 0
+        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=clip_cost)
         body["model"] = spec.upstream
         headers = upstream_headers()
         headers["X-DashScope-Async"] = "enable"
@@ -396,7 +409,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
             except (ValueError, KeyError, TypeError):
                 task_id = ""
             if task_id:
-                cloud.db.insert_video_task(task_id, caller.account_id, spec.id)
+                cloud.db.insert_video_task(task_id, caller.account_id, spec.id, cost_uy=clip_cost)
                 log.info("video task %s for %s: %s", task_id[:12], caller.account_id[:8], spec.id)
         else:
             log.warning("dashscope video HTTP %s: %s", r.status_code, r.text[:300])
@@ -419,7 +432,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
             if status == "SUCCEEDED" and cloud.db.mark_video_charged(task_id):
                 spec = settings.model(task["model"])
                 if spec is not None:
-                    charged = cloud.charge_video(caller, spec, task_id[:16])
+                    charged = cloud.charge_video(caller, spec, task_id[:16], cost_uy=int(task["cost_uy"] or 0))
                     log.info("video task %s done for %s: charged %d", task_id[:12], caller.account_id[:8], charged)
         return _dashscope_reply(r)
 
@@ -428,7 +441,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         if request.query_params.get("action") != "getPolicy":
             raise CloudError(400, "bad_request", "action=getPolicy is the only upload call the relay makes")
         spec = cloud.model_for(request.query_params.get("model", ""), "video")
-        cloud.check_budget(caller, minimum=spec.per_clip)
+        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=spec.video_cost_uy(4))
         try:
             r = await http.get(
                 settings.dashscope_base.rstrip("/") + "/uploads",
@@ -487,19 +500,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
                 a["devices"] = [
                     {k: d[k] for k in ("id", "name", "kind", "os", "online", "last_seen")} for d in hub.devices(a["id"])
                 ]
-        return {
-            "accounts": accounts,
-            "settings": {
-                "unlimited": settings.unlimited,
-                "signup_tokens": settings.signup_tokens,
-                "daily_cap_tokens": settings.daily_cap_tokens,
-                "per_minute_requests": settings.per_minute_requests,
-                "allowed_identifiers": [s.strip() for s in settings.allowed_identifiers.split(",") if s.strip()],
-                "sender": settings.sender,
-                "models": [m.id for m in settings.models],
-                "version": __version__,
-            },
-        }
+        return {"accounts": accounts, "settings": {**cloud.admin_settings(), "version": __version__}}
 
     @app.get("/v1/admin/usage", dependencies=[Depends(admin_dep)])
     async def admin_usage(days: int = 14) -> dict:
@@ -520,6 +521,13 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         hub = getattr(app.state, "hub", None)
         if disabled and hub is not None:
             await hub.drop_account(account_id)
+        return Response(status_code=204)
+
+    @app.post("/v1/admin/unlimited", dependencies=[Depends(admin_dep)])
+    async def admin_unlimited(request: Request) -> Response:
+        body = await _json(request)
+        account_id = cloud.admin_resolve(str(body.get("account_id", "")), str(body.get("identifier", "")))
+        cloud.admin_unlimited(account_id, bool(body.get("unlimited", True)))
         return Response(status_code=204)
 
     @app.post("/v1/admin/delete", dependencies=[Depends(admin_dep)])

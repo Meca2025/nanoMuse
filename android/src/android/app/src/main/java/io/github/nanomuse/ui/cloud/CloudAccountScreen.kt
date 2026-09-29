@@ -136,7 +136,54 @@ fun CloudAccountScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (a != null && a.unlimited) {
+                        if (a != null && a.pricesInMoney) {
+                            // The relay prices requests in money: today's spend against the
+                            // daily allowance in both currencies, the total, the token line.
+                            Spacer(Modifier.height(16.dp))
+                            Row(Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = stringResource(R.string.nm_cloud_spent_today, money(a.spentTodayCny), money(a.toUsd(a.spentTodayCny))),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    text = if (a.spendCapCny > 0) {
+                                        stringResource(R.string.nm_cloud_spend_cap, money(a.spendCapCny), money(a.toUsd(a.spendCapCny)))
+                                    } else {
+                                        stringResource(R.string.nm_cloud_spend_member)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (a.spendCapCny > 0) {
+                                Spacer(Modifier.height(8.dp))
+                                LinearProgressIndicator(
+                                    progress = { a.spendFraction },
+                                    color = MuseTones.action,
+                                    trackColor = MuseTones.fill,
+                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.nm_cloud_spent_total, money(a.spentTotalCny), money(a.toUsd(a.spentTotalCny))),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (a.spendCapCny > 0 && a.resetsAt > 0) {
+                                Text(
+                                    text = stringResource(R.string.nm_cloud_resets_at, resetTime(a.resetsAt)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Text(
+                                text = stringResource(R.string.nm_cloud_tokens_line, numbers.format(a.used), numbers.format(a.usedToday)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else if (a != null && a.unlimited) {
                             // No ceiling on this relay: what was used, nothing to run out of.
                             Spacer(Modifier.height(16.dp))
                             Row(Modifier.fillMaxWidth()) {
@@ -203,6 +250,8 @@ fun CloudAccountScreen(
                     )
                 }
                 MuseGap()
+                CommunityNoticeCard()
+                MuseGap()
                 MuseCard {
                     Text(
                         text = stringResource(R.string.nm_cloud_how_it_works),
@@ -261,5 +310,39 @@ fun CloudAccountScreen(
                 TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
+    }
+}
+
+/** ¥ / $ amounts: whole numbers above a hundred, cents otherwise, fen-fractions for the tiny ones. */
+internal fun money(v: Double): String = when {
+    v >= 100 -> String.format(java.util.Locale.US, "%.0f", v)
+    v >= 1 -> String.format(java.util.Locale.US, "%.2f", v)
+    v > 0 && v < 0.01 -> String.format(java.util.Locale.US, "%.4f", v)
+    else -> String.format(java.util.Locale.US, "%.2f", v)
+}
+
+/** "00:00" or "tomorrow 00:00" in the phone's own zone, for the daily reset. */
+private fun resetTime(epochSeconds: Long): String {
+    val fmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+    return fmt.format(java.util.Date(epochSeconds * 1000))
+}
+
+/**
+ * The community notice: nanoMuse is free, open source and non-profit; this version is open for
+ * the community to try; who pays; what the relay keeps. Shown on the account page and, in short,
+ * on the sign-in and first-run screens.
+ */
+@Composable
+fun CommunityNoticeCard() {
+    MuseCard {
+        Column(Modifier.padding(16.dp)) {
+            Text(stringResource(R.string.nm_cloud_notice_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.nm_cloud_notice),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
     }
 }

@@ -33,7 +33,9 @@ CLOUD_ADMIN_TOKEN=<openssl rand -hex 32>
 UPSTREAM_BASE=…/compatible-mode/v1          # your Model Studio endpoint
 UPSTREAM_KEY=sk-…
 DASHSCOPE_BASE=…/api/v1
-ALLOWED_IDENTIFIERS=139xxxxxxxx, you@example.com   # only you, for now
+SIGNUP_OPEN=0                               # members only while you try it; 1 opens sign-up
+ALLOWED_IDENTIFIERS=139xxxxxxxx, you@example.com   # members: no daily cap
+DAILY_CAP_CNY=25                            # yuan a day for everyone else once sign-up is open
 CODE_SENDER=smtp                            # or aliyun / both / log
 SMTP_HOST=… SMTP_PORT=465 SMTP_USER=… SMTP_PASSWORD=… SMTP_FROM=nanoMuse <no-reply@example.com>
 HUB_ENABLED=true
@@ -48,8 +50,8 @@ curl https://cloud.example.com/healthz
 The web console is at `https://cloud.example.com/app/`, the operator's page at
 `/app/admin/` (asks for `CLOUD_ADMIN_TOKEN`: who signed in, usage, devices,
 grant / disable / delete). Data (SQLite) lives in `cloud/data/`; back it up
-together with `CLOUD_SECRET`. `SIGNUP_TOKENS=0` runs the relay with no ceiling
-for the invited few.
+together with `CLOUD_SECRET`. Tokens have no ceiling by default; the daily
+money cap (`DAILY_CAP_CNY`) is what limits an account, and members escape it.
 
 The production relay, `https://cloud.nanomuse.cn`, is this same code on the box
 that serves nanomuse.cn, behind the showcase's Caddy;
@@ -107,8 +109,9 @@ curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -X POST https://cloud.example.com/v1
 curl -H "Authorization: Bearer nm_…" https://cloud.example.com/v1/devices
 ```
 
-Letting someone else in: add them to `ALLOWED_IDENTIFIERS` and
-`docker compose up -d` again — or empty it to let anyone register.
+Letting someone else in: `SIGNUP_OPEN=1` and `docker compose up -d` again lets
+anyone register with the daily cap; *设为成员* on the admin page, or a line in
+`ALLOWED_IDENTIFIERS`, lifts the cap for one person.
 
 ## 6. Where it stands
 

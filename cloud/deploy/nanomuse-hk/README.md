@@ -27,9 +27,14 @@ cat > .env <<EOF
 PUBLIC_BASE=https://cloud.nanomuse.cn
 CLOUD_SECRET=$(openssl rand -hex 32)
 CLOUD_ADMIN_TOKEN=$(openssl rand -hex 32)
-# who may sign in (comma-separated phone numbers / e-mail addresses)
+# anyone may sign in; the members below (comma-separated phone numbers /
+# e-mail addresses) have no daily cap, everyone else ¥25 a day
+SIGNUP_OPEN=1
 ALLOWED_IDENTIFIERS=
-# no ceiling for the invited few; usage is metered and shown
+DAILY_CAP_CNY=25
+DAY_OFFSET_H=8
+USD_CNY=7.1
+# no token ceiling; usage is metered and shown
 SIGNUP_TOKENS=0
 DAILY_CAP_TOKENS=0
 PER_MINUTE_REQUESTS=30
@@ -80,9 +85,11 @@ ssh nanomuse-hk /opt/nanomuse/relay/backup.sh                     # a backup rig
 scp nanomuse-hk:/opt/nanomuse/backups/cloud-*.db.gz ~/backups/   # take a copy off the box monthly
 ```
 
-Inviting someone: add the number or address to `ALLOWED_IDENTIFIERS` in
-`.env`, `docker compose up -d`. Removing someone: take them out of the list
-and disable or delete the account on the admin page.
+Sign-up is open; everyone gets ¥25 a day. Giving someone more: press *设为成员*
+next to their account on the admin page (no restart), or add the number or
+address to `ALLOWED_IDENTIFIERS` in `.env` and `docker compose up -d`.
+Removing someone: disable or delete the account on the admin page. Closing
+the door again: `SIGNUP_OPEN=0` (members only) and `docker compose up -d`.
 
 Kill switch — the relay stops answering, nothing else on the box changes:
 

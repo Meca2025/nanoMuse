@@ -581,10 +581,19 @@
     <string name="nm_cloud_err_disabled">這個帳號已被停用。</string>
     <string name="nm_cloud_err_bad_key">伺服器已不認識這台手機，請重新登入。</string>
     <string name="nm_cloud_err_out_of_tokens">額度用完了。</string>
-    <string name="nm_cloud_err_daily_cap">今天的額度用完了，明天再來。</string>
+    <string name="nm_cloud_err_daily_cap">今天的免費額度用完了，北京時間零點重新計算。想現在繼續，可以在「設定 → 服務商」裡加自己的 key。</string>
     <string name="nm_cloud_err_rate_limited">請求太快了，稍等一下。</string>
     <string name="nm_cloud_err_unreachable">連不上 nanoMuse 雲，請檢查網路。</string>
     <string name="nm_cloud_err_generic">出了點問題。</string>
+    <!-- nanoMuse: 帳號頁的金額，以及社群說明 -->
+    <string name="nm_cloud_spent_today">今天 ¥%1$s · $%2$s</string>
+    <string name="nm_cloud_spend_cap">每天 ¥%1$s · $%2$s</string>
+    <string name="nm_cloud_spend_member">成員 · 每日不限</string>
+    <string name="nm_cloud_spent_total">累計 ¥%1$s · $%2$s，由開發者承擔</string>
+    <string name="nm_cloud_resets_at">每日額度在 %1$s 重新計算</string>
+    <string name="nm_cloud_tokens_line">累計 %1$s tokens · 今天 %2$s</string>
+    <string name="nm_cloud_notice_title">免費 · 開源社群 · 非營利</string>
+    <string name="nm_cloud_notice">nanoMuse 是一個純開源社群的非營利專案，目標是和社群一起做出更好的個人 agent，永遠不會收取任何費用。這一版向社群開放體驗：用信箱登入即可免費使用模型，現階段每個帳號每天約 ¥25（≈ $3.5）的額度，對話、圖片、影片模型一起算，模型費用由開發者自己承擔。nanoMuse 不會洩露你的隱私：中轉只保存信箱的雜湊和每次請求的 token 數，不保存聊天內容，帳號隨時可以刪除。想完全自己掌控，也可以改用自己的 API key。</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">來自你其他裝置的訊息</string>
     <string name="nm_hub_service_channel">與你的裝置保持連線</string>

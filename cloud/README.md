@@ -87,12 +87,16 @@ for the full list. The ones that matter:
 | `UPSTREAM_BASE` / `UPSTREAM_KEY` | Model Studio compatible-mode | where chat goes |
 | `DASHSCOPE_BASE` | Model Studio native | where pictures go (same key) |
 | `CHAT_DEFAULTS` | `{"enable_thinking": false}` | merged into chat requests for fields the app did not set |
-| `SIGNUP_TOKENS` | 1 000 000 | starter grant per account |
-| `DAILY_CAP_TOKENS` | 300 000 | per account per rolling 24 h |
-| `PER_MINUTE_REQUESTS` | 30 | per account |
+| `SIGNUP_OPEN` | `1` | anyone may sign in; `0` = members only (a private relay) |
+| `ALLOWED_IDENTIFIERS` | empty | comma-separated numbers / addresses of the **members**: no daily spend cap |
+| `DAILY_CAP_CNY` | 25 | yuan a day per non-member account, at the list prices below; 0 = no cap |
+| `DAY_OFFSET_H` | 8 | the day turns at midnight UTC+8 (Beijing) |
+| `USD_CNY` | 7.1 | for showing dollars next to yuan; display only |
+| `SIGNUP_TOKENS` | 0 (no ceiling) | starter token grant per account, the older allowance |
+| `DAILY_CAP_TOKENS` | 0 (off) | tokens per account per day |
+| `PER_MINUTE_REQUESTS` | 30 | per account — what stops a runaway loop |
 | `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` |
-| `CLOUD_MODELS` | four Qwen models | JSON list to replace the menu |
-| `ALLOWED_IDENTIFIERS` | empty (anyone) | comma-separated numbers / addresses that may sign in — a private relay |
+| `CLOUD_MODELS` | four Qwen / MiniMax models | JSON list to replace the menu, prices included |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
 
@@ -105,10 +109,26 @@ endpoints assume DashScope. Video is relayed under DashScope's own paths
 `/api/v1/uploads`), so the app's video code only needs to point its host at
 the relay; a task can be polled by the account that created it only.
 
-`SIGNUP_TOKENS=0` runs the relay without a ceiling: usage is metered and shown,
-nothing is refused for lack of tokens (`/v1/me` says `"unlimited": true` and the
-apps show 「不限」). `DAILY_CAP_TOKENS=0` and `PER_MINUTE_REQUESTS=0` switch
-those two checks off in the same way.
+### Money
+
+Every request is priced in yuan at the provider's Beijing list prices (set per
+model: `price_in` / `price_out` per million tokens, `price_image` and
+`price_image_2k` per picture, `price_second` per second of video) and stored
+in the ledger next to the token count. A non-member account may cost the
+operator `DAILY_CAP_CNY` a day (¥25 by default); a picture or a clip that would
+go over the cap is refused before it is made, a chat is refused once the day's
+spend has reached the cap. Members — the identifiers in `ALLOWED_IDENTIFIERS`,
+or any account the operator marks on the admin page — have no cap. `/v1/me`
+carries a `spend` block (`today`, `total`, `daily_cap`, `unlimited`, `usd_cny`,
+`today_usd`, `daily_cap_usd`, `resets_at`) and each model in `/v1/models`
+carries its `nanomuse.price_cny`, so the apps show what a day cost in both
+currencies. The day turns at midnight in `DAY_OFFSET_H`; the admin page
+shows spend per account and per day in ¥ and $.
+
+`SIGNUP_TOKENS=0` (the default) runs the relay without a token ceiling: usage
+is metered and shown, nothing is refused for lack of tokens (`/v1/me` says
+`"unlimited": true` and the apps show 「不限」). `DAILY_CAP_TOKENS=0` and
+`PER_MINUTE_REQUESTS=0` switch those two checks off in the same way.
 
 ### Operator's page
 

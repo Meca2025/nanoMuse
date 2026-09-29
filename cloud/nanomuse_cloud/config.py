@@ -37,6 +37,16 @@ class ModelSpec:
     # second upstream, so this is set for the short clips the app makes).
     per_clip: int = 0
     recommended: bool = False
+    # What the provider bills the operator, in yuan — the list price of the
+    # Beijing region unless CLOUD_MODELS says otherwise. Chat: per million
+    # tokens in and out (one yuan per million tokens is one micro-yuan per
+    # token, which is how the ledger stores money). Images: per picture, the
+    # 2k tier for anything wider than 1k. Video: per output second.
+    price_in: float = 0.0
+    price_out: float = 0.0
+    price_image: float = 0.0
+    price_image_2k: float = 0.0
+    price_second: float = 0.0
 
     def to_public(self) -> dict:
         return {
@@ -55,30 +65,67 @@ class ModelSpec:
                 "out_mult": self.out_mult,
                 "per_image": self.per_image,
                 "per_clip": self.per_clip,
+                "price_cny": {
+                    "per_m_input": self.price_in,
+                    "per_m_output": self.price_out,
+                    "per_image": self.price_image,
+                    "per_image_2k": self.price_image_2k,
+                    "per_second": self.price_second,
+                },
             },
         }
+
+    # -- what one request costs, in micro-yuan (1e-6 CNY; integers in the ledger) --
+
+    def chat_cost_uy(self, prompt_tokens: int, completion_tokens: int) -> int:
+        return round(max(0, prompt_tokens) * self.price_in + max(0, completion_tokens) * self.price_out)
+
+    def image_cost_uy(self, size: str | None = None) -> int:
+        price = self.price_image
+        if self.price_image_2k and size and _max_side(size) > 1400:
+            price = self.price_image_2k
+        return round(price * 1_000_000)
+
+    def video_cost_uy(self, seconds: float) -> int:
+        return round(max(0.0, seconds) * self.price_second * 1_000_000)
+
+
+def _max_side(size: str) -> int:
+    """The longer side of "1024x1024" / "1664*928"; 0 when unreadable."""
+    try:
+        parts = [int(p) for p in size.lower().replace("*", "x").split("x")[:2]]
+    except ValueError:
+        return 0
+    return max(parts) if parts else 0
 
 
 # The menu a fresh account gets. Checked against the provider's own /models
 # list: qwen3.8-27b takes pictures as input (so no separate vision model),
 # qwen-image-3.0-pro draws, MiniMax-H3 makes clips through the video API
-# (which the provider does not list; the app probes it).
+# (which the provider does not list; the app probes it). Prices are the
+# provider's Beijing list prices (help.aliyun.com/en/model-studio/model-pricing,
+# 2026-09): 27B ¥3 / ¥12 per million tokens, Flash ¥0.8 / ¥2.7, Image Pro
+# ¥0.25 a picture (¥0.5 at 2k), H3 video USD 0.07 a second at 768P ≈ ¥0.5.
 DEFAULT_MODELS: tuple[ModelSpec, ...] = (
     ModelSpec(
         id="qwen3.8-27b", name="Qwen 3.8 27B", upstream="qwen3.8-27b",
         input_modalities=("text", "image"), recommended=True,
+        price_in=3.0, price_out=12.0,
     ),
     ModelSpec(
         id="qwen3.8-flash", name="Qwen 3.8 Flash", upstream="qwen3.8-flash",
         input_modalities=("text", "image"), in_mult=0.3, out_mult=0.3,
+        price_in=0.8, price_out=2.7,
     ),
     ModelSpec(
         id="qwen-image-3.0-pro", name="Qwen Image 3.0 Pro", upstream="qwen-image-3.0-pro",
         kind="image", output_modalities=("image",), per_image=30_000,
+        price_image=0.25, price_image_2k=0.5,
     ),
     ModelSpec(
         id="MiniMax/MiniMax-H3", name="MiniMax H3 (video)", upstream="MiniMax/MiniMax-H3",
         kind="video", input_modalities=("text", "image"), output_modalities=("video",), per_clip=200_000,
+        price_second=0.5,
     ),
 )
 
@@ -129,12 +176,12 @@ class Settings:
     # can still ask for it explicitly.
     chat_defaults: dict = field(default_factory=lambda: json.loads(_env("CHAT_DEFAULTS", '{"enable_thinking": false}')))
 
-    # The grant. SIGNUP_TOKENS=0 means no ceiling at all (a private relay for a
-    # few people, paid for by its operator): usage is still metered and shown,
-    # nothing is refused for lack of tokens. DAILY_CAP_TOKENS=0 and
-    # PER_MINUTE_REQUESTS=0 likewise switch those two checks off.
-    signup_tokens: int = field(default_factory=lambda: _int("SIGNUP_TOKENS", 1_000_000))
-    daily_cap_tokens: int = field(default_factory=lambda: _int("DAILY_CAP_TOKENS", 300_000))
+    # The token grant, the older allowance. SIGNUP_TOKENS=0 (the default since
+    # the money cap below took over) means no token ceiling: usage is still
+    # metered and shown, nothing is refused for lack of tokens. DAILY_CAP_TOKENS=0
+    # and PER_MINUTE_REQUESTS=0 likewise switch those two checks off.
+    signup_tokens: int = field(default_factory=lambda: _int("SIGNUP_TOKENS", 0))
+    daily_cap_tokens: int = field(default_factory=lambda: _int("DAILY_CAP_TOKENS", 0))
     per_minute_requests: int = field(default_factory=lambda: _int("PER_MINUTE_REQUESTS", 30))
     max_request_bytes: int = field(default_factory=lambda: _int("MAX_REQUEST_BYTES", 6 * 1024 * 1024))
 
@@ -144,11 +191,23 @@ class Settings:
     hub_enabled: bool = field(default_factory=lambda: _env("HUB_ENABLED", "1") not in ("0", "false", "no"))
     hub_frame_limit: int = field(default_factory=lambda: _int("HUB_FRAME_LIMIT", 16 * 1024 * 1024))
 
+    # Money. Everyone who signs in may spend DAILY_CAP_CNY yuan of the
+    # operator's provider bill a day (0 = no cap), counted at the list prices
+    # above across chat, pictures and clips; the members below are exempt.
+    # The day turns at midnight in the DAY_OFFSET_H time zone (8 = Beijing).
+    # USD_CNY is for display only: the apps show both currencies.
+    daily_cap_cny: float = field(default_factory=lambda: float(_env("DAILY_CAP_CNY", "25")))
+    day_offset_h: int = field(default_factory=lambda: _int("DAY_OFFSET_H", 8))
+    usd_cny: float = field(default_factory=lambda: float(_env("USD_CNY", "7.1")))
+
     code_ttl_s: int = field(default_factory=lambda: _int("CODE_TTL_S", 600))
     code_per_identifier_10m: int = field(default_factory=lambda: _int("CODE_PER_IDENTIFIER_10M", 3))
-    # A private relay: only these phone numbers / e-mail addresses may sign in (comma-separated;
-    # empty means anyone). Normalised like the identifiers themselves, so "139 0000 1111" works.
+    # Members: phone numbers / e-mail addresses (comma-separated) that have no
+    # daily cap — the operator and friends. Normalised like the identifiers
+    # themselves, so "139 0000 1111" works. With SIGNUP_OPEN=0 the relay is
+    # private and only members may sign in at all (the pre-release behaviour).
     allowed_identifiers: str = field(default_factory=lambda: _env("ALLOWED_IDENTIFIERS"))
+    signup_open: bool = field(default_factory=lambda: _env("SIGNUP_OPEN", "1") not in ("0", "false", "no"))
     code_per_ip_hour: int = field(default_factory=lambda: _int("CODE_PER_IP_HOUR", 10))
     code_max_attempts: int = field(default_factory=lambda: _int("CODE_MAX_ATTEMPTS", 5))
     # One phone/e-mail = one grant; a second device signing in with the same
@@ -176,6 +235,17 @@ class Settings:
     @property
     def unlimited(self) -> bool:
         return self.signup_tokens <= 0
+
+    def day_start(self, t: int) -> int:
+        """The start (as a UNIX time) of the local day `t` falls in."""
+        off = self.day_offset_h * 3600
+        return t - ((t + off) % 86400)
+
+    def uy_to_cny(self, uy: int) -> float:
+        return round(uy / 1_000_000, 4)
+
+    def cny_to_usd(self, cny: float) -> float:
+        return round(cny / self.usd_cny, 4) if self.usd_cny > 0 else 0.0
 
     @property
     def dev_mode(self) -> bool:

@@ -588,10 +588,19 @@
     <string name="nm_cloud_err_disabled">This account has been disabled.</string>
     <string name="nm_cloud_err_bad_key">The relay no longer recognises this phone. Sign in again.</string>
     <string name="nm_cloud_err_out_of_tokens">The allowance is used up.</string>
-    <string name="nm_cloud_err_daily_cap">Today\'s allowance is used up; more tomorrow.</string>
+    <string name="nm_cloud_err_daily_cap">Today\'s free allowance is used up; it starts over at midnight (Beijing time). Add your own key under Settings → Providers to keep going now.</string>
     <string name="nm_cloud_err_rate_limited">Too many requests at once. A moment, please.</string>
     <string name="nm_cloud_err_unreachable">Could not reach nanoMuse Cloud. Check the connection.</string>
     <string name="nm_cloud_err_generic">Something went wrong.</string>
+    <!-- nanoMuse: money on the account page, and the community notice -->
+    <string name="nm_cloud_spent_today">Today ¥%1$s · $%2$s</string>
+    <string name="nm_cloud_spend_cap">of ¥%1$s · $%2$s a day</string>
+    <string name="nm_cloud_spend_member">Member · no daily cap</string>
+    <string name="nm_cloud_spent_total">¥%1$s · $%2$s in all, paid by the developer</string>
+    <string name="nm_cloud_resets_at">The daily allowance starts over at %1$s</string>
+    <string name="nm_cloud_tokens_line">%1$s tokens in all · %2$s today</string>
+    <string name="nm_cloud_notice_title">Free, community, non-profit</string>
+    <string name="nm_cloud_notice">nanoMuse is an open-source community project and will never charge for anything. This version is open for the community to try: signing in with an e-mail address gives free model access — about ¥25 (≈ $3.5) a day per account, across chat, pictures and video — and the developer pays the model bill. nanoMuse does not sell or share your data: the relay keeps a hash of your address and per-request token counts, never your messages, and you can delete the account at any time. Prefer to keep everything in your own hands? Add your own API key instead.</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">Messages from your devices</string>
     <string name="nm_hub_service_channel">Connected to your devices</string>

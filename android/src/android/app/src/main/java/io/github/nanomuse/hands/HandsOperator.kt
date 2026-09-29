@@ -51,6 +51,7 @@ class HandsOperator(private val context: Context) {
     data class Options(
         val task: String,
         val appHint: String? = null,
+        /** A cap on steps for callers that want one; 0 (the default) means the run goes on until the task is done, the person stops it, or the time limit. */
         val maxSteps: Int = DEFAULT_MAX_STEPS,
         val sessionId: String? = null,
         val agentName: String = "nanoMuse",
@@ -130,7 +131,7 @@ class HandsOperator(private val context: Context) {
                 log += "open $hint → $lastResult"
             }
 
-            while (steps < opts.maxSteps) {
+            while (opts.maxSteps <= 0 || steps < opts.maxSteps) {
                 if (stop.get()) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
                 if (System.currentTimeMillis() - started > MAX_RUN_MS) {
                     return finish(Outcome.Stopped("the run hit its time limit"), steps, runId, lastScreen, traceDir, log, model.label)
@@ -532,15 +533,15 @@ class HandsOperator(private val context: Context) {
 
     companion object {
         private const val TAG = "Hands"
-        const val DEFAULT_MAX_STEPS = 25
-        const val MAX_STEPS = 60
+        /** No step cap: a task takes as many steps as it takes (the time limit and the Stop button remain). */
+        const val DEFAULT_MAX_STEPS = 0
         private const val MAX_APPS_IN_PROMPT = 120
         private const val SHOT_WIDTH = 720
         private const val JPEG_QUALITY = 78
         private const val HISTORY_IMAGES = 1
         private const val MODEL_TIMEOUT_MS = 90_000L
         private const val TAKE_OVER_TIMEOUT_MS = 5 * 60_000L
-        private const val MAX_RUN_MS = 12 * 60_000L
+        private const val MAX_RUN_MS = 30 * 60_000L
         private const val TAP_SETTLE_MS = 900L
         private const val SWIPE_SETTLE_MS = 1100L
         private const val OPEN_APP_SETTLE_MS = 1800L

@@ -193,9 +193,13 @@ fun SettingsScreen(
                 io.github.nanomuse.ui.muse.MuseRow(
                     title = stringResource(R.string.nm_cloud_title),
                     icon = Icons.Outlined.CloudQueue,
-                    value = if (cloudAccount != null && io.github.nanomuse.cloud.NanoMuseCloud.isSignedIn(context))
-                        stringResource(R.string.nm_cloud_row_remaining, java.text.NumberFormat.getIntegerInstance().format(cloudAccount.remaining))
-                    else stringResource(R.string.nm_cloud_row_sign_in),
+                    value = when {
+                        cloudAccount == null || !io.github.nanomuse.cloud.NanoMuseCloud.isSignedIn(context) -> stringResource(R.string.nm_cloud_row_sign_in)
+                        // Money relays: today's spend; the hint carries who is signed in.
+                        cloudAccount.pricesInMoney -> cloudAccount.hint + " · ¥" + io.github.nanomuse.ui.cloud.money(cloudAccount.spentTodayCny)
+                        cloudAccount.unlimited -> cloudAccount.hint
+                        else -> stringResource(R.string.nm_cloud_row_remaining, java.text.NumberFormat.getIntegerInstance().format(cloudAccount.remaining))
+                    },
                     onClick = onCloudClick,
                 )
                 io.github.nanomuse.ui.muse.MuseRowDivider()

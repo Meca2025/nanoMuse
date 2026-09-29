@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     granted       INTEGER NOT NULL DEFAULT 0,
     used          INTEGER NOT NULL DEFAULT 0,
     disabled      INTEGER NOT NULL DEFAULT 0,
-    identifier_enc TEXT NOT NULL DEFAULT ''  -- AES-GCM of the phone / address, base64
+    identifier_enc TEXT NOT NULL DEFAULT '',  -- AES-GCM of the phone / address, base64
+    unlimited     INTEGER NOT NULL DEFAULT 0   -- a member: no daily money cap (set by the operator)
 );
 CREATE TABLE IF NOT EXISTS api_keys (
     key_hash      TEXT PRIMARY KEY,
@@ -60,7 +61,8 @@ CREATE TABLE IF NOT EXISTS ledger (
     prompt_tokens INTEGER NOT NULL DEFAULT 0,
     completion_tokens INTEGER NOT NULL DEFAULT 0,
     charged       INTEGER NOT NULL,       -- positive = spent, negative = granted
-    request_id    TEXT NOT NULL DEFAULT ''
+    request_id    TEXT NOT NULL DEFAULT '',
+    cost_uy       INTEGER NOT NULL DEFAULT 0  -- what the provider bills for it, in micro-yuan
 );
 CREATE INDEX IF NOT EXISTS ledger_account_ts ON ledger(account_id, ts);
 CREATE TABLE IF NOT EXISTS devices (
@@ -80,7 +82,8 @@ CREATE TABLE IF NOT EXISTS video_tasks (
     account_id    TEXT NOT NULL REFERENCES accounts(id),
     model         TEXT NOT NULL DEFAULT '',
     created_at    INTEGER NOT NULL,
-    charged       INTEGER NOT NULL DEFAULT 0  -- set when the task was first seen SUCCEEDED
+    charged       INTEGER NOT NULL DEFAULT 0,  -- set when the task was first seen SUCCEEDED
+    cost_uy       INTEGER NOT NULL DEFAULT 0   -- priced at submission from the seconds asked for
 );
 """
 
@@ -110,8 +113,14 @@ class Database:
 
         if "identifier_enc" not in cols("accounts"):
             self._conn.execute("ALTER TABLE accounts ADD COLUMN identifier_enc TEXT NOT NULL DEFAULT ''")
+        if "unlimited" not in cols("accounts"):
+            self._conn.execute("ALTER TABLE accounts ADD COLUMN unlimited INTEGER NOT NULL DEFAULT 0")
         if "charged" not in cols("video_tasks"):
             self._conn.execute("ALTER TABLE video_tasks ADD COLUMN charged INTEGER NOT NULL DEFAULT 0")
+        if "cost_uy" not in cols("video_tasks"):
+            self._conn.execute("ALTER TABLE video_tasks ADD COLUMN cost_uy INTEGER NOT NULL DEFAULT 0")
+        if "cost_uy" not in cols("ledger"):
+            self._conn.execute("ALTER TABLE ledger ADD COLUMN cost_uy INTEGER NOT NULL DEFAULT 0")
 
     @contextmanager
     def tx(self):
@@ -228,6 +237,10 @@ class Database:
         with self.tx() as c:
             c.execute("UPDATE accounts SET disabled=? WHERE id=?", (1 if disabled else 0, account_id))
 
+    def set_unlimited(self, account_id: str, unlimited: bool) -> None:
+        with self.tx() as c:
+            c.execute("UPDATE accounts SET unlimited=? WHERE id=?", (1 if unlimited else 0, account_id))
+
     def list_accounts(self, limit: int = 200) -> list[sqlite3.Row]:
         with self._lock:
             return self._conn.execute(
@@ -235,29 +248,36 @@ class Database:
             ).fetchall()
 
     def admin_accounts(self, day_start: int, limit: int = 500) -> list[sqlite3.Row]:
-        """The operator's view: each account with today's spend, when it was last
-        seen, how many keys (sign-ins) are live and how many devices it remembers."""
+        """The operator's view: each account with today's spend (tokens and
+        money), when it was last seen, how many keys (sign-ins) are live and
+        how many devices it remembers."""
         with self._lock:
             return self._conn.execute(
                 """SELECT a.*,
                           (SELECT COALESCE(SUM(l.charged),0) FROM ledger l
                              WHERE l.account_id=a.id AND l.ts>=? AND l.charged>0) AS used_today,
+                          (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l
+                             WHERE l.account_id=a.id AND l.ts>=? AND l.cost_uy>0) AS spent_today_uy,
+                          (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l
+                             WHERE l.account_id=a.id AND l.cost_uy>0) AS spent_uy,
                           (SELECT COUNT(*) FROM ledger l
                              WHERE l.account_id=a.id AND l.kind IN ('chat','image','video')) AS requests,
                           (SELECT MAX(k.last_used_at) FROM api_keys k WHERE k.account_id=a.id) AS last_active_at,
                           (SELECT COUNT(*) FROM api_keys k WHERE k.account_id=a.id AND k.revoked_at IS NULL) AS live_keys,
                           (SELECT COUNT(*) FROM devices d WHERE d.account_id=a.id) AS device_count
                    FROM accounts a ORDER BY a.created_at DESC LIMIT ?""",
-                (day_start, limit),
+                (day_start, day_start, limit),
             ).fetchall()
 
-    def usage_by_day(self, since: int) -> list[sqlite3.Row]:
-        """Charged tokens per UTC day and kind, for the admin page's totals."""
+    def usage_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        """Charged tokens and money per local day and kind, for the admin page's
+        totals. `day` is the UNIX time the local day starts."""
         with self._lock:
             return self._conn.execute(
-                """SELECT (ts - ts % 86400) AS day, kind, COUNT(*) AS requests, SUM(charged) AS charged
+                """SELECT ((ts + ?) - (ts + ?) % 86400 - ?) AS day, kind, COUNT(*) AS requests,
+                          SUM(charged) AS charged, SUM(cost_uy) AS cost_uy
                    FROM ledger WHERE ts>=? AND charged>0 GROUP BY day, kind ORDER BY day DESC""",
-                (since,),
+                (day_offset_s, day_offset_s, day_offset_s, since),
             ).fetchall()
 
     # -- keys ----------------------------------------------------------------
@@ -272,7 +292,8 @@ class Database:
     def key(self, key_hash: str) -> sqlite3.Row | None:
         with self._lock:
             return self._conn.execute(
-                "SELECT k.*, a.disabled AS account_disabled, a.granted, a.used, a.channel, a.hint, a.created_at AS account_created_at "
+                "SELECT k.*, a.disabled AS account_disabled, a.granted, a.used, a.channel, a.hint, a.created_at AS account_created_at, "
+                "a.id_hash, a.unlimited AS account_unlimited "
                 "FROM api_keys k JOIN accounts a ON a.id=k.account_id WHERE k.key_hash=?",
                 (key_hash,),
             ).fetchone()
@@ -293,19 +314,33 @@ class Database:
 
     # -- usage -----------------------------------------------------------------
 
-    def charge(self, account_id: str, kind: str, model: str, prompt_tokens: int, completion_tokens: int, charged: int, request_id: str) -> None:
+    def charge(
+        self, account_id: str, kind: str, model: str, prompt_tokens: int, completion_tokens: int,
+        charged: int, request_id: str, cost_uy: int = 0,
+    ) -> None:
         charged = max(0, int(charged))
+        cost_uy = max(0, int(cost_uy))
         with self.tx() as c:
             c.execute("UPDATE accounts SET used=used+? WHERE id=?", (charged, account_id))
             c.execute(
-                "INSERT INTO ledger(account_id, ts, kind, model, prompt_tokens, completion_tokens, charged, request_id) VALUES (?,?,?,?,?,?,?,?)",
-                (account_id, now(), kind, model, prompt_tokens, completion_tokens, charged, request_id),
+                "INSERT INTO ledger(account_id, ts, kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (account_id, now(), kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy),
             )
 
     def used_since(self, account_id: str, since: int) -> int:
         with self._lock:
             r = self._conn.execute(
                 "SELECT COALESCE(SUM(charged),0) FROM ledger WHERE account_id=? AND ts>=? AND charged>0",
+                (account_id, since),
+            ).fetchone()
+        return int(r[0])
+
+    def spent_since(self, account_id: str, since: int) -> int:
+        """Money (micro-yuan) the account cost the operator since `since`."""
+        with self._lock:
+            r = self._conn.execute(
+                "SELECT COALESCE(SUM(cost_uy),0) FROM ledger WHERE account_id=? AND ts>=? AND cost_uy>0",
                 (account_id, since),
             ).fetchone()
         return int(r[0])
@@ -321,7 +356,7 @@ class Database:
     def recent_ledger(self, account_id: str, limit: int = 30) -> list[sqlite3.Row]:
         with self._lock:
             return self._conn.execute(
-                "SELECT ts, kind, model, prompt_tokens, completion_tokens, charged FROM ledger WHERE account_id=? ORDER BY id DESC LIMIT ?",
+                "SELECT ts, kind, model, prompt_tokens, completion_tokens, charged, cost_uy FROM ledger WHERE account_id=? ORDER BY id DESC LIMIT ?",
                 (account_id, limit),
             ).fetchall()
 
@@ -356,12 +391,12 @@ class Database:
 
     # -- video tasks (the provider's async API, relayed) --------------------------
 
-    def insert_video_task(self, task_id: str, account_id: str, model: str) -> None:
+    def insert_video_task(self, task_id: str, account_id: str, model: str, cost_uy: int = 0) -> None:
         t = now()
         with self.tx() as c:
             c.execute(
-                "INSERT OR REPLACE INTO video_tasks(task_id, account_id, model, created_at) VALUES (?,?,?,?)",
-                (task_id, account_id, model, t),
+                "INSERT OR REPLACE INTO video_tasks(task_id, account_id, model, created_at, cost_uy) VALUES (?,?,?,?,?)",
+                (task_id, account_id, model, t, max(0, int(cost_uy))),
             )
             c.execute("DELETE FROM video_tasks WHERE created_at < ?", (t - 3 * 86400,))
 

@@ -316,18 +316,24 @@ async def test_unconfigured_upstream_answers_503(stack):
     assert (await client.get("/healthz")).json()["ok"] is True
 
 
-async def test_private_relay_only_lets_listed_identifiers_in():
+def make_stack(**overrides):
     up = fake_upstream()
-    settings = Settings(
+    kwargs = dict(
         database=":memory:", secret="test-secret", admin_token="admin",
         upstream_base="http://upstream/compat/v1", upstream_key="sk-upstream",
         dashscope_base="http://upstream/ds/api/v1", public_base="http://cloud.test",
-        allowed_identifiers="139 0000 1111, Me@Example.com",
     )
+    kwargs.update(overrides)
+    settings = Settings(**kwargs)
     sender = LogSender()
     cloud = Cloud(settings, Database(":memory:"), sender)
     app = create_app(settings, cloud, upstream_transport=httpx.ASGITransport(app=up))
     client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://cloud.test")
+    return app, client, sender, up, cloud
+
+
+async def test_private_relay_only_lets_listed_identifiers_in():
+    app, client, sender, up, cloud = make_stack(allowed_identifiers="139 0000 1111, Me@Example.com", signup_open=False)
     r = await client.post("/v1/auth/code", json={"identifier": "13800138000"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "not_invited"
     assert sender.sent == []
@@ -336,6 +342,98 @@ async def test_private_relay_only_lets_listed_identifiers_in():
         assert r.status_code == 204, (ok, r.text)
     data = await sign_up(client, sender, identifier="me@example.com", device="desk")
     assert data["account"]["hint"] == "m***@example.com"
+    assert data["account"]["member"] is True and data["spend"]["unlimited"] is True
+
+
+async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
+    # The released relay: anyone may sign in; the listed people have no cap,
+    # the rest may spend ¥25 a day at the provider's list prices.
+    app, client, sender, up, cloud = make_stack(
+        allowed_identifiers="Me@Example.com", signup_tokens=0, daily_cap_tokens=0, per_minute_requests=0,
+        daily_cap_cny=0.002, usd_cny=7.0,
+    )
+    admin = {"X-Admin-Token": "admin"}
+    guest = await sign_up(client, sender, identifier="13800138000", device="pixel")
+    assert guest["account"]["member"] is False
+    assert guest["spend"] == {
+        "currency": "CNY", "today": 0, "total": 0, "daily_cap": 0.002, "unlimited": False, "usd_cny": 7.0,
+        "today_usd": 0, "daily_cap_usd": 0.0003, "day_offset_h": 8, "resets_at": guest["spend"]["resets_at"],
+    }
+    # Prices travel with the model list, so the apps can show them.
+    price = next(m for m in guest["models"] if m["id"] == "qwen3.8-27b")["nanomuse"]["price_cny"]
+    assert price["per_m_input"] == 3.0 and price["per_m_output"] == 12.0
+
+    headers = {"Authorization": f"Bearer {guest['api_key']}"}
+    # 100 prompt + 50 completion tokens at ¥3 / ¥12 per million = ¥0.0009.
+    r = await client.post("/v1/chat/completions", headers=headers,
+                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+    assert r.status_code == 200
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["spend"]["today"] == 0.0009 and me["spend"]["total"] == 0.0009
+    assert me["recent"][0]["cost_cny"] == 0.0009
+    # Chats are priced after the fact, so one starts as long as today's spend is
+    # under the cap: the second and third go through (¥0.0027), the fourth does not.
+    for _ in range(2):
+        assert (await client.post("/v1/chat/completions", headers=headers,
+                                  json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})).status_code == 200
+    r = await client.post("/v1/chat/completions", headers=headers,
+                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+    assert r.status_code == 429 and r.json()["error"]["code"] == "daily_cap"
+    assert "¥0.002" in r.json()["error"]["message"]
+    # A picture that would go over the cap is refused before it is drawn.
+    r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0-pro", "prompt": "a dragon"})
+    assert r.status_code == 429 and not any(k == "image" for k, _, _ in up.state.requests)
+
+    # The listed person has no cap and sees no cap.
+    member = await sign_up(client, sender, identifier="me@example.com", device="desk")
+    assert member["account"]["member"] is True and member["spend"]["daily_cap"] == 0 and member["spend"]["unlimited"] is True
+    mh = {"Authorization": f"Bearer {member['api_key']}"}
+    for _ in range(4):
+        assert (await client.post("/v1/chat/completions", headers=mh,
+                                  json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})).status_code == 200
+    r = await client.post("/v1/images/generations", headers=mh, json={"model": "qwen-image-3.0-pro", "prompt": "a dragon"})
+    assert r.status_code == 200
+    me = (await client.get("/v1/me", headers=mh)).json()
+    assert me["spend"]["today"] == round(4 * 0.0009 + 0.25, 4)
+
+    # The operator's view carries money next to tokens, and can make a guest a member.
+    listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
+    s = listing["settings"]
+    assert s["signup_open"] is True and s["daily_cap_cny"] == 0.002 and s["usd_cny"] == 7.0
+    assert s["prices"]["qwen-image-3.0-pro"]["per_image"] == 0.25
+    by_id = {a["identifier"]: a for a in listing["accounts"]}
+    g, m = by_id["+8613800138000"], by_id["me@example.com"]
+    assert g["member"] is False and g["spent_today_cny"] == 0.0027 and g["spent_cny"] == 0.0027
+    assert m["member"] is True and m["listed"] is True and m["unlimited"] is False
+    usage = (await client.get("/v1/admin/usage", headers=admin)).json()["days"]
+    assert {(u["kind"], u["cost_cny"]) for u in usage} == {("chat", round(7 * 0.0009, 4)), ("image", 0.25)}
+
+    r = await client.post("/v1/admin/unlimited", headers=admin, json={"identifier": "138 0013 8000"})
+    assert r.status_code == 204
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["account"]["member"] is True and me["spend"]["unlimited"] is True
+    assert (await client.post("/v1/chat/completions", headers=headers,
+                              json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})).status_code == 200
+    listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
+    g = next(a for a in listing["accounts"] if a["identifier"] == "+8613800138000")
+    assert g["member"] is True and g["unlimited"] is True and g["listed"] is False
+
+
+def test_prices_and_day_boundary():
+    s = Settings(database=":memory:", day_offset_h=8, usd_cny=7.1)
+    m = s.model("qwen3.8-27b")
+    assert m.chat_cost_uy(1_000_000, 0) == 3_000_000 and m.chat_cost_uy(0, 1_000_000) == 12_000_000
+    assert m.chat_cost_uy(333, 21) == round(333 * 3 + 21 * 12)
+    img = s.model("qwen-image-3.0-pro")
+    assert img.image_cost_uy("1024*1024") == 250_000 and img.image_cost_uy("2048x2048") == 500_000 and img.image_cost_uy(None) == 250_000
+    vid = s.model("MiniMax/MiniMax-H3")
+    assert vid.video_cost_uy(4) == 2_000_000 and vid.video_cost_uy(0) == 0
+    # 2026-09-29 02:00 UTC is still the 29th in Beijing; its day began at 16:00 UTC on the 28th.
+    t = 1790647200  # 2026-09-29T02:00:00Z
+    assert s.day_start(t) == t - 10 * 3600
+    assert s.day_start(t) == s.day_start(t + 13 * 3600)  # 15:00 UTC = 23:00 Beijing, same day
+    assert s.day_start(t + 14 * 3600 + 1) == s.day_start(t) + 86400  # 16:00:01 UTC = the 30th
+    assert s.cny_to_usd(25) == round(25 / 7.1, 4) and s.uy_to_cny(1234) == 0.0012
 
 
 async def test_video_is_relayed_under_dashscope_paths(stack):

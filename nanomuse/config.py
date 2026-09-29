@@ -282,8 +282,9 @@ class GUISettings(BaseModel):
     model: str = ""
     base_url: str | None = None
     api_key: str = ""
-    # Steps one ``phone_task`` may take on the screen before it has to report back.
-    max_steps: int = 30
+    # Steps one ``phone_task`` may take on the screen before it has to report back;
+    # 0 (the default) is no cap — the task ends when it is done, asks, or is stopped.
+    max_steps: int = 0
     # How long to wait for the phone to answer one request (screen or action).
     device_timeout_s: float = 20.0
     # Words on a screen (or a target element) that make an action *sensitive*: paying,

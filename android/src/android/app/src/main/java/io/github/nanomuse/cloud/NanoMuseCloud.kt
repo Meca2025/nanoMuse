@@ -5,6 +5,7 @@ import android.os.Build
 import com.openminis.app.BuildConfig
 import com.openminis.app.MinisApp
 import com.openminis.app.R
+import com.openminis.app.data.model.LLMModel
 import com.openminis.app.data.model.ModelGroup
 import com.openminis.app.data.model.ProviderCredential
 import com.openminis.app.data.model.ProviderInstance
@@ -54,6 +55,12 @@ object NanoMuseCloud {
     private const val KEY_DAILY_CAP = "cloud.daily_cap"
     private const val KEY_UNLIMITED = "cloud.unlimited"
     private const val KEY_CHECKED_AT = "cloud.checked_at"
+    private const val KEY_MEMBER = "cloud.member"
+    private const val KEY_SPENT_TODAY = "cloud.spent_today_cny"
+    private const val KEY_SPENT_TOTAL = "cloud.spent_total_cny"
+    private const val KEY_SPEND_CAP = "cloud.spend_cap_cny"
+    private const val KEY_USD_CNY = "cloud.usd_cny"
+    private const val KEY_RESETS_AT = "cloud.resets_at"
 
     class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
 
@@ -68,10 +75,26 @@ object NanoMuseCloud {
         val checkedAt: Long,
         /** The relay runs without a ceiling: usage is shown, nothing is refused for lack of tokens. */
         val unlimited: Boolean = false,
+        /** A member of the relay (the operator's list): no daily spend cap. */
+        val member: Boolean = false,
+        /** Money, as the relay's operator is billed for this account, in yuan. */
+        val spentTodayCny: Double = 0.0,
+        val spentTotalCny: Double = 0.0,
+        /** Yuan a day this account may cost; 0 = no cap. */
+        val spendCapCny: Double = 0.0,
+        /** Yuan per dollar, for showing both; 0 when the relay did not say. */
+        val usdCny: Double = 0.0,
+        /** When today's allowance starts over (UNIX seconds); 0 when unknown. */
+        val resetsAt: Long = 0,
     ) {
         val remaining: Long get() = (granted - used).coerceAtLeast(0)
         /** 0..1 of the grant still unspent. */
         val fraction: Float get() = if (granted <= 0) 0f else (remaining.toFloat() / granted.toFloat()).coerceIn(0f, 1f)
+        /** The relay prices requests in money (a relay from before this shows tokens only). */
+        val pricesInMoney: Boolean get() = usdCny > 0
+        /** 0..1 of today's allowance spent; 0 when there is no cap. */
+        val spendFraction: Float get() = if (spendCapCny <= 0) 0f else (spentTodayCny / spendCapCny).toFloat().coerceIn(0f, 1f)
+        fun toUsd(cny: Double): Double = if (usdCny > 0) cny / usdCny else 0.0
     }
 
     private val http: OkHttpClient by lazy {
@@ -126,6 +149,12 @@ object NanoMuseCloud {
             dailyCap = p.getLong(KEY_DAILY_CAP, 0),
             checkedAt = p.getLong(KEY_CHECKED_AT, 0),
             unlimited = p.getBoolean(KEY_UNLIMITED, false),
+            member = p.getBoolean(KEY_MEMBER, false),
+            spentTodayCny = p.getFloat(KEY_SPENT_TODAY, 0f).toDouble(),
+            spentTotalCny = p.getFloat(KEY_SPENT_TOTAL, 0f).toDouble(),
+            spendCapCny = p.getFloat(KEY_SPEND_CAP, 0f).toDouble(),
+            usdCny = p.getFloat(KEY_USD_CNY, 0f).toDouble(),
+            resetsAt = p.getLong(KEY_RESETS_AT, 0),
         )
     }
 
@@ -251,17 +280,38 @@ object NanoMuseCloud {
         }?.optString("id") ?: offered.firstOrNull { !drawsOnly(it) }?.optString("id")
         val imageModel = offered.firstOrNull { drawsOnly(it) }?.optString("id")
 
-        val config = repo.config.value
-        val entries = config.modelEntries.filter { it.providerInstanceId == inst.id && !it.isHidden }
+        var config = repo.config.value
+        var entries = config.modelEntries.filter { it.providerInstanceId == inst.id && !it.isHidden }
+        if (entries.isEmpty() && offered.isNotEmpty()) {
+            // The /models call failed or has not landed yet: build the entries
+            // from the list the relay sent with the key, so the person is never
+            // left with a provider that has no models and a group with no members.
+            repo.replaceEntries(inst.id, offered.mapNotNull { modelFromRelay(it) })
+            config = repo.config.value
+            entries = config.modelEntries.filter { it.providerInstanceId == inst.id && !it.isHidden }
+        }
         val chatEntry = entries.firstOrNull { it.model.id == recommendedChat }
-            ?: entries.firstOrNull { !ImageGen.looksLikeImageModel(it.model.id) }
+            ?: entries.firstOrNull { !ImageGen.looksLikeImageModel(it.model.id) && !drawsOrFilms(it.model) }
         if (chatEntry != null) {
             val already = config.modelGroups.any { chatEntry.id in it.memberEntryIds }
             if (!already) {
-                val group = ModelGroup(name = LABEL)
-                group.memberEntryIds.add(chatEntry.id)
-                repo.addGroup(group)
-                if (repo.defaultPrimaryGroupId == null) repo.defaultPrimaryGroupId = group.id
+                // A group of ours left empty by an earlier sign-out is reused rather
+                // than doubled; otherwise a new one.
+                val empty = config.modelGroups.firstOrNull { it.name == LABEL && it.memberEntryIds.isEmpty() }
+                if (empty != null) {
+                    repo.updateGroup(empty.copy(memberEntryIds = (empty.memberEntryIds + chatEntry.id).toMutableList()))
+                    if (repo.defaultPrimaryGroupId == null) repo.defaultPrimaryGroupId = empty.id
+                } else {
+                    val group = ModelGroup(name = LABEL)
+                    group.memberEntryIds.add(chatEntry.id)
+                    repo.addGroup(group)
+                    if (repo.defaultPrimaryGroupId == null) repo.defaultPrimaryGroupId = group.id
+                }
+            }
+            // The default group must be one that can answer.
+            val default = repo.config.value.modelGroups.firstOrNull { it.id == repo.defaultPrimaryGroupId }
+            if (default == null || default.memberEntryIds.isEmpty()) {
+                repo.defaultPrimaryGroupId = repo.config.value.modelGroups.firstOrNull { chatEntry.id in it.memberEntryIds }?.id
             }
         }
         if (imageModel != null) {
@@ -276,9 +326,33 @@ object NanoMuseCloud {
         return "image" in mods && "text" !in mods
     }
 
+    /** A picture or video model is no chat model, whatever its name says. */
+    private fun drawsOrFilms(model: LLMModel): Boolean {
+        val out = model.outputModalities?.map { it.lowercase() } ?: return false
+        return "text" !in out && ("image" in out || "video" in out)
+    }
+
+    /** One entry of the relay's `/v1/models` list (also sent with the key) as the app's model. */
+    private fun modelFromRelay(item: JSONObject): LLMModel? {
+        val id = item.optString("id").takeIf { it.isNotBlank() } ?: return null
+        val arch = item.optJSONObject("architecture")
+        fun mods(key: String): List<String>? {
+            val arr = arch?.optJSONArray(key) ?: return null
+            return (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
+        }
+        return LLMModel(
+            id = id,
+            displayName = item.optString("name").ifBlank { id },
+            provider = LABEL,
+            inputModalities = mods("input_modalities"),
+            outputModalities = mods("output_modalities"),
+        )
+    }
+
     private fun saveAccount(context: Context, reply: JSONObject) {
         val account = reply.optJSONObject("account") ?: JSONObject()
         val tokens = reply.optJSONObject("tokens") ?: JSONObject()
+        val spend = reply.optJSONObject("spend") ?: JSONObject()
         prefs(context).edit()
             .putString(KEY_CHANNEL, account.optString("channel"))
             .putString(KEY_HINT, account.optString("hint"))
@@ -287,6 +361,12 @@ object NanoMuseCloud {
             .putLong(KEY_USED_TODAY, tokens.optLong("used_today"))
             .putLong(KEY_DAILY_CAP, tokens.optLong("daily_cap"))
             .putBoolean(KEY_UNLIMITED, tokens.optBoolean("unlimited", false))
+            .putBoolean(KEY_MEMBER, account.optBoolean("member", false))
+            .putFloat(KEY_SPENT_TODAY, spend.optDouble("today", 0.0).toFloat())
+            .putFloat(KEY_SPENT_TOTAL, spend.optDouble("total", 0.0).toFloat())
+            .putFloat(KEY_SPEND_CAP, spend.optDouble("daily_cap", 0.0).toFloat())
+            .putFloat(KEY_USD_CNY, spend.optDouble("usd_cny", 0.0).toFloat())
+            .putLong(KEY_RESETS_AT, spend.optLong("resets_at", 0))
             .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
             .apply()
     }
@@ -295,6 +375,7 @@ object NanoMuseCloud {
         prefs(context).edit()
             .remove(KEY_INSTANCE).remove(KEY_CHANNEL).remove(KEY_HINT)
             .remove(KEY_GRANTED).remove(KEY_USED).remove(KEY_USED_TODAY).remove(KEY_DAILY_CAP).remove(KEY_UNLIMITED).remove(KEY_CHECKED_AT)
+            .remove(KEY_MEMBER).remove(KEY_SPENT_TODAY).remove(KEY_SPENT_TOTAL).remove(KEY_SPEND_CAP).remove(KEY_USD_CNY).remove(KEY_RESETS_AT)
             .apply()
     }
 
