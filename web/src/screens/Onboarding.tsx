@@ -1,9 +1,10 @@
 import { ArrowRight, Check, ChevronRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
-import { MASCOT } from "../avatars";
+import { DRAGON } from "../avatars";
 import { Avatar } from "../components/Avatar";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
+import { CloudCard } from "../components/CloudCard";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -29,12 +30,12 @@ type Step = "welcome" | "list" | "muse" | "model" | "connect" | "tips";
 export function Onboarding() {
   const { state, send, setTab, dismissOnboarding, refreshSettings, toast } = useStore();
   const [step, setStep] = useState<Step>("welcome");
-  const [identity, setIdentity] = useState<Identity>(() => identityOf(state.profile, MASCOT, AVATAR_COLORS[0]));
+  const [identity, setIdentity] = useState<Identity>(() => identityOf(state.profile, DRAGON, AVATAR_COLORS[0]));
   // "named" survives a reload: a profile that differs from the defaults was saved by the user
   const [named, setNamed] = useState(() => customised(state.profile));
   useEffect(() => {
     if (step === "muse") return; // never clobber what is being typed
-    setIdentity(identityOf(state.profile, MASCOT, AVATAR_COLORS[0]));
+    setIdentity(identityOf(state.profile, DRAGON, AVATAR_COLORS[0]));
     setNamed(customised(state.profile));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.profile]);
@@ -150,11 +151,15 @@ export function Onboarding() {
               <p className="mt-1 text-[14px] text-muted">
                 {modelReady
                   ? t("A model is already set up on the server. Keep it, or switch here.")
-                  : t("Pick a provider and paste a key. It is stored encrypted in the vault on the server, never shown to the model.")}
+                  : t("The quickest start is a free nanoMuse Cloud account: it brings a model with a daily allowance and lets your devices work together. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model.")}
               </p>
             </div>
             {conn ? (
-              <ModelCard data={conn} onChange={() => void loadConn()} compact />
+              <>
+                {!modelReady && <CloudCard account={state.hub?.account ?? null} onChange={() => void loadConn()} compact useAsModel />}
+                {!modelReady && <p className="px-1 text-[12.5px] font-medium text-muted">{t("Or bring your own key")}</p>}
+                <ModelCard data={conn} onChange={() => void loadConn()} compact />
+              </>
             ) : (
               <div className="flex justify-center py-8 text-muted">
                 <Loader2 className="animate-spin" size={20} />

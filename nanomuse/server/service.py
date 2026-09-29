@@ -135,9 +135,10 @@ _QUIET_HOURS_RE = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)-([01]?\d|2[0-3]):([0-
 @dataclass
 class Profile:
     name: str = "nanoMuse"
-    # the face: "panda" (the red panda the app draws live), one of the plush dolls shipped
-    # with the app (web/public/avatars), or "" for the emoji
-    avatar: str = "panda"
+    # the face: "dragon" (the one the Android app wears; stills per mood), "panda" (the red
+    # panda the app draws live), one of the plush dolls shipped with the app
+    # (web/public/avatars), or "" for the emoji
+    avatar: str = "dragon"
     emoji: str = "✨"
     color: str = "#0064d4"
     # one line under the name, the way Muse shows it ("Your day, sorted.")

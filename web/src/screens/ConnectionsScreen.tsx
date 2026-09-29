@@ -3,8 +3,6 @@ import {
   BrainCircuit,
   CalendarDays,
   Check,
-  ChevronDown,
-  ChevronUp,
   Contact as ContactIcon,
   ExternalLink,
   Eye,
@@ -32,6 +30,8 @@ import {
 import { accessibilityState, androidApp } from "../android";
 import { api } from "../api";
 import { BackBar } from "../components/BackBar";
+import { CloudCard } from "../components/CloudCard";
+import { Card, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { Contact, ConnectionsData, TestResult } from "../types";
@@ -90,6 +90,7 @@ export function ConnectionsScreen() {
         {data && (
           <>
             <ModelCard data={data} onChange={load} />
+            <CloudCard account={state.hub?.account ?? null} onChange={load} />
             {data.embeddings.memory_enabled && (
               <RecallCard data={data} onChange={load} />
             )}
@@ -2694,78 +2695,6 @@ function VaultCard({
 }
 
 // ------------------------------------------------------------------ bits
-function Card({
-  icon,
-  title,
-  summary,
-  status,
-  open,
-  onToggle,
-  trailing,
-  children,
-}: {
-  icon: ReactNode;
-  title: string;
-  summary: string;
-  status: { text: string; tone: string };
-  open: boolean;
-  onToggle?: () => void;
-  trailing?: ReactNode;
-  children?: ReactNode;
-}) {
-  const head = (
-    <>
-      <span className="text-accent mt-0.5">{icon}</span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="text-[15px] font-semibold">{title}</span>
-          <span
-            className={cx(
-              "rounded-full px-2 py-0.5 text-[11px] font-medium",
-              status.tone === "ok" &&
-                "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
-              status.tone === "warn" &&
-                "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-              status.tone === "off" && "bg-surface-2 text-muted",
-            )}
-          >
-            {status.text}
-          </span>
-        </span>
-        <span className="block text-[12.5px] text-muted truncate">
-          {summary}
-        </span>
-      </span>
-      {trailing ??
-        (onToggle ? (
-          open ? (
-            <ChevronUp size={18} className="text-muted" />
-          ) : (
-            <ChevronDown size={18} className="text-muted" />
-          )
-        ) : null)}
-    </>
-  );
-  return (
-    <section className="rounded-3xl bg-surface border border-border/70 shadow-sm">
-      {onToggle ? (
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
-        >
-          {head}
-        </button>
-      ) : (
-        <div className="flex w-full items-start gap-3 px-4 py-3.5">{head}</div>
-      )}
-      {(open || (!onToggle && children)) && children ? (
-        <div className="px-4 pb-4 space-y-3">{children}</div>
-      ) : null}
-    </section>
-  );
-}
-
 function Field({
   label,
   hint,
@@ -2809,9 +2738,4 @@ function hostOf(url: string): string {
   }
 }
 
-export const inputCls =
-  "w-full rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[14.5px] outline-none focus:ring-2 focus:ring-accent/40";
-export const primaryBtn =
-  "flex items-center justify-center gap-1.5 rounded-2xl bg-accent text-accent-fg px-4 py-2.5 text-[14px] font-medium disabled:opacity-40";
-export const secondaryBtn =
-  "flex items-center justify-center gap-1.5 rounded-2xl border border-border px-4 py-2.5 text-[14px] font-medium text-muted disabled:opacity-40";
+export { inputCls, primaryBtn, secondaryBtn };

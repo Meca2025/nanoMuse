@@ -11,8 +11,24 @@ export interface Plush {
   label: string;
 }
 
-/** The red panda: the default, and the project's mark. */
+/** The red panda: the project's mark, drawn live. */
 export const MASCOT = "panda";
+
+/**
+ * The dragon: the default face, the one the Android app wears — five stills, one per mood
+ * (public/avatars/dragon-*.webp), so the web and the phone show the same creature.
+ */
+export const DRAGON = "dragon";
+export type DragonMood = "idle" | "working" | "waiting" | "happy" | "error";
+
+export function isDragon(id: string | undefined | null): boolean {
+  return id === DRAGON;
+}
+
+export function dragonUrl(mood: string): string {
+  const still: DragonMood = mood === "working" || mood === "waiting" || mood === "happy" || mood === "error" ? mood : "idle";
+  return `/avatars/dragon-${still}.webp`;
+}
 
 export const PLUSH: readonly Plush[] = [
   { id: "sunny", label: "Sunny" },

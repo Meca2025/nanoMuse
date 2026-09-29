@@ -5,6 +5,7 @@ import { FileViewer } from "./components/FileViewer";
 import { RedPanda } from "./components/RedPanda";
 import { ChatScreen } from "./screens/ChatScreen";
 import { ConnectionsScreen } from "./screens/ConnectionsScreen";
+import { DevicesScreen } from "./screens/DevicesScreen";
 import { FeedScreen } from "./screens/FeedScreen";
 import { GoalsScreen } from "./screens/GoalsScreen";
 import { IdeasScreen } from "./screens/IdeasScreen";
@@ -67,6 +68,7 @@ export default function App() {
         {state.tab === "memory" && <MemoryScreen />}
         {state.tab === "skills" && <SkillsScreen />}
         {state.tab === "connections" && <ConnectionsScreen />}
+        {state.tab === "devices" && <DevicesScreen />}
         {state.tab === "you" && <SettingsScreen />}
       </main>
       <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5">

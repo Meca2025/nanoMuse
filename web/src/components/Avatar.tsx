@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isMascot, isPlush, plushUrl } from "../avatars";
+import { dragonUrl, isDragon, isMascot, isPlush, plushUrl } from "../avatars";
 import { useMood } from "../mood";
 import type { Profile, Status } from "../types";
 import { cx } from "../util";
@@ -37,8 +37,10 @@ export function Avatar({
   const mood = useMood(status);
   const state = status?.state ?? "idle";
   const color = profile?.color ?? "#0064d4";
-  const panda = !profile || isMascot(profile.avatar);
-  const plush = !panda && isPlush(profile?.avatar) ? profile!.avatar : null;
+  const panda = !!profile && isMascot(profile.avatar);
+  // the dragon is the default: no profile yet, or a profile that names it
+  const dragon = !profile || isDragon(profile.avatar);
+  const plush = !panda && !dragon && isPlush(profile?.avatar) ? profile!.avatar : null;
   const motion = panda
     ? wiggle
       ? "avatar-wiggle"
@@ -62,13 +64,17 @@ export function Avatar({
         style={
           panda
             ? undefined
-            : plush
-              ? { background: "#eadfcd" }
-              : { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 60%, #ffffff))` }
+            : dragon
+              ? { background: "#f1efeb" }
+              : plush
+                ? { background: "#eadfcd" }
+                : { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 60%, #ffffff))` }
         }
       >
         {panda ? (
           <RedPanda mood={wiggle ? "happy" : mood} size={size} still={still && !wiggle} />
+        ) : dragon ? (
+          <img src={dragonUrl(wiggle ? "happy" : still ? "idle" : mood)} alt="" draggable={false} className="h-full w-full object-cover" />
         ) : plush ? (
           <img src={plushUrl(plush)} alt="" draggable={false} className="h-full w-full object-cover" />
         ) : (

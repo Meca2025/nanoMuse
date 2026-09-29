@@ -14,6 +14,9 @@ import type {
   ApprovalEvent,
   AttachmentInfo,
   Goal,
+  HandsLive,
+  HandsStatus,
+  HubView,
   Profile,
   SettingsView,
   StateSnapshot,
@@ -23,9 +26,9 @@ import type {
   WsMessage,
 } from "./types";
 
-/** Tab bar: chat · feed · ideas · goals · library. Memory, connections and settings live behind the avatar. */
-export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "connections" | "skills" | "you";
-const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "connections", "skills", "you"];
+/** Tab bar: chat · feed · ideas · goals · library. Memory, devices, connections and settings live behind the avatar. */
+export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "devices" | "connections" | "skills" | "you";
+const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "devices", "connections", "skills", "you"];
 
 const FEED_SEEN_KEY = "nanomuse_feed_seen";
 
@@ -79,6 +82,12 @@ export interface AppState {
   finishedAt: number;
   /** When a tool call last failed or was refused (ms since epoch; 0 = never). The face is worried for a moment. */
   mishapAt: number;
+  /** This device on the hub and the other devices of the account (null until the first state). */
+  hub: HubView | null;
+  /** This computer's own screen and hands. */
+  hands: HandsStatus | null;
+  /** The latest live step of the hands, for the stage; cleared when the task ends. */
+  handsLive: HandsLive | null;
 }
 
 type Action =
@@ -131,6 +140,9 @@ const initial: AppState = {
   toast: null,
   finishedAt: 0,
   mishapAt: 0,
+  hub: null,
+  hands: null,
+  handsLive: null,
 };
 
 function upsertApproval(list: ApprovalEvent[], ev: TimelineEvent): ApprovalEvent[] {
@@ -183,6 +195,8 @@ function reducer(state: AppState, action: Action): AppState {
         pendingApprovals: s.pending_approvals,
         feedVersion: state.feedVersion + 1,
         activeThread: s.threads.some((t) => t.id === state.activeThread) ? state.activeThread : "main",
+        hub: s.hub ?? state.hub,
+        hands: s.hands ?? state.hands,
       };
     }
     case "connection":
@@ -327,6 +341,16 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       return { ...state, settings: msg.settings, profile: msg.settings.profile };
     case "connections":
       return { ...state, connectionsVersion: state.connectionsVersion + 1 };
+    case "hub":
+      return { ...state, hub: msg.hub };
+    case "hands_state":
+      return { ...state, hands: msg.hands };
+    case "hands": {
+      const { kind: _kind, ...live } = msg;
+      void _kind;
+      const ended = live.event === "end" || live.event === "stop";
+      return { ...state, handsLive: ended ? null : live };
+    }
     case "skills":
       return { ...state, skillsVersion: state.skillsVersion + 1 };
     case "error":
