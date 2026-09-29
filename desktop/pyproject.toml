@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nanomuse-desktop"
-version = "0.1.19"
+dynamic = ["version"] # nanomuse_desktop/__init__.py, the one place
 description = "nanoMuse Desktop: the computer's Muse — hands on this machine and, through the hub, on every other device of the account."
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -17,6 +17,9 @@ dev = ["pytest>=8", "ruff>=0.5", "pyinstaller>=6.6", "fastapi>=0.110", "httpx>=0
 
 [project.scripts]
 nanomuse-desktop = "nanomuse_desktop.__main__:main"
+
+[tool.hatch.version]
+path = "nanomuse_desktop/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["nanomuse_desktop"]
