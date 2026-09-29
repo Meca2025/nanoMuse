@@ -480,7 +480,11 @@ class PhoneOperator:
         refusals = 0
         # No step cap unless configured: the task runs until it is done, asks, is stopped
         # or fails. A cap (max_steps > 0) still ends with status "max_steps".
-        step_numbers = range(1, self.settings.max_steps + 1) if self.settings.max_steps > 0 else itertools.count(1)
+        step_numbers = (
+            range(1, self.settings.max_steps + 1)
+            if self.settings.max_steps > 0
+            else itertools.count(1)
+        )
         for step_no in step_numbers:
             outcome.steps = step_no
             outcome.last_screen = screen.render()
