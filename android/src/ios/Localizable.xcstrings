@@ -103084,6 +103084,50 @@
           }
         }
       }
+    },
+    "No limit on this account" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No limit on this account"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "额度不限"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "額度不限"
+          }
+        }
+      }
+    },
+    "%@ tokens used so far, %@ today" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ tokens used so far, %@ today"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "累计已用 %1$@ tokens，今天 %2$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "累計已用 %1$@ tokens，今天 %2$@"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

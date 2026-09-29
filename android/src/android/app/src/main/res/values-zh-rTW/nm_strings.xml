@@ -412,7 +412,7 @@
     <string name="nm_media_need_model">在下方填寫模型名稱</string>
     <string name="nm_media_section_video">影片模型</string>
     <string name="nm_media_video_footer">讓形象動起來——每個狀態一段循環短片——以及你要的任何短片。阿里雲百煉：MiniMax/MiniMax-H3（推薦）或通義萬相影片模型；列表裡是這把 key 能用的，每個模型需在百煉控制台的模型卡片上開通一次。按影片秒數計費；一套形象是四段幾秒的短片。</string>
-    <string name="nm_media_video_none">還沒有阿里雲百煉的服務商——nanoMuse 目前對接的是它的影片介面。新增一個（可以和圖像模型用同一把 key）形象就會動起來；之前保持靜態圖。</string>
+    <string name="nm_media_video_none">還沒有能出影片的服務商——nanoMuse 對接的是阿里雲百煉的影片介面，nanoMuse 雲也轉發這套介面。登入 nanoMuse 雲，或新增一個百煉的 key（可以和圖像模型用同一把），形象就會動起來；之前保持靜態圖。</string>
     <string name="nm_media_video_off">可選。不設定的話形象保持靜態，也做不了影片。</string>
     <string name="nm_media_video_off_option">不用影片模型</string>
     <string name="nm_media_not_set">未設定</string>
@@ -560,6 +560,9 @@
     <string name="nm_cloud_remaining">剩餘 %1$s tokens</string>
     <string name="nm_cloud_of_granted">共 %1$s</string>
     <string name="nm_cloud_used_today">今天已用 %1$s，每日上限 %2$s</string>
+    <string name="nm_cloud_unlimited">額度不限</string>
+    <string name="nm_cloud_used_total">累計已用 %1$s tokens</string>
+    <string name="nm_cloud_used_today_open">今天已用 %1$s</string>
     <string name="nm_cloud_refresh">重新整理餘額</string>
     <string name="nm_cloud_refreshing">正在重新整理…</string>
     <string name="nm_cloud_how_it_works">nanoMuse 雲在這個應用裡就是一個普通的服務商：它的模型列在「服務商」裡，也可以和你自己的模型放進同一個模型組。</string>

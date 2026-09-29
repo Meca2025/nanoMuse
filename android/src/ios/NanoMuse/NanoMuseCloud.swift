@@ -25,12 +25,38 @@ struct NanoMuseCloudAccount: Codable, Equatable, Sendable {
     var usedToday: Int64
     var dailyCap: Int64
     var checkedAt: Date
+    /// The relay runs without a ceiling: usage is shown, nothing is refused for lack of tokens.
+    var unlimited: Bool = false
 
     var remaining: Int64 { max(granted - used, 0) }
     /// 0..1 of the grant still unspent.
     var fraction: Double {
         guard granted > 0 else { return 0 }
         return min(max(Double(remaining) / Double(granted), 0), 1)
+    }
+
+    init(channel: String, hint: String, granted: Int64, used: Int64, usedToday: Int64, dailyCap: Int64, checkedAt: Date, unlimited: Bool = false) {
+        self.channel = channel
+        self.hint = hint
+        self.granted = granted
+        self.used = used
+        self.usedToday = usedToday
+        self.dailyCap = dailyCap
+        self.checkedAt = checkedAt
+        self.unlimited = unlimited
+    }
+
+    // `unlimited` came later; an account cached by an earlier build decodes without it.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        channel = try c.decode(String.self, forKey: .channel)
+        hint = try c.decode(String.self, forKey: .hint)
+        granted = try c.decode(Int64.self, forKey: .granted)
+        used = try c.decode(Int64.self, forKey: .used)
+        usedToday = try c.decode(Int64.self, forKey: .usedToday)
+        dailyCap = try c.decode(Int64.self, forKey: .dailyCap)
+        checkedAt = try c.decode(Date.self, forKey: .checkedAt)
+        unlimited = try c.decodeIfPresent(Bool.self, forKey: .unlimited) ?? false
     }
 }
 
@@ -291,7 +317,8 @@ enum NanoMuseCloud {
             used: int64(tokens["used"]),
             usedToday: int64(tokens["used_today"]),
             dailyCap: int64(tokens["daily_cap"]),
-            checkedAt: Date()
+            checkedAt: Date(),
+            unlimited: (tokens["unlimited"] as? Bool) ?? ((tokens["unlimited"] as? NSNumber)?.boolValue ?? false)
         )
     }
 

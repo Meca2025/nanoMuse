@@ -419,7 +419,7 @@
     <string name="nm_media_need_model">Type a model name below</string>
     <string name="nm_media_section_video">Video model</string>
     <string name="nm_media_video_footer">Makes the avatar move — a short looping clip for each state — and any clip you ask for. Alibaba Cloud Model Studio: MiniMax/MiniMax-H3 (recommended) or a Wan video model; the list shows the ones this key can use, each activated once on the model\'s card in the Model Studio console. Billed per second of video; an avatar takes four clips of a few seconds.</string>
-    <string name="nm_media_video_none">No provider on Alibaba Cloud Model Studio yet — that is the video API nanoMuse speaks. Add one (it can be the same key as the image model) and the avatar starts moving; until then it stays as still pictures.</string>
+    <string name="nm_media_video_none">No provider that can make video yet — nanoMuse speaks Alibaba Cloud Model Studio\'s video API, which nanoMuse Cloud relays too. Sign in to nanoMuse Cloud, or add a Model Studio key (it can be the same one as the image model uses), and the avatar starts moving; until then it stays as still pictures.</string>
     <string name="nm_media_video_off">Optional. Without one, the avatar stays still and no clips can be made.</string>
     <string name="nm_media_video_off_option">No video model</string>
     <string name="nm_media_not_set">Not set</string>
@@ -567,6 +567,9 @@
     <string name="nm_cloud_remaining">%1$s tokens left</string>
     <string name="nm_cloud_of_granted">of %1$s</string>
     <string name="nm_cloud_used_today">Today %1$s of a daily %2$s</string>
+    <string name="nm_cloud_unlimited">No limit on this account</string>
+    <string name="nm_cloud_used_total">%1$s tokens used so far</string>
+    <string name="nm_cloud_used_today_open">Today %1$s</string>
     <string name="nm_cloud_refresh">Refresh balance</string>
     <string name="nm_cloud_refreshing">Refreshing…</string>
     <string name="nm_cloud_how_it_works">nanoMuse Cloud is an ordinary provider in this app: its models are listed under Providers and can be mixed with your own in a model group.</string>

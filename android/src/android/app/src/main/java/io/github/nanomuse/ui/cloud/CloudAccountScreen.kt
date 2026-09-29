@@ -136,7 +136,28 @@ fun CloudAccountScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (a != null) {
+                        if (a != null && a.unlimited) {
+                            // No ceiling on this relay: what was used, nothing to run out of.
+                            Spacer(Modifier.height(16.dp))
+                            Row(Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = stringResource(R.string.nm_cloud_unlimited),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    text = stringResource(R.string.nm_cloud_used_total, numbers.format(a.used)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.nm_cloud_used_today_open, numbers.format(a.usedToday)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else if (a != null) {
                             Spacer(Modifier.height(16.dp))
                             Row(Modifier.fillMaxWidth()) {
                                 Text(
@@ -159,7 +180,11 @@ fun CloudAccountScreen(
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = stringResource(R.string.nm_cloud_used_today, numbers.format(a.usedToday), numbers.format(a.dailyCap)),
+                                text = if (a.dailyCap > 0) {
+                                    stringResource(R.string.nm_cloud_used_today, numbers.format(a.usedToday), numbers.format(a.dailyCap))
+                                } else {
+                                    stringResource(R.string.nm_cloud_used_today_open, numbers.format(a.usedToday))
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

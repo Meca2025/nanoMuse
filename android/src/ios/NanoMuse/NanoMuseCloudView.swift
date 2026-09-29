@@ -49,18 +49,29 @@ struct NanoMuseCloudView: View {
             if let account {
                 LabeledContent(AppLocalized("Signed in as"), value: account.hint)
                 VStack(alignment: .leading, spacing: 6) {
-                    ProgressView(value: account.fraction)
-                    let remaining = account.remaining.formatted()
-                    let granted = account.granted.formatted()
-                    Text(AppLocalized("\(remaining) of \(granted) tokens left"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    if account.dailyCap > 0 {
+                    if account.unlimited {
+                        // No ceiling on this relay: what was used, nothing to run out of.
+                        let used = account.used.formatted()
                         let usedToday = account.usedToday.formatted()
-                        let dailyCap = account.dailyCap.formatted()
-                        Text(AppLocalized("Today: \(usedToday) of \(dailyCap)"))
+                        Text(AppLocalized("No limit on this account"))
+                            .font(.subheadline)
+                        Text(AppLocalized("\(used) tokens used so far, \(usedToday) today"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    } else {
+                        ProgressView(value: account.fraction)
+                        let remaining = account.remaining.formatted()
+                        let granted = account.granted.formatted()
+                        Text(AppLocalized("\(remaining) of \(granted) tokens left"))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        if account.dailyCap > 0 {
+                            let usedToday = account.usedToday.formatted()
+                            let dailyCap = account.dailyCap.formatted()
+                            Text(AppLocalized("Today: \(usedToday) of \(dailyCap)"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     let checked = account.checkedAt.formatted(.relative(presentation: .named))
                     Text(AppLocalized("Checked \(checked)"))

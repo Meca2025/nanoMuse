@@ -76,8 +76,7 @@ def sign_in(cfg: Config, cloud_base: str | None = None) -> bool:
         cfg.account_hint = str((reply.get("account") or {}).get("hint") or "")
         cfg.model = cfg.model or Cloud(cfg.cloud_base, cfg.api_key).recommended_model(reply)
         save(cfg)
-        tokens = reply.get("tokens") or {}
-        print(f"Signed in as {cfg.account_hint}; {tokens.get('remaining', '?')} tokens available. This computer is “{cfg.name}”.")
+        print(f"Signed in as {cfg.account_hint}; {allowance(reply.get('tokens') or {})}. This computer is “{cfg.name}”.")
         return True
     return False
 
@@ -103,11 +102,16 @@ def cmd_status(cfg: Config) -> int:
     except CloudError as e:
         print(f"  account:  {cfg.account_hint or '?'} — {describe(e)}")
         return 1
-    t = me.get("tokens") or {}
-    print(
-        f"  account:  {(me.get('account') or {}).get('hint')}  {t.get('remaining')} of {t.get('granted')} tokens left, {t.get('used_today')} used today (cap {t.get('daily_cap')})"
-    )
+    print(f"  account:  {(me.get('account') or {}).get('hint')}  {allowance(me.get('tokens') or {})}")
     return 0
+
+
+def allowance(t: dict) -> str:
+    """One phrase for the token line: a relay without a ceiling says so instead of `0 of 0 left`."""
+    if t.get("unlimited"):
+        return f"no limit on this account; {t.get('used', 0)} tokens used so far, {t.get('used_today', 0)} today"
+    cap = f" (cap {t.get('daily_cap')})" if t.get("daily_cap") else ""
+    return f"{t.get('remaining')} of {t.get('granted')} tokens left, {t.get('used_today')} used today{cap}"
 
 
 def cmd_devices(cfg: Config) -> int:

@@ -102,7 +102,7 @@ class Cloud:
         for m in chat:
             if (m.get("nanomuse") or {}).get("recommended"):
                 return m["id"]
-        return chat[0]["id"] if chat else "qwen3.7-plus"
+        return chat[0]["id"] if chat else "qwen3.8-27b"
 
     # -- the model -------------------------------------------------------------------
 

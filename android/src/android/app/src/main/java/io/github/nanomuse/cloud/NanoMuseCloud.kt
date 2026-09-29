@@ -52,6 +52,7 @@ object NanoMuseCloud {
     private const val KEY_USED = "cloud.used"
     private const val KEY_USED_TODAY = "cloud.used_today"
     private const val KEY_DAILY_CAP = "cloud.daily_cap"
+    private const val KEY_UNLIMITED = "cloud.unlimited"
     private const val KEY_CHECKED_AT = "cloud.checked_at"
 
     class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
@@ -65,6 +66,8 @@ object NanoMuseCloud {
         val usedToday: Long,
         val dailyCap: Long,
         val checkedAt: Long,
+        /** The relay runs without a ceiling: usage is shown, nothing is refused for lack of tokens. */
+        val unlimited: Boolean = false,
     ) {
         val remaining: Long get() = (granted - used).coerceAtLeast(0)
         /** 0..1 of the grant still unspent. */
@@ -122,6 +125,7 @@ object NanoMuseCloud {
             usedToday = p.getLong(KEY_USED_TODAY, 0),
             dailyCap = p.getLong(KEY_DAILY_CAP, 0),
             checkedAt = p.getLong(KEY_CHECKED_AT, 0),
+            unlimited = p.getBoolean(KEY_UNLIMITED, false),
         )
     }
 
@@ -282,6 +286,7 @@ object NanoMuseCloud {
             .putLong(KEY_USED, tokens.optLong("used"))
             .putLong(KEY_USED_TODAY, tokens.optLong("used_today"))
             .putLong(KEY_DAILY_CAP, tokens.optLong("daily_cap"))
+            .putBoolean(KEY_UNLIMITED, tokens.optBoolean("unlimited", false))
             .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
             .apply()
     }
@@ -289,7 +294,7 @@ object NanoMuseCloud {
     private fun clear(context: Context) {
         prefs(context).edit()
             .remove(KEY_INSTANCE).remove(KEY_CHANNEL).remove(KEY_HINT)
-            .remove(KEY_GRANTED).remove(KEY_USED).remove(KEY_USED_TODAY).remove(KEY_DAILY_CAP).remove(KEY_CHECKED_AT)
+            .remove(KEY_GRANTED).remove(KEY_USED).remove(KEY_USED_TODAY).remove(KEY_DAILY_CAP).remove(KEY_UNLIMITED).remove(KEY_CHECKED_AT)
             .apply()
     }
 

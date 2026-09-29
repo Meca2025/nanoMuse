@@ -7,6 +7,7 @@ import com.openminis.app.R
 import com.openminis.app.data.model.ProviderCredential
 import com.openminis.app.data.model.ProviderInstance
 import io.github.nanomuse.avatar.ImageGen
+import io.github.nanomuse.cloud.NanoMuseCloud
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -47,12 +48,17 @@ object MediaModels {
 
     // ── video ─────────────────────────────────────────────────────────────
 
-    /** Providers whose host speaks Model Studio's asynchronous video API. */
+    /**
+     * Providers whose host speaks Model Studio's asynchronous video API: Model Studio itself, and
+     * nanoMuse Cloud, which relays those same paths (the account's own key is used).
+     */
     fun eligibleVideoInstances(context: Context): List<ProviderInstance> {
         val app = context.applicationContext as? MinisApp ?: return emptyList()
         val repo = app.providerRepositoryOrNull ?: return emptyList()
+        val cloudId = NanoMuseCloud.instance(context)?.id
         return repo.config.value.instances.filter { inst ->
-            inst.isEnabled && inst.credentialType == ProviderCredential.apiKey && VideoGen.speaksDashScope(ImageGen.baseUrlOf(inst))
+            inst.isEnabled && inst.credentialType == ProviderCredential.apiKey &&
+                (VideoGen.speaksDashScope(ImageGen.baseUrlOf(inst)) || inst.id == cloudId)
         }
     }
 
