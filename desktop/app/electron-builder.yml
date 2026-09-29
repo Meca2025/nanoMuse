@@ -27,6 +27,8 @@ linux:
       arch: [x64]
     - target: deb
       arch: [x64]
+  # electron-builder would write x86_64 / amd64 here; one name for the site's links
+  artifactName: nanoMuse-Desktop-${version}-linux-x64.${ext}
   category: Utility
   icon: resources/app-icon.png
   synopsis: a fully open-source, Muse-style personal agent for every device you own

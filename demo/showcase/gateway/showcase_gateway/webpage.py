@@ -14,7 +14,7 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>nanoMuse Web</title>
 <meta name="description" content="nanoMuse in the browser — sign in with an e-mail or phone code, no download.">
-<link rel="icon" href="https://nanomuse.cn/assets/icon-192.png">
+<link rel="icon" href="https://nanomuse.cn/assets/icon-512.png">
 <style>
 :root{--bg:#F3F3F5;--card:#fff;--ink:#1C1B22;--muted:#6E6B7A;--line:#E4E3EA;--accent:#5B4EE6;--accent-ink:#fff;--warn:#B23B3B}
 @media (prefers-color-scheme:dark){:root{--bg:#121216;--card:#1B1B21;--ink:#F1F0F5;--muted:#9C99AA;--line:#2C2B34;--accent:#8A7DFF;--accent-ink:#0F0E16}}
@@ -49,7 +49,7 @@ i.en,i.zh{font-style:normal}
 <button class="lang" id="lang" type="button">English</button>
 <main>
 <div class="card">
-  <div class="brand"><img src="https://nanomuse.cn/assets/icon-192.png" alt=""><div><b>nanoMuse Web</b>
+  <div class="brand"><img src="https://nanomuse.cn/assets/icon-512.png" alt=""><div><b>nanoMuse Web</b>
   <small><i class="zh">在浏览器里用，不用下载</i><i class="en">In the browser, nothing to install</i></small></div></div>
 
   <form id="step1">

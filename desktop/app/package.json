@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.19",
   "description": "nanoMuse for the desktop: the local runtime in a window, a tray, and a stage that shows where the hands are about to click.",
+  "homepage": "https://nanomuse.cn/",
   "license": "GPL-3.0-only",
   "main": "./out/main/index.js",
   "scripts": {
@@ -23,9 +24,8 @@
     "vite": "^5.4.0",
     "electron-builder": "^25.1.8"
   },
-  "homepage": "https://nanomuse.cn/",
   "author": {
-    "name": "the nanoMuse community",
-    "url": "https://github.com/nano-muse/nanoMuse"
+    "name": "lgy0404",
+    "email": "2528379691@qq.com"
   }
 }
