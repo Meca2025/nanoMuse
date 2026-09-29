@@ -6,9 +6,10 @@ device of the account. Windows, macOS and Linux; one binary, standard-library
 Python inside, no runtime to install.
 
 Install and commands: [`desktop/README.md`](../desktop/README.md). Packages
-come out of `scripts/build-desktop.py` and the `desktop` workflow:
-`…-windows-x64-setup.exe`, `…-macos-arm64.pkg` / `…-macos-x64.pkg`,
-`…-linux-x64.deb`, plus archives with the bare binary.
+come out of `scripts/build-desktop.py` and the `desktop` workflow, named
+`nanomuse-desktop-terminal-<version>-…`: `…-windows-x64-setup.exe`,
+`…-macos-arm64.pkg` / `…-macos-x64.pkg`, `…-linux-x64.deb`, plus archives
+with the bare binary.
 
 ## What it is, and is not
 

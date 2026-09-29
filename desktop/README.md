@@ -12,9 +12,9 @@ Grab the package for your platform from the release (or the `desktop` workflow's
 
 | Platform | Package | What it does |
 |---|---|---|
-| Windows | `nanomuse-desktop-<ver>-windows-x64-setup.exe` | Installs to `%LOCALAPPDATA%\Programs\nanoMuse Desktop`, adds it to `PATH`, Start-menu entry. Unsigned: SmartScreen shows "More info → Run anyway" once. |
-| macOS | `nanomuse-desktop-<ver>-macos-arm64.pkg` (Apple silicon) / `…-macos-x64.pkg` (Intel) | Installs `/usr/local/bin/nanomuse-desktop` and `nanoMuse Desktop.app`, which opens a terminal with the Muse in it. Unsigned: right-click → Open the first time, or `xattr -d com.apple.quarantine`. |
-| Linux | `nanomuse-desktop-<ver>-linux-x64.deb` or `.tar.gz` | `sudo dpkg -i …deb`, or unpack and run `install.sh` (→ `~/.local/bin`). |
+| Windows | `nanomuse-desktop-terminal-<ver>-windows-x64-setup.exe` | Installs to `%LOCALAPPDATA%\Programs\nanoMuse Desktop`, adds it to `PATH`, Start-menu entry. Unsigned: SmartScreen shows "More info → Run anyway" once. |
+| macOS | `nanomuse-desktop-terminal-<ver>-macos-arm64.pkg` (Apple silicon) / `…-macos-x64.pkg` (Intel) | Installs `/usr/local/bin/nanomuse-desktop` and `nanoMuse Desktop.app`, which opens a terminal with the Muse in it. Unsigned: right-click → Open the first time, or `xattr -d com.apple.quarantine`. |
+| Linux | `nanomuse-desktop-terminal-<ver>-linux-x64.deb` or `.tar.gz` | `sudo dpkg -i …deb`, or unpack and run `install.sh` (→ `~/.local/bin`). |
 
 Or, with Python 3.11+: `pip install ./desktop` and you have `nanomuse-desktop` on the path;
 `pip install './desktop[screen]'` adds screenshots without helper programs.

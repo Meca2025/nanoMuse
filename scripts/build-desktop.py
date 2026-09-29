@@ -5,14 +5,16 @@ things.
     python3 scripts/build-desktop.py            # binary + installer(s) into desktop/dist/
     python3 scripts/build-desktop.py --no-installer
 
-Produces, next to the plain binary:
+Produces, next to the plain binary (named apart from the desktop app's installers,
+nanoMuse-Desktop-<ver>-…, which share the release page — GitHub compares asset names without
+regard to case):
 
-    Windows  nanomuse-desktop-<ver>-windows-<arch>-setup.exe   (Inno Setup, when `iscc` exists)
-             nanomuse-desktop-<ver>-windows-<arch>.zip         (binary + install.cmd)
-    macOS    nanomuse-desktop-<ver>-macos-<arch>.pkg           (installs the CLI and an app that opens it)
-             nanomuse-desktop-<ver>-macos-<arch>.tar.gz
-    Linux    nanomuse-desktop-<ver>-linux-<arch>.deb           (when `dpkg-deb` exists)
-             nanomuse-desktop-<ver>-linux-<arch>.tar.gz        (binary + install.sh)
+    Windows  nanomuse-desktop-terminal-<ver>-windows-<arch>-setup.exe   (Inno Setup, when `iscc` exists)
+             nanomuse-desktop-terminal-<ver>-windows-<arch>.zip         (binary + install.cmd)
+    macOS    nanomuse-desktop-terminal-<ver>-macos-<arch>.pkg           (installs the CLI and an app that opens it)
+             nanomuse-desktop-terminal-<ver>-macos-<arch>.tar.gz
+    Linux    nanomuse-desktop-terminal-<ver>-linux-<arch>.deb           (when `dpkg-deb` exists)
+             nanomuse-desktop-terminal-<ver>-linux-<arch>.tar.gz        (binary + install.sh)
 
 Needs Python 3.11+, PyInstaller and Pillow (`pip install pyinstaller pillow mss`). Nothing is
 signed: the trial builds are for the account holder's own machines.
@@ -38,6 +40,7 @@ DIST = DESKTOP / "dist"
 BUILD = DESKTOP / "build"
 SOURCE_ICON = ROOT / "assets" / "brand" / "nanomuse-icon-source-1024.png"
 NAME = "nanomuse-desktop"
+PACKAGE = "nanomuse-desktop-terminal"  # the file names on the release page
 DISPLAY = "nanoMuse Desktop"
 BUNDLE_ID = "io.github.nanomuse.desktop"
 
@@ -195,7 +198,7 @@ end;
 
 
 def package_windows(exe: Path, ver: str, installer: bool) -> None:
-    base = f"{NAME}-{ver}-windows-{arch()}"
+    base = f"{PACKAGE}-{ver}-windows-{arch()}"
     with zipfile.ZipFile(DIST / f"{base}.zip", "w", zipfile.ZIP_DEFLATED) as z:
         z.write(exe, exe.name)
         z.writestr("install.cmd", INSTALL_CMD)
@@ -277,7 +280,7 @@ def make_app(stage: Path) -> Path:
 
 
 def package_macos(exe: Path, ver: str, installer: bool) -> None:
-    base = f"{NAME}-{ver}-macos-{arch()}"
+    base = f"{PACKAGE}-{ver}-macos-{arch()}"
     with tarfile.open(DIST / f"{base}.tar.gz", "w:gz") as t:
         t.add(exe, exe.name)
     print("tar:", DIST / f"{base}.tar.gz")
@@ -339,7 +342,7 @@ Categories=Utility;
 
 
 def package_linux(exe: Path, ver: str, installer: bool) -> None:
-    base = f"{NAME}-{ver}-linux-{arch()}"
+    base = f"{PACKAGE}-{ver}-linux-{arch()}"
     with tarfile.open(DIST / f"{base}.tar.gz", "w:gz") as t:
         t.add(exe, exe.name)
         info = tarfile.TarInfo("install.sh")
