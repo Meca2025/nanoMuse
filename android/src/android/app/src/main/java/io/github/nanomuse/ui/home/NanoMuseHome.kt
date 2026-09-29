@@ -291,6 +291,7 @@ fun NanoMuseHome(
                     onSettings = { closeDrawer(); navController.safeNavigate(Routes.SETTINGS) },
                     onSetMain = { id -> MainChat.set(context, id); closeDrawer(); showSession(id) },
                     onSystemFiles = { closeDrawer(); navController.safeNavigate(io.github.nanomuse.ui.sysfiles.ROUTE_SYSTEM_FILES) },
+                    onDevices = { closeDrawer(); navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
                 )
             }
         },

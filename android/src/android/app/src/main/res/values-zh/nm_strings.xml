@@ -631,6 +631,7 @@
     <string name="nm_hub_task_prefix">下面这件事是用户在 %1$s（用户的另一台设备）上交代的。在这台手机上完成，并用用户的语言回答。</string>
     <string name="nm_hub_session_title">来自 %1$s</string>
 
+    <string name="nm_hub_service_alone_short">只有这一台</string>
     <string name="nm_devices_title">设备</string>
     <string name="nm_devices_intro">登录同一账号的每台设备都是一个 Muse：这台手机、装了 nanoMuse 桌面版的电脑、网页控制台。它们之间可以互相交代事情——不必在同一个网络，经由 nanoMuse Cloud 中转。</string>
     <string name="nm_devices_join">让其他设备能找到这台手机</string>

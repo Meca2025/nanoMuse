@@ -19,6 +19,13 @@ import com.openminis.app.logging.AppLogger
 import com.openminis.app.sandbox.PRootKernel
 import com.openminis.app.sandbox.ShellExecutor
 import com.openminis.app.service.AgentForegroundService
+import io.github.nanomuse.guard.RiskDecision
+import io.github.nanomuse.guard.RiskGate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -59,7 +66,7 @@ object HubActions {
                 "screen" -> call.result(screen())
                 "notify" -> call.result(notify(context, call.args.optString("text"), call.args.optString("title").ifBlank { "nanoMuse" }, call.senderName))
                 "task" -> task(context, call)
-                "approve" -> call.result(JSONObject().put("ok", true).put("note", "approvals on this phone are decided on its screen"))
+                "approve" -> approve(call)
                 "stop" -> call.result(JSONObject().put("stopped", false))
                 else -> call.fail("unknown_action", "this phone does not do '${call.action}'")
             }
@@ -239,8 +246,13 @@ object HubActions {
         call.event(JSONObject().put("stage", "thinking").put("session", sessionId))
         AgentForegroundService.startService(app, sessionCount = 1, toolStatus = context.getString(R.string.nm_hub_task_from, call.senderName))
         val prompt = if (call.senderKind == "web") text else context.getString(R.string.nm_hub_task_prefix, call.senderName) + "\n\n" + text
-        val result = runBlocking {
-            HeadlessChatRunner.prompt(context = app, sessionId = sessionId, text = prompt, attachments = emptyList(), thinkingLevel = null, wait = true, timeoutMs = TASK_TIMEOUT_MS)
+        val relay = relayApprovals(context, call, sessionId)
+        val result = try {
+            runBlocking {
+                HeadlessChatRunner.prompt(context = app, sessionId = sessionId, text = prompt, attachments = emptyList(), thinkingLevel = null, wait = true, timeoutMs = TASK_TIMEOUT_MS)
+            }
+        } finally {
+            relay.cancel()
         }
         val answer = result.responseText?.trim().orEmpty()
         if (result.timedOut) { call.fail("timeout", "the phone's agent did not finish within ten minutes"); return }
@@ -249,6 +261,53 @@ object HubActions {
             JSONObject().put("text", answer.ifBlank { "(no answer)" }).put("conversation", conversation).put("session", sessionId)
                 .put("device", Hub.name(context)).put("status", result.status),
         )
+    }
+
+    /**
+     * While a task from another device runs here, its approval cards travel to that device as
+     * `approval` events (docs/hub.md), so the person can answer from where they are — the card
+     * on this phone's screen stays too, and whichever side answers first decides. The decision
+     * goes back as `approval_result`.
+     */
+    private fun relayApprovals(context: Context, call: IncomingCall, sessionId: String): CoroutineScope {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val seen = HashSet<String>()
+        scope.launch {
+            RiskGate.pending.collect { req ->
+                if (req != null && req.sessionId == sessionId && seen.add(req.id)) {
+                    call.event(
+                        JSONObject().put("stage", "approval").put("approval_id", req.id).put("preview", req.preview)
+                            .put("risk", req.assessment.riskClass.name.lowercase()).put("reason", req.assessment.reason)
+                            .put("device", Hub.name(context)).put("timeout", RiskGate.TIMEOUT_MS / 1000),
+                    )
+                }
+            }
+        }
+        scope.launch {
+            val reported = HashSet<String>()
+            RiskGate.recent.collect { recent ->
+                for ((req, decision) in recent) {
+                    if (req.id in seen && reported.add(req.id)) {
+                        val status = when (decision) {
+                            RiskDecision.DENY -> "denied"
+                            RiskDecision.TIMEOUT -> "expired"
+                            else -> "approved"
+                        }
+                        call.event(JSONObject().put("stage", "approval_result").put("approval_id", req.id).put("status", status))
+                    }
+                }
+            }
+        }
+        return scope
+    }
+
+    /** `approve {approval_id, allow}` from the device that asked for the task: decides the card here. */
+    private fun approve(call: IncomingCall) {
+        val id = call.args.optString("approval_id")
+        if (id.isBlank()) { call.fail("usage", "approval_id is required"); return }
+        val allow = call.args.optBoolean("allow", false)
+        RiskGate.decide(id, if (allow) RiskDecision.ALLOW_ONCE else RiskDecision.DENY)
+        call.result(JSONObject().put("ok", true).put("approval_id", id).put("status", if (allow) "approved" else "denied"))
     }
 
     /** One conversation per remote conversation id, created like a goal's own: seeded from the default group. */

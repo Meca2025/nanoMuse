@@ -634,6 +634,7 @@
     <string name="nm_hub_task_prefix">The following was asked from %1$s, one of the user\'s other devices. Do it on this phone and answer in the user\'s language.</string>
     <string name="nm_hub_session_title">From %1$s</string>
 
+    <string name="nm_hub_service_alone_short">Only this one</string>
     <string name="nm_devices_title">Devices</string>
     <string name="nm_devices_intro">Every device signed in to this account is a Muse: this phone, your computers running nanoMuse Desktop, the web console. Each can ask the others for things — on any network, through nanoMuse Cloud.</string>
     <string name="nm_devices_join">Reachable from your devices</string>
