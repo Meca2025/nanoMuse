@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src ws://127.0.0.1:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+    <title>nanoMuse stage</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        pointer-events: none;
+        user-select: none;
+        font-family:
+          -apple-system, "PingFang SC", "Noto Sans CJK SC", "Segoe UI", system-ui, sans-serif;
+      }
+      canvas {
+        position: fixed;
+        inset: 0;
+      }
+      #pill {
+        position: fixed;
+        top: 18px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-24px);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px 8px 10px;
+        border-radius: 999px;
+        background: rgba(28, 28, 30, 0.86);
+        color: #fff;
+        font-size: 13px;
+        line-height: 1.2;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+        opacity: 0;
+        transition:
+          opacity 220ms ease,
+          transform 220ms ease;
+        max-width: min(70vw, 720px);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #pill.on {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      #pill .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #0a66e4;
+        box-shadow: 0 0 0 0 rgba(10, 102, 228, 0.6);
+        animation: pulse 1.4s ease-out infinite;
+      }
+      #pill .avatar {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #f1efeb center/cover;
+      }
+      #pill .what {
+        font-weight: 600;
+      }
+      #pill .step {
+        color: rgba(255, 255, 255, 0.78);
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #pill .hint {
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 12px;
+        padding-left: 6px;
+        border-left: 1px solid rgba(255, 255, 255, 0.22);
+      }
+      #frame {
+        position: fixed;
+        inset: 0;
+        border: 3px solid rgba(10, 102, 228, 0);
+        border-radius: 10px;
+        transition: border-color 260ms ease;
+      }
+      #frame.on {
+        border-color: rgba(10, 102, 228, 0.55);
+      }
+      #frame.look {
+        border-color: rgba(10, 102, 228, 0.9);
+      }
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(10, 102, 228, 0.6);
+        }
+        100% {
+          box-shadow: 0 0 0 9px rgba(10, 102, 228, 0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="frame"></div>
+    <canvas id="stage"></canvas>
+    <div id="pill">
+      <span class="avatar"></span>
+      <span class="dot"></span>
+      <span class="what" id="what"></span>
+      <span class="step" id="step"></span>
+      <span class="hint" id="hint"></span>
+    </div>
+    <script type="module" src="./stage.ts"></script>
+  </body>
+</html>

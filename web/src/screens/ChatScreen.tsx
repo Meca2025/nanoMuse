@@ -87,7 +87,7 @@ export function ChatScreen() {
             onClick={() => setThreadsOpen(true)}
             aria-label={t("Chats")}
             className={cx(
-              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg",
+              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg lg:invisible",
               activeThread !== "main" && "text-accent",
             )}
           >
@@ -696,6 +696,31 @@ function ThreadsSheet({
   active: string;
   onPick: (id: string) => void;
 }) {
+  const t = useT();
+  return (
+    <Sheet open={open} onClose={onClose} title={t("Chats")}>
+      <p className="text-[13px] text-muted mb-3">
+        {t("The main chat is one long conversation. Side chats keep a separate context for a project — memory, goals and approvals are shared.")}
+      </p>
+      <ThreadList threads={threads} active={active} onPick={onPick} onCleared={onClose} />
+    </Sheet>
+  );
+}
+
+/** The list of chats with the devices a chat can be addressed to and the new-chat row; the sheet on the phone, the sidebar on a wide screen. */
+export function ThreadList({
+  threads,
+  active,
+  onPick,
+  onCleared,
+  compact = false,
+}: {
+  threads: ThreadMeta[];
+  active: string;
+  onPick: (id: string) => void;
+  onCleared?: () => void;
+  compact?: boolean;
+}) {
   const { state, toast, dispatch } = useStore();
   const t = useT();
   const [title, setTitle] = useState("");
@@ -743,22 +768,19 @@ function ThreadsSheet({
     try {
       await api.clearThread(id);
       dispatch({ type: "ws", msg: { kind: "thread_cleared", thread: id } });
-      onClose();
+      onCleared?.();
     } catch (e) {
       toast((e as Error).message);
     }
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title={t("Chats")}>
-      <p className="text-[13px] text-muted mb-3">
-        {t("The main chat is one long conversation. Side chats keep a separate context for a project — memory, goals and approvals are shared.")}
-      </p>
-      <ul className="divide-y divide-border rounded-2xl border border-border overflow-hidden">
+    <div>
+      <ul className={cx("divide-y divide-border overflow-hidden", compact ? "rounded-xl" : "rounded-2xl border border-border")}>
         {threads.map((th) => (
-          <li key={th.id} className={cx("flex items-center gap-2 px-3 py-2.5", th.id === active && "bg-surface-2/60")}>
+          <li key={th.id} className={cx("group flex items-center gap-2 px-3", compact ? "py-2 rounded-xl hover:bg-surface-2/60" : "py-2.5", th.id === active && "bg-surface-2/60")}>
             <button type="button" onClick={() => onPick(th.id)} className="flex-1 text-left min-w-0">
-              <div className="font-medium text-[15px] truncate flex items-center gap-2">
+              <div className={cx("font-medium truncate flex items-center gap-2", compact ? "text-[13.5px]" : "text-[15px]")}>
                 {th.device ? (
                   <span className="text-accent">{kindOf(th.device) === "computer" ? <Monitor size={14} /> : <Smartphone size={14} />}</span>
                 ) : th.remote_from ? (
@@ -767,15 +789,20 @@ function ThreadsSheet({
                 <span className="truncate">{th.id === "main" ? t(th.title) : th.title}</span>
                 {th.busy && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 animate-pulse" />}
               </div>
-              <div className="text-[12px] text-muted">
+              <div className={cx("text-muted", compact ? "text-[11.5px]" : "text-[12px]")}>
                 {t("{n} events", { n: th.events })}{th.queued ? ` · ${t("{n} queued", { n: th.queued })}` : ""} · {timeShort(th.updated_at)}
               </div>
             </button>
-            <button type="button" aria-label={t("Clear")} onClick={() => void clear(th.id)} className="p-2 text-muted hover:text-fg">
+            <button type="button" aria-label={t("Clear")} onClick={() => void clear(th.id)} className={cx("p-2 text-muted hover:text-fg", compact && "opacity-0 group-hover:opacity-100 focus:opacity-100")}>
               <X size={16} />
             </button>
             {th.id !== "main" && (
-              <button type="button" aria-label={t("Delete")} onClick={() => void remove(th.id)} className="p-2 text-muted hover:text-rose-500">
+              <button
+                type="button"
+                aria-label={t("Delete")}
+                onClick={() => void remove(th.id)}
+                className={cx("p-2 text-muted hover:text-rose-500", compact && "opacity-0 group-hover:opacity-100 focus:opacity-100")}
+              >
                 <Trash2 size={16} />
               </button>
             )}
@@ -800,22 +827,26 @@ function ThreadsSheet({
           </div>
         </div>
       )}
-      <div className="mt-4 flex gap-2">
+      <div className={cx("flex gap-2", compact ? "mt-3" : "mt-4")}>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={t("New side chat, e.g. “Trip to Kyoto”")}
-          className="flex-1 rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-accent/40"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !creating) void create();
+          }}
+          placeholder={compact ? t("New side chat") : t("New side chat, e.g. “Trip to Kyoto”")}
+          className={cx("min-w-0 flex-1 bg-surface-2 outline-none focus:ring-2 focus:ring-accent/40", compact ? "rounded-xl px-3 py-2 text-[13px]" : "rounded-2xl px-3.5 py-2.5 text-[14px]")}
         />
         <button
           type="button"
           disabled={creating}
           onClick={() => void create()}
-          className="rounded-2xl bg-accent text-accent-fg px-3.5 py-2.5 flex items-center gap-1.5 font-medium disabled:opacity-50"
+          aria-label={t("New")}
+          className={cx("flex items-center gap-1.5 bg-accent text-accent-fg font-medium disabled:opacity-50", compact ? "rounded-xl px-2.5" : "rounded-2xl px-3.5 py-2.5")}
         >
-          <MessageSquarePlus size={18} /> {t("New")}
+          <MessageSquarePlus size={18} /> {!compact && t("New")}
         </button>
       </div>
-    </Sheet>
+    </div>
   );
 }

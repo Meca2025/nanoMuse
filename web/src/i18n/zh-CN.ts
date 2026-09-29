@@ -948,6 +948,8 @@ const zhCN: Record<string, string> = {
   "clipboard, notifications, calendar, contacts, location, alarms, photos": "剪贴板、通知、日历、通讯录、位置、闹钟、照片",
   // ---- devices, the hub, nanoMuse Cloud (docs/every-device.md)
   "Devices": "设备",
+  "Only this one": "只有这一台",
+  Idle: "空闲",
   "Your phone and computers, working together": "手机和电脑一起干活",
   "{n} other devices, {online} online": "另外 {n} 台设备，{online} 台在线",
   "Signed in as {hint}; no other device yet": "已登录 {hint}，还没有其他设备",
