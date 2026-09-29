@@ -85,8 +85,12 @@ def _kill_tree(proc: subprocess.Popen[bytes]) -> None:
         subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
         return
     try:
-        os.killpg(proc.pid, signal.SIGKILL)
-    except (ProcessLookupError, PermissionError):
+        # POSIX only (the branch above handles Windows); looked up by name so mypy on
+        # Windows does not object to attributes that platform's os module lacks
+        killpg = getattr(os, "killpg")  # noqa: B009
+        sigkill = getattr(signal, "SIGKILL")  # noqa: B009
+        killpg(proc.pid, sigkill)
+    except (ProcessLookupError, PermissionError, AttributeError):
         proc.kill()
 
 

@@ -209,15 +209,21 @@ class XdotoolHands:
         return open_application(name)
 
 
+def _platform() -> str:
+    # a function, so mypy checks every branch below on every platform
+    return sys.platform
+
+
 def open_application(name: str) -> str:
     """Start an application by the name a person uses for it. Returns what was started."""
     name = name.strip()
     if not name:
         raise ValueError("an application name is required")
-    if sys.platform == "darwin":
+    platform = _platform()
+    if platform == "darwin":
         subprocess.run(["open", "-a", name], check=True, timeout=20, capture_output=True)
         return name
-    if sys.platform == "win32":
+    if platform == "win32":
         subprocess.Popen(["cmd", "/c", "start", "", name], shell=False)  # noqa: S603
         return name
     # Linux: a command on PATH, else a .desktop entry whose Name matches
