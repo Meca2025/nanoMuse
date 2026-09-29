@@ -33,6 +33,39 @@ class FakeRunner:
     async def gateway_address(self) -> str | None:
         return "10.0.0.1"
 
+    # kept containers (nanoMuse Web): created once, then stopped and started by name
+    @property
+    def kept(self) -> dict[str, dict]:
+        if not hasattr(self, "_kept"):
+            self._kept: dict[str, dict] = {}
+        return self._kept
+
+    async def start_persistent(self, name, env, *, volumes, network, memory, cpus, pids, image):
+        c = self.kept.get(name)
+        if c is None:
+            c = self.kept[name] = {
+                "env": env,
+                "volumes": volumes,
+                "network": network,
+                "image": image,
+                "address": f"10.0.1.{len(self.kept) + 1}",
+                "starts": 0,
+            }
+        c["running"] = True
+        c["starts"] += 1
+        return c["address"]
+
+    async def stop_only(self, name) -> None:
+        if name in self.kept:
+            self.kept[name]["running"] = False
+
+    async def remove(self, name) -> None:
+        self.kept.pop(name, None)
+
+    async def address_of(self, name) -> str | None:
+        c = self.kept.get(name)
+        return c["address"] if c and c.get("running") else None
+
 
 class Clock:
     def __init__(self) -> None:
@@ -74,6 +107,15 @@ def make_settings(**over) -> Settings:
         trial_daily_new=3,
         trial_daily_tokens=100_000,
         trial_rpm=5,
+        web_enabled=True,
+        web_relay_url="https://cloud.example",
+        web_relay_internal_url="http://relay:8787",
+        web_network="web-net",
+        web_db=":memory:",
+        web_image="nanomuse:web",
+        web_max_accounts=2,
+        web_max_running=1,
+        web_idle_stop_s=3600,
     )
     values.update(over)
     return replace(base, **values)
@@ -100,13 +142,65 @@ class Upstream:
         self.calls: list[httpx.Request] = []
         self.usage_total = 10
         self.stream = False
+        self.codes: dict[str, str] = {}  # the relay's: identifier → code
+        self.keys_issued = 0
+
+    def relay(self, request: httpx.Request) -> httpx.Response:
+        """A little nanoMuse Cloud: any identifier gets the code 246810."""
+        data = json.loads(request.content or b"{}")
+        ident = str(data.get("identifier", "")).lower()
+        if request.url.path == "/v1/auth/code":
+            if "@" not in ident and not ident.isdigit():
+                return wire(
+                    400,
+                    json.dumps(
+                        {
+                            "error": {
+                                "code": "bad_identifier",
+                                "message": "Enter a mobile number or an e-mail address",
+                            }
+                        }
+                    ),
+                )
+            self.codes[ident] = "246810"
+            return httpx.Response(204)
+        if request.url.path == "/v1/auth/verify":
+            if self.codes.get(ident) != data.get("code"):
+                return wire(
+                    400,
+                    json.dumps(
+                        {"error": {"code": "code_wrong", "message": "That code is not right"}}
+                    ),
+                )
+            self.keys_issued += 1
+            account = {
+                "id": "acct-" + ident.replace("@", "-at-"),
+                "channel": "email" if "@" in ident else "sms",
+                "hint": ident[:2] + "…",
+                "created_at": 1_700_000_000,
+                "member": False,
+            }
+            return wire(
+                200,
+                json.dumps(
+                    {
+                        "api_key": f"nm_key{self.keys_issued}",
+                        "created": self.keys_issued == 1,
+                        "account": account,
+                    }
+                ),
+                **{"content-type": "application/json"},
+            )
+        return wire(404, "{}")
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.calls.append(request)
         if request.url.path == "/api/health":
             return wire(200, '{"ok": true}', **{"content-type": "application/json"})
-        if request.url.host.startswith("10.0.0."):
+        if request.url.host.startswith("10.0."):
             return wire(200, f"container says {request.url.path}", **{"x-upstream": "yes"})
+        if request.url.host == "cloud.example":
+            return self.relay(request)
         # a model provider
         if self.stream:
             body = (

@@ -20,6 +20,14 @@ nanomuse.cn {
 	@hidden path /.*
 	respond @hidden 404
 
+	# nanoMuse Web: sign in here, then the browser goes to <slug>.s.nanomuse.dev (the gateway's
+	# session domain; nanomuse.cn has no wildcard record). The gateway is the showcase's, on
+	# the edge network of this Caddy — see demo/showcase/README.md, "nanoMuse Web".
+	@web path /web /web/* /api/web/*
+	handle @web {
+		reverse_proxy gateway:8000
+	}
+
 	# pages: ten minutes, like GitHub Pages; assets are replaced in place across versions, so a day
 	header Cache-Control "public, max-age=600"
 	@assets path /assets/*

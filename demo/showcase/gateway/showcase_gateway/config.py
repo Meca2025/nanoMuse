@@ -111,6 +111,21 @@ class Settings:
     trial_daily_tokens: int  # what all trials together may spend in a day
     trial_rpm: int  # requests per minute per trial
 
+    # nanoMuse Web: a kept Muse per Cloud account (accounts.py)
+    web_enabled: bool
+    web_relay_url: str  # the relay as the gateway calls it for sign-in
+    web_relay_internal_url: str  # the relay as the containers reach it (same Docker network)
+    web_network: str  # a network with a way out, shared with the relay
+    web_db: str
+    web_image: str  # "" → the showcase image
+    web_max_accounts: int
+    web_max_running: int
+    web_idle_stop_s: int
+    web_memory: str
+    web_cpus: str
+    web_device_name: str
+    web_slug_salt: str
+
     @classmethod
     def from_env(cls) -> Settings:
         main = Lane(
@@ -170,6 +185,21 @@ class Settings:
             trial_daily_new=_int("TRIAL_DAILY_NEW", 200),
             trial_daily_tokens=_int("TRIAL_DAILY_TOKENS", 20_000_000),
             trial_rpm=_int("TRIAL_RPM", 30),
+            web_enabled=_bool("WEB_ENABLED", False),
+            web_relay_url=_str("WEB_RELAY_URL", "https://cloud.nanomuse.cn").rstrip("/"),
+            web_relay_internal_url=_str(
+                "WEB_RELAY_INTERNAL_URL", "http://nanomuse-relay:8787"
+            ).rstrip("/"),
+            web_network=_str("WEB_NETWORK", "nanomuse-web"),
+            web_db=_str("WEB_DB", "/data/web.db"),
+            web_image=_str("WEB_IMAGE"),
+            web_max_accounts=_int("WEB_MAX_ACCOUNTS", 60),
+            web_max_running=_int("WEB_MAX_RUNNING", 12),
+            web_idle_stop_s=_int("WEB_IDLE_STOP_S", 6 * 3600),
+            web_memory=_str("WEB_CONTAINER_MEMORY", "640m"),
+            web_cpus=_str("WEB_CONTAINER_CPUS", "1"),
+            web_device_name=_str("WEB_DEVICE_NAME", "Web"),
+            web_slug_salt=_str("WEB_SLUG_SALT", "nanomuse-web"),
         )
 
     def session_origin(self, sid: str) -> str:

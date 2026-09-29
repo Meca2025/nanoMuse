@@ -67,6 +67,35 @@ together may spend `TRIAL_DAILY_TOKENS` a day; each is held to `TRIAL_RPM` reque
 Trials live in SQLite on the `gateway-data` volume and survive restarts; `GET /api/trial/<id>`
 with the key shows what is left, and `/api/demo/info` carries the totals.
 
+### nanoMuse Web: a kept Muse per Cloud account
+
+The showcase gives a visitor a Muse for half an hour. With `WEB_ENABLED=1` the same gateway
+gives a *person* one that stays — this is the web version at
+[nanomuse.cn/web/](https://nanomuse.cn/web/), for anyone who would rather not install
+anything. `/web/` is a sign-in page (served by the gateway; the site's Caddy block hands
+`/web/*` and `/api/web/*` over to it): an e-mail or a mobile number, then the six-digit code.
+The gateway asks nanoMuse Cloud for the code and checks it (`POST /v1/auth/code`,
+`/v1/auth/verify`, the visitor's address forwarded so the relay's per-address limits still
+count the right person), gets the account's key back, and starts — or wakes — the account's
+container: `nmw-<slug>` with three named volumes (`/data`, `/workspace`, `/home/muse`), on the
+`nanomuse-web` network (a way out, and the relay next to it), signed in from the environment
+(`NANOMUSE_CLOUD_KEY`, `NANOMUSE_CLOUD_BASE_URL=http://nanomuse-relay:8787`,
+`NANOMUSE_HUB_NAME=Web`, `NANOMUSE_ONBOARDED=1`; `nanomuse/hub/service.py`,
+`_seed_from_env`). The browser is sent to `https://<slug>.<SESSION_DOMAIN>/?token=…`, the same
+door the phone's QR code opens, and the runtime there makes the Cloud its model on first
+start and takes its place on the hub as one of the account's devices — so the phone can ask
+it for things and it can ask the phone.
+
+What the gateway keeps is small (`WEB_DB`, SQLite on the `gateway-data` volume): account id →
+slug, access token, the key the container was started with. The slug is an HMAC of the
+relay's opaque account id, so signing in from another browser lands in the same Muse (with a
+fresh key: the container is recreated around the same volumes). A container that has been
+quiet for `WEB_IDLE_STOP_S` (six hours) is stopped, not removed; the next request on its host
+starts it again, which takes a few seconds. `WEB_MAX_RUNNING` containers run at once — when
+every place is taken the quietest sleeps to make room, unless it was used in the last five
+minutes (`503 web_busy`) — and `WEB_MAX_ACCOUNTS` may exist at all (`503 web_full`). Model
+use is the account's own daily allowance on the relay; the gateway meters nothing here.
+
 ## Deploying
 
 You need: a Linux box with Docker (4 cores / 8 GB is plenty for `MAX_SESSIONS=20` — a session
