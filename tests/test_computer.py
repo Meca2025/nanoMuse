@@ -5,6 +5,7 @@ Hands card, the switch, Stop)."""
 from __future__ import annotations
 
 import json
+import platform
 import time
 from collections.abc import Iterator
 from typing import Any
@@ -185,7 +186,8 @@ async def test_link_acts_looks_again_and_reports_steps(settings: Settings, fake_
     r = await link.act({"action": "click", "x": 100, "y": 200, "label": "File"})
     assert r["looked"] is True and hands.calls == [("click", 100.0, 200.0, "left", 1)]
     await link.act({"action": "type", "text": "hello", "clear": True, "submit": True})
-    assert hands.calls[1:] == [("key", ("ctrl", "a")), ("type", "hello"), ("key", ("enter",))]
+    select_all = "command" if platform.system() == "Darwin" else "ctrl"
+    assert hands.calls[1:] == [("key", (select_all, "a")), ("type", "hello"), ("key", ("enter",))]
     await link.act({"action": "scroll", "x": 5, "y": 5, "dy": -120})
     await link.act({"action": "drag", "x": 1, "y": 2, "x2": 3, "y2": 4})
     await link.act({"action": "open_app", "app": "Firefox"})
