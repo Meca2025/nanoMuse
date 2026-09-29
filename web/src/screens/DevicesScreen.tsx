@@ -191,7 +191,7 @@ function ThisDeviceCard({ hub, onChange }: { hub: HubView; onChange: () => void 
           </button>
         )}
         <Toggle
-          label={t("On the hub")}
+          label={t("Join the hub")}
           hint={signedIn ? t("Reachable by your other devices while this runs.") : t("Sign in first.")}
           checked={hub.enabled && signedIn}
           disabled={!signedIn || busy}

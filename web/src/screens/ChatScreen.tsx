@@ -156,7 +156,9 @@ export function ChatScreen() {
             </button>
           </div>
         )}
-        {eventsLoaded && events.length === 0 && !stream && <EmptyChat name={name} onSend={(text) => void send(activeThread, text)} />}
+        {eventsLoaded && events.length === 0 && !stream && (
+          <EmptyChat name={name} device={thread?.device ? thread.device_name || thread.device : undefined} onSend={(text) => void send(activeThread, text)} />
+        )}
         {events.map((ev, i) => (
           <EventView
             key={ev.id}
@@ -424,21 +426,25 @@ function TypingIndicator({ label }: { label?: string }) {
   );
 }
 
-function EmptyChat({ name, onSend }: { name: string; onSend: (text: string) => void }) {
+function EmptyChat({ name, device, onSend }: { name: string; device?: string; onSend: (text: string) => void }) {
   const { state } = useStore();
   const t = useT();
-  const starters = [
-    t("What can you do for me?"),
-    t("Plan my week — ask me what's on my plate"),
-    t("Research and compare two options for me"),
-    t("Set up a long-term goal and track it"),
-  ];
+  const starters = device
+    ? [t("What is on your screen right now?"), t("Which folder are you in, and what is in it?"), t("Check for updates and tell me what needs a restart")]
+    : [
+        t("What can you do for me?"),
+        t("Plan my week — ask me what's on my plate"),
+        t("Research and compare two options for me"),
+        t("Set up a long-term goal and track it"),
+      ];
   return (
     <div className="flex flex-col items-center text-center px-6 pt-8 pb-6 gap-3">
       <Avatar profile={state.profile} size={96} />
-      <div className="text-[20px] font-semibold">{t("Hi, I'm {name}.", { name })}</div>
+      <div className="text-[20px] font-semibold">{device ? t("This chat goes to {device}.", { device }) : t("Hi, I'm {name}.", { name })}</div>
       <p className="text-muted text-[14.5px] leading-snug max-w-sm">
-        {t("I don't just answer — I get things done: research, plans, files, code, email, long-running goals. Everything I do shows up here, and anything hard to undo waits for your approval.")}
+        {device
+          ? t("Whatever you ask here, the {name} on {device} does where it is — its shell, its files, its screen. Every step shows up here, and anything that needs an approval asks you here.", { name, device })
+          : t("I don't just answer — I get things done: research, plans, files, code, email, long-running goals. Everything I do shows up here, and anything hard to undo waits for your approval.")}
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         {starters.map((s) => (

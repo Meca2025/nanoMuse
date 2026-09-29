@@ -1291,6 +1291,9 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     if STATIC_DIR.is_dir():
         from fastapi.staticfiles import StaticFiles
 
+        # nanoMuse: the avatars are WebP; older Python mimetypes tables do not know it
+        mimetypes.add_type("image/webp", ".webp")
+
         assets = STATIC_DIR / "assets"
         if assets.is_dir():
             app.mount("/assets", StaticFiles(directory=assets), name="assets")
@@ -1350,8 +1353,17 @@ async def _handle_ws_message(
                 files=[str(f) for f in files][:10] if isinstance(files, list) else None,
             )
         elif kind == "approval":
+            approval_id = str(data.get("id", ""))
+            if approval_id in svc.hub.remote_approvals:
+                # nanoMuse: a card raised by another device's run — the answer goes back over the hub
+                ok = await svc.hub.decide_remote(approval_id, bool(data.get("approved")))
+                if not ok:
+                    await ws.send_json(
+                        {"kind": "error", "error": "the device did not take the answer"}
+                    )
+                return
             ok = svc.decide(
-                str(data.get("id", "")),
+                approval_id,
                 bool(data.get("approved")),
                 str(data.get("scope", "once")),
                 str(data.get("reason", "")),

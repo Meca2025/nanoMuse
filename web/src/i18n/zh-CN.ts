@@ -1032,6 +1032,12 @@ const zhCN: Record<string, string> = {
   "Opened an application": "打开了一个应用",
   "Waited": "等待",
   "The dragon": "小龙",
+  "Join the hub": "加入中继",
+  "This chat goes to {device}.": "这个对话发给 {device}。",
+  "Whatever you ask here, the {name} on {device} does where it is — its shell, its files, its screen. Every step shows up here, and anything that needs an approval asks you here.": "在这里说的每件事，都由 {device} 上的 {name} 在它那边完成——它的命令行、它的文件、它的屏幕。每一步都显示在这里，需要批准的事也在这里问你。",
+  "What is on your screen right now?": "你屏幕上现在是什么？",
+  "Which folder are you in, and what is in it?": "你在哪个目录，里面有什么？",
+  "Check for updates and tell me what needs a restart": "检查一下更新，告诉我哪些需要重启",
 };
 
 export default zhCN;

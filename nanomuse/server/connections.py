@@ -38,6 +38,7 @@ from nanomuse.tools import (
     WebSearch,
     playwright_available,
 )
+from nanomuse.vault.vault import VaultError
 
 if TYPE_CHECKING:
     from nanomuse.server.service import MuseService
@@ -236,7 +237,12 @@ class Connections:
         if not key:
             key_source = "none"
         elif self.vault.has_placeholders(key):
-            key_source = "vault" if self.vault.get(LLM_KEY) else "missing"
+            # nanoMuse: whichever vault entry the placeholder names (LLM_API_KEY for a key
+            # pasted here, NANOMUSE_CLOUD_KEY when the Cloud relay is the model)
+            try:
+                key_source = "vault" if self.vault.resolve(key) else "missing"
+            except VaultError:
+                key_source = "missing"
         else:
             key_source = "config"
         email = s.connectors.email

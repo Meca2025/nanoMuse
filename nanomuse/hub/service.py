@@ -441,14 +441,19 @@ class HubService:
         """Follow the run in ``thread`` on the bus; send its steps to the caller; return
         the final answer once the thread is idle again."""
         started = False
+        final = ""
         while True:
             msg = await queue.get()
             kind = msg.get("kind")
-            if kind == "event":
+            if kind in ("event", "update"):
+                # "event": a new card; "update": one that changed (a tool finishing, an
+                # approval answered). Both matter to the caller's view of the run.
                 ev = msg.get("event") or {}
                 if ev.get("thread") != thread.id:
                     continue
-                await self._forward_event(call, ev)
+                if ev.get("type") == "assistant" and ev.get("text") and not ev.get("quiet"):
+                    final = str(ev["text"])
+                await self._forward_event(call, ev, fresh=kind == "event")
             elif kind == "thread":
                 meta = msg.get("thread") or {}
                 if meta.get("id") != thread.id:
@@ -457,40 +462,56 @@ class HubService:
                     started = True
                 elif started and not meta.get("queued"):
                     break
-        return self.svc.ui.last_assistant_text.get(thread.id, "")
+        return final or self.svc.ui.last_assistant_text.get(thread.id, "")
 
-    async def _forward_event(self, call: IncomingCall, ev: dict[str, Any]) -> None:
+    async def _forward_event(
+        self, call: IncomingCall, ev: dict[str, Any], *, fresh: bool = True
+    ) -> None:
+        """One card of the run, as a task event for the caller. ``fresh`` is a new card;
+        otherwise a change to one already sent (a tool's result, an approval's answer)."""
         etype = ev.get("type")
         status = ev.get("status")
         if etype == "tool":
-            if status == "running":
+            if status == "running" and fresh:
                 await call.event(
-                    {"stage": "tool", "name": ev.get("tool"), "summary": ev.get("summary", "")}
+                    {
+                        "stage": "tool",
+                        "id": ev.get("id"),
+                        "name": ev.get("tool"),
+                        "summary": ev.get("summary", ""),
+                    }
                 )
-            elif status in ("ok", "error", "blocked"):
+            elif status in ("ok", "error", "blocked") and not fresh:
                 await call.event(
                     {
                         "stage": "tool_result",
+                        "id": ev.get("id"),
                         "name": ev.get("tool"),
                         "ok": status == "ok",
                         "summary": str(ev.get("output") or "")[:200],
                     }
                 )
-        elif etype == "approval" and status == "pending":
-            await call.event(
-                {
-                    "stage": "approval",
-                    "approval_id": ev.get("id"),
-                    "preview": ev.get("summary", ""),
-                    "risk": ev.get("risk", "moderate"),
-                    "reason": "; ".join(ev.get("warnings") or ev.get("reasons") or []),
-                    "device": self.device_name,
-                    "timeout": int(self.settings.server.approval_timeout),
-                }
-            )
-        elif etype == "assistant" and ev.get("text") and not ev.get("final"):
+        elif etype == "approval":
+            if status == "pending" and fresh:
+                await call.event(
+                    {
+                        "stage": "approval",
+                        "approval_id": ev.get("id"),
+                        "preview": ev.get("summary", ""),
+                        "risk": ev.get("risk", "moderate"),
+                        "reason": "; ".join(ev.get("warnings") or ev.get("reasons") or []),
+                        "device": self.device_name,
+                        "timeout": int(self.settings.server.approval_timeout),
+                    }
+                )
+            elif status in ("approved", "denied", "expired") and not fresh:
+                # answered here (or timed out): the caller's card closes too
+                await call.event(
+                    {"stage": "approval_result", "approval_id": ev.get("id"), "status": status}
+                )
+        elif etype == "assistant" and fresh and ev.get("text") and not ev.get("final"):
             await call.event({"stage": "text", "text": ev["text"], "interim": True})
-        elif etype == "artifact" and ev.get("path"):
+        elif etype == "artifact" and fresh and ev.get("path"):
             await self._forward_artifact(call, str(ev["path"]))
 
     async def _forward_artifact(self, call: IncomingCall, rel: str) -> None:
@@ -556,10 +577,14 @@ class HubService:
                         "device": name,
                     }
                 )
-                tool_events[str(body.get("name") or "")] = ev["id"]
+                # keyed by the remote card id when the device sends one (a runtime),
+                # by the tool name otherwise (the phone)
+                tool_events[str(body.get("id") or body.get("name") or "")] = ev["id"]
                 ui.set_status("working", f"{name}: {body.get('summary') or body.get('name')}", tid)
             elif stage == "tool_result":
-                eid = tool_events.pop(str(body.get("name") or ""), None)
+                eid = tool_events.pop(str(body.get("id") or ""), None) or tool_events.pop(
+                    str(body.get("name") or ""), None
+                )
                 if eid:
                     ui.patch(
                         tid,
@@ -567,6 +592,18 @@ class HubService:
                         status="ok" if body.get("ok", True) else "error",
                         output=str(body.get("summary") or ""),
                     )
+            elif stage == "approval_result":
+                # answered on the device itself (or expired there): close the card here
+                approval_id = str(body.get("approval_id") or "")
+                for cid, (dev, aid) in list(self.remote_approvals.items()):
+                    if dev == device_id and aid == approval_id:
+                        self.remote_approvals.pop(cid, None)
+                        status = str(body.get("status") or "expired")
+                        ui.patch(
+                            tid, cid, status=status, scope="once" if status == "approved" else None
+                        )
+                if ui.status.get(tid, {}).get("state") == "waiting":
+                    ui.set_status("working", f"Asking {name}…", tid)
             elif stage == "approval":
                 approval_id = str(body.get("approval_id") or "")
                 card = ui.emit(
@@ -574,7 +611,7 @@ class HubService:
                         "type": "approval",
                         "thread": tid,
                         "tool": "delegate",
-                        "summary": f"on {name}: {body.get('preview', '')}",
+                        "summary": str(body.get("preview") or ""),
                         "risk": _RISK_WORDS.get(str(body.get("risk") or ""), "moderate"),
                         "reasons": [str(body.get("reason") or "")] if body.get("reason") else [],
                         "warnings": [],
@@ -704,17 +741,23 @@ class HubService:
         for t in self.svc.threads.values():
             if t.timeline.get(card_id) is not None:
                 self.svc.ui.patch(
-                    t.id, card_id, status="approved" if approved else "denied", scope="once"
+                    t.id,
+                    card_id,
+                    status="approved" if approved else "denied",
+                    scope="once" if approved else None,
+                    decided_ts=now_iso(),
                 )
+                if self.svc.ui.status.get(t.id, {}).get("state") == "waiting":
+                    self.svc.ui.set_status("working", f"Asking {t.device_name or device_id}…", t.id)
                 break
         try:
-            await self.call(
+            result = await self.call(
                 device_id, "approve", {"approval_id": approval_id, "allow": approved}, timeout=30
             )
         except HubError as exc:
             logger.warning("approve to {} failed: {}", device_id, exc)
             return False
-        return True
+        return bool(result.get("ok", True))
 
 
 def _mime(name: str) -> str:

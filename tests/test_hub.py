@@ -112,6 +112,7 @@ class FakeRelay:
         self.port = 0
         self.ready = threading.Event()
         self.frames: queue.Queue[dict[str, Any]] = queue.Queue()  # from the runtime, in order
+        self.skipped: list[dict[str, Any]] = []  # frames next_frame() passed over
         self.hello: dict[str, Any] | None = None
         self.ws: Any = None
         self.phone_handler: Callable[[dict[str, Any]], list[dict[str, Any]]] | None = None
@@ -200,6 +201,18 @@ class FakeRelay:
             frame = self.frames.get(timeout=left)
             if type_ is None or frame.get("type") == type_:
                 return frame
+            self.skipped.append(frame)  # kept, for checks on what came in between
+
+    def drain(self, type_: str | None = None) -> list[dict[str, Any]]:
+        """Whatever the runtime has sent so far (of one type), without waiting."""
+        out: list[dict[str, Any]] = []
+        while True:
+            try:
+                frame = self.frames.get_nowait()
+            except queue.Empty:
+                return out
+            if type_ is None or frame.get("type") == type_:
+                out.append(frame)
 
     def call_runtime(self, action: str, args: dict[str, Any], call_id: str = "c1") -> None:
         self.send({"type": "call", "id": call_id, "from": PHONE, "action": action, "args": args})
@@ -414,9 +427,12 @@ def test_task_from_a_device_runs_in_a_visible_side_chat(hub_server) -> None:
     llm.script.append(LLMResponse(content="Done: from-pixel"))
     service.settings.sentinel.mode = "auto"
     relay.call_runtime("task", {"text": "run echo from-pixel", "conversation": "conv-1"}, "t1")
-    # the approval-free run: a tool event, then the result
+    # the approval-free run: the tool starting, the tool finishing, then the result
     ev = relay.next_frame("event")
     assert ev["id"] == "t1" and ev["body"]["stage"] == "tool" and ev["body"]["name"] == "shell"
+    done = relay.next_frame("event")
+    assert done["body"]["stage"] == "tool_result" and done["body"]["ok"] is True
+    assert done["body"]["id"] == ev["body"]["id"] and "from-pixel" in done["body"]["summary"]
     res = relay.next_frame("result")
     assert res["id"] == "t1" and res["ok"] is True
     assert res["body"]["text"] == "Done: from-pixel" and res["body"]["device"] == "Desk"
@@ -457,6 +473,10 @@ def test_task_approval_is_relayed_and_answered_by_the_device(hub_server) -> None
     by_id = {r["id"]: r for r in results}
     assert by_id["a1"]["body"]["ok"] is True
     assert by_id["t3"]["ok"] is True and by_id["t3"]["body"]["text"] == "Ran it"
+    # the caller was told the card was answered, so its copy closes as well
+    seen = relay.skipped + relay.drain("event")
+    stages = [f["body"]["stage"] for f in seen if f.get("type") == "event" and f["id"] == "t3"]
+    assert "approval_result" in stages and "tool_result" in stages
 
 
 def test_remote_control_off_refuses_everything_but_info(hub_server) -> None:
@@ -555,7 +575,7 @@ def test_device_chat_relays_its_approval_card_back(hub_server) -> None:
         ]
     )[0]
     assert card["status"] == "pending" and card["remote"]["device"] == "phone-1"
-    assert card["summary"] == "on Pixel: delete the draft" and card["grant_options"] == ["once"]
+    assert card["summary"] == "delete the draft" and card["grant_options"] == ["once"]
     assert card["id"] in service.hub.remote_approvals
     r = client.post(f"/api/approvals/{card['id']}", json={"approved": True, "scope": "once"})
     assert r.status_code == 200, r.text
@@ -565,6 +585,53 @@ def test_device_chat_relays_its_approval_card_back(hub_server) -> None:
     card_after = [e for e in events if e["type"] == "approval"][0]
     assert card_after["status"] == "approved"
     assert [e["text"] for e in events if e["type"] == "assistant"] == ["Deleted."]
+
+
+def test_device_chat_approval_over_the_websocket_travels_the_hub(hub_server) -> None:
+    client, service, _llm, relay = hub_server
+    sign_in(client)
+    wait_for(lambda: client.get("/api/hub").json()["state"] == "connected")
+    approved: list[dict[str, Any]] = []
+    task_ids: list[str] = []
+
+    def phone(frame: dict[str, Any]) -> list[dict[str, Any]]:
+        cid, action = frame["id"], frame.get("action")
+        if action == "task":
+            task_ids.append(cid)
+            return [
+                {
+                    "type": "event",
+                    "id": cid,
+                    "body": {"stage": "approval", "approval_id": "ap-ws", "preview": "send it"},
+                }
+            ]
+        if action == "approve":
+            approved.append(frame["args"])
+            return [
+                {"type": "result", "id": cid, "ok": True, "body": {"ok": True}},
+                {"type": "result", "id": task_ids[0], "ok": True, "body": {"text": "Sent."}},
+            ]
+        return _phone_default(frame)
+
+    relay.phone_handler = phone
+    thread = client.post("/api/hub/ask", json={"device": "Pixel", "text": "send it"}).json()[
+        "thread"
+    ]
+    card = wait_for(
+        lambda: [
+            e
+            for e in client.get(f"/api/threads/{thread['id']}/events").json()["events"]
+            if e["type"] == "approval"
+        ]
+    )[0]
+    with client.websocket_connect("/ws?token=secret-token") as ws:
+        ws.receive_json()  # hello
+        ws.send_json({"kind": "approval", "id": card["id"], "approved": True, "scope": "once"})
+        wait_for(lambda: approved == [{"approval_id": "ap-ws", "allow": True}])
+    wait_for(lambda: not service.threads[thread["id"]].busy)
+    events = client.get(f"/api/threads/{thread['id']}/events").json()["events"]
+    assert [e["status"] for e in events if e["type"] == "approval"] == ["approved"]
+    assert [e["text"] for e in events if e["type"] == "assistant"] == ["Sent."]
 
 
 def test_delegate_tool_asks_the_device_and_passes_the_answer_on(hub_server) -> None:

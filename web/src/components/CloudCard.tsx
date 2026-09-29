@@ -26,7 +26,7 @@ export function CloudCard({
 }) {
   const { toast } = useStore();
   const t = useT();
-  const [open, setOpen] = useState(compact);
+  const [open, setOpen] = useState(compact || !account?.signed_in);
   const [identifier, setIdentifier] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
