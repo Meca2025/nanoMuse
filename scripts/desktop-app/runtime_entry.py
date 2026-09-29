@@ -16,7 +16,9 @@ def main() -> None:
         from nanomuse.bridge import cli as bridge
 
         which = sys.argv.pop(1)
-        {"device": bridge.device_main, "browser": bridge.browser_main, "open": bridge.open_main}[which]()
+        {"device": bridge.device_main, "browser": bridge.browser_main, "open": bridge.open_main}[
+            which
+        ]()
         return
     from nanomuse.cli import main as cli_main
 

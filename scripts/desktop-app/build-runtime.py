@@ -85,7 +85,11 @@ def check(exe: Path) -> None:
                         print("health:", body)
                         with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2) as r2:
                             page = r2.read()
-                            assert b"<div id=\"root\"" in page or b"<div id=root" in page or len(page) > 200
+                            assert (
+                                b'<div id="root"' in page
+                                or b"<div id=root" in page
+                                or len(page) > 200
+                            )
                         print("the app is served; the bundled runtime works")
                         return
             except Exception:  # noqa: BLE001
@@ -106,7 +110,9 @@ def check(exe: Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="start it once and ask /api/health")
-    ap.add_argument("--check-only", action="store_true", help="only check the runtime already built")
+    ap.add_argument(
+        "--check-only", action="store_true", help="only check the runtime already built"
+    )
     args = ap.parse_args()
     if args.check_only:
         exe = TARGET / ("nanomuse.exe" if sys.platform == "win32" else "nanomuse")
