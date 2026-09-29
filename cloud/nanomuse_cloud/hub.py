@@ -107,6 +107,10 @@ class Hub:
 
     # -- presence -------------------------------------------------------------------
 
+    def online_count(self) -> int:
+        """Sockets open right now, across every account (the operator's page)."""
+        return sum(len(v) for v in self.online.values())
+
     def devices(self, account_id: str) -> list[dict]:
         """Remembered devices with their presence, then the browser tabs, newest first."""
         live = self.online.get(account_id, {})

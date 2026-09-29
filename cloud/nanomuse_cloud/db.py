@@ -28,7 +28,11 @@ CREATE TABLE IF NOT EXISTS accounts (
     used          INTEGER NOT NULL DEFAULT 0,
     disabled      INTEGER NOT NULL DEFAULT 0,
     identifier_enc TEXT NOT NULL DEFAULT '',  -- AES-GCM of the phone / address, base64
-    unlimited     INTEGER NOT NULL DEFAULT 0   -- a member: no daily money cap (set by the operator)
+    unlimited     INTEGER NOT NULL DEFAULT 0,  -- a member: no daily money cap (set by the operator)
+    password_hash TEXT NOT NULL DEFAULT '',    -- scrypt$salt$hash, empty = no password (codes only)
+    password_set_at INTEGER,
+    failed_logins INTEGER NOT NULL DEFAULT 0,  -- wrong passwords in a row
+    locked_until  INTEGER                      -- password sign-in refused until then
 );
 CREATE TABLE IF NOT EXISTS api_keys (
     key_hash      TEXT PRIMARY KEY,
@@ -37,7 +41,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
     device        TEXT NOT NULL DEFAULT '',
     created_at    INTEGER NOT NULL,
     last_used_at  INTEGER,
-    revoked_at    INTEGER
+    revoked_at    INTEGER,
+    via           TEXT NOT NULL DEFAULT 'code' -- how this sign-in happened: code | password
 );
 CREATE INDEX IF NOT EXISTS api_keys_account ON api_keys(account_id);
 CREATE TABLE IF NOT EXISTS codes (
@@ -56,15 +61,28 @@ CREATE TABLE IF NOT EXISTS ledger (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id    TEXT NOT NULL REFERENCES accounts(id),
     ts            INTEGER NOT NULL,
-    kind          TEXT NOT NULL,          -- grant | chat | image | video | adjust
+    kind          TEXT NOT NULL,          -- grant | chat | image | video | realtime | adjust
     model         TEXT NOT NULL DEFAULT '',
     prompt_tokens INTEGER NOT NULL DEFAULT 0,
     completion_tokens INTEGER NOT NULL DEFAULT 0,
     charged       INTEGER NOT NULL,       -- positive = spent, negative = granted
     request_id    TEXT NOT NULL DEFAULT '',
-    cost_uy       INTEGER NOT NULL DEFAULT 0  -- what the provider bills for it, in micro-yuan
+    cost_uy       INTEGER NOT NULL DEFAULT 0,  -- what the provider bills for it, in micro-yuan
+    extra         TEXT NOT NULL DEFAULT ''     -- JSON: the token split of a call (text/audio/image), seconds…
 );
 CREATE INDEX IF NOT EXISTS ledger_account_ts ON ledger(account_id, ts);
+CREATE INDEX IF NOT EXISTS ledger_ts ON ledger(ts);
+CREATE TABLE IF NOT EXISTS events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id    TEXT NOT NULL DEFAULT '',   -- '' for events before an account exists (a failed sign-in)
+    ts            INTEGER NOT NULL,
+    kind          TEXT NOT NULL,              -- sign_in.code | sign_in.password | sign_in.failed | sign_out |
+                                              -- sign_out.all | password.set | account.created | account.deleted |
+                                              -- device.joined | upstream.error | budget.refused | call.ended
+    detail        TEXT NOT NULL DEFAULT ''    -- a device name, a model, an error code: never message content
+);
+CREATE INDEX IF NOT EXISTS events_account_ts ON events(account_id, ts);
+CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
 CREATE TABLE IF NOT EXISTS devices (
     account_id    TEXT NOT NULL REFERENCES accounts(id),
     id            TEXT NOT NULL,           -- chosen by the device, stable across restarts
@@ -121,6 +139,18 @@ class Database:
             self._conn.execute("ALTER TABLE video_tasks ADD COLUMN cost_uy INTEGER NOT NULL DEFAULT 0")
         if "cost_uy" not in cols("ledger"):
             self._conn.execute("ALTER TABLE ledger ADD COLUMN cost_uy INTEGER NOT NULL DEFAULT 0")
+        if "extra" not in cols("ledger"):
+            self._conn.execute("ALTER TABLE ledger ADD COLUMN extra TEXT NOT NULL DEFAULT ''")
+        for col, ddl in (
+            ("password_hash", "TEXT NOT NULL DEFAULT ''"),
+            ("password_set_at", "INTEGER"),
+            ("failed_logins", "INTEGER NOT NULL DEFAULT 0"),
+            ("locked_until", "INTEGER"),
+        ):
+            if col not in cols("accounts"):
+                self._conn.execute(f"ALTER TABLE accounts ADD COLUMN {col} {ddl}")
+        if "via" not in cols("api_keys"):
+            self._conn.execute("ALTER TABLE api_keys ADD COLUMN via TEXT NOT NULL DEFAULT 'code'")
 
     @contextmanager
     def tx(self):
@@ -219,6 +249,7 @@ class Database:
             if row is None:
                 return
             c.execute("DELETE FROM codes WHERE id_hash=?", (row["id_hash"],))
+            c.execute("DELETE FROM events WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM video_tasks WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM devices WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM ledger WHERE account_id=?", (account_id,))
@@ -241,6 +272,32 @@ class Database:
         with self.tx() as c:
             c.execute("UPDATE accounts SET unlimited=? WHERE id=?", (1 if unlimited else 0, account_id))
 
+    # -- passwords -----------------------------------------------------------------
+
+    def set_password(self, account_id: str, password_hash: str) -> None:
+        """Also clears any lock: a new password is a fresh start."""
+        with self.tx() as c:
+            c.execute(
+                "UPDATE accounts SET password_hash=?, password_set_at=?, failed_logins=0, locked_until=NULL WHERE id=?",
+                (password_hash, now() if password_hash else None, account_id),
+            )
+
+    def login_failed(self, account_id: str, max_attempts: int, lockout_s: int) -> int:
+        """Counts a wrong password; locks the account for `lockout_s` at the
+        limit. Returns how many tries are left (0 = locked now)."""
+        with self.tx() as c:
+            c.execute("UPDATE accounts SET failed_logins=failed_logins+1 WHERE id=?", (account_id,))
+            r = c.execute("SELECT failed_logins FROM accounts WHERE id=?", (account_id,)).fetchone()
+            failed = int(r[0]) if r else 0
+            if failed >= max_attempts:
+                c.execute("UPDATE accounts SET locked_until=?, failed_logins=0 WHERE id=?", (now() + lockout_s, account_id))
+                return 0
+        return max(0, max_attempts - failed)
+
+    def login_succeeded(self, account_id: str) -> None:
+        with self.tx() as c:
+            c.execute("UPDATE accounts SET failed_logins=0, locked_until=NULL WHERE id=?", (account_id,))
+
     def list_accounts(self, limit: int = 200) -> list[sqlite3.Row]:
         with self._lock:
             return self._conn.execute(
@@ -261,7 +318,7 @@ class Database:
                           (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l
                              WHERE l.account_id=a.id AND l.cost_uy>0) AS spent_uy,
                           (SELECT COUNT(*) FROM ledger l
-                             WHERE l.account_id=a.id AND l.kind IN ('chat','image','video')) AS requests,
+                             WHERE l.account_id=a.id AND l.kind IN ('chat','image','video','realtime')) AS requests,
                           (SELECT MAX(k.last_used_at) FROM api_keys k WHERE k.account_id=a.id) AS last_active_at,
                           (SELECT COUNT(*) FROM api_keys k WHERE k.account_id=a.id AND k.revoked_at IS NULL) AS live_keys,
                           (SELECT COUNT(*) FROM devices d WHERE d.account_id=a.id) AS device_count
@@ -282,18 +339,18 @@ class Database:
 
     # -- keys ----------------------------------------------------------------
 
-    def insert_key(self, key_hash: str, prefix: str, account_id: str, device: str) -> None:
+    def insert_key(self, key_hash: str, prefix: str, account_id: str, device: str, via: str = "code") -> None:
         with self.tx() as c:
             c.execute(
-                "INSERT INTO api_keys(key_hash, prefix, account_id, device, created_at) VALUES (?,?,?,?,?)",
-                (key_hash, prefix, account_id, device[:80], now()),
+                "INSERT INTO api_keys(key_hash, prefix, account_id, device, created_at, via) VALUES (?,?,?,?,?,?)",
+                (key_hash, prefix, account_id, device[:80], now(), via),
             )
 
     def key(self, key_hash: str) -> sqlite3.Row | None:
         with self._lock:
             return self._conn.execute(
                 "SELECT k.*, a.disabled AS account_disabled, a.granted, a.used, a.channel, a.hint, a.created_at AS account_created_at, "
-                "a.id_hash, a.unlimited AS account_unlimited "
+                "a.id_hash, a.unlimited AS account_unlimited, a.password_hash, a.password_set_at "
                 "FROM api_keys k JOIN accounts a ON a.id=k.account_id WHERE k.key_hash=?",
                 (key_hash,),
             ).fetchone()
@@ -306,27 +363,172 @@ class Database:
         with self.tx() as c:
             c.execute("UPDATE api_keys SET revoked_at=? WHERE key_hash=? AND revoked_at IS NULL", (now(), key_hash))
 
-    def keys_for(self, account_id: str) -> list[sqlite3.Row]:
+    def revoke_key_by_prefix(self, account_id: str, prefix: str) -> bool:
+        """Sign one device out from another; the prefix is what the account page shows."""
+        with self.tx() as c:
+            cur = c.execute(
+                "UPDATE api_keys SET revoked_at=? WHERE account_id=? AND prefix=? AND revoked_at IS NULL",
+                (now(), account_id, prefix),
+            )
+            return cur.rowcount > 0
+
+    def revoke_all_keys(self, account_id: str, keep_hash: str | None = None) -> int:
+        with self.tx() as c:
+            if keep_hash:
+                cur = c.execute(
+                    "UPDATE api_keys SET revoked_at=? WHERE account_id=? AND revoked_at IS NULL AND key_hash<>?",
+                    (now(), account_id, keep_hash),
+                )
+            else:
+                cur = c.execute("UPDATE api_keys SET revoked_at=? WHERE account_id=? AND revoked_at IS NULL", (now(), account_id))
+            return cur.rowcount
+
+    def keys_for(self, account_id: str, live_only: bool = False) -> list[sqlite3.Row]:
+        with self._lock:
+            sql = "SELECT * FROM api_keys WHERE account_id=?"
+            if live_only:
+                sql += " AND revoked_at IS NULL"
+            return self._conn.execute(sql + " ORDER BY created_at", (account_id,)).fetchall()
+
+    # -- events (the account's own history; the operator's audit) -------------------
+
+    def add_event(self, account_id: str, kind: str, detail: str = "") -> None:
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO events(account_id, ts, kind, detail) VALUES (?,?,?,?)",
+                (account_id or "", now(), kind, (detail or "")[:200]),
+            )
+
+    def events_for(self, account_id: str, limit: int = 50) -> list[sqlite3.Row]:
         with self._lock:
             return self._conn.execute(
-                "SELECT * FROM api_keys WHERE account_id=? ORDER BY created_at", (account_id,)
+                "SELECT ts, kind, detail FROM events WHERE account_id=? ORDER BY id DESC LIMIT ?", (account_id, limit)
             ).fetchall()
+
+    def events_recent(self, limit: int = 100, kinds: tuple[str, ...] | None = None) -> list[sqlite3.Row]:
+        with self._lock:
+            if kinds:
+                marks = ",".join("?" * len(kinds))
+                return self._conn.execute(
+                    f"SELECT account_id, ts, kind, detail FROM events WHERE kind IN ({marks}) ORDER BY id DESC LIMIT ?",
+                    (*kinds, limit),
+                ).fetchall()
+            return self._conn.execute(
+                "SELECT account_id, ts, kind, detail FROM events ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+
+    def event_counts(self, since: int) -> dict[str, int]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT kind, COUNT(*) AS n FROM events WHERE ts>=? GROUP BY kind", (since,)
+            ).fetchall()
+        return {r["kind"]: int(r["n"]) for r in rows}
+
+    def delete_events(self, account_id: str) -> None:
+        with self.tx() as c:
+            c.execute("DELETE FROM events WHERE account_id=?", (account_id,))
 
     # -- usage -----------------------------------------------------------------
 
     def charge(
         self, account_id: str, kind: str, model: str, prompt_tokens: int, completion_tokens: int,
-        charged: int, request_id: str, cost_uy: int = 0,
+        charged: int, request_id: str, cost_uy: int = 0, extra: str = "",
     ) -> None:
         charged = max(0, int(charged))
         cost_uy = max(0, int(cost_uy))
         with self.tx() as c:
             c.execute("UPDATE accounts SET used=used+? WHERE id=?", (charged, account_id))
             c.execute(
-                "INSERT INTO ledger(account_id, ts, kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                (account_id, now(), kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy),
+                "INSERT INTO ledger(account_id, ts, kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy, extra) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (account_id, now(), kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy, extra or ""),
             )
+
+    USAGE_KINDS = ("chat", "image", "video", "realtime")
+
+    def usage_by_kind(self, since: int, account_id: str | None = None) -> list[sqlite3.Row]:
+        """Requests, tokens and money per kind since `since` — one account or everyone."""
+        with self._lock:
+            where = "ts>=? AND charged>=0 AND kind IN ('chat','image','video','realtime')"
+            args: tuple = (since,)
+            if account_id is not None:
+                where += " AND account_id=?"
+                args = (since, account_id)
+            return self._conn.execute(
+                f"""SELECT kind, COUNT(*) AS requests, SUM(prompt_tokens) AS prompt_tokens,
+                           SUM(completion_tokens) AS completion_tokens, SUM(charged) AS charged, SUM(cost_uy) AS cost_uy
+                    FROM ledger WHERE {where} GROUP BY kind ORDER BY cost_uy DESC""",
+                args,
+            ).fetchall()
+
+    def usage_by_model(self, since: int, account_id: str | None = None) -> list[sqlite3.Row]:
+        with self._lock:
+            where = "ts>=? AND charged>=0 AND kind IN ('chat','image','video','realtime')"
+            args: tuple = (since,)
+            if account_id is not None:
+                where += " AND account_id=?"
+                args = (since, account_id)
+            return self._conn.execute(
+                f"""SELECT model, kind, COUNT(*) AS requests, SUM(prompt_tokens) AS prompt_tokens,
+                           SUM(completion_tokens) AS completion_tokens, SUM(charged) AS charged, SUM(cost_uy) AS cost_uy
+                    FROM ledger WHERE {where} GROUP BY model, kind ORDER BY cost_uy DESC""",
+                args,
+            ).fetchall()
+
+    def usage_by_day_for(self, account_id: str, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute(
+                """SELECT ((ts + ?) - (ts + ?) % 86400 - ?) AS day, kind, COUNT(*) AS requests,
+                          SUM(charged) AS charged, SUM(cost_uy) AS cost_uy
+                   FROM ledger WHERE account_id=? AND ts>=? AND charged>=0 AND kind IN ('chat','image','video','realtime')
+                   GROUP BY day, kind ORDER BY day DESC""",
+                (day_offset_s, day_offset_s, day_offset_s, account_id, since),
+            ).fetchall()
+
+    def active_accounts_since(self, since: int) -> int:
+        with self._lock:
+            r = self._conn.execute(
+                "SELECT COUNT(DISTINCT account_id) FROM ledger WHERE ts>=? AND kind IN ('chat','image','video','realtime')",
+                (since,),
+            ).fetchone()
+        return int(r[0])
+
+    def accounts_created_since(self, since: int) -> int:
+        with self._lock:
+            r = self._conn.execute("SELECT COUNT(*) FROM accounts WHERE created_at>=?", (since,)).fetchone()
+        return int(r[0])
+
+    def account_counts(self) -> dict[str, int]:
+        with self._lock:
+            r = self._conn.execute(
+                """SELECT COUNT(*) AS total, SUM(disabled) AS disabled, SUM(unlimited) AS unlimited,
+                          SUM(CASE WHEN password_hash<>'' THEN 1 ELSE 0 END) AS with_password
+                   FROM accounts"""
+            ).fetchone()
+            keys = self._conn.execute("SELECT COUNT(*) FROM api_keys WHERE revoked_at IS NULL").fetchone()
+            devices = self._conn.execute("SELECT COUNT(*) FROM devices").fetchone()
+        return {
+            "total": int(r["total"] or 0), "disabled": int(r["disabled"] or 0), "unlimited": int(r["unlimited"] or 0),
+            "with_password": int(r["with_password"] or 0), "live_keys": int(keys[0]), "devices": int(devices[0]),
+        }
+
+    def totals_since(self, since: int) -> sqlite3.Row:
+        with self._lock:
+            return self._conn.execute(
+                """SELECT COUNT(*) AS requests, COALESCE(SUM(charged),0) AS charged, COALESCE(SUM(cost_uy),0) AS cost_uy,
+                          COALESCE(SUM(prompt_tokens),0) AS prompt_tokens, COALESCE(SUM(completion_tokens),0) AS completion_tokens
+                   FROM ledger WHERE ts>=? AND kind IN ('chat','image','video','realtime')""",
+                (since,),
+            ).fetchone()
+
+    def top_accounts_since(self, since: int, limit: int = 10) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute(
+                """SELECT account_id, COUNT(*) AS requests, SUM(cost_uy) AS cost_uy, SUM(charged) AS charged
+                   FROM ledger WHERE ts>=? AND kind IN ('chat','image','video','realtime')
+                   GROUP BY account_id ORDER BY cost_uy DESC LIMIT ?""",
+                (since, limit),
+            ).fetchall()
 
     def used_since(self, account_id: str, since: int) -> int:
         with self._lock:
@@ -348,7 +550,7 @@ class Database:
     def requests_since(self, account_id: str, since: int) -> int:
         with self._lock:
             r = self._conn.execute(
-                "SELECT COUNT(*) FROM ledger WHERE account_id=? AND ts>=? AND kind IN ('chat','image','video')",
+                "SELECT COUNT(*) FROM ledger WHERE account_id=? AND ts>=? AND kind IN ('chat','image','video','realtime')",
                 (account_id, since),
             ).fetchone()
         return int(r[0])
@@ -356,7 +558,7 @@ class Database:
     def recent_ledger(self, account_id: str, limit: int = 30) -> list[sqlite3.Row]:
         with self._lock:
             return self._conn.execute(
-                "SELECT ts, kind, model, prompt_tokens, completion_tokens, charged, cost_uy FROM ledger WHERE account_id=? ORDER BY id DESC LIMIT ?",
+                "SELECT ts, kind, model, prompt_tokens, completion_tokens, charged, cost_uy, extra FROM ledger WHERE account_id=? ORDER BY id DESC LIMIT ?",
                 (account_id, limit),
             ).fetchall()
 

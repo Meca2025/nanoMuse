@@ -2,8 +2,14 @@
 
     POST /v1/auth/code        {identifier}                      → 204
     POST /v1/auth/verify      {identifier, code, device}        → {api_key, base_url, account, tokens, models}
-    GET  /v1/me                                                 → account, tokens, spend (¥ today / cap / $), models, recent usage
+    POST /v1/auth/login       {identifier, password, device}    → the same, for accounts that set a password
+    POST /v1/auth/password    {password, current?}              → 204 (set / change; "" + current removes)
+    GET  /v1/me                                                 → account, tokens, spend (¥ today / cap / $), usage by kind, models, recent
+    GET  /v1/me/sessions                                        → live sign-ins (device, via, when; the current one marked)
+    DELETE /v1/me/sessions/{prefix}                             → 204 (sign one device out)
+    GET  /v1/me/events                                          → the account's own timeline (sign-ins, password changes…)
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
+    POST /v1/auth/sign-out-all {all?}                           → {signed_out} (every other device; all=true takes this one too)
     POST /v1/auth/delete                                        → 204 (the whole account, every key)
     GET  /v1/models                                             → OpenAI list, with modalities
     POST /v1/chat/completions                                   → forwarded; stream or not
@@ -13,6 +19,7 @@
     GET  /api/v1/tasks/{id}                                     → its task poll (own tasks only)
     GET  /api/v1/uploads?action=getPolicy&model=…               → its temporary-storage policy
     GET  /healthz
+    WS   /v1/realtime?model=…                                   → a call: the provider's real-time socket, metered (realtime.py)
     WS   /v1/hub                                                → the devices of one account meet (hub.py)
     GET  /v1/devices                                            → remembered devices with presence
     DELETE /v1/devices/{id}                                     → forget an offline device
@@ -23,7 +30,10 @@
     POST /v1/admin/unlimited  X-Admin-Token  {account_id | identifier, unlimited}  → a member: no daily cap
     POST /v1/admin/delete     X-Admin-Token  {account_id | identifier}
     GET  /v1/admin/accounts   X-Admin-Token                     → with identifiers in clear, tokens and money
+    GET  /v1/admin/accounts/{id} X-Admin-Token ?days=30         → one account in full: usage by kind/model/day, sign-ins, devices, timeline
     GET  /v1/admin/usage      X-Admin-Token  ?days=14           → charged tokens and yuan per day and kind
+    GET  /v1/admin/overview   X-Admin-Token  ?days=30           → the dashboard: accounts, today / week / period by kind and model, signals, events
+    GET  /v1/admin/events     X-Admin-Token  ?limit=200&kind=…  → the timeline across accounts (never message content)
 
 The video paths mirror the provider's own so the app's VideoGen, which
 already speaks that API, only needs to point its host at the relay.
@@ -50,7 +60,7 @@ from fastapi import Depends, FastAPI, File, Form, Header, Request, Response, Upl
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__
+from . import __version__, realtime
 from .config import Settings
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
@@ -139,14 +149,67 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         me = cloud.me(caller)
         return {"api_key": key, "created": created, **me}
 
+    @app.post("/v1/auth/login")
+    async def auth_login(request: Request) -> dict:
+        """The password way in: no message to wait for, for people who set one."""
+        body = await _json(request)
+        try:
+            ident = parse(str(body.get("identifier", "")))
+        except BadIdentifier as e:
+            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address") from e
+        password = str(body.get("password", ""))
+        if not password:
+            raise CloudError(400, "password_required", "Enter the password")
+        device = str(body.get("device", ""))[:80]
+        key, caller = await asyncio.to_thread(cloud.login_password, ident, password, device)
+        me = cloud.me(caller)
+        return {"api_key": key, "created": False, **me}
+
+    @app.post("/v1/auth/password", status_code=204)
+    async def auth_password(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
+        """Set or change the password (`current` when one exists, unless this
+        key came from a code sign-in just now); {"password": ""} with `current`
+        removes it."""
+        body = await _json(request)
+        password = str(body.get("password", ""))
+        current = body.get("current")
+        current = str(current) if current is not None else None
+        if password == "":
+            if not current:
+                raise CloudError(400, "password_required", "Enter the current password to remove it")
+            await asyncio.to_thread(cloud.clear_password, caller, current)
+        else:
+            await asyncio.to_thread(cloud.set_password, caller, password, current)
+        return Response(status_code=204)
+
     @app.get("/v1/me")
     async def me(caller: Caller = Depends(caller_dep)) -> dict:
         return cloud.me(caller)
+
+    @app.get("/v1/me/sessions")
+    async def me_sessions(caller: Caller = Depends(caller_dep)) -> dict:
+        return {"sessions": cloud.sessions(caller)}
+
+    @app.delete("/v1/me/sessions/{prefix}", status_code=204)
+    async def me_revoke_session(prefix: str, caller: Caller = Depends(caller_dep)) -> Response:
+        cloud.revoke_session(caller, prefix)
+        return Response(status_code=204)
+
+    @app.get("/v1/me/events")
+    async def me_events(limit: int = 50, caller: Caller = Depends(caller_dep)) -> dict:
+        return {"events": cloud.events(caller, limit)}
 
     @app.post("/v1/auth/sign-out", status_code=204)
     async def sign_out(caller: Caller = Depends(caller_dep)) -> Response:
         cloud.sign_out(caller)
         return Response(status_code=204)
+
+    @app.post("/v1/auth/sign-out-all")
+    async def sign_out_all(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+        """Every other device; {"all": true} takes this one too."""
+        body = await _json(request)
+        n = cloud.sign_out_all(caller, keep_current=not bool(body.get("all")))
+        return {"signed_out": n}
 
     @app.post("/v1/auth/delete", status_code=204)
     async def delete_account(caller: Caller = Depends(caller_dep)) -> Response:
@@ -200,6 +263,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
                 log.warning("upstream error: %s", e)
                 raise CloudError(502, "upstream", "The model provider did not answer") from e
             if r.status_code >= 400:
+                cloud.note(caller.account_id, "upstream.error", f"chat {r.status_code}")
                 return _relay_error(r)
             try:
                 obj = r.json()
@@ -226,6 +290,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
                 async with http.stream("POST", url, headers=headers, content=dumps(body).encode()) as r:
                     if r.status_code >= 400:
                         raw = await r.aread()
+                        cloud.note(caller.account_id, "upstream.error", f"chat {r.status_code}")
                         err = _relay_error_body(r.status_code, raw)
                         yield f"data: {dumps(err)}\n\n".encode()
                         yield b"data: [DONE]\n\n"
@@ -452,6 +517,57 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
             raise CloudError(502, "upstream", "The video provider did not answer") from e
         return _dashscope_reply(r)
 
+    # -- calls: the provider's real-time socket, one account at a time (realtime.py) ----------------
+
+    if settings.realtime_enabled:
+
+        @app.websocket("/v1/realtime")
+        async def realtime_socket(ws: WebSocket) -> None:
+            model_id = ws.query_params.get("model", "")
+            caller: Caller | None = None
+            auth = ws.headers.get("authorization")
+            if auth and auth.lower().startswith("bearer "):
+                try:
+                    caller = cloud.authenticate(auth[7:].strip())
+                except CloudError as e:
+                    await ws.close(code=4001, reason=e.code)
+                    return
+            await ws.accept()
+            if caller is None:
+                # Browsers cannot set headers: the first frame carries the key.
+                try:
+                    first = json.loads(await asyncio.wait_for(ws.receive_text(), timeout=10))
+                except (TimeoutError, ValueError):
+                    await ws.close(code=4001, reason="bad_key")
+                    return
+                except Exception:  # noqa: BLE001 - the browser went away
+                    return
+                try:
+                    if not isinstance(first, dict) or first.get("type") != "nanomuse.auth":
+                        raise CloudError(401, "bad_key", "Sign in first")
+                    caller = cloud.authenticate(str(first.get("key", "")))
+                    model_id = str(first.get("model") or model_id)
+                except CloudError as e:
+                    await ws.send_text(realtime.error_event(e.code, e.message))
+                    await ws.close(code=4001, reason=e.code)
+                    return
+            try:
+                spec = cloud.model_for(model_id or _default_realtime_model(), "realtime")
+            except CloudError as e:
+                await ws.send_text(realtime.error_event(e.code, e.message))
+                await ws.close(code=4004, reason=e.code)
+                return
+            await realtime.serve_call(ws, caller, spec, cloud, settings)
+
+    def _default_realtime_model() -> str:
+        for m in settings.models:
+            if m.kind == "realtime" and m.recommended:
+                return m.id
+        for m in settings.models:
+            if m.kind == "realtime":
+                return m.id
+        return ""
+
     # -- the hub: devices of one account, across networks ------------------------------------------
 
     if settings.hub_enabled:
@@ -505,6 +621,27 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
     @app.get("/v1/admin/usage", dependencies=[Depends(admin_dep)])
     async def admin_usage(days: int = 14) -> dict:
         return {"days": cloud.admin_usage(max(1, min(days, 90)))}
+
+    @app.get("/v1/admin/overview", dependencies=[Depends(admin_dep)])
+    async def admin_overview(days: int = 30) -> dict:
+        out = cloud.admin_overview(max(1, min(days, 365)))
+        hub = getattr(app.state, "hub", None)
+        out["online_devices"] = hub.online_count() if hub is not None else 0
+        out["version"] = __version__
+        return out
+
+    @app.get("/v1/admin/accounts/{account_id}", dependencies=[Depends(admin_dep)])
+    async def admin_account(account_id: str, days: int = 30) -> dict:
+        out = cloud.admin_account(account_id, max(1, min(days, 365)))
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            out["devices"] = hub.devices(account_id)
+        return out
+
+    @app.get("/v1/admin/events", dependencies=[Depends(admin_dep)])
+    async def admin_events(limit: int = 200, kind: str = "") -> dict:
+        kinds = tuple(k.strip() for k in kind.split(",") if k.strip()) or None
+        return {"events": cloud.admin_events(limit, kinds)}
 
     @app.post("/v1/admin/grant", dependencies=[Depends(admin_dep)])
     async def admin_grant(request: Request) -> dict:
