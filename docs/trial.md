@@ -45,8 +45,16 @@ docker compose logs -f relay    # codes appear here when CODE_SENDER=log
 curl https://cloud.example.com/healthz
 ```
 
-The web console is at `https://cloud.example.com/app/`. Data (SQLite) lives in
-`cloud/data/`; back it up together with `CLOUD_SECRET`.
+The web console is at `https://cloud.example.com/app/`, the operator's page at
+`/app/admin/` (asks for `CLOUD_ADMIN_TOKEN`: who signed in, usage, devices,
+grant / disable / delete). Data (SQLite) lives in `cloud/data/`; back it up
+together with `CLOUD_SECRET`. `SIGNUP_TOKENS=0` runs the relay with no ceiling
+for the invited few.
+
+The production relay, `https://cloud.nanomuse.cn`, is this same code on the box
+that serves nanomuse.cn, behind the showcase's Caddy;
+[`cloud/deploy/nanomuse-hk/`](../cloud/deploy/nanomuse-hk/README.md) has the
+compose file, the Caddy site, the backup timer and the deploy script.
 
 ## 2. The phone
 
