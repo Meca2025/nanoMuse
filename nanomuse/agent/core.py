@@ -155,6 +155,32 @@ class MuseAgent:
             return ""
         return prompts.DEVICE_SECTION.format(tools=", ".join(names))
 
+    def devices_section(self) -> str:
+        """The user's other devices, when this computer is on the hub (the `devices` tool)."""
+        tool = self.tools.get("devices")
+        hub = getattr(tool, "hub", None)
+        if tool is None or hub is None:
+            return ""
+        others = hub.others()
+        if not getattr(hub, "client", None) or not hub.client.connected.is_set():
+            status = (
+                "- This computer is not connected to the nanoMuse hub right now, so the other "
+                "devices cannot be reached; say so if a step needs one."
+            )
+        elif not others:
+            status = (
+                f"- This computer is on the hub as “{hub.device_name}”; no other device of the "
+                "user's has joined yet."
+            )
+        else:
+            listed = ", ".join(
+                f"{d.get('name')} ({d.get('kind') or 'device'}, "
+                f"{'online' if d.get('online') else 'offline'})"
+                for d in others
+            )
+            status = f"- This computer is “{hub.device_name}”. Other devices: {listed}."
+        return prompts.DEVICES_SECTION.format(status=status)
+
     def contacts_note(self) -> str:
         """One line on the address book, when there is one (the tool does the looking up)."""
         book = self.contacts
@@ -254,6 +280,7 @@ class MuseAgent:
             + calendar
             + self.device_section()
             + self.phone_section()
+            + self.devices_section()
             + self.skills_section(),
             extra=extra,
         )

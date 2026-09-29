@@ -27,6 +27,7 @@ from nanomuse.app import NanoMuseApp
 from nanomuse.bridge.server import Bridge
 from nanomuse.config import Settings
 from nanomuse.goals import Goal
+from nanomuse.hub.service import HubService
 from nanomuse.llm import BaseLLM
 from nanomuse.logger import logger
 from nanomuse.memory.consolidate import TidyReport, tidy
@@ -259,9 +260,14 @@ class Thread:
     busy: bool = False
     # background prompts (goal work, ideas) → the short label shown as the approval purpose
     purposes: dict[str, str] = field(default_factory=dict)
+    # a chat addressed to another device of the account: what is typed here runs there
+    device: str | None = None
+    device_name: str = ""
+    # a chat another device opened here with a `task` over the hub: who asked
+    remote_from: dict[str, Any] | None = None
 
     def meta(self) -> dict[str, Any]:
-        return {
+        meta: dict[str, Any] = {
             "id": self.id,
             "title": self.title,
             "created_at": self.created_at,
@@ -270,6 +276,12 @@ class Thread:
             "queued": self.inbox.qsize(),
             "events": len(self.timeline.events),
         }
+        if self.device:
+            meta["device"] = self.device
+            meta["device_name"] = self.device_name
+        if self.remote_from:
+            meta["remote_from"] = self.remote_from
+        return meta
 
 
 def _parse_when(value: str | None) -> datetime | None:
@@ -328,6 +340,8 @@ class MuseService:
         self.mail_watch_error = ""
         self._watch_triggers()
         self.connections = Connections(self)
+        # this computer on the hub: the Cloud account, the other devices, their side chats
+        self.hub = HubService(self)
         self.token = self._load_token()
         self._scheduler: asyncio.Task[None] | None = None
         self._tidying = False
@@ -353,6 +367,7 @@ class MuseService:
             return
         await self.app.start()
         self._started = True
+        await self.hub.start()
         self._scheduler = asyncio.create_task(self._goal_scheduler(), name="goal-scheduler")
         logger.info("MuseService started ({} threads)", len(self.threads))
 
@@ -364,6 +379,7 @@ class MuseService:
                 t.worker.cancel()
         await asyncio.sleep(0)
         if self._started:
+            await self.hub.stop()
             await self.connections.close()
             await self.app.close()
         self._started = False
@@ -464,27 +480,33 @@ class MuseService:
         if not any(m.get("id") == MAIN_THREAD for m in metas):
             metas.insert(0, {"id": MAIN_THREAD, "title": "Main chat", "created_at": now_iso()})
         for m in metas:
-            self._make_thread(
+            thread = self._make_thread(
                 m["id"], m.get("title", m["id"]), m.get("created_at"), m.get("updated_at")
             )
+            if m.get("device"):
+                thread.device = str(m["device"])
+                thread.device_name = str(m.get("device_name") or m["device"])
+            if isinstance(m.get("remote_from"), dict):
+                thread.remote_from = dict(m["remote_from"])
         self._save_index()
 
     def _save_index(self) -> None:
+        metas = []
+        for t in self.threads.values():
+            m: dict[str, Any] = {
+                "id": t.id,
+                "title": t.title,
+                "created_at": t.created_at,
+                "updated_at": t.updated_at,
+            }
+            if t.device:
+                m["device"] = t.device
+                m["device_name"] = t.device_name
+            if t.remote_from:
+                m["remote_from"] = t.remote_from
+            metas.append(m)
         (self.threads_dir / "index.json").write_text(
-            json.dumps(
-                [
-                    {
-                        "id": t.id,
-                        "title": t.title,
-                        "created_at": t.created_at,
-                        "updated_at": t.updated_at,
-                    }
-                    for t in self.threads.values()
-                ],
-                ensure_ascii=False,
-                indent=1,
-            ),
-            "utf-8",
+            json.dumps(metas, ensure_ascii=False, indent=1), "utf-8"
         )
 
     def _make_thread(
@@ -588,6 +610,9 @@ class MuseService:
         """The stop button: end the run in progress and drop what was queued behind it.
         The conversation stays; a pending approval or question closes unanswered."""
         thread = self.threads.get(thread_id)
+        if thread is not None and thread.device and thread.busy:
+            asyncio.get_running_loop().create_task(self.hub.stop_remote(thread))
+            return True
         if thread is None or not thread.busy or thread.worker is None or thread.worker.done():
             return False
         while not thread.inbox.empty():
@@ -645,10 +670,21 @@ class MuseService:
             raise ValueError("empty message")
         thread = self.threads.get(thread_id) or self._make_thread(thread_id, thread_id)
         thread.updated_at = now_iso()
-        if source == "user":
+        if thread.device:
+            # a chat addressed to another device: the text runs there, not here
+            if thread.busy:
+                raise ValueError(f"{thread.device_name or 'the device'} is still busy")
+            event = self.ui.emit({"type": "user", "text": text, "thread": thread_id})
+            self.hub.run_remote(thread, text)
+            return event
+        if source in ("user", "device"):
             event_data: dict[str, Any] = {"type": "user", "text": text, "thread": thread_id}
             if attachments:
                 event_data["files"] = [a.model_dump() for a in attachments]
+            if source == "device":
+                # asked by another device over the hub; shown as a bubble with its name
+                event_data["via"] = label
+                thread.purposes[text] = f"asked from {label}" if label else "asked from a device"
             event = self.ui.emit(event_data)
             self.bus.publish({"kind": "thread", "thread": thread.meta()})
             if not attachments and self.ui.answer_question(thread_id, text):
@@ -1922,6 +1958,8 @@ class MuseService:
             "phone": self.phone_view(),
             # the phone this server runs on (the local runtime), or null on a computer
             "device": self.app.device.to_dict() if self.app.device is not None else None,
+            # this device on the hub: the account, the other devices
+            "hub": self.hub.view(),
         }
 
 
