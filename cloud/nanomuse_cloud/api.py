@@ -4,17 +4,28 @@
     POST /v1/auth/verify      {identifier, code, device}        → {api_key, base_url, account, tokens, models}
     GET  /v1/me                                                 → account, tokens, models, recent usage
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
+    POST /v1/auth/delete                                        → 204 (the whole account, every key)
     GET  /v1/models                                             → OpenAI list, with modalities
     POST /v1/chat/completions                                   → forwarded; stream or not
     POST /v1/images/generations                                 → DashScope native, returned as b64_json
     POST /v1/images/edits     multipart                         → same, with the picture
+    POST /api/v1/services/aigc/video-generation/video-synthesis → DashScope's async video API, relayed
+    GET  /api/v1/tasks/{id}                                     → its task poll (own tasks only)
+    GET  /api/v1/uploads?action=getPolicy&model=…               → its temporary-storage policy
     GET  /healthz
     WS   /v1/hub                                                → the devices of one account meet (hub.py)
     GET  /v1/devices                                            → remembered devices with presence
     DELETE /v1/devices/{id}                                     → forget an offline device
     GET  /app/                                                  → the web console (static)
+    GET  /app/admin/                                            → the operator's page (static; asks for the admin token)
     POST /v1/admin/grant      X-Admin-Token  {account_id | identifier, tokens}
-    GET  /v1/admin/accounts   X-Admin-Token
+    POST /v1/admin/disable    X-Admin-Token  {account_id | identifier, disabled}
+    POST /v1/admin/delete     X-Admin-Token  {account_id | identifier}
+    GET  /v1/admin/accounts   X-Admin-Token                     → with identifiers in clear
+    GET  /v1/admin/usage      X-Admin-Token  ?days=14           → charged tokens per day and kind
+
+The video paths mirror the provider's own so the app's VideoGen, which
+already speaks that API, only needs to point its host at the relay.
 
 Errors are OpenAI-shaped: {"error": {"message", "type", "code"}} with the
 status the app expects (401 bad key, 402 out of tokens, 429 rate limit).
@@ -134,6 +145,14 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
     @app.post("/v1/auth/sign-out", status_code=204)
     async def sign_out(caller: Caller = Depends(caller_dep)) -> Response:
         cloud.sign_out(caller)
+        return Response(status_code=204)
+
+    @app.post("/v1/auth/delete", status_code=204)
+    async def delete_account(caller: Caller = Depends(caller_dep)) -> Response:
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.drop_account(caller.account_id)
+        cloud.delete_account(caller)
         return Response(status_code=204)
 
     # -- models ------------------------------------------------------------------------
@@ -335,6 +354,91 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
             headers={"x-nanomuse-charged": str(charged)},
         )
 
+    # -- video: the provider's asynchronous API, relayed under its own paths ------------------------
+    #
+    # The app's VideoGen submits a task, polls it, downloads the clip from the
+    # URL the task ends with (the provider's storage, not us), and uploads a
+    # first frame to the provider's temporary storage beforehand. Each call is
+    # forwarded with the operator's key; the user's key never sees the provider.
+    # Status codes come back as the provider sent them so the app's probe
+    # (an empty task: accepted or 400 = the model exists, 404 = it does not)
+    # keeps working; 401/403 from the provider are the operator's problem and
+    # turn into 502. A clip is charged when its task is first seen SUCCEEDED —
+    # a probe's task fails at once and costs nothing, here or upstream.
+
+    VIDEO_PATH = "/services/aigc/video-generation/video-synthesis"
+
+    def _dashscope_reply(r: httpx.Response) -> Response:
+        if r.status_code in (401, 403):
+            log.error("dashscope refused the relay's key: HTTP %s %s", r.status_code, r.text[:200])
+            return JSONResponse(status_code=502, content={"code": "upstream", "message": "The video provider refused the relay's key"})
+        media = r.headers.get("content-type", "application/json")
+        return Response(status_code=r.status_code, content=r.content, media_type=media.split(";")[0])
+
+    @app.post("/api/v1" + VIDEO_PATH)
+    async def video_synthesis(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
+        body = await _json(request)
+        spec = cloud.model_for(str(body.get("model", "")), "video")
+        cloud.check_budget(caller, minimum=spec.per_clip)
+        body["model"] = spec.upstream
+        headers = upstream_headers()
+        headers["X-DashScope-Async"] = "enable"
+        if request.headers.get("x-dashscope-ossresourceresolve"):
+            headers["X-DashScope-OssResourceResolve"] = request.headers["x-dashscope-ossresourceresolve"]
+        try:
+            r = await http.post(settings.dashscope_base.rstrip("/") + VIDEO_PATH, headers=headers, content=dumps(body).encode())
+        except httpx.HTTPError as e:
+            log.warning("dashscope video error: %s", e)
+            raise CloudError(502, "upstream", "The video provider did not answer") from e
+        if r.status_code < 400:
+            try:
+                task_id = str(r.json()["output"]["task_id"])
+            except (ValueError, KeyError, TypeError):
+                task_id = ""
+            if task_id:
+                cloud.db.insert_video_task(task_id, caller.account_id, spec.id)
+                log.info("video task %s for %s: %s", task_id[:12], caller.account_id[:8], spec.id)
+        else:
+            log.warning("dashscope video HTTP %s: %s", r.status_code, r.text[:300])
+        return _dashscope_reply(r)
+
+    @app.get("/api/v1/tasks/{task_id}")
+    async def video_task(task_id: str, caller: Caller = Depends(caller_dep)) -> Response:
+        task = cloud.db.video_task(task_id)
+        if task is None or task["account_id"] != caller.account_id:
+            raise CloudError(404, "no_task", "No such task")
+        try:
+            r = await http.get(settings.dashscope_base.rstrip("/") + f"/tasks/{task_id}", headers=upstream_headers())
+        except httpx.HTTPError as e:
+            raise CloudError(502, "upstream", "The video provider did not answer") from e
+        if r.status_code < 400:
+            try:
+                status = r.json().get("output", {}).get("task_status")
+            except (ValueError, AttributeError):
+                status = None
+            if status == "SUCCEEDED" and cloud.db.mark_video_charged(task_id):
+                spec = settings.model(task["model"])
+                if spec is not None:
+                    charged = cloud.charge_video(caller, spec, task_id[:16])
+                    log.info("video task %s done for %s: charged %d", task_id[:12], caller.account_id[:8], charged)
+        return _dashscope_reply(r)
+
+    @app.get("/api/v1/uploads")
+    async def video_upload_policy(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
+        if request.query_params.get("action") != "getPolicy":
+            raise CloudError(400, "bad_request", "action=getPolicy is the only upload call the relay makes")
+        spec = cloud.model_for(request.query_params.get("model", ""), "video")
+        cloud.check_budget(caller, minimum=spec.per_clip)
+        try:
+            r = await http.get(
+                settings.dashscope_base.rstrip("/") + "/uploads",
+                params={"action": "getPolicy", "model": spec.upstream},
+                headers=upstream_headers(),
+            )
+        except httpx.HTTPError as e:
+            raise CloudError(502, "upstream", "The video provider did not answer") from e
+        return _dashscope_reply(r)
+
     # -- the hub: devices of one account, across networks ------------------------------------------
 
     if settings.hub_enabled:
@@ -376,7 +480,30 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
 
     @app.get("/v1/admin/accounts", dependencies=[Depends(admin_dep)])
     async def admin_accounts() -> dict:
-        return {"accounts": cloud.admin_accounts()}
+        accounts = cloud.admin_accounts()
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            for a in accounts:
+                a["devices"] = [
+                    {k: d[k] for k in ("id", "name", "kind", "os", "online", "last_seen")} for d in hub.devices(a["id"])
+                ]
+        return {
+            "accounts": accounts,
+            "settings": {
+                "unlimited": settings.unlimited,
+                "signup_tokens": settings.signup_tokens,
+                "daily_cap_tokens": settings.daily_cap_tokens,
+                "per_minute_requests": settings.per_minute_requests,
+                "allowed_identifiers": [s.strip() for s in settings.allowed_identifiers.split(",") if s.strip()],
+                "sender": settings.sender,
+                "models": [m.id for m in settings.models],
+                "version": __version__,
+            },
+        }
+
+    @app.get("/v1/admin/usage", dependencies=[Depends(admin_dep)])
+    async def admin_usage(days: int = 14) -> dict:
+        return {"days": cloud.admin_usage(max(1, min(days, 90)))}
 
     @app.post("/v1/admin/grant", dependencies=[Depends(admin_dep)])
     async def admin_grant(request: Request) -> dict:
@@ -388,7 +515,21 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
     async def admin_disable(request: Request) -> Response:
         body = await _json(request)
         account_id = cloud.admin_resolve(str(body.get("account_id", "")), str(body.get("identifier", "")))
-        cloud.admin_disable(account_id, bool(body.get("disabled", True)))
+        disabled = bool(body.get("disabled", True))
+        cloud.admin_disable(account_id, disabled)
+        hub = getattr(app.state, "hub", None)
+        if disabled and hub is not None:
+            await hub.drop_account(account_id)
+        return Response(status_code=204)
+
+    @app.post("/v1/admin/delete", dependencies=[Depends(admin_dep)])
+    async def admin_delete(request: Request) -> Response:
+        body = await _json(request)
+        account_id = cloud.admin_resolve(str(body.get("account_id", "")), str(body.get("identifier", "")))
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.drop_account(account_id)
+        cloud.admin_delete(account_id)
         return Response(status_code=204)
 
     # -- helpers ------------------------------------------------------------------------------------

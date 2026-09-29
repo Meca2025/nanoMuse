@@ -56,6 +56,29 @@ def fake_upstream() -> FastAPI:
         from fastapi.responses import Response
         return Response(content=PNG_1PX, media_type="image/png")
 
+    # DashScope's asynchronous video API: submit, poll, upload policy.
+    @up.post("/ds/api/v1/services/aigc/video-generation/video-synthesis")
+    async def video(request: Request):
+        body = await request.json()
+        up.state.requests.append(("video", dict(request.headers), body))
+        if body.get("model") == "nope":
+            return JSONResponse(status_code=404, content={"code": "InvalidParameter", "message": "Model not exist"})
+        if not body.get("input"):
+            return JSONResponse(status_code=400, content={"code": "InvalidParameter", "message": "prompt is required"})
+        return {"output": {"task_id": "task-42", "task_status": "PENDING"}, "request_id": "r1"}
+
+    @up.get("/ds/api/v1/tasks/{task_id}")
+    async def task(task_id: str, request: Request):
+        up.state.requests.append(("task", dict(request.headers), task_id))
+        polls = sum(1 for r in up.state.requests if r[0] == "task" and r[2] == task_id)
+        status = "RUNNING" if polls == 1 else "SUCCEEDED"
+        return {"output": {"task_id": task_id, "task_status": status, "video_url": "http://upstream/clip.mp4"}}
+
+    @up.get("/ds/api/v1/uploads")
+    async def uploads(request: Request):
+        up.state.requests.append(("uploads", dict(request.headers), dict(request.query_params)))
+        return {"data": {"upload_dir": "tmp/x", "upload_host": "http://oss", "policy": "p", "signature": "s", "oss_access_key_id": "k"}}
+
     return up
 
 
@@ -102,16 +125,18 @@ async def test_signup_grants_and_lists_models(stack):
     data = await sign_up(client, sender)
     assert data["api_key"].startswith("nm_")
     assert data["created"] is True
-    assert data["tokens"] == {"granted": 1000, "used": 0, "remaining": 1000, "used_today": 0, "daily_cap": 100_000}
+    assert data["tokens"] == {"unlimited": False, "granted": 1000, "used": 0, "remaining": 1000, "used_today": 0, "daily_cap": 100_000}
     assert data["account"]["hint"] == "138****8000"
     assert data["base_url"] == "http://cloud.test"
     ids = [m["id"] for m in data["models"]]
-    assert "qwen3.7-plus" in ids and "qwen-image-3.0-pro" in ids
+    assert "qwen3.8-27b" in ids and "qwen-image-3.0-pro" in ids and "MiniMax/MiniMax-H3" in ids
+    video = next(m for m in data["models"] if m["id"] == "MiniMax/MiniMax-H3")
+    assert video["nanomuse"]["kind"] == "video" and video["architecture"]["output_modalities"] == ["video"]
 
     headers = {"Authorization": f"Bearer {data['api_key']}"}
     r = await client.get("/v1/models", headers=headers)
     assert r.status_code == 200
-    plus = next(m for m in r.json()["data"] if m["id"] == "qwen3.7-plus")
+    plus = next(m for m in r.json()["data"] if m["id"] == "qwen3.8-27b")
     assert plus["architecture"]["input_modalities"] == ["text", "image"]
     assert plus["nanomuse"]["recommended"] is True
 
@@ -147,14 +172,14 @@ async def test_chat_is_relayed_and_charged(stack):
     headers = {"Authorization": f"Bearer {data['api_key']}"}
 
     r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.7-plus", "messages": [{"role": "user", "content": "hi"}]})
+                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
     assert r.status_code == 200, r.text
     assert r.json()["choices"][0]["message"]["content"] == "hi"
-    assert r.json()["model"] == "qwen3.7-plus"
+    assert r.json()["model"] == "qwen3.8-27b"
     assert r.headers["x-nanomuse-charged"] == "150"
     kind, up_headers, up_body = up.state.requests[-1]
     assert up_headers["authorization"] == "Bearer sk-upstream"
-    assert up_body["model"] == "qwen3.7-plus" and up_body["user"]
+    assert up_body["model"] == "qwen3.8-27b" and up_body["user"]
     assert up_body["enable_thinking"] is False  # CHAT_DEFAULTS filled in
 
     me = (await client.get("/v1/me", headers=headers)).json()
@@ -163,7 +188,7 @@ async def test_chat_is_relayed_and_charged(stack):
 
     # Flash is cheaper: 100×0.3 + 50×0.3 = 45.
     r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.7-flash", "messages": [{"role": "user", "content": "hi"}]})
+                          json={"model": "qwen3.8-flash", "messages": [{"role": "user", "content": "hi"}]})
     assert r.headers["x-nanomuse-charged"] == "45"
 
     # A model we do not offer is refused before anything is forwarded.
@@ -187,7 +212,7 @@ async def test_stream_passes_through_and_charges_from_usage_chunk(stack):
     data = await sign_up(client, sender)
     headers = {"Authorization": f"Bearer {data['api_key']}"}
     async with client.stream("POST", "/v1/chat/completions", headers=headers,
-                             json={"model": "qwen3.7-plus", "stream": True,
+                             json={"model": "qwen3.8-27b", "stream": True,
                                    "messages": [{"role": "user", "content": "hi"}]}) as r:
         assert r.status_code == 200
         assert r.headers["content-type"].startswith("text/event-stream")
@@ -197,7 +222,7 @@ async def test_stream_passes_through_and_charges_from_usage_chunk(stack):
     pieces = []
     for ln in lines[:-1]:
         obj = json.loads(ln[5:])
-        assert obj.get("model") in ("qwen3.7-plus", None)
+        assert obj.get("model") in ("qwen3.8-27b", None)
         for ch in obj.get("choices", []):
             pieces.append(ch["delta"]["content"])
     assert "".join(pieces) == "你好，世界"
@@ -214,10 +239,10 @@ async def test_out_of_tokens_and_bad_keys(stack):
     # Seven full-price calls of 150 exhaust a 1000-token grant.
     for _ in range(7):
         r = await client.post("/v1/chat/completions", headers=headers,
-                              json={"model": "qwen3.7-plus", "messages": [{"role": "user", "content": "hi"}]})
+                              json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
         assert r.status_code == 200
     r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.7-plus", "messages": [{"role": "user", "content": "hi"}]})
+                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
     assert r.status_code == 402 and r.json()["error"]["code"] == "out_of_tokens"
 
     # An admin top-up brings it back.
@@ -235,7 +260,7 @@ async def test_out_of_tokens_and_bad_keys(stack):
                           json={"identifier": "nobody@example.com", "tokens": 1})
     assert r.status_code == 404
     r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.7-plus", "messages": [{"role": "user", "content": "hi"}]})
+                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
     assert r.status_code == 200
     assert (await client.get("/v1/admin/accounts")).status_code == 401
 
@@ -286,7 +311,7 @@ async def test_unconfigured_upstream_answers_503(stack):
     object.__setattr__(app.state.settings, "upstream_key", "")
     data = await sign_up(client, sender)
     r = await client.post("/v1/chat/completions", headers={"Authorization": f"Bearer {data['api_key']}"},
-                          json={"model": "qwen3.7-plus", "messages": []})
+                          json={"model": "qwen3.8-27b", "messages": []})
     assert r.status_code == 503 and r.json()["error"]["code"] == "upstream_unconfigured"
     assert (await client.get("/healthz")).json()["ok"] is True
 
@@ -311,3 +336,137 @@ async def test_private_relay_only_lets_listed_identifiers_in():
         assert r.status_code == 204, (ok, r.text)
     data = await sign_up(client, sender, identifier="me@example.com", device="desk")
     assert data["account"]["hint"] == "m***@example.com"
+
+
+async def test_video_is_relayed_under_dashscope_paths(stack):
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender)
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"},
+                      json={"identifier": "13800138000", "tokens": 1_000_000})
+
+    # The app's probe: an unknown name is 404, an offered one answers 400 on an empty body (nothing charged).
+    r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers=headers,
+                          json={"model": "wan2.6-i2v", "input": {}, "parameters": {}})
+    assert r.status_code == 404
+    r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers=headers,
+                          json={"model": "MiniMax/MiniMax-H3", "input": {}, "parameters": {}})
+    assert r.status_code == 400 and r.json()["message"] == "prompt is required"
+    assert (await client.get("/v1/me", headers=headers)).json()["tokens"]["used"] == 0
+
+    # Upload policy, then the task itself, with the operator's key and the OSS header passed on.
+    r = await client.get("/api/v1/uploads", params={"action": "getPolicy", "model": "MiniMax/MiniMax-H3"}, headers=headers)
+    assert r.status_code == 200 and r.json()["data"]["upload_dir"] == "tmp/x"
+    kind, up_headers, q = up.state.requests[-1]
+    assert kind == "uploads" and up_headers["authorization"] == "Bearer sk-upstream" and q["model"] == "MiniMax/MiniMax-H3"
+    r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers={**headers, "X-DashScope-OssResourceResolve": "enable"},
+                          json={"model": "MiniMax/MiniMax-H3", "input": {"prompt": "a dragon waves"}, "parameters": {"duration": 4}})
+    assert r.status_code == 200 and r.json()["output"]["task_id"] == "task-42"
+    kind, up_headers, up_body = up.state.requests[-1]
+    assert kind == "video" and up_headers["x-dashscope-async"] == "enable" and up_headers["x-dashscope-ossresourceresolve"] == "enable"
+    assert up_headers["authorization"] == "Bearer sk-upstream" and up_body["model"] == "MiniMax/MiniMax-H3"
+    assert (await client.get("/v1/me", headers=headers)).json()["tokens"]["used"] == 0  # nothing until the clip exists
+
+    # Polling: still running, then done — charged once, however often it is asked again.
+    r = await client.get("/api/v1/tasks/task-42", headers=headers)
+    assert r.status_code == 200 and r.json()["output"]["task_status"] == "RUNNING"
+    assert (await client.get("/v1/me", headers=headers)).json()["tokens"]["used"] == 0
+    for _ in range(2):
+        r = await client.get("/api/v1/tasks/task-42", headers=headers)
+        assert r.status_code == 200 and r.json()["output"]["video_url"].endswith("clip.mp4")
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["tokens"]["used"] == 200_000 and me["recent"][0]["kind"] == "video"
+    # The owner sees the task, another account does not.
+    other = await sign_up(client, sender, identifier="13900001111", device="other")
+    r = await client.get("/api/v1/tasks/task-42", headers={"Authorization": f"Bearer {other['api_key']}"})
+    assert r.status_code == 404
+    # Too little grant left for a clip: refused before the provider is asked.
+    r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers={"Authorization": f"Bearer {other['api_key']}"},
+                          json={"model": "MiniMax/MiniMax-H3", "input": {"prompt": "x"}, "parameters": {}})
+    assert r.status_code == 402
+
+
+async def test_unlimited_relay_meters_but_never_refuses():
+    up = fake_upstream()
+    settings = Settings(
+        database=":memory:", secret="test-secret", admin_token="admin",
+        upstream_base="http://upstream/compat/v1", upstream_key="sk-upstream",
+        dashscope_base="http://upstream/ds/api/v1", public_base="http://cloud.test",
+        signup_tokens=0, daily_cap_tokens=0, per_minute_requests=0,
+    )
+    assert settings.unlimited
+    sender = LogSender()
+    cloud = Cloud(settings, Database(":memory:"), sender)
+    app = create_app(settings, cloud, upstream_transport=httpx.ASGITransport(app=up))
+    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://cloud.test")
+    data = await sign_up(client, sender)
+    assert data["tokens"]["unlimited"] is True and data["tokens"]["granted"] == 0
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    for _ in range(3):
+        r = await client.post("/v1/chat/completions", headers=headers,
+                              json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+        assert r.status_code == 200
+    r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0-pro", "prompt": "a dragon"})
+    assert r.status_code == 200
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["tokens"] == {"unlimited": True, "granted": 0, "used": 450 + 30_000, "remaining": 0, "used_today": 30_450, "daily_cap": 0}
+    accounts = (await client.get("/v1/admin/accounts", headers={"X-Admin-Token": "admin"})).json()
+    assert accounts["settings"]["unlimited"] is True
+    assert accounts["accounts"][0]["used_today"] == 30_450 and accounts["accounts"][0]["requests"] == 4
+
+
+async def test_admin_sees_identifiers_and_people_can_leave(stack):
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender, identifier="Someone@Example.com", device="pixel")
+    await sign_up(client, sender, identifier="13800138000", device="desk")
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    admin = {"X-Admin-Token": "admin"}
+
+    listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
+    by_id = {a["identifier"]: a for a in listing["accounts"]}
+    assert set(by_id) == {"someone@example.com", "+8613800138000"}
+    a = by_id["someone@example.com"]
+    assert a["hint"] == "so***@example.com" and a["channel"] == "email" and a["live_keys"] == 1 and a["devices"] == []
+    assert "id_hash" not in a and "identifier_enc" not in a
+    # The database itself holds no plaintext.
+    row = cloud.db.account(a["id"])
+    assert "someone" not in row["identifier_enc"] and cloud.crypto.decrypt(a["id"], row["identifier_enc"]) == "someone@example.com"
+    assert cloud.crypto.decrypt("other-account", row["identifier_enc"]) is None
+    assert listing["settings"]["models"][0] == "qwen3.8-27b"
+    usage = (await client.get("/v1/admin/usage", headers=admin)).json()
+    assert usage["days"] == []
+
+    # Disable and re-enable by identifier; a disabled account's key stops working.
+    r = await client.post("/v1/admin/disable", headers=admin, json={"identifier": "someone@example.com"})
+    assert r.status_code == 204
+    assert (await client.get("/v1/me", headers=headers)).status_code == 401
+    r = await client.post("/v1/admin/disable", headers=admin, json={"identifier": "someone@example.com", "disabled": False})
+    assert r.status_code == 204
+    assert (await client.get("/v1/me", headers=headers)).status_code == 200
+
+    # The person deletes themselves: key dead, account gone, the number can sign up afresh.
+    r = await client.post("/v1/auth/delete", headers=headers)
+    assert r.status_code == 204
+    assert (await client.get("/v1/me", headers=headers)).status_code == 401
+    listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
+    assert [a["identifier"] for a in listing["accounts"]] == ["+8613800138000"]
+    again = await sign_up(client, sender, identifier="someone@example.com", device="pixel")
+    assert again["created"] is True
+
+    # The operator removes the other one.
+    r = await client.post("/v1/admin/delete", headers=admin, json={"identifier": "138 0013 8000"})
+    assert r.status_code == 204
+    assert (await client.post("/v1/admin/delete", headers=admin, json={"identifier": "138 0013 8000"})).status_code == 404
+
+
+def test_code_mail_has_text_and_html_in_both_languages():
+    from nanomuse_cloud.senders import compose_code_mail
+
+    msg = compose_code_mail("no-reply@mail.nanomuse.cn", "someone@example.com", "123456", 10)
+    assert msg["From"] == "nanoMuse <no-reply@mail.nanomuse.cn>" and msg["To"] == "someone@example.com"
+    assert "123456" in msg["Subject"]
+    parts = {p.get_content_type(): p.get_content() for p in msg.iter_parts()}
+    assert set(parts) == {"text/plain", "text/html"}
+    assert "验证码是 123456" in parts["text/plain"] and "Your nanoMuse code is 123456" in parts["text/plain"]
+    assert "1 2 3 4 5 6" in parts["text/html"] and "10 分钟" in parts["text/html"] and "10 minutes" in parts["text/html"]
+    assert "<script" not in parts["text/html"]

@@ -25,11 +25,13 @@ its base URL.
   upstream's own `usage` (for streams, from the final usage chunk). Cheaper
   models are charged with a multiplier; pictures cost a flat amount. A daily
   cap and a per-minute limit bound the damage of a leaked key.
-- **Privacy by construction.** Phone numbers and e-mail addresses are stored
-  only as HMAC-SHA256 hashes plus a display hint (`138****8000`,
-  `so***@example.com`). Message content is forwarded, never written to disk.
-  The database holds: hashed identifier, key hashes, and token counts per
-  request.
+- **Privacy by construction.** Phone numbers and e-mail addresses are looked
+  up by HMAC-SHA256 hash, shown as a display hint (`138****8000`,
+  `so***@example.com`), and kept AES-GCM-encrypted under a key derived from
+  `CLOUD_SECRET` so the operator's page can tell accounts apart; the database
+  file on its own reveals none of them. Message content is forwarded, never
+  written to disk. The database holds: hashed and encrypted identifier, key
+  hashes, token counts per request, and video task ids.
 
 Errors carry a stable `code` the app can turn into a sentence:
 
@@ -94,10 +96,30 @@ for the full list. The ones that matter:
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
 
-The default menu: `qwen3.7-plus` (recommended; text and images in),
-`qwen3.7-flash` (charged at 0.3×), `qwen3-vl-plus`, and `qwen-image-3.0-pro`
-for drawing (30 000 tokens per picture). Any OpenAI-compatible upstream works
-for chat; the image endpoints assume DashScope.
+The default menu: `qwen3.8-27b` (recommended; text and images in),
+`qwen3.8-flash` (charged at 0.3×), `qwen-image-3.0-pro` for drawing (30 000
+tokens per picture) and `MiniMax/MiniMax-H3` for short clips (200 000 tokens
+per clip). Any OpenAI-compatible upstream works for chat; the image and video
+endpoints assume DashScope. Video is relayed under DashScope's own paths
+(`/api/v1/services/aigc/video-generation/video-synthesis`, `/api/v1/tasks/{id}`,
+`/api/v1/uploads`), so the app's video code only needs to point its host at
+the relay; a task can be polled by the account that created it only.
+
+`SIGNUP_TOKENS=0` runs the relay without a ceiling: usage is metered and shown,
+nothing is refused for lack of tokens (`/v1/me` says `"unlimited": true` and the
+apps show 「不限」). `DAILY_CAP_TOKENS=0` and `PER_MINUTE_REQUESTS=0` switch
+those two checks off in the same way.
+
+### Operator's page
+
+`/app/admin/` asks for `CLOUD_ADMIN_TOKEN` (kept in the tab's sessionStorage)
+and shows every account — phone number or address in clear, joined, used in
+all and today, last active, live sign-ins, devices with presence — with
+grant, disable and delete buttons, plus the last fourteen days of usage. The
+identifiers are stored AES-GCM-encrypted with a key derived from
+`CLOUD_SECRET`; the page is the only place they are decrypted. A person can
+also remove themselves: `POST /v1/auth/delete` with their key deletes the
+account, its keys, ledger and devices.
 
 ## Operating
 

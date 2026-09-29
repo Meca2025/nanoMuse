@@ -9,6 +9,7 @@ need).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from dataclasses import dataclass, field
@@ -22,7 +23,7 @@ class ModelSpec:
     id: str
     name: str
     upstream: str
-    kind: str = "chat"  # chat | image
+    kind: str = "chat"  # chat | image | video
     input_modalities: tuple[str, ...] = ("text",)
     output_modalities: tuple[str, ...] = ("text",)
     # Charged tokens = prompt × in_mult + completion × out_mult. Multipliers let
@@ -32,6 +33,9 @@ class ModelSpec:
     out_mult: float = 1.0
     # Images have no token count; each one costs this many tokens of grant.
     per_image: int = 0
+    # Nor do clips: each accepted video task costs this many (billed per output
+    # second upstream, so this is set for the short clips the app makes).
+    per_clip: int = 0
     recommended: bool = False
 
     def to_public(self) -> dict:
@@ -50,26 +54,31 @@ class ModelSpec:
                 "in_mult": self.in_mult,
                 "out_mult": self.out_mult,
                 "per_image": self.per_image,
+                "per_clip": self.per_clip,
             },
         }
 
 
+# The menu a fresh account gets. Checked against the provider's own /models
+# list: qwen3.8-27b takes pictures as input (so no separate vision model),
+# qwen-image-3.0-pro draws, MiniMax-H3 makes clips through the video API
+# (which the provider does not list; the app probes it).
 DEFAULT_MODELS: tuple[ModelSpec, ...] = (
     ModelSpec(
-        id="qwen3.7-plus", name="Qwen 3.7 Plus", upstream="qwen3.7-plus",
+        id="qwen3.8-27b", name="Qwen 3.8 27B", upstream="qwen3.8-27b",
         input_modalities=("text", "image"), recommended=True,
     ),
     ModelSpec(
-        id="qwen3.7-flash", name="Qwen 3.7 Flash", upstream="qwen3.7-flash",
+        id="qwen3.8-flash", name="Qwen 3.8 Flash", upstream="qwen3.8-flash",
         input_modalities=("text", "image"), in_mult=0.3, out_mult=0.3,
-    ),
-    ModelSpec(
-        id="qwen3-vl-plus", name="Qwen3 VL Plus", upstream="qwen3-vl-plus",
-        input_modalities=("text", "image"),
     ),
     ModelSpec(
         id="qwen-image-3.0-pro", name="Qwen Image 3.0 Pro", upstream="qwen-image-3.0-pro",
         kind="image", output_modalities=("image",), per_image=30_000,
+    ),
+    ModelSpec(
+        id="MiniMax/MiniMax-H3", name="MiniMax H3 (video)", upstream="MiniMax/MiniMax-H3",
+        kind="video", input_modalities=("text", "image"), output_modalities=("video",), per_clip=200_000,
     ),
 )
 
@@ -120,6 +129,10 @@ class Settings:
     # can still ask for it explicitly.
     chat_defaults: dict = field(default_factory=lambda: json.loads(_env("CHAT_DEFAULTS", '{"enable_thinking": false}')))
 
+    # The grant. SIGNUP_TOKENS=0 means no ceiling at all (a private relay for a
+    # few people, paid for by its operator): usage is still metered and shown,
+    # nothing is refused for lack of tokens. DAILY_CAP_TOKENS=0 and
+    # PER_MINUTE_REQUESTS=0 likewise switch those two checks off.
     signup_tokens: int = field(default_factory=lambda: _int("SIGNUP_TOKENS", 1_000_000))
     daily_cap_tokens: int = field(default_factory=lambda: _int("DAILY_CAP_TOKENS", 300_000))
     per_minute_requests: int = field(default_factory=lambda: _int("PER_MINUTE_REQUESTS", 30))
@@ -161,9 +174,19 @@ class Settings:
         return None
 
     @property
+    def unlimited(self) -> bool:
+        return self.signup_tokens <= 0
+
+    @property
     def dev_mode(self) -> bool:
         return not self.secret
 
     @property
     def hmac_key(self) -> bytes:
         return (self.secret or "nanomuse-cloud-dev-not-secret").encode()
+
+    @property
+    def identifier_key(self) -> bytes:
+        """32 bytes for AES-GCM over the stored phone numbers / addresses,
+        derived from the same secret so one value keeps the whole database."""
+        return hashlib.sha256(b"nanomuse-cloud/identifier:" + self.hmac_key).digest()

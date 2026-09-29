@@ -159,6 +159,16 @@ class Hub:
             raise CloudError(409, "device_online", "That device is connected right now; sign it out there first")
         self.db.forget_device(account_id, device_id)
 
+    async def drop_account(self, account_id: str) -> None:
+        """When an account is deleted or disabled: every socket of it is closed
+        (the receive loops then remove themselves) so no device keeps a live line."""
+        for c in list(self.online.get(account_id, {}).values()):
+            c.closed = True
+            try:
+                await c.ws.close(code=4001, reason="account_gone")
+            except Exception as e:  # already gone
+                log.debug("close %s: %s", c.device_id, e)
+
     # -- one socket ------------------------------------------------------------------
 
     async def serve(self, ws: WebSocket, caller: Caller | None) -> None:

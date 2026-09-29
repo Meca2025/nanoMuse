@@ -1,8 +1,11 @@
 """SQLite storage: accounts, keys, codes, the token ledger.
 
 One file, WAL mode, one connection guarded by a lock — the relay is I/O bound
-on the upstream, not on SQLite. Identifiers (phone / e-mail) are never stored;
-only their HMAC and a masked hint for the account page.
+on the upstream, not on SQLite. Identifiers (phone / e-mail) are stored as
+their HMAC (the lookup key), a masked hint for the account page, and — so the
+operator can tell who is who — encrypted with a key derived from the
+deployment secret (`identifier_enc`, see crypto.py); a copied database file
+shows none of them.
 """
 
 from __future__ import annotations
@@ -23,7 +26,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     created_at    INTEGER NOT NULL,
     granted       INTEGER NOT NULL DEFAULT 0,
     used          INTEGER NOT NULL DEFAULT 0,
-    disabled      INTEGER NOT NULL DEFAULT 0
+    disabled      INTEGER NOT NULL DEFAULT 0,
+    identifier_enc TEXT NOT NULL DEFAULT ''  -- AES-GCM of the phone / address, base64
 );
 CREATE TABLE IF NOT EXISTS api_keys (
     key_hash      TEXT PRIMARY KEY,
@@ -51,7 +55,7 @@ CREATE TABLE IF NOT EXISTS ledger (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id    TEXT NOT NULL REFERENCES accounts(id),
     ts            INTEGER NOT NULL,
-    kind          TEXT NOT NULL,          -- grant | chat | image | adjust
+    kind          TEXT NOT NULL,          -- grant | chat | image | video | adjust
     model         TEXT NOT NULL DEFAULT '',
     prompt_tokens INTEGER NOT NULL DEFAULT 0,
     completion_tokens INTEGER NOT NULL DEFAULT 0,
@@ -70,6 +74,13 @@ CREATE TABLE IF NOT EXISTS devices (
     first_seen    INTEGER NOT NULL,
     last_seen     INTEGER NOT NULL,
     PRIMARY KEY (account_id, id)
+);
+CREATE TABLE IF NOT EXISTS video_tasks (
+    task_id       TEXT PRIMARY KEY,        -- the provider's id; polled by its owner only
+    account_id    TEXT NOT NULL REFERENCES accounts(id),
+    model         TEXT NOT NULL DEFAULT '',
+    created_at    INTEGER NOT NULL,
+    charged       INTEGER NOT NULL DEFAULT 0  -- set when the task was first seen SUCCEEDED
 );
 """
 
@@ -90,6 +101,17 @@ class Database:
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(SCHEMA)
+            self._migrate()
+
+    def _migrate(self) -> None:
+        """Columns added after the first release; CREATE TABLE IF NOT EXISTS leaves old files alone."""
+        def cols(table: str) -> set[str]:
+            return {r["name"] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
+
+        if "identifier_enc" not in cols("accounts"):
+            self._conn.execute("ALTER TABLE accounts ADD COLUMN identifier_enc TEXT NOT NULL DEFAULT ''")
+        if "charged" not in cols("video_tasks"):
+            self._conn.execute("ALTER TABLE video_tasks ADD COLUMN charged INTEGER NOT NULL DEFAULT 0")
 
     @contextmanager
     def tx(self):
@@ -160,13 +182,19 @@ class Database:
         with self._lock:
             return self._conn.execute("SELECT * FROM accounts WHERE id=?", (account_id,)).fetchone()
 
-    def create_account(self, id_hash: str, channel: str, hint: str, grant: int) -> sqlite3.Row:
-        account_id = str(uuid.uuid4())
+    @staticmethod
+    def new_account_id() -> str:
+        return str(uuid.uuid4())
+
+    def create_account(
+        self, id_hash: str, channel: str, hint: str, grant: int, identifier_enc: str = "", account_id: str | None = None
+    ) -> sqlite3.Row:
+        account_id = account_id or self.new_account_id()
         t = now()
         with self.tx() as c:
             c.execute(
-                "INSERT INTO accounts(id, id_hash, channel, hint, created_at, granted) VALUES (?,?,?,?,?,?)",
-                (account_id, id_hash, channel, hint, t, grant),
+                "INSERT INTO accounts(id, id_hash, channel, hint, created_at, granted, identifier_enc) VALUES (?,?,?,?,?,?,?)",
+                (account_id, id_hash, channel, hint, t, grant, identifier_enc),
             )
             if grant:
                 c.execute(
@@ -174,6 +202,19 @@ class Database:
                     (account_id, t, "grant", -grant),
                 )
         return self.account(account_id)  # type: ignore[return-value]
+
+    def delete_account(self, account_id: str) -> None:
+        """Everything about one person: keys, ledger, devices, pending codes, the row itself."""
+        with self.tx() as c:
+            row = c.execute("SELECT id_hash FROM accounts WHERE id=?", (account_id,)).fetchone()
+            if row is None:
+                return
+            c.execute("DELETE FROM codes WHERE id_hash=?", (row["id_hash"],))
+            c.execute("DELETE FROM video_tasks WHERE account_id=?", (account_id,))
+            c.execute("DELETE FROM devices WHERE account_id=?", (account_id,))
+            c.execute("DELETE FROM ledger WHERE account_id=?", (account_id,))
+            c.execute("DELETE FROM api_keys WHERE account_id=?", (account_id,))
+            c.execute("DELETE FROM accounts WHERE id=?", (account_id,))
 
     def grant(self, account_id: str, tokens: int, kind: str = "grant") -> None:
         with self.tx() as c:
@@ -191,6 +232,32 @@ class Database:
         with self._lock:
             return self._conn.execute(
                 "SELECT * FROM accounts ORDER BY created_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+
+    def admin_accounts(self, day_start: int, limit: int = 500) -> list[sqlite3.Row]:
+        """The operator's view: each account with today's spend, when it was last
+        seen, how many keys (sign-ins) are live and how many devices it remembers."""
+        with self._lock:
+            return self._conn.execute(
+                """SELECT a.*,
+                          (SELECT COALESCE(SUM(l.charged),0) FROM ledger l
+                             WHERE l.account_id=a.id AND l.ts>=? AND l.charged>0) AS used_today,
+                          (SELECT COUNT(*) FROM ledger l
+                             WHERE l.account_id=a.id AND l.kind IN ('chat','image','video')) AS requests,
+                          (SELECT MAX(k.last_used_at) FROM api_keys k WHERE k.account_id=a.id) AS last_active_at,
+                          (SELECT COUNT(*) FROM api_keys k WHERE k.account_id=a.id AND k.revoked_at IS NULL) AS live_keys,
+                          (SELECT COUNT(*) FROM devices d WHERE d.account_id=a.id) AS device_count
+                   FROM accounts a ORDER BY a.created_at DESC LIMIT ?""",
+                (day_start, limit),
+            ).fetchall()
+
+    def usage_by_day(self, since: int) -> list[sqlite3.Row]:
+        """Charged tokens per UTC day and kind, for the admin page's totals."""
+        with self._lock:
+            return self._conn.execute(
+                """SELECT (ts - ts % 86400) AS day, kind, COUNT(*) AS requests, SUM(charged) AS charged
+                   FROM ledger WHERE ts>=? AND charged>0 GROUP BY day, kind ORDER BY day DESC""",
+                (since,),
             ).fetchall()
 
     # -- keys ----------------------------------------------------------------
@@ -246,7 +313,7 @@ class Database:
     def requests_since(self, account_id: str, since: int) -> int:
         with self._lock:
             r = self._conn.execute(
-                "SELECT COUNT(*) FROM ledger WHERE account_id=? AND ts>=? AND kind IN ('chat','image')",
+                "SELECT COUNT(*) FROM ledger WHERE account_id=? AND ts>=? AND kind IN ('chat','image','video')",
                 (account_id, since),
             ).fetchone()
         return int(r[0])
@@ -286,3 +353,24 @@ class Database:
     def forget_device(self, account_id: str, device_id: str) -> None:
         with self.tx() as c:
             c.execute("DELETE FROM devices WHERE account_id=? AND id=?", (account_id, device_id))
+
+    # -- video tasks (the provider's async API, relayed) --------------------------
+
+    def insert_video_task(self, task_id: str, account_id: str, model: str) -> None:
+        t = now()
+        with self.tx() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO video_tasks(task_id, account_id, model, created_at) VALUES (?,?,?,?)",
+                (task_id, account_id, model, t),
+            )
+            c.execute("DELETE FROM video_tasks WHERE created_at < ?", (t - 3 * 86400,))
+
+    def video_task(self, task_id: str) -> sqlite3.Row | None:
+        with self._lock:
+            return self._conn.execute("SELECT * FROM video_tasks WHERE task_id=?", (task_id,)).fetchone()
+
+    def mark_video_charged(self, task_id: str) -> bool:
+        """True the first time only, so a clip is charged once however often it is polled."""
+        with self.tx() as c:
+            cur = c.execute("UPDATE video_tasks SET charged=1 WHERE task_id=? AND charged=0", (task_id,))
+            return cur.rowcount == 1

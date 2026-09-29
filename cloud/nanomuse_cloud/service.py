@@ -14,6 +14,7 @@ import secrets
 from dataclasses import dataclass
 
 from .config import ModelSpec, Settings
+from .crypto import IdentifierCrypto
 from .db import Database, now
 from .identifiers import BadIdentifier, Identifier, parse
 from .senders import CodeSender, SendError, make_sender
@@ -58,8 +59,11 @@ class Cloud:
         self.s = settings
         self.db = db or Database(settings.database)
         self.sender = sender or make_sender(settings)
+        self.crypto = IdentifierCrypto(settings.identifier_key)
         if settings.dev_mode:
             log.warning("CLOUD_SECRET is not set: development mode, identifiers hashed with a fixed key")
+        if settings.unlimited:
+            log.warning("SIGNUP_TOKENS=0: no token ceiling, usage is metered only")
 
     # -- sign-up -------------------------------------------------------------------
 
@@ -107,7 +111,9 @@ class Cloud:
         account = self.db.account_by_hash(id_hash)
         created = account is None
         if account is None:
-            account = self.db.create_account(id_hash, ident.channel, ident.hint, self.s.signup_tokens)
+            account_id = self.db.new_account_id()
+            enc = self.crypto.encrypt(account_id, ident.value)
+            account = self.db.create_account(id_hash, ident.channel, ident.hint, self.s.signup_tokens, enc, account_id=account_id)
         elif account["disabled"]:
             raise CloudError(403, "account_disabled", "This account is disabled")
 
@@ -145,6 +151,10 @@ class Cloud:
     def sign_out(self, caller: Caller) -> None:
         self.db.revoke_key(caller.key_hash)
 
+    def delete_account(self, caller: Caller) -> None:
+        """The person's own request: every key stops working and nothing about them stays."""
+        self.db.delete_account(caller.account_id)
+
     def me(self, caller: Caller) -> dict:
         t = now()
         day_start = t - (t % 86400)
@@ -155,6 +165,9 @@ class Cloud:
                 "created_at": caller.account_created_at,
             },
             "tokens": {
+                # `unlimited` first: when it is true the app shows 「不限」 and
+                # ignores granted/remaining (kept so older builds still parse).
+                "unlimited": self.s.unlimited,
                 "granted": caller.granted,
                 "used": caller.used,
                 "remaining": caller.remaining,
@@ -176,12 +189,14 @@ class Cloud:
         return m
 
     def check_budget(self, caller: Caller, minimum: int = 1) -> None:
-        if caller.remaining < minimum:
+        """Each limit is off when its setting is 0; the per-minute one guards the
+        operator's bill against a runaway loop even on an unlimited relay."""
+        if not self.s.unlimited and caller.remaining < minimum:
             raise CloudError(402, "out_of_tokens", "Your nanoMuse Cloud grant is used up. Add your own model key under Settings → Providers to keep going.")
         t = now()
-        if self.db.requests_since(caller.account_id, t - 60) >= self.s.per_minute_requests:
+        if self.s.per_minute_requests > 0 and self.db.requests_since(caller.account_id, t - 60) >= self.s.per_minute_requests:
             raise CloudError(429, "rate_limited", "Too many requests; slow down a little")
-        if self.db.used_since(caller.account_id, t - (t % 86400)) >= self.s.daily_cap_tokens:
+        if self.s.daily_cap_tokens > 0 and self.db.used_since(caller.account_id, t - (t % 86400)) >= self.s.daily_cap_tokens:
             raise CloudError(429, "daily_cap", "Today's share of the grant is used up; it resets at midnight UTC")
 
     def charge_chat(self, caller: Caller, model: ModelSpec, prompt_tokens: int, completion_tokens: int, request_id: str) -> int:
@@ -192,6 +207,13 @@ class Cloud:
     def charge_image(self, caller: Caller, model: ModelSpec, n: int, request_id: str) -> int:
         charged = model.per_image * max(1, n)
         self.db.charge(caller.account_id, "image", model.id, 0, 0, charged, request_id)
+        return charged
+
+    def charge_video(self, caller: Caller, model: ModelSpec, request_id: str) -> int:
+        """One accepted task = one clip; the provider bills per output second, so
+        `per_clip` is set for the short clips the app asks for."""
+        charged = model.per_clip
+        self.db.charge(caller.account_id, "video", model.id, 0, 0, charged, request_id)
         return charged
 
     # -- admin ------------------------------------------------------------------------------
@@ -214,16 +236,38 @@ class Cloud:
         if self.db.account(account_id) is None:
             raise CloudError(404, "no_account", "No such account")
         self.db.grant(account_id, tokens, kind="adjust")
-        a = self.db.account(account_id)
-        return dict(a)  # type: ignore[arg-type]
+        a = dict(self.db.account(account_id))  # type: ignore[arg-type]
+        a["identifier"] = self.crypto.decrypt(account_id, a.pop("identifier_enc", "")) or ""
+        a.pop("id_hash", None)
+        return a
 
     def admin_accounts(self) -> list[dict]:
-        return [dict(r) for r in self.db.list_accounts()]
+        """With the identifier in clear (decrypted here, for the admin token
+        only); the hash and ciphertext stay out of the reply."""
+        t = now()
+        out = []
+        for r in self.db.admin_accounts(t - (t % 86400)):
+            d = dict(r)
+            d["identifier"] = self.crypto.decrypt(d["id"], d.pop("identifier_enc", "")) or ""
+            d.pop("id_hash", None)
+            d["disabled"] = bool(d["disabled"])
+            out.append(d)
+        return out
+
+    def admin_usage(self, days: int = 14) -> list[dict]:
+        t = now()
+        since = t - (t % 86400) - 86400 * max(0, days - 1)
+        return [dict(r) for r in self.db.usage_by_day(since)]
 
     def admin_disable(self, account_id: str, disabled: bool) -> None:
         if self.db.account(account_id) is None:
             raise CloudError(404, "no_account", "No such account")
         self.db.set_disabled(account_id, disabled)
+
+    def admin_delete(self, account_id: str) -> None:
+        if self.db.account(account_id) is None:
+            raise CloudError(404, "no_account", "No such account")
+        self.db.delete_account(account_id)
 
 
 def estimate_tokens(text: str) -> int:

@@ -31,15 +31,20 @@ in a model group.
 
 The relay is the code in [`cloud/`](../cloud/README.md). It stores:
 
-- a salted hash (HMAC-SHA256) of the phone number or e-mail address, and a
-  masked hint such as `138****8000` or `so***@example.com`;
+- a salted hash (HMAC-SHA256) of the phone number or e-mail address, a
+  masked hint such as `138****8000` or `so***@example.com`, and the number
+  or address itself encrypted (AES-GCM, key derived from the relay's secret)
+  so the operator can see who an account belongs to on the admin page — the
+  database file alone shows nothing;
 - the hash of each key issued, with the device name you signed in from;
-- per request: the model, the token counts and the amount charged.
+- per request: the model, the token counts and the amount charged;
+- the id of each video task, so only the account that started one can poll it.
 
 It does not store message content, images or tool results; they are forwarded
 to the upstream model (Alibaba Cloud Model Studio) and the reply is streamed
 back. Every response carries an `X-Nanomuse-Request` id so a problem report
-can be matched to a ledger row without any content being logged. See
+can be matched to a ledger row without any content being logged. Deleting the
+account (`POST /v1/auth/delete` with the account's key) removes all of it. See
 [privacy.md](privacy.md).
 
 ## Allowance
@@ -49,12 +54,15 @@ can be matched to a ledger row without any content being logged. See
 | starter grant | 1 000 000 tokens per phone number / address |
 | daily cap | 300 000 tokens per rolling 24 h |
 | rate | 30 requests per minute |
-| chat | charged from the upstream's own usage; `qwen3.7-flash` at 0.3× |
+| chat | charged from the upstream's own usage; `qwen3.8-flash` at 0.3× |
 | a picture | 30 000 tokens |
+| a clip | 200 000 tokens (`MiniMax/MiniMax-H3`, relayed through DashScope's video API) |
 
 These are the relay's defaults; an operator may set others. When the grant is
 used up the app says so (`out_of_tokens`); switch to your own key, or ask for a
-top-up.
+top-up. A relay run for a few invited people may have no ceiling at all
+(`SIGNUP_TOKENS=0`): the account page then shows 「不限」 and what was used,
+and nothing is refused for lack of tokens.
 
 ## Running your own
 
