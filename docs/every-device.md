@@ -162,6 +162,24 @@ reaching the RiskGate card (today a task the desk delegates is approved on the
 phone's screen only), the desk's Hands events shown while it works, a
 *Devices* entry in the drawer. None of it blocks the desktop work.
 
+## nanoMuse Web: a Muse with no device of yours
+
+The same runtime, run for you: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/)
+with an e-mail or a phone code and the showcase gateway
+(`demo/showcase/gateway/showcase_gateway/accounts.py`) starts a container of
+your own — the `ghcr.io/nano-muse/nanomuse` image with three named volumes
+(`/data`, `/workspace`, `/home/muse`), on a network next to the Cloud relay —
+seeded from the environment so it comes up signed in as the device *Web*, with
+the Cloud as its model and the first run behind it (`NANOMUSE_CLOUD_KEY`,
+`NANOMUSE_CLOUD_BASE_URL`, `NANOMUSE_HUB_NAME`, `NANOMUSE_ONBOARDED`;
+`nanomuse/hub/service.py`, `_seed_from_env`). The browser is sent to
+`https://<slug>.s.nanomuse.dev/?token=…`, the door the phone's QR code opens.
+It has local hands of its own (a shell and files inside the container, the
+browser tool) and sits on the hub like any other device: the phone can ask it,
+it can ask the phone or the computer. Quiet for six hours, the container is
+stopped and its volumes kept; the next request wakes it. Details and the
+settings in [demo/showcase/README.md](../demo/showcase/README.md).
+
 ## iOS, the web console, glasses
 
 iOS speaks the hub (`info`, `open`, `notify`) and gets the shape later
@@ -189,17 +207,18 @@ the hands elsewhere — the hub is already enough for them.
 
 ## Status
 
-| | Phone | Computer | Web console | iOS |
-|---|---|---|---|---|
-| Local shell / files / browser | yes | yes (runtime) | no hands | no |
-| Screen as a hand | Hands (0.1.12) | **this stage**: `computer_*` | — | — |
-| Drives other devices | `nanomuse-pc`, hub | **this stage**: `device_*`, `delegate` in the runtime (in the binary since 0.1.17) | picks a device, sends a task | — |
-| Answers other devices | yes | **this stage**: in a visible side chat | — | info / open / notify |
-| GUI in the Android shape | reference | **this stage**: web app (sidebar on wide screens) + window | console | later |
-| Stage while the hands work | `HandsStage` | **this stage**: Hands card; the stage overlay in the window | — | — |
+| | Phone | Computer | nanoMuse Web | Web console | iOS |
+|---|---|---|---|---|---|
+| Local shell / files / browser | yes | yes (runtime) | yes, inside its container | no hands | no |
+| Screen as a hand | Hands (0.1.12) | `computer_*` (0.1.19) | — | — | — |
+| Drives other devices | `nanomuse-pc`, hub | `device_*`, `delegate` (0.1.19) | the same runtime | picks a device, sends a task | — |
+| Answers other devices | yes | in a visible side chat (0.1.19) | yes | — | info / open / notify |
+| GUI in the Android shape | reference | web app (sidebar on wide screens) + window (0.1.19) | the web app | console | later |
+| Stage while the hands work | `HandsStage` | Hands card; the stage overlay in the window | — | — | — |
 
-Everything in this stage is developed and tested locally — `nanomuse serve`,
-`npm run dev` in `web/` and `desktop/app/` — and nothing is released from it.
+Released with 0.1.19: the APK, the desktop installers (`nanoMuse-Desktop-…`,
+[`.github/workflows/desktop-app.yml`](../.github/workflows/desktop-app.yml)),
+the terminal binary, and nanoMuse Web at nanomuse.cn/web.
 
 ## Debugging it all on one machine
 
@@ -244,13 +263,12 @@ ports and the same happens the other way. `npm run stage-demo` in
 `desktop/app/` plays a scripted hands run into the stage without moving the
 real mouse. Stop everything with `ss -ltnp | grep ':879'` and `kill`.
 
-## For the phone, later
+## The phone, in 0.1.19
 
-The phone already speaks the hub, but three things the computer now does are
-not yet mirrored on Android and are left for a release with an APK build: the
-`tool_result` / `approval_result` stages in the phone's hub client (today it
-only closes cards on `result`), hub `approve` frames reaching `RiskGate` so an
-approval asked on the phone can be answered from the computer, and a *Devices*
-row in the drawer next to the chats so a device chat is one tap away as it is
-in the web app's sidebar. The desk's hands events (`HandsLive`) could also be
-shown as a Hands card on the phone when the phone asked for the task.
+Three things the computer does are mirrored on Android since 0.1.19: the
+phone's hub client reads the `tool` / `tool_result` / `approval_result` stages
+(`ReachOffloadHandler`), hub `approve` frames reach `RiskGate` and the phone's
+own approvals travel to the asker as `approval` events (`HubActions`), and a
+*Devices* row sits in the drawer next to the chats. Still to come: the desk's
+hands events (`HandsLive`) as a Hands card on the phone when the phone asked
+for the task.

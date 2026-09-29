@@ -25,7 +25,8 @@ console next to it, which is where the devices sit side by side. The windowed
 desktop — the Python runtime with the hub, the Cloud account and hands on this
 computer's screen, the web app in an Electron shell under
 [`desktop/app/`](../desktop/app/) (a window, a tray, a global Stop and the
-stage that shows where the hands click; development only, not packaged yet) —
+stage that shows where the hands click; installers `nanoMuse-Desktop-<v>-…` on
+every release, built by `.github/workflows/desktop-app.yml`) —
 is described in [every-device.md](every-device.md); this binary stays the
 zero-install fallback. `serve` keeps it connected in the background without a
 terminal chat, so the phone can reach the computer while you are away from it.
