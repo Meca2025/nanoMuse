@@ -35,6 +35,16 @@ nanoMuse is a fully open-source, Muse-style personal agent for every device you 
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar: describe a look, your image model draws it, pick the one you like">
 </p>
 
+> **Free, open-source, non-profit.** nanoMuse is a community project, built to make a better personal agent together, and it will never charge for anything. This version is open for the community to try: sign in with an e-mail address and the agent has free model access — about ¥25 (≈ $3.5) a day per account, across chat, pictures and video — paid for by the developer. Your messages are not stored and nothing about you is sold or shared; delete the account at any time, or bring your own API key and skip the relay altogether. Details: [docs/cloud.md](docs/cloud.md) · [docs/privacy.md](docs/privacy.md).
+
+## News
+
+- **2026-09-29 · 0.1.18 “Open”** — Sign-up is open to everyone: an e-mail address, a code, and about ¥25 a day of model use, free (community members: no cap). What each request cost is shown in ¥ and $ in the app and the admin console. A new first run — welcome, the notice above, e-mail sign-in first, the Hands permissions up front and skippable, then the first conversation. Approvals come in three tiers now; a payment can be remembered for one app with the screen lock, and *Settings → Permissions* lists what you remembered, by tier. Hands no longer stops at 25 steps. Models that never declared their modalities (qwen3.8-27b) no longer claim they cannot see pictures. [Release notes](docs/releases/v0.1.18.md).
+- **2026-09-26 · 0.1.16 “Palette”** — Image and video models picked from what your key can use; drawing on Model Studio through its native endpoint; Wan video models beside MiniMax-H3. [Notes](docs/releases/v0.1.16.md).
+- **2026-09-25 · 0.1.12 – 0.1.15** — **Hands**: the phone's screen as a hand, with a capsule and Stop; **Reach**: the phone drives your computer; **Stage**: watching the hands work. [Notes](docs/releases/).
+
+Older versions are in the [table below](#versions) and the [CHANGELOG](CHANGELOG.md).
+
 ## Why nanoMuse
 
 Four things define the project.
@@ -52,7 +62,7 @@ How this compares with Muse and with OpenMinis, the runtime the app is built on:
 
 1. Download `nanoMuse-<version>-arm64.apk` from the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 or newer, a 64-bit phone. Verify with `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` if you like.
 2. Open it. Android asks once to allow the install; every version is signed with the same key, so updates install over the previous one and keep your data.
-3. Connect a model. *Start now*: a phone number or an e-mail address, a code, and you have a starter allowance on [nanoMuse Cloud](docs/cloud.md) — no key needed. Or bring your own: any OpenAI-compatible endpoint with your key, or one of the OAuth sign-ins the app ships with. The first conversation asks what to call you and lets the agent pick its own name.
+3. Connect a model. *Sign in with e-mail — free*: an e-mail address (or a phone number), a code, and the agent has free model access on [nanoMuse Cloud](docs/cloud.md) — about ¥25 a day, no key needed, nothing to pay. Or bring your own: any OpenAI-compatible endpoint with your key, or one of the OAuth sign-ins the app ships with. Then, if you like, the two permissions that let the agent use your phone's apps (skippable), and the first conversation, which asks what to call you and lets the agent pick its own name.
 4. Optional — *Settings → Image & video models*: an image model (qwen-image-3.0 on Alibaba Cloud Model Studio, gpt-image-1, or any provider with the OpenAI images endpoint) lets the agent change its look and draw pictures; a video model (MiniMax-H3 on Model Studio) makes the look move. Muse has these built in; nanoMuse uses your own, and the agent tells you when one is missing.
 
 The app checks this repository's releases for updates. Release notes for each version are in [docs/releases/](docs/releases/) and the [CHANGELOG](CHANGELOG.md).
@@ -109,6 +119,7 @@ One small version per stage, each a GitHub release with an APK. The plan and its
 | [0.1.14](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.14) | Home | A fix: coming back to the app — from a notification, the tool capsule or Hands finishing a run — lands in its own home again, not on the OpenMinis chat screen |
 | [0.1.15](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.15) | Stage | Watching the hands: a glow along the edges while they work, a turning ring with the action's name where they are about to tap, a ripple as they land, the ring riding along a swipe — after UI-TARS-desktop's ScreenMarker; the capsule lets every gesture through and steps aside; the app-icon quick actions open in the home |
 | [0.1.16](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.16) | Palette | Image and video models picked like the chat model — from what the key can use, the recommended one marked; drawing on Model Studio through its native endpoint (the 404 is gone); Wan video models beside MiniMax-H3 |
+| [0.1.18](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.18) | Open | Sign-up open to everyone with about ¥25 a day of model use, free; costs in ¥ and $; a new first run with the community notice, e-mail sign-in first and the Hands permissions up front; approvals in three tiers, payments rememberable per app with the screen lock; Hands without a step cap; undeclared modalities no longer read as text-only |
 | 0.2.0 | Beta | Polish from the first weeks of use; the first beta |
 
 **After that**, in order: a desktop app that is an agent of its own and a client of the phone's; iOS; the web on a machine of your own — a VM, a home server — reachable from any browser; glasses. Each device you add is one more pair of hands and one more front door for the same agent. The Python line this project started with — the agent and its Sentinel, the web app, the simulated phone — is frozen at tag [`pre-openminis`](https://github.com/nano-muse/nanoMuse/releases/tag/pre-openminis) with its docs under [docs/](docs/), and is the base of the desktop and web front doors.

@@ -7,8 +7,8 @@ provider, not a replacement.
 
 ## In the app
 
-On the first screen, *Start now* asks for a phone number or e-mail address and
-sends a six-digit code. After the code the app has:
+On the first screen, *Sign in with e-mail — free* asks for an e-mail address (or a
+phone number) and sends a six-digit code. After the code the app has:
 
 - a provider called **nanoMuse Cloud** under *Settings → Providers*, an
   ordinary OpenAI-compatible provider whose key is the token the relay issued;
