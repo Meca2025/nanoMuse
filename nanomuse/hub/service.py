@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import contextlib
+import os
 import re
 import socket
 import time
@@ -97,8 +98,34 @@ class HubService:
     # ------------------------------------------------------------------ lifecycle
     async def start(self) -> None:
         """Join the hub when the account is signed in and the hub is on."""
+        await self._seed_from_env()
         if self.signed_in and self.settings.hub.enabled:
             await self.join()
+
+    async def _seed_from_env(self) -> None:
+        """A hosted runtime (nanoMuse Web) starts already signed in: the gateway that made the
+        container passes the account key in ``NANOMUSE_CLOUD_KEY`` (``NANOMUSE_CLOUD_HINT`` /
+        ``NANOMUSE_CLOUD_CHANNEL`` for the account page). The key goes into the vault like
+        one typed in; the relay becomes the model when nothing else is configured; the first
+        run is skipped, since the person signed in one page earlier. Nothing happens when the
+        vault already holds a key."""
+        key = os.environ.get("NANOMUSE_CLOUD_KEY", "").strip()
+        if not key or self.signed_in:
+            return
+        self.svc.app.vault.set(CLOUD_KEY, key)
+        self.data["cloud"] = {
+            "base_url": self.cloud.base_url,
+            "hint": os.environ.get("NANOMUSE_CLOUD_HINT", "").strip(),
+            "channel": os.environ.get("NANOMUSE_CLOUD_CHANNEL", "").strip(),
+            "signed_in_at": now_iso(),
+        }
+        if not (self.settings.llm.api_key or (self.data.get("llm") or {}).get("api_key")):
+            with contextlib.suppress(CloudError, Exception):
+                await self.use_as_model()
+        if os.environ.get("NANOMUSE_ONBOARDED", "").strip().lower() in ("1", "true", "yes", "on"):
+            self.data["onboarded"] = True
+        self._save()
+        logger.info("cloud account seeded from the environment")
 
     async def stop(self) -> None:
         await self.leave()

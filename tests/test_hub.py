@@ -419,6 +419,37 @@ def test_sign_in_joins_hub_and_lists_devices(hub_server) -> None:
     assert client.get("/api/cloud").json()["signed_in"] is False
 
 
+def test_hosted_runtime_starts_signed_in_from_the_environment(
+    settings: Settings, relay: FakeRelay, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """nanoMuse Web: the gateway hands the container the account key; the runtime comes up
+    signed in, on the hub under the given name, with the relay as its model and no first run."""
+    settings.server.token = "secret-token"
+    settings.cloud.base_url = relay.base_url
+    settings.hub.name = "Web"
+    settings.llm.api_key = ""
+    monkeypatch.setenv("NANOMUSE_CLOUD_KEY", "test-key")
+    monkeypatch.setenv("NANOMUSE_CLOUD_HINT", "a***@example.com")
+    monkeypatch.setenv("NANOMUSE_CLOUD_CHANNEL", "email")
+    monkeypatch.setenv("NANOMUSE_ONBOARDED", "1")
+
+    async def fake_models(self: CloudClient) -> list[dict[str, Any]]:
+        return [{"id": "qwen3.8-27b"}]
+
+    monkeypatch.setattr(CloudClient, "models", fake_models)
+    service = MuseService(settings, llm=MockLLM([]))
+    app = create_app(settings, service)
+    with TestClient(app) as client:
+        client.headers["Authorization"] = "Bearer secret-token"
+        account = client.get("/api/cloud").json()
+        assert account["signed_in"] is True and account["hint"] == "a***@example.com"
+        assert account["is_model"] is True
+        assert service.app.vault.get("NANOMUSE_CLOUD_KEY") == "test-key"
+        assert client.get("/api/state").json()["settings"]["onboarded"] is True
+        wait_for(lambda: client.get("/api/hub").json()["state"] == "connected")
+        assert relay.hello["device"]["name"] == "Web"
+
+
 def test_task_from_a_device_runs_in_a_visible_side_chat(hub_server) -> None:
     client, service, llm, relay = hub_server
     sign_in(client)

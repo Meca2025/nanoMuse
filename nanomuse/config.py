@@ -580,6 +580,11 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
         raw.setdefault("browser", {}).setdefault("enabled", True)
     if val := os.environ.get("NANOMUSE_BROWSER_BACKEND"):
         raw.setdefault("browser", {})["backend"] = val
+    # a hosted runtime (nanoMuse Web) is told where its relay is and what to call itself
+    if val := os.environ.get("NANOMUSE_CLOUD_BASE_URL"):
+        raw.setdefault("cloud", {})["base_url"] = val.rstrip("/")
+    if val := os.environ.get("NANOMUSE_HUB_NAME"):
+        raw.setdefault("hub", {})["name"] = val[:60]
     gui = raw.setdefault("gui", {})
     if os.environ.get("NANOMUSE_GUI_ENABLED", "").strip().lower() in ("1", "true", "yes", "on"):
         gui["enabled"] = True
