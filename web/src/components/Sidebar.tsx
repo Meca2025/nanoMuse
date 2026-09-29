@@ -1,4 +1,4 @@
-import { LayoutGrid, Lightbulb, MessageCircle, MonitorSmartphone, Newspaper, SlidersHorizontal, SquareCheckBig } from "lucide-react";
+import { LayoutGrid, Lightbulb, MessageCircle, MonitorSmartphone, Newspaper, SlidersHorizontal, SquareCheckBig, TerminalSquare, UserRound } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useT } from "../i18n";
 import { ThreadList } from "../screens/ChatScreen";
@@ -47,6 +47,7 @@ export function Sidebar() {
       icon: <MonitorSmartphone size={18} />,
       hint: state.hub?.state === "connected" ? (online > 0 ? t("{n} online", { n: online }) : t("Only this one")) : undefined,
     },
+    { id: "coding", label: "Coding", icon: <TerminalSquare size={18} /> },
   ];
 
   return (
@@ -109,7 +110,19 @@ export function Sidebar() {
         />
       </div>
 
-      <div className="border-t border-border px-2.5 py-2">
+      <div className="border-t border-border px-2.5 py-2 space-y-0.5">
+        <button
+          type="button"
+          onClick={() => setTab("account")}
+          aria-current={state.tab === "account" ? "page" : undefined}
+          className={cx(
+            "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13.5px] font-medium transition",
+            state.tab === "account" ? "bg-surface-2 text-fg" : "text-fg/75 hover:bg-surface-2/60 hover:text-fg",
+          )}
+        >
+          <UserRound size={18} className={state.tab === "account" ? "text-accent" : "text-fg/60"} />
+          <span className="flex-1 truncate text-left">{state.hub?.account.signed_in ? state.hub.account.hint : t("Account")}</span>
+        </button>
         <button
           type="button"
           onClick={() => setTab("you")}

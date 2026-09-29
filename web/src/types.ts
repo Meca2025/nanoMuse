@@ -9,6 +9,8 @@ interface BaseEvent {
   source?: string;
   /** For background events: the short label of the work being done. */
   about?: string;
+  /** "call": said or heard on a voice / video call, not typed; otherwise the device it came from. */
+  via?: "call" | string;
 }
 
 /** A file attached to a message: in the workspace under attachments/. */
@@ -207,6 +209,139 @@ export interface CloudAccount {
   signed_in_at?: string | null;
   /** the relay is the model provider right now */
   is_model: boolean;
+  /** this runtime insists on an account (self-hosters may turn it off) */
+  required?: boolean;
+  has_password?: boolean;
+  /** the opaque account id, never the identifier */
+  account_id?: string;
+}
+
+/** One sign-in of the account (a key), as the relay lists them. */
+export interface CloudSession {
+  prefix: string;
+  device: string;
+  via: "code" | "password" | string;
+  created_at: number;
+  last_used_at: number | null;
+  current: boolean;
+}
+
+/** A line of the account's own timeline: sign-ins, calls, refusals — never message content. */
+export interface CloudEvent {
+  ts: number;
+  kind: string;
+  detail: string;
+}
+
+/** Requests, tokens and money for one kind (or one model) of use. */
+export interface UsageRow {
+  kind: "chat" | "image" | "video" | "realtime" | string;
+  model?: string;
+  requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  charged: number;
+  cost_cny: number;
+}
+
+/** `/api/cloud/me`: the account as the relay sees it. */
+export interface CloudMe {
+  account: {
+    id: string;
+    channel: string;
+    hint: string;
+    created_at: number;
+    member: boolean;
+    has_password: boolean;
+    password_set_at: number | null;
+    sessions: number;
+    signed_in_via: string;
+  };
+  usage: {
+    today: { by_kind: UsageRow[] };
+    total: { by_kind: UsageRow[]; by_model: UsageRow[] };
+    kinds: string[];
+  };
+  tokens: { unlimited: boolean; granted: number; used: number; remaining: number; used_today: number; daily_cap: number };
+  spend: { currency: string; today: number; total: number; daily_cap: number; unlimited: boolean };
+  models?: Array<{ id: string; name?: string; nanomuse?: { kind?: string; recommended?: boolean } }>;
+}
+
+/** Whether a voice / video call can be placed, and with what. */
+export interface CallView {
+  available: boolean;
+  source: "cloud" | "own" | null;
+  reason: string;
+  model: string;
+  voice: string;
+  voices: string[];
+  models: Array<{ id: string; name?: string | null; recommended?: boolean }>;
+  active: number;
+  last: { ended_at: number; seconds: number; turns: number; cost_cny: number; reason: string; source: string; model: string; video: boolean } | null;
+}
+
+/** A coding agent on a computer: Cursor, Codex, Claude Code. */
+export interface CodingAgent {
+  id: "cursor" | "codex" | "claude" | string;
+  name: string;
+  installed: boolean;
+  cli: string | null;
+  version: string;
+  sessions_root: string;
+  running: number;
+}
+
+export interface CodingMessage {
+  role: "user" | "assistant" | string;
+  text: string;
+  ts?: number;
+}
+
+/** One chat of a coding agent, as read from its store on disk. */
+export interface CodingSession {
+  agent: string;
+  id: string;
+  title: string;
+  workspace: string;
+  path: string;
+  created_at: number;
+  updated_at: number;
+  messages: number;
+  status: "idle" | "active" | "running" | string;
+  last_user: string;
+  last_assistant: string;
+  source: string;
+  resumable: boolean;
+  transcript?: CodingMessage[];
+  runs?: CodingRun[];
+}
+
+/** A message sent into a coding agent through nanoMuse, and how it went. */
+export interface CodingRun {
+  id: string;
+  agent: string;
+  session_id: string;
+  asked_session_id?: string;
+  workspace: string;
+  text: string;
+  started_at: number;
+  ended_at: number | null;
+  status: "running" | "done" | "failed" | "stopped" | string;
+  output: string;
+  resumed: boolean;
+  error: string;
+  tools: number;
+  /** set when the run is on another computer */
+  device?: string;
+}
+
+export interface CodingEvent {
+  kind: "started" | "text" | "tool" | "done" | "error" | "run" | string;
+  text?: string;
+  partial?: boolean;
+  run?: string;
+  session_id?: string;
+  model?: string;
 }
 
 /** This device on the hub, and the other devices of the account. */
@@ -837,5 +972,7 @@ export type WsMessage =
   | { kind: "connections"; connections: ConnectionsData }
   | { kind: "skills"; skills: SkillsData }
   | { kind: "approvals_reset" }
+  | { kind: "coding"; event: CodingEvent; agent: string; session_id: string; device?: string; run: CodingRun | null }
+  | { kind: "call"; state: "started" | "turn" | "ended" | string; turns?: number; cost_cny?: number; seconds?: number; reason?: string; source?: string; model?: string; video?: boolean }
   | { kind: "error"; error: string }
   | { kind: "pong"; status: Status };

@@ -4,6 +4,8 @@ import {
   Bell,
   Brain,
   Square,
+  TerminalSquare,
+  UserRound,
   CalendarClock,
   Check,
   ChevronLeft,
@@ -65,7 +67,7 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const go = (tab: "memory" | "skills" | "connections" | "devices" | "you") => {
+  const go = (tab: "memory" | "skills" | "connections" | "devices" | "you" | "coding" | "account") => {
     onClose();
     setTab(tab);
   };
@@ -102,6 +104,8 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
           onSkills={() => go("skills")}
           onConnections={() => go("connections")}
           onDevices={() => go("devices")}
+          onCoding={() => go("coding")}
+          onAccount={() => go("account")}
           onSettings={() => go("you")}
         />
       )}
@@ -122,6 +126,8 @@ function Menu({
   onSkills,
   onConnections,
   onDevices,
+  onCoding,
+  onAccount,
   onSettings,
 }: {
   name: string;
@@ -131,6 +137,8 @@ function Menu({
   onSkills: () => void;
   onConnections: () => void;
   onDevices: () => void;
+  onCoding: () => void;
+  onAccount: () => void;
   onSettings: () => void;
 }) {
   const { state, toast } = useStore();
@@ -216,6 +224,13 @@ function Menu({
                 : t("Signed in as {hint}; no other device yet", { hint: hub.account.hint })
           }
           onClick={onDevices}
+        />
+        <MenuRow icon={<TerminalSquare size={19} />} label={t("Coding agents")} hint={t("Cursor, Codex, Claude Code — here and on your other computers")} onClick={onCoding} />
+        <MenuRow
+          icon={<UserRound size={19} />}
+          label={t("Account")}
+          hint={hub?.account.signed_in ? t("{hint} · usage, password, sign-ins", { hint: hub.account.hint }) : t("Sign in to nanoMuse Cloud")}
+          onClick={onAccount}
         />
         <MenuRow icon={<SlidersHorizontal size={19} />} label={t("Settings")} hint={t("Name, style, how careful it is")} onClick={onSettings} />
       </ul>
