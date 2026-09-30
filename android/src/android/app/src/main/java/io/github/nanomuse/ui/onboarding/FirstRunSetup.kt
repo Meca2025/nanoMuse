@@ -13,6 +13,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -39,7 +41,10 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TouchApp
@@ -48,6 +53,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +64,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,12 +75,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.launch
 import androidx.lifecycle.LifecycleEventObserver
 import com.openminis.app.R
+import io.github.nanomuse.cloud.NanoMuseCloud
 import io.github.nanomuse.hands.Hands
 import io.github.nanomuse.ui.avatar.AgentAvatarDisc
 import io.github.nanomuse.ui.avatar.AgentMood
@@ -125,9 +138,14 @@ object FirstRunSetup {
     fun needed(signedIn: Boolean, hasProviders: Boolean, hasSessions: Boolean, done: Boolean): Boolean =
         !signedIn || !hasProviders || (!hasSessions && !done)
 
-    enum class Stage { WELCOME, SOURCE, MODELS, HANDS, MEET }
+    enum class Stage { WELCOME, PASSWORD, CONTRIBUTE, SOURCE, MODELS, HANDS, MEET }
 
-    /** The page to show, from what the app has. */
+    /**
+     * The page to show, from what the app has. A sign-in that *created* the account
+     * ([fresh]) is followed by two short, skippable pages — a password, so the next device
+     * signs in without a code, and the co-creation programme, which adds to the allowance
+     * once; both can be changed under Account later.
+     */
     fun stage(
         signedIn: Boolean,
         hasGroups: Boolean,
@@ -135,8 +153,13 @@ object FirstRunSetup {
         modelsSkipped: Boolean,
         handsSeen: Boolean,
         handsPossible: Boolean = Build.VERSION.SDK_INT >= Hands.MIN_SDK,
+        fresh: Boolean = false,
+        passwordAnswered: Boolean = true,
+        contributeAnswered: Boolean = true,
     ): Stage = when {
         !signedIn -> Stage.WELCOME
+        fresh && !passwordAnswered -> Stage.PASSWORD
+        fresh && !contributeAnswered -> Stage.CONTRIBUTE
         !sourceChosen -> Stage.SOURCE
         !hasGroups && !modelsSkipped -> Stage.MODELS
         !handsSeen && handsPossible -> Stage.HANDS
@@ -145,7 +168,7 @@ object FirstRunSetup {
 
     /** The dot that lights for a stage: account · phone · meet (the model pages fold into the first). */
     fun dot(stage: Stage): Int = when (stage) {
-        Stage.WELCOME, Stage.SOURCE, Stage.MODELS -> 0
+        Stage.WELCOME, Stage.PASSWORD, Stage.CONTRIBUTE, Stage.SOURCE, Stage.MODELS -> 0
         Stage.HANDS -> 1
         Stage.MEET -> 2
     }
@@ -168,7 +191,14 @@ fun FirstRunSetupScreen(
     var modelsSkipped by remember { mutableStateOf(false) }
     var handsSeen by remember { mutableStateOf(FirstRunSetup.handsGuideSeen(context)) }
     var sourceChosen by remember { mutableStateOf(FirstRunSetup.sourceChosen(context)) }
-    val stage = FirstRunSetup.stage(signedIn, hasGroups, sourceChosen, modelsSkipped, handsSeen)
+    // a sign-in that created the account owes two pages; answered (or skipped) once each
+    var fresh by remember(signedIn) { mutableStateOf(signedIn && NanoMuseCloud.freshAccount(context)) }
+    var passwordAnswered by remember { mutableStateOf(false) }
+    var contributeAnswered by remember { mutableStateOf(false) }
+    val stage = FirstRunSetup.stage(
+        signedIn, hasGroups, sourceChosen, modelsSkipped, handsSeen,
+        fresh = fresh, passwordAnswered = passwordAnswered, contributeAnswered = contributeAnswered,
+    )
     val onSurface = MaterialTheme.colorScheme.onSurface
 
     Surface(color = MuseTones.surface, modifier = Modifier.fillMaxSize()) {
@@ -198,6 +228,10 @@ fun FirstRunSetupScreen(
             ) { current ->
                 when (current) {
                     FirstRunSetup.Stage.WELCOME -> WelcomePage(onSignIn = onSignIn)
+                    FirstRunSetup.Stage.PASSWORD -> PasswordPage(onDone = { passwordAnswered = true })
+                    FirstRunSetup.Stage.CONTRIBUTE -> ContributePage(
+                        onDone = { NanoMuseCloud.clearFreshAccount(context); contributeAnswered = true; fresh = false },
+                    )
                     FirstRunSetup.Stage.SOURCE -> SourcePage(
                         onCloud = { FirstRunSetup.markSourceChosen(context); sourceChosen = true },
                         onOwnKey = { FirstRunSetup.markSourceChosen(context); sourceChosen = true; onAddProvider() },
@@ -258,6 +292,132 @@ private fun SourcePage(onCloud: () -> Unit, onOwnKey: () -> Unit) {
         FeatureRow(Icons.Outlined.CloudQueue, stringResource(R.string.nm_setup_source_cloud), stringResource(R.string.nm_setup_source_cloud_sub))
         Spacer(Modifier.height(10.dp))
         FeatureRow(Icons.Outlined.Key, stringResource(R.string.nm_setup_own_key), stringResource(R.string.nm_setup_source_own_sub))
+    }
+}
+
+/**
+ * Right after a sign-in that created the account: a password, so the next device signs in
+ * without waiting for a code. Skippable; Account has the same form later.
+ */
+@Composable
+private fun PasswordPage(onDone: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var next by remember { mutableStateOf("") }
+    var again by remember { mutableStateOf("") }
+    var show by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = MuseTones.action,
+        cursorColor = MuseTones.action,
+        focusedLabelColor = MuseTones.action,
+    )
+    val transformation = if (show) VisualTransformation.None else PasswordVisualTransformation()
+    Page(
+        hero = { HeroGlyph(Icons.Outlined.Key) },
+        title = stringResource(R.string.nm_setup_password_title),
+        subtitle = stringResource(R.string.nm_setup_password_sub),
+        primaryLabel = stringResource(R.string.nm_setup_password_set),
+        onPrimary = {
+            if (busy) return@Page
+            if (next.length < 8) { error = context.getString(R.string.nm_cloud_err_password_short); return@Page }
+            if (next != again) { error = context.getString(R.string.nm_cloud_password_mismatch); return@Page }
+            error = null
+            busy = true
+            scope.launch {
+                try {
+                    NanoMuseCloud.setPassword(context, next, null)
+                    onDone()
+                } catch (e: Exception) {
+                    error = NanoMuseCloud.describe(context, e)
+                }
+                busy = false
+            }
+        },
+        secondaryLabel = stringResource(R.string.nm_welcome_skip),
+        onSecondary = onDone,
+        finePrint = stringResource(R.string.nm_setup_password_fine_print),
+    ) {
+        OutlinedTextField(
+            value = next,
+            onValueChange = { next = it; error = null },
+            label = { Text(stringResource(R.string.nm_cloud_password_new)) },
+            singleLine = true,
+            visualTransformation = transformation,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            colors = fieldColors,
+            trailingIcon = {
+                IconButton(onClick = { show = !show }) {
+                    Icon(if (show) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            value = again,
+            onValueChange = { again = it; error = null },
+            label = { Text(stringResource(R.string.nm_cloud_password_confirm)) },
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            visualTransformation = transformation,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            colors = fieldColors,
+            isError = again.isNotEmpty() && again != next,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        error?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+/**
+ * The co-creation programme, offered once to a new account: conversations help train the
+ * community's own open model, and the relay adds to the allowance once. Off by default,
+ * never required; Account has the switch and the delete button later.
+ */
+@Composable
+private fun ContributePage(onDone: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val bonus = remember { NanoMuseCloud.account(context)?.contributeBonusCny?.takeIf { it > 0 } ?: 10.0 }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val bonusText = if (bonus >= 10) String.format(java.util.Locale.ROOT, "%.0f", bonus) else String.format(java.util.Locale.ROOT, "%.2f", bonus).trimEnd('0').trimEnd('.')
+    Page(
+        hero = { HeroGlyph(Icons.Outlined.Favorite) },
+        title = stringResource(R.string.nm_setup_contribute_title),
+        subtitle = stringResource(R.string.nm_setup_contribute_sub, bonusText),
+        primaryLabel = stringResource(R.string.nm_setup_contribute_join, bonusText),
+        onPrimary = {
+            if (busy) return@Page
+            busy = true
+            error = null
+            scope.launch {
+                try {
+                    NanoMuseCloud.setContribute(context, true)
+                    onDone()
+                } catch (e: Exception) {
+                    error = NanoMuseCloud.describe(context, e)
+                }
+                busy = false
+            }
+        },
+        secondaryLabel = stringResource(R.string.nm_setup_contribute_not_now),
+        onSecondary = onDone,
+        finePrint = stringResource(R.string.nm_setup_contribute_fine_print),
+    ) {
+        FeatureRow(Icons.Outlined.Favorite, stringResource(R.string.nm_setup_contribute_what), stringResource(R.string.nm_setup_contribute_what_sub))
+        Spacer(Modifier.height(10.dp))
+        FeatureRow(Icons.Outlined.Key, stringResource(R.string.nm_setup_contribute_control), stringResource(R.string.nm_setup_contribute_control_sub))
+        error?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+        }
     }
 }
 
@@ -520,15 +680,23 @@ private fun PermissionRow(icon: ImageVector, title: String, subtitle: String, ok
     }
 }
 
-/** The notice: a title line and a paragraph, on the grey pill fill so it reads as a card. */
+/** The notice: a title line (tapping it opens the full notice on the site) and a paragraph, on the grey pill fill so it reads as a card. */
 @Composable
 private fun NoticeCard(title: String, body: String) {
+    val context = LocalContext.current
     val onSurface = MaterialTheme.colorScheme.onSurface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(shape = RoundedCornerShape(16.dp), color = MuseTones.fill, modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MuseTones.fill,
+        modifier = Modifier.fillMaxWidth().clickable {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(io.github.nanomuse.ui.cloud.NOTICE_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        },
+    ) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = onSurface)
+            Text(title, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold, color = onSurface)
             Text(body, fontSize = 13.sp, lineHeight = 18.sp, color = muted, modifier = Modifier.padding(top = 6.dp))
+            Text(stringResource(R.string.nm_cloud_notice_closing), fontSize = 13.sp, lineHeight = 18.sp, color = muted, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

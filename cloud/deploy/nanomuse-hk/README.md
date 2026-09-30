@@ -28,10 +28,14 @@ PUBLIC_BASE=https://cloud.nanomuse.cn
 CLOUD_SECRET=$(openssl rand -hex 32)
 CLOUD_ADMIN_TOKEN=$(openssl rand -hex 32)
 # anyone may sign in; the members below (comma-separated phone numbers /
-# e-mail addresses) have no daily cap, everyone else ¥25 a day
+# e-mail addresses) have no limit, everyone else ¥10 for good, +¥5 an
+# invite, +¥10 once for joining the co-creation programme
 SIGNUP_OPEN=1
 ALLOWED_IDENTIFIERS=
-DAILY_CAP_CNY=25
+ALLOWANCE_CNY=10
+INVITE_BONUS_CNY=5
+CONTRIBUTE_BONUS_CNY=10
+OWN_KEY_DOCS=https://nanomuse.cn/own-key
 DAY_OFFSET_H=8
 USD_CNY=7.1
 # no token ceiling; usage is metered and shown
@@ -85,7 +89,9 @@ ssh nanomuse-hk /opt/nanomuse/relay/backup.sh                     # a backup rig
 scp nanomuse-hk:/opt/nanomuse/backups/cloud-*.db.gz ~/backups/   # take a copy off the box monthly
 ```
 
-Sign-up is open; everyone gets ¥25 a day. Giving someone more: press *设为成员*
+Sign-up is open; everyone gets ¥10 for the account's lifetime, +¥5 per person
+they invite and +¥10 once for joining the co-creation programme. Giving
+someone more: *加额度* on the admin page (into their pool), or press *设为成员*
 next to their account on the admin page (no restart), or add the number or
 address to `ALLOWED_IDENTIFIERS` in `.env` and `docker compose up -d`.
 Removing someone: disable or delete the account on the admin page. Closing

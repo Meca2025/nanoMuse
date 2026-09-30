@@ -1,6 +1,6 @@
 import { app } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, openSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -27,6 +27,8 @@ export class Runtime {
   /** called when a runtime this shell started stops on its own (not through stop()) */
   onCrash: ((code: number | null) => void) | null = null;
   private stopping = false;
+  /** where this session's lines begin in the append-only log (older sessions stay above it) */
+  private logStart = 0;
 
   constructor() {
     this.home = process.env.NANOMUSE_HOME || join(homedir(), ".nanomuse");
@@ -71,7 +73,16 @@ export class Runtime {
     const args = ["serve", "--no-qr", "--port", String(this.port)];
     if (process.env.NANOMUSE_CONFIG) args.push("-c", process.env.NANOMUSE_CONFIG);
     mkdirSync(this.home, { recursive: true });
-    const log = openSync(join(this.home, "desktop-app.log"), "a");
+    // The log is appended to across sessions; a marker line opens this one, and what a dialog
+    // quotes is read from here on — a failure from last week is not this morning's.
+    const logPath = join(this.home, "desktop-app.log");
+    try {
+      appendFileSync(logPath, `\n=== nanoMuse desktop ${app.getVersion()} · ${process.platform} ${process.arch} · ${new Date().toISOString()} ===\n`);
+      this.logStart = statSync(logPath).size;
+    } catch {
+      this.logStart = 0;
+    }
+    const log = openSync(logPath, "a");
     onLog(`starting ${bin} ${args.join(" ")}`);
     // The runtime is told where to keep everything: the data folder and the workspace under
     // NANOMUSE_HOME. Left to its defaults it would put the workspace under the current directory,
@@ -100,27 +111,51 @@ export class Runtime {
       this.child = null;
       if (ready && !this.stopping) this.onCrash?.(code);
     });
-    const deadline = Date.now() + 45_000;
-    while (Date.now() < deadline) {
+    // The first start of a packaged runtime is slow — the bundle unpacks, Windows Defender reads
+    // every file, a cold disk — so the wait is long, and longer on Windows; as long as the
+    // process is alive it is given the whole of it.
+    const patience = process.platform === "win32" ? 120_000 : 75_000;
+    const started = Date.now();
+    while (Date.now() - started < patience) {
       if (await this.health()) {
         ready = true;
+        onLog(`nanomuse serve is up after ${((Date.now() - started) / 1000).toFixed(1)} s`);
         return;
       }
       if (!this.child) throw new Error(this.explainExit());
       await new Promise((r) => setTimeout(r, 500));
     }
     const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
-    throw new Error(this.explainExit(zh ? "nanomuse serve 没有及时在 /api/health 上应答。" : "nanomuse serve did not answer on /api/health in time."));
+    const secs = Math.round((Date.now() - started) / 1000);
+    throw new Error(
+      this.explainExit(
+        zh ? `nanomuse serve 启动了，但 ${secs} 秒内没有在 /api/health 上应答。` : `nanomuse serve started but did not answer on /api/health within ${secs} s.`,
+      ),
+    );
   }
 
-  /** The last lines of the runtime's log, so a dialog can say why instead of "see the log". */
+  /** The last lines of this session's log, so a dialog can say why instead of "see the log". */
   logTail(lines = 12): string {
     try {
-      const text = readFileSync(join(this.home, "desktop-app.log"), "utf8");
-      return text.trimEnd().split("\n").slice(-lines).join("\n");
+      const path = join(this.home, "desktop-app.log");
+      const size = statSync(path).size;
+      // only what was written since this session's marker; a shorter file means it was rotated away
+      const text = readFileSync(path, "utf8");
+      const mine = size >= this.logStart ? text.slice(Buffer.byteLength(text, "utf8") - (size - this.logStart)) : text;
+      return mine.trimEnd().split("\n").slice(-lines).join("\n");
     } catch {
       return "";
     }
+  }
+
+  /** What a bug report needs alongside the message: versions, platform, where the log is. */
+  details(): string {
+    return [
+      `nanoMuse desktop ${app.getVersion()} · Electron ${process.versions.electron} · ${process.platform} ${process.arch}`,
+      `home: ${this.home}`,
+      `port: ${this.port}${this.owned ? "" : " (attached)"}`,
+      `log: ${join(this.home, "desktop-app.log")}`,
+    ].join("\n");
   }
 
   /** A stopped runtime, in words (the system's language): the usual causes are recognised in its log. */
@@ -145,9 +180,15 @@ export class Runtime {
       hint = zh
         ? "运行时缺少一个 Python 包；重新安装 nanoMuse，或把 NANOMUSE_BIN 指向一个可用的运行时。"
         : "The runtime is missing a Python package; reinstall nanoMuse or point NANOMUSE_BIN at a working one.";
+    } else if (/WinError 1455|MemoryError|paging file/i.test(tail)) {
+      hint = zh ? "内存不够运行时启动；关掉一些程序再试。" : "Not enough memory for the runtime to start; close some programs and try again.";
+    } else if (/Failed to load Python DLL|_MEIPASS|PyInstaller|Cannot open self/i.test(tail)) {
+      hint = zh
+        ? "自带的运行时没能解包——安全软件可能拦住了它。把 nanoMuse 加入白名单，或重新安装。"
+        : "The bundled runtime could not unpack — security software may have stopped it. Allow nanoMuse there, or reinstall.";
     }
     const where = `${zh ? "日志" : "Log"}: ${join(this.home, "desktop-app.log")}`;
-    const last = tail.split("\n").slice(-3).join("\n");
+    const last = tail.split("\n").filter(Boolean).slice(-3).join("\n");
     return [lead, hint, where, last ? `\n${last}` : ""].filter(Boolean).join("\n");
   }
 

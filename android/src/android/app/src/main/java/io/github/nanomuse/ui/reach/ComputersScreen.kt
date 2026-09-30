@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,6 +39,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openminis.app.R
+import com.openminis.app.ui.components.openExternalUrl
 import com.openminis.app.ui.settings.SettingsRow
 import com.openminis.app.ui.settings.SettingsScaffold
 import com.openminis.app.ui.settings.SettingsSection
@@ -48,14 +53,17 @@ import java.util.Date
 import java.util.Locale
 
 const val ROUTE_COMPUTERS = "nanomuse/computers"
+const val DESKTOP_DOWNLOAD_URL = "https://nanomuse.cn/#download"
 
 /**
- * Settings → Computers. The computers this phone drives: each with its name, system, address
- * and when it last answered, a tap to check it, *Forget* to drop it; and the three steps to pair
- * a new one — run the host script there, read the address and the code, type them here.
+ * Settings → Computers. First the way that needs no script: nanoMuse Desktop on the computer,
+ * signed in to the same account, which puts it under Account → Devices on any network. Below,
+ * the computers paired over the local network — each with its name, system, address and when
+ * it last answered, a tap to check it, *Forget* to drop it — and, folded away, the three steps
+ * to pair one that way: run the host script there, read the address and the code, type them here.
  */
 @Composable
-fun ComputersScreen(onBack: () -> Unit) {
+fun ComputersScreen(onBack: () -> Unit, onOpenAccount: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val computers by Computers.flow(context).collectAsState()
@@ -65,6 +73,7 @@ fun ComputersScreen(onBack: () -> Unit) {
     var pairing by remember { mutableStateOf(false) }
     var pairError by remember { mutableStateOf<String?>(null) }
     var pairedName by remember { mutableStateOf<String?>(null) }
+    var lanOpen by remember { mutableStateOf(false) }
 
     SettingsScaffold(title = stringResource(R.string.nm_pc_title), onBack = onBack) {
         Text(
@@ -75,7 +84,41 @@ fun ComputersScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(horizontal = 16.dp).padding(top = 12.dp),
         )
 
-        // ── paired ──
+        // ── the easy way: the desktop app on the same account ──
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = MuseTones.action.copy(alpha = 0.08f),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 16.dp),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text(stringResource(R.string.nm_pc_hub_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    stringResource(R.string.nm_pc_hub_body),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                    Button(
+                        onClick = { openExternalUrl(context, DESKTOP_DOWNLOAD_URL) },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MuseTones.action),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        androidx.compose.material3.Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
+                        Text(stringResource(R.string.nm_pc_hub_download), maxLines = 1)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    OutlinedButton(onClick = onOpenAccount, shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f)) {
+                        androidx.compose.material3.Icon(Icons.Outlined.Devices, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
+                        Text(stringResource(R.string.nm_pc_hub_account), maxLines = 1)
+                    }
+                }
+            }
+        }
+
+        // ── paired over the local network ──
         val list = computers.orEmpty()
         SettingsSection(
             header = stringResource(R.string.nm_pc_section_paired),
@@ -114,9 +157,17 @@ fun ComputersScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── pair ──
-        SettingsSection(header = stringResource(R.string.nm_pc_section_pair), footer = stringResource(R.string.nm_pc_pair_footer)) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        // ── pair over the local network: the fallback, folded away until asked for ──
+        SettingsSection(header = stringResource(R.string.nm_pc_section_pair), footer = if (lanOpen) stringResource(R.string.nm_pc_pair_footer) else null) {
+            SettingsRow(
+                title = stringResource(R.string.nm_pc_lan_toggle),
+                subtitle = stringResource(R.string.nm_pc_lan_toggle_sub),
+                onClick = { lanOpen = !lanOpen },
+                showChevron = !lanOpen,
+                showDivider = lanOpen,
+                minHeight = 64.dp,
+            )
+            if (lanOpen) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(stringResource(R.string.nm_pc_step1), fontSize = 14.sp, lineHeight = 20.sp)
                 Text(
                     "python3 nanomuse_host.py",
@@ -181,8 +232,8 @@ fun ComputersScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── how it works ──
-        SettingsSection(header = stringResource(R.string.nm_pc_section_how)) {
+        // ── how local pairing works ──
+        if (lanOpen) SettingsSection(header = stringResource(R.string.nm_pc_section_how)) {
             SettingsRow(title = stringResource(R.string.nm_pc_how_1), minHeight = 48.dp)
             SettingsRow(title = stringResource(R.string.nm_pc_how_2), minHeight = 48.dp)
             SettingsRow(title = stringResource(R.string.nm_pc_how_3), minHeight = 48.dp)

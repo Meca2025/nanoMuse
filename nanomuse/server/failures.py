@@ -27,6 +27,10 @@ _TOO_LONG = (
 
 # The relay's own refusals (cloud/nanomuse_cloud/service.py, api.py) by their error code.
 _RELAY: dict[str, tuple[str, str]] = {
+    "allowance_exhausted": (
+        "allowance",
+        "The free allowance is used up. Invite a friend (+¥5), join the co-creation programme (+¥10), or add your own model key under Connections — your sign-in and your devices keep working either way.",
+    ),
     "daily_cap": (
         "allowance",
         "Today's share of the free allowance is used up; it comes back at midnight, Beijing time. Your own model key under Connections keeps you going now.",
@@ -66,17 +70,45 @@ def _first_line(exc: BaseException) -> str:
     return text.splitlines()[0][:200]
 
 
+def _relay_error(exc: BaseException) -> dict[str, Any]:
+    """The relay's error object (``{"code", "message", …}``) if the exception carries one."""
+    body: Any = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        inner = body["error"] if isinstance(body.get("error"), dict) else body
+        return dict(inner)
+    extra = getattr(exc, "extra", None)
+    if isinstance(extra, dict):
+        return {"code": getattr(exc, "code", None), **extra}
+    return {}
+
+
 def _relay_code(exc: BaseException) -> str | None:
     code = getattr(exc, "code", None)
     if isinstance(code, str) and code:
         return code
-    body: Any = getattr(exc, "body", None)
-    if isinstance(body, dict):
-        inner: dict[str, Any] = body["error"] if isinstance(body.get("error"), dict) else body
-        code = inner.get("code")
-        if isinstance(code, str) and code:
-            return code
-    return None
+    code = _relay_error(exc).get("code")
+    return code if isinstance(code, str) and code else None
+
+
+# What the relay says beside the words when the allowance is spent: what is left, the
+# invite link, whether the co-creation bonus is still to be had, the own-key guide.
+_ALLOWANCE_FIELDS = (
+    "left",
+    "grant",
+    "invite_url",
+    "invite_bonus_cny",
+    "contribute_bonus_available",
+    "contribute_bonus_cny",
+    "own_key_docs",
+)
+
+
+def allowance_detail(exc: BaseException) -> dict[str, Any] | None:
+    """The structured part of a ``429 allowance_exhausted`` refusal, or None."""
+    if _relay_code(exc) != "allowance_exhausted":
+        return None
+    err = _relay_error(exc)
+    return {k: err[k] for k in _ALLOWANCE_FIELDS if k in err}
 
 
 def describe_failure(exc: BaseException) -> tuple[str, str]:
@@ -117,7 +149,7 @@ def failure_notice(exc: BaseException, thread_id: str) -> dict[str, Any]:
     """The ``notice`` event for the apps: the sentence, the code, and the raw detail for
     bug reports (collapsed in the apps, never the only thing shown)."""
     code, text = describe_failure(exc)
-    return {
+    notice: dict[str, Any] = {
         "type": "notice",
         "level": "error",
         "code": code,
@@ -125,3 +157,8 @@ def failure_notice(exc: BaseException, thread_id: str) -> dict[str, Any]:
         "detail": f"{type(exc).__name__}: {str(exc).strip()[:400]}",
         "thread": thread_id,
     }
+    allowance = allowance_detail(exc)
+    if allowance is not None:
+        # the apps draw the three ways on (invite / co-creation / own key) from this
+        notice["allowance"] = allowance
+    return notice

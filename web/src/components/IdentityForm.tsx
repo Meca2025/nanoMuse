@@ -47,7 +47,22 @@ export function Chip({ active, onClick, children }: { active: boolean; onClick: 
  * fields, the same limits as the server (`NAME_MAX`, `TAGLINE_MAX`, the tone and
  * communication vocabularies). An empty name falls back to "nanoMuse" on save.
  */
-export function IdentityForm({ value, onChange, suggestions = true, askUserName = true, inputCls }: { value: Identity; onChange: (v: Identity) => void; suggestions?: boolean; askUserName?: boolean; inputCls: string }) {
+export function IdentityForm({
+  value,
+  onChange,
+  suggestions = true,
+  askUserName = true,
+  inputCls,
+  onGenerate,
+}: {
+  value: Identity;
+  onChange: (v: Identity) => void;
+  suggestions?: boolean;
+  askUserName?: boolean;
+  inputCls: string;
+  /** the picker offers "draw a new one": the description goes to the chat (Settings only — setup has no model yet) */
+  onGenerate?: (description: string) => void;
+}) {
   const t = useT();
   const [seed, setSeed] = useState(7);
   const names = useMemo(() => pickSix(value.name, seed), [value.name, seed]);
@@ -100,7 +115,7 @@ export function IdentityForm({ value, onChange, suggestions = true, askUserName 
         </div>
       )}
 
-      <AvatarPicker value={{ avatar: value.avatar, emoji: value.emoji, color: value.color }} onChange={(look) => set(look)} />
+      <AvatarPicker value={{ avatar: value.avatar, emoji: value.emoji, color: value.color }} onChange={(look) => set(look)} onGenerate={onGenerate} />
 
       <div>
         <label className="text-[12px] text-muted">{t("Tone")}</label>

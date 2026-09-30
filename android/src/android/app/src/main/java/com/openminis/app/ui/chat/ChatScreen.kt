@@ -3780,6 +3780,7 @@ fun ChatScreen(
                     is FlatChatItem.NanoMuseAvatarOptions -> false // nanoMuse
                     is FlatChatItem.NanoMuseAvatarShare -> false // nanoMuse
                     is FlatChatItem.NanoMuseAvatarConfirm -> false // nanoMuse
+                    is FlatChatItem.NanoMuseAllowance -> false // nanoMuse
                     is FlatChatItem.AssistantTyping -> false
                     is FlatChatItem.AssistantError -> grayedMap[originalMessageId(messageId)] == true
                     is FlatChatItem.AssistantLegacyContent -> grayedMap[originalMessageId(messageId)] == true
@@ -4416,6 +4417,17 @@ fun ChatScreen(
                                 onConfirm = { viewModel.nmConfirmAvatar() },
                                 onDismiss = { viewModel.nmDeclineAvatar() },
                             )
+                            // nanoMuse: the relay refused the turn for a spent allowance — the three ways on.
+                            is FlatChatItem.NanoMuseAllowance -> {
+                                val info by viewModel.nmAllowance.collectAsState()
+                                info?.let {
+                                    io.github.nanomuse.ui.cloud.AllowanceWaysCard(
+                                        info = it,
+                                        exhausted = true,
+                                        onChanged = { viewModel.nmDismissAllowance() },
+                                    )
+                                }
+                            }
                             is FlatChatItem.AssistantTyping -> TypingIndicator()
                             is FlatChatItem.AssistantError -> InlineErrorBanner(
                                 error = item.error,

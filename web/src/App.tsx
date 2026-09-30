@@ -1,9 +1,11 @@
 import { LayoutGrid, Lightbulb, Loader2, MessageCircle, Newspaper, SquareCheckBig, WifiOff } from "lucide-react";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { setToken } from "./api";
+import { dragonUrl } from "./avatars";
 import { Avatar } from "./components/Avatar";
+import { DesktopRemoteHint } from "./components/DesktopRemoteHint";
 import { FileViewer } from "./components/FileViewer";
-import { RedPanda } from "./components/RedPanda";
+import { FirstSignInSteps, useFirstSignIn } from "./components/FirstSignInSteps";
 import { Sidebar } from "./components/Sidebar";
 import { ChatScreen } from "./screens/ChatScreen";
 import { FeedScreen } from "./screens/FeedScreen";
@@ -46,6 +48,7 @@ const TABS: Array<{ id: Tab; label: string; icon: (active: boolean) => ReactNode
 
 export default function App() {
   const { state, setTab, openFile } = useStore();
+  const firstSignIn = useFirstSignIn();
   const t = useT();
 
   // The document title follows the agent's name.
@@ -66,6 +69,10 @@ export default function App() {
     return () => window.removeEventListener("hashchange", jump);
   }, [setTab]);
 
+  // A freshly created account is owed two short steps (a password, the co-creation
+  // programme); they float over whatever comes next — setup or the chat.
+  const firstSteps = firstSignIn && state.hub?.account.signed_in ? <FirstSignInSteps /> : null;
+
   if (state.authError) return <TokenGate />;
   // Nothing has arrived from the runtime yet: say so, instead of an empty chat.
   if (!state.loaded) return <Connecting error={state.error} />;
@@ -78,6 +85,7 @@ export default function App() {
     return (
       <Suspense fallback={<Loading />}>
         <Onboarding />
+        {firstSteps}
       </Suspense>
     );
   }
@@ -87,11 +95,11 @@ export default function App() {
   const proposals = state.goals.filter((g) => g.proposal && g.status !== "cancelled").length;
   const feedUnseen = state.pendingApprovals.filter((a) => a.ts > state.feedSeenAt).length;
 
-  // One column on the phone; on a wide screen (the desktop window, a full browser) a
-  // sidebar takes over from the tab bar and the chats sheet — same screens either side.
+  // One column on the phone; on a wide screen (a full browser) and in the desktop app at any
+  // width, a sidebar takes over from the tab bar and the chats sheet — same screens either side.
   return (
-    <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border lg:max-w-none lg:flex-row lg:border-x-0">
-      <div className="hidden lg:block lg:h-full">
+    <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border wide:max-w-none wide:flex-row wide:border-x-0">
+      <div className="hidden wide:block wide:h-full">
         <Sidebar />
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -100,7 +108,8 @@ export default function App() {
             <WifiOff size={14} /> {t("Reconnecting to your nanoMuse…")}
           </div>
         )}
-        <main className="mx-auto min-h-0 w-full flex-1 lg:max-w-[900px]">
+        <DesktopRemoteHint />
+        <main className="mx-auto min-h-0 w-full flex-1 wide:max-w-[900px]">
           <Suspense fallback={<Loading />}>
             {state.tab === "chat" && <ChatScreen />}
             {state.tab === "feed" && <FeedScreen />}
@@ -116,7 +125,7 @@ export default function App() {
             {state.tab === "coding" && <CodingScreen />}
           </Suspense>
         </main>
-        <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 lg:hidden">
+        <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 wide:hidden">
         <ul className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/70 bg-surface p-1.5 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.18)]">
           {TABS.map((tab) => {
             const active = state.tab === tab.id;
@@ -147,6 +156,7 @@ export default function App() {
       </nav>
       </div>
       <FileViewer path={state.viewer} onClose={() => openFile(null)} />
+      {firstSteps}
       {state.toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4">
           <div className="rise rounded-2xl bg-fg text-bg px-4 py-2 text-[13.5px] shadow-lg max-w-sm text-center">{state.toast}</div>
@@ -184,7 +194,7 @@ function TokenGate() {
   const t = useT();
   return (
     <div className="mx-auto flex h-[100dvh] max-w-md flex-col items-center justify-center px-6 text-center">
-      <RedPanda mood="sleepy" size={96} />
+      <img src={dragonUrl("idle")} alt="" draggable={false} className="h-24 w-24 rounded-full bg-[#f1efeb] object-cover" />
       <h1 className="mt-4 text-[22px] font-bold">{t("Connect to your nanoMuse")}</h1>
       <p className="mt-2 text-[14px] text-muted">
         {t("This app talks to the nanoMuse server you run yourself. Scan the QR code printed by")}{" "}

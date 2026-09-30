@@ -42,6 +42,7 @@ button.ghost{background:transparent;color:var(--muted);font-weight:500;margin-to
 .foot a{color:inherit}
 .notice{margin:18px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:13px;line-height:1.55;color:var(--ink)}
 .notice b{display:block;margin-bottom:2px}
+.notice b a{color:var(--accent);margin:0}
 .notice a{color:var(--accent);text-decoration:none;margin-right:12px}
 details.inv{margin-top:12px;font-size:13px;color:var(--muted)}
 details.inv summary{cursor:pointer}
@@ -60,8 +61,8 @@ i.en,i.zh{font-style:normal}
   <small><i class="zh">在浏览器里用，不用下载</i><i class="en">In the browser, nothing to install</i></small></div></div>
 
   <form id="step1">
-    <h1><i class="zh">登录</i><i class="en">Sign in</i></h1>
-    <p><i class="zh">用邮箱登录 nanoMuse Cloud，我们会给你一台属于你的 nanoMuse——它一直保存着，下次登录还在。</i><i class="en">Sign in to nanoMuse Cloud with an e-mail and you get a nanoMuse of your own — it keeps everything for your next visit.</i></p>
+    <h1><i class="zh">试试 nanoMuse</i><i class="en">Try nanoMuse</i></h1>
+    <p><i class="zh">一个邮箱、一个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。它一直保存着，下次登录还在；之后手机和电脑用同一个账号登录，就是它。</i><i class="en">An e-mail, a code, and a minute later a nanoMuse of your own is here, model included. It keeps everything for your next visit; later, the same account on the phone and the desktop is the same nanoMuse.</i></p>
     <label for="ident"><i class="zh">邮箱</i><i class="en">E-mail</i></label>
     <input id="ident" name="identifier" autocomplete="email" inputmode="email" required autofocus>
     <details class="inv" id="inv">
@@ -83,10 +84,10 @@ i.en,i.zh{font-style:normal}
   </form>
 
   <div class="notice">
-    <b><i class="zh">免费 · 开源 · 非盈利</i><i class="en">Free · Open source · Non-profit</i></b>
-    <i class="zh">每个账号每天约 ¥15 的模型额度，由开发者承担；邀请一位新用户多得 ¥3。默认不保存你的消息，数据不会出售。欢迎反馈问题、提需求、贡献代码——让我们一起把它做好。</i>
-    <i class="en">About ¥15 of model use a day per account, paid by the developer; ¥3 more for each friend you invite. Messages are not stored by default and nothing is sold. Bugs, requests and pull requests welcome — let's build it together.</i>
-    <br><a href="https://github.com/nano-muse/nanoMuse" rel="noopener"><i class="zh">去 GitHub 点 Star</i><i class="en">Star on GitHub</i></a><a href="https://github.com/nano-muse/nanoMuse/issues/new/choose" rel="noopener"><i class="zh">反馈问题 / 提需求</i><i class="en">Report a bug or ask for a feature</i></a>
+    <b><a href="https://nanomuse.cn/#open-source" rel="noopener"><i class="zh">免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体</i><i class="en">Free · Open source · Non-profit — open source, built together: a personal agent for all</i></a></b>
+    <i class="zh">每个账号 ¥10 免费模型额度，由开发者承担；邀请一位新用户 +¥5，加入共创计划 +¥10；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售。欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。</i>
+    <i class="en">¥10 of model use free per account, paid by the developer; ¥5 more for each friend you invite, ¥10 more for joining the co-creation programme; then your own key (Alibaba Cloud Bailian is a good start). Messages are not stored by default and nothing is sold. Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach.</i>
+    <br><a href="https://github.com/nano-muse/nanoMuse" rel="noopener"><i class="zh">去 GitHub 点 Star</i><i class="en">Star on GitHub</i></a><a href="https://github.com/nano-muse/nanoMuse/issues/new/choose" rel="noopener"><i class="zh">反馈问题 / 提需求</i><i class="en">Report a bug or ask for a feature</i></a><a href="https://nanomuse.cn/own-key" rel="noopener"><i class="zh">换自己的 key</i><i class="en">Bring your own key</i></a>
   </div>
   <div class="foot">
     <i class="zh">你的 nanoMuse 运行在我们的服务器上，数据只有你能访问；长时间不用会休眠，登录即唤醒。想让它在自己的设备上跑？<a href="https://nanomuse.cn/#download">下载应用</a>。</i>

@@ -52,6 +52,8 @@ class HubService:
         # the account's chat models (ids), for the provider form; refreshed on sign-in and
         # whenever the form asks
         self.chat_models: list[str] = []
+        # the relay's whole list as it came (chat, image and video models, with modalities)
+        self.models: list[dict[str, Any]] = []
         # approval cards raised by *other* devices' runs, shown here: card id → (device id, approval id)
         self.remote_approvals: dict[str, tuple[str, str]] = {}
         # runs other devices asked for, by call id → the thread they run in
@@ -274,16 +276,38 @@ class HubService:
             await self.refresh_chat_models()
         except CloudError:
             pass
+        # The model client resolved its key when it was built. When the account's key is the
+        # model's key (the Cloud preset), that client still holds the previous one — revoked,
+        # or from a sign-in that ended — and every request would come back 401 until a
+        # restart. Rebuild it with the fresh key; with no model configured at all, the account
+        # becomes the model, as it does for a hosted runtime.
+        if self._llm_is_cloud():
+            self.svc.connections._swap_llm()
+        elif not (self.settings.llm.api_key or (self.data.get("llm") or {}).get("api_key")):
+            with contextlib.suppress(CloudError, Exception):
+                await self.use_as_model()
         if self.settings.hub.enabled:
             await self.join()
         self.svc.connections._publish()
         self.publish()
-        return self.account_view()
+        # ``created`` rides along: a brand-new account is offered a password and the
+        # co-creation programme right after (the clients' first-sign-in steps).
+        return {**self.account_view(), "created": bool(data.get("created"))}
+
+    def _llm_is_cloud(self) -> bool:
+        """Whether the chat model is the account (the Cloud key from the vault, on the relay)."""
+        llm = self.settings.llm
+        key = str(llm.api_key or (self.data.get("llm") or {}).get("api_key") or "")
+        if CLOUD_KEY in key:
+            return True
+        base = str(llm.base_url or "").rstrip("/")
+        return bool(base) and base == model_url(self.cloud.base_url).rstrip("/")
 
     async def refresh_chat_models(self) -> list[str]:
         """The relay's chat models (text in, text out), recommended one first."""
         self.cloud.api_key = self._key()
         models = await self.cloud.models()
+        self.models = models
         chat = [
             m
             for m in models
@@ -368,6 +392,7 @@ class HubService:
         await self._forget_key()
 
     async def _forget_key(self) -> None:
+        was_model = self._llm_is_cloud()
         self.svc.app.vault.delete(CLOUD_KEY)
         self.cloud.api_key = ""
         cloud = dict(self.data.get("cloud") or {})
@@ -375,6 +400,9 @@ class HubService:
             cloud.pop(key, None)
         self.data["cloud"] = cloud
         self._save()
+        if was_model:
+            # the client would otherwise keep sending the revoked key
+            self.svc.connections._swap_llm()
         self.svc.connections._publish()
         self.publish()
 

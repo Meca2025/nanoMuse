@@ -5,7 +5,10 @@
 # way, HTTP-01: the name points straight at this box.
 
 cloud.nanomuse.cn {
-	encode zstd gzip
+	# compressed, except the operator's samples export: it is sent whole with its length,
+	# and a download that gets re-encoded on the way has none — the browser gave up on it
+	@compressible not path /v1/admin/samples/export
+	encode @compressible zstd gzip
 
 	header {
 		X-Content-Type-Options nosniff

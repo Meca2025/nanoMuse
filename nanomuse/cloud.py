@@ -31,8 +31,8 @@ MESSAGES = {
     "account_disabled": "This account is disabled.",
     "model_not_offered": "That model is not offered here.",
     "rate_limited": "Too many requests; slow down a little.",
-    "daily_cap": "Today's allowance is used up; more tomorrow — or invite a friend for ¥3 of credit.",
-    "video_limit": "The video allowance is used up; a friend signing up with your invite code adds more clips.",
+    "allowance_exhausted": "The free allowance is used up. Invite a friend (+¥5), join the co-creation programme (+¥10), or add your own model key — your sign-in and your devices keep working either way.",
+    "daily_cap": "Today's token quota is used up; it comes back tomorrow.",
     "upstream": "The model provider did not answer.",
     "upstream_unconfigured": "nanoMuse Cloud has no model key configured.",
     "offline": "nanoMuse Cloud cannot be reached.",
@@ -48,11 +48,14 @@ MESSAGES = {
 
 
 class CloudError(Exception):
-    def __init__(self, status: int, code: str, message: str):
+    def __init__(self, status: int, code: str, message: str, extra: dict[str, Any] | None = None):
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
+        # what the relay said beside the words (an ``allowance_exhausted`` carries what is
+        # left, the invite link, the own-key guide)
+        self.extra: dict[str, Any] = dict(extra or {})
 
     def describe(self) -> str:
         return MESSAGES.get(self.code, self.message or self.code)
@@ -112,6 +115,9 @@ class CloudClient:
                 response.status_code,
                 str(err.get("code") or f"http_{response.status_code}"),
                 str(err.get("message") or response.text[:200]),
+                extra={k: v for k, v in err.items() if k not in ("code", "message", "type")}
+                if isinstance(err, dict)
+                else None,
             )
         if not response.content.strip():
             return {}
@@ -209,6 +215,18 @@ class CloudClient:
         data = await self._request("GET", "/v1/models")
         models = data.get("data")
         return models if isinstance(models, list) else []
+
+    async def estimate(
+        self, images: int = 0, image_model: str = "", size: str = ""
+    ) -> dict[str, Any]:
+        """What ``images`` pictures would cost against the pool (``cny``, ``left_cny``,
+        ``affordable``, ``unlimited``); nothing is charged."""
+        q = f"/v1/estimate?images={int(images)}"
+        if image_model:
+            q += f"&image_model={image_model}"
+        if size:
+            q += f"&size={size}"
+        return await self._request("GET", q)
 
     @staticmethod
     def recommended_model(models: list[dict[str, Any]]) -> str:

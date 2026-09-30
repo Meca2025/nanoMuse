@@ -24,7 +24,7 @@ def make(**overrides):
         signup_tokens=0,
         daily_cap_tokens=0,
         per_minute_requests=100,
-        daily_cap_cny=25,
+        allowance_cny=25,
         public_base="http://cloud.test",
         password_max_attempts=3,
         lockout_s=600,
@@ -207,12 +207,18 @@ async def test_admin_overview_and_account_detail():
     d = r.json()
     assert d["account"]["identifier"] == "dev-a@example.com" and d["account"]["has_password"] is True
     assert "password_hash" not in d["account"]
-    assert d["spend"]["requests_total"] == 2 and d["spend"]["daily_cap_cny"] == 25
+    assert (
+        d["spend"]["requests_total"] == 2
+        and d["spend"]["grant_cny"] == 25
+        and d["spend"]["left_cny"] == round(25 - d["spend"]["total_cny"], 4)
+    )
     assert {row["kind"] for row in d["usage"]["period"]["by_kind"]} == {"chat", "image"}
     assert len(d["usage"]["period"]["by_day"]) == 2
     assert d["sessions"][0]["device"] == "mac" and d["sessions"][0]["revoked_at"] is None
     assert [e["kind"] for e in d["events"]][:3] == ["sign_in.failed", "password.set", "sign_in.code"]
-    assert len(d["recent"]) == 2 and {x["kind"] for x in d["recent"]} == {"chat", "image"}
+    # the statement: the two requests and, first of all, the allowance itself
+    assert len(d["recent"]) == 3 and {x["kind"] for x in d["recent"]} == {"chat", "image", "credit"}
+    assert d["recent"][-1]["detail"] == {"credit_uy": 25_000_000, "from": "signup"}
     assert (await client.get("/v1/admin/accounts/nope", headers=admin)).status_code == 404
 
     r = await client.get("/v1/admin/events?kind=sign_in.failed,password.set", headers=admin)
@@ -237,20 +243,22 @@ async def clip(client, key: str, prompt: str = "a dragon waves"):
     return r
 
 
-async def test_invites_credit_and_the_clip_allowance():
-    """A friend's code at sign-up earns the inviter ¥3 and a clip; credit stretches
-    the day once the cap is used up; clips are counted per account; the operator
-    can add both; the estimate says what a new face costs before it is made."""
-    app, client, sender, up, cloud, settings = make(daily_cap_cny=0.6, invite_bonus_cny=3, video_clips_free=1, video_clips_per_invite=1)
+async def test_invites_and_the_operator_grow_the_one_pool():
+    """A friend's code at sign-up adds the bonus to the inviter's pool; clips are not
+    counted apart — a clip is just a dearer line on the same allowance; the operator
+    can add more; the estimate says what a new face costs before it is made."""
+    app, client, sender, up, cloud, settings = make(allowance_cny=0.6, invite_bonus_cny=3, contribute_bonus_cny=0)
     a = await sign_up(client, sender, "dev-a@example.com", "pixel")
     ka = a["api_key"]
     inv = (await client.get("/v1/me/invite", headers=auth(ka))).json()
     assert len(inv["code"]) == 8 and inv["url"] == "https://nanomuse.cn/web/?invite=" + inv["code"]
-    assert inv["invites"] == 0 and inv["bonus_cny"] == 3 and inv["friends"] == []
+    assert inv["invites"] == 0 and inv["bonus_cny"] == 3 and inv["earned_cny"] == 0 and inv["friends"] == []
     assert (await client.get("/v1/me", headers=auth(ka))).json()["invite"]["code"] == inv["code"]  # stable
-    assert a["clips"] == {"unlimited": False, "allowed": 1, "used": 0, "left": 1, "per_face": 1}
+    assert a["clips"]["unlimited"] is True and a["spend"]["grant"] == 0.6 and a["spend"]["left"] == 0.6
+    # no co-creation bonus on this relay (CONTRIBUTE_BONUS_CNY=0): nothing is offered
+    assert a["spend"]["contribute_bonus_available"] is False and a["contribute"]["bonus_available"] is False
 
-    # B signs up with A's code, typed sloppily: A earns the bonus; B signing in again does not count twice.
+    # B signs up with A's code, typed sloppily: A's pool grows; B signing in again does not count twice.
     async def verify(identifier: str, device: str, invite: str):
         await client.post("/v1/auth/code", json={"identifier": identifier})
         _, code = sender.sent[-1]
@@ -260,10 +268,11 @@ async def test_invites_credit_and_the_clip_allowance():
 
     sloppy = inv["code"][:4].lower() + "-" + inv["code"][4:].lower()
     b = await verify("dev-b@example.com", "mac", sloppy)
-    assert b["created"] is True and b["invite"]["invites"] == 0
+    assert b["created"] is True and b["invite"]["invites"] == 0 and b["spend"]["grant"] == 0.6
     me_a = (await client.get("/v1/me", headers=auth(ka))).json()
-    assert me_a["invite"]["invites"] == 1 and me_a["spend"]["credit_left"] == 3 and me_a["clips"]["allowed"] == 2
-    assert me_a["invite"]["friends"][0]["hint"].endswith("example.com") and me_a["invite"]["credit_cny"] == 3
+    assert me_a["invite"]["invites"] == 1 and me_a["invite"]["earned_cny"] == 3 and me_a["spend"]["grant"] == 3.6
+    assert me_a["spend"]["left"] == 3.6 and me_a["invite"]["friends"][0]["hint"].endswith("example.com")
+    assert me_a["recent"][0]["kind"] == "credit" and me_a["recent"][0]["detail"]["from"] == "invite"
     again = await verify("dev-b@example.com", "ipad", inv["code"])
     assert again["created"] is False
     assert (await client.get("/v1/me", headers=auth(ka))).json()["invite"]["invites"] == 1
@@ -272,60 +281,140 @@ async def test_invites_credit_and_the_clip_allowance():
     assert c["created"] is True
     assert (await client.get("/v1/me", headers=auth(ka))).json()["invite"]["invites"] == 1
 
-    # Clips: ¥0.5 each here (five seconds at ¥0.10). A's first is within the day's ¥0.6; the
-    # second is paid from credit; the third is one more than A's two (one free + one invited).
-    assert (await clip(client, ka)).status_code == 200
-    assert (await clip(client, ka)).status_code == 200
+    # Clips: ¥0.5 each here (five seconds at ¥0.10). Seven fit in A's ¥3.6; the eighth
+    # would go over and is refused before the provider hears of it.
+    for _ in range(7):
+        assert (await clip(client, ka)).status_code == 200
     me_a = (await client.get("/v1/me", headers=auth(ka))).json()
-    assert me_a["spend"]["today"] == 1.0 and me_a["spend"]["credit_left"] == round(3 - 0.4, 4)
-    assert me_a["spend"]["left_today"] == round(0.6 + 2.6 - 1.0, 4) and me_a["clips"] == {
-        "unlimited": False,
-        "allowed": 2,
-        "used": 2,
-        "left": 0,
-        "per_face": 1,
-    }
+    assert me_a["spend"]["total"] == 3.5 and me_a["spend"]["left"] == round(3.6 - 3.5, 4) and me_a["spend"]["warn"] is True
     r = await clip(client, ka)
-    assert r.status_code == 429 and r.json()["error"]["code"] == "video_limit"
+    assert r.status_code == 429 and r.json()["error"]["code"] == "allowance_exhausted"
+    assert r.json()["error"]["left"] == 0.1 and r.json()["error"]["contribute_bonus_available"] is False
+    assert "co-creation" not in r.json()["error"]["message"] and "invite a friend" in r.json()["error"]["message"]
     r = await client.get("/api/v1/uploads", params={"action": "getPolicy", "model": "wan2.2-i2v-flash"}, headers=auth(ka))
-    assert r.status_code == 429 and r.json()["error"]["code"] == "video_limit"
-    # a probe is not a clip
+    assert r.status_code == 429 and r.json()["error"]["code"] == "allowance_exhausted"
+    # a probe costs nothing and is not refused for money
     r = await client.post(VIDEO, headers=auth(ka), json={"model": "wan2.2-i2v-flash", "input": {}, "parameters": {}})
     assert r.status_code == 400
 
-    # B has no credit: the second clip does not fit in the day. The estimate said so beforehand.
+    # B has ¥0.6: one clip fits, a second does not. The estimate said so beforehand.
     kb = b["api_key"]
     est = (await client.get("/v1/estimate", params={"images": 5, "clips": 4}, headers=auth(kb))).json()
-    assert est["cny"] == 2.9 and est["left_today_cny"] == 0.6 and est["affordable"] is False and est["clips_ok"] is False
+    assert est["cny"] == 2.9 and est["left_cny"] == 0.6 and est["grant_cny"] == 0.6 and est["affordable"] is False
+    assert est["unlimited"] is False and est["clips_ok"] is True and est["left_today_cny"] == 0.6
     assert [p["kind"] for p in est["parts"]] == ["image", "video"] and est["parts"][1]["seconds"] == 5
     est = (await client.get("/v1/estimate", params={"clips": 1}, headers=auth(kb))).json()
     assert est["cny"] == 0.5 and est["affordable"] is True
     assert (await clip(client, kb)).status_code == 200
     r = await clip(client, kb)
-    assert r.status_code == 429 and r.json()["error"]["code"] == "daily_cap" and "Invite a friend" in r.json()["error"]["message"]
+    assert r.status_code == 429 and r.json()["error"]["code"] == "allowance_exhausted"
 
-    # The operator credits B for a pull request: money past the cap and clips.
+    # The operator credits B for a pull request: straight into the pool.
     admin = {"X-Admin-Token": "admin"}
-    r = await client.post(
-        "/v1/admin/credit", headers=admin, json={"identifier": "dev-b@example.com", "cny": 10, "clips": 4, "note": "PR #12"}
-    )
-    assert r.status_code == 200 and r.json()["credit_left_cny"] == 10 and r.json()["clips_bonus"] == 4
+    r = await client.post("/v1/admin/credit", headers=admin, json={"identifier": "dev-b@example.com", "cny": 10, "note": "PR #12"})
+    assert r.status_code == 200 and r.json()["grant_cny"] == 10.6 and r.json()["left_cny"] == 10.1 and "grant_uy" not in r.json()
     est = (await client.get("/v1/estimate", params={"images": 5, "clips": 4}, headers=auth(kb))).json()
-    assert est["affordable"] is True and est["clips_ok"] is True and est["left_today_cny"] == 10.1 and est["clips"]["left"] == 4
+    assert est["affordable"] is True and est["left_cny"] == 10.1
     assert (await clip(client, kb)).status_code == 200
     me_b = (await client.get("/v1/me", headers=auth(kb))).json()
-    assert me_b["spend"]["today"] == 1.0 and me_b["spend"]["credit_left"] == 9.6 and me_b["recent"][0]["kind"] == "video"
-    assert any(row["kind"] == "credit" and row["detail"]["note"] == "PR #12" for row in me_b["recent"])
+    assert me_b["spend"]["total"] == 1.0 and me_b["spend"]["left"] == 9.6 and me_b["recent"][0]["kind"] == "video"
+    assert any(row["kind"] == "credit" and row["detail"].get("note") == "PR #12" for row in me_b["recent"])
     r = await client.post("/v1/admin/credit", headers=admin, json={"identifier": "dev-b@example.com", "cny": 5000})
     assert r.status_code == 400
 
     # The operator's views carry it all.
     listing = (await client.get("/v1/admin/accounts", headers=admin)).json()["accounts"]
     row_a = next(x for x in listing if x["identifier"] == "dev-a@example.com")
-    assert row_a["invites"] == 1 and row_a["credit_cny"] == 3 and row_a["credit_left_cny"] == 2.6 and "credit_uy" not in row_a
-    detail = (await client.get(f"/v1/admin/accounts/{row_a['id']}", headers=admin)).json()["account"]
-    assert detail["clips_used"] == 2 and detail["clips_allowed"] == 2 and detail["invited"][0]["hint"].endswith("example.com")
+    assert row_a["invites"] == 1 and row_a["grant_cny"] == 3.6 and row_a["left_cny"] == 0.1 and "credit_uy" not in row_a
+    detail = (await client.get(f"/v1/admin/accounts/{row_a['id']}", headers=admin)).json()
+    assert detail["account"]["invited"][0]["hint"].endswith("example.com") and detail["spend"]["left_cny"] == 0.1
+    assert "clips_used" not in detail["account"]
     s = (await client.get("/v1/admin/accounts", headers=admin)).json()["settings"]
-    assert s["invite_bonus_cny"] == 3 and s["video_clips_free"] == 1
+    assert s["invite_bonus_cny"] == 3 and s["allowance_cny"] == 0.6 and s["contribute_bonus_cny"] == 0
     kinds = {e["kind"] for e in (await client.get("/v1/admin/events", headers=admin)).json()["events"]}
-    assert {"invite.accepted", "invite.used", "invite.unknown", "credit.granted"} <= kinds
+    assert {"invite.accepted", "invite.used", "invite.unknown", "credit.granted", "budget.refused"} <= kinds
+
+
+async def test_admin_series_and_traffic(tmp_path):
+    """The operator's time series come from the relay's own tables; the site's visits and
+    downloads from the traffic database the showcase's script keeps — or, without one, a
+    panel that says so."""
+    import importlib.util
+    import json
+    from pathlib import Path
+
+    traffic_py = Path(__file__).resolve().parents[2] / "demo" / "showcase" / "mirror" / "traffic.py"
+    db_path = tmp_path / "traffic.db"
+    app, client, sender, up, cloud, settings = make(traffic_db=str(db_path), signup_tokens=1000, allowance_cny=10)
+    a = await sign_up(client, sender, "13800138000", "pixel")
+    await sign_up(client, sender, "dev-a@example.com", "mac")
+    await client.post(
+        "/v1/chat/completions", json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}, headers=auth(a["api_key"])
+    )
+    admin = {"X-Admin-Token": "admin"}
+
+    assert (await client.get("/v1/admin/series")).status_code == 401
+    r = await client.get("/v1/admin/series?days=7", headers=admin)
+    assert r.status_code == 200, r.text
+    series = r.json()
+    assert len(series["days"]) == 7 and series["web"] is None and series["online_devices"] == 0
+    today = series["days"][-1]
+    assert today["sign_ins"] == 2 and today["new_accounts"] == 2 and today["active_accounts"] == 1
+    assert series["days"][0]["sign_ins"] == 0 and series["invites"]["invited"] == 0 and series["contributors"] == 0
+    assert "13800138000" not in r.text and "dev-a@example.com" not in r.text
+
+    # no database yet: the panel is told, nothing fails
+    r = await client.get("/v1/admin/traffic", headers=admin)
+    assert r.status_code == 200 and r.json() == {"available": False}
+
+    # the showcase's script fills one from Caddy's JSON log; the relay reads it as it is
+    if not traffic_py.exists():
+        return
+    spec = importlib.util.spec_from_file_location("nm_traffic", traffic_py)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    mod.DB_PATH = db_path
+    conn = mod.open_db()
+    tally = mod.Tally()
+    ts = float(__import__("time").time())
+    for uri, ua, ctype, status in (
+        ("/", "Mozilla/5.0", "text/html; charset=utf-8", 200),
+        ("/", "Mozilla/5.0", "text/html; charset=utf-8", 200),
+        ("/own-key/", "Mozilla/5.0 (X11)", "text/html", 200),
+        ("/", "Googlebot/2.1", "text/html", 200),
+        ("/dl/v0.1.22/nanoMuse-0.1.22-arm64.apk", "Mozilla/5.0", "application/octet-stream", 200),
+        ("/dl/v0.1.22/nanoMuse-0.1.22-arm64.apk.sha256", "Mozilla/5.0", "application/octet-stream", 200),
+    ):
+        rec = {
+            "ts": ts,
+            "status": status,
+            "size": 1000,
+            "request": {
+                "host": "nanomuse.cn",
+                "uri": uri,
+                "client_ip": "203.0.113.7",
+                "headers": {"User-Agent": [ua], "Referer": ["https://github.com/nano-muse/nanoMuse"]},
+            },
+            "resp_headers": {"Content-Type": [ctype]},
+        }
+        tally.add(rec, conn)
+    conn.execute("BEGIN")
+    tally.flush(conn)
+    conn.execute("COMMIT")
+    conn.execute(
+        "INSERT INTO github(day, ts, stars, forks, watchers, downloads, assets) VALUES (?,?,?,?,?,?,?)",
+        (mod.local_day(ts), int(ts), 24, 5, 3, 188, json.dumps({"v0.1.22": {"nanoMuse-0.1.22-arm64.apk": 100}})),
+    )
+    conn.close()
+
+    r = await client.get("/v1/admin/traffic?days=7", headers=admin)
+    assert r.status_code == 200, r.text
+    tr = r.json()
+    assert tr["available"] is True and len(tr["days"]) == 7 and tr["days"][0]["pages"] == 0
+    day = tr["days"][-1]
+    assert day["pages"] == 3 and day["visitors"] == 2 and day["bots"] == 1 and day["downloads"] == 1 and day["requests"] == 6
+    assert tr["pages"][0] == {"name": "/", "hits": 2} and tr["referrers"] == [{"name": "github.com", "hits": 3}]
+    assert tr["downloads"] == [{"name": "nanoMuse-0.1.22-arm64.apk", "hits": 1, "bytes": 1000}]
+    assert tr["github"]["stars"] == 24 and tr["github"]["downloads"] == 188 and tr["github"]["days"][0]["stars"] == 24
+    assert "203.0.113.7" not in r.text

@@ -92,15 +92,19 @@ fun AddProviderScreen(
     providerRepository: ProviderRepository,
     onBack: () -> Unit,
     onSaved: () -> Unit,
+    preset: String? = null, // nanoMuse: open straight on the form, pre-filled for a known vendor
 ) {
-    var step by remember { mutableStateOf(AddProviderStep.CHOOSE_TYPE) }
-    var selectedType by remember { mutableStateOf<ProviderType?>(null) }
-    var selectedCredential by remember { mutableStateOf<ProviderCredential?>(null) }
+    // nanoMuse: a preset (from "use your own key" — Alibaba Cloud Bailian) skips the type
+    // and credential steps; the form opens with the vendor's name and public endpoint.
+    val presetTemplate = remember(preset) { io.github.nanomuse.cloud.OwnKeyPresets.template(preset) }
+    var step by remember { mutableStateOf(if (presetTemplate != null) AddProviderStep.CONFIGURE else AddProviderStep.CHOOSE_TYPE) }
+    var selectedType by remember { mutableStateOf<ProviderType?>(presetTemplate?.providerType) }
+    var selectedCredential by remember { mutableStateOf<ProviderCredential?>(if (presetTemplate != null) ProviderCredential.apiKey else null) }
     // [T-android-provider-voice] Non-null when the flow was entered from a
     // Voice Chat Provider template row — preseeds type/base URL/label/appendV1
     // on the configure step (mirrors iOS applyVoiceTemplate).
     var selectedVoiceTemplate by remember {
-        mutableStateOf<com.openminis.app.data.model.VoiceProviderTemplate?>(null)
+        mutableStateOf<com.openminis.app.data.model.VoiceProviderTemplate?>(presetTemplate)
     }
 
     // Unified back handler: reuse each step's onBack so predictive-back gesture
@@ -113,12 +117,17 @@ fun AddProviderScreen(
                 selectedType = null
             }
             AddProviderStep.CONFIGURE -> {
+                // nanoMuse: a preset came straight to the form; back leaves the screen.
+                if (presetTemplate != null && selectedVoiceTemplate === presetTemplate) {
+                    onBack()
+                }
                 // Voice-template entry skipped the credential step entirely —
                 // back returns straight to the type/template list.
-                if (selectedVoiceTemplate != null) {
+                else if (selectedVoiceTemplate != null) {
                     step = AddProviderStep.CHOOSE_TYPE
                     selectedType = null
                     selectedVoiceTemplate = null
+                    selectedCredential = null
                 } else {
                     val creds = availableCredentials(selectedType!!)
                     if (creds.size == 1) {
@@ -127,8 +136,8 @@ fun AddProviderScreen(
                     } else {
                         step = AddProviderStep.CHOOSE_CREDENTIAL
                     }
+                    selectedCredential = null
                 }
-                selectedCredential = null
             }
         }
     }

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
 import { cx } from "../util";
+import { markFirstSignIn } from "./FirstSignInSteps";
 import { inputCls, primaryBtn, secondaryBtn } from "./Form";
 
 /**
@@ -99,7 +100,9 @@ export function SignIn({
     setBusy("verify");
     setError(null);
     try {
-      await api.cloudVerify(id, code.trim(), invite.trim());
+      const r = await api.cloudVerify(id, code.trim(), invite.trim());
+      // a brand-new account is owed two short steps (password, co-creation) — see FirstSignInSteps
+      if (r.created) markFirstSignIn();
       setCode("");
       setSent(false);
       try {
@@ -199,7 +202,7 @@ export function SignIn({
                 placeholder="ABCD2345"
                 className={cx(inputCls, "mt-1 tracking-[0.2em] uppercase")}
               />
-              <p className="mt-1.5 text-[12px] text-muted">{t("A friend's code counts for a new account: they get ¥3 of credit and more clips.")}</p>
+              <p className="mt-1.5 text-[12px] text-muted">{t("A friend's code counts for a new account: they get ¥5 more allowance.")}</p>
             </div>
           ) : (
             <button type="button" onClick={() => setInviteOpen(true)} className="text-[12px] text-muted underline-offset-2 hover:underline">

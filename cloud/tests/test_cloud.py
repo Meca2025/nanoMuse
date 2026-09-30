@@ -401,15 +401,18 @@ async def test_private_relay_only_lets_listed_identifiers_in():
     assert data["account"]["member"] is True and data["spend"]["unlimited"] is True
 
 
-async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
-    # The released relay: anyone may sign in; the listed people have no cap,
-    # the rest may spend ¥25 a day at the provider's list prices.
+async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
+    # The released relay: anyone may sign in; the listed people have no limit,
+    # the rest have one pool for good (¥10 in production) at the provider's
+    # list prices — chat, pictures and clips alike.
     app, client, sender, up, cloud = make_stack(
         allowed_identifiers="Me@Example.com",
         signup_tokens=0,
         daily_cap_tokens=0,
         per_minute_requests=0,
-        daily_cap_cny=0.002,
+        allowance_cny=0.002,
+        invite_bonus_cny=5,
+        contribute_bonus_cny=10,
         usd_cny=7.0,
     )
     admin = {"X-Admin-Token": "admin"}
@@ -417,18 +420,33 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     assert guest["account"]["member"] is False
     assert guest["spend"] == {
         "currency": "CNY",
-        "today": 0,
         "total": 0,
-        "daily_cap": 0.002,
+        "grant": 0.002,
+        "left": 0.002,
         "unlimited": False,
+        "warn": False,
         "usd_cny": 7.0,
+        "total_usd": 0,
+        "grant_usd": 0.0003,
+        "left_usd": 0.0003,
+        "today": 0,
         "today_usd": 0,
+        "allowance_cny": 0.002,
+        "invite_bonus_cny": 5,
+        "contribute_bonus_cny": 10,
+        "contribute_bonus_available": True,
+        "own_key_docs": "https://nanomuse.cn/own-key",
+        # what a 0.4 app still reads: the pool as the "cap", no midnight
+        "daily_cap": 0.002,
         "daily_cap_usd": 0.0003,
         "day_offset_h": 8,
-        "resets_at": guest["spend"]["resets_at"],
+        "resets_at": 0,
         "credit_left": 0,
         "left_today": 0.002,
     }
+    assert guest["clips"]["unlimited"] is True
+    # the allowance is the first line of the statement
+    assert guest["recent"][0]["kind"] == "credit" and guest["recent"][0]["detail"] == {"credit_uy": 2000, "from": "signup"}
     # Prices travel with the model list, so the apps can show them.
     price = next(m for m in guest["models"] if m["id"] == "qwen3.8-27b")["nanomuse"]["price_cny"]
     assert price["per_m_input"] == 3.0 and price["per_m_output"] == 12.0
@@ -440,28 +458,54 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     )
     assert r.status_code == 200
     me = (await client.get("/v1/me", headers=headers)).json()
-    assert me["spend"]["today"] == 0.0009 and me["spend"]["total"] == 0.0009
+    assert me["spend"]["today"] == 0.0009 and me["spend"]["total"] == 0.0009 and me["spend"]["left"] == 0.0011
+    assert me["spend"]["warn"] is False
     assert me["recent"][0]["cost_cny"] == 0.0009
-    # Chats are priced after the fact, so one starts as long as today's spend is
-    # under the cap: the second and third go through (¥0.0027), the fourth does not.
+    # Chats are priced after the fact, so one starts as long as anything is left:
+    # the second and third go through (¥0.0027), the fourth does not — and the
+    # refusal says what is left and where the three ways on lead.
     for _ in range(2):
         assert (
             await client.post(
                 "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
             )
         ).status_code == 200
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["spend"]["left"] == 0 and me["spend"]["warn"] is True
     r = await client.post(
         "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
     )
-    assert r.status_code == 429 and r.json()["error"]["code"] == "daily_cap"
-    assert "¥0.002" in r.json()["error"]["message"]
-    # A picture that would go over the cap is refused before it is drawn.
+    assert r.status_code == 429
+    err = r.json()["error"]
+    assert err["code"] == "allowance_exhausted" and "¥0.002" in err["message"] and "keep working" in err["message"]
+    assert err["left"] == 0 and err["grant"] == 0.002 and err["own_key_docs"] == "https://nanomuse.cn/own-key"
+    assert (
+        err["invite_url"].startswith("https://nanomuse.cn/web/?invite=")
+        and len(err["invite_url"]) == len("https://nanomuse.cn/web/?invite=") + 8
+    )
+    assert err["contribute_bonus_available"] is True and err["contribute_bonus_cny"] == 10 and err["invite_bonus_cny"] == 5
+    # A picture that would go over is refused before it is drawn.
     r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
     assert r.status_code == 429 and not any(k == "image" for k, _, _ in up.state.requests)
+    # Joining the co-creation programme adds ¥10, once: the chat goes through again.
+    r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
+    assert r.status_code == 200 and r.json()["bonus_granted"] is True and r.json()["bonus_available"] is False
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["spend"]["grant"] == 10.002 and me["spend"]["left"] == round(10.002 - 0.0027, 4) and me["spend"]["warn"] is False
+    assert me["contribute"]["on"] is True and me["contribute"]["bonus_available"] is False and me["contribute"]["bonus_at"]
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert r.status_code == 200
+    await client.post("/v1/me/contribute", headers=headers, json={"on": False})
+    r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
+    assert r.json()["bonus_granted"] is False
+    assert (await client.get("/v1/me", headers=headers)).json()["spend"]["grant"] == 10.002
 
-    # The listed person has no cap and sees no cap.
+    # The listed person has no limit and sees none.
     member = await sign_up(client, sender, identifier="me@example.com", device="desk")
-    assert member["account"]["member"] is True and member["spend"]["daily_cap"] == 0 and member["spend"]["unlimited"] is True
+    assert member["account"]["member"] is True and member["spend"]["grant"] == 0 and member["spend"]["left"] is None
+    assert member["spend"]["unlimited"] is True and member["spend"]["daily_cap"] == 0
     mh = {"Authorization": f"Bearer {member['api_key']}"}
     for _ in range(4):
         assert (
@@ -477,14 +521,18 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     # The operator's view carries money next to tokens, and can make a guest a member.
     listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
     s = listing["settings"]
-    assert s["signup_open"] is True and s["daily_cap_cny"] == 0.002 and s["usd_cny"] == 7.0
+    assert s["signup_open"] is True and s["allowance_cny"] == 0.002 and s["usd_cny"] == 7.0
+    assert s["invite_bonus_cny"] == 5 and s["contribute_bonus_cny"] == 10 and s["contributors"] == 1
+    assert "daily_cap_cny" not in s and "video_clips_free" not in s
     assert s["prices"]["qwen-image-3.0"]["per_image"] == 0.18
     by_id = {a["identifier"]: a for a in listing["accounts"]}
     g, m = by_id["+8613800138000"], by_id["me@example.com"]
-    assert g["member"] is False and g["spent_today_cny"] == 0.0027 and g["spent_cny"] == 0.0027
-    assert m["member"] is True and m["listed"] is True and m["unlimited"] is False
+    assert g["member"] is False and g["spent_today_cny"] == 0.0036 and g["spent_cny"] == 0.0036
+    assert g["grant_cny"] == 10.002 and g["left_cny"] == round(10.002 - 0.0036, 4) and g["contribute_bonus_at"]
+    assert "credit_uy" not in g and "grant_uy" not in g and "clips_bonus" not in g
+    assert m["member"] is True and m["listed"] is True and m["unlimited"] is False and m["left_cny"] is None
     usage = (await client.get("/v1/admin/usage", headers=admin)).json()["days"]
-    assert {(u["kind"], u["cost_cny"]) for u in usage} == {("chat", round(7 * 0.0009, 4)), ("image", 0.18)}
+    assert {(u["kind"], u["cost_cny"]) for u in usage} == {("chat", round(8 * 0.0009, 4)), ("image", 0.18)}
 
     r = await client.post("/v1/admin/unlimited", headers=admin, json={"identifier": "138 0013 8000"})
     assert r.status_code == 204
@@ -708,11 +756,20 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     r = await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
     assert r.status_code == 200
     me = (await client.get("/v1/me", headers=headers)).json()
-    assert me["contribute"] == {"on": False, "samples": 0}
+    assert me["contribute"] == {"on": False, "samples": 0, "bonus_cny": 10, "bonus_available": True, "bonus_at": None}
     assert (await client.get("/v1/admin/samples", headers=admin)).json() == {"samples": [], "total": 0}
 
     r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
-    assert r.status_code == 200 and r.json() == {"on": True, "samples": 0}
+    assert r.status_code == 200
+    assert r.json() == {
+        "on": True,
+        "samples": 0,
+        "bonus_cny": 10,
+        "bonus_granted": True,
+        "bonus_available": False,
+        "bonus_at": r.json()["bonus_at"],
+    }
+    assert r.json()["bonus_at"] > 0
     # a plain reply, with a picture in the request
     picture = {
         "role": "user",
@@ -730,7 +787,7 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     ) as r:
         await r.aread()
     me = (await client.get("/v1/me", headers=headers)).json()
-    assert me["contribute"] == {"on": True, "samples": 2}
+    assert me["contribute"]["on"] is True and me["contribute"]["samples"] == 2
     got = (await client.get("/v1/admin/samples", headers=admin)).json()
     assert got["total"] == 2 and [s["response"] for s in got["samples"]] == ["你好，世界", "hi"]
     first = got["samples"][1]
@@ -752,7 +809,7 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     r = await client.delete("/v1/me/samples", headers=headers)
     assert r.json() == {"deleted": 2}
     r = await client.post("/v1/me/contribute", headers=headers, json={"on": False})
-    assert r.json() == {"on": False, "samples": 0}
+    assert r.json()["on"] is False and r.json()["samples"] == 0 and r.json()["bonus_granted"] is False
     r = await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
     assert (await client.get("/v1/admin/samples", headers=admin)).json()["total"] == 0
     kinds = [e["kind"] for e in (await client.get("/v1/me/events", headers=headers)).json()["events"]]
@@ -792,3 +849,58 @@ def test_database_from_before_0_4_migrates(tmp_path):
     names = {r["name"] for r in db._conn.execute("PRAGMA index_list(accounts)").fetchall()}
     assert "accounts_invite_code" in names
     assert db._conn.execute("SELECT invite_code, contribute FROM accounts WHERE id='a1'").fetchone()[0] == ""
+
+
+def test_database_from_0_4_moves_to_the_lifetime_allowance(tmp_path):
+    """0.4 kept a daily cap and credit beyond it; 0.5 has one pool. On the first open the
+    service seeds every account with what it had spent plus the allowance, plus any 0.4
+    credit still unused — nobody starts in debt, an invite's money is kept. A second open
+    changes nothing, and accounts made afterwards start with the allowance alone."""
+    import sqlite3
+
+    path = str(tmp_path / "v04.db")
+    conn = sqlite3.connect(path)
+    conn.executescript(
+        """
+        CREATE TABLE accounts (
+            id TEXT PRIMARY KEY, id_hash TEXT NOT NULL UNIQUE, channel TEXT NOT NULL, hint TEXT NOT NULL,
+            created_at INTEGER NOT NULL, granted INTEGER NOT NULL DEFAULT 0, used INTEGER NOT NULL DEFAULT 0,
+            disabled INTEGER NOT NULL DEFAULT 0, identifier_enc TEXT NOT NULL DEFAULT '', unlimited INTEGER NOT NULL DEFAULT 0,
+            password_hash TEXT NOT NULL DEFAULT '', password_set_at INTEGER, failed_logins INTEGER NOT NULL DEFAULT 0,
+            locked_until INTEGER, invite_code TEXT NOT NULL DEFAULT '', invited_by TEXT NOT NULL DEFAULT '',
+            invites INTEGER NOT NULL DEFAULT 0, credit_uy INTEGER NOT NULL DEFAULT 0, credit_used_uy INTEGER NOT NULL DEFAULT 0,
+            clips_bonus INTEGER NOT NULL DEFAULT 0, contribute INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE ledger (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, account_id TEXT NOT NULL, ts INTEGER NOT NULL, kind TEXT NOT NULL,
+            model TEXT NOT NULL DEFAULT '', prompt_tokens INTEGER NOT NULL DEFAULT 0, completion_tokens INTEGER NOT NULL DEFAULT 0,
+            charged INTEGER NOT NULL DEFAULT 0, request_id TEXT NOT NULL DEFAULT '', cost_uy INTEGER NOT NULL DEFAULT 0,
+            extra TEXT NOT NULL DEFAULT ''
+        );
+        INSERT INTO accounts (id, id_hash, channel, hint, created_at, invites, credit_uy, credit_used_uy)
+            VALUES ('heavy', 'h1', 'email', 'a***@x', 1, 1, 3000000, 400000);
+        INSERT INTO accounts (id, id_hash, channel, hint, created_at) VALUES ('fresh', 'h2', 'email', 'b***@x', 2);
+        INSERT INTO ledger (account_id, ts, kind, model, charged, cost_uy) VALUES ('heavy', 10, 'chat', 'm', 100, 12500000);
+        INSERT INTO ledger (account_id, ts, kind, model, charged, cost_uy) VALUES ('heavy', 11, 'video', 'v', 100, 500000);
+        INSERT INTO ledger (account_id, ts, kind, charged, extra) VALUES ('heavy', 12, 'credit', 0, '{"credit_uy":3000000}');
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    settings = Settings(database=path, secret="s", admin_token="admin", allowance_cny=10, signup_tokens=0)
+    db = Database(path)
+    assert "accounts.grant_uy" in db.added
+    Cloud(settings, db, LogSender())
+    grants = {r["id"]: (int(r["grant_uy"]), r["contribute_bonus_at"]) for r in db._conn.execute("SELECT * FROM accounts")}
+    # heavy: ¥13 spent + ¥10 + ¥2.6 of unused 0.4 credit; fresh: ¥10 — and no bonus taken yet
+    assert grants == {"heavy": (25_600_000, None), "fresh": (10_000_000, None)}
+    db.close()
+
+    db2 = Database(path)
+    assert db2.added == set()
+    Cloud(settings, db2, LogSender())
+    assert {int(r["grant_uy"]) for r in db2._conn.execute("SELECT * FROM accounts")} == {25_600_000, 10_000_000}
+    a = db2.create_account("h3", "email", "c***@x", 0, grant_uy=settings.allowance_uy)
+    assert int(a["grant_uy"]) == 10_000_000
+    db2.close()

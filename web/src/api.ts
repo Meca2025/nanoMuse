@@ -136,9 +136,16 @@ export const api = {
   cloudEvents: (limit = 50) => request<{ events: CloudEvent[] }>(`/api/cloud/events?limit=${limit}`),
   cloudDelete: () => request<CloudAccount>("/api/cloud/delete", json({})),
   cloudMe: () => request<CloudMe>("/api/cloud/me"),
-  cloudContribute: (on: boolean) => request<{ on: boolean; samples: number }>("/api/cloud/contribute", json({ on })),
+  cloudContribute: (on: boolean) =>
+    request<{ on: boolean; samples: number; bonus_cny?: number; bonus_granted?: boolean; bonus_available?: boolean }>("/api/cloud/contribute", json({ on })),
   cloudDeleteSamples: () => request<{ deleted: number }>("/api/cloud/samples", { method: "DELETE" }),
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
+  /** the avatar studio: whether a face can be drawn, and the session under way */
+  avatarView: () => request<{ available: boolean; image_model: string; cloud: boolean; current: Record<string, unknown> | null }>("/api/avatar"),
+  avatarBegin: (description: string, thread = "main") => request<Record<string, unknown>>("/api/avatar/begin", json({ description, thread })),
+  avatarStart: (session: string) => request<Record<string, unknown>>("/api/avatar/start", json({ session })),
+  avatarChoose: (session: string, index: number) => request<Record<string, unknown>>("/api/avatar/choose", json({ session, index })),
+  avatarCancel: (session: string) => request<Record<string, unknown>>("/api/avatar/cancel", json({ session })),
   // ---- calls (voice / video, in real time)
   // ---- coding agents, here or on another computer of yours
   coding: (device = "") => request<{ agents: CodingAgent[]; runs: CodingRun[]; device?: string }>(`/api/coding${device ? `?device=${encodeURIComponent(device)}` : ""}`),
@@ -254,7 +261,10 @@ export const api = {
   testLLM: () => request<TestResult>("/api/connections/llm/test", { method: "POST" }),
   /** the models an endpoint offers: its own /models when it answers, else the preset's catalogue */
   llmModels: (body: { preset?: string; base_url?: string; api_key?: string }) =>
-    request<{ models: string[]; source: "live" | "catalogue"; error?: string }>("/api/llm/models", json(body)),
+    request<{ models: string[]; image_models?: string[]; video_models?: string[]; source: "live" | "catalogue"; error?: string }>(
+      "/api/llm/models",
+      json(body),
+    ),
   setEmbeddings: (body: Record<string, unknown>) =>
     request<ConnectionsData["embeddings"]>("/api/connections/embeddings", { method: "PUT", body: JSON.stringify(body) }),
   testEmbeddings: () => request<TestResult>("/api/connections/embeddings/test", { method: "POST" }),

@@ -106,6 +106,7 @@ export function Onboarding() {
 
   return (
     <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border">
+      <div className="titlebar-room" />
       <header className="safe-top shrink-0 px-5 pt-4 pb-2 flex items-center justify-between">
         <div className="flex gap-1">
           {progress.map((s, i) => (
@@ -181,9 +182,9 @@ export function Onboarding() {
               <p className="mt-1 text-[14px] text-muted">
                 {modelReady
                   ? conn?.llm.cloud
-                    ? t("Your account's model, with its daily allowance. Keep it, or switch to a key of your own here.")
+                    ? t("Your account's model, with its free allowance. Keep it, or switch to a key of your own here.")
                     : t("A model is already set up on the server. Keep it, or switch here.")
-                  : t("Your account brings a model with a daily allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
+                  : t("Your account brings a model with a free allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
               </p>
             </div>
             {conn ? (
@@ -200,7 +201,7 @@ export function Onboarding() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[15px] font-medium">{t("Use the nanoMuse Cloud model")}</span>
-                      <span className="block text-[12.5px] text-muted">{t("Signed in as {hint}. A daily allowance, nothing to paste. Recommended to start.", { hint: state.hub.account.hint })}</span>
+                      <span className="block text-[12.5px] text-muted">{t("Signed in as {hint}. A free allowance, nothing to paste. Recommended to start.", { hint: state.hub.account.hint })}</span>
                     </span>
                     <ChevronRight size={16} className="shrink-0 text-muted" />
                   </button>

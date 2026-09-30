@@ -6458,6 +6458,68 @@ class ChatViewModel(
         viewModelScope.launch { nmAppendAssistantLine(pending.sid, context.getString(R.string.nm_face_cost_declined)) }
     }
 
+    // ─── nanoMuse: the free allowance is spent ──────────────────────────────
+    // The relay's 429 arrives through the model client as "rate limited"; the
+    // structured body was kept aside by AllowanceSignal. When the error is about
+    // to be shown, the card with the three ways on (own key, invite, co-creation)
+    // is added under it — virtual, never persisted.
+
+    private val nmAllowanceCardId = "nm_allowance_card"
+    private val _nmAllowance = kotlinx.coroutines.flow.MutableStateFlow<io.github.nanomuse.cloud.AllowanceSignal.Exhausted?>(null)
+    val nmAllowance: kotlinx.coroutines.flow.StateFlow<io.github.nanomuse.cloud.AllowanceSignal.Exhausted?> = _nmAllowance
+
+    /** The error text to show for a failed turn — the allowance sentence when the relay said so, [fallback] otherwise. */
+    private fun nmAllowanceErrorText(fallback: String): String {
+        val info = io.github.nanomuse.cloud.AllowanceSignal.takeFresh() ?: return fallback
+        _nmAllowance.value = info
+        _messages.value = _messages.value.filterNot { it.id == nmAllowanceCardId } + ChatMessage(
+            id = nmAllowanceCardId,
+            role = "system",
+            content = "",
+            toolBlocks = listOf(AssistantBlock(id = "${nmAllowanceCardId}_block", kind = "nm_allowance", content = "")),
+        )
+        // the cached account shows the pool as spent until the next /v1/me
+        viewModelScope.launch { runCatching { io.github.nanomuse.cloud.NanoMuseCloud.refresh(context) } }
+        return context.getString(R.string.nm_cloud_err_allowance)
+    }
+
+    private var nmAllowanceCheckedAt = 0L
+
+    /**
+     * The 80 % heads-up, once per pool size: after a turn on the account's model, re-read the
+     * account (at most once a minute) and, when the relay says `warn` and nothing has been
+     * said for this pool yet, one line in the chat — never a dialog. The spent pool has its
+     * own card ([nmAllowanceErrorText]).
+     */
+    private fun nmAllowanceHeadsUp() {
+        val cloudId = io.github.nanomuse.cloud.NanoMuseCloud.instance(context)?.id ?: return
+        val entryId = _activeEntryId.value ?: return
+        val entry = providerRepository.config.value.modelEntries.find { it.id == entryId } ?: return
+        if (entry.providerInstanceId != cloudId) return
+        val now = System.currentTimeMillis()
+        if (now - nmAllowanceCheckedAt < 60_000) return
+        nmAllowanceCheckedAt = now
+        viewModelScope.launch {
+            val a = runCatching { io.github.nanomuse.cloud.NanoMuseCloud.refresh(context) }.getOrNull() ?: return@launch
+            if (!a.limited || a.exhausted || !(a.warn || a.spendFraction >= 0.8f)) return@launch
+            if (!io.github.nanomuse.cloud.NanoMuseCloud.markWarned(context, a.grantCny)) return@launch
+            appendSystemInfo(
+                context.getString(
+                    R.string.nm_cloud_warn_line,
+                    io.github.nanomuse.ui.cloud.money(a.leftCny.coerceAtLeast(0.0)),
+                    io.github.nanomuse.ui.cloud.money(a.grantCny),
+                ),
+                "info",
+            )
+        }
+    }
+
+    /** The card goes once a way was taken (or the person moved on). */
+    fun nmDismissAllowance() {
+        _nmAllowance.value = null
+        _messages.value = _messages.value.filterNot { it.id == nmAllowanceCardId }
+    }
+
     /**
      * Waits for the candidate tiles to finish (every slot Ready or Failed) and then says so in
      * the chat — "pick one" when at least one picture came, what went wrong when none did.
@@ -6617,6 +6679,7 @@ class ChatViewModel(
         // Goal blocks in the reply just finished, and the turn budget of any
         // prompt addendum, are settled first — they apply to every session.
         io.github.nanomuse.chat.SessionAddenda.onTurnFinished(sid)
+        nmAllowanceHeadsUp()
         _messages.value.lastOrNull { it.role == "assistant" }?.content?.let { text ->
             io.github.nanomuse.goals.GoalFlow.afterTurn(context, sid, text)
             io.github.nanomuse.feed.FeedFlow.afterTurn(context, sid, text)
@@ -6983,7 +7046,8 @@ class ChatViewModel(
         // would stick across reloads. An exception with a blank `message`
         // (`e.message ?: "Unknown error"` only guards null, not "") is the
         // realistic source. Coalesce to a generic non-empty message.
-        val safeError = errorText.ifBlank { context.getString(R.string.error_empty_response_generic) }
+        // nanoMuse: a turn refused for a spent allowance gets the plain sentence and the ways-on card.
+        val safeError = nmAllowanceErrorText(errorText.ifBlank { context.getString(R.string.error_empty_response_generic) })
         // T-streaming-side-channel: before mutating the canonical message,
         // drain any in-flight streaming delta so the error frame carries
         // the actual accumulated content (otherwise the user sees content

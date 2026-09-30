@@ -524,10 +524,13 @@ private fun SessionScreen(computer: Device, session: Session, agentName: String,
             )
         },
         bottomBar = {
+            // an IDE chat the CLI cannot reopen: the message opens a new chat in the same
+            // workspace with the last exchange quoted — the placeholder says so
+            val continuesAsNew = !session.resumable && sessionId == session.id && live?.status != "running"
             Composer(
                 draft = draft,
                 onDraft = { draft = it },
-                hint = stringResource(R.string.nm_coding_send_hint, agentName),
+                hint = if (continuesAsNew) stringResource(R.string.nm_coding_continue_new_hint) else stringResource(R.string.nm_coding_send_hint, agentName),
                 running = live?.status == "running",
                 onSend = { send() },
                 onStop = {

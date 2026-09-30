@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import type { Mood } from "./components/RedPanda";
 import { useStore } from "./store";
 import type { Status } from "./types";
+
+/** What the face shows: the dragon has a still for each, "sleepy" falls back to idle. */
+export type Mood = "idle" | "working" | "waiting" | "happy" | "error" | "sleepy";
 
 /** How long the face stays pleased after a run ends, or worried after something failed. */
 export const HAPPY_MS = 3000;
 export const ERROR_MS = 4000;
 
 /**
- * What the red panda should look like right now. The agent's status gives the pose it holds
+ * What the face should look like right now. The agent's status gives the pose it holds
  * (working, waiting for you); two moments from the store colour it briefly: the end of a run
  * (a pleased bounce) and a failed or refused tool call (a worried shake). No server: asleep.
  * Without a status to follow — pickers, previews — it just idles.

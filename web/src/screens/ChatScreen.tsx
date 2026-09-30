@@ -1,7 +1,9 @@
 import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Phone, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, fileUrl } from "../api";
+import { AllowanceHeadsUp } from "../components/AllowanceWays";
 import { Avatar } from "../components/Avatar";
+import { AvatarOptionsCard } from "../components/AvatarOptionsCard";
 import { BrowserViewer } from "../components/BrowserViewer";
 import { MicButton, useDictation } from "../components/Dictation";
 import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
@@ -88,7 +90,7 @@ export function ChatScreen() {
             onClick={() => setThreadsOpen(true)}
             aria-label={t("Chats")}
             className={cx(
-              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg lg:invisible",
+              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg wide:invisible",
               activeThread !== "main" && "text-accent",
             )}
           >
@@ -197,6 +199,7 @@ export function ChatScreen() {
         )}
       </div>
 
+      <AllowanceHeadsUp />
       <Composer
         name={name}
         busy={!!thread?.busy && pendingApprovals === 0}
@@ -275,6 +278,8 @@ function EventView({
         return <BrowserCard event={event} onOpen={onOpenBrowser} />;
       case "hands":
         return <HandsCard event={event} name={name} />;
+      case "avatar":
+        return <AvatarOptionsCard event={event} name={name} />;
       default:
         return null;
     }

@@ -15,7 +15,7 @@
     title: "nanoMuse Cloud 后台", tokenLabel: "管理口令", tokenHint: "服务器上 /opt/nanomuse/relay/ADMIN_TOKEN.txt 里的那一行；只留在这个标签页里。",
     enter: "进入", wrong: "口令不对。", offline: "连不上服务器。", refresh: "刷新", lock: "锁定", loading: "加载中…",
     today: "今天", week: "最近 7 天", period: (d) => `最近 ${d} 天`,
-    kSamples: "贡献的对话", kSamplesSub: (n) => `${n} 个账号开启了贡献`, exportSamples: "导出 JSONL", contributes: "贡献对话", samples: "贡献的对话（最近）", samplesNote: "只有把「贡献对话」打开的账号才会保存这些内容；导出的文件不带账号 id。", user: "用户", assistant: "回答", more: "查看更多", noSamples: "还没有",
+    kSamples: "贡献的对话", kSamplesSub: (n) => `${n} 个账号开启了贡献`, exportSamples: "导出 JSONL", exportFailed: (why) => `导出没有成功：${why}。可以再试一次；如果一直这样，看服务器上 docker logs nanomuse-relay。`, exportCut: "下载中途断开", exportEmpty: "还没有可导出的对话。", contributes: "贡献对话", samples: "贡献的对话（最近）", samplesNote: "只有把「贡献对话」打开的账号才会保存这些内容；导出的文件不带账号 id。", user: "用户", assistant: "回答", more: "查看更多", noSamples: "还没有",
     kAccounts: "账号", kAccountsSub: (c) => `${c.with_password || 0} 个设了密码 · ${c.unlimited || 0} 个成员 · ${c.disabled || 0} 个已停用`,
     kActive: "活跃账号", kActiveSub: (n) => `${n} 个新注册`, kSpent: "花费", kSpentSub: (r, t) => `${fmt(r)} 次 · ${fmt(t)} tokens`,
     kOnline: "在线设备", kOnlineSub: (k, s) => `记住了 ${k} 台 · ${s} 个有效登录`, kSignals: "今天的信号",
@@ -28,28 +28,36 @@
     all: "全部", signIns: "登录", refusals: "超额", errors: "错误", calls: "通话", passwords: "密码",
     eventName: {
       "account.created": "注册", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置密码", "password.changed": "修改密码",
-      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "开启贡献对话", "contribute.off": "关闭贡献对话", "contribute.deleted": "删除贡献的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励",
+      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "加入共创计划", "contribute.bonus": "共创奖励 +¥10", "contribute.off": "关闭贡献对话", "contribute.deleted": "删除贡献的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励",
     },
     // drawer
-    spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "每日上限", noCap: "无上限", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
+    spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "总额度", noCap: "无上限", left: "剩余", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
     sessions: "登录（含已退出）", revoked: "已退出", via: { code: "验证码", password: "密码" }, lastUsed: "最近使用", devices: "设备", firstSeen: "首次", lastSeen: "最近",
     ledger: "最近请求", timeline: "时间线", none: "—", online: "在线", offline: "离线", version: "版本",
-    grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, credit: "加邀请额度", creditPrompt: (who) => `给 ${who} 多少元额度？（当天免费额度用完后才扣，不过期）`, creditClips: "另加多少段视频？（0 为不加）", creditNote: "备注（比如 PR #12）", creditLine: (c, l, n, b) => `邀请额度 ${c}（剩 ${l}）· 邀请了 ${n} 人 · 额外视频 ${b} 段`, clipsLine: (u, a) => `视频 ${u} / ${a === null ? "∞" : a} 段`, invitedBy: "邀请人", disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
-    memberConfirm: (who) => `把 ${who} 设为成员？成员不受每日花费上限限制，费用由你承担。`, listedNote: "在服务器白名单里，改 ALLOWED_IDENTIFIERS 才能取消",
+    grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, credit: "加额度", creditPrompt: (who) => `给 ${who} 加多少元额度？（直接进入总额度，不过期）`, creditNote: "备注（比如 PR #12）", poolLine: (g, l, n, b) => `总额度 ${g}${l === null ? "" : `（剩 ${l}）`} · 邀请了 ${n} 人${b ? " · 已领共创奖励" : ""}`, invitedBy: "邀请人", disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
+    memberConfirm: (who) => `把 ${who} 设为成员？成员不受额度限制，费用由你承担。`, listedNote: "在服务器白名单里，改 ALLOWED_IDENTIFIERS 才能取消",
     disableConfirm: (who) => `停用 ${who}？TA 的所有设备会立刻断开，再登录会被拒。`, remove: "删除账号",
     removeConfirm: (who) => `删除 ${who} 的账号、密钥、用量记录和设备？不可恢复。`, hasPassword: "已设密码", noPassword: "未设密码", identifierNote: "明文只在这里解出来看",
     // config
     allowed: "白名单（不限额）", allowedNone: "（空）", sender: "验证码渠道", models: "模型", prices: "单价（¥）", rate: "汇率", rateLine: (r) => `1 美元 = ${r} 元（仅用于显示）`,
-    perMinute: (n) => (n > 0 ? `每分钟 ${n} 次` : "不限频"), capLine: (c, u) => (c > 0 ? `非成员每天 ¥${c}（≈ $${u}）` : "不限每日花费"), signupOpen: "开放注册", signupClosed: "仅白名单可登录",
+    perMinute: (n) => (n > 0 ? `每分钟 ${n} 次` : "不限频"), capLine: (c, u, b, k) => (c > 0 ? `非成员共 ¥${c}（≈ $${u}）· 邀请 +¥${b} · 共创 +¥${k}` : "不限花费"), signupOpen: "开放注册", signupClosed: "仅白名单可登录",
     realtime: "实时通话", on: "开", off: "关", pwMin: (n) => `密码至少 ${n} 位`,
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `输入 ${p.per_m_input} / 输出 ${p.per_m_output} 每百万 tokens` : null,
       p.per_image ? `每张 ${p.per_image}${p.per_image_2k ? `（2k ${p.per_image_2k}）` : ""}` : null, p.per_second ? `每秒 ${p.per_second}` : null].filter(Boolean).join("；"),
     foot: "手机号 / 邮箱只在打开某个账号时用管理口令解出来看；数据库里存的是加密后的值。谁和模型说了什么，这里没有，从来没存过。请不要把这个页面截图发出去。金额按模型服务商的北京地区标价估算。",
+    // trends and the site
+    trends: (d) => `账号趋势 · 最近 ${d} 天`, site: (d) => `官网访问与下载 · 最近 ${d} 天`, siteOff: "还没接上访问统计：服务器上装 nanomuse-traffic（demo/showcase/mirror/traffic.py），relay 设 TRAFFIC_DB 指向它的数据库。",
+    siteUpdated: (t) => `更新于 ${t}`, siteNote: "来自 Caddy 的访问日志（保留 7 天）：按天计数，访客用当天的随机盐对地址和浏览器做哈希，不存 IP。",
+    sPages: "页面浏览", sVisitors: "访客", sBots: "爬虫 / 监控", sMirror: "镜像下载", sGithub: "GitHub 下载", sStars: "Stars", sPeriod: "本期", sDelta: (n) => (n > 0 ? `+${fmt(n)} 本期` : n < 0 ? `${fmt(n)} 本期` : "本期无变化"),
+    sFiles: "下载的文件", sMirrorCol: "镜像", sGithubCol: "GitHub 累计", sRefs: "来源站点", sTop: "页面", sNone: "还没有数据", sSince: (d) => `自 ${d}`,
+    mSignIns: "登录", mNew: "新注册", mActive: "活跃账号", mInvites: "通过邀请注册", mContribute: "加入共创", mCalls: "通话", mRefused: "超额被拒", mErrors: "上游错误",
+    devices: "设备", devKinds: { phone: "手机", computer: "电脑", web: "网页版" }, invitesTitle: "邀请", invitesLine: (f) => `${fmt(f.with_code)} 人生成了邀请码 · ${fmt(f.inviters)} 人邀请成功 · ${fmt(f.invited)} 人经邀请注册 · ${fmt(f.contribute_bonuses)} 人领了共创奖励`,
+    webTitle: "网页版（nanomuse.cn/web）", webLine: (w) => (w ? `${fmt(w.accounts)} 个账号有自己的 Muse（上限 ${fmt(w.max_accounts)}）· ${fmt(w.running)} 个在运行（上限 ${fmt(w.max_running)}）` : "未接入：relay 设 WEB_INFO_URL 指向 gateway 的 /api/web/info。"), webOff: "网页版未开启",
   } : {
     title: "nanoMuse Cloud admin", tokenLabel: "Admin token", tokenHint: "The line in /opt/nanomuse/relay/ADMIN_TOKEN.txt on the server; it stays in this tab only.",
     enter: "Open", wrong: "That token is not right.", offline: "Cannot reach the server.", refresh: "Refresh", lock: "Lock", loading: "Loading…",
     today: "Today", week: "Last 7 days", period: (d) => `Last ${d} days`,
-    kSamples: "Contributed turns", kSamplesSub: (n) => `${n} accounts contributing`, exportSamples: "Export JSONL", contributes: "contributes", samples: "Contributed conversations (recent)", samplesNote: "Kept only for accounts that turned contribution on; the export carries no account ids.", user: "user", assistant: "reply", more: "Show more", noSamples: "None yet",
+    kSamples: "Contributed turns", kSamplesSub: (n) => `${n} accounts contributing`, exportSamples: "Export JSONL", exportFailed: (why) => `The export did not go through: ${why}. Try once more; if it keeps happening, see docker logs nanomuse-relay on the server.`, exportCut: "the download broke off", exportEmpty: "Nothing to export yet.", contributes: "contributes", samples: "Contributed conversations (recent)", samplesNote: "Kept only for accounts that turned contribution on; the export carries no account ids.", user: "user", assistant: "reply", more: "Show more", noSamples: "None yet",
     kAccounts: "Accounts", kAccountsSub: (c) => `${c.with_password || 0} with a password · ${c.unlimited || 0} members · ${c.disabled || 0} disabled`,
     kActive: "Active accounts", kActiveSub: (n) => `${n} new`, kSpent: "Spent", kSpentSub: (r, t) => `${fmt(r)} requests · ${fmt(t)} tokens`,
     kOnline: "Devices online", kOnlineSub: (k, s) => `${k} remembered · ${s} live sign-ins`, kSignals: "Signals today",
@@ -62,21 +70,28 @@
     all: "All", signIns: "Sign-ins", refusals: "Refusals", errors: "Errors", calls: "Calls", passwords: "Passwords",
     eventName: {
       "account.created": "Joined", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
-      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "Contribution on", "contribute.off": "Contribution off", "contribute.deleted": "Contributed turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted",
+      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "Joined co-creation", "contribute.bonus": "Co-creation bonus +¥10", "contribute.off": "Contribution off", "contribute.deleted": "Contributed turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted",
     },
-    spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Daily cap", noCap: "no cap", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
+    spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Pool", noCap: "no cap", left: "left", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
     sessions: "Sign-ins (incl. revoked)", revoked: "revoked", via: { code: "code", password: "password" }, lastUsed: "last used", devices: "Devices", firstSeen: "first", lastSeen: "last",
     ledger: "Recent requests", timeline: "Timeline", none: "—", online: "online", offline: "offline", version: "Version",
-    grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, credit: "Add credit", creditPrompt: (who) => `How many yuan of credit for ${who}? (spent once the day's cap is used up; never expires)`, creditClips: "And how many video clips? (0 for none)", creditNote: "Note (say, PR #12)", creditLine: (c, l, n, b) => `credit ${c} (${l} left) · ${n} invited · ${b} bonus clips`, clipsLine: (u, a) => `video ${u} / ${a === null ? "∞" : a} clips`, invitedBy: "invited by", disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
-    memberConfirm: (who) => `Make ${who} a member? Members have no daily spend cap; you pay their bill.`, listedNote: "on the server's list; edit ALLOWED_IDENTIFIERS to remove",
+    grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, credit: "Add credit", creditPrompt: (who) => `How many yuan for ${who}? (straight into the pool; never expires)`, creditNote: "Note (say, PR #12)", poolLine: (g, l, n, b) => `pool ${g}${l === null ? "" : ` (${l} left)`} · ${n} invited${b ? " · co-creation bonus taken" : ""}`, invitedBy: "invited by", disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
+    memberConfirm: (who) => `Make ${who} a member? Members have no allowance limit; you pay their bill.`, listedNote: "on the server's list; edit ALLOWED_IDENTIFIERS to remove",
     disableConfirm: (who) => `Disable ${who}? Every device of theirs drops at once and cannot sign in again.`, remove: "Delete account",
     removeConfirm: (who) => `Delete the account, keys, usage and devices of ${who}? This cannot be undone.`, hasPassword: "has a password", noPassword: "no password", identifierNote: "decrypted for this view only",
     allowed: "Members (no cap)", allowedNone: "(none)", sender: "Code sender", models: "Models", prices: "Prices (¥)", rate: "Rate", rateLine: (r) => `1 USD = ${r} CNY (display only)`,
-    perMinute: (n) => (n > 0 ? `${n} a minute` : "no rate limit"), capLine: (c, u) => (c > 0 ? `¥${c} (≈ $${u}) a day for non-members` : "no daily spend cap"), signupOpen: "sign-up open", signupClosed: "members only",
+    perMinute: (n) => (n > 0 ? `${n} a minute` : "no rate limit"), capLine: (c, u, b, k) => (c > 0 ? `¥${c} (≈ $${u}) in all for non-members · +¥${b} an invite · +¥${k} for co-creation` : "no spend limit"), signupOpen: "sign-up open", signupClosed: "members only",
     realtime: "Real-time calls", on: "on", off: "off", pwMin: (n) => `passwords ≥ ${n} chars`,
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `${p.per_m_input} in / ${p.per_m_output} out per M tokens` : null,
       p.per_image ? `${p.per_image} a picture${p.per_image_2k ? ` (${p.per_image_2k} at 2k)` : ""}` : null, p.per_second ? `${p.per_second} a second` : null].filter(Boolean).join("; "),
     foot: "A phone number or address is decrypted only when you open that account, with the admin token; the database holds ciphertext. What anyone said to a model is not here — it was never stored. Do not share screenshots of this page. Money is estimated at the provider's Beijing list prices.",
+    trends: (d) => `Accounts · last ${d} days`, site: (d) => `The site: visits and downloads · last ${d} days`, siteOff: "No traffic figures yet: install nanomuse-traffic on the server (demo/showcase/mirror/traffic.py) and point the relay's TRAFFIC_DB at its database.",
+    siteUpdated: (t) => `updated ${t}`, siteNote: "From Caddy's access log (kept seven days): counted by day; a visitor is a hash of address and browser under a salt made for that day. No addresses are stored.",
+    sPages: "Page views", sVisitors: "Visitors", sBots: "Crawlers / monitors", sMirror: "Mirror downloads", sGithub: "GitHub downloads", sStars: "Stars", sPeriod: "this period", sDelta: (n) => (n > 0 ? `+${fmt(n)} this period` : n < 0 ? `${fmt(n)} this period` : "no change this period"),
+    sFiles: "Files downloaded", sMirrorCol: "mirror", sGithubCol: "GitHub, all time", sRefs: "Referring sites", sTop: "Pages", sNone: "Nothing yet", sSince: (d) => `since ${d}`,
+    mSignIns: "Sign-ins", mNew: "New accounts", mActive: "Active accounts", mInvites: "Signed up via invite", mContribute: "Joined co-creation", mCalls: "Calls", mRefused: "Refused: over budget", mErrors: "Upstream errors",
+    devices: "Devices", devKinds: { phone: "phones", computer: "computers", web: "web" }, invitesTitle: "Invites", invitesLine: (f) => `${fmt(f.with_code)} made an invite code · ${fmt(f.inviters)} brought someone · ${fmt(f.invited)} came through one · ${fmt(f.contribute_bonuses)} took the co-creation bonus`,
+    webTitle: "nanoMuse Web (nanomuse.cn/web)", webLine: (w) => (w ? `${fmt(w.accounts)} accounts with a Muse of their own (cap ${fmt(w.max_accounts)}) · ${fmt(w.running)} running (cap ${fmt(w.max_running)})` : "Not connected: set the relay's WEB_INFO_URL to the gateway's /api/web/info."), webOff: "nanoMuse Web is off",
   };
 
   const moneyN = (v) => { const c = Number(v || 0); return c >= 100 ? c.toFixed(0) : c >= 1 ? c.toFixed(2) : c > 0 && c < 0.01 ? c.toFixed(4) : c.toFixed(2); };
@@ -118,7 +133,7 @@
 
   const SS = window.sessionStorage;
   let token = SS.getItem("nm.admin") || "";
-  let ov = null, accounts = null, usage = null, err = "", days = Number(SS.getItem("nm.admin.days") || 30), filter = "", filtered = null, q = "";
+  let ov = null, accounts = null, usage = null, series = null, traffic = null, err = "", days = Number(SS.getItem("nm.admin.days") || 30), filter = "", filtered = null, q = "";
   let detail = null, detailErr = "";
 
   const app = document.getElementById("app");
@@ -147,6 +162,8 @@
   async function load() {
     try {
       [ov, accounts, usage] = await Promise.all([api("GET", `/v1/admin/overview?days=${days}`), api("GET", "/v1/admin/accounts"), api("GET", `/v1/admin/usage?days=${Math.min(days, 90)}`)]);
+      // the two newer views: a relay from before them, or a hiccup, leaves the panels out
+      [series, traffic] = await Promise.all([api("GET", `/v1/admin/series?days=${days}`).catch(() => null), api("GET", `/v1/admin/traffic?days=${days}`).catch(() => null)]);
       err = "";
     } catch (e) {
       if (e.message !== "admin") err = e.message;
@@ -222,6 +239,66 @@
       h("div", { class: "bars-x" }),
       h("div", { class: "legend" }, ...["chat", "image", "video", "realtime"].map((k) => h("span", {}, h("i", { class: k }), T.kinds[k]))));
   }
+  /** One metric across the period: its total, then a tiny bar per day (hover for the day and the count). */
+  function sparkRow(label, cols, key, tone, dayOf) {
+    const values = cols.map((c) => Number(c[key] || 0));
+    const max = Math.max(1, ...values), total = values.reduce((a, b) => a + b, 0);
+    return h("div", { class: "spark" },
+      h("span", { class: "k" }, label), h("b", {}, fmt(total)),
+      h("div", { class: "bars-mini" }, ...values.map((v, i) => h("i", { class: v > 0 ? tone : "z", style: `height:${v > 0 ? Math.max(2, Math.round(22 * v / max)) : 1}px`, title: `${dayOf(cols[i])} · ${fmt(v)}` }))));
+  }
+  const sizeOf = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(0)} MB` : `${Math.round(b / 1e3)} kB`);
+  function rankRows(items, unit) {
+    if (!items || !items.length) return h("div", { class: "empty" }, T.sNone);
+    const max = Math.max(1, ...items.map((x) => x.hits));
+    return h("div", { class: "ranks" }, ...items.slice(0, 12).map((x) => h("div", { class: "rank", title: x.bytes ? sizeOf(x.bytes) : "" },
+      h("span", { class: "n" }, x.name), h("i", { style: `width:${Math.round(100 * x.hits / max)}%` }), h("b", {}, unit ? unit(x) : fmt(x.hits)))));
+  }
+  /** The site: what nanomuse-traffic counted from the access log, next to GitHub's own numbers. */
+  function sitePanel() {
+    const tr = traffic;
+    if (!tr) return null;
+    if (!tr.available) return h("div", { class: "panel span" }, h("h2", {}, T.site(days)), h("div", { class: "empty" }, T.siteOff));
+    const rows = tr.days || [], gh = tr.github || {}, ghDays = gh.days || [];
+    const sum = (k) => rows.reduce((a, r) => a + Number(r[k] || 0), 0);
+    const first = ghDays[0], last = ghDays[ghDays.length - 1];
+    const delta = (k) => (first && last ? Number(last[k]) - Number(first[k]) : 0);
+    const dayOf = (r) => r.day.slice(5).replace("-", "/");
+    const kpi = (k, v, sub) => h("div", { class: "kpi flat" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v), sub ? h("div", { class: "s" }, sub) : null);
+    const ghAssets = Object.assign({}, ...Object.values(gh.assets || {}));
+    return h("div", { class: "panel span" },
+      h("h2", {}, T.site(days), h("span", { class: "sp" }), tr.updated_at ? h("span", { class: "fine" }, T.siteUpdated(when(tr.updated_at))) : null),
+      h("div", { class: "kpis in-panel" },
+        kpi(T.sPages, fmt(sum("pages")), T.sPeriod), kpi(T.sVisitors, fmt(sum("visitors")), T.sPeriod), kpi(T.sMirror, fmt(sum("downloads")), sizeOf(rows.reduce((a, r) => a + Number(r.bytes || 0), 0))),
+        kpi(T.sGithub, fmt(gh.downloads || 0), T.sDelta(delta("downloads"))), kpi(T.sStars, fmt(gh.stars || 0), T.sDelta(delta("stars"))), kpi(T.sBots, fmt(sum("bots")), T.sPeriod)),
+      rows.length ? h("div", { class: "sparks" },
+        sparkRow(T.sPages, rows, "pages", "blue", dayOf), sparkRow(T.sVisitors, rows, "visitors", "cyan", dayOf), sparkRow(T.sMirror, rows, "downloads", "violet", dayOf)) : h("div", { class: "empty" }, T.sNone),
+      h("div", { class: "cols3" },
+        h("div", {}, h("h3", {}, T.sFiles, h("span", { class: "fine" }, ` · ${T.sMirrorCol} / ${T.sGithubCol}`)), rankRows(tr.downloads, (x) => `${fmt(x.hits)}${ghAssets[x.name] !== undefined ? ` / ${fmt(ghAssets[x.name])}` : ""}`)),
+        h("div", {}, h("h3", {}, T.sRefs), rankRows(tr.referrers)),
+        h("div", {}, h("h3", {}, T.sTop), rankRows(tr.pages))),
+      h("div", { class: "fine", style: "padding:0 16px 12px" }, T.siteNote));
+  }
+  /** The relay's own series: sign-ins, accounts, invites, co-creation, calls — and the devices and nanoMuse Web as they stand. */
+  function trendsPanel() {
+    const sr = series;
+    if (!sr) return null;
+    const rows = sr.days || [];
+    const dayOf = (r) => day(r.day);
+    const dev = sr.devices || [];
+    const byKind = {};
+    for (const d of dev) { const k = byKind[d.kind] || (byKind[d.kind] = { n: 0, os: [] }); k.n += d.count; k.os.push(`${d.os || "?"} ${fmt(d.count)}`); }
+    return h("div", { class: "panel span" },
+      h("h2", {}, T.trends(days)),
+      h("div", { class: "sparks" },
+        sparkRow(T.mSignIns, rows, "sign_ins", "blue", dayOf), sparkRow(T.mNew, rows, "new_accounts", "ok", dayOf), sparkRow(T.mActive, rows, "active_accounts", "cyan", dayOf),
+        sparkRow(T.mInvites, rows, "invites_used", "violet", dayOf), sparkRow(T.mContribute, rows, "contribute_on", "violet", dayOf), sparkRow(T.mCalls, rows, "calls", "ok", dayOf),
+        sparkRow(T.mRefused, rows, "budget_refusals", "warn", dayOf), sparkRow(T.mErrors, rows, "upstream_errors", "warn", dayOf)),
+      h("div", { class: "kv" },
+        h("b", {}, T.devices), h("span", {}, Object.keys(byKind).length ? Object.entries(byKind).map(([k, v]) => h("div", {}, h("span", { class: "pill", style: "margin-right:6px" }, `${T.devKinds[k] || k} ${fmt(v.n)}`), h("span", { class: "fine" }, v.os.join(" · ")))) : T.none),
+        h("b", {}, T.invitesTitle), h("span", {}, T.invitesLine({ with_code: 0, inviters: 0, invited: 0, contribute_bonuses: 0, ...(sr.invites || {}) })),
+        h("b", {}, T.webTitle), h("span", {}, sr.web && sr.web.enabled === false ? T.webOff : T.webLine(sr.web))));
+  }
   function eventRow(e, withWho) {
     const [tone, icon] = EVENT_STYLE[e.kind] || ["grey", ICON.person];
     return h("div", { class: "row" + (withWho && e.account_id ? " tap" : ""), onclick: withWho && e.account_id ? () => openAccount(e.account_id) : null },
@@ -241,16 +318,12 @@
     await Promise.all([load(), detail ? openAccount(a.id) : null]);
   }
   async function doCredit(a) {
-    const v = prompt(T.creditPrompt(who(a)), "3");
+    const v = prompt(T.creditPrompt(who(a)), "5");
     if (v === null) return;
     const cny = parseFloat(v.replace(/[\s,¥]/g, ""));
-    if (!Number.isFinite(cny) || cny < 0) return;
-    const c = prompt(T.creditClips, "0");
-    if (c === null) return;
-    const clips = parseInt(c.replace(/\D/g, "") || "0", 10);
+    if (!Number.isFinite(cny) || cny <= 0) return;
     const note = prompt(T.creditNote, "") || "";
-    if (cny === 0 && clips === 0) return;
-    try { await api("POST", "/v1/admin/credit", { account_id: a.id, cny, clips, note }); } catch (e) { alert(e.message); }
+    try { await api("POST", "/v1/admin/credit", { account_id: a.id, cny, note }); } catch (e) { alert(e.message); }
     await Promise.all([load(), detail ? openAccount(a.id) : null]);
   }
   async function doDisable(a) {
@@ -272,15 +345,23 @@
   // ── the drawer: one account ────────────────────────────────────
   let drawerEl = null;
   function closeDrawer() { if (drawerEl) { drawerEl.remove(); drawerEl = null; } detail = null; }
-  /** The whole training set as a file: fetched with the admin token (a bare link could not carry it). */
+  /** The whole training set as a file: fetched with the admin token (a bare link could not carry it).
+      What can go wrong is said in words: the browser's "Failed to fetch" covers a dropped connection,
+      a proxy in the way and a token that stopped working alike. */
   async function exportSamples() {
+    let r;
     try {
-      const r = await fetch("/v1/admin/samples/export", { headers: { "X-Admin-Token": token } });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const blob = await r.blob();
-      const a = h("a", { href: URL.createObjectURL(blob), download: `nanomuse-samples-${new Date().toISOString().slice(0, 10)}.jsonl` });
-      document.body.append(a); a.click(); a.remove();
-    } catch (e) { alert(e.message); }
+      r = await fetch("/v1/admin/samples/export", { headers: { "X-Admin-Token": token }, cache: "no-store" });
+    } catch (_) { alert(T.exportFailed(T.offline)); return; }
+    if (r.status === 401) { token = ""; SS.removeItem("nm.admin"); err = T.wrong; draw(); return; }
+    if (!r.ok) { alert(T.exportFailed(`HTTP ${r.status}${r.statusText ? " " + r.statusText : ""}`)); return; }
+    let blob;
+    try { blob = await r.blob(); } catch (_) { alert(T.exportFailed(T.exportCut)); return; }
+    if (!blob.size) { alert(T.exportEmpty); return; }
+    const url = URL.createObjectURL(blob);
+    const a = h("a", { href: url, download: `nanomuse-samples-${new Date().toISOString().slice(0, 10)}.jsonl` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   async function openAccount(id) {
@@ -307,7 +388,7 @@
       a.locked ? h("span", { class: "pill warn" }, T.locked) : null,
       a.contribute ? h("span", { class: "pill cyan" }, T.contributes) : null,
     ];
-    const cap = Number(sp.daily_cap_cny || 0), frac = cap > 0 ? Math.min(1, Number(sp.today_cny || 0) / cap) : 0;
+    const cap = a.member ? 0 : Number(sp.grant_cny || 0), frac = cap > 0 ? Math.min(1, Number(sp.total_cny || 0) / cap) : 0;
     box.replaceChildren(
       h("div", { class: "head" }, h("h2", {}, a.identifier || a.hint), h("button", { class: "round", html: ICON.close, onclick: closeDrawer })),
       h("div", { class: "card" },
@@ -315,10 +396,10 @@
           h("div", { class: "who" }, h("div", { class: "n" }, a.hint, " ", h("span", { class: "fine" }, `· ${T.identifierNote}`)),
             h("div", { class: "m" }, `${dateOf(a.created_at)} · `, h("code", {}, a.id)), h("div", { class: "tags", style: "margin-top:6px" }, ...tags))),
         h("div", { class: "stats" },
-          h("div", {}, h("div", { class: "k" }, T.spendToday), h("div", { class: "v", title: usd(sp.today_cny, rate) }, money(sp.today_cny)), cap > 0 ? h("div", { class: "meter", style: "margin-top:6px" }, h("i", { class: frac > 0.9 ? "bad" : frac > 0.7 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null, h("div", { class: "k", style: "margin-top:4px" }, cap > 0 ? `${T.cap} ${money(cap)}` : T.noCap)),
-          h("div", {}, h("div", { class: "k" }, T.spendTotal), h("div", { class: "v", title: usd(sp.total_cny, rate) }, money(sp.total_cny)), h("div", { class: "k", style: "margin-top:4px" }, T.tokens(a.used))),
+          h("div", {}, h("div", { class: "k" }, T.spendTotal), h("div", { class: "v", title: usd(sp.total_cny, rate) }, money(sp.total_cny)), cap > 0 ? h("div", { class: "meter", style: "margin-top:6px" }, h("i", { class: frac >= 1 ? "bad" : frac >= 0.8 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null, h("div", { class: "k", style: "margin-top:4px" }, cap > 0 ? `${T.cap} ${money(cap)} · ${T.left} ${money(sp.left_cny || 0)}` : T.noCap)),
+          h("div", {}, h("div", { class: "k" }, T.spendToday), h("div", { class: "v", title: usd(sp.today_cny, rate) }, money(sp.today_cny)), h("div", { class: "k", style: "margin-top:4px" }, T.tokens(a.used))),
           h("div", {}, h("div", { class: "k" }, T.requests), h("div", { class: "v" }, fmt(sp.requests_total)), h("div", { class: "k", style: "margin-top:4px" }, s.unlimited ? T.noCap : `${T.grant}: ${fmt(a.granted)}`))),
-        h("div", { class: "fine", style: "padding:0 16px 10px" }, T.creditLine(money(a.credit_cny || 0), money(a.credit_left_cny || 0), a.invites || 0, a.clips_bonus || 0), " · ", T.clipsLine(a.clips_used || 0, a.clips_allowed === undefined ? null : a.clips_allowed),
+        h("div", { class: "fine", style: "padding:0 16px 10px" }, T.poolLine(money(a.grant_cny || 0), a.left_cny === null || a.left_cny === undefined ? null : money(a.left_cny), a.invites || 0, !!a.contribute_bonus_at),
           a.invited_by ? [" · ", T.invitedBy, " ", h("code", {}, String(a.invited_by).slice(0, 8))] : null),
         h("div", { class: "acts" },
           s.unlimited ? null : h("button", { class: "btn quiet", onclick: () => doGrant(a) }, T.grant),
@@ -419,6 +500,7 @@
         (() => { const ct = ov.contributions || {}; const k = kpi(T.kSamples, fmt(ct.samples || 0), T.kSamplesSub(ct.accounts || 0)); if (ct.samples) k.append(h("button", { class: "btn quiet sm", style: "margin-top:6px", onclick: exportSamples }, T.exportSamples)); return k; })()),
       h("div", { class: "grid" },
         h("div", { class: "panel span" }, h("h2", {}, T.byDay(Math.min(days, 90))), dayBars(usage && usage.days, Math.min(days, 90), s.day_offset_h, rate)),
+        trendsPanel(), sitePanel(),
         h("div", { class: "panel" }, h("h2", {}, `${T.byKind} · ${T.today}`), kindRows(today.by_kind, rate), h("h2", {}, `${T.byKind} · ${T.period(days)}`), kindRows(period.by_kind, rate)),
         h("div", { class: "panel" }, h("h2", {}, `${T.byModel} · ${T.period(days)}`), modelRows(period.by_model, rate, kinds)),
         h("div", { class: "panel" }, h("h2", {}, T.top(days)), (ov.top_accounts || []).length ? (ov.top_accounts || []).map((t) => h("div", { class: "row tap", onclick: () => openAccount(t.account_id) },
@@ -439,7 +521,7 @@
         h("div", { class: "panel span" },
           h("h2", {}, T.config),
           h("div", { class: "kv" },
-            h("b", {}, T.kAccounts), h("span", {}, `${s.signup_open ? T.signupOpen : T.signupClosed} · ${T.capLine(s.daily_cap_cny, s.daily_cap_usd)} · ${T.perMinute(s.per_minute_requests)} · ${T.pwMin(s.password_min_len || 8)}`),
+            h("b", {}, T.kAccounts), h("span", {}, `${s.signup_open ? T.signupOpen : T.signupClosed} · ${T.capLine(s.allowance_cny, s.allowance_usd, s.invite_bonus_cny, s.contribute_bonus_cny)} · ${T.perMinute(s.per_minute_requests)} · ${T.pwMin(s.password_min_len || 8)}`),
             h("b", {}, T.realtime), h("span", {}, s.realtime_enabled ? T.on : T.off),
             h("b", {}, T.allowed), h("code", {}, (s.allowed_identifiers || []).join(", ") || T.allowedNone),
             h("b", {}, T.rate), h("span", {}, T.rateLine(rate)),

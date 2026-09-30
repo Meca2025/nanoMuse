@@ -1,11 +1,16 @@
 package io.github.nanomuse.hands
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Outline
+import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.RectF
+import android.graphics.SweepGradient
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -16,6 +21,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -28,11 +35,14 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * The capsule that sits over the operated app while the hands work: the face, what is being
- * done, and **Stop**. When the hands need the user it grows into a card — *Your turn* with
- * **Continue** for a login or a code, *Waiting for your approval* with **Open** for a tap that
- * needs the card in the chat. Plain views on a `TYPE_APPLICATION_OVERLAY` window, so it lives
- * outside any Activity; every call is safe from any thread.
+ * The capsule that sits over the operated app while the hands work: the face in a slowly
+ * turning three-hue ring, four activity bars, what is being done, and **Stop**. When the hands
+ * need the user it grows into a card — *Your turn* with **Continue** for a login or a code,
+ * *Waiting for your approval* with **Open** for a tap that needs the card in the chat — and the
+ * ring stands still. The same pill the desktop stage shows (desktop/app/src/renderer/stage):
+ * dark and translucent with a hairline edge, sliding in from the top. Plain views on a
+ * `TYPE_APPLICATION_OVERLAY` window, so it lives outside any Activity; every call is safe from
+ * any thread.
  *
  * The capsule hides itself for the instant a screenshot is taken ([hideForCapture]), so the
  * screen model never sees it and cannot tap its own Stop button. The model still cannot see
@@ -53,6 +63,8 @@ class HandsCapsule(private val context: Context) {
     private var detailView: TextView? = null
     private var continueBtn: TextView? = null
     private var openBtn: TextView? = null
+    private var ring: RingView? = null
+    private var bars: BarsView? = null
 
     /** What the hands draw on the screen while they work. */
     val stage = HandsStage(context)
@@ -67,6 +79,8 @@ class HandsCapsule(private val context: Context) {
     fun working(step: Int, detail: String) = onMain {
         ensure()
         stage.mood(HandsStage.Mood.WORKING)
+        ring?.turning(true)
+        bars?.visibility = View.VISIBLE
         titleView?.text = context.getString(R.string.nm_hands_step, step)
         detailView?.text = detail
         continueBtn?.visibility = View.GONE
@@ -78,6 +92,8 @@ class HandsCapsule(private val context: Context) {
         ensure()
         stage.mood(HandsStage.Mood.WAITING)
         stage.clear()
+        ring?.turning(false)
+        bars?.visibility = View.GONE
         titleView?.text = context.getString(R.string.nm_hands_your_turn)
         detailView?.text = reason.ifBlank { context.getString(R.string.nm_hands_your_turn_detail) }
         continueBtn?.visibility = View.VISIBLE
@@ -88,6 +104,8 @@ class HandsCapsule(private val context: Context) {
     fun approval(what: String) = onMain {
         ensure()
         stage.mood(HandsStage.Mood.WAITING)
+        ring?.turning(false)
+        bars?.visibility = View.GONE
         titleView?.text = context.getString(R.string.nm_hands_approval_title)
         detailView?.text = what
         continueBtn?.visibility = View.GONE
@@ -95,8 +113,16 @@ class HandsCapsule(private val context: Context) {
     }
 
     fun hide() = onMain {
-        root?.let { v -> runCatching { wm.removeView(v) } }
+        val v = root
         root = null; params = null; titleView = null; detailView = null; continueBtn = null; openBtn = null
+        ring?.turning(false); ring = null
+        bars?.stop(); bars = null
+        if (v != null) {
+            // slide back up the way it came, then let go of the window
+            v.animate().alpha(0f).translationY(-dp(20).toFloat()).scaleX(0.96f).scaleY(0.96f)
+                .setDuration(200L).setInterpolator(DecelerateInterpolator())
+                .withEndAction { runCatching { wm.removeView(v) } }.start()
+        }
         stage.hide()
     }
 
@@ -198,26 +224,40 @@ class HandsCapsule(private val context: Context) {
     private fun ensure() {
         if (root != null) return
         stage.show() // first, so the capsule's window sits above it
+        val radius = dp(26).toFloat()
         val pill = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setPadding(dp(8), dp(7), dp(10), dp(7))
+            // the desktop pill's ink: dark, a little translucent, a hairline of light round it
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(22).toFloat()
-                setColor(0xF2202124.toInt())
+                cornerRadius = radius
+                setColor(INK)
+                setStroke(dp(1), EDGE)
             }
-            elevation = dp(6).toFloat()
+            elevation = dp(8).toFloat()
             clipToOutline = true
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(v: View, outline: Outline) {
-                    outline.setRoundRect(0, 0, v.width, v.height, dp(22).toFloat())
+                    outline.setRoundRect(0, 0, v.width, v.height, radius)
                 }
             }
+            // slides in from the top the way the desktop pill does
+            alpha = 0f
+            translationY = -dp(28).toFloat()
+            scaleX = 0.96f; scaleY = 0.96f
+        }
+        val faceBox = FrameLayout(context).apply {
+            val s = dp(36)
+            layoutParams = LinearLayout.LayoutParams(s, s)
+        }
+        val ringView = RingView(context).apply {
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
         }
         val face = ImageView(context).apply {
-            val s = dp(30)
-            layoutParams = LinearLayout.LayoutParams(s, s)
+            val s = dp(26)
+            layoutParams = FrameLayout.LayoutParams(s, s, Gravity.CENTER)
             scaleType = ImageView.ScaleType.CENTER_CROP
             clipToOutline = true
             outlineProvider = object : ViewOutlineProvider() {
@@ -225,26 +265,30 @@ class HandsCapsule(private val context: Context) {
             }
             faceBitmap()?.let { setImageBitmap(it) } ?: setImageResource(R.drawable.nm_avatar_working)
         }
+        faceBox.addView(ringView); faceBox.addView(face)
+        val barsView = BarsView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(20), dp(14)).apply { marginStart = dp(8) }
+        }
         val texts = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(10); marginEnd = dp(10) }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(10); marginEnd = dp(8) }
         }
         val title = TextView(context).apply {
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             maxLines = 1
         }
         val detail = TextView(context).apply {
-            setTextColor(0xFFC8CCD2.toInt())
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
+            setTextColor(0xCCFFFFFF.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             maxLines = 2
         }
         texts.addView(title); texts.addView(detail)
-        val cont = button(context.getString(R.string.nm_hands_continue), 0xFF0078FD.toInt()) { onContinue?.invoke() }.apply { visibility = View.GONE }
-        val open = button(context.getString(R.string.nm_hands_open), 0xFF0078FD.toInt()) { onOpenApp?.invoke() }.apply { visibility = View.GONE }
-        val stop = button(context.getString(R.string.nm_hands_stop), 0xFFE5484D.toInt()) { onStop?.invoke() }
-        pill.addView(face); pill.addView(texts); pill.addView(cont); pill.addView(open); pill.addView(stop)
+        val cont = button(context.getString(R.string.nm_hands_continue), ACCENT) { onContinue?.invoke() }.apply { visibility = View.GONE }
+        val open = button(context.getString(R.string.nm_hands_open), ACCENT) { onOpenApp?.invoke() }.apply { visibility = View.GONE }
+        val stop = button(context.getString(R.string.nm_hands_stop), STOP_RED) { onStop?.invoke() }
+        pill.addView(faceBox); pill.addView(barsView); pill.addView(texts); pill.addView(cont); pill.addView(open); pill.addView(stop)
 
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
@@ -266,7 +310,11 @@ class HandsCapsule(private val context: Context) {
             AppLogger.warning(TAG, "addView failed: ${t.message}")
             return
         }
+        pill.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(320L).setInterpolator(DecelerateInterpolator(1.6f)).start()
+        ringView.turning(true)
+        barsView.start()
         root = pill; this.params = params; titleView = title; detailView = detail; continueBtn = cont; openBtn = open
+        ring = ringView; bars = barsView
     }
 
     private fun navigationBarHeight(): Int {
@@ -279,10 +327,112 @@ class HandsCapsule(private val context: Context) {
         setTextColor(Color.WHITE)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        setPadding(dp(12), dp(6), dp(12), dp(6))
-        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(color) }
+        setPadding(dp(12), dp(7), dp(12), dp(7))
+        background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(color) }
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) }
         setOnClickListener { onClick() }
+    }
+
+    /**
+     * The ring round the face: the three hues of the stage's comet, turning while the hands
+     * work, a still pale ring while they wait. One small view, one sweep gradient rotated by
+     * an angle — nothing full-screen animates.
+     */
+    private class RingView(context: Context) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+        private val rect = RectF()
+        private var shader: SweepGradient? = null
+        private var angle = 0f
+        private var turning = false
+        private var animator: ValueAnimator? = null
+
+        fun turning(on: Boolean) {
+            if (turning == on && (animator != null) == on) return
+            turning = on
+            animator?.cancel(); animator = null
+            if (on) {
+                animator = ValueAnimator.ofFloat(0f, 360f).apply {
+                    duration = 2400L
+                    repeatCount = ValueAnimator.INFINITE
+                    interpolator = null
+                    addUpdateListener { angle = it.animatedValue as Float; invalidate() }
+                    start()
+                }
+            }
+            invalidate()
+        }
+
+        override fun onDetachedFromWindow() {
+            animator?.cancel(); animator = null
+            super.onDetachedFromWindow()
+        }
+
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            val stroke = resources.displayMetrics.density * 1.5f
+            paint.strokeWidth = stroke
+            rect.set(stroke, stroke, w - stroke, h - stroke)
+            shader = SweepGradient(w / 2f, h / 2f, intArrayOf(ACCENT, VIOLET, CYAN, ACCENT), floatArrayOf(0f, 0.38f, 0.72f, 1f))
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            if (turning) {
+                paint.shader = shader
+                paint.alpha = 255
+                canvas.save()
+                canvas.rotate(angle, width / 2f, height / 2f)
+                canvas.drawOval(rect, paint)
+                canvas.restore()
+            } else {
+                paint.shader = null
+                paint.color = 0x59FFFFFF
+                canvas.drawOval(rect, paint)
+            }
+        }
+    }
+
+    /** Four thin bars rising and falling in turn — the desktop pill's sign that something is happening. */
+    private class BarsView(context: Context) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var t = 0f
+        private var animator: ValueAnimator? = null
+
+        fun start() {
+            if (animator != null) return
+            animator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 1000L
+                repeatCount = ValueAnimator.INFINITE
+                interpolator = null
+                addUpdateListener { t = it.animatedValue as Float; invalidate() }
+                start()
+            }
+        }
+
+        fun stop() {
+            animator?.cancel(); animator = null
+        }
+
+        override fun onDetachedFromWindow() {
+            stop()
+            super.onDetachedFromWindow()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            val d = resources.displayMetrics.density
+            val barW = 3f * d
+            val gap = 2.5f * d
+            val total = 4 * barW + 3 * gap
+            var x = (width - total) / 2f
+            for (i in 0 until 4) {
+                // each bar a little behind the last, height easing 35 % → 100 % → 35 %
+                val phase = ((t - i * 0.15f) % 1f + 1f) % 1f
+                val eased = 0.5f - 0.5f * kotlin.math.cos(phase * 2f * Math.PI.toFloat())
+                val h = height * (0.35f + 0.65f * eased)
+                paint.shader = null
+                paint.color = if (i % 2 == 0) CYAN else ACCENT
+                canvas.drawRoundRect(x, height - h, x + barW, height.toFloat(), barW / 2f, barW / 2f, paint)
+                x += barW + gap
+            }
+        }
     }
 
     private fun faceBitmap(): Bitmap? = runCatching { AvatarStore.current.value?.forMood(AgentMood.WORKING)?.asAndroidBitmap() }.getOrNull()
@@ -307,5 +457,14 @@ class HandsCapsule(private val context: Context) {
 
     companion object {
         private const val TAG = "HandsCapsule"
+        /** The stage's three hues (HandsStage, the desktop stage's --accent / --violet / --cyan). */
+        private const val ACCENT = 0xFF0A66E4.toInt()
+        private const val VIOLET = 0xFF7C5CFF.toInt()
+        private const val CYAN = 0xFF06B6D4.toInt()
+        /** The pill's ink and its hairline edge, as on the desktop: rgba(17,18,24,.82) and white at 10 %. */
+        private const val INK = 0xD1111218.toInt()
+        private const val EDGE = 0x1AFFFFFF
+        /** Stop: a low-saturation red, not an alarm. */
+        private const val STOP_RED = 0xFF9B3B3B.toInt()
     }
 }

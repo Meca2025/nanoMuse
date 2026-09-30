@@ -290,7 +290,10 @@ function SessionSheet({ agent, id, device, deviceLabel, onClose }: { agent: stri
 
   const meta = AGENT_META[agent];
   const transcript = session?.transcript ?? [];
-  const canSend = !!session?.resumable || !!running;
+  // any session takes a message: the CLI reopens its own chats, and an IDE chat (not
+  // resumable) gets a new chat in the same workspace with the last exchange quoted
+  const canSend = !!session || !!running;
+  const continuesAsNew = !!session && !session.resumable && !running;
 
   return (
     <Sheet
@@ -310,6 +313,8 @@ function SessionSheet({ agent, id, device, deviceLabel, onClose }: { agent: stri
         </span>
       }
       footer={
+        <>
+          {continuesAsNew && <p className="mb-1.5 px-1 text-[11.5px] leading-snug text-muted">{t("Made in the IDE: your message starts a new chat in the same workspace, with the last exchange quoted.")}</p>}
         <form
           className="flex items-end gap-2"
           onSubmit={(e) => {
@@ -333,9 +338,9 @@ function SessionSheet({ agent, id, device, deviceLabel, onClose }: { agent: stri
                 ? t("{agent} is working…", { agent: meta?.label ?? agent })
                 : !session
                   ? "…"
-                  : canSend
-                    ? t("Tell {agent}…", { agent: meta?.label ?? agent })
-                    : t("This chat cannot be continued from here.")
+                  : continuesAsNew
+                    ? t("Continue in a new chat…")
+                    : t("Tell {agent}…", { agent: meta?.label ?? agent })
             }
             className={cx(inputCls, "max-h-32 min-h-[44px] resize-none py-2.5")}
           />
@@ -349,6 +354,7 @@ function SessionSheet({ agent, id, device, deviceLabel, onClose }: { agent: stri
             </button>
           )}
         </form>
+        </>
       }
     >
       <div ref={listRef} className="space-y-2.5 py-1">

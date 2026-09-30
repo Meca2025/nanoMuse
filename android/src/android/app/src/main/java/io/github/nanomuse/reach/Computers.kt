@@ -309,8 +309,8 @@ object Computers {
         return buildString {
             append("## Your devices (nanoMuse)\n")
             if (all.isEmpty()) {
-                append("No other device is connected right now. The user's computers join when they run nanoMuse Desktop signed in to the same nanoMuse Cloud account (any network), or pair over the local network with `nanomuse_host.py` — the hub devices are under [Devices](${io.github.nanomuse.hub.Hub.DEEP_LINK}), local pairing under [Computers]($DEEP_LINK). ")
-                append("When the user wants something done on their PC or Mac, say so in one line and point there. ")
+                append("No other device is connected right now. The way to add a computer: install nanoMuse Desktop there (https://nanomuse.cn/#download) and sign in with the same nanoMuse Cloud account — it appears under [Devices](${io.github.nanomuse.hub.Hub.DEEP_LINK}) within seconds, on any network. Pairing over the local network with `nanomuse_host.py` under [Computers]($DEEP_LINK) is the fallback for a computer without the account. ")
+                append("When the user wants something done on their PC or Mac, say so in one line and point to the desktop app. ")
                 if (!onHub) append("This phone is not on the hub itself; signing in to nanoMuse Cloud puts it there. ")
             } else {
                 append("Connected: ").append(all.joinToString("; ") { "${it.name} (${it.kind}, ${it.os}, ${if (it.viaHub) "via the hub — any network" else "local network " + it.address})" }).append(". ")

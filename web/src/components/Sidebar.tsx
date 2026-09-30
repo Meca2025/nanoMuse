@@ -52,6 +52,7 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-full w-[272px] shrink-0 flex-col border-r border-border bg-surface/70">
+      <div className="titlebar-room" />
       <button
         type="button"
         onClick={() => setActivityOpen(true)}

@@ -101,7 +101,19 @@ export interface NoticeEvent extends BaseEvent {
   code?: string;
   /** the raw exception, for bug reports */
   detail?: string;
+  /** values for the {placeholders} in `text` */
+  vars?: Record<string, string | number>;
   source?: string;
+  /** code "allowance": what the relay said — what is left, the pool, and the three ways on */
+  allowance?: {
+    left?: number | null;
+    grant?: number;
+    invite_url?: string;
+    invite_bonus_cny?: number;
+    contribute_bonus_available?: boolean;
+    contribute_bonus_cny?: number;
+    own_key_docs?: string;
+  };
 }
 
 export interface ArtifactEvent extends BaseEvent {
@@ -165,6 +177,26 @@ export interface HandsEvent extends BaseEvent {
   notice?: string;
 }
 
+/** The avatar studio's card: a new face from a description, drawn in the chat (nanomuse/avatar). */
+export interface AvatarEvent extends BaseEvent {
+  type: "avatar";
+  session: string;
+  /** estimate (waiting for the tap) · drawing · choose (four wait) · posing · done · cancelled · failed */
+  stage: "estimate" | "drawing" | "choose" | "posing" | "done" | "cancelled" | "failed" | string;
+  description: string;
+  /** what it costs: the relay's figure when the account draws; the count alone with one's own key */
+  cost?: { pictures?: number; model?: string; cloud?: boolean; cny?: number | null; left_cny?: number | null; unlimited?: boolean; affordable?: boolean; error?: string };
+  /** workspace paths of the four candidates (null while one is still being drawn) */
+  candidates?: Array<string | null>;
+  errors?: string[];
+  chosen?: number | null;
+  /** the face id once one was picked; the profile's avatar when done */
+  face?: string | null;
+  /** mood → workspace path, filled as the poses land */
+  moods?: Record<string, string>;
+  message?: string;
+}
+
 export type TimelineEvent =
   | UserEvent
   | AssistantEvent
@@ -174,7 +206,8 @@ export type TimelineEvent =
   | NoticeEvent
   | ArtifactEvent
   | BrowserEvent
-  | HandsEvent;
+  | HandsEvent
+  | AvatarEvent;
 
 export interface ThreadMeta {
   id: string;
@@ -217,6 +250,8 @@ export interface CloudAccount {
   /** this runtime insists on an account (self-hosters may turn it off) */
   required?: boolean;
   has_password?: boolean;
+  /** on the answer to a code sign-in: the account was created by it (first sign-in ever) */
+  created?: boolean;
   /** the opaque account id, never the identifier */
   account_id?: string;
 }
@@ -268,13 +303,35 @@ export interface CloudMe {
     kinds: string[];
   };
   tokens: { unlimited: boolean; granted: number; used: number; remaining: number; used_today: number; daily_cap: number };
-  spend: { currency: string; today: number; total: number; daily_cap: number; unlimited: boolean; credit_left?: number; left_today?: number | null };
-  /** Relay 0.4: the account's invite code and what came of it. */
-  invite?: { code: string; url: string; invites: number; bonus_cny: number; clips_per_invite: number; credit_cny: number; credit_left_cny: number; friends: Array<{ hint: string; joined_at: number }> };
-  /** Relay 0.4: whether this account contributes its chat turns to the community's model, and how many so far. */
-  contribute?: { on: boolean; samples: number };
-  /** Relay 0.4: the video-clip allowance (one animated face per account, more per invite). */
-  clips?: { unlimited: boolean; allowed: number; used: number; left: number | null; per_face: number };
+  /**
+   * Relay 0.5: one pool for the account's lifetime — `total` spent against `grant`, `left`
+   * (null = no limit), `warn` from 80 %. `usd_cny` converts for display. The 0.4 names
+   * (`today`, `daily_cap`, …) are still sent for one version.
+   */
+  spend: {
+    currency: string;
+    today: number;
+    total: number;
+    grant?: number;
+    left?: number | null;
+    unlimited: boolean;
+    warn?: boolean;
+    usd_cny?: number;
+    allowance_cny?: number;
+    invite_bonus_cny?: number;
+    contribute_bonus_cny?: number;
+    contribute_bonus_available?: boolean;
+    own_key_docs?: string;
+    daily_cap: number;
+    credit_left?: number;
+    left_today?: number | null;
+  };
+  /** Relay 0.4/0.5: the account's invite code and what came of it (`earned_cny` since 0.5). */
+  invite?: { code: string; url: string; invites: number; bonus_cny: number; earned_cny?: number; friends: Array<{ hint: string; joined_at: number }> };
+  /** Relay 0.4/0.5: the co-creation programme — whether this account contributes its chat turns, how many so far, and the one-time bonus. */
+  contribute?: { on: boolean; samples: number; bonus_cny?: number; bonus_available?: boolean; bonus_at?: number | null };
+  /** Relay 0.4 counted clips; 0.5 no longer does (always unlimited here). */
+  clips?: { unlimited: boolean; allowed: number | null; used: number; left: number | null; per_face: number };
   models?: Array<{ id: string; name?: string; nanomuse?: { kind?: string; recommended?: boolean } }>;
 }
 
@@ -390,7 +447,7 @@ export interface Status {
 
 export interface Profile {
   name: string;
-  /** One of the plush dolls (see avatars.ts), or "" for the emoji on a colour. */
+  /** "dragon", the id of a face drawn in the avatar studio (see avatars.ts), or "" for the emoji on a colour. */
   avatar: string;
   emoji: string;
   color: string;
@@ -638,6 +695,10 @@ export interface ConnectionsData {
     from_app: boolean;
     /** the model is the nanoMuse Cloud account's */
     cloud?: boolean;
+    /** the avatar studio's picture model at the same host; "" = the runtime's pick */
+    image_model?: string;
+    /** the clip model at the same host; "" = the runtime's pick */
+    video_model?: string;
   };
   providers: Record<string, ProviderPreset>;
   /** Recall by meaning: memories embedded through an OpenAI-compatible /embeddings endpoint. */

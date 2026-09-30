@@ -37,9 +37,11 @@ CREATE TABLE IF NOT EXISTS accounts (
     invite_code   TEXT NOT NULL DEFAULT '',    -- what this person gives to friends (made on first ask)
     invited_by    TEXT NOT NULL DEFAULT '',    -- the account whose code was used at sign-up
     invites       INTEGER NOT NULL DEFAULT 0,  -- people who signed up with this account's code
-    credit_uy     INTEGER NOT NULL DEFAULT 0,  -- credit earned (invites, the operator), micro-yuan
-    credit_used_uy INTEGER NOT NULL DEFAULT 0, -- of which spent, beyond the daily cap
-    clips_bonus   INTEGER NOT NULL DEFAULT 0   -- video clips beyond the free allowance
+    credit_uy     INTEGER NOT NULL DEFAULT 0,  -- 0.4, unused since 0.5 (credit beyond a daily cap)
+    credit_used_uy INTEGER NOT NULL DEFAULT 0, -- 0.4, unused since 0.5
+    clips_bonus   INTEGER NOT NULL DEFAULT 0,  -- 0.4, unused since 0.5 (clips are not counted apart)
+    grant_uy      INTEGER NOT NULL DEFAULT 0,  -- 0.5: the lifetime pool, micro-yuan (allowance + invites + co-creation + operator)
+    contribute_bonus_at INTEGER                -- 0.5: when the one-time co-creation bonus was granted
 );
 -- accounts_invite_code (unique, partial) is made in _migrate(): the column is
 -- added there on databases from before 0.4, and an index in this script would
@@ -145,6 +147,9 @@ class Database:
         self._conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
         self._conn.row_factory = sqlite3.Row
         self._lock = threading.RLock()
+        # columns this open added to an older file ("accounts.grant_uy"): the service seeds
+        # what a column's default cannot know (see seed_grants)
+        self.added: set[str] = set()
         with self._lock:
             # executescript commits on its own; keep it outside tx().
             self._conn.execute("PRAGMA journal_mode=WAL")
@@ -157,6 +162,11 @@ class Database:
 
         def cols(table: str) -> set[str]:
             return {r["name"] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
+
+        def add(table: str, col: str, ddl: str) -> None:
+            if col not in cols(table):
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
+                self.added.add(f"{table}.{col}")
 
         if "identifier_enc" not in cols("accounts"):
             self._conn.execute("ALTER TABLE accounts ADD COLUMN identifier_enc TEXT NOT NULL DEFAULT ''")
@@ -197,6 +207,22 @@ class Database:
                 self._conn.execute(f"ALTER TABLE video_tasks ADD COLUMN {col} {ddl}")
         if "contribute" not in cols("accounts"):
             self._conn.execute("ALTER TABLE accounts ADD COLUMN contribute INTEGER NOT NULL DEFAULT 0")
+        # 0.5: one lifetime pool instead of a daily cap; the co-creation bonus, once
+        add("accounts", "grant_uy", "INTEGER NOT NULL DEFAULT 0")
+        add("accounts", "contribute_bonus_at", "INTEGER")
+
+    def seed_grants(self, allowance_uy: int) -> int:
+        """Accounts from before 0.5 start the new model with what they have spent so far plus
+        the allowance, and keep any 0.4 credit they had not used — nobody wakes up in debt or
+        loses what an invite earned. Returns how many accounts were seeded."""
+        with self.tx() as c:
+            cur = c.execute(
+                """UPDATE accounts SET grant_uy = ? + MAX(0, credit_uy - credit_used_uy)
+                     + (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l WHERE l.account_id=accounts.id AND l.cost_uy>0)
+                   WHERE grant_uy = 0""",
+                (max(0, int(allowance_uy)),),
+            )
+            return int(cur.rowcount or 0)
 
     @contextmanager
     def tx(self):
@@ -268,19 +294,34 @@ class Database:
         return str(uuid.uuid4())
 
     def create_account(
-        self, id_hash: str, channel: str, hint: str, grant: int, identifier_enc: str = "", account_id: str | None = None
+        self,
+        id_hash: str,
+        channel: str,
+        hint: str,
+        grant: int,
+        identifier_enc: str = "",
+        account_id: str | None = None,
+        grant_uy: int = 0,
     ) -> sqlite3.Row:
+        """`grant` is the token grant of old (0 = none); `grant_uy` the money the account
+        starts with (0.5), written to the ledger as the first line of its statement."""
         account_id = account_id or self.new_account_id()
         t = now()
+        grant_uy = max(0, int(grant_uy))
         with self.tx() as c:
             c.execute(
-                "INSERT INTO accounts(id, id_hash, channel, hint, created_at, granted, identifier_enc) VALUES (?,?,?,?,?,?,?)",
-                (account_id, id_hash, channel, hint, t, grant, identifier_enc),
+                "INSERT INTO accounts(id, id_hash, channel, hint, created_at, granted, identifier_enc, grant_uy) VALUES (?,?,?,?,?,?,?,?)",
+                (account_id, id_hash, channel, hint, t, grant, identifier_enc, grant_uy),
             )
             if grant:
                 c.execute(
                     "INSERT INTO ledger(account_id, ts, kind, charged) VALUES (?,?,?,?)",
                     (account_id, t, "grant", -grant),
+                )
+            if grant_uy:
+                c.execute(
+                    "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
+                    (account_id, t, "credit", 0, json.dumps({"credit_uy": grant_uy, "from": "signup"})),
                 )
         return self.account(account_id)  # type: ignore[return-value]
 
@@ -386,37 +427,44 @@ class Database:
                 return False
             return cur.rowcount == 1
 
-    def record_invite(self, inviter_id: str, invitee_id: str, bonus_uy: int, clips: int) -> None:
-        """A new account signed up with the inviter's code: the inviter earns the bonus."""
+    def record_invite(self, inviter_id: str, invitee_id: str, bonus_uy: int) -> None:
+        """A new account signed up with the inviter's code: the inviter's pool grows by the bonus."""
         t = now()
+        bonus_uy = max(0, int(bonus_uy))
         with self.tx() as c:
             c.execute("UPDATE accounts SET invited_by=? WHERE id=? AND invited_by=''", (inviter_id, invitee_id))
-            c.execute(
-                "UPDATE accounts SET invites=invites+1, credit_uy=credit_uy+?, clips_bonus=clips_bonus+? WHERE id=?",
-                (max(0, int(bonus_uy)), max(0, int(clips)), inviter_id),
-            )
+            c.execute("UPDATE accounts SET invites=invites+1, grant_uy=grant_uy+? WHERE id=?", (bonus_uy, inviter_id))
             c.execute(
                 "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
-                (inviter_id, t, "credit", 0, json.dumps({"credit_uy": int(bonus_uy), "clips": int(clips), "from": "invite"})),
+                (inviter_id, t, "credit", 0, json.dumps({"credit_uy": bonus_uy, "from": "invite", "friend": invitee_id[:8]})),
             )
 
-    def add_credit(self, account_id: str, credit_uy: int, clips: int = 0, note: str = "") -> None:
+    def add_credit(self, account_id: str, credit_uy: int, note: str = "") -> None:
         """Credit from the operator — a merged pull request, a good issue, a hand at a bad day."""
+        credit_uy = max(0, int(credit_uy))
         with self.tx() as c:
-            c.execute(
-                "UPDATE accounts SET credit_uy=credit_uy+?, clips_bonus=clips_bonus+? WHERE id=?",
-                (max(0, int(credit_uy)), max(0, int(clips)), account_id),
-            )
+            c.execute("UPDATE accounts SET grant_uy=grant_uy+? WHERE id=?", (credit_uy, account_id))
             c.execute(
                 "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
-                (
-                    account_id,
-                    now(),
-                    "credit",
-                    0,
-                    json.dumps({"credit_uy": int(credit_uy), "clips": int(clips), "from": "operator", "note": note[:200]}),
-                ),
+                (account_id, now(), "credit", 0, json.dumps({"credit_uy": credit_uy, "from": "operator", "note": note[:200]})),
             )
+
+    def grant_contribute_bonus(self, account_id: str, bonus_uy: int) -> bool:
+        """The co-creation bonus, once per account: False when it was granted before."""
+        bonus_uy = max(0, int(bonus_uy))
+        t = now()
+        with self.tx() as c:
+            cur = c.execute(
+                "UPDATE accounts SET grant_uy=grant_uy+?, contribute_bonus_at=? WHERE id=? AND contribute_bonus_at IS NULL",
+                (bonus_uy, t, account_id),
+            )
+            if not cur.rowcount:
+                return False
+            c.execute(
+                "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
+                (account_id, t, "credit", 0, json.dumps({"credit_uy": bonus_uy, "from": "contribute"})),
+            )
+        return True
 
     def invitees(self, inviter_id: str, limit: int = 50) -> list[sqlite3.Row]:
         with self._lock:
@@ -424,21 +472,6 @@ class Database:
                 "SELECT id, hint, created_at FROM accounts WHERE invited_by=? ORDER BY created_at DESC LIMIT ?",
                 (inviter_id, limit),
             ).fetchall()
-
-    def video_clips_used(self, account_id: str, pending_since: int) -> int:
-        """Clips this account has had: the ones charged (the ledger keeps them for
-        good) plus the tasks still running, so a burst of submissions cannot
-        outrun the count. Probes and failed tasks are not clips."""
-        with self._lock:
-            done = self._conn.execute(
-                "SELECT COUNT(*) FROM ledger WHERE account_id=? AND kind='video' AND charged>=0", (account_id,)
-            ).fetchone()
-            pending = self._conn.execute(
-                "SELECT COUNT(*) FROM video_tasks WHERE account_id=? AND charged=0 AND probe=0 "
-                "AND status NOT IN ('FAILED','CANCELED','UNKNOWN') AND created_at>=?",
-                (account_id, pending_since),
-            ).fetchone()
-        return int(done[0]) + int(pending[0])
 
     # -- passwords -----------------------------------------------------------------
 
@@ -517,7 +550,7 @@ class Database:
             return self._conn.execute(
                 "SELECT k.*, a.disabled AS account_disabled, a.granted, a.used, a.channel, a.hint, a.created_at AS account_created_at, "
                 "a.id_hash, a.unlimited AS account_unlimited, a.password_hash, a.password_set_at, "
-                "a.invite_code, a.invites, a.credit_uy, a.credit_used_uy, a.clips_bonus, a.contribute "
+                "a.invite_code, a.invites, a.grant_uy, a.contribute_bonus_at, a.contribute "
                 "FROM api_keys k JOIN accounts a ON a.id=k.account_id WHERE k.key_hash=?",
                 (key_hash,),
             ).fetchone()
@@ -604,15 +637,11 @@ class Database:
         request_id: str,
         cost_uy: int = 0,
         extra: str = "",
-        cap_uy: int | None = None,
-        day_start: int = 0,
-    ) -> int:
-        """Record one request. With `cap_uy` (the daily cap of a capped account),
-        whatever part of this cost lies beyond today's cap is drawn from the
-        account's credit; returns that part (0 for members and cheap days)."""
+    ) -> None:
+        """Record one request: the tokens on the account, the line in the ledger. What the
+        account has spent is always the ledger's sum, so there is nothing else to keep."""
         charged = max(0, int(charged))
         cost_uy = max(0, int(cost_uy))
-        from_credit = 0
         with self.tx() as c:
             c.execute("UPDATE accounts SET used=used+? WHERE id=?", (charged, account_id))
             c.execute(
@@ -620,19 +649,6 @@ class Database:
                 "VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (account_id, now(), kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy, extra or ""),
             )
-            if cap_uy is not None and cost_uy > 0:
-                spent = c.execute(
-                    "SELECT COALESCE(SUM(cost_uy),0) FROM ledger WHERE account_id=? AND ts>=? AND cost_uy>0",
-                    (account_id, day_start),
-                ).fetchone()[0]
-                over = min(cost_uy, int(spent) - cap_uy)
-                if over > 0:
-                    row = c.execute("SELECT credit_uy, credit_used_uy FROM accounts WHERE id=?", (account_id,)).fetchone()
-                    left = max(0, int(row["credit_uy"]) - int(row["credit_used_uy"])) if row else 0
-                    from_credit = min(over, left)
-                    if from_credit:
-                        c.execute("UPDATE accounts SET credit_used_uy=credit_used_uy+? WHERE id=?", (from_credit, account_id))
-        return from_credit
 
     USAGE_KINDS = ("chat", "image", "video", "realtime")
 
@@ -687,6 +703,50 @@ class Database:
         with self._lock:
             r = self._conn.execute("SELECT COUNT(*) FROM accounts WHERE created_at>=?", (since,)).fetchone()
         return int(r[0])
+
+    # -- the operator's time series ----------------------------------------------------
+
+    _DAY = "((ts + ?) - (ts + ?) % 86400 - ?)"
+
+    def events_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        """How many events of each kind per local day since `since`."""
+        with self._lock:
+            return self._conn.execute(
+                f"SELECT {self._DAY} AS day, kind, COUNT(*) AS n FROM events WHERE ts>=? GROUP BY day, kind",
+                (day_offset_s, day_offset_s, day_offset_s, since),
+            ).fetchall()
+
+    def accounts_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute(
+                f"SELECT {self._DAY.replace('ts', 'created_at')} AS day, COUNT(*) AS n FROM accounts WHERE created_at>=? GROUP BY day",
+                (day_offset_s, day_offset_s, day_offset_s, since),
+            ).fetchall()
+
+    def active_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        """Accounts that made at least one charged call, per local day."""
+        with self._lock:
+            return self._conn.execute(
+                f"""SELECT {self._DAY} AS day, COUNT(DISTINCT account_id) AS n FROM ledger
+                    WHERE ts>=? AND kind IN ('chat','image','video','realtime') GROUP BY day""",
+                (day_offset_s, day_offset_s, day_offset_s, since),
+            ).fetchall()
+
+    def devices_by_kind_os(self) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute("SELECT kind, os, COUNT(*) AS n FROM devices GROUP BY kind, os ORDER BY n DESC").fetchall()
+
+    def invite_funnel(self) -> dict[str, int]:
+        """Who asked for a code, whose code brought someone, who came through one."""
+        with self._lock:
+            r = self._conn.execute(
+                """SELECT SUM(CASE WHEN invite_code<>'' THEN 1 ELSE 0 END) AS with_code,
+                          SUM(CASE WHEN invites>0 THEN 1 ELSE 0 END) AS inviters,
+                          SUM(CASE WHEN invited_by<>'' THEN 1 ELSE 0 END) AS invited,
+                          SUM(CASE WHEN contribute_bonus_at IS NOT NULL THEN 1 ELSE 0 END) AS contribute_bonuses
+                   FROM accounts"""
+            ).fetchone()
+        return {k: int(r[k] or 0) for k in ("with_code", "inviters", "invited", "contribute_bonuses")}
 
     def account_counts(self) -> dict[str, int]:
         with self._lock:

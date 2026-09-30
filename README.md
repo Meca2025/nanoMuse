@@ -5,21 +5,44 @@
 <h1 align="center">nanoMuse</h1>
 
 <p align="center">A fully open-source, Muse-style personal agent for every device you own.</p>
-<p align="center"><b>Free · open source · non-profit</b> — <a href="#free-open-source-non-profit--lets-build-it-together">how it is paid for, and how to help</a></p>
+<table align="center"><tr><td>
+
+### [Free, open source, non-profit — open source, built together: a personal agent for all](https://nanomuse.cn/#open-source)
+
+**nanoMuse is a non-profit open-source community project — free, forever.** Sign in with an e-mail and the model comes with a free allowance: **¥10 per account**, paid by the developer; **invite a friend for ¥5 more, join the co-creation programme for ¥10 more**; when it is gone, use your own key ([Alibaba Cloud Bailian is a good start](docs/own-key.md)). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.
+
+Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach. **[Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Ask or show in Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Send a pull request](CONTRIBUTING.md) · [Star the repo](https://github.com/nano-muse/nanoMuse)** — details: [docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md).
+
+</td></tr></table>
 
 <div align="center">
   <p>
     <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
     <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh.md">简体中文</a> |
+    <a href="https://nanomuse.cn/web/"><b>Try in the browser</b></a> |
     <a href="https://nanomuse.cn/">Website</a> |
     <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Download</a>
   </p>
   <p>
     <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/v/release/nano-muse/nanoMuse?include_prereleases&label=release" alt="Latest release"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/badge/Android-8.0%2B%20arm64-3DDC84?logo=android&logoColor=white" alt="Android 8.0+ arm64"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android build"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="Release downloads"></a>
     <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse" alt="GPL-3.0-or-later"></a>
     <a href="https://github.com/nano-muse/nanoMuse"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&logo=github" alt="GitHub stars"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/discussions"><img src="https://img.shields.io/badge/Discussions-ask%20%26%20share-0a66e4?logo=github&logoColor=white" alt="GitHub Discussions"></a>
+  </p>
+  <p>
+    <a href="https://nanomuse.cn/#dl-web"><img src="https://img.shields.io/badge/Web-nanomuse.cn%2Fweb-0a66e4?logo=googlechrome&logoColor=white" alt="Web: nanomuse.cn/web"></a>
+    <a href="https://nanomuse.cn/#dl-phone"><img src="https://img.shields.io/badge/Android-8.0%2B%20arm64-3DDC84?logo=android&logoColor=white" alt="Android 8.0+ arm64"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white" alt="Windows x64"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS Apple Silicon and Intel"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20.deb-FCC624?logo=linux&logoColor=black" alt="Linux AppImage and .deb"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse"><img src="https://img.shields.io/badge/Docker-ghcr.io%2Fnano--muse%2Fnanomuse-2496ED?logo=docker&logoColor=white" alt="Docker image"></a>
+  </p>
+  <p>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android build"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml/badge.svg?branch=main" alt="Desktop app build"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml/badge.svg?branch=main" alt="Docker image build"></a>
   </p>
 </div>
 
@@ -36,13 +59,9 @@ nanoMuse is a fully open-source, Muse-style personal agent for every device you 
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar: describe a look, your image model draws it, pick the one you like">
 </p>
 
-> ### Free, open source, non-profit — let's build it together
-> **nanoMuse is a non-profit open-source community project — free, forever.** Sign in with an e-mail and use the model for free: about **¥15 a day** per account, paid by the developer; **invite a friend and you get ¥3 more.** Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like, or use your own API key.
->
-> Found a bug, want a feature, or wrote a fix? **[Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Send a pull request](CONTRIBUTING.md) · [Star the repo](https://github.com/nano-muse/nanoMuse)** — every one of them moves the project. Details: [docs/cloud.md](docs/cloud.md) · [docs/privacy.md](docs/privacy.md).
-
 ## News
 
+- **2026-09-30 · 0.1.23 “Welcome”** — The version before we tell people about it: one allowance that lasts (¥10 for good, +¥5 an invitation, +¥10 for joining the co-creation programme) and three ways on when it is spent, with a step-by-step guide to your own key; two short steps after a new account; the avatar studio on the web and the desktop; a desktop app laid out like one; a computer that joins by signing in with the same account; a download mirror at nanomuse.cn/dl for China; the operator's page with the site's visits and downloads counted without addresses; Discussions open. [Release notes](docs/releases/v0.1.23.md).
 - **2026-09-30 · 0.1.22 “Commons”** — Easier to trust, cheaper to run, simpler to join: the free / open-source / non-profit notice first everywhere; ¥15 a day with picture and clip models five times cheaper and a cost check before a face is drawn; invite a friend for ¥3 of credit and more clips; sign-in by e-mail; the calls gone and a microphone back on the web and the desktop; *Contribute conversations*, off by default, for a model the community trains itself; the desktop app installing on macOS and Windows; a light running round the stage. [Release notes](docs/releases/v0.1.22.md).
 - **2026-09-30 · 0.1.21 “Footing”** — Nothing new to demonstrate, a great deal more to trust: a pass over the runtime, the relay, the web app, the desktop, the phone and the docs. Failures said in one sentence with the detail folded away; nanoMuse Cloud offered by name as a model; a refused request or a retried clip counted once; the relay's admin token compared in constant time and its picture fetches kept to the provider's hosts; the phone's pairing tokens in the encrypted store and out of backups; the web app connecting, retrying and keeping your draft; the desktop app restarting a runtime that died, with About and Check for updates; a `pipx`/Docker runtime noticing a newer release; the docs describing the app you download. [Release notes](docs/releases/v0.1.21.md).
 - **2026-09-30 · 0.1.20 “Presence”** — Call your Muse, by voice or with the camera on, and it answers in its voice while you are still talking; your Cursor, Codex and Claude Code sessions seen and steered from the phone, the browser or another computer; the account at the front door of every app with a password, its sign-ins and its history, and usage by kind and by model; one design language — the phone's — on the web, the desktop, the console and the operator's page, and a finer stage over the screen while the hands work. [Release notes](docs/releases/v0.1.20.md).
@@ -68,11 +87,11 @@ How this compares with Muse and with OpenMinis, the runtime the app is built on:
 
 ## Install
 
-Nothing to install: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/) with an e-mail and a code and you get a nanoMuse of your own on the project's server, kept between visits. For your own devices — the [downloads](https://nanomuse.cn/#download): the Android APK, the desktop app for Windows, macOS and Linux (`nanoMuse-Desktop-<version>-…`), the terminal binary (`nanomuse-desktop-terminal-<version>-…`), or `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+; [docs/desktop.md](docs/desktop.md) and [docs/every-device.md](docs/every-device.md) say how they meet. On the phone:
+Nothing to install: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/) with an e-mail and a code and you get a nanoMuse of your own on the project's server, kept between visits. For your own devices — the [downloads](https://nanomuse.cn/#download): the Android APK, the desktop app for Windows, macOS and Linux (`nanoMuse-Desktop-<version>-…`), the terminal binary (`nanomuse-desktop-terminal-<version>-…`), or `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+; when GitHub is slow where you are, the same files are on the project's mirror at [nanomuse.cn/dl](https://nanomuse.cn/dl/) (synced within fifteen minutes of a release, SHA-256 checked); [docs/desktop.md](docs/desktop.md) and [docs/every-device.md](docs/every-device.md) say how they meet. On the phone:
 
 1. Download `nanoMuse-<version>-arm64.apk` from the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 or newer, a 64-bit phone. Verify with `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` if you like.
 2. Open it. Android asks once to allow the install; every version is signed with the same key, so updates install over the previous one and keep your data.
-3. Connect a model. *Sign in with e-mail — free*: an e-mail address, a code, and the agent has free model access on [nanoMuse Cloud](docs/cloud.md) — about ¥15 a day (¥3 more for each friend you invite), no key needed, nothing to pay. Or bring your own: any OpenAI-compatible endpoint with your key, or one of the OAuth sign-ins the app ships with. Then, if you like, the two permissions that let the agent use your phone's apps (skippable), and the first conversation, which asks what to call you and lets the agent pick its own name.
+3. Connect a model. *Sign in with e-mail — free*: an e-mail address, a code, and the agent has a free allowance on [nanoMuse Cloud](docs/cloud.md) — ¥10 per account, ¥5 more for each friend you invite, ¥10 more for joining the co-creation programme — no key needed, nothing to pay. When it is gone, bring your own: [Alibaba Cloud Bailian](docs/own-key.md) in about two minutes, any OpenAI-compatible endpoint with your key, or one of the OAuth sign-ins the app ships with. Then, if you like, the two permissions that let the agent use your phone's apps (skippable), and the first conversation, which asks what to call you and lets the agent pick its own name.
 4. Optional — *Settings → Image & video models*: an image model (qwen-image-3.0 on Alibaba Cloud Model Studio, gpt-image-1, or any provider with the OpenAI images endpoint) lets the agent change its look and draw pictures; a video model (wan2.2-i2v-flash on Model Studio) makes the look move. Muse has these built in; nanoMuse uses your own, and the agent tells you when one is missing.
 
 The app checks this repository's releases for updates. Release notes for each version are in [docs/releases/](docs/releases/) and the [CHANGELOG](CHANGELOG.md).
@@ -134,6 +153,7 @@ One small version per stage, each a GitHub release with an APK. The plan and its
 | [0.1.20](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.20) | Presence | Calls with the Muse — voice and video, in real time, through the account or your own key; the coding agents on your computer steered from any device; the account first, with a password, sign-ins, history and usage by kind and model; the phone's design on the web, the desktop, the console and the operator's page; a finer stage |
 | [0.1.21](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.21) | Footing | A pass over every part: failures in one sentence, the Cloud as a named model, money counted once, admin token and picture fetches hardened, secrets on the phone encrypted and out of backups, a web app that connects, retries and keeps drafts, a desktop app that restarts its runtime with About and Check for updates, a runtime that notices a newer release, docs that describe what ships |
 | [0.1.22](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.22) | Commons | The notice first; ¥15 a day with cheaper picture and clip models and a cost check before a face; invitations worth ¥3 and clips; e-mail sign-in; calls removed, a microphone on the web and the desktop; opt-in contributed conversations; the desktop app installing on macOS and Windows; a running light round the stage |
+| [0.1.23](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.23) | Welcome | One allowance for good (¥10, +¥5 an invitation, +¥10 for co-creation) and three ways on when it is spent; password and co-creation steps after sign-up; the avatar studio on the web and the desktop; the desktop laid out like a desktop app; a computer joins by signing in; the download mirror for China; the operator's site statistics; Discussions |
 | 0.2.0 | Beta | Polish from the first weeks of use across devices; iOS; the first beta |
 
 **After that**, in order: iOS; the web version on a machine of your own — a VM, a home server — with the same gateway; glasses. Each device you add is one more pair of hands and one more front door for the same agent. The Python line this project started with — the agent and its Sentinel, the web app, the simulated phone — is frozen at tag [`pre-openminis`](https://github.com/nano-muse/nanoMuse/releases/tag/pre-openminis) with its docs under [docs/](docs/), and is the base of the desktop and web front doors.
@@ -147,7 +167,7 @@ One small version per stage, each a GitHub release with an APK. The plan and its
 | Shape | One agent with a name and a look of its own, a feed, goals, a Sentinel | Sessions, tools and settings — a workbench | One agent, a name and a look of its own, a first conversation, a feed, goals on a schedule, memory you can edit |
 | Before something irreversible | The Sentinel model approves | Per-tool permissions | `RiskGate` stops the call: allow once, this chat, always for this recipient / domain / folder, or deny; passwords and codes are never typed by the agent |
 | Apps without an API | Out of reach — the VM has a browser, never your phone | An accessibility CLI (`android-a11y-cli`) the model can call on Android | The screen as a first-class hand: screenshots only, a ladder that tries APIs first, a take-over for logins, the same approvals — since 0.1.12 |
-| Other devices | Many clients of one VM; the VM does not touch your devices | The one device it is installed on | One agent across your devices: the phone drives your PC since 0.1.13 (`host/nanomuse_host.py`, paired by code), then every device, both ways |
+| Other devices | Many clients of one VM; the VM does not touch your devices | The one device it is installed on | One agent across your devices: install the desktop app, sign in with the same account, and the phone drives the PC from any network — and every device the others, both ways (`host/nanomuse_host.py` pairing by code stays as the no-account fallback) |
 | Avatar | A plush figure that changes pose while it works | — | A look your image model draws and poses, a looping clip per state from your video model; a small dragon, already moving, by default |
 | Models | Meta's | Bring your own | Bring your own — a chat, an image and a video model, or one Model Studio key for all three; the OAuth sign-ins OpenMinis ships with stay |
 | Licence | Closed | GPL-3.0 | GPL-3.0-or-later, built on OpenMinis — with thanks; upstream releases can still be merged |

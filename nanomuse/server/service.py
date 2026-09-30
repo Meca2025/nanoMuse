@@ -24,6 +24,7 @@ from typing import Any
 from nanomuse import __version__, prompts
 from nanomuse.agent import Incoming, MuseAgent
 from nanomuse.app import NanoMuseApp
+from nanomuse.avatar import AvatarStudio
 from nanomuse.bridge.server import Bridge
 from nanomuse.coding.service import CodingService
 from nanomuse.config import Settings
@@ -138,9 +139,9 @@ _QUIET_HOURS_RE = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)-([01]?\d|2[0-3]):([0-
 @dataclass
 class Profile:
     name: str = "nanoMuse"
-    # the face: "dragon" (the one the Android app wears; stills per mood), "panda" (the red
-    # panda the app draws live), one of the plush dolls shipped with the app
-    # (web/public/avatars), or "" for the emoji
+    # the face: "dragon" (the one the Android app wears; stills per mood), a face drawn in
+    # the avatar studio (its id names files under the workspace), or "" for the emoji; the
+    # red panda and the dolls of 0.1.22 are gone — a profile naming one wears the dragon
     avatar: str = "dragon"
     emoji: str = "✨"
     color: str = "#0064d4"
@@ -346,6 +347,8 @@ class MuseService:
         self.connections = Connections(self)
         # this computer on the hub: the Cloud account, the other devices, their side chats
         self.hub = HubService(self)
+        # a new face from a description, drawn on the chat model's host (docs/avatar.md)
+        self.avatar = AvatarStudio(self)
         self.coding = CodingService(self)
         self.app.tools.add(CodingAgents(coding=self.coding))
         self.token = self._load_token()
@@ -400,6 +403,7 @@ class MuseService:
             t.timeline.flush()
         if self._started:
             await self.coding.close()
+            await self.avatar.close()
             await self.hub.stop()
             await self.connections.close()
             await self.app.close()
@@ -709,6 +713,10 @@ class MuseService:
             event = self.ui.emit(event_data)
             self.bus.publish({"kind": "thread", "thread": thread.meta()})
             if not attachments and self.ui.answer_question(thread_id, text):
+                return event
+            # nanoMuse: a request for a new look (or the pick among four candidates) is the
+            # studio's, not the agent's — the card in the chat takes it from here
+            if source == "user" and not attachments and self.avatar.intercept(thread_id, text):
                 return event
         else:
             event = self.ui.emit(

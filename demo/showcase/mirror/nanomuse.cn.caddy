@@ -10,6 +10,19 @@ nanomuse.cn {
 	root * /srv/www/nanomuse.cn
 	encode zstd gzip
 
+	# the access log, for the daily counts traffic.py keeps (visits, downloads, referrers): JSON
+	# lines, rolled at 20 MB, kept a week and no longer. docker-compose.yml mounts logs/caddy here.
+	# Rolled files stay uncompressed so traffic.py can finish reading one by its inode.
+	log {
+		output file /var/log/caddy/nanomuse.cn.log {
+			roll_size 20MiB
+			roll_keep 20
+			roll_keep_for 168h
+			roll_uncompressed
+		}
+		format json
+	}
+
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
@@ -26,6 +39,17 @@ nanomuse.cn {
 	@web path /web /web/* /api/web/*
 	handle @web {
 		reverse_proxy gateway:8000
+	}
+
+	# the release mirror (release-sync.py): the newest releases' packages, for a download that
+	# does not have to reach GitHub. Whole files as they are — no compression to get in the way
+	# of a resumed download — with a listing, since the names carry the version.
+	handle_path /dl/* {
+		root * /srv/www/dl
+		@dot path /.*
+		respond @dot 404
+		header Cache-Control "public, max-age=3600"
+		file_server browse
 	}
 
 	# pages: ten minutes, like GitHub Pages; assets are replaced in place across versions, so a day

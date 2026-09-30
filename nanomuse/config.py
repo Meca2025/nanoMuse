@@ -60,6 +60,11 @@ class LLMSettings(BaseModel):
     # Send `reasoning_content` back with assistant messages (DeepSeek thinking-mode
     # tool calling wants this on some endpoints).
     pass_reasoning: bool = False
+    # The models that draw and animate the agent's face (the avatar studio), on the same
+    # host and key as the chat model. Empty: the relay's image model when the account is the
+    # provider, qwen-image-3.0 on Alibaba Cloud Model Studio, none elsewhere.
+    image_model: str = ""
+    video_model: str = ""
     extra_headers: dict[str, str] = Field(default_factory=dict)
     extra_body: dict[str, Any] = Field(default_factory=dict)
 
@@ -656,6 +661,10 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
         for key in ("provider", "model", "base_url", "api_key", "tool_mode", "vision"):
             if key in llm and llm[key] not in (None, ""):
                 setattr(settings.llm, key, llm[key])
+        for key in ("image_model", "video_model"):
+            # "" is meaningful here: back to the automatic choice
+            if key in llm and llm[key] is not None:
+                setattr(settings.llm, key, str(llm[key]).strip())
         if settings.llm.base_url:
             settings.llm.base_url = settings.llm.base_url.rstrip("/")
     if emb := data.get("embeddings"):

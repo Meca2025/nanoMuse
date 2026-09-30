@@ -1,6 +1,6 @@
 # nanoMuse Cloud
 
-The "start now" path: sign up with an e-mail address, get a daily allowance,
+The "start now" path: sign up with an e-mail address, get a free allowance,
 and use nanoMuse without an API key of your own.
 Bringing your own key still works exactly as before — this is one more
 provider, not a replacement.
@@ -24,7 +24,7 @@ runtime). After the code the app has:
 masked hint, never the number) and since when; sets, changes or removes the
 **password** (eight characters or more; scrypt on the relay; locked for a while
 after repeated wrong attempts, and a fresh code sign-in unlocks it); today's
-spend against the daily allowance in ¥ and $ with a meter; **usage by kind** —
+spend against the allowance in ¥ and $ with a meter; **usage by kind** —
 chat, pictures, video — today and in all, and **by model**; the
 **sign-ins** — every device holding a key, how it signed in (code or password),
 when it was last used — each revocable; the account's own **history** (sign-ins,
@@ -82,16 +82,17 @@ does not know where anyone is: the apps never send a location, and IP
 addresses are not recorded.
 
 nanoMuse is a community project and charges nothing. The public relay at
-`cloud.nanomuse.cn` is paid for by the developer, so it has a daily cap:
+`cloud.nanomuse.cn` is paid for by the developer, so each account has a pool
+to draw on — for its lifetime, not by the day (relay 0.5):
 
 | | `cloud.nanomuse.cn` |
 |---|---|
 | sign-up | open to anyone with an e-mail address |
-| daily allowance | **¥15 a day** per account, across chat, pictures and clips |
-| invitations | each friend who signs up with your code: **¥3 of credit** (spent once the day's cap is used up, never expires) and 4 more video clips for you |
-| video clips | 4 per account — one animated face — plus 4 per invitation; members: no limit |
-| the day turns | midnight Beijing time (UTC+8) |
-| members | the developer and the people they list have no cap |
+| free allowance | **¥10 per account**, across chat, pictures and clips; it does not reset |
+| invitations | each *new* person who signs up with your code adds **¥5** to your pool |
+| co-creation programme | joining (*Contribute conversations*, off by default) adds **¥10** once |
+| when it is gone | bring your own key — [Alibaba Cloud Bailian in about two minutes](own-key.md), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
+| members | the developer and the people they list have no limit |
 | rate | 30 requests per minute |
 | tokens | no ceiling; usage is metered and shown |
 
@@ -99,17 +100,19 @@ Spend is counted at the model provider's list prices (Alibaba Cloud Model
 Studio, Beijing region, September 2026): `qwen3.8-27b` ¥3 in / ¥12 out per
 million tokens, `qwen3.8-flash` ¥0.8 / ¥2.7, `qwen-image-3.0` ¥0.18 a
 picture, `wan2.2-i2v-flash` ¥0.10 a second of video at 480P (a 5-second clip
-is ¥0.50). A typical day of chatting costs a few fen; ¥15 is roughly a
-million tokens of the 27B model or eighty pictures. A new face — four
-candidates, four poses and four clips — comes to about ¥3.5, and the app
-shows the estimate and what is left today before it draws.
+is ¥0.50). A typical day of chatting costs a few fen; ¥10 is roughly
+seven hundred thousand tokens of the 27B model or fifty pictures. A new face —
+four candidates, four poses and four clips — comes to about ¥3.5, and the app
+shows the estimate and what is left before it draws.
 
-*Settings → nanoMuse Cloud* shows today's spend against the cap in ¥ and $, and
-the total so far. When the day's allowance is used up the app says so
-(`daily_cap`); invite a friend for ¥3 of credit, switch to your own key under
-*Settings → Providers* to keep going right away, or wait for midnight. Other relays may set other rules
-(`DAILY_CAP_CNY`, `SIGNUP_OPEN`, `ALLOWED_IDENTIFIERS`; see
-[`cloud/README.md`](../cloud/README.md)).
+*Settings → nanoMuse Cloud* shows what was used of the pool in ¥ and $, what
+is left, and how the pool grows. At 80 % the app says so once; when the pool
+is spent the relay refuses with `allowance_exhausted` and the app shows the
+three ways on: your own key (Alibaba Cloud Bailian first — the provider form
+opens pre-filled, [guide](own-key.md)), an invitation (+¥5 a head), or the
+co-creation programme (+¥10, once). Other relays may set other rules
+(`ALLOWANCE_CNY`, `INVITE_BONUS_CNY`, `CONTRIBUTE_BONUS_CNY`, `SIGNUP_OPEN`,
+`ALLOWED_IDENTIFIERS`; see [`cloud/README.md`](../cloud/README.md)).
 
 ## Running your own
 

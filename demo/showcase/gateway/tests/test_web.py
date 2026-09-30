@@ -175,7 +175,7 @@ async def test_an_invite_code_is_passed_on_to_the_relay(web):
     async with app.router.lifespan_context(app):
         c = await client_for(app)
         r = await c.get("/web/?invite=abcd2345")
-        assert r.status_code == 200 and 'id="invite"' in r.text and "¥15" in r.text
+        assert r.status_code == 200 and 'id="invite"' in r.text and "¥10" in r.text and "+¥5" in r.text
         assert "mobile number" not in r.text  # e-mail only on the page
         r = await c.post("/api/web/code", json={"identifier": "invited@example.com"})
         assert r.status_code == 204

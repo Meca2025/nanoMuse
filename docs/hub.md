@@ -15,9 +15,12 @@ web  ───┘        /v1/hub          └── another phone / computer
 Every device opens one outbound WebSocket to the relay and keeps it. Nothing
 listens on the device, nothing needs a port forwarded or a shared Wi-Fi; the
 relay only routes frames between devices of one account and never looks inside
-a task. Pairing over the local network (`host/nanomuse_host.py`) still works and
-needs no relay at all; the hub is what makes the same commands work from the
-train.
+a task. This is the way to add a computer: install nanoMuse Desktop on it and
+sign in with the same account — nothing to download by hand, no code to type.
+Pairing over the local network (`host/nanomuse_host.py`, under *Computers → Pair
+over the local network* on the phone) is the fallback for a computer that has no
+account: it needs no relay at all, but only works on the same Wi-Fi, has no
+notifications and cannot take a whole task.
 
 ## What you can say
 

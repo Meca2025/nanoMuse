@@ -4,13 +4,13 @@
     POST /v1/auth/verify      {identifier, code, device, invite?} → {api_key, base_url, account, tokens, models}
     POST /v1/auth/login       {identifier, password, device}    → the same, for accounts that set a password
     POST /v1/auth/password    {password, current?}              → 204 (set / change; "" + current removes)
-    GET  /v1/me                                                 → account, tokens, spend (¥ today / cap / credit), invite, clips, usage by kind, models, recent
-    GET  /v1/me/invite                                          → the invite code and link, who came with it, the credit earned
-    GET  /v1/estimate         ?images=5&clips=4                 → what that would cost next to what is left today (nothing charged)
+    GET  /v1/me                                                 → account, tokens, spend (¥ spent / pool / left), invite, contribute, usage by kind, models, recent
+    GET  /v1/me/invite                                          → the invite code and link, who came with it, what they brought
+    GET  /v1/estimate         ?images=5&clips=4                 → what that would cost next to what is left (nothing charged)
     GET  /v1/me/sessions                                        → live sign-ins (device, via, when; the current one marked)
     DELETE /v1/me/sessions/{prefix}                             → 204 (sign one device out)
     GET  /v1/me/events                                          → the account's own timeline (sign-ins, password changes…)
-    POST /v1/me/contribute {on}                                 → keep my chat turns for the community's model (off by default)
+    POST /v1/me/contribute {on}                                 → join the co-creation programme: keep my chat turns for the community's model (off by default; +CONTRIBUTE_BONUS_CNY once)
     DELETE /v1/me/samples                                       → delete everything I contributed
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
     POST /v1/auth/sign-out-all {all?}                           → {signed_out} (every other device; all=true takes this one too)
@@ -29,15 +29,17 @@
     GET  /app/                                                  → the web console (static)
     GET  /app/admin/                                            → the operator's page (static; asks for the admin token)
     POST /v1/admin/grant      X-Admin-Token  {account_id | identifier, tokens}
-    POST /v1/admin/credit     X-Admin-Token  {account_id | identifier, cny, clips?, note?} → credit spent after the day's cap
+    POST /v1/admin/credit     X-Admin-Token  {account_id | identifier, cny, note?} → more into the account's pool
     POST /v1/admin/disable    X-Admin-Token  {account_id | identifier, disabled}
-    POST /v1/admin/unlimited  X-Admin-Token  {account_id | identifier, unlimited}  → a member: no daily cap
+    POST /v1/admin/unlimited  X-Admin-Token  {account_id | identifier, unlimited}  → a member: no limit
     POST /v1/admin/delete     X-Admin-Token  {account_id | identifier}
     GET  /v1/admin/accounts   X-Admin-Token                     → with identifiers in clear, tokens and money
     GET  /v1/admin/accounts/{id} X-Admin-Token ?days=30         → one account in full: usage by kind/model/day, sign-ins, devices, timeline
     GET  /v1/admin/usage      X-Admin-Token  ?days=14           → charged tokens and yuan per day and kind
     GET  /v1/admin/overview   X-Admin-Token  ?days=30           → the dashboard: accounts, today / week / period by kind and model, signals, events
     GET  /v1/admin/events     X-Admin-Token  ?limit=200&kind=…  → the timeline across accounts (never message content)
+    GET  /v1/admin/series     X-Admin-Token  ?days=30           → by day: sign-ins, new / active accounts, invites, co-creation joins; devices by kind and OS; nanoMuse Web's counts
+    GET  /v1/admin/traffic    X-Admin-Token  ?days=30           → the site: pages, visitors, downloads per file, referrers, GitHub stars and release downloads (TRAFFIC_DB)
     GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → contributed turns (opted-in accounts only)
     GET  /v1/admin/samples/export X-Admin-Token ?since=         → the same as JSON lines, without account ids
 
@@ -77,8 +79,12 @@ from .service import Caller, Cloud, CloudError, dumps, estimate_tokens, prompt_c
 log = logging.getLogger("nanomuse_cloud.api")
 
 
-def error_response(status: int, code: str, message: str) -> JSONResponse:
-    return JSONResponse(status_code=status, content={"error": {"message": message, "type": "nanomuse_cloud", "code": code}})
+def error_response(status: int, code: str, message: str, extra: dict | None = None) -> JSONResponse:
+    """OpenAI's error shape, so the apps' clients parse it, plus whatever fields the app can
+    act on (`allowance_exhausted` says what is left and where the three ways on lead)."""
+    return JSONResponse(
+        status_code=status, content={"error": {"message": message, "type": "nanomuse_cloud", "code": code, **(extra or {})}}
+    )
 
 
 # where the provider keeps the pictures it makes: its own API host and Alibaba Cloud OSS buckets
@@ -126,7 +132,7 @@ def create_app(
 
     @app.exception_handler(CloudError)
     async def _cloud_error(_: Request, e: CloudError) -> JSONResponse:
-        return error_response(e.status, e.code, e.message)
+        return error_response(e.status, e.code, e.message, e.extra)
 
     def client_ip(request: Request) -> str:
         fwd = request.headers.get("x-forwarded-for")
@@ -542,8 +548,6 @@ def create_app(
         probe = not body.get("input")
         clip_cost = 0 if probe else spec.video_cost_uy(_clip_seconds(body, spec))
         cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=clip_cost)
-        if not probe:
-            cloud.check_clips(caller)
         body["model"] = spec.upstream
         headers = upstream_headers()
         headers["X-DashScope-Async"] = "enable"
@@ -595,7 +599,6 @@ def create_app(
             raise CloudError(400, "bad_request", "action=getPolicy is the only upload call the relay makes")
         spec = cloud.model_for(request.query_params.get("model", ""), "video")
         cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=spec.video_cost_uy(spec.clip_seconds))
-        cloud.check_clips(caller)
         try:
             r = await http.get(
                 settings.dashscope_base.rstrip("/") + "/uploads",
@@ -666,6 +669,32 @@ def create_app(
         out["version"] = __version__
         return out
 
+    @app.get("/v1/admin/series", dependencies=[Depends(admin_dep)])
+    async def admin_series(days: int = 30) -> dict:
+        out = cloud.admin_series(max(1, min(days, 365)))
+        hub = getattr(app.state, "hub", None)
+        out["online_devices"] = hub.online_count() if hub is not None else 0
+        out["web"] = await web_info()
+        return out
+
+    async def web_info() -> dict | None:
+        """nanoMuse Web's counts from the gateway next door (WEB_INFO_URL); None when it
+        is not configured or does not answer — the panel then says so."""
+        if not settings.web_info_url:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as c:
+                r = await c.get(settings.web_info_url)
+                r.raise_for_status()
+                data = r.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    @app.get("/v1/admin/traffic", dependencies=[Depends(admin_dep)])
+    async def admin_traffic(days: int = 30) -> dict:
+        return cloud.admin_traffic(max(1, min(days, 365)))
+
     @app.get("/v1/admin/accounts/{account_id}", dependencies=[Depends(admin_dep)])
     async def admin_account(account_id: str, days: int = 30) -> dict:
         out = cloud.admin_account(account_id, max(1, min(days, 365)))
@@ -689,11 +718,19 @@ def create_app(
 
     @app.get("/v1/admin/samples/export", dependencies=[Depends(admin_dep)])
     async def admin_samples_export(since: int = 0) -> Response:
-        """The training set as JSON lines (one turn per line, no account ids)."""
-        return StreamingResponse(
-            (line.encode() for line in cloud.export_samples(since)),
+        """The training set as JSON lines (one turn per line, no account ids). One whole
+        response with its length, not a stream: the set is small, and a stream that
+        stopped short — a proxy compressing it, the connection dropping — reached the
+        browser as "Failed to fetch" with nothing to say why."""
+        body = "".join(cloud.export_samples(since)).encode()
+        return Response(
+            body,
             media_type="application/x-ndjson",
-            headers={"Content-Disposition": f'attachment; filename="nanomuse-samples-{since}.jsonl"'},
+            headers={
+                "Content-Disposition": f'attachment; filename="nanomuse-samples-{since}.jsonl"',
+                "Cache-Control": "no-store",
+                "Content-Length": str(len(body)),
+            },
         )
 
     @app.post("/v1/admin/grant", dependencies=[Depends(admin_dep)])
@@ -704,16 +741,15 @@ def create_app(
 
     @app.post("/v1/admin/credit", dependencies=[Depends(admin_dep)])
     async def admin_credit(request: Request) -> dict:
-        """{account_id | identifier, cny, clips?, note?}: credit that is spent once the
-        day's cap is used up — for a merged pull request, a good bug report."""
+        """{account_id | identifier, cny, note?}: credit into the account's pool — for a
+        merged pull request, a good bug report."""
         body = await _json(request)
         account_id = cloud.admin_resolve(str(body.get("account_id", "")), str(body.get("identifier", "")))
         try:
             cny = float(body.get("cny", 0))
-            clips = int(body.get("clips", 0))
         except (TypeError, ValueError) as e:
-            raise CloudError(400, "bad_request", "cny is a number, clips an integer") from e
-        return cloud.admin_credit(account_id, cny, clips, str(body.get("note", ""))[:200])
+            raise CloudError(400, "bad_request", "cny is a number") from e
+        return cloud.admin_credit(account_id, cny, str(body.get("note", ""))[:200])
 
     @app.post("/v1/admin/disable", dependencies=[Depends(admin_dep)])
     async def admin_disable(request: Request) -> Response:
