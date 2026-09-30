@@ -519,7 +519,13 @@
     <!-- Reach (0.1.13): the phone drives your computer -->
     <string name="nm_pc_title">Computers</string>
     <string name="nm_pc_none_short">None</string>
-    <string name="nm_pc_intro">Pair a computer once, and a sentence on this phone can run there: a command in its shell, a file fetched or dropped, a page opened in its browser, a look at its screen. One way — the phone drives the computer, never the other way round — and every approval is decided here before anything is sent.</string>
+    <string name="nm_pc_intro">A sentence on this phone, done on your computer: a command in its shell, a file fetched or dropped, a page opened in its browser, a look at its screen, or a whole task handed to the nanoMuse there. One way — the phone drives the computer, never the other way round — and every approval is decided here before anything is sent.</string>
+    <string name="nm_pc_hub_title">The easy way: nanoMuse Desktop, same account</string>
+    <string name="nm_pc_hub_body">Install nanoMuse Desktop on the computer and sign in with the account this phone uses. It appears under Account → Devices within seconds — on any network, with notifications, and able to take on whole tasks.</string>
+    <string name="nm_pc_hub_download">Get nanoMuse Desktop</string>
+    <string name="nm_pc_hub_account">Account and devices</string>
+    <string name="nm_pc_lan_toggle">Pair over the local network instead</string>
+    <string name="nm_pc_lan_toggle_sub">A one-file host script, same Wi-Fi only: commands, files, pages and the screen — no notifications, no whole tasks.</string>
     <string name="nm_pc_section_paired">Paired computers</string>
     <string name="nm_pc_none">No computer yet</string>
     <string name="nm_pc_none_footer">Until one is paired, the agent will say so when a task belongs on your computer.</string>
@@ -529,7 +535,7 @@
     <string name="nm_pc_answering">Answering at %1$s</string>
     <string name="nm_pc_not_answering">Not answering at %1$s — is the host running, on the same network?</string>
     <string name="nm_pc_forget">Forget</string>
-    <string name="nm_pc_section_pair">Pair a computer</string>
+    <string name="nm_pc_section_pair">Without an account: the local network</string>
     <string name="nm_pc_step1">1. On the computer, download host/nanomuse_host.py from the nanoMuse repository (one file, Python 3, nothing to install) and run:</string>
     <string name="nm_pc_step2">2. It prints an address and a six-digit code. Enter both here within ten minutes.</string>
     <string name="nm_pc_address">Address</string>
@@ -539,7 +545,7 @@
     <string name="nm_pc_paired_with">Paired with %1$s.</string>
     <string name="nm_pc_bad_address">Enter the address as it is printed, like 192.168.1.23:7333.</string>
     <string name="nm_pc_pair_footer">The phone and the computer must be on the same network. The code is good for one phone; run the host again for another.</string>
-    <string name="nm_pc_section_how">How it works</string>
+    <string name="nm_pc_section_how">How local pairing works</string>
     <string name="nm_pc_how_1">Commands are judged like the phone\'s own shell: deleting, sending or paying waits for your approval here.</string>
     <string name="nm_pc_how_2">The computer runs them as you — the same account, the same files.</string>
     <string name="nm_pc_how_3">Traffic stays on your local network; there is no cloud in between, and no encryption yet — use a network you trust.</string>

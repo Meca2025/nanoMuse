@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { setToken } from "./api";
 import { dragonUrl } from "./avatars";
 import { Avatar } from "./components/Avatar";
+import { DesktopRemoteHint } from "./components/DesktopRemoteHint";
 import { FileViewer } from "./components/FileViewer";
 import { FirstSignInSteps, useFirstSignIn } from "./components/FirstSignInSteps";
 import { Sidebar } from "./components/Sidebar";
@@ -107,6 +108,7 @@ export default function App() {
             <WifiOff size={14} /> {t("Reconnecting to your nanoMuse…")}
           </div>
         )}
+        <DesktopRemoteHint />
         <main className="mx-auto min-h-0 w-full flex-1 wide:max-w-[900px]">
           <Suspense fallback={<Loading />}>
             {state.tab === "chat" && <ChatScreen />}

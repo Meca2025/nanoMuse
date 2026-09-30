@@ -677,7 +677,10 @@ fun AppNavigation(
         }
         // nanoMuse: the computers this phone drives — paired ones, and pairing a new one.
         composable(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) {
-            io.github.nanomuse.ui.reach.ComputersScreen(onBack = { navController.safePopBackStack() })
+            io.github.nanomuse.ui.reach.ComputersScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenAccount = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
+            )
         }
         // nanoMuse: the coding agents (Cursor, Codex, Claude Code) on the account's computers.
         composable(io.github.nanomuse.ui.coding.ROUTE_CODING) {

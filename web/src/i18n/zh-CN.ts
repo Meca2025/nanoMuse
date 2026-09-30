@@ -1110,6 +1110,8 @@ const zhCN: Record<string, string> = {
   Draw: "画",
   "New avatar: {description}": "换个形象：{description}",
   "Pictures and clips": "图片与短片",
+  "Your phone can now operate this computer: run commands, fetch files, hand over whole tasks. Each risky step still asks here first.":
+    "你的手机现在可以操作这台电脑了：跑命令、取文件、把整件事交给它。有风险的每一步仍会先在这里问你。",
   "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, qwen-image on a Model Studio key. Without one, a new face is not offered.":
     "形象工作室画图用的模型，和对话模型在同一个服务商。「自动」用服务商自己的：账号走中继的图片模型，百炼 key 走 qwen-image。没有可用的图片模型时，不会提供换形象。",
   "Picture model": "图片模型",
