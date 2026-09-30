@@ -56,7 +56,7 @@ jobs:
         include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: ${{ !matrix.container }}
         with:
           python-version: "3.12"
@@ -72,7 +72,7 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then ./desktop/dist/nanomuse-desktop.exe --help; else ./desktop/dist/nanomuse-desktop --help; fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nanomuse-desktop-${{ matrix.label }}
           path: |
@@ -88,7 +88,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: packages
           merge-multiple: true
@@ -113,7 +113,7 @@ jobs:
           fi
       - name: Publish a release of its own
         if: steps.attach.outputs.attached == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: nanoMuse Desktop ${{ github.ref_name }}
           files: packages/*

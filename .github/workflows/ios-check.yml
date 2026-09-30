@@ -33,7 +33,7 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: android/deps/rclone-mobile/go.sum
@@ -51,7 +51,7 @@ jobs:
 
       - name: Native dependency cache
         id: deps-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             android/deps/libs
@@ -85,7 +85,7 @@ jobs:
             2>&1 | tee build/xcodebuild.log | grep -E "error:|warning: .*NanoMuse|BUILD|Compiling|Linking" || true
           grep -q "\*\* BUILD SUCCEEDED \*\*" build/xcodebuild.log
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ios-check-log-${{ github.run_number }}
