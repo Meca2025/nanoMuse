@@ -27,7 +27,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from nanomuse.cloud import CLOUD_KEY, CloudClient, CloudError, model_url, realtime_url
+from nanomuse.cloud import CLOUD_KEY, CloudClient, CloudError, model_url
 from nanomuse.hub import actions
 from nanomuse.hub.client import HubClient, HubError, IncomingCall
 from nanomuse.logger import logger
@@ -47,7 +47,7 @@ class HubService:
         self.svc = svc
         self.client: HubClient | None = None
         self.cloud = CloudClient(self.settings.cloud.base_url, self._key())
-        # the relay's last /v1/me (models with prices, usage): what the call picker reads
+        # the relay's last /v1/me (models with prices, usage)
         self.last_me: dict[str, Any] = {}
         # the account's chat models (ids), for the provider form; refreshed on sign-in and
         # whenever the form asks
@@ -233,20 +233,20 @@ class HubService:
     async def request_code(self, identifier: str) -> None:
         identifier = identifier.strip()
         if not identifier:
-            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address.")
+            raise CloudError(400, "bad_identifier", "Enter an e-mail address.")
         await self.cloud.request_code(identifier)
         self._pending_code = identifier
 
-    async def verify(self, identifier: str, code: str) -> dict[str, Any]:
+    async def verify(self, identifier: str, code: str, invite: str = "") -> dict[str, Any]:
         identifier = identifier.strip() or self._pending_code
-        data = await self.cloud.verify(identifier, code.strip(), self.device_name)
+        data = await self.cloud.verify(identifier, code.strip(), self.device_name, invite=invite)
         return await self._signed_in(data)
 
     async def login(self, identifier: str, password: str) -> dict[str, Any]:
         """Sign in with the account password instead of a code."""
         identifier = identifier.strip()
         if not identifier:
-            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address.")
+            raise CloudError(400, "bad_identifier", "Enter an e-mail address.")
         if not password:
             raise CloudError(400, "password_required", "Enter the password.")
         data = await self.cloud.login(identifier, password, self.device_name)
@@ -314,6 +314,18 @@ class HubService:
             raise CloudError(401, "bad_key", "Not signed in.")
         self.cloud.api_key = self._key()
         return await self.cloud.sessions()
+
+    async def set_contribute(self, on: bool) -> dict[str, Any]:
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        self.cloud.api_key = self._key()
+        return await self.cloud.set_contribute(on)
+
+    async def delete_samples(self) -> int:
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        self.cloud.api_key = self._key()
+        return await self.cloud.delete_samples()
 
     async def revoke_session(self, prefix: str) -> None:
         if not self.signed_in:
@@ -384,17 +396,6 @@ class HubService:
                 self.publish()
         return data
 
-    def save_call_settings(self) -> None:
-        cloud = dict(self.data.get("cloud") or {})
-        cloud["realtime_model"] = self.settings.cloud.realtime_model
-        cloud["realtime_voice"] = self.settings.cloud.realtime_voice
-        self.data["cloud"] = cloud
-        self._save()
-        self.publish()
-
-    def call_view(self) -> dict[str, Any]:
-        return self.svc.call.view()
-
     def account_view(self) -> dict[str, Any]:
         cloud = self.data.get("cloud") or {}
         llm = self.settings.llm
@@ -410,7 +411,6 @@ class HubService:
             "is_model": bool(
                 llm.base_url and llm.base_url.rstrip("/") == model_url(self.cloud.base_url)
             ),
-            "realtime_url": realtime_url(self.cloud.base_url),
         }
 
     async def use_as_model(self, model: str = "") -> dict[str, Any]:

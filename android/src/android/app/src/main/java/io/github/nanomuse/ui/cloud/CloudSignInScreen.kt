@@ -70,7 +70,8 @@ const val ROUTE_CLOUD_ACCOUNT = "nanomuse/cloud/account"
 private const val CLOUD_DOC_URL = "https://github.com/nano-muse/nanoMuse/blob/main/docs/cloud.md"
 
 /**
- * Sign in to nanoMuse Cloud: a phone number or an e-mail address, then the code it receives.
+ * Sign in to nanoMuse Cloud: an e-mail address, then the code it receives (phone accounts from
+ * earlier versions keep working; the field no longer offers them).
  * On success the relay is a provider with a default model, and the caller decides where to
  * go (the first run continues to "Meet nanoMuse"; from Settings it returns to the account page).
  */
@@ -85,6 +86,9 @@ fun CloudSignInScreen(
     var identifier by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
     var codeSent by remember { mutableStateOf(false) }
+    // A friend's invite code: counts for a new account only, so it sits behind a small link.
+    var invite by remember { mutableStateOf("") }
+    var inviteOpen by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     var verifying by remember { mutableStateOf(false) }
     var byPassword by remember { mutableStateOf(false) }
@@ -126,7 +130,7 @@ fun CloudSignInScreen(
         verifying = true
         scope.launch {
             try {
-                NanoMuseCloud.verify(context, identifier, code)
+                NanoMuseCloud.verify(context, identifier, code, invite)
                 onSignedIn()
             } catch (e: Exception) {
                 error = NanoMuseCloud.describe(context, e)
@@ -209,7 +213,7 @@ fun CloudSignInScreen(
             )
             Spacer(Modifier.height(24.dp))
 
-            // Two ways in: a code to the number or address, or the password set under Account.
+            // Two ways in: a code to the address, or the password set under Account.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -312,6 +316,31 @@ fun CloudSignInScreen(
                             fontSize = 14.sp,
                         )
                     }
+                }
+            }
+
+            if (!byPassword) {
+                Spacer(Modifier.height(6.dp))
+                if (!inviteOpen) {
+                    TextButton(onClick = { inviteOpen = true }, modifier = Modifier.align(Alignment.End)) {
+                        Text(stringResource(R.string.nm_cloud_invite_have), color = MuseTones.action, fontSize = 13.sp)
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = invite,
+                        onValueChange = { v -> invite = v.uppercase().filter { it.isLetterOrDigit() }.take(8) },
+                        label = { Text(stringResource(R.string.nm_cloud_invite_field)) },
+                        singleLine = true,
+                        enabled = !verifying,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MuseTones.action,
+                            cursorColor = MuseTones.action,
+                            focusedLabelColor = MuseTones.action,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
 

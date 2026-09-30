@@ -20,22 +20,23 @@ CLOUD_KEY = "NANOMUSE_CLOUD_KEY"
 DEFAULT_MODEL = "qwen3.8-27b"
 
 MESSAGES = {
-    "bad_identifier": "Enter a mobile number or an e-mail address.",
+    "bad_identifier": "Enter an e-mail address.",
     "code_wrong": "That code is not right.",
     "code_expired": "That code has expired; ask for a new one.",
     "code_too_often": "Too many codes were sent; wait a few minutes.",
-    "not_invited": "This relay is private; that number or address is not on its list.",
+    "not_invited": "This relay is private; that address is not on its list.",
     "send_failed": "The code could not be sent; try again in a moment.",
     "bad_key": "Sign in again.",
     "out_of_tokens": "This account has used its tokens.",
     "account_disabled": "This account is disabled.",
     "model_not_offered": "That model is not offered here.",
     "rate_limited": "Too many requests; slow down a little.",
-    "daily_cap": "Today's allowance is used up; more tomorrow.",
+    "daily_cap": "Today's allowance is used up; more tomorrow — or invite a friend for ¥3 of credit.",
+    "video_limit": "The video allowance is used up; a friend signing up with your invite code adds more clips.",
     "upstream": "The model provider did not answer.",
     "upstream_unconfigured": "nanoMuse Cloud has no model key configured.",
     "offline": "nanoMuse Cloud cannot be reached.",
-    "bad_credentials": "That number or address and password do not match.",
+    "bad_credentials": "That address and password do not match.",
     "no_password": "This account has no password yet; sign in with a code and set one under Account.",
     "locked": "Too many wrong passwords; wait a while or sign in with a code.",
     "password_short": "Use at least 8 characters.",
@@ -64,12 +65,6 @@ def hub_url(base_url: str) -> str:
 
 def model_url(base_url: str) -> str:
     return base_url.rstrip("/") + "/v1"
-
-
-def realtime_url(base_url: str) -> str:
-    """The relay's call socket (``?model=`` is appended by the caller)."""
-    base = base_url.rstrip("/")
-    return base.replace("https://", "wss://", 1).replace("http://", "ws://", 1) + "/v1/realtime"
 
 
 class CloudClient:
@@ -127,15 +122,16 @@ class CloudClient:
     async def request_code(self, identifier: str) -> None:
         await self._request("POST", "/v1/auth/code", {"identifier": identifier}, token="")
 
-    async def verify(self, identifier: str, code: str, device: str) -> dict[str, Any]:
+    async def verify(
+        self, identifier: str, code: str, device: str, invite: str = ""
+    ) -> dict[str, Any]:
         """→ ``{api_key, account{channel,hint}, tokens{…}, models[…]}``; the key is kept on
-        this client from then on."""
-        data = await self._request(
-            "POST",
-            "/v1/auth/verify",
-            {"identifier": identifier, "code": code, "device": device},
-            token="",
-        )
+        this client from then on. ``invite`` is a friend's code; it counts for a new account
+        only and the relay ignores it otherwise."""
+        body: dict[str, Any] = {"identifier": identifier, "code": code, "device": device}
+        if invite.strip():
+            body["invite"] = invite.strip()
+        data = await self._request("POST", "/v1/auth/verify", body, token="")
         key = str(data.get("api_key") or "")
         if key:
             self.api_key = key
@@ -164,6 +160,14 @@ class CloudClient:
 
     async def me(self) -> dict[str, Any]:
         return await self._request("GET", "/v1/me")
+
+    async def set_contribute(self, on: bool) -> dict[str, Any]:
+        """Keep (or stop keeping) this account's chat turns for the community's model."""
+        return await self._request("POST", "/v1/me/contribute", {"on": on})
+
+    async def delete_samples(self) -> int:
+        data = await self._request("DELETE", "/v1/me/samples")
+        return int(data.get("deleted") or 0)
 
     async def sessions(self) -> list[dict[str, Any]]:
         data = await self._request("GET", "/v1/me/sessions")

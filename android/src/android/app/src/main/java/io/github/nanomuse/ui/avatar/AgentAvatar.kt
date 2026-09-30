@@ -44,7 +44,8 @@ import kotlinx.coroutines.delay
 
 /**
  * What the face is doing. The built-in character — a small pale-yellow dragon, drawn and posed
- * with qwen-image-3.0-pro and animated with MiniMax-H3, the same way a user's own face is —
+ * with qwen-image-3.0-pro and animated with MiniMax-H3 (the 0.1.21 defaults; a user's own face now
+ * comes from qwen-image-3.0 and wan2.2-i2v-flash, the same way) —
  * has a still per mood and a 4-second looping clip for the four moods that last long enough
  * to move; a custom face has a picture per mood when the image model could pose it.
  */

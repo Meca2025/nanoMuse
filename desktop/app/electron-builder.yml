@@ -1,7 +1,9 @@
 # electron-builder: the installers. `npm run dist` here after scripts/desktop-app/build-runtime.py
 # has put the bundled runtime at runtime/ (the CI workflow .github/workflows/desktop-app.yml does
-# both, per platform). Nothing is signed: macOS asks for right-click → Open once, Windows for
-# "Run anyway" — the same as the terminal binary, see docs/desktop.md.
+# both, per platform). Nothing is signed by a developer certificate: Windows asks for "Run anyway",
+# and on macOS the workflow runs `electron-builder --dir` and scripts/desktop-app/package-mac.sh,
+# which ad-hoc signs the bundle and writes the zip and an APFS dmg itself (electron-builder's HFS+
+# image failed to copy with Finder error -36 on some Macs). See docs/desktop.md.
 appId: io.github.nanomuse.desktop
 productName: nanoMuse
 copyright: GPL-3.0-only · the nanoMuse community
@@ -48,15 +50,13 @@ nsis:
   allowToChangeInstallationDirectory: true
   shortcutName: nanoMuse
 mac:
+  # the zip and dmg come from scripts/desktop-app/package-mac.sh; `npm run dist` alone leaves
+  # the unpacked .app (the workflow passes --dir)
   target:
-    - target: dmg
-      arch: [arm64, x64]
-    - target: zip
+    - target: dir
       arch: [arm64, x64]
   icon: resources/app-icon.png
   category: public.app-category.productivity
   hardenedRuntime: false
   gatekeeperAssess: false
   identity: null
-dmg:
-  writeUpdateInfo: false

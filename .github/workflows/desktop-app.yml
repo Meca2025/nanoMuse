@@ -5,13 +5,15 @@
 #   Linux    nanoMuse-Desktop-<v>-linux-x64.AppImage / .deb
 #
 # Each platform first builds the runtime (scripts/desktop-app/build-runtime.py: PyInstaller,
-# one folder, started once to check /api/health), then electron-builder wraps it with the app.
+# one folder, started once from an unrelated directory to check /api/health), then
+# electron-builder wraps it with the app. On macOS electron-builder only lays out the .app;
+# scripts/desktop-app/package-mac.sh ad-hoc signs it and writes the zip and an APFS dmg.
 # A push that touches desktop/app builds Linux only; "Run workflow" and the release tags `v*`
 # build all four, and a tag uploads the installers to the release of the same name — the one
 # scripts/release-apk.sh creates with the APK — retrying until it exists. "Run workflow" with a
 # release tag does the same for a release that already exists (a platform fixed afterwards).
-# Nothing is signed: macOS asks for right-click → Open once, Windows for "Run anyway"
-# (docs/desktop.md).
+# No developer certificate: Windows asks for "Run anyway", macOS for Open Anyway in System
+# Settings → Privacy & Security (docs/desktop.md).
 name: desktop app
 
 on:
@@ -79,6 +81,7 @@ jobs:
           python -m pip install -e ".[hands]" pyinstaller
           python scripts/desktop-app/build-runtime.py --check
       - name: The app
+        if: runner.os != 'macOS'
         working-directory: desktop/app
         env:
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: "true"
@@ -86,6 +89,14 @@ jobs:
           npm ci
           npm run typecheck
           npm run dist
+      - name: The app (macOS — ad-hoc signed, zip and APFS dmg by hand)
+        if: runner.os == 'macOS'
+        working-directory: desktop/app
+        run: |
+          npm ci
+          npm run typecheck
+          npm run dist:dir
+          ../../scripts/desktop-app/package-mac.sh "${{ matrix.label == 'macos-arm64' && 'arm64' || 'x64' }}"
       - name: What was built
         shell: bash
         working-directory: desktop/app

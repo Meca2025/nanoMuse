@@ -126,7 +126,7 @@ object ImageGen {
     fun recommendedModel(instance: ProviderInstance): String {
         val base = baseUrlOf(instance)
         return when {
-            speaksDashScope(base) -> "qwen-image-3.0-pro"
+            speaksDashScope(base) -> "qwen-image-3.0" // ¥0.18 a picture; the Pro tier draws the same face for ¥0.25–0.5
             base.contains("api.openai.com") -> "gpt-image-1"
             base.contains("api.x.ai") -> "grok-2-image"
             base.contains("openrouter.ai") -> "google/gemini-2.5-flash-image"

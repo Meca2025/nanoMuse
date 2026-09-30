@@ -9,7 +9,7 @@ interface BaseEvent {
   source?: string;
   /** For background events: the short label of the work being done. */
   about?: string;
-  /** "call": said or heard on a voice / video call, not typed; otherwise the device it came from. */
+  /** The device a message came from; "call": said on a voice call in 0.1.20–0.1.21. */
   via?: "call" | string;
 }
 
@@ -268,21 +268,14 @@ export interface CloudMe {
     kinds: string[];
   };
   tokens: { unlimited: boolean; granted: number; used: number; remaining: number; used_today: number; daily_cap: number };
-  spend: { currency: string; today: number; total: number; daily_cap: number; unlimited: boolean };
+  spend: { currency: string; today: number; total: number; daily_cap: number; unlimited: boolean; credit_left?: number; left_today?: number | null };
+  /** Relay 0.4: the account's invite code and what came of it. */
+  invite?: { code: string; url: string; invites: number; bonus_cny: number; clips_per_invite: number; credit_cny: number; credit_left_cny: number; friends: Array<{ hint: string; joined_at: number }> };
+  /** Relay 0.4: whether this account contributes its chat turns to the community's model, and how many so far. */
+  contribute?: { on: boolean; samples: number };
+  /** Relay 0.4: the video-clip allowance (one animated face per account, more per invite). */
+  clips?: { unlimited: boolean; allowed: number; used: number; left: number | null; per_face: number };
   models?: Array<{ id: string; name?: string; nanomuse?: { kind?: string; recommended?: boolean } }>;
-}
-
-/** Whether a voice / video call can be placed, and with what. */
-export interface CallView {
-  available: boolean;
-  source: "cloud" | "own" | null;
-  reason: string;
-  model: string;
-  voice: string;
-  voices: string[];
-  models: Array<{ id: string; name?: string | null; recommended?: boolean }>;
-  active: number;
-  last: { ended_at: number; seconds: number; turns: number; cost_cny: number; reason: string; source: string; model: string; video: boolean } | null;
 }
 
 /** A coding agent on a computer: Cursor, Codex, Claude Code. */

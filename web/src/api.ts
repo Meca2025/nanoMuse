@@ -2,7 +2,6 @@ import type {
   ActivityData,
   AttachmentInfo,
   CalendarData,
-  CallView,
   CloudAccount,
   CloudEvent,
   CloudMe,
@@ -125,7 +124,8 @@ export const api = {
   // ---- nanoMuse Cloud (the account) and the hub (the other devices)
   cloud: () => request<CloudAccount>("/api/cloud"),
   cloudCode: (identifier: string) => request<{ ok: boolean }>("/api/cloud/code", json({ identifier })),
-  cloudVerify: (identifier: string, code: string) => request<CloudAccount>("/api/cloud/verify", json({ identifier, code })),
+  cloudVerify: (identifier: string, code: string, invite = "") =>
+    request<CloudAccount>("/api/cloud/verify", json(invite ? { identifier, code, invite } : { identifier, code })),
   cloudSignOut: () => request<CloudAccount>("/api/cloud/sign-out", json({})),
   cloudLogin: (identifier: string, password: string) => request<CloudAccount>("/api/cloud/login", json({ identifier, password })),
   /** set or change the password; "" with the current one removes it */
@@ -136,10 +136,10 @@ export const api = {
   cloudEvents: (limit = 50) => request<{ events: CloudEvent[] }>(`/api/cloud/events?limit=${limit}`),
   cloudDelete: () => request<CloudAccount>("/api/cloud/delete", json({})),
   cloudMe: () => request<CloudMe>("/api/cloud/me"),
+  cloudContribute: (on: boolean) => request<{ on: boolean; samples: number }>("/api/cloud/contribute", json({ on })),
+  cloudDeleteSamples: () => request<{ deleted: number }>("/api/cloud/samples", { method: "DELETE" }),
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
   // ---- calls (voice / video, in real time)
-  call: () => request<CallView>("/api/cloud/call"),
-  setCall: (body: { model?: string; voice?: string }) => request<CallView>("/api/cloud/call", { method: "PUT", body: JSON.stringify(body) }),
   // ---- coding agents, here or on another computer of yours
   coding: (device = "") => request<{ agents: CodingAgent[]; runs: CodingRun[]; device?: string }>(`/api/coding${device ? `?device=${encodeURIComponent(device)}` : ""}`),
   codingSessions: (q: { agent?: string; limit?: number; workspace?: string; device?: string } = {}) => {

@@ -180,7 +180,7 @@ fun MediaModelsScreen(
                 )
                 ModelField(
                     value = imageModel,
-                    placeholder = "qwen-image-3.0-pro · gpt-image-1 · …",
+                    placeholder = "qwen-image-3.0 · gpt-image-1 · …",
                     onChange = { imageModel = it; ImageGen.save(context, imageInst.id, it) },
                 )
             }

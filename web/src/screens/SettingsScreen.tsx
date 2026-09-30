@@ -6,6 +6,7 @@ import { DRAGON } from "../avatars";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
 import { BackBar } from "../components/BackBar";
+import { CommunityNotice } from "../components/CommunityNotice";
 import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
 import { disablePush, enablePush, pushState, type PushState } from "../push";
 import { useStore } from "../store";
@@ -257,6 +258,7 @@ export function SettingsScreen() {
 
         {/* About */}
         <Section title={t("About")}>
+          <CommunityNotice />
           <div className="text-[13px] text-muted space-y-1">
             <div>
               nanoMuse {state.version}

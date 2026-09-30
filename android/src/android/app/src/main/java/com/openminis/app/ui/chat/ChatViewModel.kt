@@ -6342,6 +6342,11 @@ class ChatViewModel(
 
     private val nmAvatarCardId = "nm_avatar_options_card"
     private val nmAvatarShareId = "nm_avatar_share_card"
+    private val nmAvatarConfirmId = "nm_avatar_confirm_card"
+
+    /** A face request waiting for a yes on the cost card (pictures paid from the Cloud allowance). */
+    private class NmPendingFace(val sid: String, val desc: String, val reference: android.graphics.Bitmap?, val blocked: Boolean)
+    private var nmPendingFace: NmPendingFace? = null
 
     private fun nmInterceptAvatar(text: String): Boolean {
         val flow = io.github.nanomuse.avatar.AvatarFlow
@@ -6394,21 +6399,63 @@ class ChatViewModel(
             val realSid = ensureSession()
             nmAppendUserLine(realSid, text)
             val reference = withContext(Dispatchers.IO) { flow.loadReference(context, referenceUri) }
-            if (flow.start(context, realSid, desc, reference)) {
-                // Honest about the wait: pictures take a while, so the reply says "drawing
-                // now" at once (persisted, so the transcript never ends on an unanswered
-                // user turn) and "here they are" only when the tiles have actually landed.
-                nmAppendAssistantLine(realSid, context.getString(R.string.nm_avatar_drawing_now, desc))
-                nmShowAvatarCard()
-                nmAnnounceWhenDrawn(realSid, desc)
+            // Pictures paid from the Cloud allowance are priced first: the card says what
+            // this face costs and what is left today, and nothing is drawn until the yes.
+            if (io.github.nanomuse.cloud.FaceCost.onCloud(context)) {
+                val job = io.github.nanomuse.cloud.FaceCost.newFace(context)
+                val est = io.github.nanomuse.cloud.FaceCost.estimate(context, job)
+                nmPendingFace = NmPendingFace(realSid, desc, reference, io.github.nanomuse.cloud.FaceCost.blocked(est))
+                nmShowAvatarConfirmCard(io.github.nanomuse.cloud.FaceCost.describe(context, job, est))
             } else {
-                // No image model: say so as the agent, and point at the setting.
-                val why = io.github.nanomuse.avatar.AvatarStudio.error.value
-                    ?: context.getString(R.string.nm_avatar_no_provider)
-                nmAppendAssistantLine(realSid, context.getString(R.string.nm_avatar_cannot_start, why))
+                nmStartFace(realSid, desc, reference)
             }
         }
         return true
+    }
+
+    private suspend fun nmStartFace(realSid: String, desc: String, reference: android.graphics.Bitmap?) {
+        val flow = io.github.nanomuse.avatar.AvatarFlow
+        if (flow.start(context, realSid, desc, reference)) {
+            // Honest about the wait: pictures take a while, so the reply says "drawing
+            // now" at once (persisted, so the transcript never ends on an unanswered
+            // user turn) and "here they are" only when the tiles have actually landed.
+            nmAppendAssistantLine(realSid, context.getString(R.string.nm_avatar_drawing_now, desc))
+            nmShowAvatarCard()
+            nmAnnounceWhenDrawn(realSid, desc)
+        } else {
+            // No image model: say so as the agent, and point at the setting.
+            val why = io.github.nanomuse.avatar.AvatarStudio.error.value
+                ?: context.getString(R.string.nm_avatar_no_provider)
+            nmAppendAssistantLine(realSid, context.getString(R.string.nm_avatar_cannot_start, why))
+        }
+    }
+
+    private fun nmShowAvatarConfirmCard(text: String) {
+        _messages.value = _messages.value.filterNot { it.id == nmAvatarConfirmId } + ChatMessage(
+            id = nmAvatarConfirmId,
+            role = "system",
+            content = "",
+            toolBlocks = listOf(AssistantBlock(id = "${nmAvatarConfirmId}_block", kind = "nm_avatar_confirm", content = text)),
+        )
+    }
+
+    /** Whether the pending face's estimate said the allowance does not cover it (the card's button reads "anyway"). */
+    fun nmAvatarConfirmBlocked(): Boolean = nmPendingFace?.blocked == true
+
+    /** "Draw it" on the cost card. */
+    fun nmConfirmAvatar() {
+        val pending = nmPendingFace ?: return
+        nmPendingFace = null
+        _messages.value = _messages.value.filterNot { it.id == nmAvatarConfirmId }
+        viewModelScope.launch { nmStartFace(pending.sid, pending.desc, pending.reference) }
+    }
+
+    /** "Not now" on the cost card: the request is dropped, nothing was drawn or charged. */
+    fun nmDeclineAvatar() {
+        val pending = nmPendingFace ?: return
+        nmPendingFace = null
+        _messages.value = _messages.value.filterNot { it.id == nmAvatarConfirmId }
+        viewModelScope.launch { nmAppendAssistantLine(pending.sid, context.getString(R.string.nm_face_cost_declined)) }
     }
 
     /**

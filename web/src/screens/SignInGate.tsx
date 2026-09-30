@@ -1,6 +1,7 @@
-import { Cloud, MonitorSmartphone, Phone, ShieldCheck } from "lucide-react";
+import { Cloud, Hand, MonitorSmartphone, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Avatar } from "../components/Avatar";
+import { CommunityNotice } from "../components/CommunityNotice";
 import { SignIn } from "../components/SignIn";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -24,7 +25,7 @@ export function SignInGate() {
             <Avatar profile={state.profile} size={88} still />
           </div>
           <h1 className="mt-6 text-[28px] font-bold tracking-tight">{t("Sign in to {name}", { name })}</h1>
-          <p className="mt-2 max-w-sm text-[14.5px] leading-relaxed text-muted">{t("One free account. It is what lets your phone and computers work as one, brings a model to start with, and carries your calls.")}</p>
+          <p className="mt-2 max-w-sm text-[14.5px] leading-relaxed text-muted">{t("One free account. It is what lets your phone and computers work as one and brings a model to start with.")}</p>
         </div>
 
         <div className="mt-8 rounded-[28px] border border-border/70 bg-surface p-5 shadow-sm">
@@ -39,11 +40,12 @@ export function SignInGate() {
         <ul className="mt-6 grid grid-cols-2 gap-2 text-[12.5px]">
           <Perk icon={<MonitorSmartphone size={15} />} text={t("Every device of yours, one nanoMuse")} />
           <Perk icon={<Cloud size={15} />} text={t("A model with a daily allowance, or your own key")} />
-          <Perk icon={<Phone size={15} />} text={t("Voice and video calls with it")} />
+          <Perk icon={<Hand size={15} />} text={t("It uses your phone and computers for you")} />
           <Perk icon={<ShieldCheck size={15} />} text={t("Keys in your vault; nothing you say is kept on the relay")} />
         </ul>
-        <p className="mt-6 text-center text-[11.5px] leading-relaxed text-muted">
-          {t("nanoMuse is a non-profit community project. The relay keeps an account id, a masked identifier and usage counts — no message content.")}
+        <CommunityNotice compact className="mt-6" />
+        <p className="mt-4 text-center text-[11.5px] leading-relaxed text-muted">
+          {t("The relay keeps an account id, a masked identifier and usage counts — no message content.")}
           <br />
           {t("Running it yourself without an account? Set cloud.required to false.")}
         </p>

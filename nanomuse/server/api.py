@@ -268,10 +268,15 @@ class CloudCodeBody(BaseModel):
 class CloudVerifyBody(BaseModel):
     identifier: str = Field(default="", max_length=200)
     code: str = Field(min_length=4, max_length=12)
+    invite: str = Field(default="", max_length=32)
 
 
 class CloudModelBody(BaseModel):
     model: str = Field(default="", max_length=120)
+
+
+class CloudContributeBody(BaseModel):
+    on: bool = False
 
 
 class CloudLoginBody(BaseModel):
@@ -299,11 +304,6 @@ class CodingSendBody(BaseModel):
 class CodingStopBody(BaseModel):
     run: str = Field(min_length=1, max_length=40)
     device: str = Field(default="", max_length=120)
-
-
-class CloudCallBody(BaseModel):
-    model: str | None = Field(default=None, max_length=120)
-    voice: str | None = Field(default=None, max_length=80)
 
 
 class HubBody(BaseModel):
@@ -874,7 +874,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.post("/api/cloud/verify", dependencies=dep)
     async def cloud_verify(body: CloudVerifyBody) -> dict[str, Any]:
         try:
-            return await svc.hub.verify(body.identifier, body.code)
+            return await svc.hub.verify(body.identifier, body.code, invite=body.invite)
         except CloudError as exc:
             raise _cloud_http(exc) from exc
 
@@ -935,24 +935,25 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         await svc.hub.sign_out()
         return svc.hub.account_view()
 
-    @app.put("/api/cloud/call", dependencies=dep)
-    async def cloud_call_settings(body: CloudCallBody) -> dict[str, Any]:
-        """Which real-time model and voice a call uses."""
-        if body.model is not None:
-            svc.settings.cloud.realtime_model = body.model.strip()
-        if body.voice is not None:
-            svc.settings.cloud.realtime_voice = body.voice.strip()
-        svc.hub.save_call_settings()
-        return svc.hub.call_view()
-
-    @app.get("/api/cloud/call", dependencies=dep)
-    async def cloud_call_status() -> dict[str, Any]:
-        return svc.hub.call_view()
-
     @app.get("/api/cloud/me", dependencies=dep)
     async def cloud_me() -> dict[str, Any]:
         try:
             return await svc.hub.me()
+        except CloudError as exc:
+            raise _cloud_http(exc) from exc
+
+    @app.post("/api/cloud/contribute", dependencies=dep)
+    async def cloud_contribute(body: CloudContributeBody) -> dict[str, Any]:
+        """Opt in to (or out of) contributing chat turns to the community's model."""
+        try:
+            return await svc.hub.set_contribute(body.on)
+        except CloudError as exc:
+            raise _cloud_http(exc) from exc
+
+    @app.delete("/api/cloud/samples", dependencies=dep)
+    async def cloud_delete_samples() -> dict[str, Any]:
+        try:
+            return {"deleted": await svc.hub.delete_samples()}
         except CloudError as exc:
             raise _cloud_http(exc) from exc
 
@@ -1455,16 +1456,6 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         return FileResponse(target, media_type=media, headers=headers)
 
     # ------------------------------------------------------------------ websocket
-    @app.websocket("/ws/call")
-    async def websocket_call(ws: WebSocket) -> None:
-        """A voice or video call with the Muse (see nanomuse/call.py)."""
-        try:
-            _check_token(ws.query_params.get("token"))
-        except HTTPException:
-            await ws.close(code=4401)
-            return
-        await svc.call.serve(ws)
-
     @app.websocket("/ws")
     async def websocket(ws: WebSocket) -> None:
         try:

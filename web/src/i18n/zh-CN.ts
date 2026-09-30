@@ -969,8 +969,41 @@ const zhCN: Record<string, string> = {
   "The Cloud model is in use.": "已切换到 Cloud 模型。",
   "Sign out": "退出登录",
   "Sign out of nanoMuse Cloud on this device? The hub and the Cloud model stop working here until you sign in again.": "在这台设备上退出 nanoMuse Cloud？重新登录之前，这里的中继和 Cloud 模型都会停用。",
-  "Sign in with your e-mail address (or a mobile number) and the code it receives. No password; the key stays in the vault on this machine.": "用邮箱（或手机号）和收到的验证码登录。没有密码；密钥留在这台机器的保险库里。",
-  "E-mail or mobile number": "邮箱或手机号",
+  "Sign in with your e-mail address and the code it receives. No password; the key stays in the vault on this machine.": "用邮箱和收到的验证码登录。没有密码；密钥留在这台机器的保险库里。",
+  // -- the community notice and the gate (0.1.22) --
+  "One free account. It is what lets your phone and computers work as one and brings a model to start with.": "一个免费账号。有了它，手机和电脑就是同一个 nanoMuse，还自带一个可以先用起来的模型。",
+  "It uses your phone and computers for you": "替你操作手机和电脑",
+  "The relay keeps an account id, a masked identifier and usage counts — no message content.": "中继只保存账号 id、打码后的邮箱和用量计数——不保存消息内容。",
+  "Free, open source, non-profit": "免费 · 开源 · 非盈利",
+  "nanoMuse is a non-profit open-source community project — free, forever. Sign in with an e-mail and use the model for free: about ¥15 a day per account, paid by the developer; invite a friend and you get ¥3 more. Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like, or use your own API key.":
+    "nanoMuse 是非盈利的开源社区项目，永久免费。用邮箱登录就能免费使用模型：每个账号每天约 ¥15，模型费用由开发者承担；邀请一位新用户，你多得 ¥3 额度。默认不保存你的消息，数据不会出售；随时可以删除账号，也可以改用自己的 API key。",
+  "Found a bug, want a feature, or wrote a fix? Issues and pull requests are welcome — let's build it together.": "发现问题、想要新功能、写好了修复？欢迎提 issue 和 PR——让我们一起把它做好。",
+  "Star on GitHub": "去 GitHub 点个 Star",
+  "Report a bug or ask for a feature": "反馈问题 / 提需求",
+  // -- contributing conversations (relay 0.4) --
+  "Contribute conversations": "贡献对话",
+  "Contributing — {n} turns so far": "正在贡献——已贡献 {n} 轮",
+  "Off — nothing you say is kept": "未开启——你说的话不会被保存",
+  "When on, each turn with the model (your messages and its reply; pictures as a marker) is kept on the server to train the community's own open model. Off by default; turn it off and delete what you gave at any time.":
+    "打开后，你和模型的每一轮对话（消息和回答，图片只留标记）会保存在服务器上，用来训练社区自己的开源模型。默认关闭；随时可以关掉并删除已贡献的内容。",
+  "The conversations you contributed are removed from the server. This cannot be undone.": "你贡献的对话会从服务器上删除，不可恢复。",
+  "{n} turns deleted": "已删除 {n} 轮",
+  "Delete what I contributed": "删除我贡献的对话",
+  // -- invitations (relay 0.4) --
+  "Invite code (optional)": "邀请码（选填）",
+  "A friend's code counts for a new account: they get ¥3 of credit and more clips.": "朋友的邀请码只对新账号有效：对方会多得 ¥3 额度和几段视频次数。",
+  "Have an invite code?": "有邀请码？",
+  "Plus ¥{amount} of credit from invitations, used once the day's allowance is gone.": "另有 ¥{amount} 邀请奖励额度，当天额度用完后接着用。",
+  "Invite a friend": "邀请朋友",
+  "Each friend who signs up with your code gives you ¥{bonus} of credit and {clips} more clips.": "每有一位朋友用你的邀请码注册，你多得 ¥{bonus} 额度和 {clips} 段视频次数。",
+  "Your code": "邀请码",
+  "Copied": "已复制",
+  "Share the link": "分享链接",
+  "Copy the link": "复制链接",
+  "Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my code {code}: {link}": "来和我一起用 nanoMuse——完全开源的个人智能体，免费使用。用我的邀请码 {code} 注册：{link}",
+  "{n} friends joined": "已邀请 {n} 位",
+  "¥{amount} credit left": "奖励额度还剩 ¥{amount}",
+  "{left} of {allowed} clips left": "视频次数还剩 {left}/{allowed}",
   "The code you received": "收到的验证码",
   "Send again": "重新发送",
   "Send me a code": "发送验证码",
@@ -1049,17 +1082,12 @@ const zhCN: Record<string, string> = {
   "Sign in to nanoMuse Cloud": "登录 nanoMuse Cloud",
   "Sign in to {name}": "登录 {name}",
   "nanoMuse Cloud · one account for all your devices": "nanoMuse Cloud · 一个账号，所有设备",
-  "One free account. It is what lets your phone and computers work as one, brings a model to start with, and carries your calls.":
-    "一个免费账号：让你的手机和电脑连成一体，自带一个可以直接用的模型，也承载语音和视频通话。",
   "Every device of yours, one nanoMuse": "你的每台设备，同一个 nanoMuse",
   "A model with a daily allowance, or your own key": "自带每日额度的模型，或用你自己的 key",
-  "Voice and video calls with it": "和它语音、视频通话",
   "Keys in your vault; nothing you say is kept on the relay": "key 留在你的保险库里；你说的内容不会留在中继上",
-  "nanoMuse is a non-profit community project. The relay keeps an account id, a masked identifier and usage counts — no message content.":
-    "nanoMuse 是非营利的社区项目。中继只保存账号 ID、打码后的标识和用量计数，不保存任何消息内容。",
   "Running it yourself without an account? Set cloud.required to false.": "自己部署、不想要账号？把 cloud.required 设为 false 即可。",
-  "Free. Your devices meet on the hub, a model with a daily allowance comes with it, and calls go through it. Sign in with a code the first time; set a password afterwards if you like.":
-    "免费。你的设备在 hub 上汇合，自带每日额度的模型，通话也经由它。第一次用验证码登录，之后可以再设一个密码。",
+  "Free. Your devices meet on the hub and a model with a daily allowance comes with it. Sign in with a code the first time; set a password afterwards if you like.":
+    "免费。你的设备在 hub 上汇合，还自带一个有每日额度的模型。第一次用验证码登录，之后可以再设一个密码。",
   "With a code": "验证码登录",
   "With a password": "密码登录",
   "No password yet? Sign in with a code first, then set one under Account.": "还没有密码？先用验证码登录，再到「账号」里设置。",
@@ -1117,8 +1145,6 @@ const zhCN: Record<string, string> = {
   "Call ended": "通话结束",
   "The model provider returned an error": "模型服务返回了错误",
   "Sign out everywhere": "在所有设备退出",
-  "Sign out of nanoMuse Cloud on this device? The hub, calls and the Cloud model stop working here until you sign in again.":
-    "在这台设备上退出 nanoMuse Cloud？hub、通话和 Cloud 模型会停用，直到重新登录。",
   "Sign out on every device, including this one?": "在所有设备退出登录，包括这一台？",
   "Delete the account? The relay forgets your identifier, your devices and your usage. This cannot be undone.":
     "删除账号？中继会忘掉你的标识、设备和用量记录，且无法恢复。",
@@ -1135,29 +1161,11 @@ const zhCN: Record<string, string> = {
   "Your account brings a model with a daily allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.":
     "你的账号自带一个有每日额度的模型，起步最快。也可以粘贴自己的 key：它加密存在服务端的保险库里，不会给模型看到，你说的内容也不经过中继。",
 
-  // ── Calls ─────────────────────────────────────────────────────────────────────────
-  "Voice call": "语音通话",
-  "Video call": "视频通话",
-  "your key": "你的 key",
-  Listening: "在听",
-  Muted: "已静音",
-  "Go on…": "请说…",
-  Thinking: "思考中",
-  Speaking: "在说",
-  "Could not connect": "没能接通",
-  "Back to chat": "回到对话",
-  Mute: "静音",
-  Unmute: "取消静音",
-  "Hang up": "挂断",
-  Camera: "摄像头",
-  "Camera off": "关闭摄像头",
-  "{turns} turns · {time}": "{turns} 轮 · {time}",
-  "Calls need nanoMuse Cloud (sign in) or a Bailian key as the model.": "通话需要登录 nanoMuse Cloud，或把百炼的 key 设为模型。",
-  "The call could not be connected; try again in a moment.": "没能接通，请稍后再试。",
-  "The daily allowance is used up; the call ended.": "今日额度已用完，通话结束。",
-  "Calls are limited in length; this one reached it.": "单次通话有时长上限，这次已经到了。",
-  "Microphone access was refused. Allow it in the browser and try again.": "麦克风权限被拒绝。请在浏览器里允许后再试。",
-  "Camera access was refused.": "摄像头权限被拒绝。",
+  // ── Voice input (the browser's own speech recognition) ───────────────────────────
+  "Voice input": "语音输入",
+  "Stop voice input": "停止语音输入",
+  "The microphone is not allowed. Allow it in the browser and try again.": "麦克风未被允许。请在浏览器里允许后再试。",
+  "Voice input stopped ({code}).": "语音输入中断了（{code}）。",
   "said on a call": "通话中说的",
 
   // ── Coding agents ─────────────────────────────────────────────────────────────────
@@ -1215,22 +1223,23 @@ const zhCN: Record<string, string> = {
   "This conversation is too long for the model. Start a new one, or pick a model with a larger context.": "这段对话对模型来说太长了。开一个新对话，或者换一个上下文更大的模型。",
 
   // -- the relay's answers to signing in (nanomuse/cloud.py MESSAGES) --
-  "Enter a mobile number or an e-mail address.": "请输入手机号或邮箱地址。",
+  "Enter an e-mail address.": "请输入邮箱地址。",
   "That code is not right.": "验证码不对。",
   "That code has expired; ask for a new one.": "验证码已过期，重新获取一个。",
   "Too many codes were sent; wait a few minutes.": "验证码发得太频繁了，几分钟后再试。",
-  "This relay is private; that number or address is not on its list.": "这个中继是私有的，这个号码或邮箱不在它的名单上。",
+  "This relay is private; that address is not on its list.": "这个中继是私有的，这个邮箱不在它的名单上。",
   "The code could not be sent; try again in a moment.": "验证码没能发出，稍后再试。",
   "Sign in again.": "请重新登录。",
   "This account has used its tokens.": "这个账号的额度已经用完。",
   "This account is disabled.": "这个账号已被停用。",
   "That model is not offered here.": "这里不提供这个模型。",
   "Too many requests; slow down a little.": "请求太频繁了，稍微慢一点。",
-  "Today's allowance is used up; more tomorrow.": "今天的额度用完了，明天再来。",
+  "Today's allowance is used up; more tomorrow — or invite a friend for ¥3 of credit.": "今天的额度用完了，明天再来——或者邀请一位新用户，多得 ¥3 额度。",
+  "The video allowance is used up; a friend signing up with your invite code adds more clips.": "视频额度已用完；有朋友用你的邀请码注册，视频次数就会增加。",
   "The model provider did not answer.": "模型服务商没有响应。",
   "nanoMuse Cloud has no model key configured.": "nanoMuse Cloud 还没有配置模型 key。",
   "nanoMuse Cloud cannot be reached.": "连不上 nanoMuse Cloud。",
-  "That number or address and password do not match.": "号码或邮箱与密码不匹配。",
+  "That address and password do not match.": "邮箱与密码不匹配。",
   "This account has no password yet; sign in with a code and set one under Account.": "这个账号还没有设置密码：先用验证码登录，再在「账号」里设置。",
   "Too many wrong passwords; wait a while or sign in with a code.": "密码错误次数太多，等一会儿再试，或者改用验证码登录。",
   "Use at least 8 characters.": "至少 8 个字符。",
@@ -1238,7 +1247,6 @@ const zhCN: Record<string, string> = {
   "That is not the current password.": "当前密码不正确。",
   "Enter the current password.": "请输入当前密码。",
   "That sign-in is already gone.": "那个登录已经不存在了。",
-  "Calls need nanoMuse Cloud (sign in) or a Bailian model key as the provider.": "通话需要 nanoMuse Cloud 账号（登录），或者用百炼的模型 key 作为服务商。",
 
   // -- reaching the runtime --
   "Cannot reach your nanoMuse right now.": "现在连不上你的 nanoMuse。",
@@ -1258,11 +1266,6 @@ const zhCN: Record<string, string> = {
   "Your account's model": "账号自带的模型",
   "Your account's model, or a key of your own.": "用账号自带的模型，或者你自己的 key。",
   "Your account's model, with its daily allowance. Keep it, or switch to a key of your own here.": "账号自带的模型，带每日额度。可以保留，也可以在这里换成你自己的 key。",
-
-  // -- the call screen's microphone --
-  "No microphone was found on this device.": "这台设备上没有找到麦克风。",
-  "The microphone is in use by another app or could not be started.": "麦克风被其他应用占用，或者没能启动。",
-  "Calls need a secure page (https or localhost); the browser will not open the microphone here.": "通话需要安全页面（https 或 localhost），浏览器不会在这里打开麦克风。",
 };
 
 export default zhCN;

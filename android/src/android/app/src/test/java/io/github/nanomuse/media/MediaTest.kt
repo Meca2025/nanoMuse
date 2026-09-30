@@ -29,6 +29,18 @@ class MediaTest {
         assertFalse(VideoGen.speaksDashScope("https://openrouter.ai/api/v1"))
     }
 
+    @Test fun `wan siblings and resolutions follow the model family`() {
+        assertEquals("wan2.2-i2v-flash", MediaModels.DEFAULT_VIDEO_MODEL)
+        assertEquals("wan2.2-i2v-flash", VideoGen.KNOWN_DASHSCOPE_MODELS.first())
+        assertEquals("wan2.2-i2v-flash", VideoGen.modelFor("wan2.2-i2v-flash", fromImage = true))
+        assertEquals("wan2.2-t2v-plus", VideoGen.modelFor("wan2.2-i2v-flash", fromImage = false)) // there is no 2.2 t2v flash
+        assertEquals("wan2.6-t2v", VideoGen.modelFor("wan2.6-i2v", fromImage = false))
+        assertEquals("wan2.6-i2v", VideoGen.modelFor("wan2.6-t2v", fromImage = true))
+        assertEquals("MiniMax/MiniMax-H3", VideoGen.modelFor("MiniMax/MiniMax-H3", fromImage = false))
+        assertEquals("480P", VideoGen.wanResolution("wan2.2-i2v-flash"))
+        assertEquals("720P", VideoGen.wanResolution("wan2.6-i2v"))
+    }
+
     @Test fun `failure messages are plain for the user`() {
         val notActivated = JSONObject().put("code", "InvalidParameter").put("message", "The product is not activated, please activate it first")
         assertTrue(VideoGen.failureMessage(notActivated).contains("activate"))

@@ -15,6 +15,7 @@
     title: "nanoMuse Cloud 后台", tokenLabel: "管理口令", tokenHint: "服务器上 /opt/nanomuse/relay/ADMIN_TOKEN.txt 里的那一行；只留在这个标签页里。",
     enter: "进入", wrong: "口令不对。", offline: "连不上服务器。", refresh: "刷新", lock: "锁定", loading: "加载中…",
     today: "今天", week: "最近 7 天", period: (d) => `最近 ${d} 天`,
+    kSamples: "贡献的对话", kSamplesSub: (n) => `${n} 个账号开启了贡献`, exportSamples: "导出 JSONL", contributes: "贡献对话", samples: "贡献的对话（最近）", samplesNote: "只有把「贡献对话」打开的账号才会保存这些内容；导出的文件不带账号 id。", user: "用户", assistant: "回答", more: "查看更多", noSamples: "还没有",
     kAccounts: "账号", kAccountsSub: (c) => `${c.with_password || 0} 个设了密码 · ${c.unlimited || 0} 个成员 · ${c.disabled || 0} 个已停用`,
     kActive: "活跃账号", kActiveSub: (n) => `${n} 个新注册`, kSpent: "花费", kSpentSub: (r, t) => `${fmt(r)} 次 · ${fmt(t)} tokens`,
     kOnline: "在线设备", kOnlineSub: (k, s) => `记住了 ${k} 台 · ${s} 个有效登录`, kSignals: "今天的信号",
@@ -27,13 +28,13 @@
     all: "全部", signIns: "登录", refusals: "超额", errors: "错误", calls: "通话", passwords: "密码",
     eventName: {
       "account.created": "注册", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置密码", "password.changed": "修改密码",
-      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束",
+      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "开启贡献对话", "contribute.off": "关闭贡献对话", "contribute.deleted": "删除贡献的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励",
     },
     // drawer
     spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "每日上限", noCap: "无上限", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
     sessions: "登录（含已退出）", revoked: "已退出", via: { code: "验证码", password: "密码" }, lastUsed: "最近使用", devices: "设备", firstSeen: "首次", lastSeen: "最近",
     ledger: "最近请求", timeline: "时间线", none: "—", online: "在线", offline: "离线", version: "版本",
-    grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
+    grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, credit: "加邀请额度", creditPrompt: (who) => `给 ${who} 多少元额度？（当天免费额度用完后才扣，不过期）`, creditClips: "另加多少段视频？（0 为不加）", creditNote: "备注（比如 PR #12）", creditLine: (c, l, n, b) => `邀请额度 ${c}（剩 ${l}）· 邀请了 ${n} 人 · 额外视频 ${b} 段`, clipsLine: (u, a) => `视频 ${u} / ${a === null ? "∞" : a} 段`, invitedBy: "邀请人", disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
     memberConfirm: (who) => `把 ${who} 设为成员？成员不受每日花费上限限制，费用由你承担。`, listedNote: "在服务器白名单里，改 ALLOWED_IDENTIFIERS 才能取消",
     disableConfirm: (who) => `停用 ${who}？TA 的所有设备会立刻断开，再登录会被拒。`, remove: "删除账号",
     removeConfirm: (who) => `删除 ${who} 的账号、密钥、用量记录和设备？不可恢复。`, hasPassword: "已设密码", noPassword: "未设密码", identifierNote: "明文只在这里解出来看",
@@ -48,6 +49,7 @@
     title: "nanoMuse Cloud admin", tokenLabel: "Admin token", tokenHint: "The line in /opt/nanomuse/relay/ADMIN_TOKEN.txt on the server; it stays in this tab only.",
     enter: "Open", wrong: "That token is not right.", offline: "Cannot reach the server.", refresh: "Refresh", lock: "Lock", loading: "Loading…",
     today: "Today", week: "Last 7 days", period: (d) => `Last ${d} days`,
+    kSamples: "Contributed turns", kSamplesSub: (n) => `${n} accounts contributing`, exportSamples: "Export JSONL", contributes: "contributes", samples: "Contributed conversations (recent)", samplesNote: "Kept only for accounts that turned contribution on; the export carries no account ids.", user: "user", assistant: "reply", more: "Show more", noSamples: "None yet",
     kAccounts: "Accounts", kAccountsSub: (c) => `${c.with_password || 0} with a password · ${c.unlimited || 0} members · ${c.disabled || 0} disabled`,
     kActive: "Active accounts", kActiveSub: (n) => `${n} new`, kSpent: "Spent", kSpentSub: (r, t) => `${fmt(r)} requests · ${fmt(t)} tokens`,
     kOnline: "Devices online", kOnlineSub: (k, s) => `${k} remembered · ${s} live sign-ins`, kSignals: "Signals today",
@@ -60,12 +62,12 @@
     all: "All", signIns: "Sign-ins", refusals: "Refusals", errors: "Errors", calls: "Calls", passwords: "Passwords",
     eventName: {
       "account.created": "Joined", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
-      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended",
+      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "Contribution on", "contribute.off": "Contribution off", "contribute.deleted": "Contributed turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted",
     },
     spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Daily cap", noCap: "no cap", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
     sessions: "Sign-ins (incl. revoked)", revoked: "revoked", via: { code: "code", password: "password" }, lastUsed: "last used", devices: "Devices", firstSeen: "first", lastSeen: "last",
     ledger: "Recent requests", timeline: "Timeline", none: "—", online: "online", offline: "offline", version: "Version",
-    grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
+    grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, credit: "Add credit", creditPrompt: (who) => `How many yuan of credit for ${who}? (spent once the day's cap is used up; never expires)`, creditClips: "And how many video clips? (0 for none)", creditNote: "Note (say, PR #12)", creditLine: (c, l, n, b) => `credit ${c} (${l} left) · ${n} invited · ${b} bonus clips`, clipsLine: (u, a) => `video ${u} / ${a === null ? "∞" : a} clips`, invitedBy: "invited by", disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
     memberConfirm: (who) => `Make ${who} a member? Members have no daily spend cap; you pay their bill.`, listedNote: "on the server's list; edit ALLOWED_IDENTIFIERS to remove",
     disableConfirm: (who) => `Disable ${who}? Every device of theirs drops at once and cannot sign in again.`, remove: "Delete account",
     removeConfirm: (who) => `Delete the account, keys, usage and devices of ${who}? This cannot be undone.`, hasPassword: "has a password", noPassword: "no password", identifierNote: "decrypted for this view only",
@@ -238,6 +240,19 @@
     try { await api("POST", "/v1/admin/grant", { account_id: a.id, tokens: n }); } catch (e) { alert(e.message); }
     await Promise.all([load(), detail ? openAccount(a.id) : null]);
   }
+  async function doCredit(a) {
+    const v = prompt(T.creditPrompt(who(a)), "3");
+    if (v === null) return;
+    const cny = parseFloat(v.replace(/[\s,¥]/g, ""));
+    if (!Number.isFinite(cny) || cny < 0) return;
+    const c = prompt(T.creditClips, "0");
+    if (c === null) return;
+    const clips = parseInt(c.replace(/\D/g, "") || "0", 10);
+    const note = prompt(T.creditNote, "") || "";
+    if (cny === 0 && clips === 0) return;
+    try { await api("POST", "/v1/admin/credit", { account_id: a.id, cny, clips, note }); } catch (e) { alert(e.message); }
+    await Promise.all([load(), detail ? openAccount(a.id) : null]);
+  }
   async function doDisable(a) {
     if (!a.disabled && !confirm(T.disableConfirm(who(a)))) return;
     try { await api("POST", "/v1/admin/disable", { account_id: a.id, disabled: !a.disabled }); } catch (e) { alert(e.message); }
@@ -257,6 +272,17 @@
   // ── the drawer: one account ────────────────────────────────────
   let drawerEl = null;
   function closeDrawer() { if (drawerEl) { drawerEl.remove(); drawerEl = null; } detail = null; }
+  /** The whole training set as a file: fetched with the admin token (a bare link could not carry it). */
+  async function exportSamples() {
+    try {
+      const r = await fetch("/v1/admin/samples/export", { headers: { "X-Admin-Token": token } });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const blob = await r.blob();
+      const a = h("a", { href: URL.createObjectURL(blob), download: `nanomuse-samples-${new Date().toISOString().slice(0, 10)}.jsonl` });
+      document.body.append(a); a.click(); a.remove();
+    } catch (e) { alert(e.message); }
+  }
+
   async function openAccount(id) {
     if (!drawerEl) {
       drawerEl = h("div", { class: "drawer-scrim", onclick: (e) => { if (e.target === drawerEl) closeDrawer(); } }, h("div", { class: "drawer" }, h("div", { class: "empty" }, T.loading)));
@@ -279,6 +305,7 @@
       a.has_password ? h("span", { class: "pill violet" }, T.hasPassword) : h("span", { class: "pill" }, T.noPassword),
       a.disabled ? h("span", { class: "pill bad" }, T.disabled) : null,
       a.locked ? h("span", { class: "pill warn" }, T.locked) : null,
+      a.contribute ? h("span", { class: "pill cyan" }, T.contributes) : null,
     ];
     const cap = Number(sp.daily_cap_cny || 0), frac = cap > 0 ? Math.min(1, Number(sp.today_cny || 0) / cap) : 0;
     box.replaceChildren(
@@ -291,8 +318,11 @@
           h("div", {}, h("div", { class: "k" }, T.spendToday), h("div", { class: "v", title: usd(sp.today_cny, rate) }, money(sp.today_cny)), cap > 0 ? h("div", { class: "meter", style: "margin-top:6px" }, h("i", { class: frac > 0.9 ? "bad" : frac > 0.7 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null, h("div", { class: "k", style: "margin-top:4px" }, cap > 0 ? `${T.cap} ${money(cap)}` : T.noCap)),
           h("div", {}, h("div", { class: "k" }, T.spendTotal), h("div", { class: "v", title: usd(sp.total_cny, rate) }, money(sp.total_cny)), h("div", { class: "k", style: "margin-top:4px" }, T.tokens(a.used))),
           h("div", {}, h("div", { class: "k" }, T.requests), h("div", { class: "v" }, fmt(sp.requests_total)), h("div", { class: "k", style: "margin-top:4px" }, s.unlimited ? T.noCap : `${T.grant}: ${fmt(a.granted)}`))),
+        h("div", { class: "fine", style: "padding:0 16px 10px" }, T.creditLine(money(a.credit_cny || 0), money(a.credit_left_cny || 0), a.invites || 0, a.clips_bonus || 0), " · ", T.clipsLine(a.clips_used || 0, a.clips_allowed === undefined ? null : a.clips_allowed),
+          a.invited_by ? [" · ", T.invitedBy, " ", h("code", {}, String(a.invited_by).slice(0, 8))] : null),
         h("div", { class: "acts" },
           s.unlimited ? null : h("button", { class: "btn quiet", onclick: () => doGrant(a) }, T.grant),
+          h("button", { class: "btn quiet", onclick: () => doCredit(a) }, T.credit),
           a.listed ? null : h("button", { class: "btn quiet", onclick: () => doMember(a) }, a.unlimited ? T.unmakeMember : T.makeMember),
           h("button", { class: "btn quiet", onclick: () => doDisable(a) }, a.disabled ? T.enable : T.disable),
           h("button", { class: "btn danger", onclick: () => doDelete(a) }, T.remove))),
@@ -316,7 +346,34 @@
         h("td", {}, when(r.ts)), h("td", {}, h("span", { class: "pill " + ({ chat: "blue", image: "violet", video: "cyan", realtime: "ok" }[r.kind] || "") }, T.kinds[r.kind] || r.kind)), h("td", {}, h("code", {}, r.model || "")),
         h("td", { class: "num" }, r.kind === "chat" ? T.inOut(r.prompt_tokens, r.completion_tokens) : fmt(r.charged)), h("td", { class: "num" }, money(r.cost_cny)))))) : h("div", { class: "empty" }, T.none)),
       h("div", { class: "label" }, T.timeline), h("div", { class: "card feed" }, (detail.events || []).length ? (detail.events || []).map((e) => eventRow(e, false)) : h("div", { class: "empty" }, T.none)),
+      ...(a.contribute ? [h("div", { class: "label" }, T.samples, ` · ${fmt(a.samples || 0)}`), h("div", { class: "card" }, h("div", { class: "fine", style: "padding:10px 16px 0" }, T.samplesNote), samplesBox(a.id))] : []),
     );
+  }
+
+  /** The turns one account contributed, newest first, loaded on demand; each shows the last user message and the reply. */
+  function samplesBox(accountId) {
+    const box = h("div", {}, h("div", { class: "empty" }, T.loading));
+    let before = 0;
+    const draw = (items, total) => {
+      const nodes = items.map((smp) => {
+        const msgs = Array.isArray(smp.request) ? smp.request : [];
+        const lastUser = [...msgs].reverse().find((m) => m && m.role === "user");
+        const text = (m) => !m ? "" : typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.map((p) => p && p.type === "text" ? p.text : p && p.omitted ? `[${p.type}]` : "").join(" ") : "";
+        return h("div", { class: "row", style: "align-items:flex-start" }, h("div", { class: "txt", style: "white-space:pre-wrap;word-break:break-word" },
+          h("div", { class: "s" }, `${when(smp.ts)} · `, h("code", {}, smp.model || ""), ` · ${T.inOut(smp.prompt_tokens, smp.completion_tokens)}`, smp.meta && smp.meta.ua ? ` · ${String(smp.meta.ua).split(" ")[0]}` : ""),
+          h("div", { class: "t" }, h("b", {}, `${T.user}: `), text(lastUser).slice(0, 600)),
+          h("div", { class: "t", style: "margin-top:4px" }, h("b", {}, `${T.assistant}: `), String(smp.response || "").slice(0, 900))));
+      });
+      const more = items.length && total > (box.childElementCount + items.length) ? h("button", { class: "btn quiet sm", style: "margin:8px 16px 12px", onclick: () => load() }, T.more) : null;
+      if (before === 0) box.replaceChildren(...(nodes.length ? nodes : [h("div", { class: "empty" }, T.noSamples)]), more); else { box.querySelectorAll("button").forEach((b) => b.remove()); box.append(...nodes, more); }
+      if (items.length) before = items[items.length - 1].ts;
+    };
+    const load = async () => {
+      try { const r = await api("GET", `/v1/admin/samples?account_id=${encodeURIComponent(accountId)}&limit=20${before ? `&before=${before}` : ""}`); draw(r.samples || [], r.total || 0); }
+      catch (e) { box.replaceChildren(h("div", { class: "hint bad" }, e.message)); }
+    };
+    load();
+    return box;
   }
 
   // ── main ───────────────────────────────────────────────────────
@@ -358,7 +415,8 @@
         kpi(`${T.kActive} · ${T.today}`, fmt(today.active_accounts), T.kActiveSub(today.new_accounts || 0), `/ ${fmt(period.active_accounts)} ${T.period(days)}`),
         spendKpi(T.today, today), spendKpi(T.week, week), spendKpi(T.period(days), period),
         kpi(T.kOnline, fmt(ov.online_devices), T.kOnlineSub(c.devices || 0, c.live_keys || 0)),
-        kpi(T.kSignals, fmt((sig.sign_ins || 0) + (sig.calls || 0)), T.kSignalsSub({ sign_ins: 0, sign_in_failures: 0, budget_refusals: 0, upstream_errors: 0, calls: 0, ...sig }))),
+        kpi(T.kSignals, fmt((sig.sign_ins || 0) + (sig.calls || 0)), T.kSignalsSub({ sign_ins: 0, sign_in_failures: 0, budget_refusals: 0, upstream_errors: 0, calls: 0, ...sig })),
+        (() => { const ct = ov.contributions || {}; const k = kpi(T.kSamples, fmt(ct.samples || 0), T.kSamplesSub(ct.accounts || 0)); if (ct.samples) k.append(h("button", { class: "btn quiet sm", style: "margin-top:6px", onclick: exportSamples }, T.exportSamples)); return k; })()),
       h("div", { class: "grid" },
         h("div", { class: "panel span" }, h("h2", {}, T.byDay(Math.min(days, 90))), dayBars(usage && usage.days, Math.min(days, 90), s.day_offset_h, rate)),
         h("div", { class: "panel" }, h("h2", {}, `${T.byKind} · ${T.today}`), kindRows(today.by_kind, rate), h("h2", {}, `${T.byKind} · ${T.period(days)}`), kindRows(period.by_kind, rate)),

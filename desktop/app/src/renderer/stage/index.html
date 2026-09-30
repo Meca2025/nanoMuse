@@ -37,52 +37,130 @@
 
       /* ---------------------------------------------------------------- edge glow
          Cheap on purpose: the stage often runs on a 4K display without a GPU (remote
-         desktops), so nothing full-screen animates. The rim is four thin strips whose
-         gradient slides; the haze is rasterised once and only its opacity changes. */
+         desktops), so nothing full-screen animates. The rim is four thin strips; one light
+         runs along them clockwise — top, right, bottom, left — a bright head with a long
+         tail (a running light, as on a marquee), each strip lit for a quarter of the lap.
+         The haze is rasterised once and only its opacity changes. */
       #frame {
         position: fixed;
         inset: 0;
         opacity: 0;
         transition: opacity 480ms ease;
+        --lap: 6s;
+        --dim: rgba(10, 102, 228, 0.28);
+        --head: #9be7ff;
       }
       #frame.on {
         opacity: 1;
       }
-      #frame .e {
+      #frame .e,
+      #frame .g {
         position: absolute;
-        background: linear-gradient(90deg, var(--accent), var(--violet), var(--cyan), var(--accent), var(--violet));
-        background-size: 400% 100%;
-        animation: slide 9s linear infinite;
-        opacity: 0.85;
+        background-repeat: no-repeat;
+        animation: var(--lap) linear infinite;
       }
-      #frame .t {
-        top: 0;
+      #frame .e {
+        background-color: var(--dim);
+      }
+      #frame .e.t,
+      #frame .e.b {
         left: 0;
         right: 0;
         height: 3px;
+        background-size: 200% 100%;
       }
-      #frame .b {
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        animation-direction: reverse;
-      }
-      #frame .l,
-      #frame .r {
+      #frame .e.l,
+      #frame .e.r {
         top: 0;
         bottom: 0;
         width: 3px;
-        background: linear-gradient(180deg, var(--accent), var(--violet), var(--cyan), var(--accent), var(--violet));
-        background-size: 100% 400%;
-        animation-name: slide-v;
+        background-size: 100% 200%;
       }
-      #frame .l {
+      /* the head's glow: a wider, fainter strip under the rim that runs with it */
+      #frame .g.t,
+      #frame .g.b {
         left: 0;
-      }
-      #frame .r {
         right: 0;
-        animation-direction: reverse;
+        height: 26px;
+        background-size: 200% 100%;
+      }
+      #frame .g.l,
+      #frame .g.r {
+        top: 0;
+        bottom: 0;
+        width: 26px;
+        background-size: 100% 200%;
+      }
+      #frame .g.t {
+        top: 0;
+        background-image: linear-gradient(90deg, transparent 0%, transparent 70%, rgba(6, 182, 212, 0.4) 100%);
+        animation-name: run-x;
+      }
+      #frame .g.r {
+        right: 0;
+        background-image: linear-gradient(180deg, transparent 0%, transparent 70%, rgba(6, 182, 212, 0.4) 100%);
+        animation-name: run-y;
+        animation-delay: calc(var(--lap) * -0.75);
+      }
+      #frame .g.b {
+        bottom: 0;
+        background-image: linear-gradient(270deg, transparent 0%, transparent 70%, rgba(6, 182, 212, 0.4) 100%);
+        animation-name: run-x-back;
+        animation-delay: calc(var(--lap) * -0.5);
+      }
+      #frame .g.l {
+        left: 0;
+        background-image: linear-gradient(0deg, transparent 0%, transparent 70%, rgba(6, 182, 212, 0.4) 100%);
+        animation-name: run-y-back;
+        animation-delay: calc(var(--lap) * -0.25);
+      }
+      /* the comet: the image is twice the strip; its head sits at the leading end and the tail
+         fades over the trailing 40 %. Sliding it two strip-lengths over half a lap carries the
+         head across in the first quarter — when the next strip takes over — and the tail out
+         in the second, so the light bends round the corner; parked at the end, the strip shows
+         only the image's dim part, and for the rest of the lap it is just the dim rim. */
+      #frame .e.t {
+        top: 0;
+        background-image: linear-gradient(90deg, var(--dim) 0%, var(--dim) 60%, var(--cyan) 90%, var(--head) 100%);
+        animation-name: run-x;
+      }
+      #frame .e.r {
+        right: 0;
+        background-image: linear-gradient(180deg, var(--dim) 0%, var(--dim) 60%, var(--cyan) 90%, var(--head) 100%);
+        animation-name: run-y;
+        animation-delay: calc(var(--lap) * -0.75);
+      }
+      #frame .e.b {
+        bottom: 0;
+        background-image: linear-gradient(270deg, var(--dim) 0%, var(--dim) 60%, var(--cyan) 90%, var(--head) 100%);
+        animation-name: run-x-back;
+        animation-delay: calc(var(--lap) * -0.5);
+      }
+      #frame .e.l {
+        left: 0;
+        background-image: linear-gradient(0deg, var(--dim) 0%, var(--dim) 60%, var(--cyan) 90%, var(--head) 100%);
+        animation-name: run-y-back;
+        animation-delay: calc(var(--lap) * -0.25);
+      }
+      @keyframes run-x {
+        0% { background-position-x: 200%; }
+        50% { background-position-x: 0%; }
+        100% { background-position-x: 0%; }
+      }
+      @keyframes run-y {
+        0% { background-position-y: 200%; }
+        50% { background-position-y: 0%; }
+        100% { background-position-y: 0%; }
+      }
+      @keyframes run-x-back {
+        0% { background-position-x: -100%; }
+        50% { background-position-x: 100%; }
+        100% { background-position-x: 100%; }
+      }
+      @keyframes run-y-back {
+        0% { background-position-y: -100%; }
+        50% { background-position-y: 100%; }
+        100% { background-position-y: 100%; }
       }
       /* the inner glow: four gradient strips (no blur to rasterise), a brighter set on top
          that only fades in for the moment of a screenshot */
@@ -129,16 +207,6 @@
       }
       #frame.look .look-set {
         opacity: 1;
-      }
-      @keyframes slide {
-        to {
-          background-position: 400% 0;
-        }
-      }
-      @keyframes slide-v {
-        to {
-          background-position: 0 400%;
-        }
       }
       #scan {
         position: fixed;
@@ -409,6 +477,7 @@
     <div id="frame">
       <i class="h t"></i><i class="h b"></i><i class="h l"></i><i class="h r"></i>
       <div class="look-set"><i class="h t"></i><i class="h b"></i><i class="h l"></i><i class="h r"></i></div>
+      <i class="g t"></i><i class="g b"></i><i class="g l"></i><i class="g r"></i>
       <i class="e t"></i><i class="e b"></i><i class="e l"></i><i class="e r"></i>
     </div>
     <div id="scan"></div>

@@ -3779,6 +3779,7 @@ fun ChatScreen(
                     is FlatChatItem.NanoMuseNaming -> false // nanoMuse
                     is FlatChatItem.NanoMuseAvatarOptions -> false // nanoMuse
                     is FlatChatItem.NanoMuseAvatarShare -> false // nanoMuse
+                    is FlatChatItem.NanoMuseAvatarConfirm -> false // nanoMuse
                     is FlatChatItem.AssistantTyping -> false
                     is FlatChatItem.AssistantError -> grayedMap[originalMessageId(messageId)] == true
                     is FlatChatItem.AssistantLegacyContent -> grayedMap[originalMessageId(messageId)] == true
@@ -4407,6 +4408,13 @@ fun ChatScreen(
                             is FlatChatItem.NanoMuseAvatarShare -> io.github.nanomuse.ui.avatar.AvatarShareCard(
                                 description = item.description,
                                 onDismiss = { viewModel.nmDismissAvatarShare() },
+                            )
+                            // nanoMuse: what the face costs on the Cloud allowance — drawn only after the yes.
+                            is FlatChatItem.NanoMuseAvatarConfirm -> io.github.nanomuse.ui.avatar.AvatarConfirmCard(
+                                text = item.text,
+                                blocked = viewModel.nmAvatarConfirmBlocked(),
+                                onConfirm = { viewModel.nmConfirmAvatar() },
+                                onDismiss = { viewModel.nmDeclineAvatar() },
                             )
                             is FlatChatItem.AssistantTyping -> TypingIndicator()
                             is FlatChatItem.AssistantError -> InlineErrorBanner(

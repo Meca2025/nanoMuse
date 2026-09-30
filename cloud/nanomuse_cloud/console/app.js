@@ -11,7 +11,7 @@
   const zh = (navigator.language || "").toLowerCase().startsWith("zh");
   const T = zh ? {
     tagline: "你的每一台设备，都是你的 Muse。",
-    identifier: "手机号或邮箱", code: "验证码", password: "密码", sendCode: "发送验证码", signIn: "登录", another: "换一个号码或邮箱",
+    identifier: "邮箱", code: "验证码", password: "密码", sendCode: "发送验证码", signIn: "登录", another: "换一个邮箱",
     byCode: "验证码登录", byPassword: "密码登录", forgot: "忘了密码？用验证码登录", show: "显示", hide: "隐藏",
     codeSent: "验证码已发送，十分钟内有效。", relay: "服务器", fine: "登录后，这个页面能看到你账号下所有在线的设备，并让它们各自的 Muse 去做事。网页本身不操作任何设备。",
     devices: "设备", noDevices: "还没有设备接入。用同一个账号在手机上登录 nanoMuse，或在电脑上运行 nanoMuse Desktop，它们就会出现在这里。",
@@ -33,16 +33,18 @@
     signIns: "登录的设备", thisOne: "当前", revoke: "退出", viaCode: "验证码", viaPassword: "密码", viaWeb: "网页", lastUsed: "最近使用",
     activity: "最近动态", events: {
       "account.created": "账号创建", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置了密码", "password.changed": "修改了密码",
-      "password.cleared": "移除了密码", "sign_out": "退出登录", "sign_out.all": "在所有设备上退出", "budget.refused": "超出今日额度", "upstream.error": "模型服务出错", "call.ended": "通话结束",
+      "password.cleared": "移除了密码", "sign_out": "退出登录", "sign_out.all": "在所有设备上退出", "budget.refused": "超出今日额度", "upstream.error": "模型服务出错", "call.ended": "通话结束", "contribute.on": "开启了贡献对话", "contribute.off": "关闭了贡献对话", "contribute.deleted": "删除了贡献的对话", "invite.accepted": "邀请了一位新用户", "invite.used": "通过邀请码注册", "credit.granted": "获得了额度奖励",
     },
     ways: "退出", signOutConfirm: "退出这个页面的登录？", signOutAllConfirm: "在所有设备上退出？手机和电脑上的 nanoMuse 会需要重新登录。",
     pwTitle: (has) => (has ? "修改密码" : "设置密码"), pwWhy: "设置后可以用密码登录，不必每次等验证码。至少 8 位。", pwCurrent: "当前密码", pwNew: "新密码", pwAgain: "再输一次", pwRemove: "移除密码", pwSaved: "密码已保存。", pwRemoved: "密码已移除。", pwMismatch: "两次输入不一致。", pwShort: "至少 8 位。",
-    save: "保存", cancel: "取消", ok: "好", refresh: "刷新", community: "nanoMuse Cloud 由社区志愿维护，不以营利为目的。这里记的只有次数、tokens 和估算的费用；你和模型说过的话不会被保存。",
-    errors: { bad_identifier: "请输入手机号或邮箱地址。", code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁，稍等几分钟。", not_invited: "这是一台私人中转，这个号码或邮箱不在名单上。", send_failed: "验证码发送失败，请稍后再试。", bad_key: "登录已失效，请重新登录。", offline: "连不上服务器。",
-      bad_credentials: "号码或密码不对。", no_password: "这个账号还没设置密码，请用验证码登录。", locked: "密码试错太多次，请稍后再试或用验证码登录。", password_short: "密码至少 8 位。", password_long: "密码太长了。", password_weak: "密码太简单了。", password_wrong: "当前密码不对。", password_required: "请输入当前密码。", disabled: "这个账号已被停用。" },
+    save: "保存", cancel: "取消", ok: "好", refresh: "刷新", community: "nanoMuse Cloud 由社区志愿维护，不以营利为目的。这里记的只有次数、tokens 和估算的费用；你和模型说过的话默认不保存。",
+    contribute: "贡献对话", contributeWhy: "打开后，你和模型的每一轮对话（消息和回答，图片只留标记）会保存在服务器上，用来训练社区自己的开源模型。默认关闭；随时可以关掉并删除已贡献的内容。", contributeOn: "正在贡献", contributeOff: "未开启", contributeCount: (n) => `已贡献 ${n} 轮`, deleteSamples: "删除我贡献的对话", deleteSamplesConfirm: "已保存的对话会从服务器上删除，不可恢复。", deleted: (n) => `已删除 ${n} 轮`,
+    invite: "邀请朋友", inviteWhy: (b, c) => `每有一位朋友用你的邀请码注册，你多得 ¥${b} 额度和 ${c} 段视频。额度在当天免费额度用完后才开始扣，不过期。`, inviteCode: "邀请码", inviteLink: "邀请链接", copy: "复制", copied: "已复制", invited: (n) => `已邀请 ${n} 人`, credit: (c) => `剩余邀请额度 ¥${c}`, clips: (l, a) => `视频：还可生成 ${l} 段（共 ${a} 段）`, clipsUnlimited: "视频：不限",
+    errors: { bad_identifier: "请输入邮箱地址。", code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁，稍等几分钟。", not_invited: "这是一台私人中转，这个邮箱不在名单上。", video_limit: "视频额度已用完；邀请一位朋友注册可以再得一次。", daily_cap: "今天的免费额度用完了，明天恢复；邀请朋友注册可以多得 ¥3。", send_failed: "验证码发送失败，请稍后再试。", bad_key: "登录已失效，请重新登录。", offline: "连不上服务器。",
+      bad_credentials: "邮箱或密码不对。", no_password: "这个账号还没设置密码，请用验证码登录。", locked: "密码试错太多次，请稍后再试或用验证码登录。", password_short: "密码至少 8 位。", password_long: "密码太长了。", password_weak: "密码太简单了。", password_wrong: "当前密码不对。", password_required: "请输入当前密码。", disabled: "这个账号已被停用。" },
   } : {
     tagline: "Every device you own, a Muse of yours.",
-    identifier: "Phone number or e-mail", code: "Verification code", password: "Password", sendCode: "Send code", signIn: "Sign in", another: "Use another number or address",
+    identifier: "E-mail", code: "Verification code", password: "Password", sendCode: "Send code", signIn: "Sign in", another: "Use another address",
     byCode: "With a code", byPassword: "With a password", forgot: "Forgot it? Sign in with a code", show: "Show", hide: "Hide",
     codeSent: "A six-digit code is on its way; it is good for ten minutes.", relay: "Server", fine: "Once signed in, this page shows every device of your account that is online and lets each device's Muse do things. The page itself operates nothing.",
     devices: "Devices", noDevices: "No device yet. Sign in to nanoMuse on your phone with this account, or run nanoMuse Desktop on a computer, and they appear here.",
@@ -63,13 +65,15 @@
     signIns: "Signed in on", thisOne: "this one", revoke: "Sign out", viaCode: "code", viaPassword: "password", viaWeb: "web", lastUsed: "last used",
     activity: "Activity", events: {
       "account.created": "Account created", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
-      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Over today's allowance", "upstream.error": "Model service error", "call.ended": "Call ended",
+      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Over today's allowance", "upstream.error": "Model service error", "call.ended": "Call ended", "contribute.on": "Started contributing conversations", "contribute.off": "Stopped contributing", "contribute.deleted": "Deleted contributed conversations", "invite.accepted": "A friend signed up with your code", "invite.used": "Signed up with an invite code", "credit.granted": "Credit granted",
     },
     ways: "Leave", signOutConfirm: "Sign this page out?", signOutAllConfirm: "Sign out everywhere? nanoMuse on your phone and computers will ask you to sign in again.",
     pwTitle: (has) => (has ? "Change password" : "Set a password"), pwWhy: "With a password you can sign in without waiting for a code. At least 8 characters.", pwCurrent: "Current password", pwNew: "New password", pwAgain: "Once more", pwRemove: "Remove the password", pwSaved: "Password saved.", pwRemoved: "Password removed.", pwMismatch: "The two do not match.", pwShort: "At least 8 characters.",
-    save: "Save", cancel: "Cancel", ok: "OK", refresh: "Refresh", community: "nanoMuse Cloud is run by volunteers of the community, not for profit. What is kept here is counts, tokens and an estimated cost; what you said to the model is never stored.",
-    errors: { bad_identifier: "Enter a mobile number or an e-mail address.", code_wrong: "That code is not right.", code_expired: "That code has expired; send a new one.", code_too_often: "Too many codes; wait a few minutes.", not_invited: "This relay is private; that number or address is not on its list.", send_failed: "The code could not be sent; try again shortly.", bad_key: "Your sign-in has expired; sign in again.", offline: "Cannot reach the server.",
-      bad_credentials: "That number or password is not right.", no_password: "This account has no password yet; sign in with a code.", locked: "Too many wrong passwords; try later or use a code.", password_short: "At least 8 characters.", password_long: "That password is too long.", password_weak: "That password is too easy.", password_wrong: "The current password is not right.", password_required: "Enter the current password.", disabled: "This account has been disabled." },
+    save: "Save", cancel: "Cancel", ok: "OK", refresh: "Refresh", community: "nanoMuse Cloud is run by volunteers of the community, not for profit. What is kept here is counts, tokens and an estimated cost; what you said to the model is not stored unless you choose to contribute it.",
+    contribute: "Contribute conversations", contributeWhy: "When on, each turn with the model (your messages and its reply; pictures as a marker) is kept on the server to train the community's own open model. Off by default; turn it off and delete what you gave at any time.", contributeOn: "Contributing", contributeOff: "Off", contributeCount: (n) => `${n} turns so far`, deleteSamples: "Delete what I contributed", deleteSamplesConfirm: "The saved conversations are removed from the server. This cannot be undone.", deleted: (n) => `${n} turns deleted`,
+    invite: "Invite a friend", inviteWhy: (b, c) => `Each friend who signs up with your code earns you ¥${b} of credit and ${c} video clips. Credit is spent only once the day's free allowance is used up, and never expires.`, inviteCode: "Invite code", inviteLink: "Invite link", copy: "Copy", copied: "Copied", invited: (n) => `${n} invited`, credit: (c) => `¥${c} of credit left`, clips: (l, a) => `Video: ${l} of ${a} clips left`, clipsUnlimited: "Video: no limit",
+    errors: { bad_identifier: "Enter an e-mail address.", code_wrong: "That code is not right.", code_expired: "That code has expired; send a new one.", code_too_often: "Too many codes; wait a few minutes.", not_invited: "This relay is private; that address is not on its list.", video_limit: "Your video allowance is used up; a friend who signs up with your code adds another.", daily_cap: "Today's free allowance is used up; it comes back tomorrow. Invite a friend for ¥3 more.", send_failed: "The code could not be sent; try again shortly.", bad_key: "Your sign-in has expired; sign in again.", offline: "Cannot reach the server.",
+      bad_credentials: "That address or password is not right.", no_password: "This account has no password yet; sign in with a code.", locked: "Too many wrong passwords; try later or use a code.", password_short: "At least 8 characters.", password_long: "That password is too long.", password_weak: "That password is too easy.", password_wrong: "The current password is not right.", password_required: "Enter the current password.", disabled: "This account has been disabled." },
   };
 
   // ── state ───────────────────────────────────────────────────────
@@ -149,6 +153,7 @@
   const deviceName = () => `${zh ? "网页" : "Web console"} · ${navigator.platform || "browser"}`;
 
   // ── sign in view ─────────────────────────────────────────────────
+  { const inv = new URLSearchParams(location.search).get("invite"); if (inv) LS.setItem("nm.invite", inv); }
   function renderSignIn() {
     let identifier = LS.getItem("nm.identifier") || "", mode = LS.getItem("nm.mode") || "code", sent = false, busy = false, msg = "", bad = false, showPw = false;
     const draw = () => {
@@ -193,7 +198,9 @@
       const code = (document.getElementById("code") || {}).value || "";
       if (code.replace(/\D/g, "").length !== 6) return;
       busy = true; draw();
-      try { adopt(await api("POST", "/v1/auth/verify", { identifier, code: code.replace(/\D/g, ""), device: deviceName() })); return; }
+      // a friend's code from the link (?invite=…) travels with the first sign-in; it counts for a new account only
+      const invite = new URLSearchParams(location.search).get("invite") || LS.getItem("nm.invite") || "";
+      try { adopt(await api("POST", "/v1/auth/verify", { identifier, code: code.replace(/\D/g, ""), device: deviceName(), invite })); LS.removeItem("nm.invite"); return; }
       catch (e) { msg = errText(e); bad = true; }
       busy = false; draw();
     }
@@ -501,6 +508,25 @@
       h("div", { class: "big" }, free ? T.unlimited : `¥${money(Math.max(0, cap - spent))}`, !free ? h("small", {}, zh ? "剩余" : "left") : null),
       !free ? h("div", { class: "meter" }, h("i", { class: frac > 0.9 ? "bad" : frac > 0.7 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null,
       h("div", { class: "s" }, !free ? T.spentToday(money(spent), money(cap)) : T.spentOnly(money(spent)), tk.used_today !== undefined ? ` · ${T.tokensToday(fmtN(tk.used_today))}` : ""))));
+    // invite a friend: the code, the link, what came of it
+    const inv = me.invite, cl = me.clips;
+    if (inv && inv.code) {
+      const copyBtn = (text) => h("button", { class: "btn quiet sm", onclick: async (e) => { try { await navigator.clipboard.writeText(text); e.target.textContent = T.copied; setTimeout(() => { e.target.textContent = T.copy; }, 1500); } catch (_) { prompt(T.copy, text); } } }, T.copy);
+      kids.push(h("div", { class: "label" }, T.invite), h("div", { class: "card" },
+        h("div", { class: "row" }, h("span", { class: "tile violet", html: ICON.shield }), h("div", { class: "txt" }, h("div", { class: "t" }, T.inviteCode), h("div", { class: "s" }, h("code", { style: "font-size:15px;letter-spacing:.12em" }, inv.code))), copyBtn(inv.code)),
+        inv.url ? h("div", { class: "row" }, h("span", { class: "tile grey", html: ICON.web }), h("div", { class: "txt" }, h("div", { class: "t" }, T.inviteLink), h("div", { class: "s" }, h("code", {}, inv.url))), copyBtn(inv.url)) : null,
+        h("div", { class: "row" }, h("span", { class: "tile grey", html: ICON.devices }), h("div", { class: "txt" }, h("div", { class: "t" }, `${T.invited(inv.invites || 0)} · ${T.credit(money(sp.credit_left || 0))}`),
+          h("div", { class: "s" }, cl ? (cl.unlimited ? T.clipsUnlimited : T.clips(cl.left, cl.allowed)) : ""))),
+        h("p", { class: "fine", style: "padding:0 16px 12px" }, T.inviteWhy(inv.bonus_cny, inv.clips_per_invite))));
+    }
+    // contribute conversations: off by default, the person's switch
+    const ct = me.contribute || { on: false, samples: 0 };
+    kids.push(h("div", { class: "label" }, T.contribute), h("div", { class: "card" },
+      h("div", { class: "row" }, h("span", { class: "tile " + (ct.on ? "violet" : "grey"), html: ICON.shield }),
+        h("div", { class: "txt" }, h("div", { class: "t" }, ct.on ? T.contributeOn : T.contributeOff), h("div", { class: "s" }, ct.on ? T.contributeCount(ct.samples || 0) : "")),
+        h("button", { class: "btn quiet sm", onclick: async () => { try { await api("POST", "/v1/me/contribute", { on: !ct.on }, key); } catch (e) { alert(errText(e)); } await loadMe(); drawAccount(body); } }, ct.on ? (zh ? "关闭" : "Turn off") : (zh ? "开启" : "Turn on"))),
+      ct.samples ? h("button", { class: "row tap danger", onclick: async () => { if (await ask(T.deleteSamples, T.deleteSamplesConfirm, T.deleteSamples, true)) { try { const r = await api("DELETE", "/v1/me/samples", null, key); alert(T.deleted(r.deleted || 0)); } catch (e) { alert(errText(e)); } await loadMe(); drawAccount(body); } } }, h("span", { class: "tile bad", html: ICON.out }), h("div", { class: "txt" }, h("div", { class: "t" }, T.deleteSamples))) : null,
+      h("p", { class: "fine", style: "padding:0 16px 12px" }, T.contributeWhy)));
     // usage by kind / by model
     const rows = usageTab === "today" ? (u.today && u.today.by_kind) || [] : (u.total && u.total.by_kind) || [];
     const models = (u.total && u.total.by_model) || [];

@@ -1,8 +1,8 @@
-import { Check, Clapperboard, Image as ImageIcon, KeyRound, Loader2, LogOut, MessageCircle, Phone, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { Check, Clapperboard, Copy, Gift, Image as ImageIcon, KeyRound, Loader2, LogOut, MessageCircle, Phone, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { BackBar } from "../components/BackBar";
-import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
+import { Toggle, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { SignIn } from "../components/SignIn";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -11,7 +11,7 @@ import { cx } from "../util";
 
 /**
  * Your nanoMuse Cloud account: who you are signed in as, what has been used (by kind — chat,
- * pictures, clips, calls — and by model), the password, every device signed in, and the
+ * pictures, clips — and by model), the password, every device signed in, and the
  * way out (sign out here, everywhere, or delete the account). Everything the relay knows
  * about you is on this one screen; nothing on it is message content.
  */
@@ -56,7 +56,7 @@ export function AccountScreen() {
         {!signedIn ? (
           <Section>
             <p className="text-[13.5px] text-muted leading-relaxed">
-              {t("Free. Your devices meet on the hub, a model with a daily allowance comes with it, and calls go through it. Sign in with a code the first time; set a password afterwards if you like.")}
+              {t("Free. Your devices meet on the hub and a model with a daily allowance comes with it. Sign in with a code the first time; set a password afterwards if you like.")}
             </p>
             <SignIn onSignedIn={() => toast(t("Signed in to nanoMuse Cloud."))} />
           </Section>
@@ -64,7 +64,9 @@ export function AccountScreen() {
           <>
             <Identity account={account} me={me} />
             {me && <Allowance me={me} />}
+            {me?.invite?.code && <Invite me={me} />}
             {me && <Usage me={me} />}
+            {me && <Contribute me={me} onChanged={() => void load()} />}
             <Password account={account} onChanged={() => void load()} />
             <Sessions sessions={sessions} loading={loading} onChanged={() => void load()} />
             {events && events.length > 0 && <Timeline events={events} />}
@@ -100,7 +102,7 @@ function Identity({ account, me }: { account: CloudAccount | null; me: CloudMe |
         <div className="min-w-0 flex-1">
           <div className="truncate text-[18px] font-semibold tracking-tight">{hint}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-muted">
-            <span>{account?.channel === "sms" ? t("Mobile number") : t("E-mail")}</span>
+            <span>{account?.channel === "sms" ? t("Mobile number") : t("E-mail")}</span>{/* phone accounts from earlier versions still show their channel */}
             {since && <span>· {t("since {date}", { date: since.toLocaleDateString() })}</span>}
             {me?.account.member && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
@@ -144,6 +146,120 @@ function Allowance({ me }: { me: CloudMe }) {
           <div className={cx("h-full rounded-full transition-all", pct >= 90 ? "bg-rose-500" : pct >= 60 ? "bg-amber-500" : "bg-accent")} style={{ width: `${pct}%` }} />
         </div>
       )}
+      {!spend.unlimited && (spend.credit_left ?? 0) > 0 && (
+        <p className="text-[12.5px] text-muted">{t("Plus ¥{amount} of credit from invitations, used once the day's allowance is gone.", { amount: (spend.credit_left ?? 0).toFixed(2) })}</p>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * Contributing conversations: off by default. On, the relay keeps each chat turn (messages and
+ * reply, pictures as a marker) for the community's own model; the person can stop and delete
+ * what they gave at any time. The only way message content ever reaches the relay's disk.
+ */
+function Contribute({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
+  const t = useT();
+  const { toast } = useStore();
+  const [busy, setBusy] = useState(false);
+  const ct = me.contribute ?? { on: false, samples: 0 };
+  const flip = async (on: boolean) => {
+    setBusy(true);
+    try {
+      await api.cloudContribute(on);
+      onChanged();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const wipe = async () => {
+    if (!window.confirm(t("The conversations you contributed are removed from the server. This cannot be undone."))) return;
+    setBusy(true);
+    try {
+      const r = await api.cloudDeleteSamples();
+      toast(t("{n} turns deleted", { n: String(r.deleted) }));
+      onChanged();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Section title={t("Contribute conversations")}>
+      <Toggle
+        label={ct.on ? t("Contributing — {n} turns so far", { n: String(ct.samples) }) : t("Off — nothing you say is kept")}
+        hint={t("When on, each turn with the model (your messages and its reply; pictures as a marker) is kept on the server to train the community's own open model. Off by default; turn it off and delete what you gave at any time.")}
+        checked={ct.on}
+        disabled={busy}
+        onChange={(v) => void flip(v)}
+      />
+      {ct.samples > 0 && (
+        <button type="button" disabled={busy} onClick={() => void wipe()} className={cx(secondaryBtn, "inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300")}>
+          <Trash2 size={14} /> {t("Delete what I contributed")}
+        </button>
+      )}
+    </Section>
+  );
+}
+
+/** Invite a friend: the code and link, what each sign-up earns, and what came of it so far. */
+function Invite({ me }: { me: CloudMe }) {
+  const t = useT();
+  const { toast } = useStore();
+  const inv = me.invite!;
+  const clips = me.clips;
+  const link = inv.url || `https://nanomuse.cn/web/?invite=${inv.code}`;
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(t("Copied"));
+    } catch {
+      toast(text);
+    }
+  };
+  const share = async () => {
+    const text = t("Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my code {code}: {link}", { code: inv.code, link });
+    const nav = navigator as Navigator & { share?: (data: { text: string }) => Promise<void> };
+    if (nav.share) {
+      try {
+        await nav.share({ text });
+        return;
+      } catch {
+        /* cancelled — fall through to the clipboard */
+      }
+    }
+    await copy(text);
+  };
+  return (
+    <Section title={t("Invite a friend")}>
+      <p className="text-[12.5px] text-muted">
+        {t("Each friend who signs up with your code gives you ¥{bonus} of credit and {clips} more clips.", { bonus: inv.bonus_cny.toFixed(0), clips: String(inv.clips_per_invite) })}
+      </p>
+      <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2/70 px-3 py-2">
+        <div>
+          <div className="text-[11px] text-muted">{t("Your code")}</div>
+          <code className="font-mono text-[18px] font-semibold tracking-[0.2em]">{inv.code}</code>
+        </div>
+        <button type="button" onClick={() => void copy(inv.code)} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
+          <Copy size={14} /> {t("Copy")}
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <button type="button" onClick={() => void share()} className={cx(primaryBtn, "inline-flex flex-1 items-center justify-center gap-1.5 py-2.5")}>
+          <Share2 size={14} /> {t("Share the link")}
+        </button>
+        <button type="button" onClick={() => void copy(link)} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
+          <Gift size={14} /> {t("Copy the link")}
+        </button>
+      </div>
+      <p className="text-[12.5px] text-muted">
+        {t("{n} friends joined", { n: String(inv.invites) })}
+        {inv.credit_left_cny > 0 && <> · {t("¥{amount} credit left", { amount: inv.credit_left_cny.toFixed(2) })}</>}
+        {clips && !clips.unlimited && clips.left !== null && <> · {t("{left} of {allowed} clips left", { left: String(clips.left), allowed: String(clips.allowed) })}</>}
+      </p>
     </Section>
   );
 }
@@ -410,7 +526,7 @@ function SignOut({ account, onDone }: { account: CloudAccount | null; onDone: ()
   const run = async (what: "here" | "all" | "delete") => {
     const ask =
       what === "here"
-        ? t("Sign out of nanoMuse Cloud on this device? The hub, calls and the Cloud model stop working here until you sign in again.")
+        ? t("Sign out of nanoMuse Cloud on this device? The hub and the Cloud model stop working here until you sign in again.")
         : what === "all"
           ? t("Sign out on every device, including this one?")
           : t("Delete the account? The relay forgets your identifier, your devices and your usage. This cannot be undone.");

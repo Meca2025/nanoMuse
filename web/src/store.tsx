@@ -100,7 +100,6 @@ export interface AppState {
   /** A call in progress, as the runtime reports it (null when none). */
   call: { state: string; turns: number; cost_cny: number; video: boolean; source: string } | null;
   /** Open the call screen (set by the chat header; cleared when the call screen closes). */
-  callOpen: false | "voice" | "video";
   /** This computer's own screen and hands. */
   hands: HandsStatus | null;
   /** The latest live step of the hands, for the stage; cleared when the task ends. */
@@ -124,7 +123,6 @@ type Action =
   | { type: "draft"; text: string | null }
   | { type: "draftFiles"; files: AttachmentInfo[] | null }
   | { type: "onboardingDismissed" }
-  | { type: "callOpen"; mode: false | "voice" | "video" }
   | { type: "toast"; toast: string | null };
 
 const initial: AppState = {
@@ -162,7 +160,6 @@ const initial: AppState = {
   hub: null,
   codingLive: {},
   call: null,
-  callOpen: false,
   hands: null,
   handsLive: null,
 };
@@ -267,8 +264,6 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, draftFiles: action.files };
     case "onboardingDismissed":
       return { ...state, onboardingDismissed: true };
-    case "callOpen":
-      return { ...state, callOpen: action.mode };
     case "toast":
       return { ...state, toast: action.toast };
     case "ws":
@@ -453,7 +448,6 @@ interface StoreValue {
   draftFiles: (files: AttachmentInfo[] | null) => void;
   dismissOnboarding: () => void;
   /** open (voice / video) or close the call screen */
-  openCall: (mode: false | "voice" | "video") => void;
   toast: (text: string) => void;
 }
 
@@ -622,7 +616,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (text !== null) dispatch({ type: "tab", tab: "chat" });
       },
       dismissOnboarding: () => dispatch({ type: "onboardingDismissed" }),
-      openCall: (mode) => dispatch({ type: "callOpen", mode }),
       toast: (text) => dispatch({ type: "toast", toast: t(text) }),
     }),
     [state, loadEvents, refreshGoals, refreshSettings, refreshHub],

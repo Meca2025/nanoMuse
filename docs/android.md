@@ -22,10 +22,10 @@ About*).
    [latest release](https://github.com/nano-muse/nanoMuse/releases/latest). Verify with
    `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` if you like.
 2. Open it. Android asks once to allow installs from your browser or file manager.
-3. **Sign in.** The first screen is the account: an e-mail address or a phone number, a
-   code — or a password once you have set one. It is what lets your devices work as one
-   ([hub.md](hub.md)), brings a model to start with ([cloud.md](cloud.md), about ¥25 a day
-   per account, free), and carries calls. Then choose which model answers: the account's
+3. **Sign in.** The first screen is the account: an e-mail address, a code — or a
+   password once you have set one. It is what lets your devices work as one
+   ([hub.md](hub.md)) and brings a model to start with ([cloud.md](cloud.md), about ¥15 a
+   day per account, free; ¥3 more per friend invited). Then choose which model answers: the account's
    own, or a key of your own (any OpenAI-compatible endpoint, or the OAuth sign-ins the
    app ships with). Running everything yourself with no account at all is the runtime's
    `cloud.required = false`; the phone app asks for the account.
@@ -40,7 +40,6 @@ About*).
 | **Hands** (`hands/`) | With *Hands* on and the accessibility service enabled, the agent looks at the phone's screen and taps, types and swipes in its apps — the last rung after APIs, fetches and the browser. A stage over the app shows where it is about to tap and a capsule with the step and **Stop**. Passwords and codes are always yours to type. [gui.md](gui.md) is the design record; the app's own hands are in `io.github.nanomuse.hands`. |
 | **Reach** (`reach/`) | Your computers, from the phone, on the same network: run `host/nanomuse_host.py` on the computer, enter its code once under *Computers*, and "say it on the phone, it gets done there" — a shell command, a file, the computer's screen. Each computer has its own bearer token, kept in the phone's encrypted store (the host keeps only a hash); approvals are decided on the phone before anything is sent. [every-device.md](every-device.md). |
 | **The hub** (`hub/`) | Every signed-in device of the account meets on the relay's hub: the phone sees your computers, asks them to do things, gets their approvals as cards, and can be asked by them. A foreground service keeps it reachable in the background (Android 13+ asks for the notification permission for that). [hub.md](hub.md). |
-| **Calls** (`call/`) | Voice and video calls with the agent in real time, on Qwen Omni through the account or your own Bailian key; the camera can be switched on and off during a call. [calls.md](calls.md). |
 | **Coding agents** (`ui/coding/`) | The Cursor, Codex and Claude Code sessions on your computers, seen and steered from the phone. [coding-agents.md](coding-agents.md). |
 | **Account** (`ui/cloud/`) | Who is signed in, the password, every device holding a key, usage by kind and by model, the ways out. |
 
@@ -104,7 +103,6 @@ like the Python package's version does.
 | `hub/` | `Hub` (state, device identity, settings), `HubClient` (the socket with backoff; stops when the relay refuses the key), `HubService` (the foreground service), `HubActions` (what other devices may ask this phone), `HubErrors` (failures in words) |
 | `reach/` | `Computers` (paired computers, tokens in the encrypted store), the offload handler that sends work to a computer |
 | `hands/` | The accessibility service as the hand, the stage and the capsule, the screen reader |
-| `call/CallEngine.kt`, `ui/call/` | Real-time calls: microphone, speaker, camera frames, captions, cost |
 | `ui/coding/` | The coding agents of your computers |
 | `ui/cloud/` | Sign-in, the Account screen, the Devices section |
 | `res/values*/nm_strings.xml` | Every nanoMuse string, in English, 简体中文 and 繁體中文 (the three files carry the same keys) |

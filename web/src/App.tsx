@@ -13,10 +13,9 @@ import { useT } from "./i18n";
 import { cx } from "./util";
 
 // The chat and the feed are what opens first; every other screen arrives as its own chunk
-// the first time it is shown, so the first paint does not carry the call engine, the
-// provider form or the coding console.
+// the first time it is shown, so the first paint does not carry the provider form or the
+// coding console.
 const AccountScreen = lazy(() => import("./screens/AccountScreen").then((m) => ({ default: m.AccountScreen })));
-const CallScreen = lazy(() => import("./screens/CallScreen").then((m) => ({ default: m.CallScreen })));
 const CodingScreen = lazy(() => import("./screens/CodingScreen").then((m) => ({ default: m.CodingScreen })));
 const ConnectionsScreen = lazy(() => import("./screens/ConnectionsScreen").then((m) => ({ default: m.ConnectionsScreen })));
 const DevicesScreen = lazy(() => import("./screens/DevicesScreen").then((m) => ({ default: m.DevicesScreen })));
@@ -148,11 +147,6 @@ export default function App() {
       </nav>
       </div>
       <FileViewer path={state.viewer} onClose={() => openFile(null)} />
-      {state.callOpen && (
-        <Suspense fallback={null}>
-          <CallScreen mode={state.callOpen} />
-        </Suspense>
-      )}
       {state.toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4">
           <div className="rise rounded-2xl bg-fg text-bg px-4 py-2 text-[13.5px] shadow-lg max-w-sm text-center">{state.toast}</div>

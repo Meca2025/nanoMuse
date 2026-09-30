@@ -27,7 +27,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * nanoMuse Cloud: the "start now" path. A phone number or an e-mail address, a code, and the
+ * nanoMuse Cloud: the "start now" path. An e-mail address, a code, and the
  * app has a provider with a starter allowance — no key of one's own needed. The server is the
  * relay in `cloud/` of the repository; anyone can run one, and a debug build can be pointed at
  * a different one.
@@ -69,6 +69,19 @@ object NanoMuseCloud {
     private const val KEY_SESSIONS = "cloud.sessions"
     private const val KEY_VIA = "cloud.via"
     private const val KEY_USAGE = "cloud.usage_json"
+    // 0.1.22: invitations, credit and the clip allowance (relay 0.4)
+    private const val KEY_CREDIT_LEFT = "cloud.credit_left_cny"
+    private const val KEY_LEFT_TODAY = "cloud.left_today_cny"
+    private const val KEY_INVITE_CODE = "cloud.invite_code"
+    private const val KEY_INVITE_URL = "cloud.invite_url"
+    private const val KEY_INVITES = "cloud.invites"
+    private const val KEY_INVITE_BONUS = "cloud.invite_bonus_cny"
+    private const val KEY_INVITE_CLIPS = "cloud.invite_clips"
+    private const val KEY_CLIPS_LEFT = "cloud.clips_left"
+    private const val KEY_CLIPS_ALLOWED = "cloud.clips_allowed"
+    private const val KEY_CLIPS_UNLIMITED = "cloud.clips_unlimited"
+    private const val KEY_CONTRIBUTE = "cloud.contribute"
+    private const val KEY_SAMPLES = "cloud.samples"
 
     class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
 
@@ -140,6 +153,24 @@ object NanoMuseCloud {
         val via: String = "",
         /** The breakdown by kind and by model, when the relay reports one. */
         val usage: Usage? = null,
+        /** Credit earned from invitations and the operator, still unspent (yuan); drawn on after the day's cap. */
+        val creditLeftCny: Double = 0.0,
+        /** What may still be spent today, cap and credit together; negative when the relay did not say (no cap). */
+        val leftTodayCny: Double = -1.0,
+        /** This account's invite code and the link to share; empty on a relay from before 0.4. */
+        val inviteCode: String = "",
+        val inviteUrl: String = "",
+        /** Friends who signed up with the code, and what each earns. */
+        val invites: Int = 0,
+        val inviteBonusCny: Double = 0.0,
+        val inviteClips: Int = 0,
+        /** Video clips: what is left of the allowance (-1 = unknown), the allowance itself, or no limit at all. */
+        val clipsLeft: Int = -1,
+        val clipsAllowed: Int = 0,
+        val clipsUnlimited: Boolean = true,
+        /** The person chose to contribute their chat turns to the community's model; how many so far. */
+        val contribute: Boolean = false,
+        val samples: Int = 0,
     ) {
         val remaining: Long get() = (granted - used).coerceAtLeast(0)
         /** 0..1 of the grant still unspent. */
@@ -223,6 +254,67 @@ object NanoMuseCloud {
             sessions = p.getInt(KEY_SESSIONS, 0),
             via = p.getString(KEY_VIA, "") ?: "",
             usage = p.getString(KEY_USAGE, null)?.let { parseUsage(runCatching { JSONObject(it) }.getOrNull()) },
+            creditLeftCny = p.getFloat(KEY_CREDIT_LEFT, 0f).toDouble(),
+            leftTodayCny = p.getFloat(KEY_LEFT_TODAY, -1f).toDouble(),
+            inviteCode = p.getString(KEY_INVITE_CODE, "") ?: "",
+            inviteUrl = p.getString(KEY_INVITE_URL, "") ?: "",
+            invites = p.getInt(KEY_INVITES, 0),
+            inviteBonusCny = p.getFloat(KEY_INVITE_BONUS, 0f).toDouble(),
+            inviteClips = p.getInt(KEY_INVITE_CLIPS, 0),
+            clipsLeft = p.getInt(KEY_CLIPS_LEFT, -1),
+            clipsAllowed = p.getInt(KEY_CLIPS_ALLOWED, 0),
+            clipsUnlimited = p.getBoolean(KEY_CLIPS_UNLIMITED, true),
+            contribute = p.getBoolean(KEY_CONTRIBUTE, false),
+            samples = p.getInt(KEY_SAMPLES, 0),
+        )
+    }
+
+    /** Keep (or stop keeping) this account's chat turns for the community's own model. */
+    suspend fun setContribute(context: Context, on: Boolean): Account = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val r = call(context, "POST", "/v1/me/contribute", JSONObject().put("on", on), token = key)
+        prefs(context).edit().putBoolean(KEY_CONTRIBUTE, r.optBoolean("on", on)).putInt(KEY_SAMPLES, r.optInt("samples", 0)).apply()
+        account(context)!!
+    }
+
+    /** Delete everything this account contributed; returns how many turns went. */
+    suspend fun deleteSamples(context: Context): Int = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val n = call(context, "DELETE", "/v1/me/samples", null, token = key).optInt("deleted", 0)
+        prefs(context).edit().putInt(KEY_SAMPLES, 0).apply()
+        n
+    }
+
+    /**
+     * What a job would cost before it is started — the avatar studio asks before a new face
+     * (the candidates, the poses and, with video on, the clips). Nothing is charged.
+     */
+    data class Estimate(
+        val cny: Double,
+        /** What may still be spent today, cap and credit together; null when there is no cap. */
+        val leftTodayCny: Double?,
+        val creditLeftCny: Double,
+        val affordable: Boolean,
+        val clipsOk: Boolean,
+        /** Clips left of the allowance; null when there is no limit. */
+        val clipsLeft: Int?,
+        val images: Int,
+        val clips: Int,
+    )
+
+    suspend fun estimate(context: Context, images: Int, clips: Int): Estimate = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val r = call(context, "GET", "/v1/estimate?images=$images&clips=$clips", null, token = key)
+        val clipsView = r.optJSONObject("clips")
+        Estimate(
+            cny = r.optDouble("cny", 0.0),
+            leftTodayCny = if (r.isNull("left_today_cny")) null else r.optDouble("left_today_cny", 0.0),
+            creditLeftCny = r.optDouble("credit_left_cny", 0.0),
+            affordable = r.optBoolean("affordable", true),
+            clipsOk = r.optBoolean("clips_ok", true),
+            clipsLeft = if (clipsView == null || clipsView.optBoolean("unlimited", true) || clipsView.isNull("left")) null else clipsView.optInt("left", 0),
+            images = images,
+            clips = clips,
         )
     }
 
@@ -237,11 +329,13 @@ object NanoMuseCloud {
      * a default group with the recommended chat model (only if the user has none yet), and the
      * image model for the avatar (only if none is set). Returns the account as the relay sees it.
      */
-    suspend fun verify(context: Context, identifier: String, code: String): Account = withContext(Dispatchers.IO) {
+    suspend fun verify(context: Context, identifier: String, code: String, invite: String = ""): Account = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("identifier", identifier.trim())
             .put("code", code.trim())
             .put("device", deviceName())
+        // a friend's code counts for a new account only; the relay ignores it otherwise
+        if (invite.isNotBlank()) body.put("invite", invite.trim())
         adopt(context, call(context, "POST", "/v1/auth/verify", body, token = null))
     }
 
@@ -410,6 +504,7 @@ object NanoMuseCloud {
             "bad_key" -> context.getString(R.string.nm_cloud_err_bad_key)
             "out_of_tokens" -> context.getString(R.string.nm_cloud_err_out_of_tokens)
             "daily_cap" -> context.getString(R.string.nm_cloud_err_daily_cap)
+            "video_limit" -> context.getString(R.string.nm_cloud_err_video_limit)
             "rate_limited" -> context.getString(R.string.nm_cloud_err_rate_limited)
             "unreachable" -> context.getString(R.string.nm_cloud_err_unreachable)
             "bad_credentials" -> context.getString(R.string.nm_cloud_err_bad_credentials)
@@ -535,8 +630,49 @@ object NanoMuseCloud {
             .putInt(KEY_SESSIONS, account.optInt("sessions", 0))
             .putString(KEY_VIA, account.optString("signed_in_via"))
             .putString(KEY_USAGE, reply.optJSONObject("usage")?.toString())
+            .putFloat(KEY_CREDIT_LEFT, spend.optDouble("credit_left", 0.0).toFloat())
+            .putFloat(KEY_LEFT_TODAY, if (spend.isNull("left_today")) -1f else spend.optDouble("left_today", -1.0).toFloat())
+            .putString(KEY_INVITE_CODE, reply.optJSONObject("invite")?.optString("code").orEmpty())
+            .putString(KEY_INVITE_URL, reply.optJSONObject("invite")?.optString("url").orEmpty())
+            .putInt(KEY_INVITES, reply.optJSONObject("invite")?.optInt("invites") ?: 0)
+            .putFloat(KEY_INVITE_BONUS, (reply.optJSONObject("invite")?.optDouble("bonus_cny", 0.0) ?: 0.0).toFloat())
+            .putInt(KEY_INVITE_CLIPS, reply.optJSONObject("invite")?.optInt("clips_per_invite") ?: 0)
+            .putInt(KEY_CLIPS_LEFT, reply.optJSONObject("clips")?.let { if (it.isNull("left")) -1 else it.optInt("left", -1) } ?: -1)
+            .putInt(KEY_CLIPS_ALLOWED, reply.optJSONObject("clips")?.optInt("allowed") ?: 0)
+            .putBoolean(KEY_CLIPS_UNLIMITED, reply.optJSONObject("clips")?.optBoolean("unlimited", true) ?: true)
+            .putBoolean(KEY_CONTRIBUTE, reply.optJSONObject("contribute")?.optBoolean("on", false) ?: false)
+            .putInt(KEY_SAMPLES, reply.optJSONObject("contribute")?.optInt("samples", 0) ?: 0)
             .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
             .apply()
+        migrateMediaModels(context, reply.optJSONArray("models"))
+    }
+
+    /**
+     * The relay's menu changes between versions (0.4 draws with qwen-image-3.0 and animates with
+     * wan2.2-i2v-flash instead of the Pro tier and MiniMax-H3). A phone that still points its
+     * image or video model at a name the relay no longer offers is moved to what it offers now;
+     * a user's own providers are never touched.
+     */
+    private fun migrateMediaModels(context: Context, models: JSONArray?) {
+        val inst = instance(context) ?: return
+        val offered = (0 until (models?.length() ?: 0)).mapNotNull { models?.optJSONObject(it) }
+        if (offered.isEmpty()) return
+        val ids = offered.map { it.optString("id") }.toSet()
+        val image = ImageGen.endpoint(context)
+        if (image != null && image.instanceId == inst.id && image.model !in ids) {
+            offered.firstOrNull { drawsOnly(it) }?.optString("id")?.let { ImageGen.save(context, inst.id, it) }
+        }
+        val video = io.github.nanomuse.media.MediaModels.videoEndpoint(context)
+        if (video != null && video.instanceId == inst.id && video.model !in ids) {
+            val offeredVideo = offered.filter { films(it) }
+            val pick = offeredVideo.firstOrNull { it.optJSONObject("nanomuse")?.optBoolean("recommended") == true } ?: offeredVideo.firstOrNull()
+            pick?.optString("id")?.let { io.github.nanomuse.media.MediaModels.saveVideo(context, inst.id, it) }
+        }
+    }
+
+    private fun films(model: JSONObject): Boolean {
+        val out = model.optJSONObject("architecture")?.optJSONArray("output_modalities")
+        return (0 until (out?.length() ?: 0)).any { out!!.optString(it) == "video" }
     }
 
     private fun parseUsage(usage: JSONObject?): Usage? {

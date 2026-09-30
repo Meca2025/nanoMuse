@@ -25,7 +25,6 @@ from nanomuse import __version__, prompts
 from nanomuse.agent import Incoming, MuseAgent
 from nanomuse.app import NanoMuseApp
 from nanomuse.bridge.server import Bridge
-from nanomuse.call import CallBridge
 from nanomuse.coding.service import CodingService
 from nanomuse.config import Settings
 from nanomuse.goals import Goal
@@ -347,7 +346,6 @@ class MuseService:
         self.connections = Connections(self)
         # this computer on the hub: the Cloud account, the other devices, their side chats
         self.hub = HubService(self)
-        self.call = CallBridge(self)
         self.coding = CodingService(self)
         self.app.tools.add(CodingAgents(coding=self.coding))
         self.token = self._load_token()

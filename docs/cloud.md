@@ -1,14 +1,14 @@
 # nanoMuse Cloud
 
-The "start now" path: sign up with a phone number or an e-mail address, get a
-starter allowance of tokens, and use nanoMuse without an API key of your own.
+The "start now" path: sign up with an e-mail address, get a daily allowance,
+and use nanoMuse without an API key of your own.
 Bringing your own key still works exactly as before — this is one more
 provider, not a replacement.
 
 ## In the app
 
 Since 0.1.20 the account is where every app starts: the first screen asks for an
-e-mail address or a phone number and sends a six-digit code — or, once you have
+e-mail address and sends a six-digit code — or, once you have
 set one, takes your password — and then asks which model answers: the account's
 own (the Cloud) or a key of your own. Signing out brings that screen back
 (self-hosters: `[cloud] required = false` or `NANOMUSE_CLOUD_REQUIRED=0` on the
@@ -25,12 +25,12 @@ masked hint, never the number) and since when; sets, changes or removes the
 **password** (eight characters or more; scrypt on the relay; locked for a while
 after repeated wrong attempts, and a fresh code sign-in unlocks it); today's
 spend against the daily allowance in ¥ and $ with a meter; **usage by kind** —
-chat, pictures, video, calls — today and in all, and **by model**; the
+chat, pictures, video — today and in all, and **by model**; the
 **sign-ins** — every device holding a key, how it signed in (code or password),
 when it was last used — each revocable; the account's own **history** (sign-ins,
-password changes, refusals, calls ended; never message content); and the ways
+password changes, refusals; never message content); and the ways
 out: *Sign out* on this device, *Sign out everywhere*, *Delete the account*.
-The allowance belongs to the phone number or address: signing in again, on
+The allowance belongs to the address: signing in again, on
 this phone or another, gives a new key for the same account and does not grant
 a second allowance.
 
@@ -42,19 +42,19 @@ in a model group.
 
 The relay is the code in [`cloud/`](../cloud/README.md). It stores:
 
-- a salted hash (HMAC-SHA256) of the phone number or e-mail address, a
-  masked hint such as `138****8000` or `so***@example.com`, and the number
-  or address itself encrypted (AES-GCM, key derived from the relay's secret)
+- a salted hash (HMAC-SHA256) of the e-mail address (phone accounts from
+  0.1.18–0.1.21 keep working), a masked hint such as `so***@example.com`, and
+  the address itself encrypted (AES-GCM, key derived from the relay's secret)
   so the operator can see who an account belongs to on the admin page — the
   database file alone shows nothing;
 - the hash of each key issued, with the device name you signed in from, how
   (code or password) and when it was last used; revoked keys keep their row
   so the sign-ins list can say so;
 - the password, if you set one, as an scrypt hash — never the password;
-- per request: the kind (chat, picture, video, call), the model, the token
-  counts (for a call, the text / audio / picture split) and the amount charged;
+- per request: the kind (chat, picture, video), the model, the token counts
+  and the amount charged;
 - a timeline of account events — signed in, failed sign-in, password set or
-  changed, signed out, refused for budget, upstream error, call ended — with a
+  changed, signed out, refused for budget, upstream error — with a
   device name, a model or an error code as the detail, never message content;
 - the id of each video task, so only the account that started one can poll it.
 
@@ -67,13 +67,29 @@ account (`POST /v1/auth/delete` with the account's key) removes all of it. See
 
 ## Allowance
 
+### Contributing conversations (off by default)
+
+*Account → Contribute conversations* is a switch each person owns. Off — the
+default — the relay forwards a chat request and keeps nothing of it. On, each
+turn is kept: the messages sent (pictures replaced by a marker), the model's
+reply, the token counts and the app's platform and language from the request
+headers, tied to the account id only. The point is a training set for the
+community's own open model. The person can turn it off and delete what they
+gave at any time; deleting the account deletes it too. The operator sees these
+turns on the admin page for contributing accounts only and exports them as
+JSON lines without account ids (`GET /v1/admin/samples/export`). The relay
+does not know where anyone is: the apps never send a location, and IP
+addresses are not recorded.
+
 nanoMuse is a community project and charges nothing. The public relay at
 `cloud.nanomuse.cn` is paid for by the developer, so it has a daily cap:
 
 | | `cloud.nanomuse.cn` |
 |---|---|
-| sign-up | open to anyone with an e-mail address or a mainland mobile number |
-| daily allowance | **¥25 a day** per account (about $3.5), across chat, pictures and clips |
+| sign-up | open to anyone with an e-mail address |
+| daily allowance | **¥15 a day** per account, across chat, pictures and clips |
+| invitations | each friend who signs up with your code: **¥3 of credit** (spent once the day's cap is used up, never expires) and 4 more video clips for you |
+| video clips | 4 per account — one animated face — plus 4 per invitation; members: no limit |
 | the day turns | midnight Beijing time (UTC+8) |
 | members | the developer and the people they list have no cap |
 | rate | 30 requests per minute |
@@ -81,15 +97,17 @@ nanoMuse is a community project and charges nothing. The public relay at
 
 Spend is counted at the model provider's list prices (Alibaba Cloud Model
 Studio, Beijing region, September 2026): `qwen3.8-27b` ¥3 in / ¥12 out per
-million tokens, `qwen3.8-flash` ¥0.8 / ¥2.7, `qwen-image-3.0-pro` ¥0.25 a
-picture (¥0.5 at 2k), `MiniMax/MiniMax-H3` about ¥0.5 a second of video. A
-typical day of chatting costs a few fen; ¥25 is roughly two million tokens of
-the 27B model, a hundred pictures or fifty seconds of video.
+million tokens, `qwen3.8-flash` ¥0.8 / ¥2.7, `qwen-image-3.0` ¥0.18 a
+picture, `wan2.2-i2v-flash` ¥0.10 a second of video at 480P (a 5-second clip
+is ¥0.50). A typical day of chatting costs a few fen; ¥15 is roughly a
+million tokens of the 27B model or eighty pictures. A new face — four
+candidates, four poses and four clips — comes to about ¥3.5, and the app
+shows the estimate and what is left today before it draws.
 
 *Settings → nanoMuse Cloud* shows today's spend against the cap in ¥ and $, and
 the total so far. When the day's allowance is used up the app says so
-(`daily_cap`); switch to your own key under *Settings → Providers* to keep
-going right away, or wait for midnight. Other relays may set other rules
+(`daily_cap`); invite a friend for ¥3 of credit, switch to your own key under
+*Settings → Providers* to keep going right away, or wait for midnight. Other relays may set other rules
 (`DAILY_CAP_CNY`, `SIGNUP_OPEN`, `ALLOWED_IDENTIFIERS`; see
 [`cloud/README.md`](../cloud/README.md)).
 
@@ -141,7 +159,6 @@ GET  /v1/me/events          Bearer  ?limit=50                 → {events: [{ts,
 POST /v1/auth/sign-out      Bearer                            → 204
 POST /v1/auth/sign-out-all  Bearer  {all?}                    → {signed_out}
 POST /v1/auth/delete        Bearer                            → 204
-WS   /v1/realtime?model=    Bearer                            → the provider's real-time socket, metered ([calls.md](calls.md))
 ```
 
 Everything else is the OpenAI API: `GET /v1/models` (with `architecture`

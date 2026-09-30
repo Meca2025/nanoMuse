@@ -89,21 +89,28 @@ for the full list. The ones that matter:
 | `CHAT_DEFAULTS` | `{"enable_thinking": false}` | merged into chat requests for fields the app did not set |
 | `SIGNUP_OPEN` | `1` | anyone may sign in; `0` = members only (a private relay) |
 | `ALLOWED_IDENTIFIERS` | empty | comma-separated numbers / addresses of the **members**: no daily spend cap |
-| `DAILY_CAP_CNY` | 25 | yuan a day per non-member account, at the list prices below; 0 = no cap |
+| `DAILY_CAP_CNY` | 15 | yuan a day per non-member account, at the list prices below; 0 = no cap |
+| `INVITE_BONUS_CNY` | 3 | credit the inviter earns per friend who signs up with their code; spent once the day's cap is used up, never expires |
+| `INVITE_URL` | `https://nanomuse.cn/web/?invite=` | the link the apps offer to share; the code is appended |
+| `VIDEO_CLIPS_FREE` | 4 | video clips an account may make in all (one animated face); 0 = no limit; members have none |
+| `VIDEO_CLIPS_PER_INVITE` | 4 | more clips per friend invited |
 | `DAY_OFFSET_H` | 8 | the day turns at midnight UTC+8 (Beijing) |
 | `USD_CNY` | 7.1 | for showing dollars next to yuan; display only |
 | `SIGNUP_TOKENS` | 0 (no ceiling) | starter token grant per account, the older allowance |
 | `DAILY_CAP_TOKENS` | 0 (off) | tokens per account per day |
 | `PER_MINUTE_REQUESTS` | 30 | per account — what stops a runaway loop |
 | `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` |
-| `CLOUD_MODELS` | four Qwen / MiniMax models | JSON list to replace the menu, prices included |
+| `CLOUD_MODELS` | Qwen chat + image, Wan video | JSON list to replace the menu, prices included |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
 
 The default menu: `qwen3.8-27b` (recommended; text and images in),
-`qwen3.8-flash` (charged at 0.3×), `qwen-image-3.0-pro` for drawing (30 000
-tokens per picture) and `MiniMax/MiniMax-H3` for short clips (200 000 tokens
-per clip). Any OpenAI-compatible upstream works for chat; the image and video
+`qwen3.8-flash` (charged at 0.3×), `qwen-image-3.0` for drawing (¥0.18 a
+picture, 30 000 tokens) and `wan2.2-i2v-flash` for short clips (¥0.10 a second
+at 480P, five seconds, 200 000 tokens per clip; `wan2.2-t2v-plus` when a clip
+starts from words). Until 0.4 the menu had `qwen-image-3.0-pro` (¥0.25 / ¥0.5)
+and `MiniMax/MiniMax-H3` (¥0.5 a second): a new face with its four clips cost
+about ¥9; it is about ¥3 now. Any OpenAI-compatible upstream works for chat; the image and video
 endpoints assume DashScope. Video is relayed under DashScope's own paths
 (`/api/v1/services/aigc/video-generation/video-synthesis`, `/api/v1/tasks/{id}`,
 `/api/v1/uploads`), so the app's video code only needs to point its host at
@@ -115,12 +122,12 @@ Every request is priced in yuan at the provider's Beijing list prices (set per
 model: `price_in` / `price_out` per million tokens, `price_image` and
 `price_image_2k` per picture, `price_second` per second of video) and stored
 in the ledger next to the token count. A non-member account may cost the
-operator `DAILY_CAP_CNY` a day (¥25 by default); a picture or a clip that would
+operator `DAILY_CAP_CNY` a day (¥15 by default); a picture or a clip that would
 go over the cap is refused before it is made, a chat is refused once the day's
 spend has reached the cap. Members — the identifiers in `ALLOWED_IDENTIFIERS`,
 or any account the operator marks on the admin page — have no cap. `/v1/me`
 carries a `spend` block (`today`, `total`, `daily_cap`, `unlimited`, `usd_cny`,
-`today_usd`, `daily_cap_usd`, `resets_at`) and each model in `/v1/models`
+`today_usd`, `daily_cap_usd`, `resets_at`, `credit_left`, `left_today`) and each model in `/v1/models`
 carries its `nanomuse.price_cny`, so the apps show what a day cost in both
 currencies. The day turns at midnight in `DAY_OFFSET_H`; the admin page
 shows spend per account and per day in ¥ and $.
@@ -136,9 +143,9 @@ is metered and shown, nothing is refused for lack of tokens (`/v1/me` says
 and is the dashboard from `/v1/admin/overview`: how many accounts (with a
 password, members, disabled), who was active today and over the period,
 what it cost today / this week / over 7, 30 or 90 days split by kind (chat,
-pictures, video, calls) and by model, spend by day as stacked bars, the top
+pictures, video) and by model, spend by day as stacked bars, the top
 spenders, today's signals (sign-ins, failures, budget refusals, upstream
-errors, calls) and the timeline across accounts with a kind filter. The
+errors) and the timeline across accounts with a kind filter. The
 accounts table shows the masked hint; opening one account
 (`/v1/admin/accounts/{id}`) decrypts its phone number or address for that
 view only and shows its spend by kind / model / day, sign-ins (device names,
@@ -157,6 +164,23 @@ talk to, and an account sheet (`/v1/me`) with the allowance, usage by kind
 and by model, the sign-ins with a way to revoke each, the recent activity,
 set / change / remove the password, sign out here or everywhere.
 
+### Invitations, credit and the clip allowance (0.4)
+
+Every account has an eight-letter invite code (`GET /v1/me/invite`: the code,
+the share link `INVITE_URL` + code, who came, the credit earned). A person who
+signs up with it — `invite` in `POST /v1/auth/verify`; the web app and the
+console pick it up from `?invite=…` — earns the inviter `INVITE_BONUS_CNY` of
+**credit** and `VIDEO_CLIPS_PER_INVITE` clips. Credit is drawn on only after
+the day's cap is used up, and never expires; the second sign-in of the same
+person, one's own code and an unknown code earn nothing (and are not errors).
+Video, the expensive part, is counted per account: `VIDEO_CLIPS_FREE` clips
+in all (four = one animated face), plus what invites and the operator add;
+one more answers `429 video_limit`. `GET /v1/estimate?images=5&clips=4` says
+what a job would cost next to what is left today, so the app can ask before a
+new face is made. The operator credits an account — a merged pull request, a
+good bug report — with `POST /v1/admin/credit {identifier | account_id, cny,
+clips?, note?}` (or the *Add credit* button on the admin page).
+
 ## Operating
 
 ```bash
@@ -165,6 +189,9 @@ curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/accou
 # top up someone by phone/e-mail or by account id
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"identifier":"13800138000","tokens":500000}' https://$CLOUD_DOMAIN/v1/admin/grant
+# thank a contributor: ¥10 of credit and four more clips
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"identifier":"dev@example.com","cny":10,"clips":4,"note":"PR #12"}' https://$CLOUD_DOMAIN/v1/admin/credit
 # switch an abusive account off
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"identifier":"13800138000","disabled":true}' https://$CLOUD_DOMAIN/v1/admin/disable

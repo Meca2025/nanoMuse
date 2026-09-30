@@ -19,7 +19,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
- * Short clips through Alibaba Cloud Model Studio's asynchronous video API — MiniMax-H3 by
+ * Short clips through Alibaba Cloud Model Studio's asynchronous video API — Wan 2.2 Flash by
  * default, or one of the Wan video models (`model` is whatever the user picked or typed, so a
  * newer build works too). The user's provider key and host are reused: `POST {host}/api/v1/
  * services/aigc/video-generation/video-synthesis` with `X-DashScope-Async: enable` returns a
@@ -69,10 +69,11 @@ object VideoGen {
      * [probe] checks against the user's key; the first is the recommended one.
      */
     val KNOWN_DASHSCOPE_MODELS = listOf(
+        "wan2.2-i2v-flash",
         "MiniMax/MiniMax-H3",
         "wan2.6-i2v", "wan2.6-t2v",
         "wan2.5-i2v-preview", "wan2.5-t2v-preview",
-        "wan2.2-i2v-flash", "wan2.2-i2v-plus", "wan2.2-t2v-plus",
+        "wan2.2-i2v-plus", "wan2.2-t2v-plus",
     )
 
     /** Names that mean "video" in a provider's model list. */
@@ -116,12 +117,19 @@ object VideoGen {
 
     private fun isWan(model: String) = model.startsWith("wan", ignoreCase = true)
 
-    /** The Wan sibling for the job: `…-i2v…` when starting from a picture, `…-t2v…` from words. */
-    private fun modelFor(model: String, fromImage: Boolean): String = when {
+    /**
+     * The Wan sibling for the job: `…-i2v…` when starting from a picture, `…-t2v…` from words.
+     * Wan 2.2 has no text-to-video Flash: its Plus is the sibling there.
+     */
+    internal fun modelFor(model: String, fromImage: Boolean): String = when {
         !isWan(model) -> model
         fromImage -> model.replace("t2v", "i2v")
+        model.startsWith("wan2.2") -> "wan2.2-t2v-plus"
         else -> model.replace("i2v", "t2v")
     }
+
+    /** Wan 2.2 is priced by resolution (480P is half of 720P) and the avatar's clips are small; the newer Wans start at 720P. */
+    internal fun wanResolution(model: String): String = if (model.startsWith("wan2.2")) "480P" else "720P"
 
     /** Wan 2.2 has a fixed length; 2.5 takes 5 or 10; 2.6 anything from 2 to 15. MiniMax 4–15. */
     private fun durationFor(model: String, seconds: Int): Int? = when {
@@ -155,7 +163,7 @@ object VideoGen {
         val parameters = JSONObject().put("watermark", false)
         if (isWan(model)) {
             input.put("img_url", ossUrl)
-            parameters.put("resolution", "720P")
+            parameters.put("resolution", wanResolution(model))
         } else {
             input.put("media", JSONArray().put(JSONObject().put("type", "first_frame").put("url", ossUrl)))
             parameters.put("resolution", "768P")
@@ -295,8 +303,12 @@ object VideoGen {
         }
     }
 
+    /** DashScope puts the message at the top; the nanoMuse relay answers OpenAI-shaped (`error.message`, e.g. the clip allowance). */
     private fun apiMessage(text: String): String =
-        runCatching { JSONObject(text).optString("message") }.getOrNull()?.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
+        runCatching {
+            val json = JSONObject(text)
+            json.optString("message").ifBlank { json.optJSONObject("error")?.optString("message").orEmpty() }
+        }.getOrNull()?.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
 
     /** The API wants 256–5760 px on each side and an aspect within [0.4, 2.5]; a face is square, so only size matters. */
     private fun fitFrame(image: Bitmap): Bitmap {

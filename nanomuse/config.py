@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from nanomuse.schema import RiskLevel
 
@@ -72,6 +72,11 @@ class LLMSettings(BaseModel):
 class AgentSettings(BaseModel):
     name: str = "nanoMuse"
     max_steps: int = 30
+    # Where the agent's files live. A relative path is relative to the current directory, which is
+    # what a terminal user expects. When nothing is configured, Settings resolves it: a `workspace/`
+    # in the current directory when there is one, otherwise `<data_dir>/workspace` — so a runtime
+    # started from a read-only place (the desktop shell from /Applications or Program Files, whose
+    # working directory may even be /) never tries to create a folder where it cannot.
     workspace: Path = Path("./workspace")
     # Directories outside the workspace the files tool may read and write (e.g. "~/Documents").
     extra_roots: list[Path] = Field(default_factory=list)
@@ -374,13 +379,9 @@ class CloudSettings(BaseModel):
 
     base_url: str = "https://cloud.nanomuse.cn"
     # Sign-in is part of setting up: the first-run flow does not finish without
-    # an account (with it, the relay can be the model, the devices meet, and
-    # calls work). Self-hosters who run without a relay set this to false.
+    # an account (with it, the relay can be the model and the devices meet).
+    # Self-hosters who run without a relay set this to false.
     required: bool = True
-    # Which model a call uses; empty = the relay's recommended real-time model.
-    realtime_model: str = ""
-    # The voice of a call (the provider's names, e.g. Cherry, Tina, Chelsie).
-    realtime_voice: str = ""
 
 
 class HubSettings(BaseModel):
@@ -437,6 +438,14 @@ class Settings(BaseModel):
     server: ServerSettings = Field(default_factory=ServerSettings)
     # Where the settings came from (informational).
     source: str | None = None
+
+    @model_validator(mode="after")
+    def _default_workspace(self) -> Settings:
+        """No ``agent.workspace`` configured: ``./workspace`` when the current directory has one
+        (the terminal user's convention), otherwise ``<data_dir>/workspace``."""
+        if "workspace" not in self.agent.model_fields_set and not Path("./workspace").is_dir():
+            self.agent.workspace = self.data_dir.expanduser() / "workspace"
+        return self
 
     @property
     def audit_file(self) -> Path:
@@ -725,9 +734,6 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
             settings.cloud.base_url = str(cloud["base_url"]).strip().rstrip("/")
         if "required" in cloud and cloud["required"] is not None:
             settings.cloud.required = bool(cloud["required"])
-        for key in ("realtime_model", "realtime_voice"):
-            if key in cloud and cloud[key] is not None:
-                setattr(settings.cloud, key, str(cloud[key]).strip()[:80])
     if hub := data.get("hub"):
         for key in ("enabled", "remote_control"):
             if key in hub and hub[key] is not None:
