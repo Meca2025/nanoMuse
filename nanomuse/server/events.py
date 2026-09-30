@@ -29,8 +29,17 @@ def new_id(prefix: str = "e") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
 
 
+# how long a timeline waits for the next event before writing itself: a turn produces
+# bursts of events (steps, chips, stream ends) and one write per burst is plenty
+FLUSH_DELAY_S = 0.3
+
+
 class Timeline:
-    """Ordered list of events for one thread, persisted as a JSON file."""
+    """Ordered list of events for one thread, persisted as a JSON file.
+
+    Writes are coalesced: on an event loop, ``save()`` schedules one write shortly after
+    the last change and the file is written from a worker thread, so a busy turn does not
+    stall the loop on disk I/O. Off the loop (tests, scripts) it writes at once."""
 
     def __init__(self, thread_id: str, path: Path, max_events: int = 2000):
         self.thread_id = thread_id
@@ -38,6 +47,9 @@ class Timeline:
         self.max_events = max_events
         self.events: list[dict[str, Any]] = []
         self._index: dict[str, dict[str, Any]] = {}
+        self._flush_handle: asyncio.TimerHandle | None = None
+        self._writing: asyncio.Future[Any] | None = None
+        self._dirty = False
         self._load()
 
     def _load(self) -> None:
@@ -53,20 +65,51 @@ class Timeline:
                 self.events.append(ev)
                 self._index[ev["id"]] = ev
 
-    def save(self) -> None:
+    def _payload(self) -> str:
+        return json.dumps(
+            {"thread": self.thread_id, "events": self.events[-self.max_events :]},
+            ensure_ascii=False,
+        )
+
+    def _write(self, payload: str) -> None:
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.path.with_suffix(".tmp")
-            tmp.write_text(
-                json.dumps(
-                    {"thread": self.thread_id, "events": self.events[-self.max_events :]},
-                    ensure_ascii=False,
-                ),
-                "utf-8",
-            )
+            tmp.write_text(payload, "utf-8")
             tmp.replace(self.path)
         except OSError as exc:  # pragma: no cover
             logger.warning("could not save timeline {}: {}", self.path, exc)
+
+    def save(self) -> None:
+        """Persist soon (on a loop) or now (off one)."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._write(self._payload())
+            return
+        self._dirty = True
+        if self._flush_handle is None:
+            self._flush_handle = loop.call_later(FLUSH_DELAY_S, self._flush_later, loop)
+
+    def _flush_later(self, loop: asyncio.AbstractEventLoop) -> None:
+        self._flush_handle = None
+        if self._writing is not None and not self._writing.done():
+            # the previous write is still on its way to disk; try again after it lands
+            self._flush_handle = loop.call_later(FLUSH_DELAY_S, self._flush_later, loop)
+            return
+        if not self._dirty:
+            return
+        self._dirty = False
+        self._writing = loop.run_in_executor(None, self._write, self._payload())
+
+    def flush(self) -> None:
+        """Write now, e.g. at shutdown; a scheduled write is dropped in its favour."""
+        if self._flush_handle is not None:
+            self._flush_handle.cancel()
+            self._flush_handle = None
+        if self._dirty or self._writing is None:
+            self._dirty = False
+            self._write(self._payload())
 
     def add(self, event: dict[str, Any]) -> dict[str, Any]:
         event.setdefault("id", new_id())

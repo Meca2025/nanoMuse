@@ -978,7 +978,11 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
                 remote = await svc.coding.remote(device, "coding.agents", {})
                 runs = await svc.coding.remote(device, "coding.runs", {})
                 return {"device": device, **remote, **runs}
-            return {"agents": svc.coding.agents(), "runs": svc.coding.list_runs()}
+            # detection shells out to each CLI and walks its session folders: off the loop
+            return {
+                "agents": await asyncio.to_thread(svc.coding.agents),
+                "runs": svc.coding.list_runs(),
+            }
         except CodingError as exc:
             raise _coding_error(exc) from exc
 
@@ -991,7 +995,11 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         try:
             if device:
                 return await svc.coding.remote(device, "coding.sessions", args)
-            return {"sessions": svc.coding.sessions(agent or None, limit, workspace or None)}
+            return {
+                "sessions": await asyncio.to_thread(
+                    svc.coding.sessions, agent or None, limit, workspace or None
+                )
+            }
         except CodingError as exc:
             raise _coding_error(exc) from exc
 
@@ -1002,7 +1010,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
                 return await svc.coding.remote(
                     device, "coding.session", {"agent": agent, "session_id": session_id}
                 )
-            return svc.coding.session(agent, session_id)
+            return await asyncio.to_thread(svc.coding.session, agent, session_id)
         except CodingError as exc:
             raise _coding_error(exc) from exc
 

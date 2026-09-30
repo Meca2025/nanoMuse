@@ -398,6 +398,8 @@ class MuseService:
             if t.worker:
                 t.worker.cancel()
         await asyncio.sleep(0)
+        for t in self.threads.values():
+            t.timeline.flush()
         if self._started:
             await self.coding.close()
             await self.hub.stop()

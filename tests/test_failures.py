@@ -74,3 +74,29 @@ def test_unknown_failures_keep_the_type_and_first_line():
     notice = failure_notice(ValueError("boom"), "t1")
     assert notice["type"] == "notice" and notice["level"] == "error" and notice["thread"] == "t1"
     assert notice["code"] == "unknown" and notice["detail"] == "ValueError: boom"
+
+
+def test_timeline_writes_are_coalesced_on_a_loop_and_immediate_off_one(tmp_path):
+    import asyncio
+    import json
+
+    from nanomuse.server.events import Timeline
+
+    path = tmp_path / "t.json"
+    off = Timeline("t", path)
+    off.add({"type": "user", "text": "now"})
+    assert json.loads(path.read_text("utf-8"))["events"][0]["text"] == "now"
+
+    async def burst() -> None:
+        tl = Timeline("t", path)
+        for i in range(20):
+            tl.add({"type": "user", "text": f"e{i}"})
+        # nothing written yet: the burst is still being coalesced
+        assert "e19" not in path.read_text("utf-8")
+        await asyncio.sleep(0.8)
+        assert "e19" in path.read_text("utf-8")
+        tl.add({"type": "user", "text": "last"})
+        tl.flush()  # shutdown path: written at once, the scheduled write dropped
+        assert "last" in path.read_text("utf-8")
+
+    asyncio.run(burst())

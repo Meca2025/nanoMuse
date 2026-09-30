@@ -1206,6 +1206,9 @@ def test_timeline_survives_restart(server, settings: Settings):
     llm.script.append(LLMResponse(content="persisted"))
     client.post("/api/threads/main/send", json={"text": "remember this"})
     wait_for(lambda: events_of(client, kind="assistant"))
+    # writes are coalesced and land shortly after the burst; a restart also flushes at stop
+    path = service.threads["main"].timeline.path
+    wait_for(lambda: path.exists() and "persisted" in path.read_text("utf-8"))
     fresh = MuseService(settings, llm=MockLLM([]))
     texts = [e["text"] for e in fresh.threads["main"].timeline.events]
     assert texts == ["remember this", "persisted"]
