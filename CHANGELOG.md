@@ -2,6 +2,22 @@
 
 All notable changes to nanoMuse. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [Semantic Versioning](https://semver.org/). Unreleased changes are on `main`.
 
+## [Unreleased]
+
+### Changed
+
+- **A signed-in runtime with no model key uses the relay.** A desktop or web runtime whose account is signed in but whose model still pointed at a provider with an empty key (the DeepSeek default) answered every message with a 401; at start-up the hub now makes the relay the model in that case, and leaves a local server (Ollama, LM Studio, a LAN address) alone.
+- **When the runtime is slow to start, both sides say where they are.** The runtime starts its parts in named steps with time limits (tools, then the cloud account and hub, then the scheduler) and logs each; `/api/health` says `starting: "<step>"` until it is done; the welcome banner is printed once the app answers, and the console is UTF-8 on Windows. The desktop shell probes health with Node's own HTTP client, and every ten seconds while it waits writes the probe result, whether the port is open and who listens on it to `desktop-app.log` — the same file its own lines go to now — and quotes them in the error box.
+- **The Linux desktop runtime runs on older systems.** It is built in a Debian 11 container (glibc 2.31), so Ubuntu 20.04 / 22.04 and their kin no longer stop with `GLIBC_2.35 not found`.
+
+### Removed
+
+- **The local-network host script.** `host/nanomuse_host.py` and *Pair over the local network* on the phone are gone; a computer joins by installing nanoMuse Desktop and signing in with the same account, on any network. *Settings → Computers* lists the account's computers, says which account this phone uses — a computer that is missing has nearly always signed in with another — and a tap tells whether it answers. `nanomuse-pc` and the agent's briefing speak of the hub only.
+
+### Fixed
+
+- **Long contributed conversations are kept whole** (relay 0.5.2). A turn over the size limit was cut mid-character and then failed to parse, which broke the operator's samples list and export with a 500. Oversize turns are now cut by whole messages from the middle (the system prompt and the last exchange stay), then the longest text is shortened with a marker; rows cut the old way still load, marked `truncated`.
+
 ## [0.1.23] - 2026-09-30 · Welcome
 
 ### Added

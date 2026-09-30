@@ -32,7 +32,6 @@ jobs:
           filters: |
             python:
               - "nanomuse/**"
-              - "host/**"
               - "tests/**"
               - "scripts/**"
               - "pyproject.toml"
@@ -108,11 +107,11 @@ jobs:
 
       - name: Ruff lint
         if: env.RUN == 'true'
-        run: uv run ruff check nanomuse host tests scripts
+        run: uv run ruff check nanomuse tests scripts
 
       - name: Ruff format
         if: env.RUN == 'true'
-        run: uv run ruff format --check nanomuse host tests scripts
+        run: uv run ruff format --check nanomuse tests scripts
 
       - name: Mypy
         if: env.RUN == 'true'

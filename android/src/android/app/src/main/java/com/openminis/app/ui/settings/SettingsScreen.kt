@@ -249,13 +249,15 @@ fun SettingsScreen(
                     onClick = onHandsClick,
                 )
                 io.github.nanomuse.ui.muse.MuseRowDivider()
-                // nanoMuse: the computers this phone drives.
+                // nanoMuse: the account's computers, over the hub.
                 run {
-                    val paired = io.github.nanomuse.reach.Computers.list(context).size
+                    val hubDevices by io.github.nanomuse.hub.Hub.devices.collectAsState()
+                    val me = remember { io.github.nanomuse.hub.Hub.deviceId(context) }
+                    val computers = hubDevices.count { it.id != me && it.isComputer }
                     io.github.nanomuse.ui.muse.MuseRow(
                         title = stringResource(R.string.nm_pc_title),
                         icon = Icons.Outlined.Computer,
-                        value = if (paired == 0) stringResource(R.string.nm_pc_none_short) else paired.toString(),
+                        value = if (computers == 0) stringResource(R.string.nm_pc_none_short) else computers.toString(),
                         onClick = onComputersClick,
                     )
                 }
