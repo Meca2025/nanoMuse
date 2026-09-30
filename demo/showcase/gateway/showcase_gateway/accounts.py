@@ -191,14 +191,16 @@ class AccountManager:
             raise Refused(404, "web_off", "The web version is not turned on here.")
         await self._relay("POST", "/v1/auth/code", {"identifier": identifier}, ip)
 
-    async def verify(self, identifier: str, code: str, ip: str) -> Account:
+    async def verify(self, identifier: str, code: str, ip: str, invite: str = "") -> Account:
         """A code from the relay → the account's key → its Muse, started (or restarted with
-        the fresh key when the account already has one)."""
+        the fresh key when the account already has one). ``invite`` is a friend's code, sent
+        along only when given (older relays do not know the field)."""
         if not self.s.web_enabled:
             raise Refused(404, "web_off", "The web version is not turned on here.")
-        data = await self._relay(
-            "POST", "/v1/auth/verify", {"identifier": identifier, "code": code, "device": "Web"}, ip
-        )
+        payload: dict[str, str] = {"identifier": identifier, "code": code, "device": "Web"}
+        if invite:
+            payload["invite"] = invite
+        data = await self._relay("POST", "/v1/auth/verify", payload, ip)
         key = str(data.get("api_key") or "")
         if not key:
             raise Refused(502, "relay_error", "nanoMuse Cloud returned no key.")

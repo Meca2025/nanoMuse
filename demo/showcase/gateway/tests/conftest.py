@@ -144,6 +144,7 @@ class Upstream:
         self.stream = False
         self.codes: dict[str, str] = {}  # the relay's: identifier → code
         self.keys_issued = 0
+        self.invites: list[str] = []  # the invite field of each verify, "" when none
 
     def relay(self, request: httpx.Request) -> httpx.Response:
         """A little nanoMuse Cloud: any identifier gets the code 246810."""
@@ -173,6 +174,7 @@ class Upstream:
                     ),
                 )
             self.keys_issued += 1
+            self.invites.append(str(data.get("invite") or ""))
             account = {
                 "id": "acct-" + ident.replace("@", "-at-"),
                 "channel": "email" if "@" in ident else "sms",

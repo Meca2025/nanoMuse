@@ -63,6 +63,7 @@ async def test_the_page_and_a_first_sign_in(web):
 
         r = await sign_in(c, "someone@example.com")
         assert r.status_code == 200, r.text
+        assert upstream.invites[-1] == ""  # none given, none sent
         me = body(r)
         token = me["url"].split("token=")[1]
         assert me["slug"].startswith("w") and len(me["slug"]) == 12
@@ -167,3 +168,25 @@ async def test_switched_off(web):
         assert (await c.get("/web/")).status_code == 404
         r = await c.post("/api/web/code", json={"identifier": "a@example.com"})
         assert r.status_code == 404 and body(r)["error"] == "web_off"
+
+
+async def test_an_invite_code_is_passed_on_to_the_relay(web):
+    settings, runner, upstream, clock, accounts, app = web
+    async with app.router.lifespan_context(app):
+        c = await client_for(app)
+        r = await c.get("/web/?invite=abcd2345")
+        assert r.status_code == 200 and 'id="invite"' in r.text and "¥15" in r.text
+        assert "mobile number" not in r.text  # e-mail only on the page
+        r = await c.post("/api/web/code", json={"identifier": "invited@example.com"})
+        assert r.status_code == 204
+        r = await c.post(
+            "/api/web/verify",
+            json={"identifier": "invited@example.com", "code": "246810", "invite": "ABCD2345"},
+        )
+        assert r.status_code == 200, r.text
+        assert upstream.invites[-1] == "ABCD2345"
+        r = await c.post(
+            "/api/web/verify",
+            json={"identifier": "invited@example.com", "code": "246810", "invite": "x" * 33},
+        )
+        assert r.status_code == 422
