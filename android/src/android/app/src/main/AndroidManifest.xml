@@ -39,6 +39,13 @@
          can be issued without falling through to the broader settings list. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- nanoMuse: the alarm receiver must stay exported for BOOT_COMPLETED, but only the
+         system and this app (its own AlarmManager PendingIntents) may broadcast to it;
+         a signature permission keeps other apps from posting alarm notifications. -->
+    <permission
+        android:name="${applicationId}.permission.ALARM"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="${applicationId}.permission.ALARM" />
     <!-- [T-android-dynamic-island] Android 16 (Baklava) Live Updates: lets the
          ongoing agent-status notification be promoted to the always-visible
          status-chip / "dynamic island" surface. Non-runtime (install-time)
@@ -167,6 +174,8 @@
     <application
         android:name=".MinisApp"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/nanomuse_backup_rules"
+        android:dataExtractionRules="@xml/nanomuse_data_extraction_rules"
         android:largeHeap="true"
         android:requestLegacyExternalStorage="true"
         android:preserveLegacyExternalStorage="true"
@@ -471,7 +480,8 @@
         <!-- Alarm broadcast receiver (also handles BOOT_COMPLETED for re-scheduling) -->
         <receiver
             android:name=".offload.AlarmReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="${applicationId}.permission.ALARM">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>

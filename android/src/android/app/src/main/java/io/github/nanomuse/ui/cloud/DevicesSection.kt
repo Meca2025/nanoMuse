@@ -1,9 +1,14 @@
 package io.github.nanomuse.ui.cloud
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -40,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.openminis.app.R
 import io.github.nanomuse.hub.Hub
 import io.github.nanomuse.ui.home.MuseTones
@@ -59,8 +65,23 @@ import io.github.nanomuse.ui.muse.MuseSectionLabel
 fun DevicesSection() {
     val context = LocalContext.current
     val connected by Hub.connected.collectAsState()
+    val detail by Hub.detail.collectAsState()
     val devices by Hub.devices.collectAsState()
     var enabled by remember { mutableStateOf(Hub.enabled(context)) }
+    // Android 13+: the background hub is a foreground service with a notification; without
+    // the permission the service cannot stay up, so it is asked for when the switch turns on.
+    val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) Toast.makeText(context, R.string.nm_devices_notifications_hint, Toast.LENGTH_LONG).show()
+    }
+    val turnOn = { on: Boolean ->
+        enabled = on
+        Hub.setEnabled(context, on)
+        if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     var remote by remember { mutableStateOf(Hub.remoteControl(context)) }
     var name by remember { mutableStateOf(Hub.name(context)) }
     var editName by remember { mutableStateOf(false) }
@@ -83,11 +104,12 @@ fun DevicesSection() {
             value = when {
                 !enabled -> stringResource(R.string.nm_devices_off)
                 connected -> stringResource(R.string.nm_devices_connected)
+                detail == "bad_key" || detail == "bad_device" -> stringResource(R.string.nm_devices_refused)
                 else -> stringResource(R.string.nm_devices_connecting)
             },
             chevron = false,
-            onClick = { enabled = !enabled; Hub.setEnabled(context, enabled) },
-            trailing = { Switch(checked = enabled, onCheckedChange = { enabled = it; Hub.setEnabled(context, it) }) },
+            onClick = { turnOn(!enabled) },
+            trailing = { Switch(checked = enabled, onCheckedChange = { turnOn(it) }) },
         )
         MuseCaption(stringResource(R.string.nm_devices_join_sub), modifier = Modifier.padding(bottom = 4.dp))
         MuseRowDivider(inset = 16.dp)

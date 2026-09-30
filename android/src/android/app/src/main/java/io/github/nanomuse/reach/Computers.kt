@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit
  */
 object Computers {
     private const val PREFS = "nanomuse"
+    private const val SECURE_PREFS = "nanomuse_secure"
     private const val KEY = "reach.computers"
     const val DEEP_LINK = "minis://settings/computers"
     const val DEFAULT_PORT = 7333
@@ -63,8 +64,22 @@ object Computers {
 
     fun flow(context: Context): StateFlow<List<Computer>?> { list(context); return _list.asStateFlow() }
 
+    /**
+     * The pairing tokens are bearer credentials for the computers, so they live in the same
+     * encrypted store as API keys (and are excluded from backups). A list saved by an older
+     * build in the plain store is moved over once.
+     */
+    private fun store(context: Context) = com.openminis.app.util.EncryptedPrefsFactory.safeCreate(context, SECURE_PREFS)
+
     private fun load(context: Context): List<Computer> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null) ?: return emptyList()
+        val secure = store(context)
+        var raw = secure.getString(KEY, null)
+        if (raw == null) {
+            val plain = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            raw = plain.getString(KEY, null) ?: return emptyList()
+            secure.edit().putString(KEY, raw).apply()
+            plain.edit().remove(KEY).apply()
+        }
         return runCatching {
             val arr = JSONArray(raw)
             (0 until arr.length()).map { i ->
@@ -85,7 +100,7 @@ object Computers {
                     .put("token", c.token).put("pairedAt", c.pairedAt).put("lastSeen", c.lastSeen),
             )
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, arr.toString()).apply()
+        store(context).edit().putString(KEY, arr.toString()).apply()
         _list.value = list
     }
 

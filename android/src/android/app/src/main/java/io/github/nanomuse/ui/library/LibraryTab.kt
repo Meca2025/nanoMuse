@@ -261,7 +261,7 @@ private fun LibraryRow(entry: LibraryEntry, onClick: () -> Unit, onOpenSession: 
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                         context.startActivity(Intent.createChooser(send, item.name))
-                    }.onFailure { Toast.makeText(context, it.message ?: "share failed", Toast.LENGTH_SHORT).show() }
+                    }.onFailure { Toast.makeText(context, context.getString(R.string.nm_library_share_failed), Toast.LENGTH_SHORT).show() }
                 },
             )
             entry.sessionId?.let { sid ->
