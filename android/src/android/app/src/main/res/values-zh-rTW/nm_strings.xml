@@ -672,6 +672,30 @@
     <string name="nm_cloud_sign_out_everywhere_confirm">所有登入了這個帳號的裝置都會失效，包括這台手機。帳號本身保留，隨時可以再登入。</string>
     <string name="nm_cloud_delete_account">刪除帳號</string>
     <string name="nm_cloud_delete_account_confirm">帳號、登入記錄、用量和動態都會從伺服器刪除，無法復原。手機上的聊天記錄會保留。</string>
+    <!-- 0.1.20: the coding agents on the account's computers -->
+    <string name="nm_coding_title">程式助手</string>
+    <string name="nm_coding_intro">你電腦上的 Cursor、Codex、Claude Code：在這裡看它們的會話和最近的回覆，直接給任何一個發訊息。由電腦上的 nanoMuse 讀取和驅動，它們的內容不會複製到手機上。</string>
+    <string name="nm_coding_no_computer">沒有在線的電腦帶程式助手。請在裝了 Cursor、Codex 或 Claude Code 的電腦上執行 nanoMuse，並用同一個帳號登入。</string>
+    <string name="nm_coding_refresh">重新整理</string>
+    <string name="nm_coding_all">全部</string>
+    <string name="nm_coding_new">開始新的</string>
+    <string name="nm_coding_new_with">和 %1$s 開始新對話</string>
+    <string name="nm_coding_workspace">電腦上的專案目錄</string>
+    <string name="nm_coding_workspace_hint">助手會在這個目錄裡工作。留空則用電腦上的預設目錄。</string>
+    <string name="nm_coding_start">開始</string>
+    <string name="nm_coding_sessions">最近的會話</string>
+    <string name="nm_coding_no_sessions">這台電腦上還沒有會話。</string>
+    <string name="nm_coding_untitled">未命名</string>
+    <string name="nm_coding_running">執行中</string>
+    <string name="nm_coding_send_hint">給 %1$s 發訊息…</string>
+    <string name="nm_coding_send">傳送</string>
+    <string name="nm_coding_stop">停止</string>
+    <string name="nm_coding_working">正在處理…</string>
+    <string name="nm_coding_tools">%1$d 次工具呼叫</string>
+    <string name="nm_coding_failed">失敗：%1$s</string>
+    <string name="nm_coding_stopped">已停止。</string>
+    <string name="nm_coding_fresh_hint">和 %1$s 的新對話。你的第一則訊息會在電腦上把它開起來。</string>
+    <string name="nm_coding_no_transcript">這個會話裡還沒有可讀的內容。</string>
     <!-- nanoMuse: 帳號頁的金額，以及社群說明 -->
     <string name="nm_cloud_spent_today">今天 ¥%1$s · $%2$s</string>
     <string name="nm_cloud_spend_cap">每天 ¥%1$s · $%2$s</string>

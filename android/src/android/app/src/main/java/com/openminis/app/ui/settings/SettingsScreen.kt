@@ -58,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState // nanoMuse
+import androidx.compose.runtime.collectAsState // nanoMuse: the hub's device list for the Coding row
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,6 +102,7 @@ fun SettingsScreen(
     onCloudClick: () -> Unit = {}, // nanoMuse: Settings → nanoMuse Cloud (the starter allowance)
     onHandsClick: () -> Unit = {}, // nanoMuse: Settings → Hands (the screen as a hand)
     onComputersClick: () -> Unit = {}, // nanoMuse: Settings → Computers (the phone drives a PC)
+    onCodingClick: () -> Unit = {}, // nanoMuse: Settings → Coding agents (Cursor/Codex/Claude Code on the account's computers)
     onPermissionsClick: () -> Unit = {},
     onUsageClick: () -> Unit = {},
     onAppearanceClick: () -> Unit = {},
@@ -255,6 +257,19 @@ fun SettingsScreen(
                         icon = Icons.Outlined.Computer,
                         value = if (paired == 0) stringResource(R.string.nm_pc_none_short) else paired.toString(),
                         onClick = onComputersClick,
+                    )
+                }
+                io.github.nanomuse.ui.muse.MuseRowDivider()
+                // nanoMuse: the coding agents on the account's computers, over the hub.
+                run {
+                    val hubDevices by io.github.nanomuse.hub.Hub.devices.collectAsState()
+                    val me = remember { io.github.nanomuse.hub.Hub.deviceId(context) }
+                    val withCoding = hubDevices.count { it.id != me && it.online && it.actions.contains("coding.sessions") }
+                    io.github.nanomuse.ui.muse.MuseRow(
+                        title = stringResource(R.string.nm_coding_title),
+                        icon = Icons.Outlined.Terminal,
+                        value = if (withCoding == 0) stringResource(R.string.nm_pc_none_short) else withCoding.toString(),
+                        onClick = onCodingClick,
                     )
                 }
                 io.github.nanomuse.ui.muse.MuseRowDivider()

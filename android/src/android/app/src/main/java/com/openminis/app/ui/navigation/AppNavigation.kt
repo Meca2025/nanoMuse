@@ -676,6 +676,13 @@ fun AppNavigation(
         composable(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) {
             io.github.nanomuse.ui.reach.ComputersScreen(onBack = { navController.safePopBackStack() })
         }
+        // nanoMuse: the coding agents (Cursor, Codex, Claude Code) on the account's computers.
+        composable(io.github.nanomuse.ui.coding.ROUTE_CODING) {
+            io.github.nanomuse.ui.coding.CodingScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenDevices = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
+            )
+        }
         // nanoMuse: the agent's page behind the face — today's activity, approvals, daily,
         // soul & memory; the pen offers "Change avatar" (back to the chat, pre-typed) and
         // "Edit name".
@@ -759,6 +766,7 @@ fun AppNavigation(
                 onCloudClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) }, // nanoMuse
                 onHandsClick = { navController.safeNavigate(io.github.nanomuse.ui.hands.ROUTE_HANDS) }, // nanoMuse
                 onComputersClick = { navController.safeNavigate(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) }, // nanoMuse
+                onCodingClick = { navController.safeNavigate(io.github.nanomuse.ui.coding.ROUTE_CODING) }, // nanoMuse
                 onPermissionsClick = { navController.safeNavigate(Routes.PERMISSIONS) },
                 onUsageClick = { navController.safeNavigate(Routes.USAGE_STATS) },
                 onAppearanceClick = { navController.safeNavigate(Routes.APPEARANCE) },

@@ -538,7 +538,8 @@ class HubService:
                         if run.get("id") != run_id and ev.get("run") != run_id:
                             continue
                         if ev.get("kind") in ("text", "tool", "started"):
-                            await call.event({"kind": "coding", **ev})
+                            # the run id rides along so the caller can `coding.stop` it
+                            await call.event({"kind": "coding", "run": run_id, **ev})
                         if run.get("id") == run_id and run.get("status") in (
                             "done",
                             "failed",

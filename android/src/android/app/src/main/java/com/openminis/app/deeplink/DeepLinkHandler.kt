@@ -197,6 +197,7 @@ object DeepLinkHandler {
             "hands", "screen" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.hands.ROUTE_HANDS) // nanoMuse: the screen as a hand
             "computers", "pc" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) // nanoMuse: computers paired over the local network
             "cloud", "devices" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) // nanoMuse: the account and its devices on the hub
+            "coding", "agents" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.coding.ROUTE_CODING) // nanoMuse: the coding agents on the account's computers
             "profile" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.profile.ROUTE_AGENT_PROFILE) // nanoMuse: the face links here
             "background" -> DeepLinkAction.OpenSettingsScreen(Routes.BACKGROUND)
             "about" -> DeepLinkAction.OpenSettingsScreen(Routes.ABOUT)
