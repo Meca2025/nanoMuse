@@ -181,11 +181,11 @@ export interface HandsEvent extends BaseEvent {
 export interface AvatarEvent extends BaseEvent {
   type: "avatar";
   session: string;
-  /** estimate (waiting for the tap) · drawing · choose (four wait) · posing · done · cancelled · failed */
-  stage: "estimate" | "drawing" | "choose" | "posing" | "done" | "cancelled" | "failed" | string;
+  /** estimate (waiting for the tap) · drawing · choose (four wait) · posing · animating (the face is on, clips coming) · done · cancelled · failed */
+  stage: "estimate" | "drawing" | "choose" | "posing" | "animating" | "done" | "cancelled" | "failed" | string;
   description: string;
-  /** what it costs: the relay's figure when the account draws; the count alone with one's own key */
-  cost?: { pictures?: number; model?: string; cloud?: boolean; cny?: number | null; left_cny?: number | null; unlimited?: boolean; affordable?: boolean; error?: string };
+  /** what it costs: the relay's figure when the account draws; the counts alone with one's own key */
+  cost?: { pictures?: number; clips?: number; model?: string; clip_model?: string; cloud?: boolean; cny?: number | null; left_cny?: number | null; unlimited?: boolean; affordable?: boolean; error?: string };
   /** workspace paths of the four candidates (null while one is still being drawn) */
   candidates?: Array<string | null>;
   errors?: string[];
@@ -194,6 +194,8 @@ export interface AvatarEvent extends BaseEvent {
   face?: string | null;
   /** mood → workspace path, filled as the poses land */
   moods?: Record<string, string>;
+  /** mood → workspace path of the clip, filled as they land (idle · working · waiting · happy) */
+  clips?: Record<string, string>;
   message?: string;
 }
 

@@ -10,8 +10,12 @@ activity log behind the avatar.
 
 from __future__ import annotations
 
+import contextlib
+import os
 import socket
+import sys
 
+from nanomuse import __version__
 from nanomuse.config import Settings
 from nanomuse.server.api import STATIC_DIR, create_app
 from nanomuse.server.service import MuseService
@@ -49,6 +53,7 @@ def serve(
     """Run the app server (blocking). Prints the URL and a QR code for your phone."""
     import uvicorn
 
+    _utf8_console()
     host = host or settings.server.host
     port = port or settings.server.port
     service = MuseService(settings)
@@ -61,7 +66,10 @@ def serve(
     url = f"http://{shown_host}:{port}/"
     if service.token:
         url += f"?token={service.token}"
-    _print_banner(url, service, print_qr)
+    # the banner once the services are up and the socket is about to open: "ready" then
+    # means ready (a desktop shell reads the log when the app takes long to answer)
+    print(f"nanoMuse {__version__} starting on {host}:{port} (pid {os.getpid()})", flush=True)
+    app.state.on_ready = lambda: _print_banner(url, service, print_qr)
     # The standard loop, not uvloop: uvloop leaves extra copies of a child's stdout/stderr
     # open in the child, so anything it leaves running in the background (Cursor's CLI keeps a
     # worker alive, `nohup … &` in the shell tool) holds our pipes and the read never ends.
@@ -74,6 +82,17 @@ def serve(
         ws_ping_interval=20,
         ws_ping_timeout=20,
     )
+
+
+def _utf8_console() -> None:
+    """UTF-8 on stdout/stderr, line-buffered, whatever the console's code page: the frozen
+    runtime does not read ``PYTHONUTF8``/``PYTHONUNBUFFERED``, and a Windows log in GBK
+    with the banner's dashes mangled is what the desktop shell showed otherwise."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            with contextlib.suppress(Exception):
+                reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 
 def _print_banner(url: str, service: MuseService, print_qr: bool) -> None:

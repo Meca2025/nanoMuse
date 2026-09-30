@@ -217,15 +217,24 @@ class CloudClient:
         return models if isinstance(models, list) else []
 
     async def estimate(
-        self, images: int = 0, image_model: str = "", size: str = ""
+        self,
+        images: int = 0,
+        image_model: str = "",
+        size: str = "",
+        clips: int = 0,
+        video_model: str = "",
     ) -> dict[str, Any]:
-        """What ``images`` pictures would cost against the pool (``cny``, ``left_cny``,
-        ``affordable``, ``unlimited``); nothing is charged."""
+        """What ``images`` pictures and ``clips`` short videos would cost against the pool
+        (``cny``, ``left_cny``, ``affordable``, ``unlimited``); nothing is charged."""
         q = f"/v1/estimate?images={int(images)}"
         if image_model:
             q += f"&image_model={image_model}"
         if size:
             q += f"&size={size}"
+        if clips:
+            q += f"&clips={int(clips)}"
+            if video_model:
+                q += f"&video_model={video_model}"
         return await self._request("GET", q)
 
     @staticmethod

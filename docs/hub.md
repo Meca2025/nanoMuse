@@ -17,10 +17,10 @@ listens on the device, nothing needs a port forwarded or a shared Wi-Fi; the
 relay only routes frames between devices of one account and never looks inside
 a task. This is the way to add a computer: install nanoMuse Desktop on it and
 sign in with the same account — nothing to download by hand, no code to type.
-Pairing over the local network (`host/nanomuse_host.py`, under *Computers → Pair
-over the local network* on the phone) is the fallback for a computer that has no
-account: it needs no relay at all, but only works on the same Wi-Fi, has no
-notifications and cannot take a whole task.
+It is the only way in: the stand-alone host script that paired over the local
+network (0.1.13–0.1.23) is gone, so a computer that is missing from the phone's
+list has, nearly always, signed in with another account — *Settings → Computers*
+on the phone shows which account the phone uses.
 
 ## What you can say
 
@@ -116,8 +116,8 @@ computer's own hands — is in [every-device.md](every-device.md).
 - Android: `io.github.nanomuse.hub` — `HubClient` (OkHttp, reconnect),
   `Hub` (state, prefs, `call`/`find`), `HubActions` (what the phone does for
   others, including `task` through the headless chat runner), `HubService`
-  (foreground, `remoteMessaging`). `nanomuse-pc` reaches hub devices next to
-  LAN-paired computers.
+  (foreground, `remoteMessaging`). `nanomuse-pc` (`io.github.nanomuse.reach`)
+  reaches the hub devices from the phone's sandbox shell.
 - Desktop binary: [`desktop/nanomuse_desktop/hub.py`](../desktop/nanomuse_desktop/hub.py),
   `app.py` (incoming calls, approvals), `agent.py` (the `device_*` and
   `delegate` tools).

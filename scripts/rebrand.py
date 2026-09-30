@@ -45,8 +45,8 @@ IOS = ROOT / "android" / "src" / "ios"
 
 APP_ID = "io.github.nanomuse.app"
 NAME = "nanoMuse"
-VERSION_NAME = "0.1.23"
-VERSION_CODE = 24
+VERSION_NAME = "0.1.24"
+VERSION_CODE = 25
 REPO = "nano-muse/nanoMuse"
 REPO_URL = f"https://github.com/{REPO}"
 PRIVACY_URL = f"{REPO_URL}/blob/main/docs/privacy.md"

@@ -2,6 +2,30 @@
 
 All notable changes to nanoMuse. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [Semantic Versioning](https://semver.org/). Unreleased changes are on `main`.
 
+## [Unreleased]
+
+## [0.1.24] - 2026-10-01 · Signal
+
+### Added
+
+- **Sign in with a phone number.** A mainland China mobile number is a first-class way in on every platform — the phone, the web and desktop app, and nanomuse.cn/web — next to an e-mail: the six-digit code comes by SMS (relay 0.5.3 sends it through Aliyun's 号码认证服务 `SendSmsVerifyCode`, `ALIYUN_SMS_API=dypns`, with the service's ready-made signature and template; `dysms` keeps the older 短信服务 way), and a password set under Account works for either. The identifier box switches to the number keypad when you start with a digit; on the phone the code box is marked as a one-time code so the system can fill in the SMS it just received. The gateway's sign-in page gains the password way (`POST /api/web/login`) and says, first, that the browser version is for a first try — the phone app and the desktop app are the everyday ones, with the same account.
+- **The face moves on the web and the desktop.** The dragon plays the four short clips the phone has — a head shake at rest, headphones and a laptop while working, a crystal ball while waiting, a star when pleased — wherever it is drawn at 44 px or more (the chat header, the welcome, the sheet, onboarding); small sizes, lists, a system set to reduced motion and a clip that fails to load show the still, as before. The avatar studio makes the same four clips for a new face once its stills are on, through the video model where the endpoint has one — the relay's `wan2.2-i2v-flash`, or Wan on Alibaba Cloud Model Studio, by the asynchronous video API the phone uses (`[llm] video_model` overrides) — and the cost card counts them ("8 pictures and 4 clips"); a face from an OpenAI-compatible provider without a video API keeps its stills. `avatar/<face>/<mood>.mp4`, the `clips` field of the `avatar` event, the `animating` stage.
+
+### Changed
+
+- **A signed-in runtime with no model key uses the relay.** A desktop or web runtime whose account is signed in but whose model still pointed at a provider with an empty key (the DeepSeek default) answered every message with a 401; at start-up the hub now makes the relay the model in that case, and leaves a local server (Ollama, LM Studio, a LAN address) alone.
+- **When the runtime is slow to start, both sides say where they are.** The runtime starts its parts in named steps with time limits (tools, then the cloud account and hub, then the scheduler) and logs each; `/api/health` says `starting: "<step>"` until it is done; the welcome banner is printed once the app answers, and the console is UTF-8 on Windows. The desktop shell probes health with Node's own HTTP client, and every ten seconds while it waits writes the probe result, whether the port is open and who listens on it to `desktop-app.log` — the same file its own lines go to now — and quotes them in the error box.
+- **The Linux desktop runtime runs on older systems.** It is built in a Debian 11 container (glibc 2.31), so Ubuntu 20.04 / 22.04 and their kin no longer stop with `GLIBC_2.35 not found`.
+- **The hands are findable when they are off.** On a computer with the hands off, the agent's briefing says so and names the switch (*Devices → Hands on this computer*), so "open the calendar app for me" gets the way to it instead of a shrug; the Hands card tells Mac users about the Accessibility and Screen Recording permissions macOS asks for.
+
+### Removed
+
+- **The local-network host script.** `host/nanomuse_host.py` and *Pair over the local network* on the phone are gone; a computer joins by installing nanoMuse Desktop and signing in with the same account, on any network. *Settings → Computers* lists the account's computers, says which account this phone uses — a computer that is missing has nearly always signed in with another — and a tap tells whether it answers. `nanomuse-pc` and the agent's briefing speak of the hub only.
+
+### Fixed
+
+- **Long contributed conversations are kept whole** (relay 0.5.2). A turn over the size limit was cut mid-character and then failed to parse, which broke the operator's samples list and export with a 500. Oversize turns are now cut by whole messages from the middle (the system prompt and the last exchange stay), then the longest text is shortened with a marker; rows cut the old way still load, marked `truncated`.
+
 ## [0.1.23] - 2026-09-30 · Welcome
 
 ### Added

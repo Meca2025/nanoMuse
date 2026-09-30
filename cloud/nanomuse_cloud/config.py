@@ -281,7 +281,7 @@ class Settings:
     # One phone/e-mail = one grant; a second device signing in with the same
     # identifier shares the account and gets a second key, not a second grant.
 
-    sender: str = field(default_factory=lambda: _env("CODE_SENDER", "log"))  # log | smtp | aliyun
+    sender: str = field(default_factory=lambda: _env("CODE_SENDER", "log"))  # log | smtp | aliyun | both
     smtp_host: str = field(default_factory=lambda: _env("SMTP_HOST"))
     smtp_port: int = field(default_factory=lambda: _int("SMTP_PORT", 465))
     smtp_user: str = field(default_factory=lambda: _env("SMTP_USER"))
@@ -291,6 +291,8 @@ class Settings:
     aliyun_access_key_secret: str = field(default_factory=lambda: _env("ALIYUN_ACCESS_KEY_SECRET"))
     aliyun_sms_sign: str = field(default_factory=lambda: _env("ALIYUN_SMS_SIGN"))
     aliyun_sms_template: str = field(default_factory=lambda: _env("ALIYUN_SMS_TEMPLATE"))
+    # dypns = 号码认证服务 SendSmsVerifyCode (default), dysms = 短信服务 SendSms
+    aliyun_sms_api: str = field(default_factory=lambda: _env("ALIYUN_SMS_API", "dypns"))
 
     models: tuple[ModelSpec, ...] = field(default_factory=_models_from_env)
     # -- the operator's page, beyond the relay's own numbers ------------------------------

@@ -511,38 +511,24 @@
 
     <!-- Reach (0.1.13): the phone drives your computer -->
     <string name="nm_pc_title">電腦</string>
-    <string name="nm_pc_none_short">未配對</string>
+    <string name="nm_pc_none_short">無</string>
     <string name="nm_pc_intro">手機上說一句，電腦上就做：在它的終端機裡跑一條命令、取一個或放一個檔案、在它的瀏覽器裡打開一個頁面、看一眼它的螢幕，或者把整件事交給那邊的 nanoMuse 去做。只是單向的——手機操作電腦，反過來不行——每一次審批都在這裡、在送出之前決定。</string>
     <string name="nm_pc_hub_title">最簡單的辦法：裝桌面版，登同一個帳號</string>
     <string name="nm_pc_hub_body">在電腦上安裝 nanoMuse 桌面版，用這台手機的帳號登入。幾秒鐘後它就出現在「帳號 → 裝置」裡——不限網路，有通知，還能接手整件任務。</string>
     <string name="nm_pc_hub_download">取得 nanoMuse 桌面版</string>
     <string name="nm_pc_hub_account">帳號與裝置</string>
-    <string name="nm_pc_lan_toggle">改用區域網路配對</string>
-    <string name="nm_pc_lan_toggle_sub">一個檔案的 host 腳本，只限同一個 Wi-Fi：命令、檔案、頁面和螢幕——沒有通知，也接不了整件任務。</string>
-    <string name="nm_pc_section_paired">已配對的電腦</string>
+    <string name="nm_pc_section_paired">這個帳號下的電腦</string>
     <string name="nm_pc_none">還沒有電腦</string>
-    <string name="nm_pc_none_footer">配對之前，任務該在電腦上做的時候它會直接告訴你。</string>
-    <string name="nm_pc_paired_footer">點一下可以看它是否在線。「忘記」會丟掉這台手機對它的金鑰；電腦那邊只保存金鑰的雜湊。</string>
+    <string name="nm_pc_none_footer">電腦用這個帳號登入之前，任務該在電腦上做的時候它會直接告訴你。</string>
+    <string name="nm_pc_paired_footer">點一下可以看它是否在線。電腦沒出現在這裡，多半是登了另一個帳號——以上面提示的帳號為準。</string>
     <string name="nm_pc_last_seen">上次 %1$s</string>
+    <string name="nm_pc_offline">離線</string>
+    <string name="nm_pc_online">在線</string>
+    <string name="nm_pc_account_none">這台手機還沒登入 nanoMuse Cloud；先登入，電腦上再登同一個帳號。</string>
+    <string name="nm_pc_account_hint">這台手機登入的是 %1$s，電腦上要登同一個帳號。</string>
     <string name="nm_pc_checking">正在檢查…</string>
     <string name="nm_pc_answering">%1$s 在線</string>
-    <string name="nm_pc_not_answering">%1$s 沒有回應——host 在跑嗎？是同一個網路嗎？</string>
-    <string name="nm_pc_forget">忘記</string>
-    <string name="nm_pc_section_pair">不用帳號：走區域網路</string>
-    <string name="nm_pc_step1">1. 在電腦上，從 nanoMuse 儲存庫下載 host/nanomuse_host.py（一個檔案，Python 3，不用安裝任何東西），然後執行：</string>
-    <string name="nm_pc_step2">2. 它會印出一個位址和一個六位數字的配對碼。十分鐘內在這裡輸入這兩項。</string>
-    <string name="nm_pc_address">位址</string>
-    <string name="nm_pc_code">配對碼</string>
-    <string name="nm_pc_pair">配對</string>
-    <string name="nm_pc_pairing">正在配對…</string>
-    <string name="nm_pc_paired_with">已和 %1$s 配對。</string>
-    <string name="nm_pc_bad_address">請照螢幕上印出的填寫位址，例如 192.168.1.23:7333。</string>
-    <string name="nm_pc_pair_footer">手機和電腦要在同一個網路裡。一個配對碼只對一台手機有效；再配一台就再執行一次 host。</string>
-    <string name="nm_pc_section_how">區域網路配對是怎麼回事</string>
-    <string name="nm_pc_how_1">命令的判定和手機自己的終端機一樣：刪除、傳送、付款要先在這裡得到你的同意。</string>
-    <string name="nm_pc_how_2">電腦以你的身分執行——同一個帳戶，同一批檔案。</string>
-    <string name="nm_pc_how_3">流量只在你的區域網路裡，中間沒有雲；目前還沒有加密，請在你信任的網路裡使用。</string>
-    <string name="nm_pc_how_4">電腦永遠碰不到手機。</string>
+    <string name="nm_pc_not_answering">%1$s 沒有回應——電腦上的 nanoMuse 桌面版還開著嗎？</string>
     <!-- the approval card -->
     <string name="nm_risk_desc_on_computer">在電腦「%1$s」上，不是在這台手機上。</string>
     <string name="nm_risk_preview_computer">電腦上的命令</string>
@@ -556,7 +542,7 @@
     <string name="nm_setup_source_title">讓哪個模型來回答？</string>
     <string name="nm_setup_source_sub">你的帳號已經自帶了一個。也可以加上自己的 API key，隨時切換。</string>
     <string name="nm_setup_source_cloud">用 nanoMuse Cloud 的模型</string>
-    <string name="nm_setup_source_cloud_sub">透過阿里雲百煉使用 Qwen：每個帳號 ¥10 免費額度，費用由開發者承擔；邀請朋友、加入共創計畫還能再加。無需設定。</string>
+    <string name="nm_setup_source_cloud_sub">透過阿里雲百煉使用 Qwen，每個帳號都有一份由開發者承擔的免費額度。無需設定。</string>
     <string name="nm_setup_source_own_sub">OpenAI、Anthropic、DeepSeek、百煉等相容 OpenAI 介面的服務。key 只留在這台手機上。</string>
     <string name="nm_setup_source_fine_print">兩種方式不衝突：Cloud 模型始終可用，每個模型群組各選各的。</string>
     <string name="nm_setup_password_title">設一個密碼</string>
@@ -578,7 +564,7 @@
     <string name="nm_welcome_feat_hands_sub">訂車票、點外送、在應用程式裡查東西——你全程看著，隨時可以停</string>
     <string name="nm_welcome_feat_reach">Reach：從手機使用你的電腦</string>
     <string name="nm_welcome_feat_reach_sub">配對一台 Mac、Windows 或 Linux 電腦，在手機上派工作給它</string>
-    <string name="nm_welcome_notice">nanoMuse 是非營利的開源社群專案，永久免費。用信箱登入，模型自帶免費額度：每個帳號 ¥10，模型費用由開發者承擔；邀請一位新用戶 +¥5，加入共創計畫 +¥10；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售。</string>
+    <string name="nm_welcome_notice">nanoMuse 是非營利的開源社群專案，永久免費。用手機號或信箱登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售。</string>
     <string name="nm_welcome_hands_title">讓它替你操作手機</string>
     <string name="nm_welcome_hands_sub">開啟兩項權限後，nanoMuse 就能替你打開應用程式、點按和輸入。操作期間螢幕上始終有一個顯示目前步驟和「停止」按鈕的膠囊；登入、密碼和驗證碼永遠由你自己來。</string>
     <string name="nm_welcome_hands_turn_on">去開啟</string>
@@ -587,13 +573,13 @@
     <string name="nm_welcome_meet_fine_print">凡是無法撤回的事——刪除、傳送、付款——它都會先停下來問你。</string>
     <string name="nm_cloud_title">nanoMuse 雲</string>
     <string name="nm_cloud_signin_title">用 nanoMuse 雲開始</string>
-    <string name="nm_cloud_signin_subtitle">信箱收一個驗證碼；設過密碼的話也可以直接用密碼。每個帳號 ¥10 免費模型額度，費用由開發者承擔。</string>
+    <string name="nm_cloud_signin_subtitle">手機號或信箱收一個驗證碼；設過密碼的話也可以直接用密碼。每個帳號都有一份由開發者承擔的免費模型額度。</string>
     <string name="nm_cloud_mode_code">驗證碼登入</string>
     <string name="nm_cloud_mode_password">密碼登入</string>
     <string name="nm_cloud_password">密碼</string>
     <string name="nm_cloud_forgot_password">忘了密碼？用驗證碼登入</string>
-    <string name="nm_cloud_identifier">信箱</string>
-    <string name="nm_cloud_identifier_hint">you@example.com</string>
+    <string name="nm_cloud_identifier">手機號或信箱</string>
+    <string name="nm_cloud_identifier_hint">138 0000 0000 · you@example.com</string>
     <string name="nm_cloud_code">驗證碼</string>
     <string name="nm_cloud_send_code">發送驗證碼</string>
     <string name="nm_cloud_resend">重新發送</string>
@@ -602,7 +588,7 @@
     <string name="nm_cloud_debug_base">中繼伺服器（偵錯版）</string>
     <string name="nm_cloud_fine_print">伺服器只保存信箱的雜湊值，以及每次請求的 token 數。你的訊息只轉送給模型，預設不保存，除非你選擇貢獻出來。隨時可以換成自己的 key。</string>
     <string name="nm_cloud_not_signed_in">尚未登入</string>
-    <string name="nm_cloud_not_signed_in_sub">用信箱登入，送一份免費額度。你自己新增的服務商不受影響。</string>
+    <string name="nm_cloud_not_signed_in_sub">用手機號或信箱登入，送一份免費額度。你自己新增的服務商不受影響。</string>
     <string name="nm_cloud_sign_in">登入</string>
     <string name="nm_cloud_channel_phone">手機號</string>
     <string name="nm_cloud_channel_email">信箱</string>
@@ -751,6 +737,7 @@
     <string name="nm_coding_title">程式助手</string>
     <string name="nm_coding_intro">你電腦上的 Cursor、Codex、Claude Code：在這裡看它們的會話和最近的回覆，直接給任何一個發訊息。由電腦上的 nanoMuse 讀取和驅動，它們的內容不會複製到手機上。</string>
     <string name="nm_coding_no_computer">沒有在線的電腦帶程式助手。請在裝了 Cursor、Codex 或 Claude Code 的電腦上執行 nanoMuse，並用同一個帳號登入。</string>
+    <string name="nm_coding_account_hint">這台手機登入的是 %1$s，電腦上要登同一個帳號。</string>
     <string name="nm_coding_refresh">重新整理</string>
     <string name="nm_coding_all">全部</string>
     <string name="nm_coding_new">開始新的</string>
@@ -782,7 +769,7 @@
     <string name="nm_cloud_tokens_line">累計 %1$s tokens · 今天 %2$s</string>
     <string name="nm_cloud_notice_title">免費 · 開源 · 非營利 —— 開源共建，做屬於所有人的個人智能體</string>
     <string name="nm_cloud_notice_closing">歡迎回報問題、提需求、貢獻程式碼——每一次參與，都在讓個人智能體離所有人更近一步。</string>
-    <string name="nm_cloud_notice">nanoMuse 是非營利的開源社群專案，永久免費。用信箱登入，模型自帶免費額度：每個帳號 ¥10，模型費用由開發者承擔；邀請一位新用戶 +¥5，加入共創計畫 +¥10；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售；隨時可以刪除帳號。</string>
+    <string name="nm_cloud_notice">nanoMuse 是非營利的開源社群專案，永久免費。用手機號或信箱登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售；隨時可以刪除帳號。</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">來自你其他裝置的訊息</string>
     <string name="nm_hub_service_channel">與你的裝置保持連線</string>

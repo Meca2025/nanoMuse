@@ -201,6 +201,20 @@ class AccountManager:
         if invite:
             payload["invite"] = invite
         data = await self._relay("POST", "/v1/auth/verify", payload, ip)
+        return await self._admit(data)
+
+    async def login(self, identifier: str, password: str, ip: str) -> Account:
+        """The password way in — the account set one under Account earlier; no code to wait
+        for. The relay's answer (wrong password, no password yet, locked out) is passed on."""
+        if not self.s.web_enabled:
+            raise Refused(404, "web_off", "The web version is not turned on here.")
+        payload = {"identifier": identifier, "password": password, "device": "Web"}
+        data = await self._relay("POST", "/v1/auth/login", payload, ip)
+        return await self._admit(data)
+
+    async def _admit(self, data: dict[str, Any]) -> Account:
+        """The relay said yes: the account's key → its Muse, started (or restarted with the
+        fresh key when the account already has one)."""
         key = str(data.get("api_key") or "")
         if not key:
             raise Refused(502, "relay_error", "nanoMuse Cloud returned no key.")

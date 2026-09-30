@@ -5,15 +5,9 @@
 <h1 align="center">nanoMuse</h1>
 
 <p align="center">完全开源、Muse 风格的个人智能体，面向你的每一台设备。</p>
-<table align="center"><tr><td>
 
-### [免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体](https://nanomuse.cn/#open-source)
-
-**nanoMuse 是非盈利的开源社区项目，永久免费。** 用邮箱登录，模型自带免费额度：每个账号 **¥10**，模型费用由开发者承担；**邀请一位新用户 +¥5，加入共创计划 +¥10**；用完可以换自己的 key（[推荐阿里云百炼](docs/own-key.md)）。默认不保存你的消息，数据不会出售；随时可以删除账号。
-
-欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [到 Discussions 提问、交流](https://github.com/nano-muse/nanoMuse/discussions) · [发 PR](CONTRIBUTING.md) · [点个 Star](https://github.com/nano-muse/nanoMuse)**——详情：[docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md)。
-
-</td></tr></table>
+> [!IMPORTANT]
+> **免费 · 开源 · 非盈利 —— 做属于所有人的个人智能体。** nanoMuse 是社区项目，永久免费：用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key。默认不保存你的消息，数据不会出售，账号随时可以删除。**[在浏览器里试试](https://nanomuse.cn/web/)**，或者[下载 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
 
 <div align="center">
   <p>
@@ -38,12 +32,6 @@
     <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20.deb-FCC624?logo=linux&logoColor=black" alt="Linux AppImage and .deb"></a>
     <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse"><img src="https://img.shields.io/badge/Docker-ghcr.io%2Fnano--muse%2Fnanomuse-2496ED?logo=docker&logoColor=white" alt="Docker 镜像"></a>
   </p>
-  <p>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android 构建"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml/badge.svg?branch=main" alt="桌面 App 构建"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml/badge.svg?branch=main" alt="Docker 镜像构建"></a>
-  </p>
 </div>
 
 nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每一台设备。和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一样，它是一个有名字、有自己形象的智能体：不只回答问题，而是动手做事；App 关掉了也继续干活；记得你；遇到无法撤销的操作会先停下来问你。Android App 把整个智能体跑在**手机上**：Linux 根文件系统、shell、浏览器、MCP、技能和定时任务都在 APK 里，模型由你自己带。它有一双手，能去碰那些没有 API 的 App——经你允许后，直接操作手机屏幕；也能伸到你的电脑上：在手机上说一句，事情在电脑上办好。桌面 App 和网页版也已经有了；接下来是 iOS 和眼镜。用自己的 key，或者领一份开源中转服务的体验额度；GPL-3.0——可以在它的基础上定制一个属于自己的 Muse。
@@ -61,8 +49,9 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 
 ## 动态
 
-- **2026-09-30 · 0.1.23「Welcome」** — 正式介绍给大家之前的一版：一份不会归零的额度（终身 ¥10，邀请 +¥5，加入共创计划 +¥10），用完之后有三条路，配自己的 key 有一步步的教程；新账号之后的两个小步骤；网页和桌面版的形象工作室；真正像桌面软件的桌面版；电脑登同一个账号即接入；国内可达的下载镜像 nanomuse.cn/dl；管理后台里不存地址的官网访问与下载统计；Discussions 开放。[发布说明](docs/releases/v0.1.23.md)。
-- **2026-09-30 · 0.1.22「Commons」** — 更容易信任、更省钱、更容易加入：免费 / 开源 / 非盈利的说明放到每个地方的最前面；每天 ¥15，图片和视频模型便宜五倍，换形象之前先看花费；邀请朋友得 ¥3 额度和更多视频；邮箱登录；去掉打电话，网页和桌面版换回麦克风；「贡献对话」默认关闭，用于社区自己训练的模型；桌面版在 macOS 和 Windows 上装得上了；stage 四周的流光。[发布说明](docs/releases/v0.1.22.md)。
+- **2026-10-01 · 0.1.24「Signal」** — 手机号在每个平台都能登录（验证码走短信；设过密码两者都能用）；网页和桌面版的形象动起来了——小龙的四段短片，工作室在有视频模型时也给新形象做短片；电脑只有登录这一种接入方式，局域网脚本去掉，电脑不在时手机会说明自己登的是哪个账号；登录了账号但没配 key 的运行时自动用中转；启动慢的时候两边都会说走到哪一步；Linux 运行时兼容 glibc 2.31；Hands 关着也找得到；门面更清爽，下载默认走 GitHub，nanomuse.cn/web 多了密码登录。[发布说明](docs/releases/v0.1.24.md)。
+- **2026-09-30 · 0.1.23「Welcome」** — 正式介绍给大家之前的一版：一份不会归零的额度（有多少、怎么增加，账号页里写得清楚），用完之后有三条路，配自己的 key 有一步步的教程；新账号之后的两个小步骤；网页和桌面版的形象工作室；真正像桌面软件的桌面版；电脑登同一个账号即接入；国内可达的下载镜像 nanomuse.cn/dl；管理后台里不存地址的官网访问与下载统计；Discussions 开放。[发布说明](docs/releases/v0.1.23.md)。
+- **2026-09-30 · 0.1.22「Commons」** — 更容易信任、更省钱、更容易加入：免费 / 开源 / 非盈利的说明放到每个地方的最前面；每天一份额度，图片和视频模型便宜五倍，换形象之前先看花费；邀请朋友能多得额度和视频；邮箱登录；去掉打电话，网页和桌面版换回麦克风；「贡献对话」默认关闭，用于社区自己训练的模型；桌面版在 macOS 和 Windows 上装得上了；stage 四周的流光。[发布说明](docs/releases/v0.1.22.md)。
 - **2026-09-30 · 0.1.21「Footing」** — 没有新的演示，多了很多可以放心的地方：把运行时、中转、网页 App、桌面版、手机版和文档都过了一遍。出错只说一句话，细节收起来；nanoMuse Cloud 作为一个有名字的模型直接可选；被拒的请求、重试的视频只算一次；中转的管理员令牌恒定时间比较、图片只从服务商域名取；手机上配对电脑的令牌进加密存储、不进备份；网页 App 会显示正在连接、能重试、发失败保留草稿；桌面版会拉起停掉的运行时，多了「关于」和「检查更新」；用 `pipx`/Docker 跑的运行时会提示新版本；文档写的是你真正下载的那个 App。[发布说明](docs/releases/v0.1.21.md)。
 - **2026-09-30 · 0.1.20「Presence」** — 给你的 Muse 打个电话，语音或开着摄像头，你还没说完它就用自己的声音接上；电脑上 Cursor、Codex、Claude Code 的会话，在手机、浏览器或另一台电脑上都能看、都能指挥；每个 App 都从登录开始，有密码、登录记录和历史，用量按类型和按模型统计；网页、桌面、控制台和管理后台用上手机版的那套设计，Hands 干活时盖在屏幕上的 stage 更细了。[发布说明](docs/releases/v0.1.20.md)。
 - **2026-09-30 · 0.1.19「Ensemble」** — 每一台设备，以及一台都没有时的浏览器：Windows、macOS、Linux 的桌面 App，形状和手机版一样，运行时打包在里面（形象、对话、设备、审批、在电脑屏幕上的 Hands 和覆盖其上的 stage、全局「停止」）；电脑双向接入 hub，手机和电脑可以互相拜托，在一台上发起的审批在你手里的那台上回答；还有 **nanoMuse 网页版** [nanomuse.cn/web](https://nanomuse.cn/web/)——用邮箱或手机验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，什么都不用装。[发布说明](docs/releases/v0.1.19.md)。
@@ -87,11 +76,11 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 
 ## 安装
 
-什么都不用装：在 [nanomuse.cn/web](https://nanomuse.cn/web/) 用邮箱收个验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，下次来还在。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-terminal-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；GitHub 下载慢的话，同样的文件在项目的国内镜像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（发布后十五分钟内同步，SHA-256 核对过）；它们怎么相遇见 [docs/desktop.md](docs/desktop.md) 和 [docs/every-device.md](docs/every-device.md)。手机上：
+什么都不用装：在 [nanomuse.cn/web](https://nanomuse.cn/web/) 用手机号或邮箱收个验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，下次来还在——适合先试试；天天用的话，装下面的手机 App 和桌面版，登同一个账号。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-terminal-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；实测在国内直接从 GitHub 下载也是最快的；万一下不动，同样的文件在项目的备用镜像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（发布后十五分钟内同步，SHA-256 核对过）；它们怎么相遇见 [docs/desktop.md](docs/desktop.md) 和 [docs/every-device.md](docs/every-device.md)。手机上：
 
 1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载 `nanoMuse-<版本>-arm64.apk`——Android 8.0 以上的 64 位手机。想校验就 `sha256sum -c nanoMuse-<版本>-arm64.apk.sha256`。
 2. 打开安装。Android 会问一次是否允许；每个版本都用同一把签名，直接覆盖安装升级，数据不丢。
-3. 接入模型。「用邮箱登录，免费开始」：邮箱收一个验证码，就有 [nanoMuse 云](docs/cloud.md)的免费额度——每个账号 ¥10，邀请一位新用户 +¥5，加入共创计划 +¥10——不用配 key，不用付钱。用完可以换自己的：[阿里云百炼](docs/own-key.md)约 2 分钟开通，任何 OpenAI 兼容接口配你的 key，或者 App 自带的 OAuth 登录。接着是让它操作手机所需的两项权限（可跳过），然后是第一次对话：它会问你叫什么，并给自己起名字。
+3. 接入模型。「登录，免费开始」：手机号收一条短信，或者邮箱收一个验证码，就有 [nanoMuse 云](docs/cloud.md)的免费额度——不用配 key，不用付钱；还剩多少、怎么增加，账号页里写得清楚。用完可以换自己的：[阿里云百炼](docs/own-key.md)约 2 分钟开通，任何 OpenAI 兼容接口配你的 key，或者 App 自带的 OAuth 登录。接着是让它操作手机所需的两项权限（可跳过），然后是第一次对话：它会问你叫什么，并给自己起名字。
 4. 可选——「设置 → 图像与视频模型」：图像模型（阿里云百炼的 qwen-image-3.0、gpt-image-1，或任何有 OpenAI images 接口的服务商）让它能换形象、画图；视频模型（百炼上的 wan2.2-i2v-flash）让形象动起来。Muse 这两样是官方自带的，nanoMuse 用你自己的，缺哪个它会开口告诉你。
 
 App 会到本仓库的 Releases 检查更新。每个版本的说明在 [docs/releases/](docs/releases/) 和 [CHANGELOG](CHANGELOG.md)。
@@ -154,6 +143,7 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | [0.1.21](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.21) | Footing | 全面过一遍：出错一句话说清，Cloud 作为有名字的模型，钱只算一次，管理员令牌和图片抓取加固，手机上的密钥加密且不进备份，网页 App 会连接、重试、保留草稿，桌面版拉起运行时并有「关于」「检查更新」，运行时提示新版本，文档写的是真正发布的东西 |
 | [0.1.22](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.22) | Commons | 说明放最前面；每天 ¥15，图片和视频模型更便宜，换形象前先看花费；邀请得 ¥3 额度和视频；邮箱登录；去掉打电话，网页和桌面版有麦克风；「贡献对话」默认关闭；桌面版在 macOS 和 Windows 装得上；stage 流光 |
 | [0.1.23](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.23) | Welcome | 一份永久有效的额度（¥10，邀请 +¥5，共创 +¥10），用完有三条路；注册后设密码、加入共创两步；网页和桌面版的形象工作室；桌面版像桌面软件；电脑登录即接入；国内下载镜像；管理后台的官网统计；Discussions |
+| [0.1.24](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.24) | Signal | 手机号在各平台登录（短信验证码，密码两者通用）；网页和桌面版的形象会动，工作室做短片；电脑只靠登录接入，去掉局域网脚本；没 key 的账号自动用中转；两端的启动诊断；Linux 运行时兼容 glibc 2.31；更清爽的门面 |
 | 0.2.0 | Beta | 头几周使用后的打磨；第一个 beta |
 
 **再之后**，依次：iOS；部署在你自己机器上——一台 VM、一台家里的服务器——的网页版，用同一个网关；眼镜。每加一台设备，同一个智能体就多一双手、多一个入口。项目起步时的 Python 线——智能体和它的 Sentinel、网页 App、模拟手机——冻结在 tag [`pre-openminis`](https://github.com/nano-muse/nanoMuse/releases/tag/pre-openminis)，文档在 [docs/](docs/)，是桌面和网页这两个入口的底座。
@@ -167,12 +157,14 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | 形状 | 一个有名字、有形象的智能体，动态、目标、Sentinel | 会话、工具、设置——一个工作台 | 一个智能体：有名字和自己的形象、第一次对话、动态、按时检查的目标、能改的记忆 |
 | 无法撤销的操作前 | Sentinel 模型审批 | 按工具授权 | `RiskGate` 拦下这次调用，问你：只此一次、本次对话、对这个收件人 / 域名 / 目录一直允许，或者拒绝；密码和验证码从不由它输入 |
 | 没有 API 的 App | 碰不到——VM 里有浏览器，但够不着你的手机 | Android 上有一个模型可以调用的无障碍 CLI（`android-a11y-cli`） | 把屏幕当成一双正式的手：只看截图，先试 API 再上屏幕，登录由你接管，同一套审批——0.1.12 起 |
-| 其他设备 | 多个客户端连同一台 VM；VM 不碰你的设备 | 只有装了它的那一台 | 一个智能体，跨你的所有设备：电脑装桌面版、登同一个账号，手机就能在任何网络下操作它，所有设备双向互通（`host/nanomuse_host.py` 配对码配对保留，给没有账号的电脑用） |
+| 其他设备 | 多个客户端连同一台 VM；VM 不碰你的设备 | 只有装了它的那一台 | 一个智能体，跨你的所有设备：电脑装桌面版、登同一个账号，手机就能在任何网络下操作它，所有设备双向互通 |
 | 形象 | 一个干活时会换姿势的毛绒形象 | — | 你的图像模型画出并摆好姿势的形象，每个状态一段你的视频模型做的循环短片；默认是一只已经会动的小龙 |
 | 模型 | Meta 的 | 自己带 | 自己带——对话、图像、视频三个模型，或一把百炼 key 全包；OpenMinis 自带的 OAuth 登录保留 |
 | 许可 | 闭源 | GPL-3.0 | GPL-3.0-or-later，基于 OpenMinis——致谢；上游版本仍可合并 |
 
 ## 参与
+
+欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步：**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [到 Discussions 提问、交流](https://github.com/nano-muse/nanoMuse/discussions) · [点个 Star](https://github.com/nano-muse/nanoMuse)**。免费额度、自己的 key 和数据的去向：[docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md)。
 
 拿它做一件真事，报告哪里坏了，然后挑一件小而具体的事做。[CONTRIBUTING.md](CONTRIBUTING.md) 有构建环境（[android/BUILDING.md](android/BUILDING.md) 和 `scripts/android/` 里的工具链脚本）、约定（包名 `com.openminis.app` 不动，新代码放 `io.github.nanomuse.*`，改上游处标 `// nanoMuse:`，提交带 `Signed-off-by`）和发版方式。iOS 版从同一棵树构建，由 CI 交给 TestFlight，见 [docs/ios.md](docs/ios.md)。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Pull requests](https://github.com/nano-muse/nanoMuse/pulls)。
 

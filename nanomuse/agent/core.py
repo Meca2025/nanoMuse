@@ -16,6 +16,7 @@ from nanomuse.goals import GoalStore
 from nanomuse.llm.base import BaseLLM
 from nanomuse.logger import logger
 from nanomuse.memory import MemoryItem, MemoryStore
+from nanomuse.runtime import device
 from nanomuse.schema import AgentState, Attachment, Message, Role, ToolResult
 from nanomuse.sentinel import AuditLog, Sentinel
 from nanomuse.skills import SkillLibrary
@@ -156,10 +157,14 @@ class MuseAgent:
         return prompts.DEVICE_SECTION.format(tools=", ".join(names))
 
     def computer_section(self) -> str:
-        """This computer's screen, when the hands are on: available or not, and what is in front."""
+        """This computer's screen, when the hands are on: available or not, and what is in front.
+        On a computer with the hands off, one line saying where the switch is — so a request
+        for a desktop application gets the way to it, not a shrug."""
         task = self.tools.get("computer_task")
         link = getattr(task, "link", None)
         if task is None or link is None:
+            if device() is None and not self.settings.hands.enabled:
+                return prompts.COMPUTER_OFF_SECTION
             return ""
         status = link.status() if hasattr(link, "status") else {}
         if not status.get("available", True):

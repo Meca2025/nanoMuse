@@ -1,5 +1,5 @@
 import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, shell, Tray } from "electron";
-import { readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { StageReport } from "../shared/types";
 import { Runtime } from "./runtime";
@@ -34,9 +34,16 @@ const screenshotFlag = process.argv.find((a) => a.startsWith("--screenshot="))?.
 const stageDemo = process.argv.includes("--stage-demo");
 
 function log(line: string): void {
-  logs.push(`${new Date().toISOString().slice(11, 19)} ${line}`);
+  const stamped = `${new Date().toISOString().slice(11, 19)} ${line}`;
+  logs.push(stamped);
   if (logs.length > 200) logs.shift();
   console.log(`[nanomuse-desktop] ${line}`);
+  // the same file the runtime writes to, so one log tells the whole story of a start
+  try {
+    appendFileSync(join(runtime.home, "desktop-app.log"), `[desktop] ${stamped}\n`);
+  } catch {
+    /* the folder may not exist yet; the line is still in memory for the dialog */
+  }
 }
 
 const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
@@ -83,7 +90,17 @@ const ISSUES_PAGE = "https://github.com/nano-muse/nanoMuse/issues";
  */
 async function reportStartupFailure(exc: unknown): Promise<void> {
   const message = String((exc as Error).message ?? exc);
-  const details = [message, "", runtime.details(), "", "--- desktop-app.log (this session) ---", runtime.logTail(40)].join("\n");
+  const details = [
+    message,
+    "",
+    runtime.details(),
+    "",
+    "--- desktop shell ---",
+    logs.slice(-30).join("\n"),
+    "",
+    "--- desktop-app.log (this session) ---",
+    runtime.logTail(40),
+  ].join("\n");
   for (;;) {
     const { response } = await dialog.showMessageBox({
       type: "error",

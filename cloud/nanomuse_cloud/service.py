@@ -92,6 +92,84 @@ def _strip_binary(messages: list) -> list:
     return out
 
 
+def _fit_messages(messages: list, max_chars: int) -> tuple[str, bool]:
+    """The messages as JSON within ``max_chars`` — whole messages dropped from the middle
+    (the system prompt and the last exchange kept), then the longest text cut — so that what
+    is stored always parses. Returns the JSON and whether anything was left out."""
+    text = json.dumps(messages, ensure_ascii=False)
+    if len(text) <= max_chars:
+        return text, False
+    msgs = [dict(m) for m in messages if isinstance(m, dict)]
+    # 1. drop from the middle, oldest first, keeping the first (system) and the last two
+    while len(text) > max_chars and len(msgs) > 3:
+        del msgs[1]
+        text = json.dumps(msgs, ensure_ascii=False)
+    # 2. cut the longest text until it fits (a single huge paste, a long system prompt)
+    for _ in range(50):
+        if len(text) <= max_chars:
+            break
+        longest, where = -1, None
+        for i, m in enumerate(msgs):
+            c = m.get("content")
+            if isinstance(c, str) and len(c) > longest:
+                longest, where = len(c), (i, None)
+            elif isinstance(c, list):
+                for j, part in enumerate(c):
+                    if isinstance(part, dict) and isinstance(part.get("text"), str) and len(part["text"]) > longest:
+                        longest, where = len(part["text"]), (i, j)
+        if where is None or longest < 200:
+            break
+        over = len(text) - max_chars
+        keep = max(100, longest - over - 40)
+        i, j = where
+        if j is None:
+            msgs[i]["content"] = msgs[i]["content"][:keep] + " […]"
+        else:
+            parts = list(msgs[i]["content"])
+            parts[j] = {**parts[j], "text": parts[j]["text"][:keep] + " […]"}
+            msgs[i]["content"] = parts
+        text = json.dumps(msgs, ensure_ascii=False)
+    return text[:max_chars] if len(text) > max_chars else text, True
+
+
+def _load_messages(text: str) -> tuple[list, bool]:
+    """The stored request back as messages. Samples kept before 0.5.2 were cut at a character
+    count and may end mid-string: the messages that are whole are returned and the cut is
+    reported, rather than the row (and every export) failing on it."""
+    if not text:
+        return [], False
+    try:
+        value = json.loads(text)
+        return (value if isinstance(value, list) else [value]), False
+    except json.JSONDecodeError:
+        pass
+    decoder = json.JSONDecoder()
+    out: list = []
+    i = text.find("[")
+    if i < 0:
+        return [], True
+    i += 1
+    while i < len(text):
+        while i < len(text) and text[i] in " \n\r\t,":
+            i += 1
+        if i >= len(text) or text[i] == "]":
+            break
+        try:
+            obj, i = decoder.raw_decode(text, i)
+        except json.JSONDecodeError:
+            break
+        out.append(obj)
+    return out, True
+
+
+def _load_meta(text: str) -> dict:
+    try:
+        value = json.loads(text) if text else {}
+    except json.JSONDecodeError:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
 @dataclass(frozen=True)
 class Caller:
     key_hash: str
@@ -735,9 +813,10 @@ class Cloud:
         """Called after a chat turn for a contributing account; anything else is a no-op."""
         if not caller.contribute:
             return
-        request = json.dumps(_strip_binary(messages), ensure_ascii=False)
-        if len(request) > self.SAMPLE_MAX_CHARS:
-            request = request[: self.SAMPLE_MAX_CHARS]
+        request, cut = _fit_messages(_strip_binary(messages), self.SAMPLE_MAX_CHARS)
+        meta = dict(meta or {})
+        if cut or len(response) > self.SAMPLE_MAX_CHARS:
+            meta["truncated"] = True
         self.db.add_sample(
             caller.account_id,
             model,
@@ -745,15 +824,17 @@ class Cloud:
             response[: self.SAMPLE_MAX_CHARS],
             prompt_tokens,
             completion_tokens,
-            json.dumps(meta or {}, ensure_ascii=False),
+            json.dumps(meta, ensure_ascii=False),
         )
 
     def admin_samples(self, account_id: str | None = None, since: int = 0, limit: int = 100, before: int = 0) -> list[dict]:
         out = []
         for r in self.db.samples(account_id, since, limit, before):
             d = dict(r)
-            d["request"] = json.loads(d["request"]) if d["request"] else []
-            d["meta"] = json.loads(d["meta"]) if d["meta"] else {}
+            d["request"], cut = _load_messages(d["request"])
+            d["meta"] = _load_meta(d["meta"])
+            if cut:
+                d["meta"]["truncated"] = True
             out.append(d)
         return out
 
@@ -766,15 +847,19 @@ class Cloud:
             if not rows:
                 return
             for r in rows:
+                messages, cut = _load_messages(r["request"])
+                meta = _load_meta(r["meta"])
+                if cut:
+                    meta["truncated"] = True
                 d = {
                     "id": r["id"],
                     "ts": int(r["ts"]),
                     "model": r["model"],
-                    "messages": json.loads(r["request"]) if r["request"] else [],
+                    "messages": messages,
                     "response": r["response"],
                     "prompt_tokens": int(r["prompt_tokens"]),
                     "completion_tokens": int(r["completion_tokens"]),
-                    "meta": json.loads(r["meta"]) if r["meta"] else {},
+                    "meta": meta,
                 }
                 yield json.dumps(d, ensure_ascii=False) + "\n"
             before = int(rows[-1]["ts"])

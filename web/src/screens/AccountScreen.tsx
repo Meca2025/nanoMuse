@@ -103,7 +103,7 @@ function Identity({ account, me }: { account: CloudAccount | null; me: CloudMe |
         <div className="min-w-0 flex-1">
           <div className="truncate text-[18px] font-semibold tracking-tight">{hint}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-muted">
-            <span>{account?.channel === "sms" ? t("Mobile number") : t("E-mail")}</span>{/* phone accounts from earlier versions still show their channel */}
+            <span>{account?.channel === "phone" || account?.channel === "sms" ? t("Mobile number") : t("E-mail")}</span>
             {since && <span>· {t("since {date}", { date: since.toLocaleDateString() })}</span>}
             {me?.account.member && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">

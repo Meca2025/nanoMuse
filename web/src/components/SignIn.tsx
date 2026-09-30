@@ -7,8 +7,8 @@ import { markFirstSignIn } from "./FirstSignInSteps";
 import { inputCls, primaryBtn, secondaryBtn } from "./Form";
 
 /**
- * Signing in to nanoMuse Cloud: a code sent to an e-mail address, or — once one is set —
- * the account password. The same form everywhere it is needed (first run, the gate, the
+ * Signing in to nanoMuse Cloud: a code sent to a mainland phone number (SMS) or an e-mail
+ * address, or — once one is set — the account password. The same form everywhere it is needed (first run, the gate, the
  * account screen); the key lands in the vault on the machine running nanoMuse.
  *
  * A friend's invite code (``?invite=CODE`` on the page URL, remembered until used, or typed
@@ -36,6 +36,11 @@ export function normalizeInvite(v: string): string {
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, 8);
 }
+/** The keyboard for the identifier box: digits for a number, the e-mail layout otherwise. */
+export function identifierInputMode(value: string): "tel" | "email" {
+  return /^\s*[+\d]/.test(value) ? "tel" : "email";
+}
+
 export function SignIn({
   onSignedIn,
   /** after signing in, make the relay the model provider as well */
@@ -150,19 +155,22 @@ export function SignIn({
         <ModeButton active={mode === "password"} onClick={() => setMode("password")} icon={<KeyRound size={14} />} label={t("With a password")} />
       </div>
       <div>
-        <label className="text-[12px] text-muted">{t("E-mail")}</label>
+        <label className="text-[12px] text-muted">{t("Phone number or e-mail")}</label>
         <input
           value={identifier}
           onChange={(e) => {
             setIdentifier(e.target.value);
             setSent(false);
           }}
-          inputMode="email"
+          inputMode={identifierInputMode(identifier)}
           autoComplete="username"
           autoFocus={autoFocus}
-          placeholder="you@example.com"
+          placeholder={t("138 0000 0000 or you@example.com")}
           className={cx(inputCls, "mt-1")}
         />
+        {mode === "code" && !sent && (
+          <p className="mt-1.5 text-[12px] text-muted">{t("A mainland China number gets the code by SMS; anything else by e-mail.")}</p>
+        )}
       </div>
       {mode === "password" ? (
         <div>

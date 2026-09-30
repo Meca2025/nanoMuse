@@ -675,7 +675,7 @@ fun AppNavigation(
                 onOpenProviders = { navController.safeNavigate(Routes.PROVIDER_LIST) },
             )
         }
-        // nanoMuse: the computers this phone drives — paired ones, and pairing a new one.
+        // nanoMuse: the account's computers, and how one joins.
         composable(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) {
             io.github.nanomuse.ui.reach.ComputersScreen(
                 onBack = { navController.safePopBackStack() },

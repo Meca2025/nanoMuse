@@ -22,7 +22,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * `nanomuse-pc` — the phone drives a paired computer, from the sandbox shell:
+ * `nanomuse-pc` — the phone drives the account's other devices (through the hub), from the sandbox shell:
  *
  *     nanomuse-pc status
  *     nanomuse-pc run "<command>" [--on <computer>] [--cwd <dir>] [--timeout <s>]
@@ -69,17 +69,15 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
             failed(sub, computer, "${computer.name} answered ${e.code}: ${e.message}")
         } catch (e: java.io.IOException) {
             AppLogger.warning(TAG, "$sub on ${computer.name}: ${e.message}")
-            val hint = if (computer.viaHub) "Is nanoMuse still running there?" else "Is `nanomuse_host.py` running there, on the same network?"
-            failed(sub, computer, "${computer.name} (${computer.address}) does not answer: ${e.message ?: e.javaClass.simpleName}. $hint")
+            failed(sub, computer, "${computer.name} does not answer: ${e.message ?: e.javaClass.simpleName}. Is nanoMuse still running there?")
         }
     }
 
     private fun status(): JSONObject {
         val arr = JSONArray()
         Computers.all(context).forEach { c ->
-            val up = if (c.viaHub) true else Computers.reachable(context, c)
             arr.put(
-                JSONObject().put("name", c.name).put("kind", c.kind).put("os", c.os).put("via", if (c.viaHub) "hub" else "lan").put("address", c.address).put("reachable", up)
+                JSONObject().put("name", c.name).put("kind", c.kind).put("os", c.os).put("via", "hub").put("address", c.address).put("reachable", c.online)
                     .put("last_seen", if (c.lastSeen > 0) SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date(c.lastSeen)) else JSONObject.NULL),
             )
         }
@@ -148,7 +146,7 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         val timeout = args.get("timeout")?.toIntOrNull()?.coerceIn(1, 900) ?: 120
         val gate = approve(sessionId, c, ShellGuard.assess(command), "on ${c.name}: $command")
         gate.denied?.let { return denied(it) }
-        val r = Computers.shell(context, c, command, args.get("cwd"), timeout)
+        val r = Computers.shell(c, command, args.get("cwd"), timeout)
         val exit = r.optInt("exit_code", 1)
         val body = JSONObject()
             .put("ok", exit == 0).put("computer", c.name).put("exit_code", exit)
@@ -159,7 +157,7 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
     }
 
     private fun ls(args: MediaOffloadHandler.Args, c: Computers.Computer): NativeOffloadResult {
-        val r = Computers.files(context, c, args.positional.getOrNull(1))
+        val r = Computers.files(c, args.positional.getOrNull(1))
         return ok(JSONObject().put("ok", true).put("computer", c.name).put("path", r.optString("path")).put("entries", r.optJSONArray("entries") ?: JSONArray()))
     }
 
@@ -168,7 +166,7 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         val name = (args.get("name") ?: remote.substringAfterLast('/').substringAfterLast('\\')).ifBlank { "file" }.replace(Regex("[/\\\\]"), "_")
         val dir = attachmentsDir(sessionId) ?: return failed("get", c, "cannot write to /var/minis/attachments")
         val dest = File(dir, name)
-        val bytes = Computers.getFile(context, c, remote, dest)
+        val bytes = Computers.getFile(c, remote, dest)
         val body = JSONObject().put("ok", true).put("computer", c.name).put("path", "/var/minis/attachments/$name").put("bytes", bytes)
         if (Regex("(?i)\\.(png|jpe?g|gif|webp)$").containsMatchIn(name)) body.put("markdown", "![${name}](minis://attachments/$name)")
         return ok(body)
@@ -179,7 +177,7 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         val remote = args.positional.getOrNull(2) ?: return NativeOffloadResult(2, "nanomuse-pc put: a remote path is required\n")
         val file = resolveLocal(local, sessionId) ?: return NativeOffloadResult(2, "nanomuse-pc put: cannot read '$local'\n")
         // Never overwrite quietly: an existing file needs --force, and --force needs the card.
-        val exists = try { Computers.files(context, c, remote); true } catch (e: Computers.ReachException) { if (e.code == 404) false else throw e }
+        val exists = try { Computers.files(c, remote); true } catch (e: Computers.ReachException) { if (e.code == 404) false else throw e }
         var notice: String? = null
         if (exists) {
             if (args.get("force") != "true") return refused("exists", "$remote already exists on ${c.name}; add --force to replace it.")
@@ -187,18 +185,18 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
             gate.denied?.let { return denied(it) }
             notice = gate.notice
         }
-        val r = Computers.putFile(context, c, file, remote)
+        val r = Computers.putFile(c, file, remote)
         return ok(JSONObject().put("ok", true).put("computer", c.name).put("path", r.optString("path")).put("bytes", r.optLong("bytes")).apply { notice?.let { put("notice", it) } })
     }
 
     private fun open(args: MediaOffloadHandler.Args, c: Computers.Computer): NativeOffloadResult {
         val url = args.positional.getOrNull(1)?.trim() ?: return NativeOffloadResult(2, "nanomuse-pc open: a URL is required\n")
-        val r = Computers.open(context, c, url)
+        val r = Computers.open(c, url)
         return ok(JSONObject().put("ok", r.optBoolean("ok")).put("computer", c.name).put("url", url))
     }
 
     private fun screen(c: Computers.Computer, sessionId: String?): NativeOffloadResult {
-        val shot = Computers.screen(context, c) ?: return refused("no_screen", "${c.name} cannot take a screenshot; `pip install mss pillow` there helps.")
+        val shot = Computers.screen(c) ?: return refused("no_screen", "${c.name} cannot take a screenshot; `pip install mss pillow` there helps.")
         val ext = if (shot.second.contains("jpeg", true)) "jpg" else "png"
         val name = "pc-screen-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".$ext"
         val dir = attachmentsDir(sessionId) ?: return failed("screen", c, "cannot write to /var/minis/attachments")
@@ -259,7 +257,7 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
     private fun refused(error: String, message: String): NativeOffloadResult = NativeOffloadResult(
         3,
         JSONObject().put("ok", false).put("error", error).put("message", message)
-            .put("tell_user", "Tell the user in one line, in their language; pairing and the paired computers are at ${Computers.DEEP_LINK}.").toString(2) + "\n",
+            .put("tell_user", "Tell the user in one line, in their language; the account's devices are at ${Computers.DEEP_LINK}.").toString(2) + "\n",
     )
 
     private fun failed(kind: String, c: Computers.Computer, message: String): NativeOffloadResult = NativeOffloadResult(
@@ -284,8 +282,8 @@ Usage:
   nanomuse-pc task "<what to do, in words>" --on <device>   the Muse on that device does it and answers
 
 Commands are judged like the phone's own shell and wait for the approval card on this phone before they are sent;
-a task's own approvals show here too. Devices join by signing in to the same nanoMuse Cloud account (any network)
-or by pairing over the local network. Exit codes: 0 ok · 1 failed · 2 usage · 3 no device / refused · 4 the user said no.
+a task's own approvals show here too. Devices join by signing in to the same nanoMuse Cloud account (any network).
+Exit codes: 0 ok · 1 failed · 2 usage · 3 no device / refused · 4 the user said no.
 """
     }
 }

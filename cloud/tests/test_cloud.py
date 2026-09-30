@@ -822,6 +822,32 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     assert cloud.db.sample_count() == 0
 
 
+def test_long_samples_are_cut_whole_and_old_cut_rows_still_load():
+    """A conversation over the sample limit is shortened message by message (then text by
+    text) so that what is stored parses; a row cut at a character count by 0.5.1 gives back
+    the messages that are whole instead of failing the list and the export."""
+    from nanomuse_cloud.service import _fit_messages, _load_messages
+
+    msgs = [{"role": "system", "content": "be brief"}] + [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": f"turn {i} " + "x" * 500} for i in range(40)
+    ]
+    text, cut = _fit_messages(msgs, 3000)
+    assert cut and len(text) <= 3000
+    kept = json.loads(text)
+    assert kept[0] == msgs[0] and kept[-1] == msgs[-1] and kept[1]["content"].startswith("turn 3")
+    # one huge paste: the text is cut, the message stays
+    text, cut = _fit_messages([{"role": "user", "content": "y" * 10_000}], 1000)
+    assert cut and len(text) <= 1000 and json.loads(text)[0]["content"].endswith("[…]")
+    text, cut = _fit_messages(msgs[:3], 100_000)
+    assert not cut and json.loads(text) == msgs[:3]
+    # the 0.5.1 shape: JSON cut mid-string
+    old = json.dumps(msgs[:6], ensure_ascii=False)[:1800]
+    back, cut = _load_messages(old)
+    assert cut and 1 <= len(back) < 6 and back[0] == msgs[0]
+    assert _load_messages("") == ([], False)
+    assert _load_messages(json.dumps(msgs[:2])) == (msgs[:2], False)
+
+
 def test_database_from_before_0_4_migrates(tmp_path):
     """A relay upgraded in place: the accounts table lacks the 0.4 columns and the
     partial unique index on invite_code must not be attempted before they exist."""

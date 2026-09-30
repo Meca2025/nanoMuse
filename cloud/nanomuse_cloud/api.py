@@ -165,7 +165,7 @@ def create_app(
         try:
             ident = parse(str(body.get("identifier", "")))
         except BadIdentifier as e:
-            raise CloudError(400, "bad_identifier", "Enter an e-mail address") from e
+            raise CloudError(400, "bad_identifier", "Enter a mainland phone number or an e-mail address") from e
         await asyncio.to_thread(cloud.request_code, ident, client_ip(request))
         return Response(status_code=204)
 
@@ -175,7 +175,7 @@ def create_app(
         try:
             ident = parse(str(body.get("identifier", "")))
         except BadIdentifier as e:
-            raise CloudError(400, "bad_identifier", "Enter an e-mail address") from e
+            raise CloudError(400, "bad_identifier", "Enter a mainland phone number or an e-mail address") from e
         code = str(body.get("code", "")).strip()
         if not code.isdigit() or len(code) != 6:
             raise CloudError(400, "code_wrong", "The code is six digits")
@@ -192,7 +192,7 @@ def create_app(
         try:
             ident = parse(str(body.get("identifier", "")))
         except BadIdentifier as e:
-            raise CloudError(400, "bad_identifier", "Enter an e-mail address") from e
+            raise CloudError(400, "bad_identifier", "Enter a mainland phone number or an e-mail address") from e
         password = str(body.get("password", ""))
         if not password:
             raise CloudError(400, "password_required", "Enter the password")

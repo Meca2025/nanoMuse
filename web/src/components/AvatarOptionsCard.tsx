@@ -12,7 +12,8 @@ const MOOD_ORDER = ["idle", "working", "waiting", "happy", "error"];
 /**
  * The avatar studio's card in the chat: first what a new face costs and a *Draw* button;
  * then the four candidates 2×2 (a spinner where one is still coming) with *redraw*; then the
- * poses landing one by one; then the new face, on. The runtime updates the event in place
+ * poses landing one by one; then the new face, on, and — where the endpoint has a video model —
+ * the four clips being made behind it. The runtime updates the event in place
  * (`avatar.*` patches over the socket); a tap here calls `/api/avatar/*`.
  */
 export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarEvent; name?: string }) {
@@ -22,6 +23,7 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
   const cost = event.cost ?? {};
   const candidates = event.candidates ?? [null, null, null, null];
   const moods = event.moods ?? {};
+  const clips = event.clips ?? {};
   const act = async (what: string, run: () => Promise<unknown>) => {
     setBusy(what);
     try {
@@ -32,17 +34,19 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
       setBusy(null);
     }
   };
-  const live = event.stage === "estimate" || event.stage === "drawing" || event.stage === "choose" || event.stage === "posing";
+  const live = event.stage === "estimate" || event.stage === "drawing" || event.stage === "choose" || event.stage === "posing" || event.stage === "animating";
 
+  // "8 pictures" or "8 pictures and 4 clips": what the tap buys
+  const what = cost.clips ? t("{n} pictures and {c} clips", { n: cost.pictures ?? 8, c: cost.clips }) : t("{n} pictures", { n: cost.pictures ?? 8 });
   const costLine = (() => {
-    if (cost.cloud === false) return t("{n} pictures, drawn with your own key at your provider's prices.", { n: cost.pictures ?? 8 });
+    if (cost.cloud === false) return t("{what}, made with your own key at your provider's prices.", { what });
     if (cost.error) return t("The cost could not be checked: {error}", { error: cost.error });
     if (typeof cost.cny !== "number") return t("Checking the cost…");
-    if (cost.unlimited) return t("About ¥{cny} for {n} pictures; your account has no limit.", { cny: cost.cny.toFixed(2), n: cost.pictures ?? 8 });
+    if (cost.unlimited) return t("About ¥{cny} for {what}; your account has no limit.", { cny: cost.cny.toFixed(2), what });
     const left = typeof cost.left_cny === "number" ? cost.left_cny.toFixed(2) : "?";
     return cost.affordable === false
-      ? t("About ¥{cny} for {n} pictures — more than the ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), n: cost.pictures ?? 8, left })
-      : t("About ¥{cny} for {n} pictures; ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), n: cost.pictures ?? 8, left });
+      ? t("About ¥{cny} for {what} — more than the ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), what, left })
+      : t("About ¥{cny} for {what}; ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), what, left });
   })();
 
   return (
@@ -58,6 +62,7 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
               {event.stage === "drawing" && t("Drawing four to choose from…")}
               {event.stage === "choose" && t("Pick one — tap it, or say which")}
               {event.stage === "posing" && t("Drawing the poses…")}
+              {event.stage === "animating" && t("The new look is on — making the clips…")}
               {event.stage === "done" && t("The new look is on")}
               {event.stage === "cancelled" && t("Not this time")}
               {event.stage === "failed" && t("That did not work")}
@@ -130,16 +135,23 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
           </div>
         )}
 
-        {(event.stage === "posing" || event.stage === "done") && (
+        {(event.stage === "posing" || event.stage === "animating" || event.stage === "done") && (
           <div className="px-4 pb-3.5 space-y-2">
             <div className="flex gap-1.5">
               {MOOD_ORDER.map((m) => (
                 <div key={m} className="relative aspect-square flex-1 overflow-hidden rounded-xl bg-[#f1efeb]">
-                  {moods[m] ? (
+                  {clips[m] ? (
+                    <video key={clips[m]} src={fileUrl(clips[m])} poster={moods[m] ? fileUrl(moods[m]) : undefined} autoPlay loop muted playsInline disablePictureInPicture className="h-full w-full object-cover" />
+                  ) : moods[m] ? (
                     <img src={fileUrl(moods[m])} alt="" draggable={false} className="h-full w-full object-cover" />
                   ) : (
                     <span className="absolute inset-0 flex items-center justify-center text-muted">
                       <Loader2 size={14} className="animate-spin" />
+                    </span>
+                  )}
+                  {event.stage === "animating" && moods[m] && !clips[m] && m !== "error" && (
+                    <span className="absolute bottom-1 right-1 rounded-full bg-white/80 p-0.5 text-muted">
+                      <Loader2 size={10} className="animate-spin" />
                     </span>
                   )}
                 </div>
@@ -149,10 +161,17 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
               <p className="flex items-center gap-1.5 text-[12.5px] text-muted">
                 <Check size={14} className="text-emerald-600" /> {t("Idle, working, waiting, happy, sorry — the face follows what {name} is doing.", { name })}
               </p>
+            ) : event.stage === "animating" ? (
+              <p className="text-[12.5px] text-muted">{t("The face is already on; four short clips are being made from the poses — a few minutes.")}</p>
             ) : (
               <p className="text-[12.5px] text-muted">{t("Four more pictures from the one you picked; this takes a minute or two.")}</p>
             )}
-            {event.errors && event.errors.length > 0 && event.stage === "done" && <p className="text-[12px] text-muted">{t("Some poses could not be drawn and show the idle picture instead.")}</p>}
+            {event.errors && event.errors.length > 0 && event.stage === "done" && (
+              <p className="text-[12px] text-muted">
+                {event.errors.some((e) => !e.includes(" clip:")) && t("Some poses could not be drawn and show the idle picture instead.")}{" "}
+                {event.errors.some((e) => e.includes(" clip:")) && t("Some clips could not be made; those moods stay still.")}
+              </p>
+            )}
           </div>
         )}
 

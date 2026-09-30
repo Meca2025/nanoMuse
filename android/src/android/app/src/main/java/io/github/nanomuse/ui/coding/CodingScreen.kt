@@ -195,6 +195,16 @@ fun CodingScreen(onBack: () -> Unit, onOpenDevices: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
+                        // nanoMuse: a computer that is missing here has nearly always signed in with another account — say which this phone uses
+                        val accountHint = remember { io.github.nanomuse.cloud.NanoMuseCloud.account(context)?.hint }
+                        if (connected && !accountHint.isNullOrBlank()) {
+                            Text(
+                                text = stringResource(R.string.nm_coding_account_hint, accountHint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
                     }
                     MuseRowDivider(inset = 16.dp)
                     MuseRow(title = stringResource(R.string.nm_devices_title), icon = Icons.Outlined.Computer, onClick = onOpenDevices)

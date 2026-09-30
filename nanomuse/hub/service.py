@@ -108,6 +108,16 @@ class HubService:
     async def start(self) -> None:
         """Join the hub when the account is signed in and the hub is on."""
         await self._seed_from_env()
+        if self.signed_in and self._model_has_no_key():
+            # signed in, yet the model is still the bare default with no key (an account
+            # from before sign-in set the model, a config reset): the relay is the model,
+            # the same as the moment of signing in. Without this the first message ends in
+            # the provider's "invalid api key".
+            try:
+                await self.use_as_model()
+                logger.info("cloud account signed in and no model key set: the relay is the model")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("the relay could not be made the model: {}", exc)
         if self.signed_in:
             # the provider form's model list, without waiting for it: the relay may be slow
             # or away, and nothing else depends on the answer
@@ -116,6 +126,29 @@ class HubService:
             task.add_done_callback(self._tasks.discard)
         if self.signed_in and self.settings.hub.enabled:
             await self.join()
+
+    def _model_has_no_key(self) -> bool:
+        """True when the configured model would be called with no key at all — not a local
+        server (those take any key), not a vault reference, nothing typed in."""
+        key = (
+            self.settings.llm.api_key or (self.data.get("llm") or {}).get("api_key") or ""
+        ).strip()
+        if key:
+            return False
+        host = (
+            (self.settings.llm.base_url or "")
+            .split("://", 1)[-1]
+            .split("/", 1)[0]
+            .split(":", 1)[0]
+            .lower()
+        )
+        return host not in (
+            "localhost",
+            "127.0.0.1",
+            "::1",
+            "0.0.0.0",
+            "host.docker.internal",
+        ) and not host.startswith(("192.168.", "10.", "172."))
 
     async def _refresh_chat_models_quietly(self) -> None:
         try:
@@ -235,7 +268,7 @@ class HubService:
     async def request_code(self, identifier: str) -> None:
         identifier = identifier.strip()
         if not identifier:
-            raise CloudError(400, "bad_identifier", "Enter an e-mail address.")
+            raise CloudError(400, "bad_identifier", "Enter a phone number or an e-mail address.")
         await self.cloud.request_code(identifier)
         self._pending_code = identifier
 
@@ -248,7 +281,7 @@ class HubService:
         """Sign in with the account password instead of a code."""
         identifier = identifier.strip()
         if not identifier:
-            raise CloudError(400, "bad_identifier", "Enter an e-mail address.")
+            raise CloudError(400, "bad_identifier", "Enter a phone number or an e-mail address.")
         if not password:
             raise CloudError(400, "password_required", "Enter the password.")
         data = await self.cloud.login(identifier, password, self.device_name)
