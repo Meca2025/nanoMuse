@@ -703,6 +703,29 @@
     <string name="nm_coding_stopped">Stopped.</string>
     <string name="nm_coding_fresh_hint">A new conversation with %1$s. Your first message starts it on the computer.</string>
     <string name="nm_coding_no_transcript">Nothing readable in this session yet.</string>
+    <!-- 0.1.20: calls -->
+    <string name="nm_call_voice">Voice call</string>
+    <string name="nm_call_video">Video call</string>
+    <string name="nm_call_connecting">Connecting…</string>
+    <string name="nm_call_listening">Listening</string>
+    <string name="nm_call_muted">Muted</string>
+    <string name="nm_call_hearing">Go on…</string>
+    <string name="nm_call_thinking">Thinking</string>
+    <string name="nm_call_speaking">Speaking</string>
+    <string name="nm_call_ended">Call ended</string>
+    <string name="nm_call_mute">Mute</string>
+    <string name="nm_call_unmute">Unmute</string>
+    <string name="nm_call_hang_up">Hang up</string>
+    <string name="nm_call_camera_on">Camera</string>
+    <string name="nm_call_camera_off">Camera off</string>
+    <string name="nm_call_again">Call again</string>
+    <string name="nm_call_done">Done</string>
+    <string name="nm_call_own_key">your key</string>
+    <string name="nm_call_no_route">Calls need nanoMuse Cloud (sign in) or a Bailian key among your providers.</string>
+    <string name="nm_call_cap">Today\'s allowance is used up; the call ended.</string>
+    <string name="nm_call_too_long">Calls are limited in length; this one reached it.</string>
+    <string name="nm_call_unreachable">The call could not be connected; try again in a moment.</string>
+    <string name="nm_call_mic_refused">The microphone is not allowed. Allow it in the system settings and call again.</string>
     <!-- nanoMuse: money on the account page, and the community notice -->
     <string name="nm_cloud_spent_today">Today ¥%1$s · $%2$s</string>
     <string name="nm_cloud_spend_cap">of ¥%1$s · $%2$s a day</string>

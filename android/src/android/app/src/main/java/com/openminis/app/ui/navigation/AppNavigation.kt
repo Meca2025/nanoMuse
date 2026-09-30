@@ -676,6 +676,16 @@ fun AppNavigation(
         composable(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) {
             io.github.nanomuse.ui.reach.ComputersScreen(onBack = { navController.safePopBackStack() })
         }
+        // nanoMuse: a voice or video call with the Muse, in real time.
+        composable(
+            io.github.nanomuse.ui.call.ROUTE_CALL,
+            arguments = listOf(navArgument("video") { type = NavType.IntType }),
+        ) { entry ->
+            io.github.nanomuse.ui.call.CallScreen(
+                video = entry.arguments?.getInt("video") == 1,
+                onDone = { navController.safePopBackStack() },
+            )
+        }
         // nanoMuse: the coding agents (Cursor, Codex, Claude Code) on the account's computers.
         composable(io.github.nanomuse.ui.coding.ROUTE_CODING) {
             io.github.nanomuse.ui.coding.CodingScreen(

@@ -3,10 +3,12 @@ package io.github.nanomuse.hands
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.DashPathEffect
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
+import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -38,12 +40,14 @@ import kotlin.math.sin
  * trail and an arrow. Actions without a place — typing, Enter, Back — write their name where
  * the last ring was.
  *
- * The look follows UI-TARS-desktop's ScreenMarker (bytedance/UI-TARS-desktop,
- * `apps/ui-tars/src/main/window/ScreenMarker.ts` and `main/shared/setOfMarks.ts`, Apache-2.0):
- * its blue "water flow" breathing around the screen (a 5 s cycle, scale 1 → 1.05 → 1) and its
- * red circle — radius 16, stroke 3, dashes 80/20, one turn a second — with the action written
- * to its right. That code is Electron, CSS and SVG; this is the same picture on an Android
- * Canvas.
+ * The look is the desktop stage's (desktop/app/src/renderer/stage/), which grew out of
+ * UI-TARS-desktop's ScreenMarker (bytedance/UI-TARS-desktop, `apps/ui-tars/src/main/window/
+ * ScreenMarker.ts` and `main/shared/setOfMarks.ts`, Apache-2.0): the "water flow" breathing
+ * around the screen (a 5 s cycle, scale 1 → 1.05 → 1) with a scan line sliding down it, and at
+ * the point the model chose a halo, a ring in Muse's action blue with a cyan arc turning round
+ * it, a pair of ripples as the finger lands, a comet along a swipe, and the action's name in a
+ * dark pill with a cyan→blue bar. That code is Electron, CSS and canvas; this is the same
+ * picture on an Android Canvas.
  *
  * Hidden, like the capsule, for the instant a screenshot is taken, so the model never sees any
  * of it. Every call is safe from any thread.
@@ -151,6 +155,11 @@ class HandsStage(private val context: Context) {
 
     // ── drawing ────────────────────────────────────────────────────────────
 
+    /**
+     * The same picture as the desktop stage (desktop/app/src/renderer/stage/stage.ts), drawn
+     * cheaply: no blur filters — halos are cached radial gradients, shadows are translucent
+     * plates — and every frame draws only what is on the screen right now.
+     */
     private class StageView(context: Context) : View(context) {
         var mood: Mood = Mood.WORKING
             set(value) { field = value; postInvalidateOnAnimation() }
@@ -161,13 +170,17 @@ class HandsStage(private val context: Context) {
         private val born = SystemClock.uptimeMillis()
         private val loc = IntArray(2)
 
-        // The glow: four bands, one per edge, drawn with the colour at the edge fading out at
-        // half the band (UI-TARS: `linear-gradient(..., transparent 50%)` over a 10% band).
+        // The glow: four bands, one per edge, the colour at the edge fading out at half the
+        // band (UI-TARS: `linear-gradient(..., transparent 50%)` over a 10% band), and a thin
+        // brighter line right at the edge — the desktop's "edge strips".
         private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private var glowW = 0
         private var glowH = 0
         private var glowColor = 0
         private var glowShaders: Array<Shader>? = null
+        private val edgePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var scanShader: Shader? = null
+        private val scanPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         // The ring and what goes with it.
         private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -181,7 +194,21 @@ class HandsStage(private val context: Context) {
             strokeCap = Paint.Cap.ROUND
             strokeWidth = dp(3f)
         }
+        private val dashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeWidth = dp(2.5f)
+        }
+        private val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var haloShader: RadialGradient? = null
         private val chipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = CHIP_BG }
+        private val platePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
+        private val hairPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
+            color = 0x1AFFFFFF
+        }
+        private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             textSize = sp(12.5f)
@@ -190,6 +217,7 @@ class HandsStage(private val context: Context) {
         private val arc = RectF()
         private val chipRect = RectF()
         private val arrow = Path()
+        private val dashPath = Path()
 
         private class Mark(val x: Float, val y: Float, val label: String, val at: Long) {
             var holdMs: Long = 0L
@@ -200,7 +228,7 @@ class HandsStage(private val context: Context) {
         private class Chip(val text: String, val x: Float, val y: Float, val at: Long)
 
         private var mark: Mark? = null
-        private val ripples = ArrayList<Ripple>(4)
+        private val ripples = ArrayList<Ripple>(6)
         private var sweep: Sweep? = null
         private var chip: Chip? = null
         private var lastX = -1f
@@ -219,7 +247,10 @@ class HandsStage(private val context: Context) {
         }
 
         fun ripple(x: Float, y: Float) {
-            ripples += Ripple(x, y, SystemClock.uptimeMillis())
+            // two rings, the second a beat later — the desktop's pair
+            val now = SystemClock.uptimeMillis()
+            ripples += Ripple(x, y, now)
+            ripples += Ripple(x, y, now + RIPPLE_GAP_MS)
             postInvalidateOnAnimation()
         }
 
@@ -276,6 +307,10 @@ class HandsStage(private val context: Context) {
                     LinearGradient(0f, 0f, 0f, mid, color, clear, Shader.TileMode.CLAMP),                   // top
                     LinearGradient(0f, h.toFloat(), 0f, h - mid, color, clear, Shader.TileMode.CLAMP),      // bottom
                 )
+                // the scan line: a soft horizontal band that slides down the screen
+                val scanH = dp(SCAN_DP)
+                val scanColor = (color and 0x00FFFFFF) or 0x38000000
+                scanShader = LinearGradient(0f, 0f, 0f, scanH, intArrayOf(clear, scanColor, clear), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
                 glowW = w; glowH = h; glowColor = color
             }
             // UI-TARS: a 5 s cycle, scale 1 → 1.03 → 1.05 → 1.03 → 1 with the alpha easing down
@@ -295,9 +330,41 @@ class HandsStage(private val context: Context) {
             glowPaint.shader = shaders[3]; canvas.drawRect(0f, h - band, w.toFloat(), h.toFloat(), glowPaint)
             canvas.restore()
             glowPaint.shader = null
+            // the bright edge line, a hair wide, brightest when the glow breathes in
+            edgePaint.color = color or 0xFF000000.toInt()
+            edgePaint.alpha = (110 + 90 * breathe).toInt()
+            val e = dp(1.5f)
+            canvas.drawRect(0f, 0f, w.toFloat(), e, edgePaint)
+            canvas.drawRect(0f, h - e, w.toFloat(), h.toFloat(), edgePaint)
+            canvas.drawRect(0f, 0f, e, h.toFloat(), edgePaint)
+            canvas.drawRect(w - e, 0f, w.toFloat(), h.toFloat(), edgePaint)
+            // the scan line, only while the hands work
+            if (mood == Mood.WORKING) {
+                val sh = scanShader ?: return
+                val cycle = ((now - born) % SCAN_CYCLE_MS) / SCAN_CYCLE_MS.toFloat()
+                val y = -dp(SCAN_DP) + (h + dp(SCAN_DP)) * cycle
+                canvas.save()
+                canvas.translate(0f, y)
+                scanPaint.shader = sh
+                canvas.drawRect(0f, 0f, w.toFloat(), dp(SCAN_DP), scanPaint)
+                canvas.restore()
+            }
         }
 
         // ── the ring ──
+
+        private fun drawHalo(canvas: Canvas, x: Float, y: Float, alpha: Float) {
+            val r = dp(HALO_DP)
+            if (haloShader == null) {
+                haloShader = RadialGradient(0f, 0f, r, intArrayOf(ACCENT and 0x38FFFFFF, ACCENT and 0x00FFFFFF), floatArrayOf(0f, 1f), Shader.TileMode.CLAMP)
+            }
+            haloPaint.shader = haloShader
+            haloPaint.alpha = (255 * alpha).toInt()
+            canvas.save()
+            canvas.translate(x, y)
+            canvas.drawCircle(0f, 0f, r, haloPaint)
+            canvas.restore()
+        }
 
         private fun drawMark(canvas: Canvas, m: Mark, now: Long): Boolean {
             val age = now - m.at
@@ -307,26 +374,43 @@ class HandsStage(private val context: Context) {
             val scale = 1.8f - 0.8f * eased
             val alpha = (255 * eased).toInt()
             val r = dp(RING_DP) * scale
-            // One turn a second, 80 % arc + 20 % gap, like UI-TARS's dasharray 80/20.
-            val rotation = (age % 1000L) / 1000f * 360f
-            ringPaint.color = RING
+            drawHalo(canvas, m.x, m.y, eased)
+            // a soft wide stroke under the ring stands in for a (costly) blur
+            ringPaint.color = ACCENT
+            ringPaint.alpha = (alpha * 0.22f).toInt()
+            ringPaint.strokeWidth = dp(7f)
+            canvas.drawCircle(m.x, m.y, r, ringPaint)
+            ringPaint.strokeWidth = dp(2.5f)
             ringPaint.alpha = alpha
-            arc.set(m.x - r, m.y - r, m.x + r, m.y + r)
-            canvas.drawArc(arc, rotation, 288f, false, ringPaint)
-            fillPaint.color = RING
+            canvas.drawCircle(m.x, m.y, r, ringPaint)
+            // the turning arc, cyan, a little outside the ring — one turn in 520 ms
+            val from = (age % 520L) / 520f * 360f
+            val ar = r + dp(6f)
+            ringPaint.color = CYAN
+            ringPaint.alpha = (alpha * 0.95f).toInt()
+            ringPaint.strokeWidth = dp(2f)
+            arc.set(m.x - ar, m.y - ar, m.x + ar, m.y + ar)
+            canvas.drawArc(arc, from, 135f, false, ringPaint)
+            ringPaint.strokeWidth = dp(2.5f)
+            // the centre: accent dot with a white core
+            fillPaint.color = ACCENT
             fillPaint.alpha = alpha
-            canvas.drawCircle(m.x, m.y, dp(3f), fillPaint)
+            canvas.drawCircle(m.x, m.y, dp(4f), fillPaint)
+            fillPaint.color = Color.WHITE
+            fillPaint.alpha = alpha
+            canvas.drawCircle(m.x, m.y, dp(1.6f), fillPaint)
             // A held finger: a thin ring filling clockwise for the length of the hold.
             if (m.holdMs > 0) {
                 val hp = ((now - m.holdFrom) / m.holdMs.toFloat()).coerceIn(0f, 1f)
-                val hr = r + dp(7f)
-                ringPaint.strokeWidth = dp(1.5f)
+                val hr = r + dp(12f)
+                ringPaint.color = CYAN
+                ringPaint.strokeWidth = dp(2f)
                 ringPaint.alpha = (alpha * 0.9f).toInt()
                 arc.set(m.x - hr, m.y - hr, m.x + hr, m.y + hr)
                 canvas.drawArc(arc, -90f, 360f * hp, false, ringPaint)
                 ringPaint.strokeWidth = dp(2.5f)
             }
-            if (m.label.isNotBlank()) drawLabel(canvas, m.label, m.x, m.y, r + dp(10f), alpha)
+            if (m.label.isNotBlank()) drawLabel(canvas, m.label, m.x, m.y, r + dp(14f), alpha, age)
             return true
         }
 
@@ -336,11 +420,13 @@ class HandsStage(private val context: Context) {
             while (it.hasNext()) {
                 val rp = it.next()
                 val p = (now - rp.at) / RIPPLE_MS.toFloat()
+                if (p < 0f) continue // the second of the pair, not yet
                 if (p >= 1f) { it.remove(); continue }
-                val r = dp(RING_DP) * (1f + 1.6f * p)
-                ringPaint.color = RING
-                ringPaint.alpha = (230 * (1f - p)).toInt()
-                ringPaint.strokeWidth = dp(1f) + dp(2f) * (1f - p)
+                val eased = 1f - (1f - p) * (1f - p)
+                val r = dp(RING_DP) * (1f + 2.2f * eased)
+                ringPaint.color = ACCENT
+                ringPaint.alpha = (200 * (1f - p)).toInt()
+                ringPaint.strokeWidth = dp(1f) + dp(1.5f) * (1f - p)
                 canvas.drawCircle(rp.x, rp.y, r, ringPaint)
                 ringPaint.strokeWidth = dp(2.5f)
             }
@@ -359,24 +445,48 @@ class HandsStage(private val context: Context) {
             val fadeOut = if (done) (1f - ((age - s.delay - s.duration) / SWEEP_FADE_MS.toFloat())).coerceIn(0f, 1f) else 1f
             if (fadeOut <= 0f) { sweep = null; return false }
             val alpha = (255 * fadeIn * fadeOut).toInt()
-            // The whole path, faint, with an arrowhead at the end; the trail behind the ring, brighter.
-            trailPaint.color = RING
-            trailPaint.alpha = (alpha * 0.28f).toInt()
-            canvas.drawLine(s.x1, s.y1, s.x2, s.y2, trailPaint)
-            drawArrow(canvas, s.x1, s.y1, s.x2, s.y2, trailPaint)
+            // The whole path as a dashed accent→cyan line that flows towards the end.
+            dashPaint.shader = LinearGradient(s.x1, s.y1, s.x2, s.y2, ACCENT, CYAN, Shader.TileMode.CLAMP)
+            dashPaint.pathEffect = DashPathEffect(floatArrayOf(dp(8f), dp(6f)), -(age % 560L) / 560f * dp(14f))
+            dashPaint.alpha = (alpha * 0.55f).toInt()
+            dashPath.reset(); dashPath.moveTo(s.x1, s.y1); dashPath.lineTo(s.x2, s.y2)
+            canvas.drawPath(dashPath, dashPaint)
+            dashPaint.shader = null; dashPaint.pathEffect = null
+            // the comet: a bright trail behind the ring, fading towards its tail
             if (e > 0f) {
-                trailPaint.alpha = (alpha * 0.7f).toInt()
-                canvas.drawLine(s.x1, s.y1, cx, cy, trailPaint)
+                val tail = 0.35f
+                val tx = s.x1 + (s.x2 - s.x1) * maxOf(0f, e - tail)
+                val ty = s.y1 + (s.y2 - s.y1) * maxOf(0f, e - tail)
+                trailPaint.shader = LinearGradient(tx, ty, cx, cy, CYAN and 0x00FFFFFF, CYAN, Shader.TileMode.CLAMP)
+                trailPaint.alpha = (alpha * 0.9f).toInt()
+                canvas.drawLine(tx, ty, cx, cy, trailPaint)
+                trailPaint.shader = null
             }
+            drawHalo(canvas, cx, cy, fadeIn * fadeOut * 0.8f)
             val r = dp(RING_DP)
-            ringPaint.color = RING
+            ringPaint.color = ACCENT
+            ringPaint.alpha = (alpha * 0.22f).toInt()
+            ringPaint.strokeWidth = dp(7f)
+            canvas.drawCircle(cx, cy, r, ringPaint)
+            ringPaint.strokeWidth = dp(2.5f)
             ringPaint.alpha = alpha
             canvas.drawCircle(cx, cy, r, ringPaint)
-            fillPaint.color = RING
+            fillPaint.color = CYAN
             fillPaint.alpha = alpha
-            canvas.drawCircle(cx, cy, dp(3f), fillPaint)
-            if (s.label.isNotBlank()) drawLabel(canvas, s.label, s.x1, s.y1, r + dp(10f), alpha)
-            if (done && ripples.isEmpty() && fadeOut > 0.98f) ripples += Ripple(s.x2, s.y2, now)
+            canvas.drawCircle(cx, cy, dp(4f), fillPaint)
+            // the arrowhead and a landing ring once it arrives
+            if (done) {
+                fillPaint.color = CYAN
+                fillPaint.alpha = alpha
+                drawArrow(canvas, s.x1, s.y1, s.x2, s.y2, fillPaint)
+                ringPaint.color = CYAN
+                ringPaint.alpha = (alpha * 0.8f).toInt()
+                ringPaint.strokeWidth = dp(2f)
+                canvas.drawCircle(s.x2, s.y2, r + dp(6f), ringPaint)
+                ringPaint.strokeWidth = dp(2.5f)
+            }
+            if (s.label.isNotBlank()) drawLabel(canvas, s.label, s.x1, s.y1, r + dp(14f), alpha, age)
+            if (done && ripples.isEmpty() && fadeOut > 0.98f) ripple(s.x2, s.y2)
             return true
         }
 
@@ -384,12 +494,13 @@ class HandsStage(private val context: Context) {
             val len = hypot(x2 - x1, y2 - y1)
             if (len < dp(12f)) return
             val ang = atan2(y2 - y1, x2 - x1)
-            val head = dp(9f)
-            val spread = 0.5f
+            val head = dp(10f)
+            val spread = 0.45f
             arrow.reset()
-            arrow.moveTo(x2 - head * cos(ang - spread), y2 - head * sin(ang - spread))
-            arrow.lineTo(x2, y2)
+            arrow.moveTo(x2, y2)
+            arrow.lineTo(x2 - head * cos(ang - spread), y2 - head * sin(ang - spread))
             arrow.lineTo(x2 - head * cos(ang + spread), y2 - head * sin(ang + spread))
+            arrow.close()
             canvas.drawPath(arrow, paint)
         }
 
@@ -398,45 +509,75 @@ class HandsStage(private val context: Context) {
             if (age > CHIP_TTL_MS) { chip = null; return false }
             val fadeIn = (age / 150f).coerceIn(0f, 1f)
             val fadeOut = ((CHIP_TTL_MS - age) / 250f).coerceIn(0f, 1f)
-            drawLabel(canvas, c.text, c.x, c.y, dp(RING_DP) + dp(10f), (255 * min(fadeIn, fadeOut)).toInt())
+            drawLabel(canvas, c.text, c.x, c.y, dp(RING_DP) + dp(14f), (255 * min(fadeIn, fadeOut)).toInt(), age)
             return true
         }
 
-        /** The action's name in a dark pill to the right of ([x], [y]) — to the left when the screen ends. */
-        private fun drawLabel(canvas: Canvas, text: String, x: Float, y: Float, gap: Float, alpha: Int) {
+        /**
+         * The action's name in a dark pill to the right of ([x], [y]) — to the left when the
+         * screen ends — with a cyan→blue bar at its start, a hairline, and two translucent
+         * plates for a shadow. It pops in over the first 120 ms.
+         */
+        private fun drawLabel(canvas: Canvas, text: String, x: Float, y: Float, gap: Float, alpha: Int, age: Long) {
             val label = if (text.length > 30) text.take(29) + "…" else text
-            val padX = dp(9f); val padY = dp(5f)
+            val padX = dp(11f); val padY = dp(6f)
+            val bar = dp(3f)
             val tw = textPaint.measureText(label)
             val th = textPaint.descent() - textPaint.ascent()
-            val cw = tw + 2 * padX
+            val cw = tw + 2 * padX + bar + dp(6f)
             val ch = th + 2 * padY
             val screenRight = loc[0] + width
             var left = x + gap
             if (left + cw > screenRight - dp(8f)) left = x - gap - cw
             if (left < loc[0] + dp(8f)) left = loc[0] + dp(8f)
             val top = (y - ch / 2f).coerceIn(loc[1] + dp(8f), loc[1] + height - ch - dp(8f))
+            val pop = (age / 120f).coerceIn(0f, 1f)
+            val scale = 0.92f + 0.08f * (1f - (1f - pop) * (1f - pop))
+            canvas.save()
+            canvas.scale(scale, scale, left + cw / 2f, top + ch / 2f)
+            // shadow plates
+            platePaint.alpha = (alpha * 0.08f).toInt()
+            chipRect.set(left - dp(2f), top + dp(2f), left + cw + dp(2f), top + ch + dp(3f))
+            canvas.drawRoundRect(chipRect, ch / 2f + dp(2f), ch / 2f + dp(2f), platePaint)
+            platePaint.alpha = (alpha * 0.12f).toInt()
+            chipRect.set(left - dp(1f), top + dp(1f), left + cw + dp(1f), top + ch + dp(1.5f))
+            canvas.drawRoundRect(chipRect, ch / 2f + dp(1f), ch / 2f + dp(1f), platePaint)
+            // the pill
             chipRect.set(left, top, left + cw, top + ch)
-            chipPaint.alpha = (alpha * 0.86f).toInt()
+            chipPaint.alpha = (alpha * 0.88f).toInt()
             canvas.drawRoundRect(chipRect, ch / 2f, ch / 2f, chipPaint)
+            hairPaint.alpha = (alpha * 0.1f).toInt()
+            canvas.drawRoundRect(chipRect, ch / 2f, ch / 2f, hairPaint)
+            // the accent bar
+            barPaint.shader = LinearGradient(0f, top, 0f, top + ch, CYAN, ACCENT, Shader.TileMode.CLAMP)
+            barPaint.alpha = alpha
+            chipRect.set(left + padX - dp(2f), top + padY + dp(1f), left + padX - dp(2f) + bar, top + ch - padY - dp(1f))
+            canvas.drawRoundRect(chipRect, bar / 2f, bar / 2f, barPaint)
+            barPaint.shader = null
             textPaint.alpha = alpha
-            canvas.drawText(label, left + padX, top + padY - textPaint.ascent(), textPaint)
+            canvas.drawText(label, left + padX + bar + dp(6f), top + padY - textPaint.ascent(), textPaint)
+            canvas.restore()
         }
 
         companion object {
-            /** UI-TARS's dodger blue, rgba(30, 144, 255, 0.4), a little stronger for a phone's small bands. */
-            private const val GLOW_WORKING = 0x8A1E90FF.toInt()
-            /** Amber while the hands wait for the user. */
+            /** The desktop stage's accent (Muse's action blue) and its cyan. */
+            private const val ACCENT = 0xFF0A66E4.toInt()
+            private const val CYAN = 0xFF06B6D4.toInt()
+            /** The glow: the accent while the hands work, amber while they wait for the user. */
+            private const val GLOW_WORKING = 0x7A0A66E4.toInt()
             private const val GLOW_WAITING = 0x8AFFB000.toInt()
             /** Band width as a share of the shorter side; the colour is gone at half of it. */
             private const val GLOW_BAND = 0.14f
             private const val GLOW_CYCLE_MS = 5000L
-            /** UI-TARS's red circle. */
-            private const val RING = 0xFFFF3B30.toInt()
+            private const val SCAN_DP = 120f
+            private const val SCAN_CYCLE_MS = 6500L
             private const val RING_DP = 16f
-            private const val CHIP_BG = 0xFF202124.toInt()
+            private const val HALO_DP = 44f
+            private const val CHIP_BG = 0xFF111218.toInt()
             private const val FRAME_MS = 33L
             private const val LOCK_ON_MS = 220L
-            private const val RIPPLE_MS = 450L
+            private const val RIPPLE_MS = 520L
+            private const val RIPPLE_GAP_MS = 110L
             private const val SWEEP_FADE_MS = 320L
             private const val CHIP_TTL_MS = 2200L
         }
