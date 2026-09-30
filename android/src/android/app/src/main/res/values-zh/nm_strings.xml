@@ -580,9 +580,6 @@
     <string name="nm_cloud_signin_title">用 nanoMuse 云开始</string>
     <string name="nm_cloud_signin_subtitle">手机号或邮箱收一个验证码；设过密码的话也可以直接用密码。每个账号都有一份由开发者承担的免费模型额度。</string>
     <string name="nm_cloud_mode_code">验证码登录</string>
-    <string name="nm_cloud_onetap">本机号码一键登录</string>
-    <string name="nm_cloud_onetap_note">由运营商确认这台手机 SIM 卡的号码；需要开着手机流量、关掉 Wi‑Fi。</string>
-    <string name="nm_cloud_onetap_or">或</string>
     <string name="nm_cloud_mode_password">密码登录</string>
     <string name="nm_cloud_password">密码</string>
     <string name="nm_cloud_forgot_password">忘了密码？用验证码登录</string>
@@ -638,7 +635,6 @@
     <string name="nm_cloud_err_password_required">请先输入当前密码。</string>
     <string name="nm_cloud_err_password_short">密码至少 8 位。</string>
     <string name="nm_cloud_err_password_weak">这个密码太容易被猜到。</string>
-    <string name="nm_cloud_err_onetap">运营商没能确认这个号码。开着流量再试一次，或改用验证码。</string>
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">%1$s 加入</string>
     <string name="nm_cloud_account_id">账号 %1$s…</string>

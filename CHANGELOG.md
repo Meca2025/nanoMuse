@@ -4,10 +4,6 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
-### Added
-
-- **Sign in with the phone's own number** (Android; relay 0.6.0). On mobile data the carrier confirms the number of the SIM — 号码认证服务's H5 一键登录 — and no code is sent: the app opens the relay's page in a WebView, the carrier's dialog shows the masked number and takes its middle four digits, `GetPhoneWithToken` gives the relay the number, and the app claims the key with a secret only it holds (`GET /v1/auth/onetap`, `POST /v1/auth/onetap/{token,verify,claim}`, `cloud/nanomuse_cloud/onetap.py`). The carrier SDK is loaded by that page at runtime (the ISC-licensed `aliyun_numberauthsdk_web` from the npm mirror); nothing closed is in the APK or the relay. Wi‑Fi has to be off — the page says so and offers the code instead. Off unless the relay has `ALIYUN_ONETAP_SCHEME`.
-
 ### Changed
 
 - **A number the SMS sender cannot reach is told so at once** (relay 0.6.1). 号码认证 sends codes to mainland China numbers only; a Hong Kong, Taiwan or overseas number used to get a code that never came and "try again in a moment". The relay now answers `400 phone_region` before making a code — *Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address* — and the phone, the web app, the desktop, the web version's sign-in page and the relay console show that sentence; the sign-in field says *Mainland China phone number or e-mail*.

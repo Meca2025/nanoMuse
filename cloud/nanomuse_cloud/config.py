@@ -175,10 +175,6 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
 # simply finds the old model gone and stops animating.
 LEGACY_MODEL_IDS: dict[str, str] = {"qwen-image-3.0-pro": "qwen-image-3.0"}
 
-# The web SDK of 号码认证服务 as npm publishes it (`aliyun_numberauthsdk_web`, ISC), from the
-# npm mirror Alibaba runs — the one-tap page loads it at runtime, the relay does not ship it.
-ONETAP_SDK_URL = "https://registry.npmmirror.com/aliyun_numberauthsdk_web/2.1.15/files/build/numberAuth-web-sdk.js"
-
 
 def _env(name: str, default: str = "") -> str:
     v = os.environ.get(name)
@@ -297,13 +293,6 @@ class Settings:
     aliyun_sms_template: str = field(default_factory=lambda: _env("ALIYUN_SMS_TEMPLATE"))
     # dypns = 号码认证服务 SendSmsVerifyCode (default), dysms = 短信服务 SendSms
     aliyun_sms_api: str = field(default_factory=lambda: _env("ALIYUN_SMS_API", "dypns"))
-    # One-tap sign-in with the phone's own number (号码认证服务's H5 一键登录): the code of
-    # a *Web* scheme created for PUBLIC_BASE (origin and "origin/" as its page). Empty =
-    # the apps do not offer it. The web SDK is loaded by the page at runtime from this URL
-    # (the npm package `aliyun_numberauthsdk_web`, ISC-licensed); nothing of it ships here.
-    onetap_scheme: str = field(default_factory=lambda: _env("ALIYUN_ONETAP_SCHEME"))
-    onetap_sdk_url: str = field(default_factory=lambda: _env("ALIYUN_ONETAP_SDK_URL", ONETAP_SDK_URL))
-    onetap_per_ip_hour: int = field(default_factory=lambda: _int("ONETAP_PER_IP_HOUR", 30))
 
     models: tuple[ModelSpec, ...] = field(default_factory=_models_from_env)
     # -- the operator's page, beyond the relay's own numbers ------------------------------

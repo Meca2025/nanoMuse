@@ -12,15 +12,8 @@ phone number or an e-mail address and sends a six-digit code — or, once you ha
 set one, takes your password — and then asks which model answers: the account's
 own (the Cloud) or a key of your own. Codes by SMS reach mainland China numbers
 only (号码认证服务 sends nowhere else); a Hong Kong, Taiwan or overseas number is
-told so at once (`phone_region`) and signs in with an e-mail address instead. On a phone with mobile data on, **Sign in
-with this phone's number** is the shortest way: the carrier confirms the number
-of the SIM (号码认证服务's H5 一键登录), you fill in its middle four digits in the
-carrier's dialog, and no code is sent. It needs Wi‑Fi off — the web SDK cannot
-steer a phone on Wi‑Fi onto the cellular path — so the page says so and offers
-the code instead. The app opens the relay's page in a WebView; the carrier's SDK
-is loaded by that page at runtime, nothing of it is in the APK, and the page
-never sees the key: the app claims it afterwards with a secret only it holds
-(`cloud/nanomuse_cloud/onetap.py`). Signing out brings that screen back
+told so at once (`phone_region`) and signs in with an e-mail address instead.
+Signing out brings that screen back
 (self-hosters: `[cloud] required = false` or `NANOMUSE_CLOUD_REQUIRED=0` on the
 runtime). After the code the app has:
 
@@ -163,8 +156,6 @@ The app's calls, all JSON:
 ```
 POST /v1/auth/code          {identifier}                      → 204
 POST /v1/auth/verify        {identifier, code, device}        → {api_key, base_url, account, tokens, models}
-GET  /v1/auth/onetap                                          → {enabled, sdk_url}: sign-in with the phone's own number offered?
-POST /v1/auth/onetap/token                                    → the carrier SDK's tokens for the page; /verify {state, sp_token, device, invite?} → {ok, hint}; /claim {verifier} → what /verify returns, once
 POST /v1/auth/login         {identifier, password, device}    → the same; 401 bad_credentials, 429 locked, 400 no_password
 POST /v1/auth/password      Bearer  {password, current?}      → 204; "" with current removes it
 GET  /v1/me                 Bearer                            → {account{…, has_password, sessions, signed_in_via}, usage{today, total by kind / model}, tokens, spend, models, recent}

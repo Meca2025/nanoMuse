@@ -1,10 +1,7 @@
 package io.github.nanomuse.ui.cloud
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -29,7 +26,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -107,40 +103,6 @@ fun CloudSignInScreen(
     var baseOverride by remember { mutableStateOf(if (NanoMuseCloud.canOverrideBase()) NanoMuseCloud.baseUrl(context) else "") }
     val onSurface = MaterialTheme.colorScheme.onSurface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-
-    // The phone's own number, when the relay offers it (号码认证 H5 一键登录): the relay's page
-    // in a WebView confirms the number with the carrier; we keep the verifier and claim the key
-    // once the page says it is done. Needs mobile data — the page explains when it cannot.
-    var oneTap by remember { mutableStateOf(false) }
-    var oneTapVerifier by remember { mutableStateOf("") }
-    var oneTapClaiming by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { oneTap = NanoMuseCloud.oneTapOffered(context) }
-    val oneTapLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val verifier = oneTapVerifier
-        oneTapVerifier = ""
-        if (result.resultCode != Activity.RESULT_OK || verifier.isBlank()) return@rememberLauncherForActivityResult
-        verifying = true
-        oneTapClaiming = true
-        error = null
-        scope.launch {
-            try {
-                NanoMuseCloud.oneTapClaim(context, verifier)
-                onSignedIn()
-            } catch (e: Exception) {
-                error = NanoMuseCloud.describe(context, e)
-                verifying = false
-                oneTapClaiming = false
-            }
-        }
-    }
-    fun startOneTap() {
-        if (verifying) return
-        error = null
-        if (NanoMuseCloud.canOverrideBase()) NanoMuseCloud.setBaseUrl(context, baseOverride)
-        val verifier = NanoMuseCloud.oneTapVerifier()
-        oneTapVerifier = verifier
-        oneTapLauncher.launch(OneTapSignInActivity.intent(context, NanoMuseCloud.oneTapUrl(context, verifier, invite)))
-    }
 
     LaunchedEffect(countdown) {
         if (countdown > 0) {
@@ -254,43 +216,6 @@ fun CloudSignInScreen(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(24.dp))
-
-            if (oneTap) {
-                // The quickest way when the phone is on mobile data: the carrier confirms the number.
-                Button(
-                    onClick = { startOneTap() },
-                    enabled = !verifying,
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(containerColor = MuseTones.action, contentColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                ) {
-                    if (oneTapClaiming) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
-                    } else {
-                        Text(stringResource(R.string.nm_cloud_onetap), fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.nm_cloud_onetap_note),
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    color = muted,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(18.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = MuseTones.fill)
-                    Text(
-                        text = stringResource(R.string.nm_cloud_onetap_or),
-                        fontSize = 12.sp,
-                        color = muted,
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = MuseTones.fill)
-                }
-                Spacer(Modifier.height(18.dp))
-            }
 
             // Two ways in: a code to the address, or the password set under Account.
             Row(

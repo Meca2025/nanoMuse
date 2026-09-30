@@ -3,9 +3,6 @@
     POST /v1/auth/code        {identifier}                      → 204 (400 phone_region: a number the SMS sender cannot reach)
     POST /v1/auth/verify      {identifier, code, device, invite?} → {api_key, base_url, account, tokens, models}
     POST /v1/auth/login       {identifier, password, device}    → the same, for accounts that set a password
-    GET  /v1/auth/onetap                                        → {enabled, sdk_url}: sign-in with the phone's own number (H5 一键登录)
-    POST /v1/auth/onetap/token                                  → the page's carrier-SDK tokens; /verify {state, sp_token, device, invite?} → {ok, hint};
-                                                                  /claim {verifier} → what /v1/auth/verify returns, once (onetap.py)
     POST /v1/auth/password    {password, current?}              → 204 (set / change; "" + current removes)
     GET  /v1/me                                                 → account, tokens, spend (¥ spent / pool / left), invite, contribute, usage by kind, models, recent
     GET  /v1/me/invite                                          → the invite code and link, who came with it, what they brought
@@ -77,7 +74,6 @@ from . import __version__
 from .config import ModelSpec, Settings
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
-from .onetap import OneTap
 from .service import Caller, Cloud, CloudError, dumps, estimate_tokens, prompt_chars, usage_from_json
 
 log = logging.getLogger("nanomuse_cloud.api")
@@ -132,8 +128,6 @@ def create_app(
     app = FastAPI(title="nanoMuse Cloud", version=__version__, docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.cloud = cloud
     app.state.settings = settings
-    onetap = OneTap(settings, cloud)
-    app.state.onetap = onetap
     app.state.http = http
 
     @app.exception_handler(CloudError)
@@ -190,35 +184,6 @@ def create_app(
         key, caller, created = await asyncio.to_thread(cloud.verify_code, ident, code, device, invite)
         me = cloud.me(caller)
         return {"api_key": key, "created": created, **me}
-
-    # -- the phone's own number (H5 一键登录; see onetap.py) -------------------------------
-
-    @app.get("/v1/auth/onetap")
-    async def onetap_view() -> dict:
-        """Whether this relay offers sign-in with the phone's number, and the SDK the page loads."""
-        return onetap.view()
-
-    @app.post("/v1/auth/onetap/token")
-    async def onetap_token(request: Request) -> dict:
-        """The page's two short-lived tokens for the carrier SDK."""
-        return await asyncio.to_thread(onetap.token, client_ip(request))
-
-    @app.post("/v1/auth/onetap/verify")
-    async def onetap_verify(request: Request) -> dict:
-        """The page hands in the carrier's spToken; the number becomes a signed-in device and
-        the key waits under `state` for the app's claim. The page learns the masked number."""
-        body = await _json(request)
-        state = str(body.get("state", "")).strip().lower()
-        sp_token = str(body.get("sp_token", "")).strip()
-        device = str(body.get("device", ""))[:80]
-        invite = str(body.get("invite", ""))[:32]
-        return await asyncio.to_thread(onetap.verify, state, sp_token, device, invite)
-
-    @app.post("/v1/auth/onetap/claim")
-    async def onetap_claim(request: Request) -> dict:
-        """The app's claim with the verifier it kept: the key and the account, once."""
-        body = await _json(request)
-        return onetap.claim(str(body.get("verifier", "")))
 
     @app.post("/v1/auth/login")
     async def auth_login(request: Request) -> dict:
