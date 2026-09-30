@@ -57,7 +57,7 @@ jobs:
         include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: actions/setup-node@v7
@@ -116,7 +116,7 @@ jobs:
         shell: bash
         working-directory: desktop/app
         run: ls -la dist | grep -Ev "^total|builder-|\.blockmap|\.yml$" || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nanomuse-desktop-app-${{ matrix.label }}
           path: |
@@ -132,7 +132,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: packages
           merge-multiple: true
