@@ -11,7 +11,7 @@
 
 **nanoMuse 是非盈利的开源社区项目，永久免费。** 用邮箱登录，模型自带免费额度：每个账号 **¥10**，模型费用由开发者承担；**邀请一位新用户 +¥5，加入共创计划 +¥10**；用完可以换自己的 key（[推荐阿里云百炼](docs/own-key.md)）。默认不保存你的消息，数据不会出售；随时可以删除账号。
 
-欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [发 PR](CONTRIBUTING.md) · [点个 Star](https://github.com/nano-muse/nanoMuse)**——详情：[docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md)。
+欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [到 Discussions 提问、交流](https://github.com/nano-muse/nanoMuse/discussions) · [发 PR](CONTRIBUTING.md) · [点个 Star](https://github.com/nano-muse/nanoMuse)**——详情：[docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md)。
 
 </td></tr></table>
 
@@ -25,10 +25,24 @@
   </p>
   <p>
     <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/v/release/nano-muse/nanoMuse?include_prereleases&label=release" alt="最新版本"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/badge/Android-8.0%2B%20arm64-3DDC84?logo=android&logoColor=white" alt="Android 8.0+ arm64"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android 构建"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="下载量"></a>
     <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse" alt="GPL-3.0-or-later"></a>
     <a href="https://github.com/nano-muse/nanoMuse"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&logo=github" alt="GitHub stars"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/discussions"><img src="https://img.shields.io/badge/Discussions-%E6%8F%90%E9%97%AE%E4%B8%8E%E4%BA%A4%E6%B5%81-0a66e4?logo=github&logoColor=white" alt="GitHub 讨论区"></a>
+  </p>
+  <p>
+    <a href="https://nanomuse.cn/#dl-web"><img src="https://img.shields.io/badge/Web-nanomuse.cn%2Fweb-0a66e4?logo=googlechrome&logoColor=white" alt="网页版 nanomuse.cn/web"></a>
+    <a href="https://nanomuse.cn/#dl-phone"><img src="https://img.shields.io/badge/Android-8.0%2B%20arm64-3DDC84?logo=android&logoColor=white" alt="Android 8.0+ arm64"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white" alt="Windows x64"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS Apple Silicon and Intel"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20.deb-FCC624?logo=linux&logoColor=black" alt="Linux AppImage and .deb"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse"><img src="https://img.shields.io/badge/Docker-ghcr.io%2Fnano--muse%2Fnanomuse-2496ED?logo=docker&logoColor=white" alt="Docker 镜像"></a>
+  </p>
+  <p>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android 构建"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml/badge.svg?branch=main" alt="桌面 App 构建"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml/badge.svg?branch=main" alt="Docker 镜像构建"></a>
   </p>
 </div>
 

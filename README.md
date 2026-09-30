@@ -11,7 +11,7 @@
 
 **nanoMuse is a non-profit open-source community project — free, forever.** Sign in with an e-mail and the model comes with a free allowance: **¥10 per account**, paid by the developer; **invite a friend for ¥5 more, join the co-creation programme for ¥10 more**; when it is gone, use your own key ([Alibaba Cloud Bailian is a good start](docs/own-key.md)). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.
 
-Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach. **[Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Send a pull request](CONTRIBUTING.md) · [Star the repo](https://github.com/nano-muse/nanoMuse)** — details: [docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md).
+Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach. **[Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Ask or show in Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Send a pull request](CONTRIBUTING.md) · [Star the repo](https://github.com/nano-muse/nanoMuse)** — details: [docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md).
 
 </td></tr></table>
 
@@ -25,10 +25,24 @@ Report a bug, ask for a feature, send a pull request — every one brings a pers
   </p>
   <p>
     <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/v/release/nano-muse/nanoMuse?include_prereleases&label=release" alt="Latest release"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/badge/Android-8.0%2B%20arm64-3DDC84?logo=android&logoColor=white" alt="Android 8.0+ arm64"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android build"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="Release downloads"></a>
     <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse" alt="GPL-3.0-or-later"></a>
     <a href="https://github.com/nano-muse/nanoMuse"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&logo=github" alt="GitHub stars"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/discussions"><img src="https://img.shields.io/badge/Discussions-ask%20%26%20share-0a66e4?logo=github&logoColor=white" alt="GitHub Discussions"></a>
+  </p>
+  <p>
+    <a href="https://nanomuse.cn/#dl-web"><img src="https://img.shields.io/badge/Web-nanomuse.cn%2Fweb-0a66e4?logo=googlechrome&logoColor=white" alt="Web: nanomuse.cn/web"></a>
+    <a href="https://nanomuse.cn/#dl-phone"><img src="https://img.shields.io/badge/Android-8.0%2B%20arm64-3DDC84?logo=android&logoColor=white" alt="Android 8.0+ arm64"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white" alt="Windows x64"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS Apple Silicon and Intel"></a>
+    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20.deb-FCC624?logo=linux&logoColor=black" alt="Linux AppImage and .deb"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse"><img src="https://img.shields.io/badge/Docker-ghcr.io%2Fnano--muse%2Fnanomuse-2496ED?logo=docker&logoColor=white" alt="Docker image"></a>
+  </p>
+  <p>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android build"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml/badge.svg?branch=main" alt="Desktop app build"></a>
+    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml/badge.svg?branch=main" alt="Docker image build"></a>
   </p>
 </div>
 
