@@ -1,3 +1,4 @@
+import { app } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -108,7 +109,8 @@ export class Runtime {
       if (!this.child) throw new Error(this.explainExit());
       await new Promise((r) => setTimeout(r, 500));
     }
-    throw new Error(this.explainExit("nanomuse serve did not answer on /api/health in time."));
+    const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
+    throw new Error(this.explainExit(zh ? "nanomuse serve 没有及时在 /api/health 上应答。" : "nanomuse serve did not answer on /api/health in time."));
   }
 
   /** The last lines of the runtime's log, so a dialog can say why instead of "see the log". */
@@ -121,22 +123,30 @@ export class Runtime {
     }
   }
 
-  /** A stopped runtime, in words: the usual causes are recognised in its log. */
-  private explainExit(lead = "nanomuse serve stopped before it was ready."): string {
+  /** A stopped runtime, in words (the system's language): the usual causes are recognised in its log. */
+  private explainExit(lead?: string): string {
+    const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
+    lead ??= zh ? "nanomuse serve 在就绪前就停止了。" : "nanomuse serve stopped before it was ready.";
     const tail = this.logTail(40);
     let hint = "";
     if (/address already in use|EADDRINUSE|Errno 98|Errno 10048/i.test(tail)) {
-      hint = `Port ${this.port} is taken by another program (or another nanoMuse). Quit it, or set NANOMUSE_PORT.`;
+      hint = zh
+        ? `端口 ${this.port} 被其他程序（或另一个 nanoMuse）占用。退出它，或设置 NANOMUSE_PORT。`
+        : `Port ${this.port} is taken by another program (or another nanoMuse). Quit it, or set NANOMUSE_PORT.`;
     } else if (/permission denied|Errno 13|WinError 5|not writable|cannot write|cannot create/i.test(tail)) {
-      hint = `The data folder ${this.home} is not writable. Fix its permissions or set NANOMUSE_HOME.`;
+      hint = zh
+        ? `数据文件夹 ${this.home} 不可写。修复它的权限，或设置 NANOMUSE_HOME。`
+        : `The data folder ${this.home} is not writable. Fix its permissions or set NANOMUSE_HOME.`;
     } else if (/cannot open display|DISPLAY|xdotool/i.test(tail)) {
-      hint = "No display is available for the hands; the runtime still needs a desktop session.";
+      hint = zh ? "没有可用的显示器，Hands 需要一个桌面会话。" : "No display is available for the hands; the runtime still needs a desktop session.";
     } else if (/config\.toml|TOMLDecodeError|does not understand/i.test(tail)) {
-      hint = "config.toml could not be read; the log has the field and the line.";
+      hint = zh ? "config.toml 读不出来；日志里有字段和行号。" : "config.toml could not be read; the log has the field and the line.";
     } else if (/ModuleNotFoundError|ImportError|No module named/i.test(tail)) {
-      hint = "The runtime is missing a Python package; reinstall nanoMuse or point NANOMUSE_BIN at a working one.";
+      hint = zh
+        ? "运行时缺少一个 Python 包；重新安装 nanoMuse，或把 NANOMUSE_BIN 指向一个可用的运行时。"
+        : "The runtime is missing a Python package; reinstall nanoMuse or point NANOMUSE_BIN at a working one.";
     }
-    const where = `Log: ${join(this.home, "desktop-app.log")}`;
+    const where = `${zh ? "日志" : "Log"}: ${join(this.home, "desktop-app.log")}`;
     const last = tail.split("\n").slice(-3).join("\n");
     return [lead, hint, where, last ? `\n${last}` : ""].filter(Boolean).join("\n");
   }
