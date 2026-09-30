@@ -33,7 +33,7 @@
     spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "每日上限", noCap: "无上限", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
     sessions: "登录（含已退出）", revoked: "已退出", via: { code: "验证码", password: "密码" }, lastUsed: "最近使用", devices: "设备", firstSeen: "首次", lastSeen: "最近",
     ledger: "最近请求", timeline: "时间线", none: "—", online: "在线", offline: "离线", version: "版本",
-    grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
+    grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, credit: "加邀请额度", creditPrompt: (who) => `给 ${who} 多少元额度？（当天免费额度用完后才扣，不过期）`, creditClips: "另加多少段视频？（0 为不加）", creditNote: "备注（比如 PR #12）", creditLine: (c, l, n, b) => `邀请额度 ${c}（剩 ${l}）· 邀请了 ${n} 人 · 额外视频 ${b} 段`, clipsLine: (u, a) => `视频 ${u} / ${a === null ? "∞" : a} 段`, invitedBy: "邀请人", disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
     memberConfirm: (who) => `把 ${who} 设为成员？成员不受每日花费上限限制，费用由你承担。`, listedNote: "在服务器白名单里，改 ALLOWED_IDENTIFIERS 才能取消",
     disableConfirm: (who) => `停用 ${who}？TA 的所有设备会立刻断开，再登录会被拒。`, remove: "删除账号",
     removeConfirm: (who) => `删除 ${who} 的账号、密钥、用量记录和设备？不可恢复。`, hasPassword: "已设密码", noPassword: "未设密码", identifierNote: "明文只在这里解出来看",
@@ -65,7 +65,7 @@
     spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Daily cap", noCap: "no cap", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
     sessions: "Sign-ins (incl. revoked)", revoked: "revoked", via: { code: "code", password: "password" }, lastUsed: "last used", devices: "Devices", firstSeen: "first", lastSeen: "last",
     ledger: "Recent requests", timeline: "Timeline", none: "—", online: "online", offline: "offline", version: "Version",
-    grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
+    grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, credit: "Add credit", creditPrompt: (who) => `How many yuan of credit for ${who}? (spent once the day's cap is used up; never expires)`, creditClips: "And how many video clips? (0 for none)", creditNote: "Note (say, PR #12)", creditLine: (c, l, n, b) => `credit ${c} (${l} left) · ${n} invited · ${b} bonus clips`, clipsLine: (u, a) => `video ${u} / ${a === null ? "∞" : a} clips`, invitedBy: "invited by", disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
     memberConfirm: (who) => `Make ${who} a member? Members have no daily spend cap; you pay their bill.`, listedNote: "on the server's list; edit ALLOWED_IDENTIFIERS to remove",
     disableConfirm: (who) => `Disable ${who}? Every device of theirs drops at once and cannot sign in again.`, remove: "Delete account",
     removeConfirm: (who) => `Delete the account, keys, usage and devices of ${who}? This cannot be undone.`, hasPassword: "has a password", noPassword: "no password", identifierNote: "decrypted for this view only",
@@ -238,6 +238,19 @@
     try { await api("POST", "/v1/admin/grant", { account_id: a.id, tokens: n }); } catch (e) { alert(e.message); }
     await Promise.all([load(), detail ? openAccount(a.id) : null]);
   }
+  async function doCredit(a) {
+    const v = prompt(T.creditPrompt(who(a)), "3");
+    if (v === null) return;
+    const cny = parseFloat(v.replace(/[\s,¥]/g, ""));
+    if (!Number.isFinite(cny) || cny < 0) return;
+    const c = prompt(T.creditClips, "0");
+    if (c === null) return;
+    const clips = parseInt(c.replace(/\D/g, "") || "0", 10);
+    const note = prompt(T.creditNote, "") || "";
+    if (cny === 0 && clips === 0) return;
+    try { await api("POST", "/v1/admin/credit", { account_id: a.id, cny, clips, note }); } catch (e) { alert(e.message); }
+    await Promise.all([load(), detail ? openAccount(a.id) : null]);
+  }
   async function doDisable(a) {
     if (!a.disabled && !confirm(T.disableConfirm(who(a)))) return;
     try { await api("POST", "/v1/admin/disable", { account_id: a.id, disabled: !a.disabled }); } catch (e) { alert(e.message); }
@@ -291,8 +304,11 @@
           h("div", {}, h("div", { class: "k" }, T.spendToday), h("div", { class: "v", title: usd(sp.today_cny, rate) }, money(sp.today_cny)), cap > 0 ? h("div", { class: "meter", style: "margin-top:6px" }, h("i", { class: frac > 0.9 ? "bad" : frac > 0.7 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null, h("div", { class: "k", style: "margin-top:4px" }, cap > 0 ? `${T.cap} ${money(cap)}` : T.noCap)),
           h("div", {}, h("div", { class: "k" }, T.spendTotal), h("div", { class: "v", title: usd(sp.total_cny, rate) }, money(sp.total_cny)), h("div", { class: "k", style: "margin-top:4px" }, T.tokens(a.used))),
           h("div", {}, h("div", { class: "k" }, T.requests), h("div", { class: "v" }, fmt(sp.requests_total)), h("div", { class: "k", style: "margin-top:4px" }, s.unlimited ? T.noCap : `${T.grant}: ${fmt(a.granted)}`))),
+        h("div", { class: "fine", style: "padding:0 16px 10px" }, T.creditLine(money(a.credit_cny || 0), money(a.credit_left_cny || 0), a.invites || 0, a.clips_bonus || 0), " · ", T.clipsLine(a.clips_used || 0, a.clips_allowed === undefined ? null : a.clips_allowed),
+          a.invited_by ? [" · ", T.invitedBy, " ", h("code", {}, String(a.invited_by).slice(0, 8))] : null),
         h("div", { class: "acts" },
           s.unlimited ? null : h("button", { class: "btn quiet", onclick: () => doGrant(a) }, T.grant),
+          h("button", { class: "btn quiet", onclick: () => doCredit(a) }, T.credit),
           a.listed ? null : h("button", { class: "btn quiet", onclick: () => doMember(a) }, a.unlimited ? T.unmakeMember : T.makeMember),
           h("button", { class: "btn quiet", onclick: () => doDisable(a) }, a.disabled ? T.enable : T.disable),
           h("button", { class: "btn danger", onclick: () => doDelete(a) }, T.remove))),

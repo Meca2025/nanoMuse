@@ -65,7 +65,8 @@ def fake_upstream() -> FastAPI:
             return JSONResponse(status_code=404, content={"code": "InvalidParameter", "message": "Model not exist"})
         if not body.get("input"):
             return JSONResponse(status_code=400, content={"code": "InvalidParameter", "message": "prompt is required"})
-        return {"output": {"task_id": "task-42", "task_status": "PENDING"}, "request_id": "r1"}
+        nth = sum(1 for r in up.state.requests if r[0] == "video" and r[2].get("input"))
+        return {"output": {"task_id": f"task-{41 + nth}", "task_status": "PENDING"}, "request_id": "r1"}
 
     @up.get("/ds/api/v1/tasks/{task_id}")
     async def task(task_id: str, request: Request):
@@ -129,8 +130,8 @@ async def test_signup_grants_and_lists_models(stack):
     assert data["account"]["hint"] == "138****8000"
     assert data["base_url"] == "http://cloud.test"
     ids = [m["id"] for m in data["models"]]
-    assert "qwen3.8-27b" in ids and "qwen-image-3.0-pro" in ids and "MiniMax/MiniMax-H3" in ids
-    video = next(m for m in data["models"] if m["id"] == "MiniMax/MiniMax-H3")
+    assert "qwen3.8-27b" in ids and "qwen-image-3.0" in ids and "wan2.2-i2v-flash" in ids
+    video = next(m for m in data["models"] if m["id"] == "wan2.2-i2v-flash")
     assert video["nanomuse"]["kind"] == "video" and video["architecture"]["output_modalities"] == ["video"]
 
     headers = {"Authorization": f"Bearer {data['api_key']}"}
@@ -302,24 +303,24 @@ async def test_images_go_through_dashscope_native(stack):
     headers = {"Authorization": f"Bearer {data['api_key']}"}
     # 30 000 per picture is more than the 1 000 grant: refused first.
     r = await client.post("/v1/images/generations", headers=headers,
-                          json={"model": "qwen-image-3.0-pro", "prompt": "a small dragon", "size": "1024x1024"})
+                          json={"model": "qwen-image-3.0", "prompt": "a small dragon", "size": "1024x1024"})
     assert r.status_code == 402
     accounts = (await client.get("/v1/admin/accounts", headers={"X-Admin-Token": "admin"})).json()["accounts"]
     await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"},
                       json={"account_id": accounts[0]["id"], "tokens": 100_000})
 
     r = await client.post("/v1/images/generations", headers=headers,
-                          json={"model": "qwen-image-3.0-pro", "prompt": "a small dragon", "size": "1024x1024", "response_format": "b64_json"})
+                          json={"model": "qwen-image-3.0", "prompt": "a small dragon", "size": "1024x1024", "response_format": "b64_json"})
     assert r.status_code == 200, r.text
     assert base64.b64decode(r.json()["data"][0]["b64_json"]) == PNG_1PX
     kind, up_headers, up_body = up.state.requests[-1]
-    assert kind == "image" and up_body["model"] == "qwen-image-3.0-pro"
+    assert kind == "image" and up_body["model"] == "qwen-image-3.0"
     assert up_body["parameters"] == {"size": "1024*1024", "watermark": False, "prompt_extend": False}
     assert up_body["input"]["messages"][0]["content"] == [{"text": "a small dragon"}]
     assert r.headers["x-nanomuse-charged"] == "30000"
 
     r = await client.post("/v1/images/edits", headers=headers,
-                          data={"model": "qwen-image-3.0-pro", "prompt": "same dragon, waving", "n": "1", "size": "1024x1024"},
+                          data={"model": "qwen-image-3.0", "prompt": "same dragon, waving", "n": "1", "size": "1024x1024"},
                           files={"image": ("image0.png", PNG_1PX, "image/png")})
     assert r.status_code == 200, r.text
     kind, up_headers, up_body = up.state.requests[-1]
@@ -381,6 +382,7 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     assert guest["spend"] == {
         "currency": "CNY", "today": 0, "total": 0, "daily_cap": 0.002, "unlimited": False, "usd_cny": 7.0,
         "today_usd": 0, "daily_cap_usd": 0.0003, "day_offset_h": 8, "resets_at": guest["spend"]["resets_at"],
+        "credit_left": 0, "left_today": 0.002,
     }
     # Prices travel with the model list, so the apps can show them.
     price = next(m for m in guest["models"] if m["id"] == "qwen3.8-27b")["nanomuse"]["price_cny"]
@@ -404,7 +406,7 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     assert r.status_code == 429 and r.json()["error"]["code"] == "daily_cap"
     assert "¥0.002" in r.json()["error"]["message"]
     # A picture that would go over the cap is refused before it is drawn.
-    r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0-pro", "prompt": "a dragon"})
+    r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
     assert r.status_code == 429 and not any(k == "image" for k, _, _ in up.state.requests)
 
     # The listed person has no cap and sees no cap.
@@ -414,22 +416,22 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     for _ in range(4):
         assert (await client.post("/v1/chat/completions", headers=mh,
                                   json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})).status_code == 200
-    r = await client.post("/v1/images/generations", headers=mh, json={"model": "qwen-image-3.0-pro", "prompt": "a dragon"})
+    r = await client.post("/v1/images/generations", headers=mh, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
     assert r.status_code == 200
     me = (await client.get("/v1/me", headers=mh)).json()
-    assert me["spend"]["today"] == round(4 * 0.0009 + 0.25, 4)
+    assert me["spend"]["today"] == round(4 * 0.0009 + 0.18, 4)
 
     # The operator's view carries money next to tokens, and can make a guest a member.
     listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
     s = listing["settings"]
     assert s["signup_open"] is True and s["daily_cap_cny"] == 0.002 and s["usd_cny"] == 7.0
-    assert s["prices"]["qwen-image-3.0-pro"]["per_image"] == 0.25
+    assert s["prices"]["qwen-image-3.0"]["per_image"] == 0.18
     by_id = {a["identifier"]: a for a in listing["accounts"]}
     g, m = by_id["+8613800138000"], by_id["me@example.com"]
     assert g["member"] is False and g["spent_today_cny"] == 0.0027 and g["spent_cny"] == 0.0027
     assert m["member"] is True and m["listed"] is True and m["unlimited"] is False
     usage = (await client.get("/v1/admin/usage", headers=admin)).json()["days"]
-    assert {(u["kind"], u["cost_cny"]) for u in usage} == {("chat", round(7 * 0.0009, 4)), ("image", 0.25)}
+    assert {(u["kind"], u["cost_cny"]) for u in usage} == {("chat", round(7 * 0.0009, 4)), ("image", 0.18)}
 
     r = await client.post("/v1/admin/unlimited", headers=admin, json={"identifier": "138 0013 8000"})
     assert r.status_code == 204
@@ -447,10 +449,10 @@ def test_prices_and_day_boundary():
     m = s.model("qwen3.8-27b")
     assert m.chat_cost_uy(1_000_000, 0) == 3_000_000 and m.chat_cost_uy(0, 1_000_000) == 12_000_000
     assert m.chat_cost_uy(333, 21) == round(333 * 3 + 21 * 12)
-    img = s.model("qwen-image-3.0-pro")
-    assert img.image_cost_uy("1024*1024") == 250_000 and img.image_cost_uy("2048x2048") == 500_000 and img.image_cost_uy(None) == 250_000
-    vid = s.model("MiniMax/MiniMax-H3")
-    assert vid.video_cost_uy(4) == 2_000_000 and vid.video_cost_uy(0) == 0
+    img = s.model("qwen-image-3.0")
+    assert img.image_cost_uy("1024*1024") == 180_000 and img.image_cost_uy("2048x2048") == 180_000 and img.image_cost_uy(None) == 180_000
+    vid = s.model("wan2.2-i2v-flash")
+    assert vid.video_cost_uy(5) == 500_000 and vid.video_cost_uy(vid.clip_seconds) == 500_000 and vid.video_cost_uy(0) == 0
     # 2026-09-29 02:00 UTC is still the 29th in Beijing; its day began at 16:00 UTC on the 28th.
     t = 1790647200  # 2026-09-29T02:00:00Z
     assert s.day_start(t) == t - 10 * 3600
@@ -471,21 +473,21 @@ async def test_video_is_relayed_under_dashscope_paths(stack):
                           json={"model": "wan2.6-i2v", "input": {}, "parameters": {}})
     assert r.status_code == 404
     r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers=headers,
-                          json={"model": "MiniMax/MiniMax-H3", "input": {}, "parameters": {}})
+                          json={"model": "wan2.2-i2v-flash", "input": {}, "parameters": {}})
     assert r.status_code == 400 and r.json()["message"] == "prompt is required"
     assert (await client.get("/v1/me", headers=headers)).json()["tokens"]["used"] == 0
 
     # Upload policy, then the task itself, with the operator's key and the OSS header passed on.
-    r = await client.get("/api/v1/uploads", params={"action": "getPolicy", "model": "MiniMax/MiniMax-H3"}, headers=headers)
+    r = await client.get("/api/v1/uploads", params={"action": "getPolicy", "model": "wan2.2-i2v-flash"}, headers=headers)
     assert r.status_code == 200 and r.json()["data"]["upload_dir"] == "tmp/x"
     kind, up_headers, q = up.state.requests[-1]
-    assert kind == "uploads" and up_headers["authorization"] == "Bearer sk-upstream" and q["model"] == "MiniMax/MiniMax-H3"
+    assert kind == "uploads" and up_headers["authorization"] == "Bearer sk-upstream" and q["model"] == "wan2.2-i2v-flash"
     r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers={**headers, "X-DashScope-OssResourceResolve": "enable"},
-                          json={"model": "MiniMax/MiniMax-H3", "input": {"prompt": "a dragon waves"}, "parameters": {"duration": 4}})
+                          json={"model": "wan2.2-i2v-flash", "input": {"prompt": "a dragon waves"}, "parameters": {"duration": 4}})
     assert r.status_code == 200 and r.json()["output"]["task_id"] == "task-42"
     kind, up_headers, up_body = up.state.requests[-1]
     assert kind == "video" and up_headers["x-dashscope-async"] == "enable" and up_headers["x-dashscope-ossresourceresolve"] == "enable"
-    assert up_headers["authorization"] == "Bearer sk-upstream" and up_body["model"] == "MiniMax/MiniMax-H3"
+    assert up_headers["authorization"] == "Bearer sk-upstream" and up_body["model"] == "wan2.2-i2v-flash"
     assert (await client.get("/v1/me", headers=headers)).json()["tokens"]["used"] == 0  # nothing until the clip exists
 
     # Polling: still running, then done — charged once, however often it is asked again.
@@ -503,7 +505,7 @@ async def test_video_is_relayed_under_dashscope_paths(stack):
     assert r.status_code == 404
     # Too little grant left for a clip: refused before the provider is asked.
     r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers={"Authorization": f"Bearer {other['api_key']}"},
-                          json={"model": "MiniMax/MiniMax-H3", "input": {"prompt": "x"}, "parameters": {}})
+                          json={"model": "wan2.2-i2v-flash", "input": {"prompt": "x"}, "parameters": {}})
     assert r.status_code == 402
 
 
@@ -527,7 +529,7 @@ async def test_unlimited_relay_meters_but_never_refuses():
         r = await client.post("/v1/chat/completions", headers=headers,
                               json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
         assert r.status_code == 200
-    r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0-pro", "prompt": "a dragon"})
+    r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
     assert r.status_code == 200
     me = (await client.get("/v1/me", headers=headers)).json()
     assert me["tokens"] == {"unlimited": True, "granted": 0, "used": 450 + 30_000, "remaining": 0, "used_today": 30_450, "daily_cap": 0}

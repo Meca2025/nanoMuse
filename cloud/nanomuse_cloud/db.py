@@ -10,6 +10,7 @@ shows none of them.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 import time
@@ -32,8 +33,15 @@ CREATE TABLE IF NOT EXISTS accounts (
     password_hash TEXT NOT NULL DEFAULT '',    -- scrypt$salt$hash, empty = no password (codes only)
     password_set_at INTEGER,
     failed_logins INTEGER NOT NULL DEFAULT 0,  -- wrong passwords in a row
-    locked_until  INTEGER                      -- password sign-in refused until then
+    locked_until  INTEGER,                     -- password sign-in refused until then
+    invite_code   TEXT NOT NULL DEFAULT '',    -- what this person gives to friends (made on first ask)
+    invited_by    TEXT NOT NULL DEFAULT '',    -- the account whose code was used at sign-up
+    invites       INTEGER NOT NULL DEFAULT 0,  -- people who signed up with this account's code
+    credit_uy     INTEGER NOT NULL DEFAULT 0,  -- credit earned (invites, the operator), micro-yuan
+    credit_used_uy INTEGER NOT NULL DEFAULT 0, -- of which spent, beyond the daily cap
+    clips_bonus   INTEGER NOT NULL DEFAULT 0   -- video clips beyond the free allowance
 );
+CREATE UNIQUE INDEX IF NOT EXISTS accounts_invite_code ON accounts(invite_code) WHERE invite_code<>'';
 CREATE TABLE IF NOT EXISTS api_keys (
     key_hash      TEXT PRIMARY KEY,
     prefix        TEXT NOT NULL,
@@ -101,7 +109,9 @@ CREATE TABLE IF NOT EXISTS video_tasks (
     model         TEXT NOT NULL DEFAULT '',
     created_at    INTEGER NOT NULL,
     charged       INTEGER NOT NULL DEFAULT 0,  -- set when the task was first seen SUCCEEDED
-    cost_uy       INTEGER NOT NULL DEFAULT 0   -- priced at submission from the seconds asked for
+    cost_uy       INTEGER NOT NULL DEFAULT 0,  -- priced at submission from the seconds asked for
+    probe         INTEGER NOT NULL DEFAULT 0,  -- an empty task the app sent to see if the model exists
+    status        TEXT NOT NULL DEFAULT ''     -- the provider's last word: SUCCEEDED / FAILED / ...
 );
 """
 
@@ -151,6 +161,23 @@ class Database:
                 self._conn.execute(f"ALTER TABLE accounts ADD COLUMN {col} {ddl}")
         if "via" not in cols("api_keys"):
             self._conn.execute("ALTER TABLE api_keys ADD COLUMN via TEXT NOT NULL DEFAULT 'code'")
+        # 0.4: invitations, credit and the clip allowance
+        for col, ddl in (
+            ("invite_code", "TEXT NOT NULL DEFAULT ''"),
+            ("invited_by", "TEXT NOT NULL DEFAULT ''"),
+            ("invites", "INTEGER NOT NULL DEFAULT 0"),
+            ("credit_uy", "INTEGER NOT NULL DEFAULT 0"),
+            ("credit_used_uy", "INTEGER NOT NULL DEFAULT 0"),
+            ("clips_bonus", "INTEGER NOT NULL DEFAULT 0"),
+        ):
+            if col not in cols("accounts"):
+                self._conn.execute(f"ALTER TABLE accounts ADD COLUMN {col} {ddl}")
+        self._conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS accounts_invite_code ON accounts(invite_code) WHERE invite_code<>''"
+        )
+        for col, ddl in (("probe", "INTEGER NOT NULL DEFAULT 0"), ("status", "TEXT NOT NULL DEFAULT ''")):
+            if col not in cols("video_tasks"):
+                self._conn.execute(f"ALTER TABLE video_tasks ADD COLUMN {col} {ddl}")
 
     @contextmanager
     def tx(self):
@@ -272,6 +299,71 @@ class Database:
         with self.tx() as c:
             c.execute("UPDATE accounts SET unlimited=? WHERE id=?", (1 if unlimited else 0, account_id))
 
+    # -- invitations and credit -----------------------------------------------------
+
+    def account_by_invite_code(self, code: str) -> sqlite3.Row | None:
+        if not code:
+            return None
+        with self._lock:
+            return self._conn.execute("SELECT * FROM accounts WHERE invite_code=?", (code,)).fetchone()
+
+    def set_invite_code(self, account_id: str, code: str) -> bool:
+        """Give the account its code, once; False when another account already holds that code."""
+        with self.tx() as c:
+            try:
+                cur = c.execute("UPDATE accounts SET invite_code=? WHERE id=? AND invite_code=''", (code, account_id))
+            except sqlite3.IntegrityError:
+                return False
+            return cur.rowcount == 1
+
+    def record_invite(self, inviter_id: str, invitee_id: str, bonus_uy: int, clips: int) -> None:
+        """A new account signed up with the inviter's code: the inviter earns the bonus."""
+        t = now()
+        with self.tx() as c:
+            c.execute("UPDATE accounts SET invited_by=? WHERE id=? AND invited_by=''", (inviter_id, invitee_id))
+            c.execute(
+                "UPDATE accounts SET invites=invites+1, credit_uy=credit_uy+?, clips_bonus=clips_bonus+? WHERE id=?",
+                (max(0, int(bonus_uy)), max(0, int(clips)), inviter_id),
+            )
+            c.execute(
+                "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
+                (inviter_id, t, "credit", 0, json.dumps({"credit_uy": int(bonus_uy), "clips": int(clips), "from": "invite"})),
+            )
+
+    def add_credit(self, account_id: str, credit_uy: int, clips: int = 0, note: str = "") -> None:
+        """Credit from the operator — a merged pull request, a good issue, a hand at a bad day."""
+        with self.tx() as c:
+            c.execute(
+                "UPDATE accounts SET credit_uy=credit_uy+?, clips_bonus=clips_bonus+? WHERE id=?",
+                (max(0, int(credit_uy)), max(0, int(clips)), account_id),
+            )
+            c.execute(
+                "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
+                (account_id, now(), "credit", 0, json.dumps({"credit_uy": int(credit_uy), "clips": int(clips), "from": "operator", "note": note[:200]})),
+            )
+
+    def invitees(self, inviter_id: str, limit: int = 50) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute(
+                "SELECT id, hint, created_at FROM accounts WHERE invited_by=? ORDER BY created_at DESC LIMIT ?",
+                (inviter_id, limit),
+            ).fetchall()
+
+    def video_clips_used(self, account_id: str, pending_since: int) -> int:
+        """Clips this account has had: the ones charged (the ledger keeps them for
+        good) plus the tasks still running, so a burst of submissions cannot
+        outrun the count. Probes and failed tasks are not clips."""
+        with self._lock:
+            done = self._conn.execute(
+                "SELECT COUNT(*) FROM ledger WHERE account_id=? AND kind='video' AND charged>=0", (account_id,)
+            ).fetchone()
+            pending = self._conn.execute(
+                "SELECT COUNT(*) FROM video_tasks WHERE account_id=? AND charged=0 AND probe=0 "
+                "AND status NOT IN ('FAILED','CANCELED','UNKNOWN') AND created_at>=?",
+                (account_id, pending_since),
+            ).fetchone()
+        return int(done[0]) + int(pending[0])
+
     # -- passwords -----------------------------------------------------------------
 
     def set_password(self, account_id: str, password_hash: str) -> None:
@@ -350,7 +442,8 @@ class Database:
         with self._lock:
             return self._conn.execute(
                 "SELECT k.*, a.disabled AS account_disabled, a.granted, a.used, a.channel, a.hint, a.created_at AS account_created_at, "
-                "a.id_hash, a.unlimited AS account_unlimited, a.password_hash, a.password_set_at "
+                "a.id_hash, a.unlimited AS account_unlimited, a.password_hash, a.password_set_at, "
+                "a.invite_code, a.invites, a.credit_uy, a.credit_used_uy, a.clips_bonus "
                 "FROM api_keys k JOIN accounts a ON a.id=k.account_id WHERE k.key_hash=?",
                 (key_hash,),
             ).fetchone()
@@ -432,10 +525,14 @@ class Database:
 
     def charge(
         self, account_id: str, kind: str, model: str, prompt_tokens: int, completion_tokens: int,
-        charged: int, request_id: str, cost_uy: int = 0, extra: str = "",
-    ) -> None:
+        charged: int, request_id: str, cost_uy: int = 0, extra: str = "", cap_uy: int | None = None, day_start: int = 0,
+    ) -> int:
+        """Record one request. With `cap_uy` (the daily cap of a capped account),
+        whatever part of this cost lies beyond today's cap is drawn from the
+        account's credit; returns that part (0 for members and cheap days)."""
         charged = max(0, int(charged))
         cost_uy = max(0, int(cost_uy))
+        from_credit = 0
         with self.tx() as c:
             c.execute("UPDATE accounts SET used=used+? WHERE id=?", (charged, account_id))
             c.execute(
@@ -443,6 +540,19 @@ class Database:
                 "VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (account_id, now(), kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy, extra or ""),
             )
+            if cap_uy is not None and cost_uy > 0:
+                spent = c.execute(
+                    "SELECT COALESCE(SUM(cost_uy),0) FROM ledger WHERE account_id=? AND ts>=? AND cost_uy>0",
+                    (account_id, day_start),
+                ).fetchone()[0]
+                over = min(cost_uy, int(spent) - cap_uy)
+                if over > 0:
+                    row = c.execute("SELECT credit_uy, credit_used_uy FROM accounts WHERE id=?", (account_id,)).fetchone()
+                    left = max(0, int(row["credit_uy"]) - int(row["credit_used_uy"])) if row else 0
+                    from_credit = min(over, left)
+                    if from_credit:
+                        c.execute("UPDATE accounts SET credit_used_uy=credit_used_uy+? WHERE id=?", (from_credit, account_id))
+        return from_credit
 
     USAGE_KINDS = ("chat", "image", "video", "realtime")
 
@@ -593,20 +703,24 @@ class Database:
 
     # -- video tasks (the provider's async API, relayed) --------------------------
 
-    def insert_video_task(self, task_id: str, account_id: str, model: str, cost_uy: int = 0) -> None:
+    def insert_video_task(self, task_id: str, account_id: str, model: str, cost_uy: int = 0, probe: bool = False) -> None:
         t = now()
         with self.tx() as c:
             # a second insert for the same task (a retried poll) must not forget that it was charged
             c.execute(
-                "INSERT INTO video_tasks(task_id, account_id, model, created_at, cost_uy) VALUES (?,?,?,?,?) "
+                "INSERT INTO video_tasks(task_id, account_id, model, created_at, cost_uy, probe) VALUES (?,?,?,?,?,?) "
                 "ON CONFLICT(task_id) DO UPDATE SET model=excluded.model, cost_uy=excluded.cost_uy",
-                (task_id, account_id, model, t, max(0, int(cost_uy))),
+                (task_id, account_id, model, t, max(0, int(cost_uy)), 1 if probe else 0),
             )
             c.execute("DELETE FROM video_tasks WHERE created_at < ?", (t - 3 * 86400,))
 
     def video_task(self, task_id: str) -> sqlite3.Row | None:
         with self._lock:
             return self._conn.execute("SELECT * FROM video_tasks WHERE task_id=?", (task_id,)).fetchone()
+
+    def set_video_status(self, task_id: str, status: str) -> None:
+        with self.tx() as c:
+            c.execute("UPDATE video_tasks SET status=? WHERE task_id=?", (status[:20], task_id))
 
     def mark_video_charged(self, task_id: str) -> bool:
         """True the first time only, so a clip is charged once however often it is polled."""

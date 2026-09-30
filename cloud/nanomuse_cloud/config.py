@@ -48,6 +48,9 @@ class ModelSpec:
     price_image: float = 0.0
     price_image_2k: float = 0.0
     price_second: float = 0.0
+    # The clip length when the app does not say (`parameters.duration` absent):
+    # Wan 2.2 always makes five seconds, MiniMax four at the least.
+    clip_seconds: float = 4.0
     # Real-time (a call): the provider counts audio and picture frames as their
     # own kinds of token, priced apart from text. Per million tokens, as above;
     # `price_in` / `price_out` stay the text prices. Audio tokens weigh more on
@@ -75,6 +78,7 @@ class ModelSpec:
                 "out_mult": self.out_mult,
                 "per_image": self.per_image,
                 "per_clip": self.per_clip,
+                "clip_seconds": self.clip_seconds,
                 "price_cny": {
                     "per_m_input": self.price_in,
                     "per_m_output": self.price_out,
@@ -187,11 +191,14 @@ def _max_side(size: str) -> int:
 
 # The menu a fresh account gets. Checked against the provider's own /models
 # list: qwen3.8-27b takes pictures as input (so no separate vision model),
-# qwen-image-3.0-pro draws, MiniMax-H3 makes clips through the video API
-# (which the provider does not list; the app probes it). Prices are the
-# provider's Beijing list prices (help.aliyun.com/en/model-studio/model-pricing,
-# 2026-09): 27B ¥3 / ¥12 per million tokens, Flash ¥0.8 / ¥2.7, Image Pro
-# ¥0.25 a picture (¥0.5 at 2k), H3 video USD 0.07 a second at 768P ≈ ¥0.5.
+# qwen-image-3.0 draws, Wan 2.2 makes clips through the video API (which the
+# provider does not list; the app probes it). Prices are the provider's
+# Beijing list prices (help.aliyun.com/zh/model-studio/model-pricing, 2026-09):
+# 27B ¥3 / ¥12 per million tokens, Flash ¥0.8 / ¥2.7, qwen-image-3.0 ¥0.18 a
+# picture at 1k and 2k alike (the Pro tier is ¥0.25 / ¥0.5), wan2.2-i2v-flash
+# ¥0.10 a second at 480P for a fixed five seconds (MiniMax-H3, the 0.3 default,
+# was ¥0.5 a second: a new face cost ¥8 in clips, now ¥2). wan2.2-t2v-plus is
+# the sibling the app asks for when a clip starts from words: ¥0.14 a second.
 DEFAULT_MODELS: tuple[ModelSpec, ...] = (
     ModelSpec(
         id="qwen3.8-27b", name="Qwen 3.8 27B", upstream="qwen3.8-27b",
@@ -204,14 +211,19 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
         price_in=0.8, price_out=2.7,
     ),
     ModelSpec(
-        id="qwen-image-3.0-pro", name="Qwen Image 3.0 Pro", upstream="qwen-image-3.0-pro",
-        kind="image", output_modalities=("image",), per_image=30_000,
-        price_image=0.25, price_image_2k=0.5,
+        id="qwen-image-3.0", name="Qwen Image 3.0", upstream="qwen-image-3.0",
+        kind="image", output_modalities=("image",), per_image=30_000, recommended=True,
+        price_image=0.18, price_image_2k=0.18,
     ),
     ModelSpec(
-        id="MiniMax/MiniMax-H3", name="MiniMax H3 (video)", upstream="MiniMax/MiniMax-H3",
+        id="wan2.2-i2v-flash", name="Wan 2.2 Flash (video)", upstream="wan2.2-i2v-flash",
         kind="video", input_modalities=("text", "image"), output_modalities=("video",), per_clip=200_000,
-        price_second=0.5,
+        recommended=True, price_second=0.10, clip_seconds=5.0,
+    ),
+    ModelSpec(
+        id="wan2.2-t2v-plus", name="Wan 2.2 Plus (video from words)", upstream="wan2.2-t2v-plus",
+        kind="video", input_modalities=("text",), output_modalities=("video",), per_clip=200_000,
+        price_second=0.14, clip_seconds=5.0,
     ),
     # Calls: Qwen Omni real-time, over the provider's OpenAI-shaped WebSocket.
     # Hears and speaks (16 kHz in, 24 kHz out), sees camera frames at 1 fps.
@@ -307,9 +319,21 @@ class Settings:
     # above across chat, pictures and clips; the members below are exempt.
     # The day turns at midnight in the DAY_OFFSET_H time zone (8 = Beijing).
     # USD_CNY is for display only: the apps show both currencies.
-    daily_cap_cny: float = field(default_factory=lambda: float(_env("DAILY_CAP_CNY", "25")))
+    daily_cap_cny: float = field(default_factory=lambda: float(_env("DAILY_CAP_CNY", "15")))
     day_offset_h: int = field(default_factory=lambda: _int("DAY_OFFSET_H", 8))
     usd_cny: float = field(default_factory=lambda: float(_env("USD_CNY", "7.1")))
+    # Invitations. Every account has a code; a person who signs up with it
+    # earns the inviter INVITE_BONUS_CNY of credit — money spent only once the
+    # day's cap is used up, and never expiring — plus VIDEO_CLIPS_PER_INVITE
+    # more clips. The operator can grant credit too (issues, pull requests).
+    # INVITE_URL is the link the apps offer to share; the code is appended.
+    invite_bonus_cny: float = field(default_factory=lambda: float(_env("INVITE_BONUS_CNY", "3")))
+    invite_url: str = field(default_factory=lambda: _env("INVITE_URL", "https://nanomuse.cn/web/?invite="))
+    # Video is the expensive part: an account may make VIDEO_CLIPS_FREE clips
+    # in all (4 = one animated face, the app's four moods), plus what invites
+    # and the operator add. 0 = no limit. Members have none.
+    video_clips_free: int = field(default_factory=lambda: _int("VIDEO_CLIPS_FREE", 4))
+    video_clips_per_invite: int = field(default_factory=lambda: _int("VIDEO_CLIPS_PER_INVITE", 4))
 
     code_ttl_s: int = field(default_factory=lambda: _int("CODE_TTL_S", 600))
     code_per_identifier_10m: int = field(default_factory=lambda: _int("CODE_PER_IDENTIFIER_10M", 3))

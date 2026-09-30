@@ -1,10 +1,12 @@
 """HTTP: the sign-up endpoints the app calls, and the OpenAI-shaped proxy.
 
     POST /v1/auth/code        {identifier}                      → 204
-    POST /v1/auth/verify      {identifier, code, device}        → {api_key, base_url, account, tokens, models}
+    POST /v1/auth/verify      {identifier, code, device, invite?} → {api_key, base_url, account, tokens, models}
     POST /v1/auth/login       {identifier, password, device}    → the same, for accounts that set a password
     POST /v1/auth/password    {password, current?}              → 204 (set / change; "" + current removes)
-    GET  /v1/me                                                 → account, tokens, spend (¥ today / cap / $), usage by kind, models, recent
+    GET  /v1/me                                                 → account, tokens, spend (¥ today / cap / credit), invite, clips, usage by kind, models, recent
+    GET  /v1/me/invite                                          → the invite code and link, who came with it, the credit earned
+    GET  /v1/estimate         ?images=5&clips=4                 → what that would cost next to what is left today (nothing charged)
     GET  /v1/me/sessions                                        → live sign-ins (device, via, when; the current one marked)
     DELETE /v1/me/sessions/{prefix}                             → 204 (sign one device out)
     GET  /v1/me/events                                          → the account's own timeline (sign-ins, password changes…)
@@ -26,6 +28,7 @@
     GET  /app/                                                  → the web console (static)
     GET  /app/admin/                                            → the operator's page (static; asks for the admin token)
     POST /v1/admin/grant      X-Admin-Token  {account_id | identifier, tokens}
+    POST /v1/admin/credit     X-Admin-Token  {account_id | identifier, cny, clips?, note?} → credit spent after the day's cap
     POST /v1/admin/disable    X-Admin-Token  {account_id | identifier, disabled}
     POST /v1/admin/unlimited  X-Admin-Token  {account_id | identifier, unlimited}  → a member: no daily cap
     POST /v1/admin/delete     X-Admin-Token  {account_id | identifier}
@@ -63,7 +66,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__, realtime
-from .config import Settings
+from .config import ModelSpec, Settings
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
 from .service import Caller, Cloud, CloudError, dumps, estimate_tokens, prompt_chars, usage_from_json
@@ -153,7 +156,7 @@ def create_app(
         try:
             ident = parse(str(body.get("identifier", "")))
         except BadIdentifier as e:
-            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address") from e
+            raise CloudError(400, "bad_identifier", "Enter an e-mail address") from e
         await asyncio.to_thread(cloud.request_code, ident, client_ip(request))
         return Response(status_code=204)
 
@@ -163,12 +166,13 @@ def create_app(
         try:
             ident = parse(str(body.get("identifier", "")))
         except BadIdentifier as e:
-            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address") from e
+            raise CloudError(400, "bad_identifier", "Enter an e-mail address") from e
         code = str(body.get("code", "")).strip()
         if not code.isdigit() or len(code) != 6:
             raise CloudError(400, "code_wrong", "The code is six digits")
         device = str(body.get("device", ""))[:80]
-        key, caller, created = await asyncio.to_thread(cloud.verify_code, ident, code, device)
+        invite = str(body.get("invite", ""))[:32]
+        key, caller, created = await asyncio.to_thread(cloud.verify_code, ident, code, device, invite)
         me = cloud.me(caller)
         return {"api_key": key, "created": created, **me}
 
@@ -179,7 +183,7 @@ def create_app(
         try:
             ident = parse(str(body.get("identifier", "")))
         except BadIdentifier as e:
-            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address") from e
+            raise CloudError(400, "bad_identifier", "Enter an e-mail address") from e
         password = str(body.get("password", ""))
         if not password:
             raise CloudError(400, "password_required", "Enter the password")
@@ -208,6 +212,20 @@ def create_app(
     @app.get("/v1/me")
     async def me(caller: Caller = Depends(caller_dep)) -> dict:
         return cloud.me(caller)
+
+    @app.get("/v1/me/invite")
+    async def me_invite(caller: Caller = Depends(caller_dep)) -> dict:
+        """The account's invite code and link, who came with it, the credit earned."""
+        return cloud.invite_view(caller)
+
+    @app.get("/v1/estimate")
+    async def estimate(
+        images: int = 0, clips: int = 0, image_model: str = "", video_model: str = "", size: str = "",
+        caller: Caller = Depends(caller_dep),
+    ) -> dict:
+        """What `images` pictures and `clips` clips would cost, next to what is left
+        today — the app asks before a new face. Nothing is charged."""
+        return cloud.estimate(caller, images, clips, image_model, video_model, size or None)
 
     @app.get("/v1/me/sessions")
     async def me_sessions(caller: Caller = Depends(caller_dep)) -> dict:
@@ -476,22 +494,25 @@ def create_app(
         media = r.headers.get("content-type", "application/json")
         return Response(status_code=r.status_code, content=r.content, media_type=media.split(";")[0])
 
-    def _clip_seconds(body: dict) -> float:
-        """The seconds the app asked for (`parameters.duration`), else the shortest
-        clip MiniMax makes; the provider bills per output second."""
+    def _clip_seconds(body: dict, spec: ModelSpec) -> float:
+        """The seconds the app asked for (`parameters.duration`), else the model's
+        fixed or shortest length; the provider bills per output second."""
         params = body.get("parameters") if isinstance(body.get("parameters"), dict) else {}
         try:
-            return float(params.get("duration") or 4)
+            return float(params.get("duration") or spec.clip_seconds)
         except (TypeError, ValueError):
-            return 4.0
+            return spec.clip_seconds
 
     @app.post("/api/v1" + VIDEO_PATH)
     async def video_synthesis(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         body = await _json(request)
         spec = cloud.model_for(str(body.get("model", "")), "video")
         # A probe (no input) costs nothing upstream and is not priced here either.
-        clip_cost = spec.video_cost_uy(_clip_seconds(body)) if body.get("input") else 0
+        probe = not body.get("input")
+        clip_cost = 0 if probe else spec.video_cost_uy(_clip_seconds(body, spec))
         cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=clip_cost)
+        if not probe:
+            cloud.check_clips(caller)
         body["model"] = spec.upstream
         headers = upstream_headers()
         headers["X-DashScope-Async"] = "enable"
@@ -508,8 +529,8 @@ def create_app(
             except (ValueError, KeyError, TypeError):
                 task_id = ""
             if task_id:
-                cloud.db.insert_video_task(task_id, caller.account_id, spec.id, cost_uy=clip_cost)
-                log.info("video task %s for %s: %s", task_id[:12], caller.account_id[:8], spec.id)
+                cloud.db.insert_video_task(task_id, caller.account_id, spec.id, cost_uy=clip_cost, probe=probe)
+                log.info("video task %s for %s: %s%s", task_id[:12], caller.account_id[:8], spec.id, " (probe)" if probe else "")
         else:
             log.warning("dashscope video HTTP %s: %s", r.status_code, r.text[:300])
         return _dashscope_reply(r)
@@ -528,6 +549,8 @@ def create_app(
                 status = r.json().get("output", {}).get("task_status")
             except (ValueError, AttributeError):
                 status = None
+            if status and status != task["status"]:
+                cloud.db.set_video_status(task_id, str(status))
             if status == "SUCCEEDED" and cloud.db.mark_video_charged(task_id):
                 spec = settings.model(task["model"])
                 if spec is not None:
@@ -540,7 +563,8 @@ def create_app(
         if request.query_params.get("action") != "getPolicy":
             raise CloudError(400, "bad_request", "action=getPolicy is the only upload call the relay makes")
         spec = cloud.model_for(request.query_params.get("model", ""), "video")
-        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=spec.video_cost_uy(4))
+        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=spec.video_cost_uy(spec.clip_seconds))
+        cloud.check_clips(caller)
         try:
             r = await http.get(
                 settings.dashscope_base.rstrip("/") + "/uploads",
@@ -680,6 +704,19 @@ def create_app(
         body = await _json(request)
         account_id = cloud.admin_resolve(str(body.get("account_id", "")), str(body.get("identifier", "")))
         return cloud.admin_grant(account_id, int(body.get("tokens", 0)))
+
+    @app.post("/v1/admin/credit", dependencies=[Depends(admin_dep)])
+    async def admin_credit(request: Request) -> dict:
+        """{account_id | identifier, cny, clips?, note?}: credit that is spent once the
+        day's cap is used up — for a merged pull request, a good bug report."""
+        body = await _json(request)
+        account_id = cloud.admin_resolve(str(body.get("account_id", "")), str(body.get("identifier", "")))
+        try:
+            cny = float(body.get("cny", 0))
+            clips = int(body.get("clips", 0))
+        except (TypeError, ValueError) as e:
+            raise CloudError(400, "bad_request", "cny is a number, clips an integer") from e
+        return cloud.admin_credit(account_id, cny, clips, str(body.get("note", ""))[:200])
 
     @app.post("/v1/admin/disable", dependencies=[Depends(admin_dep)])
     async def admin_disable(request: Request) -> Response:
