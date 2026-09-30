@@ -10,6 +10,10 @@ import sys
 
 def main() -> None:
     multiprocessing.freeze_support()
+    # the bundle's OpenSSL knows the build machine's certificate paths, not this one's
+    from nanomuse.certs import ensure_ca_bundle
+
+    ensure_ca_bundle()
     # the bridge commands (console scripts in a pip install) are subcommands of this one
     # executable: `nanomuse device …`, `nanomuse browser …`, `nanomuse open …`
     if len(sys.argv) > 1 and sys.argv[1] in ("device", "browser", "open"):

@@ -8,6 +8,7 @@ import asyncio
 import base64
 import json
 import queue
+import ssl
 import sys
 import threading
 import time
@@ -329,6 +330,35 @@ def test_client_refuses_to_hammer_on_bad_key(relay: FakeRelay) -> None:
                 break
             await asyncio.sleep(0.05)
         assert client.state == "refused"
+        await client.stop()
+
+    asyncio.run(scenario())
+
+
+def test_a_certificate_failure_is_a_disconnect_not_a_refusal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SSLCertVerificationError is a ValueError too; it used to land in the refused branch
+    and read as the hub refusing the device (a Mac whose bundled Python had no CA store)."""
+
+    async def scenario() -> None:
+        client = HubClient("wss://relay.test/v1/hub", "k", "pc-1", "Desk", actions=["info"])
+
+        async def bad_cert() -> None:
+            exc = ssl.SSLCertVerificationError("certificate verify failed")
+            exc.verify_message = "unable to get local issuer certificate"
+            raise exc
+
+        monkeypatch.setattr(client, "_session", bad_cert)
+        client.start()
+        for _ in range(100):
+            if client.state == "disconnected":
+                break
+            await asyncio.sleep(0.02)
+        assert client.state == "disconnected"
+        assert "certificate could not be verified" in client.state_detail
+        assert "unable to get local issuer certificate" in client.state_detail
+        assert client.running  # it keeps trying (slowly), rather than giving up
         await client.stop()
 
     asyncio.run(scenario())

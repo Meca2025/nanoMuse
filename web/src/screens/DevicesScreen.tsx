@@ -206,7 +206,7 @@ function ThisDeviceCard({ hub, onChange }: { hub: HubView; onChange: () => void 
           disabled={busy}
           onChange={(v) => void update({ remote_control: v })}
         />
-        {hub.state === "refused" && hub.detail && <div className="rounded-2xl bg-amber-500/12 px-3 py-2 text-[12.5px] text-amber-700 dark:text-amber-300">{hub.detail}</div>}
+        {(hub.state === "refused" || hub.state === "disconnected") && hub.detail && <div className="rounded-2xl bg-amber-500/12 px-3 py-2 text-[12.5px] text-amber-700 dark:text-amber-300">{hub.detail}</div>}
       </div>
     </Card>
   );

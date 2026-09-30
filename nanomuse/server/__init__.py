@@ -18,6 +18,7 @@ import threading
 import traceback
 
 from nanomuse import __version__
+from nanomuse.certs import ensure_ca_bundle
 from nanomuse.config import Settings
 from nanomuse.server.api import STATIC_DIR, create_app
 from nanomuse.server.service import MuseService
@@ -56,6 +57,7 @@ def serve(
     import uvicorn
 
     _utf8_console()
+    ensure_ca_bundle()
     host = host or settings.server.host
     port = port or settings.server.port
     service = MuseService(settings)

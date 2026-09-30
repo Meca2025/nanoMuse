@@ -12,6 +12,7 @@ import asyncio
 import contextlib
 import json
 import platform
+import ssl
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -179,6 +180,14 @@ class HubClient:
                     delay = 60.0
                 else:
                     self._set_state("disconnected", f"HTTP {status}")
+            except ssl.SSLCertVerificationError as exc:
+                # (a ValueError too — it must not read as the hub refusing the device)
+                self.last_error = str(exc)
+                self._set_state(
+                    "disconnected",
+                    f"the relay's certificate could not be verified here: {exc.verify_message or exc}",
+                )
+                delay = 60.0
             except (InvalidURI, ValueError) as exc:
                 self.last_error = str(exc)
                 self._set_state("refused", str(exc))
