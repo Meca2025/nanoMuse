@@ -1,15 +1,26 @@
 import { useEffect, useState } from "react";
-import { dragonUrl, isDragon, studioUrl } from "../avatars";
+import { dragonClipUrl, dragonUrl, isDragon, studioClipUrl, studioUrl } from "../avatars";
 import { useMood } from "../mood";
 import type { Profile, Status } from "../types";
 import { cx } from "../util";
 
 /**
- * The agent's face: the dragon (a still per mood, posed by what the agent is doing), a face
- * drawn in the avatar studio (the same five stills) or an emoji on a colour. All move as a
- * whole — breathe when idle, sway while working, hop when waiting. Tap it and it wiggles; the
- * dragon is pleased about it.
+ * The agent's face: the dragon (posed by what the agent is doing), a face drawn in the avatar
+ * studio or an emoji on a colour. The dragon and a studio face play a short looping clip per
+ * mood where there is one — a head shake at rest, headphones and a laptop while working, a
+ * crystal ball while waiting, a star when pleased, the same clips the phone plays — and show
+ * the still otherwise: small sizes, lists and pickers, a person who prefers reduced motion, a
+ * face without clips, a clip that failed to load. Everything else moves as a whole — breathe
+ * when idle, sway while working, hop when waiting. Tap it and it wiggles; the dragon is
+ * pleased about it.
  */
+
+/** Below this the clip is not worth the bytes: the still shows. */
+const CLIP_MIN_PX = 44;
+/** Clips that did not load (a studio face without them): the still, and no second request. */
+const noClip = new Set<string>();
+const reducedMotion = typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 export function Avatar({
   profile,
   status,
@@ -27,6 +38,7 @@ export function Avatar({
   className?: string;
 }) {
   const [wiggle, setWiggle] = useState(false);
+  const [, bump] = useState(0);
   useEffect(() => {
     if (!wiggle) return;
     const id = window.setTimeout(() => setWiggle(false), 900);
@@ -41,15 +53,19 @@ export function Avatar({
   // a face from the studio: anything else that is not the emoji
   const studio = !dragon && profile?.avatar ? profile.avatar : null;
   const pose = wiggle ? "happy" : still ? "idle" : mood;
+  // the clip for this pose, when one may exist and is wanted here
+  const clipCandidate = still || reducedMotion || size < CLIP_MIN_PX ? null : dragon ? dragonClipUrl(pose) : studio ? studioClipUrl(studio, pose) : null;
+  const clip = clipCandidate && !noClip.has(clipCandidate) ? clipCandidate : null;
   const motion = wiggle
     ? "avatar-wiggle"
-    : still
+    : still || clip
       ? ""
       : state === "working"
         ? "avatar-working"
         : state === "waiting"
           ? "avatar-waiting"
           : "avatar-idle";
+  const stillUrl = dragon ? dragonUrl(pose) : studio ? studioUrl(studio, pose) : "";
 
   const label = `${profile?.name ?? "nanoMuse"} avatar`;
   const box = cx("relative inline-block shrink-0 select-none rounded-full", className);
@@ -59,10 +75,24 @@ export function Avatar({
         className={cx("block h-full w-full overflow-hidden rounded-full will-change-transform", motion)}
         style={dragon || studio ? { background: "#f1efeb" } : { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 60%, #ffffff))` }}
       >
-        {dragon ? (
-          <img src={dragonUrl(pose)} alt="" draggable={false} className="h-full w-full object-cover" />
-        ) : studio ? (
-          <img src={studioUrl(studio, pose)} alt="" draggable={false} className="h-full w-full object-cover" />
+        {clip ? (
+          <video
+            key={clip}
+            src={clip}
+            poster={stillUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            disablePictureInPicture
+            onError={() => {
+              noClip.add(clip);
+              bump((n) => n + 1);
+            }}
+            className="h-full w-full object-cover"
+          />
+        ) : dragon || studio ? (
+          <img src={stillUrl} alt="" draggable={false} className="h-full w-full object-cover" />
         ) : (
           <span className="flex h-full w-full items-center justify-center leading-none drop-shadow-sm" style={{ fontSize: size * 0.5 }}>
             {profile?.emoji ?? "✨"}

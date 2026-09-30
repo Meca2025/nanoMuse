@@ -1,0 +1,1 @@
+import{u as n,a as o,j as t,am as r}from"./index-C-3ePEtI.js";function u({label:e="Chat"}){const{setTab:s}=n(),a=o();return t.jsxs("button",{type:"button",onClick:()=>s("chat"),className:"-ml-2 mb-1 flex items-center gap-0.5 rounded-full py-1 pl-1 pr-3 text-[14px] font-medium text-accent hover:bg-surface-2",children:[t.jsx(r,{size:19})," ",a(e)]})}export{u as B};

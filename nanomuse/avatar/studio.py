@@ -21,7 +21,14 @@ Pictures come from the model endpoint the chat uses: the relay speaks the OpenAI
 API (``/v1/images/generations`` and ``/v1/images/edits``), so does any OpenAI-compatible
 provider that draws; Alibaba Cloud Model Studio's own host has neither and is called on its
 native multimodal endpoint with the same key. Without an image model the chat says so
-plainly instead of trying. No clip is drawn here: the web face is stills.
+plainly instead of trying.
+
+5. Once the stills are on, four short clips — idle, working, waiting, happy, the motions the
+   dragon's own clips have — are made from them with the video model (the relay's, or Model
+   Studio's Wan through the same asynchronous API the phone uses: an upload, a task, polling,
+   the MP4), each under ``avatar/<face>/<mood>.mp4``. The web face plays them and falls back
+   to the stills where one is missing; an OpenAI-compatible provider without a video API
+   simply has stills. The cost card counts the clips too.
 """
 
 from __future__ import annotations
@@ -53,6 +60,12 @@ SIZE = "1024x1024"
 # the stored stills: the face is never shown larger than about 200 CSS pixels
 STILL_PX = 512
 DASHSCOPE_IMAGE_MODEL = "qwen-image-3.0"
+DASHSCOPE_VIDEO_MODEL = "wan2.2-i2v-flash"
+# the moods that move; "error" stays a still, as on the phone
+CLIP_MOODS = ("idle", "working", "waiting", "happy")
+CLIP_SECONDS = 4
+CLIP_POLL_S = 5.0
+CLIP_MAX_WAIT_S = 8 * 60
 # how long a finished or abandoned session's candidates stay on disk
 SESSION_TTL_S = 24 * 3600
 
@@ -72,6 +85,24 @@ KEEP = (
     "Keep this exact character — same face, colours, outfit, art style, proportions, framing, "
     "camera angle and pure white background. Change only the pose and props described. "
 )
+# Muse's fixed motions, one per mood, on top of the pose picture (the phone's AvatarMotion)
+CLIP_ACTIONS = {
+    "idle": "The character stays in place and gently shakes its head left and right while its round body sways very slightly, calm and friendly, like the idle animation of a mascot.",
+    "waiting": "The character holds a small glowing crystal ball in its hands and plays with it, turning it slowly and peeking into it with curiosity.",
+    "happy": "The character plays happily with a small golden five-pointed star, tossing it up a little and catching it, bouncing gently with joy.",
+    "working": "The character wears headphones and types busily on the small laptop in front of it, nodding slightly to the rhythm, focused and content.",
+}
+CLIP_TAIL = (
+    " Plain white background, static camera, no zoom, no cuts, soft even studio lighting, the same 3D toy "
+    "look as the picture throughout, nothing else appears in the frame, and the motion loops naturally "
+    "with the character back in its starting pose at the end."
+)
+
+
+def clip_prompt(mood: str) -> str:
+    return CLIP_ACTIONS[mood] + CLIP_TAIL
+
+
 MOOD_INSTRUCTIONS = {
     "working": "It now wears over-ear headphones and sits typing on a small open laptop in front of it, focused and content, a faint glow from the screen on its face.",
     "waiting": "It now holds a small glowing crystal ball in both hands at chest height and gazes into it with wide curious eyes, waiting for an answer.",
@@ -222,12 +253,25 @@ class Endpoint:
     image_model: str
     # the relay (the account's model): costs are asked of it first
     cloud: bool
+    # the image-to-video model, when the host has the asynchronous video API (relay, Model Studio)
+    video_model: str = ""
 
     @property
     def dashscope(self) -> bool:
         """Model Studio's own host: no OpenAI images API, the native endpoint instead."""
         b = self.base_url.lower()
         return not self.cloud and ("dashscope" in b or "aliyuncs.com" in b)
+
+    @property
+    def clips(self) -> bool:
+        """Whether clips can be made here: a video model on a host that speaks the video API."""
+        return bool(self.video_model) and (self.cloud or self.dashscope)
+
+    @property
+    def video_host(self) -> str:
+        """Where ``/api/v1/uploads``, ``/api/v1/services/aigc/video-generation/…`` and
+        ``/api/v1/tasks/…`` live: the relay's root, or Model Studio's."""
+        return re.split(r"/compatible-mode|/api/v1|/v1$", self.base_url, maxsplit=1)[0].rstrip("/")
 
 
 class StudioError(Exception):
@@ -248,6 +292,7 @@ class Session:
     chosen: int | None = None
     face: str | None = None
     moods: dict[str, str] = field(default_factory=dict)
+    clips: dict[str, str] = field(default_factory=dict)
     message: str = ""
     tasks: list[asyncio.Task[Any]] = field(default_factory=list)
 
@@ -262,6 +307,7 @@ class Session:
             "chosen": self.chosen,
             "face": self.face,
             "moods": dict(self.moods),
+            "clips": dict(self.clips),
             "message": self.message,
         }
 
@@ -303,30 +349,40 @@ class AvatarStudio:
         hub = getattr(self.svc, "hub", None)
         cloud = bool(hub is not None and base == model_url(hub.cloud.base_url).rstrip("/"))
         ep = Endpoint(
-            base_url=base, api_key=key, image_model=(llm.image_model or "").strip(), cloud=cloud
+            base_url=base,
+            api_key=key,
+            image_model=(llm.image_model or "").strip(),
+            cloud=cloud,
+            video_model=(llm.video_model or "").strip(),
         )
         if not ep.image_model:
             if cloud:
-                ep.image_model = self._cloud_image_model()
+                ep.image_model = self._cloud_model("image", "qwen-image-3.0")
             elif ep.dashscope:
                 ep.image_model = DASHSCOPE_IMAGE_MODEL
+        if not ep.video_model:
+            if cloud:
+                ep.video_model = self._cloud_model("video", DASHSCOPE_VIDEO_MODEL)
+            elif ep.dashscope:
+                ep.video_model = DASHSCOPE_VIDEO_MODEL
         return ep if ep.image_model else None
 
-    def _cloud_image_model(self) -> str:
-        """The relay's image model, from the list it sent when the account was checked."""
+    def _cloud_model(self, kind: str, default: str) -> str:
+        """The relay's image or video model, from the list it sent when the account was checked."""
         hub = self.svc.hub
         for m in hub.models or []:
             nm = m.get("nanomuse") or {}
             arch = m.get("architecture") or {}
-            if nm.get("kind") == "image" or arch.get("output_modalities") == ["image"]:
+            if nm.get("kind") == kind or arch.get("output_modalities") == [kind]:
                 return str(m.get("id") or "")
-        return "qwen-image-3.0"
+        return default
 
     def view(self) -> dict[str, Any]:
         ep = self.endpoint()
         return {
             "available": ep is not None,
             "image_model": ep.image_model if ep else "",
+            "video_model": ep.video_model if ep and ep.clips else "",
             "cloud": bool(ep and ep.cloud),
             "current": self.current.view() if self.current else None,
         }
@@ -394,9 +450,12 @@ class AvatarStudio:
         ep = ep or self.endpoint()
         if ep is None:
             raise StudioError("no image model")
+        clips = len(CLIP_MOODS) if ep.clips else 0
         cost: dict[str, Any] = {
             "pictures": PICTURES_PER_FACE,
+            "clips": clips,
             "model": ep.image_model,
+            "clip_model": ep.video_model if clips else "",
             "cloud": ep.cloud,
         }
         if not ep.cloud:
@@ -404,7 +463,9 @@ class AvatarStudio:
         hub = self.svc.hub
         hub.cloud.api_key = ep.api_key
         try:
-            data = await hub.cloud.estimate(PICTURES_PER_FACE, ep.image_model, SIZE)
+            data = await hub.cloud.estimate(
+                PICTURES_PER_FACE, ep.image_model, SIZE, clips=clips, video_model=ep.video_model
+            )
         except CloudError as exc:
             cost["error"] = exc.describe()
             return cost
@@ -492,6 +553,7 @@ class AvatarStudio:
         session.errors = []
         session.face = f"face-{uuid.uuid4().hex[:8]}"
         session.moods = {}
+        session.clips = {}
         self._patch(session)
         session.tasks.append(asyncio.create_task(self._pose(session, ep)))
         return session.view()
@@ -528,6 +590,12 @@ class AvatarStudio:
                     shutil.copyfile(face_dir / "idle.webp", face_dir / f"{mood}.webp")
                     session.moods[mood] = f"avatar/{session.face}/{mood}.webp"
             self.svc.update_profile({"avatar": session.face})
+            if ep.clips:
+                # the face is on; the clips come after, one by one, and a failed one leaves its still
+                session.stage = "animating"
+                session.message = "The new look is on; the clips are being made."
+                self._patch(session)
+                await self._animate(session, ep, face_dir)
             session.stage = "done"
             session.message = "The new look is on."
             self._patch(session)
@@ -548,6 +616,26 @@ class AvatarStudio:
             session.stage = "failed"
             session.message = self._describe(exc)
             self._patch(session)
+
+    async def _animate(self, session: Session, ep: Endpoint, face_dir: Path) -> None:
+        """Four clips from the four stills, all at once; each failure is one line, not the end."""
+        assert session.face
+
+        async def one(mood: str) -> None:
+            try:
+                png = await asyncio.to_thread(self._png_of, face_dir / f"{mood}.webp")
+                mp4 = await self._clip(ep, png, clip_prompt(mood))
+                rel = f"avatar/{session.face}/{mood}.mp4"
+                await asyncio.to_thread((face_dir / f"{mood}.mp4").write_bytes, mp4)
+                session.clips[mood] = rel
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("avatar clip {} failed: {}", mood, exc)
+                session.errors.append(f"{mood} clip: {self._describe(exc)}")
+            self._patch(session)
+
+        await asyncio.gather(*(one(m) for m in CLIP_MOODS))
 
     def cancel(self, session_id: str, quiet: bool = False) -> dict[str, Any]:
         session = self._session(session_id)
@@ -605,6 +693,92 @@ class AvatarStudio:
     @staticmethod
     def _headers(ep: Endpoint) -> dict[str, str]:
         return {"Authorization": f"Bearer {ep.api_key}"} if ep.api_key else {}
+
+    # ------------------------------------------------------------------ clips
+    async def _clip(self, ep: Endpoint, png: bytes, prompt: str) -> bytes:
+        """One image-to-video clip through the asynchronous video API the phone's VideoGen
+        uses: the first frame to the provider's temporary storage, a task, polling, the MP4."""
+        host = ep.video_host
+        model = ep.video_model.replace("t2v", "i2v")
+        headers = self._headers(ep)
+        # 1. the first frame, uploaded with a signed policy from the provider
+        pr = await self._http.get(
+            f"{host}/api/v1/uploads",
+            params={"action": "getPolicy", "model": model},
+            headers=headers,
+        )
+        if pr.status_code >= 400:
+            raise StudioError("The upload policy was refused: " + self._http_error(pr))
+        policy = (pr.json() or {}).get("data") or {}
+        if not policy.get("upload_host"):
+            raise StudioError("The video provider gave no upload policy.")
+        key = f"{policy.get('upload_dir', '')}/first-frame.png"
+        form = {
+            "OSSAccessKeyId": str(policy.get("oss_access_key_id", "")),
+            "Signature": str(policy.get("signature", "")),
+            "policy": str(policy.get("policy", "")),
+            "x-oss-object-acl": str(policy.get("x_oss_object_acl", "private")),
+            "x-oss-forbid-overwrite": str(policy.get("x_oss_forbid_overwrite", "true")),
+            "key": key,
+        }
+        up = await self._http.post(
+            str(policy["upload_host"]),
+            data=form,
+            files={"file": ("first-frame.png", png, "image/png")},
+        )
+        if up.status_code >= 400:
+            raise StudioError(f"The first frame could not be uploaded (HTTP {up.status_code}).")
+        # 2. the task
+        parameters: dict[str, Any] = {
+            "watermark": False,
+            "resolution": "480P" if model.startswith("wan2.2") else "720P",
+        }
+        if model.startswith("wan2.5"):
+            parameters["duration"] = 5
+        elif model.startswith("wan") and not model.startswith("wan2.2"):
+            parameters["duration"] = CLIP_SECONDS
+        body = {
+            "model": model,
+            "input": {"prompt": prompt, "img_url": f"oss://{key}"},
+            "parameters": parameters,
+        }
+        cr = await self._http.post(
+            f"{host}/api/v1/services/aigc/video-generation/video-synthesis",
+            json=body,
+            headers={
+                **headers,
+                "X-DashScope-Async": "enable",
+                "X-DashScope-OssResourceResolve": "enable",
+            },
+        )
+        if cr.status_code >= 400:
+            raise StudioError(self._http_error(cr))
+        task = str(((cr.json() or {}).get("output") or {}).get("task_id") or "")
+        if not task:
+            raise StudioError("The video provider gave no task.")
+        # 3. polling, then the file
+        started = time.monotonic()
+        while True:
+            await asyncio.sleep(CLIP_POLL_S)
+            tr = await self._http.get(f"{host}/api/v1/tasks/{task}", headers=headers)
+            if tr.status_code >= 400:
+                raise StudioError(self._http_error(tr))
+            out = (tr.json() or {}).get("output") or {}
+            status = str(out.get("task_status") or "")
+            if status == "SUCCEEDED":
+                url = str(out.get("video_url") or "")
+                if not url:
+                    raise StudioError("The clip came back without a file.")
+                clip = await self._http.get(url)
+                if clip.status_code >= 400 or not clip.content:
+                    raise StudioError("The clip could not be fetched.")
+                return clip.content
+            if status in ("FAILED", "CANCELED", "UNKNOWN"):
+                raise StudioError(
+                    str(out.get("message") or out.get("code") or "The clip failed.")[:200]
+                )
+            if time.monotonic() - started > CLIP_MAX_WAIT_S:
+                raise StudioError("The clip took too long.")
 
     async def _image_of(self, r: httpx.Response) -> bytes:
         """The picture in an OpenAI images reply: inline, or fetched from the URL given."""
@@ -743,6 +917,7 @@ class AvatarStudio:
 
 __all__ = [
     "CANDIDATES",
+    "CLIP_MOODS",
     "MOODS",
     "PICTURES_PER_FACE",
     "AvatarStudio",

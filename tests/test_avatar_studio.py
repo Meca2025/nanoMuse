@@ -1,4 +1,4 @@
-"""The avatar studio: the words that ask for a face, the cost card, the four candidates, the pick, the poses."""
+"""The avatar studio: the words that ask for a face, the cost card, the four candidates, the pick, the poses, the clips."""
 
 from __future__ import annotations
 
@@ -13,7 +13,16 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from nanomuse.avatar.studio import PICTURES_PER_FACE, build_prompt, parse_choice, parse_request
+from nanomuse.avatar import studio as studio_mod
+from nanomuse.avatar.studio import (
+    CLIP_MOODS,
+    PICTURES_PER_FACE,
+    Endpoint,
+    build_prompt,
+    clip_prompt,
+    parse_choice,
+    parse_request,
+)
 from nanomuse.config import Settings
 from nanomuse.llm import MockLLM
 from nanomuse.server import create_app
@@ -132,6 +141,7 @@ def test_chat_request_becomes_a_card_and_the_agent_stays_out(studio_server) -> N
     assert client.get("/api/avatar").json() == {
         "available": True,
         "image_model": "draw-1",
+        "video_model": "",
         "cloud": False,
         "current": None,
     }
@@ -226,3 +236,152 @@ def test_without_an_image_model_the_chat_says_so(settings: Settings) -> None:
         assert "avatar" not in [
             e["type"] for e in client.get("/api/threads/main/events").json()["events"]
         ]
+
+
+# ----------------------------------------------------------------------------- clips
+@pytest.mark.parametrize(
+    ("base", "host"),
+    [
+        ("https://cloud.nanomuse.cn/v1", "https://cloud.nanomuse.cn"),
+        ("https://dashscope.aliyuncs.com/compatible-mode/v1", "https://dashscope.aliyuncs.com"),
+        ("https://dashscope.aliyuncs.com/api/v1", "https://dashscope.aliyuncs.com"),
+    ],
+)
+def test_video_host_is_the_root_of_the_model_url(base: str, host: str) -> None:
+    ep = Endpoint(
+        base_url=base,
+        api_key="k",
+        image_model="i",
+        cloud="nanomuse" in base,
+        video_model="wan2.2-i2v-flash",
+    )
+    assert ep.video_host == host and ep.clips
+
+
+def test_a_plain_openai_provider_has_stills_only() -> None:
+    ep = Endpoint(
+        base_url="https://api.openai.com/v1",
+        api_key="k",
+        image_model="gpt-image-1",
+        cloud=False,
+        video_model="x",
+    )
+    assert not ep.clips
+
+
+def test_clip_prompts_loop_on_a_white_background() -> None:
+    for mood in CLIP_MOODS:
+        p = clip_prompt(mood)
+        assert "white background" in p and "loops naturally" in p
+
+
+class FakeModelStudio(FakeImages):
+    """Model Studio's native endpoints: pictures from multimodal-generation, clips through the
+    asynchronous video API (policy, upload, task, polling, file)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.uploads: list[str] = []
+        self.tasks: dict[str, dict] = {}
+        self.polls = 0
+
+    def handler(self, request: httpx.Request) -> httpx.Response:  # noqa: PLR0911
+        path = request.url.path
+        if path.endswith("/multimodal-generation/generation"):
+            body = json.loads(request.content)
+            content = body["input"]["messages"][0]["content"]
+            if any("image" in c for c in content):
+                self.edits.append(body["model"])
+            else:
+                self.generations.append(body)
+            return httpx.Response(
+                200,
+                json={
+                    "output": {
+                        "choices": [
+                            {"message": {"content": [{"image": "https://oss.example.test/p.png"}]}}
+                        ]
+                    }
+                },
+            )
+        if path == "/p.png":
+            return httpx.Response(
+                200, content=_png((10, 200, 30)), headers={"content-type": "image/png"}
+            )
+        if path == "/api/v1/uploads":
+            assert request.url.params["model"] == "wan2.2-i2v-flash"
+            return httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "upload_host": "https://oss.example.test/bucket",
+                        "upload_dir": "tmp/dir",
+                        "oss_access_key_id": "id",
+                        "signature": "sig",
+                        "policy": "pol",
+                    }
+                },
+            )
+        if path == "/bucket":
+            assert b"first-frame.png" in request.content
+            self.uploads.append(path)
+            return httpx.Response(204)
+        if path.endswith("/video-generation/video-synthesis"):
+            assert request.headers["x-dashscope-async"] == "enable"
+            body = json.loads(request.content)
+            assert body["input"]["img_url"] == "oss://tmp/dir/first-frame.png"
+            assert body["parameters"] == {"watermark": False, "resolution": "480P"}
+            tid = f"task-{len(self.tasks)}"
+            self.tasks[tid] = body
+            return httpx.Response(200, json={"output": {"task_id": tid, "task_status": "PENDING"}})
+        if path.startswith("/api/v1/tasks/"):
+            self.polls += 1
+            tid = path.rsplit("/", 1)[1]
+            status = "SUCCEEDED" if self.polls > 2 else "RUNNING"
+            out = {"task_status": status}
+            if status == "SUCCEEDED":
+                out["video_url"] = f"https://oss.example.test/{tid}.mp4"
+            return httpx.Response(200, json={"output": out})
+        if path.endswith(".mp4"):
+            return httpx.Response(200, content=b"\x00\x00\x00\x18ftypmp42" + path.encode())
+        return httpx.Response(404, json={"message": "no such route " + path})
+
+
+def test_model_studio_face_gets_its_clips(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(studio_mod, "CLIP_POLL_S", 0.01)
+    settings.server.token = "secret-token"
+    settings.llm.base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    settings.llm.api_key = "k"
+    service = MuseService(settings, llm=MockLLM([]))
+    fake = FakeModelStudio()
+    app = create_app(settings, service)
+    with TestClient(app) as client:
+        service.avatar._http = httpx.AsyncClient(transport=httpx.MockTransport(fake.handler))
+        client.headers["Authorization"] = "Bearer secret-token"
+        view = client.get("/api/avatar").json()
+        assert view["available"] and view["video_model"] == "wan2.2-i2v-flash"
+        client.post("/api/threads/main/send", json={"text": "new avatar: a robot owl"})
+        ev = _wait(lambda: _avatar_event(client))
+        assert ev["cost"]["clips"] == 4 and ev["cost"]["clip_model"] == "wan2.2-i2v-flash"
+        client.post("/api/avatar/start", json={"session": ev["session"]})
+        _wait(lambda: _avatar_event(client)["stage"] == "choose")
+        client.post("/api/avatar/choose", json={"session": ev["session"], "index": 0})
+        ev = _wait(lambda: (e := _avatar_event(client))["stage"] == "done" and e, timeout=15)
+        assert set(ev["clips"]) == set(CLIP_MOODS)
+        assert ev["errors"] == []
+        face_dir = service.workspace() / "avatar" / ev["face"]
+        names = sorted(p.name for p in face_dir.iterdir())
+        assert [n for n in names if n.endswith(".mp4")] == [
+            "happy.mp4",
+            "idle.mp4",
+            "waiting.mp4",
+            "working.mp4",
+        ]
+        assert len(fake.tasks) == 4 and len(fake.uploads) == 4
+        # the clips reach the web through the files API, as video
+        got = client.get(f"/api/files/{ev['clips']['idle']}")
+        assert got.status_code == 200 and got.headers["content-type"].startswith("video/mp4")
+        # the face was on before the clips were made
+        assert client.get("/api/settings").json()["profile"]["avatar"] == ev["face"]

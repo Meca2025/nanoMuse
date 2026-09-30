@@ -29,8 +29,17 @@ is `[llm] image_model` in `config.toml` or *Connections → Image & video models
 empty means the relay's image model for the account, qwen-image-3.0 on Model Studio, none
 elsewhere — and then the chat says so plainly instead of trying.
 
-The phone's studio also animates the chosen face (short clips through the video model);
-the web and the desktop show stills. `GET /api/avatar` says whether a face can be drawn
-here and which session is under way; `POST /api/avatar/begin|start|choose|cancel` drive it
-(the chat card uses them). Candidates of finished sessions are cleared after a day; faces
+Once the stills are on, the studio makes the four short clips the phone's does — idle,
+working, waiting, happy; the same fixed motions — from them, when the endpoint has a video
+model: the relay's (`wan2.2-i2v-flash`) or Wan on Model Studio, through the asynchronous
+video API (an upload, a task, polling, the MP4), `[llm] video_model` overriding the choice.
+They land in `avatar/<face>/<mood>.mp4`; the card shows the stage `animating` while they
+come, the cost card counts them, and a clip that fails leaves its still. An OpenAI-compatible
+provider without a video API gives stills only. The web and the desktop play the clips at
+44 px and above — the dragon's own four ship with the web app — and show stills below that,
+in lists and pickers, under `prefers-reduced-motion`, or when a clip is missing.
+
+`GET /api/avatar` says whether a face can be drawn here (and with which clip model) and
+which session is under way; `POST /api/avatar/begin|start|choose|cancel` drive it (the chat
+card uses them). Candidates of finished sessions are cleared after a day; faces
 stay in the workspace as long as the profile — or you — want them.

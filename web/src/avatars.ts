@@ -1,9 +1,10 @@
 /**
  * The agent's face. Muse gives its agent a plush doll; nanoMuse has its dragon — five stills,
- * one per mood (public/avatars/dragon-*.webp), the same creature the Android app wears — or a
- * face the person had drawn for them in the avatar studio (served from the runtime's files),
- * or an emoji on a colour for anyone who prefers it. `profile.avatar` names the face; "" means
- * the emoji.
+ * one per mood (public/avatars/dragon-*.webp) and four short clips that move them (idle,
+ * working, waiting, happy — dragon-*.mp4, the same clips the Android app plays) — or a face the
+ * person had drawn for them in the avatar studio (served from the runtime's files, stills and,
+ * where the video model made them, clips), or an emoji on a colour for anyone who prefers it.
+ * `profile.avatar` names the face; "" means the emoji.
  */
 
 import { fileUrl } from "./api";
@@ -35,4 +36,27 @@ export function studioUrl(id: string, mood: string): string {
 export function dragonUrl(mood: string): string {
   const still: DragonMood = mood === "working" || mood === "waiting" || mood === "happy" || mood === "error" ? mood : "idle";
   return `/avatars/dragon-${still}.webp`;
+}
+
+/** The moods that move; "error" is a still, on the phone too. */
+export type ClipMood = "idle" | "working" | "waiting" | "happy";
+
+function clipMood(mood: string): ClipMood {
+  return mood === "working" || mood === "waiting" || mood === "happy" ? mood : "idle";
+}
+
+/** The dragon's clip for a mood — a few seconds, looping, back in the starting pose at the end. */
+export function dragonClipUrl(mood: string): string | null {
+  if (mood === "error") return null;
+  return `/avatars/dragon-${clipMood(mood)}.mp4`;
+}
+
+/**
+ * A studio face's clip for a mood, `avatar/<id>/<mood>.mp4` through the files API. The studio
+ * makes them after the stills when its endpoint has a video model; a face may have none, in
+ * which case the request fails and the still stays (see Avatar).
+ */
+export function studioClipUrl(id: string, mood: string): string | null {
+  if (mood === "error") return null;
+  return fileUrl(`avatar/${id}/${clipMood(mood)}.mp4`);
 }
