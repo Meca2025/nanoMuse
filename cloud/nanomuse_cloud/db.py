@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS accounts (
     credit_used_uy INTEGER NOT NULL DEFAULT 0, -- of which spent, beyond the daily cap
     clips_bonus   INTEGER NOT NULL DEFAULT 0   -- video clips beyond the free allowance
 );
-CREATE UNIQUE INDEX IF NOT EXISTS accounts_invite_code ON accounts(invite_code) WHERE invite_code<>'';
+-- accounts_invite_code (unique, partial) is made in _migrate(): the column is
+-- added there on databases from before 0.4, and an index in this script would
+-- run first and fail on them.
 CREATE TABLE IF NOT EXISTS api_keys (
     key_hash      TEXT PRIMARY KEY,
     prefix        TEXT NOT NULL,
@@ -152,6 +154,7 @@ class Database:
 
     def _migrate(self) -> None:
         """Columns added after the first release; CREATE TABLE IF NOT EXISTS leaves old files alone."""
+
         def cols(table: str) -> set[str]:
             return {r["name"] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
 
@@ -188,9 +191,7 @@ class Database:
         ):
             if col not in cols("accounts"):
                 self._conn.execute(f"ALTER TABLE accounts ADD COLUMN {col} {ddl}")
-        self._conn.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS accounts_invite_code ON accounts(invite_code) WHERE invite_code<>''"
-        )
+        self._conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS accounts_invite_code ON accounts(invite_code) WHERE invite_code<>''")
         for col, ddl in (("probe", "INTEGER NOT NULL DEFAULT 0"), ("status", "TEXT NOT NULL DEFAULT ''")):
             if col not in cols("video_tasks"):
                 self._conn.execute(f"ALTER TABLE video_tasks ADD COLUMN {col} {ddl}")
@@ -216,16 +217,12 @@ class Database:
 
     def codes_recent_for(self, id_hash: str, since: int) -> int:
         with self._lock:
-            r = self._conn.execute(
-                "SELECT COUNT(*) FROM codes WHERE id_hash=? AND created_at>=?", (id_hash, since)
-            ).fetchone()
+            r = self._conn.execute("SELECT COUNT(*) FROM codes WHERE id_hash=? AND created_at>=?", (id_hash, since)).fetchone()
         return int(r[0])
 
     def codes_recent_for_ip(self, ip: str, since: int) -> int:
         with self._lock:
-            r = self._conn.execute(
-                "SELECT COUNT(*) FROM codes WHERE ip=? AND created_at>=?", (ip, since)
-            ).fetchone()
+            r = self._conn.execute("SELECT COUNT(*) FROM codes WHERE ip=? AND created_at>=?", (ip, since)).fetchone()
         return int(r[0])
 
     def insert_code(self, id_hash: str, code_hash: str, ip: str, ttl_s: int) -> None:
@@ -412,7 +409,13 @@ class Database:
             )
             c.execute(
                 "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
-                (account_id, now(), "credit", 0, json.dumps({"credit_uy": int(credit_uy), "clips": int(clips), "from": "operator", "note": note[:200]})),
+                (
+                    account_id,
+                    now(),
+                    "credit",
+                    0,
+                    json.dumps({"credit_uy": int(credit_uy), "clips": int(clips), "from": "operator", "note": note[:200]}),
+                ),
             )
 
     def invitees(self, inviter_id: str, limit: int = 50) -> list[sqlite3.Row]:
@@ -465,9 +468,7 @@ class Database:
 
     def list_accounts(self, limit: int = 200) -> list[sqlite3.Row]:
         with self._lock:
-            return self._conn.execute(
-                "SELECT * FROM accounts ORDER BY created_at DESC LIMIT ?", (limit,)
-            ).fetchall()
+            return self._conn.execute("SELECT * FROM accounts ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
 
     def admin_accounts(self, day_start: int, limit: int = 500) -> list[sqlite3.Row]:
         """The operator's view: each account with today's spend (tokens and
@@ -579,15 +580,11 @@ class Database:
                     f"SELECT account_id, ts, kind, detail FROM events WHERE kind IN ({marks}) ORDER BY id DESC LIMIT ?",
                     (*kinds, limit),
                 ).fetchall()
-            return self._conn.execute(
-                "SELECT account_id, ts, kind, detail FROM events ORDER BY id DESC LIMIT ?", (limit,)
-            ).fetchall()
+            return self._conn.execute("SELECT account_id, ts, kind, detail FROM events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
 
     def event_counts(self, since: int) -> dict[str, int]:
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT kind, COUNT(*) AS n FROM events WHERE ts>=? GROUP BY kind", (since,)
-            ).fetchall()
+            rows = self._conn.execute("SELECT kind, COUNT(*) AS n FROM events WHERE ts>=? GROUP BY kind", (since,)).fetchall()
         return {r["kind"]: int(r["n"]) for r in rows}
 
     def delete_events(self, account_id: str) -> None:
@@ -597,8 +594,18 @@ class Database:
     # -- usage -----------------------------------------------------------------
 
     def charge(
-        self, account_id: str, kind: str, model: str, prompt_tokens: int, completion_tokens: int,
-        charged: int, request_id: str, cost_uy: int = 0, extra: str = "", cap_uy: int | None = None, day_start: int = 0,
+        self,
+        account_id: str,
+        kind: str,
+        model: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        charged: int,
+        request_id: str,
+        cost_uy: int = 0,
+        extra: str = "",
+        cap_uy: int | None = None,
+        day_start: int = 0,
     ) -> int:
         """Record one request. With `cap_uy` (the daily cap of a capped account),
         whatever part of this cost lies beyond today's cap is drawn from the
@@ -691,8 +698,12 @@ class Database:
             keys = self._conn.execute("SELECT COUNT(*) FROM api_keys WHERE revoked_at IS NULL").fetchone()
             devices = self._conn.execute("SELECT COUNT(*) FROM devices").fetchone()
         return {
-            "total": int(r["total"] or 0), "disabled": int(r["disabled"] or 0), "unlimited": int(r["unlimited"] or 0),
-            "with_password": int(r["with_password"] or 0), "live_keys": int(keys[0]), "devices": int(devices[0]),
+            "total": int(r["total"] or 0),
+            "disabled": int(r["disabled"] or 0),
+            "unlimited": int(r["unlimited"] or 0),
+            "with_password": int(r["with_password"] or 0),
+            "live_keys": int(keys[0]),
+            "devices": int(devices[0]),
         }
 
     def totals_since(self, since: int) -> sqlite3.Row:

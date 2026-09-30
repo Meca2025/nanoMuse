@@ -17,9 +17,7 @@ from nanomuse_cloud.identifiers import BadIdentifier, parse
 from nanomuse_cloud.senders import LogSender
 from nanomuse_cloud.service import Cloud
 
-PNG_1PX = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
-)
+PNG_1PX = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
 
 
 def fake_upstream() -> FastAPI:
@@ -33,17 +31,27 @@ def fake_upstream() -> FastAPI:
         if body.get("model") == "boom":
             return JSONResponse(status_code=500, content={"error": {"message": "upstream exploded"}})
         if body.get("stream"):
+
             async def gen():
                 for piece in ("你好", "，", "世界"):
-                    chunk = {"id": "c1", "object": "chat.completion.chunk", "model": body["model"],
-                             "choices": [{"index": 0, "delta": {"content": piece}, "finish_reason": None}]}
+                    chunk = {
+                        "id": "c1",
+                        "object": "chat.completion.chunk",
+                        "model": body["model"],
+                        "choices": [{"index": 0, "delta": {"content": piece}, "finish_reason": None}],
+                    }
                     yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
                 yield 'data: {"id":"c1","object":"chat.completion.chunk","choices":[],"usage":{"prompt_tokens":40,"completion_tokens":6}}\n\n'
                 yield "data: [DONE]\n\n"
+
             return StreamingResponse(gen(), media_type="text/event-stream")
-        return {"id": "c1", "object": "chat.completion", "model": body["model"],
-                "choices": [{"index": 0, "message": {"role": "assistant", "content": "hi"}, "finish_reason": "stop"}],
-                "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}}
+        return {
+            "id": "c1",
+            "object": "chat.completion",
+            "model": body["model"],
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "hi"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
+        }
 
     @up.post("/ds/api/v1/services/aigc/multimodal-generation/generation")
     async def draw(request: Request):
@@ -54,6 +62,7 @@ def fake_upstream() -> FastAPI:
     @up.get("/pic.png")
     async def pic():
         from fastapi.responses import Response
+
         return Response(content=PNG_1PX, media_type="image/png")
 
     # DashScope's asynchronous video API: submit, poll, upload policy.
@@ -87,10 +96,15 @@ def fake_upstream() -> FastAPI:
 def stack():
     up = fake_upstream()
     settings = Settings(
-        database=":memory:", secret="test-secret", admin_token="admin",
-        upstream_base="http://upstream/compat/v1", upstream_key="sk-upstream",
+        database=":memory:",
+        secret="test-secret",
+        admin_token="admin",
+        upstream_base="http://upstream/compat/v1",
+        upstream_key="sk-upstream",
         dashscope_base="http://upstream/ds/api/v1",
-        signup_tokens=1000, daily_cap_tokens=100_000, per_minute_requests=100,
+        signup_tokens=1000,
+        daily_cap_tokens=100_000,
+        per_minute_requests=100,
         public_base="http://cloud.test",
     )
     sender = LogSender()
@@ -172,8 +186,9 @@ async def test_chat_is_relayed_and_charged(stack):
     data = await sign_up(client, sender)
     headers = {"Authorization": f"Bearer {data['api_key']}"}
 
-    r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
     assert r.status_code == 200, r.text
     assert r.json()["choices"][0]["message"]["content"] == "hi"
     assert r.json()["model"] == "qwen3.8-27b"
@@ -188,14 +203,14 @@ async def test_chat_is_relayed_and_charged(stack):
     assert me["recent"][0]["kind"] == "chat" and me["recent"][0]["charged"] == 150
 
     # Flash is cheaper: 100×0.3 + 50×0.3 = 45.
-    r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.8-flash", "messages": [{"role": "user", "content": "hi"}]})
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-flash", "messages": [{"role": "user", "content": "hi"}]}
+    )
     assert r.headers["x-nanomuse-charged"] == "45"
 
     # A model we do not offer is refused before anything is forwarded.
     n = len(up.state.requests)
-    r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "gpt-4o", "messages": []})
+    r = await client.post("/v1/chat/completions", headers=headers, json={"model": "gpt-4o", "messages": []})
     assert r.status_code == 404 and r.json()["error"]["code"] == "model_not_offered"
     assert len(up.state.requests) == n
 
@@ -217,9 +232,12 @@ async def test_stream_refused_upstream_is_not_charged(stack):
     headers = {"Authorization": f"Bearer {data['api_key']}"}
     settings = app.state.settings
     object.__setattr__(settings, "models", settings.models + (type(settings.models[0])(id="boom", name="Boom", upstream="boom"),))
-    async with client.stream("POST", "/v1/chat/completions", headers=headers,
-                             json={"model": "boom", "stream": True,
-                                   "messages": [{"role": "user", "content": "hi " * 500}]}) as r:
+    async with client.stream(
+        "POST",
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "boom", "stream": True, "messages": [{"role": "user", "content": "hi " * 500}]},
+    ) as r:
         assert r.status_code == 200
         body = (await r.aread()).decode()
     lines = [ln for ln in body.split("\n") if ln.startswith("data:")]
@@ -235,9 +253,12 @@ async def test_stream_passes_through_and_charges_from_usage_chunk(stack):
     app, client, sender, up, cloud = stack
     data = await sign_up(client, sender)
     headers = {"Authorization": f"Bearer {data['api_key']}"}
-    async with client.stream("POST", "/v1/chat/completions", headers=headers,
-                             json={"model": "qwen3.8-27b", "stream": True,
-                                   "messages": [{"role": "user", "content": "hi"}]}) as r:
+    async with client.stream(
+        "POST",
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "qwen3.8-27b", "stream": True, "messages": [{"role": "user", "content": "hi"}]},
+    ) as r:
         assert r.status_code == 200
         assert r.headers["content-type"].startswith("text/event-stream")
         body = (await r.aread()).decode()
@@ -262,29 +283,29 @@ async def test_out_of_tokens_and_bad_keys(stack):
     headers = {"Authorization": f"Bearer {data['api_key']}"}
     # Seven full-price calls of 150 exhaust a 1000-token grant.
     for _ in range(7):
-        r = await client.post("/v1/chat/completions", headers=headers,
-                              json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+        r = await client.post(
+            "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+        )
         assert r.status_code == 200
-    r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
     assert r.status_code == 402 and r.json()["error"]["code"] == "out_of_tokens"
 
     # An admin top-up brings it back.
     me = (await client.get("/v1/me", headers=headers)).json()
     accounts = (await client.get("/v1/admin/accounts", headers={"X-Admin-Token": "admin"})).json()["accounts"]
     assert accounts[0]["hint"] == me["account"]["hint"]
-    r = await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"},
-                          json={"account_id": accounts[0]["id"], "tokens": 500})
+    r = await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"}, json={"account_id": accounts[0]["id"], "tokens": 500})
     assert r.status_code == 200
     # ...or by the phone number itself, which is hashed the same way.
-    r = await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"},
-                          json={"identifier": "138 0013 8000", "tokens": 0})
+    r = await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"}, json={"identifier": "138 0013 8000", "tokens": 0})
     assert r.status_code == 200 and r.json()["granted"] == 1500
-    r = await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"},
-                          json={"identifier": "nobody@example.com", "tokens": 1})
+    r = await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"}, json={"identifier": "nobody@example.com", "tokens": 1})
     assert r.status_code == 404
-    r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
     assert r.status_code == 200
     assert (await client.get("/v1/admin/accounts")).status_code == 401
 
@@ -302,15 +323,18 @@ async def test_images_go_through_dashscope_native(stack):
     data = await sign_up(client, sender)
     headers = {"Authorization": f"Bearer {data['api_key']}"}
     # 30 000 per picture is more than the 1 000 grant: refused first.
-    r = await client.post("/v1/images/generations", headers=headers,
-                          json={"model": "qwen-image-3.0", "prompt": "a small dragon", "size": "1024x1024"})
+    r = await client.post(
+        "/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": "a small dragon", "size": "1024x1024"}
+    )
     assert r.status_code == 402
     accounts = (await client.get("/v1/admin/accounts", headers={"X-Admin-Token": "admin"})).json()["accounts"]
-    await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"},
-                      json={"account_id": accounts[0]["id"], "tokens": 100_000})
+    await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"}, json={"account_id": accounts[0]["id"], "tokens": 100_000})
 
-    r = await client.post("/v1/images/generations", headers=headers,
-                          json={"model": "qwen-image-3.0", "prompt": "a small dragon", "size": "1024x1024", "response_format": "b64_json"})
+    r = await client.post(
+        "/v1/images/generations",
+        headers=headers,
+        json={"model": "qwen-image-3.0", "prompt": "a small dragon", "size": "1024x1024", "response_format": "b64_json"},
+    )
     assert r.status_code == 200, r.text
     assert base64.b64decode(r.json()["data"][0]["b64_json"]) == PNG_1PX
     kind, up_headers, up_body = up.state.requests[-1]
@@ -319,9 +343,12 @@ async def test_images_go_through_dashscope_native(stack):
     assert up_body["input"]["messages"][0]["content"] == [{"text": "a small dragon"}]
     assert r.headers["x-nanomuse-charged"] == "30000"
 
-    r = await client.post("/v1/images/edits", headers=headers,
-                          data={"model": "qwen-image-3.0", "prompt": "same dragon, waving", "n": "1", "size": "1024x1024"},
-                          files={"image": ("image0.png", PNG_1PX, "image/png")})
+    r = await client.post(
+        "/v1/images/edits",
+        headers=headers,
+        data={"model": "qwen-image-3.0", "prompt": "same dragon, waving", "n": "1", "size": "1024x1024"},
+        files={"image": ("image0.png", PNG_1PX, "image/png")},
+    )
     assert r.status_code == 200, r.text
     kind, up_headers, up_body = up.state.requests[-1]
     content = up_body["input"]["messages"][0]["content"]
@@ -334,8 +361,9 @@ async def test_unconfigured_upstream_answers_503(stack):
     app, client, sender, up, cloud = stack
     object.__setattr__(app.state.settings, "upstream_key", "")
     data = await sign_up(client, sender)
-    r = await client.post("/v1/chat/completions", headers={"Authorization": f"Bearer {data['api_key']}"},
-                          json={"model": "qwen3.8-27b", "messages": []})
+    r = await client.post(
+        "/v1/chat/completions", headers={"Authorization": f"Bearer {data['api_key']}"}, json={"model": "qwen3.8-27b", "messages": []}
+    )
     assert r.status_code == 503 and r.json()["error"]["code"] == "upstream_unconfigured"
     assert (await client.get("/healthz")).json()["ok"] is True
 
@@ -343,9 +371,13 @@ async def test_unconfigured_upstream_answers_503(stack):
 def make_stack(**overrides):
     up = fake_upstream()
     kwargs = dict(
-        database=":memory:", secret="test-secret", admin_token="admin",
-        upstream_base="http://upstream/compat/v1", upstream_key="sk-upstream",
-        dashscope_base="http://upstream/ds/api/v1", public_base="http://cloud.test",
+        database=":memory:",
+        secret="test-secret",
+        admin_token="admin",
+        upstream_base="http://upstream/compat/v1",
+        upstream_key="sk-upstream",
+        dashscope_base="http://upstream/ds/api/v1",
+        public_base="http://cloud.test",
     )
     kwargs.update(overrides)
     settings = Settings(**kwargs)
@@ -373,16 +405,29 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     # The released relay: anyone may sign in; the listed people have no cap,
     # the rest may spend ¥25 a day at the provider's list prices.
     app, client, sender, up, cloud = make_stack(
-        allowed_identifiers="Me@Example.com", signup_tokens=0, daily_cap_tokens=0, per_minute_requests=0,
-        daily_cap_cny=0.002, usd_cny=7.0,
+        allowed_identifiers="Me@Example.com",
+        signup_tokens=0,
+        daily_cap_tokens=0,
+        per_minute_requests=0,
+        daily_cap_cny=0.002,
+        usd_cny=7.0,
     )
     admin = {"X-Admin-Token": "admin"}
     guest = await sign_up(client, sender, identifier="13800138000", device="pixel")
     assert guest["account"]["member"] is False
     assert guest["spend"] == {
-        "currency": "CNY", "today": 0, "total": 0, "daily_cap": 0.002, "unlimited": False, "usd_cny": 7.0,
-        "today_usd": 0, "daily_cap_usd": 0.0003, "day_offset_h": 8, "resets_at": guest["spend"]["resets_at"],
-        "credit_left": 0, "left_today": 0.002,
+        "currency": "CNY",
+        "today": 0,
+        "total": 0,
+        "daily_cap": 0.002,
+        "unlimited": False,
+        "usd_cny": 7.0,
+        "today_usd": 0,
+        "daily_cap_usd": 0.0003,
+        "day_offset_h": 8,
+        "resets_at": guest["spend"]["resets_at"],
+        "credit_left": 0,
+        "left_today": 0.002,
     }
     # Prices travel with the model list, so the apps can show them.
     price = next(m for m in guest["models"] if m["id"] == "qwen3.8-27b")["nanomuse"]["price_cny"]
@@ -390,8 +435,9 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
 
     headers = {"Authorization": f"Bearer {guest['api_key']}"}
     # 100 prompt + 50 completion tokens at ¥3 / ¥12 per million = ¥0.0009.
-    r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
     assert r.status_code == 200
     me = (await client.get("/v1/me", headers=headers)).json()
     assert me["spend"]["today"] == 0.0009 and me["spend"]["total"] == 0.0009
@@ -399,10 +445,14 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     # Chats are priced after the fact, so one starts as long as today's spend is
     # under the cap: the second and third go through (¥0.0027), the fourth does not.
     for _ in range(2):
-        assert (await client.post("/v1/chat/completions", headers=headers,
-                                  json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})).status_code == 200
-    r = await client.post("/v1/chat/completions", headers=headers,
-                          json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+        assert (
+            await client.post(
+                "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+            )
+        ).status_code == 200
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
     assert r.status_code == 429 and r.json()["error"]["code"] == "daily_cap"
     assert "¥0.002" in r.json()["error"]["message"]
     # A picture that would go over the cap is refused before it is drawn.
@@ -414,8 +464,11 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     assert member["account"]["member"] is True and member["spend"]["daily_cap"] == 0 and member["spend"]["unlimited"] is True
     mh = {"Authorization": f"Bearer {member['api_key']}"}
     for _ in range(4):
-        assert (await client.post("/v1/chat/completions", headers=mh,
-                                  json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})).status_code == 200
+        assert (
+            await client.post(
+                "/v1/chat/completions", headers=mh, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+            )
+        ).status_code == 200
     r = await client.post("/v1/images/generations", headers=mh, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
     assert r.status_code == 200
     me = (await client.get("/v1/me", headers=mh)).json()
@@ -437,8 +490,11 @@ async def test_open_signup_members_uncapped_everyone_else_capped_in_yuan():
     assert r.status_code == 204
     me = (await client.get("/v1/me", headers=headers)).json()
     assert me["account"]["member"] is True and me["spend"]["unlimited"] is True
-    assert (await client.post("/v1/chat/completions", headers=headers,
-                              json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})).status_code == 200
+    assert (
+        await client.post(
+            "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+        )
+    ).status_code == 200
     listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
     g = next(a for a in listing["accounts"] if a["identifier"] == "+8613800138000")
     assert g["member"] is True and g["unlimited"] is True and g["listed"] is False
@@ -467,15 +523,20 @@ async def test_video_is_relayed_under_dashscope_paths(stack):
     app, client, sender, up, cloud = stack
     data = await sign_up(client, sender)
     headers = {"Authorization": f"Bearer {data['api_key']}"}
-    await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"},
-                      json={"identifier": "13800138000", "tokens": 1_000_000})
+    await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"}, json={"identifier": "13800138000", "tokens": 1_000_000})
 
     # The app's probe: an unknown name is 404, an offered one answers 400 on an empty body (nothing charged).
-    r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers=headers,
-                          json={"model": "wan2.6-i2v", "input": {}, "parameters": {}})
+    r = await client.post(
+        "/api/v1/services/aigc/video-generation/video-synthesis",
+        headers=headers,
+        json={"model": "wan2.6-i2v", "input": {}, "parameters": {}},
+    )
     assert r.status_code == 404
-    r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers=headers,
-                          json={"model": "wan2.2-i2v-flash", "input": {}, "parameters": {}})
+    r = await client.post(
+        "/api/v1/services/aigc/video-generation/video-synthesis",
+        headers=headers,
+        json={"model": "wan2.2-i2v-flash", "input": {}, "parameters": {}},
+    )
     assert r.status_code == 400 and r.json()["message"] == "prompt is required"
     assert (await client.get("/v1/me", headers=headers)).json()["tokens"]["used"] == 0
 
@@ -484,8 +545,11 @@ async def test_video_is_relayed_under_dashscope_paths(stack):
     assert r.status_code == 200 and r.json()["data"]["upload_dir"] == "tmp/x"
     kind, up_headers, q = up.state.requests[-1]
     assert kind == "uploads" and up_headers["authorization"] == "Bearer sk-upstream" and q["model"] == "wan2.2-i2v-flash"
-    r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers={**headers, "X-DashScope-OssResourceResolve": "enable"},
-                          json={"model": "wan2.2-i2v-flash", "input": {"prompt": "a dragon waves"}, "parameters": {"duration": 4}})
+    r = await client.post(
+        "/api/v1/services/aigc/video-generation/video-synthesis",
+        headers={**headers, "X-DashScope-OssResourceResolve": "enable"},
+        json={"model": "wan2.2-i2v-flash", "input": {"prompt": "a dragon waves"}, "parameters": {"duration": 4}},
+    )
     assert r.status_code == 200 and r.json()["output"]["task_id"] == "task-42"
     kind, up_headers, up_body = up.state.requests[-1]
     assert kind == "video" and up_headers["x-dashscope-async"] == "enable" and up_headers["x-dashscope-ossresourceresolve"] == "enable"
@@ -506,18 +570,27 @@ async def test_video_is_relayed_under_dashscope_paths(stack):
     r = await client.get("/api/v1/tasks/task-42", headers={"Authorization": f"Bearer {other['api_key']}"})
     assert r.status_code == 404
     # Too little grant left for a clip: refused before the provider is asked.
-    r = await client.post("/api/v1/services/aigc/video-generation/video-synthesis", headers={"Authorization": f"Bearer {other['api_key']}"},
-                          json={"model": "wan2.2-i2v-flash", "input": {"prompt": "x"}, "parameters": {}})
+    r = await client.post(
+        "/api/v1/services/aigc/video-generation/video-synthesis",
+        headers={"Authorization": f"Bearer {other['api_key']}"},
+        json={"model": "wan2.2-i2v-flash", "input": {"prompt": "x"}, "parameters": {}},
+    )
     assert r.status_code == 402
 
 
 async def test_unlimited_relay_meters_but_never_refuses():
     up = fake_upstream()
     settings = Settings(
-        database=":memory:", secret="test-secret", admin_token="admin",
-        upstream_base="http://upstream/compat/v1", upstream_key="sk-upstream",
-        dashscope_base="http://upstream/ds/api/v1", public_base="http://cloud.test",
-        signup_tokens=0, daily_cap_tokens=0, per_minute_requests=0,
+        database=":memory:",
+        secret="test-secret",
+        admin_token="admin",
+        upstream_base="http://upstream/compat/v1",
+        upstream_key="sk-upstream",
+        dashscope_base="http://upstream/ds/api/v1",
+        public_base="http://cloud.test",
+        signup_tokens=0,
+        daily_cap_tokens=0,
+        per_minute_requests=0,
     )
     assert settings.unlimited
     sender = LogSender()
@@ -528,8 +601,9 @@ async def test_unlimited_relay_meters_but_never_refuses():
     assert data["tokens"]["unlimited"] is True and data["tokens"]["granted"] == 0
     headers = {"Authorization": f"Bearer {data['api_key']}"}
     for _ in range(3):
-        r = await client.post("/v1/chat/completions", headers=headers,
-                              json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]})
+        r = await client.post(
+            "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+        )
         assert r.status_code == 200
     r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
     assert r.status_code == 200
@@ -640,7 +714,10 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
     assert r.status_code == 200 and r.json() == {"on": True, "samples": 0}
     # a plain reply, with a picture in the request
-    picture = {"role": "user", "content": [{"type": "text", "text": "what is this"}, {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}]}
+    picture = {
+        "role": "user",
+        "content": [{"type": "text", "text": "what is this"}, {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}],
+    }
     r = await client.post(
         "/v1/chat/completions",
         headers={**headers, "User-Agent": "nanoMuse/0.1.22 (Android)", "Accept-Language": "zh-CN"},
@@ -648,8 +725,9 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     )
     assert r.status_code == 200
     # and a streamed one
-    async with client.stream("POST", "/v1/chat/completions", headers=headers,
-                             json={"model": "qwen3.8-27b", "stream": True, "messages": msgs}) as r:
+    async with client.stream(
+        "POST", "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "stream": True, "messages": msgs}
+    ) as r:
         await r.aread()
     me = (await client.get("/v1/me", headers=headers)).json()
     assert me["contribute"] == {"on": True, "samples": 2}
@@ -685,3 +763,32 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     assert cloud.db.sample_count() == 1
     assert (await client.post("/v1/auth/delete", headers=headers)).status_code == 204
     assert cloud.db.sample_count() == 0
+
+
+def test_database_from_before_0_4_migrates(tmp_path):
+    """A relay upgraded in place: the accounts table lacks the 0.4 columns and the
+    partial unique index on invite_code must not be attempted before they exist."""
+    import sqlite3
+
+    from nanomuse_cloud.db import Database
+
+    path = str(tmp_path / "old.db")
+    conn = sqlite3.connect(path)
+    conn.executescript(
+        """
+        CREATE TABLE accounts (
+            id TEXT PRIMARY KEY, id_hash TEXT NOT NULL UNIQUE, channel TEXT NOT NULL, hint TEXT NOT NULL,
+            created_at INTEGER NOT NULL, disabled INTEGER NOT NULL DEFAULT 0, grant_tokens INTEGER NOT NULL DEFAULT 0,
+            note TEXT NOT NULL DEFAULT ''
+        );
+        INSERT INTO accounts (id, id_hash, channel, hint, created_at) VALUES ('a1', 'h1', 'email', 'a***@x', 1);
+        """
+    )
+    conn.commit()
+    conn.close()
+    db = Database(path)
+    cols = {r["name"] for r in db._conn.execute("PRAGMA table_info(accounts)").fetchall()}
+    assert {"invite_code", "invited_by", "credit_uy", "clips_bonus", "contribute"} <= cols
+    names = {r["name"] for r in db._conn.execute("PRAGMA index_list(accounts)").fetchall()}
+    assert "accounts_invite_code" in names
+    assert db._conn.execute("SELECT invite_code, contribute FROM accounts WHERE id='a1'").fetchone()[0] == ""
