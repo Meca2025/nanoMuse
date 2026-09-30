@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
-import { dragonUrl, isDragon, isMascot, isPlush, plushUrl } from "../avatars";
+import { dragonUrl, isDragon, studioUrl } from "../avatars";
 import { useMood } from "../mood";
 import type { Profile, Status } from "../types";
 import { cx } from "../util";
-import { RedPanda } from "./RedPanda";
 
 /**
- * The agent's face: the red panda (drawn live, posed by what the agent is doing), a plush
- * doll (profile.avatar) or an emoji on a colour. The dolls and the emoji move as a whole —
- * breathe when idle, sway while working, hop when waiting — the panda moves on its own.
- * Tap it and it wiggles; the panda is pleased about it.
+ * The agent's face: the dragon (a still per mood, posed by what the agent is doing), a face
+ * drawn in the avatar studio (the same five stills) or an emoji on a colour. All move as a
+ * whole — breathe when idle, sway while working, hop when waiting. Tap it and it wiggles; the
+ * dragon is pleased about it.
  */
 export function Avatar({
   profile,
@@ -37,23 +36,20 @@ export function Avatar({
   const mood = useMood(status);
   const state = status?.state ?? "idle";
   const color = profile?.color ?? "#0064d4";
-  const panda = !!profile && isMascot(profile.avatar);
-  // the dragon is the default: no profile yet, or a profile that names it
+  // the dragon is the default: no profile yet, or a profile that names it (or a retired face)
   const dragon = !profile || isDragon(profile.avatar);
-  const plush = !panda && !dragon && isPlush(profile?.avatar) ? profile!.avatar : null;
-  const motion = panda
-    ? wiggle
-      ? "avatar-wiggle"
-      : ""
-    : wiggle
-      ? "avatar-wiggle"
-      : still
-        ? ""
-        : state === "working"
-          ? "avatar-working"
-          : state === "waiting"
-            ? "avatar-waiting"
-            : "avatar-idle";
+  // a face from the studio: anything else that is not the emoji
+  const studio = !dragon && profile?.avatar ? profile.avatar : null;
+  const pose = wiggle ? "happy" : still ? "idle" : mood;
+  const motion = wiggle
+    ? "avatar-wiggle"
+    : still
+      ? ""
+      : state === "working"
+        ? "avatar-working"
+        : state === "waiting"
+          ? "avatar-waiting"
+          : "avatar-idle";
 
   const label = `${profile?.name ?? "nanoMuse"} avatar`;
   const box = cx("relative inline-block shrink-0 select-none rounded-full", className);
@@ -61,22 +57,12 @@ export function Avatar({
     <>
       <span
         className={cx("block h-full w-full overflow-hidden rounded-full will-change-transform", motion)}
-        style={
-          panda
-            ? undefined
-            : dragon
-              ? { background: "#f1efeb" }
-              : plush
-                ? { background: "#eadfcd" }
-                : { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 60%, #ffffff))` }
-        }
+        style={dragon || studio ? { background: "#f1efeb" } : { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 60%, #ffffff))` }}
       >
-        {panda ? (
-          <RedPanda mood={wiggle ? "happy" : mood} size={size} still={still && !wiggle} />
-        ) : dragon ? (
-          <img src={dragonUrl(wiggle ? "happy" : still ? "idle" : mood)} alt="" draggable={false} className="h-full w-full object-cover" />
-        ) : plush ? (
-          <img src={plushUrl(plush)} alt="" draggable={false} className="h-full w-full object-cover" />
+        {dragon ? (
+          <img src={dragonUrl(pose)} alt="" draggable={false} className="h-full w-full object-cover" />
+        ) : studio ? (
+          <img src={studioUrl(studio, pose)} alt="" draggable={false} className="h-full w-full object-cover" />
         ) : (
           <span className="flex h-full w-full items-center justify-center leading-none drop-shadow-sm" style={{ fontSize: size * 0.5 }}>
             {profile?.emoji ?? "✨"}

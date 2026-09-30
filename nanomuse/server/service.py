@@ -138,9 +138,9 @@ _QUIET_HOURS_RE = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)-([01]?\d|2[0-3]):([0-
 @dataclass
 class Profile:
     name: str = "nanoMuse"
-    # the face: "dragon" (the one the Android app wears; stills per mood), "panda" (the red
-    # panda the app draws live), one of the plush dolls shipped with the app
-    # (web/public/avatars), or "" for the emoji
+    # the face: "dragon" (the one the Android app wears; stills per mood), a face drawn in
+    # the avatar studio (its id names files under the workspace), or "" for the emoji; the
+    # red panda and the dolls of 0.1.22 are gone — a profile naming one wears the dragon
     avatar: str = "dragon"
     emoji: str = "✨"
     color: str = "#0064d4"

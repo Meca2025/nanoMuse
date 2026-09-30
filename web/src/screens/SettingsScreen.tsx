@@ -38,7 +38,7 @@ const MODES: Array<{ id: "ask" | "strict" | "auto"; title: string; text: string;
 ];
 
 export function SettingsScreen() {
-  const { state, refreshSettings, setTab, toast } = useStore();
+  const { state, refreshSettings, setTab, toast, send } = useStore();
   const s = state.settings;
   const [identity, setIdentity] = useState<Identity>(() => identityOf(state.profile, DRAGON, AVATAR_COLORS[0]));
   const [saving, setSaving] = useState(false);
@@ -88,7 +88,17 @@ export function SettingsScreen() {
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">
         {/* who it is */}
         <Section title={name}>
-          <IdentityForm value={identity} onChange={setIdentity} suggestions={false} inputCls={settingsInput} />
+          <IdentityForm
+            value={identity}
+            onChange={setIdentity}
+            suggestions={false}
+            inputCls={settingsInput}
+            onGenerate={(description) => {
+              // the chat draws it: the runtime reads the request, shows the cost, then four to choose from
+              setTab("chat");
+              void send("main", t("New avatar: {description}", { description })).catch((e: Error) => toast(e.message));
+            }}
+          />
           <button
             type="button"
             disabled={!dirty || saving}

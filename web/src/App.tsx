@@ -1,10 +1,10 @@
 import { LayoutGrid, Lightbulb, Loader2, MessageCircle, Newspaper, SquareCheckBig, WifiOff } from "lucide-react";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { setToken } from "./api";
+import { dragonUrl } from "./avatars";
 import { Avatar } from "./components/Avatar";
 import { FileViewer } from "./components/FileViewer";
 import { FirstSignInSteps, useFirstSignIn } from "./components/FirstSignInSteps";
-import { RedPanda } from "./components/RedPanda";
 import { Sidebar } from "./components/Sidebar";
 import { ChatScreen } from "./screens/ChatScreen";
 import { FeedScreen } from "./screens/FeedScreen";
@@ -192,7 +192,7 @@ function TokenGate() {
   const t = useT();
   return (
     <div className="mx-auto flex h-[100dvh] max-w-md flex-col items-center justify-center px-6 text-center">
-      <RedPanda mood="sleepy" size={96} />
+      <img src={dragonUrl("idle")} alt="" draggable={false} className="h-24 w-24 rounded-full bg-[#f1efeb] object-cover" />
       <h1 className="mt-4 text-[22px] font-bold">{t("Connect to your nanoMuse")}</h1>
       <p className="mt-2 text-[14px] text-muted">
         {t("This app talks to the nanoMuse server you run yourself. Scan the QR code printed by")}{" "}
