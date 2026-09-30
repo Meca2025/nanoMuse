@@ -450,6 +450,8 @@ def test_prices_and_day_boundary():
     assert m.chat_cost_uy(1_000_000, 0) == 3_000_000 and m.chat_cost_uy(0, 1_000_000) == 12_000_000
     assert m.chat_cost_uy(333, 21) == round(333 * 3 + 21 * 12)
     img = s.model("qwen-image-3.0")
+    assert s.model("qwen-image-3.0-pro") is img  # what 0.1.21 phones still ask for
+    assert s.model("MiniMax/MiniMax-H3") is None and s.model("nope") is None
     assert img.image_cost_uy("1024*1024") == 180_000 and img.image_cost_uy("2048x2048") == 180_000 and img.image_cost_uy(None) == 180_000
     vid = s.model("wan2.2-i2v-flash")
     assert vid.video_cost_uy(5) == 500_000 and vid.video_cost_uy(vid.clip_seconds) == 500_000 and vid.video_cost_uy(0) == 0

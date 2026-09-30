@@ -111,6 +111,14 @@ fun AvatarStudioScreen(onBack: () -> Unit, onOpenSoul: () -> Unit, onOpenMediaMo
     val generating = slots.any { it is AvatarStudio.Slot.Loading }
     // Read each time: the media page may have changed it while this screen was below it.
     val endpoint = ImageGen.endpoint(context)
+    // Pictures paid from the Cloud allowance are priced and confirmed first; a user's own key is not asked.
+    var pendingCost by remember { mutableStateOf<Pair<io.github.nanomuse.cloud.FaceCost.Job, () -> Unit>?>(null) }
+    fun priced(job: io.github.nanomuse.cloud.FaceCost.Job, run: () -> Unit) {
+        if (io.github.nanomuse.cloud.FaceCost.onCloud(context)) pendingCost = job to run else run()
+    }
+    pendingCost?.let { (job, run) ->
+        FaceCostDialog(job = job, onConfirm = { pendingCost = null; run() }, onDismiss = { pendingCost = null })
+    }
 
     // The preview face cycles through its moods so the user sees what they got.
     LaunchedEffect(current?.createdAt) {
@@ -141,7 +149,7 @@ fun AvatarStudioScreen(onBack: () -> Unit, onOpenSoul: () -> Unit, onOpenMediaMo
                         if (current != null) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.nm_avatar_menu_regenerate_moods)) },
-                                onClick = { menu = false; AvatarStudio.generateMoods(context, force = true) },
+                                onClick = { menu = false; priced(io.github.nanomuse.cloud.FaceCost.poses()) { AvatarStudio.generateMoods(context, force = true) } },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.nm_avatar_menu_reset), color = MaterialTheme.colorScheme.error) },
@@ -239,7 +247,7 @@ fun AvatarStudioScreen(onBack: () -> Unit, onOpenSoul: () -> Unit, onOpenMediaMo
                     }
                     Spacer(Modifier.height(14.dp))
                     Button(
-                        onClick = { AvatarStudio.generateCandidates(context, description, style) },
+                        onClick = { priced(io.github.nanomuse.cloud.FaceCost.candidates()) { AvatarStudio.generateCandidates(context, description, style) } },
                         enabled = !generating,
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = CircleShape,

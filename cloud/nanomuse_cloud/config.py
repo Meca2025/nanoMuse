@@ -246,6 +246,12 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
 )
 
 
+# Ids older app builds still send, and what answers them now. Video is not
+# aliased: a MiniMax-shaped request body does not fit Wan, and the app's probe
+# simply finds the old model gone and stops animating.
+LEGACY_MODEL_IDS: dict[str, str] = {"qwen-image-3.0-pro": "qwen-image-3.0"}
+
+
 def _env(name: str, default: str = "") -> str:
     v = os.environ.get(name)
     return default if v is None or v == "" else v
@@ -375,6 +381,11 @@ class Settings:
         for m in self.models:
             if m.id == model_id:
                 return m
+        # Phones from before 0.4 still ask for the model the menu used to carry;
+        # same API shape, so the cheaper sibling answers in its place.
+        alias = LEGACY_MODEL_IDS.get(model_id)
+        if alias and alias != model_id:
+            return self.model(alias)
         return None
 
     @property

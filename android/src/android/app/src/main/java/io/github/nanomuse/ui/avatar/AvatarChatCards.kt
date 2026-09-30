@@ -290,6 +290,42 @@ fun AvatarShareCard(description: String, onDismiss: () -> Unit) {
     if (sheet) AvatarShareSheet(onDismiss = { sheet = false })
 }
 
+/**
+ * Before a new face is drawn on the Cloud allowance: the estimate (already fetched by the
+ * view model — [text] is the whole sentence), what is left today, and a yes. [blocked] when
+ * the allowance does not cover it; the person may still go ahead and pay from what is left.
+ */
+@Composable
+fun AvatarConfirmCard(text: String, blocked: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    ChatCardFrame {
+        Text(
+            text = stringResource(R.string.nm_face_cost_title),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(text = text, fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(
+                onClick = onConfirm,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (blocked) MuseTones.fill else MuseTones.action,
+                    contentColor = if (blocked) MaterialTheme.colorScheme.onSurface else Color.White,
+                ),
+            ) {
+                Text(stringResource(if (blocked) R.string.nm_face_cost_anyway else R.string.nm_face_cost_go), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.nm_face_cost_not_now), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
 @Composable
 private fun ChatCardFrame(content: @Composable () -> Unit) {
     Surface(

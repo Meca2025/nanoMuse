@@ -21,10 +21,10 @@ import org.json.JSONArray
  *    for in the chat ([ImageGen]; any provider with the OpenAI images API, or Alibaba Cloud
  *    Model Studio's qwen-image);
  *  - the **video model** — the animated avatar and short clips the user asks for ([VideoGen];
- *    Model Studio's asynchronous video API, MiniMax-H3 by default).
+ *    Model Studio's asynchronous video API, Wan 2.2 Flash by default: ¥0.10 a second at 480P).
  *
- * The recommended setup is one Model Studio key for all three — chat, qwen-image-3.0-pro,
- * MiniMax-H3 — but each model is chosen on its own, so any part can come from a different
+ * The recommended setup is one Model Studio key for all three — chat, qwen-image-3.0,
+ * wan2.2-i2v-flash — but each model is chosen on its own, so any part can come from a different
  * provider. The image model is picked automatically from the first eligible provider so an
  * avatar change works out of the box; the video model follows the image provider when that one
  * is Model Studio, and can be switched off or moved to another Model Studio provider.
@@ -36,7 +36,7 @@ object MediaModels {
     private const val KEY_VIDEO_INSTANCE = "media.video.provider_id"
     private const val KEY_VIDEO_MODEL = "media.video.model"
     private const val KEY_ANIMATE = "media.animate_avatar"
-    const val DEFAULT_VIDEO_MODEL = "MiniMax/MiniMax-H3"
+    const val DEFAULT_VIDEO_MODEL = "wan2.2-i2v-flash"
     const val DEEP_LINK = "minis://settings/media"
 
     fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -180,7 +180,7 @@ object MediaModels {
             }
             if (video == null) {
                 append("- No video model is set: the avatar stays as still pictures, and clips cannot be made. If asked, explain that a video model is needed ")
-                append("(Alibaba Cloud Model Studio: MiniMax/MiniMax-H3 or a Wan video model, picked in the setting) and give the link [Image & video models](").append(DEEP_LINK).append(").")
+                append("(Alibaba Cloud Model Studio: a Wan video model such as wan2.2-i2v-flash, or MiniMax/MiniMax-H3, picked in the setting) and give the link [Image & video models](").append(DEEP_LINK).append(").")
             }
         }.trimEnd()
     }

@@ -462,6 +462,12 @@ internal sealed class FlatChatItem {
         override val contentType = "nm_avatar_share"
     }
 
+    /** nanoMuse: the cost of a new face on the Cloud allowance, asked before drawing (the text is the whole sentence). */
+    data class NanoMuseAvatarConfirm(val messageId: String, val text: String) : FlatChatItem() {
+        override val key = "nm_avatar_confirm:$messageId"
+        override val contentType = "nm_avatar_confirm"
+    }
+
     data class AssistantTyping(val messageId: String) : FlatChatItem() {
         override val key = "typing:$messageId"
         override val contentType = "typing"
@@ -576,6 +582,7 @@ internal fun buildFlatChatItems(
             is FlatChatItem.NanoMuseNaming -> item.copy(messageId = "${item.messageId}#$n") // nanoMuse
             is FlatChatItem.NanoMuseAvatarOptions -> item.copy(messageId = "${item.messageId}#$n") // nanoMuse
             is FlatChatItem.NanoMuseAvatarShare -> item.copy(messageId = "${item.messageId}#$n") // nanoMuse
+            is FlatChatItem.NanoMuseAvatarConfirm -> item.copy(messageId = "${item.messageId}#$n") // nanoMuse
             is FlatChatItem.AssistantTyping -> item.copy(messageId = "${item.messageId}#$n")
             is FlatChatItem.AssistantError -> item.copy(messageId = "${item.messageId}#$n")
             is FlatChatItem.AssistantLegacyContent -> FlatChatItem.AssistantLegacyContent(
@@ -750,6 +757,7 @@ internal fun buildFlatChatItems(
                 "nm_naming" -> out.add(dedupe(FlatChatItem.NanoMuseNaming(message.id))) // nanoMuse
                 "nm_avatar_options" -> out.add(dedupe(FlatChatItem.NanoMuseAvatarOptions(message.id))) // nanoMuse
                 "nm_avatar_share" -> out.add(dedupe(FlatChatItem.NanoMuseAvatarShare(message.id, block.content))) // nanoMuse
+                "nm_avatar_confirm" -> out.add(dedupe(FlatChatItem.NanoMuseAvatarConfirm(message.id, block.content))) // nanoMuse
                 else -> out.add(dedupe(FlatChatItem.AssistantToolUse(
                     messageId = message.id,
                     block = block,
