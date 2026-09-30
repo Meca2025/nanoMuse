@@ -18,6 +18,7 @@ import contextlib
 import json
 import os
 import signal
+import sys
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -89,7 +90,8 @@ class Run:
         if p is None or p.returncode is not None:
             return False
         try:
-            if os.name == "posix":
+            if sys.platform != "win32":
+                # the whole process group: the agent and the helpers it forked
                 os.killpg(p.pid, signal.SIGTERM)
             else:
                 p.terminate()
@@ -373,7 +375,7 @@ async def start_run(
                 stderr=asyncio.subprocess.PIPE,
                 stdin=asyncio.subprocess.DEVNULL,
                 cwd=run.workspace or None,
-                start_new_session=(os.name == "posix"),
+                start_new_session=(sys.platform != "win32"),
                 env={**os.environ, "NO_COLOR": "1", "CI": "1"},
             )
         except FileNotFoundError as exc:
