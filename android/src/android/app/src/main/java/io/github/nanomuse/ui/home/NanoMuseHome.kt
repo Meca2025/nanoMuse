@@ -155,9 +155,11 @@ fun NanoMuseHome(
     var setupDone by remember { mutableStateOf(FirstRunSetup.isDone(context)) }
     val hasProviders = providerConfig.instances.isNotEmpty()
     val hasGroups = providerConfig.modelGroups.isNotEmpty()
+    // The account is required: the flow flips when the sign-in lands (or the key is revoked).
+    val signedIn by io.github.nanomuse.cloud.NanoMuseCloud.signedIn(context).collectAsState()
     val phase = when {
-        !configLoaded || sessions == null -> HomePhase.LOADING
-        FirstRunSetup.needed(hasProviders, sessions!!.isNotEmpty(), setupDone) -> HomePhase.SETUP
+        !configLoaded || sessions == null || signedIn == null -> HomePhase.LOADING
+        FirstRunSetup.needed(signedIn == true, hasProviders, sessions!!.isNotEmpty(), setupDone) -> HomePhase.SETUP
         else -> HomePhase.HOME
     }
     // Once the chat has been shown the setup is over for good: an empty main chat is a draft
@@ -447,10 +449,10 @@ fun NanoMuseHome(
             HomePhase.LOADING -> Surface(color = MuseTones.surface, modifier = Modifier.fillMaxSize()) {}
             HomePhase.SETUP -> FirstRunSetupScreen(
                 agentName = agentName,
-                hasProviders = hasProviders,
+                signedIn = signedIn == true,
                 hasGroups = hasGroups,
+                onSignIn = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
                 onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
-                onStartNow = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
                 onSelectModels = { navController.safeNavigate(Routes.ONBOARDING_MODELS) },
                 onStart = { FirstRunSetup.markDone(context); setupDone = true },
                 onSettings = { navController.safeNavigate(Routes.SETTINGS) },

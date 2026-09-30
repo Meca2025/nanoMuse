@@ -6359,8 +6359,14 @@ class ChatViewModel(
                     }
                 }
                 io.github.nanomuse.avatar.AvatarFlow.Choice.Regenerate -> {
-                    viewModelScope.launch { nmAppendUserLine(sid, text) }
-                    flow.regenerate(context)
+                    val desc = (flow.stage.value as? io.github.nanomuse.avatar.AvatarFlow.Stage.Choosing)?.description.orEmpty()
+                    viewModelScope.launch {
+                        nmAppendUserLine(sid, text)
+                        if (flow.regenerate(context)) {
+                            nmAppendAssistantLine(sid, context.getString(R.string.nm_avatar_drawing_again))
+                            nmAnnounceWhenDrawn(sid, desc)
+                        }
+                    }
                     return true
                 }
                 null -> Unit
@@ -6389,10 +6395,12 @@ class ChatViewModel(
             nmAppendUserLine(realSid, text)
             val reference = withContext(Dispatchers.IO) { flow.loadReference(context, referenceUri) }
             if (flow.start(context, realSid, desc, reference)) {
-                // The reply is persisted right away so the transcript never ends on an
-                // unanswered user turn (which the resume banner would flag on reload).
-                nmAppendAssistantLine(realSid, flow.optionsReadyText(context, desc))
+                // Honest about the wait: pictures take a while, so the reply says "drawing
+                // now" at once (persisted, so the transcript never ends on an unanswered
+                // user turn) and "here they are" only when the tiles have actually landed.
+                nmAppendAssistantLine(realSid, context.getString(R.string.nm_avatar_drawing_now, desc))
                 nmShowAvatarCard()
+                nmAnnounceWhenDrawn(realSid, desc)
             } else {
                 // No image model: say so as the agent, and point at the setting.
                 val why = io.github.nanomuse.avatar.AvatarStudio.error.value
@@ -6401,6 +6409,28 @@ class ChatViewModel(
             }
         }
         return true
+    }
+
+    /**
+     * Waits for the candidate tiles to finish (every slot Ready or Failed) and then says so in
+     * the chat — "pick one" when at least one picture came, what went wrong when none did.
+     * Nothing is said if the person already chose or cancelled in the meantime.
+     */
+    private fun nmAnnounceWhenDrawn(sid: String, desc: String) {
+        viewModelScope.launch {
+            val slots = io.github.nanomuse.avatar.AvatarStudio.slots.first { list ->
+                list.none { it is io.github.nanomuse.avatar.AvatarStudio.Slot.Loading }
+            }
+            val flow = io.github.nanomuse.avatar.AvatarFlow
+            if (!flow.isActiveIn(sid) || flow.stage.value !is io.github.nanomuse.avatar.AvatarFlow.Stage.Choosing) return@launch
+            if (slots.any { it is io.github.nanomuse.avatar.AvatarStudio.Slot.Ready }) {
+                nmAppendAssistantLine(sid, flow.optionsReadyText(context, desc))
+            } else {
+                val why = (slots.firstOrNull { it is io.github.nanomuse.avatar.AvatarStudio.Slot.Failed } as? io.github.nanomuse.avatar.AvatarStudio.Slot.Failed)?.message
+                    ?: context.getString(R.string.nm_avatar_no_provider)
+                nmAppendAssistantLine(sid, context.getString(R.string.nm_avatar_cannot_start, why))
+            }
+        }
     }
 
     private fun nmShowAvatarCard() {
@@ -6426,7 +6456,15 @@ class ChatViewModel(
 
     /** "Again" on the options card. */
     fun nmRegenerateAvatar() {
-        io.github.nanomuse.avatar.AvatarFlow.regenerate(context)
+        val flow = io.github.nanomuse.avatar.AvatarFlow
+        val sid = realSessionId.ifEmpty { sessionId }
+        val desc = (flow.stage.value as? io.github.nanomuse.avatar.AvatarFlow.Stage.Choosing)?.description.orEmpty()
+        if (flow.regenerate(context) && realSessionId.isNotEmpty()) {
+            viewModelScope.launch {
+                nmAppendAssistantLine(sid, context.getString(R.string.nm_avatar_drawing_again))
+                nmAnnounceWhenDrawn(sid, desc)
+            }
+        }
     }
 
     /** The options card was dismissed without a pick. */

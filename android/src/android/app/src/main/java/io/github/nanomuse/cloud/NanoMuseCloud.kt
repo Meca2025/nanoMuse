@@ -16,6 +16,8 @@ import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -61,8 +63,48 @@ object NanoMuseCloud {
     private const val KEY_SPEND_CAP = "cloud.spend_cap_cny"
     private const val KEY_USD_CNY = "cloud.usd_cny"
     private const val KEY_RESETS_AT = "cloud.resets_at"
+    private const val KEY_ACCOUNT_ID = "cloud.account_id"
+    private const val KEY_CREATED_AT = "cloud.created_at"
+    private const val KEY_HAS_PASSWORD = "cloud.has_password"
+    private const val KEY_SESSIONS = "cloud.sessions"
+    private const val KEY_VIA = "cloud.via"
+    private const val KEY_USAGE = "cloud.usage_json"
 
     class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
+
+    /** One line of the usage breakdown: a kind (chat, image, video, realtime) or a model. */
+    data class UsageRow(
+        val kind: String,
+        val model: String,
+        val requests: Int,
+        val promptTokens: Long,
+        val completionTokens: Long,
+        val charged: Long,
+        val costCny: Double,
+    ) {
+        val tokens: Long get() = promptTokens + completionTokens
+    }
+
+    /** What the relay says was used, by category today and overall, and by model overall. */
+    data class Usage(
+        val todayByKind: List<UsageRow>,
+        val totalByKind: List<UsageRow>,
+        val byModel: List<UsageRow>,
+        val kinds: List<String>,
+    )
+
+    /** A live sign-in of the account: one per device holding a key. */
+    data class Session(
+        val prefix: String,
+        val device: String,
+        val via: String,
+        val createdAt: Long,
+        val lastUsedAt: Long,
+        val current: Boolean,
+    )
+
+    /** One line of the account's own history (sign-ins, password changes, refusals). */
+    data class Event(val ts: Long, val kind: String, val detail: String)
 
     /** What the settings page shows. Cached from the last `/v1/me` (or the sign-in itself). */
     data class Account(
@@ -86,6 +128,18 @@ object NanoMuseCloud {
         val usdCny: Double = 0.0,
         /** When today's allowance starts over (UNIX seconds); 0 when unknown. */
         val resetsAt: Long = 0,
+        /** The relay's opaque id for the account (not the number or address). */
+        val accountId: String = "",
+        /** When the account was created (UNIX seconds); 0 when unknown. */
+        val createdAt: Long = 0,
+        /** A password is set, so signing in elsewhere needs no code. */
+        val hasPassword: Boolean = false,
+        /** Devices currently signed in, this one included. */
+        val sessions: Int = 0,
+        /** How this phone signed in: "code" or "password". */
+        val via: String = "",
+        /** The breakdown by kind and by model, when the relay reports one. */
+        val usage: Usage? = null,
     ) {
         val remaining: Long get() = (granted - used).coerceAtLeast(0)
         /** 0..1 of the grant still unspent. */
@@ -131,6 +185,14 @@ object NanoMuseCloud {
         return !repo(context)?.loadApiKey(inst.id).isNullOrBlank()
     }
 
+    private val _signedIn = MutableStateFlow<Boolean?>(null)
+
+    /** Whether this phone is signed in, as a flow the home screen can follow (the account is required). */
+    fun signedIn(context: Context): StateFlow<Boolean?> {
+        if (_signedIn.value == null) _signedIn.value = isSignedIn(context)
+        return _signedIn
+    }
+
     /** The account key this phone signed in with — the hub authenticates with it too. */
     fun apiKey(context: Context): String? {
         val inst = instance(context) ?: return null
@@ -155,6 +217,12 @@ object NanoMuseCloud {
             spendCapCny = p.getFloat(KEY_SPEND_CAP, 0f).toDouble(),
             usdCny = p.getFloat(KEY_USD_CNY, 0f).toDouble(),
             resetsAt = p.getLong(KEY_RESETS_AT, 0),
+            accountId = p.getString(KEY_ACCOUNT_ID, "") ?: "",
+            createdAt = p.getLong(KEY_CREATED_AT, 0),
+            hasPassword = p.getBoolean(KEY_HAS_PASSWORD, false),
+            sessions = p.getInt(KEY_SESSIONS, 0),
+            via = p.getString(KEY_VIA, "") ?: "",
+            usage = p.getString(KEY_USAGE, null)?.let { parseUsage(runCatching { JSONObject(it) }.getOrNull()) },
         )
     }
 
@@ -170,12 +238,98 @@ object NanoMuseCloud {
      * image model for the avatar (only if none is set). Returns the account as the relay sees it.
      */
     suspend fun verify(context: Context, identifier: String, code: String): Account = withContext(Dispatchers.IO) {
-        val repo = repo(context) ?: throw CloudException("no_repository", "Provider storage is not ready")
         val body = JSONObject()
             .put("identifier", identifier.trim())
             .put("code", code.trim())
-            .put("device", "${Build.MANUFACTURER} ${Build.MODEL}".trim().take(80))
-        val reply = call(context, "POST", "/v1/auth/verify", body, token = null)
+            .put("device", deviceName())
+        adopt(context, call(context, "POST", "/v1/auth/verify", body, token = null))
+    }
+
+    /** The password way in — for people who set one under Account; no code to wait for. */
+    suspend fun login(context: Context, identifier: String, password: String): Account = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("identifier", identifier.trim())
+            .put("password", password)
+            .put("device", deviceName())
+        adopt(context, call(context, "POST", "/v1/auth/login", body, token = null))
+    }
+
+    /**
+     * Set or change the password. [current] is needed when one is set already — except right
+     * after a code sign-in, which is the "forgot it" path. An empty [password] with [current]
+     * removes it.
+     */
+    suspend fun setPassword(context: Context, password: String, current: String?) = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val body = JSONObject().put("password", password)
+        if (current != null) body.put("current", current) else body.put("current", JSONObject.NULL)
+        call(context, "POST", "/v1/auth/password", body, token = key)
+        prefs(context).edit().putBoolean(KEY_HAS_PASSWORD, password.isNotEmpty()).apply()
+        Unit
+    }
+
+    /** The devices signed in to this account, the current one first. */
+    suspend fun sessions(context: Context): List<Session> = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: return@withContext emptyList()
+        val arr = call(context, "GET", "/v1/me/sessions", null, token = key).optJSONArray("sessions") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.map {
+            Session(
+                prefix = it.optString("prefix"),
+                device = it.optString("device"),
+                via = it.optString("via", "code"),
+                createdAt = it.optLong("created_at"),
+                lastUsedAt = it.optLong("last_used_at", 0),
+                current = it.optBoolean("current"),
+            )
+        }
+    }
+
+    /** Sign one other device out. */
+    suspend fun revokeSession(context: Context, prefix: String) = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        call(context, "DELETE", "/v1/me/sessions/$prefix", null, token = key)
+        Unit
+    }
+
+    /** The account's own history, newest first. */
+    suspend fun events(context: Context, limit: Int = 40): List<Event> = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: return@withContext emptyList()
+        val arr = call(context, "GET", "/v1/me/events?limit=$limit", null, token = key).optJSONArray("events") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.map {
+            Event(ts = it.optLong("ts"), kind = it.optString("kind"), detail = it.optString("detail"))
+        }
+    }
+
+    /** Every other device loses its key; with [includingThis] this phone signs out too. */
+    suspend fun signOutEverywhere(context: Context, includingThis: Boolean) = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        call(context, "POST", "/v1/auth/sign-out-all", JSONObject().put("all", includingThis), token = key)
+        if (includingThis) forgetLocally(context)
+        Unit
+    }
+
+    /** The person's own request: the account and everything about it goes at the relay. */
+    suspend fun deleteAccount(context: Context) = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        call(context, "POST", "/v1/auth/delete", null, token = key)
+        forgetLocally(context)
+    }
+
+    private fun deviceName(): String = "${Build.MANUFACTURER} ${Build.MODEL}".trim().take(80)
+
+    private fun forgetLocally(context: Context) {
+        io.github.nanomuse.hub.Hub.stop(context)
+        instance(context)?.let { repo(context)?.removeInstance(it.id) }
+        clear(context)
+    }
+
+    /**
+     * A key from the relay (a code or a password sign-in) becomes a usable provider: instance,
+     * key, models, a default group with the recommended chat model (only if the user has none
+     * yet), and the image model for the avatar (only if none is set).
+     */
+    private suspend fun adopt(context: Context, reply: JSONObject): Account {
+        val repo = repo(context) ?: throw CloudException("no_repository", "Provider storage is not ready")
         val apiKey = reply.optString("api_key").takeIf { it.isNotBlank() }
             ?: throw CloudException("bad_reply", "The relay sent no key")
         // The host the code was sent to is the host the key is for; the relay's own idea of
@@ -204,8 +358,9 @@ object NanoMuseCloud {
         provisionDefaults(context, repo, inst, reply.optJSONArray("models"))
 
         saveAccount(context, reply)
+        _signedIn.value = true
         io.github.nanomuse.hub.Hub.restart(context) // the new key joins the hub
-        account(context)!!
+        return account(context)!!
     }
 
     /** Re-read the balance. Returns null (and forgets the account) when the key is gone. */
@@ -257,6 +412,13 @@ object NanoMuseCloud {
             "daily_cap" -> context.getString(R.string.nm_cloud_err_daily_cap)
             "rate_limited" -> context.getString(R.string.nm_cloud_err_rate_limited)
             "unreachable" -> context.getString(R.string.nm_cloud_err_unreachable)
+            "bad_credentials" -> context.getString(R.string.nm_cloud_err_bad_credentials)
+            "no_password" -> context.getString(R.string.nm_cloud_err_no_password)
+            "locked" -> context.getString(R.string.nm_cloud_err_locked)
+            "password_wrong" -> context.getString(R.string.nm_cloud_err_password_wrong)
+            "password_required" -> context.getString(R.string.nm_cloud_err_password_required)
+            "password_short" -> context.getString(R.string.nm_cloud_err_password_short)
+            "password_weak", "password_long" -> context.getString(R.string.nm_cloud_err_password_weak)
             else -> e.message ?: context.getString(R.string.nm_cloud_err_generic)
         }
         is IOException -> context.getString(R.string.nm_cloud_err_unreachable)
@@ -367,15 +529,45 @@ object NanoMuseCloud {
             .putFloat(KEY_SPEND_CAP, spend.optDouble("daily_cap", 0.0).toFloat())
             .putFloat(KEY_USD_CNY, spend.optDouble("usd_cny", 0.0).toFloat())
             .putLong(KEY_RESETS_AT, spend.optLong("resets_at", 0))
+            .putString(KEY_ACCOUNT_ID, account.optString("id"))
+            .putLong(KEY_CREATED_AT, account.optLong("created_at", 0))
+            .putBoolean(KEY_HAS_PASSWORD, account.optBoolean("has_password", false))
+            .putInt(KEY_SESSIONS, account.optInt("sessions", 0))
+            .putString(KEY_VIA, account.optString("signed_in_via"))
+            .putString(KEY_USAGE, reply.optJSONObject("usage")?.toString())
             .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
             .apply()
     }
 
+    private fun parseUsage(usage: JSONObject?): Usage? {
+        usage ?: return null
+        fun rows(arr: JSONArray?): List<UsageRow> = (0 until (arr?.length() ?: 0)).mapNotNull { arr?.optJSONObject(it) }.map {
+            UsageRow(
+                kind = it.optString("kind"),
+                model = it.optString("model"),
+                requests = it.optInt("requests"),
+                promptTokens = it.optLong("prompt_tokens"),
+                completionTokens = it.optLong("completion_tokens"),
+                charged = it.optLong("charged"),
+                costCny = it.optDouble("cost_cny", 0.0),
+            )
+        }
+        val kinds = usage.optJSONArray("kinds")
+        return Usage(
+            todayByKind = rows(usage.optJSONObject("today")?.optJSONArray("by_kind")),
+            totalByKind = rows(usage.optJSONObject("total")?.optJSONArray("by_kind")),
+            byModel = rows(usage.optJSONObject("total")?.optJSONArray("by_model")),
+            kinds = (0 until (kinds?.length() ?: 0)).map { kinds!!.optString(it) },
+        )
+    }
+
     private fun clear(context: Context) {
+        _signedIn.value = false
         prefs(context).edit()
             .remove(KEY_INSTANCE).remove(KEY_CHANNEL).remove(KEY_HINT)
             .remove(KEY_GRANTED).remove(KEY_USED).remove(KEY_USED_TODAY).remove(KEY_DAILY_CAP).remove(KEY_UNLIMITED).remove(KEY_CHECKED_AT)
             .remove(KEY_MEMBER).remove(KEY_SPENT_TODAY).remove(KEY_SPENT_TOTAL).remove(KEY_SPEND_CAP).remove(KEY_USD_CNY).remove(KEY_RESETS_AT)
+            .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_USAGE)
             .apply()
     }
 
