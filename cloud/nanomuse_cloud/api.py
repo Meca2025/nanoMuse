@@ -1,6 +1,6 @@
 """HTTP: the sign-up endpoints the app calls, and the OpenAI-shaped proxy.
 
-    POST /v1/auth/code        {identifier}                      → 204
+    POST /v1/auth/code        {identifier}                      → 204 (400 phone_region: a number the SMS sender cannot reach)
     POST /v1/auth/verify      {identifier, code, device, invite?} → {api_key, base_url, account, tokens, models}
     POST /v1/auth/login       {identifier, password, device}    → the same, for accounts that set a password
     GET  /v1/auth/onetap                                        → {enabled, sdk_url}: sign-in with the phone's own number (H5 一键登录)

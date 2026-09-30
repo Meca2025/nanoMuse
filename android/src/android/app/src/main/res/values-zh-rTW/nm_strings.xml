@@ -581,7 +581,7 @@
     <string name="nm_cloud_mode_password">密碼登入</string>
     <string name="nm_cloud_password">密碼</string>
     <string name="nm_cloud_forgot_password">忘了密碼？用驗證碼登入</string>
-    <string name="nm_cloud_identifier">手機號或信箱</string>
+    <string name="nm_cloud_identifier">中國大陸手機號或信箱</string>
     <string name="nm_cloud_identifier_hint">138 0000 0000 · you@example.com</string>
     <string name="nm_cloud_code">驗證碼</string>
     <string name="nm_cloud_send_code">發送驗證碼</string>
@@ -616,6 +616,7 @@
     <string name="nm_cloud_err_code_too_often">發送太頻繁了，請過幾分鐘再試。</string>
     <string name="nm_cloud_err_not_invited">這是一台私人中轉，這個信箱不在名單上。</string>
     <string name="nm_cloud_err_send_failed">驗證碼沒發出去，請稍後再試。</string>
+    <string name="nm_cloud_err_phone_region">簡訊驗證碼目前只支援中國大陸手機號，海外使用者請改用信箱登入。</string>
     <string name="nm_cloud_err_disabled">這個帳號已被停用。</string>
     <string name="nm_cloud_err_bad_key">伺服器已不認識這台手機，請重新登入。</string>
     <string name="nm_cloud_err_out_of_tokens">額度用完了。</string>

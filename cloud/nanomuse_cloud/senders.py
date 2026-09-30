@@ -33,12 +33,20 @@ class SendError(RuntimeError):
 class CodeSender(Protocol):
     def send(self, ident: Identifier, code: str) -> None: ...
 
+    def accepts(self, ident: Identifier) -> bool:
+        """Can a code reach this identifier at all? Asked before one is made, so the
+        answer is a plain 400 and not a failed send."""
+        ...
+
 
 class LogSender:
     """Development: the code goes to the log, and stays reachable for tests."""
 
     def __init__(self) -> None:
         self.sent: list[tuple[Identifier, str]] = []
+
+    def accepts(self, ident: Identifier) -> bool:
+        return True
 
     def send(self, ident: Identifier, code: str) -> None:
         self.sent.append((ident, code))
@@ -50,6 +58,9 @@ class SmtpSender:
         if not (s.smtp_host and s.smtp_from):
             raise ValueError("SMTP_HOST and SMTP_FROM are required for CODE_SENDER=smtp")
         self.s = s
+
+    def accepts(self, ident: Identifier) -> bool:
+        return ident.channel == "email"
 
     def send(self, ident: Identifier, code: str) -> None:
         if ident.channel != "email":
@@ -169,6 +180,10 @@ class AliyunSmsSender:
     def _signed_query(self, params: dict[str, str]) -> str:
         return aliyun_signed_query(self.s.aliyun_access_key_secret, params)
 
+    def accepts(self, ident: Identifier) -> bool:
+        """Phones only; 号码认证 (dypns) reaches mainland numbers only, 短信服务 (dysms) any."""
+        return ident.channel == "phone" and (self.api == "dysms" or ident.value.startswith("+86"))
+
     def params(self, ident: Identifier, code: str) -> dict[str, str]:
         """The request for one code, before signing; a mainland number without +86."""
         if ident.channel != "phone":
@@ -240,5 +255,11 @@ class BothSender:
     def __init__(self, mail: SmtpSender, sms: AliyunSmsSender) -> None:
         self.mail, self.sms = mail, sms
 
+    def _for(self, ident: Identifier) -> SmtpSender | AliyunSmsSender:
+        return self.sms if ident.channel == "phone" else self.mail
+
+    def accepts(self, ident: Identifier) -> bool:
+        return self._for(ident).accepts(ident)
+
     def send(self, ident: Identifier, code: str) -> None:
-        (self.sms if ident.channel == "phone" else self.mail).send(ident, code)
+        self._for(ident).send(ident, code)

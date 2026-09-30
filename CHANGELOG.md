@@ -10,6 +10,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Changed
 
+- **A number the SMS sender cannot reach is told so at once** (relay 0.6.1). 号码认证 sends codes to mainland China numbers only; a Hong Kong, Taiwan or overseas number used to get a code that never came and "try again in a moment". The relay now answers `400 phone_region` before making a code — *Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address* — and the phone, the web app, the desktop, the web version's sign-in page and the relay console show that sentence; the sign-in field says *Mainland China phone number or e-mail*.
 - **The relay's web console takes a phone number too** (relay 0.5.4): the sign-in field says *Phone number or e-mail*, switches to the number keypad when you start with a digit, and the refusal names both; the docs and the docstrings that still said "sign in with an e-mail" say a phone number or an e-mail.
 
 ## [0.1.24] - 2026-10-01 · Signal

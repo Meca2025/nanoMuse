@@ -75,7 +75,7 @@ i.en,i.zh{font-style:normal}
       <button type="button" class="tab on" id="tab-code" role="tab" aria-selected="true"><i class="zh">验证码登录</i><i class="en">With a code</i></button>
       <button type="button" class="tab" id="tab-pass" role="tab" aria-selected="false"><i class="zh">密码登录</i><i class="en">With a password</i></button>
     </div>
-    <label for="ident"><i class="zh">手机号或邮箱</i><i class="en">Phone number or e-mail</i></label>
+    <label for="ident"><i class="zh">中国大陆手机号或邮箱</i><i class="en">Mainland China phone number or e-mail</i></label>
     <input id="ident" name="identifier" autocomplete="username" required autofocus>
     <div id="pass-box" class="hidden">
       <label for="password"><i class="zh">密码</i><i class="en">Password</i></label>
@@ -163,13 +163,21 @@ i.en,i.zh{font-style:normal}
     network: ["网络不通，请稍后再试。", "Could not reach the server. Try again in a moment."]
   };
   function t(k){ return T[k][zh ? 0 : 1]; }
+  // the relay's refusals in Chinese; English shows the relay's own sentence
+  var E = {
+    phone_region: "短信验证码目前只支持中国大陆手机号，海外用户请用邮箱登录。", bad_identifier: "请输入中国大陆手机号或邮箱。",
+    code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁了，请几分钟后再试。",
+    send_failed: "验证码没发出去，请稍后再试。", not_invited: "这个 relay 是私有的，这个账号不在名单上。",
+    bad_credentials: "账号和密码不匹配。", no_password: "这个账号还没设密码，先用验证码登录，再在「账号」里设一个。", locked: "密码错得太多次了，请稍后再试，或改用验证码登录。"
+  };
+  function errText(r){ return (zh && E[r.body.error]) || r.body.message || ("HTTP " + r.status); }
   function show(el, text, err){ el.textContent = text || ""; el.className = "msg" + (err ? " err" : ""); }
   function post(url, data){
     return fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data)})
       .then(function(r){ return r.text().then(function(txt){ var j = {}; try { j = txt ? JSON.parse(txt) : {}; } catch (e) {} return {ok: r.ok, status: r.status, body: j}; }); });
   }
   function enter(r, btn, msg){
-    if (!r.ok) { btn.disabled = false; show(msg, r.body.message || ("HTTP " + r.status), true); return; }
+    if (!r.ok) { btn.disabled = false; show(msg, errText(r), true); return; }
     show(msg, t("ready")); location.href = r.body.url;
   }
   s1.onsubmit = function(ev){
@@ -184,7 +192,7 @@ i.en,i.zh{font-style:normal}
     send.disabled = true; show(msg1, t("sending"));
     post("/api/web/code", {identifier: ident.value.trim()}).then(function(r){
       send.disabled = false;
-      if (!r.ok) { show(msg1, r.body.message || ("HTTP " + r.status), true); return; }
+      if (!r.ok) { show(msg1, errText(r), true); return; }
       document.getElementById("to").textContent = ident.value.trim();
       s1.classList.add("hidden"); s2.classList.remove("hidden"); show(msg2, t("sent")); code.value = ""; code.focus();
     }).catch(function(){ send.disabled = false; show(msg1, t("network"), true); });

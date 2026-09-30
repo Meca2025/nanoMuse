@@ -20,7 +20,8 @@ CLOUD_KEY = "NANOMUSE_CLOUD_KEY"
 DEFAULT_MODEL = "qwen3.8-27b"
 
 MESSAGES = {
-    "bad_identifier": "Enter an e-mail address.",
+    "bad_identifier": "Enter a mainland phone number or an e-mail address.",
+    "phone_region": "Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address.",
     "code_wrong": "That code is not right.",
     "code_expired": "That code has expired; ask for a new one.",
     "code_too_often": "Too many codes were sent; wait a few minutes.",

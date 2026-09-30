@@ -263,6 +263,20 @@ class Cloud:
         return self.s.signup_open or self.listed(ident)
 
     def request_code(self, ident: Identifier, ip: str) -> None:
+        if not self.sender.accepts(ident):
+            # the honest answer up front: a Hong Kong or overseas number gets no SMS from
+            # 号码认证, so the person should not wait for one — e-mail works everywhere
+            if ident.channel == "phone" and not ident.value.startswith("+86"):
+                raise CloudError(
+                    400,
+                    "phone_region",
+                    "Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address",
+                )
+            raise CloudError(
+                400,
+                "channel_unsupported",
+                f"This relay does not send codes by {'SMS' if ident.channel == 'phone' else 'e-mail'}",
+            )
         if not self.allowed(ident):
             raise CloudError(403, "not_invited", "This relay is private; that address is not on its list")
         t = now()
