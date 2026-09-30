@@ -4,6 +4,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.24] - 2026-10-01 · Signal
+
 ### Added
 
 - **Sign in with a phone number.** A mainland China mobile number is a first-class way in on every platform — the phone, the web and desktop app, and nanomuse.cn/web — next to an e-mail: the six-digit code comes by SMS (relay 0.5.3 sends it through Aliyun's 号码认证服务 `SendSmsVerifyCode`, `ALIYUN_SMS_API=dypns`, with the service's ready-made signature and template; `dysms` keeps the older 短信服务 way), and a password set under Account works for either. The identifier box switches to the number keypad when you start with a digit; on the phone the code box is marked as a one-time code so the system can fill in the SMS it just received. The gateway's sign-in page gains the password way (`POST /api/web/login`) and says, first, that the browser version is for a first try — the phone app and the desktop app are the everyday ones, with the same account.
