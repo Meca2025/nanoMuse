@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openminis.app.R
 import com.openminis.app.ui.components.openExternalUrl
+import io.github.nanomuse.cloud.AllowanceSignal
 import io.github.nanomuse.cloud.NanoMuseCloud
 import io.github.nanomuse.sysfiles.SystemFiles
 import io.github.nanomuse.ui.home.MuseTones
@@ -252,51 +253,57 @@ fun CloudAccountScreen(
                 MuseCard {
                     Column(Modifier.padding(16.dp)) {
                         if (a != null && a.pricesInMoney) {
-                            // The relay prices requests in money: today's spend against the
-                            // daily allowance in both currencies, the total, the token line.
+                            // The relay prices requests in money (0.5: one pool for the account's
+                            // lifetime): used of the pool in both currencies, what is left, the
+                            // token line, and how the pool grows.
                             Row(Modifier.fillMaxWidth()) {
                                 Text(
-                                    text = stringResource(R.string.nm_cloud_spent_today, money(a.spentTodayCny), money(a.toUsd(a.spentTodayCny))),
+                                    text = if (a.limited) stringResource(R.string.nm_cloud_allowance_used, money(a.spentTotalCny), money(a.toUsd(a.spentTotalCny)))
+                                    else stringResource(R.string.nm_cloud_spent_total, money(a.spentTotalCny), money(a.toUsd(a.spentTotalCny))),
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.weight(1f),
                                 )
                                 Text(
-                                    text = if (a.spendCapCny > 0) {
-                                        stringResource(R.string.nm_cloud_spend_cap, money(a.spendCapCny), money(a.toUsd(a.spendCapCny)))
-                                    } else {
-                                        stringResource(R.string.nm_cloud_spend_member)
-                                    },
+                                    text = if (a.limited) stringResource(R.string.nm_cloud_allowance_of, money(a.grantCny), money(a.toUsd(a.grantCny)))
+                                    else stringResource(R.string.nm_cloud_spend_member),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            if (a.spendCapCny > 0) {
+                            if (a.limited) {
                                 Spacer(Modifier.height(8.dp))
                                 LinearProgressIndicator(
                                     progress = { a.spendFraction },
-                                    color = MuseTones.action,
+                                    color = when {
+                                        a.exhausted -> MaterialTheme.colorScheme.error
+                                        a.warn || a.spendFraction >= 0.8f -> Color(0xFFD97706)
+                                        else -> MuseTones.action
+                                    },
                                     trackColor = MuseTones.fill,
                                     modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                                 )
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.nm_cloud_spent_total, money(a.spentTotalCny), money(a.toUsd(a.spentTotalCny))),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            if (a.spendCapCny > 0 && a.resetsAt > 0) {
+                                Spacer(Modifier.height(8.dp))
                                 Text(
-                                    text = stringResource(R.string.nm_cloud_resets_at, resetTime(a.resetsAt)),
+                                    text = stringResource(R.string.nm_cloud_allowance_left, money(a.leftCny.coerceAtLeast(0.0)), money(a.toUsd(a.leftCny.coerceAtLeast(0.0)))),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (a.exhausted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                            } else {
+                                Spacer(Modifier.height(8.dp))
                             }
                             Text(
                                 text = stringResource(R.string.nm_cloud_tokens_line, numbers.format(a.used), numbers.format(a.usedToday)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            if (a.limited && a.allowanceCny > 0) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = stringResource(R.string.nm_cloud_allowance_why, money(a.allowanceCny), money(a.inviteBonusCny), money(a.contributeBonusCny)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         } else if (a != null && a.unlimited) {
                             // No ceiling on this relay: what was used, nothing to run out of.
                             Row(Modifier.fillMaxWidth()) {
@@ -440,18 +447,43 @@ fun CloudAccountScreen(
                     }
                 }
 
-                // -- contribute conversations: off by default, the person's own switch ------------
+                // -- the three ways on, when the pool is spent or nearly ------------------------
+                if (a != null && a.limited && (a.exhausted || a.warn)) {
+                    MuseGap()
+                    AllowanceWaysCard(
+                        info = AllowanceSignal.Exhausted(
+                            leftCny = a.leftCny.coerceAtLeast(0.0),
+                            grantCny = a.grantCny,
+                            inviteUrl = a.inviteUrl,
+                            contributeBonusAvailable = a.contributeBonusAvailable,
+                            ownKeyDocs = a.ownKeyDocs,
+                        ),
+                        exhausted = a.exhausted,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        onChanged = { account = NanoMuseCloud.account(context) },
+                    )
+                }
+
+                // -- the co-creation programme: off by default, the person's own switch ----------
                 if (a != null) {
                     MuseSectionLabel(stringResource(R.string.nm_cloud_contribute_title))
                     MuseCard {
                         MuseRow(
-                            title = if (a.contribute) stringResource(R.string.nm_cloud_contribute_on, a.samples) else stringResource(R.string.nm_cloud_contribute_off),
+                            title = when {
+                                a.contribute -> stringResource(R.string.nm_cloud_contribute_on, a.samples)
+                                a.contributeBonusAvailable && a.contributeBonusCny > 0 -> stringResource(R.string.nm_cloud_contribute_off_bonus, money(a.contributeBonusCny))
+                                else -> stringResource(R.string.nm_cloud_contribute_off)
+                            },
                             chevron = false,
                             onClick = {
                                 if (busy) return@MuseRow
                                 busy = true
                                 scope.launch {
-                                    try { account = NanoMuseCloud.setContribute(context, !a.contribute) } catch (e: Exception) { error = NanoMuseCloud.describe(context, e) }
+                                    try {
+                                        val r = NanoMuseCloud.setContribute(context, !a.contribute)
+                                        account = r.account
+                                        if (r.bonusGranted) notice = context.getString(R.string.nm_cloud_contribute_joined, money(r.bonusCny))
+                                    } catch (e: Exception) { error = NanoMuseCloud.describe(context, e) }
                                     busy = false
                                 }
                             },
@@ -460,7 +492,11 @@ fun CloudAccountScreen(
                                     if (busy) return@Switch
                                     busy = true
                                     scope.launch {
-                                        try { account = NanoMuseCloud.setContribute(context, on) } catch (e: Exception) { error = NanoMuseCloud.describe(context, e) }
+                                        try {
+                                            val r = NanoMuseCloud.setContribute(context, on)
+                                            account = r.account
+                                            if (r.bonusGranted) notice = context.getString(R.string.nm_cloud_contribute_joined, money(r.bonusCny))
+                                        } catch (e: Exception) { error = NanoMuseCloud.describe(context, e) }
                                         busy = false
                                     }
                                 })
@@ -934,15 +970,9 @@ internal fun money(v: Double): String = when {
     else -> String.format(java.util.Locale.US, "%.2f", v)
 }
 
-/** "00:00" or "tomorrow 00:00" in the phone's own zone, for the daily reset. */
-private fun resetTime(epochSeconds: Long): String {
-    val fmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-    return fmt.format(java.util.Date(epochSeconds * 1000))
-}
-
 /**
- * Invite a friend: the account's code and link (each sign-up with it adds credit and clips),
- * how many came, what is left of the credit and of the clip allowance.
+ * Invite a friend: the account's code and link (each new sign-up with it adds to the pool),
+ * how many came and what they added.
  */
 @Composable
 private fun InviteCard(a: NanoMuseCloud.Account) {
@@ -954,7 +984,7 @@ private fun InviteCard(a: NanoMuseCloud.Account) {
     MuseCard {
         Column(Modifier.padding(16.dp)) {
             Text(
-                text = stringResource(R.string.nm_cloud_invite_why, money(a.inviteBonusCny), a.inviteClips),
+                text = stringResource(R.string.nm_cloud_invite_why, money(a.inviteBonusCny)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -993,8 +1023,7 @@ private fun InviteCard(a: NanoMuseCloud.Account) {
             Spacer(Modifier.height(10.dp))
             val facts = buildList {
                 add(stringResource(R.string.nm_cloud_invite_count, a.invites))
-                if (a.creditLeftCny > 0) add(stringResource(R.string.nm_cloud_credit_left, money(a.creditLeftCny)))
-                if (!a.clipsUnlimited && a.clipsLeft >= 0) add(stringResource(R.string.nm_cloud_clips_left, a.clipsLeft, a.clipsAllowed))
+                if (a.inviteEarnedCny > 0) add(stringResource(R.string.nm_cloud_invite_earned, money(a.inviteEarnedCny)))
             }
             Text(
                 text = facts.joinToString(" · "),

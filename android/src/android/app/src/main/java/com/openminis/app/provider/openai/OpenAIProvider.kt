@@ -3429,6 +3429,9 @@ class OpenAIProvider private constructor(
 
     private fun mapHttpError(statusCode: Int, body: String): LLMError {
         if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
+        // nanoMuse: the relay's "allowance used up" is a 429 with a structured body; keep it
+        // for the chat's card before the generic mapping drops the body.
+        io.github.nanomuse.cloud.AllowanceSignal.noteHttpError(statusCode, body)
         if (statusCode == 429) return LLMError.RateLimited()
 
         val message = try {

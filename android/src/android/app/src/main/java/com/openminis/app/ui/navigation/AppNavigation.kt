@@ -91,6 +91,9 @@ object Routes {
     const val SETTINGS = "settings"
     const val PROVIDER_LIST = "providers"
     const val ADD_PROVIDER = "add_provider"
+    // nanoMuse: the same form, pre-filled for a known vendor (`bailian` = Alibaba Cloud Bailian)
+    const val ADD_PROVIDER_PATTERN = "add_provider?preset={preset}"
+    fun addProvider(preset: String?): String = if (preset.isNullOrBlank()) ADD_PROVIDER else "add_provider?preset=$preset"
     const val PROVIDER_DETAIL = "provider/{instanceId}"
     /** [T-android-provider-voice] Read-only shadow Voice Service detail. */
     const val SHADOW_VOICE_DETAIL = "voice_service/{instanceId}"
@@ -1036,11 +1039,15 @@ fun AppNavigation(
             )
         }
 
-        composable(Routes.ADD_PROVIDER) {
+        composable(
+            route = Routes.ADD_PROVIDER_PATTERN, // nanoMuse: optional ?preset=…; plain ADD_PROVIDER still matches
+            arguments = listOf(navArgument("preset") { type = NavType.StringType; nullable = true; defaultValue = null }),
+        ) { backStackEntry ->
             AddProviderScreen(
                 providerRepository = providerRepository,
                 onBack = { navController.safePopBackStack() },
                 onSaved = { navController.safePopBackStack() },
+                preset = backStackEntry.arguments?.getString("preset"), // nanoMuse
             )
         }
 

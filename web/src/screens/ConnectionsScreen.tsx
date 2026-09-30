@@ -29,6 +29,7 @@ import {
 } from "react";
 import { accessibilityState, androidApp } from "../android";
 import { api } from "../api";
+import { takePresetHint } from "../components/AllowanceWays";
 import { BackBar } from "../components/BackBar";
 import { CloudCard } from "../components/CloudCard";
 import { Card, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
@@ -224,6 +225,17 @@ export function ModelCard({
     setTyped(false);
     setNoKey(false);
   };
+
+  // "Set it up" on the allowance card lands here with a provider already chosen (Alibaba
+  // Cloud Bailian by default): the card opens on that preset, the key field waits for a paste.
+  useEffect(() => {
+    const hint = takePresetHint();
+    if (hint && presets[hint]) {
+      setOpen(true);
+      pick(hint);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const keyless = !!p?.no_key || (noKey && !!p?.key_optional);
   const status = data.llm.cloud

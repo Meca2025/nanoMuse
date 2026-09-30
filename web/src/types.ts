@@ -102,6 +102,16 @@ export interface NoticeEvent extends BaseEvent {
   /** the raw exception, for bug reports */
   detail?: string;
   source?: string;
+  /** code "allowance": what the relay said — what is left, the pool, and the three ways on */
+  allowance?: {
+    left?: number | null;
+    grant?: number;
+    invite_url?: string;
+    invite_bonus_cny?: number;
+    contribute_bonus_available?: boolean;
+    contribute_bonus_cny?: number;
+    own_key_docs?: string;
+  };
 }
 
 export interface ArtifactEvent extends BaseEvent {
@@ -268,13 +278,35 @@ export interface CloudMe {
     kinds: string[];
   };
   tokens: { unlimited: boolean; granted: number; used: number; remaining: number; used_today: number; daily_cap: number };
-  spend: { currency: string; today: number; total: number; daily_cap: number; unlimited: boolean; credit_left?: number; left_today?: number | null };
-  /** Relay 0.4: the account's invite code and what came of it. */
-  invite?: { code: string; url: string; invites: number; bonus_cny: number; clips_per_invite: number; credit_cny: number; credit_left_cny: number; friends: Array<{ hint: string; joined_at: number }> };
-  /** Relay 0.4: whether this account contributes its chat turns to the community's model, and how many so far. */
-  contribute?: { on: boolean; samples: number };
-  /** Relay 0.4: the video-clip allowance (one animated face per account, more per invite). */
-  clips?: { unlimited: boolean; allowed: number; used: number; left: number | null; per_face: number };
+  /**
+   * Relay 0.5: one pool for the account's lifetime — `total` spent against `grant`, `left`
+   * (null = no limit), `warn` from 80 %. `usd_cny` converts for display. The 0.4 names
+   * (`today`, `daily_cap`, …) are still sent for one version.
+   */
+  spend: {
+    currency: string;
+    today: number;
+    total: number;
+    grant?: number;
+    left?: number | null;
+    unlimited: boolean;
+    warn?: boolean;
+    usd_cny?: number;
+    allowance_cny?: number;
+    invite_bonus_cny?: number;
+    contribute_bonus_cny?: number;
+    contribute_bonus_available?: boolean;
+    own_key_docs?: string;
+    daily_cap: number;
+    credit_left?: number;
+    left_today?: number | null;
+  };
+  /** Relay 0.4/0.5: the account's invite code and what came of it (`earned_cny` since 0.5). */
+  invite?: { code: string; url: string; invites: number; bonus_cny: number; earned_cny?: number; friends: Array<{ hint: string; joined_at: number }> };
+  /** Relay 0.4/0.5: the co-creation programme — whether this account contributes its chat turns, how many so far, and the one-time bonus. */
+  contribute?: { on: boolean; samples: number; bonus_cny?: number; bonus_available?: boolean; bonus_at?: number | null };
+  /** Relay 0.4 counted clips; 0.5 no longer does (always unlimited here). */
+  clips?: { unlimited: boolean; allowed: number | null; used: number; left: number | null; per_face: number };
   models?: Array<{ id: string; name?: string; nanomuse?: { kind?: string; recommended?: boolean } }>;
 }
 

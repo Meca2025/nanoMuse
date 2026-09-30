@@ -199,7 +199,7 @@ export function SignIn({
                 placeholder="ABCD2345"
                 className={cx(inputCls, "mt-1 tracking-[0.2em] uppercase")}
               />
-              <p className="mt-1.5 text-[12px] text-muted">{t("A friend's code counts for a new account: they get ¥3 of credit and more clips.")}</p>
+              <p className="mt-1.5 text-[12px] text-muted">{t("A friend's code counts for a new account: they get ¥5 more allowance.")}</p>
             </div>
           ) : (
             <button type="button" onClick={() => setInviteOpen(true)} className="text-[12px] text-muted underline-offset-2 hover:underline">

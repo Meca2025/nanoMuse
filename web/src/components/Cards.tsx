@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, fileUrl, frameUrl } from "../api";
+import { AllowanceWays } from "./AllowanceWays";
 import { t, useT } from "../i18n";
 import type {
   ApprovalEvent,
@@ -384,6 +385,17 @@ export function Notice({ event }: { event: NoticeEvent }) {
   const t = useT();
   const [showDetail, setShowDetail] = useState(false);
   const detail = event.detail && event.detail !== event.text ? event.detail : null;
+  // the relay refused the turn for a spent allowance: the sentence, then the three ways on
+  if (event.code === "allowance" && event.allowance) {
+    return (
+      <div className="rise flex flex-col items-center gap-2 px-6">
+        <div className="max-w-full rounded-2xl bg-amber-500/12 px-3 py-1.5 text-center text-[12.5px] leading-snug text-amber-700 dark:text-amber-300">{t(event.text)}</div>
+        <div className="w-full max-w-[520px]">
+          <AllowanceWays info={event.allowance} exhausted compact />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="rise flex justify-center px-6">
       <div

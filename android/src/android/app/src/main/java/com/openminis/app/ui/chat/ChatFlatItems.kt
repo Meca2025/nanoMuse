@@ -468,6 +468,12 @@ internal sealed class FlatChatItem {
         override val contentType = "nm_avatar_confirm"
     }
 
+    /** nanoMuse: the free allowance is spent — the three ways on (own key, invite, co-creation). */
+    data class NanoMuseAllowance(val messageId: String) : FlatChatItem() {
+        override val key = "nm_allowance:$messageId"
+        override val contentType = "nm_allowance"
+    }
+
     data class AssistantTyping(val messageId: String) : FlatChatItem() {
         override val key = "typing:$messageId"
         override val contentType = "typing"
@@ -583,6 +589,7 @@ internal fun buildFlatChatItems(
             is FlatChatItem.NanoMuseAvatarOptions -> item.copy(messageId = "${item.messageId}#$n") // nanoMuse
             is FlatChatItem.NanoMuseAvatarShare -> item.copy(messageId = "${item.messageId}#$n") // nanoMuse
             is FlatChatItem.NanoMuseAvatarConfirm -> item.copy(messageId = "${item.messageId}#$n") // nanoMuse
+            is FlatChatItem.NanoMuseAllowance -> item.copy(messageId = "${item.messageId}#$n") // nanoMuse
             is FlatChatItem.AssistantTyping -> item.copy(messageId = "${item.messageId}#$n")
             is FlatChatItem.AssistantError -> item.copy(messageId = "${item.messageId}#$n")
             is FlatChatItem.AssistantLegacyContent -> FlatChatItem.AssistantLegacyContent(
@@ -758,6 +765,7 @@ internal fun buildFlatChatItems(
                 "nm_avatar_options" -> out.add(dedupe(FlatChatItem.NanoMuseAvatarOptions(message.id))) // nanoMuse
                 "nm_avatar_share" -> out.add(dedupe(FlatChatItem.NanoMuseAvatarShare(message.id, block.content))) // nanoMuse
                 "nm_avatar_confirm" -> out.add(dedupe(FlatChatItem.NanoMuseAvatarConfirm(message.id, block.content))) // nanoMuse
+                "nm_allowance" -> out.add(dedupe(FlatChatItem.NanoMuseAllowance(message.id))) // nanoMuse
                 else -> out.add(dedupe(FlatChatItem.AssistantToolUse(
                     messageId = message.id,
                     block = block,

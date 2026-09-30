@@ -60,26 +60,27 @@ object NanoMuseCloud {
     private const val KEY_MEMBER = "cloud.member"
     private const val KEY_SPENT_TODAY = "cloud.spent_today_cny"
     private const val KEY_SPENT_TOTAL = "cloud.spent_total_cny"
-    private const val KEY_SPEND_CAP = "cloud.spend_cap_cny"
     private const val KEY_USD_CNY = "cloud.usd_cny"
-    private const val KEY_RESETS_AT = "cloud.resets_at"
+    // 0.1.23: the one pool (relay 0.5)
+    private const val KEY_GRANT = "cloud.grant_cny"
+    private const val KEY_LEFT = "cloud.left_cny"
+    private const val KEY_WARN = "cloud.warn"
+    private const val KEY_ALLOWANCE = "cloud.allowance_cny"
+    private const val KEY_CONTRIBUTE_BONUS = "cloud.contribute_bonus_cny"
+    private const val KEY_CONTRIBUTE_BONUS_AVAILABLE = "cloud.contribute_bonus_available"
+    private const val KEY_OWN_KEY_DOCS = "cloud.own_key_docs"
     private const val KEY_ACCOUNT_ID = "cloud.account_id"
     private const val KEY_CREATED_AT = "cloud.created_at"
     private const val KEY_HAS_PASSWORD = "cloud.has_password"
     private const val KEY_SESSIONS = "cloud.sessions"
     private const val KEY_VIA = "cloud.via"
     private const val KEY_USAGE = "cloud.usage_json"
-    // 0.1.22: invitations, credit and the clip allowance (relay 0.4)
-    private const val KEY_CREDIT_LEFT = "cloud.credit_left_cny"
-    private const val KEY_LEFT_TODAY = "cloud.left_today_cny"
+    // 0.1.22: invitations (relay 0.4); 0.5 counts no clips and keeps no separate credit
     private const val KEY_INVITE_CODE = "cloud.invite_code"
     private const val KEY_INVITE_URL = "cloud.invite_url"
     private const val KEY_INVITES = "cloud.invites"
     private const val KEY_INVITE_BONUS = "cloud.invite_bonus_cny"
-    private const val KEY_INVITE_CLIPS = "cloud.invite_clips"
-    private const val KEY_CLIPS_LEFT = "cloud.clips_left"
-    private const val KEY_CLIPS_ALLOWED = "cloud.clips_allowed"
-    private const val KEY_CLIPS_UNLIMITED = "cloud.clips_unlimited"
+    private const val KEY_INVITE_EARNED = "cloud.invite_earned_cny"
     private const val KEY_CONTRIBUTE = "cloud.contribute"
     private const val KEY_SAMPLES = "cloud.samples"
 
@@ -135,12 +136,23 @@ object NanoMuseCloud {
         /** Money, as the relay's operator is billed for this account, in yuan. */
         val spentTodayCny: Double = 0.0,
         val spentTotalCny: Double = 0.0,
-        /** Yuan a day this account may cost; 0 = no cap. */
-        val spendCapCny: Double = 0.0,
+        /**
+         * The pool for the account's lifetime (relay 0.5): the allowance plus what invites, the
+         * co-creation bonus and the operator added; 0 = no limit (a member, or an open relay).
+         */
+        val grantCny: Double = 0.0,
+        /** What is left of the pool; negative when there is no limit. */
+        val leftCny: Double = -1.0,
+        /** The relay's 80 % heads-up. */
+        val warn: Boolean = false,
+        /** How the pool grows, for the account page: the starting allowance and the bonuses. */
+        val allowanceCny: Double = 0.0,
+        val contributeBonusCny: Double = 0.0,
+        val contributeBonusAvailable: Boolean = false,
+        /** The guide for bringing one's own key; empty on an older relay. */
+        val ownKeyDocs: String = "",
         /** Yuan per dollar, for showing both; 0 when the relay did not say. */
         val usdCny: Double = 0.0,
-        /** When today's allowance starts over (UNIX seconds); 0 when unknown. */
-        val resetsAt: Long = 0,
         /** The relay's opaque id for the account (not the number or address). */
         val accountId: String = "",
         /** When the account was created (UNIX seconds); 0 when unknown. */
@@ -153,21 +165,13 @@ object NanoMuseCloud {
         val via: String = "",
         /** The breakdown by kind and by model, when the relay reports one. */
         val usage: Usage? = null,
-        /** Credit earned from invitations and the operator, still unspent (yuan); drawn on after the day's cap. */
-        val creditLeftCny: Double = 0.0,
-        /** What may still be spent today, cap and credit together; negative when the relay did not say (no cap). */
-        val leftTodayCny: Double = -1.0,
         /** This account's invite code and the link to share; empty on a relay from before 0.4. */
         val inviteCode: String = "",
         val inviteUrl: String = "",
-        /** Friends who signed up with the code, and what each earns. */
+        /** Friends who signed up with the code, what each adds, and what they added in all. */
         val invites: Int = 0,
         val inviteBonusCny: Double = 0.0,
-        val inviteClips: Int = 0,
-        /** Video clips: what is left of the allowance (-1 = unknown), the allowance itself, or no limit at all. */
-        val clipsLeft: Int = -1,
-        val clipsAllowed: Int = 0,
-        val clipsUnlimited: Boolean = true,
+        val inviteEarnedCny: Double = 0.0,
         /** The person chose to contribute their chat turns to the community's model; how many so far. */
         val contribute: Boolean = false,
         val samples: Int = 0,
@@ -177,8 +181,12 @@ object NanoMuseCloud {
         val fraction: Float get() = if (granted <= 0) 0f else (remaining.toFloat() / granted.toFloat()).coerceIn(0f, 1f)
         /** The relay prices requests in money (a relay from before this shows tokens only). */
         val pricesInMoney: Boolean get() = usdCny > 0
-        /** 0..1 of today's allowance spent; 0 when there is no cap. */
-        val spendFraction: Float get() = if (spendCapCny <= 0) 0f else (spentTodayCny / spendCapCny).toFloat().coerceIn(0f, 1f)
+        /** The account has a pool to run out of (not a member, not an open relay). */
+        val limited: Boolean get() = grantCny > 0 && leftCny >= 0
+        /** 0..1 of the pool spent; 0 when there is no limit. */
+        val spendFraction: Float get() = if (!limited) 0f else (spentTotalCny / grantCny).toFloat().coerceIn(0f, 1f)
+        /** The pool is spent: the relay refuses model calls until it grows or the person brings a key. */
+        val exhausted: Boolean get() = limited && leftCny <= 0.0
         fun toUsd(cny: Double): Double = if (usdCny > 0) cny / usdCny else 0.0
     }
 
@@ -245,36 +253,49 @@ object NanoMuseCloud {
             member = p.getBoolean(KEY_MEMBER, false),
             spentTodayCny = p.getFloat(KEY_SPENT_TODAY, 0f).toDouble(),
             spentTotalCny = p.getFloat(KEY_SPENT_TOTAL, 0f).toDouble(),
-            spendCapCny = p.getFloat(KEY_SPEND_CAP, 0f).toDouble(),
+            grantCny = p.getFloat(KEY_GRANT, 0f).toDouble(),
+            leftCny = p.getFloat(KEY_LEFT, -1f).toDouble(),
+            warn = p.getBoolean(KEY_WARN, false),
+            allowanceCny = p.getFloat(KEY_ALLOWANCE, 0f).toDouble(),
+            contributeBonusCny = p.getFloat(KEY_CONTRIBUTE_BONUS, 0f).toDouble(),
+            contributeBonusAvailable = p.getBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, false),
+            ownKeyDocs = p.getString(KEY_OWN_KEY_DOCS, "") ?: "",
             usdCny = p.getFloat(KEY_USD_CNY, 0f).toDouble(),
-            resetsAt = p.getLong(KEY_RESETS_AT, 0),
             accountId = p.getString(KEY_ACCOUNT_ID, "") ?: "",
             createdAt = p.getLong(KEY_CREATED_AT, 0),
             hasPassword = p.getBoolean(KEY_HAS_PASSWORD, false),
             sessions = p.getInt(KEY_SESSIONS, 0),
             via = p.getString(KEY_VIA, "") ?: "",
             usage = p.getString(KEY_USAGE, null)?.let { parseUsage(runCatching { JSONObject(it) }.getOrNull()) },
-            creditLeftCny = p.getFloat(KEY_CREDIT_LEFT, 0f).toDouble(),
-            leftTodayCny = p.getFloat(KEY_LEFT_TODAY, -1f).toDouble(),
             inviteCode = p.getString(KEY_INVITE_CODE, "") ?: "",
             inviteUrl = p.getString(KEY_INVITE_URL, "") ?: "",
             invites = p.getInt(KEY_INVITES, 0),
             inviteBonusCny = p.getFloat(KEY_INVITE_BONUS, 0f).toDouble(),
-            inviteClips = p.getInt(KEY_INVITE_CLIPS, 0),
-            clipsLeft = p.getInt(KEY_CLIPS_LEFT, -1),
-            clipsAllowed = p.getInt(KEY_CLIPS_ALLOWED, 0),
-            clipsUnlimited = p.getBoolean(KEY_CLIPS_UNLIMITED, true),
+            inviteEarnedCny = p.getFloat(KEY_INVITE_EARNED, 0f).toDouble(),
             contribute = p.getBoolean(KEY_CONTRIBUTE, false),
             samples = p.getInt(KEY_SAMPLES, 0),
         )
     }
 
-    /** Keep (or stop keeping) this account's chat turns for the community's own model. */
-    suspend fun setContribute(context: Context, on: Boolean): Account = withContext(Dispatchers.IO) {
+    /** The relay's answer to joining or leaving the co-creation programme. */
+    data class Contribution(val account: Account, val bonusGranted: Boolean, val bonusCny: Double)
+
+    /**
+     * Join (or leave) the co-creation programme: keep this account's chat turns for the
+     * community's own model. Joining adds the relay's bonus to the pool the first time.
+     */
+    suspend fun setContribute(context: Context, on: Boolean): Contribution = withContext(Dispatchers.IO) {
         val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
         val r = call(context, "POST", "/v1/me/contribute", JSONObject().put("on", on), token = key)
-        prefs(context).edit().putBoolean(KEY_CONTRIBUTE, r.optBoolean("on", on)).putInt(KEY_SAMPLES, r.optInt("samples", 0)).apply()
-        account(context)!!
+        prefs(context).edit()
+            .putBoolean(KEY_CONTRIBUTE, r.optBoolean("on", on))
+            .putInt(KEY_SAMPLES, r.optInt("samples", 0))
+            .putBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, r.optBoolean("bonus_available", false))
+            .apply()
+        // the pool changed: read it back so the page shows the new numbers
+        val granted = r.optBoolean("bonus_granted", false)
+        if (granted) runCatching { refresh(context) }
+        Contribution(account(context)!!, granted, r.optDouble("bonus_cny", 0.0))
     }
 
     /** Delete everything this account contributed; returns how many turns went. */
@@ -291,13 +312,9 @@ object NanoMuseCloud {
      */
     data class Estimate(
         val cny: Double,
-        /** What may still be spent today, cap and credit together; null when there is no cap. */
-        val leftTodayCny: Double?,
-        val creditLeftCny: Double,
+        /** What is left of the pool; null when there is no limit. */
+        val leftCny: Double?,
         val affordable: Boolean,
-        val clipsOk: Boolean,
-        /** Clips left of the allowance; null when there is no limit. */
-        val clipsLeft: Int?,
         val images: Int,
         val clips: Int,
     )
@@ -305,14 +322,12 @@ object NanoMuseCloud {
     suspend fun estimate(context: Context, images: Int, clips: Int): Estimate = withContext(Dispatchers.IO) {
         val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
         val r = call(context, "GET", "/v1/estimate?images=$images&clips=$clips", null, token = key)
-        val clipsView = r.optJSONObject("clips")
+        // 0.5 says `left_cny`; a 0.4 relay said `left_today_cny`
+        val leftKey = if (r.has("left_cny")) "left_cny" else "left_today_cny"
         Estimate(
             cny = r.optDouble("cny", 0.0),
-            leftTodayCny = if (r.isNull("left_today_cny")) null else r.optDouble("left_today_cny", 0.0),
-            creditLeftCny = r.optDouble("credit_left_cny", 0.0),
+            leftCny = if (r.isNull(leftKey)) null else r.optDouble(leftKey, 0.0),
             affordable = r.optBoolean("affordable", true),
-            clipsOk = r.optBoolean("clips_ok", true),
-            clipsLeft = if (clipsView == null || clipsView.optBoolean("unlimited", true) || clipsView.isNull("left")) null else clipsView.optInt("left", 0),
             images = images,
             clips = clips,
         )
@@ -504,7 +519,7 @@ object NanoMuseCloud {
             "bad_key" -> context.getString(R.string.nm_cloud_err_bad_key)
             "out_of_tokens" -> context.getString(R.string.nm_cloud_err_out_of_tokens)
             "daily_cap" -> context.getString(R.string.nm_cloud_err_daily_cap)
-            "video_limit" -> context.getString(R.string.nm_cloud_err_video_limit)
+            "allowance_exhausted" -> context.getString(R.string.nm_cloud_err_allowance)
             "rate_limited" -> context.getString(R.string.nm_cloud_err_rate_limited)
             "unreachable" -> context.getString(R.string.nm_cloud_err_unreachable)
             "bad_credentials" -> context.getString(R.string.nm_cloud_err_bad_credentials)
@@ -621,25 +636,34 @@ object NanoMuseCloud {
             .putBoolean(KEY_MEMBER, account.optBoolean("member", false))
             .putFloat(KEY_SPENT_TODAY, spend.optDouble("today", 0.0).toFloat())
             .putFloat(KEY_SPENT_TOTAL, spend.optDouble("total", 0.0).toFloat())
-            .putFloat(KEY_SPEND_CAP, spend.optDouble("daily_cap", 0.0).toFloat())
+            // relay 0.5: the pool and what is left; a 0.4 relay sent the day's cap under `daily_cap`
+            .putFloat(KEY_GRANT, spend.optDouble("grant", spend.optDouble("daily_cap", 0.0)).toFloat())
+            .putFloat(
+                KEY_LEFT,
+                when {
+                    spend.optBoolean("unlimited", false) -> -1f
+                    spend.has("left") && !spend.isNull("left") -> spend.optDouble("left", -1.0).toFloat()
+                    spend.has("left_today") && !spend.isNull("left_today") -> spend.optDouble("left_today", -1.0).toFloat()
+                    else -> -1f
+                },
+            )
+            .putBoolean(KEY_WARN, spend.optBoolean("warn", false))
+            .putFloat(KEY_ALLOWANCE, spend.optDouble("allowance_cny", 0.0).toFloat())
+            .putFloat(KEY_CONTRIBUTE_BONUS, spend.optDouble("contribute_bonus_cny", 0.0).toFloat())
+            .putBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, spend.optBoolean("contribute_bonus_available", false))
+            .putString(KEY_OWN_KEY_DOCS, spend.optString("own_key_docs", ""))
             .putFloat(KEY_USD_CNY, spend.optDouble("usd_cny", 0.0).toFloat())
-            .putLong(KEY_RESETS_AT, spend.optLong("resets_at", 0))
             .putString(KEY_ACCOUNT_ID, account.optString("id"))
             .putLong(KEY_CREATED_AT, account.optLong("created_at", 0))
             .putBoolean(KEY_HAS_PASSWORD, account.optBoolean("has_password", false))
             .putInt(KEY_SESSIONS, account.optInt("sessions", 0))
             .putString(KEY_VIA, account.optString("signed_in_via"))
             .putString(KEY_USAGE, reply.optJSONObject("usage")?.toString())
-            .putFloat(KEY_CREDIT_LEFT, spend.optDouble("credit_left", 0.0).toFloat())
-            .putFloat(KEY_LEFT_TODAY, if (spend.isNull("left_today")) -1f else spend.optDouble("left_today", -1.0).toFloat())
             .putString(KEY_INVITE_CODE, reply.optJSONObject("invite")?.optString("code").orEmpty())
             .putString(KEY_INVITE_URL, reply.optJSONObject("invite")?.optString("url").orEmpty())
             .putInt(KEY_INVITES, reply.optJSONObject("invite")?.optInt("invites") ?: 0)
             .putFloat(KEY_INVITE_BONUS, (reply.optJSONObject("invite")?.optDouble("bonus_cny", 0.0) ?: 0.0).toFloat())
-            .putInt(KEY_INVITE_CLIPS, reply.optJSONObject("invite")?.optInt("clips_per_invite") ?: 0)
-            .putInt(KEY_CLIPS_LEFT, reply.optJSONObject("clips")?.let { if (it.isNull("left")) -1 else it.optInt("left", -1) } ?: -1)
-            .putInt(KEY_CLIPS_ALLOWED, reply.optJSONObject("clips")?.optInt("allowed") ?: 0)
-            .putBoolean(KEY_CLIPS_UNLIMITED, reply.optJSONObject("clips")?.optBoolean("unlimited", true) ?: true)
+            .putFloat(KEY_INVITE_EARNED, (reply.optJSONObject("invite")?.optDouble("earned_cny", 0.0) ?: 0.0).toFloat())
             .putBoolean(KEY_CONTRIBUTE, reply.optJSONObject("contribute")?.optBoolean("on", false) ?: false)
             .putInt(KEY_SAMPLES, reply.optJSONObject("contribute")?.optInt("samples", 0) ?: 0)
             .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
@@ -702,8 +726,12 @@ object NanoMuseCloud {
         prefs(context).edit()
             .remove(KEY_INSTANCE).remove(KEY_CHANNEL).remove(KEY_HINT)
             .remove(KEY_GRANTED).remove(KEY_USED).remove(KEY_USED_TODAY).remove(KEY_DAILY_CAP).remove(KEY_UNLIMITED).remove(KEY_CHECKED_AT)
-            .remove(KEY_MEMBER).remove(KEY_SPENT_TODAY).remove(KEY_SPENT_TOTAL).remove(KEY_SPEND_CAP).remove(KEY_USD_CNY).remove(KEY_RESETS_AT)
+            .remove(KEY_MEMBER).remove(KEY_SPENT_TODAY).remove(KEY_SPENT_TOTAL).remove(KEY_USD_CNY)
+            .remove(KEY_GRANT).remove(KEY_LEFT).remove(KEY_WARN).remove(KEY_ALLOWANCE).remove(KEY_CONTRIBUTE_BONUS)
+            .remove(KEY_CONTRIBUTE_BONUS_AVAILABLE).remove(KEY_OWN_KEY_DOCS)
             .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_USAGE)
+            .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
+            .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES)
             .apply()
     }
 

@@ -1,6 +1,7 @@
 import { Check, Clapperboard, Copy, Gift, Image as ImageIcon, KeyRound, Loader2, LogOut, MessageCircle, Phone, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
+import { AllowanceWays } from "../components/AllowanceWays";
 import { BackBar } from "../components/BackBar";
 import { Toggle, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { SignIn } from "../components/SignIn";
@@ -56,14 +57,14 @@ export function AccountScreen() {
         {!signedIn ? (
           <Section>
             <p className="text-[13.5px] text-muted leading-relaxed">
-              {t("Free. Your devices meet on the hub and a model with a daily allowance comes with it. Sign in with a code the first time; set a password afterwards if you like.")}
+              {t("Free. Your devices meet on the hub and a model with a free allowance comes with it — ¥10 for good, +¥5 for each friend you invite, +¥10 for joining the co-creation programme. Sign in with a code the first time; set a password afterwards if you like.")}
             </p>
             <SignIn onSignedIn={() => toast(t("Signed in to nanoMuse Cloud."))} />
           </Section>
         ) : (
           <>
             <Identity account={account} me={me} />
-            {me && <Allowance me={me} />}
+            {me && <Allowance me={me} onChanged={() => void load()} />}
             {me?.invite?.code && <Invite me={me} />}
             {me && <Usage me={me} />}
             {me && <Contribute me={me} onChanged={() => void load()} />}
@@ -122,51 +123,91 @@ function Identity({ account, me }: { account: CloudAccount | null; me: CloudMe |
   );
 }
 
-function Allowance({ me }: { me: CloudMe }) {
+function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
   const t = useT();
   const spend = me.spend;
-  const pct = spend.unlimited || spend.daily_cap <= 0 ? 0 : Math.min(100, Math.round((spend.today / spend.daily_cap) * 100));
+  // relay 0.5: one pool for good; a 0.4 relay still answers with the day's cap in the old names
+  const grant = spend.grant ?? spend.daily_cap ?? 0;
+  const spent = spend.grant !== undefined ? spend.total : spend.today;
+  const left = spend.left ?? (spend.unlimited ? null : Math.max(0, grant - spent));
+  const limited = !spend.unlimited && grant > 0;
+  const pct = limited ? Math.min(100, Math.round((spent / grant) * 100)) : 0;
+  const rate = spend.usd_cny ?? 0;
+  const usd = (cny: number) => (rate > 0 ? ` ≈ $${(cny / rate).toFixed(2)}` : "");
+  const exhausted = limited && (left ?? 0) <= 0;
+  const warn = limited && !exhausted && (spend.warn ?? pct >= 80);
+  const info = {
+    left,
+    grant,
+    invite_url: me.invite?.url,
+    invite_bonus_cny: spend.invite_bonus_cny ?? me.invite?.bonus_cny,
+    contribute_bonus_available: spend.contribute_bonus_available ?? me.contribute?.bonus_available,
+    contribute_bonus_cny: spend.contribute_bonus_cny ?? me.contribute?.bonus_cny,
+    own_key_docs: spend.own_key_docs,
+  };
   return (
-    <Section title={t("Today")}>
+    <Section title={t("Free allowance")}>
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="text-[28px] font-bold tracking-tight leading-none">
-            ¥{spend.today.toFixed(2)}
-            {!spend.unlimited && spend.daily_cap > 0 && <span className="text-[14px] font-medium text-muted"> / ¥{spend.daily_cap.toFixed(0)}</span>}
+            {limited ? (
+              <>
+                ¥{(left ?? 0).toFixed(2)}
+                <span className="text-[14px] font-medium text-muted"> {t("left of ¥{grant}", { grant: grant.toFixed(0) })}</span>
+              </>
+            ) : (
+              <>¥{spent.toFixed(2)}</>
+            )}
           </div>
-          <div className="mt-1 text-[12.5px] text-muted">{spend.unlimited ? t("No daily limit on this account.") : t("Spent today, of the daily allowance. Resets at midnight (Beijing time).")}</div>
+          <div className="mt-1 text-[12.5px] text-muted">
+            {limited
+              ? t("¥{spent} spent so far{usd}. The allowance is for the account's lifetime — it does not reset by the day.", { spent: spent.toFixed(2), usd: usd(spent) })
+              : t("No limit on this account.")}
+          </div>
         </div>
         <div className="text-right text-[12.5px] text-muted">
           <div>{t("All time")}</div>
           <div className="text-[15px] font-semibold text-fg">¥{spend.total.toFixed(2)}</div>
+          {rate > 0 && <div className="text-[11.5px]">≈ ${(spend.total / rate).toFixed(2)}</div>}
         </div>
       </div>
-      {!spend.unlimited && spend.daily_cap > 0 && (
+      {limited && (
         <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-          <div className={cx("h-full rounded-full transition-all", pct >= 90 ? "bg-rose-500" : pct >= 60 ? "bg-amber-500" : "bg-accent")} style={{ width: `${pct}%` }} />
+          <div className={cx("h-full rounded-full transition-all", pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-accent")} style={{ width: `${pct}%` }} />
         </div>
       )}
-      {!spend.unlimited && (spend.credit_left ?? 0) > 0 && (
-        <p className="text-[12.5px] text-muted">{t("Plus ¥{amount} of credit from invitations, used once the day's allowance is gone.", { amount: (spend.credit_left ?? 0).toFixed(2) })}</p>
+      {limited && (
+        <p className="text-[12.5px] text-muted">
+          {t("Every account starts with ¥{allowance}. Each new person you invite adds ¥{invite}; joining the co-creation programme adds ¥{contribute} once. When it is gone, your own model key (Alibaba Cloud Bailian is a good start) keeps you going — sign-in and your devices are never affected.", {
+            allowance: (spend.allowance_cny ?? 10).toFixed(0),
+            invite: (info.invite_bonus_cny ?? 5).toFixed(0),
+            contribute: (info.contribute_bonus_cny ?? 10).toFixed(0),
+          })}
+        </p>
       )}
+      {(exhausted || warn) && <AllowanceWays info={info} exhausted={exhausted} onChanged={onChanged} />}
     </Section>
   );
 }
 
 /**
- * Contributing conversations: off by default. On, the relay keeps each chat turn (messages and
- * reply, pictures as a marker) for the community's own model; the person can stop and delete
- * what they gave at any time. The only way message content ever reaches the relay's disk.
+ * The co-creation programme: off by default. Joined, the relay keeps each chat turn (messages
+ * and reply, pictures as a marker) for the community's own model — and adds the one-time
+ * bonus to the allowance; the person can leave and delete what they gave at any time. The
+ * only way message content ever reaches the relay's disk.
  */
 function Contribute({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
   const t = useT();
   const { toast } = useStore();
   const [busy, setBusy] = useState(false);
   const ct = me.contribute ?? { on: false, samples: 0 };
+  const bonus = ct.bonus_cny ?? me.spend.contribute_bonus_cny ?? 0;
+  const bonusAvailable = ct.bonus_available ?? me.spend.contribute_bonus_available ?? false;
   const flip = async (on: boolean) => {
     setBusy(true);
     try {
-      await api.cloudContribute(on);
+      const r = await api.cloudContribute(on);
+      if (on && r.bonus_granted) toast(t("Joined — ¥{bonus} added to your allowance.", { bonus: (r.bonus_cny ?? bonus).toFixed(0) }));
       onChanged();
     } catch (e) {
       toast((e as Error).message);
@@ -188,10 +229,10 @@ function Contribute({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
     }
   };
   return (
-    <Section title={t("Contribute conversations")}>
+    <Section title={t("Co-creation programme")}>
       <Toggle
-        label={ct.on ? t("Contributing — {n} turns so far", { n: String(ct.samples) }) : t("Off — nothing you say is kept")}
-        hint={t("When on, each turn with the model (your messages and its reply; pictures as a marker) is kept on the server to train the community's own open model. Off by default; turn it off and delete what you gave at any time.")}
+        label={ct.on ? t("Joined — {n} turns contributed so far", { n: String(ct.samples) }) : bonusAvailable && bonus > 0 ? t("Not joined — joining adds ¥{bonus} to your allowance, once", { bonus: bonus.toFixed(0) }) : t("Not joined — nothing you say is kept")}
+        hint={t("When you join, each turn with the model (your messages and its reply; pictures as a marker) is kept on the server to train the community's own open model. Never required, off by default; leave and delete what you gave at any time.")}
         checked={ct.on}
         disabled={busy}
         onChange={(v) => void flip(v)}
@@ -205,13 +246,13 @@ function Contribute({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
   );
 }
 
-/** Invite a friend: the code and link, what each sign-up earns, and what came of it so far. */
+/** Invite a friend: the code and link, what each sign-up adds, and what came of it so far. */
 function Invite({ me }: { me: CloudMe }) {
   const t = useT();
   const { toast } = useStore();
   const inv = me.invite!;
-  const clips = me.clips;
   const link = inv.url || `https://nanomuse.cn/web/?invite=${inv.code}`;
+  const earned = inv.earned_cny ?? inv.invites * inv.bonus_cny;
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -236,7 +277,7 @@ function Invite({ me }: { me: CloudMe }) {
   return (
     <Section title={t("Invite a friend")}>
       <p className="text-[12.5px] text-muted">
-        {t("Each friend who signs up with your code gives you ¥{bonus} of credit and {clips} more clips.", { bonus: inv.bonus_cny.toFixed(0), clips: String(inv.clips_per_invite) })}
+        {t("Each new person who signs up with your code adds ¥{bonus} to your allowance. It never expires.", { bonus: inv.bonus_cny.toFixed(0) })}
       </p>
       <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2/70 px-3 py-2">
         <div>
@@ -257,8 +298,7 @@ function Invite({ me }: { me: CloudMe }) {
       </div>
       <p className="text-[12.5px] text-muted">
         {t("{n} friends joined", { n: String(inv.invites) })}
-        {inv.credit_left_cny > 0 && <> · {t("¥{amount} credit left", { amount: inv.credit_left_cny.toFixed(2) })}</>}
-        {clips && !clips.unlimited && clips.left !== null && <> · {t("{left} of {allowed} clips left", { left: String(clips.left), allowed: String(clips.allowed) })}</>}
+        {earned > 0 && <> · {t("¥{amount} added by invitations", { amount: earned.toFixed(0) })}</>}
       </p>
     </Section>
   );
