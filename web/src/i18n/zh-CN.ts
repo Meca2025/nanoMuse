@@ -1306,7 +1306,6 @@ const zhCN: Record<string, string> = {
   "This conversation is too long for the model. Start a new one, or pick a model with a larger context.": "这段对话对模型来说太长了。开一个新对话，或者换一个上下文更大的模型。",
 
   // -- the relay's answers to signing in (nanomuse/cloud.py MESSAGES) --
-  "Enter an e-mail address.": "请输入邮箱地址。",
   "Enter a phone number or an e-mail address.": "请输入手机号或邮箱。",
   "Enter a mainland phone number or an e-mail address": "请输入中国大陆手机号或邮箱",
   "That code is not right.": "验证码不对。",
