@@ -1,6 +1,8 @@
 import { app } from "electron";
-import { spawn, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, openSync, readFileSync, statSync } from "node:fs";
+import { get as httpGet } from "node:http";
+import { connect as tcpConnect } from "node:net";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -45,16 +47,73 @@ export class Runtime {
     }
   }
 
-  async health(): Promise<{ ok: boolean; auth?: boolean; version?: string } | null> {
+  /** Why the last health probe failed (an error code, an HTTP status), for the log. */
+  lastProbe = "";
+
+  /**
+   * GET /api/health over Node's own http client — a plain socket to 127.0.0.1, no proxy, no
+   * fetch machinery — answering within 1.5 s. The runtime reports what it is still starting
+   * (`starting`) while its services come up.
+   */
+  health(): Promise<{ ok: boolean; auth?: boolean; version?: string; starting?: string } | null> {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (value: { ok: boolean; auth?: boolean; version?: string; starting?: string } | null, why: string) => {
+        if (done) return;
+        done = true;
+        if (why) this.lastProbe = why;
+        resolve(value);
+      };
+      try {
+        const req = httpGet(`${this.base}/api/health`, { timeout: 1500 }, (res) => {
+          const chunks: Buffer[] = [];
+          res.on("data", (c: Buffer) => chunks.push(c));
+          res.on("end", () => {
+            if (res.statusCode !== 200) return finish(null, `HTTP ${res.statusCode}`);
+            try {
+              finish(JSON.parse(Buffer.concat(chunks).toString("utf8")), "");
+            } catch {
+              finish(null, "unreadable body");
+            }
+          });
+          res.on("error", (e: NodeJS.ErrnoException) => finish(null, e.code || e.message));
+        });
+        req.on("timeout", () => {
+          req.destroy();
+          finish(null, "no answer in 1.5 s");
+        });
+        req.on("error", (e: NodeJS.ErrnoException) => finish(null, e.code || e.message));
+      } catch (e) {
+        finish(null, e instanceof Error ? e.message : String(e));
+      }
+    });
+  }
+
+  /** Whether anything at all listens on the port (a bare TCP connect), for the log when HTTP does not answer. */
+  private tcpOpen(): Promise<string> {
+    return new Promise((resolve) => {
+      const sock = tcpConnect({ host: "127.0.0.1", port: this.port });
+      const end = (r: string) => {
+        sock.destroy();
+        resolve(r);
+      };
+      sock.setTimeout(1500, () => end("tcp: timeout"));
+      sock.once("connect", () => end("tcp: open"));
+      sock.once("error", (e: NodeJS.ErrnoException) => end(`tcp: ${e.code || e.message}`));
+    });
+  }
+
+  /** Who listens on the port, by the system's own account (for the log; Windows and macOS/Linux). */
+  private listeners(): string {
     try {
-      const ctl = new AbortController();
-      const t = setTimeout(() => ctl.abort(), 1500);
-      const r = await fetch(`${this.base}/api/health`, { signal: ctl.signal });
-      clearTimeout(t);
-      if (!r.ok) return null;
-      return (await r.json()) as { ok: boolean; auth?: boolean; version?: string };
-    } catch {
-      return null;
+      if (process.platform === "win32") {
+        const out = execFileSync("netstat", ["-ano", "-p", "tcp"], { encoding: "utf8", timeout: 5000, windowsHide: true });
+        return out.split(/\r?\n/).filter((l) => l.includes(`:${this.port} `) || l.includes(`:${this.port}\t`)).join("\n") || "(netstat: nothing on the port)";
+      }
+      const out = execFileSync("lsof", ["-nP", `-iTCP:${this.port}`, "-sTCP:LISTEN"], { encoding: "utf8", timeout: 5000 });
+      return out.trim() || "(lsof: nothing on the port)";
+    } catch (e) {
+      return `(listeners: ${e instanceof Error ? e.message.split("\n")[0] : String(e)})`;
     }
   }
 
@@ -116,20 +175,38 @@ export class Runtime {
     // process is alive it is given the whole of it.
     const patience = process.platform === "win32" ? 120_000 : 75_000;
     const started = Date.now();
+    let nextNote = 10_000;
+    let lastStarting = "";
     while (Date.now() - started < patience) {
-      if (await this.health()) {
+      const h = await this.health();
+      if (h) {
+        if (h.starting) {
+          // the socket is open but the services are still coming up: say so, and go on waiting a little
+          if (h.starting !== lastStarting) onLog(`nanomuse serve is starting: ${h.starting}`);
+          lastStarting = h.starting;
+        }
         ready = true;
         onLog(`nanomuse serve is up after ${((Date.now() - started) / 1000).toFixed(1)} s`);
         return;
       }
       if (!this.child) throw new Error(this.explainExit());
+      const waited = Date.now() - started;
+      if (waited >= nextNote) {
+        // every ten seconds: what the probe saw, and whether the port is open at all — the
+        // difference between a runtime still loading and one that answers on another address
+        nextNote += 10_000;
+        onLog(`still waiting after ${Math.round(waited / 1000)} s: health probe ${this.lastProbe || "no answer"}, ${await this.tcpOpen()}, pid ${this.child.pid}`);
+      }
       await new Promise((r) => setTimeout(r, 500));
     }
     const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
     const secs = Math.round((Date.now() - started) / 1000);
+    onLog(`gave up after ${secs} s: health probe ${this.lastProbe || "no answer"}, ${await this.tcpOpen()}; listeners:\n${this.listeners()}`);
     throw new Error(
       this.explainExit(
-        zh ? `nanomuse serve 启动了，但 ${secs} 秒内没有在 /api/health 上应答。` : `nanomuse serve started but did not answer on /api/health within ${secs} s.`,
+        zh
+          ? `nanomuse serve 启动了，但 ${secs} 秒内没有在 /api/health 上应答（最后一次探测：${this.lastProbe || "无应答"}）。`
+          : `nanomuse serve started but did not answer on /api/health within ${secs} s (last probe: ${this.lastProbe || "no answer"}).`,
       ),
     );
   }

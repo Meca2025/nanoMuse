@@ -71,6 +71,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends xdotool libfuse2 rpm
       - name: The runtime
+        if: runner.os != 'Linux'
         shell: bash
         run: |
           python -m pip install --upgrade pip
@@ -80,6 +81,20 @@ jobs:
           if [ "${{ matrix.label }}" = "macos-x64" ]; then python -m pip install "cryptography<49"; fi
           python -m pip install -e ".[hands]" pyinstaller
           python scripts/desktop-app/build-runtime.py --check
+      - name: The runtime (Linux — inside Debian 11, so it runs on glibc 2.31 and newer)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # A PyInstaller bundle links the glibc of the machine that built it. Built on the
+          # runner (Ubuntu 22.04, glibc 2.35) it refused to start on Ubuntu 20.04 and Debian 11:
+          # "version `GLIBC_2.35' not found". Debian 11's glibc 2.31 is the oldest in support.
+          docker run --rm -v "$PWD:/src" -w /src -e HOME=/tmp/home python:3.12-bullseye bash -euo pipefail -c '
+            python -m pip install --upgrade pip
+            python -m pip install -e ".[hands]" pyinstaller
+            python scripts/desktop-app/build-runtime.py --check
+            chown -R '"$(id -u):$(id -g)"' desktop/app/runtime build *.egg-info 2>/dev/null || true
+          '
+          ls desktop/app/runtime | head
       - name: The app
         if: runner.os != 'macOS'
         working-directory: desktop/app

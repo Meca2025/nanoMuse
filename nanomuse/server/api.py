@@ -336,8 +336,11 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     svc = service or MuseService(settings)
 
     @contextlib.asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await svc.start()
+        on_ready = getattr(app.state, "on_ready", None)
+        if callable(on_ready):
+            on_ready()
         try:
             yield
         finally:
@@ -393,7 +396,10 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
 
     @app.get("/api/health")
     async def health() -> dict[str, Any]:
-        return {"ok": True, "version": svc.settings_view()["version"], "auth": bool(svc.token)}
+        out = {"ok": True, "version": svc.settings_view()["version"], "auth": bool(svc.token)}
+        if svc.starting:
+            out["starting"] = svc.starting
+        return out
 
     update_check = UpdateCheck(svc.settings.server.update_check)
 

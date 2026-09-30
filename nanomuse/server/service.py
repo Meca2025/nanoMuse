@@ -15,6 +15,7 @@ import re
 import secrets
 import time
 import uuid
+from collections.abc import Coroutine
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from datetime import time as time_of_day
@@ -353,6 +354,8 @@ class MuseService:
         self.app.tools.add(CodingAgents(coding=self.coding))
         self.token = self._load_token()
         self._scheduler: asyncio.Task[None] | None = None
+        # what start() is busy with, for /api/health and the log while the app comes up
+        self.starting: str = "not started"
         self._tidying = False
         self._writing_feed = False
         self._started = False
@@ -384,13 +387,34 @@ class MuseService:
 
     # ------------------------------------------------------------------ lifecycle
     async def start(self) -> None:
+        """Bring the services up, one logged step at a time. A step that stalls (an MCP
+        server that never answers, a relay that cannot be reached through a broken proxy)
+        is given up after its timeout with a warning, so that the app still opens."""
         if self._started:
             return
-        await self.app.start()
+        started = time.monotonic()
+        await self._step("tools", self.app.start(), 90)
         self._started = True
-        await self.hub.start()
+        await self._step("cloud account and hub", self.hub.start(), 30)
         self._scheduler = asyncio.create_task(self._goal_scheduler(), name="goal-scheduler")
-        logger.info("MuseService started ({} threads)", len(self.threads))
+        self.starting = ""
+        logger.info(
+            "MuseService started ({} threads, {:.1f}s)",
+            len(self.threads),
+            time.monotonic() - started,
+        )
+
+    async def _step(self, name: str, work: Coroutine[Any, Any, Any], timeout: float) -> None:
+        self.starting = name
+        logger.info("starting: {}", name)
+        try:
+            await asyncio.wait_for(work, timeout)
+        except TimeoutError:
+            logger.warning(
+                "starting: {} did not finish in {:.0f}s; going on without it", name, timeout
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("starting: {} failed: {}: {}", name, type(exc).__name__, exc)
 
     async def stop(self) -> None:
         if self._scheduler:

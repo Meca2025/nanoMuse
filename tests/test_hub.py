@@ -457,6 +457,44 @@ def test_hosted_runtime_starts_signed_in_from_the_environment(
         assert relay.hello["device"]["name"] == "Web"
 
 
+def test_a_signed_in_runtime_with_no_model_key_makes_the_relay_its_model(
+    settings: Settings, relay: FakeRelay, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A desktop that signed in before the model followed the account (or had its model
+    reset) still has the bare default with no key; at start the relay becomes the model,
+    the same as at the moment of signing in — instead of the provider's 401 on the first
+    message. A local server without a key is left alone."""
+    settings.server.token = "secret-token"
+    settings.cloud.base_url = relay.base_url
+    settings.llm.api_key = ""
+    settings.llm.base_url = "https://api.deepseek.com"
+
+    async def fake_models(self: CloudClient) -> list[dict[str, Any]]:
+        return [{"id": "qwen3.8-27b"}]
+
+    monkeypatch.setattr(CloudClient, "models", fake_models)
+    service = MuseService(settings, llm=MockLLM([]))
+    service.app.vault.set("NANOMUSE_CLOUD_KEY", "old-key")
+    app = create_app(settings, service)
+    with TestClient(app) as client:
+        client.headers["Authorization"] = "Bearer secret-token"
+        account = client.get("/api/cloud").json()
+        assert account["signed_in"] is True and account["is_model"] is True
+        assert settings.llm.base_url.startswith(relay.base_url)
+        assert settings.llm.api_key == "{{vault:NANOMUSE_CLOUD_KEY}}"
+
+    settings2 = settings.model_copy(deep=True)
+    settings2.llm.api_key = ""
+    settings2.llm.base_url = "http://localhost:11434/v1"
+    service2 = MuseService(settings2, llm=MockLLM([]))
+    service2.app.vault.set("NANOMUSE_CLOUD_KEY", "old-key")
+    service2.hub.data.pop("llm", None)
+    with TestClient(create_app(settings2, service2)) as client:
+        client.headers["Authorization"] = "Bearer secret-token"
+        assert client.get("/api/cloud").json()["is_model"] is False
+        assert settings2.llm.base_url == "http://localhost:11434/v1"
+
+
 def test_task_from_a_device_runs_in_a_visible_side_chat(hub_server) -> None:
     client, service, llm, relay = hub_server
     sign_in(client)
