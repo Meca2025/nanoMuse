@@ -975,7 +975,6 @@ const zhCN: Record<string, string> = {
   "Sign in with your phone number or e-mail address and the code it receives. No password; the key stays in the vault on this machine.": "用手机号或邮箱加收到的验证码登录。不用密码；密钥留在这台机器的保险库里。",
   "Mainland China phone number or e-mail": "中国大陆手机号或邮箱",
   "138 0000 0000 or you@example.com": "138 0000 0000 或 you@example.com",
-  "A mainland China number gets the code by SMS; anything else by e-mail.": "中国大陆手机号收短信验证码，其他的发到邮箱。",
   // -- the community notice and the gate (0.1.22) --
   "One free account. It is what lets your phone and computers work as one and brings a model to start with.": "一个免费账号。有了它，手机和电脑就是同一个 nanoMuse，还自带一个可以先用起来的模型。",
   "It uses your phone and computers for you": "替你操作手机和电脑",
@@ -1172,12 +1171,11 @@ const zhCN: Record<string, string> = {
   "Every device of yours, one nanoMuse": "你的每台设备，同一个 nanoMuse",
   "A model with a free allowance, or your own key": "自带免费额度的模型，或用你自己的 key",
   "Keys in your vault; nothing you say is kept on the relay": "key 留在你的保险库里；你说的内容不会留在中继上",
-  "Running it yourself without an account? Set cloud.required to false.": "自己部署、不想要账号？把 cloud.required 设为 false 即可。",
   "Free. Your devices meet on the hub and a model with a free allowance comes with it — ¥10 for good, +¥5 for each friend you invite, +¥10 for joining the co-creation programme. Sign in with a code the first time; set a password afterwards if you like.":
     "免费。你的设备在 hub 上汇合，还自带一个有免费额度的模型——¥10 终身额度，邀请一位新用户 +¥5，加入共创计划 +¥10。第一次用验证码登录，之后可以再设一个密码。",
   "With a code": "验证码登录",
   "With a password": "密码登录",
-  "No password yet? Sign in with a code first, then set one under Account.": "还没有密码？先用验证码登录，再到「账号」里设置。",
+  "No password yet? Use a code first; set one under Account.": "还没有密码？先用验证码登录，再到「账号」里设置。",
   "E-mail": "邮箱",
   "Mobile number": "手机号",
   "since {date}": "{date} 起",

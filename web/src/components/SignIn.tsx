@@ -168,9 +168,6 @@ export function SignIn({
           placeholder={t("138 0000 0000 or you@example.com")}
           className={cx(inputCls, "mt-1")}
         />
-        {mode === "code" && !sent && (
-          <p className="mt-1.5 text-[12px] text-muted">{t("A mainland China number gets the code by SMS; anything else by e-mail.")}</p>
-        )}
       </div>
       {mode === "password" ? (
         <div>
@@ -182,7 +179,7 @@ export function SignIn({
             autoComplete="current-password"
             className={cx(inputCls, "mt-1")}
           />
-          <p className="mt-1.5 text-[12px] text-muted">{t("No password yet? Sign in with a code first, then set one under Account.")}</p>
+          <p className="mt-1.5 text-[12px] text-muted">{t("No password yet? Use a code first; set one under Account.")}</p>
         </div>
       ) : (
         <>
