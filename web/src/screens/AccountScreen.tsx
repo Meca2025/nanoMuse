@@ -258,7 +258,7 @@ function Password({ account, onChanged }: { account: CloudAccount | null; onChan
       setAgain("");
       onChanged();
     } catch (e) {
-      setError((e as Error).message);
+      setError(t((e as Error).message));
     } finally {
       setBusy(false);
     }

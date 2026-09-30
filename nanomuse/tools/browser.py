@@ -36,7 +36,7 @@ from nanomuse.tools.browser_backends import (
     PlaywrightBackend,
     profile_named,
 )
-from nanomuse.tools.web import host_of
+from nanomuse.tools.web import _is_private_host, host_of
 
 # the default (desktop) viewport; the frame the user sees is whatever the backend's profile is
 VIEWPORT = PROFILES["desktop"].viewport
@@ -433,6 +433,11 @@ class Browser(BaseTool):
             return ToolResult.fail("`url` is required")
         if not url.lower().startswith(("http://", "https://")):
             url = "https://" + url
+        # the same guard as web_fetch: the browser's fetch must not reach the machine's own
+        # network (loopback, LAN, cloud metadata) on the model's say-so
+        host = host_of(url)
+        if host is None or await asyncio.to_thread(_is_private_host, host):
+            return ToolResult.fail(f"refusing to fetch a private or local address: {url}")
         result = await backend.fetch(url, method=(method or "GET").upper(), body=body)
         text = str(result.get("body") or "")
         ctype = str((result.get("headers") or {}).get("content-type", ""))

@@ -1206,6 +1206,9 @@ def test_timeline_survives_restart(server, settings: Settings):
     llm.script.append(LLMResponse(content="persisted"))
     client.post("/api/threads/main/send", json={"text": "remember this"})
     wait_for(lambda: events_of(client, kind="assistant"))
+    # writes are coalesced and land shortly after the burst; a restart also flushes at stop
+    path = service.threads["main"].timeline.path
+    wait_for(lambda: path.exists() and "persisted" in path.read_text("utf-8"))
     fresh = MuseService(settings, llm=MockLLM([]))
     texts = [e["text"] for e in fresh.threads["main"].timeline.events]
     assert texts == ["remember this", "persisted"]
@@ -1812,3 +1815,11 @@ def test_triggers_start_work_from_mail_events_and_webhooks(
     r = plain.post(f"/api/hooks/{hook['id']}?key={hook['secret']}", content="x")
     assert r.status_code == 409  # cancelled: the URL is dead
     assert client.get("/api/triggers").json()["items"][0]["url"] == ""
+
+
+def test_update_endpoint(server, monkeypatch):
+    client, _, _ = server
+    monkeypatch.setenv("NANOMUSE_NO_UPDATE_CHECK", "1")  # no network in tests
+    view = client.get("/api/update").json()
+    assert view["enabled"] is False and view["newer"] is False and view["current"]
+    assert TestClient(client.app).get("/api/update").status_code == 401

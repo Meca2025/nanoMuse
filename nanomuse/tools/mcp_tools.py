@@ -158,7 +158,15 @@ class MCPManager:
                 )
             try:
                 streams = await self._stack.enter_async_context(http_client(cfg.url))
-            except Exception:
+            except Exception as exc:  # noqa: BLE001
+                # an older server speaks SSE only; but a wrong URL or a refused key looks the
+                # same from here, so the first answer is kept in the log
+                logger.warning(
+                    "MCP '{}': streamable HTTP failed ({}: {}); trying SSE",
+                    cfg.name,
+                    type(exc).__name__,
+                    exc,
+                )
                 from mcp.client.sse import sse_client
 
                 streams = await self._stack.enter_async_context(sse_client(cfg.url))

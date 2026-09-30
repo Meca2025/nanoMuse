@@ -39,6 +39,7 @@ from nanomuse.schema import Attachment, Message, Role
 from nanomuse.sentinel.grants import SCOPES
 from nanomuse.server.connections import Connections
 from nanomuse.server.events import MAIN_THREAD, EventBus, Timeline, new_id, now_iso
+from nanomuse.server.failures import failure_notice
 from nanomuse.server.push import PushService
 from nanomuse.server.webui import WebUI, current_thread
 from nanomuse.tools.browser import Browser
@@ -397,6 +398,8 @@ class MuseService:
             if t.worker:
                 t.worker.cancel()
         await asyncio.sleep(0)
+        for t in self.threads.values():
+            t.timeline.flush()
         if self._started:
             await self.coding.close()
             await self.hub.stop()
@@ -790,14 +793,7 @@ class MuseService:
                     raise
                 except Exception as exc:  # noqa: BLE001
                     logger.exception("thread {} failed", thread.id)
-                    self.ui.emit(
-                        {
-                            "type": "notice",
-                            "level": "error",
-                            "text": f"Something went wrong: {type(exc).__name__}: {exc}",
-                            "thread": thread.id,
-                        }
-                    )
+                    self.ui.emit(failure_notice(exc, thread.id))
                     if thread.agent.state.value == "error":
                         thread.agent.state = thread.agent.state.__class__.IDLE
                 finally:

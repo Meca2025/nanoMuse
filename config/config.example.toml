@@ -267,3 +267,4 @@ auth = true              # access token in the link / QR code; keep it on
 token = ""               # empty → generated once, kept in <data_dir>/server_token
 approval_timeout = 3600  # seconds an approval card waits before it counts as "deny"
 max_upload_mb = 25       # largest file the app may attach to a message
+update_check = true      # say under Settings → About when a newer release is out (GitHub Releases, every 6 h; nothing is sent)

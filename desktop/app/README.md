@@ -36,5 +36,12 @@ Environment the shell reads:
 Flags for checks without a person at the screen: `--screenshot=/tmp/win.png` writes the
 window and quits; with `--stage-demo` it writes the stage instead.
 
-Nothing here is packaged yet (no electron-builder); the standard-library
+`npm run dist` packages it with electron-builder — a bundled runtime built by
+`scripts/desktop-app/build-runtime.py` goes into `resources/runtime/` first — and
+`.github/workflows/desktop-app.yml` does the same on every `v*` tag, attaching
+`nanoMuse-Desktop-<version>-…` (`.exe`, `.dmg`, `.AppImage`, `.deb`) to the release.
+The installers are not code-signed: Windows and macOS show their unsigned-app
+warning once ([docs/desktop.md](../../docs/desktop.md) says how to get past it).
+The tray has **About nanoMuse** (version, runtime, shortcuts) and **Check for
+updates** (GitHub Releases; nothing is downloaded on its own). The standard-library
 `desktop/nanomuse_desktop` binary remains the zero-install way to get a window.

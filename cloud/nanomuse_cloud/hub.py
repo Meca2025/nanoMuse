@@ -348,7 +348,7 @@ class Hub:
         if target is conn:
             await conn.send({"type": "error", "id": call_id, "code": "self_call", "message": "That is this device"})
             return
-        self._sweep()
+        await self._sweep()
         self.pending[call_id] = Pending(call_id=call_id, caller=conn.device_id, target=to, account_id=conn.account_id)
         args = frame.get("args") if isinstance(frame.get("args"), dict) else {}
         await target.send({"type": "call", "id": call_id, "from": conn.brief(), "action": action, "args": args})
@@ -371,11 +371,15 @@ class Hub:
         out["from"] = conn.brief()
         await caller.send(out)
 
-    def _sweep(self) -> None:
+    async def _sweep(self) -> None:
+        """Calls nobody answered in time are dropped, and the caller hears so instead of waiting for its own clock."""
         cutoff = now() - CALL_TTL_S
         for call_id, p in list(self.pending.items()):
             if p.started < cutoff:
                 del self.pending[call_id]
+                caller = self.online.get(p.account_id, {}).get(p.caller)
+                if caller:
+                    await caller.send({"type": "error", "id": call_id, "code": "timeout", "message": "the device did not answer in time"})
 
 
 def _loads(raw: str):

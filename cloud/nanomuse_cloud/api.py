@@ -49,11 +49,13 @@ import base64
 import json
 import logging
 import math
+import secrets
 import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, Request, Response, UploadFile, WebSocket
@@ -73,7 +75,28 @@ def error_response(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"error": {"message": message, "type": "nanomuse_cloud", "code": code}})
 
 
-def create_app(settings: Settings | None = None, cloud: Cloud | None = None, upstream_transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
+# where the provider keeps the pictures it makes: its own API host and Alibaba Cloud OSS buckets
+PROVIDER_HOST_SUFFIXES = (".aliyuncs.com", ".alicdn.com")
+
+
+def _provider_url_ok(url: object, own_hosts: tuple[str, ...] = ()) -> bool:
+    """Only URLs on the provider's own hosts are fetched (the relay must not become an open proxy):
+    the configured API hosts themselves, or https on Alibaba Cloud's storage domains."""
+    try:
+        parts = urlsplit(str(url))
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower()
+    if not host or parts.scheme not in ("http", "https"):
+        return False
+    if host in own_hosts:
+        return True
+    return parts.scheme == "https" and host.endswith(PROVIDER_HOST_SUFFIXES)
+
+
+def create_app(
+    settings: Settings | None = None, cloud: Cloud | None = None, upstream_transport: httpx.AsyncBaseTransport | None = None
+) -> FastAPI:
     settings = settings or Settings()
     cloud = cloud or Cloud(settings)
 
@@ -286,11 +309,15 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         async def gen() -> AsyncIterator[bytes]:
             usage: tuple[int, int] | None = None
             text_len = 0
+            # A request the provider refused, or dropped before a single token, costs the
+            # account nothing; a stream that broke off midway is charged for what arrived.
+            failed = False
             try:
                 async with http.stream("POST", url, headers=headers, content=dumps(body).encode()) as r:
                     if r.status_code >= 400:
                         raw = await r.aread()
                         cloud.note(caller.account_id, "upstream.error", f"chat {r.status_code}")
+                        failed = True
                         err = _relay_error_body(r.status_code, raw)
                         yield f"data: {dumps(err)}\n\n".encode()
                         yield b"data: [DONE]\n\n"
@@ -320,13 +347,16 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
                             yield (line + "\n").encode()
             except httpx.HTTPError as e:
                 log.warning("upstream stream error: %s", e)
+                cloud.note(caller.account_id, "upstream.error", "chat stream broke")
+                failed = usage is None and text_len == 0
                 err = {"error": {"message": "The model provider stopped answering", "type": "nanomuse_cloud", "code": "upstream"}}
                 yield f"data: {dumps(err)}\n\n".encode()
                 yield b"data: [DONE]\n\n"
             finally:
-                if usage is None:
-                    usage = (fallback_prompt_tokens, math.ceil(text_len / 3))
-                cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
+                if not failed:
+                    if usage is None:
+                        usage = (fallback_prompt_tokens, math.ceil(text_len / 3))
+                    cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
 
         return StreamingResponse(
             gen(),
@@ -356,6 +386,10 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
             image_url = r.json()["output"]["choices"][0]["message"]["content"][0]["image"]
         except (ValueError, KeyError, IndexError, TypeError) as e:
             raise CloudError(502, "upstream", "The image provider sent no picture") from e
+        own_hosts = tuple((urlsplit(u).hostname or "").lower() for u in (settings.dashscope_base, settings.upstream_base))
+        if not _provider_url_ok(image_url, own_hosts):
+            log.warning("dashscope image URL off the provider's hosts: %s", str(image_url)[:120])
+            raise CloudError(502, "upstream", "The image provider sent a picture from somewhere unexpected")
         try:
             img = await http.get(image_url)
         except httpx.HTTPError as e:
@@ -604,7 +638,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
     # -- admin ------------------------------------------------------------------------------------
 
     def admin_dep(x_admin_token: str | None = Header(default=None)) -> None:
-        if not settings.admin_token or x_admin_token != settings.admin_token:
+        if not settings.admin_token or not secrets.compare_digest((x_admin_token or "").encode(), settings.admin_token.encode()):
             raise CloudError(401, "admin", "admin token required")
 
     @app.get("/v1/admin/accounts", dependencies=[Depends(admin_dep)])
@@ -613,9 +647,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         hub = getattr(app.state, "hub", None)
         if hub is not None:
             for a in accounts:
-                a["devices"] = [
-                    {k: d[k] for k in ("id", "name", "kind", "os", "online", "last_seen")} for d in hub.devices(a["id"])
-                ]
+                a["devices"] = [{k: d[k] for k in ("id", "name", "kind", "os", "online", "last_seen")} for d in hub.devices(a["id"])]
         return {"accounts": accounts, "settings": {**cloud.admin_settings(), "version": __version__}}
 
     @app.get("/v1/admin/usage", dependencies=[Depends(admin_dep)])
@@ -692,18 +724,36 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         return obj
 
     def _relay_error_body(status: int, raw: bytes) -> dict:
-        message = "The model provider refused the request"
+        """What the app is told when the provider says no. A 400 is about the request and
+        the provider's own words are the useful ones; everything else is the relay's problem
+        (its key, its quota, the provider's day) and is said in words that do not send the
+        person hunting for an API key they never had. The provider's text rides along under
+        ``upstream`` for the curious and for bug reports."""
+        upstream = ""
         try:
             up = json.loads(raw)
             if isinstance(up, dict):
                 e = up.get("error")
                 if isinstance(e, dict) and e.get("message"):
-                    message = str(e["message"])[:300]
+                    upstream = str(e["message"])[:300]
                 elif up.get("message"):
-                    message = str(up["message"])[:300]
+                    upstream = str(up["message"])[:300]
         except ValueError:
             pass
-        return {"error": {"message": message, "type": "upstream", "code": f"upstream_{status}"}}
+        if status == 400:
+            message, code = upstream or "The model provider refused the request", "upstream_400"
+        elif status in (401, 403):
+            message, code = "The relay's model provider refused its key; the operator has been told", "upstream_auth"
+        elif status == 404:
+            message, code = "The model provider does not know this model right now", "upstream_model"
+        elif status == 429:
+            message, code = "The model provider is busy; try again in a moment", "upstream_busy"
+        else:
+            message, code = "The model provider is having trouble; try again in a moment", f"upstream_{status}"
+        err: dict = {"message": message, "type": "upstream", "code": code}
+        if upstream and status != 400:
+            err["upstream"] = upstream
+        return {"error": err}
 
     def _relay_error(r: httpx.Response) -> JSONResponse:
         # The provider's own status codes would confuse the app (its 401 is not

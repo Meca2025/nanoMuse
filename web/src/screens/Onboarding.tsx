@@ -57,15 +57,18 @@ export function Onboarding() {
     }
   };
 
+  const [connError, setConnError] = useState<string | null>(null);
   const loadConn = async () => {
     try {
+      setConnError(null);
       setConn(await api.connections());
-    } catch {
-      /* shown as loading */
+    } catch (e) {
+      setConnError(t((e as Error).message) || t("Could not load the connections."));
     }
   };
   useEffect(() => {
     void loadConn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when the server says connections changed
   }, [state.connectionsVersion]);
 
   const saveIdentity = async () => {
@@ -91,7 +94,7 @@ export function Onboarding() {
     }
     dismissOnboarding();
     setTab("chat");
-    if (firstAsk) void send("main", firstAsk);
+    if (firstAsk) send("main", firstAsk).catch((e: Error) => toast(e.message || t("Could not send")));
   };
 
   const preview = { ...identity, proactivity: "default" as const, proactive: true, goal_interval_minutes: 60, quiet_hours: "" };
@@ -141,7 +144,20 @@ export function Onboarding() {
             </div>
             <ol className="mt-6 space-y-2">
               <Item done={named} title={t("Meet your nanoMuse")} body={named ? t("Named {name}. Tap to change.", { name }) : t("Give it a name, a face and a way of talking.")} onClick={() => setStep("muse")} />
-              <Item done={modelReady} title={t("Add a model")} body={modelReady ? `${conn?.llm.model} · ${hostOf(conn?.llm.base_url ?? "")}` : t("Pick a provider and paste a key. Yours, stored in the vault.")} onClick={() => setStep("model")} />
+              <Item
+                done={modelReady}
+                title={t("Add a model")}
+                body={
+                  modelReady
+                    ? conn?.llm.cloud
+                      ? `nanoMuse Cloud · ${conn.llm.model}`
+                      : `${conn?.llm.model} · ${hostOf(conn?.llm.base_url ?? "")}`
+                    : state.hub?.account.signed_in
+                      ? t("Your account's model, or a key of your own.")
+                      : t("Pick a provider and paste a key. Yours, stored in the vault.")
+                }
+                onClick={() => setStep("model")}
+              />
               <Item done={connected} optional title={t("Connect mail, calendar, contacts")} body={connected ? t("Connected. Tap to add more.") : t("Optional — it can read what came in, know your day, and who is who.")} onClick={() => setStep("connect")} />
               <Item locked={!modelReady} done={false} title={t("Start")} body={modelReady ? t("Open the chat and ask for the first thing.") : t("Needs a model first.")} onClick={() => modelReady && setStep("tips")} />
             </ol>
@@ -164,7 +180,9 @@ export function Onboarding() {
               <h1 className="text-[26px] font-bold tracking-tight">{t("The model behind it")}</h1>
               <p className="mt-1 text-[14px] text-muted">
                 {modelReady
-                  ? t("A model is already set up on the server. Keep it, or switch here.")
+                  ? conn?.llm.cloud
+                    ? t("Your account's model, with its daily allowance. Keep it, or switch to a key of your own here.")
+                    : t("A model is already set up on the server. Keep it, or switch here.")
                   : t("Your account brings a model with a daily allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
               </p>
             </div>
@@ -195,6 +213,13 @@ export function Onboarding() {
                 {!modelReady && <p className="px-1 text-[12.5px] font-medium text-muted">{t("Or bring your own key")}</p>}
                 <ModelCard data={conn} onChange={() => void loadConn()} compact />
               </>
+            ) : connError ? (
+              <div className="rounded-3xl border border-border/70 bg-surface p-4 text-center">
+                <p className="text-[13.5px] text-muted">{connError}</p>
+                <button type="button" onClick={() => void loadConn()} className="mt-3 rounded-full bg-surface-2 px-4 py-1.5 text-[13px] font-medium">
+                  {t("Retry")}
+                </button>
+              </div>
             ) : (
               <div className="flex justify-center py-8 text-muted">
                 <Loader2 className="animate-spin" size={20} />
@@ -217,6 +242,13 @@ export function Onboarding() {
                 <CalendarCard data={conn} onChange={() => void loadConn()} compact />
                 <ContactsCard data={conn} onChange={() => void loadConn()} compact />
               </>
+            ) : connError ? (
+              <div className="rounded-3xl border border-border/70 bg-surface p-4 text-center">
+                <p className="text-[13.5px] text-muted">{connError}</p>
+                <button type="button" onClick={() => void loadConn()} className="mt-3 rounded-full bg-surface-2 px-4 py-1.5 text-[13px] font-medium">
+                  {t("Retry")}
+                </button>
+              </div>
             ) : (
               <div className="flex justify-center py-8 text-muted">
                 <Loader2 className="animate-spin" size={20} />

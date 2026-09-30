@@ -153,14 +153,16 @@ export function CallScreen({ mode }: { mode: "voice" | "video" }) {
           const err = (obj.error ?? {}) as { code?: string; message?: string };
           const code = err.code ?? "";
           if (code === "no_call_route" || code === "offline") {
-            setError(err.message ?? code);
+            setError(t(err.message ?? code));
             hangUp("failed");
           } else if (code === "daily_cap" || code === "out_of_tokens") {
             setError(t("The daily allowance is used up; the call ended."));
+            hangUp("failed");
           } else if (code === "call_too_long") {
             setError(t("Calls are limited in length; this one reached it."));
+            hangUp();
           } else if (err.message && !/cancel/i.test(err.message)) {
-            setError(err.message);
+            setError(t(err.message));
           }
           break;
         }
@@ -229,12 +231,24 @@ export function CallScreen({ mode }: { mode: "voice" | "video" }) {
           /* onclose follows */
         };
       } catch (e) {
+        // getUserMedia's DOMException names, in the person's words
+        const name = (e as Error).name;
         const msg =
-          (e as Error).name === "NotAllowedError"
+          name === "NotAllowedError" || name === "SecurityError"
             ? t(
                 "Microphone access was refused. Allow it in the browser and try again.",
               )
-            : (e as Error).message;
+            : name === "NotFoundError" || name === "OverconstrainedError"
+              ? t("No microphone was found on this device.")
+              : name === "NotReadableError" || name === "AbortError"
+                ? t(
+                    "The microphone is in use by another app or could not be started.",
+                  )
+                : window.isSecureContext === false
+                  ? t(
+                      "Calls need a secure page (https or localhost); the browser will not open the microphone here.",
+                    )
+                  : t((e as Error).message);
         setError(msg);
         hangUp("failed");
       }

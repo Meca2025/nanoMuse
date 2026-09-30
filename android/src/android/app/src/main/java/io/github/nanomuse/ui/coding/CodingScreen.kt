@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openminis.app.R
+import com.openminis.app.logging.AppLogger
 import io.github.nanomuse.coding.CodingBridge
 import io.github.nanomuse.coding.CodingBridge.Agent
 import io.github.nanomuse.coding.CodingBridge.LiveRun
@@ -75,6 +76,7 @@ import io.github.nanomuse.coding.CodingBridge.Message
 import io.github.nanomuse.coding.CodingBridge.Session
 import io.github.nanomuse.hub.Device
 import io.github.nanomuse.hub.Hub
+import io.github.nanomuse.hub.HubErrors
 import io.github.nanomuse.sysfiles.SystemFiles
 import io.github.nanomuse.ui.home.MuseTones
 import io.github.nanomuse.ui.muse.MuseCard
@@ -124,7 +126,8 @@ fun CodingScreen(onBack: () -> Unit, onOpenDevices: () -> Unit) {
                 agents = CodingBridge.agents(dev.id)
                 sessions = CodingBridge.sessions(dev.id, null)
             } catch (e: Exception) {
-                error = e.message ?: e.javaClass.simpleName
+                AppLogger.info("CodingScreen", "list failed: ${e.message}")
+                error = HubErrors.describe(context, e)
             }
             loading = false
         }
@@ -449,7 +452,8 @@ private fun SessionScreen(computer: Device, session: Session, agentName: String,
                 transcript = CodingBridge.transcript(computer.id, session.agent, sessionId)
                 error = null
             } catch (e: Exception) {
-                error = e.message ?: e.javaClass.simpleName
+                AppLogger.info("CodingScreen", "transcript failed: ${e.message}")
+                error = HubErrors.describe(context, e)
             }
             loading = false
         }
@@ -480,7 +484,8 @@ private fun SessionScreen(computer: Device, session: Session, agentName: String,
                 live = final
                 if (final.sessionId.isNotBlank() && final.sessionId != sessionId) sessionId = final.sessionId else reload()
             } catch (e: Exception) {
-                live = live?.copy(status = "failed", error = e.message ?: e.javaClass.simpleName)
+                AppLogger.info("CodingScreen", "send failed: ${e.message}")
+                live = live?.copy(status = "failed", error = HubErrors.describe(context, e))
             }
         }
     }

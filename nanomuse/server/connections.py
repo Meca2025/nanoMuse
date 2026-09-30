@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
+from nanomuse.cloud import DEFAULT_MODEL as DEFAULT_CLOUD_MODEL
+from nanomuse.cloud import model_url
 from nanomuse.config import (
     CalendarFeedSettings,
     ContactSourceSettings,
@@ -231,6 +233,29 @@ class Connections:
         self.svc.bus.publish({"kind": "settings", "settings": self.svc.settings_view()})
 
     # ------------------------------------------------------------------ view
+    CLOUD_PRESET = "nanomuse_cloud"
+
+    def _providers(self) -> dict[str, dict[str, Any]]:
+        """The catalogue, plus nanoMuse Cloud as a provider of its own while the account is
+        signed in: the account's chat models, no key to paste (the account key is the key),
+        so the form says "nanoMuse Cloud" rather than a bare URL under "other endpoint"."""
+        hub = getattr(self.svc, "hub", None)
+        if hub is None or not hub.signed_in:
+            return PROVIDERS
+        return {
+            self.CLOUD_PRESET: {
+                "label": "nanoMuse Cloud",
+                "subtitle": "your account's model, with a daily allowance",
+                "group": "cloud",
+                "provider": "openai",
+                "base_url": model_url(hub.cloud.base_url),
+                "models": hub.chat_models or [DEFAULT_CLOUD_MODEL],
+                "no_key": True,
+                "cloud": True,
+            },
+            **PROVIDERS,
+        }
+
     def view(self) -> dict[str, Any]:
         s = self.settings
         key = s.llm.api_key
@@ -265,8 +290,14 @@ class Connections:
                 "stream": s.llm.stream,
                 "key_source": key_source,
                 "from_app": bool(self.data.get("llm")),
+                # the model is the nanoMuse Cloud account's (the form says so instead of a URL)
+                "cloud": bool(
+                    s.llm.base_url
+                    and getattr(self.svc, "hub", None) is not None
+                    and s.llm.base_url.rstrip("/") == model_url(self.svc.hub.cloud.base_url)
+                ),
             },
-            "providers": PROVIDERS,
+            "providers": self._providers(),
             "embeddings": self._embeddings_view(),
             "search": self._search_view(),
             "email": {
@@ -564,6 +595,22 @@ class Connections:
         configured one. Never touches settings — what the user typed in the form stays.
         """
         preset_id = str(body.get("preset") or "")
+        if preset_id == self.CLOUD_PRESET:
+            hub = self.svc.hub
+            if not hub.signed_in:
+                return {
+                    "models": [DEFAULT_CLOUD_MODEL],
+                    "source": "catalogue",
+                    "error": "signed out",
+                }
+            try:
+                return {"models": await hub.refresh_chat_models(), "source": "live"}
+            except Exception as exc:  # noqa: BLE001
+                return {
+                    "models": hub.chat_models or [DEFAULT_CLOUD_MODEL],
+                    "source": "catalogue",
+                    "error": f"{type(exc).__name__}",
+                }
         preset = PROVIDERS.get(preset_id) or {}
         base_url = normalize_base_url(str(body.get("base_url") or preset.get("base_url") or ""))
         catalogue: list[str] = list(preset.get("models") or [])

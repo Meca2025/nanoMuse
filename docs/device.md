@@ -1,5 +1,11 @@
 # The phone's own capabilities
 
+> **Design record of the Python line.** In the current Android app the phone's
+> capabilities are OpenMinis's device tools, and the computers are reached through
+> Reach and the hub ([android.md](android.md), [hub.md](hub.md)); the "connect build"
+> mentioned below no longer exists.
+
+
 On a phone, nanoMuse can reach what is on it: the clipboard, the calendar, the contacts, where the phone is, the clock's alarms and timers, the notification shade, and the photo library through the system picker. This page is about how that works, what each tool may do, what it asks the user, and what it deliberately cannot do.
 
 The rule of the design: **the model gets tools, the user gets Android's own dialogs.** nanoMuse never grants itself anything. Every permission is asked for by the platform's dialog, the photo library is only ever seen through the platform's picker, and alarms are handed to the clock app the user already has. The Python brain does not change to run on a phone; the Kotlin side is a small tool host.

@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -136,6 +137,14 @@ fun CallScreen(video: Boolean, onDone: () -> Unit) {
         e.start()
     }
     DisposableEffect(Unit) { onDispose { engine?.hangUp() } }
+    // The camera switched on or off during the call: the engine starts or stops sending frames.
+    LaunchedEffect(camera, engine) { engine?.setVideo(camera && granted(Manifest.permission.CAMERA)) }
+    // The screen stays on for the call (as a phone's dialer does), and comes back to normal after.
+    val callView = LocalView.current
+    DisposableEffect(callView) {
+        callView.keepScreenOn = true
+        onDispose { callView.keepScreenOn = false }
+    }
     BackHandler { engine?.hangUp(); onDone() }
 
     val e = engine

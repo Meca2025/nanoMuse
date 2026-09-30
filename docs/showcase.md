@@ -35,7 +35,7 @@ No screen anywhere. The Sentinel asks once, for the message; everything else is 
 | `shell: tmeet meeting list --compact` | today's meetings with 会议号 and link |
 | the notification | one card; tapping it opens the chat with the full brief |
 
-**Trace:** *pending* — 高德 key, 飞书 and 腾讯会议 logins. The routine and the notification path themselves are exercised by the app's tests and the emulator (the *Keep it running* work in [android.md](android.md#keeping-it-running)).
+**Trace:** *pending* — 高德 key, 飞书 and 腾讯会议 logins. The routine and the notification path themselves are exercised by the app's tests and the emulator (the *Keep it running* work in [archive/android-python-line.md](archive/android-python-line.md#keeping-it-running)).
 
 ## 3. Where is my 京东 order
 

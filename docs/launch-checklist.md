@@ -1,5 +1,12 @@
 # Launch checklist — v0.1.0
 
+> **Archived.** This was the working list for the first public release of the Python
+> line. Domains (`nanomuse.dev`), artifacts (two APKs, a rootfs) and the mascot decision
+> (red panda) it mentions are not the current ones: the site is nanomuse.cn, the release
+> carries one `nanoMuse-<version>-arm64.apk`, the default face is the dragon. Kept
+> unchanged as a record; the plan that replaced it is [roadmap.md](roadmap.md).
+
+
 Everything that has to happen before the first public release of nanoMuse, in the order it will be done. This is a working document: items are ticked as they land, and the [CHANGELOG](../CHANGELOG.md) records what shipped.
 
 Priorities: **P0** — the release does not go out without it. **P1** — the release should have it. **P2** — can follow in a point release.

@@ -95,7 +95,12 @@ export interface QuestionEvent extends BaseEvent {
 export interface NoticeEvent extends BaseEvent {
   type: "notice";
   level: "info" | "warn" | "error";
+  /** an English sentence; the runtime's failure sentences are keys in the dictionary */
   text: string;
+  /** a short reason for a failed run: allowance, key, network, timeout, too_long … */
+  code?: string;
+  /** the raw exception, for bug reports */
+  detail?: string;
   source?: string;
 }
 
@@ -536,6 +541,15 @@ export interface ToolInfo {
   description: string;
 }
 
+export interface UpdateView {
+  current: string;
+  enabled: boolean;
+  latest: string | null;
+  newer: boolean;
+  url: string;
+  error?: string | null;
+}
+
 export interface SettingsView {
   version: string;
   profile: Profile;
@@ -602,13 +616,15 @@ export interface ProviderPreset {
   label: string;
   /** who is behind it, or what protocol: "Moonshot AI · 月之暗面", "Responses API" */
   subtitle?: string;
-  /** how the form groups them: "openai" (Chat Completions), "responses", "local" */
-  group?: "openai" | "responses" | "local" | string;
+  /** how the form groups them: "cloud" (the account), "openai" (Chat Completions), "responses", "local" */
+  group?: "cloud" | "openai" | "responses" | "local" | string;
   provider: "openai" | "openai_responses" | string;
   base_url: string;
   /** the fallback catalogue; the live list comes from /api/llm/models */
   models?: string[];
   no_key?: boolean;
+  /** the nanoMuse Cloud account as the provider: the account key is the key, saved through /api/cloud/use-as-model */
+  cloud?: boolean;
   /** a key may be left empty (a gateway or local server without one) */
   key_optional?: boolean;
   /** where a key comes from */
@@ -627,6 +643,8 @@ export interface ConnectionsData {
     /** vault = key entered in the app; config = from config.toml / env; missing = referenced but not set. */
     key_source: "vault" | "config" | "missing" | "none";
     from_app: boolean;
+    /** the model is the nanoMuse Cloud account's */
+    cloud?: boolean;
   };
   providers: Record<string, ProviderPreset>;
   /** Recall by meaning: memories embedded through an OpenAI-compatible /embeddings endpoint. */

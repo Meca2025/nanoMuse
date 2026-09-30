@@ -54,9 +54,9 @@ export function ConnectionsScreen() {
       setData(await api.connections());
       setError(null);
     } catch (e) {
-      setError((e as Error).message);
+      setError(t((e as Error).message));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -226,10 +226,11 @@ export function ModelCard({
   };
 
   const keyless = !!p?.no_key || (noKey && !!p?.key_optional);
-  const status =
-    data.llm.key_source === "none" &&
-    !presets[currentPreset]?.no_key &&
-    !presets[currentPreset]?.key_optional
+  const status = data.llm.cloud
+    ? { text: t("Your account's model"), tone: "ok" }
+    : data.llm.key_source === "none" &&
+        !presets[currentPreset]?.no_key &&
+        !presets[currentPreset]?.key_optional
       ? { text: t("No key yet"), tone: "warn" }
       : data.llm.key_source === "missing"
         ? { text: t("Key missing from vault"), tone: "warn" }
@@ -247,13 +248,18 @@ export function ModelCard({
     setSaving(true);
     setTest(null);
     try {
-      await api.setLLM({
-        provider: p?.provider ?? "openai",
-        model: model.trim(),
-        base_url: effectiveUrl.trim(),
-        tool_mode: toolMode,
-        api_key: key ? key : keyless ? "" : null,
-      });
+      if (p?.cloud) {
+        // the account's key stays the key; only the model is chosen here
+        await api.cloudUseAsModel(model.trim());
+      } else {
+        await api.setLLM({
+          provider: p?.provider ?? "openai",
+          model: model.trim(),
+          base_url: effectiveUrl.trim(),
+          tool_mode: toolMode,
+          api_key: key ? key : keyless ? "" : null,
+        });
+      }
       setKey("");
       toast(t("Model saved"));
       onChange();
@@ -277,6 +283,7 @@ export function ModelCard({
   };
 
   const groups: Array<{ id: string; title: string; ids: string[] }> = [
+    { id: "cloud", title: t("Your account"), ids: [] },
     { id: "openai", title: t("OpenAI-compatible · Chat Completions"), ids: [] },
     { id: "responses", title: t("Responses API"), ids: [] },
     { id: "local", title: t("Local or your own endpoint"), ids: [] },
@@ -292,7 +299,11 @@ export function ModelCard({
     <Card
       icon={<Bot size={19} />}
       title={t("Model")}
-      summary={`${data.llm.model || "—"}${data.llm.base_url ? ` · ${hostOf(data.llm.base_url)}` : ""}`}
+      summary={
+        data.llm.cloud
+          ? `nanoMuse Cloud · ${data.llm.model || "—"}`
+          : `${data.llm.model || "—"}${data.llm.base_url ? ` · ${hostOf(data.llm.base_url)}` : ""}`
+      }
       status={status}
       open={open}
       onToggle={compact ? undefined : () => setOpen(!open)}
@@ -331,7 +342,7 @@ export function ModelCard({
                         </span>
                         {q.subtitle && (
                           <span className="block text-[10.5px] opacity-80">
-                            {q.subtitle}
+                            {t(q.subtitle)}
                           </span>
                         )}
                       </button>

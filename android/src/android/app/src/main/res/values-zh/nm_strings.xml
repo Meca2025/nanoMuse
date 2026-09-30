@@ -768,4 +768,18 @@
     <string name="nm_devices_forget">移除</string>
     <string name="nm_devices_forget_sub">把这台设备从列表里去掉。它下次用这个账号登录时会重新出现。</string>
     <string name="nm_devices_how">在聊天里直接说就行：「在我 Mac 上列一下下载文件夹」「让电脑把项目编译一遍，把日志发给我」。需要确认的事会在这台手机上弹卡片。</string>
+    <!-- 0.1.21: hub and coding errors in words; the devices row when the relay refuses -->
+    <string name="nm_hub_err_disconnected">现在没有连上中继。</string>
+    <string name="nm_hub_err_timeout">电脑没有及时回应。</string>
+    <string name="nm_hub_err_device_offline">那台电脑不在线。</string>
+    <string name="nm_hub_err_busy">电脑正忙着另一个任务，稍后再试。</string>
+    <string name="nm_hub_err_not_controllable">那个设备不能接受操作。</string>
+    <string name="nm_hub_err_unknown_agent">电脑上没有这个 coding agent。</string>
+    <string name="nm_hub_err_no_session">这个会话已经不在电脑上了。</string>
+    <string name="nm_hub_err_unknown_action">电脑上的 nanoMuse 版本较旧，不认识这个操作。</string>
+    <string name="nm_hub_err_bad_key">中继上已退出登录，请重新登录。</string>
+    <string name="nm_hub_err_generic">电脑没能完成。</string>
+    <string name="nm_devices_refused">被中继拒绝——请重新登录</string>
+    <string name="nm_devices_notifications_hint">允许通知，手机才能在后台保持可联。</string>
+    <string name="nm_library_share_failed">文件没能分享出去。</string>
 </resources>

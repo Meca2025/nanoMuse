@@ -121,8 +121,9 @@ adds the hub, the Cloud account and the hands to it.
   icon, native notifications, the **stage** — a transparent, click-through,
   always-on-top window that draws the ring and the ripple where the hands are
   about to click (UI-TARS-desktop's ScreenMarker, the way `HandsStage` redrew
-  it on Android) — and a global Stop shortcut. Development only for now: no
-  installer is built in this stage.
+  it on Android) — and a global Stop shortcut. Packaged since 0.1.19:
+  `nanoMuse-Desktop-<version>-…` installers for Windows, macOS and Linux on every
+  release ([desktop.md](desktop.md)).
 - **The standard-library binary** (`desktop/nanomuse_desktop`) stays as the
   zero-install fallback for a machine without Python; its hub code is the
   origin of `nanomuse/hub`. In time its terminal becomes a client of the
@@ -173,7 +174,8 @@ seeded from the environment so it comes up signed in as the device *Web*, with
 the Cloud as its model and the first run behind it (`NANOMUSE_CLOUD_KEY`,
 `NANOMUSE_CLOUD_BASE_URL`, `NANOMUSE_HUB_NAME`, `NANOMUSE_ONBOARDED`;
 `nanomuse/hub/service.py`, `_seed_from_env`). The browser is sent to
-`https://<slug>.s.nanomuse.dev/?token=…`, the door the phone's QR code opens.
+`https://<slug>.<SESSION_DOMAIN>/?token=…` (`s.nanomuse.dev` on the project's
+gateway; the sign-in itself is at nanomuse.cn/web), the door the phone's QR code opens.
 It has local hands of its own (a shell and files inside the container, the
 browser tool) and sits on the hub like any other device: the phone can ask it,
 it can ask the phone or the computer. Quiet for six hours, the container is

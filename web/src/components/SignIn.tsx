@@ -53,7 +53,7 @@ export function SignIn({
       await api.cloudCode(id);
       setSent(true);
     } catch (e) {
-      setError((e as Error).message);
+      setError(t((e as Error).message));
     } finally {
       setBusy(null);
     }
@@ -70,7 +70,7 @@ export function SignIn({
       setSent(false);
       await finish();
     } catch (e) {
-      setError((e as Error).message);
+      setError(t((e as Error).message));
     } finally {
       setBusy(null);
     }
@@ -86,7 +86,7 @@ export function SignIn({
       setPassword("");
       await finish();
     } catch (e) {
-      setError((e as Error).message);
+      setError(t((e as Error).message));
     } finally {
       setBusy(null);
     }

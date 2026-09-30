@@ -771,4 +771,18 @@
     <string name="nm_devices_forget">Forget</string>
     <string name="nm_devices_forget_sub">Take this device off the list. It comes back the next time it signs in with this account.</string>
     <string name="nm_devices_how">In a chat, just ask: “on my Mac, list the downloads folder”, “tell my PC to build the project and send me the log”. Approvals show on this phone.</string>
+    <!-- 0.1.21: hub and coding errors in words; the devices row when the relay refuses -->
+    <string name="nm_hub_err_disconnected">Not connected to the hub right now.</string>
+    <string name="nm_hub_err_timeout">The computer did not answer in time.</string>
+    <string name="nm_hub_err_device_offline">That computer is offline.</string>
+    <string name="nm_hub_err_busy">The computer is busy with another run; try again in a moment.</string>
+    <string name="nm_hub_err_not_controllable">That device cannot be asked to do things.</string>
+    <string name="nm_hub_err_unknown_agent">That coding agent is not on the computer.</string>
+    <string name="nm_hub_err_no_session">That session is not on the computer any more.</string>
+    <string name="nm_hub_err_unknown_action">The computer runs an older nanoMuse that does not know this action.</string>
+    <string name="nm_hub_err_bad_key">Signed out on the relay; sign in again.</string>
+    <string name="nm_hub_err_generic">The computer could not do it.</string>
+    <string name="nm_devices_refused">Refused by the relay — sign in again</string>
+    <string name="nm_devices_notifications_hint">Allow notifications so the phone can stay reachable in the background.</string>
+    <string name="nm_library_share_failed">Could not share the file.</string>
 </resources>

@@ -5,11 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
+import tomllib
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from pydantic import ValidationError
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
@@ -92,6 +94,18 @@ def _settings(config: Path | None, auto: bool = False) -> Settings:
     except FileNotFoundError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
+    except tomllib.TOMLDecodeError as exc:
+        where = find_config_file(config)
+        console.print(f"[red]config.toml is not valid TOML[/red] ({where}): {exc}")
+        raise typer.Exit(1) from exc
+    except ValidationError as exc:
+        where = find_config_file(config)
+        console.print(
+            f"[red]config.toml has {exc.error_count()} setting(s) nanoMuse does not understand[/red] ({where}):"
+        )
+        for err in exc.errors():
+            console.print(f"  [bold]{'.'.join(str(x) for x in err['loc'])}[/bold]: {err['msg']}")
+        raise typer.Exit(1) from exc
     if auto:
         settings.sentinel.mode = "auto"
     if not settings.llm.api_key and "localhost" not in (settings.llm.base_url or ""):
@@ -99,7 +113,14 @@ def _settings(config: Path | None, auto: bool = False) -> Settings:
             "[yellow]No API key configured.[/yellow] Set [bold]llm.api_key[/bold] in config.toml "
             "(run `nanomuse config init`) or export DEEPSEEK_API_KEY / OPENAI_API_KEY."
         )
-    settings.ensure_dirs()  # the store commands open SQLite files under data_dir directly
+    try:
+        settings.ensure_dirs()  # the store commands open SQLite files under data_dir directly
+    except OSError as exc:
+        console.print(
+            f"[red]cannot write to the data directory[/red] {settings.data_dir}: {exc.strerror or exc}\n"
+            "Point NANOMUSE_DATA_DIR (or data_dir in config.toml) at a folder you can write to."
+        )
+        raise typer.Exit(1) from exc
     return settings
 
 
@@ -333,6 +354,13 @@ def serve(
         _serve(settings, host=host, port=port, print_qr=not no_qr)
     except KeyboardInterrupt:  # pragma: no cover
         console.print("\n[yellow]stopped[/yellow]")
+    except PermissionError as exc:
+        console.print(
+            f"[red]the data directory is not writable[/red] ({settings.data_dir}): {exc.strerror or exc}\n"
+            "nanoMuse keeps its access token, timelines and vault there. Point NANOMUSE_DATA_DIR at a "
+            "folder you can write to, or set server.token in config.toml."
+        )
+        raise typer.Exit(1) from exc
 
 
 # ============================================================================ goals

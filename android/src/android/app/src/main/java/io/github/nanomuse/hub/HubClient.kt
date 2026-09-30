@@ -131,6 +131,11 @@ class HubClient(
         ws = null
         connected = false
         failAll("closed", "the hub connection was closed")
+        // a stopped client is never started again (Hub makes a new one): its threads go too
+        timer.shutdownNow()
+        workers.shutdownNow()
+        http.dispatcher.executorService.shutdown()
+        http.connectionPool.evictAll()
     }
 
     private fun connect() {
@@ -167,8 +172,14 @@ class HubClient(
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (code == 4001 || code == 4002) {
-                // Bad key or bad device: retrying quickly would not help.
-                delayMs = 60_000L
+                // Bad key or bad device: the relay will say the same thing next time. Stop here
+                // and say why; a new sign-in makes a new client.
+                stopped = true
+                connected = false
+                ws = null
+                failAll("bad_key", "the hub refused this device")
+                onState(false, if (code == 4001) "bad_key" else "bad_device")
+                return
             }
             scheduleReconnect("closed $code $reason")
         }

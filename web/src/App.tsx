@@ -1,27 +1,40 @@
-import { LayoutGrid, Lightbulb, MessageCircle, Newspaper, SquareCheckBig, WifiOff } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { LayoutGrid, Lightbulb, Loader2, MessageCircle, Newspaper, SquareCheckBig, WifiOff } from "lucide-react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { setToken } from "./api";
+import { Avatar } from "./components/Avatar";
 import { FileViewer } from "./components/FileViewer";
 import { RedPanda } from "./components/RedPanda";
 import { Sidebar } from "./components/Sidebar";
-import { AccountScreen } from "./screens/AccountScreen";
-import { CallScreen } from "./screens/CallScreen";
 import { ChatScreen } from "./screens/ChatScreen";
-import { CodingScreen } from "./screens/CodingScreen";
-import { ConnectionsScreen } from "./screens/ConnectionsScreen";
-import { DevicesScreen } from "./screens/DevicesScreen";
 import { FeedScreen } from "./screens/FeedScreen";
-import { GoalsScreen } from "./screens/GoalsScreen";
-import { IdeasScreen } from "./screens/IdeasScreen";
-import { LibraryScreen } from "./screens/LibraryScreen";
-import { MemoryScreen } from "./screens/MemoryScreen";
-import { Onboarding } from "./screens/Onboarding";
-import { SettingsScreen } from "./screens/SettingsScreen";
 import { SignInGate } from "./screens/SignInGate";
-import { SkillsScreen } from "./screens/SkillsScreen";
 import { useStore, type Tab } from "./store";
 import { useT } from "./i18n";
 import { cx } from "./util";
+
+// The chat and the feed are what opens first; every other screen arrives as its own chunk
+// the first time it is shown, so the first paint does not carry the call engine, the
+// provider form or the coding console.
+const AccountScreen = lazy(() => import("./screens/AccountScreen").then((m) => ({ default: m.AccountScreen })));
+const CallScreen = lazy(() => import("./screens/CallScreen").then((m) => ({ default: m.CallScreen })));
+const CodingScreen = lazy(() => import("./screens/CodingScreen").then((m) => ({ default: m.CodingScreen })));
+const ConnectionsScreen = lazy(() => import("./screens/ConnectionsScreen").then((m) => ({ default: m.ConnectionsScreen })));
+const DevicesScreen = lazy(() => import("./screens/DevicesScreen").then((m) => ({ default: m.DevicesScreen })));
+const GoalsScreen = lazy(() => import("./screens/GoalsScreen").then((m) => ({ default: m.GoalsScreen })));
+const IdeasScreen = lazy(() => import("./screens/IdeasScreen").then((m) => ({ default: m.IdeasScreen })));
+const LibraryScreen = lazy(() => import("./screens/LibraryScreen").then((m) => ({ default: m.LibraryScreen })));
+const MemoryScreen = lazy(() => import("./screens/MemoryScreen").then((m) => ({ default: m.MemoryScreen })));
+const Onboarding = lazy(() => import("./screens/Onboarding").then((m) => ({ default: m.Onboarding })));
+const SettingsScreen = lazy(() => import("./screens/SettingsScreen").then((m) => ({ default: m.SettingsScreen })));
+const SkillsScreen = lazy(() => import("./screens/SkillsScreen").then((m) => ({ default: m.SkillsScreen })));
+
+function Loading() {
+  return (
+    <div className="flex h-full min-h-[40vh] items-center justify-center text-muted">
+      <Loader2 className="animate-spin" size={20} />
+    </div>
+  );
+}
 
 /** The tab bar: five icons in a floating pill, as in Muse. Memory and Settings are behind the avatar. */
 const TABS: Array<{ id: Tab; label: string; icon: (active: boolean) => ReactNode }> = [
@@ -38,7 +51,8 @@ export default function App() {
 
   // The document title follows the agent's name.
   useEffect(() => {
-    document.title = state.profile?.name ? `${state.profile.name} · nanoMuse` : "nanoMuse";
+    const name = state.profile?.name?.trim();
+    document.title = name && name.toLowerCase() !== "nanomuse" ? `${name} · nanoMuse` : "nanoMuse";
   }, [state.profile?.name]);
 
   // `#devices` etc. opens a section straight away — the desktop tray menu links here.
@@ -54,13 +68,19 @@ export default function App() {
   }, [setTab]);
 
   if (state.authError) return <TokenGate />;
+  // Nothing has arrived from the runtime yet: say so, instead of an empty chat.
+  if (!state.loaded) return <Connecting error={state.error} />;
   // The account comes first: this runtime asks for one (cloud.required) and none is signed in.
-  if (state.loaded && state.hub && state.hub.account.required && !state.hub.account.signed_in) {
+  if (state.hub && state.hub.account.required && !state.hub.account.signed_in) {
     return <SignInGate />;
   }
   // First run: the server has not seen setup finish and nothing has been said yet.
-  if (state.loaded && state.settings && !state.settings.onboarded && !state.onboardingDismissed && !state.threads.some((t) => t.events > 0)) {
-    return <Onboarding />;
+  if (state.settings && !state.settings.onboarded && !state.onboardingDismissed && !state.threads.some((t) => t.events > 0)) {
+    return (
+      <Suspense fallback={<Loading />}>
+        <Onboarding />
+      </Suspense>
+    );
   }
 
   const pendingApprovals = state.pendingApprovals.length;
@@ -81,24 +101,21 @@ export default function App() {
             <WifiOff size={14} /> {t("Reconnecting to your nanoMuse…")}
           </div>
         )}
-        {state.error && !state.loaded && (
-          <div className="m-4 rounded-2xl bg-rose-500/12 text-rose-700 dark:text-rose-300 p-3 text-[13.5px]">
-            {t("Could not reach the server: {error}", { error: state.error })}
-          </div>
-        )}
         <main className="mx-auto min-h-0 w-full flex-1 lg:max-w-[900px]">
-          {state.tab === "chat" && <ChatScreen />}
-          {state.tab === "feed" && <FeedScreen />}
-          {state.tab === "ideas" && <IdeasScreen />}
-          {state.tab === "goals" && <GoalsScreen />}
-          {state.tab === "library" && <LibraryScreen />}
-          {state.tab === "memory" && <MemoryScreen />}
-          {state.tab === "skills" && <SkillsScreen />}
-          {state.tab === "connections" && <ConnectionsScreen />}
-          {state.tab === "devices" && <DevicesScreen />}
-          {state.tab === "you" && <SettingsScreen />}
-          {state.tab === "account" && <AccountScreen />}
-          {state.tab === "coding" && <CodingScreen />}
+          <Suspense fallback={<Loading />}>
+            {state.tab === "chat" && <ChatScreen />}
+            {state.tab === "feed" && <FeedScreen />}
+            {state.tab === "ideas" && <IdeasScreen />}
+            {state.tab === "goals" && <GoalsScreen />}
+            {state.tab === "library" && <LibraryScreen />}
+            {state.tab === "memory" && <MemoryScreen />}
+            {state.tab === "skills" && <SkillsScreen />}
+            {state.tab === "connections" && <ConnectionsScreen />}
+            {state.tab === "devices" && <DevicesScreen />}
+            {state.tab === "you" && <SettingsScreen />}
+            {state.tab === "account" && <AccountScreen />}
+            {state.tab === "coding" && <CodingScreen />}
+          </Suspense>
         </main>
         <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 lg:hidden">
         <ul className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/70 bg-surface p-1.5 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.18)]">
@@ -131,11 +148,38 @@ export default function App() {
       </nav>
       </div>
       <FileViewer path={state.viewer} onClose={() => openFile(null)} />
-      {state.callOpen && <CallScreen mode={state.callOpen} />}
+      {state.callOpen && (
+        <Suspense fallback={null}>
+          <CallScreen mode={state.callOpen} />
+        </Suspense>
+      )}
       {state.toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4">
           <div className="rise rounded-2xl bg-fg text-bg px-4 py-2 text-[13.5px] shadow-lg max-w-sm text-center">{state.toast}</div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** The first seconds: the socket is on its way, or the runtime cannot be reached at all. */
+function Connecting({ error }: { error: string | null }) {
+  const t = useT();
+  return (
+    <div className="mx-auto flex h-[100dvh] max-w-sm flex-col items-center justify-center px-6 text-center">
+      <Avatar profile={null} size={72} still />
+      {error ? (
+        <>
+          <p className="mt-6 text-[15px] font-medium">{t("Could not reach your nanoMuse.")}</p>
+          <p className="mt-1.5 text-[13px] text-muted">{t(error)}</p>
+          <button type="button" onClick={() => window.location.reload()} className="mt-5 rounded-full bg-fg px-5 py-2 text-[14px] font-medium text-bg">
+            {t("Try again")}
+          </button>
+        </>
+      ) : (
+        <p className="mt-6 flex items-center gap-2 text-[14px] text-muted">
+          <Loader2 className="animate-spin" size={16} /> {t("Connecting to your nanoMuse…")}
+        </p>
       )}
     </div>
   );
@@ -164,6 +208,7 @@ function TokenGate() {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          aria-label={t("Access token")}
           placeholder={t("Access token")}
           className="flex-1 rounded-2xl bg-surface-2 px-4 py-2.5 text-[15px] outline-none focus:ring-2 focus:ring-accent/40"
         />

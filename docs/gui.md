@@ -1,5 +1,12 @@
 # Operating the phone
 
+> **Design record of the Python line.** The current Android app's hands
+> (`io.github.nanomuse.hands`, since 0.1.12) follow this design — the ladder, the
+> capsule with **Stop**, the approvals — with the agent running on the phone itself
+> ([android.md](android.md)). Where this page says "red panda", the capsule shows the
+> agent's own face (the dragon by default).
+
+
 Muse's abilities in the West come from services with APIs. Most of what a person in China does on a phone — 12306, 微信, 支付宝, 美团 — has no API a personal agent may call. nanoMuse therefore has a second pair of hands: with the *Phone* switch on, the agent can look at the phone's screen and tap, type and swipe in its apps, the way a person would. It is the same agent with the same Sentinel in front of it; GUI steps are just more tool calls.
 
 Three things decide how this part is built:

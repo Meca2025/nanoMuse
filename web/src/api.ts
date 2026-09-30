@@ -37,6 +37,7 @@ import type {
   TriggerKind,
   TriggersData,
   UpcomingData,
+  UpdateView,
   WsMessage,
 } from "./types";
 
@@ -96,7 +97,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (init.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
-  const res = await fetch(path, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(path, { ...init, headers });
+  } catch {
+    // the browser's "Failed to fetch": the runtime is down or the network is
+    throw new Error("Cannot reach your nanoMuse right now.");
+  }
   if (res.status === 401) throw new AuthError();
   if (!res.ok) {
     let detail = res.statusText;
@@ -237,6 +244,7 @@ export const api = {
     return res.text();
   },
   settings: () => request<SettingsView>("/api/settings"),
+  update: () => request<UpdateView>("/api/update"),
   updateSettings: (body: Record<string, unknown>) =>
     request<SettingsView>("/api/settings", { method: "PUT", body: JSON.stringify(body) }),
   // connections: secrets go into the vault on the server; only names ever come back

@@ -26,4 +26,8 @@ Start with `nanomuse doctor`: it prints the config file in use, the data directo
 
 **Playwright fails to install Chromium.** Older distributions are not supported by recent Playwright builds. Use the Docker image or leave `browser.enabled = false`; `web_fetch` covers most reading tasks.
 
+**The desktop app shows "nanoMuse could not start", or a blank window.** The shell starts `nanomuse serve` on `127.0.0.1:8787` and reads its log at `~/.nanomuse/desktop-app.log` (`NANOMUSE_HOME` if you set it); the dialog quotes the last lines and names the usual causes — the port taken by another program or another nanoMuse (`NANOMUSE_PORT` picks a different one), a data folder that is not writable, a `config.toml` that does not parse. If the runtime stops later, the shell restarts it once and asks before trying again; *Open the log* in that dialog and the tray's *Open the log folder* lead to the same file. Windows and macOS warn about the unsigned installer once ([desktop.md](desktop.md) says how to proceed). Updates are not installed on their own: the tray's *Check for updates* looks at GitHub Releases.
+
+**The Android app says "Refused by the relay — sign in again" under Devices.** The relay no longer accepts this phone's key (signed out everywhere, or the account was deleted). Sign out and in again on the Account screen; the hub joins again on its own.
+
 **Reset everything.** Stop the server and delete `~/.nanomuse` (or your `data_dir`). The vault key lives there too, so export secrets first if you need them.

@@ -32,6 +32,10 @@ A study of Muse's screens — the announcement, the walkthrough and sizzle video
 
 ## The red panda
 
+> Since 0.1.11 the default face is the bundled dragon (the same on the phone, the desktop and
+> the web); the red panda below stayed as an optional avatar and as the record of how a face
+> that poses from state was first drawn.
+
 Muse's doll says "there is someone here, and it is busy" without a spinner. nanoMuse's answer is a red panda — a round head with two small ringed ears, a cream face that comes down in two cheek lobes to a dark nose, big dark eyes with a catchlight, a ringed tail — drawn as an SVG so that it can be posed from the app's state instead of swapped between photographs.
 
 **Why this animal, drawn this way.** A giant panda is the obvious mascot and the one everyone already uses; a red panda is small, warm-coloured and curious, and reads as "a little helper" rather than "a national symbol". The drawing is simplified — few parts, big eyes, one expression change per mood — so it survives 16 px. Above that it is *2.5D*: radial gradients on the fur, body and cheeks, a sheen on the top of the head, a shade under the chin, a shadow the body sits in — the roundness a plush doll has, without a 3D render, which would not pose from CSS and would not stay a few kilobytes. It is never a real render and never an illustration with outlines; the parts are flat shapes with soft light on them.

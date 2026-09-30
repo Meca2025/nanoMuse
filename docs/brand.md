@@ -25,8 +25,9 @@ it is a gesture first and a letter second.
   sits on a home screen. This is the README hero and the picture to use wherever
   the app is shown as an app.
 
-The icon is **not** the mascot. The red panda (`web/src/components/redPandaShapes.ts`) is the
-default chat avatar only, and users will be able to replace it. Never put the red panda on the
+The icon is **not** the mascot. The default face is the bundled **dragon** (`web/public/avatars/`,
+the Android app's `avatar/`); the red panda (`web/src/components/redPandaShapes.ts`) is one of
+the optional avatars a user can pick. Never put the red panda (or the dragon) on the
 launcher icon, and never put the N mark in the chat as a face.
 
 ## Colour

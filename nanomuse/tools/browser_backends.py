@@ -326,8 +326,9 @@ class PlaywrightBackend(BrowserBackend):
     async def settle(self, timeout_ms: int) -> None:
         try:
             await self._page.wait_for_load_state("domcontentloaded", timeout=timeout_ms)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            # a slow page is still worth reading; a note in the log says why the read was early
+            logger.debug("browser: page not settled after {} ms: {}", timeout_ms, exc)
         await self._page.wait_for_timeout(400)
 
     async def fetch(

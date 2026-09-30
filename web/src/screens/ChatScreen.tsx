@@ -94,7 +94,7 @@ export function ChatScreen() {
             <Menu size={20} />
             {threads.length > 1 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-accent" />}
           </button>
-          <button type="button" className="flex min-w-0 flex-1 flex-col items-center px-2 pt-0.5" onClick={() => setActivityOpen(true)}>
+          <button type="button" aria-label={t("Activity")} className="flex min-w-0 flex-1 flex-col items-center px-2 pt-0.5" onClick={() => setActivityOpen(true)}>
             <span className="relative">
               <Avatar profile={profile} status={status} size={48} />
               {queued > 0 && (
@@ -179,7 +179,11 @@ export function ChatScreen() {
           </div>
         )}
         {eventsLoaded && events.length === 0 && !stream && (
-          <EmptyChat name={name} device={thread?.device ? thread.device_name || thread.device : undefined} onSend={(text) => void send(activeThread, text)} />
+          <EmptyChat
+            name={name}
+            device={thread?.device ? thread.device_name || thread.device : undefined}
+            onSend={(text) => send(activeThread, text).catch((e: Error) => toast(e.message || t("Could not send")))}
+          />
         )}
         {events.map((ev, i) => (
           <EventView
@@ -216,7 +220,12 @@ export function ChatScreen() {
         name={name}
         busy={!!thread?.busy && pendingApprovals === 0}
         waiting={events.some((e) => e.type === "question" && e.status === "pending")}
-        onSend={(text, files) => send(activeThread, text, files).catch((e: Error) => toast(e.message || t("Could not send")))}
+        onSend={(text, files) =>
+          send(activeThread, text, files).catch((e: Error) => {
+            toast(e.message || t("Could not send"));
+            throw e;
+          })
+        }
       />
 
       <MuseSheet open={activityOpen} onClose={() => setActivityOpen(false)} />
@@ -508,10 +517,11 @@ function Composer({
   name: string;
   busy: boolean;
   waiting: boolean;
-  onSend: (text: string, files: string[]) => void;
+  onSend: (text: string, files: string[]) => Promise<void>;
 }) {
   const { state, draft, draftFiles, toast } = useStore();
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [pending, setPending] = useState<Pending[]>([]);
 
@@ -598,11 +608,19 @@ function Composer({
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
     const trimmed = text.trim();
-    if ((!trimmed && attached.length === 0) || uploading) return;
-    onSend(trimmed, attached);
+    if ((!trimmed && attached.length === 0) || uploading || sending) return;
+    // the draft leaves the box at once (it feels sent) and comes back if sending failed
+    const files = pending;
+    setSending(true);
     setText("");
     setPending([]);
     ref.current?.focus();
+    onSend(trimmed, attached)
+      .catch(() => {
+        setText((cur) => cur || trimmed);
+        setPending((cur) => (cur.length ? cur : files));
+      })
+      .finally(() => setSending(false));
   };
 
   return (

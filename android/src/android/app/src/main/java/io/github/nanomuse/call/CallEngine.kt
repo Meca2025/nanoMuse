@@ -9,6 +9,7 @@ import android.media.MediaRecorder
 import android.util.Base64
 import com.openminis.app.MinisApp
 import com.openminis.app.agent.SoulStore
+import com.openminis.app.logging.AppLogger
 import io.github.nanomuse.cloud.NanoMuseCloud
 import io.github.nanomuse.sysfiles.SystemFiles
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +40,17 @@ import kotlin.math.sqrt
  *
  * One engine per call. Everything here runs off the main thread; the screen follows the flows.
  */
-class CallEngine(private val context: Context, val video: Boolean) {
+class CallEngine(private val context: Context, video: Boolean) {
+    /** Whether camera frames go out. Flipped mid-call by [setVideo]; the model is told it can see. */
+    @Volatile var video: Boolean = video
+        private set
+
+    fun setVideo(on: Boolean) {
+        if (video == on) return
+        video = on
+        if (!closed.get() && sentAudio.get()) send(sessionUpdate())
+    }
+
     enum class Phase { CONNECTING, LISTENING, HEARING, THINKING, SPEAKING, ENDED, FAILED }
 
     data class Caption(val who: String, val text: String, val final: Boolean)
@@ -66,7 +77,7 @@ class CallEngine(private val context: Context, val video: Boolean) {
         private set
     val startedAt: Long = System.currentTimeMillis()
 
-    private val http = OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).pingInterval(20, TimeUnit.SECONDS).build()
+    private val http = sharedHttp
     private var socket: WebSocket? = null
     private val closed = AtomicBoolean(false)
     private val sentAudio = AtomicBoolean(false)
@@ -167,9 +178,10 @@ class CallEngine(private val context: Context, val video: Boolean) {
     private fun end(phase: Phase, why: String?) {
         if (!closed.compareAndSet(false, true)) return
         if (why != null) _error.value = why
+        else if (phase == Phase.ENDED) _error.value = null // hung up on purpose: no stale complaint
         mic?.interrupt()
         speaker?.stop()
-        runCatching { socket?.close(1000, "hang up") }
+        runCatching { socket?.cancel() }
         _phase.value = phase
         _level.value = 0f
     }
@@ -269,10 +281,14 @@ class CallEngine(private val context: Context, val video: Boolean) {
                 when (val code = e.optString("code")) {
                     "daily_cap", "out_of_tokens" -> _error.value = CAP
                     "call_too_long" -> _error.value = TOO_LONG
-                    "upstream", "upstream_unconfigured" -> _error.value = UNREACHABLE
+                    "upstream", "upstream_unconfigured", "upstream_busy", "upstream_auth", "upstream_model" -> _error.value = UNREACHABLE
                     else -> {
+                        // anything else is the provider's own wording: logged, shown as "unreachable"
                         val m = e.optString("message")
-                        if (m.isNotEmpty() && !m.contains("cancel", ignoreCase = true)) _error.value = "$code $m".trim()
+                        if (m.isNotEmpty() && !m.contains("cancel", ignoreCase = true)) {
+                            AppLogger.info(TAG, "call error $code: $m")
+                            _error.value = UNREACHABLE
+                        }
                     }
                 }
             }
@@ -414,6 +430,13 @@ class CallEngine(private val context: Context, val video: Boolean) {
     }
 
     companion object {
+        private const val TAG = "CallEngine"
+
+        /** One client for every call: a new one per call kept its threads and pool alive after hang-up. */
+        private val sharedHttp: OkHttpClient by lazy {
+            OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).pingInterval(20, TimeUnit.SECONDS).build()
+        }
+
         const val IN_RATE = 16_000
         const val OUT_RATE = 24_000
         const val DEFAULT_MODEL = "qwen3.5-omni-flash-realtime"

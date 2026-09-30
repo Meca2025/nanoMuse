@@ -1,116 +1,110 @@
 # The Android app
 
-`android/` is a native shell around the web app, in two flavours:
+`android/` is nanoMuse for the phone: [OpenMinis](https://github.com/OpenMinis/OpenMinis)
+1.13 (GPL-3.0) — a native app whose agent runs **on the phone**, with a Linux shell, a
+browser, MCP servers, skills and scheduled tasks inside the APK — with nanoMuse's own
+identity, design and features on top. Everything of nanoMuse's lives in
+`io.github.nanomuse.*`; edits inside OpenMinis files are marked `// nanoMuse:`. The
+history of this choice is in [roadmap.md](roadmap.md); what came before it (a WebView
+around a Python server, two APK flavours) is kept as a design record in
+[archive/android-python-line.md](archive/android-python-line.md) and is not what you
+download today.
 
-- **nanomuse.apk** (`local`) runs nanoMuse **on the phone itself**: the Python server, its tools and a small Alpine Linux live inside the app, unpacked on first start and run under a user-mode chroot. Nothing to install on a computer. arm64 phones, Android 8.0 or newer. How it works, what it can and cannot do: [local-runtime.md](local-runtime.md).
-- **nanomuse-connect.apk** (`connect`) is the **remote for a `nanomuse serve` on your computer** — the same web app in a WebView, plus what a browser tab cannot do on a home network: notifications while the app is closed. Web Push needs `https://` and a push service in the middle; the app keeps its own connection to your server instead. Any CPU.
-
-The local build offers both on its first screen (*Run on this phone* / *Connect to my computer*), so it is the one to download unless the phone is 32-bit or storage is tight.
-
-What the shell adds over the browser tab:
-
-- **Connect by QR code.** Scan the code `nanomuse serve` prints; no typing addresses or tokens.
-- **Notifications in the background.** A foreground service keeps one WebSocket open to your server. Approvals, questions and the last word of background work arrive as Android notifications and open the right chat. A resolved approval takes its notification down again. Reconnects after a network change or a reboot.
-- **Attachments, downloads, links.** The file picker for the paperclip, downloads to the phone's Downloads folder, links opening in the real browser.
-- **The agent's browser.** While the app is connected, its own WebView is a browser the agent may use — offscreen, on a private virtual display so pages run at full speed with the app in the background — and *Take over* on a browser card slides that very page up for you to sign in or decide, then **Done**. In the local build this is the only browser there is; with a server it is used whenever the app is connected (`[browser] backend`). [browser.md](browser.md).
-- **Operating the screen.** With the *Phone* switch on (*Connections → Phone*) and the app's accessibility service enabled, the agent can look at the phone's screen and tap, type and swipe in its apps — the last rung after skills, fetches and the browser. Android 11 or newer. A capsule with the current step and a **Stop** button sits over the operated app the whole time; a `FLAG_SECURE` screen stays black to it and it refuses to type into password fields. [gui.md](gui.md).
-- **Plain HTTP on the LAN.** Works with `http://192.168.x.x:8787` as is.
-
-Everything else is the same web app, served by your `nanomuse serve`.
+One APK, one architecture: `nanoMuse-<version>-arm64.apk` (arm64-v8a, Android 8.0 / API 26
+or newer, `targetSdk` 35). Every release is signed with the same key, so a newer APK
+installs over the old one and keeps its data. No Play Store listing: the app checks this
+repository's GitHub Releases for a newer version and offers the download (*Settings →
+About*).
 
 ## Install
 
-Download [`nanomuse.apk`](https://github.com/nano-muse/nanoMuse/releases/latest/download/nanomuse.apk) (always the current release; the same file is also there as `nanomuse-<version>.apk`; the connect-only build is [`nanomuse-connect.apk`](https://github.com/nano-muse/nanoMuse/releases/latest/download/nanomuse-connect.apk)) and open it on the phone. Android asks once to allow installs from your browser or file manager. Android 8.0 (API 26) or newer. Every release is signed with the same key, so a newer APK installs over the old one and keeps its connection and data.
+1. Download `nanoMuse-<version>-arm64.apk` from the
+   [latest release](https://github.com/nano-muse/nanoMuse/releases/latest). Verify with
+   `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` if you like.
+2. Open it. Android asks once to allow installs from your browser or file manager.
+3. **Sign in.** The first screen is the account: an e-mail address or a phone number, a
+   code — or a password once you have set one. It is what lets your devices work as one
+   ([hub.md](hub.md)), brings a model to start with ([cloud.md](cloud.md), about ¥25 a day
+   per account, free), and carries calls. Then choose which model answers: the account's
+   own, or a key of your own (any OpenAI-compatible endpoint, or the OAuth sign-ins the
+   app ships with). Running everything yourself with no account at all is the runtime's
+   `cloud.required = false`; the phone app asks for the account.
+4. Optional: the two permissions that let the agent use your phone's apps (skippable and
+   revocable), and *Settings → Image & video models* for a look that can change and move.
 
-**Run on this phone**: tap it, wait for the unpack (about a minute; ~330 MB of storage), and the app opens on the onboarding: give the agent a name, paste a model API key. That is all; there is no computer involved. The runtime shows a quiet *Running on this phone* notification while it is up, comes back after a reboot, and can be stopped from that notification.
+## What the phone does
 
-**Connect to my computer**: on the computer,
+| | |
+| --- | --- |
+| **The agent, on the phone** | A sandboxed Alpine Linux, a real shell, files, a browser, MCP servers, skills in the Agent Skills format, memory, scheduled tasks; approvals before deleting, sending or paying. The model is the account's or your own; nothing you say passes through the project's relay when you use your own key. |
+| **Hands** (`hands/`) | With *Hands* on and the accessibility service enabled, the agent looks at the phone's screen and taps, types and swipes in its apps — the last rung after APIs, fetches and the browser. A stage over the app shows where it is about to tap and a capsule with the step and **Stop**. Passwords and codes are always yours to type. [gui.md](gui.md) is the design record; the app's own hands are in `io.github.nanomuse.hands`. |
+| **Reach** (`reach/`) | Your computers, from the phone, on the same network: run `host/nanomuse_host.py` on the computer, enter its code once under *Computers*, and "say it on the phone, it gets done there" — a shell command, a file, the computer's screen. Each computer has its own bearer token, kept in the phone's encrypted store (the host keeps only a hash); approvals are decided on the phone before anything is sent. [every-device.md](every-device.md). |
+| **The hub** (`hub/`) | Every signed-in device of the account meets on the relay's hub: the phone sees your computers, asks them to do things, gets their approvals as cards, and can be asked by them. A foreground service keeps it reachable in the background (Android 13+ asks for the notification permission for that). [hub.md](hub.md). |
+| **Calls** (`call/`) | Voice and video calls with the agent in real time, on Qwen Omni through the account or your own Bailian key; the camera can be switched on and off during a call. [calls.md](calls.md). |
+| **Coding agents** (`ui/coding/`) | The Cursor, Codex and Claude Code sessions on your computers, seen and steered from the phone. [coding-agents.md](coding-agents.md). |
+| **Account** (`ui/cloud/`) | Who is signed in, the password, every device holding a key, usage by kind and by model, the ways out. |
 
-```bash
-nanomuse serve --host 0.0.0.0
-```
+The web console of the same account is at the relay (`/app`), the desktop app in
+[desktop.md](desktop.md); the phone, the desktop and the web share the design language
+described in [brand.md](brand.md).
 
-Tap **Scan QR code** and point the camera at the terminal. Or paste the printed link (`http://…:8787/?token=…`) into the field. The app checks the address and the token against the server before it keeps them.
+## Privacy and permissions
 
-The app on the phone and the server on your computer need to reach each other: same Wi-Fi, or a VPN such as Tailscale, or the server behind a reverse proxy with TLS (`https://` works too). See [deployment.md](deployment.md) for reaching the server from outside your network.
-
-## Notifications
-
-*Settings → Notifications → Let … notify this phone* turns the background connection on and off. While it is on, a silent "Connected to …" notification sits in the tray: that is Android's requirement for a service that stays alive, and it can be minimised in the notification's own settings. Turning it off stops the service; the web app itself still shows everything when it is open.
-
-Updates arrive through the same connection, so there is nothing to configure on the server and no third party sees the content. In local mode the runtime's own notification carries the same role, and the approvals, questions and results come from the same code.
-
-## Keeping it running
-
-Android stops apps that look idle, and the vendors' Android stops them sooner. The agent already does its part: it runs as a foreground service, holds the phone awake only while a task runs, and in local mode asks Android to wake it at the moment the next reminder, goal check-in or background pass is due (an alarm set for the runtime's `next_wake_at`; see [local-runtime.md](local-runtime.md#waking-up)). *Settings → Keep it running* shows the three switches that let it keep that promise on this phone, each with an *Allow* / *Open* button that jumps to Android's own page:
-
-- **Battery** — *Unrestricted* or *Optimised*. Optimised means Android may freeze the process after a while with the screen off; routines and check-ins then wait until the phone wakes. The button raises Android's own dialog (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`).
-- **Display over other apps** — needed to bring the app to the front from the background (the *Open* button on a notice card) and for the status capsule while it works in other apps. Not needed for the GUI executor itself: its overlays come with the accessibility service.
-- **Alarms & reminders** (local mode only) — *Exact* or *Approximate*. Android 14 denies `SCHEDULE_EXACT_ALARM` to a fresh install; the app then falls back to an inexact alarm (`setAndAllowWhileIdle`), which fires within the system's batching window — usually a few minutes late, never early. Granting the permission makes reminders punctual.
-- **Start after a reboot** — a switch, on by default. In connect mode the notification service reconnects when the phone restarts; in local mode the runtime starts again in the background. Off, the app waits until you open it.
-
-Vendor Android needs one more step, and the section names it when it recognises the phone: 小米 / Redmi (*自启动* and *后台弹出界面*, both under the app's settings in 安全中心), 华为 / 荣耀 (*应用启动管理* → turn off automatic management, allow all three), OPPO / realme / OnePlus (*自启动* plus *允许后台运行*), vivo / iQOO (*后台高耗电* and *自启动*), 三星 (*Sleeping apps* — remove the app; *Deep sleeping apps* must not list it), 魅族 (*后台管理* → allow). *Open the auto-start settings* tries the vendor's own activity and falls back to the app's details page when the phone does not have it. The vendor page names move between releases, so the section describes what to look for rather than a fixed menu path; [dontkillmyapp.com](https://dontkillmyapp.com) keeps a current list per vendor.
-
-Crashes are written to a file on the phone (`files/crashes/`, the last five) and nowhere else — the app has no crash reporter and no analytics. *Export logs* bundles them with the app's recent logcat (its own process only), the runtime's log in local mode and a one-page summary (versions, mode, which of the switches above are on) into a zip and hands it to the share sheet, so you can look at it or send it to someone you choose. Nothing is sent unless you send it.
-
-## Disconnect
-
-*Settings → About → Disconnect from this server* forgets the address and the token and returns to the first screen. Uninstalling does the same. The token is stored in the app's private storage and excluded from cloud backups. In local mode, *Start over* on the failure screen returns to the first screen too, and keeps the phone's data (`files/home`); uninstalling removes it.
+The relay keeps an account id, a masked identifier and usage counts — never message
+content ([privacy.md](privacy.md)). On the phone, API keys, the account key and Reach
+pairing tokens are in `EncryptedSharedPreferences`; the backup rules
+(`res/xml/nanomuse_backup_rules.xml`, `nanomuse_data_extraction_rules.xml`) keep every
+secret store out of device backups and transfers. Hands needs the accessibility service
+and the overlay permission, both optional and both revocable from the same screen. The
+app allows plain HTTP on the LAN for a model server or a computer of your own; the relay
+and the hub are TLS only.
 
 ## Building it yourself
 
-JDK 17 or newer and the Android SDK (Android Studio installs both). Then:
+JDK 17 and the Android SDK (Android Studio installs both); `scripts/android/env.sh` sets
+the environment on a bare machine. The project is under `android/src/android`:
 
 ```bash
-cd android
-./gradlew assembleConnectDebug    # app/build/outputs/apk/connect/debug/app-connect-debug.apk
-./gradlew assembleConnectRelease  # app/build/outputs/apk/connect/release/app-connect-release.apk
+cd android/src/android
+./gradlew :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease      # signed with android/keystore.properties when present
 ```
 
-The `local` flavour also needs the root file system and PRoot in place first — `scripts/rootfs/build.sh` (Docker + QEMU) and `android/native/build-proot.sh` (the NDK) put them under `android/app/src/local/`; see [local-runtime.md](local-runtime.md#building-the-pieces). Then `./gradlew assembleLocalDebug`.
-
-Without a signing key the release build is signed with the debug key, which installs fine but cannot update a build signed with a different key. To sign properly, create a key once and keep it outside the repository:
+`scripts/rebrand.py` carries the version (`VERSION_NAME`, `VERSION_CODE`) and applies
+nanoMuse's naming to the OpenMinis tree; `android/BUILDING.md` covers the native pieces.
+Without a signing key the release build is signed with the debug key, which installs but
+cannot update a properly signed build. To sign, create a key once and keep it outside the
+repository:
 
 ```bash
 keytool -genkeypair -keystore ~/.nanomuse-release/nanomuse.jks -alias nanomuse \
         -keyalg RSA -keysize 4096 -validity 10950
 ```
 
-and tell Gradle about it in `android/keystore.properties` (ignored by git):
-
-```properties
-storeFile=/home/you/.nanomuse-release/nanomuse.jks
-storePassword=…
-keyAlias=nanomuse
-keyPassword=…
-```
-
-The same four values can come from the environment as `NANOMUSE_STOREFILE`, `NANOMUSE_STOREPASSWORD`, `NANOMUSE_KEYALIAS`, `NANOMUSE_KEYPASSWORD`.
+and put its four values in `android/keystore.properties` (git-ignored: `storeFile`,
+`storePassword`, `keyAlias`, `keyPassword`).
 
 ## Releases
 
-`.github/workflows/android.yml` builds the connect APK and runs the unit tests on every change under `android/`; on pushes to `main` and on `v*` tags it also calls `rootfs.yml` for the root file system and PRoot, builds both release APKs, checks the local one against its size budget (80 MB), and on a tag attaches `nanomuse-<version>.apk`, `nanomuse-<version>-connect.apk`, `nanomuse.apk` and `nanomuse-connect.apk` to the GitHub release — but only when it could sign with the release key, which the repository gets from four secrets: `ANDROID_KEYSTORE_B64` (the `.jks` file, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Without them the workflow still builds an APK signed with a throwaway debug key and keeps it as a workflow artifact; the maintainer then attaches the APK built locally with the real key. A debug-signed APK never goes on a release, because it could not be updated by a properly signed one.
+`.github/workflows/android.yml` builds the debug APK on every change under `android/`
+(the "debug APK · arm64-v8a" check). A release is made from a tag by
+`scripts/release-apk.sh <version>`: it checks the version against `rebrand.py` and
+Gradle, builds `:app:assembleRelease` with the release key, writes
+`dist/nanoMuse-<version>-arm64.apk` and its `.sha256`, and with `--publish` tags
+`v<version>` and attaches both to the GitHub release with the notes from
+`docs/releases/v<version>.md`. A debug-signed APK never goes on a release, because it
+could not be updated by a properly signed one. The `versionName` must match the tag,
+like the Python package's version does.
 
-The `versionName` in `android/app/build.gradle.kts` must match the tag, like the Python package's version does.
+## Where things are
 
-## How it is put together
-
-| File | Does |
+| Path (`android/src/android/app/src/main/java/io/github/nanomuse/`) | Does |
 | --- | --- |
-| `ConnectActivity.kt` | The first screen: *Run on this phone* (unpack, start, wait) / *Connect to my computer* (QR scan / paste, checks `GET /api/state` with the token) |
-| `MainActivity.kt` | The WebView: loads `<server>/?token=…`, file picker, downloads, external links; the offline / starting / failure screen |
-| `NotifyService.kt` | Remote mode: foreground service with an OkHttp WebSocket to `/ws?token=…` |
-| `Notifier.kt` | Events → notifications, shared by both services |
-| `runtime/RuntimeService.kt`, `runtime/LocalRuntime.kt`, `runtime/TarUnpacker.kt` | Local mode: the runtime on the phone ([local-runtime.md](local-runtime.md)) |
-| `Bridge.kt` | `window.NanoMuseAndroid` — the web app uses it to show phone settings instead of Web Push, to know the mode, and to read the accessibility service's state and open the settings that turn it on |
-| `DeviceLink.kt` | The device on the app's WebSocket: announces `gui` / `capsule` / the app list (again whenever the accessibility service comes or goes) and answers `screen`, `act`, `task` and `browser` requests |
-| `gui/MuseAccessibilityService.kt`, `gui/A11yExecutor.kt`, `gui/NodeTree.kt` | The screen executor: screenshot (downscaled to 720 px wide), gestures, global actions, typing with a clipboard fallback, the element tree with stable ids, an event-based wait for the UI to settle |
-| `gui/GuiOverlay.kt` | Two accessibility overlay windows: the finger marks (rings, lines, typed text, caption) and the capsule with the step and **Stop**, which grows into a notice card when the agent needs you; both hidden while a screenshot is taken |
-| `device/` | The phone's own capabilities as a loopback MCP server ([device.md](device.md)) |
-| `runtime/WakeAlarms.kt` | Local mode: the alarm for the runtime's `next_wake_at` — exact when allowed, inexact otherwise — and the receiver that pokes the service |
-| `KeepRunning.kt` | The state of the battery, overlay and exact-alarm permissions, the vendor guess, and the intents that open the right settings page |
-| `Diagnostics.kt` | Crash files (`files/crashes/`, local only) and *Export logs* (a zip through a `FileProvider` to the share sheet) |
-| `BootReceiver.kt` | Starts the notification service or the runtime after a reboot when *Start after a reboot* is on |
-| `Prefs.kt` | Mode, server URL, token, the local port and token, the notifications and boot switches, the agent's name |
-
-The events the service reacts to are the same ones the web app draws cards for: `approval` / `question` with `status: pending` (and their resolution), and `assistant` events with `source: background` and `final: true`. `demo/mobilegym/apps/nanoMuse/bridge.ts` does the same job for the simulator, in TypeScript.
+| `cloud/NanoMuseCloud.kt` | The account: sign-in with a code or a password, the key in the encrypted store, `/v1/me`, usage, sessions, the localized error sentences |
+| `hub/` | `Hub` (state, device identity, settings), `HubClient` (the socket with backoff; stops when the relay refuses the key), `HubService` (the foreground service), `HubActions` (what other devices may ask this phone), `HubErrors` (failures in words) |
+| `reach/` | `Computers` (paired computers, tokens in the encrypted store), the offload handler that sends work to a computer |
+| `hands/` | The accessibility service as the hand, the stage and the capsule, the screen reader |
+| `call/CallEngine.kt`, `ui/call/` | Real-time calls: microphone, speaker, camera frames, captions, cost |
+| `ui/coding/` | The coding agents of your computers |
+| `ui/cloud/` | Sign-in, the Account screen, the Devices section |
+| `res/values*/nm_strings.xml` | Every nanoMuse string, in English, 简体中文 and 繁體中文 (the three files carry the same keys) |

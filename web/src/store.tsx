@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { api, AuthError, connectWs, getToken } from "./api";
+import { t } from "./i18n";
 import { registerWorker, setAppBadge } from "./push";
 import type {
   ApprovalEvent,
@@ -113,6 +114,7 @@ type Action =
   | { type: "authError" }
   | { type: "error"; error: string | null }
   | { type: "events"; thread: string; events: TimelineEvent[]; hasMore: boolean; prepend?: boolean }
+  | { type: "eventsFailed"; thread: string }
   | { type: "activeThread"; thread: string }
   | { type: "goals"; goals: Goal[] }
   | { type: "settings"; settings: SettingsView }
@@ -202,6 +204,8 @@ function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "hello": {
       const s = action.state;
+      // a fresh snapshot: what was streaming or working before the socket dropped is gone
+      for (const k of Object.keys(perThread)) delete perThread[k];
       return {
         ...state,
         loaded: true,
@@ -209,6 +213,7 @@ function reducer(state: AppState, action: Action): AppState {
         version: s.version,
         profile: s.profile,
         status: s.status,
+        streams: {},
         threads: s.threads,
         goals: s.goals,
         settings: s.settings,
@@ -236,6 +241,13 @@ function reducer(state: AppState, action: Action): AppState {
         hasMore: { ...state.hasMore, [action.thread]: action.hasMore },
       };
     }
+    case "eventsFailed":
+      // the timeline could not be loaded: show the empty chat (with a toast) instead of nothing
+      return {
+        ...state,
+        events: { ...state.events, [action.thread]: state.events[action.thread] ?? [] },
+        toast: t("Could not load the conversation. Pull to retry."),
+      };
     case "activeThread":
       return { ...state, activeThread: action.thread, tab: "chat" };
     case "goals":
@@ -405,7 +417,7 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
     case "skills":
       return { ...state, skillsVersion: state.skillsVersion + 1 };
     case "error":
-      return { ...state, toast: msg.error };
+      return { ...state, toast: t(msg.error) };
     case "pong":
       return { ...state, status: msg.status };
     default:
@@ -431,6 +443,7 @@ interface StoreValue {
   loadEvents: (thread: string, before?: string) => Promise<void>;
   refreshGoals: () => Promise<void>;
   refreshSettings: () => Promise<void>;
+  refreshHub: () => Promise<void>;
   setTab: (tab: Tab) => void;
   openThread: (thread: string) => void;
   markFeedSeen: (at: string) => void;
@@ -474,6 +487,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "events", thread, events: data.events, hasMore: data.has_more, prepend: !!before });
     } catch (e) {
       if (e instanceof AuthError) dispatch({ type: "authError" });
+      else dispatch({ type: "eventsFailed", thread });
+    }
+  }, []);
+
+  // The account as the runtime sees it, fetched directly: after a sign-in the socket
+  // usually brings it, but the gate must not depend on the socket being up.
+  const refreshHub = useCallback(async () => {
+    try {
+      dispatch({ type: "ws", msg: { kind: "hub", hub: await api.hub() } });
+    } catch {
+      /* offline */
     }
   }, []);
 
@@ -564,19 +588,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dispatch,
       send: async (thread, text, files = []) => {
         if (!text.trim() && files.length === 0) return;
-        // attachments go over REST so a failure (a path gone, a full disk) comes back as an error
-        if (files.length > 0 || !wsRef.current?.send({ kind: "send", thread, text })) {
-          await api.send(thread, text, files);
+        try {
+          // attachments go over REST so a failure (a path gone, a full disk) comes back as an error
+          if (files.length > 0 || !wsRef.current?.send({ kind: "send", thread, text })) {
+            await api.send(thread, text, files);
+          }
+        } catch (e) {
+          if (e instanceof AuthError) dispatch({ type: "authError" });
+          throw e;
         }
       },
       decide: async (id, approved, scope = "once") => {
-        if (!wsRef.current?.send({ kind: "approval", id, approved, scope })) {
-          await api.decide(id, approved, scope);
+        try {
+          if (!wsRef.current?.send({ kind: "approval", id, approved, scope })) {
+            await api.decide(id, approved, scope);
+          }
+        } catch (e) {
+          if (e instanceof AuthError) dispatch({ type: "authError" });
+          throw e;
         }
       },
       loadEvents,
       refreshGoals,
       refreshSettings,
+      refreshHub,
       setTab: (tab) => dispatch({ type: "tab", tab }),
       openThread: (thread) => dispatch({ type: "activeThread", thread }),
       markFeedSeen: (at) => dispatch({ type: "feedSeen", at }),
@@ -588,9 +623,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       dismissOnboarding: () => dispatch({ type: "onboardingDismissed" }),
       openCall: (mode) => dispatch({ type: "callOpen", mode }),
-      toast: (text) => dispatch({ type: "toast", toast: text }),
+      toast: (text) => dispatch({ type: "toast", toast: t(text) }),
     }),
-    [state, loadEvents, refreshGoals, refreshSettings],
+    [state, loadEvents, refreshGoals, refreshSettings, refreshHub],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

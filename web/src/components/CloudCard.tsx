@@ -43,7 +43,7 @@ export function CloudCard({
       await api.cloudCode(id);
       setSent(true);
     } catch (e) {
-      setError((e as Error).message);
+      setError(t((e as Error).message));
     } finally {
       setBusy(null);
     }
@@ -65,7 +65,7 @@ export function CloudCard({
       toast(t("Signed in to nanoMuse Cloud."));
       onChange();
     } catch (e) {
-      setError((e as Error).message);
+      setError(t((e as Error).message));
     } finally {
       setBusy(null);
     }
@@ -79,7 +79,7 @@ export function CloudCard({
       toast(t("The Cloud model is in use."));
       onChange();
     } catch (e) {
-      setError((e as Error).message);
+      setError(t((e as Error).message));
     } finally {
       setBusy(null);
     }

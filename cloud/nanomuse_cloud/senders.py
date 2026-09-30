@@ -168,6 +168,13 @@ class AliyunSmsSender:
 
 def make_sender(s: Settings) -> CodeSender:
     if s.sender == "log":
+        if s.signup_open and not s.public_base.startswith(("http://127.", "http://localhost")):
+            # a relay with a public address and open sign-up that writes the codes to its log:
+            # nobody receives a code, and whoever reads the log can sign in as anyone — say so at startup
+            log.error(
+                "CODE_SENDER=log with SIGNUP_OPEN at %s: verification codes go to this log and nobody receives them. Set CODE_SENDER=smtp or aliyun.",
+                s.public_base,
+            )
         return LogSender()
     if s.sender == "smtp":
         return SmtpSender(s)
