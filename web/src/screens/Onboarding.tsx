@@ -57,15 +57,18 @@ export function Onboarding() {
     }
   };
 
+  const [connError, setConnError] = useState<string | null>(null);
   const loadConn = async () => {
     try {
+      setConnError(null);
       setConn(await api.connections());
-    } catch {
-      /* shown as loading */
+    } catch (e) {
+      setConnError(t((e as Error).message) || t("Could not load the connections."));
     }
   };
   useEffect(() => {
     void loadConn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when the server says connections changed
   }, [state.connectionsVersion]);
 
   const saveIdentity = async () => {
@@ -91,7 +94,7 @@ export function Onboarding() {
     }
     dismissOnboarding();
     setTab("chat");
-    if (firstAsk) void send("main", firstAsk);
+    if (firstAsk) send("main", firstAsk).catch((e: Error) => toast(e.message || t("Could not send")));
   };
 
   const preview = { ...identity, proactivity: "default" as const, proactive: true, goal_interval_minutes: 60, quiet_hours: "" };
@@ -210,6 +213,13 @@ export function Onboarding() {
                 {!modelReady && <p className="px-1 text-[12.5px] font-medium text-muted">{t("Or bring your own key")}</p>}
                 <ModelCard data={conn} onChange={() => void loadConn()} compact />
               </>
+            ) : connError ? (
+              <div className="rounded-3xl border border-border/70 bg-surface p-4 text-center">
+                <p className="text-[13.5px] text-muted">{connError}</p>
+                <button type="button" onClick={() => void loadConn()} className="mt-3 rounded-full bg-surface-2 px-4 py-1.5 text-[13px] font-medium">
+                  {t("Retry")}
+                </button>
+              </div>
             ) : (
               <div className="flex justify-center py-8 text-muted">
                 <Loader2 className="animate-spin" size={20} />
@@ -232,6 +242,13 @@ export function Onboarding() {
                 <CalendarCard data={conn} onChange={() => void loadConn()} compact />
                 <ContactsCard data={conn} onChange={() => void loadConn()} compact />
               </>
+            ) : connError ? (
+              <div className="rounded-3xl border border-border/70 bg-surface p-4 text-center">
+                <p className="text-[13.5px] text-muted">{connError}</p>
+                <button type="button" onClick={() => void loadConn()} className="mt-3 rounded-full bg-surface-2 px-4 py-1.5 text-[13px] font-medium">
+                  {t("Retry")}
+                </button>
+              </div>
             ) : (
               <div className="flex justify-center py-8 text-muted">
                 <Loader2 className="animate-spin" size={20} />

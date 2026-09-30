@@ -1239,6 +1239,15 @@ const zhCN: Record<string, string> = {
   "That sign-in is already gone.": "那个登录已经不存在了。",
   "Calls need nanoMuse Cloud (sign in) or a Bailian model key as the provider.": "通话需要 nanoMuse Cloud 账号（登录），或者用百炼的模型 key 作为服务商。",
 
+  // -- reaching the runtime --
+  "Cannot reach your nanoMuse right now.": "现在连不上你的 nanoMuse。",
+  "Could not reach your nanoMuse.": "连不上你的 nanoMuse。",
+  "Connecting to your nanoMuse…": "正在连接你的 nanoMuse…",
+  "Try again": "再试一次",
+  "Retry": "重试",
+  "Could not load the conversation. Pull to retry.": "对话没能加载出来，下拉重试。",
+  "Could not load the connections.": "连接信息没能加载出来。",
+
   // -- nanoMuse Cloud as the provider --
   "Your account": "你的账号",
   "your account's model, with a daily allowance": "账号自带的模型，带每日额度",

@@ -157,8 +157,10 @@ export function CallScreen({ mode }: { mode: "voice" | "video" }) {
             hangUp("failed");
           } else if (code === "daily_cap" || code === "out_of_tokens") {
             setError(t("The daily allowance is used up; the call ended."));
+            hangUp("failed");
           } else if (code === "call_too_long") {
             setError(t("Calls are limited in length; this one reached it."));
+            hangUp();
           } else if (err.message && !/cancel/i.test(err.message)) {
             setError(t(err.message));
           }

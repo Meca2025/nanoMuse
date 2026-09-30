@@ -12,7 +12,7 @@ import { useStore } from "../store";
  * a key of their own follows in setup.
  */
 export function SignInGate() {
-  const { state, refreshSettings, toast } = useStore();
+  const { state, refreshSettings, refreshHub, toast } = useStore();
   const t = useT();
   const name = state.profile?.name ?? "nanoMuse";
   return (
@@ -31,7 +31,7 @@ export function SignInGate() {
           <SignIn
             onSignedIn={async () => {
               toast(t("Signed in to nanoMuse Cloud."));
-              await refreshSettings();
+              await Promise.all([refreshSettings(), refreshHub()]);
             }}
           />
         </div>
