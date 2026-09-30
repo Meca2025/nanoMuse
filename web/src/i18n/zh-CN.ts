@@ -1109,6 +1109,12 @@ const zhCN: Record<string, string> = {
   "a small orange cat with round glasses": "一只戴圆眼镜的橘猫",
   Draw: "画",
   "New avatar: {description}": "换个形象：{description}",
+  "Pictures and clips": "图片与短片",
+  "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, qwen-image on a Model Studio key. Without one, a new face is not offered.":
+    "形象工作室画图用的模型，和对话模型在同一个服务商。「自动」用服务商自己的：账号走中继的图片模型，百炼 key 走 qwen-image。没有可用的图片模型时，不会提供换形象。",
+  "Picture model": "图片模型",
+  "Clip model": "短片模型",
+  Automatic: "自动",
   "{n} pictures, drawn with your own key at your provider's prices.": "共 {n} 张图，用你自己的 key 按服务商价格计费。",
   "The cost could not be checked: {error}": "费用暂时查不到：{error}",
   "Checking the cost…": "正在查费用…",

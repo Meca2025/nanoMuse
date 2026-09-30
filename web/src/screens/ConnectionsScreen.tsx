@@ -148,14 +148,24 @@ export function ModelCard({
     data.llm.key_source === "none" && !!presets[currentPreset]?.key_optional,
   );
   const [toolMode, setToolMode] = useState(data.llm.tool_mode || "auto");
+  // the avatar studio's picture and clip models at the same host; "" lets the runtime pick
+  const [imageModel, setImageModel] = useState(data.llm.image_model ?? "");
+  const [videoModel, setVideoModel] = useState(data.llm.video_model ?? "");
   const [saving, setSaving] = useState(false);
   const [test, setTest] = useState<TestResult | null>(null);
   const [testing, setTesting] = useState(false);
   // the endpoint's own list of models, fetched when the provider, URL or key changes
   const [models, setModels] = useState<{
     list: string[];
+    image: string[];
+    video: string[];
     source: "live" | "catalogue" | "loading";
-  }>({ list: presets[currentPreset]?.models ?? [], source: "catalogue" });
+  }>({
+    list: presets[currentPreset]?.models ?? [],
+    image: [],
+    video: [],
+    source: "catalogue",
+  });
   // true once the user edits the model field by hand in this session: that value is never replaced
   const [typed, setTyped] = useState(false);
 
@@ -163,6 +173,8 @@ export function ModelCard({
     setModel(data.llm.model);
     setBaseUrl(data.llm.base_url);
     setToolMode(data.llm.tool_mode || "auto");
+    setImageModel(data.llm.image_model ?? "");
+    setVideoModel(data.llm.video_model ?? "");
     setPreset(currentPreset);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.llm]);
@@ -186,7 +198,12 @@ export function ModelCard({
           })
           .then((r) => {
             if (!alive) return;
-            setModels({ list: r.models, source: r.source });
+            setModels({
+              list: r.models,
+              image: r.image_models ?? [],
+              video: r.video_models ?? [],
+              source: r.source,
+            });
             // a model left over from another provider yields to what this endpoint actually serves
             if (r.source === "live" && r.models.length && !typed)
               setModel((m) => (r.models.includes(m) ? m : r.models[0]));
@@ -194,7 +211,12 @@ export function ModelCard({
           .catch(
             () =>
               alive &&
-              setModels({ list: p?.models ?? [], source: "catalogue" }),
+              setModels({
+                list: p?.models ?? [],
+                image: [],
+                video: [],
+                source: "catalogue",
+              }),
           );
       },
       key ? 600 : 150,
@@ -221,7 +243,14 @@ export function ModelCard({
       !next.models.includes(model)
     )
       setModel(next.models[0]);
-    setModels({ list: next.models ?? [], source: "catalogue" });
+    setModels({
+      list: next.models ?? [],
+      image: [],
+      video: [],
+      source: "catalogue",
+    });
+    setImageModel("");
+    setVideoModel("");
     setTyped(false);
     setNoKey(false);
   };
@@ -260,9 +289,18 @@ export function ModelCard({
     setSaving(true);
     setTest(null);
     try {
+      const studio = {
+        image_model: imageModel.trim(),
+        video_model: videoModel.trim(),
+      };
       if (p?.cloud) {
-        // the account's key stays the key; only the model is chosen here
+        // the account's key stays the key; only the models are chosen here
         await api.cloudUseAsModel(model.trim());
+        if (
+          studio.image_model !== (data.llm.image_model ?? "") ||
+          studio.video_model !== (data.llm.video_model ?? "")
+        )
+          await api.setLLM(studio);
       } else {
         await api.setLLM({
           provider: p?.provider ?? "openai",
@@ -270,6 +308,7 @@ export function ModelCard({
           base_url: effectiveUrl.trim(),
           tool_mode: toolMode,
           api_key: key ? key : keyless ? "" : null,
+          ...studio,
         });
       }
       setKey("");
@@ -523,6 +562,27 @@ export function ModelCard({
               {m}
             </button>
           ))}
+        </div>
+      </Field>
+      <Field
+        label={t("Pictures and clips")}
+        hint={t(
+          "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, qwen-image on a Model Studio key. Without one, a new face is not offered.",
+        )}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <StudioModelPick
+            label={t("Picture model")}
+            value={imageModel}
+            options={models.image}
+            onChange={setImageModel}
+          />
+          <StudioModelPick
+            label={t("Clip model")}
+            value={videoModel}
+            options={models.video}
+            onChange={setVideoModel}
+          />
         </div>
       </Field>
       <div className="flex gap-2 pt-1">
@@ -2718,6 +2778,50 @@ function VaultCard({
 }
 
 // ------------------------------------------------------------------ bits
+/** one of the studio's two model pickers: the endpoint's candidates when it lists any, a
+ *  free field otherwise; the empty choice leaves the pick to the runtime */
+function StudioModelPick({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  const t = useT();
+  const listed = options.includes(value);
+  return (
+    <label className="block text-[12.5px] text-muted">
+      <span className="block mb-1">{label}</span>
+      {options.length && (listed || !value) ? (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={cx(inputCls, "text-fg")}
+        >
+          <option value="">{t("Automatic")}</option>
+          {options.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={t("Automatic")}
+          className={cx(inputCls, "text-fg")}
+          spellCheck={false}
+        />
+      )}
+    </label>
+  );
+}
+
 function Field({
   label,
   hint,

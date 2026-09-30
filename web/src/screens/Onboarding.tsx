@@ -106,6 +106,7 @@ export function Onboarding() {
 
   return (
     <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border">
+      <div className="titlebar-room" />
       <header className="safe-top shrink-0 px-5 pt-4 pb-2 flex items-center justify-between">
         <div className="flex gap-1">
           {progress.map((s, i) => (

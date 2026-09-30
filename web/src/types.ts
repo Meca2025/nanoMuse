@@ -695,6 +695,10 @@ export interface ConnectionsData {
     from_app: boolean;
     /** the model is the nanoMuse Cloud account's */
     cloud?: boolean;
+    /** the avatar studio's picture model at the same host; "" = the runtime's pick */
+    image_model?: string;
+    /** the clip model at the same host; "" = the runtime's pick */
+    video_model?: string;
   };
   providers: Record<string, ProviderPreset>;
   /** Recall by meaning: memories embedded through an OpenAI-compatible /embeddings endpoint. */

@@ -21,6 +21,17 @@
     U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* `wide:` — the sidebar layout. A browser gets it from 1024px; the desktop app always has it,
+   whatever the window's width (main.tsx marks <html class="desktop">). */
+@custom-variant wide {
+  @media (min-width: 64rem) {
+    @slot;
+  }
+  :where(html.desktop) & {
+    @slot;
+  }
+}
+
 @theme {
   --color-bg: var(--om-bg);
   --color-surface: var(--om-surface);
@@ -84,6 +95,17 @@ body {
 
 .safe-top {
   padding-top: env(safe-area-inset-top);
+}
+/* The desktop app on a Mac hides the title bar ("hiddenInset"): the traffic lights sit over the
+   top-left of the page, so the sidebar starts below them and that strip moves the window. */
+.titlebar-room {
+  display: none;
+}
+html.desktop[data-platform="darwin"] .titlebar-room {
+  display: block;
+  height: 28px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
 }
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);

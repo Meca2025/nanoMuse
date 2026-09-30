@@ -19,6 +19,7 @@ export function SignInGate() {
   return (
     <div className="relative mx-auto flex h-[100dvh] max-w-[760px] flex-col overflow-hidden bg-bg sm:border-x sm:border-border">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[46vh] bg-[radial-gradient(ellipse_at_top,rgba(0,100,212,0.18),transparent_65%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(23,147,255,0.22),transparent_65%)]" />
+      <div className="titlebar-room relative" />
       <div className="relative flex-1 overflow-y-auto px-6 pb-8">
         <div className="safe-top flex flex-col items-center pt-14 text-center">
           <div className="rounded-full bg-surface p-3 shadow-[0_20px_60px_-24px_rgba(0,100,212,0.55)]">

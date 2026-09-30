@@ -94,11 +94,11 @@ export default function App() {
   const proposals = state.goals.filter((g) => g.proposal && g.status !== "cancelled").length;
   const feedUnseen = state.pendingApprovals.filter((a) => a.ts > state.feedSeenAt).length;
 
-  // One column on the phone; on a wide screen (the desktop window, a full browser) a
-  // sidebar takes over from the tab bar and the chats sheet — same screens either side.
+  // One column on the phone; on a wide screen (a full browser) and in the desktop app at any
+  // width, a sidebar takes over from the tab bar and the chats sheet — same screens either side.
   return (
-    <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border lg:max-w-none lg:flex-row lg:border-x-0">
-      <div className="hidden lg:block lg:h-full">
+    <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border wide:max-w-none wide:flex-row wide:border-x-0">
+      <div className="hidden wide:block wide:h-full">
         <Sidebar />
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -107,7 +107,7 @@ export default function App() {
             <WifiOff size={14} /> {t("Reconnecting to your nanoMuse…")}
           </div>
         )}
-        <main className="mx-auto min-h-0 w-full flex-1 lg:max-w-[900px]">
+        <main className="mx-auto min-h-0 w-full flex-1 wide:max-w-[900px]">
           <Suspense fallback={<Loading />}>
             {state.tab === "chat" && <ChatScreen />}
             {state.tab === "feed" && <FeedScreen />}
@@ -123,7 +123,7 @@ export default function App() {
             {state.tab === "coding" && <CodingScreen />}
           </Suspense>
         </main>
-        <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 lg:hidden">
+        <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 wide:hidden">
         <ul className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/70 bg-surface p-1.5 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.18)]">
           {TABS.map((tab) => {
             const active = state.tab === tab.id;

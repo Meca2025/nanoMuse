@@ -168,6 +168,53 @@ PROVIDERS: dict[str, dict[str, Any]] = {
 }
 
 
+def _modality(model: dict[str, Any]) -> str:
+    """What a relay model does — "image", "video" or "chat" — from its `nanomuse.kind` or
+    the OpenRouter-style `architecture.output_modalities`."""
+    kind = str((model.get("nanomuse") or {}).get("kind") or "")
+    if kind in ("image", "video"):
+        return kind
+    out = (model.get("architecture") or {}).get("output_modalities") or ["text"]
+    if out == ["image"]:
+        return "image"
+    if out == ["video"]:
+        return "video"
+    return "chat"
+
+
+_NOT_IMAGE = ("embedding", "-vl", "vision", "caption", "edit")
+_IMAGE_WORDS = (
+    "image",
+    "dall-e",
+    "flux",
+    "stable-diffusion",
+    "sdxl",
+    "sd3",
+    "seedream",
+    "kolors",
+    "imagen",
+    "ideogram",
+    "recraft",
+    "hidream",
+    "cogview",
+)
+_VIDEO_WORDS = ("i2v", "t2v", "video", "sora", "veo", "kling", "hailuo", "seedance")
+
+
+def looks_like_image_model(model_id: str) -> bool:
+    """Names that mean "text to image" across the providers nanoMuse meets (the phone's
+    ImageGen.looksLikeImageModel); edit-only models are left out — they need a picture."""
+    s = model_id.lower()
+    if any(w in s for w in _NOT_IMAGE) or looks_like_video_model(s):
+        return False
+    return any(w in s for w in _IMAGE_WORDS)
+
+
+def looks_like_video_model(model_id: str) -> bool:
+    s = model_id.lower()
+    return any(w in s for w in _VIDEO_WORDS)
+
+
 def normalize_base_url(url: str) -> str:
     """Trim, drop a trailing slash and add ``/v1`` when the URL names a host and nothing else.
 
@@ -607,13 +654,17 @@ class Connections:
                     "error": "signed out",
                 }
             try:
-                return {"models": await hub.refresh_chat_models(), "source": "live"}
+                chat = await hub.refresh_chat_models()
             except Exception as exc:  # noqa: BLE001
                 return {
                     "models": hub.chat_models or [DEFAULT_CLOUD_MODEL],
                     "source": "catalogue",
                     "error": f"{type(exc).__name__}",
                 }
+            # the relay says what each model does; the studio's pickers take it from here
+            image = [str(m["id"]) for m in hub.models if _modality(m) == "image"]
+            video = [str(m["id"]) for m in hub.models if _modality(m) == "video"]
+            return {"models": chat, "image_models": image, "video_models": video, "source": "live"}
         preset = PROVIDERS.get(preset_id) or {}
         base_url = normalize_base_url(str(body.get("base_url") or preset.get("base_url") or ""))
         catalogue: list[str] = list(preset.get("models") or [])
@@ -653,7 +704,12 @@ class Connections:
                         }
                     )
                     if ids:
-                        return {"models": ids, "source": "live"}
+                        return {
+                            "models": ids,
+                            "image_models": [i for i in ids if looks_like_image_model(i)],
+                            "video_models": [i for i in ids if looks_like_video_model(i)],
+                            "source": "live",
+                        }
                     error = "empty list"
                     break
         except Exception as exc:  # noqa: BLE001

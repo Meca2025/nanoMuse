@@ -90,7 +90,7 @@ export function ChatScreen() {
             onClick={() => setThreadsOpen(true)}
             aria-label={t("Chats")}
             className={cx(
-              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg lg:invisible",
+              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg wide:invisible",
               activeThread !== "main" && "text-accent",
             )}
           >

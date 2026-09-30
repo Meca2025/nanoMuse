@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, shell, Tray } from "electron";
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, shell, Tray } from "electron";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { StageReport } from "../shared/types";
@@ -57,6 +57,11 @@ const T = {
   crashedAgain: zh ? "nanoMuse 的运行时再次停止，没有自动重启。" : "The nanoMuse runtime stopped again and was not restarted.",
   restart: zh ? "重新启动" : "Restart",
   openLog: zh ? "打开日志" : "Open the log",
+  copyDetails: zh ? "复制详情" : "Copy details",
+  copied: zh ? "已复制。到 GitHub 发一个 issue 时贴上即可。" : "Copied. Paste it into a GitHub issue.",
+  openLogFolder: zh ? "打开日志文件夹" : "Open the log folder",
+  quitPlain: zh ? "退出" : "Quit",
+  reportHint: zh ? "「复制详情」会把这段话和日志末尾复制下来，发 issue 时贴上：" : "Copy details puts this and the end of the log on the clipboard for an issue at",
   about: zh ? "关于 nanoMuse" : "About nanoMuse",
   checkUpdates: zh ? "检查更新" : "Check for updates",
   upToDate: zh ? "已是最新版本。" : "You are on the latest version.",
@@ -69,6 +74,39 @@ const T = {
 
 const RELEASES_API = "https://api.github.com/repos/nano-muse/nanoMuse/releases/latest";
 const RELEASES_PAGE = "https://github.com/nano-muse/nanoMuse/releases/latest";
+const ISSUES_PAGE = "https://github.com/nano-muse/nanoMuse/issues";
+
+/**
+ * The runtime did not come up: say why in words, and give the two things that help — the
+ * details on the clipboard for an issue, and the folder the log is in. A plain error box
+ * with an OK button left Windows users with a screenshot and nothing to send.
+ */
+async function reportStartupFailure(exc: unknown): Promise<void> {
+  const message = String((exc as Error).message ?? exc);
+  const details = [message, "", runtime.details(), "", "--- desktop-app.log (this session) ---", runtime.logTail(40)].join("\n");
+  for (;;) {
+    const { response } = await dialog.showMessageBox({
+      type: "error",
+      title: T.notReady,
+      message: T.notReady,
+      detail: `${message}\n\n${T.reportHint} ${ISSUES_PAGE}`,
+      buttons: [T.copyDetails, T.openLogFolder, T.quitPlain],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+    });
+    if (response === 0) {
+      clipboard.writeText(details);
+      await dialog.showMessageBox({ type: "info", title: "nanoMuse", message: T.copied, buttons: ["OK"] });
+      continue;
+    }
+    if (response === 1) {
+      shell.showItemInFolder(join(runtime.home, "desktop-app.log"));
+      continue;
+    }
+    return;
+  }
+}
 
 function iconPath(name: string): string {
   // out/main → ../../resources in dev and in the built app alike
@@ -270,7 +308,7 @@ async function onRuntimeCrash(code: number | null): Promise<void> {
       await runtime.ensure(log);
       mainWindow?.webContents.reload();
     } catch (exc) {
-      dialog.showErrorBox(T.notReady, String((exc as Error).message ?? exc));
+      await reportStartupFailure(exc);
     }
   } else if (response === 1) {
     void shell.openPath(join(runtime.home, "desktop-app.log"));
@@ -328,7 +366,7 @@ if (!app.requestSingleInstanceLock()) {
       await runtime.ensure(log);
     } catch (exc) {
       log(String(exc));
-      dialog.showErrorBox(T.notReady, String((exc as Error).message ?? exc));
+      await reportStartupFailure(exc);
       app.quit();
       return;
     }

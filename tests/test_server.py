@@ -704,7 +704,18 @@ def test_llm_models_live_then_catalogue(server, monkeypatch):
         async def get(self, url, headers=None):
             calls.append((url, dict(headers or {})))
             if url.startswith("https://live.example.com/v1/models"):
-                return FakeResponse(200, {"data": [{"id": "b-model"}, {"id": "a-model"}]})
+                return FakeResponse(
+                    200,
+                    {
+                        "data": [
+                            {"id": "b-model"},
+                            {"id": "a-model"},
+                            {"id": "qwen-image-3.0"},
+                            {"id": "qwen-image-edit-max"},
+                            {"id": "wan2.2-t2v-plus"},
+                        ]
+                    },
+                )
             if url.startswith("https://dead.example.com"):
                 raise httpx.ConnectError("no route")
             return FakeResponse(404)
@@ -713,7 +724,11 @@ def test_llm_models_live_then_catalogue(server, monkeypatch):
     live = client.post(
         "/api/llm/models", json={"base_url": "https://live.example.com", "api_key": "sk-typed"}
     ).json()
-    assert live == {"models": ["a-model", "b-model"], "source": "live"}
+    assert live["source"] == "live"
+    assert live["models"][:2] == ["a-model", "b-model"]
+    # the studio's pickers get the names that mean pictures and clips; edit-only models stay out
+    assert live["image_models"] == ["qwen-image-3.0"]
+    assert live["video_models"] == ["wan2.2-t2v-plus"]
     assert calls[-1][1]["Authorization"] == "Bearer sk-typed"
 
     fallback = client.post(
