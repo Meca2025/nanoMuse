@@ -5,7 +5,15 @@
 <h1 align="center">nanoMuse</h1>
 
 <p align="center">完全开源、Muse 风格的个人智能体，面向你的每一台设备。</p>
-<p align="center"><b>免费 · 开源 · 非盈利</b>——<a href="#免费--开源--非盈利让我们一起把它做好">费用从哪来，怎么参与</a></p>
+<table align="center"><tr><td>
+
+### [免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体](https://nanomuse.cn/#open-source)
+
+**nanoMuse 是非盈利的开源社区项目，永久免费。** 用邮箱登录，模型自带免费额度：每个账号 **¥10**，模型费用由开发者承担；**邀请一位新用户 +¥5，加入共创计划 +¥10**；用完可以换自己的 key（[推荐阿里云百炼](docs/own-key.md)）。默认不保存你的消息，数据不会出售；随时可以删除账号。
+
+欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [发 PR](CONTRIBUTING.md) · [点个 Star](https://github.com/nano-muse/nanoMuse)**——详情：[docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md)。
+
+</td></tr></table>
 
 <div align="center">
   <p>
@@ -35,11 +43,6 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/goals.png" width="23%" alt="目标：按时检查，还有例程">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/avatar.png" width="23%" alt="形象：描述一句，你的图像模型来画，你挑一张喜欢的">
 </p>
-
-> ### 免费 · 开源 · 非盈利——让我们一起把它做好
-> **nanoMuse 是非盈利的开源社区项目，永久免费。** 用邮箱登录就能免费使用模型：每个账号每天约 **¥15**，模型费用由开发者承担；**邀请一位新用户，你多得 ¥3 额度。** 默认不保存你的消息，数据不会出售；随时可以删除账号，也可以改用自己的 API key。
->
-> 发现问题、想要新功能、写好了修复？**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [发 PR](CONTRIBUTING.md) · [点个 Star](https://github.com/nano-muse/nanoMuse)**——每一个都在推动这个项目。详情：[docs/cloud.md](docs/cloud.md) · [docs/privacy.md](docs/privacy.md)。
 
 ## 动态
 
@@ -72,7 +75,7 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 
 1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载 `nanoMuse-<版本>-arm64.apk`——Android 8.0 以上的 64 位手机。想校验就 `sha256sum -c nanoMuse-<版本>-arm64.apk.sha256`。
 2. 打开安装。Android 会问一次是否允许；每个版本都用同一把签名，直接覆盖安装升级，数据不丢。
-3. 接入模型。「用邮箱登录，免费开始」：邮箱收一个验证码，就能在 [nanoMuse 云](docs/cloud.md)上免费使用模型——每天约 ¥15（每邀请一位新用户加 ¥3），不用配 key，不用付钱。也可以用自己的：任何 OpenAI 兼容接口配你的 key，或者 App 自带的 OAuth 登录。接着是让它操作手机所需的两项权限（可跳过），然后是第一次对话：它会问你叫什么，并给自己起名字。
+3. 接入模型。「用邮箱登录，免费开始」：邮箱收一个验证码，就有 [nanoMuse 云](docs/cloud.md)的免费额度——每个账号 ¥10，邀请一位新用户 +¥5，加入共创计划 +¥10——不用配 key，不用付钱。用完可以换自己的：[阿里云百炼](docs/own-key.md)约 2 分钟开通，任何 OpenAI 兼容接口配你的 key，或者 App 自带的 OAuth 登录。接着是让它操作手机所需的两项权限（可跳过），然后是第一次对话：它会问你叫什么，并给自己起名字。
 4. 可选——「设置 → 图像与视频模型」：图像模型（阿里云百炼的 qwen-image-3.0、gpt-image-1，或任何有 OpenAI images 接口的服务商）让它能换形象、画图；视频模型（百炼上的 wan2.2-i2v-flash）让形象动起来。Muse 这两样是官方自带的，nanoMuse 用你自己的，缺哪个它会开口告诉你。
 
 App 会到本仓库的 Releases 检查更新。每个版本的说明在 [docs/releases/](docs/releases/) 和 [CHANGELOG](CHANGELOG.md)。

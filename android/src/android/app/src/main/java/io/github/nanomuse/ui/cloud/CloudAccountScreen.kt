@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Share
@@ -92,7 +93,7 @@ import java.util.Date
 
 /**
  * Settings → nanoMuse Cloud: the account. Who is signed in (the hint, never the number), the
- * password, the devices holding a key, today's spend against the daily allowance, what was used
+ * password, the devices holding a key, what was used of the allowance and what is left, what was used
  * by kind (chat, pictures, video, calls) and by model, the account's own history, the provider's
  * pages, and the ways out — this phone, everywhere, or the account itself.
  */
@@ -1034,26 +1035,41 @@ private fun InviteCard(a: NanoMuseCloud.Account) {
     }
 }
 
+/** The notice on the site, with the whole story: who pays, what is kept, how to help. */
+const val NOTICE_URL = "https://nanomuse.cn/#open-source"
+
 /**
  * The community notice: nanoMuse is free, open source and non-profit; who pays; what the relay
  * keeps; and the invitation to file issues and pull requests — with the repository one tap
- * away. Shown on the account page, the sign-in screen and (in short) the first-run screen.
+ * away. The title opens the same notice on the site. Shown on the account page, the sign-in
+ * screen and (in short) the first-run screen.
  */
 @Composable
 fun CommunityNoticeCard(inset: Dp = 16.dp) {
     val context = LocalContext.current
     MuseCard(inset = inset) {
         Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Code, contentDescription = null, tint = MuseTones.action, modifier = Modifier.size(18.dp))
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth().clickable { openExternalUrl(context, NOTICE_URL) },
+            ) {
+                Icon(Icons.Outlined.Code, contentDescription = null, tint = MuseTones.action, modifier = Modifier.padding(top = 2.dp).size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.nm_cloud_notice_title), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.nm_cloud_notice_title), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(6.dp))
+                Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp).size(14.dp))
             }
             Text(
                 stringResource(R.string.nm_cloud_notice),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(top = 8.dp),
+            )
+            Text(
+                stringResource(R.string.nm_cloud_notice_closing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 6.dp),
             )
             Spacer(Modifier.height(6.dp))
             Row {

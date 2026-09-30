@@ -13,6 +13,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -679,15 +680,23 @@ private fun PermissionRow(icon: ImageVector, title: String, subtitle: String, ok
     }
 }
 
-/** The notice: a title line and a paragraph, on the grey pill fill so it reads as a card. */
+/** The notice: a title line (tapping it opens the full notice on the site) and a paragraph, on the grey pill fill so it reads as a card. */
 @Composable
 private fun NoticeCard(title: String, body: String) {
+    val context = LocalContext.current
     val onSurface = MaterialTheme.colorScheme.onSurface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(shape = RoundedCornerShape(16.dp), color = MuseTones.fill, modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MuseTones.fill,
+        modifier = Modifier.fillMaxWidth().clickable {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(io.github.nanomuse.ui.cloud.NOTICE_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        },
+    ) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = onSurface)
+            Text(title, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold, color = onSurface)
             Text(body, fontSize = 13.sp, lineHeight = 18.sp, color = muted, modifier = Modifier.padding(top = 6.dp))
+            Text(stringResource(R.string.nm_cloud_notice_closing), fontSize = 13.sp, lineHeight = 18.sp, color = muted, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

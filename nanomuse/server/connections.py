@@ -245,7 +245,7 @@ class Connections:
         return {
             self.CLOUD_PRESET: {
                 "label": "nanoMuse Cloud",
-                "subtitle": "your account's model, with a daily allowance",
+                "subtitle": "your account's model, with a free allowance",
                 "group": "cloud",
                 "provider": "openai",
                 "base_url": model_url(hub.cloud.base_url),

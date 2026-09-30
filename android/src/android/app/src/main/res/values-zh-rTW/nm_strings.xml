@@ -550,7 +550,7 @@
     <string name="nm_setup_source_title">讓哪個模型來回答？</string>
     <string name="nm_setup_source_sub">你的帳號已經自帶了一個。也可以加上自己的 API key，隨時切換。</string>
     <string name="nm_setup_source_cloud">用 nanoMuse Cloud 的模型</string>
-    <string name="nm_setup_source_cloud_sub">透過阿里雲百煉使用 Qwen，每天約 ¥15，費用由開發者承擔。無需設定。</string>
+    <string name="nm_setup_source_cloud_sub">透過阿里雲百煉使用 Qwen：每個帳號 ¥10 免費額度，費用由開發者承擔；邀請朋友、加入共創計畫還能再加。無需設定。</string>
     <string name="nm_setup_source_own_sub">OpenAI、Anthropic、DeepSeek、百煉等相容 OpenAI 介面的服務。key 只留在這台手機上。</string>
     <string name="nm_setup_source_fine_print">兩種方式不衝突：Cloud 模型始終可用，每個模型群組各選各的。</string>
     <string name="nm_setup_password_title">設一個密碼</string>
@@ -581,7 +581,7 @@
     <string name="nm_welcome_meet_fine_print">凡是無法撤回的事——刪除、傳送、付款——它都會先停下來問你。</string>
     <string name="nm_cloud_title">nanoMuse 雲</string>
     <string name="nm_cloud_signin_title">用 nanoMuse 雲開始</string>
-    <string name="nm_cloud_signin_subtitle">信箱收一個驗證碼；設過密碼的話也可以直接用密碼。免費使用模型，每天約 ¥15，費用由開發者承擔。</string>
+    <string name="nm_cloud_signin_subtitle">信箱收一個驗證碼；設過密碼的話也可以直接用密碼。每個帳號 ¥10 免費模型額度，費用由開發者承擔。</string>
     <string name="nm_cloud_mode_code">驗證碼登入</string>
     <string name="nm_cloud_mode_password">密碼登入</string>
     <string name="nm_cloud_password">密碼</string>
@@ -772,7 +772,8 @@
     <string name="nm_cloud_allowance_left">剩餘 ¥%1$s · $%2$s</string>
     <string name="nm_cloud_allowance_why">每個帳號有 ¥%1$s 免費額度；邀請一位新用戶 +¥%2$s，加入共創計畫 +¥%3$s（一次）。用完可以換自己的 key（推薦阿里雲百煉），登入和多裝置功能不受影響。</string>
     <string name="nm_cloud_tokens_line">累計 %1$s tokens · 今天 %2$s</string>
-    <string name="nm_cloud_notice_title">免費 · 開源 · 非營利</string>
+    <string name="nm_cloud_notice_title">免費 · 開源 · 非營利 —— 開源共建，做屬於所有人的個人智能體</string>
+    <string name="nm_cloud_notice_closing">歡迎回報問題、提需求、貢獻程式碼——每一次參與，都在讓個人智能體離所有人更近一步。</string>
     <string name="nm_cloud_notice">nanoMuse 是非營利的開源社群專案，永久免費。用信箱登入，模型自帶免費額度：每個帳號 ¥10，模型費用由開發者承擔；邀請一位新用戶 +¥5，加入共創計畫 +¥10；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售；隨時可以刪除帳號。</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">來自你其他裝置的訊息</string>

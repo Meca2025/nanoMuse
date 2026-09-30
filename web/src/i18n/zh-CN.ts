@@ -964,7 +964,7 @@ const zhCN: Record<string, string> = {
   "Signed out": "已退出",
   "{hint} · hub": "{hint} · 中继",
   "{hint} · model and hub": "{hint} · 模型和中继",
-  "Signed in as {hint}. Your devices meet on the hub; the relay can also be the model, with a daily allowance.": "已登录 {hint}。你的设备在中继上互相认识；中继也可以作为模型使用，每天有额度。",
+  "Signed in as {hint}. Your devices meet on the hub; the relay can also be the model, with a free allowance.": "已登录 {hint}。你的设备在中继上互相认识；中继也可以作为模型使用，自带免费额度。",
   "Use the Cloud model": "使用 Cloud 模型",
   "The Cloud model is in use.": "已切换到 Cloud 模型。",
   "Sign out": "退出登录",
@@ -974,10 +974,10 @@ const zhCN: Record<string, string> = {
   "One free account. It is what lets your phone and computers work as one and brings a model to start with.": "一个免费账号。有了它，手机和电脑就是同一个 nanoMuse，还自带一个可以先用起来的模型。",
   "It uses your phone and computers for you": "替你操作手机和电脑",
   "The relay keeps an account id, a masked identifier and usage counts — no message content.": "中继只保存账号 id、打码后的邮箱和用量计数——不保存消息内容。",
-  "Free, open source, non-profit": "免费 · 开源 · 非盈利",
+  "Free, open source, non-profit — open source, built together: a personal agent for all": "免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体",
   "nanoMuse is a non-profit open-source community project — free, forever. Sign in with an e-mail and the model comes with a free allowance: ¥10 per account, paid by the developer; invite a friend for ¥5 more, join the co-creation programme for ¥10 more; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.":
     "nanoMuse 是非盈利的开源社区项目，永久免费。用邮箱登录，模型自带免费额度：每个账号 ¥10，模型费用由开发者承担；邀请一位新用户 +¥5，加入共创计划 +¥10；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售；随时可以删除账号。",
-  "Found a bug, want a feature, or wrote a fix? Issues and pull requests are welcome — let's build it together.": "发现问题、想要新功能、写好了修复？欢迎提 issue 和 PR——让我们一起把它做好。",
+  "Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach.": "欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。",
   "Star on GitHub": "去 GitHub 点个 Star",
   "Report a bug or ask for a feature": "反馈问题 / 提需求",
   // -- the co-creation programme (relay 0.4/0.5) --
@@ -1044,7 +1044,6 @@ const zhCN: Record<string, string> = {
   "Sign in and use its model": "登录并使用它的模型",
   "Signed in to nanoMuse Cloud.": "已登录 nanoMuse Cloud。",
   "Or bring your own key": "或者用你自己的密钥",
-  "The quickest start is a free nanoMuse Cloud account: it brings a model with a daily allowance and lets your devices work together. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model.": "最快的开始方式是免费的 nanoMuse Cloud 账号：自带一个有每日额度的模型，还能让你的设备协同工作。也可以粘贴自己的密钥；它会加密存在服务端的保险库里，模型永远看不到。",
   "This device": "这台设备",
   "A name your other devices will see": "其他设备看到的名字",
   "On the hub": "已连上中继",
@@ -1116,7 +1115,7 @@ const zhCN: Record<string, string> = {
   "Sign in to {name}": "登录 {name}",
   "nanoMuse Cloud · one account for all your devices": "nanoMuse Cloud · 一个账号，所有设备",
   "Every device of yours, one nanoMuse": "你的每台设备，同一个 nanoMuse",
-  "A model with a daily allowance, or your own key": "自带每日额度的模型，或用你自己的 key",
+  "A model with a free allowance, or your own key": "自带免费额度的模型，或用你自己的 key",
   "Keys in your vault; nothing you say is kept on the relay": "key 留在你的保险库里；你说的内容不会留在中继上",
   "Running it yourself without an account? Set cloud.required to false.": "自己部署、不想要账号？把 cloud.required 设为 false 即可。",
   "Free. Your devices meet on the hub and a model with a free allowance comes with it — ¥10 for good, +¥5 for each friend you invite, +¥10 for joining the co-creation programme. Sign in with a code the first time; set a password afterwards if you like.":
@@ -1172,7 +1171,7 @@ const zhCN: Record<string, string> = {
   "Password removed": "密码已移除",
   "Password changed": "密码已修改",
   "Password set": "密码已设置",
-  "A request was refused: daily allowance reached": "一次请求被拒绝：已到每日额度",
+  "A request was refused: the allowance is used up": "一次请求被拒绝：免费额度已用完",
   "Call ended": "通话结束",
   "The model provider returned an error": "模型服务返回了错误",
   "Sign out everywhere": "在所有设备退出",
@@ -1188,9 +1187,9 @@ const zhCN: Record<string, string> = {
   "{n} d ago": "{n} 天前",
   "{hint} · usage, password, sign-ins": "{hint} · 用量、密码、登录设备",
   "Use the nanoMuse Cloud model": "使用 nanoMuse Cloud 模型",
-  "Signed in as {hint}. A daily allowance, nothing to paste. Recommended to start.": "已登录 {hint}。自带每日额度，无需粘贴任何 key，推荐先用它。",
-  "Your account brings a model with a daily allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.":
-    "你的账号自带一个有每日额度的模型，起步最快。也可以粘贴自己的 key：它加密存在服务端的保险库里，不会给模型看到，你说的内容也不经过中继。",
+  "Signed in as {hint}. A free allowance, nothing to paste. Recommended to start.": "已登录 {hint}。自带免费额度，无需粘贴任何 key，推荐先用它。",
+  "Your account brings a model with a free allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.":
+    "你的账号自带一个有免费额度的模型，起步最快。也可以粘贴自己的 key：它加密存在服务端的保险库里，不会给模型看到，你说的内容也不经过中继。",
 
   // ── Voice input (the browser's own speech recognition) ───────────────────────────
   "Voice input": "语音输入",
@@ -1293,13 +1292,13 @@ const zhCN: Record<string, string> = {
 
   // -- nanoMuse Cloud as the provider --
   "Your account": "你的账号",
-  "your account's model, with a daily allowance": "账号自带的模型，带每日额度",
+  "your account's model, with a free allowance": "账号自带的模型，带免费额度",
   "many models, one key": "一个 key，很多模型",
   "on this machine, no key": "跑在本机，不用 key",
   "vLLM, LM Studio, a gateway, anything with /v1": "vLLM、LM Studio、网关，任何带 /v1 的服务",
   "Your account's model": "账号自带的模型",
   "Your account's model, or a key of your own.": "用账号自带的模型，或者你自己的 key。",
-  "Your account's model, with its daily allowance. Keep it, or switch to a key of your own here.": "账号自带的模型，带每日额度。可以保留，也可以在这里换成你自己的 key。",
+  "Your account's model, with its free allowance. Keep it, or switch to a key of your own here.": "账号自带的模型，带免费额度。可以保留，也可以在这里换成你自己的 key。",
 };
 
 export default zhCN;

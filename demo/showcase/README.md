@@ -94,7 +94,7 @@ quiet for `WEB_IDLE_STOP_S` (six hours) is stopped, not removed; the next reques
 starts it again, which takes a few seconds. `WEB_MAX_RUNNING` containers run at once — when
 every place is taken the quietest sleeps to make room, unless it was used in the last five
 minutes (`503 web_busy`) — and `WEB_MAX_ACCOUNTS` may exist at all (`503 web_full`). Model
-use is the account's own daily allowance on the relay; the gateway meters nothing here.
+use is the account's own allowance on the relay; the gateway meters nothing here.
 
 ## Deploying
 

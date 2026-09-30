@@ -39,7 +39,7 @@ export function SignInGate() {
 
         <ul className="mt-6 grid grid-cols-2 gap-2 text-[12.5px]">
           <Perk icon={<MonitorSmartphone size={15} />} text={t("Every device of yours, one nanoMuse")} />
-          <Perk icon={<Cloud size={15} />} text={t("A model with a daily allowance, or your own key")} />
+          <Perk icon={<Cloud size={15} />} text={t("A model with a free allowance, or your own key")} />
           <Perk icon={<Hand size={15} />} text={t("It uses your phone and computers for you")} />
           <Perk icon={<ShieldCheck size={15} />} text={t("Keys in your vault; nothing you say is kept on the relay")} />
         </ul>

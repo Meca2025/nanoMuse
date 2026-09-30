@@ -528,7 +528,7 @@ const EVENT_LABELS: Record<string, string> = {
   "password.set": "Password set",
   "password.changed": "Password changed",
   "password.cleared": "Password removed",
-  "budget.refused": "A request was refused: daily allowance reached",
+  "budget.refused": "A request was refused: the allowance is used up",
   "call.ended": "Call ended",
   "upstream.error": "The model provider returned an error",
 };

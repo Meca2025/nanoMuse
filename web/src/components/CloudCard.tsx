@@ -117,7 +117,7 @@ export function CloudCard({
       {signedIn ? (
         <div className="space-y-3">
           <p className="text-[13px] text-muted leading-relaxed">
-            {t("Signed in as {hint}. Your devices meet on the hub; the relay can also be the model, with a daily allowance.", { hint: account?.hint ?? "" })}
+            {t("Signed in as {hint}. Your devices meet on the hub; the relay can also be the model, with a free allowance.", { hint: account?.hint ?? "" })}
           </p>
           <div className="flex flex-wrap gap-2">
             {!account?.is_model && (

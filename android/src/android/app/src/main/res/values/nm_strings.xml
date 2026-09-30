@@ -557,7 +557,7 @@
     <string name="nm_setup_source_title">Which model answers?</string>
     <string name="nm_setup_source_sub">Your account already brings one. You can add your own API key as well and switch at any time.</string>
     <string name="nm_setup_source_cloud">Use the nanoMuse Cloud model</string>
-    <string name="nm_setup_source_cloud_sub">Qwen through Alibaba Cloud Bailian, about ¥15 a day, paid by the developer. Nothing to configure.</string>
+    <string name="nm_setup_source_cloud_sub">Qwen through Alibaba Cloud Bailian: ¥10 free per account, paid by the developer; more for inviting a friend or joining the co-creation programme. Nothing to configure.</string>
     <string name="nm_setup_source_own_sub">OpenAI, Anthropic, DeepSeek, Bailian and other OpenAI-compatible endpoints. The key stays on this phone.</string>
     <string name="nm_setup_source_fine_print">The two do not compete: the Cloud model stays available, and each model group picks its own.</string>
     <string name="nm_setup_password_title">Set a password</string>
@@ -588,7 +588,7 @@
     <string name="nm_welcome_meet_fine_print">Before anything it cannot take back — deleting, sending, paying — it stops and asks you first.</string>
     <string name="nm_cloud_title">nanoMuse Cloud</string>
     <string name="nm_cloud_signin_title">Start with nanoMuse Cloud</string>
-    <string name="nm_cloud_signin_subtitle">Your e-mail and a code — or your password, once you have set one. Free model access, about ¥15 a day, paid by the developer.</string>
+    <string name="nm_cloud_signin_subtitle">Your e-mail and a code — or your password, once you have set one. ¥10 of model use free per account, paid by the developer.</string>
     <string name="nm_cloud_mode_code">With a code</string>
     <string name="nm_cloud_mode_password">With a password</string>
     <string name="nm_cloud_password">Password</string>
@@ -779,7 +779,8 @@
     <string name="nm_cloud_allowance_left">¥%1$s · $%2$s left</string>
     <string name="nm_cloud_allowance_why">Every account starts with ¥%1$s. Each new person you invite adds ¥%2$s; joining the co-creation programme adds ¥%3$s once. When it is gone, your own key (Alibaba Cloud Bailian is a good start) keeps you going — sign-in and your devices are never affected.</string>
     <string name="nm_cloud_tokens_line">%1$s tokens in all · %2$s today</string>
-    <string name="nm_cloud_notice_title">Free, open source, non-profit</string>
+    <string name="nm_cloud_notice_title">Free, open source, non-profit — open source, built together: a personal agent for all</string>
+    <string name="nm_cloud_notice_closing">Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone\'s reach.</string>
     <string name="nm_cloud_notice">nanoMuse is a non-profit open-source community project — free, forever. Sign in with an e-mail and the model comes with a free allowance: ¥10 per account, paid by the developer; invite a friend for ¥5 more, join the co-creation programme for ¥10 more; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">Messages from your devices</string>
