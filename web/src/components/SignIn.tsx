@@ -155,7 +155,7 @@ export function SignIn({
         <ModeButton active={mode === "password"} onClick={() => setMode("password")} icon={<KeyRound size={14} />} label={t("With a password")} />
       </div>
       <div>
-        <label className="text-[12px] text-muted">{t("Phone number or e-mail")}</label>
+        <label className="text-[12px] text-muted">{t("Mainland China phone number or e-mail")}</label>
         <input
           value={identifier}
           onChange={(e) => {

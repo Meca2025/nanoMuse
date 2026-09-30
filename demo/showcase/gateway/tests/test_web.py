@@ -177,7 +177,8 @@ async def test_an_invite_code_is_passed_on_to_the_relay(web):
         r = await c.get("/web/?invite=abcd2345")
         assert r.status_code == 200 and 'id="invite"' in r.text
         assert "¥" not in r.text  # no amounts on the way in; the account page has them
-        assert "Phone number or e-mail" in r.text and "/api/web/login" in r.text
+        assert "Mainland China phone number or e-mail" in r.text and "/api/web/login" in r.text
+        assert "phone_region" in r.text  # the relay's refusal of an overseas number, in Chinese too
         r = await c.post("/api/web/code", json={"identifier": "invited@example.com"})
         assert r.status_code == 204
         r = await c.post(

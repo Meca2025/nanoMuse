@@ -120,3 +120,47 @@ def test_unknown_api_and_missing_settings_are_refused_at_startup():
         AliyunSmsSender(aliyun_settings(aliyun_sms_api="carrier-pigeon"))
     with pytest.raises(ValueError):
         AliyunSmsSender(aliyun_settings(aliyun_sms_template=""))
+
+
+def test_senders_say_up_front_whom_they_can_reach():
+    dypns = AliyunSmsSender(aliyun_settings())
+    assert dypns.accepts(parse("13800138000"))
+    assert not dypns.accepts(parse("+85212345678"))  # 号码认证: mainland only
+    assert not dypns.accepts(parse("dev-a@example.com"))
+    dysms = AliyunSmsSender(aliyun_settings(aliyun_sms_api="dysms"))
+    assert dysms.accepts(parse("+85212345678")) and not dysms.accepts(parse("dev-a@example.com"))
+    mail = SmtpSender(aliyun_settings(sender="smtp", smtp_host="smtp.test", smtp_from="nanoMuse <no-reply@test>"))
+    assert mail.accepts(parse("dev-a@example.com")) and not mail.accepts(parse("13800138000"))
+    both = BothSender(mail, dypns)
+    assert both.accepts(parse("13800138000")) and both.accepts(parse("dev-a@example.com"))
+    assert not both.accepts(parse("+14155550100"))
+
+
+def test_a_number_the_sender_cannot_reach_is_a_400_before_any_code_exists(monkeypatch):
+    """An overseas number gets `phone_region` right away — not a code that never arrives,
+    not a 502 — and nothing is counted against it."""
+    import asyncio
+
+    from nanomuse_cloud.api import create_app
+    from nanomuse_cloud.db import Database
+    from nanomuse_cloud.service import Cloud
+
+    s = aliyun_settings(sender="both", smtp_host="smtp.test", smtp_from="nanoMuse <no-reply@test>", public_base="http://cloud.test")
+    calls = FakeGet({"Code": "OK"})
+    monkeypatch.setattr(senders.httpx, "get", calls)
+    cloud = Cloud(s, Database(":memory:"), make_sender(s))
+    app = create_app(s, cloud)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://cloud.test") as c:
+            r = await c.post("/v1/auth/code", json={"identifier": "+1 415 555 0100"})
+            assert r.status_code == 400 and r.json()["error"]["code"] == "phone_region"
+            assert "e-mail" in r.json()["error"]["message"]
+            r = await c.post("/v1/auth/code", json={"identifier": "+852 1234 5678"})
+            assert r.status_code == 400 and r.json()["error"]["code"] == "phone_region"
+            r = await c.post("/v1/auth/code", json={"identifier": "138 0013 8000"})
+            assert r.status_code == 204
+
+    asyncio.run(run())
+    assert len(calls.urls) == 1  # only the mainland number went to Aliyun
+    assert cloud.db.codes_recent_for(parse("+14155550100").hash(s.hmac_key), 0) == 0

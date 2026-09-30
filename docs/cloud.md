@@ -10,7 +10,9 @@ provider, not a replacement.
 Since 0.1.20 the account is where every app starts: the first screen asks for a
 phone number or an e-mail address and sends a six-digit code — or, once you have
 set one, takes your password — and then asks which model answers: the account's
-own (the Cloud) or a key of your own. On a phone with mobile data on, **Sign in
+own (the Cloud) or a key of your own. Codes by SMS reach mainland China numbers
+only (号码认证服务 sends nowhere else); a Hong Kong, Taiwan or overseas number is
+told so at once (`phone_region`) and signs in with an e-mail address instead. On a phone with mobile data on, **Sign in
 with this phone's number** is the shortest way: the carrier confirms the number
 of the SIM (号码认证服务's H5 一键登录), you fill in its middle four digits in the
 carrier's dialog, and no code is sent. It needs Wi‑Fi off — the web SDK cannot

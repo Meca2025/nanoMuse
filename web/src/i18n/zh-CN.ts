@@ -969,7 +969,7 @@ const zhCN: Record<string, string> = {
   "Sign out": "退出登录",
   "Sign out of nanoMuse Cloud on this device? The hub and the Cloud model stop working here until you sign in again.": "在这台设备上退出 nanoMuse Cloud？重新登录之前，这里的中继和 Cloud 模型都会停用。",
   "Sign in with your phone number or e-mail address and the code it receives. No password; the key stays in the vault on this machine.": "用手机号或邮箱加收到的验证码登录。不用密码；密钥留在这台机器的保险库里。",
-  "Phone number or e-mail": "手机号或邮箱",
+  "Mainland China phone number or e-mail": "中国大陆手机号或邮箱",
   "138 0000 0000 or you@example.com": "138 0000 0000 或 you@example.com",
   "A mainland China number gets the code by SMS; anything else by e-mail.": "中国大陆手机号收短信验证码，其他的发到邮箱。",
   // -- the community notice and the gate (0.1.22) --
@@ -1308,6 +1308,8 @@ const zhCN: Record<string, string> = {
   // -- the relay's answers to signing in (nanomuse/cloud.py MESSAGES) --
   "Enter a phone number or an e-mail address.": "请输入手机号或邮箱。",
   "Enter a mainland phone number or an e-mail address": "请输入中国大陆手机号或邮箱",
+  "Enter a mainland phone number or an e-mail address.": "请输入中国大陆手机号或邮箱。",
+  "Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address.": "短信验证码目前只支持中国大陆手机号，海外用户请用邮箱登录。",
   "That code is not right.": "验证码不对。",
   "That code has expired; ask for a new one.": "验证码已过期，重新获取一个。",
   "Too many codes were sent; wait a few minutes.": "验证码发得太频繁了，几分钟后再试。",

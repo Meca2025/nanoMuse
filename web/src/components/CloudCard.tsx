@@ -144,7 +144,7 @@ export function CloudCard({
             {t("Sign in with your phone number or e-mail address and the code it receives. No password; the key stays in the vault on this machine.")}
           </p>
           <div>
-            <label className="text-[12px] text-muted">{t("Phone number or e-mail")}</label>
+            <label className="text-[12px] text-muted">{t("Mainland China phone number or e-mail")}</label>
             <input
               value={identifier}
               onChange={(e) => {
