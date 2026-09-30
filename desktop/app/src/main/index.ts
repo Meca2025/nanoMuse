@@ -1,5 +1,5 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, shell, Tray } from "electron";
-import { writeFileSync } from "node:fs";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, shell, Tray } from "electron";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { StageReport } from "../shared/types";
 import { Runtime } from "./runtime";
@@ -14,8 +14,9 @@ import { Stage } from "./stage";
  * the mouse back from the hands, native notifications, and the stage (stage.ts) that
  * shows where the hands are about to click.
  *
- * Development only for now: `npm run dev` here with the runtime's .venv next door.
- * Nothing is packaged in this stage (docs/every-device.md).
+ * `npm run dev` here runs it against the runtime's .venv next door; `npm run dist` (and
+ * .github/workflows/desktop-app.yml on every `v*` tag) packages it with a bundled runtime
+ * as nanoMuse-Desktop-<version>-… for Windows, macOS and Linux (docs/desktop.md).
  */
 
 const runtime = new Runtime();
@@ -51,17 +52,63 @@ const T = {
   stopped: zh ? "已把鼠标交还给你。" : "The mouse is yours again.",
   stoppedTitle: zh ? "操作已停止" : "Hands stopped",
   notReady: zh ? "nanoMuse 没能启动" : "nanoMuse could not start",
+  crashed: zh ? "nanoMuse 的运行时停止了" : "The nanoMuse runtime stopped",
+  crashedBody: zh ? "正在重新启动…" : "Starting it again…",
+  crashedAgain: zh ? "nanoMuse 的运行时再次停止，没有自动重启。" : "The nanoMuse runtime stopped again and was not restarted.",
+  restart: zh ? "重新启动" : "Restart",
+  openLog: zh ? "打开日志" : "Open the log",
+  about: zh ? "关于 nanoMuse" : "About nanoMuse",
+  checkUpdates: zh ? "检查更新" : "Check for updates",
+  upToDate: zh ? "已是最新版本。" : "You are on the latest version.",
+  newer: zh ? "有新版本" : "A newer version is available",
+  download: zh ? "打开下载页" : "Open the download page",
+  later: zh ? "以后再说" : "Later",
+  updateFailed: zh ? "现在查不到最新版本；稍后再试。" : "Could not look up the latest version right now; try again later.",
+  shortcuts: zh ? "快捷键：Ctrl+Shift+Esc 停止操作 · Ctrl+Shift+M 打开窗口" : "Shortcuts: Ctrl+Shift+Esc stops the hands · Ctrl+Shift+M opens the window",
 };
+
+const RELEASES_API = "https://api.github.com/repos/nano-muse/nanoMuse/releases/latest";
+const RELEASES_PAGE = "https://github.com/nano-muse/nanoMuse/releases/latest";
 
 function iconPath(name: string): string {
   // out/main → ../../resources in dev and in the built app alike
   return join(__dirname, "..", "..", "resources", name);
 }
 
+type Bounds = { x?: number; y?: number; width: number; height: number };
+const boundsFile = (): string => join(runtime.home, "desktop-window.json");
+
+/** Where the window was last time, if that spot is still on a screen. */
+function savedBounds(): Bounds {
+  const fallback: Bounds = { width: 1180, height: 820 };
+  try {
+    const b = JSON.parse(readFileSync(boundsFile(), "utf8")) as Bounds;
+    if (!b || typeof b.width !== "number" || typeof b.height !== "number") return fallback;
+    if (typeof b.x === "number" && typeof b.y === "number") {
+      const onScreen = screen.getAllDisplays().some((d) => {
+        const a = d.workArea;
+        return b.x! >= a.x - 50 && b.y! >= a.y - 50 && b.x! < a.x + a.width - 100 && b.y! < a.y + a.height - 100;
+      });
+      if (!onScreen) return { width: b.width, height: b.height };
+    }
+    return b;
+  } catch {
+    return fallback;
+  }
+}
+
+function rememberBounds(win: BrowserWindow): void {
+  if (win.isMinimized() || win.isFullScreen()) return;
+  try {
+    writeFileSync(boundsFile(), JSON.stringify(win.getNormalBounds()));
+  } catch {
+    /* a read-only home: the size is simply not kept */
+  }
+}
+
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 1180,
-    height: 820,
+    ...savedBounds(),
     minWidth: 720,
     minHeight: 560,
     title: "nanoMuse",
@@ -73,9 +120,17 @@ function createMainWindow(): BrowserWindow {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       sandbox: true,
+      nodeIntegration: false,
     },
   });
   win.setMenuBarVisibility(false);
+  let boundsTimer: NodeJS.Timeout | null = null;
+  const onBounds = () => {
+    if (boundsTimer) clearTimeout(boundsTimer);
+    boundsTimer = setTimeout(() => rememberBounds(win), 400);
+  };
+  win.on("resize", onBounds);
+  win.on("move", onBounds);
   void win.loadURL(runtime.appUrl());
   // links to elsewhere open in the system browser; the app stays on its own origin
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -121,6 +176,110 @@ async function stopHands(): Promise<void> {
   if (Notification.isSupported()) new Notification({ title: T.stoppedTitle, body: T.stopped, silent: true }).show();
 }
 
+async function checkForUpdates(quiet = false): Promise<void> {
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch(RELEASES_API, { signal: ctl.signal, headers: { accept: "application/vnd.github+json", "user-agent": `nanoMuse-Desktop/${app.getVersion()}` } });
+    clearTimeout(t);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = (await r.json()) as { tag_name?: string; html_url?: string };
+    const latest = (data.tag_name ?? "").replace(/^v/, "");
+    if (!latest) throw new Error("no tag");
+    if (newerThan(latest, app.getVersion())) {
+      const { response } = await dialog.showMessageBox({
+        type: "info",
+        title: T.newer,
+        message: `nanoMuse ${latest}`,
+        detail: `${T.newer}: ${latest} (${zh ? "当前" : "installed"}: ${app.getVersion()})`,
+        buttons: [T.download, T.later],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if (response === 0) void shell.openExternal(data.html_url || RELEASES_PAGE);
+    } else if (!quiet) {
+      await dialog.showMessageBox({ type: "info", title: "nanoMuse", message: T.upToDate, detail: `nanoMuse ${app.getVersion()}` });
+    }
+  } catch (exc) {
+    log(`update check failed: ${String(exc)}`);
+    if (!quiet) await dialog.showMessageBox({ type: "warning", title: "nanoMuse", message: T.updateFailed });
+  }
+}
+
+/** "0.1.21" > "0.1.20"; anything unparsable is not newer. */
+function newerThan(a: string, b: string): boolean {
+  const pa = a.split(".").map((x) => parseInt(x, 10));
+  const pb = b.split(".").map((x) => parseInt(x, 10));
+  if (pa.some(Number.isNaN) || pb.some(Number.isNaN)) return false;
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
+async function showAbout(): Promise<void> {
+  const health = await runtime.health();
+  const { response } = await dialog.showMessageBox({
+    type: "info",
+    title: T.about,
+    message: `nanoMuse ${app.getVersion()}`,
+    detail: [
+      `${zh ? "运行时" : "Runtime"}: ${health?.version ?? "—"} @ ${runtime.base}${runtime.owned ? "" : zh ? "（外部启动）" : " (attached)"}`,
+      T.shortcuts,
+      zh ? "开源、非营利的社区项目，GPL-3.0。nanoMuse 与 Meta 无关；Muse 是 Meta 的商标。" : "An open-source, non-profit community project, GPL-3.0. Not affiliated with Meta; Muse is a trademark of Meta.",
+    ].join("\n"),
+    buttons: [T.checkUpdates, "OK"],
+    defaultId: 1,
+    cancelId: 1,
+  });
+  if (response === 0) void checkForUpdates();
+}
+
+let restarts = 0;
+/** The runtime this shell started died: start it once more; if it dies again, ask. */
+async function onRuntimeCrash(code: number | null): Promise<void> {
+  if (quitting) return;
+  log(`runtime crashed (${code}); restarts so far: ${restarts}`);
+  if (restarts < 1) {
+    restarts += 1;
+    if (Notification.isSupported()) new Notification({ title: T.crashed, body: T.crashedBody, silent: true }).show();
+    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      await runtime.ensure(log);
+      mainWindow?.webContents.reload();
+      setTimeout(() => (restarts = 0), 10 * 60_000); // a clean ten minutes forgives the first crash
+      return;
+    } catch (exc) {
+      log(String(exc));
+    }
+  }
+  const { response } = await dialog.showMessageBox({
+    type: "error",
+    title: T.crashed,
+    message: T.crashedAgain,
+    detail: runtime.logTail(8),
+    buttons: [T.restart, T.openLog, T.quit],
+    defaultId: 0,
+    cancelId: 1,
+  });
+  if (response === 0) {
+    restarts = 0;
+    try {
+      await runtime.ensure(log);
+      mainWindow?.webContents.reload();
+    } catch (exc) {
+      dialog.showErrorBox(T.notReady, String((exc as Error).message ?? exc));
+    }
+  } else if (response === 1) {
+    void shell.openPath(join(runtime.home, "desktop-app.log"));
+  } else {
+    quitting = true;
+    app.quit();
+  }
+}
+
 function buildTray(): void {
   const img = nativeImage.createFromPath(iconPath("tray.png"));
   tray = new Tray(process.platform === "darwin" ? img.resize({ width: 18, height: 18 }) : img);
@@ -143,6 +302,9 @@ function refreshTray(report: StageReport): void {
       { type: "separator" },
       { label: T.browser, click: () => void shell.openExternal(runtime.appUrl()) },
       { label: T.logs, click: () => void shell.openPath(runtime.home) },
+      { type: "separator" },
+      { label: T.checkUpdates, click: () => void checkForUpdates() },
+      { label: T.about, click: () => void showAbout() },
       { type: "separator" },
       {
         label: runtime.owned ? T.quit : T.quitAttached,
@@ -176,6 +338,13 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     ipcMain.on("hands:stop", () => void stopHands());
+    ipcMain.on("app:version", (event) => {
+      event.returnValue = app.getVersion();
+    });
+    runtime.onCrash = (code) => void onRuntimeCrash(code);
+    if (process.platform === "darwin") {
+      app.setAboutPanelOptions({ applicationName: "nanoMuse", applicationVersion: app.getVersion(), copyright: "GPL-3.0 · nano-muse community" });
+    }
 
     const devUrl = process.env.ELECTRON_RENDERER_URL ? `${process.env.ELECTRON_RENDERER_URL}/stage/index.html` : null;
     stage = new Stage(

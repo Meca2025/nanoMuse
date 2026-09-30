@@ -22,6 +22,9 @@ export class Runtime {
   private child: ChildProcess | null = null;
   /** true when this shell started the runtime (and should stop it on quit) */
   owned = false;
+  /** called when a runtime this shell started stops on its own (not through stop()) */
+  onCrash: ((code: number | null) => void) | null = null;
+  private stopping = false;
 
   constructor() {
     this.home = process.env.NANOMUSE_HOME || join(homedir(), ".nanomuse");
@@ -74,22 +77,59 @@ export class Runtime {
       detached: false,
     });
     this.owned = true;
+    this.stopping = false;
+    let ready = false;
     this.child.on("exit", (code) => {
       onLog(`nanomuse serve exited (${code})`);
       this.child = null;
+      if (ready && !this.stopping) this.onCrash?.(code);
     });
     const deadline = Date.now() + 45_000;
     while (Date.now() < deadline) {
-      if (await this.health()) return;
-      if (!this.child) throw new Error(`nanomuse serve stopped before it was ready; see ${join(this.home, "desktop-app.log")}`);
+      if (await this.health()) {
+        ready = true;
+        return;
+      }
+      if (!this.child) throw new Error(this.explainExit());
       await new Promise((r) => setTimeout(r, 500));
     }
-    throw new Error("nanomuse serve did not answer on /api/health in time");
+    throw new Error(this.explainExit("nanomuse serve did not answer on /api/health in time."));
+  }
+
+  /** The last lines of the runtime's log, so a dialog can say why instead of "see the log". */
+  logTail(lines = 12): string {
+    try {
+      const text = readFileSync(join(this.home, "desktop-app.log"), "utf8");
+      return text.trimEnd().split("\n").slice(-lines).join("\n");
+    } catch {
+      return "";
+    }
+  }
+
+  /** A stopped runtime, in words: the usual causes are recognised in its log. */
+  private explainExit(lead = "nanomuse serve stopped before it was ready."): string {
+    const tail = this.logTail(40);
+    let hint = "";
+    if (/address already in use|EADDRINUSE|Errno 98|Errno 10048/i.test(tail)) {
+      hint = `Port ${this.port} is taken by another program (or another nanoMuse). Quit it, or set NANOMUSE_PORT.`;
+    } else if (/permission denied|Errno 13|not writable|cannot write/i.test(tail)) {
+      hint = `The data folder ${this.home} is not writable. Fix its permissions or set NANOMUSE_HOME.`;
+    } else if (/cannot open display|DISPLAY|xdotool/i.test(tail)) {
+      hint = "No display is available for the hands; the runtime still needs a desktop session.";
+    } else if (/config\.toml|TOMLDecodeError|does not understand/i.test(tail)) {
+      hint = "config.toml could not be read; the log has the field and the line.";
+    } else if (/ModuleNotFoundError|ImportError|No module named/i.test(tail)) {
+      hint = "The runtime is missing a Python package; reinstall nanoMuse or point NANOMUSE_BIN at a working one.";
+    }
+    const where = `Log: ${join(this.home, "desktop-app.log")}`;
+    const last = tail.split("\n").slice(-3).join("\n");
+    return [lead, hint, where, last ? `\n${last}` : ""].filter(Boolean).join("\n");
   }
 
   /** Stop the runtime we started (a runtime we attached to is left alone). */
   stop(): void {
     if (this.child && this.owned) {
+      this.stopping = true;
       this.child.kill("SIGTERM");
       this.child = null;
     }

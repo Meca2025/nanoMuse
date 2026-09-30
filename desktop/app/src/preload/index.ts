@@ -8,7 +8,13 @@ import type { DesktopBridge, HandsLive, StageConfig, StageReport } from "../shar
  */
 const bridge: DesktopBridge = {
   platform: process.platform,
-  version: process.env.npm_package_version ?? "dev",
+  version: (() => {
+    try {
+      return String(ipcRenderer.sendSync("app:version") || "dev");
+    } catch {
+      return "dev";
+    }
+  })(),
   onConfig: (cb: (config: StageConfig) => void) => {
     ipcRenderer.on("config", (_event, config: StageConfig) => cb(config));
   },

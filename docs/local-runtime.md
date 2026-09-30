@@ -1,6 +1,12 @@
 # nanoMuse on the phone: the local runtime
 
-The Android app comes in two flavours. **connect** is the remote for a `nanomuse serve` on your computer ([android.md](android.md)). **local** is the whole thing: the same Python server, its tools and its Linux sandbox, running on the phone itself with nothing else to install. This page is about the second.
+> **Design record of the Python line.** The current Android app runs its agent on the
+> phone through OpenMinis's own Linux sandbox, not through this PRoot + Alpine + Python
+> arrangement; there is no `rootfs.yml`, no `local`/`connect` flavour and no
+> `nanomuse-device` CLI in the APK you download. See [android.md](android.md).
+
+
+The Python line's Android app came in two flavours. **connect** was the remote for a `nanomuse serve` on your computer ([archive/android-python-line.md](archive/android-python-line.md)). **local** was the whole thing: the same Python server, its tools and its Linux sandbox, running on the phone itself with nothing else to install. This page is about the second.
 
 The idea in one sentence: the APK carries a small Alpine Linux root file system with Python and `nanomuse` inside; on first start the app unpacks it into its private storage and runs `nanomuse serve` in it under [PRoot](https://proot-me.github.io/), a user-mode `chroot` that needs no root; the app's WebView then opens `http://127.0.0.1:<port>/`. The brain is unchanged. Kotlin only hosts it.
 
@@ -108,7 +114,7 @@ Nothing is due → no alarm, and the runtime idles until the WebView or a notifi
 - **musl, not glibc.** Alpine uses musl. Most Python wheels come as `musllinux`; a prebuilt binary that assumes glibc needs `apk add gcompat`. Node is the Alpine build.
 - **No Chromium in the rootfs.** Playwright cannot run a browser here; the browser is always the app's own WebView (the `Browser` tool's device backend, `nanomuse-browser` from scripts — [browser.md](browser.md)). `apk add chromium` does install but does not start under PRoot on Android.
 - **Storage.** About 330 MB after unpacking, plus whatever the user installs. The compressed rootfs is under 70 MB; the APK a little more.
-- **Background limits.** Android may still kill the service under memory pressure or aggressive vendor battery managers (the per-vendor battery allowances are in [android.md](android.md#keeping-it-running)). The service is `START_STICKY` and restarts; the alarm above survives the process, and the scheduler catches up on missed routines when it is back.
+- **Background limits.** Android may still kill the service under memory pressure or aggressive vendor battery managers (the per-vendor battery allowances are in [archive/android-python-line.md](archive/android-python-line.md#keeping-it-running)). The service is `START_STICKY` and restarts; the alarm above survives the process, and the scheduler catches up on missed routines when it is back.
 - **What is in the box.** Alpine's `apk`, `git`, `curl`, `jq`, `bash`, `openssh-client`, `python3` with `pip`, and Node with `npm`. `uv` is not (35 MB); `pip install uv` gets it. `nanomuse-mirror cn|default` switches apk, pip and npm between the upstream servers and mirrors in mainland China; the first start picks from the phone's region.
 - **Node is optional.** `NODE=0 scripts/rootfs/build.sh` produces a rootfs without it, about 12 MB smaller compressed. The default includes it because the showcase's Chinese services (lark-cli, `@tencentcloud/tmeet`, `12306-mcp`) are npm packages.
 
@@ -134,7 +140,7 @@ cd android && ./gradlew assembleLocalDebug assembleConnectDebug   # app/build/ou
 
 PRoot is built from the [Termux fork](https://github.com/termux/proot) (`5.1.107.94`, which carries the Android fixes: `--link2symlink`, ashmem/memfd, the loader as a separate file) with talloc `2.4.3`, both pinned by SHA-256, with the NDK's clang for API 26. PRoot is GPL-2.0; it runs as a separate executable that the app starts, and is not linked into the app. Its notice and the source offer are in `THIRD_PARTY_NOTICES.md`.
 
-In CI, `rootfs.yml` builds both and `android.yml` (which calls it) puts them into the `local` APK; the compressed rootfs and its `.json` are attached to every release next to the APKs.
+In the Python line's CI a `rootfs.yml` workflow built both and put them into the `local` APK; neither workflow exists any more (the current `android.yml` builds the OpenMinis-based APK, [android.md](android.md)).
 
 ## Files
 
