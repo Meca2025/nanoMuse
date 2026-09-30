@@ -293,7 +293,15 @@ class Cloud:
         if not secrets.compare_digest(row["code_hash"], _sha256(code.strip())):
             raise CloudError(400, "code_wrong", "That code is not right")
         self.db.consume_code(int(row["id"]))
+        return self.sign_in(ident, device, "code", invite)
 
+    def sign_in(self, ident: Identifier, device: str, via: str, invite: str = "") -> tuple[str, Caller, bool]:
+        """An identifier that has just been proven (a code, the carrier's word) becomes a
+        signed-in device: the account is made on first sight, a key is issued.
+        Returns (api_key, caller, created)."""
+        if not self.allowed(ident):
+            raise CloudError(403, "not_invited", "This relay is private; that address is not on its list")
+        id_hash = ident.hash(self.s.hmac_key)
         account = self.db.account_by_hash(id_hash)
         created = account is None
         if account is None:
@@ -307,8 +315,8 @@ class Cloud:
         elif account["disabled"]:
             raise CloudError(403, "account_disabled", "This account is disabled")
 
-        key, caller = self._issue_key(account["id"], device, via="code")
-        self.db.add_event(account["id"], "sign_in.code", device)
+        key, caller = self._issue_key(account["id"], device, via=via)
+        self.db.add_event(account["id"], f"sign_in.{via}", device)
         return key, caller, created
 
     # -- invitations ------------------------------------------------------------------
@@ -399,7 +407,7 @@ class Cloud:
         self._check_new_password(password, self.crypto.decrypt(caller.account_id, account["identifier_enc"] or "") or "")
         stored = account["password_hash"] or ""
         if stored:
-            fresh_code = caller.via == "code" and now() - caller.key_created_at <= self.s.password_reset_window_s
+            fresh_code = caller.via in ("code", "onetap") and now() - caller.key_created_at <= self.s.password_reset_window_s
             if not fresh_code:
                 if not current:
                     raise CloudError(400, "password_required", "Enter the current password (or sign in with a code first)")
@@ -1061,7 +1069,7 @@ class Cloud:
             "week": totals(week_start),
             "period": {"days": days, **totals(since), "by_model": self._rows_cny(self.db.usage_by_model(since))},
             "signals_today": {
-                "sign_ins": counts.get("sign_in.code", 0) + counts.get("sign_in.password", 0),
+                "sign_ins": counts.get("sign_in.code", 0) + counts.get("sign_in.password", 0) + counts.get("sign_in.onetap", 0),
                 "sign_in_failures": counts.get("sign_in.failed", 0),
                 "budget_refusals": counts.get("budget.refused", 0),
                 "upstream_errors": counts.get("upstream.error", 0),
@@ -1094,7 +1102,7 @@ class Cloud:
             rows.append(
                 {
                     "day": d,
-                    "sign_ins": e.get("sign_in.code", 0) + e.get("sign_in.password", 0),
+                    "sign_ins": e.get("sign_in.code", 0) + e.get("sign_in.password", 0) + e.get("sign_in.onetap", 0),
                     "sign_in_failures": e.get("sign_in.failed", 0),
                     "new_accounts": new.get(d, 0),
                     "active_accounts": active.get(d, 0),

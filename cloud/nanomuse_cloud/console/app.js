@@ -31,9 +31,9 @@
     allowanceWhy: (a, b, c) => `每个账号有 ¥${a} 免费额度，不按天重置；邀请一位新用户 +¥${b}，加入共创计划 +¥${c}。用完可以换自己的 key（推荐阿里云百炼），登录和多设备功能不受影响。`, allowanceWarn: "额度快用完了。", allowanceOut: "额度已用完。", ownKey: "自己的 key 怎么配",
     usage: "用量", today: "今天", allTime: "累计", byModel: "按模型", noUsage: "还没有用量。", requests: (n) => `${n} 次`, tokens: (n) => `${n} tokens`, seconds: (n) => `${n} 秒`, images: (n) => `${n} 张`,
     kinds: { chat: "对话", image: "图片", video: "视频", realtime: "实时通话" },
-    signIns: "登录的设备", thisOne: "当前", revoke: "退出", viaCode: "验证码", viaPassword: "密码", viaWeb: "网页", lastUsed: "最近使用",
+    signIns: "登录的设备", thisOne: "当前", revoke: "退出", viaCode: "验证码", viaOneTap: "本机号码", viaPassword: "密码", viaWeb: "网页", lastUsed: "最近使用",
     activity: "最近动态", events: {
-      "account.created": "账号创建", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置了密码", "password.changed": "修改了密码",
+      "account.created": "账号创建", "sign_in.code": "验证码登录", "sign_in.onetap": "本机号码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置了密码", "password.changed": "修改了密码",
       "password.cleared": "移除了密码", "sign_out": "退出登录", "sign_out.all": "在所有设备上退出", "budget.refused": "额度不够，请求被拒绝", "upstream.error": "模型服务出错", "call.ended": "通话结束", "contribute.on": "开启了贡献对话", "contribute.off": "关闭了贡献对话", "contribute.deleted": "删除了贡献的对话", "invite.accepted": "邀请了一位新用户", "invite.used": "通过邀请码注册", "credit.granted": "获得了额度奖励", "contribute.bonus": "加入共创计划，额度 +¥10",
     },
     ways: "退出", signOutConfirm: "退出这个页面的登录？", signOutAllConfirm: "在所有设备上退出？手机和电脑上的 nanoMuse 会需要重新登录。",
@@ -64,9 +64,9 @@
     allowanceWhy: (a, b, c) => `Every account has ¥${a} to spend, for good — it does not reset by the day. A friend who signs up with your code adds ¥${b}; joining the co-creation programme adds ¥${c}. When it is gone, bring your own key (Alibaba Cloud Bailian is a good start); sign-in and your devices keep working.`, allowanceWarn: "Nearly used up.", allowanceOut: "Used up.", ownKey: "How to bring your own key",
     usage: "Usage", today: "Today", allTime: "All time", byModel: "By model", noUsage: "Nothing used yet.", requests: (n) => `${n} req`, tokens: (n) => `${n} tokens`, seconds: (n) => `${n} s`, images: (n) => `${n} pictures`,
     kinds: { chat: "Chat", image: "Pictures", video: "Video", realtime: "Calls" },
-    signIns: "Signed in on", thisOne: "this one", revoke: "Sign out", viaCode: "code", viaPassword: "password", viaWeb: "web", lastUsed: "last used",
+    signIns: "Signed in on", thisOne: "this one", revoke: "Sign out", viaCode: "code", viaOneTap: "phone number", viaPassword: "password", viaWeb: "web", lastUsed: "last used",
     activity: "Activity", events: {
-      "account.created": "Account created", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
+      "account.created": "Account created", "sign_in.code": "Signed in with a code", "sign_in.onetap": "Signed in with the phone's number", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
       "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Refused: allowance used up", "upstream.error": "Model service error", "call.ended": "Call ended", "contribute.on": "Started contributing conversations", "contribute.off": "Stopped contributing", "contribute.deleted": "Deleted contributed conversations", "invite.accepted": "A friend signed up with your code", "invite.used": "Signed up with an invite code", "credit.granted": "Credit granted", "contribute.bonus": "Joined the co-creation programme: +¥10",
     },
     ways: "Leave", signOutConfirm: "Sign this page out?", signOutAllConfirm: "Sign out everywhere? nanoMuse on your phone and computers will ask you to sign in again.",
@@ -549,7 +549,7 @@
     if (sessions.length) kids.push(h("div", { class: "label" }, T.signIns), h("div", { class: "card" }, ...sessions.map((s) => h("div", { class: "row" },
       h("span", { class: "tile" + (s.current ? "" : " grey"), html: /web|网页|browser/i.test(s.device || "") ? ICON.web : /phone|android|手机|iphone/i.test(s.device || "") ? ICON.phone : ICON.computer }),
       h("div", { class: "txt" }, h("div", { class: "t" }, s.device || "—", s.current ? [" ", h("span", { class: "pill blue" }, T.thisOne)] : null),
-        h("div", { class: "s" }, `${s.via === "password" ? T.viaPassword : T.viaCode} · ${when(s.created_at)}${s.last_used_at ? ` · ${T.lastUsed} ${ago(s.last_used_at)}` : ""}`)),
+        h("div", { class: "s" }, `${s.via === "password" ? T.viaPassword : s.via === "onetap" ? T.viaOneTap : T.viaCode} · ${when(s.created_at)}${s.last_used_at ? ` · ${T.lastUsed} ${ago(s.last_used_at)}` : ""}`)),
       s.current ? null : h("button", { class: "btn quiet sm", onclick: async () => { try { await api("DELETE", `/v1/me/sessions/${encodeURIComponent(s.prefix)}`, null, key); } catch (e) { alert(errText(e)); } await loadMe(); drawAccount(body); } }, T.revoke)))));
     // activity
     const events = me.events || [];

@@ -110,6 +110,32 @@ def compose_code_mail(sender: str, to: str, code: str, minutes: int) -> EmailMes
     return msg
 
 
+def _pct(v: str) -> str:
+    return urllib.parse.quote(v, safe="~")
+
+
+def aliyun_common_params(access_key_id: str) -> dict[str, str]:
+    """What every RPC-style Aliyun call (dypnsapi, dysmsapi; API version 2017-05-25) carries."""
+    return {
+        "AccessKeyId": access_key_id,
+        "Format": "JSON",
+        "SignatureMethod": "HMAC-SHA1",
+        "SignatureNonce": uuid.uuid4().hex,
+        "SignatureVersion": "1.0",
+        "Timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "Version": "2017-05-25",
+    }
+
+
+def aliyun_signed_query(access_key_secret: str, params: dict[str, str]) -> str:
+    """The query string of a GET, signed the RPC way: HMAC-SHA1 over the sorted, encoded pairs."""
+    canonical = "&".join(f"{_pct(k)}={_pct(v)}" for k, v in sorted(params.items()))
+    string_to_sign = "GET&%2F&" + _pct(canonical)
+    digest = hmac.new((access_key_secret + "&").encode(), string_to_sign.encode(), hashlib.sha1).digest()
+    signature = base64.b64encode(digest).decode()
+    return canonical + "&Signature=" + _pct(signature)
+
+
 class AliyunSmsSender:
     """Aliyun SMS, signed the RPC way (HMAC-SHA1), no SDK. Two services:
 
@@ -140,16 +166,8 @@ class AliyunSmsSender:
     def endpoint(self) -> str:
         return self.ENDPOINTS[self.api]
 
-    @staticmethod
-    def _pct(v: str) -> str:
-        return urllib.parse.quote(v, safe="~")
-
     def _signed_query(self, params: dict[str, str]) -> str:
-        canonical = "&".join(f"{self._pct(k)}={self._pct(v)}" for k, v in sorted(params.items()))
-        string_to_sign = "GET&%2F&" + self._pct(canonical)
-        digest = hmac.new((self.s.aliyun_access_key_secret + "&").encode(), string_to_sign.encode(), hashlib.sha1).digest()
-        signature = base64.b64encode(digest).decode()
-        return canonical + "&Signature=" + self._pct(signature)
+        return aliyun_signed_query(self.s.aliyun_access_key_secret, params)
 
     def params(self, ident: Identifier, code: str) -> dict[str, str]:
         """The request for one code, before signing; a mainland number without +86."""
@@ -159,15 +177,9 @@ class AliyunSmsSender:
         number = ident.value[3:] if mainland else ident.value.lstrip("+")
         minutes = str(max(1, self.s.code_ttl_s // 60))
         common = {
-            "AccessKeyId": self.s.aliyun_access_key_id,
-            "Format": "JSON",
+            **aliyun_common_params(self.s.aliyun_access_key_id),
             "SignName": self.s.aliyun_sms_sign,
-            "SignatureMethod": "HMAC-SHA1",
-            "SignatureNonce": uuid.uuid4().hex,
-            "SignatureVersion": "1.0",
             "TemplateCode": self.s.aliyun_sms_template,
-            "Timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "Version": "2017-05-25",
         }
         if self.api == "dypns":
             if not mainland:
