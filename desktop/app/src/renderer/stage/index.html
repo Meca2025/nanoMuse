@@ -12,7 +12,7 @@
       }
       :root {
         --accent: #0a66e4;
-        --violet: #7c3aed;
+        --violet: #7c5cff;
         --cyan: #06b6d4;
         --ink: rgba(17, 18, 24, 0.82);
       }
@@ -40,15 +40,29 @@
          desktops), so nothing full-screen animates. The rim is four thin strips; one light
          runs along them clockwise — top, right, bottom, left — a bright head with a long
          tail (a running light, as on a marquee), each strip lit for a quarter of the lap.
+         The comet is three hues — blue into violet into cyan, a whitish head — the same
+         three the Android stage runs; amber while the hands wait for the user.
          The haze is rasterised once and only its opacity changes. */
       #frame {
         position: fixed;
         inset: 0;
         opacity: 0;
         transition: opacity 480ms ease;
-        --lap: 6s;
-        --dim: rgba(10, 102, 228, 0.28);
-        --head: #9be7ff;
+        --lap: 8s;
+        --c1: var(--accent);
+        --c2: var(--violet);
+        --c3: var(--cyan);
+        --dim: rgba(10, 102, 228, 0.2);
+        --head: #eef7ff;
+        --haze: rgba(124, 92, 255, 0.28);
+      }
+      #frame.wait {
+        --c1: #d97706;
+        --c2: #f59e0b;
+        --c3: #fbbf24;
+        --dim: rgba(245, 158, 11, 0.22);
+        --head: #fff6dc;
+        --haze: rgba(245, 158, 11, 0.26);
       }
       #frame.on {
         opacity: 1;
@@ -93,52 +107,52 @@
       }
       #frame .g.t {
         top: 0;
-        background-image: linear-gradient(90deg, transparent 0%, transparent 70%, rgba(6, 182, 212, 0.4) 100%);
+        background-image: linear-gradient(90deg, transparent 0%, transparent 62%, var(--haze) 100%);
         animation-name: run-x;
       }
       #frame .g.r {
         right: 0;
-        background-image: linear-gradient(180deg, transparent 0%, transparent 70%, rgba(6, 182, 212, 0.4) 100%);
+        background-image: linear-gradient(180deg, transparent 0%, transparent 62%, var(--haze) 100%);
         animation-name: run-y;
         animation-delay: calc(var(--lap) * -0.75);
       }
       #frame .g.b {
         bottom: 0;
-        background-image: linear-gradient(270deg, transparent 0%, transparent 70%, rgba(6, 182, 212, 0.4) 100%);
+        background-image: linear-gradient(270deg, transparent 0%, transparent 62%, var(--haze) 100%);
         animation-name: run-x-back;
         animation-delay: calc(var(--lap) * -0.5);
       }
       #frame .g.l {
         left: 0;
-        background-image: linear-gradient(0deg, transparent 0%, transparent 70%, rgba(6, 182, 212, 0.4) 100%);
+        background-image: linear-gradient(0deg, transparent 0%, transparent 62%, var(--haze) 100%);
         animation-name: run-y-back;
         animation-delay: calc(var(--lap) * -0.25);
       }
       /* the comet: the image is twice the strip; its head sits at the leading end and the tail
-         fades over the trailing 40 %. Sliding it two strip-lengths over half a lap carries the
+         fades over the trailing 55 %. Sliding it two strip-lengths over half a lap carries the
          head across in the first quarter — when the next strip takes over — and the tail out
          in the second, so the light bends round the corner; parked at the end, the strip shows
          only the image's dim part, and for the rest of the lap it is just the dim rim. */
       #frame .e.t {
         top: 0;
-        background-image: linear-gradient(90deg, var(--dim) 0%, var(--dim) 60%, var(--cyan) 90%, var(--head) 100%);
+        background-image: linear-gradient(90deg, var(--dim) 0%, var(--dim) 45%, var(--c1) 72%, var(--c2) 88%, var(--c3) 97%, var(--head) 100%);
         animation-name: run-x;
       }
       #frame .e.r {
         right: 0;
-        background-image: linear-gradient(180deg, var(--dim) 0%, var(--dim) 60%, var(--cyan) 90%, var(--head) 100%);
+        background-image: linear-gradient(180deg, var(--dim) 0%, var(--dim) 45%, var(--c1) 72%, var(--c2) 88%, var(--c3) 97%, var(--head) 100%);
         animation-name: run-y;
         animation-delay: calc(var(--lap) * -0.75);
       }
       #frame .e.b {
         bottom: 0;
-        background-image: linear-gradient(270deg, var(--dim) 0%, var(--dim) 60%, var(--cyan) 90%, var(--head) 100%);
+        background-image: linear-gradient(270deg, var(--dim) 0%, var(--dim) 45%, var(--c1) 72%, var(--c2) 88%, var(--c3) 97%, var(--head) 100%);
         animation-name: run-x-back;
         animation-delay: calc(var(--lap) * -0.5);
       }
       #frame .e.l {
         left: 0;
-        background-image: linear-gradient(0deg, var(--dim) 0%, var(--dim) 60%, var(--cyan) 90%, var(--head) 100%);
+        background-image: linear-gradient(0deg, var(--dim) 0%, var(--dim) 45%, var(--c1) 72%, var(--c2) 88%, var(--c3) 97%, var(--head) 100%);
         animation-name: run-y-back;
         animation-delay: calc(var(--lap) * -0.25);
       }
@@ -166,7 +180,10 @@
          that only fades in for the moment of a screenshot */
       #frame .h {
         position: absolute;
-        --g: rgba(10, 102, 228, 0.22);
+        --g: rgba(10, 102, 228, 0.15);
+      }
+      #frame.wait .h {
+        --g: rgba(245, 158, 11, 0.14);
       }
       #frame .h.t {
         top: 0;
@@ -203,7 +220,7 @@
         transition: opacity 160ms ease;
       }
       #frame .look-set .h {
-        --g: rgba(6, 182, 212, 0.42);
+        --g: rgba(6, 182, 212, 0.3);
       }
       #frame.look .look-set {
         opacity: 1;

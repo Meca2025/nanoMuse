@@ -188,8 +188,9 @@ class HandsStage(private val context: Context) {
 
         // The running light: the rim as a path, the comet as the segment of it behind the head
         // (PathMeasure cuts it out each frame), stroked three times — a wide faint glow, a
-        // narrower one, the hair-thin bright core — with one gradient fading from nothing at
-        // the tail to the colour at the head.
+        // narrower one, the hair-thin bright core — with one gradient running from nothing at
+        // the tail through the three hues (blue, violet, cyan) to a whitish head, the same
+        // gradient the desktop stage's rim shows; amber shades while the hands wait.
         private val rimPath = Path()
         private val rimMeasure = PathMeasure()
         private var rimLen = 0f
@@ -398,13 +399,19 @@ class HandsStage(private val context: Context) {
             rimMeasure.getPosTan(head, pos, null)
             val x1 = pos[0]; val y1 = pos[1]
             if (x0 == x1 && y0 == y1) return
-            // nothing at the tail, the colour at the head, along the straight line between them
-            // (round a corner the fade is a little uneven; the eye does not mind)
-            cometPaint.shader = LinearGradient(x0, y0, x1, y1, intArrayOf(color and 0x00FFFFFF, color), floatArrayOf(0f, 1f), Shader.TileMode.CLAMP)
+            // nothing at the tail, the three hues towards the head, along the straight line
+            // between them (round a corner the fade is a little uneven; the eye does not mind)
+            val hues = if (mood == Mood.WORKING) COMET_WORKING else COMET_WAITING
+            cometPaint.shader = LinearGradient(
+                x0, y0, x1, y1,
+                intArrayOf(hues[0] and 0x00FFFFFF, hues[0], hues[1], hues[2]),
+                floatArrayOf(0f, 0.5f, 0.8f, 1f),
+                Shader.TileMode.CLAMP,
+            )
             cometPaint.colorFilter = null
-            cometPaint.strokeWidth = dp(22f); cometPaint.alpha = 0x38
+            cometPaint.strokeWidth = dp(22f); cometPaint.alpha = 0x27
             canvas.drawPath(cometPath, cometPaint)
-            cometPaint.strokeWidth = dp(7f); cometPaint.alpha = 0x90
+            cometPaint.strokeWidth = dp(7f); cometPaint.alpha = 0x80
             canvas.drawPath(cometPath, cometPaint)
             cometPaint.colorFilter = coreFilter
             cometPaint.strokeWidth = dp(2.5f); cometPaint.alpha = 0xFF
@@ -413,10 +420,10 @@ class HandsStage(private val context: Context) {
             cometPaint.colorFilter = null
         }
 
-        /** The colour most of the way to white — the comet's core against its own glow. */
+        /** The colour most of the way to white — the comet's whitish head against its own glow. */
         private fun lighten(color: Int): Int {
             val r = Color.red(color); val g = Color.green(color); val b = Color.blue(color)
-            return Color.rgb(r + (255 - r) * 6 / 10, g + (255 - g) * 6 / 10, b + (255 - b) * 6 / 10)
+            return Color.rgb(r + (255 - r) * 8 / 10, g + (255 - g) * 8 / 10, b + (255 - b) * 8 / 10)
         }
 
         // ── the ring ──
@@ -628,18 +635,22 @@ class HandsStage(private val context: Context) {
         }
 
         companion object {
-            /** The desktop stage's accent (Muse's action blue) and its cyan. */
+            /** The desktop stage's accent (Muse's action blue), its violet and its cyan. */
             private const val ACCENT = 0xFF0A66E4.toInt()
+            private const val VIOLET = 0xFF7C5CFF.toInt()
             private const val CYAN = 0xFF06B6D4.toInt()
-            /** The glow: the accent while the hands work, amber while they wait for the user. */
-            private const val GLOW_WORKING = 0x7A0A66E4.toInt()
-            private const val GLOW_WAITING = 0x8AFFB000.toInt()
+            /** The comet's hues, tail to head: blue → violet → cyan while working, three ambers while waiting. */
+            private val COMET_WORKING = intArrayOf(ACCENT, VIOLET, CYAN)
+            private val COMET_WAITING = intArrayOf(0xFFD97706.toInt(), 0xFFF59E0B.toInt(), 0xFFFBBF24.toInt())
+            /** The glow: the accent while the hands work, amber while they wait for the user (alpha 30 % down from 0.1.22). */
+            private const val GLOW_WORKING = 0x550A66E4.toInt()
+            private const val GLOW_WAITING = 0x60FFB000.toInt()
             /** Band width as a share of the shorter side; the colour is gone at half of it. */
             private const val GLOW_BAND = 0.14f
             private const val GLOW_CYCLE_MS = 5000L
             /** The running light: one lap of the rim, and the tail as a share of the rim. */
-            private const val RIM_LAP_MS = 6000L
-            private const val RIM_TAIL = 0.16f
+            private const val RIM_LAP_MS = 8000L
+            private const val RIM_TAIL = 0.22f
             private const val SCAN_DP = 120f
             private const val SCAN_CYCLE_MS = 6500L
             private const val RING_DP = 16f

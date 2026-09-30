@@ -219,6 +219,7 @@ function onHands(ev: HandsLive): void {
       active = true;
       marks = [];
       last = null;
+      frame.classList.remove("wait");
       what.textContent = w.working;
       setStep(ev.text ? `· ${ev.text}` : "");
       hint.innerHTML = `<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Esc</kbd> ${esc(w.stop)}`;
@@ -236,6 +237,7 @@ function onHands(ev: HandsLive): void {
       break;
     case "act": {
       const text = describe(ev);
+      frame.classList.remove("wait");
       setStep(text ? `· ${text}` : "");
       if (!active) {
         // a single computer_act outside a task: show the target anyway, briefly
@@ -276,11 +278,14 @@ function onHands(ev: HandsLive): void {
       break;
     }
     case "notice":
+      // the hands have stopped to ask (an approval, a login): the rim turns amber until the run goes on
+      frame.classList.add("wait");
       setStep(ev.text ? `· ${ev.text}` : "");
       break;
     case "end":
     case "stop":
       active = false;
+      frame.classList.remove("wait");
       setStep(`· ${ev.event === "stop" ? w.stopped : w.done}`);
       showPill(ev.event === "stop" ? "stopped" : "done");
       hidePill(1100);
