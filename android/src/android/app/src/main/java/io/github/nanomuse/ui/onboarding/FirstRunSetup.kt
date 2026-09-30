@@ -95,7 +95,7 @@ import io.github.nanomuse.ui.home.MuseTones
  * nanoMuse's first run: a few full pages in Muse's shape, one blue pill each.
  *
  * 1. **Welcome** — the face, what it is, and the notice that matters most: free, open-source,
- *    non-profit, and what signing in gives. *Sign in with e-mail* is the door most people take
+ *    non-profit, and what signing in gives. *Sign in — free* (a phone number or an e-mail) is the door most people take
  *    ([io.github.nanomuse.cloud.NanoMuseCloud], the relay becomes a provider with a default
  *    model in one go); *I have my own API key* is the other, OpenMinis' provider screen.
  * 2. **Models** — only on the own-key path, when the provider has no model group yet

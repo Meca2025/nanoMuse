@@ -1,7 +1,7 @@
 # nanoMuse Cloud
 
-The "start now" path: sign up with an e-mail address, get a free allowance,
-and use nanoMuse without an API key of your own.
+The "start now" path: sign up with a phone number (mainland China; the code comes by SMS)
+or an e-mail address, get a free allowance, and use nanoMuse without an API key of your own.
 Bringing your own key still works exactly as before — this is one more
 provider, not a replacement.
 
@@ -87,7 +87,7 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 
 | | `cloud.nanomuse.cn` |
 |---|---|
-| sign-up | open to anyone with an e-mail address |
+| sign-up | open to anyone with a mainland China mobile number or an e-mail address |
 | free allowance | **¥10 per account**, across chat, pictures and clips; it does not reset |
 | invitations | each *new* person who signs up with your code adds **¥5** to your pool |
 | co-creation programme | joining (*Contribute conversations*, off by default) adds **¥10** once |

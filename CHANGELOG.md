@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Changed
+
+- **The relay's web console takes a phone number too** (relay 0.5.4): the sign-in field says *Phone number or e-mail*, switches to the number keypad when you start with a digit, and the refusal names both; the docs and the docstrings that still said "sign in with an e-mail" say a phone number or an e-mail.
+
 ## [0.1.24] - 2026-10-01 · Signal
 
 ### Added

@@ -23,7 +23,7 @@ Android app is the reference; the others follow its shape, not its pixels:
 | Settings → Hands: the screen as a hand, off by default | `Hands` | Settings → Hands (this computer's screen) |
 | Devices: the account's other devices, online dots, *Remote control*, rename, forget, *ask this device* | `DevicesSection`, `ComputersScreen` | Devices page |
 | The stage while the hands work: a ring where the next tap lands, a capsule with the step and **Stop** | `HandsStage`, capsule | a live *Hands* card in the chat; the window adds an overlay |
-| First run: what it is, sign in with e-mail (free) or your own key, the Hands permissions, meet | `FirstRunSetup` | the same four pages |
+| First run: what it is, sign in with a phone number or an e-mail (free) or your own key, the Hands permissions, meet | `FirstRunSetup` | the same four pages |
 
 ## Two roles
 
@@ -104,7 +104,7 @@ adds the hub, the Cloud account and the hands to it.
 
 - **Runtime** (`nanomuse/`): `cloud.py` signs in to nanoMuse Cloud with an
   e-mail (or phone) code, keeps the key in the vault and can make the relay the
-  model provider — the same *Sign in with e-mail — free* first step as on the
+  model provider — the same *Sign in — free* first step as on the
   phone. `hub/` is the async port of the desktop binary's hub client: one
   socket kept up, incoming actions answered by `hub/actions.py`, incoming
   `task`s run in a visible side chat with their approvals relayed, outgoing

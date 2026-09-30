@@ -378,7 +378,7 @@ class HandsSettings(BaseModel):
 
 
 class CloudSettings(BaseModel):
-    """nanoMuse Cloud: the relay the phone signs in to with an e-mail (or phone) code. The
+    """nanoMuse Cloud: the relay the phone signs in to with a phone-number or e-mail code. The
     account key lives in the vault (``NANOMUSE_CLOUD_KEY``); ``base_url`` is the relay.
     Signed in, the relay can be the model provider and the hub is reachable."""
 
