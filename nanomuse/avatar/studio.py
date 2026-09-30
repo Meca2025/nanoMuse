@@ -66,6 +66,9 @@ CLIP_MOODS = ("idle", "working", "waiting", "happy")
 CLIP_SECONDS = 4
 CLIP_POLL_S = 5.0
 CLIP_MAX_WAIT_S = 8 * 60
+# pictures in flight at once, and the pauses before a 429 is tried again
+IMAGE_AT_ONCE = 2
+IMAGE_PAUSES = (3.0, 6.0, 12.0)
 # how long a finished or abandoned session's candidates stay on disk
 SESSION_TTL_S = 24 * 3600
 
@@ -327,6 +330,21 @@ class AvatarStudio:
         self._http = httpx.AsyncClient(
             timeout=httpx.Timeout(240.0, connect=30.0), follow_redirects=True
         )
+        # image providers allow an account a couple of pictures at a time (DashScope says
+        # 429 past that): the four candidates and the four poses go two by two, and a 429
+        # is waited out before it is shown
+        self._gate = asyncio.Semaphore(IMAGE_AT_ONCE)
+
+    async def _post_image(self, url: str, **kwargs: Any) -> httpx.Response:
+        """One picture request, two at a time, tried again after a 429 with growing pauses."""
+        async with self._gate:
+            for pause in (*IMAGE_PAUSES, None):
+                r = await self._http.post(url, **kwargs)
+                if r.status_code != 429 or pause is None:
+                    return r
+                logger.info("image provider busy (429); again in {:.0f}s", pause)
+                await asyncio.sleep(pause)
+            return r  # pragma: no cover — the loop returns
 
     async def close(self) -> None:
         if self.current is not None:
@@ -660,7 +678,7 @@ class AvatarStudio:
             "size": SIZE,
             "response_format": "b64_json",
         }
-        r = await self._http.post(
+        r = await self._post_image(
             f"{ep.base_url}/images/generations", json=body, headers=self._headers(ep)
         )
         return await self._image_of(r)
@@ -676,7 +694,7 @@ class AvatarStudio:
                 {"text": instruction},
             ]
             return await self._dashscope(ep, edit_model, content, params)
-        r = await self._http.post(
+        r = await self._post_image(
             f"{ep.base_url}/images/edits",
             data={
                 "model": ep.image_model,
@@ -817,7 +835,7 @@ class AvatarStudio:
             "input": {"messages": [{"role": "user", "content": content}]},
             "parameters": params,
         }
-        r = await self._http.post(
+        r = await self._post_image(
             f"{host}/api/v1/services/aigc/multimodal-generation/generation",
             json=body,
             headers=self._headers(ep),
@@ -841,6 +859,8 @@ class AvatarStudio:
 
     @staticmethod
     def _http_error(r: httpx.Response) -> str:
+        if r.status_code == 429:
+            return "The image provider is busy right now — try again in a minute."
         try:
             err = r.json()
             if isinstance(err, dict):

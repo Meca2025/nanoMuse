@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import json
@@ -90,9 +91,23 @@ class FakeImages:
     def __init__(self) -> None:
         self.generations: list[dict] = []
         self.edits: list[str] = []
+        self.busy = 0  # how many of the next calls answer 429 first
+        self.in_flight = 0
+        self.peak = 0
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/images/generations"):
+            if self.busy > 0:
+                self.busy -= 1
+                return httpx.Response(
+                    429,
+                    json={
+                        "error": {
+                            "code": "provider_busy",
+                            "message": "The image provider is busy right now; try again in a moment",
+                        }
+                    },
+                )
             body = json.loads(request.content)
             self.generations.append(body)
             colour = (200, 40 * len(self.generations) % 255, 90)
@@ -191,6 +206,37 @@ def test_draw_pick_pose_sets_the_profile(studio_server, settings: Settings) -> N
     assert client.get("/api/settings").json()["profile"]["avatar"] == ev["face"]
     # the candidates of the finished session are cleared later; the face stays
     assert client.get("/api/avatar").json()["current"]["stage"] == "done"
+
+
+def test_a_busy_provider_is_waited_out_two_pictures_at_a_time(studio_server, monkeypatch) -> None:
+    """A 429 from the provider (or the relay's `provider_busy`) is tried again after a pause
+    rather than shown; the candidates are drawn two at a time so as not to provoke it."""
+    client, service, fake = studio_server
+    naps: list[float] = []
+
+    real_sleep = asyncio.sleep
+
+    async def no_sleep(seconds: float) -> None:
+        naps.append(seconds)
+        await real_sleep(0)
+
+    # (the studio's `asyncio` is the module itself: this patches sleep everywhere for the test)
+    monkeypatch.setattr(asyncio, "sleep", no_sleep)
+    fake.busy = 3
+    client.post("/api/threads/main/send", json={"text": "new avatar: a robot owl"})
+    ev = _wait(lambda: _avatar_event(client))
+    client.post("/api/avatar/start", json={"session": ev["session"]})
+    ev = _wait(lambda: (e := _avatar_event(client))["stage"] == "choose" and e)
+    assert all(ev["candidates"]) and not ev["errors"]
+    assert len(fake.generations) == 4
+    assert sorted(naps)[:1] == [3.0] and len(naps) == 3  # three 429s, three pauses
+
+    # a provider that never clears: the sentence, not the status line
+    fake.busy = 99
+    client.post("/api/avatar/start", json={"session": ev["session"]})
+    ev = _wait(lambda: (e := _avatar_event(client))["stage"] == "failed" and e)
+    assert ev["message"] == "The image provider is busy right now — try again in a minute."
+    fake.busy = 0
 
 
 def test_cancel_and_redraw(studio_server) -> None:

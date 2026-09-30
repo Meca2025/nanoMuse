@@ -385,6 +385,7 @@
     <string name="nm_avatar_options_drawing">正在畫四個「%1$s」的樣子…</string>
     <string name="nm_avatar_options_pick_hint">點一個你喜歡的，或者直接告訴我「第二個」。</string>
     <string name="nm_avatar_options_failed">圖片沒有生成出來。到 ••• → 形象工坊檢查一下圖像模型，再試一次。</string>
+    <string name="nm_avatar_provider_busy">生圖服務現在有點忙，請過一分鐘再試。</string>
     <string name="nm_avatar_options_again">再來一組</string>
     <string name="nm_avatar_options_keep">先不換了</string>
     <string name="nm_avatar_option_n">第 %1$d 個</string>

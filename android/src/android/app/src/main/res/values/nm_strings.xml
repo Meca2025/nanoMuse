@@ -392,6 +392,7 @@
     <string name="nm_avatar_options_drawing">Drawing four takes on "%1$s"…</string>
     <string name="nm_avatar_options_pick_hint">Tap the one you like, or tell me — "the second one".</string>
     <string name="nm_avatar_options_failed">The pictures did not come through. Check the image model under ••• → Avatar studio and try again.</string>
+    <string name="nm_avatar_provider_busy">The image provider is busy right now — try again in a minute.</string>
     <string name="nm_avatar_options_again">Again</string>
     <string name="nm_avatar_options_keep">Keep current</string>
     <string name="nm_avatar_option_n">Option %1$d</string>

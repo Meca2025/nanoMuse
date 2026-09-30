@@ -1012,6 +1012,7 @@ const zhCN: Record<string, string> = {
   "Every account starts with ¥{allowance}. Each new person you invite adds ¥{invite}; joining the co-creation programme adds ¥{contribute} once. When it is gone, your own model key (Alibaba Cloud Bailian is a good start) keeps you going — sign-in and your devices are never affected.":
     "每个账号有 ¥{allowance} 免费额度；邀请一位新用户 +¥{invite}，加入共创计划 +¥{contribute}（一次）。用完可以换自己的 key（推荐阿里云百炼），登录和多设备功能不受影响。",
   "The free allowance is used up.": "免费额度已用完。",
+  "The image provider is busy right now — try again in a minute.": "生图服务现在有点忙，请过一分钟再试。",
   "Nearly used up: ¥{left} of ¥{grant} left.": "额度快用完了：还剩 ¥{left}（共 ¥{grant}）。",
   "Invite a friend (+¥{invite}), join the co-creation programme (+¥{contribute}) or bring your own key — your sign-in keeps working either way.":
     "邀请一位新用户 +¥{invite}，加入共创计划 +¥{contribute}，或者换成自己的 key——无论哪种，登录都不受影响。",

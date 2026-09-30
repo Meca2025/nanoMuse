@@ -121,7 +121,7 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
                 </button>
               ))}
             </div>
-            {event.errors && event.errors.length > 0 && <p className="text-[12px] text-rose-600 dark:text-rose-300">{event.errors[0]}</p>}
+            {event.errors && event.errors.length > 0 && <p className="text-[12px] text-rose-600 dark:text-rose-300">{t(event.errors[0])}</p>}
             {event.stage === "choose" && (
               <div className="flex gap-2">
                 <button type="button" disabled={busy !== null} onClick={() => act("redraw", () => api.avatarStart(event.session))} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
