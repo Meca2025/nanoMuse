@@ -3,7 +3,7 @@ the relay offers, and the hub's address.
 
 The relay (``cloud/`` in this repository, ``docs/cloud.md``) is one more OpenAI-compatible
 provider to the agent — ``<base_url>/v1`` with the account key — so signing in here is the
-same first step the phone offers: *Sign in with e-mail — free*. The key is kept in the
+same first step the phone offers: *Sign in — free*, with a phone number or an e-mail. The key is kept in the
 vault under :data:`CLOUD_KEY`; nothing here ever shows it to the model.
 """
 

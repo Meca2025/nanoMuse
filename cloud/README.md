@@ -74,7 +74,7 @@ curl https://$CLOUD_DOMAIN/healthz
 Back up `data/cloud.db` together with `CLOUD_SECRET`: the hashes are useless
 without the secret, and the secret alone is useless without the database.
 
-Point the app at it: in nanoMuse, *Sign in with e-mail — free* → enter e-mail or phone → code.
+Point the app at it: in nanoMuse, *Sign in — free* → enter a phone number or an e-mail → code.
 The app stores the key in its encrypted preferences and sets up a provider
 with `PUBLIC_BASE` as its base URL. Nothing else in the app changes; you can
 add your own key next to it at any time.

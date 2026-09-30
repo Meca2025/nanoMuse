@@ -10,8 +10,8 @@ import { identifierInputMode } from "./SignIn";
 
 /**
  * nanoMuse Cloud: the free account that gives every device of yours one place to meet
- * (the hub) and a model to start with (the relay). Sign in with an e-mail address and
- * a code; the key lands in the vault on this machine.
+ * (the hub) and a model to start with (the relay). Sign in with a phone number or an
+ * e-mail address and a code; the key lands in the vault on this machine.
  */
 export function CloudCard({
   account,

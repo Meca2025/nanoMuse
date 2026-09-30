@@ -154,7 +154,7 @@ the Cloud sign-in. In the order it makes sense to port, and where the Android co
 | Android (`io.github.nanomuse.*`) | On iOS |
 |---|---|
 | `cloud` — relay client, sign-in, account | Done: `NanoMuse/NanoMuseCloud*.swift` |
-| `ui.onboarding` — the four-page first run with *Sign in with e-mail — free* | Next: a first-run sheet before the provider list |
+| `ui.onboarding` — the four-page first run with *Sign in — free* | Next: a first-run sheet before the provider list |
 | `ui.home`, `ui.chat`, `ui.settings` — the Muse-style shell, header, tones | SwiftUI views under `NanoMuse/`; the OpenMinis screens stay behind them |
 | `avatar` — the drawn face and its states | Needs the relay's picture model; same request shape as Android (`docs/cloud.md`) |
 | `reach` — the phone drives the computer | The pairing protocol is platform-neutral; the client moves as is |
