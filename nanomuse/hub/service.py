@@ -288,7 +288,9 @@ class HubService:
             await self.join()
         self.svc.connections._publish()
         self.publish()
-        return self.account_view()
+        # ``created`` rides along: a brand-new account is offered a password and the
+        # co-creation programme right after (the clients' first-sign-in steps).
+        return {**self.account_view(), "created": bool(data.get("created"))}
 
     def _llm_is_cloud(self) -> bool:
         """Whether the chat model is the account (the Cloud key from the vault, on the relay)."""

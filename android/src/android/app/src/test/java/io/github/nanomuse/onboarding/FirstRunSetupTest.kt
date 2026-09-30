@@ -42,6 +42,20 @@ class FirstRunSetupTest {
     }
 
     @Test
+    fun `a sign-in that created the account is followed by the password and co-creation pages`() {
+        // both owed, in that order; each answered (or skipped) once
+        assertEquals(Stage.PASSWORD, FirstRunSetup.stage(signedIn = true, hasGroups = true, sourceChosen = false, modelsSkipped = false, handsSeen = false, handsPossible = true, fresh = true, passwordAnswered = false, contributeAnswered = false))
+        assertEquals(Stage.CONTRIBUTE, FirstRunSetup.stage(signedIn = true, hasGroups = true, sourceChosen = false, modelsSkipped = false, handsSeen = false, handsPossible = true, fresh = true, passwordAnswered = true, contributeAnswered = false))
+        assertEquals(Stage.SOURCE, FirstRunSetup.stage(signedIn = true, hasGroups = true, sourceChosen = false, modelsSkipped = false, handsSeen = false, handsPossible = true, fresh = true, passwordAnswered = true, contributeAnswered = true))
+        // an existing account signing in again sees neither
+        assertEquals(Stage.SOURCE, FirstRunSetup.stage(signedIn = true, hasGroups = true, sourceChosen = false, modelsSkipped = false, handsSeen = false, handsPossible = true, fresh = false, passwordAnswered = false, contributeAnswered = false))
+        // never before the sign-in itself
+        assertEquals(Stage.WELCOME, FirstRunSetup.stage(signedIn = false, hasGroups = true, sourceChosen = false, modelsSkipped = false, handsSeen = false, handsPossible = true, fresh = true, passwordAnswered = false, contributeAnswered = false))
+        assertEquals(0, FirstRunSetup.dot(Stage.PASSWORD))
+        assertEquals(0, FirstRunSetup.dot(Stage.CONTRIBUTE))
+    }
+
+    @Test
     fun `the three dots - the model pages fold into the first`() {
         assertEquals(0, FirstRunSetup.dot(Stage.WELCOME))
         assertEquals(0, FirstRunSetup.dot(Stage.SOURCE))

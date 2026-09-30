@@ -991,6 +991,18 @@ const zhCN: Record<string, string> = {
   "The conversations you contributed are removed from the server. This cannot be undone.": "你贡献的对话会从服务器上删除，不可恢复。",
   "{n} turns deleted": "已删除 {n} 轮",
   "Delete what I contributed": "删除我贡献的对话",
+  // -- the first-sign-in steps: a password, the co-creation programme (relay 0.5) --
+  "Set a password": "设一个密码",
+  "Your account is in. With a password, your phone and your other computers sign in at once, without waiting for a code. Optional — you can set one later under Account.":
+    "账号已登录。设了密码，手机和其他电脑就能直接登录，不用再等验证码。可选——以后也可以在「账号」里设置。",
+  "At least 8 characters": "至少 8 个字符",
+  "Set the password": "设置密码",
+  "Join the co-creation programme?": "加入共创计划？",
+  "nanoMuse is built by its community. If you join, your conversations (messages and replies; pictures as a marker) help train the community's own open model, and ¥{n} is added to your allowance once. Never required, off by default; leave and delete what you gave at any time under Account.":
+    "nanoMuse 由社区共同建设。加入后，你的对话（消息和回答，图片只留标记）会用来训练社区自己的开源模型，额度一次性 +¥{n}。不强制，默认关闭；随时可以在「账号」里退出并删除已贡献的内容。",
+  "Not now": "暂不",
+  "Join, +¥{n}": "加入，+¥{n}",
+  "Joined the co-creation programme.": "已加入共创计划。",
   // -- the allowance and the three ways on (relay 0.5) --
   "Free allowance": "免费额度",
   "left of ¥{grant}": "剩余 / 共 ¥{grant}",

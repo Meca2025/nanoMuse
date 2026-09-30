@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
 import { cx } from "../util";
+import { markFirstSignIn } from "./FirstSignInSteps";
 import { inputCls, primaryBtn, secondaryBtn } from "./Form";
 
 /**
@@ -99,7 +100,9 @@ export function SignIn({
     setBusy("verify");
     setError(null);
     try {
-      await api.cloudVerify(id, code.trim(), invite.trim());
+      const r = await api.cloudVerify(id, code.trim(), invite.trim());
+      // a brand-new account is owed two short steps (password, co-creation) — see FirstSignInSteps
+      if (r.created) markFirstSignIn();
       setCode("");
       setSent(false);
       try {

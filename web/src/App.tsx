@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { setToken } from "./api";
 import { Avatar } from "./components/Avatar";
 import { FileViewer } from "./components/FileViewer";
+import { FirstSignInSteps, useFirstSignIn } from "./components/FirstSignInSteps";
 import { RedPanda } from "./components/RedPanda";
 import { Sidebar } from "./components/Sidebar";
 import { ChatScreen } from "./screens/ChatScreen";
@@ -46,6 +47,7 @@ const TABS: Array<{ id: Tab; label: string; icon: (active: boolean) => ReactNode
 
 export default function App() {
   const { state, setTab, openFile } = useStore();
+  const firstSignIn = useFirstSignIn();
   const t = useT();
 
   // The document title follows the agent's name.
@@ -66,6 +68,10 @@ export default function App() {
     return () => window.removeEventListener("hashchange", jump);
   }, [setTab]);
 
+  // A freshly created account is owed two short steps (a password, the co-creation
+  // programme); they float over whatever comes next — setup or the chat.
+  const firstSteps = firstSignIn && state.hub?.account.signed_in ? <FirstSignInSteps /> : null;
+
   if (state.authError) return <TokenGate />;
   // Nothing has arrived from the runtime yet: say so, instead of an empty chat.
   if (!state.loaded) return <Connecting error={state.error} />;
@@ -78,6 +84,7 @@ export default function App() {
     return (
       <Suspense fallback={<Loading />}>
         <Onboarding />
+        {firstSteps}
       </Suspense>
     );
   }
@@ -147,6 +154,7 @@ export default function App() {
       </nav>
       </div>
       <FileViewer path={state.viewer} onClose={() => openFile(null)} />
+      {firstSteps}
       {state.toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4">
           <div className="rise rounded-2xl bg-fg text-bg px-4 py-2 text-[13.5px] shadow-lg max-w-sm text-center">{state.toast}</div>

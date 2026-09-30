@@ -227,6 +227,8 @@ export interface CloudAccount {
   /** this runtime insists on an account (self-hosters may turn it off) */
   required?: boolean;
   has_password?: boolean;
+  /** on the answer to a code sign-in: the account was created by it (first sign-in ever) */
+  created?: boolean;
   /** the opaque account id, never the identifier */
   account_id?: string;
 }

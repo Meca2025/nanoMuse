@@ -82,6 +82,8 @@ object NanoMuseCloud {
     private const val KEY_INVITE_BONUS = "cloud.invite_bonus_cny"
     private const val KEY_INVITE_EARNED = "cloud.invite_earned_cny"
     private const val KEY_CONTRIBUTE = "cloud.contribute"
+    /** The code sign-in created the account: the first-run setup owes the password and co-creation steps. */
+    private const val KEY_FRESH = "cloud.fresh_account"
     private const val KEY_SAMPLES = "cloud.samples"
 
     class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
@@ -277,6 +279,10 @@ object NanoMuseCloud {
         )
     }
 
+    /** Whether the last sign-in created the account (until [clearFreshAccount]). */
+    fun freshAccount(context: Context): Boolean = prefs(context).getBoolean(KEY_FRESH, false)
+    fun clearFreshAccount(context: Context) { prefs(context).edit().remove(KEY_FRESH).apply() }
+
     /** The relay's answer to joining or leaving the co-creation programme. */
     data class Contribution(val account: Account, val bonusGranted: Boolean, val bonusCny: Double)
 
@@ -467,6 +473,7 @@ object NanoMuseCloud {
         provisionDefaults(context, repo, inst, reply.optJSONArray("models"))
 
         saveAccount(context, reply)
+        if (reply.optBoolean("created", false)) prefs(context).edit().putBoolean(KEY_FRESH, true).apply()
         _signedIn.value = true
         io.github.nanomuse.hub.Hub.restart(context) // the new key joins the hub
         return account(context)!!
@@ -731,7 +738,7 @@ object NanoMuseCloud {
             .remove(KEY_CONTRIBUTE_BONUS_AVAILABLE).remove(KEY_OWN_KEY_DOCS)
             .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_USAGE)
             .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
-            .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES)
+            .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_FRESH)
             .apply()
     }
 
