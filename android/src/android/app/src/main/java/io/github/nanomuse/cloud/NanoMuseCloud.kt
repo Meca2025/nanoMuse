@@ -373,6 +373,46 @@ object NanoMuseCloud {
         adopt(context, call(context, "POST", "/v1/auth/verify", body, token = null))
     }
 
+    /**
+     * Does this relay offer sign-in with the phone's own number (号码认证's H5 一键登录, see
+     * `cloud/nanomuse_cloud/onetap.py`)? Asked once per relay per process; false when it
+     * cannot be reached, so the button simply stays away.
+     */
+    suspend fun oneTapOffered(context: Context): Boolean = withContext(Dispatchers.IO) {
+        val base = baseUrl(context)
+        oneTapCache[base] ?: runCatching {
+            call(context, "GET", "/v1/auth/onetap", null, token = null).optBoolean("enabled", false)
+        }.getOrDefault(false).also { oneTapCache[base] = it }
+    }
+
+    private val oneTapCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    /** The page the one-tap WebView opens: `state` is sha256(verifier), the app keeps the verifier. */
+    fun oneTapUrl(context: Context, verifier: String, invite: String = ""): String {
+        val state = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(verifier.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        val lang = if (java.util.Locale.getDefault().language == "zh") "zh" else "en"
+        var url = baseUrl(context) + "/app/onetap.html?app=1&state=" + state +
+            "&lang=" + lang + "&device=" + android.net.Uri.encode(deviceName())
+        if (invite.isNotBlank()) url += "&invite=" + android.net.Uri.encode(invite.trim())
+        return url
+    }
+
+    /** A fresh verifier for one attempt: 32 random bytes, URL-safe. */
+    fun oneTapVerifier(): String {
+        val bytes = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+        return android.util.Base64.encodeToString(bytes, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
+    }
+
+    /**
+     * After the page said it is done: the key and the account, once, for the verifier this
+     * attempt was started with. The relay keeps the grant for five minutes.
+     */
+    suspend fun oneTapClaim(context: Context, verifier: String): Account = withContext(Dispatchers.IO) {
+        adopt(context, call(context, "POST", "/v1/auth/onetap/claim", JSONObject().put("verifier", verifier), token = null))
+    }
+
     /** The password way in — for people who set one under Account; no code to wait for. */
     suspend fun login(context: Context, identifier: String, password: String): Account = withContext(Dispatchers.IO) {
         val body = JSONObject()
@@ -549,6 +589,7 @@ object NanoMuseCloud {
             "password_required" -> context.getString(R.string.nm_cloud_err_password_required)
             "password_short" -> context.getString(R.string.nm_cloud_err_password_short)
             "password_weak", "password_long" -> context.getString(R.string.nm_cloud_err_password_weak)
+            "not_ready", "onetap_failed", "onetap_unavailable", "onetap_off" -> context.getString(R.string.nm_cloud_err_onetap)
             else -> e.message ?: context.getString(R.string.nm_cloud_err_generic)
         }
         is IOException -> context.getString(R.string.nm_cloud_err_unreachable)

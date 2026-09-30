@@ -582,6 +582,9 @@
     <string name="nm_cloud_signin_title">Start with nanoMuse Cloud</string>
     <string name="nm_cloud_signin_subtitle">A phone number or an e-mail and the code it receives — or your password, once you have set one. Every account starts with a free allowance of model use, paid by the developer.</string>
     <string name="nm_cloud_mode_code">With a code</string>
+    <string name="nm_cloud_onetap">Sign in with this phone\'s number</string>
+    <string name="nm_cloud_onetap_note">The carrier confirms the number of the SIM in this phone; needs mobile data on, Wi‑Fi off.</string>
+    <string name="nm_cloud_onetap_or">or</string>
     <string name="nm_cloud_mode_password">With a password</string>
     <string name="nm_cloud_password">Password</string>
     <string name="nm_cloud_forgot_password">Forgot the password? Sign in with a code</string>
@@ -636,6 +639,7 @@
     <string name="nm_cloud_err_password_required">Enter the current password first.</string>
     <string name="nm_cloud_err_password_short">The password needs at least 8 characters.</string>
     <string name="nm_cloud_err_password_weak">That password is too easy to guess.</string>
+    <string name="nm_cloud_err_onetap">The carrier could not confirm the number. Try again on mobile data, or use a code.</string>
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">since %1$s</string>
     <string name="nm_cloud_account_id">Account %1$s…</string>
