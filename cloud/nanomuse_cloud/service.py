@@ -16,7 +16,7 @@ import re
 import secrets
 from dataclasses import dataclass
 
-from .config import ModelSpec, RealtimeUsage, Settings
+from .config import ModelSpec, Settings
 from .crypto import IdentifierCrypto
 from .db import Database, now
 from .identifiers import BadIdentifier, Identifier, parse
@@ -141,13 +141,12 @@ class Cloud:
             log.warning("SIGNUP_TOKENS=0: no token ceiling, usage is metered only")
         # The members' identifiers, hashed once so a request can be matched
         # against the list without ever seeing the plaintext.
-        self.member_hashes: frozenset[str] = frozenset(
-            i.hash(settings.hmac_key) for i in self._listed_identifiers()
-        )
+        self.member_hashes: frozenset[str] = frozenset(i.hash(settings.hmac_key) for i in self._listed_identifiers())
         if settings.signup_open:
             log.info(
                 "sign-up is open: %d member(s) without a cap, everyone else ¥%.2f a day",
-                len(self.member_hashes), settings.daily_cap_cny,
+                len(self.member_hashes),
+                settings.daily_cap_cny,
             )
         else:
             log.warning("SIGNUP_OPEN=0: private relay, only the %d listed identifier(s) may sign in", len(self.member_hashes))
@@ -266,9 +265,7 @@ class Cloud:
             "clips_per_invite": self.s.video_clips_per_invite,
             "credit_cny": self.s.uy_to_cny(caller.credit_uy),
             "credit_left_cny": self.s.uy_to_cny(caller.credit_left_uy),
-            "friends": [
-                {"hint": r["hint"], "joined_at": int(r["created_at"])} for r in self.db.invitees(caller.account_id)
-            ],
+            "friends": [{"hint": r["hint"], "joined_at": int(r["created_at"])} for r in self.db.invitees(caller.account_id)],
         }
 
     # -- video clips: the expensive part, counted per account ---------------------------
@@ -298,7 +295,8 @@ class Cloud:
         if used + max(1, n) > allowed:
             self.db.add_event(caller.account_id, "budget.refused", "video_limit")
             raise CloudError(
-                429, "video_limit",
+                429,
+                "video_limit",
                 f"Your video allowance is used up ({allowed} clips — one animated face per account). "
                 f"Each friend who signs up with your invite code adds {self.s.video_clips_per_invite} more, "
                 "or add your own model key under Settings → Providers.",
@@ -339,7 +337,13 @@ class Cloud:
                     raise CloudError(400, "password_required", "Enter the current password (or sign in with a code first)")
                 if not check_password(current, stored):
                     left = self.db.login_failed(caller.account_id, self.s.password_max_attempts, self.s.lockout_s)
-                    raise CloudError(400, "password_wrong", f"That is not the current password ({left} tries left)" if left else "Too many wrong tries; sign in with a code to reset it")
+                    raise CloudError(
+                        400,
+                        "password_wrong",
+                        f"That is not the current password ({left} tries left)"
+                        if left
+                        else "Too many wrong tries; sign in with a code to reset it",
+                    )
         self.db.set_password(caller.account_id, hash_password(password))
         self.db.add_event(caller.account_id, "password.set" if not stored else "password.changed")
 
@@ -387,27 +391,31 @@ class Cloud:
         row = self.db.key(key_hash)
         if row is None or row["revoked_at"] is not None:
             return None
-        return Caller(
-            key_hash=key_hash,
-            account_id=row["account_id"],
-            channel=row["channel"],
-            hint=row["hint"],
-            granted=int(row["granted"]),
-            used=int(row["used"]),
-            account_created_at=int(row["account_created_at"]),
-            member=bool(row["account_unlimited"]) or row["id_hash"] in self.member_hashes,
-            has_password=bool(row["password_hash"]),
-            password_set_at=int(row["password_set_at"]) if row["password_set_at"] else None,
-            via=row["via"] or "code",
-            key_created_at=int(row["created_at"]),
-            key_prefix=row["prefix"],
-            invite_code=row["invite_code"] or "",
-            invites=int(row["invites"] or 0),
-            credit_uy=int(row["credit_uy"] or 0),
-            credit_used_uy=int(row["credit_used_uy"] or 0),
-            clips_bonus=int(row["clips_bonus"] or 0),
-            contribute=bool(row["contribute"]),
-        ) if not row["account_disabled"] else None
+        return (
+            Caller(
+                key_hash=key_hash,
+                account_id=row["account_id"],
+                channel=row["channel"],
+                hint=row["hint"],
+                granted=int(row["granted"]),
+                used=int(row["used"]),
+                account_created_at=int(row["account_created_at"]),
+                member=bool(row["account_unlimited"]) or row["id_hash"] in self.member_hashes,
+                has_password=bool(row["password_hash"]),
+                password_set_at=int(row["password_set_at"]) if row["password_set_at"] else None,
+                via=row["via"] or "code",
+                key_created_at=int(row["created_at"]),
+                key_prefix=row["prefix"],
+                invite_code=row["invite_code"] or "",
+                invites=int(row["invites"] or 0),
+                credit_uy=int(row["credit_uy"] or 0),
+                credit_used_uy=int(row["credit_used_uy"] or 0),
+                clips_bonus=int(row["clips_bonus"] or 0),
+                contribute=bool(row["contribute"]),
+            )
+            if not row["account_disabled"]
+            else None
+        )
 
     def authenticate(self, bearer: str | None) -> Caller:
         if not bearer or not bearer.startswith(KEY_PREFIX):
@@ -439,14 +447,16 @@ class Cloud:
         with the one making the request marked."""
         out = []
         for k in self.db.keys_for(caller.account_id, live_only=True):
-            out.append({
-                "prefix": k["prefix"],
-                "device": k["device"],
-                "via": k["via"] or "code",
-                "created_at": int(k["created_at"]),
-                "last_used_at": int(k["last_used_at"]) if k["last_used_at"] else None,
-                "current": k["key_hash"] == caller.key_hash,
-            })
+            out.append(
+                {
+                    "prefix": k["prefix"],
+                    "device": k["device"],
+                    "via": k["via"] or "code",
+                    "created_at": int(k["created_at"]),
+                    "last_used_at": int(k["last_used_at"]) if k["last_used_at"] else None,
+                    "current": k["key_hash"] == caller.key_hash,
+                }
+            )
         out.sort(key=lambda s: (not s["current"], -(s["last_used_at"] or s["created_at"])))
         return out
 
@@ -460,6 +470,7 @@ class Cloud:
     def usage(self, account_id: str, day_start: int) -> dict:
         """The breakdown behind the totals: by kind (chat, pictures, clips,
         calls) today and overall, and by model overall."""
+
         def rows(rs) -> list[dict]:
             out = []
             for r in rs:
@@ -527,7 +538,8 @@ class Cloud:
                 # credit (invites, the operator) is spent only once the day's cap is; what is left
                 # of it, and what may still be spent today all told (None = no limit)
                 "credit_left": self.s.uy_to_cny(caller.credit_left_uy),
-                "left_today": None if caller.member or self.s.daily_cap_cny <= 0
+                "left_today": None
+                if caller.member or self.s.daily_cap_cny <= 0
                 else self.s.uy_to_cny(max(0, self._cap_uy() + caller.credit_left_uy - spent_today_uy)),
             },
             "invite": self.invite_view(caller),
@@ -572,7 +584,11 @@ class Cloud:
 
     def _check_budget(self, caller: Caller, minimum: int, cost_uy: int) -> None:
         if not self.s.unlimited and caller.remaining < minimum:
-            raise CloudError(402, "out_of_tokens", "Your nanoMuse Cloud grant is used up. Add your own model key under Settings → Providers to keep going.")
+            raise CloudError(
+                402,
+                "out_of_tokens",
+                "Your nanoMuse Cloud grant is used up. Add your own model key under Settings → Providers to keep going.",
+            )
         t = now()
         if self.s.per_minute_requests > 0 and self.db.requests_since(caller.account_id, t - 60) >= self.s.per_minute_requests:
             raise CloudError(429, "rate_limited", "Too many requests; slow down a little")
@@ -586,7 +602,8 @@ class Cloud:
             room = cap_uy + caller.credit_left_uy
             if spent >= room or (cost_uy > 0 and spent + cost_uy > room):
                 raise CloudError(
-                    429, "daily_cap",
+                    429,
+                    "daily_cap",
                     f"Today's free ¥{self.s.daily_cap_cny:g} is used up; it resets at midnight (UTC{self.s.day_offset_h:+d}). "
                     f"Invite a friend for ¥{self.s.invite_bonus_cny:g} of credit (Account → Invite), "
                     "or add your own model key under Settings → Providers to keep going now.",
@@ -606,8 +623,16 @@ class Cloud:
         cost = model.chat_cost_uy(prompt_tokens, completion_tokens)
         cap_uy, day_start = self._cap_for(caller)
         self.db.charge(
-            caller.account_id, "chat", model.id, prompt_tokens, completion_tokens, charged, request_id,
-            cost_uy=cost, cap_uy=cap_uy, day_start=day_start,
+            caller.account_id,
+            "chat",
+            model.id,
+            prompt_tokens,
+            completion_tokens,
+            charged,
+            request_id,
+            cost_uy=cost,
+            cap_uy=cap_uy,
+            day_start=day_start,
         )
         return charged
 
@@ -626,25 +651,6 @@ class Cloud:
         cap_uy, day_start = self._cap_for(caller)
         self.db.charge(caller.account_id, "video", model.id, 0, 0, charged, request_id, cost_uy=cost_uy, cap_uy=cap_uy, day_start=day_start)
         return charged
-
-    def charge_realtime(self, caller: Caller, model: ModelSpec, usage: RealtimeUsage, request_id: str) -> int:
-        """One answer of a call. The ledger row keeps the split (text / audio /
-        picture tokens) so the account page can say what a call was made of."""
-        charged = model.realtime_charged(usage)
-        cost = model.realtime_cost_uy(usage)
-        self.db.charge(
-            caller.account_id, "realtime", model.id, usage.input_tokens, usage.output_tokens, charged, request_id,
-            cost_uy=cost, extra=dumps(usage.to_json()),
-        )
-        return charged
-
-    def budget_ok(self, caller: Caller) -> CloudError | None:
-        """`check_budget` as a question, for the long-lived call socket."""
-        try:
-            self.check_budget(caller)
-        except CloudError as e:
-            return e
-        return None
 
     def note(self, account_id: str, kind: str, detail: str = "") -> None:
         """An event on the account's timeline (never message content)."""
@@ -729,7 +735,9 @@ class Cloud:
             if len(rows) < 1000:
                 return
 
-    def estimate(self, caller: Caller, images: int = 0, clips: int = 0, image_model: str = "", video_model: str = "", size: str | None = None) -> dict:
+    def estimate(
+        self, caller: Caller, images: int = 0, clips: int = 0, image_model: str = "", video_model: str = "", size: str | None = None
+    ) -> dict:
         """What a job would cost before it is started — the app asks before a new
         face (five pictures and, with video on, four clips) and shows the person
         the number next to what they have left today. Nothing is charged."""
@@ -891,11 +899,15 @@ class Cloud:
         hints = {r["id"]: r["hint"] for r in self.db.list_accounts(limit=5000)}
         top = []
         for r in self.db.top_accounts_since(since):
-            top.append({
-                "account_id": r["account_id"], "hint": hints.get(r["account_id"], "?"),
-                "requests": int(r["requests"] or 0), "charged": int(r["charged"] or 0),
-                "cost_cny": self.s.uy_to_cny(int(r["cost_uy"] or 0)),
-            })
+            top.append(
+                {
+                    "account_id": r["account_id"],
+                    "hint": hints.get(r["account_id"], "?"),
+                    "requests": int(r["requests"] or 0),
+                    "charged": int(r["charged"] or 0),
+                    "cost_cny": self.s.uy_to_cny(int(r["cost_uy"] or 0)),
+                }
+            )
         events = []
         for r in self.db.events_recent(60):
             d = dict(r)
@@ -971,7 +983,9 @@ class Cloud:
             },
             "sessions": [
                 {
-                    "prefix": k["prefix"], "device": k["device"], "via": k["via"] or "code",
+                    "prefix": k["prefix"],
+                    "device": k["device"],
+                    "via": k["via"] or "code",
                     "created_at": int(k["created_at"]),
                     "last_used_at": int(k["last_used_at"]) if k["last_used_at"] else None,
                     "revoked_at": int(k["revoked_at"]) if k["revoked_at"] else None,
@@ -1009,7 +1023,6 @@ class Cloud:
             "video_clips_per_invite": self.s.video_clips_per_invite,
             "allowed_identifiers": [s.strip() for s in self.s.allowed_identifiers.split(",") if s.strip()],
             "sender": self.s.sender,
-            "realtime_enabled": self.s.realtime_enabled,
             "password_min_len": self.s.password_min_len,
             "models": [m.id for m in self.s.models],
             "model_kinds": {m.id: m.kind for m in self.s.models},

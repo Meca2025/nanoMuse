@@ -67,12 +67,6 @@ def model_url(base_url: str) -> str:
     return base_url.rstrip("/") + "/v1"
 
 
-def realtime_url(base_url: str) -> str:
-    """The relay's call socket (``?model=`` is appended by the caller)."""
-    base = base_url.rstrip("/")
-    return base.replace("https://", "wss://", 1).replace("http://", "ws://", 1) + "/v1/realtime"
-
-
 class CloudClient:
     """The relay's account API. One instance per relay; the key may change (sign in/out)."""
 

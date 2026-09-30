@@ -23,7 +23,6 @@
     GET  /api/v1/tasks/{id}                                     → its task poll (own tasks only)
     GET  /api/v1/uploads?action=getPolicy&model=…               → its temporary-storage policy
     GET  /healthz
-    WS   /v1/realtime?model=…                                   → a call: the provider's real-time socket, metered (realtime.py)
     WS   /v1/hub                                                → the devices of one account meet (hub.py)
     GET  /v1/devices                                            → remembered devices with presence
     DELETE /v1/devices/{id}                                     → forget an offline device
@@ -69,7 +68,7 @@ from fastapi import Depends, FastAPI, File, Form, Header, Request, Response, Upl
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, realtime
+from . import __version__
 from .config import ModelSpec, Settings
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
@@ -224,7 +223,11 @@ def create_app(
 
     @app.get("/v1/estimate")
     async def estimate(
-        images: int = 0, clips: int = 0, image_model: str = "", video_model: str = "", size: str = "",
+        images: int = 0,
+        clips: int = 0,
+        image_model: str = "",
+        video_model: str = "",
+        size: str = "",
         caller: Caller = Depends(caller_dep),
     ) -> dict:
         """What `images` pictures and `clips` clips would cost, next to what is left
@@ -312,10 +315,14 @@ def create_app(
         fallback_prompt_tokens = math.ceil(prompt_chars(body.get("messages") or []) / 3)
         # For an account that opted in, the turn is kept once it is answered (service.keep_sample);
         # the platform and language hints come from the headers, never an address.
-        sample_meta = {
-            "ua": (request.headers.get("user-agent") or "")[:120],
-            "lang": (request.headers.get("accept-language") or "")[:40],
-        } if caller.contribute else None
+        sample_meta = (
+            {
+                "ua": (request.headers.get("user-agent") or "")[:120],
+                "lang": (request.headers.get("accept-language") or "")[:40],
+            }
+            if caller.contribute
+            else None
+        )
         sample_messages = body.get("messages") if caller.contribute and isinstance(body.get("messages"), list) else []
 
         if not stream:
@@ -599,57 +606,6 @@ def create_app(
             raise CloudError(502, "upstream", "The video provider did not answer") from e
         return _dashscope_reply(r)
 
-    # -- calls: the provider's real-time socket, one account at a time (realtime.py) ----------------
-
-    if settings.realtime_enabled:
-
-        @app.websocket("/v1/realtime")
-        async def realtime_socket(ws: WebSocket) -> None:
-            model_id = ws.query_params.get("model", "")
-            caller: Caller | None = None
-            auth = ws.headers.get("authorization")
-            if auth and auth.lower().startswith("bearer "):
-                try:
-                    caller = cloud.authenticate(auth[7:].strip())
-                except CloudError as e:
-                    await ws.close(code=4001, reason=e.code)
-                    return
-            await ws.accept()
-            if caller is None:
-                # Browsers cannot set headers: the first frame carries the key.
-                try:
-                    first = json.loads(await asyncio.wait_for(ws.receive_text(), timeout=10))
-                except (TimeoutError, ValueError):
-                    await ws.close(code=4001, reason="bad_key")
-                    return
-                except Exception:  # noqa: BLE001 - the browser went away
-                    return
-                try:
-                    if not isinstance(first, dict) or first.get("type") != "nanomuse.auth":
-                        raise CloudError(401, "bad_key", "Sign in first")
-                    caller = cloud.authenticate(str(first.get("key", "")))
-                    model_id = str(first.get("model") or model_id)
-                except CloudError as e:
-                    await ws.send_text(realtime.error_event(e.code, e.message))
-                    await ws.close(code=4001, reason=e.code)
-                    return
-            try:
-                spec = cloud.model_for(model_id or _default_realtime_model(), "realtime")
-            except CloudError as e:
-                await ws.send_text(realtime.error_event(e.code, e.message))
-                await ws.close(code=4004, reason=e.code)
-                return
-            await realtime.serve_call(ws, caller, spec, cloud, settings)
-
-    def _default_realtime_model() -> str:
-        for m in settings.models:
-            if m.kind == "realtime" and m.recommended:
-                return m.id
-        for m in settings.models:
-            if m.kind == "realtime":
-                return m.id
-        return ""
-
     # -- the hub: devices of one account, across networks ------------------------------------------
 
     if settings.hub_enabled:
@@ -726,7 +682,10 @@ def create_app(
     @app.get("/v1/admin/samples", dependencies=[Depends(admin_dep)])
     async def admin_samples(account_id: str = "", limit: int = 100, since: int = 0, before: int = 0) -> dict:
         """Contributed chat turns — only from accounts that turned contribution on."""
-        return {"samples": cloud.admin_samples(account_id or None, since, limit, before), "total": cloud.db.sample_count(account_id or None)}
+        return {
+            "samples": cloud.admin_samples(account_id or None, since, limit, before),
+            "total": cloud.db.sample_count(account_id or None),
+        }
 
     @app.get("/v1/admin/samples/export", dependencies=[Depends(admin_dep)])
     async def admin_samples_export(since: int = 0) -> Response:

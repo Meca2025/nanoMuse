@@ -25,10 +25,10 @@ masked hint, never the number) and since when; sets, changes or removes the
 **password** (eight characters or more; scrypt on the relay; locked for a while
 after repeated wrong attempts, and a fresh code sign-in unlocks it); today's
 spend against the daily allowance in ¥ and $ with a meter; **usage by kind** —
-chat, pictures, video, calls — today and in all, and **by model**; the
+chat, pictures, video — today and in all, and **by model**; the
 **sign-ins** — every device holding a key, how it signed in (code or password),
 when it was last used — each revocable; the account's own **history** (sign-ins,
-password changes, refusals, calls ended; never message content); and the ways
+password changes, refusals; never message content); and the ways
 out: *Sign out* on this device, *Sign out everywhere*, *Delete the account*.
 The allowance belongs to the address: signing in again, on
 this phone or another, gives a new key for the same account and does not grant
@@ -51,10 +51,10 @@ The relay is the code in [`cloud/`](../cloud/README.md). It stores:
   (code or password) and when it was last used; revoked keys keep their row
   so the sign-ins list can say so;
 - the password, if you set one, as an scrypt hash — never the password;
-- per request: the kind (chat, picture, video, call), the model, the token
-  counts (for a call, the text / audio / picture split) and the amount charged;
+- per request: the kind (chat, picture, video), the model, the token counts
+  and the amount charged;
 - a timeline of account events — signed in, failed sign-in, password set or
-  changed, signed out, refused for budget, upstream error, call ended — with a
+  changed, signed out, refused for budget, upstream error — with a
   device name, a model or an error code as the detail, never message content;
 - the id of each video task, so only the account that started one can poll it.
 
@@ -159,7 +159,6 @@ GET  /v1/me/events          Bearer  ?limit=50                 → {events: [{ts,
 POST /v1/auth/sign-out      Bearer                            → 204
 POST /v1/auth/sign-out-all  Bearer  {all?}                    → {signed_out}
 POST /v1/auth/delete        Bearer                            → 204
-WS   /v1/realtime?model=    Bearer                            → the provider's real-time socket, metered ([calls.md](calls.md))
 ```
 
 Everything else is the OpenAI API: `GET /v1/models` (with `architecture`

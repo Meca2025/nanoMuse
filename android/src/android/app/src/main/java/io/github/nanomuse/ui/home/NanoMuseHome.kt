@@ -503,14 +503,6 @@ private fun TabHeader(
                     onClick = { FeedUi.settingsOpen.value = true },
                 )
             } else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // nanoMuse: a call with the Muse — voice here, video in the menu (docs/calls.md)
-                if (tab == HomeTab.CHAT) {
-                    MuseRoundButton(
-                        icon = Icons.Outlined.Call,
-                        contentDescription = stringResource(R.string.nm_call_voice),
-                        onClick = { navController.safeNavigate(io.github.nanomuse.ui.call.callRoute(video = false)) },
-                    )
-                }
                 Box {
                 MuseRoundButton(
                     icon = Icons.Filled.MoreHoriz,
@@ -519,10 +511,6 @@ private fun TabHeader(
                 )
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     if (tab == HomeTab.CHAT) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.nm_call_video)) },
-                            onClick = { menu = false; navController.safeNavigate(io.github.nanomuse.ui.call.callRoute(video = true)) },
-                        )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.nm_coding_title)) },
                             onClick = { menu = false; navController.safeNavigate(io.github.nanomuse.ui.coding.ROUTE_CODING) },

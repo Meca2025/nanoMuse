@@ -306,11 +306,6 @@ class CodingStopBody(BaseModel):
     device: str = Field(default="", max_length=120)
 
 
-class CloudCallBody(BaseModel):
-    model: str | None = Field(default=None, max_length=120)
-    voice: str | None = Field(default=None, max_length=80)
-
-
 class HubBody(BaseModel):
     enabled: bool | None = None
     remote_control: bool | None = None
@@ -940,20 +935,6 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         await svc.hub.sign_out()
         return svc.hub.account_view()
 
-    @app.put("/api/cloud/call", dependencies=dep)
-    async def cloud_call_settings(body: CloudCallBody) -> dict[str, Any]:
-        """Which real-time model and voice a call uses."""
-        if body.model is not None:
-            svc.settings.cloud.realtime_model = body.model.strip()
-        if body.voice is not None:
-            svc.settings.cloud.realtime_voice = body.voice.strip()
-        svc.hub.save_call_settings()
-        return svc.hub.call_view()
-
-    @app.get("/api/cloud/call", dependencies=dep)
-    async def cloud_call_status() -> dict[str, Any]:
-        return svc.hub.call_view()
-
     @app.get("/api/cloud/me", dependencies=dep)
     async def cloud_me() -> dict[str, Any]:
         try:
@@ -1475,16 +1456,6 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         return FileResponse(target, media_type=media, headers=headers)
 
     # ------------------------------------------------------------------ websocket
-    @app.websocket("/ws/call")
-    async def websocket_call(ws: WebSocket) -> None:
-        """A voice or video call with the Muse (see nanomuse/call.py)."""
-        try:
-            _check_token(ws.query_params.get("token"))
-        except HTTPException:
-            await ws.close(code=4401)
-            return
-        await svc.call.serve(ws)
-
     @app.websocket("/ws")
     async def websocket(ws: WebSocket) -> None:
         try:

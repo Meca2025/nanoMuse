@@ -2,7 +2,6 @@ import type {
   ActivityData,
   AttachmentInfo,
   CalendarData,
-  CallView,
   CloudAccount,
   CloudEvent,
   CloudMe,
@@ -141,8 +140,6 @@ export const api = {
   cloudDeleteSamples: () => request<{ deleted: number }>("/api/cloud/samples", { method: "DELETE" }),
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
   // ---- calls (voice / video, in real time)
-  call: () => request<CallView>("/api/cloud/call"),
-  setCall: (body: { model?: string; voice?: string }) => request<CallView>("/api/cloud/call", { method: "PUT", body: JSON.stringify(body) }),
   // ---- coding agents, here or on another computer of yours
   coding: (device = "") => request<{ agents: CodingAgent[]; runs: CodingRun[]; device?: string }>(`/api/coding${device ? `?device=${encodeURIComponent(device)}` : ""}`),
   codingSessions: (q: { agent?: string; limit?: number; workspace?: string; device?: string } = {}) => {

@@ -27,7 +27,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from nanomuse.cloud import CLOUD_KEY, CloudClient, CloudError, model_url, realtime_url
+from nanomuse.cloud import CLOUD_KEY, CloudClient, CloudError, model_url
 from nanomuse.hub import actions
 from nanomuse.hub.client import HubClient, HubError, IncomingCall
 from nanomuse.logger import logger
@@ -47,7 +47,7 @@ class HubService:
         self.svc = svc
         self.client: HubClient | None = None
         self.cloud = CloudClient(self.settings.cloud.base_url, self._key())
-        # the relay's last /v1/me (models with prices, usage): what the call picker reads
+        # the relay's last /v1/me (models with prices, usage)
         self.last_me: dict[str, Any] = {}
         # the account's chat models (ids), for the provider form; refreshed on sign-in and
         # whenever the form asks
@@ -396,17 +396,6 @@ class HubService:
                 self.publish()
         return data
 
-    def save_call_settings(self) -> None:
-        cloud = dict(self.data.get("cloud") or {})
-        cloud["realtime_model"] = self.settings.cloud.realtime_model
-        cloud["realtime_voice"] = self.settings.cloud.realtime_voice
-        self.data["cloud"] = cloud
-        self._save()
-        self.publish()
-
-    def call_view(self) -> dict[str, Any]:
-        return self.svc.call.view()
-
     def account_view(self) -> dict[str, Any]:
         cloud = self.data.get("cloud") or {}
         llm = self.settings.llm
@@ -422,7 +411,6 @@ class HubService:
             "is_model": bool(
                 llm.base_url and llm.base_url.rstrip("/") == model_url(self.cloud.base_url)
             ),
-            "realtime_url": realtime_url(self.cloud.base_url),
         }
 
     async def use_as_model(self, model: str = "") -> dict[str, Any]:

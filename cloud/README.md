@@ -143,9 +143,9 @@ is metered and shown, nothing is refused for lack of tokens (`/v1/me` says
 and is the dashboard from `/v1/admin/overview`: how many accounts (with a
 password, members, disabled), who was active today and over the period,
 what it cost today / this week / over 7, 30 or 90 days split by kind (chat,
-pictures, video, calls) and by model, spend by day as stacked bars, the top
+pictures, video) and by model, spend by day as stacked bars, the top
 spenders, today's signals (sign-ins, failures, budget refusals, upstream
-errors, calls) and the timeline across accounts with a kind filter. The
+errors) and the timeline across accounts with a kind filter. The
 accounts table shows the masked hint; opening one account
 (`/v1/admin/accounts/{id}`) decrypts its phone number or address for that
 view only and shows its spend by kind / model / day, sign-ins (device names,

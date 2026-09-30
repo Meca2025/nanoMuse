@@ -744,29 +744,6 @@
     <string name="nm_coding_stopped">已停止。</string>
     <string name="nm_coding_fresh_hint">和 %1$s 的新对话。你的第一条消息会在电脑上把它开起来。</string>
     <string name="nm_coding_no_transcript">这个会话里还没有可读的内容。</string>
-    <!-- 0.1.20: calls -->
-    <string name="nm_call_voice">语音通话</string>
-    <string name="nm_call_video">视频通话</string>
-    <string name="nm_call_connecting">正在接通…</string>
-    <string name="nm_call_listening">在听</string>
-    <string name="nm_call_muted">已静音</string>
-    <string name="nm_call_hearing">你说…</string>
-    <string name="nm_call_thinking">在想</string>
-    <string name="nm_call_speaking">在说</string>
-    <string name="nm_call_ended">通话结束</string>
-    <string name="nm_call_mute">静音</string>
-    <string name="nm_call_unmute">取消静音</string>
-    <string name="nm_call_hang_up">挂断</string>
-    <string name="nm_call_camera_on">摄像头</string>
-    <string name="nm_call_camera_off">关闭摄像头</string>
-    <string name="nm_call_again">再打一次</string>
-    <string name="nm_call_done">完成</string>
-    <string name="nm_call_own_key">你的 key</string>
-    <string name="nm_call_no_route">通话需要 nanoMuse Cloud（登录），或在服务商里配一个百炼的 key。</string>
-    <string name="nm_call_cap">今天的额度用完了，通话已结束。</string>
-    <string name="nm_call_too_long">单次通话有时长上限，这一通到了。</string>
-    <string name="nm_call_unreachable">没接通，稍后再试。</string>
-    <string name="nm_call_mic_refused">没有麦克风权限。在系统设置里允许后再打。</string>
     <!-- nanoMuse: 账号页的金额，以及社区说明 -->
     <string name="nm_cloud_spent_today">今天 ¥%1$s · $%2$s</string>
     <string name="nm_cloud_spend_cap">每天 ¥%1$s · $%2$s</string>

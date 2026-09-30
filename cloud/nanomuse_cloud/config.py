@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import os
 from dataclasses import dataclass, field
 
@@ -24,7 +23,7 @@ class ModelSpec:
     id: str
     name: str
     upstream: str
-    kind: str = "chat"  # chat | image | video | realtime
+    kind: str = "chat"  # chat | image | video
     input_modalities: tuple[str, ...] = ("text",)
     output_modalities: tuple[str, ...] = ("text",)
     # Charged tokens = prompt × in_mult + completion × out_mult. Multipliers let
@@ -51,15 +50,6 @@ class ModelSpec:
     # The clip length when the app does not say (`parameters.duration` absent):
     # Wan 2.2 always makes five seconds, MiniMax four at the least.
     clip_seconds: float = 4.0
-    # Real-time (a call): the provider counts audio and picture frames as their
-    # own kinds of token, priced apart from text. Per million tokens, as above;
-    # `price_in` / `price_out` stay the text prices. Audio tokens weigh more on
-    # the grant too (the multipliers), so the token view stays roughly honest.
-    price_audio_in: float = 0.0
-    price_audio_out: float = 0.0
-    price_image_in: float = 0.0
-    audio_in_mult: float = 1.0
-    audio_out_mult: float = 1.0
 
     def to_public(self) -> dict:
         return {
@@ -85,9 +75,6 @@ class ModelSpec:
                     "per_image": self.price_image,
                     "per_image_2k": self.price_image_2k,
                     "per_second": self.price_second,
-                    "per_m_audio_in": self.price_audio_in,
-                    "per_m_audio_out": self.price_audio_out,
-                    "per_m_image_in": self.price_image_in,
                 },
             },
         }
@@ -105,79 +92,6 @@ class ModelSpec:
 
     def video_cost_uy(self, seconds: float) -> int:
         return round(max(0.0, seconds) * self.price_second * 1_000_000)
-
-    def realtime_cost_uy(self, u: RealtimeUsage) -> int:
-        """One answer of a call, from the provider's `response.done` usage. Text
-        and pictures in at their rates, audio in and out at theirs; the text the
-        model speaks alongside its audio is not billed by the provider."""
-        image_price = self.price_image_in or self.price_in
-        text_out = u.text_out if u.audio_out == 0 else 0
-        return round(
-            u.text_in * self.price_in
-            + u.audio_in * (self.price_audio_in or self.price_in)
-            + u.image_in * image_price
-            + text_out * self.price_out
-            + u.audio_out * (self.price_audio_out or self.price_out)
-        )
-
-    def realtime_charged(self, u: RealtimeUsage) -> int:
-        return math.ceil(
-            (u.text_in + u.image_in) * self.in_mult
-            + u.audio_in * self.audio_in_mult
-            + u.text_out * self.out_mult
-            + u.audio_out * self.audio_out_mult
-        )
-
-
-@dataclass(frozen=True)
-class RealtimeUsage:
-    """The token counts of one real-time answer, by kind, as the provider
-    reports them in `response.done` (`usage.input_token_details` /
-    `usage.output_token_details`)."""
-
-    text_in: int = 0
-    audio_in: int = 0
-    image_in: int = 0
-    text_out: int = 0
-    audio_out: int = 0
-
-    @property
-    def input_tokens(self) -> int:
-        return self.text_in + self.audio_in + self.image_in
-
-    @property
-    def output_tokens(self) -> int:
-        return self.text_out + self.audio_out
-
-    def to_json(self) -> dict:
-        return {"text_in": self.text_in, "audio_in": self.audio_in, "image_in": self.image_in, "text_out": self.text_out, "audio_out": self.audio_out}
-
-    @classmethod
-    def from_response_done(cls, event: dict) -> RealtimeUsage | None:
-        resp = event.get("response") if isinstance(event, dict) else None
-        u = resp.get("usage") if isinstance(resp, dict) else None
-        if not isinstance(u, dict):
-            return None
-
-        def n(*path) -> int:
-            cur = u
-            for p in path:
-                cur = cur.get(p) if isinstance(cur, dict) else None
-            try:
-                return max(0, int(cur or 0))
-            except (TypeError, ValueError):
-                return 0
-
-        text_in = n("input_token_details", "text_tokens")
-        audio_in = n("input_token_details", "audio_tokens")
-        image_in = n("input_token_details", "image_tokens")
-        text_out = n("output_token_details", "text_tokens")
-        audio_out = n("output_token_details", "audio_tokens")
-        if text_in + audio_in + image_in == 0:
-            text_in = n("input_tokens")
-        if text_out + audio_out == 0:
-            text_out = n("output_tokens")
-        return cls(text_in, audio_in, image_in, text_out, audio_out)
 
 
 def _max_side(size: str) -> int:
@@ -201,47 +115,57 @@ def _max_side(size: str) -> int:
 # the sibling the app asks for when a clip starts from words: ¥0.14 a second.
 DEFAULT_MODELS: tuple[ModelSpec, ...] = (
     ModelSpec(
-        id="qwen3.8-27b", name="Qwen 3.8 27B", upstream="qwen3.8-27b",
-        input_modalities=("text", "image"), recommended=True,
-        price_in=3.0, price_out=12.0,
+        id="qwen3.8-27b",
+        name="Qwen 3.8 27B",
+        upstream="qwen3.8-27b",
+        input_modalities=("text", "image"),
+        recommended=True,
+        price_in=3.0,
+        price_out=12.0,
     ),
     ModelSpec(
-        id="qwen3.8-flash", name="Qwen 3.8 Flash", upstream="qwen3.8-flash",
-        input_modalities=("text", "image"), in_mult=0.3, out_mult=0.3,
-        price_in=0.8, price_out=2.7,
+        id="qwen3.8-flash",
+        name="Qwen 3.8 Flash",
+        upstream="qwen3.8-flash",
+        input_modalities=("text", "image"),
+        in_mult=0.3,
+        out_mult=0.3,
+        price_in=0.8,
+        price_out=2.7,
     ),
     ModelSpec(
-        id="qwen-image-3.0", name="Qwen Image 3.0", upstream="qwen-image-3.0",
-        kind="image", output_modalities=("image",), per_image=30_000, recommended=True,
-        price_image=0.18, price_image_2k=0.18,
+        id="qwen-image-3.0",
+        name="Qwen Image 3.0",
+        upstream="qwen-image-3.0",
+        kind="image",
+        output_modalities=("image",),
+        per_image=30_000,
+        recommended=True,
+        price_image=0.18,
+        price_image_2k=0.18,
     ),
     ModelSpec(
-        id="wan2.2-i2v-flash", name="Wan 2.2 Flash (video)", upstream="wan2.2-i2v-flash",
-        kind="video", input_modalities=("text", "image"), output_modalities=("video",), per_clip=200_000,
-        recommended=True, price_second=0.10, clip_seconds=5.0,
+        id="wan2.2-i2v-flash",
+        name="Wan 2.2 Flash (video)",
+        upstream="wan2.2-i2v-flash",
+        kind="video",
+        input_modalities=("text", "image"),
+        output_modalities=("video",),
+        per_clip=200_000,
+        recommended=True,
+        price_second=0.10,
+        clip_seconds=5.0,
     ),
     ModelSpec(
-        id="wan2.2-t2v-plus", name="Wan 2.2 Plus (video from words)", upstream="wan2.2-t2v-plus",
-        kind="video", input_modalities=("text",), output_modalities=("video",), per_clip=200_000,
-        price_second=0.14, clip_seconds=5.0,
-    ),
-    # Calls: Qwen Omni real-time, over the provider's OpenAI-shaped WebSocket.
-    # Hears and speaks (16 kHz in, 24 kHz out), sees camera frames at 1 fps.
-    # Prices are the Beijing list (2026-09): Flash ¥3.3 text/picture in,
-    # ¥27 audio in, ¥20 text out, ¥107 audio out per million tokens; a second
-    # of speech is about 25 tokens, so an hour of talking both ways is a few
-    # yuan. The 3.8 generation is priced the same until the list says otherwise.
-    ModelSpec(
-        id="qwen3.5-omni-flash-realtime", name="Qwen 3.5 Omni Flash (realtime)", upstream="qwen3.5-omni-flash-realtime",
-        kind="realtime", input_modalities=("text", "audio", "image"), output_modalities=("text", "audio"),
-        recommended=True, price_in=3.3, price_out=20.0, price_audio_in=27.0, price_audio_out=107.0, price_image_in=3.3,
-        audio_in_mult=8.0, audio_out_mult=8.0,
-    ),
-    ModelSpec(
-        id="qwen3.8-omni-flash-realtime", name="Qwen 3.8 Omni Flash (realtime)", upstream="qwen3.8-omni-flash-realtime",
-        kind="realtime", input_modalities=("text", "audio", "image"), output_modalities=("text", "audio"),
-        price_in=3.3, price_out=20.0, price_audio_in=27.0, price_audio_out=107.0, price_image_in=3.3,
-        audio_in_mult=8.0, audio_out_mult=8.0,
+        id="wan2.2-t2v-plus",
+        name="Wan 2.2 Plus (video from words)",
+        upstream="wan2.2-t2v-plus",
+        kind="video",
+        input_modalities=("text",),
+        output_modalities=("video",),
+        per_clip=200_000,
+        price_second=0.14,
+        clip_seconds=5.0,
     ),
 )
 
@@ -291,13 +215,6 @@ class Settings:
     # DashScope's native host, for drawing (its OpenAI-compatible host has no
     # images endpoint). Same key.
     dashscope_base: str = field(default_factory=lambda: _env("DASHSCOPE_BASE", "https://dashscope.aliyuncs.com/api/v1"))
-    # The provider's real-time (call) socket, OpenAI Realtime-shaped; `?model=`
-    # is appended. Same key. REALTIME_ENABLED=0 switches calls off.
-    realtime_base: str = field(default_factory=lambda: _env("UPSTREAM_REALTIME_BASE", "wss://dashscope.aliyuncs.com/api-ws/v1/realtime"))
-    realtime_enabled: bool = field(default_factory=lambda: _env("REALTIME_ENABLED", "1") not in ("0", "false", "no"))
-    # A call may run this long before the relay hangs up (the provider's own
-    # ceiling is two hours); the budget is re-checked after every answer.
-    realtime_max_s: int = field(default_factory=lambda: _int("REALTIME_MAX_S", 3600))
     upstream_timeout_s: float = field(default_factory=lambda: float(_env("UPSTREAM_TIMEOUT_S", "180")))
     # JSON object merged into every chat request for fields the app did not set.
     # Qwen 3.x models think by default and a one-line answer can cost a

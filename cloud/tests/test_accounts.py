@@ -2,18 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
-import threading
-import time
-
 import httpx
-import websockets
-from starlette.testclient import TestClient
 from test_cloud import fake_upstream, sign_up
 
 from nanomuse_cloud.api import create_app
-from nanomuse_cloud.config import RealtimeUsage, Settings
+from nanomuse_cloud.config import Settings
 from nanomuse_cloud.db import Database
 from nanomuse_cloud.senders import LogSender
 from nanomuse_cloud.service import Cloud, check_password, hash_password
@@ -22,11 +15,19 @@ from nanomuse_cloud.service import Cloud, check_password, hash_password
 def make(**overrides):
     up = fake_upstream()
     kw = dict(
-        database=":memory:", secret="test-secret", admin_token="admin",
-        upstream_base="http://upstream/compat/v1", upstream_key="sk-upstream",
+        database=":memory:",
+        secret="test-secret",
+        admin_token="admin",
+        upstream_base="http://upstream/compat/v1",
+        upstream_key="sk-upstream",
         dashscope_base="http://upstream/ds/api/v1",
-        signup_tokens=0, daily_cap_tokens=0, per_minute_requests=100, daily_cap_cny=25,
-        public_base="http://cloud.test", password_max_attempts=3, lockout_s=600,
+        signup_tokens=0,
+        daily_cap_tokens=0,
+        per_minute_requests=100,
+        daily_cap_cny=25,
+        public_base="http://cloud.test",
+        password_max_attempts=3,
+        lockout_s=600,
     )
     kw.update(overrides)
     settings = Settings(**kw)
@@ -148,9 +149,13 @@ async def test_usage_is_broken_down_by_kind_and_model():
     data = await sign_up(client, sender)
     headers = auth(data["api_key"])
     for _ in range(2):
-        r = await client.post("/v1/chat/completions", json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}, headers=headers)
+        r = await client.post(
+            "/v1/chat/completions", json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}, headers=headers
+        )
         assert r.status_code == 200
-    r = await client.post("/v1/chat/completions", json={"model": "qwen3.8-flash", "messages": [{"role": "user", "content": "hi"}]}, headers=headers)
+    r = await client.post(
+        "/v1/chat/completions", json={"model": "qwen3.8-flash", "messages": [{"role": "user", "content": "hi"}]}, headers=headers
+    )
     assert r.status_code == 200
     r = await client.post("/v1/images/generations", json={"model": "qwen-image-3.0", "prompt": "a cat", "n": 1}, headers=headers)
     assert r.status_code == 200, r.text
@@ -167,156 +172,6 @@ async def test_usage_is_broken_down_by_kind_and_model():
     # Money adds up across kinds: 2 × (100×3 + 50×12) + (100×0.8 + 50×2.7) micro-yuan + ¥0.18
     total_cny = sum(row["cost_cny"] for row in usage["total"]["by_kind"])
     assert round(total_cny, 4) == round(2 * 0.0009 + 0.000215 + 0.18, 4)
-
-
-def test_realtime_usage_and_prices():
-    done = {
-        "type": "response.done",
-        "response": {
-            "usage": {
-                "input_tokens": 1300, "output_tokens": 700,
-                "input_token_details": {"text_tokens": 300, "audio_tokens": 1000, "image_tokens": 0},
-                "output_token_details": {"text_tokens": 200, "audio_tokens": 500},
-            }
-        },
-    }
-    u = RealtimeUsage.from_response_done(done)
-    assert u == RealtimeUsage(text_in=300, audio_in=1000, image_in=0, text_out=200, audio_out=500)
-    assert u.input_tokens == 1300 and u.output_tokens == 700
-    spec = Settings().model("qwen3.5-omni-flash-realtime")
-    assert spec is not None and spec.kind == "realtime"
-    # text in 300×3.3 + audio in 1000×27 + audio out 500×107 (the spoken text is free) = 81 490 µ¥
-    assert spec.realtime_cost_uy(u) == round(300 * 3.3 + 1000 * 27 + 500 * 107)
-    # The grant weighs audio eight times: 300 + 8000 + 200 + 4000
-    assert spec.realtime_charged(u) == 300 + 8000 + 200 + 4000
-    # Text-only answers bill the text out.
-    t = RealtimeUsage(text_in=100, text_out=50)
-    assert spec.realtime_cost_uy(t) == round(100 * 3.3 + 50 * 20)
-    # Without details the totals are taken as text.
-    u2 = RealtimeUsage.from_response_done({"type": "response.done", "response": {"usage": {"input_tokens": 10, "output_tokens": 5}}})
-    assert u2 == RealtimeUsage(text_in=10, text_out=5)
-    assert RealtimeUsage.from_response_done({"type": "response.done", "response": {}}) is None
-
-
-class FakeRealtimeUpstream:
-    """A provider stand-in: answers every committed buffer with one audio delta
-    and a `response.done` carrying usage; remembers what it was sent."""
-
-    def __init__(self):
-        self.received: list[dict] = []
-        self.headers: dict = {}
-        self.port = 0
-        self._ready = threading.Event()
-        self._loop: asyncio.AbstractEventLoop | None = None
-        self._thread = threading.Thread(target=self._run, daemon=True)
-
-    def start(self) -> FakeRealtimeUpstream:
-        self._thread.start()
-        assert self._ready.wait(5)
-        return self
-
-    def stop(self) -> None:
-        if self._loop is not None:
-            self._loop.call_soon_threadsafe(self._stopping.set)
-            self._thread.join(5)
-
-    def _run(self) -> None:
-        self._loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self._loop)
-        self._stopping = asyncio.Event()
-
-        async def serve():
-            async with websockets.serve(self._handle, "127.0.0.1", 0) as server:
-                self.port = server.sockets[0].getsockname()[1]
-                self._ready.set()
-                await self._stopping.wait()
-
-        self._loop.run_until_complete(serve())
-        self._loop.close()
-
-    async def _handle(self, ws) -> None:
-        self.headers = dict(ws.request.headers)
-        self.path = ws.request.path
-        await ws.send(json.dumps({"type": "session.created", "session": {"id": "s1", "model": "fake", "voice": "Cherry"}}))
-        async for raw in ws:
-            ev = json.loads(raw)
-            self.received.append(ev)
-            if ev.get("type") == "input_audio_buffer.commit":
-                await ws.send(json.dumps({"type": "response.audio.delta", "delta": "AAAA"}))
-                await ws.send(json.dumps({
-                    "type": "response.done",
-                    "response": {"usage": {
-                        "input_tokens": 1100, "output_tokens": 300,
-                        "input_token_details": {"text_tokens": 100, "audio_tokens": 1000},
-                        "output_token_details": {"text_tokens": 50, "audio_tokens": 250},
-                    }},
-                }))
-
-
-def test_call_is_relayed_metered_and_hung_up_at_the_cap():
-    upstream = FakeRealtimeUpstream().start()
-    try:
-        # A tiny cap: the first answer costs 100×3.3 + 1000×27 + 250×107 = 54 080 µ¥ ≈ ¥0.054,
-        # so a ¥0.05 cap allows exactly one answer before the relay hangs up.
-        app, client, sender, up, cloud, settings = make(
-            realtime_base=f"ws://127.0.0.1:{upstream.port}/api-ws/v1/realtime", daily_cap_cny=0.05,
-        )
-        tc = TestClient(app)
-        r = tc.post("/v1/auth/code", json={"identifier": "13800138000"})
-        assert r.status_code == 204
-        ident, code = sender.sent[-1]
-        key = tc.post("/v1/auth/verify", json={"identifier": "13800138000", "code": code, "device": "pixel"}).json()["api_key"]
-
-        # Header auth, model by query; the greeting comes through untouched.
-        with tc.websocket_connect("/v1/realtime?model=qwen3.5-omni-flash-realtime", headers=auth(key)) as ws:
-            created = ws.receive_json()
-            assert created["type"] == "session.created"
-            ws.send_json({"type": "session.update", "session": {"voice": "Cherry"}})
-            ws.send_json({"type": "input_audio_buffer.append", "audio": "AAAA"})
-            ws.send_json({"type": "input_audio_buffer.commit"})
-            delta = ws.receive_json()
-            assert delta["type"] == "response.audio.delta"
-            done = ws.receive_json()
-            assert done["type"] == "response.done"
-            assert done["nanomuse"]["charged"] == 100 + 8000 + 50 + 2000
-            assert done["nanomuse"]["cost_cny"] == round((100 * 3.3 + 1000 * 27 + 250 * 107) / 1e6, 4)
-            # …and that answer used the day's ¥0.05 up: the relay says so and closes.
-            err = ws.receive_json()
-            assert err["type"] == "error" and err["error"]["code"] == "daily_cap"
-        assert upstream.headers.get("authorization") == "Bearer sk-upstream"
-        assert upstream.path.endswith("?model=qwen3.5-omni-flash-realtime")
-        assert [e["type"] for e in upstream.received] == ["session.update", "input_audio_buffer.append", "input_audio_buffer.commit"]
-
-        me = tc.get("/v1/me", headers=auth(key)).json()
-        by_kind = {row["kind"]: row for row in me["usage"]["today"]["by_kind"]}
-        assert by_kind["realtime"]["requests"] == 1 and by_kind["realtime"]["prompt_tokens"] == 1100
-        recent = me["recent"][0]
-        assert recent["kind"] == "realtime" and recent["detail"] == {"text_in": 100, "audio_in": 1000, "image_in": 0, "text_out": 50, "audio_out": 250}
-        # The hang-up is written after the socket closes; give the server a moment.
-        for _ in range(50):
-            events = tc.get("/v1/me/events", headers=auth(key)).json()["events"]
-            if any(e["kind"] == "call.ended" for e in events):
-                break
-            time.sleep(0.05)
-        assert any(e["kind"] == "call.ended" and e["detail"].startswith("qwen3.5-omni-flash-realtime") for e in events)
-        assert any(e["kind"] == "budget.refused" for e in events)
-
-        # Over the cap already: refused before connecting upstream.
-        with tc.websocket_connect("/v1/realtime", headers=auth(key)) as ws:
-            err = ws.receive_json()
-            assert err["type"] == "error" and err["error"]["code"] == "daily_cap"
-
-        # First-frame auth for browsers; a wrong key is told so.
-        with tc.websocket_connect("/v1/realtime") as ws:
-            ws.send_json({"type": "nanomuse.auth", "key": "nm_wrong"})
-            err = ws.receive_json()
-            assert err["error"]["code"] == "bad_key"
-        # A chat model is not a call model.
-        with tc.websocket_connect("/v1/realtime?model=qwen3.8-27b", headers=auth(key)) as ws:
-            err = ws.receive_json()
-            assert err["error"]["code"] == "model_not_offered"
-    finally:
-        upstream.stop()
 
 
 async def test_admin_overview_and_account_detail():
@@ -423,7 +278,13 @@ async def test_invites_credit_and_the_clip_allowance():
     assert (await clip(client, ka)).status_code == 200
     me_a = (await client.get("/v1/me", headers=auth(ka))).json()
     assert me_a["spend"]["today"] == 1.0 and me_a["spend"]["credit_left"] == round(3 - 0.4, 4)
-    assert me_a["spend"]["left_today"] == round(0.6 + 2.6 - 1.0, 4) and me_a["clips"] == {"unlimited": False, "allowed": 2, "used": 2, "left": 0, "per_face": 1}
+    assert me_a["spend"]["left_today"] == round(0.6 + 2.6 - 1.0, 4) and me_a["clips"] == {
+        "unlimited": False,
+        "allowed": 2,
+        "used": 2,
+        "left": 0,
+        "per_face": 1,
+    }
     r = await clip(client, ka)
     assert r.status_code == 429 and r.json()["error"]["code"] == "video_limit"
     r = await client.get("/api/v1/uploads", params={"action": "getPolicy", "model": "wan2.2-i2v-flash"}, headers=auth(ka))
@@ -445,7 +306,9 @@ async def test_invites_credit_and_the_clip_allowance():
 
     # The operator credits B for a pull request: money past the cap and clips.
     admin = {"X-Admin-Token": "admin"}
-    r = await client.post("/v1/admin/credit", headers=admin, json={"identifier": "dev-b@example.com", "cny": 10, "clips": 4, "note": "PR #12"})
+    r = await client.post(
+        "/v1/admin/credit", headers=admin, json={"identifier": "dev-b@example.com", "cny": 10, "clips": 4, "note": "PR #12"}
+    )
     assert r.status_code == 200 and r.json()["credit_left_cny"] == 10 and r.json()["clips_bonus"] == 4
     est = (await client.get("/v1/estimate", params={"images": 5, "clips": 4}, headers=auth(kb))).json()
     assert est["affordable"] is True and est["clips_ok"] is True and est["left_today_cny"] == 10.1 and est["clips"]["left"] == 4

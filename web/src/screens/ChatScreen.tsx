@@ -1,8 +1,9 @@
-import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Phone, Plus, Smartphone, Table2, Trash2, Video, Wand2, X } from "lucide-react";
+import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Phone, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, fileUrl } from "../api";
 import { Avatar } from "../components/Avatar";
 import { BrowserViewer } from "../components/BrowserViewer";
+import { MicButton, useDictation } from "../components/Dictation";
 import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
 import { Markdown } from "../components/Markdown";
 import { Sheet } from "../components/Sheet";
@@ -13,7 +14,7 @@ import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
 
 export function ChatScreen() {
-  const { state, send, decide, loadEvents, openThread, openFile, openCall, toast } = useStore();
+  const { state, send, decide, loadEvents, openThread, openFile, toast } = useStore();
   const t = useT();
   const { profile, status, activeThread, threads } = state;
   // undefined until the first fetch for this thread has returned — don't flash the empty state
@@ -133,26 +134,6 @@ export function ChatScreen() {
             )}
           </button>
           <div className="flex items-center gap-1.5">
-            {activeThread === "main" && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => openCall("voice")}
-                  aria-label={t("Voice call")}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg"
-                >
-                  <Phone size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openCall("video")}
-                  aria-label={t("Video call")}
-                  className="hidden h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg sm:flex"
-                >
-                  <Video size={18} />
-                </button>
-              </>
-            )}
             <button
               type="button"
               onClick={() => setActivityOpen(true)}
@@ -522,6 +503,21 @@ function Composer({
   const { state, draft, draftFiles, toast } = useStore();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  // voice input: the words recognised so far replace what dictation put in the box, after
+  // whatever was typed before the mic was tapped
+  const typedBefore = useRef("");
+  const dictation = useDictation(
+    useCallback((final: string, interim: string) => {
+      const lead = typedBefore.current;
+      const sep = lead && !/\s$/.test(lead) ? " " : "";
+      setText(lead + sep + final + interim);
+    }, []),
+    useCallback((message: string) => toast(message), [toast]),
+  );
+  const toggleDictation = () => {
+    if (!dictation.listening) typedBefore.current = text;
+    dictation.toggle();
+  };
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [pending, setPending] = useState<Pending[]>([]);
 
@@ -609,6 +605,7 @@ function Composer({
     e?.preventDefault();
     const trimmed = text.trim();
     if ((!trimmed && attached.length === 0) || uploading || sending) return;
+    if (dictation.listening) dictation.stop();
     // the draft leaves the box at once (it feels sent) and comes back if sending failed
     const files = pending;
     setSending(true);
@@ -721,6 +718,7 @@ function Composer({
           placeholder={waiting ? t("Answer {name}…", { name }) : pending.length > 0 ? t("Say what to do with it…") : t("Message")}
           className="flex-1 resize-none bg-transparent px-1 py-2 text-[15px] leading-[1.4] outline-none placeholder:text-muted"
         />
+        {dictation.supported && <MicButton listening={dictation.listening} onClick={toggleDictation} />}
         <button
           type="submit"
           disabled={(!text.trim() && attached.length === 0) || uploading}

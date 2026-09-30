@@ -11,7 +11,7 @@ import { cx } from "../util";
 
 /**
  * Your nanoMuse Cloud account: who you are signed in as, what has been used (by kind — chat,
- * pictures, clips, calls — and by model), the password, every device signed in, and the
+ * pictures, clips — and by model), the password, every device signed in, and the
  * way out (sign out here, everywhere, or delete the account). Everything the relay knows
  * about you is on this one screen; nothing on it is message content.
  */
@@ -56,7 +56,7 @@ export function AccountScreen() {
         {!signedIn ? (
           <Section>
             <p className="text-[13.5px] text-muted leading-relaxed">
-              {t("Free. Your devices meet on the hub, a model with a daily allowance comes with it, and calls go through it. Sign in with a code the first time; set a password afterwards if you like.")}
+              {t("Free. Your devices meet on the hub and a model with a daily allowance comes with it. Sign in with a code the first time; set a password afterwards if you like.")}
             </p>
             <SignIn onSignedIn={() => toast(t("Signed in to nanoMuse Cloud."))} />
           </Section>
@@ -526,7 +526,7 @@ function SignOut({ account, onDone }: { account: CloudAccount | null; onDone: ()
   const run = async (what: "here" | "all" | "delete") => {
     const ask =
       what === "here"
-        ? t("Sign out of nanoMuse Cloud on this device? The hub, calls and the Cloud model stop working here until you sign in again.")
+        ? t("Sign out of nanoMuse Cloud on this device? The hub and the Cloud model stop working here until you sign in again.")
         : what === "all"
           ? t("Sign out on every device, including this one?")
           : t("Delete the account? The relay forgets your identifier, your devices and your usage. This cannot be undone.");

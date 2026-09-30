@@ -1086,8 +1086,8 @@ const zhCN: Record<string, string> = {
   "A model with a daily allowance, or your own key": "自带每日额度的模型，或用你自己的 key",
   "Keys in your vault; nothing you say is kept on the relay": "key 留在你的保险库里；你说的内容不会留在中继上",
   "Running it yourself without an account? Set cloud.required to false.": "自己部署、不想要账号？把 cloud.required 设为 false 即可。",
-  "Free. Your devices meet on the hub, a model with a daily allowance comes with it, and calls go through it. Sign in with a code the first time; set a password afterwards if you like.":
-    "免费。你的设备在 hub 上汇合，自带每日额度的模型，通话也经由它。第一次用验证码登录，之后可以再设一个密码。",
+  "Free. Your devices meet on the hub and a model with a daily allowance comes with it. Sign in with a code the first time; set a password afterwards if you like.":
+    "免费。你的设备在 hub 上汇合，还自带一个有每日额度的模型。第一次用验证码登录，之后可以再设一个密码。",
   "With a code": "验证码登录",
   "With a password": "密码登录",
   "No password yet? Sign in with a code first, then set one under Account.": "还没有密码？先用验证码登录，再到「账号」里设置。",
@@ -1145,8 +1145,6 @@ const zhCN: Record<string, string> = {
   "Call ended": "通话结束",
   "The model provider returned an error": "模型服务返回了错误",
   "Sign out everywhere": "在所有设备退出",
-  "Sign out of nanoMuse Cloud on this device? The hub, calls and the Cloud model stop working here until you sign in again.":
-    "在这台设备上退出 nanoMuse Cloud？hub、通话和 Cloud 模型会停用，直到重新登录。",
   "Sign out on every device, including this one?": "在所有设备退出登录，包括这一台？",
   "Delete the account? The relay forgets your identifier, your devices and your usage. This cannot be undone.":
     "删除账号？中继会忘掉你的标识、设备和用量记录，且无法恢复。",
@@ -1163,29 +1161,11 @@ const zhCN: Record<string, string> = {
   "Your account brings a model with a daily allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.":
     "你的账号自带一个有每日额度的模型，起步最快。也可以粘贴自己的 key：它加密存在服务端的保险库里，不会给模型看到，你说的内容也不经过中继。",
 
-  // ── Calls ─────────────────────────────────────────────────────────────────────────
-  "Voice call": "语音通话",
-  "Video call": "视频通话",
-  "your key": "你的 key",
-  Listening: "在听",
-  Muted: "已静音",
-  "Go on…": "请说…",
-  Thinking: "思考中",
-  Speaking: "在说",
-  "Could not connect": "没能接通",
-  "Back to chat": "回到对话",
-  Mute: "静音",
-  Unmute: "取消静音",
-  "Hang up": "挂断",
-  Camera: "摄像头",
-  "Camera off": "关闭摄像头",
-  "{turns} turns · {time}": "{turns} 轮 · {time}",
-  "Calls need nanoMuse Cloud (sign in) or a Bailian key as the model.": "通话需要登录 nanoMuse Cloud，或把百炼的 key 设为模型。",
-  "The call could not be connected; try again in a moment.": "没能接通，请稍后再试。",
-  "The daily allowance is used up; the call ended.": "今日额度已用完，通话结束。",
-  "Calls are limited in length; this one reached it.": "单次通话有时长上限，这次已经到了。",
-  "Microphone access was refused. Allow it in the browser and try again.": "麦克风权限被拒绝。请在浏览器里允许后再试。",
-  "Camera access was refused.": "摄像头权限被拒绝。",
+  // ── Voice input (the browser's own speech recognition) ───────────────────────────
+  "Voice input": "语音输入",
+  "Stop voice input": "停止语音输入",
+  "The microphone is not allowed. Allow it in the browser and try again.": "麦克风未被允许。请在浏览器里允许后再试。",
+  "Voice input stopped ({code}).": "语音输入中断了（{code}）。",
   "said on a call": "通话中说的",
 
   // ── Coding agents ─────────────────────────────────────────────────────────────────
@@ -1267,7 +1247,6 @@ const zhCN: Record<string, string> = {
   "That is not the current password.": "当前密码不正确。",
   "Enter the current password.": "请输入当前密码。",
   "That sign-in is already gone.": "那个登录已经不存在了。",
-  "Calls need nanoMuse Cloud (sign in) or a Bailian model key as the provider.": "通话需要 nanoMuse Cloud 账号（登录），或者用百炼的模型 key 作为服务商。",
 
   // -- reaching the runtime --
   "Cannot reach your nanoMuse right now.": "现在连不上你的 nanoMuse。",
@@ -1287,11 +1266,6 @@ const zhCN: Record<string, string> = {
   "Your account's model": "账号自带的模型",
   "Your account's model, or a key of your own.": "用账号自带的模型，或者你自己的 key。",
   "Your account's model, with its daily allowance. Keep it, or switch to a key of your own here.": "账号自带的模型，带每日额度。可以保留，也可以在这里换成你自己的 key。",
-
-  // -- the call screen's microphone --
-  "No microphone was found on this device.": "这台设备上没有找到麦克风。",
-  "The microphone is in use by another app or could not be started.": "麦克风被其他应用占用，或者没能启动。",
-  "Calls need a secure page (https or localhost); the browser will not open the microphone here.": "通话需要安全页面（https 或 localhost），浏览器不会在这里打开麦克风。",
 };
 
 export default zhCN;
