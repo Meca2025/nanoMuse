@@ -1,15 +1,40 @@
 import { KeyRound, Loader2, MessageSquareText } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
 import { cx } from "../util";
 import { inputCls, primaryBtn, secondaryBtn } from "./Form";
 
 /**
- * Signing in to nanoMuse Cloud: a code sent to an e-mail address or a mobile number, or —
- * once one is set — the account password. The same form everywhere it is needed (first run,
- * the gate, the account screen); the key lands in the vault on the machine running nanoMuse.
+ * Signing in to nanoMuse Cloud: a code sent to an e-mail address, or — once one is set —
+ * the account password. The same form everywhere it is needed (first run, the gate, the
+ * account screen); the key lands in the vault on the machine running nanoMuse.
+ *
+ * A friend's invite code (``?invite=CODE`` on the page URL, remembered until used, or typed
+ * into the optional field) travels with the code sign-in; it counts for a new account only.
  */
+const INVITE_KEY = "nm.invite";
+
+/** The invite code from the page URL (kept for later) or from an earlier visit. */
+export function pendingInvite(): string {
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get("invite");
+    if (fromUrl) {
+      const clean = normalizeInvite(fromUrl);
+      if (clean) localStorage.setItem(INVITE_KEY, clean);
+    }
+    return localStorage.getItem(INVITE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function normalizeInvite(v: string): string {
+  return v
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 8);
+}
 export function SignIn({
   onSignedIn,
   /** after signing in, make the relay the model provider as well */
@@ -31,6 +56,15 @@ export function SignIn({
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState<"code" | "verify" | "login" | "model" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [invite, setInvite] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  useEffect(() => {
+    const code = pendingInvite();
+    if (code) {
+      setInvite(code);
+      setInviteOpen(true);
+    }
+  }, []);
 
   const finish = async () => {
     if (useAsModel) {
@@ -65,9 +99,14 @@ export function SignIn({
     setBusy("verify");
     setError(null);
     try {
-      await api.cloudVerify(id, code.trim());
+      await api.cloudVerify(id, code.trim(), invite.trim());
       setCode("");
       setSent(false);
+      try {
+        localStorage.removeItem(INVITE_KEY);
+      } catch {
+        /* storage may be off */
+      }
       await finish();
     } catch (e) {
       setError(t((e as Error).message));
@@ -108,7 +147,7 @@ export function SignIn({
         <ModeButton active={mode === "password"} onClick={() => setMode("password")} icon={<KeyRound size={14} />} label={t("With a password")} />
       </div>
       <div>
-        <label className="text-[12px] text-muted">{t("E-mail or mobile number")}</label>
+        <label className="text-[12px] text-muted">{t("E-mail")}</label>
         <input
           value={identifier}
           onChange={(e) => {
@@ -135,20 +174,39 @@ export function SignIn({
           <p className="mt-1.5 text-[12px] text-muted">{t("No password yet? Sign in with a code first, then set one under Account.")}</p>
         </div>
       ) : (
-        sent && (
-          <div>
-            <label className="text-[12px] text-muted">{t("The code you received")}</label>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="123456"
-              autoFocus
-              className={cx(inputCls, "mt-1 tracking-[0.3em]")}
-            />
-          </div>
-        )
+        <>
+          {sent && (
+            <div>
+              <label className="text-[12px] text-muted">{t("The code you received")}</label>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="123456"
+                autoFocus
+                className={cx(inputCls, "mt-1 tracking-[0.3em]")}
+              />
+            </div>
+          )}
+          {inviteOpen ? (
+            <div>
+              <label className="text-[12px] text-muted">{t("Invite code (optional)")}</label>
+              <input
+                value={invite}
+                onChange={(e) => setInvite(normalizeInvite(e.target.value))}
+                autoComplete="off"
+                placeholder="ABCD2345"
+                className={cx(inputCls, "mt-1 tracking-[0.2em] uppercase")}
+              />
+              <p className="mt-1.5 text-[12px] text-muted">{t("A friend's code counts for a new account: they get ¥3 of credit and more clips.")}</p>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setInviteOpen(true)} className="text-[12px] text-muted underline-offset-2 hover:underline">
+              {t("Have an invite code?")}
+            </button>
+          )}
+        </>
       )}
       {error && <div className="rounded-2xl bg-rose-500/12 px-3 py-2 text-[12.5px] text-rose-700 dark:text-rose-300">{error}</div>}
       <div className="flex gap-2">

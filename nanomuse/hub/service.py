@@ -233,20 +233,20 @@ class HubService:
     async def request_code(self, identifier: str) -> None:
         identifier = identifier.strip()
         if not identifier:
-            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address.")
+            raise CloudError(400, "bad_identifier", "Enter an e-mail address.")
         await self.cloud.request_code(identifier)
         self._pending_code = identifier
 
-    async def verify(self, identifier: str, code: str) -> dict[str, Any]:
+    async def verify(self, identifier: str, code: str, invite: str = "") -> dict[str, Any]:
         identifier = identifier.strip() or self._pending_code
-        data = await self.cloud.verify(identifier, code.strip(), self.device_name)
+        data = await self.cloud.verify(identifier, code.strip(), self.device_name, invite=invite)
         return await self._signed_in(data)
 
     async def login(self, identifier: str, password: str) -> dict[str, Any]:
         """Sign in with the account password instead of a code."""
         identifier = identifier.strip()
         if not identifier:
-            raise CloudError(400, "bad_identifier", "Enter a mobile number or an e-mail address.")
+            raise CloudError(400, "bad_identifier", "Enter an e-mail address.")
         if not password:
             raise CloudError(400, "password_required", "Enter the password.")
         data = await self.cloud.login(identifier, password, self.device_name)

@@ -113,6 +113,7 @@ class FakeRelay:
         self.ready = threading.Event()
         self.frames: queue.Queue[dict[str, Any]] = queue.Queue()  # from the runtime, in order
         self.skipped: list[dict[str, Any]] = []  # frames next_frame() passed over
+        self.invites: list[str] = []  # invite codes seen by the (faked) verify call
         self.hello: dict[str, Any] | None = None
         self.ws: Any = None
         self.phone_handler: Callable[[dict[str, Any]], list[dict[str, Any]]] | None = None
@@ -348,8 +349,9 @@ def hub_server(
         return {"ok": True, "channel": "email"}
 
     async def fake_verify(
-        self: CloudClient, identifier: str, code: str, device: str = ""
+        self: CloudClient, identifier: str, code: str, device: str = "", invite: str = ""
     ) -> dict[str, Any]:
+        relay.invites.append(invite)  # what the web/app sent along (a friend's code, or "")
         if code != "123456":
             from nanomuse.cloud import CloudError
 
@@ -387,10 +389,15 @@ def test_sign_in_joins_hub_and_lists_devices(hub_server) -> None:
     before = client.get("/api/hub").json()
     assert before["state"] == "signed_out" and before["account"]["signed_in"] is False
     assert "devices" not in service.app.tools
-    bad = client.post("/api/cloud/verify", json={"identifier": "x@example.com", "code": "000000"})
+    bad = client.post(
+        "/api/cloud/verify",
+        json={"identifier": "x@example.com", "code": "000000", "invite": "abcd-2345"},
+    )
     assert bad.status_code == 400
     account = sign_in(client)
     assert account["signed_in"] is True and account["hint"] == "s***@example.com"
+    # the invite code travels to the relay as typed (it normalises), and is absent when not given
+    assert relay.invites == ["abcd-2345", ""]
     hub = wait_for(lambda: (h := client.get("/api/hub").json())["state"] == "connected" and h)
     assert relay.hello["device"]["name"] == "Desk"
     assert relay.hello["device"]["kind"] == "computer"

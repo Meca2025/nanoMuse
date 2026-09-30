@@ -1,4 +1,4 @@
-import { Check, Clapperboard, Image as ImageIcon, KeyRound, Loader2, LogOut, MessageCircle, Phone, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { Check, Clapperboard, Copy, Gift, Image as ImageIcon, KeyRound, Loader2, LogOut, MessageCircle, Phone, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { BackBar } from "../components/BackBar";
@@ -64,6 +64,7 @@ export function AccountScreen() {
           <>
             <Identity account={account} me={me} />
             {me && <Allowance me={me} />}
+            {me?.invite?.code && <Invite me={me} />}
             {me && <Usage me={me} />}
             <Password account={account} onChanged={() => void load()} />
             <Sessions sessions={sessions} loading={loading} onChanged={() => void load()} />
@@ -100,7 +101,7 @@ function Identity({ account, me }: { account: CloudAccount | null; me: CloudMe |
         <div className="min-w-0 flex-1">
           <div className="truncate text-[18px] font-semibold tracking-tight">{hint}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-muted">
-            <span>{account?.channel === "sms" ? t("Mobile number") : t("E-mail")}</span>
+            <span>{account?.channel === "sms" ? t("Mobile number") : t("E-mail")}</span>{/* phone accounts from earlier versions still show their channel */}
             {since && <span>· {t("since {date}", { date: since.toLocaleDateString() })}</span>}
             {me?.account.member && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
@@ -144,6 +145,68 @@ function Allowance({ me }: { me: CloudMe }) {
           <div className={cx("h-full rounded-full transition-all", pct >= 90 ? "bg-rose-500" : pct >= 60 ? "bg-amber-500" : "bg-accent")} style={{ width: `${pct}%` }} />
         </div>
       )}
+      {!spend.unlimited && (spend.credit_left ?? 0) > 0 && (
+        <p className="text-[12.5px] text-muted">{t("Plus ¥{amount} of credit from invitations, used once the day's allowance is gone.", { amount: (spend.credit_left ?? 0).toFixed(2) })}</p>
+      )}
+    </Section>
+  );
+}
+
+/** Invite a friend: the code and link, what each sign-up earns, and what came of it so far. */
+function Invite({ me }: { me: CloudMe }) {
+  const t = useT();
+  const { toast } = useStore();
+  const inv = me.invite!;
+  const clips = me.clips;
+  const link = inv.url || `https://nanomuse.cn/web/?invite=${inv.code}`;
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(t("Copied"));
+    } catch {
+      toast(text);
+    }
+  };
+  const share = async () => {
+    const text = t("Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my code {code}: {link}", { code: inv.code, link });
+    const nav = navigator as Navigator & { share?: (data: { text: string }) => Promise<void> };
+    if (nav.share) {
+      try {
+        await nav.share({ text });
+        return;
+      } catch {
+        /* cancelled — fall through to the clipboard */
+      }
+    }
+    await copy(text);
+  };
+  return (
+    <Section title={t("Invite a friend")}>
+      <p className="text-[12.5px] text-muted">
+        {t("Each friend who signs up with your code gives you ¥{bonus} of credit and {clips} more clips.", { bonus: inv.bonus_cny.toFixed(0), clips: String(inv.clips_per_invite) })}
+      </p>
+      <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2/70 px-3 py-2">
+        <div>
+          <div className="text-[11px] text-muted">{t("Your code")}</div>
+          <code className="font-mono text-[18px] font-semibold tracking-[0.2em]">{inv.code}</code>
+        </div>
+        <button type="button" onClick={() => void copy(inv.code)} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
+          <Copy size={14} /> {t("Copy")}
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <button type="button" onClick={() => void share()} className={cx(primaryBtn, "inline-flex flex-1 items-center justify-center gap-1.5 py-2.5")}>
+          <Share2 size={14} /> {t("Share the link")}
+        </button>
+        <button type="button" onClick={() => void copy(link)} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
+          <Gift size={14} /> {t("Copy the link")}
+        </button>
+      </div>
+      <p className="text-[12.5px] text-muted">
+        {t("{n} friends joined", { n: String(inv.invites) })}
+        {inv.credit_left_cny > 0 && <> · {t("¥{amount} credit left", { amount: inv.credit_left_cny.toFixed(2) })}</>}
+        {clips && !clips.unlimited && clips.left !== null && <> · {t("{left} of {allowed} clips left", { left: String(clips.left), allowed: String(clips.allowed) })}</>}
+      </p>
     </Section>
   );
 }

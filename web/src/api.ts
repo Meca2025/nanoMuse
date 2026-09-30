@@ -125,7 +125,8 @@ export const api = {
   // ---- nanoMuse Cloud (the account) and the hub (the other devices)
   cloud: () => request<CloudAccount>("/api/cloud"),
   cloudCode: (identifier: string) => request<{ ok: boolean }>("/api/cloud/code", json({ identifier })),
-  cloudVerify: (identifier: string, code: string) => request<CloudAccount>("/api/cloud/verify", json({ identifier, code })),
+  cloudVerify: (identifier: string, code: string, invite = "") =>
+    request<CloudAccount>("/api/cloud/verify", json(invite ? { identifier, code, invite } : { identifier, code })),
   cloudSignOut: () => request<CloudAccount>("/api/cloud/sign-out", json({})),
   cloudLogin: (identifier: string, password: string) => request<CloudAccount>("/api/cloud/login", json({ identifier, password })),
   /** set or change the password; "" with the current one removes it */

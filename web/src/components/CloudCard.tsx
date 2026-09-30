@@ -9,8 +9,8 @@ import { Card, inputCls, primaryBtn, secondaryBtn } from "./Form";
 
 /**
  * nanoMuse Cloud: the free account that gives every device of yours one place to meet
- * (the hub) and a model to start with (the relay). Sign in with an e-mail address or a
- * mobile number and a code; the key lands in the vault on this machine.
+ * (the hub) and a model to start with (the relay). Sign in with an e-mail address and
+ * a code; the key lands in the vault on this machine.
  */
 export function CloudCard({
   account,
@@ -140,10 +140,10 @@ export function CloudCard({
           }}
         >
           <p className="text-[13px] text-muted leading-relaxed">
-            {t("Sign in with your e-mail address (or a mobile number) and the code it receives. No password; the key stays in the vault on this machine.")}
+            {t("Sign in with your e-mail address and the code it receives. No password; the key stays in the vault on this machine.")}
           </p>
           <div>
-            <label className="text-[12px] text-muted">{t("E-mail or mobile number")}</label>
+            <label className="text-[12px] text-muted">{t("E-mail")}</label>
             <input
               value={identifier}
               onChange={(e) => {

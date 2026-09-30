@@ -268,6 +268,7 @@ class CloudCodeBody(BaseModel):
 class CloudVerifyBody(BaseModel):
     identifier: str = Field(default="", max_length=200)
     code: str = Field(min_length=4, max_length=12)
+    invite: str = Field(default="", max_length=32)
 
 
 class CloudModelBody(BaseModel):
@@ -874,7 +875,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.post("/api/cloud/verify", dependencies=dep)
     async def cloud_verify(body: CloudVerifyBody) -> dict[str, Any]:
         try:
-            return await svc.hub.verify(body.identifier, body.code)
+            return await svc.hub.verify(body.identifier, body.code, invite=body.invite)
         except CloudError as exc:
             raise _cloud_http(exc) from exc
 
