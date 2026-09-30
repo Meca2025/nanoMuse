@@ -52,6 +52,8 @@ class HubService:
         # the account's chat models (ids), for the provider form; refreshed on sign-in and
         # whenever the form asks
         self.chat_models: list[str] = []
+        # the relay's whole list as it came (chat, image and video models, with modalities)
+        self.models: list[dict[str, Any]] = []
         # approval cards raised by *other* devices' runs, shown here: card id → (device id, approval id)
         self.remote_approvals: dict[str, tuple[str, str]] = {}
         # runs other devices asked for, by call id → the thread they run in
@@ -305,6 +307,7 @@ class HubService:
         """The relay's chat models (text in, text out), recommended one first."""
         self.cloud.api_key = self._key()
         models = await self.cloud.models()
+        self.models = models
         chat = [
             m
             for m in models

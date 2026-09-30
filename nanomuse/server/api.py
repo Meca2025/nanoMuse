@@ -34,6 +34,9 @@
     POST /api/connections/mcp  DELETE /api/connections/mcp/{name}
     GET  /api/vault  PUT|DELETE /api/vault/{name}   (names only ever come back)
     POST /api/onboarded
+    GET  /api/avatar                      the avatar studio: can a face be drawn, the session under way
+    POST /api/avatar/begin {description}  a session: the card with the cost in the chat
+    POST /api/avatar/start|choose|cancel {session, index?}   draw (or redraw) the four, pick one, stop
     WS   /ws?token=…                     live events
 
 All endpoints require ``Authorization: Bearer <token>`` (or ``?token=``) unless
@@ -56,6 +59,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
+from nanomuse.avatar.studio import StudioError
 from nanomuse.bridge.server import BridgeError
 from nanomuse.cloud import CloudError
 from nanomuse.coding.service import CodingError
@@ -273,6 +277,16 @@ class CloudVerifyBody(BaseModel):
 
 class CloudModelBody(BaseModel):
     model: str = Field(default="", max_length=120)
+
+
+class AvatarBeginBody(BaseModel):
+    description: str = Field(min_length=1, max_length=200)
+    thread: str = MAIN_THREAD
+
+
+class AvatarSessionBody(BaseModel):
+    session: str
+    index: int | None = None
 
 
 class CloudContributeBody(BaseModel):
@@ -841,6 +855,52 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.post("/api/hands/stop", dependencies=dep)
     async def stop_hands() -> dict[str, Any]:
         return {"stopped": svc.stop_hands()}
+
+    # ------------------------------------------------------------------ the avatar studio
+    def _studio_http(exc: StudioError) -> HTTPException:
+        return HTTPException(409, str(exc))
+
+    @app.get("/api/avatar", dependencies=dep)
+    async def avatar_view() -> dict[str, Any]:
+        """Whether a face can be drawn (an image model on the chat model's host), and the
+        session under way if any."""
+        return svc.avatar.view()
+
+    @app.post("/api/avatar/estimate", dependencies=dep)
+    async def avatar_estimate() -> dict[str, Any]:
+        try:
+            return await svc.avatar.estimate()
+        except StudioError as exc:
+            raise _studio_http(exc) from exc
+
+    @app.post("/api/avatar/begin", dependencies=dep)
+    async def avatar_begin(body: AvatarBeginBody) -> dict[str, Any]:
+        """A new session from a description: the card with the cost appears in the chat."""
+        return await svc.avatar.begin(body.thread, body.description.strip())
+
+    @app.post("/api/avatar/start", dependencies=dep)
+    async def avatar_start(body: AvatarSessionBody) -> dict[str, Any]:
+        """The tap on *Draw*: four candidates (also *redraw*)."""
+        try:
+            return await svc.avatar.start(body.session)
+        except StudioError as exc:
+            raise _studio_http(exc) from exc
+
+    @app.post("/api/avatar/choose", dependencies=dep)
+    async def avatar_choose(body: AvatarSessionBody) -> dict[str, Any]:
+        if body.index is None:
+            raise HTTPException(422, "index is required")
+        try:
+            return await svc.avatar.choose(body.session, body.index)
+        except StudioError as exc:
+            raise _studio_http(exc) from exc
+
+    @app.post("/api/avatar/cancel", dependencies=dep)
+    async def avatar_cancel(body: AvatarSessionBody) -> dict[str, Any]:
+        try:
+            return svc.avatar.cancel(body.session)
+        except StudioError as exc:
+            raise _studio_http(exc) from exc
 
     @app.get("/api/phone", dependencies=dep)
     async def phone_status() -> dict[str, Any]:

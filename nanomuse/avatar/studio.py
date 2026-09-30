@@ -1,0 +1,755 @@
+"""The avatar studio: a new face for the agent, drawn from a description.
+
+The phone has had this since 0.1.20 (``io.github.nanomuse.avatar``); this is the same flow
+for the web app and the desktop, run by the runtime so both share it:
+
+1. A chat message asks for a new look ("换个形象：一只橘猫", "new avatar: a robot owl") —
+   :func:`parse_request` reads it the way the phone does — or the picker in Settings sends
+   the description. The agent is not run for it.
+2. A card in the chat says what it will cost (``GET /v1/estimate`` on the relay when the
+   account's model is the provider; "at your provider's prices" for a key of one's own) and
+   waits for a tap.
+3. Four candidates are drawn — the same subject four times, different colouring or outfit —
+   and shown 2×2 with *redraw*. A tap (or "第二个", "the first one") picks one.
+4. The chosen picture is the idle pose; four more are edits of it — working with headphones
+   at a laptop, waiting with a crystal ball, happy hugging a star, sorry with a sweat drop —
+   the set the dragon has. Each lands in the workspace under ``avatar/<face>/<mood>.webp``
+   and the profile's ``avatar`` becomes the face id; the app shows it through
+   ``/api/files/avatar/<face>/<mood>.webp``.
+
+Pictures come from the model endpoint the chat uses: the relay speaks the OpenAI images
+API (``/v1/images/generations`` and ``/v1/images/edits``), so does any OpenAI-compatible
+provider that draws; Alibaba Cloud Model Studio's own host has neither and is called on its
+native multimodal endpoint with the same key. Without an image model the chat says so
+plainly instead of trying. No clip is drawn here: the web face is stills.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import base64
+import io
+import re
+import shutil
+import time
+import uuid
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+import httpx
+
+from nanomuse.cloud import CloudError, model_url
+from nanomuse.logger import logger
+
+if TYPE_CHECKING:
+    from nanomuse.server.service import MuseService
+
+MOODS = ("idle", "working", "waiting", "happy", "error")
+CANDIDATES = 4
+# candidates plus the four posed edits; the idle still is the chosen candidate itself
+PICTURES_PER_FACE = CANDIDATES + len(MOODS) - 1
+SIZE = "1024x1024"
+# the stored stills: the face is never shown larger than about 200 CSS pixels
+STILL_PX = 512
+DASHSCOPE_IMAGE_MODEL = "qwen-image-3.0"
+# how long a finished or abandoned session's candidates stay on disk
+SESSION_TTL_S = 24 * 3600
+
+# Muse's house style for the candidates (the phone's default, ``Style.MUSE``)
+STYLE = (
+    "cute 3D character render in the style of a collectible vinyl toy, soft matte materials "
+    "with subtle sheen, rounded simplified forms, big friendly eyes, soft studio lighting with "
+    "gentle shadows, pastel accents"
+)
+VARIATIONS = (
+    "variation 1: the most typical, classic colouring",
+    "variation 2: a different breed or colour pattern, lighter tones",
+    "variation 3: a different breed or colour pattern, darker or warmer tones, a small accessory such as a scarf or glasses",
+    "variation 4: a playful take — unusual colouring or a tiny outfit, slight head tilt",
+)
+KEEP = (
+    "Keep this exact character — same face, colours, outfit, art style, proportions, framing, "
+    "camera angle and pure white background. Change only the pose and props described. "
+)
+MOOD_INSTRUCTIONS = {
+    "working": "It now wears over-ear headphones and sits typing on a small open laptop in front of it, focused and content, a faint glow from the screen on its face.",
+    "waiting": "It now holds a small glowing crystal ball in both hands at chest height and gazes into it with wide curious eyes, waiting for an answer.",
+    "happy": "It is now celebrating, hugging a big glowing yellow five-pointed star, eyes closed with a wide smile. Same white background; no confetti, no night sky, no extra decoration.",
+    "error": "It now looks sheepish and apologetic, a small sweat drop beside its head, one hand behind its head, shoulders slightly raised.",
+}
+
+
+# ----------------------------------------------------------------------------- the words
+# the phone's AvatarFlow.parseRequest / parseChoice, kept in step by hand
+_ZH_REQUEST = [
+    re.compile(
+        r"^(?:请|麻烦|帮我|帮忙|可以|能不能|能否)?\s*(?:把|将)?\s*(?:你的|你|我的|我)?\s*(?:虚拟)?(?:形象|头像|样子|外形)\s*"
+        r"(?:改|换|变|更换|切换|设置|设定|变更)(?:成|为|到|一下成|一下为)?\s*(.+)$"
+    ),
+    re.compile(
+        r"^(?:请|麻烦|帮我|帮忙)?\s*(?:换|变|改)(?:个|一个|一下)?\s*(?:新的?)?(?:虚拟)?(?:形象|头像)\s*[：:，,、]?\s*(.+)$"
+    ),
+    re.compile(
+        r"^(?:请|麻烦|帮我|帮忙)?\s*(?:变成|化身为|变身为|变身成)\s*(.+?)\s*(?:的)?(?:形象|样子|头像)?$"
+    ),
+]
+_EN_REQUEST = [
+    re.compile(
+        r"^(?:please\s+)?(?:can you\s+)?(?:change|switch|set|update|turn|make|transform)\s+(?:your|the|my|ur)?\s*"
+        r"(?:virtual\s+)?(?:avatar|appearance|look|character)\s+(?:to|into)\s+(.+)$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^(?:please\s+)?(?:new|another)\s+(?:virtual\s+)?avatar\s*[:,-]?\s*(.+)$", re.IGNORECASE
+    ),
+    re.compile(r"^(?:please\s+)?(?:become|be)\s+(.+)$", re.IGNORECASE),
+]
+_SUBJECT = re.compile(
+    r"\b(cat|dog|puppy|kitten|robot|bear|panda|fox|rabbit|bunny|bird|dragon|penguin|owl|corgi|shiba|husky|otter|character|creature|monster|alien)\b",
+    re.IGNORECASE,
+)
+_TRAILING = "。.!！~～吧呗呀哦啊嘛"
+
+
+def parse_request(text: str) -> str | None:
+    """The description of the new face if ``text`` asks for one, else None."""
+    t = text.strip()
+    if not t or len(t) > 400 or "\n" in t:
+        return None
+    for rx in _ZH_REQUEST + _EN_REQUEST:
+        hit = rx.search(t)
+        if hit:
+            break
+    else:
+        return None
+    desc = hit.group(1).strip().rstrip(_TRAILING).strip()
+    desc = re.sub(r"^(an?|the)\s+", "", desc, flags=re.IGNORECASE).strip()
+    if not desc or len(desc) > 200:
+        return None
+    head = hit.group(0).lower()
+    # "be quiet", "become better": only the bare verbs with something that reads like a subject
+    if (head.startswith("be ") or head.startswith("become ")) and not _SUBJECT.search(desc):
+        return None
+    if head.startswith(("变成", "化身", "变身")) and len(desc) < 2:
+        return None
+    return desc
+
+
+_ORDINAL_ZH = {"一": 0, "1": 0, "二": 1, "两": 1, "2": 1, "三": 2, "3": 2, "四": 3, "4": 3}
+_ORDINAL_EN = {
+    "first": 0,
+    "1st": 0,
+    "second": 1,
+    "2nd": 1,
+    "third": 2,
+    "3rd": 2,
+    "fourth": 3,
+    "4th": 3,
+    "last": 3,
+}
+_CORNERS = {
+    "左上": 0,
+    "右上": 1,
+    "左下": 2,
+    "右下": 3,
+    "top left": 0,
+    "top right": 1,
+    "bottom left": 2,
+    "bottom right": 3,
+}
+_REGENERATE = re.compile(
+    r"^(重新生成|再来一组|再生成|换一批|都不喜欢|都不好|都不要|再来四个|重来|regenerate|try again|another set|none of (these|them)|new options)$"
+)
+_CANCEL = re.compile(r"^(算了|不换了|取消|不要了|cancel|never mind|nevermind|forget it|stop)$")
+_PICK_ZH = re.compile(
+    r"^(?:就|选|要|我要|我选|用|我喜欢|喜欢)?\s*第\s*([一二两三四1234])\s*(?:个|只|张|款|号)?(?:吧|好了|好)?$"
+)
+_PICK_N = re.compile(r"^(?:就|选|要|我要|我选|用)?\s*([1-4])\s*(?:号|个|只|张)?(?:吧|好了|好)?$")
+_PICK_EN = re.compile(
+    r"^(?:i(?:'ll| will)? (?:take|pick|choose|like|want)|pick|choose|take|use|go with)?\s*(?:the\s+)?(?:option|number|no\.?|#)?\s*([1-4])$"
+)
+_PICK_EN_ORD = re.compile(
+    r"^(?:i(?:'ll| will)? (?:take|pick|choose|like|want)|pick|choose|take|use|go with)?\s*(?:the\s+)?(first|1st|second|2nd|third|3rd|fourth|4th|last)(?:\s+one)?$"
+)
+
+
+def parse_choice(text: str) -> int | str | None:
+    """While four candidates wait: the index picked (0–3), ``"regenerate"``, ``"cancel"``, or None."""
+    t = text.strip().rstrip(_TRAILING).strip()
+    lower = t.lower()
+    if not t or len(t) > 40:
+        return None
+    if _REGENERATE.match(lower):
+        return "regenerate"
+    if _CANCEL.match(lower):
+        return "cancel"
+    for corner, idx in _CORNERS.items():
+        if lower in (corner, f"{corner}那个", f"{corner}的", f"the {corner} one", f"{corner} one"):
+            return idx
+    m = _PICK_ZH.match(t)
+    if m:
+        return _ORDINAL_ZH[m.group(1)]
+    m = _PICK_N.match(t)
+    if m:
+        return int(m.group(1)) - 1
+    m = _PICK_EN.match(lower)
+    if m:
+        return int(m.group(1)) - 1
+    m = _PICK_EN_ORD.match(lower)
+    if m:
+        return _ORDINAL_EN[m.group(1)]
+    return None
+
+
+def build_prompt(description: str, index: int) -> str:
+    subject = description.strip().rstrip(".。!！,，")
+    return (
+        f"A cute character based on: {subject}. {STYLE}. Full body, standing, facing the viewer, "
+        "centred, whole figure visible with margin on all sides, big head and small body, friendly expression, "
+        f"pure white background, soft ground shadow only. {VARIATIONS[index % CANDIDATES]}. "
+        "Square composition. No text, no watermark, no border, no props other than what is described, one character only."
+    )
+
+
+# ----------------------------------------------------------------------------- the endpoint
+@dataclass
+class Endpoint:
+    """Where pictures come from: the chat model's host and key, and the image model there."""
+
+    base_url: str
+    api_key: str
+    image_model: str
+    # the relay (the account's model): costs are asked of it first
+    cloud: bool
+
+    @property
+    def dashscope(self) -> bool:
+        """Model Studio's own host: no OpenAI images API, the native endpoint instead."""
+        b = self.base_url.lower()
+        return not self.cloud and ("dashscope" in b or "aliyuncs.com" in b)
+
+
+class StudioError(Exception):
+    pass
+
+
+@dataclass
+class Session:
+    id: str
+    thread: str
+    event_id: str
+    description: str
+    created: float = field(default_factory=time.time)
+    stage: str = "estimate"  # estimate · drawing · choose · posing · done · cancelled · failed
+    cost: dict[str, Any] = field(default_factory=dict)
+    candidates: list[str | None] = field(default_factory=lambda: [None] * CANDIDATES)
+    errors: list[str] = field(default_factory=list)
+    chosen: int | None = None
+    face: str | None = None
+    moods: dict[str, str] = field(default_factory=dict)
+    message: str = ""
+    tasks: list[asyncio.Task[Any]] = field(default_factory=list)
+
+    def view(self) -> dict[str, Any]:
+        return {
+            "session": self.id,
+            "stage": self.stage,
+            "description": self.description,
+            "cost": self.cost,
+            "candidates": list(self.candidates),
+            "errors": list(self.errors),
+            "chosen": self.chosen,
+            "face": self.face,
+            "moods": dict(self.moods),
+            "message": self.message,
+        }
+
+    def cancel_tasks(self) -> None:
+        for t in self.tasks:
+            if not t.done():
+                t.cancel()
+        self.tasks.clear()
+
+
+class AvatarStudio:
+    """One studio per runtime; one session at a time (a new request replaces the old)."""
+
+    def __init__(self, svc: MuseService):
+        self.svc = svc
+        self.current: Session | None = None
+        self._http = httpx.AsyncClient(
+            timeout=httpx.Timeout(240.0, connect=30.0), follow_redirects=True
+        )
+
+    async def close(self) -> None:
+        if self.current is not None:
+            self.current.cancel_tasks()
+        await self._http.aclose()
+
+    # ------------------------------------------------------------------ the endpoint
+    def endpoint(self) -> Endpoint | None:
+        """The chat model's host and key with an image model, or None when there is none."""
+        llm = self.svc.settings.llm
+        base = (llm.base_url or "").rstrip("/")
+        if not base:
+            return None
+        key = llm.api_key
+        vault = self.svc.app.vault
+        if vault.has_placeholders(key):
+            key = vault.resolve(key, strict=False)
+            if vault.has_placeholders(key):
+                key = ""
+        hub = getattr(self.svc, "hub", None)
+        cloud = bool(hub is not None and base == model_url(hub.cloud.base_url).rstrip("/"))
+        ep = Endpoint(
+            base_url=base, api_key=key, image_model=(llm.image_model or "").strip(), cloud=cloud
+        )
+        if not ep.image_model:
+            if cloud:
+                ep.image_model = self._cloud_image_model()
+            elif ep.dashscope:
+                ep.image_model = DASHSCOPE_IMAGE_MODEL
+        return ep if ep.image_model else None
+
+    def _cloud_image_model(self) -> str:
+        """The relay's image model, from the list it sent when the account was checked."""
+        hub = self.svc.hub
+        for m in hub.models or []:
+            nm = m.get("nanomuse") or {}
+            arch = m.get("architecture") or {}
+            if nm.get("kind") == "image" or arch.get("output_modalities") == ["image"]:
+                return str(m.get("id") or "")
+        return "qwen-image-3.0"
+
+    def view(self) -> dict[str, Any]:
+        ep = self.endpoint()
+        return {
+            "available": ep is not None,
+            "image_model": ep.image_model if ep else "",
+            "cloud": bool(ep and ep.cloud),
+            "current": self.current.view() if self.current else None,
+        }
+
+    # ------------------------------------------------------------------ the chat
+    def intercept(self, thread: str, text: str) -> bool:
+        """A user message that is about the face: handled here, not by the agent.
+
+        A request for a new look starts a session (the card with the cost); while candidates
+        wait, a pick / "regenerate" / "cancel" is applied. Returns True when the message was
+        taken."""
+        cur = self.current
+        if cur is not None and cur.thread == thread and cur.stage == "choose":
+            choice = parse_choice(text)
+            if choice == "regenerate":
+                asyncio.ensure_future(self.regenerate(cur.id))
+                return True
+            if choice == "cancel":
+                self.cancel(cur.id)
+                return True
+            if isinstance(choice, int):
+                asyncio.ensure_future(self.choose(cur.id, choice))
+                return True
+        description = parse_request(text)
+        if description is None:
+            return False
+        asyncio.ensure_future(self.begin(thread, description))
+        return True
+
+    async def begin(self, thread: str, description: str) -> dict[str, Any]:
+        """Open a session: the card with what it will cost, waiting for a tap."""
+        ui = self.svc.ui
+        ep = self.endpoint()
+        if ep is None:
+            ui.emit(
+                {
+                    "type": "notice",
+                    "level": "warn",
+                    "text": "No image model is set, so a new look cannot be drawn. Pick one under Connections → Image & video models (the account's model draws with qwen-image; Alibaba Cloud Bailian does too).",
+                    "code": "no_image_model",
+                    "thread": thread,
+                }
+            )
+            return {"available": False}
+        if self.current is not None and self.current.stage not in ("done", "cancelled", "failed"):
+            self.cancel(self.current.id, quiet=True)
+        sid = uuid.uuid4().hex[:10]
+        event = ui.emit(
+            {
+                "type": "avatar",
+                "thread": thread,
+                "session": sid,
+                "stage": "estimate",
+                "description": description,
+            }
+        )
+        session = Session(id=sid, thread=thread, event_id=event["id"], description=description)
+        self.current = session
+        session.cost = await self.estimate(ep)
+        self._patch(session)
+        return session.view()
+
+    async def estimate(self, ep: Endpoint | None = None) -> dict[str, Any]:
+        """What a new face costs: the relay's word when the account draws; otherwise the count."""
+        ep = ep or self.endpoint()
+        if ep is None:
+            raise StudioError("no image model")
+        cost: dict[str, Any] = {
+            "pictures": PICTURES_PER_FACE,
+            "model": ep.image_model,
+            "cloud": ep.cloud,
+        }
+        if not ep.cloud:
+            return cost
+        hub = self.svc.hub
+        hub.cloud.api_key = ep.api_key
+        try:
+            data = await hub.cloud.estimate(PICTURES_PER_FACE, ep.image_model, SIZE)
+        except CloudError as exc:
+            cost["error"] = exc.describe()
+            return cost
+        cost.update(
+            {
+                "cny": data.get("cny"),
+                "usd": data.get("usd"),
+                "left_cny": data.get("left_cny"),
+                "grant_cny": data.get("grant_cny"),
+                "unlimited": bool(data.get("unlimited")),
+                "affordable": bool(data.get("affordable", True)),
+            }
+        )
+        return cost
+
+    def _session(self, session_id: str) -> Session:
+        cur = self.current
+        if cur is None or cur.id != session_id:
+            raise StudioError("that session is over")
+        return cur
+
+    def _patch(self, session: Session) -> None:
+        self.svc.ui.patch(session.thread, session.event_id, **session.view())
+
+    async def start(self, session_id: str) -> dict[str, Any]:
+        """The tap on *Draw*: the four candidates."""
+        session = self._session(session_id)
+        if session.stage not in ("estimate", "choose", "failed"):
+            return session.view()
+        ep = self.endpoint()
+        if ep is None:
+            raise StudioError("no image model")
+        session.cancel_tasks()
+        session.stage = "drawing"
+        session.candidates = [None] * CANDIDATES
+        session.errors = []
+        session.chosen = None
+        session.message = ""
+        self._patch(session)
+        self._clear_session_dir(session)
+        for i in range(CANDIDATES):
+            session.tasks.append(asyncio.create_task(self._draw_candidate(session, ep, i)))
+        return session.view()
+
+    async def regenerate(self, session_id: str) -> dict[str, Any]:
+        return await self.start(session_id)
+
+    async def _draw_candidate(self, session: Session, ep: Endpoint, index: int) -> None:
+        try:
+            png = await self._generate(ep, build_prompt(session.description, index))
+            rel = f"avatar/sessions/{session.id}/c{index}.webp"
+            await asyncio.to_thread(self._save_still, rel, png)
+            session.candidates[index] = rel
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("avatar candidate {} failed: {}", index, exc)
+            session.errors.append(self._describe(exc))
+        finally:
+            if session.stage == "drawing":
+                done = sum(1 for c in session.candidates if c) + len(session.errors)
+                if done >= CANDIDATES:
+                    if any(session.candidates):
+                        session.stage = "choose"
+                    else:
+                        session.stage = "failed"
+                        session.message = (
+                            session.errors[0] if session.errors else "Nothing came back."
+                        )
+                self._patch(session)
+
+    async def choose(self, session_id: str, index: int) -> dict[str, Any]:
+        """One of the four was picked: it is the idle pose; the other four are drawn from it."""
+        session = self._session(session_id)
+        if session.stage != "choose":
+            return session.view()
+        if not 0 <= index < CANDIDATES or not session.candidates[index]:
+            raise StudioError("that candidate is not there")
+        ep = self.endpoint()
+        if ep is None:
+            raise StudioError("no image model")
+        session.cancel_tasks()
+        session.chosen = index
+        session.stage = "posing"
+        session.errors = []
+        session.face = f"face-{uuid.uuid4().hex[:8]}"
+        session.moods = {}
+        self._patch(session)
+        session.tasks.append(asyncio.create_task(self._pose(session, ep)))
+        return session.view()
+
+    async def _pose(self, session: Session, ep: Endpoint) -> None:
+        assert session.face and session.chosen is not None
+        ws = self.svc.workspace()
+        src = ws / str(session.candidates[session.chosen])
+        face_dir = ws / "avatar" / session.face
+        try:
+            face_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, face_dir / "idle.webp")
+            session.moods["idle"] = f"avatar/{session.face}/idle.webp"
+            self._patch(session)
+            png = await asyncio.to_thread(self._png_of, src)
+
+            async def one(mood: str) -> None:
+                try:
+                    out = await self._edit(ep, png, KEEP + MOOD_INSTRUCTIONS[mood])
+                    rel = f"avatar/{session.face}/{mood}.webp"
+                    await asyncio.to_thread(self._save_still, rel, out)
+                    session.moods[mood] = rel
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("avatar pose {} failed: {}", mood, exc)
+                    session.errors.append(f"{mood}: {self._describe(exc)}")
+                self._patch(session)
+
+            await asyncio.gather(*(one(m) for m in MOODS if m != "idle"))
+            # a pose that failed shows the idle still instead, so the face is never blank
+            for mood in MOODS:
+                if mood not in session.moods:
+                    shutil.copyfile(face_dir / "idle.webp", face_dir / f"{mood}.webp")
+                    session.moods[mood] = f"avatar/{session.face}/{mood}.webp"
+            self.svc.update_profile({"avatar": session.face})
+            session.stage = "done"
+            session.message = "The new look is on."
+            self._patch(session)
+            self.svc.ui.emit(
+                {
+                    "type": "notice",
+                    "level": "info",
+                    "text": "New look: {description}. Say what to change any time, or pick another under Settings.",
+                    "vars": {"description": session.description},
+                    "thread": session.thread,
+                }
+            )
+            self._prune_sessions()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("avatar pose set failed")
+            session.stage = "failed"
+            session.message = self._describe(exc)
+            self._patch(session)
+
+    def cancel(self, session_id: str, quiet: bool = False) -> dict[str, Any]:
+        session = self._session(session_id)
+        session.cancel_tasks()
+        if session.stage not in ("done",):
+            session.stage = "cancelled"
+            session.message = "" if quiet else "Not this time."
+        self._patch(session)
+        self._clear_session_dir(session)
+        return session.view()
+
+    # ------------------------------------------------------------------ pictures
+    async def _generate(self, ep: Endpoint, prompt: str) -> bytes:
+        if ep.dashscope:
+            return await self._dashscope(
+                ep, ep.image_model, [{"text": prompt}], self._dashscope_params(ep.image_model)
+            )
+        body = {
+            "model": ep.image_model,
+            "prompt": prompt,
+            "n": 1,
+            "size": SIZE,
+            "response_format": "b64_json",
+        }
+        r = await self._http.post(
+            f"{ep.base_url}/images/generations", json=body, headers=self._headers(ep)
+        )
+        return await self._image_of(r)
+
+    async def _edit(self, ep: Endpoint, png: bytes, instruction: str) -> bytes:
+        if ep.dashscope:
+            model = ep.image_model
+            three_x = model.startswith("qwen-image-3") or model.startswith("wan")
+            edit_model = model if (three_x or "edit" in model) else "qwen-image-edit-max"
+            params = self._dashscope_params(model) if three_x else {"n": 1, "watermark": False}
+            content = [
+                {"image": "data:image/png;base64," + base64.b64encode(png).decode()},
+                {"text": instruction},
+            ]
+            return await self._dashscope(ep, edit_model, content, params)
+        r = await self._http.post(
+            f"{ep.base_url}/images/edits",
+            data={
+                "model": ep.image_model,
+                "prompt": instruction,
+                "n": "1",
+                "size": SIZE,
+                "response_format": "b64_json",
+            },
+            files={"image": ("idle.png", png, "image/png")},
+            headers=self._headers(ep),
+        )
+        return await self._image_of(r)
+
+    @staticmethod
+    def _headers(ep: Endpoint) -> dict[str, str]:
+        return {"Authorization": f"Bearer {ep.api_key}"} if ep.api_key else {}
+
+    async def _image_of(self, r: httpx.Response) -> bytes:
+        """The picture in an OpenAI images reply: inline, or fetched from the URL given."""
+        if r.status_code >= 400:
+            raise StudioError(self._http_error(r))
+        try:
+            data = r.json()
+        except ValueError as exc:
+            raise StudioError("The image endpoint sent something that is not a picture.") from exc
+        first = (data.get("data") or [{}])[0] if isinstance(data, dict) else {}
+        if first.get("b64_json"):
+            return base64.b64decode(first["b64_json"])
+        if first.get("url"):
+            img = await self._http.get(str(first["url"]))
+            if img.status_code >= 400:
+                raise StudioError("The picture could not be fetched.")
+            return img.content
+        raise StudioError(
+            str((data.get("error") or {}).get("message") or "No picture came back.")[:200]
+        )
+
+    @staticmethod
+    def _dashscope_params(model: str) -> dict[str, Any]:
+        params: dict[str, Any] = {"size": SIZE.replace("x", "*"), "watermark": False}
+        if model.startswith("qwen-image"):
+            params["prompt_extend"] = False
+        return params
+
+    async def _dashscope(
+        self, ep: Endpoint, model: str, content: list[dict[str, Any]], params: dict[str, Any]
+    ) -> bytes:
+        """One call to Model Studio's ``multimodal-generation/generation``; the first picture."""
+        host = re.split(r"/compatible-mode|/api/v1", ep.base_url, maxsplit=1)[0].rstrip("/")
+        body = {
+            "model": model,
+            "input": {"messages": [{"role": "user", "content": content}]},
+            "parameters": params,
+        }
+        r = await self._http.post(
+            f"{host}/api/v1/services/aigc/multimodal-generation/generation",
+            json=body,
+            headers=self._headers(ep),
+        )
+        if r.status_code >= 400:
+            raise StudioError(self._http_error(r))
+        try:
+            data = r.json()
+            url = data["output"]["choices"][0]["message"]["content"][0]["image"]
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            msg = ""
+            try:
+                msg = str(r.json().get("message") or "")
+            except ValueError:
+                pass
+            raise StudioError(msg[:200] or "No picture came back.") from exc
+        img = await self._http.get(str(url))
+        if img.status_code >= 400:
+            raise StudioError("The picture could not be fetched.")
+        return img.content
+
+    @staticmethod
+    def _http_error(r: httpx.Response) -> str:
+        try:
+            err = r.json()
+            if isinstance(err, dict):
+                e = err.get("error")
+                if isinstance(e, dict):
+                    code = str(e.get("code") or "")
+                    if code == "allowance_exhausted":
+                        return "The free allowance is used up."
+                    return str(e.get("message") or code or f"HTTP {r.status_code}")[:200]
+                return str(err.get("message") or f"HTTP {r.status_code}")[:200]
+        except ValueError:
+            pass
+        return f"HTTP {r.status_code}"
+
+    @staticmethod
+    def _describe(exc: Exception) -> str:
+        if isinstance(exc, StudioError):
+            return str(exc)
+        if isinstance(exc, httpx.TimeoutException):
+            return "The image endpoint did not answer in time."
+        if isinstance(exc, httpx.HTTPError):
+            return "The image endpoint could not be reached."
+        return f"{type(exc).__name__}: {exc}"[:200]
+
+    # ------------------------------------------------------------------ files
+    def _save_still(self, rel: str, data: bytes) -> None:
+        """A picture into the workspace as a square webp, at most STILL_PX wide."""
+        from PIL import Image
+
+        target = self.svc.workspace() / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with Image.open(io.BytesIO(data)) as opened:
+            im = opened.convert("RGB")
+        w, h = im.size
+        side = min(w, h)
+        if w != h:
+            left, top = (w - side) // 2, (h - side) // 2
+            im = im.crop((left, top, left + side, top + side))
+        if side > STILL_PX:
+            im = im.resize((STILL_PX, STILL_PX), Image.Resampling.LANCZOS)
+        im.save(target, "WEBP", quality=88, method=4)
+
+    @staticmethod
+    def _png_of(path: Path) -> bytes:
+        from PIL import Image
+
+        with Image.open(path) as im:
+            out = io.BytesIO()
+            im.convert("RGB").save(out, "PNG")
+            return out.getvalue()
+
+    def _clear_session_dir(self, session: Session) -> None:
+        d = self.svc.workspace() / "avatar" / "sessions" / session.id
+        if d.is_dir():
+            shutil.rmtree(d, ignore_errors=True)
+
+    def _prune_sessions(self) -> None:
+        """Candidates of sessions older than a day go; faces stay (the profile may name one)."""
+        root = self.svc.workspace() / "avatar" / "sessions"
+        if not root.is_dir():
+            return
+        cutoff = time.time() - SESSION_TTL_S
+        for d in root.iterdir():
+            try:
+                if (
+                    d.is_dir()
+                    and d.stat().st_mtime < cutoff
+                    and not (self.current and d.name == self.current.id)
+                ):
+                    shutil.rmtree(d, ignore_errors=True)
+            except OSError:
+                pass
+
+
+__all__ = [
+    "CANDIDATES",
+    "MOODS",
+    "PICTURES_PER_FACE",
+    "AvatarStudio",
+    "Endpoint",
+    "Session",
+    "StudioError",
+    "build_prompt",
+    "parse_choice",
+    "parse_request",
+]

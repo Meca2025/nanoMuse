@@ -406,7 +406,7 @@ export function Notice({ event }: { event: NoticeEvent }) {
           event.level === "error" && "bg-rose-500/12 text-rose-700 dark:text-rose-300",
         )}
       >
-        {t(event.text)}
+        {t(event.text, event.vars)}
         {detail && (
           <>
             {" "}

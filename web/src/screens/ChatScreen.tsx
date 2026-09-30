@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { api, fileUrl } from "../api";
 import { AllowanceHeadsUp } from "../components/AllowanceWays";
 import { Avatar } from "../components/Avatar";
+import { AvatarOptionsCard } from "../components/AvatarOptionsCard";
 import { BrowserViewer } from "../components/BrowserViewer";
 import { MicButton, useDictation } from "../components/Dictation";
 import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
@@ -277,6 +278,8 @@ function EventView({
         return <BrowserCard event={event} onOpen={onOpenBrowser} />;
       case "hands":
         return <HandsCard event={event} name={name} />;
+      case "avatar":
+        return <AvatarOptionsCard event={event} name={name} />;
       default:
         return null;
     }

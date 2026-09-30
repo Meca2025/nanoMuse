@@ -101,6 +101,8 @@ export interface NoticeEvent extends BaseEvent {
   code?: string;
   /** the raw exception, for bug reports */
   detail?: string;
+  /** values for the {placeholders} in `text` */
+  vars?: Record<string, string | number>;
   source?: string;
   /** code "allowance": what the relay said — what is left, the pool, and the three ways on */
   allowance?: {
@@ -175,6 +177,26 @@ export interface HandsEvent extends BaseEvent {
   notice?: string;
 }
 
+/** The avatar studio's card: a new face from a description, drawn in the chat (nanomuse/avatar). */
+export interface AvatarEvent extends BaseEvent {
+  type: "avatar";
+  session: string;
+  /** estimate (waiting for the tap) · drawing · choose (four wait) · posing · done · cancelled · failed */
+  stage: "estimate" | "drawing" | "choose" | "posing" | "done" | "cancelled" | "failed" | string;
+  description: string;
+  /** what it costs: the relay's figure when the account draws; the count alone with one's own key */
+  cost?: { pictures?: number; model?: string; cloud?: boolean; cny?: number | null; left_cny?: number | null; unlimited?: boolean; affordable?: boolean; error?: string };
+  /** workspace paths of the four candidates (null while one is still being drawn) */
+  candidates?: Array<string | null>;
+  errors?: string[];
+  chosen?: number | null;
+  /** the face id once one was picked; the profile's avatar when done */
+  face?: string | null;
+  /** mood → workspace path, filled as the poses land */
+  moods?: Record<string, string>;
+  message?: string;
+}
+
 export type TimelineEvent =
   | UserEvent
   | AssistantEvent
@@ -184,7 +206,8 @@ export type TimelineEvent =
   | NoticeEvent
   | ArtifactEvent
   | BrowserEvent
-  | HandsEvent;
+  | HandsEvent
+  | AvatarEvent;
 
 export interface ThreadMeta {
   id: string;

@@ -216,6 +216,18 @@ class CloudClient:
         models = data.get("data")
         return models if isinstance(models, list) else []
 
+    async def estimate(
+        self, images: int = 0, image_model: str = "", size: str = ""
+    ) -> dict[str, Any]:
+        """What ``images`` pictures would cost against the pool (``cny``, ``left_cny``,
+        ``affordable``, ``unlimited``); nothing is charged."""
+        q = f"/v1/estimate?images={int(images)}"
+        if image_model:
+            q += f"&image_model={image_model}"
+        if size:
+            q += f"&size={size}"
+        return await self._request("GET", q)
+
     @staticmethod
     def recommended_model(models: list[dict[str, Any]]) -> str:
         """The relay's recommended chat model, else the default when it is offered, else the

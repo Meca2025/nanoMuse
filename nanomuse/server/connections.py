@@ -288,6 +288,9 @@ class Connections:
                 "base_url": s.llm.base_url or "",
                 "tool_mode": s.llm.tool_mode,
                 "stream": s.llm.stream,
+                # the avatar studio's models on the same host; "" = the automatic choice
+                "image_model": s.llm.image_model,
+                "video_model": s.llm.video_model,
                 "key_source": key_source,
                 "from_app": bool(self.data.get("llm")),
                 # the model is the nanoMuse Cloud account's (the form says so instead of a URL)
@@ -388,7 +391,7 @@ class Connections:
     # ------------------------------------------------------------------ model
     def set_llm(self, body: dict[str, Any]) -> dict[str, Any]:
         llm = dict(self.data.get("llm") or {})
-        for key in ("provider", "model", "base_url", "tool_mode"):
+        for key in ("provider", "model", "base_url", "tool_mode", "image_model", "video_model"):
             if body.get(key) is not None:
                 llm[key] = str(body[key]).strip()
         if body.get("base_url") is not None:
