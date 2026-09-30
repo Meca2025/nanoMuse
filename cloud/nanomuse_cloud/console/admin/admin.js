@@ -27,7 +27,7 @@
     reqs: (n) => `${fmt(n)} 次`, tokens: (n) => `${fmt(n)} tokens`, seconds: (n) => `${fmt(n)} 秒`, pictures: (n) => `${fmt(n)} 张`, inOut: (i, o) => `输入 ${fmt(i)} · 输出 ${fmt(o)}`,
     all: "全部", signIns: "登录", refusals: "超额", errors: "错误", calls: "通话", passwords: "密码",
     eventName: {
-      "account.created": "注册", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置密码", "password.changed": "修改密码",
+      "account.created": "注册", "sign_in.code": "验证码登录", "sign_in.onetap": "本机号码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置密码", "password.changed": "修改密码",
       "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "加入共创计划", "contribute.bonus": "共创奖励 +¥10", "contribute.off": "关闭贡献对话", "contribute.deleted": "删除贡献的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励",
     },
     // drawer
@@ -69,7 +69,7 @@
     reqs: (n) => `${fmt(n)} req`, tokens: (n) => `${fmt(n)} tokens`, seconds: (n) => `${fmt(n)} s`, pictures: (n) => `${fmt(n)} pictures`, inOut: (i, o) => `${fmt(i)} in · ${fmt(o)} out`,
     all: "All", signIns: "Sign-ins", refusals: "Refusals", errors: "Errors", calls: "Calls", passwords: "Passwords",
     eventName: {
-      "account.created": "Joined", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
+      "account.created": "Joined", "sign_in.code": "Signed in with a code", "sign_in.onetap": "Signed in with the phone's number", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
       "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "Joined co-creation", "contribute.bonus": "Co-creation bonus +¥10", "contribute.off": "Contribution off", "contribute.deleted": "Contributed turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted",
     },
     spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Pool", noCap: "no cap", left: "left", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
@@ -125,11 +125,11 @@
     lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
   };
   const EVENT_STYLE = {
-    "account.created": ["ok", ICON.person], "sign_in.code": ["", ICON.in], "sign_in.password": ["", ICON.in], "sign_in.failed": ["warn", ICON.warn],
+    "account.created": ["ok", ICON.person], "sign_in.code": ["", ICON.in], "sign_in.onetap": ["", ICON.in], "sign_in.password": ["", ICON.in], "sign_in.failed": ["warn", ICON.warn],
     "password.set": ["violet", ICON.key], "password.changed": ["violet", ICON.key], "password.cleared": ["violet", ICON.key], "sign_out": ["grey", ICON.out], "sign_out.all": ["grey", ICON.out],
     "budget.refused": ["bad", ICON.warn], "upstream.error": ["bad", ICON.warn], "call.ended": ["ok", ICON.realtime],
   };
-  const FILTERS = [["", "all"], ["sign_in.code,sign_in.password,sign_in.failed,account.created", "signIns"], ["budget.refused", "refusals"], ["upstream.error", "errors"], ["call.ended", "calls"], ["password.set,password.changed,password.cleared", "passwords"]];
+  const FILTERS = [["", "all"], ["sign_in.code,sign_in.onetap,sign_in.password,sign_in.failed,account.created", "signIns"], ["budget.refused", "refusals"], ["upstream.error", "errors"], ["call.ended", "calls"], ["password.set,password.changed,password.cleared", "passwords"]];
 
   const SS = window.sessionStorage;
   let token = SS.getItem("nm.admin") || "";

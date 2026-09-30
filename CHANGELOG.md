@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Added
+
+- **Sign in with the phone's own number** (Android; relay 0.6.0). On mobile data the carrier confirms the number of the SIM — 号码认证服务's H5 一键登录 — and no code is sent: the app opens the relay's page in a WebView, the carrier's dialog shows the masked number and takes its middle four digits, `GetPhoneWithToken` gives the relay the number, and the app claims the key with a secret only it holds (`GET /v1/auth/onetap`, `POST /v1/auth/onetap/{token,verify,claim}`, `cloud/nanomuse_cloud/onetap.py`). The carrier SDK is loaded by that page at runtime (the ISC-licensed `aliyun_numberauthsdk_web` from the npm mirror); nothing closed is in the APK or the relay. Wi‑Fi has to be off — the page says so and offers the code instead. Off unless the relay has `ALIYUN_ONETAP_SCHEME`.
+
 ### Changed
 
 - **The relay's web console takes a phone number too** (relay 0.5.4): the sign-in field says *Phone number or e-mail*, switches to the number keypad when you start with a digit, and the refusal names both; the docs and the docstrings that still said "sign in with an e-mail" say a phone number or an e-mail.

@@ -395,6 +395,13 @@
             </intent-filter>
         </activity>
 
+        <!-- nanoMuse: sign in with the phone's own number — the relay's page in a WebView -->
+        <activity
+            android:name="io.github.nanomuse.ui.cloud.OneTapSignInActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.Minis" />
+
         <!-- OAuth callback handler: captures localhost redirects for all providers -->
         <!-- Prevents "Choose activity" dialog when OAuth provider redirects to localhost -->
         <activity
