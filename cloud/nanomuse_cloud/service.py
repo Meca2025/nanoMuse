@@ -421,7 +421,7 @@ class Cloud:
         self._check_new_password(password, self.crypto.decrypt(caller.account_id, account["identifier_enc"] or "") or "")
         stored = account["password_hash"] or ""
         if stored:
-            fresh_code = caller.via in ("code", "onetap") and now() - caller.key_created_at <= self.s.password_reset_window_s
+            fresh_code = caller.via == "code" and now() - caller.key_created_at <= self.s.password_reset_window_s
             if not fresh_code:
                 if not current:
                     raise CloudError(400, "password_required", "Enter the current password (or sign in with a code first)")
@@ -1083,7 +1083,7 @@ class Cloud:
             "week": totals(week_start),
             "period": {"days": days, **totals(since), "by_model": self._rows_cny(self.db.usage_by_model(since))},
             "signals_today": {
-                "sign_ins": counts.get("sign_in.code", 0) + counts.get("sign_in.password", 0) + counts.get("sign_in.onetap", 0),
+                "sign_ins": counts.get("sign_in.code", 0) + counts.get("sign_in.password", 0),
                 "sign_in_failures": counts.get("sign_in.failed", 0),
                 "budget_refusals": counts.get("budget.refused", 0),
                 "upstream_errors": counts.get("upstream.error", 0),
@@ -1116,7 +1116,7 @@ class Cloud:
             rows.append(
                 {
                     "day": d,
-                    "sign_ins": e.get("sign_in.code", 0) + e.get("sign_in.password", 0) + e.get("sign_in.onetap", 0),
+                    "sign_ins": e.get("sign_in.code", 0) + e.get("sign_in.password", 0),
                     "sign_in_failures": e.get("sign_in.failed", 0),
                     "new_accounts": new.get(d, 0),
                     "active_accounts": active.get(d, 0),

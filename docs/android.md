@@ -23,8 +23,7 @@ About*).
    `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` if you like.
 2. Open it. Android asks once to allow installs from your browser or file manager.
 3. **Sign in.** The first screen is the account: a phone number or an e-mail address,
-   a code — or a password once you have set one; on mobile data, *Sign in with this
-   phone's number* lets the carrier confirm the SIM's number instead ([cloud.md](cloud.md)). It is what lets your devices work as one
+   a code — or a password once you have set one. It is what lets your devices work as one
    ([hub.md](hub.md)) and brings a model to start with ([cloud.md](cloud.md): ¥10 free per
    account, ¥5 more per friend invited, ¥10 more for joining the co-creation programme; then [your own key](own-key.md)). Then choose which model answers: the account's
    own, or a key of your own (any OpenAI-compatible endpoint, or the OAuth sign-ins the

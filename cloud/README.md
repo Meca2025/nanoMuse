@@ -106,7 +106,6 @@ for the full list. The ones that matter:
 | `PER_MINUTE_REQUESTS` | 30 | per account — what stops a runaway loop |
 | `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` (SMS for phones, mail for addresses) |
 | `ALIYUN_SMS_API` | `dypns` | `dypns` (号码认证服务 `SendSmsVerifyCode`) or `dysms` (短信服务 `SendSms`) |
-| `ALIYUN_ONETAP_SCHEME` | empty | the *Web* scheme of 号码认证服务 for `PUBLIC_BASE`: the apps offer *Sign in with this phone's number* (H5 一键登录, `onetap.py`); `ALIYUN_ONETAP_SDK_URL` is where the page loads the web SDK from |
 | `CLOUD_MODELS` | Qwen chat + image, Wan video | JSON list to replace the menu, prices included |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
@@ -238,13 +237,6 @@ report can be matched to a ledger row without any content being logged.
   with your own approved signature and a template whose only variable is
   `${code}`; that review is Aliyun's process and takes a working day or two.
   Either way the relay makes and checks the code itself.
-- **The phone's own number, no code** (`ALIYUN_ONETAP_SCHEME`): the same RAM
-  user, plus a *Web* scheme in 号码认证服务 whose origin is `PUBLIC_BASE` and
-  whose page is `PUBLIC_BASE/` (`CreateVerifyScheme` with `OsType=Web`, or the
-  console). The apps then show *Sign in with this phone's number*: the relay's
-  page `/app/onetap.html` in a WebView, the carrier's dialog, `GetAuthToken` and
-  `GetPhoneWithToken` on the relay. Mobile data on and Wi‑Fi off is the H5
-  flow's condition; the page says so and hands back to the code otherwise.
 - `both` routes by identifier type. Non-mainland numbers are accepted as
   identifiers but the Aliyun sender only covers `+86`; use e-mail for the rest
   or plug in another sender in `senders.py`.
