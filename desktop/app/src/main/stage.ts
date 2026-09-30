@@ -101,14 +101,17 @@ export class Stage {
     const frames: Array<[number, Record<string, unknown>]> = [
       [0, { kind: "hands", event: "begin", text: "Open the budget sheet and add this month's numbers" }],
       [300, { kind: "hands", event: "screen" }],
-      [900, { kind: "hands", event: "act", action: "click", fx: 0.28, fy: 0.36, label: "Budget 2026.xlsx", app: "Files" }],
-      [1500, { kind: "hands", event: "act", action: "drag", fx: 0.55, fy: 0.5, fx2: 0.72, fy2: 0.62, label: "select the range" }],
-      [1900, { kind: "hands", event: "act", action: "type", text: "1240" }],
+      [900, { kind: "hands", event: "act", action: "drag", fx: 0.55, fy: 0.5, fx2: 0.72, fy2: 0.62, label: "select the range" }],
+      [1300, { kind: "hands", event: "act", action: "type", text: "1240" }],
+      [1500, { kind: "hands", event: "act", action: "click", fx: 0.28, fy: 0.36, label: "Budget 2026.xlsx", app: "Files" }],
+      [1800, { kind: "hands", event: "act", action: "key", keys: ["ctrl", "s"] }],
     ];
+    // NANOMUSE_STAGE_DEMO_AT picks the moment (ms into the script) the screenshot is taken
+    const at = Number(process.env.NANOMUSE_STAGE_DEMO_AT || 2200);
     win.webContents.once("did-finish-load", () => {
       this.show();
-      for (const [at, frame] of frames) setTimeout(() => win.webContents.send("hands", frame), 400 + at);
-      setTimeout(() => void onDone(win), 400 + 2300);
+      for (const [when, frame] of frames) setTimeout(() => win.webContents.send("hands", frame), 400 + when);
+      setTimeout(() => void onDone(win), 400 + at);
     });
   }
 }

@@ -25,6 +25,8 @@ from nanomuse import __version__, prompts
 from nanomuse.agent import Incoming, MuseAgent
 from nanomuse.app import NanoMuseApp
 from nanomuse.bridge.server import Bridge
+from nanomuse.call import CallBridge
+from nanomuse.coding.service import CodingService
 from nanomuse.config import Settings
 from nanomuse.goals import Goal
 from nanomuse.hub.service import HubService
@@ -40,6 +42,7 @@ from nanomuse.server.events import MAIN_THREAD, EventBus, Timeline, new_id, now_
 from nanomuse.server.push import PushService
 from nanomuse.server.webui import WebUI, current_thread
 from nanomuse.tools.browser import Browser
+from nanomuse.tools.coding_tool import CodingAgents
 from nanomuse.tools.reminder_tools import Reminders
 from nanomuse.tools.trigger_tools import Triggers
 from nanomuse.triggers import MailWatcher, Trigger, matches
@@ -343,6 +346,9 @@ class MuseService:
         self.connections = Connections(self)
         # this computer on the hub: the Cloud account, the other devices, their side chats
         self.hub = HubService(self)
+        self.call = CallBridge(self)
+        self.coding = CodingService(self)
+        self.app.tools.add(CodingAgents(coding=self.coding))
         self.token = self._load_token()
         self._scheduler: asyncio.Task[None] | None = None
         self._tidying = False
@@ -392,6 +398,7 @@ class MuseService:
                 t.worker.cancel()
         await asyncio.sleep(0)
         if self._started:
+            await self.coding.close()
             await self.hub.stop()
             await self.connections.close()
             await self.app.close()

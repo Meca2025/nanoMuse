@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -82,6 +83,7 @@ fun SideChatDrawer(
     onSetMain: (String) -> Unit,
     onSystemFiles: (() -> Unit)? = null,
     onDevices: (() -> Unit)? = null,
+    onCoding: (() -> Unit)? = null,
 ) {
     val sessions by chatRepository.observeSessions().collectAsState(initial = emptyList())
     // nanoMuse: the account's other devices, for the row under the main chat
@@ -89,6 +91,10 @@ fun SideChatDrawer(
     val hubDevices by io.github.nanomuse.hub.Hub.devices.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val othersOnline = remember(hubDevices) { hubDevices.count { it.online && it.kind != "web" && it.id != io.github.nanomuse.hub.Hub.deviceId(context) } }
+    // nanoMuse: computers whose runtime can show and steer coding agents (Cursor, Codex, Claude Code)
+    val codingComputers = remember(hubDevices) {
+        hubDevices.count { it.online && it.actions.contains("coding.sessions") && it.id != io.github.nanomuse.hub.Hub.deviceId(context) }
+    }
     var query by remember { mutableStateOf("") }
     val sideChats = remember(sessions, mainSessionId, query) {
         sessions
@@ -160,6 +166,34 @@ fun SideChatDrawer(
                         othersOnline == 0 -> stringResource(R.string.nm_hub_service_alone_short)
                         else -> pluralStringResource(R.plurals.nm_hub_service_devices, othersOnline, othersOnline)
                     },
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        // nanoMuse: Coding — the coding agents on the account's computers, shown once one is online
+        if (onCoding != null && codingComputers > 0) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClick = onCoding)
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+            ) {
+                Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    text = stringResource(R.string.nm_coding_title),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = codingComputers.toString(),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

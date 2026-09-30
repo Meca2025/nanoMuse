@@ -4,7 +4,10 @@ import { setToken } from "./api";
 import { FileViewer } from "./components/FileViewer";
 import { RedPanda } from "./components/RedPanda";
 import { Sidebar } from "./components/Sidebar";
+import { AccountScreen } from "./screens/AccountScreen";
+import { CallScreen } from "./screens/CallScreen";
 import { ChatScreen } from "./screens/ChatScreen";
+import { CodingScreen } from "./screens/CodingScreen";
 import { ConnectionsScreen } from "./screens/ConnectionsScreen";
 import { DevicesScreen } from "./screens/DevicesScreen";
 import { FeedScreen } from "./screens/FeedScreen";
@@ -14,6 +17,7 @@ import { LibraryScreen } from "./screens/LibraryScreen";
 import { MemoryScreen } from "./screens/MemoryScreen";
 import { Onboarding } from "./screens/Onboarding";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { SignInGate } from "./screens/SignInGate";
 import { SkillsScreen } from "./screens/SkillsScreen";
 import { useStore, type Tab } from "./store";
 import { useT } from "./i18n";
@@ -42,7 +46,7 @@ export default function App() {
     const jump = () => {
       const tab = window.location.hash.slice(1) as Tab;
       if (tab && TABS.some((x) => x.id === tab)) setTab(tab);
-      else if (tab === "devices" || tab === "you" || tab === "memory" || tab === "connections" || tab === "skills") setTab(tab);
+      else if (tab === "devices" || tab === "you" || tab === "memory" || tab === "connections" || tab === "skills" || tab === "account" || tab === "coding") setTab(tab);
     };
     jump();
     window.addEventListener("hashchange", jump);
@@ -50,6 +54,10 @@ export default function App() {
   }, [setTab]);
 
   if (state.authError) return <TokenGate />;
+  // The account comes first: this runtime asks for one (cloud.required) and none is signed in.
+  if (state.loaded && state.hub && state.hub.account.required && !state.hub.account.signed_in) {
+    return <SignInGate />;
+  }
   // First run: the server has not seen setup finish and nothing has been said yet.
   if (state.loaded && state.settings && !state.settings.onboarded && !state.onboardingDismissed && !state.threads.some((t) => t.events > 0)) {
     return <Onboarding />;
@@ -89,6 +97,8 @@ export default function App() {
           {state.tab === "connections" && <ConnectionsScreen />}
           {state.tab === "devices" && <DevicesScreen />}
           {state.tab === "you" && <SettingsScreen />}
+          {state.tab === "account" && <AccountScreen />}
+          {state.tab === "coding" && <CodingScreen />}
         </main>
         <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 lg:hidden">
         <ul className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/70 bg-surface p-1.5 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.18)]">
@@ -121,6 +131,7 @@ export default function App() {
       </nav>
       </div>
       <FileViewer path={state.viewer} onClose={() => openFile(null)} />
+      {state.callOpen && <CallScreen mode={state.callOpen} />}
       {state.toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4">
           <div className="rise rounded-2xl bg-fg text-bg px-4 py-2 text-[13.5px] shadow-lg max-w-sm text-center">{state.toast}</div>

@@ -695,3 +695,159 @@ def test_delegate_tool_asks_the_device_and_passes_the_answer_on(hub_server) -> N
     assert actions_sent == ["task", "shell"]
     task_call = [c for c in calls if c.get("action") == "task"][0]
     assert task_call["args"]["from"] == "Desk"
+
+
+def test_coding_actions_are_served_to_other_devices(
+    hub_server, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The phone asks this computer about its coding agents (docs/coding-agents.md)."""
+    from nanomuse.coding import agents as coding_agents
+
+    home = tmp_path / "home"
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    slug = str(ws).strip("/").replace("/", "-")
+    path = home / ".cursor" / "projects" / slug / "agent-transcripts" / "s1" / "s1.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        json.dumps({"role": "user", "message": {"content": [{"type": "text", "text": "hello"}]}})
+        + "\n"
+        + json.dumps(
+            {"role": "assistant", "message": {"content": [{"type": "text", "text": "hi"}]}}
+        )
+        + "\n"
+    )
+    monkeypatch.setenv("NANOMUSE_CODING_HOME", str(home))
+    monkeypatch.setattr(coding_agents, "which", lambda agent: None)
+    client, service, _llm, relay = hub_server
+    sign_in(client)
+    wait_for(lambda: client.get("/api/hub").json()["state"] == "connected")
+    assert "coding.sessions" in relay.hello["device"]["actions"]
+    assert "coding.send" in relay.hello["device"]["actions"]
+
+    relay.call_runtime("coding.sessions", {"agent": "cursor"}, "c1")
+    res = relay.next_frame("result")
+    assert res["id"] == "c1" and res["ok"] is True
+    assert [s["id"] for s in res["body"]["sessions"]] == ["s1"]
+    assert res["body"]["sessions"][0]["title"] == "hello"
+
+    relay.call_runtime("coding.session", {"agent": "cursor", "session_id": "s1"}, "c2")
+    res = relay.next_frame("result")
+    assert res["ok"] is True and [m["text"] for m in res["body"]["transcript"]] == ["hello", "hi"]
+
+    relay.call_runtime("coding.session", {"agent": "cursor", "session_id": "zz"}, "c3")
+    res = relay.next_frame("result")
+    assert res["ok"] is False and res["error"] == "no_session"
+
+    # sending needs the CLI; without it the caller hears why
+    relay.call_runtime("coding.send", {"agent": "cursor", "text": "go", "session_id": "s1"}, "c4")
+    res = relay.next_frame("result")
+    assert res["ok"] is False and res["error"] == "not_installed"
+
+
+def test_password_sign_in_and_account_management(
+    hub_server, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Passwords, other sign-ins, signing out everywhere — the runtime's side of the account
+    (the relay's own rules are covered in cloud/tests)."""
+    client, service, _llm, relay = hub_server
+    calls: list[tuple[str, Any]] = []
+
+    async def fake_login(
+        self: CloudClient, identifier: str, password: str, device: str = ""
+    ) -> dict[str, Any]:
+        from nanomuse.cloud import CloudError
+
+        calls.append(("login", (identifier, password, device)))
+        if password != "correct horse":
+            raise CloudError(401, "bad_credentials", "wrong")
+        self.api_key = "test-key"
+        return {
+            "api_key": "test-key",
+            "account": {
+                "id": "acc_1",
+                "hint": "s***@example.com",
+                "channel": "email",
+                "has_password": True,
+            },
+            "usage": {"today": {"by_kind": {"chat": {"charged": 12}}}},
+        }
+
+    async def fake_set_password(
+        self: CloudClient, password: str, current: str | None = None
+    ) -> None:
+        calls.append(("set_password", (password, current)))
+
+    async def fake_sessions(self: CloudClient) -> list[dict[str, Any]]:
+        return [
+            {"prefix": "nmk_aaaa", "device": "Desk", "via": "password", "current": True},
+            {"prefix": "nmk_bbbb", "device": "Pixel", "via": "code", "current": False},
+        ]
+
+    async def fake_revoke(self: CloudClient, prefix: str) -> None:
+        calls.append(("revoke", prefix))
+
+    async def fake_sign_out_all(self: CloudClient, everything: bool = False) -> int:
+        calls.append(("sign_out_all", everything))
+        return 2 if everything else 1
+
+    monkeypatch.setattr(CloudClient, "login", fake_login)
+    monkeypatch.setattr(CloudClient, "set_password", fake_set_password)
+    monkeypatch.setattr(CloudClient, "sessions", fake_sessions)
+    monkeypatch.setattr(CloudClient, "revoke_session", fake_revoke)
+    monkeypatch.setattr(CloudClient, "sign_out_all", fake_sign_out_all)
+
+    before = client.get("/api/cloud").json()
+    assert (
+        before["signed_in"] is False
+        and before["required"] is True
+        and before["has_password"] is False
+    )
+    bad = client.post(
+        "/api/cloud/login", json={"identifier": "someone@example.com", "password": "nope"}
+    )
+    assert bad.status_code == 401 and "do not match" in str(bad.json()["detail"])
+    assert (
+        client.post(
+            "/api/cloud/login", json={"identifier": "someone@example.com", "password": ""}
+        ).status_code
+        == 422
+    )
+    ok = client.post(
+        "/api/cloud/login", json={"identifier": "someone@example.com", "password": "correct horse"}
+    )
+    assert ok.status_code == 200, ok.text
+    account = ok.json()
+    assert (
+        account["signed_in"] is True
+        and account["has_password"] is True
+        and account["account_id"] == "acc_1"
+    )
+    assert calls[-1][1][2] == "Desk"  # the device name travels with the sign-in
+    assert service.app.vault.get("NANOMUSE_CLOUD_KEY") == "test-key"
+    wait_for(lambda: client.get("/api/hub").json()["state"] == "connected")
+
+    # change the password (the relay checks the current one)
+    r = client.post(
+        "/api/cloud/password", json={"password": "new longer one", "current": "correct horse"}
+    )
+    assert r.status_code == 200 and r.json()["has_password"] is True
+    assert calls[-1] == ("set_password", ("new longer one", "correct horse"))
+    # remove it
+    r = client.post("/api/cloud/password", json={"password": "", "current": "new longer one"})
+    assert r.status_code == 200 and r.json()["has_password"] is False
+
+    sessions = client.get("/api/cloud/sessions").json()["sessions"]
+    assert [s["device"] for s in sessions] == ["Desk", "Pixel"] and sessions[0]["current"] is True
+    assert client.delete("/api/cloud/sessions/nmk_bbbb").status_code == 200
+    assert calls[-1] == ("revoke", "nmk_bbbb")
+
+    # sign out the other devices: still signed in here
+    r = client.post("/api/cloud/sign-out-all", json={"all": False})
+    assert r.json()["signed_out"] == 1 and client.get("/api/cloud").json()["signed_in"] is True
+    # everywhere: this one too
+    r = client.post("/api/cloud/sign-out-all", json={"all": True})
+    assert r.json()["signed_out"] == 2
+    assert client.get("/api/cloud").json()["signed_in"] is False
+    assert service.app.vault.get("NANOMUSE_CLOUD_KEY") is None
+    assert client.get("/api/cloud/sessions").status_code == 401

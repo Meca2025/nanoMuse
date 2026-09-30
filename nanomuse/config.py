@@ -373,6 +373,14 @@ class CloudSettings(BaseModel):
     Signed in, the relay can be the model provider and the hub is reachable."""
 
     base_url: str = "https://cloud.nanomuse.cn"
+    # Sign-in is part of setting up: the first-run flow does not finish without
+    # an account (with it, the relay can be the model, the devices meet, and
+    # calls work). Self-hosters who run without a relay set this to false.
+    required: bool = True
+    # Which model a call uses; empty = the relay's recommended real-time model.
+    realtime_model: str = ""
+    # The voice of a call (the provider's names, e.g. Cherry, Tina, Chelsie).
+    realtime_voice: str = ""
 
 
 class HubSettings(BaseModel):
@@ -583,6 +591,8 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
     # a hosted runtime (nanoMuse Web) is told where its relay is and what to call itself
     if val := os.environ.get("NANOMUSE_CLOUD_BASE_URL"):
         raw.setdefault("cloud", {})["base_url"] = val.rstrip("/")
+    if val := os.environ.get("NANOMUSE_CLOUD_REQUIRED"):
+        raw.setdefault("cloud", {})["required"] = val.strip().lower() in ("1", "true", "yes", "on")
     if val := os.environ.get("NANOMUSE_HUB_NAME"):
         raw.setdefault("hub", {})["name"] = val[:60]
     gui = raw.setdefault("gui", {})
@@ -710,6 +720,11 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
     if cloud := data.get("cloud"):
         if cloud.get("base_url"):
             settings.cloud.base_url = str(cloud["base_url"]).strip().rstrip("/")
+        if "required" in cloud and cloud["required"] is not None:
+            settings.cloud.required = bool(cloud["required"])
+        for key in ("realtime_model", "realtime_voice"):
+            if key in cloud and cloud[key] is not None:
+                setattr(settings.cloud, key, str(cloud[key]).strip()[:80])
     if hub := data.get("hub"):
         for key in ("enabled", "remote_control"):
             if key in hub and hub[key] is not None:

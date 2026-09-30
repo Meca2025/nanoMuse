@@ -370,3 +370,58 @@ body {
 .sheet-in {
   animation: om-sheet 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
+/* Calls: the presence in the middle breathes while it thinks; the rings around it take the
+   colour of who is talking. */
+.call-ring-idle {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.call-ring-hear {
+  border-color: rgba(52, 211, 153, 0.55);
+}
+.call-ring-speak {
+  border-color: rgba(56, 189, 248, 0.6);
+}
+@keyframes call-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+.call-breathe {
+  animation: call-breathe 2.4s ease-in-out infinite;
+}
+@keyframes call-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.call-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.call-dots::before,
+.call-dots::after,
+.call-dots {
+  --d: 5px;
+}
+.call-dots::before,
+.call-dots::after {
+  content: "";
+  width: var(--d);
+  height: var(--d);
+  border-radius: 999px;
+  background: currentColor;
+  animation: call-dot 1.2s infinite ease-in-out;
+}
+.call-dots::after {
+  animation-delay: 0.3s;
+}

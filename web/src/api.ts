@@ -2,7 +2,14 @@ import type {
   ActivityData,
   AttachmentInfo,
   CalendarData,
+  CallView,
   CloudAccount,
+  CloudEvent,
+  CloudMe,
+  CloudSession,
+  CodingAgent,
+  CodingRun,
+  CodingSession,
   ConnectionsData,
   Contact,
   FeedItem,
@@ -113,7 +120,34 @@ export const api = {
   cloudCode: (identifier: string) => request<{ ok: boolean }>("/api/cloud/code", json({ identifier })),
   cloudVerify: (identifier: string, code: string) => request<CloudAccount>("/api/cloud/verify", json({ identifier, code })),
   cloudSignOut: () => request<CloudAccount>("/api/cloud/sign-out", json({})),
+  cloudLogin: (identifier: string, password: string) => request<CloudAccount>("/api/cloud/login", json({ identifier, password })),
+  /** set or change the password; "" with the current one removes it */
+  cloudPassword: (password: string, current?: string) => request<CloudAccount>("/api/cloud/password", json({ password, current: current ?? null })),
+  cloudSessions: () => request<{ sessions: CloudSession[] }>("/api/cloud/sessions"),
+  cloudRevokeSession: (prefix: string) => request<{ sessions: CloudSession[] }>(`/api/cloud/sessions/${encodeURIComponent(prefix)}`, { method: "DELETE" }),
+  cloudSignOutAll: (all = false) => request<{ signed_out: number } & CloudAccount>("/api/cloud/sign-out-all", json({ all })),
+  cloudEvents: (limit = 50) => request<{ events: CloudEvent[] }>(`/api/cloud/events?limit=${limit}`),
+  cloudDelete: () => request<CloudAccount>("/api/cloud/delete", json({})),
+  cloudMe: () => request<CloudMe>("/api/cloud/me"),
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
+  // ---- calls (voice / video, in real time)
+  call: () => request<CallView>("/api/cloud/call"),
+  setCall: (body: { model?: string; voice?: string }) => request<CallView>("/api/cloud/call", { method: "PUT", body: JSON.stringify(body) }),
+  // ---- coding agents, here or on another computer of yours
+  coding: (device = "") => request<{ agents: CodingAgent[]; runs: CodingRun[]; device?: string }>(`/api/coding${device ? `?device=${encodeURIComponent(device)}` : ""}`),
+  codingSessions: (q: { agent?: string; limit?: number; workspace?: string; device?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (q.agent) params.set("agent", q.agent);
+    if (q.limit) params.set("limit", String(q.limit));
+    if (q.workspace) params.set("workspace", q.workspace);
+    if (q.device) params.set("device", q.device);
+    const qs = params.toString();
+    return request<{ sessions: CodingSession[] }>(`/api/coding/sessions${qs ? `?${qs}` : ""}`);
+  },
+  codingSession: (agent: string, id: string, device = "") =>
+    request<CodingSession>(`/api/coding/sessions/${encodeURIComponent(agent)}/${encodeURIComponent(id)}${device ? `?device=${encodeURIComponent(device)}` : ""}`),
+  codingSend: (body: { agent: string; text: string; session_id?: string; workspace?: string; device?: string }) => request<CodingRun>("/api/coding/send", json(body)),
+  codingStop: (run: string, device = "") => request<{ stopped: boolean }>("/api/coding/stop", json({ run, device })),
   hub: () => request<HubView>("/api/hub"),
   updateHub: (body: { enabled?: boolean; remote_control?: boolean; name?: string }) =>
     request<HubView>("/api/hub", { method: "PUT", body: JSON.stringify(body) }),

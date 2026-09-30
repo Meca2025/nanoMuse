@@ -1,4 +1,4 @@
-import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
+import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Phone, Plus, Smartphone, Table2, Trash2, Video, Wand2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, fileUrl } from "../api";
 import { Avatar } from "../components/Avatar";
@@ -13,7 +13,7 @@ import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
 
 export function ChatScreen() {
-  const { state, send, decide, loadEvents, openThread, openFile, toast } = useStore();
+  const { state, send, decide, loadEvents, openThread, openFile, openCall, toast } = useStore();
   const t = useT();
   const { profile, status, activeThread, threads } = state;
   // undefined until the first fetch for this thread has returned — don't flash the empty state
@@ -132,14 +132,36 @@ export function ChatScreen() {
               </span>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => setActivityOpen(true)}
-            aria-label={t("Menu")}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg"
-          >
-            <MoreHorizontal size={20} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {activeThread === "main" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => openCall("voice")}
+                  aria-label={t("Voice call")}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg"
+                >
+                  <Phone size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openCall("video")}
+                  aria-label={t("Video call")}
+                  className="hidden h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg sm:flex"
+                >
+                  <Video size={18} />
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setActivityOpen(true)}
+              aria-label={t("Menu")}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg"
+            >
+              <MoreHorizontal size={20} />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -246,6 +268,7 @@ function EventView({
             continued={prev?.type === "assistant"}
             files={files}
             onOpenFile={onOpenFile}
+            spoken={event.via === "call"}
           />
         );
       case "tool":
@@ -296,7 +319,13 @@ function UserBubble({ event, onOpenFile }: { event: UserEvent; onOpenFile: (path
   const others = files.filter((f) => f.kind !== "image");
   return (
     <div className="rise flex flex-col items-end pl-12">
-      {event.via && <span className="mb-1 text-[11.5px] font-medium text-muted">{t("asked from {device}", { device: event.via })}</span>}
+      {event.via === "call" ? (
+        <span className="mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted">
+          <Phone size={11} /> {t("said on a call")}
+        </span>
+      ) : (
+        event.via && <span className="mb-1 text-[11.5px] font-medium text-muted">{t("asked from {device}", { device: event.via })}</span>
+      )}
       {pictures.length > 0 && (
         <div className="mb-1 flex max-w-full flex-wrap justify-end gap-1.5">
           {pictures.map((f) => (
@@ -364,12 +393,15 @@ function AssistantBubble({
   continued,
   files,
   onOpenFile,
+  spoken,
 }: {
   text: string;
   reasoning?: string;
   streaming?: boolean;
   continued?: boolean;
   files?: readonly string[];
+  /** said aloud on a call rather than written */
+  spoken?: boolean;
   onOpenFile?: (path: string) => void;
 }) {
   const [showReasoning, setShowReasoning] = useState(false);
@@ -387,7 +419,12 @@ function AssistantBubble({
             {reasoning}
           </div>
         )}
-        <div className="rounded-[20px] rounded-bl-md bg-surface-2 px-4 py-2.5">
+        <div className={cx("rounded-[20px] rounded-bl-md bg-surface-2 px-4 py-2.5", spoken && "border border-accent/15")}>
+          {spoken && (
+            <div className="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-accent/80">
+              <Phone size={10} /> {t("said on a call")}
+            </div>
+          )}
           <Markdown text={text} files={files} onOpenFile={onOpenFile} />
           {streaming && <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-accent/70 animate-pulse rounded-sm" />}
         </div>

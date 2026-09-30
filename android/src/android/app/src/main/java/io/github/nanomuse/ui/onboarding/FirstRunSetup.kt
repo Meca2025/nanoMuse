@@ -36,8 +36,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TouchApp
@@ -97,6 +99,7 @@ object FirstRunSetup {
     private const val PREFS = "nanomuse"
     private const val KEY_DONE = "setup.done"
     private const val KEY_HANDS_SEEN = "setup.hands_seen"
+    private const val KEY_SOURCE = "setup.source_chosen"
 
     fun isDone(context: Context): Boolean = prefs(context).getBoolean(KEY_DONE, false)
     fun markDone(context: Context) { prefs(context).edit().putBoolean(KEY_DONE, true).apply() }
@@ -105,36 +108,44 @@ object FirstRunSetup {
     fun handsGuideSeen(context: Context): Boolean = prefs(context).getBoolean(KEY_HANDS_SEEN, false)
     fun markHandsGuideSeen(context: Context) { prefs(context).edit().putBoolean(KEY_HANDS_SEEN, true).apply() }
 
+    /** Whether the "which model answers" page has been answered (Cloud model or own key). */
+    fun sourceChosen(context: Context): Boolean = prefs(context).getBoolean(KEY_SOURCE, false)
+    fun markSourceChosen(context: Context) { prefs(context).edit().putBoolean(KEY_SOURCE, true).apply() }
+
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /**
-     * Whether the home should show the setup instead of the chat. No provider means the chat
-     * cannot answer, so the setup always comes back then. Otherwise it stays only for a brand-new
-     * install — no conversation yet — until *Start* has been tapped, so the last page is a real
-     * step and the hand-off into the first conversation is deliberate.
+     * Whether the home should show the setup instead of the chat. The account is required —
+     * it is what keeps a person's devices together and what the free model runs on — so
+     * without a sign-in the setup always comes back, as it does without any provider (the chat
+     * could not answer). Otherwise it stays only for a brand-new install — no conversation yet —
+     * until *Start* has been tapped, so the last page is a real step and the hand-off into the
+     * first conversation is deliberate.
      */
-    fun needed(hasProviders: Boolean, hasSessions: Boolean, done: Boolean): Boolean =
-        !hasProviders || (!hasSessions && !done)
+    fun needed(signedIn: Boolean, hasProviders: Boolean, hasSessions: Boolean, done: Boolean): Boolean =
+        !signedIn || !hasProviders || (!hasSessions && !done)
 
-    enum class Stage { WELCOME, MODELS, HANDS, MEET }
+    enum class Stage { WELCOME, SOURCE, MODELS, HANDS, MEET }
 
     /** The page to show, from what the app has. */
     fun stage(
-        hasProviders: Boolean,
+        signedIn: Boolean,
         hasGroups: Boolean,
+        sourceChosen: Boolean,
         modelsSkipped: Boolean,
         handsSeen: Boolean,
         handsPossible: Boolean = Build.VERSION.SDK_INT >= Hands.MIN_SDK,
     ): Stage = when {
-        !hasProviders -> Stage.WELCOME
+        !signedIn -> Stage.WELCOME
+        !sourceChosen -> Stage.SOURCE
         !hasGroups && !modelsSkipped -> Stage.MODELS
         !handsSeen && handsPossible -> Stage.HANDS
         else -> Stage.MEET
     }
 
-    /** The dot that lights for a stage: connect · phone · meet (models fold into the first). */
+    /** The dot that lights for a stage: account · phone · meet (the model pages fold into the first). */
     fun dot(stage: Stage): Int = when (stage) {
-        Stage.WELCOME, Stage.MODELS -> 0
+        Stage.WELCOME, Stage.SOURCE, Stage.MODELS -> 0
         Stage.HANDS -> 1
         Stage.MEET -> 2
     }
@@ -145,18 +156,19 @@ private const val PRIVACY_URL = "https://github.com/nano-muse/nanoMuse/blob/main
 @Composable
 fun FirstRunSetupScreen(
     agentName: String,
-    hasProviders: Boolean,
+    signedIn: Boolean,
     hasGroups: Boolean,
+    onSignIn: () -> Unit,
     onAddProvider: () -> Unit,
     onSelectModels: () -> Unit,
     onStart: () -> Unit,
     onSettings: () -> Unit,
-    onStartNow: () -> Unit = onAddProvider,
 ) {
     val context = LocalContext.current
     var modelsSkipped by remember { mutableStateOf(false) }
     var handsSeen by remember { mutableStateOf(FirstRunSetup.handsGuideSeen(context)) }
-    val stage = FirstRunSetup.stage(hasProviders, hasGroups, modelsSkipped, handsSeen)
+    var sourceChosen by remember { mutableStateOf(FirstRunSetup.sourceChosen(context)) }
+    val stage = FirstRunSetup.stage(signedIn, hasGroups, sourceChosen, modelsSkipped, handsSeen)
     val onSurface = MaterialTheme.colorScheme.onSurface
 
     Surface(color = MuseTones.surface, modifier = Modifier.fillMaxSize()) {
@@ -185,7 +197,11 @@ fun FirstRunSetupScreen(
                 modifier = Modifier.weight(1f),
             ) { current ->
                 when (current) {
-                    FirstRunSetup.Stage.WELCOME -> WelcomePage(onStartNow = onStartNow, onOwnKey = onAddProvider)
+                    FirstRunSetup.Stage.WELCOME -> WelcomePage(onSignIn = onSignIn)
+                    FirstRunSetup.Stage.SOURCE -> SourcePage(
+                        onCloud = { FirstRunSetup.markSourceChosen(context); sourceChosen = true },
+                        onOwnKey = { FirstRunSetup.markSourceChosen(context); sourceChosen = true; onAddProvider() },
+                    )
                     FirstRunSetup.Stage.MODELS -> ModelsPage(onSelectModels = onSelectModels, onSkip = { modelsSkipped = true })
                     FirstRunSetup.Stage.HANDS -> HandsPage(
                         onDone = { FirstRunSetup.markHandsGuideSeen(context); handsSeen = true },
@@ -199,18 +215,16 @@ fun FirstRunSetupScreen(
 
 // ── the pages ──────────────────────────────────────────────────────────────
 
-/** The first page: the face, one line on what it is, the notice, and the two doors. */
+/** The first page: the face, one line on what it is, the notice, and the one door — the account. */
 @Composable
-private fun WelcomePage(onStartNow: () -> Unit, onOwnKey: () -> Unit) {
+private fun WelcomePage(onSignIn: () -> Unit) {
     val context = LocalContext.current
     Page(
         hero = { AgentAvatarDisc(mood = AgentMood.IDLE, discSize = 104.dp) },
         title = stringResource(R.string.nm_setup_title),
         subtitle = stringResource(R.string.nm_welcome_tagline),
         primaryLabel = stringResource(R.string.nm_welcome_email),
-        onPrimary = onStartNow,
-        secondaryLabel = stringResource(R.string.nm_setup_own_key),
-        onSecondary = onOwnKey,
+        onPrimary = onSignIn,
         finePrint = stringResource(R.string.nm_welcome_fine_print),
         onLearnMore = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL))) },
     ) {
@@ -221,6 +235,29 @@ private fun WelcomePage(onStartNow: () -> Unit, onOwnKey: () -> Unit) {
         FeatureRow(Icons.Outlined.Computer, stringResource(R.string.nm_welcome_feat_reach), stringResource(R.string.nm_welcome_feat_reach_sub))
         Spacer(Modifier.height(18.dp))
         NoticeCard(title = stringResource(R.string.nm_cloud_notice_title), body = stringResource(R.string.nm_welcome_notice))
+    }
+}
+
+/**
+ * Right after the sign-in: which model answers. The account's own (nanoMuse Cloud, already
+ * set up as a provider by the sign-in) or a key of one's own — the second door leads to
+ * OpenMinis' provider screen; the Cloud provider stays either way.
+ */
+@Composable
+private fun SourcePage(onCloud: () -> Unit, onOwnKey: () -> Unit) {
+    Page(
+        hero = { HeroGlyph(Icons.Outlined.CloudQueue) },
+        title = stringResource(R.string.nm_setup_source_title),
+        subtitle = stringResource(R.string.nm_setup_source_sub),
+        primaryLabel = stringResource(R.string.nm_setup_source_cloud),
+        onPrimary = onCloud,
+        secondaryLabel = stringResource(R.string.nm_setup_own_key),
+        onSecondary = onOwnKey,
+        finePrint = stringResource(R.string.nm_setup_source_fine_print),
+    ) {
+        FeatureRow(Icons.Outlined.CloudQueue, stringResource(R.string.nm_setup_source_cloud), stringResource(R.string.nm_setup_source_cloud_sub))
+        Spacer(Modifier.height(10.dp))
+        FeatureRow(Icons.Outlined.Key, stringResource(R.string.nm_setup_own_key), stringResource(R.string.nm_setup_source_own_sub))
     }
 }
 

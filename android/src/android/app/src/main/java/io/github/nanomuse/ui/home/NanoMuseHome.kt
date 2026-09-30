@@ -10,8 +10,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
@@ -155,9 +158,11 @@ fun NanoMuseHome(
     var setupDone by remember { mutableStateOf(FirstRunSetup.isDone(context)) }
     val hasProviders = providerConfig.instances.isNotEmpty()
     val hasGroups = providerConfig.modelGroups.isNotEmpty()
+    // The account is required: the flow flips when the sign-in lands (or the key is revoked).
+    val signedIn by io.github.nanomuse.cloud.NanoMuseCloud.signedIn(context).collectAsState()
     val phase = when {
-        !configLoaded || sessions == null -> HomePhase.LOADING
-        FirstRunSetup.needed(hasProviders, sessions!!.isNotEmpty(), setupDone) -> HomePhase.SETUP
+        !configLoaded || sessions == null || signedIn == null -> HomePhase.LOADING
+        FirstRunSetup.needed(signedIn == true, hasProviders, sessions!!.isNotEmpty(), setupDone) -> HomePhase.SETUP
         else -> HomePhase.HOME
     }
     // Once the chat has been shown the setup is over for good: an empty main chat is a draft
@@ -292,6 +297,7 @@ fun NanoMuseHome(
                     onSetMain = { id -> MainChat.set(context, id); closeDrawer(); showSession(id) },
                     onSystemFiles = { closeDrawer(); navController.safeNavigate(io.github.nanomuse.ui.sysfiles.ROUTE_SYSTEM_FILES) },
                     onDevices = { closeDrawer(); navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
+                    onCoding = { closeDrawer(); navController.safeNavigate(io.github.nanomuse.ui.coding.ROUTE_CODING) },
                 )
             }
         },
@@ -447,10 +453,10 @@ fun NanoMuseHome(
             HomePhase.LOADING -> Surface(color = MuseTones.surface, modifier = Modifier.fillMaxSize()) {}
             HomePhase.SETUP -> FirstRunSetupScreen(
                 agentName = agentName,
-                hasProviders = hasProviders,
+                signedIn = signedIn == true,
                 hasGroups = hasGroups,
+                onSignIn = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
                 onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
-                onStartNow = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
                 onSelectModels = { navController.safeNavigate(Routes.ONBOARDING_MODELS) },
                 onStart = { FirstRunSetup.markDone(context); setupDone = true },
                 onSettings = { navController.safeNavigate(Routes.SETTINGS) },
@@ -496,13 +502,32 @@ private fun TabHeader(
                     contentDescription = stringResource(R.string.nm_feed_settings_title),
                     onClick = { FeedUi.settingsOpen.value = true },
                 )
-            } else Box {
+            } else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // nanoMuse: a call with the Muse — voice here, video in the menu (docs/calls.md)
+                if (tab == HomeTab.CHAT) {
+                    MuseRoundButton(
+                        icon = Icons.Outlined.Call,
+                        contentDescription = stringResource(R.string.nm_call_voice),
+                        onClick = { navController.safeNavigate(io.github.nanomuse.ui.call.callRoute(video = false)) },
+                    )
+                }
+                Box {
                 MuseRoundButton(
                     icon = Icons.Filled.MoreHoriz,
                     contentDescription = stringResource(R.string.nm_more),
                     onClick = { menu = true },
                 )
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (tab == HomeTab.CHAT) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.nm_call_video)) },
+                            onClick = { menu = false; navController.safeNavigate(io.github.nanomuse.ui.call.callRoute(video = true)) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.nm_coding_title)) },
+                            onClick = { menu = false; navController.safeNavigate(io.github.nanomuse.ui.coding.ROUTE_CODING) },
+                        )
+                    }
                     when (tab) {
                         HomeTab.GOALS -> {
                             DropdownMenuItem(
@@ -532,6 +557,7 @@ private fun TabHeader(
                         text = { Text(stringResource(R.string.nm_drawer_settings)) },
                         onClick = { menu = false; navController.safeNavigate(Routes.SETTINGS) },
                     )
+                }
                 }
             }
         },

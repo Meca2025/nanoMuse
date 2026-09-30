@@ -58,6 +58,7 @@ from pydantic import BaseModel, Field
 
 from nanomuse.bridge.server import BridgeError
 from nanomuse.cloud import CloudError
+from nanomuse.coding.service import CodingError
 from nanomuse.config import Settings
 from nanomuse.hub.client import HubError
 from nanomuse.logger import logger
@@ -270,6 +271,38 @@ class CloudVerifyBody(BaseModel):
 
 class CloudModelBody(BaseModel):
     model: str = Field(default="", max_length=120)
+
+
+class CloudLoginBody(BaseModel):
+    identifier: str = Field(min_length=3, max_length=200)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class CloudPasswordBody(BaseModel):
+    password: str = Field(default="", max_length=128)
+    current: str | None = Field(default=None, max_length=128)
+
+
+class CloudSignOutAllBody(BaseModel):
+    all: bool = False
+
+
+class CodingSendBody(BaseModel):
+    agent: str = Field(min_length=1, max_length=20)
+    text: str = Field(min_length=1, max_length=20000)
+    session_id: str = Field(default="", max_length=120)
+    workspace: str = Field(default="", max_length=1000)
+    device: str = Field(default="", max_length=120)
+
+
+class CodingStopBody(BaseModel):
+    run: str = Field(min_length=1, max_length=40)
+    device: str = Field(default="", max_length=120)
+
+
+class CloudCallBody(BaseModel):
+    model: str | None = Field(default=None, max_length=120)
+    voice: str | None = Field(default=None, max_length=80)
 
 
 class HubBody(BaseModel):
@@ -828,10 +861,76 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         except CloudError as exc:
             raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
 
+    @app.post("/api/cloud/login", dependencies=dep)
+    async def cloud_login(body: CloudLoginBody) -> dict[str, Any]:
+        try:
+            return await svc.hub.login(body.identifier, body.password)
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    @app.post("/api/cloud/password", dependencies=dep)
+    async def cloud_password(body: CloudPasswordBody) -> dict[str, Any]:
+        try:
+            return await svc.hub.set_password(body.password, body.current)
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    @app.get("/api/cloud/sessions", dependencies=dep)
+    async def cloud_sessions() -> dict[str, Any]:
+        try:
+            return {"sessions": await svc.hub.sessions()}
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    @app.delete("/api/cloud/sessions/{prefix}", dependencies=dep)
+    async def cloud_revoke_session(prefix: str) -> dict[str, Any]:
+        try:
+            await svc.hub.revoke_session(prefix)
+            return {"sessions": await svc.hub.sessions()}
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    @app.post("/api/cloud/sign-out-all", dependencies=dep)
+    async def cloud_sign_out_all(body: CloudSignOutAllBody) -> dict[str, Any]:
+        try:
+            n = await svc.hub.sign_out_all(body.all)
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+        return {"signed_out": n, **svc.hub.account_view()}
+
+    @app.get("/api/cloud/events", dependencies=dep)
+    async def cloud_events(limit: int = 50) -> dict[str, Any]:
+        try:
+            return {"events": await svc.hub.events(limit)}
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    @app.post("/api/cloud/delete", dependencies=dep)
+    async def cloud_delete_account() -> dict[str, Any]:
+        try:
+            await svc.hub.delete_account()
+        except CloudError as exc:
+            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+        return svc.hub.account_view()
+
     @app.post("/api/cloud/sign-out", dependencies=dep)
     async def cloud_sign_out() -> dict[str, Any]:
         await svc.hub.sign_out()
         return svc.hub.account_view()
+
+    @app.put("/api/cloud/call", dependencies=dep)
+    async def cloud_call_settings(body: CloudCallBody) -> dict[str, Any]:
+        """Which real-time model and voice a call uses."""
+        if body.model is not None:
+            svc.settings.cloud.realtime_model = body.model.strip()
+        if body.voice is not None:
+            svc.settings.cloud.realtime_voice = body.voice.strip()
+        svc.hub.save_call_settings()
+        return svc.hub.call_view()
+
+    @app.get("/api/cloud/call", dependencies=dep)
+    async def cloud_call_status() -> dict[str, Any]:
+        return svc.hub.call_view()
 
     @app.get("/api/cloud/me", dependencies=dep)
     async def cloud_me() -> dict[str, Any]:
@@ -846,6 +945,87 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             return await svc.hub.use_as_model(body.model)
         except CloudError as exc:
             raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+
+    # ------------------------------------------------------------------ coding agents
+    def _coding_error(exc: CodingError) -> HTTPException:
+        status = {
+            "unknown_agent": 404,
+            "no_session": 404,
+            "no_device": 404,
+            "device_offline": 409,
+            "busy": 409,
+            "not_installed": 412,
+            "not_supported": 412,
+            "usage": 400,
+            "unknown_action": 400,
+        }.get(exc.code, 502)
+        return HTTPException(status, f"{exc.message} ({exc.code})")
+
+    @app.get("/api/coding", dependencies=dep)
+    async def coding_status(device: str = "") -> dict[str, Any]:
+        """Installed agents and recent runs — here, or on another computer of the account."""
+        try:
+            if device:
+                remote = await svc.coding.remote(device, "coding.agents", {})
+                runs = await svc.coding.remote(device, "coding.runs", {})
+                return {"device": device, **remote, **runs}
+            return {"agents": svc.coding.agents(), "runs": svc.coding.list_runs()}
+        except CodingError as exc:
+            raise _coding_error(exc) from exc
+
+    @app.get("/api/coding/sessions", dependencies=dep)
+    async def coding_sessions(
+        agent: str = "", limit: int = 30, workspace: str = "", device: str = ""
+    ) -> dict[str, Any]:
+        limit = max(1, min(limit, 200))
+        args: dict[str, Any] = {"agent": agent, "limit": limit, "workspace": workspace}
+        try:
+            if device:
+                return await svc.coding.remote(device, "coding.sessions", args)
+            return {"sessions": svc.coding.sessions(agent or None, limit, workspace or None)}
+        except CodingError as exc:
+            raise _coding_error(exc) from exc
+
+    @app.get("/api/coding/sessions/{agent}/{session_id}", dependencies=dep)
+    async def coding_session(agent: str, session_id: str, device: str = "") -> dict[str, Any]:
+        try:
+            if device:
+                return await svc.coding.remote(
+                    device, "coding.session", {"agent": agent, "session_id": session_id}
+                )
+            return svc.coding.session(agent, session_id)
+        except CodingError as exc:
+            raise _coding_error(exc) from exc
+
+    @app.post("/api/coding/send", dependencies=dep)
+    async def coding_send(body: CodingSendBody) -> dict[str, Any]:
+        """A message into a coding agent's session; returns the run at once — follow it on
+        the WebSocket (``kind: "coding"``) or poll ``/api/coding``."""
+        try:
+            if body.device:
+                return await svc.coding.remote_send(
+                    body.device,
+                    {
+                        "agent": body.agent,
+                        "text": body.text,
+                        "session_id": body.session_id,
+                        "workspace": body.workspace,
+                    },
+                )
+            return await svc.coding.send(
+                body.agent, body.text, session_id=body.session_id, workspace=body.workspace
+            )
+        except CodingError as exc:
+            raise _coding_error(exc) from exc
+
+    @app.post("/api/coding/stop", dependencies=dep)
+    async def coding_stop(body: CodingStopBody) -> dict[str, Any]:
+        try:
+            if body.device:
+                return await svc.coding.remote(body.device, "coding.stop", {"run": body.run})
+            return {"stopped": svc.coding.stop(body.run)}
+        except CodingError as exc:
+            raise _coding_error(exc) from exc
 
     @app.get("/api/hub", dependencies=dep)
     async def hub_status() -> dict[str, Any]:
@@ -1250,6 +1430,16 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         return FileResponse(target, media_type=media, headers=headers)
 
     # ------------------------------------------------------------------ websocket
+    @app.websocket("/ws/call")
+    async def websocket_call(ws: WebSocket) -> None:
+        """A voice or video call with the Muse (see nanomuse/call.py)."""
+        try:
+            _check_token(ws.query_params.get("token"))
+        except HTTPException:
+            await ws.close(code=4401)
+            return
+        await svc.call.serve(ws)
+
     @app.websocket("/ws")
     async def websocket(ws: WebSocket) -> None:
         try:

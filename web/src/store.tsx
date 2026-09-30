@@ -13,6 +13,8 @@ import { registerWorker, setAppBadge } from "./push";
 import type {
   ApprovalEvent,
   AttachmentInfo,
+  CodingEvent,
+  CodingRun,
   Goal,
   HandsLive,
   HandsStatus,
@@ -27,8 +29,16 @@ import type {
 } from "./types";
 
 /** Tab bar: chat · feed · ideas · goals · library. Memory, devices, connections and settings live behind the avatar. */
-export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "devices" | "connections" | "skills" | "you";
-const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "devices", "connections", "skills", "you"];
+export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "devices" | "connections" | "skills" | "you" | "account" | "coding";
+const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "devices", "connections", "skills", "you", "account", "coding"];
+
+/** A coding run being followed live: the run itself and the steps that arrived so far. */
+export interface CodingLive {
+  run: CodingRun;
+  events: CodingEvent[];
+  /** the text the agent is writing right now (partial deltas) */
+  current: string;
+}
 
 const FEED_SEEN_KEY = "nanomuse_feed_seen";
 
@@ -84,6 +94,12 @@ export interface AppState {
   mishapAt: number;
   /** This device on the hub and the other devices of the account (null until the first state). */
   hub: HubView | null;
+  /** Coding runs followed live, newest last (kept for this page only). */
+  codingLive: Record<string, CodingLive>;
+  /** A call in progress, as the runtime reports it (null when none). */
+  call: { state: string; turns: number; cost_cny: number; video: boolean; source: string } | null;
+  /** Open the call screen (set by the chat header; cleared when the call screen closes). */
+  callOpen: false | "voice" | "video";
   /** This computer's own screen and hands. */
   hands: HandsStatus | null;
   /** The latest live step of the hands, for the stage; cleared when the task ends. */
@@ -106,6 +122,7 @@ type Action =
   | { type: "draft"; text: string | null }
   | { type: "draftFiles"; files: AttachmentInfo[] | null }
   | { type: "onboardingDismissed" }
+  | { type: "callOpen"; mode: false | "voice" | "video" }
   | { type: "toast"; toast: string | null };
 
 const initial: AppState = {
@@ -141,6 +158,9 @@ const initial: AppState = {
   finishedAt: 0,
   mishapAt: 0,
   hub: null,
+  codingLive: {},
+  call: null,
+  callOpen: false,
   hands: null,
   handsLive: null,
 };
@@ -235,6 +255,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, draftFiles: action.files };
     case "onboardingDismissed":
       return { ...state, onboardingDismissed: true };
+    case "callOpen":
+      return { ...state, callOpen: action.mode };
     case "toast":
       return { ...state, toast: action.toast };
     case "ws":
@@ -343,6 +365,35 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       return { ...state, connectionsVersion: state.connectionsVersion + 1 };
     case "hub":
       return { ...state, hub: msg.hub };
+    case "coding": {
+      const id = msg.run?.id ?? msg.event.run;
+      if (!id) return state;
+      const prev = state.codingLive[id];
+      const run: CodingRun | undefined = msg.run ?? prev?.run;
+      if (!run) return state;
+      const events = msg.event.kind === "run" ? (prev?.events ?? []) : [...(prev?.events ?? []), msg.event].slice(-400);
+      let current = prev?.current ?? "";
+      if (msg.event.kind === "text") current = msg.event.partial ? current + (msg.event.text ?? "") : "";
+      if (msg.event.kind === "done" || msg.event.kind === "error") current = "";
+      const live = { ...state.codingLive, [id]: { run: { ...run, device: msg.device ?? run.device }, events, current } };
+      // keep the last 20 runs on the page
+      const ids = Object.keys(live);
+      if (ids.length > 20) for (const old of ids.sort((a, b) => live[a].run.started_at - live[b].run.started_at).slice(0, ids.length - 20)) delete live[old];
+      return { ...state, codingLive: live };
+    }
+    case "call": {
+      if (msg.state === "ended") return { ...state, call: null };
+      return {
+        ...state,
+        call: {
+          state: msg.state,
+          turns: msg.turns ?? state.call?.turns ?? 0,
+          cost_cny: msg.cost_cny ?? state.call?.cost_cny ?? 0,
+          video: msg.video ?? state.call?.video ?? false,
+          source: msg.source ?? state.call?.source ?? "",
+        },
+      };
+    }
     case "hands_state":
       return { ...state, hands: msg.hands };
     case "hands": {
@@ -388,6 +439,8 @@ interface StoreValue {
   draft: (text: string | null) => void;
   draftFiles: (files: AttachmentInfo[] | null) => void;
   dismissOnboarding: () => void;
+  /** open (voice / video) or close the call screen */
+  openCall: (mode: false | "voice" | "video") => void;
   toast: (text: string) => void;
 }
 
@@ -534,6 +587,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (text !== null) dispatch({ type: "tab", tab: "chat" });
       },
       dismissOnboarding: () => dispatch({ type: "onboardingDismissed" }),
+      openCall: (mode) => dispatch({ type: "callOpen", mode }),
       toast: (text) => dispatch({ type: "toast", toast: text }),
     }),
     [state, loadEvents, refreshGoals, refreshSettings],

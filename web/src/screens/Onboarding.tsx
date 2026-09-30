@@ -1,10 +1,10 @@
-import { ArrowRight, Check, ChevronRight, Loader2, Lock } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Cloud, Loader2, Lock } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { DRAGON } from "../avatars";
 import { Avatar } from "../components/Avatar";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
-import { CloudCard } from "../components/CloudCard";
+import { SignIn } from "../components/SignIn";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -41,7 +41,21 @@ export function Onboarding() {
   }, [state.profile]);
   const [conn, setConn] = useState<ConnectionsData | null>(null);
   const [saving, setSaving] = useState(false);
+  const [cloudBusy, setCloudBusy] = useState(false);
   const t = useT();
+
+  const pickCloudModel = async () => {
+    setCloudBusy(true);
+    try {
+      await api.cloudUseAsModel();
+      toast(t("The Cloud model is in use."));
+      await loadConn();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setCloudBusy(false);
+    }
+  };
 
   const loadConn = async () => {
     try {
@@ -151,12 +165,33 @@ export function Onboarding() {
               <p className="mt-1 text-[14px] text-muted">
                 {modelReady
                   ? t("A model is already set up on the server. Keep it, or switch here.")
-                  : t("The quickest start is a free nanoMuse Cloud account: it brings a model with a daily allowance and lets your devices work together. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model.")}
+                  : t("Your account brings a model with a daily allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
               </p>
             </div>
             {conn ? (
               <>
-                {!modelReady && <CloudCard account={state.hub?.account ?? null} onChange={() => void loadConn()} compact useAsModel />}
+                {!modelReady && state.hub?.account.signed_in && (
+                  <button
+                    type="button"
+                    disabled={cloudBusy}
+                    onClick={() => void pickCloudModel()}
+                    className="flex w-full items-center gap-3 rounded-3xl border border-accent/30 bg-accent/5 px-4 py-3.5 text-left"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-white">
+                      {cloudBusy ? <Loader2 size={18} className="animate-spin" /> : <Cloud size={18} />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-medium">{t("Use the nanoMuse Cloud model")}</span>
+                      <span className="block text-[12.5px] text-muted">{t("Signed in as {hint}. A daily allowance, nothing to paste. Recommended to start.", { hint: state.hub.account.hint })}</span>
+                    </span>
+                    <ChevronRight size={16} className="shrink-0 text-muted" />
+                  </button>
+                )}
+                {!modelReady && !state.hub?.account.signed_in && (
+                  <div className="rounded-3xl border border-border/70 bg-surface p-4">
+                    <SignIn onSignedIn={() => void loadConn()} useAsModel />
+                  </div>
+                )}
                 {!modelReady && <p className="px-1 text-[12.5px] font-medium text-muted">{t("Or bring your own key")}</p>}
                 <ModelCard data={conn} onChange={() => void loadConn()} compact />
               </>

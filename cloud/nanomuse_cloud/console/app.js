@@ -1,19 +1,23 @@
-/* nanoMuse web console — a front door to the Muses on your devices.
-   No build step, no framework: one WebSocket to /v1/hub as a `web` device,
-   `task` calls to the device you pick, events streamed back. */
+/* nanoMuse web console — a front door to the Muses on your devices, and
+   to your nanoMuse Cloud account. No build step, no framework: one
+   WebSocket to /v1/hub as a `web` device, `task` calls to the device you
+   pick, events streamed back; the account sheet talks to /v1/me. */
 (() => {
   "use strict";
+
+  const VERSION = "0.1.20";
 
   // ── i18n ────────────────────────────────────────────────────────
   const zh = (navigator.language || "").toLowerCase().startsWith("zh");
   const T = zh ? {
     tagline: "你的每一台设备，都是你的 Muse。",
-    identifier: "手机号或邮箱", code: "验证码", sendCode: "发送验证码", signIn: "登录", another: "换一个号码或邮箱",
+    identifier: "手机号或邮箱", code: "验证码", password: "密码", sendCode: "发送验证码", signIn: "登录", another: "换一个号码或邮箱",
+    byCode: "验证码登录", byPassword: "密码登录", forgot: "忘了密码？用验证码登录", show: "显示", hide: "隐藏",
     codeSent: "验证码已发送，十分钟内有效。", relay: "服务器", fine: "登录后，这个页面能看到你账号下所有在线的设备，并让它们各自的 Muse 去做事。网页本身不操作任何设备。",
     devices: "设备", noDevices: "还没有设备接入。用同一个账号在手机上登录 nanoMuse，或在电脑上运行 nanoMuse Desktop，它们就会出现在这里。",
     online: "在线", offline: "离线", phone: "手机", computer: "电脑", web: "网页", thisTab: "这个页面",
-    signOut: "退出", connected: "已连接", connecting: "连接中…", disconnected: "已断开，正在重连…",
-    pick: "在左边选一台设备", pickSub: "然后像发消息一样告诉它要做什么。手机上的 Muse 会用手机的应用和沙盒，电脑上的 Muse 会用电脑的 shell、文件和屏幕；它们也能互相帮忙。",
+    signOut: "退出登录", signOutAll: "在所有设备上退出", connected: "已连接", connecting: "连接中…", disconnected: "已断开，正在重连…",
+    pick: "选一台设备", pickSub: "然后像发消息一样告诉它要做什么。手机上的 Muse 会用手机的应用和沙盒，电脑上的 Muse 会用电脑的 shell、文件和屏幕；它们也能互相帮忙。",
     placeholder: (n) => `让 ${n} 做点什么…`, offlineNote: (n) => `${n} 现在不在线，消息发不过去。`,
     thinking: "思考中", running: "执行", result: "结果", asks: "转交", remote: "对方",
     approvalTitle: (d) => `${d} 想执行一个需要确认的操作`, allow: "允许", deny: "拒绝", allowed: "已允许", denied: "已拒绝", expired: "已超时", stop: "停止",
@@ -21,15 +25,30 @@
     busy: (n) => `${n} 正在处理…`, sentFrom: "来自网页", waitingPhone: "手机上的 Muse 正在处理，完成后会把结果发回来。",
     lastSeen: "上次在线", justNow: "刚刚", minAgo: (m) => `${m} 分钟前`, hAgo: (h) => `${h} 小时前`, dAgo: (d) => `${d} 天前`,
     risks: { destructive: "会删除或改写", outbound: "会向外发送", system: "系统级操作", install: "安装软件", money: "涉及付款" },
-    errors: { bad_identifier: "请输入手机号或邮箱地址。", code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁，稍等几分钟。", not_invited: "这是一台私人中转，这个号码或邮箱不在名单上。", send_failed: "验证码发送失败，请稍后再试。", bad_key: "登录已失效，请重新登录。", offline: "连不上服务器。" },
+    // account
+    account: "账号", member: "成员", regular: "普通账号", since: "加入于", noPassword: "未设置密码", hasPassword: "已设置密码", setPassword: "设置密码", changePassword: "修改密码",
+    allowance: "今日额度", unlimited: "不限额度", spentToday: (a, c) => `今天已用 ¥${a}，上限 ¥${c}`, spentOnly: (a) => `今天已用 ¥${a}`, tokensToday: (n) => `今天 ${n} tokens`,
+    usage: "用量", today: "今天", allTime: "累计", byModel: "按模型", noUsage: "还没有用量。", requests: (n) => `${n} 次`, tokens: (n) => `${n} tokens`, seconds: (n) => `${n} 秒`, images: (n) => `${n} 张`,
+    kinds: { chat: "对话", image: "图片", video: "视频", realtime: "实时通话" },
+    signIns: "登录的设备", thisOne: "当前", revoke: "退出", viaCode: "验证码", viaPassword: "密码", viaWeb: "网页", lastUsed: "最近使用",
+    activity: "最近动态", events: {
+      "account.created": "账号创建", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置了密码", "password.changed": "修改了密码",
+      "password.cleared": "移除了密码", "sign_out": "退出登录", "sign_out.all": "在所有设备上退出", "budget.refused": "超出今日额度", "upstream.error": "模型服务出错", "call.ended": "通话结束",
+    },
+    ways: "退出", signOutConfirm: "退出这个页面的登录？", signOutAllConfirm: "在所有设备上退出？手机和电脑上的 nanoMuse 会需要重新登录。",
+    pwTitle: (has) => (has ? "修改密码" : "设置密码"), pwWhy: "设置后可以用密码登录，不必每次等验证码。至少 8 位。", pwCurrent: "当前密码", pwNew: "新密码", pwAgain: "再输一次", pwRemove: "移除密码", pwSaved: "密码已保存。", pwRemoved: "密码已移除。", pwMismatch: "两次输入不一致。", pwShort: "至少 8 位。",
+    save: "保存", cancel: "取消", ok: "好", refresh: "刷新", community: "nanoMuse Cloud 由社区志愿维护，不以营利为目的。这里记的只有次数、tokens 和估算的费用；你和模型说过的话不会被保存。",
+    errors: { bad_identifier: "请输入手机号或邮箱地址。", code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁，稍等几分钟。", not_invited: "这是一台私人中转，这个号码或邮箱不在名单上。", send_failed: "验证码发送失败，请稍后再试。", bad_key: "登录已失效，请重新登录。", offline: "连不上服务器。",
+      bad_credentials: "号码或密码不对。", no_password: "这个账号还没设置密码，请用验证码登录。", locked: "密码试错太多次，请稍后再试或用验证码登录。", password_short: "密码至少 8 位。", password_long: "密码太长了。", password_weak: "密码太简单了。", password_wrong: "当前密码不对。", password_required: "请输入当前密码。", disabled: "这个账号已被停用。" },
   } : {
     tagline: "Every device you own, a Muse of yours.",
-    identifier: "Phone number or e-mail", code: "Verification code", sendCode: "Send code", signIn: "Sign in", another: "Use another number or address",
+    identifier: "Phone number or e-mail", code: "Verification code", password: "Password", sendCode: "Send code", signIn: "Sign in", another: "Use another number or address",
+    byCode: "With a code", byPassword: "With a password", forgot: "Forgot it? Sign in with a code", show: "Show", hide: "Hide",
     codeSent: "A six-digit code is on its way; it is good for ten minutes.", relay: "Server", fine: "Once signed in, this page shows every device of your account that is online and lets each device's Muse do things. The page itself operates nothing.",
     devices: "Devices", noDevices: "No device yet. Sign in to nanoMuse on your phone with this account, or run nanoMuse Desktop on a computer, and they appear here.",
     online: "online", offline: "offline", phone: "phone", computer: "computer", web: "browser", thisTab: "this tab",
-    signOut: "Sign out", connected: "connected", connecting: "connecting…", disconnected: "disconnected, reconnecting…",
-    pick: "Pick a device on the left", pickSub: "then tell it what to do, like a message. The Muse on a phone uses the phone's apps and sandbox; the one on a computer uses its shell, files and screen; and they can ask each other.",
+    signOut: "Sign out", signOutAll: "Sign out everywhere", connected: "connected", connecting: "connecting…", disconnected: "disconnected, reconnecting…",
+    pick: "Pick a device", pickSub: "then tell it what to do, like a message. The Muse on a phone uses the phone's apps and sandbox; the one on a computer uses its shell, files and screen; and they can ask each other.",
     placeholder: (n) => `Ask ${n} to do something…`, offlineNote: (n) => `${n} is offline; nothing can be sent.`,
     thinking: "thinking", running: "run", result: "result", asks: "asks", remote: "there",
     approvalTitle: (d) => `${d} wants to do something that needs your OK`, allow: "Allow", deny: "Don't", allowed: "allowed", denied: "declined", expired: "timed out", stop: "Stop",
@@ -37,7 +56,20 @@
     busy: (n) => `${n} is working…`, sentFrom: "from the web", waitingPhone: "The Muse on the phone is working; the answer comes back here when it is done.",
     lastSeen: "last seen", justNow: "just now", minAgo: (m) => `${m} min ago`, hAgo: (h) => `${h} h ago`, dAgo: (d) => `${d} d ago`,
     risks: { destructive: "removes or rewrites", outbound: "sends something out", system: "system-level", install: "installs software", money: "a payment" },
-    errors: { bad_identifier: "Enter a mobile number or an e-mail address.", code_wrong: "That code is not right.", code_expired: "That code has expired; send a new one.", code_too_often: "Too many codes; wait a few minutes.", not_invited: "This relay is private; that number or address is not on its list.", send_failed: "The code could not be sent; try again shortly.", bad_key: "Your sign-in has expired; sign in again.", offline: "Cannot reach the server." },
+    account: "Account", member: "member", regular: "account", since: "since", noPassword: "No password yet", hasPassword: "Password set", setPassword: "Set a password", changePassword: "Change password",
+    allowance: "Today's allowance", unlimited: "No ceiling", spentToday: (a, c) => `¥${a} of ¥${c} used today`, spentOnly: (a) => `¥${a} used today`, tokensToday: (n) => `${n} tokens today`,
+    usage: "Usage", today: "Today", allTime: "All time", byModel: "By model", noUsage: "Nothing used yet.", requests: (n) => `${n} req`, tokens: (n) => `${n} tokens`, seconds: (n) => `${n} s`, images: (n) => `${n} pictures`,
+    kinds: { chat: "Chat", image: "Pictures", video: "Video", realtime: "Calls" },
+    signIns: "Signed in on", thisOne: "this one", revoke: "Sign out", viaCode: "code", viaPassword: "password", viaWeb: "web", lastUsed: "last used",
+    activity: "Activity", events: {
+      "account.created": "Account created", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
+      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Over today's allowance", "upstream.error": "Model service error", "call.ended": "Call ended",
+    },
+    ways: "Leave", signOutConfirm: "Sign this page out?", signOutAllConfirm: "Sign out everywhere? nanoMuse on your phone and computers will ask you to sign in again.",
+    pwTitle: (has) => (has ? "Change password" : "Set a password"), pwWhy: "With a password you can sign in without waiting for a code. At least 8 characters.", pwCurrent: "Current password", pwNew: "New password", pwAgain: "Once more", pwRemove: "Remove the password", pwSaved: "Password saved.", pwRemoved: "Password removed.", pwMismatch: "The two do not match.", pwShort: "At least 8 characters.",
+    save: "Save", cancel: "Cancel", ok: "OK", refresh: "Refresh", community: "nanoMuse Cloud is run by volunteers of the community, not for profit. What is kept here is counts, tokens and an estimated cost; what you said to the model is never stored.",
+    errors: { bad_identifier: "Enter a mobile number or an e-mail address.", code_wrong: "That code is not right.", code_expired: "That code has expired; send a new one.", code_too_often: "Too many codes; wait a few minutes.", not_invited: "This relay is private; that number or address is not on its list.", send_failed: "The code could not be sent; try again shortly.", bad_key: "Your sign-in has expired; sign in again.", offline: "Cannot reach the server.",
+      bad_credentials: "That number or password is not right.", no_password: "This account has no password yet; sign in with a code.", locked: "Too many wrong passwords; try later or use a code.", password_short: "At least 8 characters.", password_long: "That password is too long.", password_weak: "That password is too easy.", password_wrong: "The current password is not right.", password_required: "Enter the current password.", disabled: "This account has been disabled." },
   };
 
   // ── state ───────────────────────────────────────────────────────
@@ -63,6 +95,25 @@
     return el;
   };
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const svg = (paths, extra = "") => `<svg viewBox="0 0 24 24" ${extra}>${paths}</svg>`;
+  const ICON = {
+    phone: svg('<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/>'),
+    computer: svg('<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17v3.5"/>'),
+    web: svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'),
+    person: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>'),
+    key: svg('<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M15 5l3 3M18 4l2 2"/>'),
+    chat: svg('<path d="M4 5.5h16v10H9l-5 4z"/>'),
+    image: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>'),
+    video: svg('<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/>'),
+    realtime: svg('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>'),
+    devices: svg('<rect x="2.5" y="5" width="13" height="10" rx="2"/><rect x="17" y="9" width="4.5" height="10" rx="1.5"/><path d="M6 19h6"/>'),
+    out: svg('<path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l5 4-5 4M20 12H9"/>'),
+    clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    back: svg('<path d="M15 5l-7 7 7 7"/>'),
+    more: svg('<circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>'),
+    refresh: svg('<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>'),
+    shield: svg('<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>'),
+  };
 
   // A very small Markdown: paragraphs, **bold**, `code`, ```blocks```, links, lists.
   function md(text) {
@@ -95,27 +146,37 @@
     return data;
   }
   const errText = (e) => T.errors[e.code] || e.message || e.code || String(e);
+  const deviceName = () => `${zh ? "网页" : "Web console"} · ${navigator.platform || "browser"}`;
 
   // ── sign in view ─────────────────────────────────────────────────
   function renderSignIn() {
-    let identifier = LS.getItem("nm.identifier") || "", sent = false, busy = false, msg = "", bad = false;
+    let identifier = LS.getItem("nm.identifier") || "", mode = LS.getItem("nm.mode") || "code", sent = false, busy = false, msg = "", bad = false, showPw = false;
     const draw = () => {
-      app.replaceChildren(h("div", { class: "signin" }, h("div", { class: "card" },
-        h("img", { src: "mark.svg", alt: "" }),
+      const byPw = mode === "password";
+      app.replaceChildren(h("div", { class: "signin" }, h("div", { class: "card rise" },
+        h("div", { class: "disc" }, h("img", { src: "mark.svg", alt: "" })),
         h("h1", {}, "nanoMuse"),
         h("p", { class: "sub" }, T.tagline),
+        h("div", { class: "seg" },
+          h("button", { class: byPw ? "" : "on", onclick: () => { mode = "code"; LS.setItem("nm.mode", mode); msg = ""; draw(); } }, T.byCode),
+          h("button", { class: byPw ? "on" : "", onclick: () => { mode = "password"; LS.setItem("nm.mode", mode); sent = false; msg = ""; draw(); } }, T.byPassword)),
         h("div", { class: "field" }, h("label", {}, T.identifier),
-          h("input", { id: "ident", type: "text", autocomplete: "username", value: identifier, disabled: sent ? "" : null, oninput: (e) => { identifier = e.target.value; } })),
-        sent ? h("div", { class: "field" }, h("label", {}, T.code),
-          h("input", { id: "code", type: "text", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "6", onkeydown: (e) => { if (e.key === "Enter") verify(); } })) : null,
-        h("button", { class: "btn", disabled: busy ? "" : null, onclick: sent ? verify : send }, sent ? T.signIn : T.sendCode),
-        sent ? h("button", { class: "btn ghost", onclick: () => { sent = false; msg = ""; draw(); } }, T.another) : null,
-        h("div", { class: "hint" + (bad ? " bad" : "") }, msg),
-        h("p", { class: "fine" }, T.fine, h("br"), `${T.relay}: ${base}`),
+          h("div", { class: "in" }, h("input", { id: "ident", type: "text", autocomplete: "username", value: identifier, disabled: sent ? "" : null, oninput: (e) => { identifier = e.target.value; }, onkeydown: (e) => { if (e.key === "Enter") go(); } }))),
+        byPw ? h("div", { class: "field" }, h("label", {}, T.password),
+          h("div", { class: "in" }, h("input", { id: "pw", type: showPw ? "text" : "password", autocomplete: "current-password", onkeydown: (e) => { if (e.key === "Enter") go(); } }),
+            h("button", { type: "button", onclick: () => { showPw = !showPw; const i = document.getElementById("pw"); if (i) i.type = showPw ? "text" : "password"; } }, showPw ? T.hide : T.show))) : null,
+        !byPw && sent ? h("div", { class: "field" }, h("label", {}, T.code),
+          h("div", { class: "in" }, h("input", { id: "code", type: "text", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "6", onkeydown: (e) => { if (e.key === "Enter") go(); } }))) : null,
+        h("button", { class: "btn", disabled: busy ? "" : null, onclick: go }, byPw || sent ? T.signIn : T.sendCode),
+        !byPw && sent ? h("button", { class: "btn ghost", onclick: () => { sent = false; msg = ""; draw(); } }, T.another) : null,
+        byPw ? h("button", { class: "btn ghost", onclick: () => { mode = "code"; LS.setItem("nm.mode", mode); msg = ""; draw(); } }, T.forgot) : null,
+        h("div", { class: "hint" + (bad ? " bad" : msg ? " ok" : "") }, msg),
+        h("p", { class: "fine" }, T.fine, h("br"), h("b", {}, `${T.relay}: `), base),
       )));
-      const focus = document.getElementById(sent ? "code" : "ident");
+      const focus = document.getElementById(byPw ? (identifier ? "pw" : "ident") : sent ? "code" : "ident");
       if (focus) focus.focus();
     };
+    const go = () => { if (mode === "password") login(); else if (sent) verify(); else send(); };
     async function send() {
       identifier = identifier.trim(); if (!identifier) return;
       busy = true; msg = ""; bad = false; draw();
@@ -123,17 +184,26 @@
       catch (e) { msg = errText(e); bad = true; }
       busy = false; draw();
     }
+    function adopt(r) {
+      key = r.api_key; hint = (r.account && r.account.hint) || identifier;
+      LS.setItem("nm.key", key); LS.setItem("nm.hint", hint);
+      renderMain(); connect();
+    }
     async function verify() {
       const code = (document.getElementById("code") || {}).value || "";
       if (code.replace(/\D/g, "").length !== 6) return;
       busy = true; draw();
-      try {
-        const r = await api("POST", "/v1/auth/verify", { identifier, code: code.replace(/\D/g, ""), device: `Web console · ${navigator.platform || "browser"}` });
-        key = r.api_key; hint = (r.account && r.account.hint) || identifier;
-        LS.setItem("nm.key", key); LS.setItem("nm.hint", hint);
-        renderMain(); connect();
-        return;
-      } catch (e) { msg = errText(e); bad = true; }
+      try { adopt(await api("POST", "/v1/auth/verify", { identifier, code: code.replace(/\D/g, ""), device: deviceName() })); return; }
+      catch (e) { msg = errText(e); bad = true; }
+      busy = false; draw();
+    }
+    async function login() {
+      identifier = identifier.trim();
+      const pw = (document.getElementById("pw") || {}).value || "";
+      if (!identifier || !pw) return;
+      busy = true; msg = ""; bad = false; draw();
+      try { LS.setItem("nm.identifier", identifier); adopt(await api("POST", "/v1/auth/login", { identifier, password: pw, device: deviceName() })); return; }
+      catch (e) { msg = errText(e); bad = true; }
       busy = false; draw();
     }
     draw();
@@ -147,7 +217,7 @@
     const url = base.replace(/^http/, "ws") + "/v1/hub";
     ws = new WebSocket(url);
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "hello", key, device: { id: webId, name: zh ? "网页" : "Web console", kind: "web", os: navigator.platform || "browser", version: "0.1.17", actions: [] } }));
+      ws.send(JSON.stringify({ type: "hello", key, device: { id: webId, name: zh ? "网页" : "Web console", kind: "web", os: navigator.platform || "browser", version: VERSION, actions: [] } }));
     };
     ws.onmessage = (ev) => {
       let f; try { f = JSON.parse(ev.data); } catch (_) { return; }
@@ -183,6 +253,7 @@
     if (!expired && key) api("POST", "/v1/auth/sign-out", {}, key).catch(() => {});
     key = ""; hint = ""; LS.removeItem("nm.key"); LS.removeItem("nm.hint");
     if (ws) { try { ws.onclose = null; ws.close(); } catch (_) { /* ignore */ } ws = null; }
+    closeSheet();
     renderSignIn();
   }
 
@@ -208,9 +279,14 @@
   const dev = (id) => devices.find((d) => d.id === id);
   const kindLabel = (k) => T[k] || k;
   function ago(ts) {
+    if (!ts) return "";
     const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
     if (s < 90) return T.justNow; if (s < 3600) return T.minAgo(Math.floor(s / 60)); if (s < 86400) return T.hAgo(Math.floor(s / 3600)); return T.dAgo(Math.floor(s / 86400));
   }
+  const when = (ts) => (ts ? new Date(ts * 1000).toLocaleString(zh ? "zh-CN" : undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
+  const dateOf = (ts) => (ts ? new Date(ts * 1000).toLocaleDateString(zh ? "zh-CN" : undefined, { year: "numeric", month: "short", day: "numeric" }) : "");
+  const fmtN = (n) => Number(n || 0).toLocaleString();
+  const money = (v) => { const c = Number(v || 0); return c >= 100 ? c.toFixed(0) : c >= 1 ? c.toFixed(2) : c > 0 && c < 0.01 ? c.toFixed(4) : c.toFixed(2); };
 
   async function send(text) {
     const d = dev(selected); if (!d || !d.online) return;
@@ -262,23 +338,30 @@
   }
   function drawAll() { drawSide(); drawChatShell(); }
   function drawStatus() { const s = els.status; if (s) { s.className = "status " + (wsState === "on" ? "on" : wsState === "off" ? "off" : ""); s.title = wsState === "on" ? T.connected : wsState === "off" ? T.disconnected : T.connecting; } }
-  const glyph = (kind) => kind === "phone"
-    ? '<svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>'
-    : '<svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17v3.5"/></svg>';
+  const glyph = (kind) => ICON[kind] || ICON.computer;
+  function pickDevice(id) {
+    selected = id; LS.setItem("nm.selected", id); history.replaceState(null, "", "?device=" + encodeURIComponent(id));
+    drawSide(); drawChatShell();
+    if (window.matchMedia("(max-width: 760px)").matches) { els.side.classList.add("hidden"); }
+  }
   function drawSide() {
     if (!els.side) return;
     const others = devices.filter((d) => d.kind !== "web");
     els.status = h("span", { class: "status" });
     els.side.replaceChildren(
       h("div", { class: "top" }, h("img", { src: "mark.svg", alt: "" }), h("b", {}, "nanoMuse"), els.status),
-      h("h2", {}, T.devices),
-      h("ul", { class: "devices" },
-        others.length ? others.map((d) => h("li", { class: d.id === selected ? "active" : "", onclick: () => { selected = d.id; LS.setItem("nm.selected", d.id); history.replaceState(null, "", "?device=" + encodeURIComponent(d.id)); drawSide(); drawChatShell(); } },
-          h("span", { class: "glyph", html: glyph(d.kind) }),
-          h("div", { class: "txt" }, h("div", { class: "name" }, d.name), h("div", { class: "meta" }, `${kindLabel(d.kind)} · ${d.os || ""} · ${d.online ? T.online : `${T.lastSeen} ${ago(d.last_seen)}`}`)),
+      h("div", { class: "label" }, T.devices),
+      h("div", { class: "devices" }, h("div", { class: "card" },
+        others.length ? others.map((d) => h("button", { class: "row tap" + (d.id === selected ? " active" : ""), onclick: () => pickDevice(d.id) },
+          h("span", { class: "tile" + (d.online ? "" : " grey"), html: glyph(d.kind) }),
+          h("div", { class: "txt" }, h("div", { class: "t" }, d.name), h("div", { class: "s" }, `${kindLabel(d.kind)} · ${d.os || ""} · ${d.online ? T.online : `${T.lastSeen} ${ago(d.last_seen)}`}`)),
           h("span", { class: "dot" + (d.online ? " on" : "") }),
-        )) : h("li", { class: "empty" }, T.noDevices)),
-      h("div", { class: "foot" }, h("span", { class: "who" }, hint), h("button", { onclick: () => signOut(false) }, T.signOut)),
+        )) : h("div", { class: "empty" }, T.noDevices))),
+      h("div", { class: "foot card" },
+        h("button", { class: "row tap", onclick: openAccount },
+          h("span", { class: "tile grey", html: ICON.person }),
+          h("div", { class: "txt" }, h("div", { class: "t" }, hint), h("div", { class: "s" }, T.account)),
+          h("span", { class: "chev" }))),
     );
     drawStatus();
   }
@@ -286,7 +369,7 @@
     if (!els.chat) return;
     const d = dev(selected);
     if (!d) {
-      els.chat.replaceChildren(h("div", { class: "empty-chat" }, h("img", { src: "mark.svg", alt: "" }), h("p", {}, h("b", {}, T.pick)), h("p", {}, T.pickSub)));
+      els.chat.replaceChildren(h("div", { class: "empty-chat" }, h("img", { src: "mark.svg", alt: "" }), h("p", {}, h("b", {}, T.pick), T.pickSub)));
       return;
     }
     els.head = h("div", { class: "head" });
@@ -298,13 +381,13 @@
   function drawHead() {
     const d = dev(selected); if (!els.head || !d) return;
     els.head.replaceChildren(
-      h("span", { class: "glyph", html: glyph(d.kind), style: "width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(1,92,251,.1);color:var(--blue)" }),
+      h("button", { class: "round back", onclick: () => { els.side.classList.remove("hidden"); }, html: ICON.back }),
+      h("span", { class: "tile", html: glyph(d.kind) }),
       h("div", {}, h("div", { class: "name" }, d.name), h("div", { class: "sub" }, `${kindLabel(d.kind)} · ${d.os || ""} · ${d.online ? T.online : T.offline}`)),
       h("span", { class: "spacer" }),
-      h("button", { onclick: () => { const c = chat(d.id); c.messages = []; persist(d.id); LS.removeItem("nm.conv." + d.id); drawChat(); } }, T.clear),
-      d.online ? null : h("button", { onclick: () => { if (!confirm(T.forgetConfirm(d.name))) return; if (ws && wsState === "on") ws.send(JSON.stringify({ type: "forget", device_id: d.id })); LS.removeItem("nm.conv." + d.id); if (selected === d.id) { selected = ""; LS.removeItem("nm.selected"); history.replaceState(null, "", location.pathname); } devices = devices.filter((x) => x.id !== d.id); drawSide(); drawChatShell(); } }, T.forget),
+      h("button", { class: "btn quiet sm", onclick: () => { const c = chat(d.id); c.messages = []; persist(d.id); LS.removeItem("nm.conv." + d.id); drawChat(); } }, T.clear),
+      d.online ? null : h("button", { class: "btn quiet sm", onclick: () => { if (!confirm(T.forgetConfirm(d.name))) return; if (ws && wsState === "on") ws.send(JSON.stringify({ type: "forget", device_id: d.id })); LS.removeItem("nm.conv." + d.id); if (selected === d.id) { selected = ""; LS.removeItem("nm.selected"); history.replaceState(null, "", location.pathname); } devices = devices.filter((x) => x.id !== d.id); drawSide(); drawChatShell(); } }, T.forget),
     );
-    const g = els.head.querySelector(".glyph svg"); if (g) { g.style.width = "18px"; g.style.height = "18px"; g.style.fill = "none"; g.style.stroke = "currentColor"; g.style.strokeWidth = "1.8"; }
     drawComposer();
   }
   function drawChat() {
@@ -343,6 +426,143 @@
       h("div", { class: "note" }, d.online ? (d.kind === "phone" ? (zh ? "手机上需要确认的操作，会在手机上弹出确认卡。" : "Anything that needs an OK on the phone is asked on the phone.") : (zh ? "需要确认的操作会在这里弹出确认卡。" : "Anything that needs an OK is asked here.")) : T.offlineNote(d.name)),
     );
     if (d.online && !c.busy) ta.focus();
+  }
+
+  // ── account sheet (/v1/me, the same picture as the phone's Account screen) ──
+  let sheet = null;
+  function closeSheet() { if (sheet) { sheet.remove(); sheet = null; } }
+  function openSheet(node) {
+    closeSheet();
+    sheet = h("div", { class: "scrim", onclick: (e) => { if (e.target === sheet) closeSheet(); } }, node);
+    document.body.append(sheet);
+    const onKey = (e) => { if (e.key === "Escape") { closeSheet(); document.removeEventListener("keydown", onKey); } };
+    document.addEventListener("keydown", onKey);
+  }
+  function dialog(title, body, actions) {
+    const d = h("div", { class: "dialog" }, h("h3", {}, title), body, h("div", { class: "acts" }, ...actions));
+    openSheet(d);
+    return d;
+  }
+  function ask(title, text, okLabel, danger) {
+    return new Promise((resolve) => {
+      dialog(title, h("p", {}, text), [
+        h("button", { class: "btn quiet", onclick: () => { closeSheet(); resolve(false); } }, T.cancel),
+        h("button", { class: "btn" + (danger ? " danger" : ""), onclick: () => { closeSheet(); resolve(true); } }, okLabel),
+      ]);
+    });
+  }
+
+  let me = null, meErr = "", usageTab = "today";
+  async function openAccount() {
+    const body = h("div", { class: "sheet" });
+    openSheet(body);
+    drawAccount(body);
+    await loadMe();
+    if (sheet && body.isConnected) drawAccount(body);
+  }
+  async function loadMe() {
+    try {
+      const [m, s, ev] = await Promise.all([api("GET", "/v1/me", null, key), api("GET", "/v1/me/sessions", null, key), api("GET", "/v1/me/events?limit=12", null, key)]);
+      me = { ...m, sessions: s.sessions || [], events: ev.events || [] }; meErr = "";
+    } catch (e) { if (e.code === "bad_key" || e.code === "http_401") { signOut(true); return; } meErr = errText(e); }
+  }
+  const kindRow = (r) => {
+    const k = r.kind || "chat";
+    const n = k === "realtime" ? T.seconds(fmtN(r.charged)) : k === "image" ? T.images(fmtN(r.requests)) : k === "video" ? T.seconds(fmtN(r.charged)) : T.tokens(fmtN(r.charged));
+    return h("div", { class: "usage-row" },
+      h("div", { class: "k" }, h("i", { class: k }), T.kinds[k] || k),
+      h("span", { class: "n" }, `${T.requests(fmtN(r.requests))} · ${n}`),
+      h("span", { class: "c" }, r.cost_cny !== undefined ? `¥${money(r.cost_cny)}` : ""));
+  };
+  function drawAccount(body) {
+    const a = me && me.account, u = me && me.usage;
+    const initial = (hint || "?").replace(/[^0-9a-z]/gi, "").slice(0, 1).toUpperCase() || "M";
+    const kids = [
+      h("div", { class: "grab" }),
+      h("div", { class: "head" }, h("h2", {}, T.account), h("button", { class: "round", title: T.refresh, html: ICON.refresh, onclick: async () => { await loadMe(); drawAccount(body); } }), h("button", { class: "round", html: svg('<path d="M6 6l12 12M18 6L6 18"/>'), onclick: closeSheet })),
+    ];
+    if (!me) { kids.push(h("div", { class: "card" }, h("div", { class: "empty" }, meErr || "…"))); body.replaceChildren(...kids); return; }
+    // identity
+    kids.push(h("div", { class: "card" },
+      h("div", { class: "identity" }, h("div", { class: "disc" }, initial),
+        h("div", { class: "who" }, h("div", { class: "n" }, a.hint || hint),
+          h("div", { class: "m" }, `${a.channel === "phone" ? T.phone : "e-mail"} · ${T.since} ${dateOf(a.created_at)}`, a.member ? [" · ", h("span", { class: "pill ok" }, T.member)] : null))),
+      h("button", { class: "row tap", onclick: () => passwordDialog(!!a.has_password, body) },
+        h("span", { class: "tile violet", html: ICON.key }),
+        h("div", { class: "txt" }, h("div", { class: "t" }, a.has_password ? T.changePassword : T.setPassword), h("div", { class: "s" }, a.has_password ? `${T.hasPassword}${a.password_set_at ? " · " + dateOf(a.password_set_at) : ""}` : T.noPassword)),
+        h("span", { class: "chev" })),
+      h("div", { class: "row" }, h("span", { class: "tile grey", html: ICON.devices }), h("div", { class: "txt" }, h("div", { class: "t" }, T.signIns)), h("span", { class: "v" }, h("b", {}, fmtN(a.sessions || 0)))),
+      h("div", { class: "row" }, h("span", { class: "tile grey", html: ICON.shield }), h("div", { class: "txt" }, h("div", { class: "t" }, "ID"), h("div", { class: "s" }, h("code", {}, (a.id || "").slice(0, 12) + "…"))))));
+    // allowance
+    const sp = me.spend || {}, tk = me.tokens || {};
+    const cap = Number(sp.daily_cap || 0), spent = Number(sp.today || 0), free = !!sp.unlimited;
+    const frac = cap > 0 ? Math.min(1, spent / cap) : 0;
+    kids.push(h("div", { class: "label" }, T.allowance), h("div", { class: "card" }, h("div", { class: "allow" },
+      h("div", { class: "big" }, free ? T.unlimited : `¥${money(Math.max(0, cap - spent))}`, !free ? h("small", {}, zh ? "剩余" : "left") : null),
+      !free ? h("div", { class: "meter" }, h("i", { class: frac > 0.9 ? "bad" : frac > 0.7 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null,
+      h("div", { class: "s" }, !free ? T.spentToday(money(spent), money(cap)) : T.spentOnly(money(spent)), tk.used_today !== undefined ? ` · ${T.tokensToday(fmtN(tk.used_today))}` : ""))));
+    // usage by kind / by model
+    const rows = usageTab === "today" ? (u.today && u.today.by_kind) || [] : (u.total && u.total.by_kind) || [];
+    const models = (u.total && u.total.by_model) || [];
+    kids.push(h("div", { class: "label" }, T.usage), h("div", { class: "card" },
+      h("div", { style: "padding:12px 16px 4px" }, h("div", { class: "seg" },
+        h("button", { class: usageTab === "today" ? "on" : "", onclick: () => { usageTab = "today"; drawAccount(body); } }, T.today),
+        h("button", { class: usageTab === "all" ? "on" : "", onclick: () => { usageTab = "all"; drawAccount(body); } }, T.allTime))),
+      rows.length ? rows.map(kindRow) : h("div", { class: "empty" }, T.noUsage)),
+      ...(models.length ? [h("div", { class: "label" }, T.byModel), h("div", { class: "card" }, ...models.map((m) => h("div", { class: "usage-row" },
+        h("div", { class: "k" }, h("i", { class: m.kind || "chat" }), h("code", {}, m.model)),
+        h("span", { class: "n" }, `${T.requests(fmtN(m.requests))}${m.charged ? " · " + fmtN(m.charged) : ""}`),
+        h("span", { class: "c" }, m.cost_cny !== undefined ? `¥${money(m.cost_cny)}` : ""))))] : []));
+    // sign-ins
+    const sessions = me.sessions || [];
+    if (sessions.length) kids.push(h("div", { class: "label" }, T.signIns), h("div", { class: "card" }, ...sessions.map((s) => h("div", { class: "row" },
+      h("span", { class: "tile" + (s.current ? "" : " grey"), html: /web|网页|browser/i.test(s.device || "") ? ICON.web : /phone|android|手机|iphone/i.test(s.device || "") ? ICON.phone : ICON.computer }),
+      h("div", { class: "txt" }, h("div", { class: "t" }, s.device || "—", s.current ? [" ", h("span", { class: "pill blue" }, T.thisOne)] : null),
+        h("div", { class: "s" }, `${s.via === "password" ? T.viaPassword : T.viaCode} · ${when(s.created_at)}${s.last_used_at ? ` · ${T.lastUsed} ${ago(s.last_used_at)}` : ""}`)),
+      s.current ? null : h("button", { class: "btn quiet sm", onclick: async () => { try { await api("DELETE", `/v1/me/sessions/${encodeURIComponent(s.prefix)}`, null, key); } catch (e) { alert(errText(e)); } await loadMe(); drawAccount(body); } }, T.revoke)))));
+    // activity
+    const events = me.events || [];
+    if (events.length) kids.push(h("div", { class: "label" }, T.activity), h("div", { class: "card" }, ...events.slice(0, 12).map((e) => h("div", { class: "row" },
+      h("span", { class: "tile grey", html: ICON.clock }),
+      h("div", { class: "txt" }, h("div", { class: "t" }, T.events[e.kind] || e.kind), h("div", { class: "s" }, [when(e.ts), e.detail].filter(Boolean).join(" · ")))))));
+    // ways out
+    kids.push(h("div", { class: "label" }, T.ways), h("div", { class: "card" },
+      h("button", { class: "row tap", onclick: async () => { if (await ask(T.signOut, T.signOutConfirm, T.signOut)) signOut(false); } }, h("span", { class: "tile grey", html: ICON.out }), h("div", { class: "txt" }, h("div", { class: "t" }, T.signOut))),
+      h("button", { class: "row tap danger", onclick: async () => { if (await ask(T.signOutAll, T.signOutAllConfirm, T.signOutAll, true)) { try { await api("POST", "/v1/auth/sign-out-all", { all: true }, key); } catch (_) { /* leaving anyway */ } signOut(true); } } }, h("span", { class: "tile bad", html: ICON.out }), h("div", { class: "txt" }, h("div", { class: "t" }, T.signOutAll)))),
+      h("p", { class: "fine" }, T.community));
+    body.replaceChildren(...kids);
+  }
+  function passwordDialog(has, sheetBody) {
+    let msg = "", bad = false;
+    const cur = h("input", { type: "password", autocomplete: "current-password" });
+    const nw = h("input", { type: "password", autocomplete: "new-password" });
+    const again = h("input", { type: "password", autocomplete: "new-password" });
+    const hintEl = h("div", { class: "hint" });
+    const setMsg = (m, isBad) => { hintEl.textContent = m; hintEl.className = "hint" + (isBad ? " bad" : m ? " ok" : ""); };
+    const save = async () => {
+      if (nw.value.length < 8) return setMsg(T.pwShort, true);
+      if (nw.value !== again.value) return setMsg(T.pwMismatch, true);
+      try { await api("POST", "/v1/auth/password", { password: nw.value, current: has ? cur.value : undefined }, key); closeSheet(); openAccount(); }
+      catch (e) { setMsg(errText(e), true); }
+    };
+    const remove = async () => {
+      try { await api("POST", "/v1/auth/password", { password: "", current: cur.value }, key); closeSheet(); openAccount(); }
+      catch (e) { setMsg(errText(e), true); }
+    };
+    const d = dialog(T.pwTitle(has), h("div", {},
+      h("p", {}, T.pwWhy),
+      has ? h("div", { class: "field" }, h("label", {}, T.pwCurrent), h("div", { class: "in" }, cur)) : null,
+      h("div", { class: "field" }, h("label", {}, T.pwNew), h("div", { class: "in" }, nw)),
+      h("div", { class: "field" }, h("label", {}, T.pwAgain), h("div", { class: "in" }, again)),
+      hintEl,
+    ), [
+      has ? h("button", { class: "btn danger", style: "margin-right:auto", onclick: remove }, T.pwRemove) : null,
+      h("button", { class: "btn quiet", onclick: () => { closeSheet(); if (sheetBody) openAccount(); } }, T.cancel),
+      h("button", { class: "btn", onclick: save }, T.save),
+    ]);
+    if (msg) setMsg(msg, bad);
+    (has ? cur : nw).focus();
+    return d;
   }
 
   // ── boot ─────────────────────────────────────────────────────────

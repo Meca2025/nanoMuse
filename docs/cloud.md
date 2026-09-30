@@ -7,8 +7,12 @@ provider, not a replacement.
 
 ## In the app
 
-On the first screen, *Sign in with e-mail — free* asks for an e-mail address (or a
-phone number) and sends a six-digit code. After the code the app has:
+Since 0.1.20 the account is where every app starts: the first screen asks for an
+e-mail address or a phone number and sends a six-digit code — or, once you have
+set one, takes your password — and then asks which model answers: the account's
+own (the Cloud) or a key of your own. Signing out brings that screen back
+(self-hosters: `[cloud] required = false` or `NANOMUSE_CLOUD_REQUIRED=0` on the
+runtime). After the code the app has:
 
 - a provider called **nanoMuse Cloud** under *Settings → Providers*, an
   ordinary OpenAI-compatible provider whose key is the token the relay issued;
@@ -16,12 +20,19 @@ phone number) and sends a six-digit code. After the code the app has:
   none;
 - the relay's picture model as the avatar's image model, if none was set.
 
-*Settings → nanoMuse Cloud* shows who is signed in (a masked hint, never the
-number), today's spend against the daily allowance in ¥ and $, the tokens
-used, and *Sign out*, which revokes this phone's key at the relay and removes
-the provider. The allowance belongs to the phone number or address: signing in
-again, on this phone or another, gives a new key for the same account and does
-not grant a second allowance.
+*Settings → nanoMuse Cloud* (the *Account* screen) shows who is signed in (a
+masked hint, never the number) and since when; sets, changes or removes the
+**password** (eight characters or more; scrypt on the relay; locked for a while
+after repeated wrong attempts, and a fresh code sign-in unlocks it); today's
+spend against the daily allowance in ¥ and $ with a meter; **usage by kind** —
+chat, pictures, video, calls — today and in all, and **by model**; the
+**sign-ins** — every device holding a key, how it signed in (code or password),
+when it was last used — each revocable; the account's own **history** (sign-ins,
+password changes, refusals, calls ended; never message content); and the ways
+out: *Sign out* on this device, *Sign out everywhere*, *Delete the account*.
+The allowance belongs to the phone number or address: signing in again, on
+this phone or another, gives a new key for the same account and does not grant
+a second allowance.
 
 Signing in a second provider next to it — your own Model Studio key, DeepSeek,
 a local server — works as always; the relay's models can be mixed with yours
@@ -36,8 +47,15 @@ The relay is the code in [`cloud/`](../cloud/README.md). It stores:
   or address itself encrypted (AES-GCM, key derived from the relay's secret)
   so the operator can see who an account belongs to on the admin page — the
   database file alone shows nothing;
-- the hash of each key issued, with the device name you signed in from;
-- per request: the model, the token counts and the amount charged;
+- the hash of each key issued, with the device name you signed in from, how
+  (code or password) and when it was last used; revoked keys keep their row
+  so the sign-ins list can say so;
+- the password, if you set one, as an scrypt hash — never the password;
+- per request: the kind (chat, picture, video, call), the model, the token
+  counts (for a call, the text / audio / picture split) and the amount charged;
+- a timeline of account events — signed in, failed sign-in, password set or
+  changed, signed out, refused for budget, upstream error, call ended — with a
+  device name, a model or an error code as the detail, never message content;
 - the id of each video task, so only the account that started one can poll it.
 
 It does not store message content, images or tool results; they are forwarded
@@ -109,13 +127,21 @@ a user-facing setting in release builds is on the roadmap.
 
 ## Protocol
 
-The app uses four calls, all JSON:
+The app's calls, all JSON:
 
 ```
-POST /v1/auth/code       {identifier}                → 204
-POST /v1/auth/verify     {identifier, code, device}  → {api_key, base_url, account, tokens, models}
-GET  /v1/me              Bearer nm_…                 → {account, tokens, models, recent}
-POST /v1/auth/sign-out   Bearer nm_…                 → 204
+POST /v1/auth/code          {identifier}                      → 204
+POST /v1/auth/verify        {identifier, code, device}        → {api_key, base_url, account, tokens, models}
+POST /v1/auth/login         {identifier, password, device}    → the same; 401 bad_credentials, 429 locked, 400 no_password
+POST /v1/auth/password      Bearer  {password, current?}      → 204; "" with current removes it
+GET  /v1/me                 Bearer                            → {account{…, has_password, sessions, signed_in_via}, usage{today, total by kind / model}, tokens, spend, models, recent}
+GET  /v1/me/sessions        Bearer                            → {sessions: [{prefix, device, via, created_at, last_used_at, current}]}
+DELETE /v1/me/sessions/{prefix}  Bearer                       → 204
+GET  /v1/me/events          Bearer  ?limit=50                 → {events: [{ts, kind, detail}]}
+POST /v1/auth/sign-out      Bearer                            → 204
+POST /v1/auth/sign-out-all  Bearer  {all?}                    → {signed_out}
+POST /v1/auth/delete        Bearer                            → 204
+WS   /v1/realtime?model=    Bearer                            → the provider's real-time socket, metered ([calls.md](calls.md))
 ```
 
 Everything else is the OpenAI API: `GET /v1/models` (with `architecture`
