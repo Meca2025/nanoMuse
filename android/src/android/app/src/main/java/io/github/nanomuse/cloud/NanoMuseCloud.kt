@@ -80,6 +80,8 @@ object NanoMuseCloud {
     private const val KEY_CLIPS_LEFT = "cloud.clips_left"
     private const val KEY_CLIPS_ALLOWED = "cloud.clips_allowed"
     private const val KEY_CLIPS_UNLIMITED = "cloud.clips_unlimited"
+    private const val KEY_CONTRIBUTE = "cloud.contribute"
+    private const val KEY_SAMPLES = "cloud.samples"
 
     class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
 
@@ -166,6 +168,9 @@ object NanoMuseCloud {
         val clipsLeft: Int = -1,
         val clipsAllowed: Int = 0,
         val clipsUnlimited: Boolean = true,
+        /** The person chose to contribute their chat turns to the community's model; how many so far. */
+        val contribute: Boolean = false,
+        val samples: Int = 0,
     ) {
         val remaining: Long get() = (granted - used).coerceAtLeast(0)
         /** 0..1 of the grant still unspent. */
@@ -259,7 +264,25 @@ object NanoMuseCloud {
             clipsLeft = p.getInt(KEY_CLIPS_LEFT, -1),
             clipsAllowed = p.getInt(KEY_CLIPS_ALLOWED, 0),
             clipsUnlimited = p.getBoolean(KEY_CLIPS_UNLIMITED, true),
+            contribute = p.getBoolean(KEY_CONTRIBUTE, false),
+            samples = p.getInt(KEY_SAMPLES, 0),
         )
+    }
+
+    /** Keep (or stop keeping) this account's chat turns for the community's own model. */
+    suspend fun setContribute(context: Context, on: Boolean): Account = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val r = call(context, "POST", "/v1/me/contribute", JSONObject().put("on", on), token = key)
+        prefs(context).edit().putBoolean(KEY_CONTRIBUTE, r.optBoolean("on", on)).putInt(KEY_SAMPLES, r.optInt("samples", 0)).apply()
+        account(context)!!
+    }
+
+    /** Delete everything this account contributed; returns how many turns went. */
+    suspend fun deleteSamples(context: Context): Int = withContext(Dispatchers.IO) {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        val n = call(context, "DELETE", "/v1/me/samples", null, token = key).optInt("deleted", 0)
+        prefs(context).edit().putInt(KEY_SAMPLES, 0).apply()
+        n
     }
 
     /**
@@ -617,6 +640,8 @@ object NanoMuseCloud {
             .putInt(KEY_CLIPS_LEFT, reply.optJSONObject("clips")?.let { if (it.isNull("left")) -1 else it.optInt("left", -1) } ?: -1)
             .putInt(KEY_CLIPS_ALLOWED, reply.optJSONObject("clips")?.optInt("allowed") ?: 0)
             .putBoolean(KEY_CLIPS_UNLIMITED, reply.optJSONObject("clips")?.optBoolean("unlimited", true) ?: true)
+            .putBoolean(KEY_CONTRIBUTE, reply.optJSONObject("contribute")?.optBoolean("on", false) ?: false)
+            .putInt(KEY_SAMPLES, reply.optJSONObject("contribute")?.optInt("samples", 0) ?: 0)
             .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
             .apply()
         migrateMediaModels(context, reply.optJSONArray("models"))

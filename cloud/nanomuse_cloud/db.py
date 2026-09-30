@@ -113,6 +113,22 @@ CREATE TABLE IF NOT EXISTS video_tasks (
     probe         INTEGER NOT NULL DEFAULT 0,  -- an empty task the app sent to see if the model exists
     status        TEXT NOT NULL DEFAULT ''     -- the provider's last word: SUCCEEDED / FAILED / ...
 );
+-- 0.4: conversations an account chose to contribute (accounts.contribute=1). The only
+-- place message content ever lands; empty for everyone else, and deleted with the account
+-- or on request.
+CREATE TABLE IF NOT EXISTS samples (
+    id            TEXT PRIMARY KEY,
+    account_id    TEXT NOT NULL REFERENCES accounts(id),
+    ts            INTEGER NOT NULL,
+    model         TEXT NOT NULL DEFAULT '',
+    request       TEXT NOT NULL,               -- the messages sent, as JSON (pictures replaced by a marker)
+    response      TEXT NOT NULL DEFAULT '',    -- the assistant's reply text
+    prompt_tokens INTEGER NOT NULL DEFAULT 0,
+    completion_tokens INTEGER NOT NULL DEFAULT 0,
+    meta          TEXT NOT NULL DEFAULT '{}'   -- platform / language hints from the request headers
+);
+CREATE INDEX IF NOT EXISTS samples_account ON samples(account_id, ts);
+CREATE INDEX IF NOT EXISTS samples_ts ON samples(ts);
 """
 
 
@@ -178,6 +194,8 @@ class Database:
         for col, ddl in (("probe", "INTEGER NOT NULL DEFAULT 0"), ("status", "TEXT NOT NULL DEFAULT ''")):
             if col not in cols("video_tasks"):
                 self._conn.execute(f"ALTER TABLE video_tasks ADD COLUMN {col} {ddl}")
+        if "contribute" not in cols("accounts"):
+            self._conn.execute("ALTER TABLE accounts ADD COLUMN contribute INTEGER NOT NULL DEFAULT 0")
 
     @contextmanager
     def tx(self):
@@ -276,6 +294,7 @@ class Database:
             if row is None:
                 return
             c.execute("DELETE FROM codes WHERE id_hash=?", (row["id_hash"],))
+            c.execute("DELETE FROM samples WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM events WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM video_tasks WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM devices WHERE account_id=?", (account_id,))
@@ -290,6 +309,60 @@ class Database:
                 "INSERT INTO ledger(account_id, ts, kind, charged) VALUES (?,?,?,?)",
                 (account_id, now(), kind, -tokens),
             )
+
+    # -- contributed conversations -------------------------------------------------------------
+
+    def set_contribute(self, account_id: str, on: bool) -> None:
+        with self.tx() as c:
+            c.execute("UPDATE accounts SET contribute=? WHERE id=?", (1 if on else 0, account_id))
+
+    def add_sample(
+        self,
+        account_id: str,
+        model: str,
+        request: str,
+        response: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        meta: str = "{}",
+    ) -> str:
+        sid = uuid.uuid4().hex
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO samples(id, account_id, ts, model, request, response, prompt_tokens, completion_tokens, meta) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (sid, account_id, now(), model, request, response, prompt_tokens, completion_tokens, meta),
+            )
+        return sid
+
+    def sample_count(self, account_id: str | None = None) -> int:
+        with self._lock:
+            if account_id is None:
+                return int(self._conn.execute("SELECT COUNT(*) FROM samples").fetchone()[0])
+            return int(self._conn.execute("SELECT COUNT(*) FROM samples WHERE account_id=?", (account_id,)).fetchone()[0])
+
+    def samples(self, account_id: str | None = None, since: int = 0, limit: int = 100, before: int = 0) -> list[sqlite3.Row]:
+        """Newest first; ``before`` (a ts) pages further back."""
+        q = "SELECT * FROM samples WHERE ts>=?"
+        args: list = [since]
+        if account_id is not None:
+            q += " AND account_id=?"
+            args.append(account_id)
+        if before:
+            q += " AND ts<?"
+            args.append(before)
+        q += " ORDER BY ts DESC LIMIT ?"
+        args.append(max(1, min(limit, 1000)))
+        with self._lock:
+            return self._conn.execute(q, args).fetchall()
+
+    def delete_samples(self, account_id: str) -> int:
+        with self.tx() as c:
+            return c.execute("DELETE FROM samples WHERE account_id=?", (account_id,)).rowcount
+
+    def contributors(self) -> int:
+        with self._lock:
+            return int(self._conn.execute("SELECT COUNT(*) FROM accounts WHERE contribute=1").fetchone()[0])
 
     def set_disabled(self, account_id: str, disabled: bool) -> None:
         with self.tx() as c:
@@ -443,7 +516,7 @@ class Database:
             return self._conn.execute(
                 "SELECT k.*, a.disabled AS account_disabled, a.granted, a.used, a.channel, a.hint, a.created_at AS account_created_at, "
                 "a.id_hash, a.unlimited AS account_unlimited, a.password_hash, a.password_set_at, "
-                "a.invite_code, a.invites, a.credit_uy, a.credit_used_uy, a.clips_bonus "
+                "a.invite_code, a.invites, a.credit_uy, a.credit_used_uy, a.clips_bonus, a.contribute "
                 "FROM api_keys k JOIN accounts a ON a.id=k.account_id WHERE k.key_hash=?",
                 (key_hash,),
             ).fetchone()

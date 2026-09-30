@@ -980,6 +980,15 @@ const zhCN: Record<string, string> = {
   "Found a bug, want a feature, or wrote a fix? Issues and pull requests are welcome — let's build it together.": "发现问题、想要新功能、写好了修复？欢迎提 issue 和 PR——让我们一起把它做好。",
   "Star on GitHub": "去 GitHub 点个 Star",
   "Report a bug or ask for a feature": "反馈问题 / 提需求",
+  // -- contributing conversations (relay 0.4) --
+  "Contribute conversations": "贡献对话",
+  "Contributing — {n} turns so far": "正在贡献——已贡献 {n} 轮",
+  "Off — nothing you say is kept": "未开启——你说的话不会被保存",
+  "When on, each turn with the model (your messages and its reply; pictures as a marker) is kept on the server to train the community's own open model. Off by default; turn it off and delete what you gave at any time.":
+    "打开后，你和模型的每一轮对话（消息和回答，图片只留标记）会保存在服务器上，用来训练社区自己的开源模型。默认关闭；随时可以关掉并删除已贡献的内容。",
+  "The conversations you contributed are removed from the server. This cannot be undone.": "你贡献的对话会从服务器上删除，不可恢复。",
+  "{n} turns deleted": "已删除 {n} 轮",
+  "Delete what I contributed": "删除我贡献的对话",
   // -- invitations (relay 0.4) --
   "Invite code (optional)": "邀请码（选填）",
   "A friend's code counts for a new account: they get ¥3 of credit and more clips.": "朋友的邀请码只对新账号有效：对方会多得 ¥3 额度和几段视频次数。",

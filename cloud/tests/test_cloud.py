@@ -620,3 +620,68 @@ def test_a_video_task_seen_twice_stays_charged():
     assert db.mark_video_charged("t1") is False
     row = db.video_task("t1")
     assert row is not None and row["charged"] == 1
+
+
+async def test_contributed_conversations_are_opt_in_and_deletable(stack):
+    """Off by default: nothing about a chat turn is kept. On: the messages (pictures
+    replaced by a marker) and the reply land in ``samples`` for the operator, exported
+    without the account id; off again or a delete removes them."""
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender, identifier="dev-a@example.com")
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    admin = {"X-Admin-Token": "admin"}
+    msgs = [{"role": "user", "content": "hi"}]
+    r = await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
+    assert r.status_code == 200
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["contribute"] == {"on": False, "samples": 0}
+    assert (await client.get("/v1/admin/samples", headers=admin)).json() == {"samples": [], "total": 0}
+
+    r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
+    assert r.status_code == 200 and r.json() == {"on": True, "samples": 0}
+    # a plain reply, with a picture in the request
+    picture = {"role": "user", "content": [{"type": "text", "text": "what is this"}, {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}]}
+    r = await client.post(
+        "/v1/chat/completions",
+        headers={**headers, "User-Agent": "nanoMuse/0.1.22 (Android)", "Accept-Language": "zh-CN"},
+        json={"model": "qwen3.8-27b", "messages": [picture]},
+    )
+    assert r.status_code == 200
+    # and a streamed one
+    async with client.stream("POST", "/v1/chat/completions", headers=headers,
+                             json={"model": "qwen3.8-27b", "stream": True, "messages": msgs}) as r:
+        await r.aread()
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["contribute"] == {"on": True, "samples": 2}
+    got = (await client.get("/v1/admin/samples", headers=admin)).json()
+    assert got["total"] == 2 and [s["response"] for s in got["samples"]] == ["你好，世界", "hi"]
+    first = got["samples"][1]
+    assert first["request"][0]["content"] == [{"type": "text", "text": "what is this"}, {"type": "image_url", "omitted": True}]
+    assert "AAAA" not in json.dumps(first)
+    assert first["meta"] == {"ua": "nanoMuse/0.1.22 (Android)", "lang": "zh-CN"}
+    assert first["prompt_tokens"] == 100 and first["completion_tokens"] == 50
+    account = (await client.get(f"/v1/admin/accounts/{data['account']['id']}", headers=admin)).json()["account"]
+    assert account["contribute"] is True and account["samples"] == 2
+    overview = (await client.get("/v1/admin/overview", headers=admin)).json()
+    assert overview["contributions"] == {"accounts": 1, "samples": 2}
+    # the export has no account ids
+    r = await client.get("/v1/admin/samples/export", headers=admin)
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/x-ndjson")
+    lines = [json.loads(ln) for ln in r.text.splitlines() if ln]
+    assert len(lines) == 2 and all("account_id" not in ln for ln in lines)
+    assert {ln["response"] for ln in lines} == {"hi", "你好，世界"}
+    # the person's own delete
+    r = await client.delete("/v1/me/samples", headers=headers)
+    assert r.json() == {"deleted": 2}
+    r = await client.post("/v1/me/contribute", headers=headers, json={"on": False})
+    assert r.json() == {"on": False, "samples": 0}
+    r = await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
+    assert (await client.get("/v1/admin/samples", headers=admin)).json()["total"] == 0
+    kinds = [e["kind"] for e in (await client.get("/v1/me/events", headers=headers)).json()["events"]]
+    assert {"contribute.on", "contribute.off", "contribute.deleted"} <= set(kinds)
+    # deleting the account takes any samples with it
+    await client.post("/v1/me/contribute", headers=headers, json={"on": True})
+    await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
+    assert cloud.db.sample_count() == 1
+    assert (await client.post("/v1/auth/delete", headers=headers)).status_code == 204
+    assert cloud.db.sample_count() == 0

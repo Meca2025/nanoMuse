@@ -315,6 +315,18 @@ class HubService:
         self.cloud.api_key = self._key()
         return await self.cloud.sessions()
 
+    async def set_contribute(self, on: bool) -> dict[str, Any]:
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        self.cloud.api_key = self._key()
+        return await self.cloud.set_contribute(on)
+
+    async def delete_samples(self) -> int:
+        if not self.signed_in:
+            raise CloudError(401, "bad_key", "Not signed in.")
+        self.cloud.api_key = self._key()
+        return await self.cloud.delete_samples()
+
     async def revoke_session(self, prefix: str) -> None:
         if not self.signed_in:
             raise CloudError(401, "bad_key", "Not signed in.")

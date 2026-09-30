@@ -5,6 +5,7 @@
 <h1 align="center">nanoMuse</h1>
 
 <p align="center">A fully open-source, Muse-style personal agent for every device you own.</p>
+<p align="center"><b>Free · open source · non-profit</b> — <a href="#free-open-source-non-profit--lets-build-it-together">how it is paid for, and how to help</a></p>
 
 <div align="center">
   <p>
@@ -35,7 +36,10 @@ nanoMuse is a fully open-source, Muse-style personal agent for every device you 
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar: describe a look, your image model draws it, pick the one you like">
 </p>
 
-> **Free, open-source, non-profit.** nanoMuse is a community project, built to make a better personal agent together, and it will never charge for anything. This version is open for the community to try: sign in with an e-mail address and the agent has free model access — about ¥25 (≈ $3.5) a day per account, across chat, pictures and video — paid for by the developer. Your messages are not stored and nothing about you is sold or shared; delete the account at any time, or bring your own API key and skip the relay altogether. Details: [docs/cloud.md](docs/cloud.md) · [docs/privacy.md](docs/privacy.md).
+> ### Free, open source, non-profit — let's build it together
+> **nanoMuse is a non-profit open-source community project — free, forever.** Sign in with an e-mail and use the model for free: about **¥15 a day** per account, paid by the developer; **invite a friend and you get ¥3 more.** Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like, or use your own API key.
+>
+> Found a bug, want a feature, or wrote a fix? **[Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Send a pull request](CONTRIBUTING.md) · [Star the repo](https://github.com/nano-muse/nanoMuse)** — every one of them moves the project. Details: [docs/cloud.md](docs/cloud.md) · [docs/privacy.md](docs/privacy.md).
 
 ## News
 
@@ -63,12 +67,12 @@ How this compares with Muse and with OpenMinis, the runtime the app is built on:
 
 ## Install
 
-Nothing to install: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/) with an e-mail or a phone code and you get a nanoMuse of your own on the project's server, kept between visits. For your own devices — the [downloads](https://nanomuse.cn/#download): the Android APK, the desktop app for Windows, macOS and Linux (`nanoMuse-Desktop-<version>-…`), the terminal binary (`nanomuse-desktop-terminal-<version>-…`), or `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+; [docs/desktop.md](docs/desktop.md) and [docs/every-device.md](docs/every-device.md) say how they meet. On the phone:
+Nothing to install: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/) with an e-mail and a code and you get a nanoMuse of your own on the project's server, kept between visits. For your own devices — the [downloads](https://nanomuse.cn/#download): the Android APK, the desktop app for Windows, macOS and Linux (`nanoMuse-Desktop-<version>-…`), the terminal binary (`nanomuse-desktop-terminal-<version>-…`), or `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+; [docs/desktop.md](docs/desktop.md) and [docs/every-device.md](docs/every-device.md) say how they meet. On the phone:
 
 1. Download `nanoMuse-<version>-arm64.apk` from the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 or newer, a 64-bit phone. Verify with `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` if you like.
 2. Open it. Android asks once to allow the install; every version is signed with the same key, so updates install over the previous one and keep your data.
-3. Connect a model. *Sign in with e-mail — free*: an e-mail address (or a phone number), a code, and the agent has free model access on [nanoMuse Cloud](docs/cloud.md) — about ¥25 a day, no key needed, nothing to pay. Or bring your own: any OpenAI-compatible endpoint with your key, or one of the OAuth sign-ins the app ships with. Then, if you like, the two permissions that let the agent use your phone's apps (skippable), and the first conversation, which asks what to call you and lets the agent pick its own name.
-4. Optional — *Settings → Image & video models*: an image model (qwen-image-3.0 on Alibaba Cloud Model Studio, gpt-image-1, or any provider with the OpenAI images endpoint) lets the agent change its look and draw pictures; a video model (MiniMax-H3 on Model Studio) makes the look move. Muse has these built in; nanoMuse uses your own, and the agent tells you when one is missing.
+3. Connect a model. *Sign in with e-mail — free*: an e-mail address, a code, and the agent has free model access on [nanoMuse Cloud](docs/cloud.md) — about ¥15 a day (¥3 more for each friend you invite), no key needed, nothing to pay. Or bring your own: any OpenAI-compatible endpoint with your key, or one of the OAuth sign-ins the app ships with. Then, if you like, the two permissions that let the agent use your phone's apps (skippable), and the first conversation, which asks what to call you and lets the agent pick its own name.
+4. Optional — *Settings → Image & video models*: an image model (qwen-image-3.0 on Alibaba Cloud Model Studio, gpt-image-1, or any provider with the OpenAI images endpoint) lets the agent change its look and draw pictures; a video model (wan2.2-i2v-flash on Model Studio) makes the look move. Muse has these built in; nanoMuse uses your own, and the agent tells you when one is missing.
 
 The app checks this repository's releases for updates. Release notes for each version are in [docs/releases/](docs/releases/) and the [CHANGELOG](CHANGELOG.md).
 

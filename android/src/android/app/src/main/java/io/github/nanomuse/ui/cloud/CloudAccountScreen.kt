@@ -48,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -439,6 +440,51 @@ fun CloudAccountScreen(
                     }
                 }
 
+                // -- contribute conversations: off by default, the person's own switch ------------
+                if (a != null) {
+                    MuseSectionLabel(stringResource(R.string.nm_cloud_contribute_title))
+                    MuseCard {
+                        MuseRow(
+                            title = if (a.contribute) stringResource(R.string.nm_cloud_contribute_on, a.samples) else stringResource(R.string.nm_cloud_contribute_off),
+                            chevron = false,
+                            onClick = {
+                                if (busy) return@MuseRow
+                                busy = true
+                                scope.launch {
+                                    try { account = NanoMuseCloud.setContribute(context, !a.contribute) } catch (e: Exception) { error = NanoMuseCloud.describe(context, e) }
+                                    busy = false
+                                }
+                            },
+                            trailing = {
+                                Switch(checked = a.contribute, enabled = !busy, onCheckedChange = { on ->
+                                    if (busy) return@Switch
+                                    busy = true
+                                    scope.launch {
+                                        try { account = NanoMuseCloud.setContribute(context, on) } catch (e: Exception) { error = NanoMuseCloud.describe(context, e) }
+                                        busy = false
+                                    }
+                                })
+                            },
+                        )
+                        Text(
+                            text = stringResource(R.string.nm_cloud_contribute_why),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                        )
+                        if (a.samples > 0) {
+                            MuseRowDivider(inset = 16.dp)
+                            MuseRow(
+                                title = stringResource(R.string.nm_cloud_contribute_delete),
+                                icon = Icons.Outlined.DeleteOutline,
+                                titleColor = MaterialTheme.colorScheme.error,
+                                chevron = false,
+                                onClick = { confirm = Confirm.DELETE_SAMPLES },
+                            )
+                        }
+                    }
+                }
+
                 // -- sign-ins ---------------------------------------------------------------
                 if (sessions.isNotEmpty()) {
                     MuseSectionLabel(stringResource(R.string.nm_cloud_devices_signed_in))
@@ -606,6 +652,7 @@ fun CloudAccountScreen(
                             Confirm.SIGN_OUT -> R.string.nm_cloud_sign_out_here
                             Confirm.SIGN_OUT_ALL -> R.string.nm_cloud_sign_out_everywhere
                             Confirm.DELETE -> R.string.nm_cloud_delete_account
+                            Confirm.DELETE_SAMPLES -> R.string.nm_cloud_contribute_delete
                         },
                     ),
                 )
@@ -617,6 +664,7 @@ fun CloudAccountScreen(
                             Confirm.SIGN_OUT -> R.string.nm_cloud_sign_out_confirm
                             Confirm.SIGN_OUT_ALL -> R.string.nm_cloud_sign_out_everywhere_confirm
                             Confirm.DELETE -> R.string.nm_cloud_delete_account_confirm
+                            Confirm.DELETE_SAMPLES -> R.string.nm_cloud_contribute_delete_confirm
                         },
                     ),
                 )
@@ -629,11 +677,15 @@ fun CloudAccountScreen(
                         scope.launch {
                             try {
                                 when (which) {
-                                    Confirm.SIGN_OUT -> NanoMuseCloud.signOut(context)
-                                    Confirm.SIGN_OUT_ALL -> NanoMuseCloud.signOutEverywhere(context, includingThis = true)
-                                    Confirm.DELETE -> NanoMuseCloud.deleteAccount(context)
+                                    Confirm.SIGN_OUT -> { NanoMuseCloud.signOut(context); leave() }
+                                    Confirm.SIGN_OUT_ALL -> { NanoMuseCloud.signOutEverywhere(context, includingThis = true); leave() }
+                                    Confirm.DELETE -> { NanoMuseCloud.deleteAccount(context); leave() }
+                                    Confirm.DELETE_SAMPLES -> {
+                                        val n = NanoMuseCloud.deleteSamples(context)
+                                        notice = context.getString(R.string.nm_cloud_contribute_deleted, n)
+                                        account = NanoMuseCloud.account(context)
+                                    }
                                 }
-                                leave()
                             } catch (e: Exception) {
                                 error = NanoMuseCloud.describe(context, e)
                             }
@@ -643,7 +695,7 @@ fun CloudAccountScreen(
                     },
                 ) {
                     Text(
-                        stringResource(if (which == Confirm.DELETE) R.string.delete else R.string.nm_cloud_sign_out),
+                        stringResource(if (which == Confirm.DELETE || which == Confirm.DELETE_SAMPLES) R.string.delete else R.string.nm_cloud_sign_out),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -668,7 +720,7 @@ fun CloudAccountScreen(
     }
 }
 
-private enum class Confirm { SIGN_OUT, SIGN_OUT_ALL, DELETE }
+private enum class Confirm { SIGN_OUT, SIGN_OUT_ALL, DELETE, DELETE_SAMPLES }
 
 /** Set, change or remove the password; the relay decides whether the current one is needed. */
 @Composable
@@ -855,6 +907,12 @@ private fun kindLabel(kind: String): String = stringResource(
 @Composable
 private fun eventLabel(kind: String): String = when (kind) {
     "account.created" -> stringResource(R.string.nm_cloud_ev_account_created)
+    "contribute.on" -> stringResource(R.string.nm_cloud_ev_contribute_on)
+    "contribute.off" -> stringResource(R.string.nm_cloud_ev_contribute_off)
+    "contribute.deleted" -> stringResource(R.string.nm_cloud_ev_contribute_deleted)
+    "invite.accepted" -> stringResource(R.string.nm_cloud_ev_invite_accepted)
+    "invite.used" -> stringResource(R.string.nm_cloud_ev_invite_used)
+    "credit.granted" -> stringResource(R.string.nm_cloud_ev_credit_granted)
     "sign_in.code" -> stringResource(R.string.nm_cloud_ev_sign_in_code)
     "sign_in.password" -> stringResource(R.string.nm_cloud_ev_sign_in_password)
     "sign_in.failed" -> stringResource(R.string.nm_cloud_ev_sign_in_failed)

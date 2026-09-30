@@ -64,6 +64,28 @@ class CloudError(Exception):
         self.message = message
 
 
+def _strip_binary(messages: list) -> list:
+    """Messages with pictures (data: URLs) replaced by a marker: the words are the sample."""
+    out = []
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        m = dict(m)
+        content = m.get("content")
+        if isinstance(content, list):
+            parts = []
+            for part in content:
+                if isinstance(part, dict) and part.get("type") in ("image_url", "input_audio", "video_url", "video"):
+                    parts.append({"type": part["type"], "omitted": True})
+                elif isinstance(part, dict) and part.get("type") == "text":
+                    parts.append({"type": "text", "text": str(part.get("text", ""))})
+                else:
+                    parts.append(part if isinstance(part, (str, int, float, bool)) else {"type": "other", "omitted": True})
+            m["content"] = parts
+        out.append(m)
+    return out
+
+
 @dataclass(frozen=True)
 class Caller:
     key_hash: str
@@ -90,6 +112,9 @@ class Caller:
     credit_uy: int = 0
     credit_used_uy: int = 0
     clips_bonus: int = 0
+    # The person chose to contribute their conversations (0.4): only then does the
+    # relay keep what was said, for the community's own model.
+    contribute: bool = False
 
     @property
     def remaining(self) -> int:
@@ -381,6 +406,7 @@ class Cloud:
             credit_uy=int(row["credit_uy"] or 0),
             credit_used_uy=int(row["credit_used_uy"] or 0),
             clips_bonus=int(row["clips_bonus"] or 0),
+            contribute=bool(row["contribute"]),
         ) if not row["account_disabled"] else None
 
     def authenticate(self, bearer: str | None) -> Caller:
@@ -506,6 +532,7 @@ class Cloud:
             },
             "invite": self.invite_view(caller),
             "clips": self.clips_view(caller),
+            "contribute": {"on": caller.contribute, "samples": self.db.sample_count(caller.account_id) if caller.contribute else 0},
             "models": [m.to_public() for m in self.s.models],
             "base_url": self.s.public_base,
             "recent": [self._ledger_row(r) for r in self.db.recent_ledger(caller.account_id)],
@@ -623,6 +650,85 @@ class Cloud:
         """An event on the account's timeline (never message content)."""
         self.db.add_event(account_id, kind, detail)
 
+    # -- contributed conversations ---------------------------------------------------------
+    #
+    # Off for everyone until they turn it on. With it on, each chat request's messages and
+    # the model's reply are kept for the community's own model — nothing else changes, and
+    # the person can turn it off and delete what they gave at any time. Never the person's
+    # identity: samples carry the account id only, and are exported without it.
+
+    SAMPLE_MAX_CHARS = 200_000
+
+    def set_contribute(self, caller: Caller, on: bool) -> dict:
+        if on != caller.contribute:
+            self.db.set_contribute(caller.account_id, on)
+            self.note(caller.account_id, "contribute.on" if on else "contribute.off")
+        return {"on": on, "samples": self.db.sample_count(caller.account_id) if on else 0}
+
+    def delete_samples(self, caller: Caller) -> int:
+        n = self.db.delete_samples(caller.account_id)
+        self.note(caller.account_id, "contribute.deleted", f"{n} conversations")
+        return n
+
+    def keep_sample(
+        self,
+        caller: Caller,
+        model: str,
+        messages: list,
+        response: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        meta: dict | None = None,
+    ) -> None:
+        """Called after a chat turn for a contributing account; anything else is a no-op."""
+        if not caller.contribute:
+            return
+        request = json.dumps(_strip_binary(messages), ensure_ascii=False)
+        if len(request) > self.SAMPLE_MAX_CHARS:
+            request = request[: self.SAMPLE_MAX_CHARS]
+        self.db.add_sample(
+            caller.account_id,
+            model,
+            request,
+            response[: self.SAMPLE_MAX_CHARS],
+            prompt_tokens,
+            completion_tokens,
+            json.dumps(meta or {}, ensure_ascii=False),
+        )
+
+    def admin_samples(self, account_id: str | None = None, since: int = 0, limit: int = 100, before: int = 0) -> list[dict]:
+        out = []
+        for r in self.db.samples(account_id, since, limit, before):
+            d = dict(r)
+            d["request"] = json.loads(d["request"]) if d["request"] else []
+            d["meta"] = json.loads(d["meta"]) if d["meta"] else {}
+            out.append(d)
+        return out
+
+    def export_samples(self, since: int = 0):
+        """Every contributed conversation as JSON lines, without the account id: the
+        training set is about what was said, not who said it."""
+        before = 0
+        while True:
+            rows = self.db.samples(None, since, 1000, before)
+            if not rows:
+                return
+            for r in rows:
+                d = {
+                    "id": r["id"],
+                    "ts": int(r["ts"]),
+                    "model": r["model"],
+                    "messages": json.loads(r["request"]) if r["request"] else [],
+                    "response": r["response"],
+                    "prompt_tokens": int(r["prompt_tokens"]),
+                    "completion_tokens": int(r["completion_tokens"]),
+                    "meta": json.loads(r["meta"]) if r["meta"] else {},
+                }
+                yield json.dumps(d, ensure_ascii=False) + "\n"
+            before = int(rows[-1]["ts"])
+            if len(rows) < 1000:
+                return
+
     def estimate(self, caller: Caller, images: int = 0, clips: int = 0, image_model: str = "", video_model: str = "", size: str | None = None) -> dict:
         """What a job would cost before it is started — the app asks before a new
         face (five pictures and, with video on, four clips) and shows the person
@@ -725,6 +831,7 @@ class Cloud:
             d["spent_today_cny"] = self.s.uy_to_cny(int(d.pop("spent_today_uy", 0) or 0))
             d["spent_cny"] = self.s.uy_to_cny(int(d.pop("spent_uy", 0) or 0))
             self._credit_fields(d)
+            d["contribute"] = bool(d.get("contribute"))
             out.append(d)
         return out
 
@@ -810,6 +917,8 @@ class Cloud:
             },
             "top_accounts": top,
             "events": events,
+            # what the community chose to give: how many accounts contribute, how many turns so far
+            "contributions": {"accounts": self.db.contributors(), "samples": self.db.sample_count()},
             "settings": self.admin_settings(),
         }
 
@@ -838,6 +947,8 @@ class Cloud:
         a["clips_used"] = self.db.video_clips_used(account_id, t - 3600)
         a["clips_allowed"] = None if a["member"] or self.s.video_clips_free <= 0 else self.s.video_clips_free + a["clips_bonus"]
         a["invited"] = [{"id": r["id"], "hint": r["hint"], "created_at": int(r["created_at"])} for r in self.db.invitees(account_id)]
+        a["contribute"] = bool(a.get("contribute"))
+        a["samples"] = self.db.sample_count(account_id) if a["contribute"] else 0
         spent_today = self.db.spent_since(account_id, day_start)
         return {
             "account": a,

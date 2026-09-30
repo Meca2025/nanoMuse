@@ -137,6 +137,8 @@ export const api = {
   cloudEvents: (limit = 50) => request<{ events: CloudEvent[] }>(`/api/cloud/events?limit=${limit}`),
   cloudDelete: () => request<CloudAccount>("/api/cloud/delete", json({})),
   cloudMe: () => request<CloudMe>("/api/cloud/me"),
+  cloudContribute: (on: boolean) => request<{ on: boolean; samples: number }>("/api/cloud/contribute", json({ on })),
+  cloudDeleteSamples: () => request<{ deleted: number }>("/api/cloud/samples", { method: "DELETE" }),
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
   // ---- calls (voice / video, in real time)
   call: () => request<CallView>("/api/cloud/call"),

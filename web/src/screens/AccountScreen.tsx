@@ -2,7 +2,7 @@ import { Check, Clapperboard, Copy, Gift, Image as ImageIcon, KeyRound, Loader2,
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { BackBar } from "../components/BackBar";
-import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
+import { Toggle, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { SignIn } from "../components/SignIn";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -66,6 +66,7 @@ export function AccountScreen() {
             {me && <Allowance me={me} />}
             {me?.invite?.code && <Invite me={me} />}
             {me && <Usage me={me} />}
+            {me && <Contribute me={me} onChanged={() => void load()} />}
             <Password account={account} onChanged={() => void load()} />
             <Sessions sessions={sessions} loading={loading} onChanged={() => void load()} />
             {events && events.length > 0 && <Timeline events={events} />}
@@ -147,6 +148,58 @@ function Allowance({ me }: { me: CloudMe }) {
       )}
       {!spend.unlimited && (spend.credit_left ?? 0) > 0 && (
         <p className="text-[12.5px] text-muted">{t("Plus ¥{amount} of credit from invitations, used once the day's allowance is gone.", { amount: (spend.credit_left ?? 0).toFixed(2) })}</p>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * Contributing conversations: off by default. On, the relay keeps each chat turn (messages and
+ * reply, pictures as a marker) for the community's own model; the person can stop and delete
+ * what they gave at any time. The only way message content ever reaches the relay's disk.
+ */
+function Contribute({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
+  const t = useT();
+  const { toast } = useStore();
+  const [busy, setBusy] = useState(false);
+  const ct = me.contribute ?? { on: false, samples: 0 };
+  const flip = async (on: boolean) => {
+    setBusy(true);
+    try {
+      await api.cloudContribute(on);
+      onChanged();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const wipe = async () => {
+    if (!window.confirm(t("The conversations you contributed are removed from the server. This cannot be undone."))) return;
+    setBusy(true);
+    try {
+      const r = await api.cloudDeleteSamples();
+      toast(t("{n} turns deleted", { n: String(r.deleted) }));
+      onChanged();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Section title={t("Contribute conversations")}>
+      <Toggle
+        label={ct.on ? t("Contributing — {n} turns so far", { n: String(ct.samples) }) : t("Off — nothing you say is kept")}
+        hint={t("When on, each turn with the model (your messages and its reply; pictures as a marker) is kept on the server to train the community's own open model. Off by default; turn it off and delete what you gave at any time.")}
+        checked={ct.on}
+        disabled={busy}
+        onChange={(v) => void flip(v)}
+      />
+      {ct.samples > 0 && (
+        <button type="button" disabled={busy} onClick={() => void wipe()} className={cx(secondaryBtn, "inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300")}>
+          <Trash2 size={14} /> {t("Delete what I contributed")}
+        </button>
       )}
     </Section>
   );

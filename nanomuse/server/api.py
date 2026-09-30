@@ -275,6 +275,10 @@ class CloudModelBody(BaseModel):
     model: str = Field(default="", max_length=120)
 
 
+class CloudContributeBody(BaseModel):
+    on: bool = False
+
+
 class CloudLoginBody(BaseModel):
     identifier: str = Field(min_length=3, max_length=200)
     password: str = Field(min_length=1, max_length=128)
@@ -954,6 +958,21 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     async def cloud_me() -> dict[str, Any]:
         try:
             return await svc.hub.me()
+        except CloudError as exc:
+            raise _cloud_http(exc) from exc
+
+    @app.post("/api/cloud/contribute", dependencies=dep)
+    async def cloud_contribute(body: CloudContributeBody) -> dict[str, Any]:
+        """Opt in to (or out of) contributing chat turns to the community's model."""
+        try:
+            return await svc.hub.set_contribute(body.on)
+        except CloudError as exc:
+            raise _cloud_http(exc) from exc
+
+    @app.delete("/api/cloud/samples", dependencies=dep)
+    async def cloud_delete_samples() -> dict[str, Any]:
+        try:
+            return {"deleted": await svc.hub.delete_samples()}
         except CloudError as exc:
             raise _cloud_http(exc) from exc
 

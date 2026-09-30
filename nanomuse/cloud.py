@@ -167,6 +167,14 @@ class CloudClient:
     async def me(self) -> dict[str, Any]:
         return await self._request("GET", "/v1/me")
 
+    async def set_contribute(self, on: bool) -> dict[str, Any]:
+        """Keep (or stop keeping) this account's chat turns for the community's model."""
+        return await self._request("POST", "/v1/me/contribute", {"on": on})
+
+    async def delete_samples(self) -> int:
+        data = await self._request("DELETE", "/v1/me/samples")
+        return int(data.get("deleted") or 0)
+
     async def sessions(self) -> list[dict[str, Any]]:
         data = await self._request("GET", "/v1/me/sessions")
         sessions = data.get("sessions")

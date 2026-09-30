@@ -271,6 +271,8 @@ export interface CloudMe {
   spend: { currency: string; today: number; total: number; daily_cap: number; unlimited: boolean; credit_left?: number; left_today?: number | null };
   /** Relay 0.4: the account's invite code and what came of it. */
   invite?: { code: string; url: string; invites: number; bonus_cny: number; clips_per_invite: number; credit_cny: number; credit_left_cny: number; friends: Array<{ hint: string; joined_at: number }> };
+  /** Relay 0.4: whether this account contributes its chat turns to the community's model, and how many so far. */
+  contribute?: { on: boolean; samples: number };
   /** Relay 0.4: the video-clip allowance (one animated face per account, more per invite). */
   clips?: { unlimited: boolean; allowed: number; used: number; left: number | null; per_face: number };
   models?: Array<{ id: string; name?: string; nanomuse?: { kind?: string; recommended?: boolean } }>;
