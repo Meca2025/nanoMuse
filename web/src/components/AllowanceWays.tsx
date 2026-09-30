@@ -1,5 +1,5 @@
-import { Copy, ExternalLink, KeyRound, Loader2, Share2, Sparkles, Users } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Copy, ExternalLink, KeyRound, Loader2, Share2, Sparkles, Users, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -178,6 +178,99 @@ function Way({ icon, tone, title, children }: { icon: ReactNode; tone: string; t
         <div className="text-[13px] font-medium leading-snug">{title}</div>
         {children}
       </div>
+    </div>
+  );
+}
+
+/** The pool size the heads-up was last shown for: the strip comes back only once the pool has grown. */
+const WARNED_KEY = "nm.cloud.warned_grant";
+
+/**
+ * The 80 % heads-up, once: after a turn finishes on the account's model, ask the runtime for
+ * the account and, when the relay says `warn` (under ¥2 of the pool left) and the strip has
+ * not been shown for this pool size yet, show one dismissible line above the composer that
+ * leads to the account page. Never a modal; nothing while the pool is spent (the card in the
+ * chat says that) or without limit.
+ */
+export function AllowanceHeadsUp() {
+  const t = useT();
+  const { state, setTab } = useStore();
+  const [info, setInfo] = useState<AllowanceInfo | null>(null);
+  const lastCheck = useRef(0);
+  const account = state.hub?.account;
+  const eligible = !!account?.signed_in && !!account.is_model;
+  const finishedAt = state.finishedAt;
+
+  useEffect(() => {
+    if (!eligible || !finishedAt || info) return;
+    if (Date.now() - lastCheck.current < 60_000) return;
+    lastCheck.current = Date.now();
+    let cancelled = false;
+    api
+      .cloudMe()
+      .then((me) => {
+        if (cancelled) return;
+        const s = me.spend;
+        const grant = s.grant ?? s.allowance_cny ?? 0;
+        const left = s.left ?? null;
+        if (s.unlimited || !s.warn || left === null || left <= 0) return;
+        let warnedFor: string | null = null;
+        try {
+          warnedFor = localStorage.getItem(WARNED_KEY);
+        } catch {
+          /* private mode: show it; it will show again next load */
+        }
+        if (warnedFor === String(grant)) return;
+        setInfo({
+          left,
+          grant,
+          invite_url: me.invite?.url,
+          invite_bonus_cny: s.invite_bonus_cny,
+          contribute_bonus_available: s.contribute_bonus_available,
+          contribute_bonus_cny: s.contribute_bonus_cny,
+          own_key_docs: s.own_key_docs,
+        });
+      })
+      .catch(() => {
+        /* offline or signed out meanwhile: no strip */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eligible, finishedAt, info]);
+
+  if (!info) return null;
+  const dismiss = () => {
+    try {
+      localStorage.setItem(WARNED_KEY, String(info.grant ?? 0));
+    } catch {
+      /* ignore */
+    }
+    setInfo(null);
+  };
+  return (
+    <div className="rise mx-3 mb-1.5 flex items-start gap-2 rounded-2xl bg-amber-500/12 px-3 py-2 text-[12.5px] leading-snug text-amber-800 dark:text-amber-200">
+      <Sparkles size={14} className="mt-0.5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        {t("Nearly used up: ¥{left} of ¥{grant} left.", { left: (info.left ?? 0).toFixed(2), grant: (info.grant ?? 0).toFixed(0) })}{" "}
+        {t("Invite a friend (+¥{invite}), join the co-creation programme (+¥{contribute}) or bring your own key — your sign-in keeps working either way.", {
+          invite: (info.invite_bonus_cny ?? 5).toFixed(0),
+          contribute: (info.contribute_bonus_cny ?? 10).toFixed(0),
+        })}{" "}
+        <button
+          type="button"
+          onClick={() => {
+            dismiss();
+            setTab("account");
+          }}
+          className="font-semibold underline decoration-dotted underline-offset-2"
+        >
+          {t("See the ways")}
+        </button>
+      </div>
+      <button type="button" onClick={dismiss} aria-label={t("Dismiss")} className="shrink-0 rounded-full p-0.5 opacity-70 hover:opacity-100">
+        <X size={14} />
+      </button>
     </div>
   );
 }

@@ -631,6 +631,7 @@
     <string name="nm_cloud_err_out_of_tokens">额度用完了。</string>
     <string name="nm_cloud_err_daily_cap">今天的 token 配额用完了，明天恢复。</string>
     <string name="nm_cloud_err_allowance">免费额度已用完。邀请一位新用户 +¥5，加入共创计划 +¥10，或在 设置 → 服务商 里添加自己的 key——无论选哪个，登录和多设备功能都不受影响。</string>
+    <string name="nm_cloud_warn_line">免费额度快用完了：还剩 ¥%1$s（共 ¥%2$s）。邀请一位新用户 +¥5，加入共创计划 +¥10，或换成自己的 key——都在「账号」里；无论哪种，登录都不受影响。</string>
     <string name="nm_cloud_err_rate_limited">请求太快了，稍等一下。</string>
     <string name="nm_cloud_err_unreachable">连不上 nanoMuse 云，请检查网络。</string>
     <string name="nm_cloud_err_generic">出了点问题。</string>

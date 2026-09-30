@@ -1012,6 +1012,10 @@ const zhCN: Record<string, string> = {
     "每个账号有 ¥{allowance} 免费额度；邀请一位新用户 +¥{invite}，加入共创计划 +¥{contribute}（一次）。用完可以换自己的 key（推荐阿里云百炼），登录和多设备功能不受影响。",
   "The free allowance is used up.": "免费额度已用完。",
   "Nearly used up: ¥{left} of ¥{grant} left.": "额度快用完了：还剩 ¥{left}（共 ¥{grant}）。",
+  "Invite a friend (+¥{invite}), join the co-creation programme (+¥{contribute}) or bring your own key — your sign-in keeps working either way.":
+    "邀请一位新用户 +¥{invite}，加入共创计划 +¥{contribute}，或者换成自己的 key——无论哪种，登录都不受影响。",
+  "See the ways": "看看怎么办",
+  Dismiss: "关闭",
   "Three ways on — your sign-in and your devices keep working either way.": "三个办法继续用——无论选哪个，登录和多设备功能都不受影响。",
   "Use your own model key": "换成自己的 key",
   "Alibaba Cloud Bailian (阿里云百炼) is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.":

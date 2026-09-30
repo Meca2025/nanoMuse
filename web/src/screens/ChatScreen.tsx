@@ -1,6 +1,7 @@
 import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Phone, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, fileUrl } from "../api";
+import { AllowanceHeadsUp } from "../components/AllowanceWays";
 import { Avatar } from "../components/Avatar";
 import { BrowserViewer } from "../components/BrowserViewer";
 import { MicButton, useDictation } from "../components/Dictation";
@@ -197,6 +198,7 @@ export function ChatScreen() {
         )}
       </div>
 
+      <AllowanceHeadsUp />
       <Composer
         name={name}
         busy={!!thread?.busy && pendingApprovals === 0}

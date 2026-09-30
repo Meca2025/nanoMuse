@@ -633,6 +633,7 @@
     <string name="nm_cloud_err_out_of_tokens">The allowance is used up.</string>
     <string name="nm_cloud_err_daily_cap">Today\'s token quota is used up; it comes back tomorrow.</string>
     <string name="nm_cloud_err_allowance">The free allowance is used up. Invite a friend (+¥5), join the co-creation programme (+¥10), or add your own key under Settings → Providers — your sign-in and your devices keep working either way.</string>
+    <string name="nm_cloud_warn_line">The free allowance is nearly used up: ¥%1$s of ¥%2$s left. Invite a friend (+¥5), join the co-creation programme (+¥10) or add your own key — all under Account; your sign-in keeps working either way.</string>
     <string name="nm_cloud_err_rate_limited">Too many requests at once. A moment, please.</string>
     <string name="nm_cloud_err_unreachable">Could not reach nanoMuse Cloud. Check the connection.</string>
     <string name="nm_cloud_err_generic">Something went wrong.</string>
