@@ -19,6 +19,7 @@ Report a bug, ask for a feature, send a pull request — every one brings a pers
   <p>
     <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
     <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh.md">简体中文</a> |
+    <a href="https://nanomuse.cn/web/"><b>Try in the browser</b></a> |
     <a href="https://nanomuse.cn/">Website</a> |
     <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Download</a>
   </p>

@@ -61,8 +61,8 @@ i.en,i.zh{font-style:normal}
   <small><i class="zh">在浏览器里用，不用下载</i><i class="en">In the browser, nothing to install</i></small></div></div>
 
   <form id="step1">
-    <h1><i class="zh">登录</i><i class="en">Sign in</i></h1>
-    <p><i class="zh">用邮箱登录 nanoMuse Cloud，我们会给你一台属于你的 nanoMuse——它一直保存着，下次登录还在。</i><i class="en">Sign in to nanoMuse Cloud with an e-mail and you get a nanoMuse of your own — it keeps everything for your next visit.</i></p>
+    <h1><i class="zh">试试 nanoMuse</i><i class="en">Try nanoMuse</i></h1>
+    <p><i class="zh">一个邮箱、一个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。它一直保存着，下次登录还在；之后手机和电脑用同一个账号登录，就是它。</i><i class="en">An e-mail, a code, and a minute later a nanoMuse of your own is here, model included. It keeps everything for your next visit; later, the same account on the phone and the desktop is the same nanoMuse.</i></p>
     <label for="ident"><i class="zh">邮箱</i><i class="en">E-mail</i></label>
     <input id="ident" name="identifier" autocomplete="email" inputmode="email" required autofocus>
     <details class="inv" id="inv">
