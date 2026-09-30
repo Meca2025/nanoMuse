@@ -70,7 +70,7 @@ i.en,i.zh{font-style:normal}
 
   <form id="step1">
     <h1><i class="zh">试试 nanoMuse</i><i class="en">Try nanoMuse</i></h1>
-    <p><i class="zh">手机号或邮箱，加一个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。它一直保存着，下次登录还在；之后手机和电脑用同一个账号登录，就是它。</i><i class="en">A phone number or an e-mail, a code, and a minute later a nanoMuse of your own is here, model included. It keeps everything for your next visit; later, the same account on the phone and the desktop is the same nanoMuse.</i></p>
+    <p><i class="zh">手机号或邮箱收个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。它会一直保存，下次登录还在；之后手机和电脑登同一个账号，就是它。</i><i class="en">A phone number or an e-mail, a code, and a minute later a nanoMuse of your own is here, model included. It keeps everything for your next visit; later, the same account on the phone and the desktop is the same nanoMuse.</i></p>
     <div class="tabs" role="tablist">
       <button type="button" class="tab on" id="tab-code" role="tab" aria-selected="true"><i class="zh">验证码登录</i><i class="en">With a code</i></button>
       <button type="button" class="tab" id="tab-pass" role="tab" aria-selected="false"><i class="zh">密码登录</i><i class="en">With a password</i></button>

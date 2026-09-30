@@ -355,7 +355,7 @@ const zhCN: Record<string, string> = {
   "Every action, including refused ones": "每一次操作，包括被拒绝的",
   Approvals: "审批",
   "Actions your nanoMuse wants to take but cannot without you. Each one shows what will run and why; a permission you grant is bound to that exact tool and target.":
-    "你的 nanoMuse 想执行但没有你就无法进行的操作。每一项都会显示将要运行什么以及原因；你授予的权限只绑定到那个具体的工具和目标。",
+    "这些是你的 nanoMuse 想做、但没有你点头就不能做的事。每一项都写明要运行什么、为什么；你给的许可只对那个具体的工具和对象有效。",
   "Nothing waiting": "没有待处理项",
   "{n} waiting for you": "{n} 项等待你处理",
   Permissions: "权限",
@@ -578,7 +578,7 @@ const zhCN: Record<string, string> = {
   "read {when}": "{when}读取",
   "Calendar connected": "日历已连接",
   "Reads your calendar from its private .ics link — the link stays in the vault. It never changes your calendar; an event it proposes comes as a file you add with a tap.":
-    "通过私密 .ics 链接读取你的日历——链接保存在保险库里。它不会改动你的日历；它提议的日程会以文件形式给你，点一下即可加入。",
+    "通过私密 .ics 链接读取你的日历，链接存在保险库里。它不会改动你的日历；它建议的日程会做成文件给你，点一下就能加进去。",
   "not read yet": "尚未读取",
   "Where is the link?": "链接在哪里？",
   "Settings → your calendar → Integrate calendar → Secret address in iCal format": "设置 → 你的日历 → 整合日历 → iCal 格式的私密地址",
@@ -706,7 +706,7 @@ const zhCN: Record<string, string> = {
     "一个真正干活的个人助手：它搜索、浏览网页、编写文件和代码、收发邮件，并在你离开时继续推进长期目标。",
   "Yours, on your machine": "属于你，运行在你的机器上",
   "It runs on the server you started. A separate Sentinel checks every action, asks before anything hard to undo, and keeps your keys and passwords in an encrypted vault the model cannot read.":
-    "它运行在你启动的服务器上。独立的 Sentinel 审查每一次操作，在任何难以撤销的事情之前先询问你，并把你的密钥和密码放在模型无法读取的加密保险库中。",
+    "它跑在你自己启动的服务器上。独立的 Sentinel 会检查每一步操作，遇到不好撤销的事先问你，并把你的密钥和密码锁在模型读不到的加密保险库里。",
   "First, you": "先说说你",
   "What should it call you?": "它应该怎么称呼你？",
   "Your name": "你的名字",
@@ -725,7 +725,7 @@ const zhCN: Record<string, string> = {
     "选择一个服务商并粘贴密钥。它会加密存储在服务器的保险库中，绝不会展示给模型。",
   "Connect your mail, calendar and contacts": "连接你的邮箱、日历和通讯录",
   "Optional. With a mailbox connected it can read what came in and draft replies; it will always ask before sending. With a calendar it knows your day and finds free time. With your contacts it knows who is who. The browser and MCP servers are under Connections later.":
-    "可选。连接邮箱后它可以读取新邮件并起草回复；发送前总会先询问你。连接日历后它知道你这一天的安排，也能找出空闲时间。连接通讯录后它知道谁是谁。浏览器和 MCP 服务器稍后可在“连接”中设置。",
+    "可选。连上邮箱，它能读新邮件、起草回复，发之前一定先问你。连上日历，它知道你这一天的安排，也能找出空档。连上通讯录，它知道谁是谁。浏览器和 MCP 服务器之后在「连接」里设置。",
   "Ready, {name}.": "准备好了，{name}。",
   "Ready.": "准备好了。",
   "A few things people do in their first days.": "大家在最初几天常做的几件事。",
@@ -914,11 +914,11 @@ const zhCN: Record<string, string> = {
   "No key will be sent.": "不会发送密钥。",
   "Show key": "显示密钥",
   "Hide key": "隐藏密钥",
-  "Actions {name} wants to take but cannot without you. Each one shows what will run and why; a permission you grant is bound to that exact tool and target.": "{name} 想执行但没有你就无法进行的操作。每一项都会显示将要运行什么以及原因；你授予的权限只绑定到那个具体的工具和目标。",
+  "Actions {name} wants to take but cannot without you. Each one shows what will run and why; a permission you grant is bound to that exact tool and target.": "这些是 {name} 想做、但没有你点头就不能做的事。每一项都写明要运行什么、为什么；你给的许可只对那个具体的工具和对象有效。",
   "Forget every permission you granted? {name} will ask again next time.": "忘掉你授予的所有权限？下次 {name} 会重新询问。",
   "This phone": "这台手机",
   "Keep it running": "保持运行",
-  "Android stops apps that seem idle. {name} runs as a foreground service and holds the phone awake only while a task runs; these switches let it keep that promise on this phone.": "安卓会停掉看起来闲着的应用。{name} 以前台服务运行，只在任务进行时保持手机唤醒；下面这些开关让它在这台手机上兑现这一点。",
+  "Android stops apps that seem idle. {name} runs as a foreground service and holds the phone awake only while a task runs; these switches let it keep that promise on this phone.": "安卓会停掉看起来闲着的应用。{name} 以前台服务运行，只在任务进行时让手机保持唤醒；下面这几个开关，是让它在这台手机上真能做到这一点。",
   "Battery": "电池",
   "Unrestricted": "无限制",
   "Optimised": "已优化",
@@ -1149,7 +1149,7 @@ const zhCN: Record<string, string> = {
   "Not this time.": "这次先不换。",
   "New look: {description}. Say what to change any time, or pick another under Settings.": "新形象：{description}。想改随时说，也可以在「设置」里换别的。",
   "No image model is set, so a new look cannot be drawn. Pick one under Connections → Image & video models (the account's model draws with qwen-image; Alibaba Cloud Bailian does too).":
-    "还没有设置图像模型，画不了新形象。到 连接 → 图像与视频模型 里选一个（账号自带的模型用 qwen-image 画图，阿里云百炼也可以）。",
+    "还没有设置图像模型，画不了新形象。到「连接 → 图像与视频模型」里选一个（账号自带的模型用 qwen-image 画图，阿里云百炼也可以）。",
   "Join the hub": "加入中继",
   "This chat goes to {device}.": "这个对话发给 {device}。",
   "Whatever you ask here, the {name} on {device} does where it is — its shell, its files, its screen. Every step shows up here, and anything that needs an approval asks you here.": "在这里说的每件事，都由 {device} 上的 {name} 在它那边完成——它的命令行、它的文件、它的屏幕。每一步都显示在这里，需要批准的事也在这里问你。",
