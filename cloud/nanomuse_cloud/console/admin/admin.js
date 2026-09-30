@@ -15,7 +15,7 @@
     title: "nanoMuse Cloud 后台", tokenLabel: "管理口令", tokenHint: "服务器上 /opt/nanomuse/relay/ADMIN_TOKEN.txt 里的那一行；只留在这个标签页里。",
     enter: "进入", wrong: "口令不对。", offline: "连不上服务器。", refresh: "刷新", lock: "锁定", loading: "加载中…",
     today: "今天", week: "最近 7 天", period: (d) => `最近 ${d} 天`,
-    kSamples: "贡献的对话", kSamplesSub: (n) => `${n} 个账号开启了贡献`, exportSamples: "导出 JSONL", contributes: "贡献对话", samples: "贡献的对话（最近）", samplesNote: "只有把「贡献对话」打开的账号才会保存这些内容；导出的文件不带账号 id。", user: "用户", assistant: "回答", more: "查看更多", noSamples: "还没有",
+    kSamples: "贡献的对话", kSamplesSub: (n) => `${n} 个账号开启了贡献`, exportSamples: "导出 JSONL", exportFailed: (why) => `导出没有成功：${why}。可以再试一次；如果一直这样，看服务器上 docker logs nanomuse-relay。`, exportCut: "下载中途断开", exportEmpty: "还没有可导出的对话。", contributes: "贡献对话", samples: "贡献的对话（最近）", samplesNote: "只有把「贡献对话」打开的账号才会保存这些内容；导出的文件不带账号 id。", user: "用户", assistant: "回答", more: "查看更多", noSamples: "还没有",
     kAccounts: "账号", kAccountsSub: (c) => `${c.with_password || 0} 个设了密码 · ${c.unlimited || 0} 个成员 · ${c.disabled || 0} 个已停用`,
     kActive: "活跃账号", kActiveSub: (n) => `${n} 个新注册`, kSpent: "花费", kSpentSub: (r, t) => `${fmt(r)} 次 · ${fmt(t)} tokens`,
     kOnline: "在线设备", kOnlineSub: (k, s) => `记住了 ${k} 台 · ${s} 个有效登录`, kSignals: "今天的信号",
@@ -57,7 +57,7 @@
     title: "nanoMuse Cloud admin", tokenLabel: "Admin token", tokenHint: "The line in /opt/nanomuse/relay/ADMIN_TOKEN.txt on the server; it stays in this tab only.",
     enter: "Open", wrong: "That token is not right.", offline: "Cannot reach the server.", refresh: "Refresh", lock: "Lock", loading: "Loading…",
     today: "Today", week: "Last 7 days", period: (d) => `Last ${d} days`,
-    kSamples: "Contributed turns", kSamplesSub: (n) => `${n} accounts contributing`, exportSamples: "Export JSONL", contributes: "contributes", samples: "Contributed conversations (recent)", samplesNote: "Kept only for accounts that turned contribution on; the export carries no account ids.", user: "user", assistant: "reply", more: "Show more", noSamples: "None yet",
+    kSamples: "Contributed turns", kSamplesSub: (n) => `${n} accounts contributing`, exportSamples: "Export JSONL", exportFailed: (why) => `The export did not go through: ${why}. Try once more; if it keeps happening, see docker logs nanomuse-relay on the server.`, exportCut: "the download broke off", exportEmpty: "Nothing to export yet.", contributes: "contributes", samples: "Contributed conversations (recent)", samplesNote: "Kept only for accounts that turned contribution on; the export carries no account ids.", user: "user", assistant: "reply", more: "Show more", noSamples: "None yet",
     kAccounts: "Accounts", kAccountsSub: (c) => `${c.with_password || 0} with a password · ${c.unlimited || 0} members · ${c.disabled || 0} disabled`,
     kActive: "Active accounts", kActiveSub: (n) => `${n} new`, kSpent: "Spent", kSpentSub: (r, t) => `${fmt(r)} requests · ${fmt(t)} tokens`,
     kOnline: "Devices online", kOnlineSub: (k, s) => `${k} remembered · ${s} live sign-ins`, kSignals: "Signals today",
@@ -345,15 +345,23 @@
   // ── the drawer: one account ────────────────────────────────────
   let drawerEl = null;
   function closeDrawer() { if (drawerEl) { drawerEl.remove(); drawerEl = null; } detail = null; }
-  /** The whole training set as a file: fetched with the admin token (a bare link could not carry it). */
+  /** The whole training set as a file: fetched with the admin token (a bare link could not carry it).
+      What can go wrong is said in words: the browser's "Failed to fetch" covers a dropped connection,
+      a proxy in the way and a token that stopped working alike. */
   async function exportSamples() {
+    let r;
     try {
-      const r = await fetch("/v1/admin/samples/export", { headers: { "X-Admin-Token": token } });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const blob = await r.blob();
-      const a = h("a", { href: URL.createObjectURL(blob), download: `nanomuse-samples-${new Date().toISOString().slice(0, 10)}.jsonl` });
-      document.body.append(a); a.click(); a.remove();
-    } catch (e) { alert(e.message); }
+      r = await fetch("/v1/admin/samples/export", { headers: { "X-Admin-Token": token }, cache: "no-store" });
+    } catch (_) { alert(T.exportFailed(T.offline)); return; }
+    if (r.status === 401) { token = ""; SS.removeItem("nm.admin"); err = T.wrong; draw(); return; }
+    if (!r.ok) { alert(T.exportFailed(`HTTP ${r.status}${r.statusText ? " " + r.statusText : ""}`)); return; }
+    let blob;
+    try { blob = await r.blob(); } catch (_) { alert(T.exportFailed(T.exportCut)); return; }
+    if (!blob.size) { alert(T.exportEmpty); return; }
+    const url = URL.createObjectURL(blob);
+    const a = h("a", { href: url, download: `nanomuse-samples-${new Date().toISOString().slice(0, 10)}.jsonl` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   async function openAccount(id) {

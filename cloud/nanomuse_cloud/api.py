@@ -718,11 +718,19 @@ def create_app(
 
     @app.get("/v1/admin/samples/export", dependencies=[Depends(admin_dep)])
     async def admin_samples_export(since: int = 0) -> Response:
-        """The training set as JSON lines (one turn per line, no account ids)."""
-        return StreamingResponse(
-            (line.encode() for line in cloud.export_samples(since)),
+        """The training set as JSON lines (one turn per line, no account ids). One whole
+        response with its length, not a stream: the set is small, and a stream that
+        stopped short — a proxy compressing it, the connection dropping — reached the
+        browser as "Failed to fetch" with nothing to say why."""
+        body = "".join(cloud.export_samples(since)).encode()
+        return Response(
+            body,
             media_type="application/x-ndjson",
-            headers={"Content-Disposition": f'attachment; filename="nanomuse-samples-{since}.jsonl"'},
+            headers={
+                "Content-Disposition": f'attachment; filename="nanomuse-samples-{since}.jsonl"',
+                "Cache-Control": "no-store",
+                "Content-Length": str(len(body)),
+            },
         )
 
     @app.post("/v1/admin/grant", dependencies=[Depends(admin_dep)])
