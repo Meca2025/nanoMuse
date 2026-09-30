@@ -66,7 +66,7 @@ pass_reasoning = false
 [agent]
 name = "nanoMuse"
 max_steps = 30
-workspace = "./workspace"       # the agent's files live here
+# workspace = "./workspace"     # the agent's files. Default: ./workspace when the current directory has one, else <data_dir>/workspace
 # Directories outside the workspace the files tool may use. Reads there count as
 # private data (taint tracking); writes there ask for approval.
 extra_roots = []                # e.g. ["~/Documents/notes"]

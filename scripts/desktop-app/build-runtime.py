@@ -61,15 +61,31 @@ def build() -> Path:
 
 
 def check(exe: Path) -> None:
-    """Start the bundled runtime once, wait for /api/health, stop it."""
+    """Start the bundled runtime once, wait for /api/health, stop it.
+
+    Started the way a launcher might: from an unrelated, empty working directory with only the
+    data directory named. Everything the runtime writes — the workspace included — must land
+    under that data directory (0.1.20/0.1.21 on Windows created ``./workspace`` wherever the
+    shell happened to start it and died when that was not writable).
+    """
     port = 8765
     home = ROOT / "build" / "runtime-check-home"
-    shutil.rmtree(home, ignore_errors=True)
-    env = dict(os.environ, NANOMUSE_DATA_DIR=str(home), NANOMUSE_WORKSPACE=str(home / "ws"))
-    for key in ("OPENAI_API_KEY", "DASHSCOPE_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_BASE_URL"):
+    cwd = ROOT / "build" / "runtime-check-cwd"
+    for d in (home, cwd):
+        shutil.rmtree(d, ignore_errors=True)
+    cwd.mkdir(parents=True)
+    env = dict(os.environ, NANOMUSE_DATA_DIR=str(home), PYTHONUTF8="1")
+    for key in (
+        "OPENAI_API_KEY",
+        "DASHSCOPE_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_BASE_URL",
+        "NANOMUSE_WORKSPACE",
+    ):
         env.pop(key, None)
     proc = subprocess.Popen(
         [str(exe), "serve", "--no-qr", "--no-auth", "--port", str(port)],
+        cwd=cwd,
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -90,6 +106,8 @@ def check(exe: Path) -> None:
                                 or b"<div id=root" in page
                                 or len(page) > 200
                             )
+                        assert (home / "workspace").is_dir(), "workspace not under the data dir"
+                        assert not (cwd / "workspace").exists(), "workspace created in the cwd"
                         print("the app is served; the bundled runtime works")
                         return
             except Exception:  # noqa: BLE001
@@ -104,7 +122,8 @@ def check(exe: Path) -> None:
             proc.wait(10)
         except subprocess.TimeoutExpired:
             proc.kill()
-        shutil.rmtree(home, ignore_errors=True)
+        for d in (home, cwd):
+            shutil.rmtree(d, ignore_errors=True)
 
 
 def main() -> None:

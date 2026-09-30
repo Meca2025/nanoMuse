@@ -9,7 +9,8 @@ import { join, resolve } from "node:path";
  * starts one of its own otherwise, stopping it again when the window quits.
  *
  * Where things are, in order of preference:
- * - NANOMUSE_HOME — the data dir (~/.nanomuse): server_token, app-settings.json, logs
+ * - NANOMUSE_HOME — the data dir (~/.nanomuse): server_token, app-settings.json, logs, and the
+ *   workspace under it (the runtime is started there, with NANOMUSE_DATA_DIR / NANOMUSE_WORKSPACE set)
  * - NANOMUSE_PORT — the port (8787)
  * - NANOMUSE_BIN — the `nanomuse` executable; else the runtime the packaged app carries
  *   (resources/runtime/), else the repo's .venv, else PATH
@@ -71,8 +72,22 @@ export class Runtime {
     mkdirSync(this.home, { recursive: true });
     const log = openSync(join(this.home, "desktop-app.log"), "a");
     onLog(`starting ${bin} ${args.join(" ")}`);
+    // The runtime is told where to keep everything: the data folder and the workspace under
+    // NANOMUSE_HOME. Left to its defaults it would put the workspace under the current directory,
+    // which for an app started from Finder is / and from a Windows shortcut may be Program Files
+    // or System32 — neither writable, and the runtime would stop before it was ready.
+    // PYTHONUTF8 keeps the log readable on a Chinese or Japanese Windows (the console code page
+    // would otherwise garble the runtime's error messages).
     this.child = spawn(bin, args, {
-      env: { ...process.env, NANOMUSE_HOME: this.home, PYTHONUNBUFFERED: "1" },
+      cwd: this.home,
+      env: {
+        ...process.env,
+        NANOMUSE_HOME: this.home,
+        NANOMUSE_DATA_DIR: this.home,
+        NANOMUSE_WORKSPACE: join(this.home, "workspace"),
+        PYTHONUNBUFFERED: "1",
+        PYTHONUTF8: "1",
+      },
       stdio: ["ignore", log, log],
       detached: false,
     });
@@ -112,7 +127,7 @@ export class Runtime {
     let hint = "";
     if (/address already in use|EADDRINUSE|Errno 98|Errno 10048/i.test(tail)) {
       hint = `Port ${this.port} is taken by another program (or another nanoMuse). Quit it, or set NANOMUSE_PORT.`;
-    } else if (/permission denied|Errno 13|not writable|cannot write/i.test(tail)) {
+    } else if (/permission denied|Errno 13|WinError 5|not writable|cannot write|cannot create/i.test(tail)) {
       hint = `The data folder ${this.home} is not writable. Fix its permissions or set NANOMUSE_HOME.`;
     } else if (/cannot open display|DISPLAY|xdotool/i.test(tail)) {
       hint = "No display is available for the hands; the runtime still needs a desktop session.";

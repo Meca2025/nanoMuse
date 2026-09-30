@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from nanomuse.schema import RiskLevel
 
@@ -72,6 +72,11 @@ class LLMSettings(BaseModel):
 class AgentSettings(BaseModel):
     name: str = "nanoMuse"
     max_steps: int = 30
+    # Where the agent's files live. A relative path is relative to the current directory, which is
+    # what a terminal user expects. When nothing is configured, Settings resolves it: a `workspace/`
+    # in the current directory when there is one, otherwise `<data_dir>/workspace` — so a runtime
+    # started from a read-only place (the desktop shell from /Applications or Program Files, whose
+    # working directory may even be /) never tries to create a folder where it cannot.
     workspace: Path = Path("./workspace")
     # Directories outside the workspace the files tool may read and write (e.g. "~/Documents").
     extra_roots: list[Path] = Field(default_factory=list)
@@ -437,6 +442,14 @@ class Settings(BaseModel):
     server: ServerSettings = Field(default_factory=ServerSettings)
     # Where the settings came from (informational).
     source: str | None = None
+
+    @model_validator(mode="after")
+    def _default_workspace(self) -> Settings:
+        """No ``agent.workspace`` configured: ``./workspace`` when the current directory has one
+        (the terminal user's convention), otherwise ``<data_dir>/workspace``."""
+        if "workspace" not in self.agent.model_fields_set and not Path("./workspace").is_dir():
+            self.agent.workspace = self.data_dir.expanduser() / "workspace"
+        return self
 
     @property
     def audit_file(self) -> Path:

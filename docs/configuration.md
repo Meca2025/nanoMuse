@@ -21,7 +21,7 @@ These win over the file. They cover the settings people change most often and wh
 | `NANOMUSE_LLM_PROVIDER`, `NANOMUSE_LLM_MODEL`, `NANOMUSE_LLM_BASE_URL`, `NANOMUSE_LLM_API_KEY`, `NANOMUSE_LLM_TOOL_MODE` | `[llm]` |
 | `DEEPSEEK_API_KEY`, `OPENAI_API_KEY` | used as `llm.api_key` when it is empty — DeepSeek's for a `*.deepseek.com` `base_url`, OpenAI's for every other host (OpenAI itself, OpenRouter, a gateway, vLLM) |
 | `NANOMUSE_DATA_DIR` | `data_dir` (default `~/.nanomuse`) |
-| `NANOMUSE_WORKSPACE` | `agent.workspace` (default `./workspace`) |
+| `NANOMUSE_WORKSPACE` | `agent.workspace` (default: `./workspace` when the current directory has one, else `<data_dir>/workspace`) |
 | `NANOMUSE_SENTINEL_MODE` | `sentinel.mode` |
 | `NANOMUSE_SEARCH_PROVIDER`, `NANOMUSE_SEARCH_API_KEY`, `NANOMUSE_SEARCH_BASE_URL` | `[connectors.search]` |
 | `NANOMUSE_SERVER_HOST`, `NANOMUSE_SERVER_PORT`, `NANOMUSE_SERVER_TOKEN` | `[server]` |
@@ -104,7 +104,7 @@ Models that emit `<think>…</think>` inside the content are handled: the reason
 [agent]
 name                 = "nanoMuse"      # what the agent calls itself (the app's profile overrides this)
 max_steps            = 30              # tool calls per turn before it must wrap up
-workspace            = "./workspace"   # the only directory the files tool can touch
+# workspace          = "./workspace"   # the only directory the files tool can touch; default ./workspace if present here, else <data_dir>/workspace
 language             = "auto"          # or a fixed language: "English", "中文", ...
 max_context_messages = 80
 show_thinking        = false

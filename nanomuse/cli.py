@@ -117,8 +117,9 @@ def _settings(config: Path | None, auto: bool = False) -> Settings:
         settings.ensure_dirs()  # the store commands open SQLite files under data_dir directly
     except OSError as exc:
         console.print(
-            f"[red]cannot write to the data directory[/red] {settings.data_dir}: {exc.strerror or exc}\n"
-            "Point NANOMUSE_DATA_DIR (or data_dir in config.toml) at a folder you can write to."
+            f"[red]cannot create[/red] {exc.filename or settings.data_dir}: {exc.strerror or exc}\n"
+            f"(data directory {settings.data_dir}, workspace {settings.agent.workspace}). Point NANOMUSE_DATA_DIR "
+            "and NANOMUSE_WORKSPACE (or data_dir / agent.workspace in config.toml) at folders you can write to."
         )
         raise typer.Exit(1) from exc
     return settings

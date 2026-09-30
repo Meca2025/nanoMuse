@@ -85,3 +85,25 @@ def test_provider_key_fallback_follows_the_host(tmp_path: Path, monkeypatch: pyt
     monkeypatch.delenv("OPENAI_API_KEY")
     assert not key_for("https://api.openai.com/v1")  # DeepSeek's key does not stand in
     assert key_for("https://api.deepseek.com") == "sk-deepseek"
+
+
+def test_workspace_defaults_under_the_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """No ``agent.workspace``: ``./workspace`` only when the current directory has one (the
+    terminal user's convention); otherwise inside the data directory, wherever the process was
+    started — a launcher's cwd may be Program Files or System32 (the 0.1.21 Windows failure)."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("NANOMUSE_WORKSPACE", raising=False)
+    monkeypatch.setenv("NANOMUSE_DATA_DIR", str(tmp_path / "data"))
+    assert load_settings().agent.workspace == tmp_path / "data" / "workspace"
+
+    (tmp_path / "workspace").mkdir()
+    assert load_settings().agent.workspace == Path("./workspace")
+
+    monkeypatch.setenv("NANOMUSE_WORKSPACE", str(tmp_path / "elsewhere"))
+    assert load_settings().agent.workspace == tmp_path / "elsewhere"
+    monkeypatch.delenv("NANOMUSE_WORKSPACE")
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        f'data_dir = "{(tmp_path / "data").as_posix()}"\n[agent]\nworkspace = "./mine"\n'
+    )
+    assert load_settings(cfg).agent.workspace == Path("./mine")
