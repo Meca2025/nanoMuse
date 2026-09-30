@@ -133,13 +133,29 @@ is metered and shown, nothing is refused for lack of tokens (`/v1/me` says
 ### Operator's page
 
 `/app/admin/` asks for `CLOUD_ADMIN_TOKEN` (kept in the tab's sessionStorage)
-and shows every account — phone number or address in clear, joined, used in
-all and today, last active, live sign-ins, devices with presence — with
-grant, disable and delete buttons, plus the last fourteen days of usage. The
-identifiers are stored AES-GCM-encrypted with a key derived from
-`CLOUD_SECRET`; the page is the only place they are decrypted. A person can
-also remove themselves: `POST /v1/auth/delete` with their key deletes the
-account, its keys, ledger and devices.
+and is the dashboard from `/v1/admin/overview`: how many accounts (with a
+password, members, disabled), who was active today and over the period,
+what it cost today / this week / over 7, 30 or 90 days split by kind (chat,
+pictures, video, calls) and by model, spend by day as stacked bars, the top
+spenders, today's signals (sign-ins, failures, budget refusals, upstream
+errors, calls) and the timeline across accounts with a kind filter. The
+accounts table shows the masked hint; opening one account
+(`/v1/admin/accounts/{id}`) decrypts its phone number or address for that
+view only and shows its spend by kind / model / day, sign-ins (device names,
+revoked ones too), remembered devices with presence, the recent requests and
+its timeline, with the grant / member / disable / delete buttons. What
+anyone said to a model is nowhere on the page — it is never stored.
+Identifiers are kept AES-GCM-encrypted with a key derived from
+`CLOUD_SECRET`. A person can also remove themselves: `POST /v1/auth/delete`
+with their key deletes the account, its keys, ledger and devices.
+
+### Web console
+
+`/app/` is the person's own page in the same design as the phone app: sign in
+with a code or a password, the devices of the account with their Muses to
+talk to, and an account sheet (`/v1/me`) with the allowance, usage by kind
+and by model, the sign-ins with a way to revoke each, the recent activity,
+set / change / remove the password, sign out here or everywhere.
 
 ## Operating
 
