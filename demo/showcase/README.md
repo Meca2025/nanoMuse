@@ -168,6 +168,15 @@ listing, and the site's download switch ("GitHub / 国内镜像") rewrites its l
 `/etc/default/nanomuse-site-mirror` changes how many are kept. `install.sh` installs this too and
 starts the first fetch in the background (`journalctl -u nanomuse-release-mirror` to watch it).
 
+And it counts: the site block writes a JSON access log (`logs/caddy/`, rolled, kept seven days),
+and `mirror/traffic.py` — `nanomuse-traffic`, every ten minutes — turns what was added since the
+last run into daily counts in `/var/lib/nanomuse-traffic/traffic.db`: page views, visitors (a
+hash of address and browser under a salt made for the day and dropped two days later; no address
+is ever written), crawlers, downloads per file from `/dl/`, referring sites, the pages; once a run
+it also records the repository's stars and GitHub's own release download counts. The relay
+(cloud/deploy/nanomuse-hk) mounts the database read-only and shows it on its operator page;
+`nanomuse-traffic --report` prints the last two weeks in the terminal.
+
 ### Running it on your machine
 
 The gateway runs anywhere Docker does; Caddy is only for TLS and names. Browsers resolve

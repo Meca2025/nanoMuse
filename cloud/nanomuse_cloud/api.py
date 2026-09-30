@@ -38,6 +38,8 @@
     GET  /v1/admin/usage      X-Admin-Token  ?days=14           → charged tokens and yuan per day and kind
     GET  /v1/admin/overview   X-Admin-Token  ?days=30           → the dashboard: accounts, today / week / period by kind and model, signals, events
     GET  /v1/admin/events     X-Admin-Token  ?limit=200&kind=…  → the timeline across accounts (never message content)
+    GET  /v1/admin/series     X-Admin-Token  ?days=30           → by day: sign-ins, new / active accounts, invites, co-creation joins; devices by kind and OS; nanoMuse Web's counts
+    GET  /v1/admin/traffic    X-Admin-Token  ?days=30           → the site: pages, visitors, downloads per file, referrers, GitHub stars and release downloads (TRAFFIC_DB)
     GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → contributed turns (opted-in accounts only)
     GET  /v1/admin/samples/export X-Admin-Token ?since=         → the same as JSON lines, without account ids
 
@@ -666,6 +668,32 @@ def create_app(
         out["online_devices"] = hub.online_count() if hub is not None else 0
         out["version"] = __version__
         return out
+
+    @app.get("/v1/admin/series", dependencies=[Depends(admin_dep)])
+    async def admin_series(days: int = 30) -> dict:
+        out = cloud.admin_series(max(1, min(days, 365)))
+        hub = getattr(app.state, "hub", None)
+        out["online_devices"] = hub.online_count() if hub is not None else 0
+        out["web"] = await web_info()
+        return out
+
+    async def web_info() -> dict | None:
+        """nanoMuse Web's counts from the gateway next door (WEB_INFO_URL); None when it
+        is not configured or does not answer — the panel then says so."""
+        if not settings.web_info_url:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as c:
+                r = await c.get(settings.web_info_url)
+                r.raise_for_status()
+                data = r.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    @app.get("/v1/admin/traffic", dependencies=[Depends(admin_dep)])
+    async def admin_traffic(days: int = 30) -> dict:
+        return cloud.admin_traffic(max(1, min(days, 365)))
 
     @app.get("/v1/admin/accounts/{account_id}", dependencies=[Depends(admin_dep)])
     async def admin_account(account_id: str, days: int = 30) -> dict:

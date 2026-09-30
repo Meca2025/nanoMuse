@@ -97,6 +97,8 @@ for the full list. The ones that matter:
 | `INVITE_URL` | `https://nanomuse.cn/web/?invite=` | the link the apps offer to share; the code is appended |
 | `OWN_KEY_DOCS` | `https://nanomuse.cn/own-key` | the guide the apps open for bringing one's own key |
 | `DAY_OFFSET_H` | 8 | the operator's reports group by local day, midnight UTC+8 (Beijing) |
+| `TRAFFIC_DB` | empty | the site's daily traffic counts (`demo/showcase/mirror/traffic.py`), mounted read-only, for the operator's page; empty = that panel says it is not connected |
+| `WEB_INFO_URL` | empty | nanoMuse Web's gateway (`http://gateway:8000/api/web/info` on the same docker network) for its account and session counts on the operator's page |
 | `USD_CNY` | 7.1 | for showing dollars next to yuan; display only |
 | `SIGNUP_TOKENS` | 0 (no ceiling) | starter token grant per account, the older allowance |
 | `DAILY_CAP_TOKENS` | 0 (off) | tokens per account per day |
@@ -163,6 +165,17 @@ anyone said to a model is nowhere on the page — it is never stored.
 Identifiers are kept AES-GCM-encrypted with a key derived from
 `CLOUD_SECRET`. A person can also remove themselves: `POST /v1/auth/delete`
 with their key deletes the account, its keys, ledger and devices.
+
+Two more panels come from `/v1/admin/series` and `/v1/admin/traffic`: the
+relay's own numbers by day (sign-ins, new and active accounts, sign-ups
+through an invite, co-creation joins, calls, refusals, upstream errors),
+the remembered devices by kind and system, the invite funnel and — with
+`WEB_INFO_URL` — how many nanoMuse Web accounts and sessions the gateway
+holds; and, with `TRAFFIC_DB`, the project site's visits and downloads:
+page views, visitors, crawlers, downloads per file from the mirror next to
+GitHub's own download counts, stars, referring sites, the pages. The traffic
+database is written by `demo/showcase/mirror/traffic.py` from Caddy's access
+log — daily counts only; the script never stores an address.
 
 ### Web console
 

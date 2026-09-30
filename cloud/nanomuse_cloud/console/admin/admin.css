@@ -45,6 +45,28 @@
 .admin .search { display: flex; align-items: center; gap: 8px; }
 .admin .search input { border: 0; background: var(--fill); border-radius: 10px; padding: 6px 10px; font-size: 13px; width: 200px; outline: none; }
 .admin .search input:focus { box-shadow: 0 0 0 2px rgba(10, 102, 228, 0.25); }
+/* trends and the site: a total and a bar a day per metric, ranked lists */
+.admin .sparks { padding: 8px 16px 6px; }
+.admin .spark { display: grid; grid-template-columns: minmax(110px, 160px) 56px 1fr; align-items: center; gap: 12px; padding: 5px 0; font-size: 13px; }
+.admin .spark .k { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin .spark b { font-variant-numeric: tabular-nums; text-align: right; }
+.admin .bars-mini { display: flex; align-items: flex-end; gap: 2px; height: 24px; }
+.admin .bars-mini i { flex: 1; min-width: 2px; border-radius: 2px; background: var(--action); opacity: 0.85; }
+.admin .bars-mini i.ok { background: var(--ok); } .admin .bars-mini i.cyan { background: var(--action-2); } .admin .bars-mini i.violet { background: var(--violet); } .admin .bars-mini i.warn { background: var(--warn); }
+.admin .bars-mini i.z { background: var(--hairline); opacity: 1; }
+.admin .bars-mini i:hover { opacity: 1; }
+.admin .kpis.in-panel { padding: 12px 16px 4px; margin: 0; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.admin .kpi.flat { box-shadow: none; background: var(--fill); border-radius: 14px; padding: 10px 12px 9px; }
+.admin .kpi.flat .v { font-size: 20px; }
+.admin .cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 18px; padding: 6px 16px 8px; }
+.admin .cols3 h3 { font-size: 12px; color: var(--ink-3); font-weight: 600; margin: 8px 0 4px; letter-spacing: 0.02em; }
+.admin .ranks { display: flex; flex-direction: column; gap: 4px; }
+.admin .rank { display: grid; grid-template-columns: minmax(0, 1fr) 72px 44px; align-items: center; gap: 8px; font-size: 12.5px; }
+.admin .rank .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.admin .rank i { display: block; height: 6px; border-radius: 3px; background: var(--action); opacity: 0.55; justify-self: start; }
+.admin .rank b { font-variant-numeric: tabular-nums; text-align: right; font-weight: 500; white-space: nowrap; }
+.admin .panel h2 .fine { font-weight: 400; }
+@media (max-width: 900px) { .admin .cols3 { grid-template-columns: 1fr; } }
 /* the drawer: one account */
 .drawer-scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.32); z-index: 30; animation: fade 0.18s ease both; }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100%); background: var(--canvas); overflow: auto; padding: 16px 18px 40px; animation: slide 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both; }

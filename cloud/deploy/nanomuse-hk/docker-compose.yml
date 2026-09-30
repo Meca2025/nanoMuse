@@ -16,8 +16,15 @@ services:
     container_name: nanomuse-relay
     restart: unless-stopped
     env_file: .env
+    environment:
+      # the operator's page, beyond the relay's own tables: the site's daily counts
+      # (demo/showcase/mirror/traffic.py, /var/lib/nanomuse-traffic on the host) and
+      # nanoMuse Web's numbers from the showcase gateway on the edge network
+      TRAFFIC_DB: /srv/nanomuse-cloud/traffic/traffic.db
+      WEB_INFO_URL: http://gateway:8000/api/web/info
     volumes:
       - ./data:/srv/nanomuse-cloud/data
+      - /var/lib/nanomuse-traffic:/srv/nanomuse-cloud/traffic:ro
     networks:
       - edge
       - web

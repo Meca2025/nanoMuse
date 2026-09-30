@@ -293,6 +293,13 @@ class Settings:
     aliyun_sms_template: str = field(default_factory=lambda: _env("ALIYUN_SMS_TEMPLATE"))
 
     models: tuple[ModelSpec, ...] = field(default_factory=_models_from_env)
+    # -- the operator's page, beyond the relay's own numbers ------------------------------
+    # the site's traffic database (demo/showcase/mirror/traffic.py), mounted read-only into
+    # the container; empty = the "visits and downloads" panel says so and shows nothing
+    traffic_db: str = field(default_factory=lambda: _env("TRAFFIC_DB"))
+    # nanoMuse Web's gateway on the same docker network (http://gateway:8000/api/web/info):
+    # how many kept accounts and running sessions; empty = not asked
+    web_info_url: str = field(default_factory=lambda: _env("WEB_INFO_URL"))
 
     def model(self, model_id: str) -> ModelSpec | None:
         for m in self.models:

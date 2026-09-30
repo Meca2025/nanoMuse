@@ -45,6 +45,14 @@
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `输入 ${p.per_m_input} / 输出 ${p.per_m_output} 每百万 tokens` : null,
       p.per_image ? `每张 ${p.per_image}${p.per_image_2k ? `（2k ${p.per_image_2k}）` : ""}` : null, p.per_second ? `每秒 ${p.per_second}` : null].filter(Boolean).join("；"),
     foot: "手机号 / 邮箱只在打开某个账号时用管理口令解出来看；数据库里存的是加密后的值。谁和模型说了什么，这里没有，从来没存过。请不要把这个页面截图发出去。金额按模型服务商的北京地区标价估算。",
+    // trends and the site
+    trends: (d) => `账号趋势 · 最近 ${d} 天`, site: (d) => `官网访问与下载 · 最近 ${d} 天`, siteOff: "还没接上访问统计：服务器上装 nanomuse-traffic（demo/showcase/mirror/traffic.py），relay 设 TRAFFIC_DB 指向它的数据库。",
+    siteUpdated: (t) => `更新于 ${t}`, siteNote: "来自 Caddy 的访问日志（保留 7 天）：按天计数，访客用当天的随机盐对地址和浏览器做哈希，不存 IP。",
+    sPages: "页面浏览", sVisitors: "访客", sBots: "爬虫 / 监控", sMirror: "镜像下载", sGithub: "GitHub 下载", sStars: "Stars", sPeriod: "本期", sDelta: (n) => (n > 0 ? `+${fmt(n)} 本期` : n < 0 ? `${fmt(n)} 本期` : "本期无变化"),
+    sFiles: "下载的文件", sMirrorCol: "镜像", sGithubCol: "GitHub 累计", sRefs: "来源站点", sTop: "页面", sNone: "还没有数据", sSince: (d) => `自 ${d}`,
+    mSignIns: "登录", mNew: "新注册", mActive: "活跃账号", mInvites: "通过邀请注册", mContribute: "加入共创", mCalls: "通话", mRefused: "超额被拒", mErrors: "上游错误",
+    devices: "设备", devKinds: { phone: "手机", computer: "电脑", web: "网页版" }, invitesTitle: "邀请", invitesLine: (f) => `${fmt(f.with_code)} 人生成了邀请码 · ${fmt(f.inviters)} 人邀请成功 · ${fmt(f.invited)} 人经邀请注册 · ${fmt(f.contribute_bonuses)} 人领了共创奖励`,
+    webTitle: "网页版（nanomuse.cn/web）", webLine: (w) => (w ? `${fmt(w.accounts)} 个账号有自己的 Muse（上限 ${fmt(w.max_accounts)}）· ${fmt(w.running)} 个在运行（上限 ${fmt(w.max_running)}）` : "未接入：relay 设 WEB_INFO_URL 指向 gateway 的 /api/web/info。"), webOff: "网页版未开启",
   } : {
     title: "nanoMuse Cloud admin", tokenLabel: "Admin token", tokenHint: "The line in /opt/nanomuse/relay/ADMIN_TOKEN.txt on the server; it stays in this tab only.",
     enter: "Open", wrong: "That token is not right.", offline: "Cannot reach the server.", refresh: "Refresh", lock: "Lock", loading: "Loading…",
@@ -77,6 +85,13 @@
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `${p.per_m_input} in / ${p.per_m_output} out per M tokens` : null,
       p.per_image ? `${p.per_image} a picture${p.per_image_2k ? ` (${p.per_image_2k} at 2k)` : ""}` : null, p.per_second ? `${p.per_second} a second` : null].filter(Boolean).join("; "),
     foot: "A phone number or address is decrypted only when you open that account, with the admin token; the database holds ciphertext. What anyone said to a model is not here — it was never stored. Do not share screenshots of this page. Money is estimated at the provider's Beijing list prices.",
+    trends: (d) => `Accounts · last ${d} days`, site: (d) => `The site: visits and downloads · last ${d} days`, siteOff: "No traffic figures yet: install nanomuse-traffic on the server (demo/showcase/mirror/traffic.py) and point the relay's TRAFFIC_DB at its database.",
+    siteUpdated: (t) => `updated ${t}`, siteNote: "From Caddy's access log (kept seven days): counted by day; a visitor is a hash of address and browser under a salt made for that day. No addresses are stored.",
+    sPages: "Page views", sVisitors: "Visitors", sBots: "Crawlers / monitors", sMirror: "Mirror downloads", sGithub: "GitHub downloads", sStars: "Stars", sPeriod: "this period", sDelta: (n) => (n > 0 ? `+${fmt(n)} this period` : n < 0 ? `${fmt(n)} this period` : "no change this period"),
+    sFiles: "Files downloaded", sMirrorCol: "mirror", sGithubCol: "GitHub, all time", sRefs: "Referring sites", sTop: "Pages", sNone: "Nothing yet", sSince: (d) => `since ${d}`,
+    mSignIns: "Sign-ins", mNew: "New accounts", mActive: "Active accounts", mInvites: "Signed up via invite", mContribute: "Joined co-creation", mCalls: "Calls", mRefused: "Refused: over budget", mErrors: "Upstream errors",
+    devices: "Devices", devKinds: { phone: "phones", computer: "computers", web: "web" }, invitesTitle: "Invites", invitesLine: (f) => `${fmt(f.with_code)} made an invite code · ${fmt(f.inviters)} brought someone · ${fmt(f.invited)} came through one · ${fmt(f.contribute_bonuses)} took the co-creation bonus`,
+    webTitle: "nanoMuse Web (nanomuse.cn/web)", webLine: (w) => (w ? `${fmt(w.accounts)} accounts with a Muse of their own (cap ${fmt(w.max_accounts)}) · ${fmt(w.running)} running (cap ${fmt(w.max_running)})` : "Not connected: set the relay's WEB_INFO_URL to the gateway's /api/web/info."), webOff: "nanoMuse Web is off",
   };
 
   const moneyN = (v) => { const c = Number(v || 0); return c >= 100 ? c.toFixed(0) : c >= 1 ? c.toFixed(2) : c > 0 && c < 0.01 ? c.toFixed(4) : c.toFixed(2); };
@@ -118,7 +133,7 @@
 
   const SS = window.sessionStorage;
   let token = SS.getItem("nm.admin") || "";
-  let ov = null, accounts = null, usage = null, err = "", days = Number(SS.getItem("nm.admin.days") || 30), filter = "", filtered = null, q = "";
+  let ov = null, accounts = null, usage = null, series = null, traffic = null, err = "", days = Number(SS.getItem("nm.admin.days") || 30), filter = "", filtered = null, q = "";
   let detail = null, detailErr = "";
 
   const app = document.getElementById("app");
@@ -147,6 +162,8 @@
   async function load() {
     try {
       [ov, accounts, usage] = await Promise.all([api("GET", `/v1/admin/overview?days=${days}`), api("GET", "/v1/admin/accounts"), api("GET", `/v1/admin/usage?days=${Math.min(days, 90)}`)]);
+      // the two newer views: a relay from before them, or a hiccup, leaves the panels out
+      [series, traffic] = await Promise.all([api("GET", `/v1/admin/series?days=${days}`).catch(() => null), api("GET", `/v1/admin/traffic?days=${days}`).catch(() => null)]);
       err = "";
     } catch (e) {
       if (e.message !== "admin") err = e.message;
@@ -221,6 +238,66 @@
       i % every === 0 ? h("div", { class: "lbl" }, day(d.day)) : null))),
       h("div", { class: "bars-x" }),
       h("div", { class: "legend" }, ...["chat", "image", "video", "realtime"].map((k) => h("span", {}, h("i", { class: k }), T.kinds[k]))));
+  }
+  /** One metric across the period: its total, then a tiny bar per day (hover for the day and the count). */
+  function sparkRow(label, cols, key, tone, dayOf) {
+    const values = cols.map((c) => Number(c[key] || 0));
+    const max = Math.max(1, ...values), total = values.reduce((a, b) => a + b, 0);
+    return h("div", { class: "spark" },
+      h("span", { class: "k" }, label), h("b", {}, fmt(total)),
+      h("div", { class: "bars-mini" }, ...values.map((v, i) => h("i", { class: v > 0 ? tone : "z", style: `height:${v > 0 ? Math.max(2, Math.round(22 * v / max)) : 1}px`, title: `${dayOf(cols[i])} · ${fmt(v)}` }))));
+  }
+  const sizeOf = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(0)} MB` : `${Math.round(b / 1e3)} kB`);
+  function rankRows(items, unit) {
+    if (!items || !items.length) return h("div", { class: "empty" }, T.sNone);
+    const max = Math.max(1, ...items.map((x) => x.hits));
+    return h("div", { class: "ranks" }, ...items.slice(0, 12).map((x) => h("div", { class: "rank", title: x.bytes ? sizeOf(x.bytes) : "" },
+      h("span", { class: "n" }, x.name), h("i", { style: `width:${Math.round(100 * x.hits / max)}%` }), h("b", {}, unit ? unit(x) : fmt(x.hits)))));
+  }
+  /** The site: what nanomuse-traffic counted from the access log, next to GitHub's own numbers. */
+  function sitePanel() {
+    const tr = traffic;
+    if (!tr) return null;
+    if (!tr.available) return h("div", { class: "panel span" }, h("h2", {}, T.site(days)), h("div", { class: "empty" }, T.siteOff));
+    const rows = tr.days || [], gh = tr.github || {}, ghDays = gh.days || [];
+    const sum = (k) => rows.reduce((a, r) => a + Number(r[k] || 0), 0);
+    const first = ghDays[0], last = ghDays[ghDays.length - 1];
+    const delta = (k) => (first && last ? Number(last[k]) - Number(first[k]) : 0);
+    const dayOf = (r) => r.day.slice(5).replace("-", "/");
+    const kpi = (k, v, sub) => h("div", { class: "kpi flat" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v), sub ? h("div", { class: "s" }, sub) : null);
+    const ghAssets = Object.assign({}, ...Object.values(gh.assets || {}));
+    return h("div", { class: "panel span" },
+      h("h2", {}, T.site(days), h("span", { class: "sp" }), tr.updated_at ? h("span", { class: "fine" }, T.siteUpdated(when(tr.updated_at))) : null),
+      h("div", { class: "kpis in-panel" },
+        kpi(T.sPages, fmt(sum("pages")), T.sPeriod), kpi(T.sVisitors, fmt(sum("visitors")), T.sPeriod), kpi(T.sMirror, fmt(sum("downloads")), sizeOf(rows.reduce((a, r) => a + Number(r.bytes || 0), 0))),
+        kpi(T.sGithub, fmt(gh.downloads || 0), T.sDelta(delta("downloads"))), kpi(T.sStars, fmt(gh.stars || 0), T.sDelta(delta("stars"))), kpi(T.sBots, fmt(sum("bots")), T.sPeriod)),
+      rows.length ? h("div", { class: "sparks" },
+        sparkRow(T.sPages, rows, "pages", "blue", dayOf), sparkRow(T.sVisitors, rows, "visitors", "cyan", dayOf), sparkRow(T.sMirror, rows, "downloads", "violet", dayOf)) : h("div", { class: "empty" }, T.sNone),
+      h("div", { class: "cols3" },
+        h("div", {}, h("h3", {}, T.sFiles, h("span", { class: "fine" }, ` · ${T.sMirrorCol} / ${T.sGithubCol}`)), rankRows(tr.downloads, (x) => `${fmt(x.hits)}${ghAssets[x.name] !== undefined ? ` / ${fmt(ghAssets[x.name])}` : ""}`)),
+        h("div", {}, h("h3", {}, T.sRefs), rankRows(tr.referrers)),
+        h("div", {}, h("h3", {}, T.sTop), rankRows(tr.pages))),
+      h("div", { class: "fine", style: "padding:0 16px 12px" }, T.siteNote));
+  }
+  /** The relay's own series: sign-ins, accounts, invites, co-creation, calls — and the devices and nanoMuse Web as they stand. */
+  function trendsPanel() {
+    const sr = series;
+    if (!sr) return null;
+    const rows = sr.days || [];
+    const dayOf = (r) => day(r.day);
+    const dev = sr.devices || [];
+    const byKind = {};
+    for (const d of dev) { const k = byKind[d.kind] || (byKind[d.kind] = { n: 0, os: [] }); k.n += d.count; k.os.push(`${d.os || "?"} ${fmt(d.count)}`); }
+    return h("div", { class: "panel span" },
+      h("h2", {}, T.trends(days)),
+      h("div", { class: "sparks" },
+        sparkRow(T.mSignIns, rows, "sign_ins", "blue", dayOf), sparkRow(T.mNew, rows, "new_accounts", "ok", dayOf), sparkRow(T.mActive, rows, "active_accounts", "cyan", dayOf),
+        sparkRow(T.mInvites, rows, "invites_used", "violet", dayOf), sparkRow(T.mContribute, rows, "contribute_on", "violet", dayOf), sparkRow(T.mCalls, rows, "calls", "ok", dayOf),
+        sparkRow(T.mRefused, rows, "budget_refusals", "warn", dayOf), sparkRow(T.mErrors, rows, "upstream_errors", "warn", dayOf)),
+      h("div", { class: "kv" },
+        h("b", {}, T.devices), h("span", {}, Object.keys(byKind).length ? Object.entries(byKind).map(([k, v]) => h("div", {}, h("span", { class: "pill", style: "margin-right:6px" }, `${T.devKinds[k] || k} ${fmt(v.n)}`), h("span", { class: "fine" }, v.os.join(" · ")))) : T.none),
+        h("b", {}, T.invitesTitle), h("span", {}, T.invitesLine({ with_code: 0, inviters: 0, invited: 0, contribute_bonuses: 0, ...(sr.invites || {}) })),
+        h("b", {}, T.webTitle), h("span", {}, sr.web && sr.web.enabled === false ? T.webOff : T.webLine(sr.web))));
   }
   function eventRow(e, withWho) {
     const [tone, icon] = EVENT_STYLE[e.kind] || ["grey", ICON.person];
@@ -415,6 +492,7 @@
         (() => { const ct = ov.contributions || {}; const k = kpi(T.kSamples, fmt(ct.samples || 0), T.kSamplesSub(ct.accounts || 0)); if (ct.samples) k.append(h("button", { class: "btn quiet sm", style: "margin-top:6px", onclick: exportSamples }, T.exportSamples)); return k; })()),
       h("div", { class: "grid" },
         h("div", { class: "panel span" }, h("h2", {}, T.byDay(Math.min(days, 90))), dayBars(usage && usage.days, Math.min(days, 90), s.day_offset_h, rate)),
+        trendsPanel(), sitePanel(),
         h("div", { class: "panel" }, h("h2", {}, `${T.byKind} · ${T.today}`), kindRows(today.by_kind, rate), h("h2", {}, `${T.byKind} · ${T.period(days)}`), kindRows(period.by_kind, rate)),
         h("div", { class: "panel" }, h("h2", {}, `${T.byModel} · ${T.period(days)}`), modelRows(period.by_model, rate, kinds)),
         h("div", { class: "panel" }, h("h2", {}, T.top(days)), (ov.top_accounts || []).length ? (ov.top_accounts || []).map((t) => h("div", { class: "row tap", onclick: () => openAccount(t.account_id) },

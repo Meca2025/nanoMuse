@@ -704,6 +704,50 @@ class Database:
             r = self._conn.execute("SELECT COUNT(*) FROM accounts WHERE created_at>=?", (since,)).fetchone()
         return int(r[0])
 
+    # -- the operator's time series ----------------------------------------------------
+
+    _DAY = "((ts + ?) - (ts + ?) % 86400 - ?)"
+
+    def events_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        """How many events of each kind per local day since `since`."""
+        with self._lock:
+            return self._conn.execute(
+                f"SELECT {self._DAY} AS day, kind, COUNT(*) AS n FROM events WHERE ts>=? GROUP BY day, kind",
+                (day_offset_s, day_offset_s, day_offset_s, since),
+            ).fetchall()
+
+    def accounts_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute(
+                f"SELECT {self._DAY.replace('ts', 'created_at')} AS day, COUNT(*) AS n FROM accounts WHERE created_at>=? GROUP BY day",
+                (day_offset_s, day_offset_s, day_offset_s, since),
+            ).fetchall()
+
+    def active_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        """Accounts that made at least one charged call, per local day."""
+        with self._lock:
+            return self._conn.execute(
+                f"""SELECT {self._DAY} AS day, COUNT(DISTINCT account_id) AS n FROM ledger
+                    WHERE ts>=? AND kind IN ('chat','image','video','realtime') GROUP BY day""",
+                (day_offset_s, day_offset_s, day_offset_s, since),
+            ).fetchall()
+
+    def devices_by_kind_os(self) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute("SELECT kind, os, COUNT(*) AS n FROM devices GROUP BY kind, os ORDER BY n DESC").fetchall()
+
+    def invite_funnel(self) -> dict[str, int]:
+        """Who asked for a code, whose code brought someone, who came through one."""
+        with self._lock:
+            r = self._conn.execute(
+                """SELECT SUM(CASE WHEN invite_code<>'' THEN 1 ELSE 0 END) AS with_code,
+                          SUM(CASE WHEN invites>0 THEN 1 ELSE 0 END) AS inviters,
+                          SUM(CASE WHEN invited_by<>'' THEN 1 ELSE 0 END) AS invited,
+                          SUM(CASE WHEN contribute_bonus_at IS NOT NULL THEN 1 ELSE 0 END) AS contribute_bonuses
+                   FROM accounts"""
+            ).fetchone()
+        return {k: int(r[k] or 0) for k in ("with_code", "inviters", "invited", "contribute_bonuses")}
+
     def account_counts(self) -> dict[str, int]:
         with self._lock:
             r = self._conn.execute(

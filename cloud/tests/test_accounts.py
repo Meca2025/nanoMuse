@@ -333,3 +333,88 @@ async def test_invites_and_the_operator_grow_the_one_pool():
     assert s["invite_bonus_cny"] == 3 and s["allowance_cny"] == 0.6 and s["contribute_bonus_cny"] == 0
     kinds = {e["kind"] for e in (await client.get("/v1/admin/events", headers=admin)).json()["events"]}
     assert {"invite.accepted", "invite.used", "invite.unknown", "credit.granted", "budget.refused"} <= kinds
+
+
+async def test_admin_series_and_traffic(tmp_path):
+    """The operator's time series come from the relay's own tables; the site's visits and
+    downloads from the traffic database the showcase's script keeps — or, without one, a
+    panel that says so."""
+    import importlib.util
+    import json
+    from pathlib import Path
+
+    traffic_py = Path(__file__).resolve().parents[2] / "demo" / "showcase" / "mirror" / "traffic.py"
+    db_path = tmp_path / "traffic.db"
+    app, client, sender, up, cloud, settings = make(traffic_db=str(db_path), signup_tokens=1000, allowance_cny=10)
+    a = await sign_up(client, sender, "13800138000", "pixel")
+    await sign_up(client, sender, "dev-a@example.com", "mac")
+    await client.post(
+        "/v1/chat/completions", json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}, headers=auth(a["api_key"])
+    )
+    admin = {"X-Admin-Token": "admin"}
+
+    assert (await client.get("/v1/admin/series")).status_code == 401
+    r = await client.get("/v1/admin/series?days=7", headers=admin)
+    assert r.status_code == 200, r.text
+    series = r.json()
+    assert len(series["days"]) == 7 and series["web"] is None and series["online_devices"] == 0
+    today = series["days"][-1]
+    assert today["sign_ins"] == 2 and today["new_accounts"] == 2 and today["active_accounts"] == 1
+    assert series["days"][0]["sign_ins"] == 0 and series["invites"]["invited"] == 0 and series["contributors"] == 0
+    assert "13800138000" not in r.text and "dev-a@example.com" not in r.text
+
+    # no database yet: the panel is told, nothing fails
+    r = await client.get("/v1/admin/traffic", headers=admin)
+    assert r.status_code == 200 and r.json() == {"available": False}
+
+    # the showcase's script fills one from Caddy's JSON log; the relay reads it as it is
+    if not traffic_py.exists():
+        return
+    spec = importlib.util.spec_from_file_location("nm_traffic", traffic_py)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    mod.DB_PATH = db_path
+    conn = mod.open_db()
+    tally = mod.Tally()
+    ts = float(__import__("time").time())
+    for uri, ua, ctype, status in (
+        ("/", "Mozilla/5.0", "text/html; charset=utf-8", 200),
+        ("/", "Mozilla/5.0", "text/html; charset=utf-8", 200),
+        ("/own-key/", "Mozilla/5.0 (X11)", "text/html", 200),
+        ("/", "Googlebot/2.1", "text/html", 200),
+        ("/dl/v0.1.22/nanoMuse-0.1.22-arm64.apk", "Mozilla/5.0", "application/octet-stream", 200),
+        ("/dl/v0.1.22/nanoMuse-0.1.22-arm64.apk.sha256", "Mozilla/5.0", "application/octet-stream", 200),
+    ):
+        rec = {
+            "ts": ts,
+            "status": status,
+            "size": 1000,
+            "request": {
+                "host": "nanomuse.cn",
+                "uri": uri,
+                "client_ip": "203.0.113.7",
+                "headers": {"User-Agent": [ua], "Referer": ["https://github.com/nano-muse/nanoMuse"]},
+            },
+            "resp_headers": {"Content-Type": [ctype]},
+        }
+        tally.add(rec, conn)
+    conn.execute("BEGIN")
+    tally.flush(conn)
+    conn.execute("COMMIT")
+    conn.execute(
+        "INSERT INTO github(day, ts, stars, forks, watchers, downloads, assets) VALUES (?,?,?,?,?,?,?)",
+        (mod.local_day(ts), int(ts), 24, 5, 3, 188, json.dumps({"v0.1.22": {"nanoMuse-0.1.22-arm64.apk": 100}})),
+    )
+    conn.close()
+
+    r = await client.get("/v1/admin/traffic?days=7", headers=admin)
+    assert r.status_code == 200, r.text
+    tr = r.json()
+    assert tr["available"] is True and len(tr["days"]) == 7 and tr["days"][0]["pages"] == 0
+    day = tr["days"][-1]
+    assert day["pages"] == 3 and day["visitors"] == 2 and day["bots"] == 1 and day["downloads"] == 1 and day["requests"] == 6
+    assert tr["pages"][0] == {"name": "/", "hits": 2} and tr["referrers"] == [{"name": "github.com", "hits": 3}]
+    assert tr["downloads"] == [{"name": "nanoMuse-0.1.22-arm64.apk", "hits": 1, "bytes": 1000}]
+    assert tr["github"]["stars"] == 24 and tr["github"]["downloads"] == 188 and tr["github"]["days"][0]["stars"] == 24
+    assert "203.0.113.7" not in r.text

@@ -37,6 +37,8 @@ services:
       # other sites on this Caddy: their site blocks, and the files they serve (README, "Other sites")
       - ./sites.d:/etc/caddy/sites.d:ro
       - ${WWW_ROOT:-./www}:/srv/www:ro
+      # access logs of the sites that keep one (mirror/nanomuse.cn.caddy), read by mirror/traffic.py
+      - ./logs/caddy:/var/log/caddy
       - caddy-data:/data
       - caddy-config:/config
     networks:

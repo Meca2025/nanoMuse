@@ -10,6 +10,17 @@ nanomuse.cn {
 	root * /srv/www/nanomuse.cn
 	encode zstd gzip
 
+	# the access log, for the daily counts traffic.py keeps (visits, downloads, referrers): JSON
+	# lines, rolled at 20 MB, kept a week and no longer. docker-compose.yml mounts logs/caddy here.
+	log {
+		output file /var/log/caddy/nanomuse.cn.log {
+			roll_size 20MiB
+			roll_keep 20
+			roll_keep_for 168h
+		}
+		format json
+	}
+
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin

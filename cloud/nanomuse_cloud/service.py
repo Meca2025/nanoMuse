@@ -12,8 +12,12 @@ import hmac
 import json
 import logging
 import math
+import os
 import re
 import secrets
+import sqlite3
+import time
+from contextlib import closing
 from dataclasses import dataclass
 
 from .config import ModelSpec, Settings
@@ -983,6 +987,124 @@ class Cloud:
             # what the community chose to give: how many accounts contribute, how many turns so far
             "contributions": {"accounts": self.db.contributors(), "samples": self.db.sample_count()},
             "settings": self.admin_settings(),
+        }
+
+    def admin_series(self, days: int = 30) -> dict:
+        """The relay's own numbers by local day, for the operator's charts: sign-ins,
+        new and active accounts, invites taken up, co-creation joins, calls, refusals —
+        one row per day of the period, zeros where nothing happened — plus the devices
+        by kind and system and the invite funnel as they stand now."""
+        t = now()
+        off = self.s.day_offset_h * 3600
+        since = self.s.day_start(t) - 86400 * max(0, days - 1)
+        by_day: dict[int, dict[str, int]] = {}
+        for r in self.db.events_by_day(since, off):
+            by_day.setdefault(int(r["day"]), {})[str(r["kind"])] = int(r["n"])
+        new = {int(r["day"]): int(r["n"]) for r in self.db.accounts_by_day(since, off)}
+        active = {int(r["day"]): int(r["n"]) for r in self.db.active_by_day(since, off)}
+        rows = []
+        for i in range(days):
+            d = since + i * 86400
+            e = by_day.get(d, {})
+            rows.append(
+                {
+                    "day": d,
+                    "sign_ins": e.get("sign_in.code", 0) + e.get("sign_in.password", 0),
+                    "sign_in_failures": e.get("sign_in.failed", 0),
+                    "new_accounts": new.get(d, 0),
+                    "active_accounts": active.get(d, 0),
+                    "invites_used": e.get("invite.used", 0),
+                    "contribute_on": e.get("contribute.on", 0),
+                    "calls": e.get("call.ended", 0),
+                    "budget_refusals": e.get("budget.refused", 0),
+                    "upstream_errors": e.get("upstream.error", 0),
+                }
+            )
+        devices = [{"kind": r["kind"], "os": r["os"] or "", "count": int(r["n"])} for r in self.db.devices_by_kind_os()]
+        return {
+            "generated_at": t,
+            "days": rows,
+            "devices": devices,
+            "invites": self.db.invite_funnel(),
+            "contributors": self.db.contributors(),
+        }
+
+    def admin_traffic(self, days: int = 30) -> dict:
+        """The site's visits and downloads, read from the traffic database that
+        demo/showcase/mirror/traffic.py keeps (TRAFFIC_DB, mounted read-only). Daily
+        counts only — the script never wrote an address, so there is none to show."""
+        path = self.s.traffic_db
+        if not path or not os.path.exists(path):
+            return {"available": False}
+        off = self.s.day_offset_h * 3600
+        first = now() + off - 86400 * max(0, days - 1)
+        since = time.strftime("%Y-%m-%d", time.gmtime(first))
+        try:
+            conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=2)
+        except sqlite3.Error:
+            return {"available": False}
+        conn.row_factory = sqlite3.Row
+        with closing(conn):
+            try:
+                have = {r["day"]: dict(r) for r in conn.execute("SELECT * FROM days WHERE day>=? ORDER BY day", (since,))}
+                # one row a day, zeros where the log had nothing, so the charts line up
+                day_rows = []
+                for i in range(days):
+                    d = time.strftime("%Y-%m-%d", time.gmtime(first + i * 86400))
+                    day_rows.append(
+                        have.get(d) or {"day": d, "requests": 0, "pages": 0, "visitors": 0, "bots": 0, "downloads": 0, "bytes": 0}
+                    )
+
+                def top(table: str, col: str, limit: int = 15) -> list[dict]:
+                    return [
+                        {"name": r[col], "hits": int(r["hits"])}
+                        for r in conn.execute(
+                            f"SELECT {col}, SUM(hits) AS hits FROM {table} WHERE day>=? GROUP BY {col} ORDER BY hits DESC LIMIT ?",
+                            (since, limit),
+                        )
+                    ]
+
+                pages, referrers = top("pages", "path"), top("referrers", "host")
+                downloads = [
+                    {"name": r["file"], "hits": int(r["hits"]), "bytes": int(r["bytes"] or 0)}
+                    for r in conn.execute(
+                        "SELECT file, SUM(hits) AS hits, SUM(bytes) AS bytes FROM downloads WHERE day>=? GROUP BY file ORDER BY hits DESC LIMIT 40",
+                        (since,),
+                    )
+                ]
+                gh_days = [
+                    {"day": r["day"], "stars": int(r["stars"]), "downloads": int(r["downloads"])}
+                    for r in conn.execute("SELECT day, stars, downloads FROM github WHERE day>=? ORDER BY day", (since,))
+                ]
+                latest = conn.execute("SELECT * FROM github ORDER BY day DESC LIMIT 1").fetchone()
+                last_run = conn.execute("SELECT value FROM state WHERE key='last_run'").fetchone()
+            except sqlite3.Error:
+                return {"available": False}
+        github: dict = {"days": gh_days}
+        if latest is not None:
+            try:
+                assets = json.loads(latest["assets"] or "{}")
+            except ValueError:
+                assets = {}
+            github.update(
+                {
+                    "day": latest["day"],
+                    "stars": int(latest["stars"]),
+                    "forks": int(latest["forks"]),
+                    "watchers": int(latest["watchers"]),
+                    "downloads": int(latest["downloads"]),
+                    "assets": assets,
+                }
+            )
+        return {
+            "available": True,
+            "since": since,
+            "updated_at": int(last_run["value"]) if last_run else 0,
+            "days": day_rows,
+            "pages": pages,
+            "referrers": referrers,
+            "downloads": downloads,
+            "github": github,
         }
 
     def admin_account(self, account_id: str, days: int = 30) -> dict:
