@@ -547,7 +547,7 @@
     <string name="nm_setup_source_title">让哪个模型来回答？</string>
     <string name="nm_setup_source_sub">你的账号已经自带了一个。也可以加上自己的 API key，随时切换。</string>
     <string name="nm_setup_source_cloud">用 nanoMuse Cloud 的模型</string>
-    <string name="nm_setup_source_cloud_sub">通过阿里云百炼使用 Qwen：每个账号 ¥10 免费额度，费用由开发者承担；邀请朋友、加入共创计划还能再加。无需配置。</string>
+    <string name="nm_setup_source_cloud_sub">通过阿里云百炼使用 Qwen，每个账号都有一份由开发者承担的免费额度。无需配置。</string>
     <string name="nm_setup_source_own_sub">OpenAI、Anthropic、DeepSeek、百炼等兼容 OpenAI 接口的服务。key 只留在这台手机上。</string>
     <string name="nm_setup_source_fine_print">两种方式不冲突：Cloud 模型始终可用，每个模型组各选各的。</string>
     <string name="nm_setup_password_title">设一个密码</string>
@@ -569,7 +569,7 @@
     <string name="nm_welcome_feat_hands_sub">订车票、点外卖、在应用里查东西——你全程看着，随时可以停</string>
     <string name="nm_welcome_feat_reach">Reach：从手机使用你的电脑</string>
     <string name="nm_welcome_feat_reach_sub">配对一台 Mac、Windows 或 Linux 电脑，在手机上派活给它</string>
-    <string name="nm_welcome_notice">nanoMuse 是非盈利的开源社区项目，永久免费。用邮箱登录，模型自带免费额度：每个账号 ¥10，模型费用由开发者承担；邀请一位新用户 +¥5，加入共创计划 +¥10；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售。</string>
+    <string name="nm_welcome_notice">nanoMuse 是非盈利的开源社区项目，永久免费。用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售。</string>
     <string name="nm_welcome_hands_title">让它替你操作手机</string>
     <string name="nm_welcome_hands_sub">开启两项权限后，nanoMuse 就能替你打开应用、点按和输入。操作期间屏幕上始终有一个显示当前步骤和「停止」按钮的胶囊；登录、密码和验证码永远由你自己来。</string>
     <string name="nm_welcome_hands_turn_on">去开启</string>
@@ -773,7 +773,7 @@
     <string name="nm_cloud_tokens_line">累计 %1$s tokens · 今天 %2$s</string>
     <string name="nm_cloud_notice_title">免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体</string>
     <string name="nm_cloud_notice_closing">欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。</string>
-    <string name="nm_cloud_notice">nanoMuse 是非盈利的开源社区项目，永久免费。用邮箱登录，模型自带免费额度：每个账号 ¥10，模型费用由开发者承担；邀请一位新用户 +¥5，加入共创计划 +¥10；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售；随时可以删除账号。</string>
+    <string name="nm_cloud_notice">nanoMuse 是非盈利的开源社区项目，永久免费。用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售；随时可以删除账号。</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">来自你其他设备的消息</string>
     <string name="nm_hub_service_channel">与你的设备保持连接</string>

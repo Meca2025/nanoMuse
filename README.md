@@ -5,15 +5,9 @@
 <h1 align="center">nanoMuse</h1>
 
 <p align="center">A fully open-source, Muse-style personal agent for every device you own.</p>
-<table align="center"><tr><td>
 
-### [Free, open source, non-profit — open source, built together: a personal agent for all](https://nanomuse.cn/#open-source)
-
-**nanoMuse is a non-profit open-source community project — free, forever.** Sign in with an e-mail and the model comes with a free allowance: **¥10 per account**, paid by the developer; **invite a friend for ¥5 more, join the co-creation programme for ¥10 more**; when it is gone, use your own key ([Alibaba Cloud Bailian is a good start](docs/own-key.md)). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.
-
-Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach. **[Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Ask or show in Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Send a pull request](CONTRIBUTING.md) · [Star the repo](https://github.com/nano-muse/nanoMuse)** — details: [docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md).
-
-</td></tr></table>
+> [!IMPORTANT]
+> **Free, open source, non-profit — a personal agent for all.** nanoMuse is a community project, free for good: sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, bring your own key. Messages are not stored unless you choose to contribute them; nothing is sold; delete the account whenever you like. **[Try it in the browser](https://nanomuse.cn/web/)**, or [download the app](https://github.com/nano-muse/nanoMuse/releases/latest).
 
 <div align="center">
   <p>
@@ -37,12 +31,6 @@ Report a bug, ask for a feature, send a pull request — every one brings a pers
     <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS Apple Silicon and Intel"></a>
     <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20.deb-FCC624?logo=linux&logoColor=black" alt="Linux AppImage and .deb"></a>
     <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse"><img src="https://img.shields.io/badge/Docker-ghcr.io%2Fnano--muse%2Fnanomuse-2496ED?logo=docker&logoColor=white" alt="Docker image"></a>
-  </p>
-  <p>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android build"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml/badge.svg?branch=main" alt="Desktop app build"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml/badge.svg?branch=main" alt="Docker image build"></a>
   </p>
 </div>
 
@@ -87,7 +75,7 @@ How this compares with Muse and with OpenMinis, the runtime the app is built on:
 
 ## Install
 
-Nothing to install: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/) with an e-mail and a code and you get a nanoMuse of your own on the project's server, kept between visits. For your own devices — the [downloads](https://nanomuse.cn/#download): the Android APK, the desktop app for Windows, macOS and Linux (`nanoMuse-Desktop-<version>-…`), the terminal binary (`nanomuse-desktop-terminal-<version>-…`), or `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+; when GitHub is slow where you are, the same files are on the project's mirror at [nanomuse.cn/dl](https://nanomuse.cn/dl/) (synced within fifteen minutes of a release, SHA-256 checked); [docs/desktop.md](docs/desktop.md) and [docs/every-device.md](docs/every-device.md) say how they meet. On the phone:
+Nothing to install: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/) with a phone number or an e-mail and a code and you get a nanoMuse of your own on the project's server, kept between visits — good for a first try; for every day, the phone app and the desktop app below, with the same account. For your own devices — the [downloads](https://nanomuse.cn/#download): the Android APK, the desktop app for Windows, macOS and Linux (`nanoMuse-Desktop-<version>-…`), the terminal binary (`nanomuse-desktop-terminal-<version>-…`), or `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+; GitHub's own downloads are the fastest source from China too in our measurements; if they fail where you are, the same files are on the project's mirror at [nanomuse.cn/dl](https://nanomuse.cn/dl/) (synced within fifteen minutes of a release, SHA-256 checked); [docs/desktop.md](docs/desktop.md) and [docs/every-device.md](docs/every-device.md) say how they meet. On the phone:
 
 1. Download `nanoMuse-<version>-arm64.apk` from the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 or newer, a 64-bit phone. Verify with `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` if you like.
 2. Open it. Android asks once to allow the install; every version is signed with the same key, so updates install over the previous one and keep your data.
@@ -173,6 +161,8 @@ One small version per stage, each a GitHub release with an APK. The plan and its
 | Licence | Closed | GPL-3.0 | GPL-3.0-or-later, built on OpenMinis — with thanks; upstream releases can still be merged |
 
 ## Contribute
+
+Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach: **[open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [ask or show in Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [star the repo](https://github.com/nano-muse/nanoMuse)**. How the free allowance, your own key and your data work: [docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md).
 
 Use it for a real task, report what broke, then pick something focused. [CONTRIBUTING.md](CONTRIBUTING.md) has the build setup ([android/BUILDING.md](android/BUILDING.md) and the toolchain scripts in `scripts/android/`), the conventions (`com.openminis.app` stays, new code in `io.github.nanomuse.*`, `// nanoMuse:` on upstream edits, `Signed-off-by` on commits) and how releases are cut. The iOS app is built from the same tree and handed to TestFlight by CI — [docs/ios.md](docs/ios.md). [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Pull requests](https://github.com/nano-muse/nanoMuse/pulls).
 

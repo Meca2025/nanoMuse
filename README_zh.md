@@ -5,15 +5,9 @@
 <h1 align="center">nanoMuse</h1>
 
 <p align="center">完全开源、Muse 风格的个人智能体，面向你的每一台设备。</p>
-<table align="center"><tr><td>
 
-### [免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体](https://nanomuse.cn/#open-source)
-
-**nanoMuse 是非盈利的开源社区项目，永久免费。** 用邮箱登录，模型自带免费额度：每个账号 **¥10**，模型费用由开发者承担；**邀请一位新用户 +¥5，加入共创计划 +¥10**；用完可以换自己的 key（[推荐阿里云百炼](docs/own-key.md)）。默认不保存你的消息，数据不会出售；随时可以删除账号。
-
-欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [到 Discussions 提问、交流](https://github.com/nano-muse/nanoMuse/discussions) · [发 PR](CONTRIBUTING.md) · [点个 Star](https://github.com/nano-muse/nanoMuse)**——详情：[docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md)。
-
-</td></tr></table>
+> [!IMPORTANT]
+> **免费 · 开源 · 非盈利 —— 做属于所有人的个人智能体。** nanoMuse 是社区项目，永久免费：用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key。默认不保存你的消息，数据不会出售，账号随时可以删除。**[在浏览器里试试](https://nanomuse.cn/web/)**，或者[下载 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
 
 <div align="center">
   <p>
@@ -37,12 +31,6 @@
     <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS Apple Silicon and Intel"></a>
     <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20.deb-FCC624?logo=linux&logoColor=black" alt="Linux AppImage and .deb"></a>
     <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse"><img src="https://img.shields.io/badge/Docker-ghcr.io%2Fnano--muse%2Fnanomuse-2496ED?logo=docker&logoColor=white" alt="Docker 镜像"></a>
-  </p>
-  <p>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/android.yml/badge.svg?branch=main" alt="Android 构建"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/desktop-app.yml/badge.svg?branch=main" alt="桌面 App 构建"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/docker.yml/badge.svg?branch=main" alt="Docker 镜像构建"></a>
   </p>
 </div>
 
@@ -87,7 +75,7 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 
 ## 安装
 
-什么都不用装：在 [nanomuse.cn/web](https://nanomuse.cn/web/) 用邮箱收个验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，下次来还在。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-terminal-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；GitHub 下载慢的话，同样的文件在项目的国内镜像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（发布后十五分钟内同步，SHA-256 核对过）；它们怎么相遇见 [docs/desktop.md](docs/desktop.md) 和 [docs/every-device.md](docs/every-device.md)。手机上：
+什么都不用装：在 [nanomuse.cn/web](https://nanomuse.cn/web/) 用手机号或邮箱收个验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，下次来还在——适合先试试；天天用的话，装下面的手机 App 和桌面版，登同一个账号。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-terminal-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；实测在国内直接从 GitHub 下载也是最快的；万一下不动，同样的文件在项目的备用镜像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（发布后十五分钟内同步，SHA-256 核对过）；它们怎么相遇见 [docs/desktop.md](docs/desktop.md) 和 [docs/every-device.md](docs/every-device.md)。手机上：
 
 1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载 `nanoMuse-<版本>-arm64.apk`——Android 8.0 以上的 64 位手机。想校验就 `sha256sum -c nanoMuse-<版本>-arm64.apk.sha256`。
 2. 打开安装。Android 会问一次是否允许；每个版本都用同一把签名，直接覆盖安装升级，数据不丢。
@@ -173,6 +161,8 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | 许可 | 闭源 | GPL-3.0 | GPL-3.0-or-later，基于 OpenMinis——致谢；上游版本仍可合并 |
 
 ## 参与
+
+欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步：**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [到 Discussions 提问、交流](https://github.com/nano-muse/nanoMuse/discussions) · [点个 Star](https://github.com/nano-muse/nanoMuse)**。免费额度、自己的 key 和数据的去向：[docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md)。
 
 拿它做一件真事，报告哪里坏了，然后挑一件小而具体的事做。[CONTRIBUTING.md](CONTRIBUTING.md) 有构建环境（[android/BUILDING.md](android/BUILDING.md) 和 `scripts/android/` 里的工具链脚本）、约定（包名 `com.openminis.app` 不动，新代码放 `io.github.nanomuse.*`，改上游处标 `// nanoMuse:`，提交带 `Signed-off-by`）和发版方式。iOS 版从同一棵树构建，由 CI 交给 TestFlight，见 [docs/ios.md](docs/ios.md)。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Pull requests](https://github.com/nano-muse/nanoMuse/pulls)。
 

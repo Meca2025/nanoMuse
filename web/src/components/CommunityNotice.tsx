@@ -24,7 +24,7 @@ export function CommunityNotice({ compact = false, className }: { compact?: bool
       </a>
       <p className={cx("mt-1.5 leading-relaxed text-fg/85", compact ? "text-[12.5px]" : "text-[13px]")}>
         {t(
-          "nanoMuse is a non-profit open-source community project — free, forever. Sign in with an e-mail and the model comes with a free allowance: ¥10 per account, paid by the developer; invite a friend for ¥5 more, join the co-creation programme for ¥10 more; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.",
+          "nanoMuse is a non-profit open-source community project — free, forever. Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.",
         )}
       </p>
       <p className={cx("mt-1.5 leading-relaxed text-fg/85", compact ? "text-[12.5px]" : "text-[13px]")}>

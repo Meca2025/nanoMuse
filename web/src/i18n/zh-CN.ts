@@ -977,8 +977,7 @@ const zhCN: Record<string, string> = {
   "It uses your phone and computers for you": "替你操作手机和电脑",
   "The relay keeps an account id, a masked identifier and usage counts — no message content.": "中继只保存账号 id、打码后的邮箱和用量计数——不保存消息内容。",
   "Free, open source, non-profit — open source, built together: a personal agent for all": "免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体",
-  "nanoMuse is a non-profit open-source community project — free, forever. Sign in with an e-mail and the model comes with a free allowance: ¥10 per account, paid by the developer; invite a friend for ¥5 more, join the co-creation programme for ¥10 more; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.":
-    "nanoMuse 是非盈利的开源社区项目，永久免费。用邮箱登录，模型自带免费额度：每个账号 ¥10，模型费用由开发者承担；邀请一位新用户 +¥5，加入共创计划 +¥10；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售；随时可以删除账号。",
+  "nanoMuse is a non-profit open-source community project — free, forever. Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.": "nanoMuse 是非盈利的开源社区项目，永久免费。用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售；随时可以删除账号。",
   "Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach.": "欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。",
   "Star on GitHub": "去 GitHub 点个 Star",
   "Report a bug or ask for a feature": "反馈问题 / 提需求",

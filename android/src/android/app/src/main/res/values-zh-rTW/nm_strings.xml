@@ -542,7 +542,7 @@
     <string name="nm_setup_source_title">讓哪個模型來回答？</string>
     <string name="nm_setup_source_sub">你的帳號已經自帶了一個。也可以加上自己的 API key，隨時切換。</string>
     <string name="nm_setup_source_cloud">用 nanoMuse Cloud 的模型</string>
-    <string name="nm_setup_source_cloud_sub">透過阿里雲百煉使用 Qwen：每個帳號 ¥10 免費額度，費用由開發者承擔；邀請朋友、加入共創計畫還能再加。無需設定。</string>
+    <string name="nm_setup_source_cloud_sub">透過阿里雲百煉使用 Qwen，每個帳號都有一份由開發者承擔的免費額度。無需設定。</string>
     <string name="nm_setup_source_own_sub">OpenAI、Anthropic、DeepSeek、百煉等相容 OpenAI 介面的服務。key 只留在這台手機上。</string>
     <string name="nm_setup_source_fine_print">兩種方式不衝突：Cloud 模型始終可用，每個模型群組各選各的。</string>
     <string name="nm_setup_password_title">設一個密碼</string>
@@ -564,7 +564,7 @@
     <string name="nm_welcome_feat_hands_sub">訂車票、點外送、在應用程式裡查東西——你全程看著，隨時可以停</string>
     <string name="nm_welcome_feat_reach">Reach：從手機使用你的電腦</string>
     <string name="nm_welcome_feat_reach_sub">配對一台 Mac、Windows 或 Linux 電腦，在手機上派工作給它</string>
-    <string name="nm_welcome_notice">nanoMuse 是非營利的開源社群專案，永久免費。用信箱登入，模型自帶免費額度：每個帳號 ¥10，模型費用由開發者承擔；邀請一位新用戶 +¥5，加入共創計畫 +¥10；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售。</string>
+    <string name="nm_welcome_notice">nanoMuse 是非營利的開源社群專案，永久免費。用手機號或信箱登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售。</string>
     <string name="nm_welcome_hands_title">讓它替你操作手機</string>
     <string name="nm_welcome_hands_sub">開啟兩項權限後，nanoMuse 就能替你打開應用程式、點按和輸入。操作期間螢幕上始終有一個顯示目前步驟和「停止」按鈕的膠囊；登入、密碼和驗證碼永遠由你自己來。</string>
     <string name="nm_welcome_hands_turn_on">去開啟</string>
@@ -768,7 +768,7 @@
     <string name="nm_cloud_tokens_line">累計 %1$s tokens · 今天 %2$s</string>
     <string name="nm_cloud_notice_title">免費 · 開源 · 非營利 —— 開源共建，做屬於所有人的個人智能體</string>
     <string name="nm_cloud_notice_closing">歡迎回報問題、提需求、貢獻程式碼——每一次參與，都在讓個人智能體離所有人更近一步。</string>
-    <string name="nm_cloud_notice">nanoMuse 是非營利的開源社群專案，永久免費。用信箱登入，模型自帶免費額度：每個帳號 ¥10，模型費用由開發者承擔；邀請一位新用戶 +¥5，加入共創計畫 +¥10；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售；隨時可以刪除帳號。</string>
+    <string name="nm_cloud_notice">nanoMuse 是非營利的開源社群專案，永久免費。用手機號或信箱登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售；隨時可以刪除帳號。</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">來自你其他裝置的訊息</string>
     <string name="nm_hub_service_channel">與你的裝置保持連線</string>
