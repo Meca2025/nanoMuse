@@ -38,7 +38,8 @@ export default function App() {
 
   // The document title follows the agent's name.
   useEffect(() => {
-    document.title = state.profile?.name ? `${state.profile.name} · nanoMuse` : "nanoMuse";
+    const name = state.profile?.name?.trim();
+    document.title = name && name.toLowerCase() !== "nanomuse" ? `${name} · nanoMuse` : "nanoMuse";
   }, [state.profile?.name]);
 
   // `#devices` etc. opens a section straight away — the desktop tray menu links here.

@@ -141,7 +141,20 @@ export function Onboarding() {
             </div>
             <ol className="mt-6 space-y-2">
               <Item done={named} title={t("Meet your nanoMuse")} body={named ? t("Named {name}. Tap to change.", { name }) : t("Give it a name, a face and a way of talking.")} onClick={() => setStep("muse")} />
-              <Item done={modelReady} title={t("Add a model")} body={modelReady ? `${conn?.llm.model} · ${hostOf(conn?.llm.base_url ?? "")}` : t("Pick a provider and paste a key. Yours, stored in the vault.")} onClick={() => setStep("model")} />
+              <Item
+                done={modelReady}
+                title={t("Add a model")}
+                body={
+                  modelReady
+                    ? conn?.llm.cloud
+                      ? `nanoMuse Cloud · ${conn.llm.model}`
+                      : `${conn?.llm.model} · ${hostOf(conn?.llm.base_url ?? "")}`
+                    : state.hub?.account.signed_in
+                      ? t("Your account's model, or a key of your own.")
+                      : t("Pick a provider and paste a key. Yours, stored in the vault.")
+                }
+                onClick={() => setStep("model")}
+              />
               <Item done={connected} optional title={t("Connect mail, calendar, contacts")} body={connected ? t("Connected. Tap to add more.") : t("Optional — it can read what came in, know your day, and who is who.")} onClick={() => setStep("connect")} />
               <Item locked={!modelReady} done={false} title={t("Start")} body={modelReady ? t("Open the chat and ask for the first thing.") : t("Needs a model first.")} onClick={() => modelReady && setStep("tips")} />
             </ol>
@@ -164,7 +177,9 @@ export function Onboarding() {
               <h1 className="text-[26px] font-bold tracking-tight">{t("The model behind it")}</h1>
               <p className="mt-1 text-[14px] text-muted">
                 {modelReady
-                  ? t("A model is already set up on the server. Keep it, or switch here.")
+                  ? conn?.llm.cloud
+                    ? t("Your account's model, with its daily allowance. Keep it, or switch to a key of your own here.")
+                    : t("A model is already set up on the server. Keep it, or switch here.")
                   : t("Your account brings a model with a daily allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
               </p>
             </div>

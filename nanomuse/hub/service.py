@@ -49,6 +49,9 @@ class HubService:
         self.cloud = CloudClient(self.settings.cloud.base_url, self._key())
         # the relay's last /v1/me (models with prices, usage): what the call picker reads
         self.last_me: dict[str, Any] = {}
+        # the account's chat models (ids), for the provider form; refreshed on sign-in and
+        # whenever the form asks
+        self.chat_models: list[str] = []
         # approval cards raised by *other* devices' runs, shown here: card id → (device id, approval id)
         self.remote_approvals: dict[str, tuple[str, str]] = {}
         # runs other devices asked for, by call id → the thread they run in
@@ -103,8 +106,20 @@ class HubService:
     async def start(self) -> None:
         """Join the hub when the account is signed in and the hub is on."""
         await self._seed_from_env()
+        if self.signed_in:
+            # the provider form's model list, without waiting for it: the relay may be slow
+            # or away, and nothing else depends on the answer
+            task = asyncio.ensure_future(self._refresh_chat_models_quietly())
+            self._tasks.add(task)
+            task.add_done_callback(self._tasks.discard)
         if self.signed_in and self.settings.hub.enabled:
             await self.join()
+
+    async def _refresh_chat_models_quietly(self) -> None:
+        try:
+            await self.refresh_chat_models()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("cloud models not listed: {}", exc)
 
     async def _seed_from_env(self) -> None:
         """A hosted runtime (nanoMuse Web) starts already signed in: the gateway that made the
@@ -254,11 +269,33 @@ class HubService:
         }
         self._save()
         self._pending_code = ""
+        self.cloud.api_key = key
+        try:
+            await self.refresh_chat_models()
+        except CloudError:
+            pass
         if self.settings.hub.enabled:
             await self.join()
         self.svc.connections._publish()
         self.publish()
         return self.account_view()
+
+    async def refresh_chat_models(self) -> list[str]:
+        """The relay's chat models (text in, text out), recommended one first."""
+        self.cloud.api_key = self._key()
+        models = await self.cloud.models()
+        chat = [
+            m
+            for m in models
+            if (m.get("architecture") or {}).get("output_modalities", ["text"]) == ["text"]
+        ]
+        recommended = self.cloud.recommended_model(models)
+        ids = [str(m["id"]) for m in chat if m.get("id")]
+        if recommended in ids:
+            ids.remove(recommended)
+            ids.insert(0, recommended)
+        self.chat_models = ids
+        return ids
 
     async def set_password(self, password: str, current: str | None = None) -> dict[str, Any]:
         if not self.signed_in:

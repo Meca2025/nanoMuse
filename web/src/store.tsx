@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { api, AuthError, connectWs, getToken } from "./api";
+import { t } from "./i18n";
 import { registerWorker, setAppBadge } from "./push";
 import type {
   ApprovalEvent,
@@ -405,7 +406,7 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
     case "skills":
       return { ...state, skillsVersion: state.skillsVersion + 1 };
     case "error":
-      return { ...state, toast: msg.error };
+      return { ...state, toast: t(msg.error) };
     case "pong":
       return { ...state, status: msg.status };
     default:
@@ -588,7 +589,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       dismissOnboarding: () => dispatch({ type: "onboardingDismissed" }),
       openCall: (mode) => dispatch({ type: "callOpen", mode }),
-      toast: (text) => dispatch({ type: "toast", toast: text }),
+      toast: (text) => dispatch({ type: "toast", toast: t(text) }),
     }),
     [state, loadEvents, refreshGoals, refreshSettings],
   );

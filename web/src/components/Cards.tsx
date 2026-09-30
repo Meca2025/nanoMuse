@@ -378,7 +378,12 @@ export function QuestionCard({ event, name }: { event: QuestionEvent; name: stri
 }
 
 // ------------------------------------------------------------------ notice
+/** A line from the runtime — in the person's language when the sentence is one we know;
+ * a failed run's raw exception stays one tap away for bug reports. */
 export function Notice({ event }: { event: NoticeEvent }) {
+  const t = useT();
+  const [showDetail, setShowDetail] = useState(false);
+  const detail = event.detail && event.detail !== event.text ? event.detail : null;
   return (
     <div className="rise flex justify-center px-6">
       <div
@@ -389,7 +394,16 @@ export function Notice({ event }: { event: NoticeEvent }) {
           event.level === "error" && "bg-rose-500/12 text-rose-700 dark:text-rose-300",
         )}
       >
-        {event.text}
+        {t(event.text)}
+        {detail && (
+          <>
+            {" "}
+            <button type="button" onClick={() => setShowDetail((v) => !v)} className="underline decoration-dotted underline-offset-2 opacity-70 hover:opacity-100">
+              {showDetail ? t("Hide details") : t("Details")}
+            </button>
+            {showDetail && <div className="mt-1.5 break-all text-left font-mono text-[11px] opacity-80">{detail}</div>}
+          </>
+        )}
       </div>
     </div>
   );

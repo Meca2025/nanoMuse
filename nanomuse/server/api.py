@@ -842,6 +842,15 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         return view
 
     # ------------------------------------------------------------------ cloud account & hub
+    def _cloud_http(exc: CloudError) -> HTTPException:
+        """A relay refusal as the app sees it: the sentence from :data:`nanomuse.cloud.MESSAGES`
+        (the web app translates it) and the relay's code in a header, for apps that act on it."""
+        return HTTPException(
+            exc.status if exc.status >= 400 else 502,
+            exc.describe(),
+            headers={"X-Nanomuse-Code": exc.code or "error"},
+        )
+
     @app.get("/api/cloud", dependencies=dep)
     async def cloud_status() -> dict[str, Any]:
         return svc.hub.account_view()
@@ -851,7 +860,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         try:
             await svc.hub.request_code(body.identifier)
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
         return {"ok": True}
 
     @app.post("/api/cloud/verify", dependencies=dep)
@@ -859,28 +868,28 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         try:
             return await svc.hub.verify(body.identifier, body.code)
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
 
     @app.post("/api/cloud/login", dependencies=dep)
     async def cloud_login(body: CloudLoginBody) -> dict[str, Any]:
         try:
             return await svc.hub.login(body.identifier, body.password)
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
 
     @app.post("/api/cloud/password", dependencies=dep)
     async def cloud_password(body: CloudPasswordBody) -> dict[str, Any]:
         try:
             return await svc.hub.set_password(body.password, body.current)
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
 
     @app.get("/api/cloud/sessions", dependencies=dep)
     async def cloud_sessions() -> dict[str, Any]:
         try:
             return {"sessions": await svc.hub.sessions()}
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
 
     @app.delete("/api/cloud/sessions/{prefix}", dependencies=dep)
     async def cloud_revoke_session(prefix: str) -> dict[str, Any]:
@@ -888,14 +897,14 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             await svc.hub.revoke_session(prefix)
             return {"sessions": await svc.hub.sessions()}
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
 
     @app.post("/api/cloud/sign-out-all", dependencies=dep)
     async def cloud_sign_out_all(body: CloudSignOutAllBody) -> dict[str, Any]:
         try:
             n = await svc.hub.sign_out_all(body.all)
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
         return {"signed_out": n, **svc.hub.account_view()}
 
     @app.get("/api/cloud/events", dependencies=dep)
@@ -903,14 +912,14 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         try:
             return {"events": await svc.hub.events(limit)}
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
 
     @app.post("/api/cloud/delete", dependencies=dep)
     async def cloud_delete_account() -> dict[str, Any]:
         try:
             await svc.hub.delete_account()
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
         return svc.hub.account_view()
 
     @app.post("/api/cloud/sign-out", dependencies=dep)
@@ -937,14 +946,14 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         try:
             return await svc.hub.me()
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
 
     @app.post("/api/cloud/use-as-model", dependencies=dep)
     async def cloud_use_as_model(body: CloudModelBody) -> dict[str, Any]:
         try:
             return await svc.hub.use_as_model(body.model)
         except CloudError as exc:
-            raise HTTPException(exc.status if exc.status >= 400 else 502, exc.describe()) from exc
+            raise _cloud_http(exc) from exc
 
     # ------------------------------------------------------------------ coding agents
     def _coding_error(exc: CodingError) -> HTTPException:
