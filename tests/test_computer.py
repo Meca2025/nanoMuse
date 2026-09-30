@@ -352,11 +352,15 @@ def test_hands_switch_adds_the_tools_and_the_card_follows_a_task(server) -> None
     assert view["enabled"] is False and view["available"] is True and view["backend"] == "fake"
     assert "computer_act" not in service.app.tools
     assert client.get("/api/state").json()["hands"]["available"] is True
+    # off, on a computer: the agent is told where the switch is, not left to shrug
+    section = service.app.agent.computer_section()
+    assert "turned off" in section and "Devices → Hands on this computer" in section
     r = client.put("/api/connections/hands", json={"enabled": True})
     assert r.status_code == 200 and r.json()["enabled"] is True
     assert {"computer_screen", "computer_act", "computer_task"} <= {
         t.name for t in service.app.tools
     }
+    assert "can drive this computer" in service.app.agent.computer_section()
     assert client.put("/api/connections/hands", json={"backend": "nope"}).status_code == 400
     # the computer_act tool: a hands card for the step, the screen in the tool output
     service.settings.sentinel.mode = "auto"
@@ -389,4 +393,5 @@ def test_hands_switch_adds_the_tools_and_the_card_follows_a_task(server) -> None
     # the switch off takes the tools away; Stop with nothing running says so
     client.put("/api/connections/hands", json={"enabled": False})
     assert "computer_act" not in service.app.tools
+    assert "turned off" in service.app.agent.computer_section()
     assert client.post("/api/hands/stop").json()["stopped"] is True  # a last action exists

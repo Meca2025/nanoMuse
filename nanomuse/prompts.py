@@ -120,6 +120,11 @@ DEVICES_SECTION = """
 - What the other Muse needs approved is shown here as a card; what you did on another device is said in one line, with the device's name.
 """
 
+COMPUTER_OFF_SECTION = """
+## This computer's screen
+- The hands — this computer's own screen, mouse and keyboard — are turned off, so there are no `computer_*` tools. When a step needs a desktop application, a dialog that is up or the user's own browser session, say so and tell the user the switch: *Devices → Hands on this computer* in the app; meanwhile do what `shell`, the files, `browser` / `web_fetch` and the skills can.
+"""
+
 COMPUTER_SECTION = """
 ## This computer's screen
 {status}

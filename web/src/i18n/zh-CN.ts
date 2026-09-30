@@ -1082,6 +1082,7 @@ const zhCN: Record<string, string> = {
   "Its own screen, mouse and keyboard — the last resort after the shell and the browser.": "用它自己的屏幕、鼠标和键盘——在命令行和浏览器都不够用时的兜底手段。",
   "Nothing can drive this screen yet.": "目前没有能驱动这块屏幕的组件。",
   "Let it use this computer's screen": "允许它操作这台电脑的屏幕",
+  "On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black.": "Mac 上，macOS 弹窗询问时请在「系统设置 → 隐私与安全性」的「辅助功能」和「屏幕录制」里允许 nanoMuse；不允许的话点击没有反应，截图也是黑的。",
   "It looks at a screenshot and clicks by position; every click carries the words under the cursor to the Sentinel. Paying, sending and deleting ask every time.": "它看一张截图、按位置点击；每次点击都会把光标下的文字交给 Sentinel 审核。支付、发送和删除每次都会先问你。",
   "Driver": "驱动",
   "Working": "工作中",

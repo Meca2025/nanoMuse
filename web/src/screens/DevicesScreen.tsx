@@ -274,6 +274,9 @@ function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => vo
             </button>
           ))}
         </div>
+        {hands.enabled && hands.device?.platform === "darwin" && (
+          <p className="text-[12px] text-muted">{t("On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black.")}</p>
+        )}
         {!hands.available && hands.reason && <div className="rounded-2xl bg-amber-500/12 px-3 py-2 text-[12.5px] text-amber-700 dark:text-amber-300">{hands.reason}</div>}
         {hands.task_active && (
           <button type="button" onClick={() => void api.stopHands().catch((e: Error) => toast(e.message))} className={cx(secondaryBtn, "w-full")}>
