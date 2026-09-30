@@ -1065,6 +1065,7 @@ const zhCN: Record<string, string> = {
   "Sign in above to see them.": "先在上面登录，才能看到它们。",
   "{n} online": "{n} 台在线",
   "None yet — open nanoMuse on your phone and sign in with the same account.": "还没有——在手机上打开 nanoMuse，用同一个账号登录。",
+  "None yet — sign in on your phone as {hint}, the account this device uses.": "还没有——手机上请登录 {hint}，也就是这台设备用的账号。",
   "online": "在线",
   "offline": "离线",
   "last seen {when}": "最后在线 {when}",

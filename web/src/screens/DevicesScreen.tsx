@@ -77,7 +77,9 @@ export function DevicesScreen() {
                     ? hubStateLabel(hub?.state ?? "", t)
                     : others.length
                       ? t("{n} online", { n: others.filter((d) => d.online).length })
-                      : t("None yet — open nanoMuse on your phone and sign in with the same account.")}
+                      : hub?.account.hint
+                        ? t("None yet — sign in on your phone as {hint}, the account this device uses.", { hint: hub.account.hint })
+                        : t("None yet — open nanoMuse on your phone and sign in with the same account.")}
               </span>
             </span>
             {signedIn && (

@@ -744,6 +744,7 @@
     <string name="nm_coding_title">Coding agents</string>
     <string name="nm_coding_intro">Cursor, Codex and Claude Code on your computers: their sessions, what they said last, and a message to any of them — from here. The computer\'s nanoMuse reads and drives them; nothing of theirs is copied to the phone.</string>
     <string name="nm_coding_no_computer">No computer with a coding agent is online. Run nanoMuse on the computer where Cursor, Codex or Claude Code is installed, signed in with this account.</string>
+    <string name="nm_coding_account_hint">This phone is signed in as %1$s — the computer must use the same account.</string>
     <string name="nm_coding_refresh">Refresh</string>
     <string name="nm_coding_all">All</string>
     <string name="nm_coding_new">Start something new</string>

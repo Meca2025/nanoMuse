@@ -737,6 +737,7 @@
     <string name="nm_coding_title">程式助手</string>
     <string name="nm_coding_intro">你電腦上的 Cursor、Codex、Claude Code：在這裡看它們的會話和最近的回覆，直接給任何一個發訊息。由電腦上的 nanoMuse 讀取和驅動，它們的內容不會複製到手機上。</string>
     <string name="nm_coding_no_computer">沒有在線的電腦帶程式助手。請在裝了 Cursor、Codex 或 Claude Code 的電腦上執行 nanoMuse，並用同一個帳號登入。</string>
+    <string name="nm_coding_account_hint">這台手機登入的是 %1$s，電腦上要登同一個帳號。</string>
     <string name="nm_coding_refresh">重新整理</string>
     <string name="nm_coding_all">全部</string>
     <string name="nm_coding_new">開始新的</string>
