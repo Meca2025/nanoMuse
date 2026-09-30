@@ -6,6 +6,7 @@ import { useStore } from "../store";
 import type { CloudAccount } from "../types";
 import { cx } from "../util";
 import { Card, inputCls, primaryBtn, secondaryBtn } from "./Form";
+import { identifierInputMode } from "./SignIn";
 
 /**
  * nanoMuse Cloud: the free account that gives every device of yours one place to meet
@@ -140,19 +141,19 @@ export function CloudCard({
           }}
         >
           <p className="text-[13px] text-muted leading-relaxed">
-            {t("Sign in with your e-mail address and the code it receives. No password; the key stays in the vault on this machine.")}
+            {t("Sign in with your phone number or e-mail address and the code it receives. No password; the key stays in the vault on this machine.")}
           </p>
           <div>
-            <label className="text-[12px] text-muted">{t("E-mail")}</label>
+            <label className="text-[12px] text-muted">{t("Phone number or e-mail")}</label>
             <input
               value={identifier}
               onChange={(e) => {
                 setIdentifier(e.target.value);
                 setSent(false);
               }}
-              inputMode="email"
-              autoComplete="email"
-              placeholder="you@example.com"
+              inputMode={identifierInputMode(identifier)}
+              autoComplete="username"
+              placeholder={t("138 0000 0000 or you@example.com")}
               className={cx(inputCls, "mt-1")}
             />
           </div>

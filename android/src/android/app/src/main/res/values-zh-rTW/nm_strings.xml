@@ -573,13 +573,13 @@
     <string name="nm_welcome_meet_fine_print">凡是無法撤回的事——刪除、傳送、付款——它都會先停下來問你。</string>
     <string name="nm_cloud_title">nanoMuse 雲</string>
     <string name="nm_cloud_signin_title">用 nanoMuse 雲開始</string>
-    <string name="nm_cloud_signin_subtitle">信箱收一個驗證碼；設過密碼的話也可以直接用密碼。每個帳號 ¥10 免費模型額度，費用由開發者承擔。</string>
+    <string name="nm_cloud_signin_subtitle">手機號或信箱收一個驗證碼；設過密碼的話也可以直接用密碼。每個帳號都有一份由開發者承擔的免費模型額度。</string>
     <string name="nm_cloud_mode_code">驗證碼登入</string>
     <string name="nm_cloud_mode_password">密碼登入</string>
     <string name="nm_cloud_password">密碼</string>
     <string name="nm_cloud_forgot_password">忘了密碼？用驗證碼登入</string>
-    <string name="nm_cloud_identifier">信箱</string>
-    <string name="nm_cloud_identifier_hint">you@example.com</string>
+    <string name="nm_cloud_identifier">手機號或信箱</string>
+    <string name="nm_cloud_identifier_hint">138 0000 0000 · you@example.com</string>
     <string name="nm_cloud_code">驗證碼</string>
     <string name="nm_cloud_send_code">發送驗證碼</string>
     <string name="nm_cloud_resend">重新發送</string>
@@ -588,7 +588,7 @@
     <string name="nm_cloud_debug_base">中繼伺服器（偵錯版）</string>
     <string name="nm_cloud_fine_print">伺服器只保存信箱的雜湊值，以及每次請求的 token 數。你的訊息只轉送給模型，預設不保存，除非你選擇貢獻出來。隨時可以換成自己的 key。</string>
     <string name="nm_cloud_not_signed_in">尚未登入</string>
-    <string name="nm_cloud_not_signed_in_sub">用信箱登入，送一份免費額度。你自己新增的服務商不受影響。</string>
+    <string name="nm_cloud_not_signed_in_sub">用手機號或信箱登入，送一份免費額度。你自己新增的服務商不受影響。</string>
     <string name="nm_cloud_sign_in">登入</string>
     <string name="nm_cloud_channel_phone">手機號</string>
     <string name="nm_cloud_channel_email">信箱</string>

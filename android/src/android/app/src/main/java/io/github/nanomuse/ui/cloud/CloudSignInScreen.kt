@@ -49,6 +49,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -70,8 +73,9 @@ const val ROUTE_CLOUD_ACCOUNT = "nanomuse/cloud/account"
 private const val CLOUD_DOC_URL = "https://github.com/nano-muse/nanoMuse/blob/main/docs/cloud.md"
 
 /**
- * Sign in to nanoMuse Cloud: an e-mail address, then the code it receives (phone accounts from
- * earlier versions keep working; the field no longer offers them).
+ * Sign in to nanoMuse Cloud: a mainland phone number (the code comes by SMS) or an e-mail
+ * address, then the code it receives — or the account's password. The code box is marked as a
+ * one-time code so the system's autofill or the keyboard can offer the SMS it just saw.
  * On success the relay is a provider with a default model, and the caller decides where to
  * go (the first run continues to "Meet nanoMuse"; from Settings it returns to the account page).
  */
@@ -237,7 +241,8 @@ fun CloudSignInScreen(
                 singleLine = true,
                 enabled = !verifying,
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
+                    // digits get the phone keypad, anything else the e-mail layout
+                    keyboardType = if (identifier.trimStart().firstOrNull()?.let { it.isDigit() || it == '+' } == true) KeyboardType.Phone else KeyboardType.Email,
                     imeAction = if (byPassword) ImeAction.Next else ImeAction.Send,
                 ),
                 keyboardActions = KeyboardActions(onSend = { sendCode() }),
@@ -247,7 +252,9 @@ fun CloudSignInScreen(
                     cursorColor = MuseTones.action,
                     focusedLabelColor = MuseTones.action,
                 ),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentType = ContentType.Username + ContentType.PhoneNumber + ContentType.EmailAddress },
             )
             Spacer(Modifier.height(12.dp))
             if (byPassword) {
@@ -288,7 +295,7 @@ fun CloudSignInScreen(
                     label = { Text(stringResource(R.string.nm_cloud_code)) },
                     singleLine = true,
                     enabled = codeSent && !verifying,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { verify() }),
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -296,7 +303,9 @@ fun CloudSignInScreen(
                         cursorColor = MuseTones.action,
                         focusedLabelColor = MuseTones.action,
                     ),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { contentType = ContentType.SmsOtpCode },
                 )
                 Spacer(Modifier.padding(horizontal = 6.dp))
                 TextButton(

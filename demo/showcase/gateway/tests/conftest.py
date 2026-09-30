@@ -165,7 +165,12 @@ class Upstream:
                 )
             self.codes[ident] = "246810"
             return httpx.Response(204)
-        if request.url.path == "/v1/auth/verify":
+        if request.url.path == "/v1/auth/login":
+            # the password way: one account has a password, the others say so
+            if ident != "someone@example.com" or data.get("password") != "correct horse":
+                code = "password_wrong" if ident == "someone@example.com" else "no_password"
+                return wire(400, json.dumps({"error": {"code": code, "message": "No."}}))
+        elif request.url.path == "/v1/auth/verify":
             if self.codes.get(ident) != data.get("code"):
                 return wire(
                     400,
@@ -173,6 +178,7 @@ class Upstream:
                         {"error": {"code": "code_wrong", "message": "That code is not right"}}
                     ),
                 )
+        if request.url.path in ("/v1/auth/verify", "/v1/auth/login"):
             self.keys_issued += 1
             self.invites.append(str(data.get("invite") or ""))
             account = {

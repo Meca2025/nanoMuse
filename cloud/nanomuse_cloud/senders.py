@@ -111,19 +111,34 @@ def compose_code_mail(sender: str, to: str, code: str, minutes: int) -> EmailMes
 
 
 class AliyunSmsSender:
-    """Dysmsapi SendSms, signed the RPC way (HMAC-SHA1), no SDK.
+    """Aliyun SMS, signed the RPC way (HMAC-SHA1), no SDK. Two services:
 
-    The template must take one variable named `code`, e.g. 「您的验证码为
-    ${code}，10分钟内有效。」. Mainland numbers are sent without +86, others
-    with the country code and no plus, as the API expects.
+    - `ALIYUN_SMS_API=dypns` (default): 号码认证服务's `SendSmsVerifyCode`
+      (dypnsapi). Its ready-made templates take `code` and `min`; our own code
+      is passed in `TemplateParam`, so the relay still verifies it locally.
+    - `ALIYUN_SMS_API=dysms`: 短信服务's `SendSms` (dysmsapi) with a template
+      whose one variable is `code`, e.g. 「您的验证码为${code}，10分钟内有效。」.
+
+    Mainland numbers are sent without +86; dysms takes others with the country
+    code and no plus, dypns only mainland numbers.
     """
 
-    ENDPOINT = "https://dysmsapi.aliyuncs.com/"
+    ENDPOINTS = {"dypns": "https://dypnsapi.aliyuncs.com/", "dysms": "https://dysmsapi.aliyuncs.com/"}
 
     def __init__(self, s: Settings) -> None:
         if not (s.aliyun_access_key_id and s.aliyun_access_key_secret and s.aliyun_sms_sign and s.aliyun_sms_template):
             raise ValueError("ALIYUN_ACCESS_KEY_ID/SECRET, ALIYUN_SMS_SIGN and ALIYUN_SMS_TEMPLATE are required for CODE_SENDER=aliyun")
+        if s.aliyun_sms_api not in self.ENDPOINTS:
+            raise ValueError("ALIYUN_SMS_API must be dypns or dysms")
         self.s = s
+
+    @property
+    def api(self) -> str:
+        return self.s.aliyun_sms_api
+
+    @property
+    def endpoint(self) -> str:
+        return self.ENDPOINTS[self.api]
 
     @staticmethod
     def _pct(v: str) -> str:
@@ -136,25 +151,45 @@ class AliyunSmsSender:
         signature = base64.b64encode(digest).decode()
         return canonical + "&Signature=" + self._pct(signature)
 
-    def send(self, ident: Identifier, code: str) -> None:
+    def params(self, ident: Identifier, code: str) -> dict[str, str]:
+        """The request for one code, before signing; a mainland number without +86."""
         if ident.channel != "phone":
             raise SendError("this deployment sends codes by SMS only")
-        number = ident.value[3:] if ident.value.startswith("+86") else ident.value.lstrip("+")
-        params = {
+        mainland = ident.value.startswith("+86")
+        number = ident.value[3:] if mainland else ident.value.lstrip("+")
+        minutes = str(max(1, self.s.code_ttl_s // 60))
+        common = {
             "AccessKeyId": self.s.aliyun_access_key_id,
-            "Action": "SendSms",
             "Format": "JSON",
-            "PhoneNumbers": number,
             "SignName": self.s.aliyun_sms_sign,
             "SignatureMethod": "HMAC-SHA1",
             "SignatureNonce": uuid.uuid4().hex,
             "SignatureVersion": "1.0",
             "TemplateCode": self.s.aliyun_sms_template,
-            "TemplateParam": json.dumps({"code": code}),
             "Timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "Version": "2017-05-25",
         }
-        url = self.ENDPOINT + "?" + self._signed_query(params)
+        if self.api == "dypns":
+            if not mainland:
+                raise SendError("this deployment sends codes to mainland numbers only")
+            return {
+                **common,
+                "Action": "SendSmsVerifyCode",
+                "PhoneNumber": number,
+                "CountryCode": "86",
+                "TemplateParam": json.dumps({"code": code, "min": minutes}),
+                "ValidTime": str(self.s.code_ttl_s),
+                "ReturnVerifyCode": "false",
+            }
+        return {
+            **common,
+            "Action": "SendSms",
+            "PhoneNumbers": number,
+            "TemplateParam": json.dumps({"code": code}),
+        }
+
+    def send(self, ident: Identifier, code: str) -> None:
+        url = self.endpoint + "?" + self._signed_query(self.params(ident, code))
         try:
             r = httpx.get(url, timeout=15)
             body = r.json()
@@ -162,7 +197,9 @@ class AliyunSmsSender:
             log.error("aliyun sms request failed: %s", e)
             raise SendError("sms") from e
         if body.get("Code") != "OK":
-            log.error("aliyun sms rejected: %s %s", body.get("Code"), body.get("Message"))
+            # never the number: BUSINESS_LIMIT_CONTROL (too many for one number), FREQUENCY_FAIL,
+            # MOBILE_NUMBER_ILLEGAL, FUNCTION_NOT_OPENED, isv.* — all are the operator's to read
+            log.error("aliyun sms (%s) rejected: %s %s", self.api, body.get("Code"), body.get("Message"))
             raise SendError("sms")
 
 

@@ -580,13 +580,13 @@
     <string name="nm_welcome_meet_fine_print">Before anything it cannot take back — deleting, sending, paying — it stops and asks you first.</string>
     <string name="nm_cloud_title">nanoMuse Cloud</string>
     <string name="nm_cloud_signin_title">Start with nanoMuse Cloud</string>
-    <string name="nm_cloud_signin_subtitle">Your e-mail and a code — or your password, once you have set one. ¥10 of model use free per account, paid by the developer.</string>
+    <string name="nm_cloud_signin_subtitle">A phone number or an e-mail and the code it receives — or your password, once you have set one. Every account starts with a free allowance of model use, paid by the developer.</string>
     <string name="nm_cloud_mode_code">With a code</string>
     <string name="nm_cloud_mode_password">With a password</string>
     <string name="nm_cloud_password">Password</string>
     <string name="nm_cloud_forgot_password">Forgot the password? Sign in with a code</string>
-    <string name="nm_cloud_identifier">E-mail</string>
-    <string name="nm_cloud_identifier_hint">you@example.com</string>
+    <string name="nm_cloud_identifier">Phone number or e-mail</string>
+    <string name="nm_cloud_identifier_hint">138 0000 0000 · you@example.com</string>
     <string name="nm_cloud_code">Code</string>
     <string name="nm_cloud_send_code">Send code</string>
     <string name="nm_cloud_resend">Send again</string>
@@ -595,7 +595,7 @@
     <string name="nm_cloud_debug_base">Relay (debug build)</string>
     <string name="nm_cloud_fine_print">The relay keeps only a hash of your address and the token count of each request. Your messages are forwarded to the model, not stored unless you choose to contribute them. You can add your own key at any time.</string>
     <string name="nm_cloud_not_signed_in">Not signed in</string>
-    <string name="nm_cloud_not_signed_in_sub">Sign in with an e-mail for a free allowance. Your own providers stay as they are.</string>
+    <string name="nm_cloud_not_signed_in_sub">Sign in with a phone number or an e-mail for a free allowance. Your own providers stay as they are.</string>
     <string name="nm_cloud_sign_in">Sign in</string>
     <string name="nm_cloud_channel_phone">Phone number</string>
     <string name="nm_cloud_channel_email">E-mail</string>

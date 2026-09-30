@@ -79,6 +79,11 @@ class WebVerifyIn(BaseModel):
     invite: str = Field(default="", max_length=32)
 
 
+class WebLoginIn(BaseModel):
+    identifier: str = Field(min_length=3, max_length=120)
+    password: str = Field(min_length=1, max_length=200)
+
+
 def client_ip(request: Request, trust_proxy: bool) -> str:
     if trust_proxy:
         forwarded = request.headers.get("x-forwarded-for")
@@ -249,6 +254,16 @@ def create_app(
                 body.code,
                 client_ip(request, settings.trust_proxy),
                 invite=body.invite.strip(),
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return JSONResponse(account.public(settings), headers={"Cache-Control": "no-store"})
+
+    @app.post("/api/web/login")
+    async def web_login(body: WebLoginIn, request: Request) -> Response:
+        try:
+            account = await accounts.login(
+                body.identifier.strip(), body.password, client_ip(request, settings.trust_proxy)
             )
         except Refused as exc:
             return _refused(exc)

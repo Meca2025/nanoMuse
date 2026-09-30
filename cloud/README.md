@@ -103,7 +103,8 @@ for the full list. The ones that matter:
 | `SIGNUP_TOKENS` | 0 (no ceiling) | starter token grant per account, the older allowance |
 | `DAILY_CAP_TOKENS` | 0 (off) | tokens per account per day |
 | `PER_MINUTE_REQUESTS` | 30 | per account — what stops a runaway loop |
-| `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` |
+| `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` (SMS for phones, mail for addresses) |
+| `ALIYUN_SMS_API` | `dypns` | `dypns` (号码认证服务 `SendSmsVerifyCode`) or `dysms` (短信服务 `SendSms`) |
 | `CLOUD_MODELS` | Qwen chat + image, Wan video | JSON list to replace the menu, prices included |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
@@ -226,10 +227,15 @@ report can be matched to a ledger row without any content being logged.
 
 - **E-mail** (`CODE_SENDER=smtp`): any SMTP account; port 465 uses implicit
   TLS, anything else STARTTLS.
-- **Mainland phones** (`CODE_SENDER=aliyun`): an Aliyun account with SMS
-  enabled, an approved signature (`ALIYUN_SMS_SIGN`) and a template
-  (`ALIYUN_SMS_TEMPLATE`) whose only variable is `${code}`. Signature and
-  template review is Aliyun's process and takes a working day or two.
+- **Mainland phones** (`CODE_SENDER=aliyun`): an Aliyun RAM user with
+  `ALIYUN_ACCESS_KEY_ID/SECRET`, a signature (`ALIYUN_SMS_SIGN`) and a template
+  (`ALIYUN_SMS_TEMPLATE`). `ALIYUN_SMS_API=dypns` (default) sends through
+  号码认证服务's `SendSmsVerifyCode`, whose ready-made signatures and templates
+  (`100001`: 「您的验证码为${code}…${min}分钟内有效」) need no review — the RAM user
+  needs `AliyunDypnsFullAccess`. `ALIYUN_SMS_API=dysms` is 短信服务's `SendSms`
+  with your own approved signature and a template whose only variable is
+  `${code}`; that review is Aliyun's process and takes a working day or two.
+  Either way the relay makes and checks the code itself.
 - `both` routes by identifier type. Non-mainland numbers are accepted as
   identifiers but the Aliyun sender only covers `+86`; use e-mail for the rest
   or plug in another sender in `senders.py`.

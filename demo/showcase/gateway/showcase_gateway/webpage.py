@@ -1,8 +1,9 @@
 """The sign-in page of nanoMuse Web (``/web/``), one file, in both languages.
 
-Two steps: an e-mail address, then the six-digit code nanoMuse Cloud sends (and, the first
-time, a friend's invite code if there is one — ``?invite=`` in the address fills it in). On
-success the browser goes to the account's own Muse at ``<slug>.<SESSION_DOMAIN>``. The page
+Two steps: a phone number or an e-mail address, then the six-digit code nanoMuse Cloud sends
+(and, the first time, a friend's invite code if there is one — ``?invite=`` in the address
+fills it in); or, for an account that set one, the password in one step. On success the
+browser goes to the account's own Muse at ``<slug>.<SESSION_DOMAIN>``. The page
 is served by the gateway itself so that it has no build step and no assets to keep in step.
 """
 
@@ -14,7 +15,7 @@ PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>nanoMuse Web</title>
-<meta name="description" content="nanoMuse in the browser — sign in with an e-mail, no download. Free, open source, non-profit.">
+<meta name="description" content="nanoMuse in the browser — sign in with a phone number or an e-mail, nothing to install. Free, open source, non-profit.">
 <link rel="icon" href="https://nanomuse.cn/assets/icon-512.png">
 <style>
 :root{--bg:#F3F3F5;--card:#fff;--ink:#1C1B22;--muted:#6E6B7A;--line:#E4E3EA;--accent:#5B4EE6;--accent-ink:#fff;--warn:#B23B3B}
@@ -48,6 +49,13 @@ details.inv{margin-top:12px;font-size:13px;color:var(--muted)}
 details.inv summary{cursor:pointer}
 details.inv input{margin-top:8px;font-size:15px;text-transform:uppercase;letter-spacing:.12em}
 .lang{position:fixed;top:14px;right:16px;font-size:13px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer;width:auto;margin:0;font-weight:500}
+.tabs{display:flex;gap:4px;padding:4px;margin:0 0 16px;border-radius:14px;background:color-mix(in srgb,var(--line) 55%,transparent)}
+.tabs .tab{flex:1;margin:0;padding:8px 10px;font-size:14px;font-weight:500;border-radius:10px;background:transparent;color:var(--muted)}
+.tabs .tab.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.hint{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5}
+#pass-box{margin-top:14px}
+.notice.tip{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--card))}
+.notice.tip a{display:inline-block;margin:6px 0 0;font-weight:600}
 .hidden{display:none}
 i.en,i.zh{font-style:normal}
 [data-lang="zh"] i.en,[data-lang="en"] i.zh{display:none}
@@ -62,14 +70,25 @@ i.en,i.zh{font-style:normal}
 
   <form id="step1">
     <h1><i class="zh">试试 nanoMuse</i><i class="en">Try nanoMuse</i></h1>
-    <p><i class="zh">一个邮箱、一个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。它一直保存着，下次登录还在；之后手机和电脑用同一个账号登录，就是它。</i><i class="en">An e-mail, a code, and a minute later a nanoMuse of your own is here, model included. It keeps everything for your next visit; later, the same account on the phone and the desktop is the same nanoMuse.</i></p>
-    <label for="ident"><i class="zh">邮箱</i><i class="en">E-mail</i></label>
-    <input id="ident" name="identifier" autocomplete="email" inputmode="email" required autofocus>
+    <p><i class="zh">手机号或邮箱，加一个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。它一直保存着，下次登录还在；之后手机和电脑用同一个账号登录，就是它。</i><i class="en">A phone number or an e-mail, a code, and a minute later a nanoMuse of your own is here, model included. It keeps everything for your next visit; later, the same account on the phone and the desktop is the same nanoMuse.</i></p>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab on" id="tab-code" role="tab" aria-selected="true"><i class="zh">验证码登录</i><i class="en">With a code</i></button>
+      <button type="button" class="tab" id="tab-pass" role="tab" aria-selected="false"><i class="zh">密码登录</i><i class="en">With a password</i></button>
+    </div>
+    <label for="ident"><i class="zh">手机号或邮箱</i><i class="en">Phone number or e-mail</i></label>
+    <input id="ident" name="identifier" autocomplete="username" required autofocus>
+    <div id="pass-box" class="hidden">
+      <label for="password"><i class="zh">密码</i><i class="en">Password</i></label>
+      <input id="password" name="password" type="password" autocomplete="current-password">
+      <div class="hint"><i class="zh">还没有密码？先用验证码登录，再在「账号」里设一个。</i><i class="en">No password yet? Sign in with a code first, then set one under Account.</i></div>
+    </div>
+    <div class="hint" id="code-hint"><i class="zh">中国大陆手机号收短信验证码，其他的发到邮箱。</i><i class="en">A mainland China number gets the code by SMS; anything else by e-mail.</i></div>
     <details class="inv" id="inv">
       <summary><i class="zh">有邀请码？</i><i class="en">Have an invite code?</i></summary>
       <input id="invite" name="invite" maxlength="8" autocomplete="off" spellcheck="false" placeholder="ABCD2345">
     </details>
     <button id="send" type="submit"><i class="zh">发送验证码</i><i class="en">Send the code</i></button>
+    <button id="login" type="submit" class="hidden"><i class="zh">进入我的 nanoMuse</i><i class="en">Open my nanoMuse</i></button>
     <div class="msg" id="msg1"></div>
   </form>
 
@@ -83,15 +102,20 @@ i.en,i.zh{font-style:normal}
     <div class="msg" id="msg2"></div>
   </form>
 
+  <div class="notice tip">
+    <b><i class="zh">浏览器版适合先试一试</i><i class="en">The browser version is for a first try</i></b>
+    <i class="zh">要天天用，推荐装手机 App——功能最全，智能体整个跑在手机上；电脑上装桌面版。同一个账号登录，就是同一个 nanoMuse。<a href="https://nanomuse.cn/#download">下载手机 App 和桌面版</a></i>
+    <i class="en">For every day, install the phone app — the fullest, the whole agent runs on the phone — and the desktop app on your computer. The same account is the same nanoMuse everywhere. <a href="https://nanomuse.cn/#download">Get the phone and desktop apps</a></i>
+  </div>
   <div class="notice">
     <b><a href="https://nanomuse.cn/#open-source" rel="noopener"><i class="zh">免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体</i><i class="en">Free · Open source · Non-profit — open source, built together: a personal agent for all</i></a></b>
-    <i class="zh">每个账号 ¥10 免费模型额度，由开发者承担；邀请一位新用户 +¥5，加入共创计划 +¥10；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售。欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。</i>
-    <i class="en">¥10 of model use free per account, paid by the developer; ¥5 more for each friend you invite, ¥10 more for joining the co-creation programme; then your own key (Alibaba Cloud Bailian is a good start). Messages are not stored by default and nothing is sold. Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach.</i>
-    <br><a href="https://github.com/nano-muse/nanoMuse" rel="noopener"><i class="zh">去 GitHub 点 Star</i><i class="en">Star on GitHub</i></a><a href="https://github.com/nano-muse/nanoMuse/issues/new/choose" rel="noopener"><i class="zh">反馈问题 / 提需求</i><i class="en">Report a bug or ask for a feature</i></a><a href="https://nanomuse.cn/own-key" rel="noopener"><i class="zh">换自己的 key</i><i class="en">Bring your own key</i></a>
+    <i class="zh">每个账号都有一份由开发者承担的免费模型额度，用完可以换自己的 key。默认不保存你的消息，数据不会出售。</i>
+    <i class="en">Every account starts with an allowance of model use paid by the developer; after that, your own key. Messages are not stored by default and nothing is sold.</i>
+    <br><a href="https://github.com/nano-muse/nanoMuse" rel="noopener"><i class="zh">GitHub</i><i class="en">GitHub</i></a><a href="https://nanomuse.cn/own-key" rel="noopener"><i class="zh">换自己的 key</i><i class="en">Bring your own key</i></a>
   </div>
   <div class="foot">
-    <i class="zh">你的 nanoMuse 运行在我们的服务器上，数据只有你能访问；长时间不用会休眠，登录即唤醒。想让它在自己的设备上跑？<a href="https://nanomuse.cn/#download">下载应用</a>。</i>
-    <i class="en">Your nanoMuse runs on our server and only you can reach it; it sleeps after a long quiet spell and wakes when you sign in. Want it on your own device? <a href="https://nanomuse.cn/#download">Download the app</a>.</i>
+    <i class="zh">你的 nanoMuse 运行在我们的服务器上，数据只有你能访问；长时间不用会休眠，登录即唤醒。</i>
+    <i class="en">Your nanoMuse runs on our server and only you can reach it; it sleeps after a long quiet spell and wakes when you sign in.</i>
     <br><i class="zh">nanoMuse 是社区项目，与 Meta 无关。</i><i class="en">nanoMuse is a community project, not affiliated with Meta.</i>
   </div>
 </div>
@@ -108,14 +132,30 @@ i.en,i.zh{font-style:normal}
 
   var s1 = document.getElementById("step1"), s2 = document.getElementById("step2");
   var ident = document.getElementById("ident"), code = document.getElementById("code");
-  var invite = document.getElementById("invite"), inv = document.getElementById("inv");
+  var password = document.getElementById("password"), passBox = document.getElementById("pass-box");
+  var codeHint = document.getElementById("code-hint"), inv = document.getElementById("inv");
+  var tabCode = document.getElementById("tab-code"), tabPass = document.getElementById("tab-pass");
+  var invite = document.getElementById("invite");
+  var msg1 = document.getElementById("msg1"), msg2 = document.getElementById("msg2");
+  var send = document.getElementById("send"), login = document.getElementById("login"), go = document.getElementById("go");
+  var mode = "code";
+  function setMode(m){
+    mode = m; var pw = m === "password";
+    tabCode.classList.toggle("on", !pw); tabPass.classList.toggle("on", pw);
+    tabCode.setAttribute("aria-selected", String(!pw)); tabPass.setAttribute("aria-selected", String(pw));
+    passBox.classList.toggle("hidden", !pw); codeHint.classList.toggle("hidden", pw); inv.classList.toggle("hidden", pw);
+    send.classList.toggle("hidden", pw); login.classList.toggle("hidden", !pw); show(msg1, "");
+    if (pw && ident.value) password.focus();
+  }
+  tabCode.onclick = function(){ setMode("code"); };
+  tabPass.onclick = function(){ setMode("password"); };
+  // digits get the phone keypad, anything else the e-mail layout
+  ident.oninput = function(){ ident.inputMode = /^\\s*[+\\d]/.test(ident.value) ? "tel" : "email"; };
   function cleanInvite(v){ return (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8); }
   try {
     var fromUrl = cleanInvite(new URLSearchParams(location.search).get("invite"));
     if (fromUrl) { invite.value = fromUrl; inv.open = true; }
   } catch (e) {}
-  var msg1 = document.getElementById("msg1"), msg2 = document.getElementById("msg2");
-  var send = document.getElementById("send"), go = document.getElementById("go");
   var T = {
     sending: ["正在发送…", "Sending…"], sent: ["已发送", "Sent"],
     starting: ["正在准备你的 nanoMuse，第一次大约需要十几秒…", "Getting your nanoMuse ready — the first time takes ten seconds or so…"],
@@ -128,8 +168,20 @@ i.en,i.zh{font-style:normal}
     return fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data)})
       .then(function(r){ return r.text().then(function(txt){ var j = {}; try { j = txt ? JSON.parse(txt) : {}; } catch (e) {} return {ok: r.ok, status: r.status, body: j}; }); });
   }
+  function enter(r, btn, msg){
+    if (!r.ok) { btn.disabled = false; show(msg, r.body.message || ("HTTP " + r.status), true); return; }
+    show(msg, t("ready")); location.href = r.body.url;
+  }
   s1.onsubmit = function(ev){
-    ev.preventDefault(); send.disabled = true; show(msg1, t("sending"));
+    ev.preventDefault();
+    if (mode === "password") {
+      if (!password.value) { password.focus(); return; }
+      login.disabled = true; show(msg1, t("starting"));
+      post("/api/web/login", {identifier: ident.value.trim(), password: password.value}).then(function(r){ enter(r, login, msg1); })
+        .catch(function(){ login.disabled = false; show(msg1, t("network"), true); });
+      return;
+    }
+    send.disabled = true; show(msg1, t("sending"));
     post("/api/web/code", {identifier: ident.value.trim()}).then(function(r){
       send.disabled = false;
       if (!r.ok) { show(msg1, r.body.message || ("HTTP " + r.status), true); return; }
@@ -139,10 +191,8 @@ i.en,i.zh{font-style:normal}
   };
   s2.onsubmit = function(ev){
     ev.preventDefault(); go.disabled = true; show(msg2, t("starting"));
-    post("/api/web/verify", {identifier: ident.value.trim(), code: code.value.trim(), invite: cleanInvite(invite.value)}).then(function(r){
-      if (!r.ok) { go.disabled = false; show(msg2, r.body.message || ("HTTP " + r.status), true); return; }
-      show(msg2, t("ready")); location.href = r.body.url;
-    }).catch(function(){ go.disabled = false; show(msg2, t("network"), true); });
+    post("/api/web/verify", {identifier: ident.value.trim(), code: code.value.trim(), invite: cleanInvite(invite.value)}).then(function(r){ enter(r, go, msg2); })
+      .catch(function(){ go.disabled = false; show(msg2, t("network"), true); });
   };
   document.getElementById("back").onclick = function(){ s2.classList.add("hidden"); s1.classList.remove("hidden"); show(msg1, ""); ident.focus(); };
 })();

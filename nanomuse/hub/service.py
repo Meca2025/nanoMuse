@@ -268,7 +268,7 @@ class HubService:
     async def request_code(self, identifier: str) -> None:
         identifier = identifier.strip()
         if not identifier:
-            raise CloudError(400, "bad_identifier", "Enter an e-mail address.")
+            raise CloudError(400, "bad_identifier", "Enter a phone number or an e-mail address.")
         await self.cloud.request_code(identifier)
         self._pending_code = identifier
 
@@ -281,7 +281,7 @@ class HubService:
         """Sign in with the account password instead of a code."""
         identifier = identifier.strip()
         if not identifier:
-            raise CloudError(400, "bad_identifier", "Enter an e-mail address.")
+            raise CloudError(400, "bad_identifier", "Enter a phone number or an e-mail address.")
         if not password:
             raise CloudError(400, "password_required", "Enter the password.")
         data = await self.cloud.login(identifier, password, self.device_name)
