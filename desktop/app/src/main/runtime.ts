@@ -274,6 +274,10 @@ export class Runtime {
         : "The runtime is missing a Python package; reinstall nanoMuse or point NANOMUSE_BIN at a working one.";
     } else if (/WinError 1455|MemoryError|paging file/i.test(tail)) {
       hint = zh ? "内存不够运行时启动；关掉一些程序再试。" : "Not enough memory for the runtime to start; close some programs and try again.";
+    } else if (/GLIBC_[0-9.]+' not found/.test(tail)) {
+      hint = zh
+        ? "这台电脑的系统库（glibc）比自带运行时要求的旧。0.1.24 起的版本在 Ubuntu 20.04 / Debian 11 及更新的系统上都能运行——请安装最新版；更老的系统请用 pip 安装 nanomuse 后自行运行 nanomuse serve。"
+        : "This computer's system library (glibc) is older than the bundled runtime needs. Releases from 0.1.24 on run on Ubuntu 20.04 / Debian 11 and newer — install the latest; on an older system, pip install nanomuse and run nanomuse serve yourself.";
     } else if (/Failed to load Python DLL|_MEIPASS|PyInstaller|Cannot open self/i.test(tail)) {
       hint = zh
         ? "自带的运行时没能解包——安全软件可能拦住了它。把 nanoMuse 加入白名单，或重新安装。"
