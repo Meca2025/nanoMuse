@@ -596,8 +596,10 @@ class Database:
     def insert_video_task(self, task_id: str, account_id: str, model: str, cost_uy: int = 0) -> None:
         t = now()
         with self.tx() as c:
+            # a second insert for the same task (a retried poll) must not forget that it was charged
             c.execute(
-                "INSERT OR REPLACE INTO video_tasks(task_id, account_id, model, created_at, cost_uy) VALUES (?,?,?,?,?)",
+                "INSERT INTO video_tasks(task_id, account_id, model, created_at, cost_uy) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(task_id) DO UPDATE SET model=excluded.model, cost_uy=excluded.cost_uy",
                 (task_id, account_id, model, t, max(0, int(cost_uy))),
             )
             c.execute("DELETE FROM video_tasks WHERE created_at < ?", (t - 3 * 86400,))

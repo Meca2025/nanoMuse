@@ -591,3 +591,28 @@ def test_code_mail_has_text_and_html_in_both_languages():
     assert "验证码是 123456" in parts["text/plain"] and "Your nanoMuse code is 123456" in parts["text/plain"]
     assert "1 2 3 4 5 6" in parts["text/html"] and "10 分钟" in parts["text/html"] and "10 minutes" in parts["text/html"]
     assert "<script" not in parts["text/html"]
+
+
+def test_provider_picture_urls_are_only_fetched_from_the_provider():
+    from nanomuse_cloud.api import _provider_url_ok
+
+    own = ("dashscope.aliyuncs.com",)
+    assert _provider_url_ok("https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/x/y.png", own)
+    assert _provider_url_ok("https://dashscope.aliyuncs.com/api/v1/files/1", own)
+    assert _provider_url_ok("http://upstream/pic.png", ("upstream",))
+    assert not _provider_url_ok("http://dashscope-result.oss-cn-beijing.aliyuncs.com/x.png", own)  # plain http, not our host
+    assert not _provider_url_ok("https://169.254.169.254/latest/meta-data/", own)
+    assert not _provider_url_ok("https://evil.example.com/aliyuncs.com/x.png", own)
+    assert not _provider_url_ok("file:///etc/passwd", own)
+    assert not _provider_url_ok("", own)
+
+
+def test_a_video_task_seen_twice_stays_charged():
+    db = Database(":memory:")
+    db.create_account("h", "phone", "138****8000", 0, account_id="a1")
+    db.insert_video_task("t1", "a1", "wan-x", cost_uy=500)
+    assert db.mark_video_charged("t1") is True
+    db.insert_video_task("t1", "a1", "wan-x", cost_uy=500)  # a retried submission answer, same task id
+    assert db.mark_video_charged("t1") is False
+    row = db.video_task("t1")
+    assert row is not None and row["charged"] == 1

@@ -49,11 +49,13 @@ import base64
 import json
 import logging
 import math
+import secrets
 import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, Request, Response, UploadFile, WebSocket
@@ -73,7 +75,28 @@ def error_response(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"error": {"message": message, "type": "nanomuse_cloud", "code": code}})
 
 
-def create_app(settings: Settings | None = None, cloud: Cloud | None = None, upstream_transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
+# where the provider keeps the pictures it makes: its own API host and Alibaba Cloud OSS buckets
+PROVIDER_HOST_SUFFIXES = (".aliyuncs.com", ".alicdn.com")
+
+
+def _provider_url_ok(url: object, own_hosts: tuple[str, ...] = ()) -> bool:
+    """Only URLs on the provider's own hosts are fetched (the relay must not become an open proxy):
+    the configured API hosts themselves, or https on Alibaba Cloud's storage domains."""
+    try:
+        parts = urlsplit(str(url))
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower()
+    if not host or parts.scheme not in ("http", "https"):
+        return False
+    if host in own_hosts:
+        return True
+    return parts.scheme == "https" and host.endswith(PROVIDER_HOST_SUFFIXES)
+
+
+def create_app(
+    settings: Settings | None = None, cloud: Cloud | None = None, upstream_transport: httpx.AsyncBaseTransport | None = None
+) -> FastAPI:
     settings = settings or Settings()
     cloud = cloud or Cloud(settings)
 
@@ -363,6 +386,10 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
             image_url = r.json()["output"]["choices"][0]["message"]["content"][0]["image"]
         except (ValueError, KeyError, IndexError, TypeError) as e:
             raise CloudError(502, "upstream", "The image provider sent no picture") from e
+        own_hosts = tuple((urlsplit(u).hostname or "").lower() for u in (settings.dashscope_base, settings.upstream_base))
+        if not _provider_url_ok(image_url, own_hosts):
+            log.warning("dashscope image URL off the provider's hosts: %s", str(image_url)[:120])
+            raise CloudError(502, "upstream", "The image provider sent a picture from somewhere unexpected")
         try:
             img = await http.get(image_url)
         except httpx.HTTPError as e:
@@ -611,7 +638,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
     # -- admin ------------------------------------------------------------------------------------
 
     def admin_dep(x_admin_token: str | None = Header(default=None)) -> None:
-        if not settings.admin_token or x_admin_token != settings.admin_token:
+        if not settings.admin_token or not secrets.compare_digest((x_admin_token or "").encode(), settings.admin_token.encode()):
             raise CloudError(401, "admin", "admin token required")
 
     @app.get("/v1/admin/accounts", dependencies=[Depends(admin_dep)])
@@ -620,9 +647,7 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         hub = getattr(app.state, "hub", None)
         if hub is not None:
             for a in accounts:
-                a["devices"] = [
-                    {k: d[k] for k in ("id", "name", "kind", "os", "online", "last_seen")} for d in hub.devices(a["id"])
-                ]
+                a["devices"] = [{k: d[k] for k in ("id", "name", "kind", "os", "online", "last_seen")} for d in hub.devices(a["id"])]
         return {"accounts": accounts, "settings": {**cloud.admin_settings(), "version": __version__}}
 
     @app.get("/v1/admin/usage", dependencies=[Depends(admin_dep)])
