@@ -1,6 +1,7 @@
 """The sign-in page of nanoMuse Web (``/web/``), one file, in both languages.
 
-Two steps: an e-mail or mobile number, then the six-digit code nanoMuse Cloud sends. On
+Two steps: an e-mail address, then the six-digit code nanoMuse Cloud sends (and, the first
+time, a friend's invite code if there is one — ``?invite=`` in the address fills it in). On
 success the browser goes to the account's own Muse at ``<slug>.<SESSION_DOMAIN>``. The page
 is served by the gateway itself so that it has no build step and no assets to keep in step.
 """
@@ -13,7 +14,7 @@ PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>nanoMuse Web</title>
-<meta name="description" content="nanoMuse in the browser — sign in with an e-mail or phone code, no download.">
+<meta name="description" content="nanoMuse in the browser — sign in with an e-mail, no download. Free, open source, non-profit.">
 <link rel="icon" href="https://nanomuse.cn/assets/icon-512.png">
 <style>
 :root{--bg:#F3F3F5;--card:#fff;--ink:#1C1B22;--muted:#6E6B7A;--line:#E4E3EA;--accent:#5B4EE6;--accent-ink:#fff;--warn:#B23B3B}
@@ -39,6 +40,12 @@ button.ghost{background:transparent;color:var(--muted);font-weight:500;margin-to
 .msg.err{color:var(--warn)}
 .foot{margin-top:22px;font-size:12.5px;color:var(--muted);line-height:1.6}
 .foot a{color:inherit}
+.notice{margin:18px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:13px;line-height:1.55;color:var(--ink)}
+.notice b{display:block;margin-bottom:2px}
+.notice a{color:var(--accent);text-decoration:none;margin-right:12px}
+details.inv{margin-top:12px;font-size:13px;color:var(--muted)}
+details.inv summary{cursor:pointer}
+details.inv input{margin-top:8px;font-size:15px;text-transform:uppercase;letter-spacing:.12em}
 .lang{position:fixed;top:14px;right:16px;font-size:13px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer;width:auto;margin:0;font-weight:500}
 .hidden{display:none}
 i.en,i.zh{font-style:normal}
@@ -54,9 +61,13 @@ i.en,i.zh{font-style:normal}
 
   <form id="step1">
     <h1><i class="zh">登录</i><i class="en">Sign in</i></h1>
-    <p><i class="zh">用邮箱或手机号登录 nanoMuse Cloud，我们会给你一台属于你的 nanoMuse——它一直保存着，下次登录还在。</i><i class="en">Sign in to nanoMuse Cloud with an e-mail or a mobile number and you get a nanoMuse of your own — it keeps everything for your next visit.</i></p>
-    <label for="ident"><i class="zh">邮箱或手机号</i><i class="en">E-mail or mobile number</i></label>
+    <p><i class="zh">用邮箱登录 nanoMuse Cloud，我们会给你一台属于你的 nanoMuse——它一直保存着，下次登录还在。</i><i class="en">Sign in to nanoMuse Cloud with an e-mail and you get a nanoMuse of your own — it keeps everything for your next visit.</i></p>
+    <label for="ident"><i class="zh">邮箱</i><i class="en">E-mail</i></label>
     <input id="ident" name="identifier" autocomplete="email" inputmode="email" required autofocus>
+    <details class="inv" id="inv">
+      <summary><i class="zh">有邀请码？</i><i class="en">Have an invite code?</i></summary>
+      <input id="invite" name="invite" maxlength="8" autocomplete="off" spellcheck="false" placeholder="ABCD2345">
+    </details>
     <button id="send" type="submit"><i class="zh">发送验证码</i><i class="en">Send the code</i></button>
     <div class="msg" id="msg1"></div>
   </form>
@@ -71,9 +82,15 @@ i.en,i.zh{font-style:normal}
     <div class="msg" id="msg2"></div>
   </form>
 
+  <div class="notice">
+    <b><i class="zh">免费 · 开源 · 非盈利</i><i class="en">Free · Open source · Non-profit</i></b>
+    <i class="zh">每个账号每天约 ¥15 的模型额度，由开发者承担；邀请一位新用户多得 ¥3。默认不保存你的消息，数据不会出售。欢迎反馈问题、提需求、贡献代码——让我们一起把它做好。</i>
+    <i class="en">About ¥15 of model use a day per account, paid by the developer; ¥3 more for each friend you invite. Messages are not stored by default and nothing is sold. Bugs, requests and pull requests welcome — let's build it together.</i>
+    <br><a href="https://github.com/nano-muse/nanoMuse" rel="noopener"><i class="zh">去 GitHub 点 Star</i><i class="en">Star on GitHub</i></a><a href="https://github.com/nano-muse/nanoMuse/issues/new/choose" rel="noopener"><i class="zh">反馈问题 / 提需求</i><i class="en">Report a bug or ask for a feature</i></a>
+  </div>
   <div class="foot">
-    <i class="zh">注册用户每天有 ¥25 的模型额度，免费。你的 nanoMuse 运行在我们的服务器上，数据只有你能访问；长时间不用会休眠，登录即唤醒。想让它在自己的设备上跑？<a href="https://nanomuse.cn/#download">下载应用</a>。</i>
-    <i class="en">Registered users get ¥25 of model use a day, free. Your nanoMuse runs on our server and only you can reach it; it sleeps after a long quiet spell and wakes when you sign in. Want it on your own device? <a href="https://nanomuse.cn/#download">Download the app</a>.</i>
+    <i class="zh">你的 nanoMuse 运行在我们的服务器上，数据只有你能访问；长时间不用会休眠，登录即唤醒。想让它在自己的设备上跑？<a href="https://nanomuse.cn/#download">下载应用</a>。</i>
+    <i class="en">Your nanoMuse runs on our server and only you can reach it; it sleeps after a long quiet spell and wakes when you sign in. Want it on your own device? <a href="https://nanomuse.cn/#download">Download the app</a>.</i>
     <br><i class="zh">nanoMuse 是社区项目，与 Meta 无关。</i><i class="en">nanoMuse is a community project, not affiliated with Meta.</i>
   </div>
 </div>
@@ -90,6 +107,12 @@ i.en,i.zh{font-style:normal}
 
   var s1 = document.getElementById("step1"), s2 = document.getElementById("step2");
   var ident = document.getElementById("ident"), code = document.getElementById("code");
+  var invite = document.getElementById("invite"), inv = document.getElementById("inv");
+  function cleanInvite(v){ return (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8); }
+  try {
+    var fromUrl = cleanInvite(new URLSearchParams(location.search).get("invite"));
+    if (fromUrl) { invite.value = fromUrl; inv.open = true; }
+  } catch (e) {}
   var msg1 = document.getElementById("msg1"), msg2 = document.getElementById("msg2");
   var send = document.getElementById("send"), go = document.getElementById("go");
   var T = {
@@ -115,7 +138,7 @@ i.en,i.zh{font-style:normal}
   };
   s2.onsubmit = function(ev){
     ev.preventDefault(); go.disabled = true; show(msg2, t("starting"));
-    post("/api/web/verify", {identifier: ident.value.trim(), code: code.value.trim()}).then(function(r){
+    post("/api/web/verify", {identifier: ident.value.trim(), code: code.value.trim(), invite: cleanInvite(invite.value)}).then(function(r){
       if (!r.ok) { go.disabled = false; show(msg2, r.body.message || ("HTTP " + r.status), true); return; }
       show(msg2, t("ready")); location.href = r.body.url;
     }).catch(function(){ go.disabled = false; show(msg2, t("network"), true); });

@@ -75,6 +75,8 @@ class WebCodeIn(BaseModel):
 class WebVerifyIn(BaseModel):
     identifier: str = Field(min_length=3, max_length=120)
     code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+    # a friend's invite code (relay 0.4), passed on as typed; the relay decides what it is worth
+    invite: str = Field(default="", max_length=32)
 
 
 def client_ip(request: Request, trust_proxy: bool) -> str:
@@ -243,7 +245,10 @@ def create_app(
     async def web_verify(body: WebVerifyIn, request: Request) -> Response:
         try:
             account = await accounts.verify(
-                body.identifier.strip(), body.code, client_ip(request, settings.trust_proxy)
+                body.identifier.strip(),
+                body.code,
+                client_ip(request, settings.trust_proxy),
+                invite=body.invite.strip(),
             )
         except Refused as exc:
             return _refused(exc)
