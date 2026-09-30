@@ -23,8 +23,9 @@ its base URL.
   relay too.
 - **Ledger.** Every request is charged from the account's grant using the
   upstream's own `usage` (for streams, from the final usage chunk). Cheaper
-  models are charged with a multiplier; pictures cost a flat amount. A daily
-  cap and a per-minute limit bound the damage of a leaked key.
+  models are charged with a multiplier; pictures cost a flat amount. One
+  lifetime allowance per account and a per-minute limit bound the damage of a
+  leaked key.
 - **Privacy by construction.** Phone numbers and e-mail addresses are looked
   up by HMAC-SHA256 hash, shown as a display hint (`138****8000`,
   `so***@example.com`), and kept AES-GCM-encrypted under a key derived from
@@ -43,7 +44,8 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 402 | `out_of_tokens` | grant used up — top up with the admin endpoint |
 | 403 | `account_disabled` | |
 | 404 | `model_not_offered` | not on the menu |
-| 429 | `code_too_often` / `rate_limited` / `daily_cap` | |
+| 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `invite_url`, `contribute_bonus_available`, `own_key_docs` |
+| 429 | `code_too_often` / `rate_limited` / `daily_cap` | (`daily_cap` only with the legacy token cap on) |
 | 502 | `upstream` | the provider failed; message passed through |
 | 503 | `upstream_unconfigured` | `UPSTREAM_KEY` missing |
 
@@ -88,13 +90,13 @@ for the full list. The ones that matter:
 | `DASHSCOPE_BASE` | Model Studio native | where pictures go (same key) |
 | `CHAT_DEFAULTS` | `{"enable_thinking": false}` | merged into chat requests for fields the app did not set |
 | `SIGNUP_OPEN` | `1` | anyone may sign in; `0` = members only (a private relay) |
-| `ALLOWED_IDENTIFIERS` | empty | comma-separated numbers / addresses of the **members**: no daily spend cap |
-| `DAILY_CAP_CNY` | 15 | yuan a day per non-member account, at the list prices below; 0 = no cap |
-| `INVITE_BONUS_CNY` | 3 | credit the inviter earns per friend who signs up with their code; spent once the day's cap is used up, never expires |
+| `ALLOWED_IDENTIFIERS` | empty | comma-separated numbers / addresses of the **members**: no spend limit |
+| `ALLOWANCE_CNY` | 10 | yuan per non-member account **for its lifetime**, at the list prices below; 0 = no limit |
+| `INVITE_BONUS_CNY` | 5 | added to the inviter's pool per new person who signs up with their code |
+| `CONTRIBUTE_BONUS_CNY` | 10 | added once when the person joins the co-creation programme (contributes conversations) |
 | `INVITE_URL` | `https://nanomuse.cn/web/?invite=` | the link the apps offer to share; the code is appended |
-| `VIDEO_CLIPS_FREE` | 4 | video clips an account may make in all (one animated face); 0 = no limit; members have none |
-| `VIDEO_CLIPS_PER_INVITE` | 4 | more clips per friend invited |
-| `DAY_OFFSET_H` | 8 | the day turns at midnight UTC+8 (Beijing) |
+| `OWN_KEY_DOCS` | `https://nanomuse.cn/own-key` | the guide the apps open for bringing one's own key |
+| `DAY_OFFSET_H` | 8 | the operator's reports group by local day, midnight UTC+8 (Beijing) |
 | `USD_CNY` | 7.1 | for showing dollars next to yuan; display only |
 | `SIGNUP_TOKENS` | 0 (no ceiling) | starter token grant per account, the older allowance |
 | `DAILY_CAP_TOKENS` | 0 (off) | tokens per account per day |
@@ -121,16 +123,22 @@ the relay; a task can be polled by the account that created it only.
 Every request is priced in yuan at the provider's Beijing list prices (set per
 model: `price_in` / `price_out` per million tokens, `price_image` and
 `price_image_2k` per picture, `price_second` per second of video) and stored
-in the ledger next to the token count. A non-member account may cost the
-operator `DAILY_CAP_CNY` a day (¥15 by default); a picture or a clip that would
-go over the cap is refused before it is made, a chat is refused once the day's
-spend has reached the cap. Members — the identifiers in `ALLOWED_IDENTIFIERS`,
-or any account the operator marks on the admin page — have no cap. `/v1/me`
-carries a `spend` block (`today`, `total`, `daily_cap`, `unlimited`, `usd_cny`,
-`today_usd`, `daily_cap_usd`, `resets_at`, `credit_left`, `left_today`) and each model in `/v1/models`
-carries its `nanomuse.price_cny`, so the apps show what a day cost in both
-currencies. The day turns at midnight in `DAY_OFFSET_H`; the admin page
-shows spend per account and per day in ¥ and $.
+in the ledger next to the token count. A non-member account has one pool for
+its lifetime — `ALLOWANCE_CNY` (¥10 by default), grown by invites, the
+co-creation bonus and the operator's credit; a picture or a clip that would go
+over it is refused before it is made, a chat once the pool is spent. Clips are
+not counted apart: a clip is just the dearest line on the same allowance.
+Members — the identifiers in `ALLOWED_IDENTIFIERS`, or any account the
+operator marks on the admin page — have no limit. `/v1/me` carries a `spend`
+block (`total`, `grant`, `left`, `unlimited`, `warn` at 80 %, `usd_cny`,
+`total_usd`, `grant_usd`, `left_usd`, `today`, the bonus amounts and
+`own_key_docs`; the 0.4 names `daily_cap` / `left_today` / `resets_at` = 0
+for one more version) and each model in `/v1/models` carries its
+`nanomuse.price_cny`, so the apps show what was spent in both currencies. The
+refusal, `429 allowance_exhausted`, says what is left and where the three ways
+on lead (invite, co-creation, one's own key) — sign-in and the hub are never
+gated, only the model routes. The admin page shows spend per account and per
+day (`DAY_OFFSET_H`) in ¥ and $.
 
 `SIGNUP_TOKENS=0` (the default) runs the relay without a token ceiling: usage
 is metered and shown, nothing is refused for lack of tokens (`/v1/me` says
@@ -164,22 +172,23 @@ talk to, and an account sheet (`/v1/me`) with the allowance, usage by kind
 and by model, the sign-ins with a way to revoke each, the recent activity,
 set / change / remove the password, sign out here or everywhere.
 
-### Invitations, credit and the clip allowance (0.4)
+### Invitations, co-creation and the one pool (0.5)
 
 Every account has an eight-letter invite code (`GET /v1/me/invite`: the code,
-the share link `INVITE_URL` + code, who came, the credit earned). A person who
-signs up with it — `invite` in `POST /v1/auth/verify`; the web app and the
-console pick it up from `?invite=…` — earns the inviter `INVITE_BONUS_CNY` of
-**credit** and `VIDEO_CLIPS_PER_INVITE` clips. Credit is drawn on only after
-the day's cap is used up, and never expires; the second sign-in of the same
-person, one's own code and an unknown code earn nothing (and are not errors).
-Video, the expensive part, is counted per account: `VIDEO_CLIPS_FREE` clips
-in all (four = one animated face), plus what invites and the operator add;
-one more answers `429 video_limit`. `GET /v1/estimate?images=5&clips=4` says
-what a job would cost next to what is left today, so the app can ask before a
-new face is made. The operator credits an account — a merged pull request, a
-good bug report — with `POST /v1/admin/credit {identifier | account_id, cny,
-clips?, note?}` (or the *Add credit* button on the admin page).
+the share link `INVITE_URL` + code, who came, what they brought). A new person
+who signs up with it — `invite` in `POST /v1/auth/verify`; the web app and the
+console pick it up from `?invite=…` — adds `INVITE_BONUS_CNY` to the inviter's
+pool; the second sign-in of the same person, one's own code and an unknown
+code add nothing (and are not errors). Joining the co-creation programme
+(`POST /v1/me/contribute {on: true}`) adds `CONTRIBUTE_BONUS_CNY` once for the
+account's lifetime (`contribute_bonus_at`); leaving and re-joining earns
+nothing more. `GET /v1/estimate?images=5&clips=4` says what a job would cost
+next to what is left, so the app can ask before a new face is made. The
+operator credits an account — a merged pull request, a good bug report — with
+`POST /v1/admin/credit {identifier | account_id, cny, note?}` (or the *Add
+credit* button on the admin page). A database from 0.4 is moved over on the
+first start: every account's pool becomes what it had spent plus the
+allowance plus any unused 0.4 credit, so nobody starts in debt.
 
 ## Operating
 
@@ -189,9 +198,9 @@ curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/accou
 # top up someone by phone/e-mail or by account id
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"identifier":"13800138000","tokens":500000}' https://$CLOUD_DOMAIN/v1/admin/grant
-# thank a contributor: ¥10 of credit and four more clips
+# thank a contributor: ¥10 more in their pool
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"identifier":"dev@example.com","cny":10,"clips":4,"note":"PR #12"}' https://$CLOUD_DOMAIN/v1/admin/credit
+  -d '{"identifier":"dev@example.com","cny":10,"note":"PR #12"}' https://$CLOUD_DOMAIN/v1/admin/credit
 # switch an abusive account off
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"identifier":"13800138000","disabled":true}' https://$CLOUD_DOMAIN/v1/admin/disable

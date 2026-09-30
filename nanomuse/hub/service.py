@@ -274,11 +274,30 @@ class HubService:
             await self.refresh_chat_models()
         except CloudError:
             pass
+        # The model client resolved its key when it was built. When the account's key is the
+        # model's key (the Cloud preset), that client still holds the previous one — revoked,
+        # or from a sign-in that ended — and every request would come back 401 until a
+        # restart. Rebuild it with the fresh key; with no model configured at all, the account
+        # becomes the model, as it does for a hosted runtime.
+        if self._llm_is_cloud():
+            self.svc.connections._swap_llm()
+        elif not (self.settings.llm.api_key or (self.data.get("llm") or {}).get("api_key")):
+            with contextlib.suppress(CloudError, Exception):
+                await self.use_as_model()
         if self.settings.hub.enabled:
             await self.join()
         self.svc.connections._publish()
         self.publish()
         return self.account_view()
+
+    def _llm_is_cloud(self) -> bool:
+        """Whether the chat model is the account (the Cloud key from the vault, on the relay)."""
+        llm = self.settings.llm
+        key = str(llm.api_key or (self.data.get("llm") or {}).get("api_key") or "")
+        if CLOUD_KEY in key:
+            return True
+        base = str(llm.base_url or "").rstrip("/")
+        return bool(base) and base == model_url(self.cloud.base_url).rstrip("/")
 
     async def refresh_chat_models(self) -> list[str]:
         """The relay's chat models (text in, text out), recommended one first."""
@@ -368,6 +387,7 @@ class HubService:
         await self._forget_key()
 
     async def _forget_key(self) -> None:
+        was_model = self._llm_is_cloud()
         self.svc.app.vault.delete(CLOUD_KEY)
         self.cloud.api_key = ""
         cloud = dict(self.data.get("cloud") or {})
@@ -375,6 +395,9 @@ class HubService:
             cloud.pop(key, None)
         self.data["cloud"] = cloud
         self._save()
+        if was_model:
+            # the client would otherwise keep sending the revoked key
+            self.svc.connections._swap_llm()
         self.svc.connections._publish()
         self.publish()
 

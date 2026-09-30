@@ -237,26 +237,26 @@ class Settings:
     hub_enabled: bool = field(default_factory=lambda: _env("HUB_ENABLED", "1") not in ("0", "false", "no"))
     hub_frame_limit: int = field(default_factory=lambda: _int("HUB_FRAME_LIMIT", 16 * 1024 * 1024))
 
-    # Money. Everyone who signs in may spend DAILY_CAP_CNY yuan of the
-    # operator's provider bill a day (0 = no cap), counted at the list prices
-    # above across chat, pictures and clips; the members below are exempt.
-    # The day turns at midnight in the DAY_OFFSET_H time zone (8 = Beijing).
-    # USD_CNY is for display only: the apps show both currencies.
-    daily_cap_cny: float = field(default_factory=lambda: float(_env("DAILY_CAP_CNY", "15")))
+    # Money (0.5). Every account has one allowance for its lifetime, not a day:
+    # ALLOWANCE_CNY yuan of the operator's provider bill (0 = no limit), counted
+    # at the list prices above across chat, pictures and clips alike — a clip is
+    # not counted apart, it just costs more. The pool grows by INVITE_BONUS_CNY
+    # for each friend who signs up with the account's code, once by
+    # CONTRIBUTE_BONUS_CNY when the person joins the co-creation programme
+    # (contributes their conversations), and by whatever the operator credits.
+    # The members below (ALLOWED_IDENTIFIERS, or flagged by the operator) have
+    # no limit. DAY_OFFSET_H only groups the operator's reports by local day
+    # (8 = Beijing). USD_CNY is for display: the apps show both currencies.
+    allowance_cny: float = field(default_factory=lambda: float(_env("ALLOWANCE_CNY", "10")))
+    invite_bonus_cny: float = field(default_factory=lambda: float(_env("INVITE_BONUS_CNY", "5")))
+    contribute_bonus_cny: float = field(default_factory=lambda: float(_env("CONTRIBUTE_BONUS_CNY", "10")))
     day_offset_h: int = field(default_factory=lambda: _int("DAY_OFFSET_H", 8))
     usd_cny: float = field(default_factory=lambda: float(_env("USD_CNY", "7.1")))
-    # Invitations. Every account has a code; a person who signs up with it
-    # earns the inviter INVITE_BONUS_CNY of credit — money spent only once the
-    # day's cap is used up, and never expiring — plus VIDEO_CLIPS_PER_INVITE
-    # more clips. The operator can grant credit too (issues, pull requests).
     # INVITE_URL is the link the apps offer to share; the code is appended.
-    invite_bonus_cny: float = field(default_factory=lambda: float(_env("INVITE_BONUS_CNY", "3")))
+    # OWN_KEY_DOCS is the guide the apps open when the allowance is used up and
+    # the person wants to bring their own model key.
     invite_url: str = field(default_factory=lambda: _env("INVITE_URL", "https://nanomuse.cn/web/?invite="))
-    # Video is the expensive part: an account may make VIDEO_CLIPS_FREE clips
-    # in all (4 = one animated face, the app's four moods), plus what invites
-    # and the operator add. 0 = no limit. Members have none.
-    video_clips_free: int = field(default_factory=lambda: _int("VIDEO_CLIPS_FREE", 4))
-    video_clips_per_invite: int = field(default_factory=lambda: _int("VIDEO_CLIPS_PER_INVITE", 4))
+    own_key_docs: str = field(default_factory=lambda: _env("OWN_KEY_DOCS", "https://nanomuse.cn/own-key"))
 
     code_ttl_s: int = field(default_factory=lambda: _int("CODE_TTL_S", 600))
     code_per_identifier_10m: int = field(default_factory=lambda: _int("CODE_PER_IDENTIFIER_10M", 3))
@@ -316,6 +316,14 @@ class Settings:
 
     def uy_to_cny(self, uy: int) -> float:
         return round(uy / 1_000_000, 4)
+
+    @staticmethod
+    def cny_to_uy(cny: float) -> int:
+        return round(cny * 1_000_000)
+
+    @property
+    def allowance_uy(self) -> int:
+        return self.cny_to_uy(self.allowance_cny)
 
     def cny_to_usd(self, cny: float) -> float:
         return round(cny / self.usd_cny, 4) if self.usd_cny > 0 else 0.0

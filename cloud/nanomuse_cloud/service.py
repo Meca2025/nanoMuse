@@ -57,11 +57,13 @@ class CloudError(Exception):
     """An error the app should show. `status` is the HTTP status, `code` a stable
     machine-readable name the app can switch on (it has strings for each)."""
 
-    def __init__(self, status: int, code: str, message: str):
+    def __init__(self, status: int, code: str, message: str, extra: dict | None = None):
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
+        # fields the app can act on beside the words (what is left, where to go next)
+        self.extra = dict(extra or {})
 
 
 def _strip_binary(messages: list) -> list:
@@ -105,13 +107,13 @@ class Caller:
     via: str = "code"
     key_created_at: int = 0
     key_prefix: str = ""
-    # Invitations (0.4): the code this person hands out, how many came, and the
-    # credit earned — money for the days the cap is used up — with the clips.
+    # Invitations (0.4): the code this person hands out and how many came.
     invite_code: str = ""
     invites: int = 0
-    credit_uy: int = 0
-    credit_used_uy: int = 0
-    clips_bonus: int = 0
+    # The lifetime pool (0.5), micro-yuan: the allowance, plus what invites, the co-creation
+    # bonus and the operator added. What is spent is the ledger's sum, read when needed.
+    grant_uy: int = 0
+    contribute_bonus_at: int | None = None
     # The person chose to contribute their conversations (0.4): only then does the
     # relay keep what was said, for the community's own model.
     contribute: bool = False
@@ -119,10 +121,6 @@ class Caller:
     @property
     def remaining(self) -> int:
         return max(0, self.granted - self.used)
-
-    @property
-    def credit_left_uy(self) -> int:
-        return max(0, self.credit_uy - self.credit_used_uy)
 
 
 def _sha256(s: str) -> str:
@@ -144,12 +142,22 @@ class Cloud:
         self.member_hashes: frozenset[str] = frozenset(i.hash(settings.hmac_key) for i in self._listed_identifiers())
         if settings.signup_open:
             log.info(
-                "sign-up is open: %d member(s) without a cap, everyone else ¥%.2f a day",
+                "sign-up is open: %d member(s) without a limit, everyone else ¥%.2f in all (+¥%.2f an invite, +¥%.2f for co-creation)",
                 len(self.member_hashes),
-                settings.daily_cap_cny,
+                settings.allowance_cny,
+                settings.invite_bonus_cny,
+                settings.contribute_bonus_cny,
             )
         else:
             log.warning("SIGNUP_OPEN=0: private relay, only the %d listed identifier(s) may sign in", len(self.member_hashes))
+        if settings.allowance_uy > 0:
+            # A database from before 0.5 (or from a spell with ALLOWANCE_CNY=0): every account
+            # without a pool starts the lifetime model with the allowance on top of what it has
+            # spent, plus any 0.4 credit an invite had earned it. Idempotent: an account with a
+            # pool is left alone, so a restart between the column and this line loses nothing.
+            n = self.db.seed_grants(settings.allowance_uy)
+            if n:
+                log.warning("0.5: %d account(s) moved to the lifetime allowance (¥%.2f + what was spent)", n, settings.allowance_cny)
 
     # -- sign-up -------------------------------------------------------------------
 
@@ -209,7 +217,9 @@ class Cloud:
         if account is None:
             account_id = self.db.new_account_id()
             enc = self.crypto.encrypt(account_id, ident.value)
-            account = self.db.create_account(id_hash, ident.channel, ident.hint, self.s.signup_tokens, enc, account_id=account_id)
+            account = self.db.create_account(
+                id_hash, ident.channel, ident.hint, self.s.signup_tokens, enc, account_id=account_id, grant_uy=self.s.allowance_uy
+            )
             self.db.add_event(account_id, "account.created", ident.channel)
             self._accept_invite(account_id, invite)
         elif account["disabled"]:
@@ -235,8 +245,8 @@ class Cloud:
             # a wrong code is not an error: the person is signed in either way
             self.db.add_event(new_account_id, "invite.unknown")
             return
-        bonus_uy = round(self.s.invite_bonus_cny * 1_000_000)
-        self.db.record_invite(inviter["id"], new_account_id, bonus_uy, self.s.video_clips_per_invite)
+        bonus_uy = self.s.cny_to_uy(self.s.invite_bonus_cny)
+        self.db.record_invite(inviter["id"], new_account_id, bonus_uy)
         self.db.add_event(inviter["id"], "invite.accepted", new_account_id[:8])
         self.db.add_event(new_account_id, "invite.used", inviter["id"][:8])
         log.info("invite: %s brought %s (+¥%.2f)", inviter["id"][:8], new_account_id[:8], self.s.invite_bonus_cny)
@@ -257,50 +267,26 @@ class Cloud:
 
     def invite_view(self, caller: Caller) -> dict:
         code = self.invite_code_for(caller)
+        earned = self.s.uy_to_cny(caller.invites * self.s.cny_to_uy(self.s.invite_bonus_cny))
         return {
             "code": code,
             "url": self.s.invite_url + code if self.s.invite_url else "",
             "invites": caller.invites,
             "bonus_cny": self.s.invite_bonus_cny,
-            "clips_per_invite": self.s.video_clips_per_invite,
-            "credit_cny": self.s.uy_to_cny(caller.credit_uy),
-            "credit_left_cny": self.s.uy_to_cny(caller.credit_left_uy),
+            "earned_cny": earned,
+            # 0.4 names, one more version: the money invites brought (there is no separate
+            # credit any more, it is all one pool) and no clips to count
+            "credit_cny": earned,
+            "credit_left_cny": earned,
+            "clips_per_invite": 0,
             "friends": [{"hint": r["hint"], "joined_at": int(r["created_at"])} for r in self.db.invitees(caller.account_id)],
         }
 
-    # -- video clips: the expensive part, counted per account ---------------------------
-
-    def clips_allowed(self, caller: Caller) -> int | None:
-        """How many clips this account may make in all; None = no limit."""
-        if caller.member or self.s.video_clips_free <= 0:
-            return None
-        return self.s.video_clips_free + caller.clips_bonus
-
-    def clips_view(self, caller: Caller) -> dict:
-        allowed = self.clips_allowed(caller)
-        used = self.db.video_clips_used(caller.account_id, now() - 3600)
-        return {
-            "unlimited": allowed is None,
-            "allowed": allowed,
-            "used": used,
-            "left": None if allowed is None else max(0, allowed - used),
-            "per_face": self.s.video_clips_per_invite or 4,
-        }
-
-    def check_clips(self, caller: Caller, n: int = 1) -> None:
-        allowed = self.clips_allowed(caller)
-        if allowed is None:
-            return
-        used = self.db.video_clips_used(caller.account_id, now() - 3600)
-        if used + max(1, n) > allowed:
-            self.db.add_event(caller.account_id, "budget.refused", "video_limit")
-            raise CloudError(
-                429,
-                "video_limit",
-                f"Your video allowance is used up ({allowed} clips — one animated face per account). "
-                f"Each friend who signs up with your invite code adds {self.s.video_clips_per_invite} more, "
-                "or add your own model key under Settings → Providers.",
-            )
+    @staticmethod
+    def clips_view() -> dict:
+        """0.5 counts no clips apart — a clip is just the most expensive thing on the one
+        allowance. Kept in the shape 0.4 phones read so they show 「不限」."""
+        return {"unlimited": True, "allowed": None, "used": 0, "left": None, "per_face": 4}
 
     def _issue_key(self, account_id: str, device: str, via: str) -> tuple[str, Caller]:
         key = KEY_PREFIX + secrets.token_urlsafe(30)
@@ -408,9 +394,8 @@ class Cloud:
                 key_prefix=row["prefix"],
                 invite_code=row["invite_code"] or "",
                 invites=int(row["invites"] or 0),
-                credit_uy=int(row["credit_uy"] or 0),
-                credit_used_uy=int(row["credit_used_uy"] or 0),
-                clips_bonus=int(row["clips_bonus"] or 0),
+                grant_uy=int(row["grant_uy"] or 0),
+                contribute_bonus_at=int(row["contribute_bonus_at"]) if row["contribute_bonus_at"] else None,
                 contribute=bool(row["contribute"]),
             )
             if not row["account_disabled"]
@@ -490,12 +475,64 @@ class Cloud:
             "kinds": list(USAGE_KINDS),
         }
 
+    # -- the allowance (0.5) ----------------------------------------------------------------
+    #
+    # One pool for the account's lifetime: `grant_uy` on the account, what was spent is the
+    # ledger's sum. Members (the operator's list, or flagged) have no limit; so has everyone
+    # when ALLOWANCE_CNY is 0.
+
+    def limited(self, caller: Caller) -> bool:
+        return not caller.member and self.s.allowance_cny > 0
+
+    def allowance(self, caller: Caller, spent_uy: int | None = None) -> dict:
+        """The numbers behind every allowance view: spent, the pool, what is left, and
+        whether it is time for the 80 % heads-up."""
+        if spent_uy is None:
+            spent_uy = self.db.spent_since(caller.account_id, 0)
+        limited = self.limited(caller)
+        grant = caller.grant_uy if limited else 0
+        left = max(0, grant - spent_uy) if limited else None
+        return {
+            "limited": limited,
+            "spent_uy": spent_uy,
+            "grant_uy": grant,
+            "left_uy": left,
+            "warn": bool(limited and grant > 0 and spent_uy * 5 >= grant * 4),
+            "contribute_bonus_available": self.s.contribute_bonus_cny > 0 and caller.contribute_bonus_at is None,
+        }
+
+    def _exhausted(self, caller: Caller, a: dict) -> CloudError:
+        ways = [f"invite a friend (+¥{self.s.invite_bonus_cny:g} each)"]
+        if a["contribute_bonus_available"]:
+            ways.append(f"join the co-creation programme (+¥{self.s.contribute_bonus_cny:g}, once)")
+        ways.append("add your own model key (Alibaba Cloud Bailian has a free tier)")
+        message = (
+            f"Your free allowance (¥{self.s.uy_to_cny(a['grant_uy']):g}) is used up. "
+            f"Three ways on: {'; '.join(ways)}. Your sign-in and your devices keep working either way."
+        )
+        return CloudError(
+            429,
+            "allowance_exhausted",
+            message,
+            extra={
+                "left": self.s.uy_to_cny(a["left_uy"] or 0),
+                "grant": self.s.uy_to_cny(a["grant_uy"]),
+                "invite_url": (self.s.invite_url + self.invite_code_for(caller)) if self.s.invite_url else "",
+                "invite_bonus_cny": self.s.invite_bonus_cny,
+                "contribute_bonus_available": a["contribute_bonus_available"],
+                "contribute_bonus_cny": self.s.contribute_bonus_cny,
+                "own_key_docs": self.s.own_key_docs,
+            },
+        )
+
     def me(self, caller: Caller) -> dict:
         t = now()
         day_start = self.s.day_start(t)
         spent_today_uy = self.db.spent_since(caller.account_id, day_start)
         spent_uy = self.db.spent_since(caller.account_id, 0)
-        cap_cny = 0.0 if caller.member else self.s.daily_cap_cny
+        a = self.allowance(caller, spent_uy)
+        grant_cny = self.s.uy_to_cny(a["grant_uy"])
+        left_cny = None if a["left_uy"] is None else self.s.uy_to_cny(a["left_uy"])
         return {
             "account": {
                 # an opaque id (not the identifier): what nanoMuse Web keys a person's kept
@@ -521,30 +558,47 @@ class Cloud:
                 "used_today": self.db.used_since(caller.account_id, day_start),
                 "daily_cap": self.s.daily_cap_tokens,
             },
-            # Money, as the provider bills the operator: today's spend against
-            # the daily cap (0 = none, which is what members get), the total,
-            # and the rate the apps use to show dollars next to yuan.
+            # Money, as the provider bills the operator: what the account has spent in all
+            # against its pool (0 = no limit, which is what members get), what is left, and
+            # the rate the apps use to show dollars next to yuan. `warn` turns on at 80 %.
             "spend": {
                 "currency": "CNY",
-                "today": self.s.uy_to_cny(spent_today_uy),
                 "total": self.s.uy_to_cny(spent_uy),
-                "daily_cap": cap_cny,
-                "unlimited": caller.member or self.s.daily_cap_cny <= 0,
+                "grant": grant_cny,
+                "left": left_cny,
+                "unlimited": not a["limited"],
+                "warn": a["warn"],
                 "usd_cny": self.s.usd_cny,
+                "total_usd": self.s.cny_to_usd(self.s.uy_to_cny(spent_uy)),
+                "grant_usd": self.s.cny_to_usd(grant_cny),
+                "left_usd": None if left_cny is None else self.s.cny_to_usd(left_cny),
+                "today": self.s.uy_to_cny(spent_today_uy),
                 "today_usd": self.s.cny_to_usd(self.s.uy_to_cny(spent_today_uy)),
-                "daily_cap_usd": self.s.cny_to_usd(cap_cny),
+                # how the pool grows, for the account page
+                "allowance_cny": self.s.allowance_cny,
+                "invite_bonus_cny": self.s.invite_bonus_cny,
+                "contribute_bonus_cny": self.s.contribute_bonus_cny,
+                "contribute_bonus_available": a["contribute_bonus_available"],
+                "own_key_docs": self.s.own_key_docs,
+                # 0.4 names, one more version: apps from before 0.5 draw a "today / cap" bar;
+                # with the pool in `daily_cap` and the total in `today` that bar is the right
+                # one, and with no `resets_at` they print no midnight.
+                "daily_cap": grant_cny,
+                "daily_cap_usd": self.s.cny_to_usd(grant_cny),
                 "day_offset_h": self.s.day_offset_h,
-                "resets_at": day_start + 86400,
-                # credit (invites, the operator) is spent only once the day's cap is; what is left
-                # of it, and what may still be spent today all told (None = no limit)
-                "credit_left": self.s.uy_to_cny(caller.credit_left_uy),
-                "left_today": None
-                if caller.member or self.s.daily_cap_cny <= 0
-                else self.s.uy_to_cny(max(0, self._cap_uy() + caller.credit_left_uy - spent_today_uy)),
+                "resets_at": 0,
+                "credit_left": 0,
+                "left_today": left_cny,
             },
             "invite": self.invite_view(caller),
-            "clips": self.clips_view(caller),
-            "contribute": {"on": caller.contribute, "samples": self.db.sample_count(caller.account_id) if caller.contribute else 0},
+            "clips": self.clips_view(),
+            "contribute": {
+                "on": caller.contribute,
+                "samples": self.db.sample_count(caller.account_id) if caller.contribute else 0,
+                "bonus_cny": self.s.contribute_bonus_cny,
+                "bonus_available": a["contribute_bonus_available"],
+                "bonus_at": caller.contribute_bonus_at,
+            },
             "models": [m.to_public() for m in self.s.models],
             "base_url": self.s.public_base,
             "recent": [self._ledger_row(r) for r in self.db.recent_ledger(caller.account_id)],
@@ -578,7 +632,7 @@ class Cloud:
         try:
             self._check_budget(caller, minimum, cost_uy)
         except CloudError as e:
-            if e.code in ("out_of_tokens", "daily_cap"):
+            if e.code in ("out_of_tokens", "daily_cap", "allowance_exhausted"):
                 self.db.add_event(caller.account_id, "budget.refused", e.code)
             raise
 
@@ -592,55 +646,26 @@ class Cloud:
         t = now()
         if self.s.per_minute_requests > 0 and self.db.requests_since(caller.account_id, t - 60) >= self.s.per_minute_requests:
             raise CloudError(429, "rate_limited", "Too many requests; slow down a little")
-        day_start = self.s.day_start(t)
-        if self.s.daily_cap_tokens > 0 and self.db.used_since(caller.account_id, day_start) >= self.s.daily_cap_tokens:
+        if self.s.daily_cap_tokens > 0 and self.db.used_since(caller.account_id, self.s.day_start(t)) >= self.s.daily_cap_tokens:
             raise CloudError(429, "daily_cap", "Today's share of the grant is used up; it resets at midnight")
-        if not caller.member and self.s.daily_cap_cny > 0:
-            # today's cap, stretched by whatever credit is left (invites, the operator)
-            cap_uy = self._cap_uy()
-            spent = self.db.spent_since(caller.account_id, day_start)
-            room = cap_uy + caller.credit_left_uy
-            if spent >= room or (cost_uy > 0 and spent + cost_uy > room):
-                raise CloudError(
-                    429,
-                    "daily_cap",
-                    f"Today's free ¥{self.s.daily_cap_cny:g} is used up; it resets at midnight (UTC{self.s.day_offset_h:+d}). "
-                    f"Invite a friend for ¥{self.s.invite_bonus_cny:g} of credit (Account → Invite), "
-                    "or add your own model key under Settings → Providers to keep going now.",
-                )
-
-    def _cap_uy(self) -> int:
-        return round(self.s.daily_cap_cny * 1_000_000)
-
-    def _cap_for(self, caller: Caller) -> tuple[int | None, int]:
-        """(cap in micro-yuan or None for members, today's start) — what `db.charge` needs to draw on credit."""
-        if caller.member or self.s.daily_cap_cny <= 0:
-            return None, 0
-        return self._cap_uy(), self.s.day_start(now())
+        if self.limited(caller):
+            # the one pool: a chat starts while anything is left (it is priced after the
+            # fact), a picture or a clip only when its known price fits
+            a = self.allowance(caller)
+            spent, grant = a["spent_uy"], a["grant_uy"]
+            if spent >= grant or (cost_uy > 0 and spent + cost_uy > grant):
+                raise self._exhausted(caller, a)
 
     def charge_chat(self, caller: Caller, model: ModelSpec, prompt_tokens: int, completion_tokens: int, request_id: str) -> int:
         charged = math.ceil(prompt_tokens * model.in_mult + completion_tokens * model.out_mult)
         cost = model.chat_cost_uy(prompt_tokens, completion_tokens)
-        cap_uy, day_start = self._cap_for(caller)
-        self.db.charge(
-            caller.account_id,
-            "chat",
-            model.id,
-            prompt_tokens,
-            completion_tokens,
-            charged,
-            request_id,
-            cost_uy=cost,
-            cap_uy=cap_uy,
-            day_start=day_start,
-        )
+        self.db.charge(caller.account_id, "chat", model.id, prompt_tokens, completion_tokens, charged, request_id, cost_uy=cost)
         return charged
 
     def charge_image(self, caller: Caller, model: ModelSpec, n: int, request_id: str, size: str | None = None) -> int:
         charged = model.per_image * max(1, n)
         cost = model.image_cost_uy(size) * max(1, n)
-        cap_uy, day_start = self._cap_for(caller)
-        self.db.charge(caller.account_id, "image", model.id, 0, 0, charged, request_id, cost_uy=cost, cap_uy=cap_uy, day_start=day_start)
+        self.db.charge(caller.account_id, "image", model.id, 0, 0, charged, request_id, cost_uy=cost)
         return charged
 
     def charge_video(self, caller: Caller, model: ModelSpec, request_id: str, cost_uy: int = 0) -> int:
@@ -648,8 +673,7 @@ class Cloud:
         `per_clip` is set for the short clips the app asks for and the money
         was priced from the seconds asked for when the task was submitted."""
         charged = model.per_clip
-        cap_uy, day_start = self._cap_for(caller)
-        self.db.charge(caller.account_id, "video", model.id, 0, 0, charged, request_id, cost_uy=cost_uy, cap_uy=cap_uy, day_start=day_start)
+        self.db.charge(caller.account_id, "video", model.id, 0, 0, charged, request_id, cost_uy=cost_uy)
         return charged
 
     def note(self, account_id: str, kind: str, detail: str = "") -> None:
@@ -666,10 +690,28 @@ class Cloud:
     SAMPLE_MAX_CHARS = 200_000
 
     def set_contribute(self, caller: Caller, on: bool) -> dict:
+        """Joining the co-creation programme (turning contribution on) adds CONTRIBUTE_BONUS_CNY
+        to the pool the first time — once for the account's lifetime, so switching it off and
+        on again earns nothing more, and the samples already given are not taken back."""
+        granted = False
         if on != caller.contribute:
             self.db.set_contribute(caller.account_id, on)
             self.note(caller.account_id, "contribute.on" if on else "contribute.off")
-        return {"on": on, "samples": self.db.sample_count(caller.account_id) if on else 0}
+        if on and self.s.contribute_bonus_cny > 0 and caller.contribute_bonus_at is None:
+            bonus_uy = self.s.cny_to_uy(self.s.contribute_bonus_cny)
+            granted = self.db.grant_contribute_bonus(caller.account_id, bonus_uy)
+            if granted:
+                self.note(caller.account_id, "contribute.bonus", f"¥{self.s.contribute_bonus_cny:g}")
+        row = self.db.account(caller.account_id)
+        bonus_at = int(row["contribute_bonus_at"]) if row is not None and row["contribute_bonus_at"] else None
+        return {
+            "on": on,
+            "samples": self.db.sample_count(caller.account_id) if on else 0,
+            "bonus_cny": self.s.contribute_bonus_cny,
+            "bonus_granted": granted,
+            "bonus_available": self.s.contribute_bonus_cny > 0 and bonus_at is None,
+            "bonus_at": bonus_at,
+        }
 
     def delete_samples(self, caller: Caller) -> int:
         n = self.db.delete_samples(caller.account_id)
@@ -759,40 +801,44 @@ class Cloud:
             c = m.video_cost_uy(m.clip_seconds) * clips
             cost += c
             parts.append({"kind": "video", "model": m.id, "count": clips, "seconds": m.clip_seconds, "cny": self.s.uy_to_cny(c)})
-        day_start = self.s.day_start(now())
-        spent = self.db.spent_since(caller.account_id, day_start)
-        capped = not caller.member and self.s.daily_cap_cny > 0
-        room = None if not capped else max(0, self._cap_uy() + caller.credit_left_uy - spent)
-        clip_view = self.clips_view(caller)
-        clips_ok = clip_view["unlimited"] or clips <= int(clip_view["left"] or 0)
+        a = self.allowance(caller)
+        room = a["left_uy"]
+        left_cny = None if room is None else self.s.uy_to_cny(room)
+        grant_cny = self.s.uy_to_cny(a["grant_uy"])
         return {
             "cny": self.s.uy_to_cny(cost),
+            "usd": self.s.cny_to_usd(self.s.uy_to_cny(cost)),
             "parts": parts,
-            "left_today_cny": None if room is None else self.s.uy_to_cny(room),
-            "credit_left_cny": self.s.uy_to_cny(caller.credit_left_uy),
-            "affordable": (room is None or cost <= room) and clips_ok,
-            "clips_ok": clips_ok,
-            "clips": clip_view,
-            "daily_cap_cny": 0.0 if caller.member else self.s.daily_cap_cny,
+            "left_cny": left_cny,
+            "grant_cny": grant_cny,
+            "unlimited": room is None,
+            "affordable": room is None or cost <= room,
+            # 0.4 names, one more version
+            "left_today_cny": left_cny,
+            "credit_left_cny": 0,
+            "clips_ok": True,
+            "clips": self.clips_view(),
+            "daily_cap_cny": grant_cny,
         }
 
     # -- admin ------------------------------------------------------------------------------
 
-    def admin_credit(self, account_id: str, cny: float, clips: int = 0, note: str = "") -> dict:
+    def admin_credit(self, account_id: str, cny: float, note: str = "") -> dict:
         """Credit from the operator: a merged pull request, a reported bug, a
-        promised refund. Spent only after the day's cap, never expires."""
+        promised refund. It goes into the account's pool and never expires."""
         if self.db.account(account_id) is None:
             raise CloudError(404, "no_account", "No such account")
-        if cny < 0 or cny > 1000 or clips < 0 or clips > 1000:
-            raise CloudError(400, "bad_request", "Credit is between ¥0 and ¥1000, clips between 0 and 1000")
-        self.db.add_credit(account_id, round(cny * 1_000_000), clips=clips, note=note)
-        self.db.add_event(account_id, "credit.granted", f"¥{cny:g}" + (f" +{clips} clips" if clips else ""))
+        if cny < 0 or cny > 1000:
+            raise CloudError(400, "bad_request", "Credit is between ¥0 and ¥1000")
+        self.db.add_credit(account_id, self.s.cny_to_uy(cny), note=note)
+        self.db.add_event(account_id, "credit.granted", f"¥{cny:g}")
         a = dict(self.db.account(account_id))  # type: ignore[arg-type]
         a["identifier"] = self.crypto.decrypt(account_id, a.pop("identifier_enc", "")) or ""
+        a["member"] = bool(a.get("unlimited")) or a.pop("id_hash", None) in self.member_hashes
         a.pop("id_hash", None)
         a.pop("password_hash", None)
-        a["credit_cny"] = self.s.uy_to_cny(int(a.get("credit_uy") or 0))
-        a["credit_left_cny"] = self.s.uy_to_cny(max(0, int(a.get("credit_uy") or 0) - int(a.get("credit_used_uy") or 0)))
+        a["spent_cny"] = self.s.uy_to_cny(self.db.spent_since(account_id, 0))
+        self._pool_fields(a, spent_cny=a["spent_cny"])
         return a
 
     def admin_resolve(self, account_id: str = "", identifier: str = "") -> str:
@@ -838,18 +884,23 @@ class Cloud:
             d["member"] = d["unlimited"] or d["listed"]
             d["spent_today_cny"] = self.s.uy_to_cny(int(d.pop("spent_today_uy", 0) or 0))
             d["spent_cny"] = self.s.uy_to_cny(int(d.pop("spent_uy", 0) or 0))
-            self._credit_fields(d)
+            self._pool_fields(d, spent_cny=d["spent_cny"])
             d["contribute"] = bool(d.get("contribute"))
             out.append(d)
         return out
 
-    def _credit_fields(self, d: dict) -> None:
-        credit = int(d.pop("credit_uy", 0) or 0)
-        used = int(d.pop("credit_used_uy", 0) or 0)
-        d["credit_cny"] = self.s.uy_to_cny(credit)
-        d["credit_left_cny"] = self.s.uy_to_cny(max(0, credit - used))
+    def _pool_fields(self, d: dict, spent_cny: float) -> None:
+        """The account's pool in yuan (`grant_cny`), what is left of it (`left_cny`, None for a
+        member), the invites that fed it and whether the co-creation bonus was taken; the
+        0.4 credit columns leave the reply."""
+        for k in ("credit_uy", "credit_used_uy", "clips_bonus"):
+            d.pop(k, None)
+        grant = int(d.pop("grant_uy", 0) or 0)
+        d["grant_cny"] = self.s.uy_to_cny(grant)
+        member = bool(d.get("member"))
+        d["left_cny"] = None if member or self.s.allowance_cny <= 0 else round(max(0.0, d["grant_cny"] - spent_cny), 4)
         d["invites"] = int(d.get("invites") or 0)
-        d["clips_bonus"] = int(d.get("clips_bonus") or 0)
+        d["contribute_bonus_at"] = int(d["contribute_bonus_at"]) if d.get("contribute_bonus_at") else None
 
     def admin_usage(self, days: int = 14) -> list[dict]:
         t = now()
@@ -955,9 +1006,8 @@ class Cloud:
         a["listed"] = id_hash in self.member_hashes
         a["member"] = a["unlimited"] or a["listed"]
         a["locked"] = bool(row["locked_until"] and int(row["locked_until"]) > t)
-        self._credit_fields(a)
-        a["clips_used"] = self.db.video_clips_used(account_id, t - 3600)
-        a["clips_allowed"] = None if a["member"] or self.s.video_clips_free <= 0 else self.s.video_clips_free + a["clips_bonus"]
+        spent_total = self.db.spent_since(account_id, 0)
+        self._pool_fields(a, spent_cny=self.s.uy_to_cny(spent_total))
         a["invited"] = [{"id": r["id"], "hint": r["hint"], "created_at": int(r["created_at"])} for r in self.db.invitees(account_id)]
         a["contribute"] = bool(a.get("contribute"))
         a["samples"] = self.db.sample_count(account_id) if a["contribute"] else 0
@@ -966,8 +1016,9 @@ class Cloud:
             "account": a,
             "spend": {
                 "today_cny": self.s.uy_to_cny(spent_today),
-                "total_cny": self.s.uy_to_cny(self.db.spent_since(account_id, 0)),
-                "daily_cap_cny": 0.0 if a["member"] else self.s.daily_cap_cny,
+                "total_cny": self.s.uy_to_cny(spent_total),
+                "grant_cny": a["grant_cny"],
+                "left_cny": a["left_cny"],
                 "used_today": self.db.used_since(account_id, day_start),
                 "requests_total": self.db.requests_since(account_id, 0),
             },
@@ -1013,14 +1064,15 @@ class Cloud:
             "daily_cap_tokens": self.s.daily_cap_tokens,
             "per_minute_requests": self.s.per_minute_requests,
             "signup_open": self.s.signup_open,
-            "daily_cap_cny": self.s.daily_cap_cny,
-            "daily_cap_usd": self.s.cny_to_usd(self.s.daily_cap_cny),
+            "allowance_cny": self.s.allowance_cny,
+            "allowance_usd": self.s.cny_to_usd(self.s.allowance_cny),
+            "invite_bonus_cny": self.s.invite_bonus_cny,
+            "contribute_bonus_cny": self.s.contribute_bonus_cny,
             "usd_cny": self.s.usd_cny,
             "day_offset_h": self.s.day_offset_h,
-            "invite_bonus_cny": self.s.invite_bonus_cny,
             "invite_url": self.s.invite_url,
-            "video_clips_free": self.s.video_clips_free,
-            "video_clips_per_invite": self.s.video_clips_per_invite,
+            "own_key_docs": self.s.own_key_docs,
+            "contributors": self.db.contributors(),
             "allowed_identifiers": [s.strip() for s in self.s.allowed_identifiers.split(",") if s.strip()],
             "sender": self.s.sender,
             "password_min_len": self.s.password_min_len,

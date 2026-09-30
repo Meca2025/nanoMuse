@@ -28,19 +28,19 @@
     all: "全部", signIns: "登录", refusals: "超额", errors: "错误", calls: "通话", passwords: "密码",
     eventName: {
       "account.created": "注册", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.failed": "登录失败", "password.set": "设置密码", "password.changed": "修改密码",
-      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "开启贡献对话", "contribute.off": "关闭贡献对话", "contribute.deleted": "删除贡献的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励",
+      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "加入共创计划", "contribute.bonus": "共创奖励 +¥10", "contribute.off": "关闭贡献对话", "contribute.deleted": "删除贡献的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励",
     },
     // drawer
-    spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "每日上限", noCap: "无上限", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
+    spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "总额度", noCap: "无上限", left: "剩余", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
     sessions: "登录（含已退出）", revoked: "已退出", via: { code: "验证码", password: "密码" }, lastUsed: "最近使用", devices: "设备", firstSeen: "首次", lastSeen: "最近",
     ledger: "最近请求", timeline: "时间线", none: "—", online: "在线", offline: "离线", version: "版本",
-    grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, credit: "加邀请额度", creditPrompt: (who) => `给 ${who} 多少元额度？（当天免费额度用完后才扣，不过期）`, creditClips: "另加多少段视频？（0 为不加）", creditNote: "备注（比如 PR #12）", creditLine: (c, l, n, b) => `邀请额度 ${c}（剩 ${l}）· 邀请了 ${n} 人 · 额外视频 ${b} 段`, clipsLine: (u, a) => `视频 ${u} / ${a === null ? "∞" : a} 段`, invitedBy: "邀请人", disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
-    memberConfirm: (who) => `把 ${who} 设为成员？成员不受每日花费上限限制，费用由你承担。`, listedNote: "在服务器白名单里，改 ALLOWED_IDENTIFIERS 才能取消",
+    grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, credit: "加额度", creditPrompt: (who) => `给 ${who} 加多少元额度？（直接进入总额度，不过期）`, creditNote: "备注（比如 PR #12）", poolLine: (g, l, n, b) => `总额度 ${g}${l === null ? "" : `（剩 ${l}）`} · 邀请了 ${n} 人${b ? " · 已领共创奖励" : ""}`, invitedBy: "邀请人", disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
+    memberConfirm: (who) => `把 ${who} 设为成员？成员不受额度限制，费用由你承担。`, listedNote: "在服务器白名单里，改 ALLOWED_IDENTIFIERS 才能取消",
     disableConfirm: (who) => `停用 ${who}？TA 的所有设备会立刻断开，再登录会被拒。`, remove: "删除账号",
     removeConfirm: (who) => `删除 ${who} 的账号、密钥、用量记录和设备？不可恢复。`, hasPassword: "已设密码", noPassword: "未设密码", identifierNote: "明文只在这里解出来看",
     // config
     allowed: "白名单（不限额）", allowedNone: "（空）", sender: "验证码渠道", models: "模型", prices: "单价（¥）", rate: "汇率", rateLine: (r) => `1 美元 = ${r} 元（仅用于显示）`,
-    perMinute: (n) => (n > 0 ? `每分钟 ${n} 次` : "不限频"), capLine: (c, u) => (c > 0 ? `非成员每天 ¥${c}（≈ $${u}）` : "不限每日花费"), signupOpen: "开放注册", signupClosed: "仅白名单可登录",
+    perMinute: (n) => (n > 0 ? `每分钟 ${n} 次` : "不限频"), capLine: (c, u, b, k) => (c > 0 ? `非成员共 ¥${c}（≈ $${u}）· 邀请 +¥${b} · 共创 +¥${k}` : "不限花费"), signupOpen: "开放注册", signupClosed: "仅白名单可登录",
     realtime: "实时通话", on: "开", off: "关", pwMin: (n) => `密码至少 ${n} 位`,
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `输入 ${p.per_m_input} / 输出 ${p.per_m_output} 每百万 tokens` : null,
       p.per_image ? `每张 ${p.per_image}${p.per_image_2k ? `（2k ${p.per_image_2k}）` : ""}` : null, p.per_second ? `每秒 ${p.per_second}` : null].filter(Boolean).join("；"),
@@ -62,17 +62,17 @@
     all: "All", signIns: "Sign-ins", refusals: "Refusals", errors: "Errors", calls: "Calls", passwords: "Passwords",
     eventName: {
       "account.created": "Joined", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
-      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "Contribution on", "contribute.off": "Contribution off", "contribute.deleted": "Contributed turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted",
+      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "Joined co-creation", "contribute.bonus": "Co-creation bonus +¥10", "contribute.off": "Contribution off", "contribute.deleted": "Contributed turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted",
     },
-    spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Daily cap", noCap: "no cap", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
+    spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Pool", noCap: "no cap", left: "left", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
     sessions: "Sign-ins (incl. revoked)", revoked: "revoked", via: { code: "code", password: "password" }, lastUsed: "last used", devices: "Devices", firstSeen: "first", lastSeen: "last",
     ledger: "Recent requests", timeline: "Timeline", none: "—", online: "online", offline: "offline", version: "Version",
-    grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, credit: "Add credit", creditPrompt: (who) => `How many yuan of credit for ${who}? (spent once the day's cap is used up; never expires)`, creditClips: "And how many video clips? (0 for none)", creditNote: "Note (say, PR #12)", creditLine: (c, l, n, b) => `credit ${c} (${l} left) · ${n} invited · ${b} bonus clips`, clipsLine: (u, a) => `video ${u} / ${a === null ? "∞" : a} clips`, invitedBy: "invited by", disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
-    memberConfirm: (who) => `Make ${who} a member? Members have no daily spend cap; you pay their bill.`, listedNote: "on the server's list; edit ALLOWED_IDENTIFIERS to remove",
+    grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, credit: "Add credit", creditPrompt: (who) => `How many yuan for ${who}? (straight into the pool; never expires)`, creditNote: "Note (say, PR #12)", poolLine: (g, l, n, b) => `pool ${g}${l === null ? "" : ` (${l} left)`} · ${n} invited${b ? " · co-creation bonus taken" : ""}`, invitedBy: "invited by", disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
+    memberConfirm: (who) => `Make ${who} a member? Members have no allowance limit; you pay their bill.`, listedNote: "on the server's list; edit ALLOWED_IDENTIFIERS to remove",
     disableConfirm: (who) => `Disable ${who}? Every device of theirs drops at once and cannot sign in again.`, remove: "Delete account",
     removeConfirm: (who) => `Delete the account, keys, usage and devices of ${who}? This cannot be undone.`, hasPassword: "has a password", noPassword: "no password", identifierNote: "decrypted for this view only",
     allowed: "Members (no cap)", allowedNone: "(none)", sender: "Code sender", models: "Models", prices: "Prices (¥)", rate: "Rate", rateLine: (r) => `1 USD = ${r} CNY (display only)`,
-    perMinute: (n) => (n > 0 ? `${n} a minute` : "no rate limit"), capLine: (c, u) => (c > 0 ? `¥${c} (≈ $${u}) a day for non-members` : "no daily spend cap"), signupOpen: "sign-up open", signupClosed: "members only",
+    perMinute: (n) => (n > 0 ? `${n} a minute` : "no rate limit"), capLine: (c, u, b, k) => (c > 0 ? `¥${c} (≈ $${u}) in all for non-members · +¥${b} an invite · +¥${k} for co-creation` : "no spend limit"), signupOpen: "sign-up open", signupClosed: "members only",
     realtime: "Real-time calls", on: "on", off: "off", pwMin: (n) => `passwords ≥ ${n} chars`,
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `${p.per_m_input} in / ${p.per_m_output} out per M tokens` : null,
       p.per_image ? `${p.per_image} a picture${p.per_image_2k ? ` (${p.per_image_2k} at 2k)` : ""}` : null, p.per_second ? `${p.per_second} a second` : null].filter(Boolean).join("; "),
@@ -241,16 +241,12 @@
     await Promise.all([load(), detail ? openAccount(a.id) : null]);
   }
   async function doCredit(a) {
-    const v = prompt(T.creditPrompt(who(a)), "3");
+    const v = prompt(T.creditPrompt(who(a)), "5");
     if (v === null) return;
     const cny = parseFloat(v.replace(/[\s,¥]/g, ""));
-    if (!Number.isFinite(cny) || cny < 0) return;
-    const c = prompt(T.creditClips, "0");
-    if (c === null) return;
-    const clips = parseInt(c.replace(/\D/g, "") || "0", 10);
+    if (!Number.isFinite(cny) || cny <= 0) return;
     const note = prompt(T.creditNote, "") || "";
-    if (cny === 0 && clips === 0) return;
-    try { await api("POST", "/v1/admin/credit", { account_id: a.id, cny, clips, note }); } catch (e) { alert(e.message); }
+    try { await api("POST", "/v1/admin/credit", { account_id: a.id, cny, note }); } catch (e) { alert(e.message); }
     await Promise.all([load(), detail ? openAccount(a.id) : null]);
   }
   async function doDisable(a) {
@@ -307,7 +303,7 @@
       a.locked ? h("span", { class: "pill warn" }, T.locked) : null,
       a.contribute ? h("span", { class: "pill cyan" }, T.contributes) : null,
     ];
-    const cap = Number(sp.daily_cap_cny || 0), frac = cap > 0 ? Math.min(1, Number(sp.today_cny || 0) / cap) : 0;
+    const cap = a.member ? 0 : Number(sp.grant_cny || 0), frac = cap > 0 ? Math.min(1, Number(sp.total_cny || 0) / cap) : 0;
     box.replaceChildren(
       h("div", { class: "head" }, h("h2", {}, a.identifier || a.hint), h("button", { class: "round", html: ICON.close, onclick: closeDrawer })),
       h("div", { class: "card" },
@@ -315,10 +311,10 @@
           h("div", { class: "who" }, h("div", { class: "n" }, a.hint, " ", h("span", { class: "fine" }, `· ${T.identifierNote}`)),
             h("div", { class: "m" }, `${dateOf(a.created_at)} · `, h("code", {}, a.id)), h("div", { class: "tags", style: "margin-top:6px" }, ...tags))),
         h("div", { class: "stats" },
-          h("div", {}, h("div", { class: "k" }, T.spendToday), h("div", { class: "v", title: usd(sp.today_cny, rate) }, money(sp.today_cny)), cap > 0 ? h("div", { class: "meter", style: "margin-top:6px" }, h("i", { class: frac > 0.9 ? "bad" : frac > 0.7 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null, h("div", { class: "k", style: "margin-top:4px" }, cap > 0 ? `${T.cap} ${money(cap)}` : T.noCap)),
-          h("div", {}, h("div", { class: "k" }, T.spendTotal), h("div", { class: "v", title: usd(sp.total_cny, rate) }, money(sp.total_cny)), h("div", { class: "k", style: "margin-top:4px" }, T.tokens(a.used))),
+          h("div", {}, h("div", { class: "k" }, T.spendTotal), h("div", { class: "v", title: usd(sp.total_cny, rate) }, money(sp.total_cny)), cap > 0 ? h("div", { class: "meter", style: "margin-top:6px" }, h("i", { class: frac >= 1 ? "bad" : frac >= 0.8 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null, h("div", { class: "k", style: "margin-top:4px" }, cap > 0 ? `${T.cap} ${money(cap)} · ${T.left} ${money(sp.left_cny || 0)}` : T.noCap)),
+          h("div", {}, h("div", { class: "k" }, T.spendToday), h("div", { class: "v", title: usd(sp.today_cny, rate) }, money(sp.today_cny)), h("div", { class: "k", style: "margin-top:4px" }, T.tokens(a.used))),
           h("div", {}, h("div", { class: "k" }, T.requests), h("div", { class: "v" }, fmt(sp.requests_total)), h("div", { class: "k", style: "margin-top:4px" }, s.unlimited ? T.noCap : `${T.grant}: ${fmt(a.granted)}`))),
-        h("div", { class: "fine", style: "padding:0 16px 10px" }, T.creditLine(money(a.credit_cny || 0), money(a.credit_left_cny || 0), a.invites || 0, a.clips_bonus || 0), " · ", T.clipsLine(a.clips_used || 0, a.clips_allowed === undefined ? null : a.clips_allowed),
+        h("div", { class: "fine", style: "padding:0 16px 10px" }, T.poolLine(money(a.grant_cny || 0), a.left_cny === null || a.left_cny === undefined ? null : money(a.left_cny), a.invites || 0, !!a.contribute_bonus_at),
           a.invited_by ? [" · ", T.invitedBy, " ", h("code", {}, String(a.invited_by).slice(0, 8))] : null),
         h("div", { class: "acts" },
           s.unlimited ? null : h("button", { class: "btn quiet", onclick: () => doGrant(a) }, T.grant),
@@ -439,7 +435,7 @@
         h("div", { class: "panel span" },
           h("h2", {}, T.config),
           h("div", { class: "kv" },
-            h("b", {}, T.kAccounts), h("span", {}, `${s.signup_open ? T.signupOpen : T.signupClosed} · ${T.capLine(s.daily_cap_cny, s.daily_cap_usd)} · ${T.perMinute(s.per_minute_requests)} · ${T.pwMin(s.password_min_len || 8)}`),
+            h("b", {}, T.kAccounts), h("span", {}, `${s.signup_open ? T.signupOpen : T.signupClosed} · ${T.capLine(s.allowance_cny, s.allowance_usd, s.invite_bonus_cny, s.contribute_bonus_cny)} · ${T.perMinute(s.per_minute_requests)} · ${T.pwMin(s.password_min_len || 8)}`),
             h("b", {}, T.realtime), h("span", {}, s.realtime_enabled ? T.on : T.off),
             h("b", {}, T.allowed), h("code", {}, (s.allowed_identifiers || []).join(", ") || T.allowedNone),
             h("b", {}, T.rate), h("span", {}, T.rateLine(rate)),
