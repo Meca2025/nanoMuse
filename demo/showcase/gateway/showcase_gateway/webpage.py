@@ -17,9 +17,10 @@ PAGE = """<!doctype html>
 <title>nanoMuse Web</title>
 <meta name="description" content="nanoMuse in the browser — sign in with a phone number or an e-mail, nothing to install. Free, open source, non-profit.">
 <link rel="icon" href="https://nanomuse.cn/assets/icon-512.png">
+<script>try{var t=localStorage.getItem("nanomuse_theme")||"light";if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
 :root{--bg:#F3F3F5;--card:#fff;--ink:#1C1B22;--muted:#6E6B7A;--line:#E4E3EA;--accent:#5B4EE6;--accent-ink:#fff;--warn:#B23B3B}
-@media (prefers-color-scheme:dark){:root{--bg:#121216;--card:#1B1B21;--ink:#F1F0F5;--muted:#9C99AA;--line:#2C2B34;--accent:#8A7DFF;--accent-ink:#0F0E16}}
+html[data-theme=dark]{--bg:#121216;--card:#1B1B21;--ink:#F1F0F5;--muted:#9C99AA;--line:#2C2B34;--accent:#8A7DFF;--accent-ink:#0F0E16;color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 -apple-system,"PingFang SC","Noto Sans SC","Segoe UI",system-ui,sans-serif}
 main{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}

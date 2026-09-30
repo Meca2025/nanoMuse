@@ -8,6 +8,7 @@ import { IdentityForm, identityBody, identityOf, type Identity } from "../compon
 import { BackBar } from "../components/BackBar";
 import { CommunityNotice } from "../components/CommunityNotice";
 import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
+import { setThemeSetting, useThemeSetting } from "../theme";
 import { disablePush, enablePush, pushState, type PushState } from "../push";
 import { useStore } from "../store";
 import type { Proactivity, PushInfo, UpdateView } from "../types";
@@ -44,6 +45,7 @@ export function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const t = useT();
   const localeSetting = useLocaleSetting();
+  const themeSetting = useThemeSetting();
   const [release, setRelease] = useState<UpdateView | null>(null);
 
   useEffect(() => {
@@ -219,6 +221,21 @@ export function SettingsScreen() {
             checked={!!s?.agent.show_thinking}
             onChange={(v) => void update({ show_thinking: v })}
           />
+          <div className="flex items-center gap-3">
+            <label className="text-[13.5px] flex-1">
+              {t("Appearance")}
+              <span className="block text-[12px] text-muted">{t("This device only")}</span>
+            </label>
+            <select
+              value={themeSetting}
+              onChange={(e) => setThemeSetting(e.target.value as typeof themeSetting)}
+              className="rounded-2xl bg-surface-2 px-3 py-2 text-[13.5px] outline-none"
+            >
+              <option value="light">{t("Light")}</option>
+              <option value="dark">{t("Dark")}</option>
+              <option value="system">{t("Follow the system")}</option>
+            </select>
+          </div>
           <div className="flex items-center gap-3">
             <label className="text-[13.5px] flex-1">
               {t("App language")}
