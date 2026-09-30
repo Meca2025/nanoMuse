@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
 import time
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -75,6 +76,45 @@ def test_auth_required(server):
     assert state["profile"]["name"] == "nanoMuse"
     assert [t["id"] for t in state["threads"]] == ["main"]
     assert state["settings"]["sentinel"]["mode"] == "ask"
+
+
+def test_the_socket_opens_after_the_grace_while_services_keep_starting(settings, monkeypatch):
+    """A relay behind a broken proxy or an MCP server that never answers must not keep the
+    app closed: past ``start_grace`` it answers, and /api/health names the step still running."""
+    settings.server.token = "secret-token"
+    settings.server.start_grace = 0.2
+    service = MuseService(settings, llm=MockLLM([]))
+    release = asyncio.Event()
+
+    async def slow_hub_start() -> None:
+        await release.wait()
+
+    monkeypatch.setattr(service.hub, "start", slow_hub_start)
+    app = create_app(settings, service)
+    with TestClient(app) as client:
+        client.headers["Authorization"] = "Bearer secret-token"
+        health = client.get("/api/health").json()
+        assert health["ok"] is True
+        assert health["starting"] == "cloud account and hub"
+        # the app itself already works
+        assert client.get("/api/state").status_code == 200
+        client.portal.call(release.set)
+        wait_for(lambda: not service.starting)
+        assert "starting" not in client.get("/api/health").json()
+
+
+def test_the_startup_watchdog_writes_where_every_thread_is(capsys):
+    from nanomuse.server import _watch_startup
+
+    serving = threading.Event()
+    _watch_startup(serving, after=(0.05,))
+    wait_for(lambda: "still not serving after 0 s" in capsys.readouterr().err, timeout=3)
+    # (readouterr consumed it; the dump named this thread's frame)
+    served = threading.Event()
+    served.set()
+    _watch_startup(served, after=(0.05,))
+    time.sleep(0.2)
+    assert "still not serving" not in capsys.readouterr().err
 
 
 # ----------------------------------------------------------------------------- chat

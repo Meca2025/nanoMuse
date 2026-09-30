@@ -268,3 +268,4 @@ token = ""               # empty → generated once, kept in <data_dir>/server_t
 approval_timeout = 3600  # seconds an approval card waits before it counts as "deny"
 max_upload_mb = 25       # largest file the app may attach to a message
 update_check = true      # say under Settings → About when a newer release is out (GitHub Releases, every 6 h; nothing is sent)
+start_grace = 4          # seconds the tools/MCP servers/cloud account may take before the app answers anyway (/api/health names the step still running)

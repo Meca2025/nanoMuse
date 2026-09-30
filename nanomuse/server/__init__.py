@@ -14,6 +14,8 @@ import contextlib
 import os
 import socket
 import sys
+import threading
+import traceback
 
 from nanomuse import __version__
 from nanomuse.config import Settings
@@ -66,10 +68,18 @@ def serve(
     url = f"http://{shown_host}:{port}/"
     if service.token:
         url += f"?token={service.token}"
-    # the banner once the services are up and the socket is about to open: "ready" then
-    # means ready (a desktop shell reads the log when the app takes long to answer)
+    # the banner once the socket is about to open (a desktop shell reads the log when the
+    # app takes long to answer); the services may still be coming up behind it, and
+    # /api/health says which one
     print(f"nanoMuse {__version__} starting on {host}:{port} (pid {os.getpid()})", flush=True)
-    app.state.on_ready = lambda: _print_banner(url, service, print_qr)
+    serving = threading.Event()
+
+    def on_ready() -> None:
+        serving.set()
+        _print_banner(url, service, print_qr)
+
+    app.state.on_ready = on_ready
+    _watch_startup(serving)
     # The standard loop, not uvloop: uvloop leaves extra copies of a child's stdout/stderr
     # open in the child, so anything it leaves running in the background (Cursor's CLI keeps a
     # worker alive, `nohup … &` in the shell tool) holds our pipes and the read never ends.
@@ -82,6 +92,33 @@ def serve(
         ws_ping_interval=20,
         ws_ping_timeout=20,
     )
+
+
+def _watch_startup(serving: threading.Event, after: tuple[float, ...] = (20, 40)) -> None:
+    """A daemon thread that, should the socket still not be open 20 s and then 60 s after
+    the banner, writes where every thread is to stderr. A machine on which the runtime
+    starts and then says nothing (a Windows box whose security software holds the
+    loopback, a stalled import) is then diagnosable from the desktop shell's log."""
+
+    def watch() -> None:
+        waited = 0.0
+        for delay in after:
+            if serving.wait(delay):
+                return
+            waited += delay
+            _dump_threads(f"still not serving after {waited:.0f} s")
+
+    threading.Thread(target=watch, name="startup-watchdog", daemon=True).start()
+
+
+def _dump_threads(why: str) -> None:
+    lines = [f"nanoMuse: {why}; where every thread is:"]
+    names = {t.ident: t.name for t in threading.enumerate()}
+    for ident, frame in sys._current_frames().items():
+        lines.append(f"--- thread {names.get(ident, '?')} ({ident})")
+        lines.extend(line.rstrip() for line in traceback.format_stack(frame))
+    with contextlib.suppress(Exception):
+        print("\n".join(lines), file=sys.stderr, flush=True)
 
 
 def _utf8_console() -> None:

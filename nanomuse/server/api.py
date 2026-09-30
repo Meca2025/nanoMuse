@@ -337,13 +337,22 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
 
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        await svc.start()
+        # The services get a few seconds to come up before the socket opens; past that the
+        # app answers (and /api/health names the step still running) rather than leaving
+        # a desktop shell staring at a closed port while an MCP server or a relay behind a
+        # broken proxy takes its time.
+        starting = asyncio.create_task(svc.start(), name="services-start")
+        await asyncio.wait({starting}, timeout=settings.server.start_grace)
         on_ready = getattr(app.state, "on_ready", None)
         if callable(on_ready):
             on_ready()
         try:
             yield
         finally:
+            if not starting.done():
+                starting.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await starting
             await svc.stop()
 
     app = FastAPI(
