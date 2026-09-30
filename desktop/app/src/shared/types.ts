@@ -44,7 +44,19 @@ export interface DesktopBridge {
   /** hands frames pushed by main (the `--stage-demo` script); the runtime's come over /ws */
   onHands: (cb: (frame: HandsLive) => void) => void;
   report: (report: StageReport) => void;
+  /** the part of the stage that takes the mouse (the pill with its Stop), null for none */
+  solid: (rect: SolidRect | null) => void;
   stopHands: () => void;
+}
+
+/** A rectangle of the stage window, in CSS pixels, that should take clicks. */
+export interface SolidRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** whether the pointer is over it right now (macOS/Windows forward mouse moves) */
+  hover: boolean;
 }
 
 declare global {

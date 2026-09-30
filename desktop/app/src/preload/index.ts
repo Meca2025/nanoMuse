@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { DesktopBridge, HandsLive, StageConfig, StageReport } from "../shared/types";
+import type { DesktopBridge, HandsLive, SolidRect, StageConfig, StageReport } from "../shared/types";
 
 /**
  * The one bridge, for both windows. The web app sees `window.nanomuseDesktop` and can
@@ -22,6 +22,7 @@ const bridge: DesktopBridge = {
     ipcRenderer.on("hands", (_event, frame: HandsLive) => cb(frame));
   },
   report: (report: StageReport) => ipcRenderer.send("stage:report", report),
+  solid: (rect: SolidRect | null) => ipcRenderer.send("stage:solid", rect),
   stopHands: () => ipcRenderer.send("hands:stop"),
 };
 
