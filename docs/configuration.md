@@ -329,7 +329,13 @@ token            = ""            # empty → generated once, stored in <data_dir
 approval_timeout = 3600          # seconds an approval card waits before counting as "deny"
 cors_origins     = []            # only for the Vite dev server, e.g. ["http://localhost:5173"]
 max_upload_mb    = 25            # largest file the app may attach to a message
+update_check     = true          # Settings → About says when a newer release is out (GitHub Releases, every 6 h)
 ```
+
+`update_check` asks `api.github.com` for the latest release at most every six hours and shows
+the version under *Settings → About* with a link to the release page; nothing is downloaded and
+nothing about the install is sent. `NANOMUSE_NO_UPDATE_CHECK=1` turns it off too, and a hosted
+web session (a runtime started with `NANOMUSE_CLOUD_KEY`) never checks — its operator updates it.
 
 ## Where things live
 

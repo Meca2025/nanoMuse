@@ -100,3 +100,72 @@ def test_timeline_writes_are_coalesced_on_a_loop_and_immediate_off_one(tmp_path)
         assert "last" in path.read_text("utf-8")
 
     asyncio.run(burst())
+
+
+# ----------------------------------------------------------------------------- update check
+def test_update_check_versions_and_opt_out(monkeypatch):
+    from nanomuse.server import update
+
+    assert update.parse_version("v0.1.21") == (0, 1, 21)
+    assert update.parse_version("0.2.0-rc1") == (0, 2, 0)
+    assert update.parse_version("nightly") == ()
+    assert update.newer_than("0.1.21", "0.1.20") and not update.newer_than("0.1.20", "0.1.20")
+    assert not update.newer_than("nightly", "0.1.20")
+    monkeypatch.delenv("NANOMUSE_CLOUD_KEY", raising=False)
+    monkeypatch.delenv("NANOMUSE_NO_UPDATE_CHECK", raising=False)
+    assert update.enabled(True) and not update.enabled(False)
+    monkeypatch.setenv("NANOMUSE_NO_UPDATE_CHECK", "1")
+    assert not update.enabled(True)
+    monkeypatch.delenv("NANOMUSE_NO_UPDATE_CHECK")
+    monkeypatch.setenv(
+        "NANOMUSE_CLOUD_KEY", "nm_hosted"
+    )  # a hosted web session: the operator updates
+    assert not update.enabled(True)
+
+
+def test_update_check_caches_and_survives_failures(monkeypatch):
+    import asyncio
+    import time
+
+    from nanomuse.server import update
+
+    monkeypatch.delenv("NANOMUSE_CLOUD_KEY", raising=False)
+    monkeypatch.delenv("NANOMUSE_NO_UPDATE_CHECK", raising=False)
+    calls = 0
+    real_check = update.UpdateCheck._check
+
+    async def fake_check(self: update.UpdateCheck) -> None:
+        nonlocal calls
+        calls += 1
+        self.checked_at = time.monotonic()
+        self.latest = "0.1.21"
+        self.url = "https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.21"
+
+    monkeypatch.setattr(update.UpdateCheck, "_check", fake_check)
+    check = update.UpdateCheck(True, current="0.1.20")
+    first = asyncio.run(check.view())
+    assert first["newer"] is True and first["latest"] == "0.1.21" and first["enabled"] is True
+    asyncio.run(check.view())
+    assert calls == 1  # the second look is answered from the cache
+
+    monkeypatch.setattr(
+        update.UpdateCheck, "_check", real_check
+    )  # the real one, with a client that fails
+
+    class Boom:
+        def __init__(self, *a, **k): ...
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, *a, **k):
+            raise update.httpx.ConnectError("no network")
+
+    monkeypatch.setattr(update.httpx, "AsyncClient", Boom)
+    check = update.UpdateCheck(True, current="0.1.20")
+    view = asyncio.run(check.view())
+    assert view["newer"] is False and view["latest"] is None and view["error"] == "ConnectError"
+    assert not asyncio.run(update.UpdateCheck(False, current="0.1.20").view())["enabled"]

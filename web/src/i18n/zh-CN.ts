@@ -557,6 +557,7 @@ const zhCN: Record<string, string> = {
   "App language": "应用语言",
   "is where email, the browser and MCP servers are plugged in.": "是接入邮件、浏览器和 MCP 服务器的地方。",
   About: "关于",
+  "{version} is out": "{version} 已发布",
   "Data:": "数据：",
   "Workspace:": "工作区：",
   "Forget this device's access token": "忘掉这台设备的访问令牌",

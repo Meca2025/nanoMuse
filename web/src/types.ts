@@ -541,6 +541,15 @@ export interface ToolInfo {
   description: string;
 }
 
+export interface UpdateView {
+  current: string;
+  enabled: boolean;
+  latest: string | null;
+  newer: boolean;
+  url: string;
+  error?: string | null;
+}
+
 export interface SettingsView {
   version: string;
   profile: Profile;

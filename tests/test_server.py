@@ -1815,3 +1815,11 @@ def test_triggers_start_work_from_mail_events_and_webhooks(
     r = plain.post(f"/api/hooks/{hook['id']}?key={hook['secret']}", content="x")
     assert r.status_code == 409  # cancelled: the URL is dead
     assert client.get("/api/triggers").json()["items"][0]["url"] == ""
+
+
+def test_update_endpoint(server, monkeypatch):
+    client, _, _ = server
+    monkeypatch.setenv("NANOMUSE_NO_UPDATE_CHECK", "1")  # no network in tests
+    view = client.get("/api/update").json()
+    assert view["enabled"] is False and view["newer"] is False and view["current"]
+    assert TestClient(client.app).get("/api/update").status_code == 401

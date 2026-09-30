@@ -64,6 +64,7 @@ from nanomuse.hub.client import HubError
 from nanomuse.logger import logger
 from nanomuse.server.events import MAIN_THREAD
 from nanomuse.server.service import MuseService, goal_to_dict
+from nanomuse.server.update import UpdateCheck
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -379,6 +380,13 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.get("/api/health")
     async def health() -> dict[str, Any]:
         return {"ok": True, "version": svc.settings_view()["version"], "auth": bool(svc.token)}
+
+    update_check = UpdateCheck(svc.settings.server.update_check)
+
+    @app.get("/api/update", dependencies=dep)
+    async def update_status() -> dict[str, Any]:
+        """Whether a newer release exists (GitHub Releases, cached six hours; see ``server.update_check``)."""
+        return await update_check.view()
 
     # ------------------------------------------------------------------ threads & chat
     @app.get("/api/threads", dependencies=dep)

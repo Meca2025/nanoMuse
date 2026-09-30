@@ -412,6 +412,9 @@ class ServerSettings(BaseModel):
     cors_origins: list[str] = Field(default_factory=list)
     # Largest file the app may attach to a message (photos from a phone run 3–12 MB).
     max_upload_mb: int = 25
+    # Ask GitHub Releases (at most every six hours) whether a newer nanoMuse is out, and say so
+    # under Settings → About. Nothing is downloaded or reported. NANOMUSE_NO_UPDATE_CHECK=1 also turns it off.
+    update_check: bool = True
 
 
 class Settings(BaseModel):

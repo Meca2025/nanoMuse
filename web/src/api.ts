@@ -37,6 +37,7 @@ import type {
   TriggerKind,
   TriggersData,
   UpcomingData,
+  UpdateView,
   WsMessage,
 } from "./types";
 
@@ -243,6 +244,7 @@ export const api = {
     return res.text();
   },
   settings: () => request<SettingsView>("/api/settings"),
+  update: () => request<UpdateView>("/api/update"),
   updateSettings: (body: Record<string, unknown>) =>
     request<SettingsView>("/api/settings", { method: "PUT", body: JSON.stringify(body) }),
   // connections: secrets go into the vault on the server; only names ever come back

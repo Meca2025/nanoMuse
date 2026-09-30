@@ -9,7 +9,7 @@ import { BackBar } from "../components/BackBar";
 import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
 import { disablePush, enablePush, pushState, type PushState } from "../push";
 import { useStore } from "../store";
-import type { Proactivity, PushInfo } from "../types";
+import type { Proactivity, PushInfo, UpdateView } from "../types";
 import { cx } from "../util";
 import { Toggle } from "../components/Form";
 
@@ -43,10 +43,17 @@ export function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const t = useT();
   const localeSetting = useLocaleSetting();
+  const [release, setRelease] = useState<UpdateView | null>(null);
 
   useEffect(() => {
     if (!s) void refreshSettings();
   }, [s, refreshSettings]);
+
+  useEffect(() => {
+    // the runtime asks GitHub Releases at most every six hours; a phone shell has its own check
+    if (androidApp()) return;
+    api.update().then(setRelease, () => setRelease(null));
+  }, []);
 
   useEffect(() => {
     if (state.profile) setIdentity(identityOf(state.profile, "", AVATAR_COLORS[0]));
@@ -251,7 +258,17 @@ export function SettingsScreen() {
         {/* About */}
         <Section title={t("About")}>
           <div className="text-[13px] text-muted space-y-1">
-            <div>nanoMuse {state.version}</div>
+            <div>
+              nanoMuse {state.version}
+              {release?.newer && release.latest && (
+                <>
+                  {" · "}
+                  <a href={release.url} target="_blank" rel="noreferrer" className="text-accent underline-offset-2 hover:underline">
+                    {t("{version} is out", { version: release.latest })}
+                  </a>
+                </>
+              )}
+            </div>
             {s && <div className="break-all">{t("Data:")} {s.data_dir}</div>}
             {s && <div className="break-all">{t("Workspace:")} {s.agent.workspace}</div>}
             <div>{state.connected ? t("Connected") : t("Reconnecting…")}</div>
