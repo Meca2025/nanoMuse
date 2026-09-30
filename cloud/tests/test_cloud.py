@@ -198,13 +198,36 @@ async def test_chat_is_relayed_and_charged(stack):
     assert r.status_code == 404 and r.json()["error"]["code"] == "model_not_offered"
     assert len(up.state.requests) == n
 
-    # Upstream failures come back as 502 with the provider's message, uncharged.
+    # Upstream failures come back as 502 in the relay's words (the provider's under
+    # ``upstream``), uncharged.
     used = cloud.me(cloud.authenticate(data["api_key"]))["tokens"]["used"]
     settings = app.state.settings
     object.__setattr__(settings, "models", settings.models + (type(settings.models[0])(id="boom", name="Boom", upstream="boom"),))
     r = await client.post("/v1/chat/completions", headers=headers, json={"model": "boom", "messages": []})
-    assert r.status_code == 502 and "exploded" in r.json()["error"]["message"]
+    assert r.status_code == 502
+    err = r.json()["error"]
+    assert err["code"] == "upstream_500" and "exploded" not in err["message"] and "exploded" in err["upstream"]
     assert cloud.me(cloud.authenticate(data["api_key"]))["tokens"]["used"] == used
+
+
+async def test_stream_refused_upstream_is_not_charged(stack):
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender)
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    settings = app.state.settings
+    object.__setattr__(settings, "models", settings.models + (type(settings.models[0])(id="boom", name="Boom", upstream="boom"),))
+    async with client.stream("POST", "/v1/chat/completions", headers=headers,
+                             json={"model": "boom", "stream": True,
+                                   "messages": [{"role": "user", "content": "hi " * 500}]}) as r:
+        assert r.status_code == 200
+        body = (await r.aread()).decode()
+    lines = [ln for ln in body.split("\n") if ln.startswith("data:")]
+    assert lines[-1] == "data: [DONE]"
+    err = json.loads(lines[0][5:])["error"]
+    assert err["code"] == "upstream_500" and err["upstream"] == "upstream exploded"
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["tokens"]["used"] == 0  # nothing was generated, nothing is owed
+    assert not [row for row in me["recent"] if row["kind"] == "chat"]
 
 
 async def test_stream_passes_through_and_charges_from_usage_chunk(stack):

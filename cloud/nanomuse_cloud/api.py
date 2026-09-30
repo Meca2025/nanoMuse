@@ -286,11 +286,15 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         async def gen() -> AsyncIterator[bytes]:
             usage: tuple[int, int] | None = None
             text_len = 0
+            # A request the provider refused, or dropped before a single token, costs the
+            # account nothing; a stream that broke off midway is charged for what arrived.
+            failed = False
             try:
                 async with http.stream("POST", url, headers=headers, content=dumps(body).encode()) as r:
                     if r.status_code >= 400:
                         raw = await r.aread()
                         cloud.note(caller.account_id, "upstream.error", f"chat {r.status_code}")
+                        failed = True
                         err = _relay_error_body(r.status_code, raw)
                         yield f"data: {dumps(err)}\n\n".encode()
                         yield b"data: [DONE]\n\n"
@@ -320,13 +324,16 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
                             yield (line + "\n").encode()
             except httpx.HTTPError as e:
                 log.warning("upstream stream error: %s", e)
+                cloud.note(caller.account_id, "upstream.error", "chat stream broke")
+                failed = usage is None and text_len == 0
                 err = {"error": {"message": "The model provider stopped answering", "type": "nanomuse_cloud", "code": "upstream"}}
                 yield f"data: {dumps(err)}\n\n".encode()
                 yield b"data: [DONE]\n\n"
             finally:
-                if usage is None:
-                    usage = (fallback_prompt_tokens, math.ceil(text_len / 3))
-                cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
+                if not failed:
+                    if usage is None:
+                        usage = (fallback_prompt_tokens, math.ceil(text_len / 3))
+                    cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
 
         return StreamingResponse(
             gen(),
@@ -692,18 +699,36 @@ def create_app(settings: Settings | None = None, cloud: Cloud | None = None, ups
         return obj
 
     def _relay_error_body(status: int, raw: bytes) -> dict:
-        message = "The model provider refused the request"
+        """What the app is told when the provider says no. A 400 is about the request and
+        the provider's own words are the useful ones; everything else is the relay's problem
+        (its key, its quota, the provider's day) and is said in words that do not send the
+        person hunting for an API key they never had. The provider's text rides along under
+        ``upstream`` for the curious and for bug reports."""
+        upstream = ""
         try:
             up = json.loads(raw)
             if isinstance(up, dict):
                 e = up.get("error")
                 if isinstance(e, dict) and e.get("message"):
-                    message = str(e["message"])[:300]
+                    upstream = str(e["message"])[:300]
                 elif up.get("message"):
-                    message = str(up["message"])[:300]
+                    upstream = str(up["message"])[:300]
         except ValueError:
             pass
-        return {"error": {"message": message, "type": "upstream", "code": f"upstream_{status}"}}
+        if status == 400:
+            message, code = upstream or "The model provider refused the request", "upstream_400"
+        elif status in (401, 403):
+            message, code = "The relay's model provider refused its key; the operator has been told", "upstream_auth"
+        elif status == 404:
+            message, code = "The model provider does not know this model right now", "upstream_model"
+        elif status == 429:
+            message, code = "The model provider is busy; try again in a moment", "upstream_busy"
+        else:
+            message, code = "The model provider is having trouble; try again in a moment", f"upstream_{status}"
+        err: dict = {"message": message, "type": "upstream", "code": code}
+        if upstream and status != 400:
+            err["upstream"] = upstream
+        return {"error": err}
 
     def _relay_error(r: httpx.Response) -> JSONResponse:
         # The provider's own status codes would confuse the app (its 401 is not
