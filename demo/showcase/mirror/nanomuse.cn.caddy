@@ -28,6 +28,17 @@ nanomuse.cn {
 		reverse_proxy gateway:8000
 	}
 
+	# the release mirror (release-sync.py): the newest releases' packages, for a download that
+	# does not have to reach GitHub. Whole files as they are — no compression to get in the way
+	# of a resumed download — with a listing, since the names carry the version.
+	handle_path /dl/* {
+		root * /srv/www/dl
+		@dot path /.*
+		respond @dot 404
+		header Cache-Control "public, max-age=3600"
+		file_server browse
+	}
+
 	# pages: ten minutes, like GitHub Pages; assets are replaced in place across versions, so a day
 	header Cache-Control "public, max-age=600"
 	@assets path /assets/*

@@ -72,7 +72,7 @@ nanoMuse 是一个完全开源、Muse 风格的个人智能体，面向你的每
 
 ## 安装
 
-什么都不用装：在 [nanomuse.cn/web](https://nanomuse.cn/web/) 用邮箱收个验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，下次来还在。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-terminal-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；它们怎么相遇见 [docs/desktop.md](docs/desktop.md) 和 [docs/every-device.md](docs/every-device.md)。手机上：
+什么都不用装：在 [nanomuse.cn/web](https://nanomuse.cn/web/) 用邮箱收个验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，下次来还在。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-terminal-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；GitHub 下载慢的话，同样的文件在项目的国内镜像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（发布后十五分钟内同步，SHA-256 核对过）；它们怎么相遇见 [docs/desktop.md](docs/desktop.md) 和 [docs/every-device.md](docs/every-device.md)。手机上：
 
 1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载 `nanoMuse-<版本>-arm64.apk`——Android 8.0 以上的 64 位手机。想校验就 `sha256sum -c nanoMuse-<版本>-arm64.apk.sha256`。
 2. 打开安装。Android 会问一次是否允许；每个版本都用同一把签名，直接覆盖安装升级，数据不丢。

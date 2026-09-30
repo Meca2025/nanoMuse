@@ -158,6 +158,16 @@ site block and `sync.sh`, which a systemd timer runs every minute to pull
 in the repository: two A records at the registrar (`nanomuse.cn`, `www.nanomuse.cn` → this box).
 A server outside mainland China needs no ICP filing for a `.cn` name; one inside does.
 
+The same box mirrors the releases: `mirror/release-sync.py`, run by a second timer every fifteen
+minutes, asks the GitHub API for the newest two releases (drafts and pre-releases skipped) and
+fetches every asset into `www/dl/<tag>/`, checking each against the SHA-256 GitHub records for it;
+`www/dl/latest` points at the newest tag, `www/dl/index.json` lists what is there, older tags are
+removed. The site block serves the directory at [nanomuse.cn/dl/](https://nanomuse.cn/dl/) with a
+listing, and the site's download switch ("GitHub / 国内镜像") rewrites its links to
+`https://nanomuse.cn/dl/<tag>/<file>`. About 1.3 GB per release; `MIRROR_RELEASES_KEEP` in
+`/etc/default/nanomuse-site-mirror` changes how many are kept. `install.sh` installs this too and
+starts the first fetch in the background (`journalctl -u nanomuse-release-mirror` to watch it).
+
 ### Running it on your machine
 
 The gateway runs anywhere Docker does; Caddy is only for TLS and names. Browsers resolve
