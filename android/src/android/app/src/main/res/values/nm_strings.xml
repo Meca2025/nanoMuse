@@ -770,6 +770,7 @@
     <string name="nm_coding_untitled">Untitled</string>
     <string name="nm_coding_running">running</string>
     <string name="nm_coding_send_hint">Message %1$s…</string>
+    <string name="nm_coding_continue_new_hint">Made in the IDE: continues as a new chat in the same workspace…</string>
     <string name="nm_coding_send">Send</string>
     <string name="nm_coding_stop">Stop</string>
     <string name="nm_coding_working">Working…</string>

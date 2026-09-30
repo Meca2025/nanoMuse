@@ -6,15 +6,21 @@ the account and the same request travels over the hub as ``coding.*`` actions, s
 phone (or a laptop) sees and steers the desktop's Cursor and Codex sessions.
 
 Runs publish on the bus as ``{"kind": "coding", …}`` so every open app follows a run
-live; the finished ones are kept for the session list (the last 50).
+live; the finished ones are kept for the session list (the last 50) — in memory and in
+``<data_dir>/coding/runs.json``, so a restart of the runtime does not lose what was asked
+and answered. A run that was still going when the runtime stopped comes back as
+``stopped`` with a note; the CLI process itself was ended with the runtime.
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
+import os
 import time
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from nanomuse.coding import agents
@@ -49,6 +55,66 @@ class CodingService:
         self._tasks: dict[str, asyncio.Task[Any]] = {}
         self._detected: list[dict[str, Any]] = []
         self._detected_at = 0.0
+        self._store: Path | None = None
+        data_dir = getattr(svc, "data_dir", None)
+        if data_dir is not None:
+            self._store = Path(data_dir) / "coding" / "runs.json"
+            self._load()
+
+    # ------------------------------------------------------------------ the record
+    def _load(self) -> None:
+        """The finished runs of earlier sessions of the runtime, newest kept."""
+        if self._store is None or not self._store.is_file():
+            return
+        try:
+            rows = json.loads(self._store.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            logger.warning("coding: could not read {}: {}", self._store, exc)
+            return
+        if not isinstance(rows, list):
+            return
+        for row in rows[-KEEP_RUNS:]:
+            if not isinstance(row, dict) or not row.get("id"):
+                continue
+            run = Run(
+                id=str(row["id"]),
+                agent=str(row.get("agent") or ""),
+                session_id=str(row.get("asked_session_id") or ""),
+                workspace=str(row.get("workspace") or ""),
+                text=str(row.get("text") or ""),
+                started_at=float(row.get("started_at") or 0),
+                ended_at=row.get("ended_at"),
+                status=str(row.get("status") or "done"),
+                output=str(row.get("output") or ""),
+                result_session_id=str(row.get("session_id") or ""),
+                resumed=bool(row.get("resumed")),
+                error=str(row.get("error") or ""),
+                tools=int(row.get("tools") or 0),
+            )
+            if run.status == "running":
+                # it was going when the runtime stopped; the process went with it
+                run.status = "stopped"
+                run.ended_at = run.ended_at or run.started_at
+                run.error = run.error or "the runtime restarted while this was running"
+            run.device = str(row.get("device") or "")
+            self.runs[run.id] = run
+
+    def _save(self) -> None:
+        """Every run that is not still going, oldest first, replaced atomically."""
+        if self._store is None:
+            return
+        rows = [
+            r.to_dict()
+            for r in sorted(self.runs.values(), key=lambda r: r.started_at)
+            if r.status != "running"
+        ][-KEEP_RUNS:]
+        try:
+            self._store.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._store.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, self._store)
+        except OSError as exc:
+            logger.warning("coding: could not write {}: {}", self._store, exc)
 
     # ------------------------------------------------------------------ local
     def agents(self, fresh: bool = False) -> list[dict[str, Any]]:
@@ -171,6 +237,7 @@ class CodingService:
                     }
                 )
             self._trim()
+            self._save()
 
         task.add_done_callback(_done)
         # give start_run a tick to register the Run so the caller gets its shape back
@@ -260,6 +327,7 @@ class CodingService:
         )
         self.runs[run_id] = shadow
         device_name = str(dev.get("name") or device)
+        shadow.device = device_name
 
         def publish(ev: dict[str, Any], run: dict[str, Any] | None = None) -> None:
             self.svc.bus.publish(
@@ -305,12 +373,13 @@ class CodingService:
             finally:
                 shadow.ended_at = time.time()
                 self._tasks.pop(run_id, None)
-                publish({"kind": "run"}, {**shadow.to_dict(), "device": device_name})
+                publish({"kind": "run"}, shadow.to_dict())
                 self._trim()
+                self._save()
 
         self._tasks[run_id] = asyncio.create_task(go())
-        publish({"kind": "run"}, {**shadow.to_dict(), "device": device_name})
-        return {**shadow.to_dict(), "device": device_name}
+        publish({"kind": "run"}, shadow.to_dict())
+        return shadow.to_dict()
 
     async def remote(
         self, device: str, action: str, args: dict[str, Any], on_event: Any = None

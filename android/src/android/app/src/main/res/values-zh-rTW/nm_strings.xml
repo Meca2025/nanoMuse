@@ -763,6 +763,7 @@
     <string name="nm_coding_untitled">未命名</string>
     <string name="nm_coding_running">執行中</string>
     <string name="nm_coding_send_hint">給 %1$s 發訊息…</string>
+    <string name="nm_coding_continue_new_hint">這是 IDE 裡的對話：會在同一工作區開新對話接著說…</string>
     <string name="nm_coding_send">傳送</string>
     <string name="nm_coding_stop">停止</string>
     <string name="nm_coding_working">正在處理…</string>

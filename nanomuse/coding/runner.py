@@ -25,7 +25,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from nanomuse.coding.agents import AGENTS, read_session, which
+from nanomuse.coding.agents import AGENTS, Session, read_session, which
 from nanomuse.logger import logger
 
 RUN_TIMEOUT_S = 20 * 60
@@ -59,6 +59,7 @@ class Run:
     resumed: bool = False
     error: str = ""
     tools: int = 0
+    device: str = ""  # the other computer this ran on, when it did (the service's shadow runs)
     process: asyncio.subprocess.Process | None = None
     # the message being streamed (Cursor sends deltas, then the whole message)
     current: str = ""
@@ -83,6 +84,7 @@ class Run:
             "resumed": self.resumed,
             "error": self.error,
             "tools": self.tools,
+            **({"device": self.device} if self.device else {}),
         }
 
     def stop(self) -> bool:
@@ -333,9 +335,10 @@ async def start_run(
     """Send ``text`` into ``session_id`` of ``agent`` (a new session when empty) and follow
     it to the end. Returns the finished ``Run``; ``on_event`` sees each step as it happens.
 
-    A Cursor IDE chat cannot be continued by the CLI; when resuming fails, the message is
-    sent as a new CLI chat in the same workspace with the last exchange quoted for context,
-    and the run says ``resumed: false``."""
+    A Cursor IDE chat cannot be continued by the CLI: for one (``Session.resumable`` false)
+    the message goes straight out as a new CLI chat in the same workspace with the last
+    exchange quoted for context, and the run says ``resumed: false``; the same happens when
+    a chat the store said was resumable turns out unknown to the CLI."""
     if agent not in AGENTS:
         raise ValueError(f"unknown agent {agent!r}")
     text = text.strip()
@@ -350,10 +353,9 @@ async def start_run(
     )
     if register is not None:
         register(run)
-    if session_id and not workspace:
-        s = read_session(agent, session_id)
-        if s is not None:
-            run.workspace = s.workspace
+    prior = read_session(agent, session_id) if session_id else None
+    if prior is not None and not workspace:
+        run.workspace = prior.workspace
     if run.workspace and not os.path.isdir(run.workspace):
         run.workspace = ""
 
@@ -366,6 +368,15 @@ async def start_run(
 
     resume = bool(session_id)
     attempt_text = text
+    if prior is not None and not prior.resumable:
+        resume, attempt_text = False, _continuation(prior, text)
+        await emit(
+            RunEvent(
+                "tool",
+                "that chat was made in the IDE and cannot be reopened from the command line; starting a new one in the same workspace",
+                extra={"phase": "note"},
+            )
+        )
     for attempt in (1, 2):
         try:
             cmd = command_for(agent, session_id, run.workspace, attempt_text, resume)
@@ -453,16 +464,7 @@ async def start_run(
         # A failed resume of a chat the CLI does not know: try once more as a new chat.
         lower = (stderr_tail + " " + run.output).lower()
         if attempt == 1 and resume and _looks_like_unknown_session(lower):
-            prior = read_session(agent, session_id)
-            context = ""
-            if prior is not None and prior.transcript:
-                last = prior.transcript[-2:]
-                context = "\n".join(f"{m['role']}: {m['text'][:800]}" for m in last)
-            attempt_text = (
-                f"Continuing an earlier chat titled {prior.title!r}.\n\nLast exchange:\n{context}\n\nNow: {text}"
-                if prior is not None
-                else text
-            )
+            attempt_text = _continuation(prior, text) if prior is not None else text
             resume = False
             run.output = ""
             await emit(
@@ -478,6 +480,14 @@ async def start_run(
         await emit(RunEvent("error", run.error, extra={"final": True}))
         return run
     return run
+
+
+def _continuation(prior: Session, text: str) -> str:
+    """The message for a fresh chat that carries on an old one: its title, the last exchange."""
+    context = ""
+    if prior.transcript:
+        context = "\n".join(f"{m['role']}: {m['text'][:800]}" for m in prior.transcript[-2:])
+    return f"Continuing an earlier chat titled {prior.title!r}.\n\nLast exchange:\n{context}\n\nNow: {text}"
 
 
 async def _wait_exit(proc: asyncio.subprocess.Process, grace_s: float) -> None:

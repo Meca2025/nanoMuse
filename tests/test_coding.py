@@ -190,9 +190,11 @@ def test_sessions_are_read_from_each_agents_store(coding_home: Path, tmp_path: P
     assert c1.title == "Fix the login bug" and c1.source == "ide" and c1.messages == 3
     assert c1.workspace == ws and c1.last_assistant == "Done: the token check was inverted."
     assert c1.status == "active"  # written just now, turn closed
+    assert c1.resumable is False  # an IDE chat: the CLI cannot reopen it
     c2 = by[("cursor", "c2")]
     assert c2.source == "cli" and c2.workspace == ws and c2.created_at == 1790000000.0
     assert c2.status == "running"  # a user turn without turn_ended, fresh
+    assert c2.resumable is True
 
     cx = by[("codex", "01a0c858-5820-7853-ba4c-dee7f183169c")]
     assert cx.title == "Rename the CLI flag" and cx.source == "Codex Desktop" and cx.messages == 2
@@ -377,7 +379,7 @@ def test_start_run_streams_and_falls_back_to_a_new_chat(
         seen.append(ev)
 
     run = asyncio.run(
-        start_run("cursor", "carry on", session_id="c1", on_event=on_event, timeout_s=20)
+        start_run("cursor", "carry on", session_id="c2", on_event=on_event, timeout_s=20)
     )
     assert run.status == "done" and run.resumed is True and run.result_session_id == "S-new"
     assert run.output == "working on it" and run.tools == 1
@@ -385,7 +387,21 @@ def test_start_run_streams_and_falls_back_to_a_new_chat(
     kinds = [e["kind"] for e in seen]
     assert kinds == ["started", "text", "text", "tool", "done"]
     args = (tmp_path / "args.log").read_text()
-    assert "--resume c1" in args and "--workspace" in args and args.strip().endswith("carry on")
+    assert "--resume c2" in args and "--workspace" in args and args.strip().endswith("carry on")
+
+    # an IDE chat is known not to be resumable: no failed attempt first, straight to a new
+    # chat in its workspace with the last exchange quoted, and the run says so
+    (tmp_path / "args.log").unlink()
+    seen.clear()
+    run = asyncio.run(
+        start_run("cursor", "carry on", session_id="c1", on_event=on_event, timeout_s=20)
+    )
+    assert run.status == "done" and run.resumed is False and run.result_session_id == "S-new"
+    assert seen[0]["kind"] == "tool" and "made in the IDE" in seen[0]["text"]
+    args = (tmp_path / "args.log").read_text()
+    assert "--resume" not in args and args.count("--workspace") == 1  # one call, no failed try
+    assert "Fix the login bug" in args and "token check was inverted" in args
+    assert args.strip().endswith("carry on")
 
     # an unknown chat: the CLI refuses, the runner starts a new chat with the last exchange quoted
     (tmp_path / "args.log").unlink()
@@ -504,6 +520,77 @@ def test_api_lists_sessions_sends_and_follows(
     assert "Renamed --foo" in out.output
     a = tool.assess({"action": "send", "agent": "cursor", "text": "do it"})
     assert a.risk.value == "moderate" and a.summary.startswith("tell cursor")
+
+
+def test_runs_survive_a_restart(
+    server: tuple[TestClient, MuseService], settings: Settings, tmp_path: Path
+) -> None:
+    """The record of runs is written to <data_dir>/coding/runs.json as they finish, and a
+    new service reads it back; one that was still going comes back as stopped."""
+    client, service = server
+    r = client.post(
+        "/api/coding/send", json={"agent": "cursor", "text": "carry on", "session_id": "c2"}
+    )
+    assert r.status_code == 200
+    store = Path(settings.data_dir) / "coding" / "runs.json"
+    deadline = time.time() + 20
+    while time.time() < deadline and not store.is_file():
+        time.sleep(0.1)
+    rows = json.loads(store.read_text(encoding="utf-8"))
+    assert len(rows) == 1 and rows[0]["status"] == "done" and rows[0]["session_id"] == "S-new"
+    assert rows[0]["asked_session_id"] == "c2" and rows[0]["text"] == "carry on"
+    # a run that never finished (the runtime went down): kept as stopped, with a note
+    rows.append({**rows[0], "id": "run_lost", "status": "running", "ended_at": None})
+    store.write_text(json.dumps(rows), encoding="utf-8")
+
+    from nanomuse.coding.service import CodingService
+
+    again = CodingService(service)
+    listed = {r["id"]: r for r in again.list_runs()}
+    assert (
+        listed[rows[0]["id"]]["status"] == "done"
+        and listed[rows[0]["id"]]["output"] == "working on it"
+    )
+    lost = listed["run_lost"]
+    assert lost["status"] == "stopped" and "restarted" in lost["error"] and lost["ended_at"]
+
+
+def test_process_table_is_read_the_platforms_way(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Linux reads /proc, macOS asks ps, Windows tasklist — the same counts come out, and a
+    node process is Cursor's CLI only when its arguments say so."""
+    agents._PROCESS_CACHE = (0.0, {})
+    monkeypatch.setattr(agents.sys, "platform", "darwin")
+    ps_out = (
+        "/usr/local/bin/node /usr/local/bin/cursor-agent -p hello\n"
+        "/opt/homebrew/bin/codex codex exec --json\n"
+        "/usr/local/bin/node /srv/app/server.js\n"
+        "/usr/bin/claude claude -p\n"
+        "ps ps -axo comm=,args=\n"
+    )
+    monkeypatch.setattr(
+        agents.subprocess,
+        "run",
+        lambda *a, **k: type("R", (), {"stdout": ps_out, "stderr": ""})(),
+    )
+    assert agents.running_processes("cursor") == 1
+    assert agents.running_processes("codex") == 1 and agents.running_processes("claude") == 1
+
+    agents._PROCESS_CACHE = (0.0, {})
+    monkeypatch.setattr(agents.sys, "platform", "win32")
+    calls: list[list[str]] = []
+
+    def fake_run(cmd: list[str], **k: Any) -> Any:
+        calls.append(cmd)
+        if cmd[0] == "tasklist":
+            out = '"node.exe","100","Console","1","10 K"\n"codex.exe","101","Console","1","10 K"\n"node.exe","102","Console","1","10 K"\n'
+        else:
+            out = "C:\\node.exe C:\\cursor-agent\\index.js -p\r\nC:\\node.exe C:\\other\\app.js\r\n"
+        return type("R", (), {"stdout": out, "stderr": ""})()
+
+    monkeypatch.setattr(agents.subprocess, "run", fake_run)
+    assert agents.running_processes("cursor") == 1 and agents.running_processes("codex") == 1
+    assert calls[0][0] == "tasklist" and calls[1][0] == "powershell" and len(calls) == 2
+    agents._PROCESS_CACHE = (0.0, {})
 
 
 def test_offline_device_is_refused(server: tuple[TestClient, MuseService]) -> None:

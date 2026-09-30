@@ -36,9 +36,17 @@ appear; a phone never does.
 Reading is best effort: a line that does not parse is skipped, a missing
 directory is an agent with no sessions. A session lists its agent, id, title
 (the first user message), workspace, timestamps, message count, the last
-exchange and whether it is `resumable` — Cursor IDE chats can be read but not
-resumed from the CLI, so a message to one starts a fresh CLI session in the same
-workspace.
+exchange and whether it is `resumable`. Cursor IDE chats can be read but not
+resumed from the CLI (`resumable: false`, `source: "ide"`): a message to one
+goes straight out as a fresh CLI chat in the same workspace, with the old chat's
+title and last exchange quoted, and the run says `resumed: false`; the apps say
+so above the composer. The same fallback runs when a chat the store called
+resumable turns out unknown to the CLI.
+
+`running` on an agent is the number of its processes alive right now, read from
+`/proc` on Linux, `ps` on macOS and `tasklist` (plus the command lines of
+`node.exe`, for the node-bundled Cursor CLI) on Windows — never `pgrep -f`, and
+at most once every two seconds.
 
 The runner stops reading when the agent's terminal event arrives, not at pipe
 EOF: `cursor-agent` leaves a worker server running after it answers and would
@@ -71,8 +79,11 @@ POST /api/coding/stop    {run_id, device?}
 ```
 
 A run is `{id, agent, session_id, asked_session_id, workspace, text, started_at,
-ended_at, status, output, resumed, error, tools}`; `status` is `running`, `done`,
-`error` or `stopped`. While it runs the bus carries `{"kind": "coding", "run":
+ended_at, status, output, resumed, error, tools, device?}`; `status` is `running`,
+`done`, `error` or `stopped`. The last 50 finished runs are kept in
+`<data_dir>/coding/runs.json` and read back when the runtime starts, so the
+record survives a restart; a run that was still going then comes back as
+`stopped` with a note (the CLI process ended with the runtime). While it runs the bus carries `{"kind": "coding", "run":
 id, …}` events every open app follows live: `started {session_id, model}`, `text
 {text, partial}` (Cursor sends deltas, then the whole message; the apps replace
 the streamed text with the final one), `tool {text, phase}`, `done`, `error`.

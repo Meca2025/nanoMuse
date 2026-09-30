@@ -25,6 +25,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -135,29 +136,112 @@ def version_of(cli: str) -> str:
 
 
 def running_processes(agent: str) -> int:
-    """How many processes of that agent are alive — read from /proc, so no `pgrep -f`
-    with our own command line in it."""
-    names = AGENTS[agent]["process"]
-    proc = Path("/proc")
-    if not proc.is_dir():
-        return 0
-    n = 0
-    for p in proc.iterdir():
-        if not p.name.isdigit():
-            continue
-        try:
-            comm = (p / "comm").read_text().strip()
-            if comm in names:
-                n += 1
+    """How many processes of that agent are alive right now. Linux reads /proc; macOS asks
+    `ps` once for every process; Windows `tasklist` (and, for the node-bundled Cursor CLI,
+    the command lines of node.exe). Never `pgrep -f`, whose match would include our own
+    command line. The process table is read once per call for all agents and kept two
+    seconds, since the apps ask about the three agents together."""
+    return _process_table().get(agent, 0)
+
+
+_PROCESS_CACHE: tuple[float, dict[str, int]] = (0.0, {})
+
+
+def _process_table() -> dict[str, int]:
+    global _PROCESS_CACHE
+    at, counts = _PROCESS_CACHE
+    if time.time() - at < 2.0:
+        return counts
+    counts = {aid: 0 for aid in AGENTS}
+    for comm, argv in _processes():
+        base = os.path.basename(comm).lower()
+        if base.endswith(".exe"):
+            base = base[:-4]
+        for aid, spec in AGENTS.items():
+            if base in spec["process"]:
+                counts[aid] += 1
+                break
+        else:
+            # the Cursor CLI is a node bundle: its name is "node"; look at the argv
+            if base in ("node", "node.exe") and "cursor-agent" in argv:
+                counts["cursor"] += 1
+    _PROCESS_CACHE = (time.time(), counts)
+    return counts
+
+
+def _processes() -> list[tuple[str, str]]:
+    """(executable name, first arguments) of every process, the platform's way."""
+    plat = sys.platform  # through a name: mypy would otherwise drop the other platforms' branches
+    if plat.startswith("linux"):
+        out: list[tuple[str, str]] = []
+        proc = Path("/proc")
+        if not proc.is_dir():
+            return out
+        for p in proc.iterdir():
+            if not p.name.isdigit():
                 continue
-            if agent == "cursor":
-                # the CLI is a node bundle: its comm is "node"; look at the argv
-                cmdline = (p / "cmdline").read_bytes().split(b"\0")
-                if any(b"cursor-agent" in part for part in cmdline[:3]):
-                    n += 1
-        except (OSError, UnicodeDecodeError):
-            continue
-    return n
+            try:
+                comm = (p / "comm").read_text().strip()
+                argv = b" ".join((p / "cmdline").read_bytes().split(b"\0")[:3]).decode(
+                    "utf-8", "replace"
+                )
+            except (OSError, UnicodeDecodeError):
+                continue
+            out.append((comm, argv))
+        return out
+    if plat == "darwin":
+        try:
+            ps = subprocess.run(
+                ["ps", "-axo", "comm=,args="], capture_output=True, text=True, timeout=8
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return []
+        rows = []
+        for line in ps.stdout.splitlines():
+            parts = line.strip().split(None, 1)
+            if parts:
+                rows.append((parts[0], " ".join(parts[1].split()[:3]) if len(parts) > 1 else ""))
+        return rows
+    if plat == "win32":
+        try:
+            tl = subprocess.run(
+                ["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=8
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return []
+        rows = []
+        node_lines: list[str] | None = None
+        for line in tl.stdout.splitlines():
+            name = line.split('","', 1)[0].strip('" ')
+            if not name:
+                continue
+            argv = ""
+            if name.lower() == "node.exe":
+                if node_lines is None:
+                    node_lines = _windows_node_command_lines()
+                argv = node_lines.pop(0) if node_lines else ""
+            rows.append((name, argv))
+        return rows
+    return []
+
+
+def _windows_node_command_lines() -> list[str]:
+    """The command lines of the node.exe processes (tasklist has none); one PowerShell call."""
+    try:
+        ps = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | ForEach-Object { $_.CommandLine }",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    return [line.strip() for line in ps.stdout.splitlines() if line.strip()]
 
 
 def sessions_root(agent: str) -> Path:
@@ -375,9 +459,10 @@ def _cursor_session(
         last_user=_title(last_user, 160),
         last_assistant=_title(last_assistant, 160),
         source="cli" if sid in cli_meta else "ide",
-        # the CLI resumes its own chats by id; an IDE chat gets a fresh CLI chat in its
-        # workspace with the message (the runner says which happened)
-        resumable=True,
+        # the CLI resumes its own chats by id. An IDE chat it cannot reopen: a message sent
+        # there starts a fresh CLI chat in the same workspace with the last exchange quoted
+        # (the runner does this at once rather than trying and failing first)
+        resumable=sid in cli_meta,
         transcript=transcript,
     )
 
