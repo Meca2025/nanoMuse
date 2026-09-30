@@ -30,7 +30,6 @@ last two weeks in the terminal. The systemd timer runs it every ten minutes.
 from __future__ import annotations
 
 import fcntl
-import gzip
 import hashlib
 import json
 import os
@@ -152,8 +151,8 @@ def log_files() -> list[Path]:
 def read_new_lines(conn: sqlite3.Connection):
     """Yield the lines written since the last run. The position is remembered as (inode, offset)
     of the current file; when Caddy rolled it, the rest of the old file is read first from the
-    rolled copy that carries the same inode (or, once compressed, by its size), then the new
-    file from the top."""
+    rolled copy that carries the same inode (the site block says roll_uncompressed so that it
+    keeps it), then the new file from the top."""
     current = LOG_DIR / LOG_NAME
     if not current.exists():
         return
