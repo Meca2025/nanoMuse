@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/app-icon.png" width="128" alt="Icono de la app nanoMuse">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.svg" alt="nanoMuse — an open-source personal agent for every device you own">
 </p>
-
-<h1 align="center">nanoMuse</h1>
-
-<p align="center">Un agente personal al estilo de Muse, completamente de código abierto, para todos tus dispositivos.</p>
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
@@ -33,7 +29,7 @@
 
 > Esta página es una traducción del [README en inglés](README.md), que es la referencia y contiene las novedades y la tabla completa de versiones.
 
-nanoMuse es un agente personal al estilo de Muse, completamente de código abierto, para todos tus dispositivos: un solo agente con nombre y aspecto propios, como el [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) de Meta, que hace cosas en vez de responder preguntas, sigue trabajando con la app cerrada, te recuerda y se detiene a preguntar antes de cualquier cosa que no podrías deshacer. La app de Android ejecuta el agente entero **en el teléfono**: un sistema de archivos Linux, una shell, un navegador, MCP, habilidades y tareas programadas dentro del APK, con un modelo que tú aportas. Tiene manos para las apps que nunca tuvieron API —la propia pantalla del teléfono, con tu permiso— y llega hasta tu ordenador: dilo en el teléfono y se hace allí. La app de escritorio y la versión web también están disponibles; iOS y las gafas vienen después. Tu propia clave o una asignación inicial de un relé abierto, GPL-3.0 — y una base sobre la que construir tu propio Muse.
+nanoMuse es un agente personal de código abierto para todos tus dispositivos: un solo agente con nombre y aspecto propios, como el [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) de Meta, que hace cosas en vez de responder preguntas, sigue trabajando con la app cerrada, te recuerda y se detiene a preguntar antes de cualquier cosa que no podrías deshacer. La app de Android ejecuta el agente entero **en el teléfono**: un sistema de archivos Linux, una shell, un navegador, MCP, habilidades y tareas programadas dentro del APK, con un modelo que tú aportas. Tiene manos para las apps que nunca tuvieron API —la propia pantalla del teléfono, con tu permiso— y llega hasta tu ordenador: dilo en el teléfono y se hace allí. La app de escritorio y la versión web también están disponibles; iOS y las gafas vienen después. Tu propia clave o una asignación inicial de un relé abierto, GPL-3.0 — y una base sobre la que construir tu propio Muse.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="El mismo dragoncito en cinco estados: en reposo, trabajando, esperando, contento, apenado">

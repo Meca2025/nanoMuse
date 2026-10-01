@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/app-icon.png" width="128" alt="Ikon aplikasi nanoMuse">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.svg" alt="nanoMuse — an open-source personal agent for every device you own">
 </p>
-
-<h1 align="center">nanoMuse</h1>
-
-<p align="center">Agen pribadi bergaya Muse yang sepenuhnya open source, untuk setiap perangkat yang kamu miliki.</p>
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
@@ -33,7 +29,7 @@
 
 > Halaman ini adalah terjemahan dari [README berbahasa Inggris](README.md), yang menjadi acuan dan memuat berita serta tabel versi lengkap.
 
-nanoMuse adalah agen pribadi bergaya Muse yang sepenuhnya open source, untuk setiap perangkat yang kamu miliki: satu agen dengan nama dan wajahnya sendiri, seperti [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) dari Meta, yang mengerjakan sesuatu alih-alih sekadar menjawab pertanyaan, terus bekerja saat aplikasi ditutup, mengingatmu, dan berhenti untuk bertanya sebelum melakukan apa pun yang tidak bisa kamu batalkan. Aplikasi Android menjalankan seluruh agen **di ponsel**: sistem berkas Linux, shell, browser, MCP, skill, dan tugas terjadwal ada di dalam APK, dengan model yang kamu bawa sendiri. Ia punya tangan untuk aplikasi yang tidak pernah punya API — layar ponsel itu sendiri, dengan izinmu — dan menjangkau komputermu: katakan di ponsel, selesai dikerjakan di sana. Aplikasi desktop dan versi web juga sudah tersedia; iOS dan kacamata menyusul. Kunci API-mu sendiri atau kuota awal dari relay terbuka, GPL-3.0 — dan fondasi untuk membangun Muse-mu sendiri.
+nanoMuse adalah agen pribadi open source untuk setiap perangkat yang kamu miliki: satu agen dengan nama dan wajahnya sendiri, seperti [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) dari Meta, yang mengerjakan sesuatu alih-alih sekadar menjawab pertanyaan, terus bekerja saat aplikasi ditutup, mengingatmu, dan berhenti untuk bertanya sebelum melakukan apa pun yang tidak bisa kamu batalkan. Aplikasi Android menjalankan seluruh agen **di ponsel**: sistem berkas Linux, shell, browser, MCP, skill, dan tugas terjadwal ada di dalam APK, dengan model yang kamu bawa sendiri. Ia punya tangan untuk aplikasi yang tidak pernah punya API — layar ponsel itu sendiri, dengan izinmu — dan menjangkau komputermu: katakan di ponsel, selesai dikerjakan di sana. Aplikasi desktop dan versi web juga sudah tersedia; iOS dan kacamata menyusul. Kunci API-mu sendiri atau kuota awal dari relay terbuka, GPL-3.0 — dan fondasi untuk membangun Muse-mu sendiri.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="Naga kecil yang sama dalam lima keadaan: istirahat, bekerja, menunggu, senang, menyesal">

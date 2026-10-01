@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/app-icon.png" width="128" alt="nanoMuse 앱 아이콘">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.svg" alt="nanoMuse — an open-source personal agent for every device you own">
 </p>
-
-<h1 align="center">nanoMuse</h1>
-
-<p align="center">완전한 오픈 소스, Muse 스타일의 개인 에이전트. 당신이 가진 모든 기기를 위해.</p>
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
@@ -33,7 +29,7 @@
 
 > 이 페이지는 [영어 README](README.md)의 번역본입니다. 영어판이 기준이며, 소식과 전체 버전 표는 그곳에 있습니다.
 
-nanoMuse는 완전한 오픈 소스의 Muse 스타일 개인 에이전트로, 당신이 가진 모든 기기를 위한 것입니다. Meta의 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/)처럼 자기만의 이름과 모습을 가진 하나의 에이전트가 질문에 답하는 대신 일을 해내고, 앱을 닫아도 계속 일하며, 당신을 기억하고, 되돌릴 수 없는 일 앞에서는 멈춰서 먼저 묻습니다. Android 앱은 에이전트 전체를 **휴대폰 위에서** 실행합니다. Linux 루트 파일 시스템, 셸, 브라우저, MCP, 스킬, 예약 작업이 APK 안에 들어 있고, 모델은 당신이 가져옵니다. API가 없는 앱을 위한 '손'도 있습니다 — 당신의 허락 아래 휴대폰 화면 자체를 보고 누릅니다 — 그리고 당신의 컴퓨터까지 닿습니다. 휴대폰에서 말하면 컴퓨터에서 처리됩니다. 데스크톱 앱과 웹 버전도 제공되며, iOS와 글래스가 뒤따릅니다. 자신의 키 또는 공개 릴레이의 시작 사용량, GPL-3.0 — 그리고 자신만의 Muse를 만들 수 있는 토대입니다.
+nanoMuse는 오픈 소스 개인 에이전트로, 당신이 가진 모든 기기를 위한 것입니다. Meta의 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/)처럼 자기만의 이름과 모습을 가진 하나의 에이전트가 질문에 답하는 대신 일을 해내고, 앱을 닫아도 계속 일하며, 당신을 기억하고, 되돌릴 수 없는 일 앞에서는 멈춰서 먼저 묻습니다. Android 앱은 에이전트 전체를 **휴대폰 위에서** 실행합니다. Linux 루트 파일 시스템, 셸, 브라우저, MCP, 스킬, 예약 작업이 APK 안에 들어 있고, 모델은 당신이 가져옵니다. API가 없는 앱을 위한 '손'도 있습니다 — 당신의 허락 아래 휴대폰 화면 자체를 보고 누릅니다 — 그리고 당신의 컴퓨터까지 닿습니다. 휴대폰에서 말하면 컴퓨터에서 처리됩니다. 데스크톱 앱과 웹 버전도 제공되며, iOS와 글래스가 뒤따릅니다. 자신의 키 또는 공개 릴레이의 시작 사용량, GPL-3.0 — 그리고 자신만의 Muse를 만들 수 있는 토대입니다.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="같은 작은 용의 다섯 가지 상태: 휴식, 작업 중, 대기, 기쁨, 미안함">

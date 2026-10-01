@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/app-icon.png" width="128" alt="nanoMuse app icon">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.svg" alt="nanoMuse — an open-source personal agent for every device you own">
 </p>
-
-<h1 align="center">nanoMuse</h1>
-
-<p align="center">A fully open-source, Muse-style personal agent for every device you own.</p>
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
@@ -31,7 +27,7 @@
 > [!IMPORTANT]
 > **Free, open source, non-profit — a personal agent for all.** nanoMuse is a community project, free for good: sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, bring your own key. Messages are not stored unless you choose to contribute them; nothing is sold; delete the account whenever you like. **[Try it in the browser](https://nanomuse.cn/web/)**, or [download the app](https://github.com/nano-muse/nanoMuse/releases/latest).
 
-nanoMuse is a fully open-source, Muse-style personal agent for every device you own: one agent with a name and a look of its own, like Meta's [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/), that does things instead of answering questions, keeps working while the app is closed, remembers you, and stops to ask before anything you could not undo. The Android app runs the whole agent **on the phone**: a Linux root file system, a shell, a browser, MCP, skills and scheduled tasks inside the APK, with a model you bring. It has hands for the apps that never had an API — the phone's own screen, with your permission — and reaches your computer: say it on the phone, it gets done there. The desktop app and the web version ship too; iOS and glasses come next. Your own key or a starter allowance from an open relay, GPL-3.0 — and a base you can build your own Muse on.
+nanoMuse is an open-source personal agent for every device you own: one agent with a name and a look of its own, like Meta's [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/), that does things instead of answering questions, keeps working while the app is closed, remembers you, and stops to ask before anything you could not undo. The Android app runs the whole agent **on the phone**: a Linux root file system, a shell, a browser, MCP, skills and scheduled tasks inside the APK, with a model you bring. It has hands for the apps that never had an API — the phone's own screen, with your permission — and reaches your computer: say it on the phone, it gets done there. The desktop app and the web version ship too; iOS and glasses come next. Your own key or a starter allowance from an open relay, GPL-3.0 — and a base you can build your own Muse on.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="The same small dragon in five states: at rest, working, waiting, pleased, sorry">

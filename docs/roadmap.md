@@ -1,6 +1,6 @@
 # Roadmap
 
-nanoMuse is a fully open-source, Muse-style personal agent for every device you own. This page is the plan: what defines the project, which piece comes when, and how the code got to where it is.
+nanoMuse is an open-source personal agent for every device you own. This page is the plan: what defines the project, which piece comes when, and how the code got to where it is.
 
 ## What defines it
 
