@@ -3,7 +3,8 @@
 // scripts (state-builder.js powers it on into #demo-frame and runs the State Builder; boot-hero.js
 // runs the gesture keys and the power button). The nanoMuse app on the phone exposes
 // window.__NANOMUSE__ on the frame's window (demo/mobilegym/apps/nanoMuse/host.ts), which is how
-// a tap here becomes text in the chat there.
+// a tap here becomes text in the chat there. The whole stage fits one screen: the phone is scaled
+// to the room there is beside the panel.
 (function () {
   "use strict";
 
@@ -42,24 +43,18 @@
     })
     .then(function (i) {
       info = i;
-      if (i && lookGroup) {
-        var why = lookGroup.querySelector(".why");
-        if (!i.image_model) {
-          // no image model on this showcase: the lines stay visible, but say why they will not draw
-          lookGroup.classList.add("off");
-          lookGroup.querySelectorAll(".chip").forEach(function (b) {
-            b.disabled = true;
-          });
-          if (why) {
-            why.innerHTML =
-              '<i class="en">This showcase has no image model, so the Muse keeps its dragon look here. Your own nanoMuse draws.</i>' +
-              '<i class="zh">这个展示站没有配图像模型，这里的 Muse 就一直是小龙的样子。你自己装的 nanoMuse 可以画。</i>';
-          }
-        } else if (!i.video_model && why) {
-          // pictures but no clips: the face will not move here
+      if (i && lookGroup && !i.image_model) {
+        // no image model on this showcase: the lines stay visible, but say why they will not draw
+        lookGroup.classList.add("off");
+        lookGroup.querySelectorAll(".chip").forEach(function (b) {
+          b.disabled = true;
+        });
+        var why = document.getElementById("look-why");
+        if (why) {
           why.innerHTML =
-            '<i class="en">Describe it and the Muse draws itself — four to pick from, then its poses.</i>' +
-            '<i class="zh">说一句，它就把自己画出来：四张候选，选一张，再补齐表情。</i>';
+            '<i class="en">No image model here, so the Muse keeps its dragon look.</i>' +
+            '<i class="zh">这里没有配图像模型，Muse 保持小龙的样子。</i>';
+          why.classList.remove("hidden");
         }
       }
       render();
@@ -153,31 +148,73 @@
     launch(w);
   }, 250);
 
+  // ---- the stage fits the screen ----------------------------------------------------------
+  // MobileGym's stylesheet scales the phone to the viewport's height alone (and not below 0.7).
+  // Here the phone shares the row with the panel, has a bezel, and its chrome stands beside it
+  // (≥1280px) or under it (below); the scale comes from the room left for all of that, and
+  // the margins take back the phantom space of the unscaled layout box.
+  var hero = document.getElementById("demo");
+  var layout = document.querySelector(".demo-layout");
+  var wrap = document.querySelector(".demo-phone-wrap");
+  var rig = document.querySelector(".phone-rig");
+  var side = document.querySelector(".side");
+  var BEZEL = 10;
+  var SCREEN_W = 360;
+  var SCREEN_H = 800;
+  function fitPhone() {
+    if (!hero || !layout || !wrap) return;
+    var wide = window.innerWidth >= 1280; // their chrome beside the phone
+    var column = window.innerWidth < 1000; // phones: a column that scrolls, the phone at its size
+    // the room the chrome needs, in the phone's own pixels (it scales with the phone)
+    var roomLeft = wide ? 24 + 168 + 8 : BEZEL + 6;
+    var roomRight = wide ? 24 + 52 + 24 : BEZEL + 6;
+    var roomBelow = wide ? 24 : 0; // the "Patch state" hint under the dock
+    var layoutH = SCREEN_H + (wide ? 0 : 162); // their pills under the phone below 1280px (page.css)
+    var s = 1;
+    if (!column) {
+      var styles = getComputedStyle(hero);
+      var availH = hero.clientHeight - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
+      var gap = parseFloat(getComputedStyle(layout).gap) || 40;
+      var sideMin = side ? parseFloat(getComputedStyle(side).minWidth) || 300 : 0;
+      var availW = layout.clientWidth - sideMin - gap;
+      s = Math.min(1, availH / (layoutH + roomBelow + 2 * BEZEL), availW / (SCREEN_W + roomLeft + roomRight));
+      s = Math.max(0.4, Math.round(s * 1000) / 1000);
+    }
+    wrap.style.setProperty("--nm-scale", String(s));
+    // the layout box stays 360 × layoutH; pull its edges in to the drawn size, plus the room
+    wrap.style.marginLeft = Math.round(roomLeft * s - ((1 - s) * SCREEN_W) / 2) + "px";
+    wrap.style.marginRight = Math.round(roomRight * s - ((1 - s) * SCREEN_W) / 2) + "px";
+    wrap.style.marginBottom = Math.round((s - 1) * layoutH) + "px";
+    placeDrawer();
+  }
+
   // ---- the State Builder's drawer: beside the dock, level with the phone -------------------
   // MobileGym's stylesheet places the drawer assuming the phone is centred in the row; here the
-  // panel shares the row, so the drawer follows the phone instead. Below 1280px their stylesheet
-  // puts the drawer into the flow under the phone, and this leaves it alone.
+  // panel shares the row, so the drawer follows the phone instead. On a phone (a column) their
+  // stylesheet puts the drawer into the flow under the phone, and this leaves it alone.
   var drawer = document.getElementById("state-drawer");
-  var layout = document.querySelector(".demo-layout");
-  var rig = document.querySelector(".phone-rig");
   function placeDrawer() {
     if (!drawer || !layout || !rig) return;
-    if (window.innerWidth < 1280) {
+    if (window.innerWidth < 1000) {
       drawer.style.left = "";
       drawer.style.top = "";
       return;
     }
     var l = layout.getBoundingClientRect();
-    var r = rig.getBoundingClientRect(); // the phone as drawn (scaled to the viewport's height)
-    // phone's right edge, the dock (14px gap, ~50px wide) and another 14px, as on their page
-    drawer.style.left = Math.round(r.right - l.left + 78) + "px";
-    drawer.style.top = Math.round(r.top - l.top) + "px";
+    var r = rig.getBoundingClientRect(); // the phone as drawn (scaled)
+    var s = parseFloat(wrap.style.getPropertyValue("--nm-scale")) || 1;
+    // ≥1280px: the phone's right edge, the bezel, the dock (24px gap, ~52px wide) and another
+    // 14px, as on their page; below, over the panel, right next to the phone
+    var past = window.innerWidth >= 1280 ? (BEZEL + 24 + 52 + 14) * s : (BEZEL + 16) * s;
+    drawer.style.left = Math.round(r.right - l.left + past) + "px";
+    drawer.style.top = Math.round(r.top - l.top - BEZEL * s) + "px";
   }
   if (drawer) {
     new MutationObserver(placeDrawer).observe(drawer, { attributes: true, attributeFilter: ["data-open"] });
-    window.addEventListener("resize", placeDrawer);
-    placeDrawer();
   }
+  window.addEventListener("resize", fitPhone);
+  if (window.ResizeObserver && hero) new ResizeObserver(fitPhone).observe(hero);
+  fitPhone();
 
   // ---- the status line ------------------------------------------------------------------
   function minutesLeft() {
