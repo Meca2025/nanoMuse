@@ -347,7 +347,9 @@ export default class NanomuseCloud extends Service {
       if (!token) return this.status()
       try {
         const [account, models] = await Promise.all([this.relay.me(token), this.relay.models(token)])
-        if (!sameModels(models, this.state.models ?? [])) await this.writeProvider(models)
+        // The row is rewritten when the menu changed — and when it is simply not there: a profile
+        // made again around an account that is still signed in has the credential but no row.
+        if (!sameModels(models, this.state.models ?? []) || !this.providerPresent()) await this.writeProvider(models)
         this.state = { ...this.state, account, models }
         await this.writeState()
         await this.profile.pull(token).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
@@ -456,6 +458,17 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
+  /** The providers the model layer knows right now. */
+  private providers(): { id: string }[] {
+    const llm = (this.ctx as unknown as { get(name: string): unknown }).get('llm') as { listProviders?: () => { id: string }[] } | undefined
+    return llm?.listProviders?.() ?? []
+  }
+
+  /** Whether the `nanomuse` provider row is in the model layer (it lives in the profile's patch file). */
+  private providerPresent(): boolean {
+    return this.providers().some((p) => p.id === PROVIDER_ID)
+  }
+
   /** Another model can answer without the account: a DeepSeek key, or a provider the person added. */
   private async otherProviderReady(): Promise<boolean> {
     try {
@@ -463,9 +476,7 @@ export default class NanomuseCloud extends Service {
     } catch {
       // no credential store answer: assume nothing
     }
-    const llm = (this.ctx as unknown as { get(name: string): unknown }).get('llm') as { listProviders?: () => { id: string }[] } | undefined
-    const providers = llm?.listProviders?.() ?? []
-    return providers.some((p) => p.id !== 'deepseek-official' && p.id !== 'deepseek-account' && p.id !== PROVIDER_ID)
+    return this.providers().some((p) => p.id !== 'deepseek-official' && p.id !== 'deepseek-account' && p.id !== PROVIDER_ID)
   }
 
   // -- hands and notices ----------------------------------------------------------------
