@@ -542,7 +542,7 @@
     <!-- nanoMuse Cloud：手机号/邮箱验证码登录，赠送体验额度 -->
     <string name="nm_setup_own_key">我有自己的 API key</string>
     <!-- nanoMuse: the first-run pages -->
-    <string name="nm_welcome_tagline">一个完全开源、Muse 风格的个人智能体，装在你的每一台设备上。</string>
+    <string name="nm_welcome_tagline">一个开源的个人智能体，装在你的每一台设备上。</string>
     <string name="nm_welcome_email">登录，免费开始</string>
     <string name="nm_welcome_fine_print">一个账号连起你的几台设备，也承载免费的模型额度；不收费。登录之后随时可以改用自己的 API key。</string>
     <string name="nm_setup_source_title">让哪个模型来回答？</string>

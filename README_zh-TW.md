@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/app-icon.png" width="128" alt="nanoMuse 應用程式圖示">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.svg" alt="nanoMuse — an open-source personal agent for every device you own">
 </p>
-
-<h1 align="center">nanoMuse</h1>
-
-<p align="center">完全開源、Muse 風格的個人智慧代理，為你的每一台裝置而生。</p>
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
@@ -33,7 +29,7 @@
 
 > 這一頁是 [英文 README](README.md) 的譯文；英文版是基準，最新消息與完整版本表都在那裡。
 
-nanoMuse 是一個完全開源、Muse 風格的個人智慧代理，為你的每一台裝置而生：一個有自己名字和模樣的代理，像 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一樣，不只回答問題，而是把事情做完；App 關掉它也繼續工作，記得你，在任何無法復原的操作前先停下來問你。Android App 把整個代理跑在**手機上**：一個 Linux 根檔案系統、shell、瀏覽器、MCP、技能和排程任務都在 APK 裡，模型由你自備。對於那些從來沒有 API 的 App，它有一雙「手」——經你允許，直接看手機螢幕、點手機螢幕；它還能連到你的電腦：在手機上說一句，電腦上就做完。桌面版和網頁版也已經推出；iOS 和眼鏡接著來。自己的 key，或是來自開放 relay 的起步額度，GPL-3.0——也是一個你可以拿來做自己的 Muse 的底子。
+nanoMuse 是一個開源的個人智慧代理，為你的每一台裝置而生：一個有自己名字和模樣的代理，像 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一樣，不只回答問題，而是把事情做完；App 關掉它也繼續工作，記得你，在任何無法復原的操作前先停下來問你。Android App 把整個代理跑在**手機上**：一個 Linux 根檔案系統、shell、瀏覽器、MCP、技能和排程任務都在 APK 裡，模型由你自備。對於那些從來沒有 API 的 App，它有一雙「手」——經你允許，直接看手機螢幕、點手機螢幕；它還能連到你的電腦：在手機上說一句，電腦上就做完。桌面版和網頁版也已經推出；iOS 和眼鏡接著來。自己的 key，或是來自開放 relay 的起步額度，GPL-3.0——也是一個你可以拿來做自己的 Muse 的底子。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="同一隻小龍的五種狀態：休息、工作中、等待、開心、抱歉">
