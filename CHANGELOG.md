@@ -4,6 +4,17 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Changed
+
+- **The three hosts promise HTTPS for a year.** `nanomuse.cn`, `demo.nanomuse.dev` and `cloud.nanomuse.cn` send `Strict-Transport-Security: max-age=31536000` (this host only; subdomains make their own promise), next to the `nosniff` and referrer headers they already sent. The showcase `Caddyfile` is in `caddy fmt`'s shape, so Caddy stops warning about it at start.
+- **One licence in every label.** The runtime, browser, showcase gateway and showcase Caddy images said `MIT` in their OCI labels, the gateway's `pyproject.toml` too, and the desktop app's `package.json` said `GPL-3.0-only`; all now say what the repository's LICENSE says, `GPL-3.0-or-later`. The showcase gateway is 0.2.0 in both places it carries a version (it had 0.1.0 in one and 0.1.1 in the other).
+- **The Android app reads optional JSON strings through one helper** (`JSONObject.stringOrNull`). `optString(key, null)` on Android gives back the *text* "null" for a JSON `null`, and the goals, their check-ins and the ideas the model proposes carry explicit nulls; a goal's session, task and last note, a check-in's status and note, an idea's time and category now come back as nothing instead of "null". Eight strings nothing referred to are gone from the three `nm_strings.xml` (742 each), and the deprecated Compose APIs the app still used — the mirrored icons (`Feed`, `Logout`, `OpenInNew`, `TrendingUp`, `LibraryBooks`, `InsertDriveFile`), `LocalLifecycleOwner` from `lifecycle-runtime-compose`, `using` in the avatar's keyframes, an opt-in instead of a suppression on the home bus — are replaced; 31 compiler warnings in nanoMuse's own code are 5.
+
+### Fixed
+
+- **The relay no longer logs a traceback when a client disconnects mid-request** (relay 0.7.2). A phone changing networks or a tab closed while its body was still arriving raised `ClientDisconnect` inside the chat route, which the server logged as `Exception in ASGI application` with forty lines of stack — seven times a day. It is a quiet `400 client_disconnected` now, to a caller that is not there to read it.
+- **The archived design record of the Python-line Android app links to its neighbours again.** `docs/archive/android-python-line.md` moved into `archive/` with its relative links unchanged; they point one level up now.
+
 ## [0.1.26] - 2026-10-02 · Window
 
 ### Added
