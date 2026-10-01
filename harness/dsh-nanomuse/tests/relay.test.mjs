@@ -1,0 +1,123 @@
+// The relay client against a fake relay: the wire shapes the desktop depends on.
+// Run with `pnpm test` after `pnpm build` (the test imports the built lib/).
+import { test, before, after } from 'node:test'
+import assert from 'node:assert/strict'
+import { createServer } from 'node:http'
+
+import { Relay, RelayError } from '../lib/relay.js'
+
+/** A relay that remembers what it was asked and answers like the real one. */
+function fakeRelay() {
+  const seen = []
+  const server = createServer(async (req, res) => {
+    const chunks = []
+    for await (const chunk of req) chunks.push(chunk)
+    const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : null
+    seen.push({ method: req.method, url: req.url, auth: req.headers.authorization ?? null, body })
+    const json = (status, payload) => {
+      res.writeHead(status, { 'content-type': 'application/json' })
+      res.end(payload === undefined ? '' : JSON.stringify(payload))
+    }
+    if (req.url === '/v1/auth/code') return json(204)
+    if (req.url === '/v1/auth/verify') {
+      if (body.code !== '123456') return json(400, { error: { code: 'bad_code', message: 'That code is not right.' } })
+      return json(200, {
+        api_key: 'sk-test-device-key',
+        created: true,
+        account: { id: 'acc_1', channel: 'email', hint: 'de***@example.com', member: false },
+        tokens: { unlimited: false, granted: 1000, used: 10, remaining: 990 },
+      })
+    }
+    if (req.url === '/v1/me') {
+      if (req.headers.authorization !== 'Bearer sk-test-device-key') return json(401, { error: { code: 'unauthorized', message: 'no' } })
+      return json(200, {
+        account: { id: 'acc_1', channel: 'email', hint: 'de***@example.com', member: true },
+        tokens: { unlimited: true, granted: 0, used: 30605, remaining: 0 },
+      })
+    }
+    if (req.url === '/v1/models') {
+      return json(200, {
+        data: [
+          { id: 'qwen-a', name: 'Qwen A', architecture: { input_modalities: ['text', 'image'] }, nanomuse: { kind: 'chat', recommended: true } },
+          { id: 'wan-v', name: 'Wan (video)', architecture: { input_modalities: ['text'] }, nanomuse: { kind: 'video', recommended: false } },
+          { id: 'bare' },
+        ],
+      })
+    }
+    if (req.url === '/v1/auth/sign-out') return json(401, { error: { code: 'unauthorized', message: 'already gone' } })
+    json(404, { error: { code: 'not_found', message: 'nothing here' } })
+  })
+  return { server, seen }
+}
+
+let relay
+let seen
+let server
+
+before(async () => {
+  ;({ server, seen } = fakeRelay())
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  relay = new Relay(`http://127.0.0.1:${server.address().port}/`)
+})
+
+after(() => server.close())
+
+test('origin is normalised and the OpenAI root hangs off it', () => {
+  assert.equal(relay.origin.endsWith('/'), false)
+  assert.equal(relay.openaiBase, `${relay.origin}/v1`)
+})
+
+test('requestCode posts the identifier and accepts 204', async () => {
+  await relay.requestCode('dev-a@example.com')
+  const last = seen.at(-1)
+  assert.equal(last.method, 'POST')
+  assert.equal(last.url, '/v1/auth/code')
+  assert.deepEqual(last.body, { identifier: 'dev-a@example.com' })
+})
+
+test('verify trims the code, caps the device name and maps the key', async () => {
+  const signIn = await relay.verify('dev-a@example.com', ' 123456 ', 'x'.repeat(120))
+  assert.equal(signIn.apiKey, 'sk-test-device-key')
+  assert.equal(signIn.created, true)
+  assert.equal(signIn.account.hint, 'de***@example.com')
+  assert.equal(signIn.account.tokens.remaining, 990)
+  const last = seen.at(-1)
+  assert.equal(last.body.code, '123456')
+  assert.equal(last.body.device.length, 80)
+})
+
+test('a relay error carries the relay code and message', async () => {
+  await assert.rejects(relay.verify('dev-a@example.com', '000000', 'desk'), (err) => {
+    assert.ok(err instanceof RelayError)
+    assert.equal(err.status, 400)
+    assert.equal(err.code, 'bad_code')
+    assert.equal(err.message, 'That code is not right.')
+    return true
+  })
+})
+
+test('me sends the bearer key and reads the allowance', async () => {
+  const account = await relay.me('sk-test-device-key')
+  assert.equal(seen.at(-1).auth, 'Bearer sk-test-device-key')
+  assert.equal(account.member, true)
+  assert.equal(account.tokens.unlimited, true)
+  await assert.rejects(relay.me('sk-wrong'), (err) => err instanceof RelayError && err.status === 401)
+})
+
+test('models keeps kind, recommendation and modalities, with defaults', async () => {
+  const models = await relay.models('sk-test-device-key')
+  assert.deepEqual(
+    models.map((m) => [m.id, m.kind, m.recommended, m.inputModalities]),
+    [
+      ['qwen-a', 'chat', true, ['text', 'image']],
+      ['wan-v', 'video', false, ['text']],
+      ['bare', 'chat', false, ['text']],
+    ],
+  )
+  assert.equal(models[2].name, 'bare')
+})
+
+test('signOut tolerates a key the relay no longer knows', async () => {
+  await relay.signOut('sk-test-device-key')
+  assert.equal(seen.at(-1).url, '/v1/auth/sign-out')
+})
