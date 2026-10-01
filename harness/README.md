@@ -15,7 +15,7 @@ over the stock configuration and the plugins the patch names:
 | `nanomuse`         | host    | Serves the face's stills under `/nanomuse/assets/`.                                                                                        |
 | `nanomuse-cloud`   | host    | The account: sign-in by phone or e-mail code against the relay, the key in dsh's credential store, the account's chat models written into `dsh-llm-pi-ai` as the `nanoMuse Cloud` provider. Loopback API under `/nanomuse/cloud/`. |
 | `nanomuse` (client)| browser | The dragon in the sidebar's brand seat and the hero, the *nanoMuse* wordmark, the *nanoMuse account* section in Settings.                  |
-| `preset-nanomuse`  | patch   | An agent preset with nanoMuse's voice and the same tools as dsh's *Standard*; new sessions start from it.                                   |
+| `preset-nanomuse`  | patch   | An agent preset with nanoMuse's voice and the same tools as dsh's *Standard*, plus **Hands**: dsh's MCP client on `nanomuse mcp`, the runtime's `computer_screen`/`computer_act` over stdio. New sessions start from it. |
 | `system-prompt`, `agent-preset-registry`, `ui-brand-official` | patch | The persona for preset-free compositions, the default preset, and the stock brand mark stepping aside. |
 
 Everything else — the agent loop, tools, skills, goals, plan mode, compaction,
@@ -39,14 +39,19 @@ pnpm install && pnpm build && pnpm test
 /tmp/nm-dev/dsh/node_modules/.bin/dsh --profile nanomuse --from-default-profile web --dump-config >/dev/null
 /tmp/nm-dev/dsh/node_modules/.bin/dsh plugin --profile nanomuse add "$PWD"
 
-# 4. boot — against the production relay, or a local one (docs/every-device.md, "Debugging it all on one machine")
-NANOMUSE_CLOUD_URL=http://127.0.0.1:8790 /tmp/nm-dev/dsh/node_modules/.bin/dsh nanomuse --no-open --port 3082
+# 4. boot — against the production relay, or a local one (docs/every-device.md, "Debugging it all on one machine");
+#    NANOMUSE_PY points at the runtime that serves the hands when `nanomuse` is not on PATH
+NANOMUSE_CLOUD_URL=http://127.0.0.1:8790 NANOMUSE_PY=/path/to/nanoMuse/.venv/bin/nanomuse \
+  /tmp/nm-dev/dsh/node_modules/.bin/dsh nanomuse --no-open --port 3082
 ```
 
 Open the printed `?token=` URL. Settings → *nanoMuse account* signs in; the account's
 models then appear in the model picker under *nanoMuse Cloud* and a new session
-answers through the relay, as nanoMuse. `dsh --profile nanomuse --dump-config` shows
-the composed configuration with our rows marked `patched by dsh-nanomuse`.
+answers through the relay, as nanoMuse. "What is on my screen?" makes it call
+`mcp__nanomuse__computer_screen` — the runtime's hands, started by dsh as a child
+process (`nanomuse mcp`; a display is needed for a picture). `dsh --profile nanomuse
+--dump-config` shows the composed configuration with our rows marked `patched by
+dsh-nanomuse`.
 
 After changing `src/`, `pnpm build` and restart dsh (the client half is served from
 `lib/client.js`; append `?v=N` to the page URL if the browser keeps the old one).

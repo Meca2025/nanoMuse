@@ -46,11 +46,25 @@ linked into a profile created from dsh's own web template:
   wins over the global one, so the bundle declares a preset `nanomuse` — the same plugin
   list as dsh's *Standard* with nanoMuse's persona — and makes it the default. The
   person can still pick *Standard*, *PTC* or *Minimal*.
+- **Hands, the first of our capabilities as a plugin.** The preset mounts dsh's MCP
+  client on `nanomuse mcp` ([cli.md](cli.md#audit-and-config)): the runtime's
+  `computer_screen` and `computer_act` served over stdio, with their own descriptions
+  and schemas, arriving in dsh as `mcp__nanomuse__computer_screen` and
+  `…computer_act`. Screenshots travel as MCP images, so a vision model sees the screen.
+  What the Sentinel does in the runtime the bridge does at the model's level: a step the
+  runtime would ask the person about (Enter or a submit, a heavy shortcut, a click on a
+  word from the sensitive list) is refused with the reason until the call carries
+  `confirmed: true`, which the model may set only after the person agreed in the
+  conversation; dsh's own approval policy can add a real gate in front of the tool.
+  `NANOMUSE_PY` names the runtime's executable when it is not on `PATH`; without a
+  runtime the preset simply has no hands.
 
 Verified end to end on a scratch install against a local relay: sign in, the two chat
 models appear under *nanoMuse Cloud* in the picker without a restart, a new session
-starts as *nanoMuse*, and "who are you?" is answered through the relay in nanoMuse's
-voice. [`harness/README.md`](../harness/README.md) has the recipe.
+starts as *nanoMuse*, "who are you?" is answered through the relay in nanoMuse's voice,
+and "what is on my screen?" is answered after one `mcp__nanomuse__computer_screen` call
+with a correct description of the desktop. [`harness/README.md`](../harness/README.md)
+has the recipe.
 
 ## Where each part of nanoMuse goes
 
@@ -62,7 +76,7 @@ voice. [`harness/README.md`](../harness/README.md) has the recipe.
 | Avatar studio, face sync across devices                 | A settings page (slot `settings.section`) + host routes; the account's face pulled from the relay's profile, moods from agent events          | phase 2    |
 | First run                                               | dsh's first-run dialog asks for a DeepSeek key; ours should offer the Cloud sign-in first (a client plugin replacing that step)               | phase 2    |
 | Sentinel ([sentinel.md](sentinel.md))                   | dsh approval policies and the `tools/pre-execute` waterfall; our categories become an approval preset; the visible gate stays                | phase 2    |
-| Hands — GUI control of this computer ([gui.md](gui.md)) | dsh's computer-use seam (`ctx.computerUse.register`, one provider) with a native driver, or an MCP bridge to the Python hands as the interim | phase 3    |
+| Hands — GUI control of this computer ([gui.md](gui.md)) | The Python hands over MCP (`nanomuse mcp`, mounted in the preset) — done; a native TypeScript driver behind dsh's computer-use seam (`ctx.computerUse.register`) later, so no Python is needed | done (bridge) |
 | Reach — the phone and other devices ([hub.md](hub.md), [every-device.md](every-device.md)) | A hub client service + `device_*` tools (`ctx.tools.register`) in TypeScript; the phone side unchanged                 | phase 3    |
 | Skills, schedule, goals, memory, sub-agents             | dsh's own (`skill`, `schedule`, `goals`, compaction, delegation) — ours are not ported                                                       | by design  |
 | Web UI, zh-CN                                           | dsh's web app (it ships zh); our strings in the bundle's locale table                                                                        | done       |
@@ -100,13 +114,14 @@ a community project with no affiliation — apply unchanged.
 
 ## Phases
 
-1. **This slice** — account, face, voice; verified on a scratch install. *Done, internal.*
+1. **This slice** — account, face, voice, and Hands over MCP; verified on a scratch
+   install. *Done, internal.*
 2. **Daily-driver on dsh** — first-run sign-in, avatar studio and face sync, the Sentinel
    as an approval preset, the account's name; the person can live in it for ordinary
    work on files and the web.
-3. **The nanoMuse features** — Hands as a computer-use provider (native, or the Python
-   hands over MCP first), Reach as a hub client with the `device_*` tools; this is what
-   makes it nanoMuse rather than a re-skinned dsh.
+3. **The nanoMuse features** — Reach as a hub client with the `device_*` tools, Hands
+   without Python (a native driver behind dsh's computer-use seam); this is what makes it
+   nanoMuse rather than a re-skinned dsh.
 4. **Ship** — our own shell and installers, the downloads, the docs; `desktop/` retired.
 
 Until phase 4, `desktop/` is the desktop app and keeps getting its fixes.

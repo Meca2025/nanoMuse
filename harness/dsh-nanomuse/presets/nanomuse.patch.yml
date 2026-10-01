@@ -160,3 +160,23 @@
           - id: tool-plugin-manager
             name: '@deepseek-ai/dsh-plugin-manager/tools'
             disabled: true
+
+          # ── nanoMuse's own ────────────────────────────────────────────────
+          # Hands: this computer's screen and mouse/keyboard, from the runtime's
+          # `nanomuse mcp` (nanomuse/bridge/mcp_server.py) over stdio — the tools
+          # arrive as mcp__nanomuse__computer_screen / computer_act, with the
+          # runtime's descriptions and its "ask the person first" gate. NANOMUSE_PY
+          # names the runtime's executable when it is not on PATH (a venv, the
+          # desktop app's bundled runtime); a missing runtime leaves the preset
+          # without hands rather than broken.
+          - id: nanomuse-hands
+            name: '@deepseek-ai/dsh-mcp-client'
+            config:
+              transport: stdio
+              serverName: nanomuse
+              command: !!js process.env.NANOMUSE_PY || 'nanomuse'
+              args: [mcp]
+              env: !!js 'process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}'
+              cwd: !!js process.env.HOME || process.env.USERPROFILE || process.cwd()
+              toolCallTimeoutMs: 120000
+              failOnStartupError: false
