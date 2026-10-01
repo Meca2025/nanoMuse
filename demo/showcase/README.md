@@ -1,26 +1,38 @@
 # The public showcase
 
 A page anyone can open: a phone in the browser with 微信, 支付宝, 铁路12306 and the other
-[MobileGym](https://github.com/Purewhiter/mobilegym) apps on it, and nanoMuse installed. Open
-nanoMuse, and a **private nanoMuse is started for you** on the showcase server — your own
-container, your own token, phone operation on — for thirty minutes and within a model budget.
-Ask it to check the earliest train to Shanghai and watch it open 12306 on the phone.
+[MobileGym](https://github.com/Purewhiter/mobilegym) apps on it, and nanoMuse installed. The
+page opens on the nanoMuse app, and a **private nanoMuse is started for you** on the showcase
+server — your own container, your own token, phone operation on — for thirty minutes and
+within a model budget. Beside the phone are a few lines to try: a new look for the Muse
+(it draws itself), the apps on the phone operated for you ("打开微信，看看张伟最新发来的消息"),
+memory and reminders; a tap puts the line in the chat on the phone, and anything else can be
+typed there. This is nanoMuse's web entry — what [nanomuse.cn/web](https://nanomuse.cn/web/)
+leads to.
+
+The page (`site/page/`) is plain HTML and a little script, with MobileGym in a frame on the
+same origin as `/phone.html`; it talks to the nanoMuse app on the phone through
+`window.__NANOMUSE__` on that frame (open, draft, reset, state, subscribe — see
+`demo/mobilegym/README.md`) and the app passes drafts on to the web app over `postMessage`.
+On a hosted session the web app runs lite (`?ui=lite`): the chat alone, no first-run setup;
+the other screens stay behind the avatar.
 
 Nothing about the phone runs on the server. MobileGym is a React app: the whole simulated
 phone lives in the visitor's tab (~400 MB of *their* memory). The server runs three things:
 
 | | |
 |---|---|
-| **Caddy** | HTTPS, the static site (MobileGym + the nanoMuse app), `/api/demo/*` to the gateway, and one hostname per session |
+| **Caddy** | HTTPS, the static site (the page at `/`, MobileGym + the nanoMuse app at `/phone.html`), `/api/demo/*` to the gateway, and one hostname per session |
 | **gateway** (`gateway/`) | Starts a nanoMuse container per visitor, relays the phone's HTTP and WebSocket to it, proxies the container's model calls to the provider with the demo key, keeps the books |
 | **sessions** | `ghcr.io/nano-muse/nanomuse` containers on an internal Docker network with no way out — the gateway is the only thing they can reach |
 
 ```
-visitor's browser ──HTTPS──▶ Caddy ── demo.nanomuse.dev ──▶ /srv/site (MobileGym + nanoMuse app)
-   │  MobileGym phone            │                      └▶ /api/demo/* ──▶ gateway
-   │  nanoMuse app (iframe)      └── <id>.s.nanomuse.dev ─────────────────▶ gateway ──▶ nm-<id>:8787
+visitor's browser ──HTTPS──▶ Caddy ── demo.nanomuse.dev ──▶ /srv/site (the page; /phone.html = MobileGym + nanoMuse app)
+   │  the page                   │                      └▶ /api/demo/* ──▶ gateway
+   │   └ MobileGym phone (frame) └── <id>.s.nanomuse.dev ─────────────────▶ gateway ──▶ nm-<id>:8787
+   │      └ nanoMuse app (iframe)                                                          │
    └──────────────────────────────────────────────────────────────────────────────┘        │
-                                            models ◀── gateway ◀── /llm/<id>/{main,gui} ◀──┘
+                  models, pictures ◀── gateway ◀── /llm/<id>/{main,gui}[/images/*] ◀───────┘
 ```
 
 A session is one hostname (`<id>.s.nanomuse.dev`) because the nanoMuse web app and the
@@ -53,6 +65,19 @@ Two lanes: `main` (the model that talks to the visitor) and `gui` (the one that 
 and taps; many small calls with a screenshot each). The default is 阿里云百炼's `qwen3.8-27b`
 for both — it reads screenshots, so one key does everything. Set `GUI_*` to split the lanes.
 
+**Pictures for a new look** (`gateway/showcase_gateway/images.py`): "换个形象：一只橘猫" in the
+chat is the avatar studio's ([docs/avatar.md](../../docs/avatar.md)) — eight pictures: four
+candidates, then the chosen one's poses. The container speaks the OpenAI images API at its
+model's address (`…/images/generations`, `…/images/edits`); the gateway answers those two
+calls itself, on Model Studio's native multimodal endpoint with the demo key, the way
+nanoMuse Cloud's relay does, and tells the container the model's name
+(`NANOMUSE_LLM_IMAGE_MODEL`). On by itself when `MAIN_BASE_URL` is a Model Studio host
+(`IMAGE_MODEL=qwen-image-3.0`), off with `IMAGE_MODEL=` empty; `IMAGE_PER_SESSION` (12) and
+`DAILY_IMAGES` (400) count apart from the chat budget. No clips: a video model would need
+the asynchronous video API too, and a demo Muse is gone in half an hour. A visitor's own key
+draws nothing through the gateway; `/api/demo/info` says `image_model: null` and the page
+greys the lines out.
+
 ### Trial credentials for the phone app
 
 The same proxy can hand a new phone its first model. With `TRIAL_ENABLED=1`, `POST /api/trial`
@@ -70,9 +95,10 @@ with the key shows what is left, and `/api/demo/info` carries the totals.
 ### nanoMuse Web: a kept Muse per Cloud account
 
 The showcase gives a visitor a Muse for half an hour. With `WEB_ENABLED=1` the same gateway
-gives a *person* one that stays — this is the web version at
-[nanomuse.cn/web/](https://nanomuse.cn/web/), for anyone who would rather not install
-anything. `/web/` is a sign-in page (served by the gateway; the site's Caddy block hands
+gives a *person* one that stays — a kept Muse per account, for anyone who would rather not
+install anything. With it off (the default), `/web/` redirects to the showcase site — the
+phone — so [nanomuse.cn/web/](https://nanomuse.cn/web/), which the project site's Caddy
+block hands to the gateway, stays the web entry either way. `/web/` is a sign-in page (served by the gateway; the site's Caddy block hands
 `/web/*` and `/api/web/*` over to it): an e-mail or a mobile number, then the six-digit code.
 The gateway asks nanoMuse Cloud for the code and checks it (`POST /v1/auth/code`,
 `/v1/auth/verify`, the visitor's address forwarded so the relay's per-address limits still
@@ -185,12 +211,15 @@ The gateway runs anywhere Docker does; Caddy is only for TLS and names. Browsers
 ```bash
 docker network create --internal nanomuse-sessions
 docker build -t nanomuse:local ../..                        # the sessions' image
-site/build.sh                                              # clones MobileGym, builds with VITE_NANOMUSE_DEMO=/api/demo
+site/build.sh                                              # clones MobileGym, builds with VITE_NANOMUSE_DEMO=/api/demo, adds the page
 cd gateway && pip install -e '.[dev]' && cd ..
 PUBLIC_SCHEME=http SITE_HOST=localhost SESSION_DOMAIN=s.localhost PUBLIC_PORT=:8000 \
 NANOMUSE_IMAGE=nanomuse:local SITE_DIR=$PWD/site/dist \
 MAIN_API_KEY=sk-... python -m showcase_gateway              # http://localhost:8000
 ```
+
+`site/build.sh /path/to/mobilegym` builds from a checkout you already have. The page itself
+needs no build: edit `site/page/` and run `build.sh` again (or copy the folder into `dist/`).
 
 `cd gateway && pytest` runs the gateway's tests (no Docker needed; the containers are faked).
 
@@ -198,8 +227,10 @@ MAIN_API_KEY=sk-... python -m showcase_gateway              # http://localhost:8
 
 A session that asks two or three things, one of them on the phone, is 5–15 model calls and
 20–60k tokens: about ¥0.05–0.2 at DeepSeek/百炼 prices. Two hundred sessions a day is ¥20–40.
-The daily caps in `.env.example` (3,000 calls / 6M tokens) bound the worst day at a few tens of
-yuan; lower them if you like. Put a spending alert on the provider accounts too — the gateway's
+A new look is eight qwen-image pictures, about ¥2; `DAILY_IMAGES` (400) bounds that at ¥100 a
+day, `IMAGE_PER_SESSION` (12) at one face and half a redraw per visitor. The daily caps in
+`.env.example` (3,000 calls / 6M tokens) bound the chat's worst day at a few tens of yuan;
+lower them if you like. Put a spending alert on the provider accounts too — the gateway's
 counters live in memory and start from zero when it restarts.
 
 ## Known limits

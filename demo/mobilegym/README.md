@@ -86,7 +86,15 @@ checkout is edited. Run it again after pulling a newer nanoMuse.
 
 - **Origin.** The web app runs cross-origin inside an `<iframe>` (`127.0.0.1:8787` inside
   `127.0.0.1:3000`). That is fine for using it; it only means the outer page cannot script the
-  inner one, which is the point of an iframe.
+  inner one, which is the point of an iframe. The one thing that crosses is a draft: the shell
+  posts `{type: "nanomuse:draft", text}` to the web app, which takes it from its parent
+  window only and puts the text in the composer (sending is still a tap); the web app says
+  `{type: "nanomuse:ready", name}` when it is up.
+- **A guest of a page.** `host.ts` exposes `window.__NANOMUSE__` on the simulator's window —
+  `open()`, `draft(text)`, `reset()`, `state()`, `subscribe(fn)` — the way MobileGym exposes
+  `__OS__`. The showcase's page (`demo/showcase/site/page/`) puts the simulator in a frame on
+  the same origin and uses it for the lines to try beside the phone. On a hosted session the
+  web app is opened with `?ui=lite`: the chat alone, no first-run setup.
 - **Dark mode.** The web app inside the frame follows the browser's colour scheme (it cannot
   see the simulator's); the setup page follows the simulator's.
 - **Deep links.** The OS hands the app `/?thread=<id>`; the shell forwards `thread` and `tab`
@@ -108,7 +116,8 @@ apps/nanoMuse/
 ├── bridge.ts                 WebSocket → NotificationService; device announce, screen/act requests
 ├── demo.ts                   the showcase gateway's API (start/end a hosted session), used on the public site
 ├── gui.ts                    the simulator as a device: DOM → PNG screenshot, actions → __SIM_INPUT__, the finger overlay
-├── pages/MusePage.tsx        the web app, full screen
+├── host.ts                   window.__NANOMUSE__ for the page around the phone; drafts to the web app over postMessage
+├── pages/MusePage.tsx        the web app, full screen (lite on a hosted session)
 ├── pages/SetupPage.tsx       hosted Muse (showcase), or server address + token; the operate-this-phone switch
 ├── hooks/useNanoMuseGestures.ts
 ├── data/                     defaults
