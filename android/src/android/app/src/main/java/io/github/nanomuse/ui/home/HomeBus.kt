@@ -2,6 +2,7 @@ package io.github.nanomuse.ui.home
 
 import androidx.navigation.NavController
 import com.openminis.app.ui.navigation.Routes
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -31,7 +32,7 @@ object HomeBus {
 
     fun prefillComposer(text: String) { _requests.tryEmit(Request.PrefillComposer(text)) }
 
-    @Suppress("EXPERIMENTAL_API_USAGE")
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun handled() { _requests.resetReplayCache() }
 }
 

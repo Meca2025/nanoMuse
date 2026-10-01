@@ -23,7 +23,7 @@ import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Phone
@@ -32,7 +32,7 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Share
@@ -648,14 +648,14 @@ fun CloudAccountScreen(
                 MuseCard {
                     MuseRow(
                         title = stringResource(R.string.nm_cloud_sign_out_here),
-                        icon = Icons.Outlined.Logout,
+                        icon = Icons.AutoMirrored.Outlined.Logout,
                         chevron = false,
                         onClick = { confirm = Confirm.SIGN_OUT },
                     )
                     MuseRowDivider()
                     MuseRow(
                         title = stringResource(R.string.nm_cloud_sign_out_everywhere),
-                        icon = Icons.Outlined.Logout,
+                        icon = Icons.AutoMirrored.Outlined.Logout,
                         chevron = false,
                         onClick = { confirm = Confirm.SIGN_OUT_ALL },
                     )
@@ -1057,7 +1057,7 @@ fun CommunityNoticeCard(inset: Dp = 16.dp) {
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.nm_cloud_notice_title), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(6.dp))
-                Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp).size(14.dp))
+                Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp).size(14.dp))
             }
             Text(
                 stringResource(R.string.nm_cloud_notice),

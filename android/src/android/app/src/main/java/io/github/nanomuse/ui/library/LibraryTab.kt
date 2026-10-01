@@ -30,8 +30,8 @@ import androidx.compose.material.icons.outlined.AudioFile
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.InsertDriveFile
-import androidx.compose.material.icons.outlined.LibraryBooks
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
+import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.VideoFile
@@ -52,7 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -123,7 +123,7 @@ fun LibraryTab(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(
-                        Icons.Outlined.LibraryBooks,
+                        Icons.AutoMirrored.Outlined.LibraryBooks,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(34.dp),
@@ -195,7 +195,7 @@ private fun iconFor(item: FileItem): ImageVector = when (item.iconRes) {
     "video" -> Icons.Outlined.VideoFile
     "archive" -> Icons.Outlined.Archive
     "pdf" -> Icons.Outlined.PictureAsPdf
-    else -> Icons.Outlined.InsertDriveFile
+    else -> Icons.AutoMirrored.Outlined.InsertDriveFile
 }
 
 @OptIn(ExperimentalFoundationApi::class)
