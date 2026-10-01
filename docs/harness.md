@@ -110,6 +110,36 @@ relayed and answered (allow and reject) and *Stop* ending it; a `notify` from an
 device shown as a toast; the name and emoji set on Laptop B worn by the desktop's brand
 mark and hero within seconds, and "我叫小蓝" when asked.
 
+The third slice makes the desktop answer the phone, so Reach runs both ways:
+
+- **This computer's hands for the others.** `actions.ts` is a port of the runtime's
+  [hub actions](hub.md): `shell` (the login shell, a clamped timeout, 124 on timeout,
+  the output cap), `files`, `file.get` / `file.put` (the 8 MiB limit, `force`, the
+  `.nanomuse-part` rename), `open` and `screen` (`screencapture`, PowerShell,
+  `gnome-screenshot` / `spectacle` / `grim` / `scrot` / `import` in turn). Same names,
+  same shapes, same error codes, so a phone cannot tell a runtime from a dsh desktop.
+- **The remote-control switch.** Settings → *nanoMuse account* → under *this computer*,
+  the same switch the runtime has: on, the device announces the six actions in `hello`;
+  off, it announces `info` and `notify` only and refuses the rest with `not_allowed`
+  (the phone sees the same message a runtime would give). Flipping it re-greets the hub
+  so the account's device list updates at once. The contract is unchanged: the asking
+  device judges a command before sending (Sentinel on the phone and the runtime, the
+  approval card here); the target does not ask again.
+- **Every call shows.** What another device did here appears as a toast — "Laptop B 在
+  这里运行了：uname -a", "…看了一眼这里的屏幕" — after it actually happened; a refused
+  path is the asker's error to see, not a toast here.
+- **Stop reaches the other side.** Pressing *Stop* on a `delegate` now sends the
+  runtime's `stop {call}` for that very call, so the thread it opened for us ends too
+  instead of running on to its own approval or timeout.
+
+Verified: a second hub client drove all six actions against the desktop (a real
+3840×2160 still, a timed-out `sleep` returning 124, `exists` / `not_found` / `too_large`
+codes as the runtime gives them), each one a toast; the switch off refused `shell` with
+`not_allowed` while `info` and `notify` kept working and the relay list showed the
+narrower action set; Laptop B's own Muse, asked in its chat to run a command "on kwai",
+did so through the relay after its own Sentinel approval and reported the output; a
+delegated `sleep 120` on Laptop B stopped there within two seconds of *Stop* here.
+
 ## Where each part of nanoMuse goes
 
 | nanoMuse today (Python runtime)                         | On dsh                                                                                                                                       | State      |
@@ -118,15 +148,16 @@ mark and hero within seconds, and "我叫小蓝" when asked.
 | Persona, agent name ([design.md](design.md))            | Agent preset `nanomuse` (`@deepseek-ai/dsh-persona`); the account's chosen name from the profile, in the brand seat and a system-prompt context | done       |
 | The face in the UI ([avatar.md](avatar.md))             | Slots `sidebar.brand.*`, `conversation.hero.brand.mark`; stills from the host; moods from the session status; the capsule while the hands work | done       |
 | Face sync across devices                                | `profile.ts` pulls the relay's profile on the hub's `profile` frame; drawn-face stills cached and served by the host                            | done       |
-| Avatar studio (drawing a new face here)                 | A settings page over the relay's image model; today a face is drawn on the phone and worn here                                                | phase 3    |
+| Avatar studio (drawing a new face here)                 | A settings page over the relay's image model; today a face is drawn on the phone and worn here                                                | phase 4    |
 | First run                                               | Our step in dsh's `settings.onboarding` seat: meet, sign in (free), own key, later                                                             | done       |
-| Sentinel ([sentinel.md](sentinel.md))                   | dsh approval policies and the `tools/pre-execute` waterfall; our categories become an approval preset; the visible gate stays                | phase 3    |
+| Sentinel ([sentinel.md](sentinel.md))                   | dsh approval policies and the `tools/pre-execute` waterfall; our categories become an approval preset; the visible gate stays                | phase 4    |
 | Hands — GUI control of this computer ([gui.md](gui.md)) | The Python hands over MCP (`nanomuse mcp`, mounted in the preset) — done; a native TypeScript driver behind dsh's computer-use seam (`ctx.computerUse.register`) later, so no Python is needed | done (bridge) |
-| Reach — the phone and other devices ([hub.md](hub.md), [every-device.md](every-device.md)) | `hub.ts` + `dsh-nanomuse/reach`: `devices`, `device_screen/shell/files/open/notify`, `delegate` with relayed approvals; this computer answers `info` and `notify`; the phone side unchanged | done       |
-| Being controlled from the phone (shell, files, screen, a task run here) | Handlers on the hub client for the remaining actions, behind dsh's approval; today the desktop only answers `info` and `notify`     | phase 3    |
+| Reach — the phone and other devices ([hub.md](hub.md), [every-device.md](every-device.md)) | `hub.ts` + `dsh-nanomuse/reach`: `devices`, `device_screen/shell/files/open/notify`, `delegate` with relayed approvals and `stop` on *Stop*; the phone side unchanged | done       |
+| Being controlled from the phone (shell, files, screen)  | `actions.ts` answers `shell`, `files`, `file.get`, `file.put`, `open`, `screen` with the runtime's shapes, behind the remote-control switch in Settings; each call a toast | done       |
+| A task run here for the phone (`task`)                  | The phone's `delegate` landing in a dsh session: open one, feed it the task, stream its tool calls as `event` frames, relay its approvals back — dsh's session API from the host | phase 4    |
 | Skills, schedule, goals, memory, sub-agents             | dsh's own (`skill`, `schedule`, `goals`, compaction, delegation) — ours are not ported                                                       | by design  |
 | Web UI, zh-CN                                           | dsh's web app (it ships zh); our strings in the bundle's locale table                                                                        | done       |
-| The desktop shell                                       | dsh's desktop app for now (Electron, DeepSeek Harness branding in About); our own shell and installer are the last step                       | phase 4    |
+| The desktop shell                                       | dsh's desktop app for now (Electron, DeepSeek Harness branding in About); our own shell and installer are the last step                       | phase 5    |
 | Browser demo at nanomuse.cn/web                         | Stays on the Python runtime                                                                                                                  | unchanged  |
 | The phone                                               | Stays on the Python runtime; meets the desktop through the account and Reach                                                                 | unchanged  |
 
@@ -158,9 +189,14 @@ mark and hero within seconds, and "我叫小蓝" when asked.
 - Images a tool returns must go through the attachment store (`attachments.saveImages`)
   and only when `llm.resolveModelInfo(...).inputModalities` includes `image`; otherwise
   the tool says what it saw in words — the MCP client does the same.
-- The hub has no cancel frame: stopping a `delegate` here ends the call, but the other
-  device's Muse finishes (or times out at its own approval) on its own. A `cancel` call
-  is the protocol change to make when the desktop also answers `task`.
+- The hub has no cancel frame, and does not need one: the runtime's `stop {call}` action
+  ends the thread it opened for a `task` call, so picking the call id up front and
+  sending `stop` for it when the turn is aborted stops the job on the other side. The
+  runtime's `stop_thread` does not kill a shell child already running in its sandbox —
+  that one ends on its own — which is a runtime detail to tighten, not a protocol gap.
+- The relay's `controllable` flag only says *not a browser tab*; what a device allows is
+  its announced `actions` list, re-sent in `hello`. A device that turns remote control
+  off must reconnect (or re-greet) for the account to see the narrower list.
 
 ## Names and licences
 
@@ -178,10 +214,13 @@ a community project with no affiliation — apply unchanged.
 2. **The Muse style and Reach** — the first run, the account's name, face and moods,
    the capsule with Stop, the hub client, the `device_*` tools and `delegate` with
    relayed approvals, the device list in Settings. *Done, internal.*
-3. **Daily-driver** — the desktop answers the phone (`shell`, `files`, `screen`, `task`
-   behind dsh's approval), the Sentinel as an approval preset, the avatar studio here,
-   Hands without Python (a native driver behind dsh's computer-use seam); the person can
-   live in it for ordinary work on files and the web.
-4. **Ship** — our own shell and installers, the downloads, the docs; `desktop/` retired.
+3. **Reach both ways** — the desktop answers `shell`, `files`, `file.get`, `file.put`,
+   `open` and `screen` behind its remote-control switch, every call a toast, *Stop*
+   stopping the delegated job on the other device. *Done, internal.*
+4. **Daily-driver** — a `task` from the phone run in a dsh session here, the Sentinel as
+   an approval preset, the avatar studio here, Hands without Python (a native driver
+   behind dsh's computer-use seam); the person can live in it for ordinary work on files
+   and the web.
+5. **Ship** — our own shell and installers, the downloads, the docs; `desktop/` retired.
 
-Until phase 4, `desktop/` is the desktop app and keeps getting its fixes.
+Until phase 5, `desktop/` is the desktop app and keeps getting its fixes.
