@@ -83,3 +83,7 @@ updates:
       # deliberate change, not a dependency update
       - dependency-name: python
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # the Node line is the one the web app is built with in CI (an LTS); moving it is the
+      # same deliberate change
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
