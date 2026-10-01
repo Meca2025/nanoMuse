@@ -5,6 +5,7 @@ import { IcOffline, IcWarning } from '../res/icons';
 import { attachFrame } from '../host';
 import { useNanoMuseStore } from '../state';
 import { useNanoMuseGestures } from '../hooks/useNanoMuseGestures';
+import { fmt, useNanoMuseStrings } from '../res/strings';
 
 /**
  * The nanoMuse web app, full screen. `?thread=` and `?tab=` on this route are forwarded to
@@ -19,6 +20,7 @@ export default function MusePage() {
   const link = useNanoMuseStore((s) => s.link);
   const { bindTap, go } = useNanoMuseGestures();
   const location = useLocation();
+  const s = useNanoMuseStrings();
 
   // first launch: nothing configured yet → setup
   useEffect(() => {
@@ -70,22 +72,14 @@ export default function MusePage() {
               {link === 'unauthorized' ? <IcWarning size={20} /> : <IcOffline size={20} />}
             </div>
             <div className="flex-1 min-w-0 text-[13px] leading-snug text-app-text">
-              {demoOver ? (
-                <>Your Muse on the showcase server has ended, and everything in it with it.</>
-              ) : link === 'unauthorized' ? (
-                <>The server refused this phone&apos;s token.</>
-              ) : (
-                <>
-                  Can&apos;t reach your Muse at <span className="font-mono break-all">{serverUrl}</span>. Retrying…
-                </>
-              )}
+              {demoOver ? s.muse_demo_over : link === 'unauthorized' ? s.muse_refused : fmt(s.muse_unreachable, serverUrl)}
             </div>
             <button
               type="button"
               {...bindTap('setup.open')}
               className="shrink-0 rounded-xl bg-app-primary text-app-on-primary text-[12.5px] font-semibold px-3 py-1.5"
             >
-              {demoOver ? 'New Muse' : 'Change server'}
+              {demoOver ? s.muse_new : s.muse_change_server}
             </button>
           </div>
         )}

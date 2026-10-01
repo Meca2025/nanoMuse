@@ -4,6 +4,7 @@ import { parseServerInput, useNanoMuseStore } from '../state';
 import { useNanoMuseGestures } from '../hooks/useNanoMuseGestures';
 import { NANOMUSE_CONFIG } from '../data';
 import { DemoError, fetchDemoInfo, startDemoSession, type DemoInfo, type DemoProvider } from '../demo';
+import { fmt, useNanoMuseStrings } from '../res/strings';
 
 /**
  * Connect the phone to a nanoMuse server.
@@ -24,6 +25,7 @@ export default function SetupPage() {
   const { go } = useNanoMuseGestures();
   const demo = useNanoMuseStore((s) => s.demo);
   const gateway = NANOMUSE_CONFIG.demoGateway;
+  const s = useNanoMuseStrings();
 
   // the form is for your own server; a hosted session's address is not something to type back
   const [address, setAddress] = useState(current && !demo ? current : 'http://127.0.0.1:8787');
@@ -36,7 +38,7 @@ export default function SetupPage() {
     const parsed = parseServerInput(address);
     const finalToken = (parsed.token || token).trim();
     if (!parsed.serverUrl) {
-      setError('Enter the server address.');
+      setError(s.setup_need_address);
       return;
     }
     setBusy(true);
@@ -44,11 +46,7 @@ export default function SetupPage() {
     const result = await probe(parsed.serverUrl, finalToken);
     setBusy(false);
     if (result !== 'ok') {
-      setError(
-        result === 'unauthorized'
-          ? 'The server refused the token. Copy it from the link nanomuse serve prints.'
-          : `Could not reach ${parsed.serverUrl}. Is nanomuse serve running on this machine?`,
-      );
+      setError(result === 'unauthorized' ? s.setup_refused : fmt(s.setup_unreachable, parsed.serverUrl));
       return;
     }
     configure(parsed.serverUrl, finalToken);
@@ -65,12 +63,8 @@ export default function SetupPage() {
           >
             <IcLauncher size={40} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">{gateway ? 'Meet your Muse' : 'Connect your Muse'}</h1>
-          <p className="mt-2 text-[14px] text-app-text-muted leading-snug">
-            {gateway
-              ? 'A private nanoMuse for you, on the showcase server. It can operate the apps on this phone.'
-              : 'nanoMuse runs on your computer. Point this phone at it.'}
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{gateway ? s.setup_title_hosted : s.setup_title_own}</h1>
+          <p className="mt-2 text-[14px] text-app-text-muted leading-snug">{gateway ? s.setup_sub_hosted : s.setup_sub_own}</p>
         </div>
 
         {gateway && (
@@ -87,14 +81,14 @@ export default function SetupPage() {
         {gateway && (
           <div className="my-6 flex items-center gap-3 text-[12px] text-app-text-muted">
             <div className="h-px flex-1 bg-app-border" />
-            or connect to your own nanoMuse
+            {s.setup_or_own}
             <div className="h-px flex-1 bg-app-border" />
           </div>
         )}
 
         <form onSubmit={submit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-medium text-app-text-muted">Server address or link</span>
+            <span className="text-[12.5px] font-medium text-app-text-muted">{s.setup_address}</span>
             <input
               type="url"
               inputMode="url"
@@ -108,7 +102,7 @@ export default function SetupPage() {
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-medium text-app-text-muted">Access token (if the link has none)</span>
+            <span className="text-[12.5px] font-medium text-app-text-muted">{s.setup_token}</span>
             <input
               type="text"
               autoCapitalize="off"
@@ -116,7 +110,7 @@ export default function SetupPage() {
               spellCheck={false}
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="printed by nanomuse serve"
+              placeholder={s.setup_token_hint}
               className="h-12 rounded-2xl bg-app-surface border border-app-border px-4 text-[15px] outline-none focus:border-app-primary"
             />
           </label>
@@ -133,7 +127,7 @@ export default function SetupPage() {
             }`}
           >
             <IcLink size={18} />
-            {busy ? 'Connecting…' : 'Connect'}
+            {busy ? s.setup_connecting : s.setup_connect}
           </button>
         </form>
 
@@ -145,19 +139,14 @@ export default function SetupPage() {
             className="mt-1 h-4 w-4 accent-app-primary"
           />
           <span className="text-[13px] leading-relaxed text-app-text-muted">
-            <span className="font-medium text-app-text block mb-0.5">Let nanoMuse operate this phone</span>
-            The agent may read this screen and tap, type and swipe in the apps here — when its own
-            GUI switch (Settings → Phone) is on. It asks before paying, sending or deleting.
+            <span className="font-medium text-app-text block mb-0.5">{s.setup_gui_title}</span>
+            {s.setup_gui_detail}
           </span>
         </label>
 
         <div className="mt-4 rounded-2xl bg-app-surface border border-app-border p-4 text-[13px] text-app-text-muted leading-relaxed">
-          <p className="font-medium text-app-text mb-1">On the computer</p>
-          <p>
-            <code className="font-mono">nanomuse serve</code> prints a link with a one-time token
-            and a QR code. Paste the link here. Approvals, questions and background results then
-            also show up in this phone&apos;s notification shade.
-          </p>
+          <p className="font-medium text-app-text mb-1">{s.setup_computer_title}</p>
+          <p>{s.setup_computer_detail}</p>
         </div>
       </div>
     </div>
@@ -176,6 +165,7 @@ function HostedDemo({
   autoStart: boolean;
   onReady: (serverUrl: string, token: string, demo: { id: string; expiresAt: number; byok: boolean }) => void;
 }) {
+  const s = useNanoMuseStrings();
   const [info, setInfo] = useState<DemoInfo | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [message, setMessage] = useState('');
@@ -206,11 +196,12 @@ function HostedDemo({
     } catch (err) {
       setPhase('failed');
       if (err instanceof DemoError) {
-        setMessage(err.message);
+        const known = (s as Record<string, string>)[`demo_${err.code}`];
+        setMessage(known ?? err.message);
         // no demo key on this server: the visitor has to bring one
         if (err.code === 'no_model') setOwnKey(true);
       } else {
-        setMessage('Something went wrong starting your Muse.');
+        setMessage(s.hosted_failed);
       }
     }
   };
@@ -231,11 +222,12 @@ function HostedDemo({
   return (
     <div className="rounded-2xl bg-app-surface border border-app-border p-4 flex flex-col gap-3">
       <div>
-        <p className="font-medium text-app-text">Your Muse on the showcase server</p>
+        <p className="font-medium text-app-text">{s.hosted_title}</p>
         <p className="mt-0.5 text-[13px] text-app-text-muted leading-relaxed">
-          {minutes ? `Yours for ${minutes} minutes` : 'Yours for a while'}, then it is gone with everything in it.
-          {info?.demo_model ? ` Thinks with ${info.demo_model}` : ''}
-          {info ? `; ${info.active_sessions} of ${info.max_sessions} in use right now.` : '.'}
+          {minutes ? fmt(s.hosted_minutes, minutes) : s.hosted_a_while}
+          {s.hosted_then_gone}
+          {info?.demo_model ? fmt(s.hosted_thinks_with, info.demo_model) : ''}
+          {info ? fmt(s.hosted_in_use, info.active_sessions, info.max_sessions) : ''}
         </p>
       </div>
 
@@ -248,8 +240,8 @@ function HostedDemo({
             className="mt-1 h-4 w-4 accent-app-primary"
           />
           <span>
-            <span className="font-medium text-app-text block mb-0.5">Use my own model key</span>
-            No budget then. The key stays on the showcase server for the session and is never stored.
+            <span className="font-medium text-app-text block mb-0.5">{s.hosted_own_key}</span>
+            {s.hosted_own_key_detail}
           </span>
         </label>
       )}
@@ -263,7 +255,7 @@ function HostedDemo({
             spellCheck={false}
             value={provider.base_url}
             onChange={(e) => setProvider({ ...provider, base_url: e.target.value })}
-            placeholder="API base URL, e.g. https://api.deepseek.com"
+            placeholder={s.hosted_base_url}
             className="h-11 rounded-xl bg-app-bg border border-app-border px-3 text-[14px] outline-none focus:border-app-primary"
           />
           <input
@@ -272,7 +264,7 @@ function HostedDemo({
             spellCheck={false}
             value={provider.model}
             onChange={(e) => setProvider({ ...provider, model: e.target.value })}
-            placeholder="Model, e.g. deepseek-flash"
+            placeholder={s.hosted_model}
             className="h-11 rounded-xl bg-app-bg border border-app-border px-3 text-[14px] outline-none focus:border-app-primary"
           />
           <input
@@ -281,12 +273,12 @@ function HostedDemo({
             spellCheck={false}
             value={provider.api_key}
             onChange={(e) => setProvider({ ...provider, api_key: e.target.value })}
-            placeholder="API key"
+            placeholder={s.hosted_api_key}
             className="h-11 rounded-xl bg-app-bg border border-app-border px-3 text-[14px] outline-none focus:border-app-primary"
           />
           {info && info.byok_hosts.length > 0 && (
             <p className="text-[11.5px] text-app-text-muted leading-snug">
-              Providers: {info.byok_hosts.join(', ')}. OpenAI-compatible chat completions.
+              {fmt(s.hosted_providers, info.byok_hosts.join(', '))}
             </p>
           )}
         </div>
@@ -303,12 +295,12 @@ function HostedDemo({
         {phase === 'starting' ? (
           <>
             <IcRetry size={18} className="animate-spin" />
-            Starting your Muse…
+            {s.hosted_starting}
           </>
         ) : (
           <>
             <IcLauncher size={18} />
-            {phase === 'failed' ? 'Try again' : 'Start'}
+            {phase === 'failed' ? s.hosted_retry : s.hosted_start}
           </>
         )}
       </button>
