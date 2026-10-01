@@ -140,6 +140,37 @@ narrower action set; Laptop B's own Muse, asked in its chat to run a command "on
 did so through the relay after its own Sentinel approval and reported the output; a
 delegated `sleep 120` on Laptop B stopped there within two seconds of *Stop* here.
 
+The fourth slice is the phone's `delegate` landing here — the desktop answers `task`:
+
+- **A task runs in a dsh session.** `task.ts` opens a session per asking device and
+  conversation through dsh's session controller (`create` with the `nanomuse` preset,
+  renamed "From <device>"), feeds the task as a user message that says where it came
+  from and which computer this is, and follows the run on the `session/event` feed:
+  `tool/call` → `tool`, `tool/result` → `tool_result`, `assistant/message` → interim
+  `text`, `turn/end` → the result `{text, conversation, thread, device}`. The same
+  vocabulary the runtime streams, so the phone's `delegate` card reads the same. The
+  session is remembered in the host's state and resumed for the next task from the same
+  place, across restarts.
+- **Approvals go to the asker.** An answerer on dsh's `approval/request` waterfall, ahead
+  of the UI's, claims the asks of these sessions: the question travels as an `approval`
+  event (the tool call's preview, dsh's reason, this computer's name, a timeout), the
+  asker's `approve {approval_id, allow}` decides it, `approval_result` closes the card.
+  The person is at the other device, so the local card is not raised for these runs.
+- **`stop {call}` and the rest.** Stop cancels the run's agent (`cancel({kind: 'user'})`),
+  which also ends the shell child dsh started — the turn settles as aborted and the asker
+  gets what was said so far. `busy` while a conversation runs, `usage`, `timeout` after
+  the runtime's fifteen minutes, `failed` with the model's message on an error. `task`
+  and `stop` are behind the remote-control switch like the other actions; `approve` is
+  always answered. A task's arrival and its end show as toasts.
+
+Verified with Laptop B's runtime as the asker: "ask kwai's Muse to run `uname -s` and
+`date +%M`" came back with the answer and a `kwai used bash: …` step; a write outside the
+dsh workspace raised dsh's gate, which appeared on Laptop B as "on kwai: bash: echo
+outside > ~/…" and, approved there, let the desktop write the file and answer; a long
+`sleep` task stopped by `stop {call}` settled as "(stopped)" in three seconds with no
+child left; after a restart of dsh the next task from Laptop B resumed the same session
+and the Muse answered what it had been asked before.
+
 ## Where each part of nanoMuse goes
 
 | nanoMuse today (Python runtime)                         | On dsh                                                                                                                                       | State      |
@@ -154,7 +185,7 @@ delegated `sleep 120` on Laptop B stopped there within two seconds of *Stop* her
 | Hands — GUI control of this computer ([gui.md](gui.md)) | The Python hands over MCP (`nanomuse mcp`, mounted in the preset) — done; a native TypeScript driver behind dsh's computer-use seam (`ctx.computerUse.register`) later, so no Python is needed | done (bridge) |
 | Reach — the phone and other devices ([hub.md](hub.md), [every-device.md](every-device.md)) | `hub.ts` + `dsh-nanomuse/reach`: `devices`, `device_screen/shell/files/open/notify`, `delegate` with relayed approvals and `stop` on *Stop*; the phone side unchanged | done       |
 | Being controlled from the phone (shell, files, screen)  | `actions.ts` answers `shell`, `files`, `file.get`, `file.put`, `open`, `screen` with the runtime's shapes, behind the remote-control switch in Settings; each call a toast | done       |
-| A task run here for the phone (`task`)                  | The phone's `delegate` landing in a dsh session: open one, feed it the task, stream its tool calls as `event` frames, relay its approvals back — dsh's session API from the host | phase 4    |
+| A task run here for the phone (`task`)                  | `task.ts`: the phone's `delegate` lands in a dsh session ("From <device>", resumed next time), its run streamed back as the runtime's event frames, its approvals relayed to the asker, `stop {call}` honoured | done       |
 | Skills, schedule, goals, memory, sub-agents             | dsh's own (`skill`, `schedule`, `goals`, compaction, delegation) — ours are not ported                                                       | by design  |
 | Web UI, zh-CN                                           | dsh's web app (it ships zh); our strings in the bundle's locale table                                                                        | done       |
 | The desktop shell                                       | dsh's desktop app for now (Electron, DeepSeek Harness branding in About); our own shell and installer are the last step                       | phase 5    |
@@ -197,6 +228,14 @@ delegated `sleep 120` on Laptop B stopped there within two seconds of *Stop* her
 - The relay's `controllable` flag only says *not a browser tab*; what a device allows is
   its announced `actions` list, re-sent in `hello`. A device that turns remote control
   off must reconnect (or re-greet) for the account to see the narrower list.
+- Driving a session from the host is three calls: `sessionController.create` /
+  `rename`, `resolveAgent(id).agent.followup(createUserMessage(…))`, and the
+  `session/event` feed for what happens (`tool/call`, `tool/result`,
+  `assistant/message`, `turn/end`). `dsh-schedule` does the same for reminders. The
+  `approval/request` waterfall takes an answerer registered with `prepend`, which is how
+  a run's questions can be routed elsewhere without touching the UI's answerer.
+- A session created without a workspace lands under *Ungrouped* in the sidebar with
+  dsh's default cwd (the process's); fine for a preview, a chosen workspace later.
 
 ## Names and licences
 
@@ -216,10 +255,11 @@ a community project with no affiliation — apply unchanged.
    relayed approvals, the device list in Settings. *Done, internal.*
 3. **Reach both ways** — the desktop answers `shell`, `files`, `file.get`, `file.put`,
    `open` and `screen` behind its remote-control switch, every call a toast, *Stop*
-   stopping the delegated job on the other device. *Done, internal.*
-4. **Daily-driver** — a `task` from the phone run in a dsh session here, the Sentinel as
-   an approval preset, the avatar studio here, Hands without Python (a native driver
-   behind dsh's computer-use seam); the person can live in it for ordinary work on files
+   stopping the delegated job on the other device; the phone's `delegate` runs in a dsh
+   session here with its approvals relayed back. *Done, internal.*
+4. **Daily-driver** — the Sentinel as an approval preset, the avatar studio here, Hands
+   without Python (a native driver behind dsh's computer-use seam), a chosen workspace
+   for tasks from other devices; the person can live in it for ordinary work on files
    and the web.
 5. **Ship** — our own shell and installers, the downloads, the docs; `desktop/` retired.
 

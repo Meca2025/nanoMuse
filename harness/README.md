@@ -13,7 +13,7 @@ over the stock configuration and the plugins the patch names:
 | Row                | Half    | What it does                                                                                                                              |
 | ------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `nanomuse`         | host    | Serves the face's stills under `/nanomuse/assets/` — the dragon's, and the account's drawn face at `face/<id>/<mood>.webp`.                 |
-| `nanomuse-cloud`   | host    | The account: sign-in by phone or e-mail code against the relay, the key in dsh's credential store, the account's chat models written into `dsh-llm-pi-ai` as the `nanoMuse Cloud` provider. The hub client: this computer on the account's device list, answering `info` and `notify` always and `shell`, `files`, `file.get`, `file.put`, `open`, `screen` (the runtime's shapes, in `actions.ts`) while the remote-control switch is on. The profile pulled from the relay (name, face), the Hands/Reach calls in flight, the calls other devices made here, all streamed to the browser over SSE. Loopback API under `/nanomuse/cloud/`. |
+| `nanomuse-cloud`   | host    | The account: sign-in by phone or e-mail code against the relay, the key in dsh's credential store, the account's chat models written into `dsh-llm-pi-ai` as the `nanoMuse Cloud` provider. The hub client: this computer on the account's device list, answering `info` and `notify` always, `shell`, `files`, `file.get`, `file.put`, `open`, `screen` (the runtime's shapes, in `actions.ts`) and `task` (the phone's `delegate`, run in a dsh session "From <device>" with its approvals relayed back, in `task.ts`) while the remote-control switch is on. The profile pulled from the relay (name, face), the Hands/Reach calls in flight, the calls other devices made here, all streamed to the browser over SSE. Loopback API under `/nanomuse/cloud/`. |
 | `nanomuse-reach`   | host    | **Reach**: the tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`, `device_notify`, `delegate` over the hub, approvals through dsh's card, *Stop* stopping the delegated job on the other device; a system-prompt context with the agent's name, its look and the devices online. |
 | `nanomuse` (client)| browser | The face (dragon, emoji or the drawn one, in five moods) in the sidebar's brand seat and the hero, the name the person gave it, the first run (meet → sign in / own key / later), the *nanoMuse account* section in Settings with the device list and this computer's remote-control switch, the capsule at the top while Hands or Reach work (with Stop), toasts for notices from other devices and for what they did here. |
 | `preset-nanomuse`  | patch   | An agent preset with nanoMuse's voice and the same tools as dsh's *Standard*, plus **Hands**: dsh's MCP client on `nanomuse mcp`, the runtime's `computer_screen`/`computer_act` over stdio, and the Reach plugin. New sessions start from it. |
@@ -64,8 +64,10 @@ is" (`delegate`; its approval requests come back here) exercise the tools. Renam
 agent or picking an emoji on that runtime changes the desktop's brand mark within
 seconds. The other way round, "run `uname -a` on <this computer's name>" in that
 runtime's chat runs here (after its own Sentinel approval) and shows as a toast;
-the *Remote control* switch under *this computer* in the settings section turns that
-off — other devices then only see this computer and can notify it.
+"ask kwai's Muse to …" there (`delegate`) runs as a session named *From Laptop B* here,
+with any approval it needs shown on Laptop B; the *Remote control* switch under *this
+computer* in the settings section turns all of that off — other devices then only see
+this computer and can notify it.
 
 After changing `src/`, `pnpm build` and restart dsh (the client half is served from
 `lib/client.js`; append `?v=N` to the page URL if the browser keeps the old one).
@@ -85,6 +87,8 @@ dsh-nanomuse/
   src/hub.ts            the hub as a client: hello/welcome/devices, calls out and in, reconnect (no Cordis)
   src/actions.ts        this computer's hands for the other devices: shell, files, file.get/put, open, screen
                         (the runtime's shapes, limits and error codes)
+  src/task.ts           a task from another device run in a dsh session: the session per conversation, the run
+                        streamed back as the runtime's event frames, approvals relayed to the asker, stop
   src/profile.ts        the account profile on disk: pull when newer, face stills cached per face id
   src/reach.ts          plugin `nanomuse-reach`: the device_* tools, delegate, the system-prompt context
   src/relay.ts          the relay as a client (plain fetch; tested against a fake relay)
@@ -100,7 +104,7 @@ dsh-nanomuse/
     api.ts, locales.ts  the fetch helper and the en/zh copy
   assets/               dragon-{idle,working,waiting,happy,error}.webp
   build.mjs             esbuild: host ESM (split, so HubError is one class) + client lazy-CJS factory + .d.ts
-  tests/                node:test — the relay client against a fake relay, the hub client against a fake socket, the actions on a temp dir and fake platforms
+  tests/                node:test — the relay client against a fake relay, the hub client against a fake socket, the actions on a temp dir and fake platforms, the task runner against a fake session controller
 ```
 
 Secrets never pass through here: the account key lives in dsh's `.credentials.yaml`
