@@ -142,14 +142,20 @@ class ProfileSync:
             face_id = await asyncio.to_thread(self._store_face, full.get("face") or {})
             if face_id:
                 patch["avatar"] = face_id
-        self._applying = True
-        try:
-            self.hub.svc.update_profile(patch)
-        finally:
-            self._applying = False
+        # the rev is remembered before the look is worn, so anyone who sees the new look
+        # (the web app, a test) also sees the rev it came with; a failed apply forgets it
+        before = (self.rev, self.pushed_face)
         self._remember(
             rev, face_id if face_id else (patch.get("avatar") if "avatar" in patch else None)
         )
+        self._applying = True
+        try:
+            self.hub.svc.update_profile(patch)
+        except Exception:
+            self._remember(*before)
+            raise
+        finally:
+            self._applying = False
         logger.info(
             "profile: now wearing rev {} from the account ({})",
             rev,

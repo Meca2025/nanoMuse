@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 import ssl
-import sys
 from pathlib import Path
 
 
@@ -38,7 +37,7 @@ def _system_store_present() -> bool:
     # Windows and macOS system stores are read by load_default_certs() through the OS, not
     # through these paths; on Windows that works in a bundled runtime, on macOS it does not
     # (python.org builds do not link the Security framework), hence the file check there too.
-    if sys.platform == "win32":
+    if os.name == "nt":  # not sys.platform: mypy on Windows would call the rest unreachable
         return True
     paths = ssl.get_default_verify_paths()
     for candidate in (paths.cafile, paths.capath):

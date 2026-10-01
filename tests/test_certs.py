@@ -15,7 +15,7 @@ def test_an_empty_store_is_pointed_at_certifi(
 ) -> None:
     monkeypatch.delenv("SSL_CERT_FILE", raising=False)
     monkeypatch.delenv("SSL_CERT_DIR", raising=False)
-    monkeypatch.setattr(certs.sys, "platform", "darwin")
+    monkeypatch.setattr(certs.os, "name", "posix")
     missing = tmp_path / "gone"
     paths = ssl.DefaultVerifyPaths(
         str(missing / "cert.pem"),
@@ -36,7 +36,7 @@ def test_an_empty_store_is_pointed_at_certifi(
 def test_a_system_store_is_left_alone(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.delenv("SSL_CERT_FILE", raising=False)
     monkeypatch.delenv("SSL_CERT_DIR", raising=False)
-    monkeypatch.setattr(certs.sys, "platform", "linux")
+    monkeypatch.setattr(certs.os, "name", "posix")
     present = tmp_path / "cert.pem"
     present.write_text("")
     paths = ssl.DefaultVerifyPaths(
@@ -55,5 +55,5 @@ def test_an_explicit_choice_wins(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_windows_reads_its_own_store(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SSL_CERT_FILE", raising=False)
     monkeypatch.delenv("SSL_CERT_DIR", raising=False)
-    monkeypatch.setattr(certs.sys, "platform", "win32")
+    monkeypatch.setattr(certs.os, "name", "nt")
     assert certs.ensure_ca_bundle() == ""
