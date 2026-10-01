@@ -32,15 +32,24 @@ shell around the real nanoMuse web app:
   server's WebSocket once, so the server needs no CORS configuration.
 - **The phone as the agent's hands** — with *Let nanoMuse operate this phone* ticked on the
   setup page (on by default), the module also announces the simulator as a *device*: it lists
-  the installed apps, and answers the server's requests for the screen and for actions. The
-  screen is a picture: the simulator's DOM is rendered to a 360×800 PNG in the page
-  (`modern-screenshot`), with the app and route read off the simulator's OS — no element list,
-  the agent taps by position like a finger would — and actions go through MobileGym's own input
-  API. While Muse works, a ripple marks each tap, a line each swipe, and a caption under the
-  screen says what it is doing; the marks are left out of the screenshots. Nothing is touched
-  unless the server's own *Phone* switch is on too (`[gui] enabled`, or Connections → Phone in
-  the app); [docs/gui.md](../../docs/gui.md) has the rest, including what asks for approval
-  first.
+  the installed apps, and answers the server's requests for the screen and for actions, the
+  way the Android app does. The screen is what the Android app sends: a picture — the
+  simulator's DOM rendered in the page (`modern-screenshot`) at 720×1600, twice the phone's
+  size, so the model reads small text — and a list of up to 120 elements read off the DOM
+  (buttons, fields, links, the texts; their centres, boxes and flags, in the picture's
+  pixels), with the app and route read off the simulator's OS. Actions go through MobileGym's
+  own input API. While Muse works the phone shows the **same capsule the Android app has**: a
+  pill at the top with the Muse's face, the step in progress (*第 3 步 · 点击「查询车票」*) and
+  **Stop**; before a tap lands, a ring with the action's words marks the target, a trail each
+  swipe, a chip what is being typed; a password or code field is not typed into — the capsule
+  says *Your turn*, the person fills it in and taps *Continue*; an approval the agent waits
+  for and a question it has become a card with *Open*. The marks are left out of the
+  screenshots. Nothing is touched unless the server's own *Phone* switch is on too (`[gui]
+  enabled`, or Connections → Phone in the app); [docs/gui.md](../../docs/gui.md) has the
+  rest, including what asks for approval first.
+- **Two languages** — the setup page, the hosted-Muse card, the notifications and the capsule
+  follow the simulator's language (`__OS__.locale`, MobileGym's `useAppStrings` convention:
+  `res/strings.ts` holds 简体中文 and English).
 
 - **The hosted showcase** — built with `VITE_NANOMUSE_DEMO=/api/demo`, the setup page first
   offers a Muse on the showcase server: one tap (or none, the first time) and the *showcase
@@ -94,7 +103,8 @@ checkout is edited. Run it again after pulling a newer nanoMuse.
   `open()`, `draft(text)`, `reset()`, `state()`, `subscribe(fn)` — the way MobileGym exposes
   `__OS__`. The showcase's page (`demo/showcase/site/page/`) puts the simulator in a frame on
   the same origin and uses it for the lines to try beside the phone. On a hosted session the
-  web app is opened with `?ui=lite`: the chat alone, no first-run setup.
+  web app is opened with `?ui=lite`: the phone layout whatever the window's width — the tabs
+  the Android app has — with the first-run setup and the desktop hints off.
 - **Dark mode.** The web app inside the frame follows the browser's colour scheme (it cannot
   see the simulator's); the setup page follows the simulator's.
 - **Deep links.** The OS hands the app `/?thread=<id>`; the shell forwards `thread` and `tab`
@@ -113,14 +123,16 @@ apps/nanoMuse/
 ├── navigation.ts             go()/back() over the declaration
 ├── navigation.types.ts       re-exports the platform's shared types
 ├── state.ts                  Zustand store: server URL, token, notify and GUI switches, showcase session; wires the bridge
-├── bridge.ts                 WebSocket → NotificationService; device announce, screen/act requests
+├── bridge.ts                 WebSocket → NotificationService; device announce (capsule: true), screen/act/task requests, Stop
 ├── demo.ts                   the showcase gateway's API (start/end a hosted session), used on the public site
-├── gui.ts                    the simulator as a device: DOM → PNG screenshot, actions → __SIM_INPUT__, the finger overlay
+├── gui.ts                    the simulator as a device: DOM → 720×1600 PNG + element list, actions → __SIM_INPUT__
+├── stage.ts                  the capsule and the marks (the Android app's look): step, Stop, Your turn, approval, ring/trail/keys
 ├── host.ts                   window.__NANOMUSE__ for the page around the phone; drafts to the web app over postMessage
 ├── pages/MusePage.tsx        the web app, full screen (lite on a hosted session)
 ├── pages/SetupPage.tsx       hosted Muse (showcase), or server address + token; the operate-this-phone switch
 ├── hooks/useNanoMuseGestures.ts
 ├── data/                     defaults
+├── res/strings.ts            简体中文 and English for the shell, the notifications and the capsule
 ├── res/icons.tsx             the shell's icons; the launcher icon is the red panda
 └── res/mark.tsx              the red panda's head, generated by web/scripts/mascot-assets.mjs
 ```

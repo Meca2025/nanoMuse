@@ -14,8 +14,21 @@ The page (`site/page/`) is plain HTML and a little script, with MobileGym in a f
 same origin as `/phone.html`; it talks to the nanoMuse app on the phone through
 `window.__NANOMUSE__` on that frame (open, draft, reset, state, subscribe — see
 `demo/mobilegym/README.md`) and the app passes drafts on to the web app over `postMessage`.
-On a hosted session the web app runs lite (`?ui=lite`): the chat alone, no first-run setup;
-the other screens stay behind the avatar.
+On a hosted session the web app runs lite (`?ui=lite`): the phone layout at any width, with
+the tabs the Android app has, and no first-run setup.
+
+**The phone keeps MobileGym's own chrome.** Around the frame are the pieces of
+[mobilegym.dev](https://mobilegym.dev/)'s page, nothing cut down: the Gesture Guide on the
+left (Back, Home and Recents as keys — the simulator is gesture-only — and a legend of the
+gestures), the State Builder dock on the right with its drawer (session snapshots, the phone's
+language, device time / battery / location, a WeChat message or contact, an Alipay balance or
+bill, an SMS, a 12306 order, the weather — patched into the running phone), and *Power off*.
+They are not copied into this repository: `site/compose.mjs` lifts the markup from the
+checkout's `web/index.html` at build time and takes its `styles.css`, `state-builder.js`,
+`boot-hero.js` and icons as they are (one default changed: the phone's address is
+`/phone.html`), so an upstream change arrives with the next build. Our column — the lines to
+try, the status, *Show nanoMuse* / *Start over* — sits beside the phone; below 1280px their
+chrome folds under the phone and the column follows.
 
 Nothing about the phone runs on the server. MobileGym is a React app: the whole simulated
 phone lives in the visitor's tab (~400 MB of *their* memory). The server runs three things:
@@ -229,7 +242,11 @@ MAIN_API_KEY=sk-... python -m showcase_gateway              # http://localhost:8
 ```
 
 `site/build.sh /path/to/mobilegym` builds from a checkout you already have. The page itself
-needs no build: edit `site/page/` and run `build.sh` again (or copy the folder into `dist/`).
+needs no bundler: edit `site/page/` and run `build.sh` again, or just
+`node site/compose.mjs /path/to/mobilegym site/page site/dist` to recompose it with
+MobileGym's chrome. Without MobileGym's companion data (`CDN_DIR`, or `./data/mobilegym-data`
+in the compose file) the launcher's theme widgets show their error cards, as on an upstream
+checkout without it.
 
 `cd gateway && pytest` runs the gateway's tests (no Docker needed; the containers are faked).
 

@@ -142,9 +142,9 @@ For anyone writing another executor. Messages ride on the app's WebSocket (`/ws?
 The device announces itself once:
 
 ```json
-{"kind": "device", "name": "MobileGym", "platform": "mobilegym", "gui": true,
+{"kind": "device", "name": "MobileGym", "platform": "mobilegym", "gui": true, "capsule": true,
  "apps": [{"id": "wechat", "name": "微信"}, {"id": "railway12306", "name": "铁路12306"}],
- "screen": {"width": 360, "height": 800}}
+ "screen": {"width": 720, "height": 1600}}
 ```
 
 and gets `{"kind": "device_ack", "phone": {…}}` back. A device may announce again on the same connection when something changed (the Android app does when its accessibility service is switched on or off; `gui` flips); the server keeps the connection's time of arrival and updates the rest. `"capsule": true` says the device shows a step capsule with a Stop button and wants the `task` requests below. The server then asks, one request at a time:
@@ -166,7 +166,7 @@ A `screen` result is a picture and a few facts about it:
 
 `screenshot` is the whole screen, `width` × `height` pixels — the same space the device takes its taps in, so a point in the picture is a point on the screen with no conversion; when a device sends no size at all the server reads it off the picture. (`image` is accepted as an older name for the same field.) The model reads the picture, and coordinates are pixels in it, top-left origin. `app`, `app_name`, `route` and `keyboard` are optional but make the captions, Sentinel's summaries and the traces better.
 
-A device that has an accessibility tree may add `nodes` — the elements that say or do something, flattened, at most 120, in the picture's pixel space:
+A device that has an accessibility tree — or a DOM, as the MobileGym module does — may add `nodes` — the elements that say or do something, flattened, at most 120, in the picture's pixel space:
 
 ```json
 {"nodes": [
@@ -197,7 +197,7 @@ A device that announced `"capsule": true` also gets `task` requests — `{"op": 
 
 **Stop.** When the user presses Stop on the device, the device fails the request in flight (and every one after it until the next `task begin`) with an error that contains the marker `nanomuse:stop`. The server turns that into a `stopped` outcome: the operator ends its loop, `phone_act` reports it in plain words, and the main agent is told not to go on operating the phone but to ask what to do next. A device without a capsule never needs to send the marker.
 
-The MobileGym executor (`demo/mobilegym/apps/nanoMuse/gui.ts`) is a readable example: it renders the simulator's DOM to a PNG in the page (`modern-screenshot`, with the phone's CSS transform neutralised and the finger overlay left out), reads the app and route off the simulator's OS object, and drives MobileGym's own input API for the actions so a tap lands the way a finger would.
+The MobileGym executor (`demo/mobilegym/apps/nanoMuse/gui.ts`) is a readable example: it renders the simulator's DOM to a PNG in the page (`modern-screenshot`, with the phone's CSS transform neutralised and the stage left out) at twice the phone's size — 720×1600, so the model reads small text, taps scaled back to the phone — walks the DOM for the `nodes` (what is interactive or says something, visible, not covered; the kind guessed from the tag and role), reads the app and route off the simulator's OS object, and drives MobileGym's own input API for the actions so a tap lands the way a finger would. It refuses to `type` into a password or code field the way the Android executor does: the capsule asks the person to fill it in and tap *Continue*.
 
 ## Showing the finger
 
@@ -215,7 +215,7 @@ After an action the executor waits for the UI to settle (650 ms on MobileGym; on
 
 ### The capsule
 
-On Android a task is never silent: a pill at the top of the screen shows the red panda, the step in progress (*Muse · 点击「查询车票」*) and a **Stop** button, over whatever app is being operated. It appears on `task begin`, follows every step, and goes on `task end`; it is not part of the screenshot. Stop is the user's brake — no long press, no menu: one tap, the action in flight fails with `nanomuse:stop`, the pill says *Stopped* and hides itself, and the agent asks what to do next instead of carrying on. When the agent needs the user (`ask`, `blocked`) the pill grows into a card with the question and an *Open* button that brings nanoMuse to the front; it stays a minute, then folds away.
+On a device with a capsule — the Android app, and the MobileGym module, which draws the same pill in the simulated phone — a task is never silent: a pill at the top of the screen shows the red panda, the step in progress (*Muse · 点击「查询车票」*) and a **Stop** button, over whatever app is being operated. It appears on `task begin`, follows every step, and goes on `task end`; it is not part of the screenshot. Stop is the user's brake — no long press, no menu: one tap, the action in flight fails with `nanomuse:stop`, the pill says *Stopped* and hides itself, and the agent asks what to do next instead of carrying on. When the agent needs the user (`ask`, `blocked`) the pill grows into a card with the question and an *Open* button that brings nanoMuse to the front; it stays a minute, then folds away.
 
 ## Limits
 
