@@ -180,3 +180,11 @@
               cwd: !!js process.env.HOME || process.env.USERPROFILE || process.cwd()
               toolCallTimeoutMs: 120000
               failOnStartupError: false
+          # Reach: the account's other devices over the hub — `devices`,
+          # `device_screen`, `device_shell`, `device_files`, `device_open`,
+          # `device_notify` and `delegate` (src/reach.ts), plus the prompt
+          # context that tells the agent its name and who is around. Needs the
+          # cloud row (`nanomuse-cloud`) and a signed-in account to do anything;
+          # without one the tools answer that it is not signed in.
+          - id: nanomuse-reach
+            name: dsh-nanomuse/reach
