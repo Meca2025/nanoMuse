@@ -26,6 +26,8 @@ nanomuse.cn {
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+		# a year of HTTPS-only for this host (its subdomains are not promised)
+		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
 
