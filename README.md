@@ -157,6 +157,12 @@ One small version per stage, each a GitHub release with an APK. The plan and its
 | Models | Meta's | Bring your own | Bring your own — a chat, an image and a video model, or one Model Studio key for all three; the OAuth sign-ins OpenMinis ships with stay |
 | Licence | Closed | GPL-3.0 | GPL-3.0-or-later, built on OpenMinis — with thanks; upstream releases can still be merged |
 
+## Where we are
+
+nanoMuse 0.1 is a preview. The agent, the phone, the desktop, the web and the relay all work, every day, for the people building them — and every one of them has rough edges we know about and more we do not, so what breaks for you, and what you wish it did, is the most useful thing you can send us. The apps are made for anyone to pick up; the developer side — your own models and providers, the shell, MCP, skills, the harness, the runtime's API — is there, in the settings and the docs, when you turn it on. The product, the runtime's surfaces and the skill and plugin interfaces will keep moving quickly for a while and settle as they go; the [CHANGELOG](CHANGELOG.md) says what changed and the [roadmap](docs/roadmap.md) what comes next.
+
+What we are after is bigger than one app: a personal agent that belongs to the person who runs it, built in the open on infrastructure anyone can reuse and recombine — the runtime, the relay, the phone's hands, the hub between devices — and a shared answer to how far such an agent can go. We look forward to finding it out with users and developers everywhere: bring an idea and make it real here, as a skill, a connector, a model, a device or a translation, and help the ecosystem around nanoMuse grow.
+
 ## Contribute
 
 Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach: **[open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [ask or show in Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [star the repo](https://github.com/nano-muse/nanoMuse)**. How the free allowance, your own key and your data work: [docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md).

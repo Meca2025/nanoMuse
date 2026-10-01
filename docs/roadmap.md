@@ -2,6 +2,8 @@
 
 nanoMuse is an open-source personal agent for every device you own. This page is the plan: what defines the project, which piece comes when, and how the code got to where it is.
 
+The 0.1 versions are a preview: the agent, the phone, the desktop, the web and the relay work, every day, for the people building them, and every one of them has rough edges we know about and more we do not. The product, the runtime's surfaces and the skill and plugin interfaces will keep moving quickly for a while and settle as they go — this page says in which order. What we are after is bigger than one app: a personal agent that belongs to the person who runs it, built in the open on infrastructure anyone can reuse and recombine, and a shared answer, with users and developers everywhere, to how far such an agent can go.
+
 ## What defines it
 
 Four things. Two are in the app today; two are the next versions. Everything else is a feature.

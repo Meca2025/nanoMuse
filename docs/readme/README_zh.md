@@ -157,6 +157,12 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | 模型 | Meta 的 | 自己带 | 自己带——对话、图像、视频三个模型，或一把百炼 key 全包；OpenMinis 自带的 OAuth 登录保留 |
 | 许可 | 闭源 | GPL-3.0 | GPL-3.0-or-later，基于 OpenMinis——致谢；上游版本仍可合并 |
 
+## 现在走到哪儿了
+
+nanoMuse 0.1 还是预览版。智能体、手机端、桌面端、网页版和中继每天都在被做它的人用着，也都有我们知道的毛边，和更多我们还不知道的——所以在你这儿哪里坏了、你希望它能做什么，是你能给我们的最有用的东西。应用是给所有人用的；开发者的那一面——自己的模型和服务商、shell、MCP、技能、harness、运行时的 API——都在设置和文档里，打开就有。产品形态、运行时的各个面、技能与插件接口一段时间内还会快速变化，并逐步稳定下来；[CHANGELOG](../../CHANGELOG.md) 记录改了什么，[路线图](../roadmap.md) 说接下来做什么。
+
+我们想做的事比一个应用大：一个属于使用者本人的个人智能体，在任何人都能复用、重组的开放基础设施上公开地做出来——运行时、中继、手机上的 Hands、设备之间的 hub——也一起回答这样的智能体到底能走多远。我们期待和世界各地的用户与开发者一起找到答案：把你的想法在这里变成现实，一个技能、一个连接器、一个模型、一台设备或一份翻译，让 nanoMuse 周围的生态长起来。
+
 ## 参与
 
 欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步：**[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [到 Discussions 提问、交流](https://github.com/nano-muse/nanoMuse/discussions) · [点个 Star](https://github.com/nano-muse/nanoMuse)**。免费额度、自己的 key 和数据的去向：[docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md)。
