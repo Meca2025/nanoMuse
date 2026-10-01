@@ -82,6 +82,17 @@ export function SettingsScreen() {
   const dirty = !!state.profile && (Object.keys(identity) as (keyof Identity)[]).some((k) => identity[k] !== saved[k]);
   const name = state.profile?.name ?? "nanoMuse";
   const developer = useDeveloperTools();
+  const sections: Array<{ id: string; title: string }> = [
+    { id: "who", title: name },
+    { id: "sentinel", title: t("Safety · Sentinel") },
+    { id: "proactivity", title: t("Proactivity") },
+    { id: "notifications", title: t("Notifications") },
+    ...(keepRunningStatus() ? [{ id: "keep-running", title: t("Keep it running") }] : []),
+    { id: "model", title: t("Model") },
+    ...(isDesktopApp() ? [{ id: "desktop", title: t("Desktop app") }] : []),
+    { id: "developer", title: t("Developer") },
+    { id: "about", title: t("About") },
+  ];
 
   // `#developer` (the sidebar's menu) lands on that section — once the settings are in, so
   // the sections above it have their final height
@@ -101,9 +112,23 @@ export function SettingsScreen() {
         <p className="text-[13px] text-muted">{t("Its name and look, how careful it is, how often it speaks up.")}</p>
       </header>
 
+      <div className="flex min-h-0 flex-1">
+        {/* on a wide window, the sections down the left — the shape of Muse's settings */}
+        <nav className="hidden wide:flex w-[188px] shrink-0 flex-col gap-0.5 self-start pl-4 pr-2 pt-1" aria-label={t("Settings")}>
+          {sections.map((sec) => (
+            <button
+              key={sec.id}
+              type="button"
+              onClick={() => document.getElementById(sec.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="truncate rounded-xl px-3 py-1.5 text-left text-[13px] font-medium text-fg/75 hover:bg-surface-2 hover:text-fg"
+            >
+              {sec.title}
+            </button>
+          ))}
+        </nav>
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">
         {/* who it is */}
-        <Section title={name}>
+        <Section title={name} id="who">
           <IdentityForm
             value={identity}
             onChange={setIdentity}
@@ -122,7 +147,7 @@ export function SettingsScreen() {
         </Section>
 
         {/* Sentinel */}
-        <Section title={t("Safety · Sentinel")}>
+        <Section title={t("Safety · Sentinel")} id="sentinel">
           <p className="text-[13px] text-muted -mt-1">
             {t("A separate gatekeeper reviews every action. Pick how often it should check in with you.")}
           </p>
@@ -173,7 +198,7 @@ export function SettingsScreen() {
         </Section>
 
         {/* Proactivity */}
-        <Section title={t("Proactivity")}>
+        <Section title={t("Proactivity")} id="proactivity">
           <ProactivityDial value={state.profile?.proactivity ?? "default"} onChange={(v) => void update({ profile: { proactivity: v } })} />
           <div className="flex items-center gap-3">
             <label className="text-[13.5px] flex-1">
@@ -202,19 +227,19 @@ export function SettingsScreen() {
         </Section>
 
         {/* Notifications */}
-        <Section title={t("Notifications")}>
+        <Section title={t("Notifications")} id="notifications">
           {androidApp() ? <PhoneAppSettings name={state.profile?.name ?? "nanoMuse"} /> : <PushSettings name={state.profile?.name ?? "nanoMuse"} />}
         </Section>
 
         {/* Keep it running: only the Android app has anything to say here */}
         {keepRunningStatus() && (
-          <Section title={t("Keep it running")}>
+          <Section title={t("Keep it running")} id="keep-running">
             <KeepRunningSettings name={state.profile?.name ?? "nanoMuse"} />
           </Section>
         )}
 
         {/* Model */}
-        <Section title={t("Model")}>
+        <Section title={t("Model")} id="model">
           {s && (
             <button type="button" onClick={() => setTab("connections")} className="w-full text-[13.5px] flex items-center justify-between">
               <span className="text-muted">{t("Provider / model")}</span>
@@ -298,7 +323,7 @@ export function SettingsScreen() {
 
         {/* The desktop app's own switches: the shell around this page */}
         {isDesktopApp() && (
-          <Section title={t("Desktop app")}>
+          <Section title={t("Desktop app")} id="desktop">
             <DesktopAppSettings />
           </Section>
         )}
@@ -330,7 +355,7 @@ export function SettingsScreen() {
         </Section>
 
         {/* About */}
-        <Section title={t("About")}>
+        <Section title={t("About")} id="about">
           <CommunityNotice />
           <div className="text-[13px] text-muted space-y-1">
             <div>
@@ -364,6 +389,7 @@ export function SettingsScreen() {
             <LogOut size={16} /> {androidApp() ? t("Disconnect from this server") : t("Forget this device's access token")}
           </button>
         </Section>
+      </div>
       </div>
     </div>
   );
