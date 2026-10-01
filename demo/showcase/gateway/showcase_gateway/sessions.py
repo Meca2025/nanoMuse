@@ -229,6 +229,9 @@ class SessionManager:
             "NANOMUSE_GUI_BASE_URL": f"{base}/gui",
             "NANOMUSE_GUI_API_KEY": sess.llm_key,
             "NANOMUSE_LOG_LEVEL": "warning",
+            # a demo Muse has its model from us and no account to sign in to; without this the
+            # web app opens on the Cloud sign-in (cloud.required is the runtime's default)
+            "NANOMUSE_CLOUD_REQUIRED": "0",
         }
         # a new look for the Muse: pictures drawn through the gateway (images.py) — on the
         # showcase's key only; a visitor's own provider is not asked to draw

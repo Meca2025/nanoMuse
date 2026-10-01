@@ -33,6 +33,8 @@ async def test_a_visitor_gets_a_private_muse(world):
         assert env["NANOMUSE_LLM_API_KEY"] != settings.main.api_key
         assert env["NANOMUSE_SERVER_TOKEN"] == sess["token"]
         assert env["NANOMUSE_GUI_ENABLED"] == "1"
+        # no account to sign in to: the web app opens on the chat, not the Cloud sign-in
+        assert env["NANOMUSE_CLOUD_REQUIRED"] == "0"
         # the phone's traffic on the session host reaches the container
         host = sess["server_url"].split("//")[1]
         r = await c.get("/api/state?token=x", headers={"host": host})
