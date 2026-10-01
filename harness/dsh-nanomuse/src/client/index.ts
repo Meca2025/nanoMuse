@@ -303,6 +303,16 @@ export function apply(ctx: ClientContext): void {
   const Onboarding = makeOnboarding(t)
   slots.inject('settings.onboarding', () =>
     slots.register({ name: 'settings.onboarding', id: 'deepseek-official', order: 0, priority: -1 }, (props: OnboardingOwnerProps) => h(Onboarding, props)))
+  // The harness's own preview notice stores its acknowledgement in the stock
+  // General plugin's settings, which this bundle switches off; the About row
+  // credits the harness instead, so the step passes straight through.
+  const PassThrough = (props: OnboardingOwnerProps): null => {
+    const { complete } = props
+    useEffect(() => { complete() }, [complete])
+    return null
+  }
+  slots.inject('settings.onboarding', () =>
+    slots.register({ name: 'settings.onboarding', id: 'welcome-notice', order: -100, priority: -1 }, PassThrough))
 
   // Settings → nanoMuse, after Models (10) and Agents (20).
   const CloudSection = makeCloudSection(t)

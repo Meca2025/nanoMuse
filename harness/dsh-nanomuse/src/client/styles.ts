@@ -132,12 +132,13 @@ header[data-window-drag]:has(.nm-header) { position: relative; min-height: 104px
 .nm-advanced-note { font-size: 12.5px; line-height: 1.5; color: var(--dsw-alias-label-tertiary); margin: 0 0 14px; }
 
 /* ---- first run -------------------------------------------------------- */
-.nm-welcome { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 12px 10px 4px; width: min(420px, 86vw); text-align: center; }
+.nm-onboarding-card { width: min(480px, 92vw) !important; padding: 28px 28px 24px !important; box-sizing: border-box; }
+.nm-welcome { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 4px 0 0; width: 100%; text-align: center; }
 .nm-welcome-title { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin: 4px 0 0; }
 .nm-welcome-sub { font-size: 14px; line-height: 1.55; color: var(--dsw-alias-label-secondary); margin: 0; }
 .nm-welcome-actions { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 6px; }
 .nm-welcome-foot { font-size: 12px; color: var(--dsw-alias-label-tertiary); margin-top: 8px; }
-.nm-perm { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(440px, 86vw); padding: 8px 6px 2px; text-align: center; }
+.nm-perm { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; padding: 0; text-align: center; }
 .nm-perm-art { width: 96px; height: 96px; border-radius: 28px; display: flex; align-items: center; justify-content: center; background: var(--dsw-alias-interactive-bg-hover); color: var(--nm-accent); }
 .nm-perm-title { font-size: 20px; font-weight: 600; margin: 0; }
 .nm-perm-text { font-size: 14px; line-height: 1.55; color: var(--dsw-alias-label-secondary); margin: 0; min-height: 66px; }
