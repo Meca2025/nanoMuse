@@ -28,6 +28,8 @@ import type {
   SkillInfo,
   SkillsData,
   StateSnapshot,
+  StudioSession,
+  StudioView,
   TestResult,
   ThreadMeta,
   TidyReport,
@@ -141,11 +143,15 @@ export const api = {
   cloudDeleteSamples: () => request<{ deleted: number }>("/api/cloud/samples", { method: "DELETE" }),
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
   /** the avatar studio: whether a face can be drawn, and the session under way */
-  avatarView: () => request<{ available: boolean; image_model: string; cloud: boolean; current: Record<string, unknown> | null }>("/api/avatar"),
-  avatarBegin: (description: string, thread = "main", style = "muse") => request<Record<string, unknown>>("/api/avatar/begin", json({ description, thread, style })),
-  avatarStart: (session: string) => request<Record<string, unknown>>("/api/avatar/start", json({ session })),
-  avatarChoose: (session: string, index: number) => request<Record<string, unknown>>("/api/avatar/choose", json({ session, index })),
-  avatarCancel: (session: string) => request<Record<string, unknown>>("/api/avatar/cancel", json({ session })),
+  avatarView: () => request<StudioView>("/api/avatar"),
+  /** a session; `thread` "" runs it from the studio screen, without a card in the chat */
+  avatarBegin: (description: string, thread = "main", style = "muse") =>
+    request<StudioSession & { available?: boolean; message?: string }>("/api/avatar/begin", json({ description, thread, style })),
+  avatarStart: (session: string) => request<StudioSession>("/api/avatar/start", json({ session })),
+  avatarChoose: (session: string, index: number) => request<StudioSession>("/api/avatar/choose", json({ session, index })),
+  avatarCancel: (session: string) => request<StudioSession>("/api/avatar/cancel", json({ session })),
+  /** the poses (and clips) of the face the profile wears, drawn again from its idle still */
+  avatarMoods: () => request<StudioSession>("/api/avatar/moods", json({})),
   // ---- calls (voice / video, in real time)
   // ---- coding agents, here or on another computer of yours
   coding: (device = "") => request<{ agents: CodingAgent[]; runs: CodingRun[]; device?: string }>(`/api/coding${device ? `?device=${encodeURIComponent(device)}` : ""}`),

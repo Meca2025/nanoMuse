@@ -53,15 +53,15 @@ export function IdentityForm({
   suggestions = true,
   askUserName = true,
   inputCls,
-  onGenerate,
+  onStudio,
 }: {
   value: Identity;
   onChange: (v: Identity) => void;
   suggestions?: boolean;
   askUserName?: boolean;
   inputCls: string;
-  /** the picker offers "draw a new one": the description goes to the chat (Settings only — setup has no model yet) */
-  onGenerate?: (description: string, style: string) => void;
+  /** the picker offers the avatar studio (Settings only — setup has no model yet) */
+  onStudio?: () => void;
 }) {
   const t = useT();
   const [seed, setSeed] = useState(7);
@@ -109,7 +109,7 @@ export function IdentityForm({
         </div>
       )}
 
-      <AvatarPicker value={{ avatar: value.avatar, emoji: value.emoji, color: value.color }} onChange={(look) => set(look)} onGenerate={onGenerate} />
+      <AvatarPicker value={{ avatar: value.avatar, emoji: value.emoji, color: value.color }} onChange={(look) => set(look)} onStudio={onStudio} />
 
       <div>
         <label className="text-[12px] text-muted">{t("Tone")}</label>

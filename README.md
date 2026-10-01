@@ -6,33 +6,30 @@
 
 <p align="center">A fully open-source, Muse-style personal agent for every device you own.</p>
 
+<p align="center">
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh.md">简体中文</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh-TW.md">繁體中文</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_es.md">Español</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_fr.md">Français</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_id.md">Bahasa Indonesia</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ja.md">日本語</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ko.md">한국어</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ru.md">Русский</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_vi.md">Tiếng Việt</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="GitHub stars"></a>
+  <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="Downloads"></a>
+  <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
+  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/Try%20in%20the%20browser-nanomuse.cn%2Fweb-5B4EE6" alt="Try in the browser"></a>
+  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/Website-nanomuse.cn-0a66e4" alt="Website"></a>
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
+</p>
+
 > [!IMPORTANT]
 > **Free, open source, non-profit — a personal agent for all.** nanoMuse is a community project, free for good: sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, bring your own key. Messages are not stored unless you choose to contribute them; nothing is sold; delete the account whenever you like. **[Try it in the browser](https://nanomuse.cn/web/)**, or [download the app](https://github.com/nano-muse/nanoMuse/releases/latest).
-
-<div align="center">
-  <p>
-    <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
-    <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh.md">简体中文</a> |
-    <a href="https://nanomuse.cn/web/"><b>Try in the browser</b></a> |
-    <a href="https://nanomuse.cn/">Website</a> |
-    <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Download</a>
-  </p>
-  <p>
-    <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/v/release/nano-muse/nanoMuse?include_prereleases&label=release" alt="Latest release"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="Release downloads"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse" alt="GPL-3.0-or-later"></a>
-    <a href="https://github.com/nano-muse/nanoMuse"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&logo=github" alt="GitHub stars"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/discussions"><img src="https://img.shields.io/badge/Discussions-ask%20%26%20share-0a66e4?logo=github&logoColor=white" alt="GitHub Discussions"></a>
-  </p>
-  <p>
-    <a href="https://nanomuse.cn/#dl-web"><img src="https://img.shields.io/badge/Web-nanomuse.cn%2Fweb-0a66e4?logo=googlechrome&logoColor=white" alt="Web: nanomuse.cn/web"></a>
-    <a href="https://nanomuse.cn/#dl-phone"><img src="https://img.shields.io/badge/Android-8.0%2B%20arm64-3DDC84?logo=android&logoColor=white" alt="Android 8.0+ arm64"></a>
-    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white" alt="Windows x64"></a>
-    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS Apple Silicon and Intel"></a>
-    <a href="https://nanomuse.cn/#dl-desktop"><img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20.deb-FCC624?logo=linux&logoColor=black" alt="Linux AppImage and .deb"></a>
-    <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse"><img src="https://img.shields.io/badge/Docker-ghcr.io%2Fnano--muse%2Fnanomuse-2496ED?logo=docker&logoColor=white" alt="Docker image"></a>
-  </p>
-</div>
 
 nanoMuse is a fully open-source, Muse-style personal agent for every device you own: one agent with a name and a look of its own, like Meta's [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/), that does things instead of answering questions, keeps working while the app is closed, remembers you, and stops to ask before anything you could not undo. The Android app runs the whole agent **on the phone**: a Linux root file system, a shell, a browser, MCP, skills and scheduled tasks inside the APK, with a model you bring. It has hands for the apps that never had an API — the phone's own screen, with your permission — and reaches your computer: say it on the phone, it gets done there. The desktop app and the web version ship too; iOS and glasses come next. Your own key or a starter allowance from an open relay, GPL-3.0 — and a base you can build your own Muse on.
 

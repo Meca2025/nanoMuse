@@ -199,6 +199,28 @@ export interface AvatarEvent extends BaseEvent {
   message?: string;
 }
 
+/** The avatar studio's session as `GET /api/avatar` and the "studio" messages carry it. */
+export type StudioSession = Omit<AvatarEvent, keyof BaseEvent | "type">;
+
+/** The face the profile wears when the studio drew it (`avatar/<face>/face.json`). */
+export interface StudioFace {
+  id: string;
+  description: string | null;
+  style: string | null;
+  model: string | null;
+  created: number | null;
+}
+
+export interface StudioView {
+  available: boolean;
+  image_model: string;
+  video_model: string;
+  cloud: boolean;
+  host: string;
+  current: StudioSession | null;
+  face: StudioFace | null;
+}
+
 export type TimelineEvent =
   | UserEvent
   | AssistantEvent
@@ -1043,6 +1065,8 @@ export type WsMessage =
   | { kind: "hub"; hub: HubView }
   | { kind: "hands_state"; hands: HandsStatus }
   | ({ kind: "hands" } & HandsLive)
+  /** the avatar studio's session, every time it changes (the studio screen watches this; the chat has its card) */
+  | { kind: "studio"; current: StudioSession | null }
   | { kind: "connections"; connections: ConnectionsData }
   | { kind: "skills"; skills: SkillsData }
   | { kind: "approvals_reset" }

@@ -167,7 +167,9 @@ def test_chat_request_becomes_a_card_and_the_agent_stays_out(studio_server) -> N
         "image_model": "draw-1",
         "video_model": "",
         "cloud": False,
+        "host": "images.example.test",
         "current": None,
+        "face": None,
     }
     r = client.post("/api/threads/main/send", json={"text": "换个形象：一只橘猫"})
     assert r.status_code == 200
@@ -207,14 +209,64 @@ def test_draw_pick_pose_sets_the_profile(studio_server, settings: Settings) -> N
     face_dir = service.workspace() / "avatar" / ev["face"]
     assert sorted(p.name for p in face_dir.iterdir()) == [
         "error.webp",
+        "face.json",
         "happy.webp",
         "idle.webp",
         "waiting.webp",
         "working.webp",
     ]
     assert client.get("/api/settings").json()["profile"]["avatar"] == ev["face"]
-    # the candidates of the finished session are cleared later; the face stays
-    assert client.get("/api/avatar").json()["current"]["stage"] == "done"
+    # the candidates of the finished session are cleared later; the face stays, with its record
+    view = client.get("/api/avatar").json()
+    assert view["current"]["stage"] == "done"
+    assert view["face"]["id"] == ev["face"]
+    assert view["face"]["description"] == "robot owl" and view["face"]["model"] == "draw-1"
+    assert view["face"]["style"] == "muse" and view["face"]["created"] > 0
+
+
+def test_the_studio_screen_runs_a_session_without_a_card(studio_server) -> None:
+    """From the studio screen (thread ""): no card in the chat, the session is reported over
+    the socket as "studio" messages, and the poses can be drawn again from the menu."""
+    client, service, fake = studio_server
+    q = service.ui.bus.subscribe()  # what a web socket would receive
+    r = client.post(
+        "/api/avatar/begin", json={"description": "a tiny whale", "thread": "", "style": "pixel"}
+    )
+    assert r.status_code == 200 and r.json()["stage"] == "estimate"
+    sid = r.json()["session"]
+    events = client.get("/api/threads/main/events").json()["events"]
+    assert not any(e["type"] == "avatar" for e in events)
+    client.post("/api/avatar/start", json={"session": sid})
+    _wait(lambda: service.avatar.current and service.avatar.current.stage == "choose")
+    client.post("/api/avatar/choose", json={"session": sid, "index": 2})
+    _wait(lambda: service.avatar.current and service.avatar.current.stage == "done")
+    face = service.profile.avatar
+    assert face.startswith("face-")
+    seen = []
+    while not q.empty():
+        msg = q.get_nowait()
+        if msg.get("kind") == "studio":
+            seen.append(msg)
+    assert [m["current"]["stage"] for m in seen][:2] == ["estimate", "drawing"]
+    assert seen[-1]["current"]["stage"] == "done" and seen[-1]["current"]["face"] == face
+    assert not any(
+        e["type"] in ("avatar", "notice")
+        for e in client.get("/api/threads/main/events").json()["events"]
+    )
+    # the poses again, from the face's idle still
+    edits_before = len(fake.edits)
+    r = client.post("/api/avatar/moods")
+    assert r.status_code == 200 and r.json()["stage"] == "posing" and r.json()["face"] == face
+    _wait(lambda: service.avatar.current and service.avatar.current.stage == "done")
+    assert len(fake.edits) == edits_before + 4
+    assert service.profile.avatar == face
+    assert client.get("/api/avatar").json()["face"]["description"] == "a tiny whale"
+
+
+def test_redrawing_the_poses_needs_a_drawn_face(studio_server) -> None:
+    client, _service, _fake = studio_server
+    r = client.post("/api/avatar/moods")
+    assert r.status_code == 409 and "no face" in r.json()["detail"]
 
 
 def test_a_busy_provider_is_waited_out_two_pictures_at_a_time(studio_server, monkeypatch) -> None:

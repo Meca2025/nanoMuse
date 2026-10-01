@@ -1,5 +1,4 @@
 import { Check, Sparkles } from "lucide-react";
-import { useState } from "react";
 import { DRAGON, dragonUrl, isDragon, studioUrl } from "../avatars";
 import { useT } from "../i18n";
 import { cx } from "../util";
@@ -25,36 +24,26 @@ export const AVATAR_STYLES: { id: string; label: string }[] = [
 ];
 
 /**
- * The dragon, a face drawn for you in the avatar studio (when the profile has one, or when
- * `onGenerate` is given: describe it and the chat draws four to choose from), plus an emoji on
- * a colour for anyone who would rather. Used in setup and in Settings.
+ * The dragon, a face drawn for you in the avatar studio (when the profile wears one), a tile
+ * that opens the studio (when `onStudio` is given — Settings; setup has no model yet), plus
+ * an emoji on a colour for anyone who would rather.
  */
 export function AvatarPicker({
   value,
   onChange,
-  onGenerate,
+  onStudio,
 }: {
   value: AvatarChoice;
   onChange: (v: AvatarChoice) => void;
-  /** asked for a new face: the description typed and the style picked; the caller starts the studio */
-  onGenerate?: (description: string, style: string) => void;
+  /** the "draw a new one" tile: opens the avatar studio screen */
+  onStudio?: () => void;
 }) {
   const t = useT();
-  const [describing, setDescribing] = useState(false);
-  const [description, setDescription] = useState("");
-  const [style, setStyle] = useState("muse");
   const emojiMode = value.avatar === "";
   // a face from the studio: anything that is neither the dragon nor the emoji
   const studio = !emojiMode && !isDragon(value.avatar) ? value.avatar : null;
   const ring = "ring-[2.5px] ring-accent ring-offset-2 ring-offset-bg";
   const tile = "relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-full transition";
-  const submit = () => {
-    const d = description.trim();
-    if (!d || !onGenerate) return;
-    onGenerate(d, style);
-    setDescription("");
-    setDescribing(false);
-  };
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-3">
@@ -72,13 +61,12 @@ export function AvatarPicker({
             <img src={studioUrl(studio, "happy")} alt="" draggable={false} className="h-full w-full object-cover" />
           </button>
         )}
-        {onGenerate && (
+        {onStudio && (
           <button
             type="button"
-            aria-label={t("Draw a new one")}
-            aria-pressed={describing}
-            onClick={() => setDescribing((v) => !v)}
-            className={cx(tile, "flex items-center justify-center border border-dashed border-border text-accent", describing ? ring : "hover:bg-surface-2")}
+            aria-label={t("Avatar studio")}
+            onClick={onStudio}
+            className={cx(tile, "flex items-center justify-center border border-dashed border-border text-accent hover:bg-surface-2")}
           >
             <Sparkles size={22} />
           </button>
@@ -94,41 +82,6 @@ export function AvatarPicker({
           {value.emoji}
         </button>
       </div>
-      {describing && onGenerate && (
-        <div className="rounded-2xl bg-surface-2 p-3 space-y-2">
-          <p className="text-[12.5px] text-muted">{t("One sentence is enough. Four are drawn to choose from; the cost shows first.")}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {AVATAR_STYLES.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setStyle(s.id)}
-                className={cx("rounded-full border px-2.5 py-1 text-[12.5px]", style === s.id ? "border-accent bg-accent/10 text-accent" : "border-border text-muted")}
-              >
-                {t(s.label)}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              placeholder={t("a small orange cat with round glasses")}
-              maxLength={200}
-              className="min-w-0 flex-1 rounded-xl bg-bg px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-accent/40"
-            />
-            <button type="button" onClick={submit} disabled={!description.trim()} className="rounded-xl bg-accent px-3 py-2 text-[13.5px] font-medium text-accent-fg disabled:opacity-40">
-              {t("Draw four")}
-            </button>
-          </div>
-        </div>
-      )}
       {emojiMode && (
         <>
           <div className="grid grid-cols-8 gap-1.5">

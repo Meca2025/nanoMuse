@@ -37,6 +37,7 @@
     GET  /api/avatar                      the avatar studio: can a face be drawn, the session under way
     POST /api/avatar/begin {description, style?}  a session: the card with the cost in the chat
     POST /api/avatar/start|choose|cancel {session, index?}   draw (or redraw) the four, pick one, stop
+    POST /api/avatar/moods                the poses of the current face drawn again
     WS   /ws?token=…                     live events
 
 All endpoints require ``Authorization: Bearer <token>`` (or ``?token=``) unless
@@ -281,6 +282,7 @@ class CloudModelBody(BaseModel):
 
 class AvatarBeginBody(BaseModel):
     description: str = Field(min_length=1, max_length=200)
+    # the chat the card goes to; "" from the studio screen, which has no card
     thread: str = MAIN_THREAD
     # one of the studio's STYLES (the phone's list); Muse's 3D toy look when left out
     style: str = Field(default="muse", max_length=20)
@@ -916,6 +918,15 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     async def avatar_cancel(body: AvatarSessionBody) -> dict[str, Any]:
         try:
             return svc.avatar.cancel(body.session)
+        except StudioError as exc:
+            raise _studio_http(exc) from exc
+
+    @app.post("/api/avatar/moods", dependencies=dep)
+    async def avatar_moods() -> dict[str, Any]:
+        """*Redraw the poses* of the face the profile wears, from its idle still (and the
+        clips, where the endpoint has a video model)."""
+        try:
+            return await svc.avatar.redraw_moods()
         except StudioError as exc:
             raise _studio_http(exc) from exc
 

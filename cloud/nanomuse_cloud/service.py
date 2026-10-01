@@ -830,10 +830,23 @@ class Cloud:
             "style": str(body.get("style") or ""),
             "description": str(body.get("description") or ""),
             "has_face": bool(row["face"]),
+            # the hash of the idle still: a device that already wears these pictures keeps
+            # its own copy (and the clips it made) instead of downloading them again
+            "face_id": self._face_id(row["face"]),
         }
         if with_face:
             out["face"] = json.loads(row["face"]) if row["face"] else None
         return out
+
+    @staticmethod
+    def _face_id(face_json: str | None) -> str:
+        if not face_json:
+            return ""
+        try:
+            idle = json.loads(face_json).get("idle") or ""
+            return hashlib.sha1(base64.b64decode(idle)).hexdigest()[:12] if idle else ""
+        except (ValueError, binascii.Error, AttributeError):
+            return ""
 
     def put_profile(self, caller: Caller, device: str, data: dict) -> dict:
         """Last writer wins. Only the look is kept — never a key, a message or a setting that

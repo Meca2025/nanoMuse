@@ -10,6 +10,7 @@ import com.openminis.app.logging.AppLogger
 import io.github.nanomuse.avatar.AvatarStore
 import io.github.nanomuse.ui.avatar.AgentMood
 import java.io.ByteArrayOutputStream
+import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -25,6 +26,11 @@ import org.json.JSONObject
  * the face ([AvatarStore]) changes here. The pictures ride along only when the face itself
  * changed. Never a key, never a message — the runtime does the same in `nanomuse/hub/profile.py`.
  *
+ * The phone keeps the face it drew — the clips, the prompt — when the account's pictures are
+ * the ones it already wears: the relay names them with `face_id` (the hash of the idle still),
+ * older relays are checked against the downloaded still. So a rename on the desktop changes
+ * the name here and nothing else.
+ *
  * An emoji look chosen on the web has no picture here, so the phone wears the dragon for it.
  */
 object ProfileSync {
@@ -33,6 +39,8 @@ object ProfileSync {
     private const val KEY_REV = "rev"
     private const val KEY_PUSHED_FACE = "pushed_face"
     private const val KEY_PUSHED_NAME = "pushed_name"
+    /** The hash of the idle still as the relay holds it (what it reports as `face_id`). */
+    private const val KEY_FACE_HASH = "face_hash"
     private const val PUSH_DELAY_MS = 2_500L
     private const val DRAGON = "dragon"
 
@@ -110,10 +118,15 @@ object ProfileSync {
                     SoulStore.save(context, cur.copy(metadata = cur.metadata.copy(name = name)))
                 }
             }
+            val knownHash = prefs(context).getString(KEY_FACE_HASH, "").orEmpty()
             when {
                 avatar == "face" && light.optBoolean("has_face") -> {
-                    val full = NanoMuseCloud.profile(context, withFace = true)
-                    wearFace(full)
+                    val remote = light.optString("face_id")
+                    if (AvatarStore.current.value == null || remote.isEmpty() || remote != knownHash) {
+                        val full = NanoMuseCloud.profile(context, withFace = true)
+                        wearFace(context, full, knownHash)
+                    }
+                    // else: the pictures this phone already wears — only the name changed
                 }
                 // the dragon, or an emoji the phone cannot draw: the built-in face
                 AvatarStore.current.value != null -> AvatarStore.reset()
@@ -129,20 +142,31 @@ object ProfileSync {
         AppLogger.info(TAG, "wearing rev $rev from the account ($avatar)")
     }
 
-    private fun wearFace(full: JSONObject) {
+    private fun wearFace(context: Context, full: JSONObject, knownHash: String) {
         val face = full.optJSONObject("face") ?: return
-        val idle = decode(face.optString("idle")) ?: return
+        val idleBytes = bytes(face.optString("idle")) ?: return
+        val hash = sha1(idleBytes)
+        if (AvatarStore.current.value != null && hash == knownHash) return
+        val idle = BitmapFactory.decodeByteArray(idleBytes, 0, idleBytes.size) ?: return
         AvatarStore.adopt(idle, full.optString("description"), full.optString("style"), "account")
         for ((key, mood) in moods) {
             if (mood == AgentMood.IDLE) continue
             val pic = decode(face.optString(key)) ?: continue
             AvatarStore.putMood(mood, pic)
         }
+        prefs(context).edit().putString(KEY_FACE_HASH, hash).apply()
     }
 
-    private fun decode(b64: String): Bitmap? {
+    private fun bytes(b64: String): ByteArray? {
         if (b64.isBlank()) return null
-        val bytes = runCatching { Base64.decode(b64, Base64.DEFAULT) }.getOrNull() ?: return null
+        return runCatching { Base64.decode(b64, Base64.DEFAULT) }.getOrNull()
+    }
+
+    private fun sha1(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }.take(12)
+
+    private fun decode(b64: String): Bitmap? {
+        val bytes = bytes(b64) ?: return null
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
@@ -178,6 +202,7 @@ object ProfileSync {
             .put("device", io.github.nanomuse.hub.Hub.deviceId(context))
             .put("name", name.take(60))
         val cur = AvatarStore.current.value
+        var sentHash: String? = null
         if (cur == null) {
             body.put("avatar", DRAGON)
         } else {
@@ -186,10 +211,16 @@ object ProfileSync {
                 .put("description", cur.prompt.take(200))
             if (!sameFace) {
                 val face = JSONObject()
-                AvatarStore.decodeBitmap(AvatarStore.baseFile())?.let { face.put("idle", webp(it)) }
+                AvatarStore.decodeBitmap(AvatarStore.baseFile())?.let {
+                    val idle = webp(it)
+                    face.put("idle", Base64.encodeToString(idle, Base64.NO_WRAP))
+                    sentHash = sha1(idle)
+                }
                 for ((key, mood) in moods) {
                     if (mood == AgentMood.IDLE) continue
-                    AvatarStore.decodeBitmap(AvatarStore.moodFile(mood))?.let { face.put(key, webp(it)) }
+                    AvatarStore.decodeBitmap(AvatarStore.moodFile(mood))?.let {
+                        face.put(key, Base64.encodeToString(webp(it), Base64.NO_WRAP))
+                    }
                 }
                 if (face.has("idle")) {
                     body.put("face", face)
@@ -202,20 +233,22 @@ object ProfileSync {
             }
         }
         val out = NanoMuseCloud.putProfile(context, body)
-        p.edit()
+        val editor = p.edit()
             .putInt(KEY_REV, out.optInt("rev", p.getInt(KEY_REV, 0)))
             .putString(KEY_PUSHED_FACE, if (body.optString("avatar") == "face") stamp else "")
             .putString(KEY_PUSHED_NAME, name)
-            .apply()
+        if (body.optString("avatar") != "face") editor.putString(KEY_FACE_HASH, "")
+        else if (sentHash != null) editor.putString(KEY_FACE_HASH, sentHash)
+        editor.apply()
         AppLogger.info(TAG, "shared with the account as rev ${out.optInt("rev")}")
     }
 
-    /** A still as base64 WebP, small enough for the relay (512 px, lossy). */
-    private fun webp(bitmap: Bitmap): String {
+    /** A still as WebP bytes, small enough for the relay (512 px, lossy). */
+    private fun webp(bitmap: Bitmap): ByteArray {
         val out = ByteArrayOutputStream()
         @Suppress("DEPRECATION")
         val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.WEBP
         bitmap.compress(format, 82, out)
-        return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+        return out.toByteArray()
     }
 }

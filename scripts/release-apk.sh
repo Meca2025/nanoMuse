@@ -12,8 +12,9 @@
 # 5. writes dist/nanoMuse-<version>-arm64.apk and .sha256,
 # 6. with --publish: tags v<version> (annotated, at --target or HEAD, unless the tag already
 #    exists), pushes the tag, then gh release create v<version> --latest with the APK, the
-#    checksum and the notes (default docs/releases/v<version>.md); --prerelease marks it as
-#    one instead and leaves Latest alone.
+#    checksum and the notes (default docs/releases/v<version>.md, with What's Changed / New
+#    Contributors / Contributors / Full Changelog filled in from the merged pull requests by
+#    scripts/release_notes.py); --prerelease marks it as one instead and leaves Latest alone.
 #
 # --publish-only skips 1-5 and publishes the dist/ APK that is already there — for a version
 # whose sources are an older commit (pass --target <commit> so the tag lands on it). The APK
@@ -126,6 +127,15 @@ if [ $publish = 1 ]; then
     exit 1
   fi
   if [ "$prerelease" = 1 ]; then kind="--prerelease"; else kind="--latest"; fi
+  # What's Changed / New Contributors / Contributors / Full Changelog come from the pull
+  # requests merged since the previous tag (scripts/release_notes.py); the hand-written notes
+  # are published as they are when that fails, so a release is never blocked on it.
+  body="$(mktemp)"
+  if ! python3 "$NM_ROOT/scripts/release_notes.py" "$version" --notes "$notes" --target "$tag" -o "$body"; then
+    echo "release_notes.py failed — publishing $notes as written" >&2
+    cp "$notes" "$body"
+  fi
   echo "== gh release create $tag $kind"
-  gh release create "$tag" "$out" "$out.sha256" --verify-tag $kind --title "$title" --notes-file "$notes"
+  gh release create "$tag" "$out" "$out.sha256" --verify-tag $kind --title "$title" --notes-file "$body"
+  rm -f "$body"
 fi

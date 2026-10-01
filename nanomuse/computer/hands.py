@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import time
+import types
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -99,13 +100,30 @@ def _normalise_key(key: str, table: dict[str, str]) -> str:
     return table.get(k.lower(), k if len(k) > 1 else k.lower()) if k else k
 
 
+def _import_pyautogui() -> Any:
+    """``pyautogui``, importable without Tk. Its ``mouseinfo`` dependency *exits the
+    interpreter* (``sys.exit``) when tkinter is missing on Linux — and the frozen runtime
+    leaves Tk out — which took every request on the Linux desktop app down with it. Nothing
+    here ever opens the MouseInfo window, so a stand-in module is registered first."""
+    if "mouseinfo" not in sys.modules:
+        try:
+            import tkinter  # noqa: F401
+        except ImportError:
+            stub = types.ModuleType("mouseinfo")
+            stub.MouseInfoWindow = lambda *args, **kwargs: None  # type: ignore[attr-defined]
+            sys.modules["mouseinfo"] = stub
+    import pyautogui
+
+    return pyautogui
+
+
 class PyAutoGUIHands:
     name = "pyautogui"
 
     def __init__(self) -> None:
         try:
-            import pyautogui
-        except Exception as exc:  # noqa: BLE001 — import errors differ per platform
+            pyautogui = _import_pyautogui()
+        except (Exception, SystemExit) as exc:  # noqa: BLE001 — import errors differ per platform
             raise HandsUnavailable(
                 f"pyautogui is not available ({exc}); pip install 'nanomuse[hands]'"
             ) from exc
@@ -313,6 +331,9 @@ def pick_backend(preference: str = "auto") -> HandsBackend:
             backend: HandsBackend = PyAutoGUIHands() if name == "pyautogui" else XdotoolHands()
         except HandsUnavailable as exc:
             errors.append(str(exc))
+            continue
+        except Exception as exc:  # noqa: BLE001 — a backend that cannot set up is one that is not there
+            errors.append(f"{name}: {exc}")
             continue
         logger.info("computer hands: {}", backend.name)
         return backend

@@ -2,7 +2,7 @@ import { app } from "electron";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, openSync, readFileSync, statSync } from "node:fs";
 import { get as httpGet } from "node:http";
-import { connect as tcpConnect } from "node:net";
+import { connect as tcpConnect, createServer as tcpServer } from "node:net";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -22,7 +22,8 @@ import { join, resolve } from "node:path";
 export class Runtime {
   readonly home: string;
   readonly port: number;
-  readonly base: string;
+  /** the loopback the runtime listens on: 127.0.0.1, or ::1 on a machine where IPv4 loopback is intercepted */
+  host = "127.0.0.1";
   private child: ChildProcess | null = null;
   /** true when this shell started the runtime (and should stop it on quit) */
   owned = false;
@@ -35,7 +36,10 @@ export class Runtime {
   constructor() {
     this.home = process.env.NANOMUSE_HOME || join(homedir(), ".nanomuse");
     this.port = Number(process.env.NANOMUSE_PORT || 8787);
-    this.base = `http://127.0.0.1:${this.port}`;
+  }
+
+  get base(): string {
+    return this.host.includes(":") ? `http://[${this.host}]:${this.port}` : `http://${this.host}:${this.port}`;
   }
 
   /** The access token the runtime generated (empty with --no-auth). */
@@ -92,7 +96,7 @@ export class Runtime {
   /** Whether anything at all listens on the port (a bare TCP connect), for the log when HTTP does not answer. */
   private tcpOpen(): Promise<string> {
     return new Promise((resolve) => {
-      const sock = tcpConnect({ host: "127.0.0.1", port: this.port });
+      const sock = tcpConnect({ host: this.host, port: this.port });
       const end = (r: string) => {
         sock.destroy();
         resolve(r);
@@ -130,7 +134,21 @@ export class Runtime {
         "nanomuse is not installed here. Set NANOMUSE_BIN to the executable, or run `nanomuse serve` yourself and open the window again.",
       );
     }
-    const args = ["serve", "--no-qr", "--port", String(this.port)];
+    // Can this machine connect to itself at all? Proxy clients that route every connection
+    // (Proxifier, a TUN mode) and some security software swallow connections to 127.0.0.1;
+    // the runtime's own event loop needs one before it can listen, and the window needs one to
+    // reach it. Often only IPv4 is taken: then everything goes over ::1 instead. Nothing at all:
+    // say so now, not after two minutes of probing.
+    if (!(await loopbackWorks("127.0.0.1"))) {
+      if (await loopbackWorks("::1")) {
+        this.host = "::1";
+        onLog("connections to 127.0.0.1 are intercepted on this machine; using ::1");
+      } else {
+        onLog("connections to 127.0.0.1 and ::1 are both intercepted on this machine");
+        throw new Error(loopbackBlocked(this.home));
+      }
+    }
+    const args = ["serve", "--no-qr", "--port", String(this.port), "--host", this.host];
     if (process.env.NANOMUSE_CONFIG) args.push("-c", process.env.NANOMUSE_CONFIG);
     mkdirSync(this.home, { recursive: true });
     // The log is appended to across sessions; a marker line opens this one, and what a dialog
@@ -246,7 +264,9 @@ export class Runtime {
     lead ??= zh ? "nanomuse serve 在就绪前就停止了。" : "nanomuse serve stopped before it was ready.";
     const tail = this.logTail(40);
     let hint = "";
-    if (alive && /still not serving after/.test(tail)) {
+    if (/loopback blocked:/.test(tail)) {
+      hint = loopbackBlocked(this.home, false);
+    } else if (alive && /still not serving after/.test(tail)) {
       // the runtime's own watchdog wrote where every thread is; that is the report to send
       hint = zh
         ? "运行时进程还在，但一直没有开始监听。多半是安全软件或防火墙拦住了它在本机 127.0.0.1 上开端口——把 nanoMuse（resources\\runtime\\nanomuse.exe）加入白名单后再试。日志末尾记录了它卡住时每个线程的位置，报告问题时请一并附上。"
@@ -333,6 +353,56 @@ export class Runtime {
     // PATH: let spawn resolve it, if `nanomuse --version` can be found
     return which("nanomuse");
   }
+}
+
+/**
+ * Whether a TCP connection from this machine to itself on `host` completes: a listener on a
+ * free port, a connect to it, both ends seeing each other within 3 s. False when the connect is
+ * refused, times out, or lands somewhere else (a proxy answering in the listener's place).
+ */
+export function loopbackWorks(host: string, timeoutMs = 3000): Promise<boolean> {
+  return new Promise((resolve) => {
+    let done = false;
+    let accepted = false;
+    let connected = false;
+    const server = tcpServer();
+    let client: ReturnType<typeof tcpConnect> | null = null;
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      client?.destroy();
+      server.close();
+      resolve(ok);
+    };
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    server.on("error", () => finish(false));
+    server.on("connection", (sock) => {
+      sock.destroy();
+      accepted = true;
+      if (connected) finish(true);
+    });
+    server.listen(0, host, () => {
+      const addr = server.address();
+      if (!addr || typeof addr === "string") return finish(false);
+      client = tcpConnect({ host, port: addr.port });
+      client.on("connect", () => {
+        connected = true;
+        if (accepted) finish(true);
+      });
+      client.on("error", () => finish(false));
+    });
+  });
+}
+
+/** The explanation when no loopback connection completes, in the system's language. */
+function loopbackBlocked(home: string, withLog = true): string {
+  const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
+  const text = zh
+    ? "这台电脑连不上它自己：到 127.0.0.1（以及 ::1）的本机连接一直完成不了，nanoMuse 的运行时因此无法启动。多半是某个把所有连接都接管的代理客户端——Proxifier，或 Clash / V2Ray / Surge 等开着 TUN 模式（虚拟网卡）、游戏加速器——或者安全软件在拦截。请让 127.0.0.1 和 localhost 直连（Proxifier：Profile → Proxification Rules → Localhost 设为 Direct；Clash：关闭 TUN 模式或把 127.0.0.1 加入绕过列表），或把 nanoMuse 加入它的例外，然后重新打开 nanoMuse。"
+    : "This computer cannot connect to itself: connections to 127.0.0.1 (and to ::1) never complete, so the nanoMuse runtime cannot start. Most often a proxy client that routes every connection — Proxifier; Clash, V2Ray or Surge in TUN mode; a game accelerator — or security software is intercepting them. Make 127.0.0.1 and localhost connect directly (Proxifier: Profile → Proxification Rules → Localhost → Direct; Clash: turn TUN mode off or exclude 127.0.0.1), or add nanoMuse to its exceptions, then open nanoMuse again.";
+  return withLog ? `${text}
+${zh ? "日志" : "Log"}: ${join(home, "desktop-app.log")}` : text;
 }
 
 function which(name: string): string | null {

@@ -15,6 +15,7 @@ import {
   Loader2,
   Mail,
   MonitorSmartphone,
+  Pencil,
   Play,
   Plug,
   Repeat,
@@ -56,7 +57,7 @@ type View = "menu" | "activity" | "approvals" | "permissions" | "upcoming";
  * (permissions), what it will do next (upcoming), plus its memory and settings.
  */
 export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state, setTab } = useStore();
+  const { state, setTab, draft } = useStore();
   const [view, setView] = useState<View>("menu");
   const name = state.profile?.name ?? "nanoMuse";
   const pending = state.pendingApprovals.length;
@@ -67,7 +68,7 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const go = (tab: "memory" | "skills" | "connections" | "devices" | "you" | "coding" | "account") => {
+  const go = (tab: "memory" | "skills" | "connections" | "devices" | "you" | "coding" | "account" | "avatar") => {
     onClose();
     setTab(tab);
   };
@@ -107,6 +108,13 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
           onCoding={() => go("coding")}
           onAccount={() => go("account")}
           onSettings={() => go("you")}
+          onStudio={() => go("avatar")}
+          onChangeLook={() => {
+            // the phone's "Change the avatar": the sentence is put in the chat box to finish
+            draft(t("Change your avatar to "));
+            onClose();
+            setTab("chat");
+          }}
         />
       )}
       {view === "activity" && <ActivityView open={open} />}
@@ -129,6 +137,8 @@ function Menu({
   onCoding,
   onAccount,
   onSettings,
+  onStudio,
+  onChangeLook,
 }: {
   name: string;
   pending: number;
@@ -140,6 +150,8 @@ function Menu({
   onCoding: () => void;
   onAccount: () => void;
   onSettings: () => void;
+  onStudio: () => void;
+  onChangeLook: () => void;
 }) {
   const { state, toast } = useStore();
   const hub = state.hub;
@@ -147,6 +159,7 @@ function Menu({
   const online = others.filter((d) => d.online).length;
   const t = useT();
   const [stopping, setStopping] = useState(false);
+  const [pen, setPen] = useState(false);
   const mode = state.settings?.sentinel.mode;
   const c = state.settings?.connectors;
   const connected = [c?.email && t("email"), c?.calendar && t("calendar"), c?.browser && t("browser"), c?.mcp.length ? `${c.mcp.length} MCP` : null].filter(Boolean);
@@ -167,7 +180,32 @@ function Menu({
   return (
     <div className="pb-2">
       <div className="flex flex-col items-center px-4 pt-1 pb-3 text-center">
-        <Avatar profile={state.profile} status={state.status} size={84} />
+        <div className="relative">
+          <Avatar profile={state.profile} status={state.status} size={84} />
+          {/* the pen, as on the phone: the look, the name, the studio */}
+          <button
+            type="button"
+            aria-label={t("Edit")}
+            aria-expanded={pen}
+            onClick={() => setPen((v) => !v)}
+            className="absolute -bottom-0.5 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-border/70 bg-surface text-fg/80 shadow-sm hover:bg-surface-2"
+          >
+            <Pencil size={13} />
+          </button>
+          {pen && (
+            <div className="absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-border/70 bg-surface py-1 text-left text-[14px] shadow-lg">
+              <button type="button" onClick={onChangeLook} className="block w-full px-4 py-2.5 text-left hover:bg-surface-2">
+                {t("Change the look")}
+              </button>
+              <button type="button" onClick={onSettings} className="block w-full px-4 py-2.5 text-left hover:bg-surface-2">
+                {t("Edit the name")}
+              </button>
+              <button type="button" onClick={onStudio} className="block w-full px-4 py-2.5 text-left text-muted hover:bg-surface-2">
+                {t("Avatar studio…")}
+              </button>
+            </div>
+          )}
+        </div>
         <div className="mt-2.5 text-[20px] font-semibold tracking-tight">{name}</div>
         <div className={cx("mt-0.5 flex items-center gap-1.5 text-[13px]", working ? "text-fg" : "text-muted")}>
           {working && <Loader2 size={13} className="animate-spin text-accent" />}

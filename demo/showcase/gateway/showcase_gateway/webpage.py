@@ -5,6 +5,10 @@ Two steps: a phone number or an e-mail address, then the six-digit code nanoMuse
 fills it in); or, for an account that set one, the password in one step. On success the
 browser goes to the account's own Muse at ``<slug>.<SESSION_DOMAIN>``. The page
 is served by the gateway itself so that it has no build step and no assets to keep in step.
+
+One column on a phone; from 900px the words, the perks and the notices sit on the left and
+the form on the right, both centred — the desktop app's sign-in page, not a phone column in
+the middle of a wide window.
 """
 
 from __future__ import annotations
@@ -24,13 +28,21 @@ html[data-theme=dark]{--bg:#121216;--card:#1B1B21;--ink:#F1F0F5;--muted:#9C99AA;
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 -apple-system,"PingFang SC","Noto Sans SC","Segoe UI",system-ui,sans-serif}
 main{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
-.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:32px 28px;box-shadow:0 10px 40px rgba(0,0,0,.06)}
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+/* one column on a phone; from 900px the words on the left and the form on the right, like the desktop app */
+.page{width:100%;max-width:440px;display:flex;flex-direction:column;gap:18px}
+.words{padding:0 4px}
+.card{order:1;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+.perks{order:2;display:grid;grid-template-columns:1fr 1fr;gap:8px;list-style:none;margin:0;padding:0}
+.perks li{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.4;color:var(--ink);opacity:.85;padding:9px 11px;border-radius:14px;background:color-mix(in srgb,var(--line) 45%,transparent)}
+.perks svg{flex:none;width:16px;height:16px;color:var(--accent);margin-top:1px}
+.more{order:3}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .brand img{width:44px;height:44px;border-radius:12px}
 .brand b{font-size:20px;letter-spacing:-.01em}
 .brand small{display:block;color:var(--muted);font-size:13px;margin-top:1px}
 h1{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
 p{margin:0 0 18px;color:var(--muted);font-size:14.5px}
+.words p{margin-bottom:0}
 label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
 input{width:100%;font:inherit;font-size:17px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);outline:none}
 input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
@@ -40,9 +52,9 @@ button[disabled]{opacity:.55;cursor:default}
 button.ghost{background:transparent;color:var(--muted);font-weight:500;margin-top:6px;padding:8px}
 .msg{min-height:22px;font-size:14px;margin-top:12px;color:var(--muted)}
 .msg.err{color:var(--warn)}
-.foot{margin-top:22px;font-size:12.5px;color:var(--muted);line-height:1.6}
+.foot{margin-top:16px;font-size:12.5px;color:var(--muted);line-height:1.6}
 .foot a{color:inherit}
-.notice{margin:18px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:13px;line-height:1.55;color:var(--ink)}
+.notice{margin:0 0 12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:13px;line-height:1.55;color:var(--ink)}
 .notice b{display:block;margin-bottom:2px}
 .notice b a{color:var(--accent);margin:0}
 .notice a{color:var(--accent);text-decoration:none;margin-right:12px}
@@ -60,18 +72,43 @@ details.inv input{margin-top:8px;font-size:15px;text-transform:uppercase;letter-
 .hidden{display:none}
 i.en,i.zh{font-style:normal}
 [data-lang="zh"] i.en,[data-lang="en"] i.zh{display:none}
+@media (min-width:900px){
+  body{background:radial-gradient(ellipse at 18% 50%,color-mix(in srgb,var(--accent) 11%,transparent),transparent 58%) var(--bg)}
+  main{padding:40px 56px}
+  .page{max-width:1060px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,420px);grid-template-areas:"words card" "perks card" "more card";column-gap:72px;row-gap:24px;align-items:center}
+  .words{grid-area:words;align-self:end;padding:0}
+  .perks{grid-area:perks;display:block}
+  .perks li{font-size:14.5px;line-height:1.45;padding:0;margin:0 0 10px;background:none;opacity:.9}
+  .perks svg{width:18px;height:18px;margin-top:3px}
+  .more{grid-area:more;align-self:start;max-width:34em}
+  .card{grid-area:card;padding:32px;align-self:center}
+  .brand{margin-bottom:28px}
+  h1.title{font-size:34px;margin-bottom:10px}
+  .words p{font-size:16px;max-width:30em}
+  .notice{font-size:13px}
+}
 </style>
 </head>
 <body data-lang="zh">
 <button class="lang" id="lang" type="button">English</button>
 <main>
-<div class="card">
-  <div class="brand"><img src="https://nanomuse.cn/assets/icon-512.png" alt=""><div><b>nanoMuse Web</b>
-  <small><i class="zh">在浏览器里用，不用下载</i><i class="en">In the browser, nothing to install</i></small></div></div>
+<div class="page">
+  <section class="words">
+    <div class="brand"><img src="https://nanomuse.cn/assets/icon-512.png" alt=""><div><b>nanoMuse Web</b>
+    <small><i class="zh">在浏览器里用，不用下载</i><i class="en">In the browser, nothing to install</i></small></div></div>
+    <h1 class="title"><i class="zh">试试 nanoMuse</i><i class="en">Try nanoMuse</i></h1>
+    <p><i class="zh">手机号或邮箱收个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。</i><i class="en">A phone number or an e-mail, a code, and a minute later a nanoMuse of your own is here, model included.</i></p>
+  </section>
 
+  <ul class="perks">
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/></svg><span><i class="zh">不用下载，打开浏览器就能用</i><i class="en">Nothing to install — it opens in the browser</i></span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg><span><i class="zh">自带模型和免费额度，也可以换自己的 key</i><i class="en">A model with a free allowance, or your own key</i></span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span><i class="zh">一直保存着，下次登录还在</i><i class="en">It keeps everything for your next visit</i></span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span><i class="zh">同一个账号，手机和电脑上就是同一个 nanoMuse</i><i class="en">The same account on the phone and the desktop is the same nanoMuse</i></span></li>
+  </ul>
+
+  <section class="card">
   <form id="step1">
-    <h1><i class="zh">试试 nanoMuse</i><i class="en">Try nanoMuse</i></h1>
-    <p><i class="zh">手机号或邮箱收个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。它会一直保存，下次登录还在；之后手机和电脑登同一个账号，就是它。</i><i class="en">A phone number or an e-mail, a code, and a minute later a nanoMuse of your own is here, model included. It keeps everything for your next visit; later, the same account on the phone and the desktop is the same nanoMuse.</i></p>
     <div class="tabs" role="tablist">
       <button type="button" class="tab on" id="tab-code" role="tab" aria-selected="true"><i class="zh">验证码登录</i><i class="en">With a code</i></button>
       <button type="button" class="tab" id="tab-pass" role="tab" aria-selected="false"><i class="zh">密码登录</i><i class="en">With a password</i></button>
@@ -102,7 +139,9 @@ i.en,i.zh{font-style:normal}
     <button id="back" class="ghost" type="button"><i class="zh">换个账号</i><i class="en">Use another account</i></button>
     <div class="msg" id="msg2"></div>
   </form>
+  </section>
 
+  <section class="more">
   <div class="notice tip">
     <b><i class="zh">浏览器版适合先试一试</i><i class="en">The browser version is for a first try</i></b>
     <i class="zh">要天天用，推荐装手机 App——功能最全，智能体整个跑在手机上；电脑上装桌面版。同一个账号登录，就是同一个 nanoMuse。<a href="https://nanomuse.cn/#download">下载手机 App 和桌面版</a></i>
@@ -119,6 +158,7 @@ i.en,i.zh{font-style:normal}
     <i class="en">Your nanoMuse runs on our server and only you can reach it; it sleeps after a long quiet spell and wakes when you sign in.</i>
     <br><i class="zh">nanoMuse 是社区项目，与 Meta 无关。</i><i class="en">nanoMuse is a community project, not affiliated with Meta.</i>
   </div>
+  </section>
 </div>
 </main>
 <script>

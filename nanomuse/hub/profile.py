@@ -13,9 +13,15 @@ changes (``{"type": "profile", "rev": n, "device": id}``). Here:
   Settings, the studio, a rename in the chat. The pictures ride along only when the face
   itself changed; a rename keeps them on the relay.
 
+A device keeps its own folder for a face it drew: when the account's pictures are the ones
+it already wears (the relay says so with ``face_id``, the hash of the idle still; older
+relays are checked against the downloaded still), only the name is taken, so the clips the
+studio made and ``face.json`` stay. The face's description and style travel too, so the
+other devices show what it is and can redraw its poses with their own image model.
+
 Never a key, never a message, never a setting that could reach the network: the fields are
-``name``, ``avatar``, ``emoji``, ``color`` and the pictures. The phone does the same from
-``io.github.nanomuse.cloud.ProfileSync``.
+``name``, ``avatar``, ``emoji``, ``color``, ``style``, ``description`` and the pictures. The
+phone does the same from ``io.github.nanomuse.cloud.ProfileSync``.
 """
 
 from __future__ import annotations
@@ -24,7 +30,9 @@ import asyncio
 import base64
 import contextlib
 import hashlib
+import json
 import shutil
+import time
 from typing import TYPE_CHECKING, Any
 
 from nanomuse.cloud import CloudError
@@ -138,8 +146,13 @@ class ProfileSync:
             patch["emoji"] = str(light.get("emoji") or "") or "✨"
             patch["color"] = str(light.get("color") or "") or "#0064d4"
         elif avatar == "face" and light.get("has_face"):
-            full = await self.hub.cloud.profile(with_face=True)
-            face_id = await asyncio.to_thread(self._store_face, full.get("face") or {})
+            worn = self._worn_face_id()
+            if worn and worn[1] == str(light.get("face_id") or ""):
+                # the pictures this device already wears (it drew them, or pulled them before)
+                face_id = worn[0]
+            else:
+                full = await self.hub.cloud.profile(with_face=True)
+                face_id = await asyncio.to_thread(self._store_face, full.get("face") or {}, light)
             if face_id:
                 patch["avatar"] = face_id
         # the rev is remembered before the look is worn, so anyone who sees the new look
@@ -163,9 +176,27 @@ class ProfileSync:
         )
         return True
 
-    def _store_face(self, face: dict[str, Any]) -> str | None:
+    @staticmethod
+    def face_hash(idle: bytes) -> str:
+        """How a face is told apart across devices: the hash of its idle still (the relay
+        reports the same as ``face_id``)."""
+        return hashlib.sha1(idle).hexdigest()[:12]
+
+    def _worn_face_id(self) -> tuple[str, str] | None:
+        """(folder, hash) of the drawn face the profile wears, when its idle still is on disk."""
+        face = self.hub.svc.profile.avatar
+        if not face or face == DRAGON or face in RETIRED:
+            return None
+        path = self.hub.svc.workspace() / "avatar" / face / "idle.webp"
+        try:
+            return face, self.face_hash(path.read_bytes())
+        except OSError:
+            return None
+
+    def _store_face(self, face: dict[str, Any], light: dict[str, Any]) -> str | None:
         """The stills of a pulled face into the workspace; the id is a hash of the idle still
-        so the same face from two devices lands in one folder."""
+        so the same face from two devices lands in one folder. The face this device already
+        wears, when the pictures are the same, is kept under its own name."""
         idle = face.get("idle")
         if not isinstance(idle, str) or not idle:
             return None
@@ -173,7 +204,11 @@ class ProfileSync:
             idle_bytes = base64.b64decode(idle)
         except ValueError:
             return None
-        face_id = "sync-" + hashlib.sha1(idle_bytes).hexdigest()[:12]
+        digest = self.face_hash(idle_bytes)
+        worn = self._worn_face_id()
+        if worn and worn[1] == digest:
+            return worn[0]
+        face_id = "sync-" + digest
         root = self.hub.svc.workspace() / "avatar"
         folder = root / face_id
         folder.mkdir(parents=True, exist_ok=True)
@@ -184,6 +219,19 @@ class ProfileSync:
                 with contextlib.suppress(ValueError):
                     raw = base64.b64decode(pic)
             (folder / f"{mood}.webp").write_bytes(raw)
+        # what the face is, for the studio screen here (and a redraw of its poses)
+        info = {
+            "description": str(light.get("description") or ""),
+            "style": str(light.get("style") or ""),
+            "model": "",
+            "clip_model": "",
+            "created": int(time.time()),
+            "from": "account",
+        }
+        with contextlib.suppress(OSError):
+            (folder / "face.json").write_text(
+                json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
         # older pulled faces are not worn any more
         with contextlib.suppress(OSError):
             for other in root.iterdir():
@@ -222,6 +270,9 @@ class ProfileSync:
             body.update(avatar="emoji", emoji=p.emoji, color=p.color)
         else:
             body["avatar"] = "face"
+            info = self._face_info(p.avatar)
+            body["style"] = str(info.get("style") or "")[:20]
+            body["description"] = str(info.get("description") or "")[:200]
             if p.avatar != self.pushed_face:
                 face = self._read_face(p.avatar)
                 if face is None:
@@ -230,6 +281,15 @@ class ProfileSync:
                 else:
                     body["face"] = face
         return body
+
+    def _face_info(self, face_id: str) -> dict[str, Any]:
+        """``face.json`` of a drawn face (the studio writes it with the poses), or {}."""
+        path = self.hub.svc.workspace() / "avatar" / face_id / "face.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
 
     def _read_face(self, face_id: str) -> dict[str, str] | None:
         folder = self.hub.svc.workspace() / "avatar" / face_id

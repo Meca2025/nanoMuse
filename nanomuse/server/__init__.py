@@ -17,7 +17,7 @@ import sys
 import threading
 import traceback
 
-from nanomuse import __version__
+from nanomuse import __version__, loopback
 from nanomuse.certs import ensure_ca_bundle
 from nanomuse.config import Settings
 from nanomuse.server.api import STATIC_DIR, create_app
@@ -58,6 +58,13 @@ def serve(
 
     _utf8_console()
     ensure_ca_bundle()
+    # Windows: asyncio's self-pipe is a loopback connection; on a machine that intercepts
+    # those the loop would never start. Say so and stop, rather than listen on nothing.
+    loopback.install()
+    problem = loopback.check()
+    if problem:
+        print(f"nanoMuse: {problem}", file=sys.stderr, flush=True)
+        raise SystemExit(78)
     host = host or settings.server.host
     port = port or settings.server.port
     service = MuseService(settings)
@@ -67,7 +74,7 @@ def serve(
     shown_host = host
     if host in ("0.0.0.0", "::", ""):
         shown_host = lan_ip() or "127.0.0.1"
-    url = f"http://{shown_host}:{port}/"
+    url = f"http://[{shown_host}]:{port}/" if ":" in shown_host else f"http://{shown_host}:{port}/"
     if service.token:
         url += f"?token={service.token}"
     # the banner once the socket is about to open (a desktop shell reads the log when the

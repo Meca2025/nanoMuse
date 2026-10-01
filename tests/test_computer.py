@@ -228,6 +228,35 @@ def test_hands_backend_choice(monkeypatch: pytest.MonkeyPatch) -> None:
             hands_mod.pick_backend("auto")
 
 
+def test_pyautogui_without_tk_does_not_take_the_runtime_down(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """mouseinfo (pyautogui's dependency) calls sys.exit at import when tkinter is missing on
+    Linux; the frozen desktop runtime has no Tk. A stand-in is registered first, and should
+    the import still exit, the hands are merely unavailable (0.1.25 Linux: every request died)."""
+    import types
+
+    monkeypatch.setitem(hands_mod.sys.modules, "tkinter", None)  # import tkinter fails
+    monkeypatch.delitem(hands_mod.sys.modules, "mouseinfo", raising=False)
+    fake = types.ModuleType("pyautogui")
+    monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", fake)
+    assert hands_mod._import_pyautogui() is fake
+    stub = hands_mod.sys.modules["mouseinfo"]
+    assert stub.__name__ == "mouseinfo" and callable(stub.MouseInfoWindow)
+    monkeypatch.delitem(hands_mod.sys.modules, "mouseinfo")
+
+    def exits() -> Any:
+        raise SystemExit("NOTE: You must install tkinter on Linux to use MouseInfo.")
+
+    monkeypatch.setattr(hands_mod, "_import_pyautogui", exits)
+    monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    with pytest.raises(hands_mod.HandsUnavailable, match="tkinter"):
+        hands_mod.PyAutoGUIHands()
+    info = hands_mod.describe_availability("auto")
+    assert info["available"] is False and "tkinter" in info["reason"]
+
+
 # ----------------------------------------------------------------------------- the tools
 def test_computer_act_risk(settings: Settings, fake_screen) -> None:
     link = make_link(settings)
