@@ -9,7 +9,8 @@ cannot do:
 - a global **Stop** — `Ctrl/Cmd+Shift+Esc` — that takes the mouse back from the hands;
 - the **stage**: a transparent, click-through window over the display that draws the ring
   and the ripple where the hands are about to click (UI-TARS-desktop's ScreenMarker, the
-  Android `HandsStage`), with a pill saying what is going on and how to stop it.
+  Android `HandsStage`), with a pill saying what is going on and a **Stop** button on it —
+  the one part of the stage that takes a click (the shortcut works too).
 
 Design notes and the wider picture: [`docs/every-device.md`](../../docs/every-device.md),
 [`docs/desktop.md`](../../docs/desktop.md).

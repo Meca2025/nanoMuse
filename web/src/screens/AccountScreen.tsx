@@ -57,7 +57,7 @@ export function AccountScreen() {
         {!signedIn ? (
           <Section>
             <p className="text-[13.5px] text-muted leading-relaxed">
-              {t("Free. Your devices meet on the hub and a model with a free allowance comes with it — ¥10 for good, +¥5 for each friend you invite, +¥10 for joining the co-creation programme. Sign in with a code the first time; set a password afterwards if you like.")}
+              {t("Free. One account for all your devices, with a model and ¥10 of use to start; a code the first time, a password afterwards if you like.")}
             </p>
             <SignIn onSignedIn={() => toast(t("Signed in to nanoMuse Cloud."))} />
           </Section>
@@ -161,7 +161,7 @@ function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
           </div>
           <div className="mt-1 text-[12.5px] text-muted">
             {limited
-              ? t("¥{spent} spent so far{usd}. The allowance is for the account's lifetime — it does not reset by the day.", { spent: spent.toFixed(2), usd: usd(spent) })
+              ? t("¥{spent} used{usd}; the allowance does not reset.", { spent: spent.toFixed(2), usd: usd(spent) })
               : t("No limit on this account.")}
           </div>
         </div>
@@ -178,7 +178,7 @@ function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
       )}
       {limited && (
         <p className="text-[12.5px] text-muted">
-          {t("Every account starts with ¥{allowance}. Each new person you invite adds ¥{invite}; joining the co-creation programme adds ¥{contribute} once. When it is gone, your own model key (Alibaba Cloud Bailian is a good start) keeps you going — sign-in and your devices are never affected.", {
+          {t("¥{allowance} to start, +¥{invite} per friend you invite, +¥{contribute} once for the co-creation programme; after that, your own key keeps the model going.", {
             allowance: (spend.allowance_cny ?? 10).toFixed(0),
             invite: (info.invite_bonus_cny ?? 5).toFixed(0),
             contribute: (info.contribute_bonus_cny ?? 10).toFixed(0),

@@ -246,6 +246,29 @@ def create_app(
         body = await _json(request)
         return cloud.set_contribute(caller, bool(body.get("on")))
 
+    @app.get("/v1/me/profile")
+    async def me_profile(face: bool = True, caller: Caller = Depends(caller_dep)) -> dict:
+        """The agent's name and look, shared by the account's devices; ``?face=false`` leaves
+        the pictures out (a device checks ``rev`` first and fetches them only when it moved)."""
+        return cloud.profile(caller, with_face=face)
+
+    @app.put("/v1/me/profile")
+    async def me_put_profile(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+        """A device wrote the name or the look: stored (last writer wins) and every other
+        device of the account hears ``{"type": "profile", "rev"}`` on the hub."""
+        body = await _json(request)
+        device = str(body.pop("device", "") or "")
+        out = cloud.put_profile(caller, device, body)
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.broadcast_profile(caller.account_id, int(out["rev"]), device[:80])
+        return out
+
+    @app.delete("/v1/me/profile", status_code=204)
+    async def me_delete_profile(caller: Caller = Depends(caller_dep)) -> Response:
+        cloud.delete_profile(caller)
+        return Response(status_code=204)
+
     @app.delete("/v1/me/samples")
     async def me_delete_samples(caller: Caller = Depends(caller_dep)) -> dict:
         return {"deleted": cloud.delete_samples(caller)}
@@ -421,14 +444,40 @@ def create_app(
 
     # -- images -------------------------------------------------------------------------------
 
+    # the provider draws only a couple of pictures per account at a time: everyone's
+    # requests pass through this gate, and a 429 behind it is waited out (see Settings)
+    image_gate = asyncio.Semaphore(max(1, settings.image_concurrency))
+    IMAGE_PAUSES = (2.0, 4.0, 8.0, 12.0, 15.0)
+
+    async def _dashscope_post_image(url: str, payload: bytes) -> httpx.Response:
+        """The upstream call, behind the gate, tried again on a 429 or a 5xx."""
+        async with image_gate:
+            attempt = 0
+            while True:
+                try:
+                    r = await http.post(url, headers=upstream_headers(), content=payload)
+                except httpx.HTTPError as e:
+                    raise CloudError(502, "upstream", "The image provider did not answer") from e
+                if r.status_code != 429 and r.status_code < 500:
+                    return r
+                if attempt >= settings.image_retries:
+                    return r
+                pause = IMAGE_PAUSES[min(attempt, len(IMAGE_PAUSES) - 1)]
+                retry_after = r.headers.get("retry-after", "")
+                if retry_after.isdigit():
+                    pause = min(max(float(retry_after), 1.0), 30.0)
+                log.info("dashscope image HTTP %s; again in %.0fs (%d/%d)", r.status_code, pause, attempt + 1, settings.image_retries)
+                await asyncio.sleep(pause)
+                attempt += 1
+
     async def _dashscope_image(model: str, content: list[dict], parameters: dict) -> bytes:
         host = settings.dashscope_base.rstrip("/")
         url = f"{host}/services/aigc/multimodal-generation/generation"
         payload = {"model": model, "input": {"messages": [{"role": "user", "content": content}]}, "parameters": parameters}
-        try:
-            r = await http.post(url, headers=upstream_headers(), content=dumps(payload).encode())
-        except httpx.HTTPError as e:
-            raise CloudError(502, "upstream", "The image provider did not answer") from e
+        r = await _dashscope_post_image(url, dumps(payload).encode())
+        if r.status_code == 429:
+            log.warning("dashscope image still 429 after %d retries", settings.image_retries)
+            raise CloudError(429, "provider_busy", "The image provider is busy right now; try again in a moment", {"retry_after": 20})
         if r.status_code >= 400:
             msg = ""
             try:

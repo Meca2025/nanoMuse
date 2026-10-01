@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 
@@ -53,10 +54,18 @@ def fake_upstream() -> FastAPI:
             "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
         }
 
+    up.state.image_429s = 0  # how many times the next pictures are refused with a 429 first
+
     @up.post("/ds/api/v1/services/aigc/multimodal-generation/generation")
     async def draw(request: Request):
         body = await request.json()
         up.state.requests.append(("image", dict(request.headers), body))
+        if up.state.image_429s > 0:
+            up.state.image_429s -= 1
+            return JSONResponse(
+                status_code=429,
+                content={"code": "Throttling.RateQuota", "message": "Requests rate limit exceeded, please try again later."},
+            )
         return {"output": {"choices": [{"message": {"content": [{"image": "http://upstream/pic.png"}]}}]}}
 
     @up.get("/pic.png")
@@ -316,6 +325,76 @@ async def test_out_of_tokens_and_bad_keys(stack):
     assert (await client.post("/v1/auth/sign-out", headers=headers)).status_code == 204
     r = await client.get("/v1/me", headers=headers)
     assert r.status_code == 401 and r.json()["error"]["code"] == "bad_key"
+
+
+async def test_a_rate_limited_picture_is_tried_again_behind_the_gate(stack, monkeypatch):
+    """DashScope allows an account a couple of image tasks at a time and says 429 past that.
+    The relay waits it out (with growing pauses) instead of handing the app a 502 that
+    quotes the provider; only when it never clears does the app hear `provider_busy`."""
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender)
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    accounts = (await client.get("/v1/admin/accounts", headers={"X-Admin-Token": "admin"})).json()["accounts"]
+    await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"}, json={"account_id": accounts[0]["id"], "tokens": 1_000_000})
+    naps: list[float] = []
+
+    async def no_sleep(seconds: float) -> None:
+        naps.append(seconds)
+
+    monkeypatch.setattr("nanomuse_cloud.api.asyncio.sleep", no_sleep)
+
+    up.state.image_429s = 2
+    r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
+    assert r.status_code == 200, r.text
+    assert naps == [2.0, 4.0]
+    assert sum(1 for k, _, _ in up.state.requests if k == "image") == 3
+    assert r.headers["x-nanomuse-charged"] == "30000"
+
+    # never clears: a 429 of the relay's own, a stable code, no charge
+    naps.clear()
+    up.state.image_429s = 99
+    before = (await client.get("/v1/me", headers=headers)).json()
+    r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
+    assert r.status_code == 429
+    assert r.json()["error"]["code"] == "provider_busy"
+    assert r.json()["error"]["retry_after"] == 20
+    assert len(naps) == 4  # IMAGE_RETRIES
+    after = (await client.get("/v1/me", headers=headers)).json()
+    assert after["usage"] == before["usage"]
+    up.state.image_429s = 0
+
+
+async def test_pictures_are_drawn_a_couple_at_a_time(stack):
+    """Six at once from six devices: the gate lets two through at a time, the rest queue,
+    all six come back — the provider never sees more than two in flight."""
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender)
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    accounts = (await client.get("/v1/admin/accounts", headers={"X-Admin-Token": "admin"})).json()["accounts"]
+    await client.post("/v1/admin/grant", headers={"X-Admin-Token": "admin"}, json={"account_id": accounts[0]["id"], "tokens": 1_000_000})
+    in_flight = {"now": 0, "peak": 0}
+
+    async def slow(request: Request):
+        in_flight["now"] += 1
+        in_flight["peak"] = max(in_flight["peak"], in_flight["now"])
+        await asyncio.sleep(0.05)
+        in_flight["now"] -= 1
+        return {"output": {"choices": [{"message": {"content": [{"image": "http://upstream/pic.png"}]}}]}}
+
+    # the slow handler takes the place of the fake's usual one
+    up.router.routes[:] = [
+        rt for rt in up.router.routes if getattr(rt, "path", "") != "/ds/api/v1/services/aigc/multimodal-generation/generation"
+    ]
+    up.add_api_route("/ds/api/v1/services/aigc/multimodal-generation/generation", slow, methods=["POST"])
+
+    rs = await asyncio.gather(
+        *(
+            client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": f"dragon {i}"})
+            for i in range(6)
+        )
+    )
+    assert [r.status_code for r in rs] == [200] * 6
+    assert in_flight["peak"] <= 2
 
 
 async def test_images_go_through_dashscope_native(stack):

@@ -12,9 +12,10 @@ import type { HandsLive, StageConfig } from "../../shared/types";
  *   what is typed never appears on the stage);
  * - a soft gradient rim around the display while a task runs, with a sweep across the
  *   screen for the moment of a screenshot;
- * - a pill at the top saying what is going on and how to stop it.
- * The window is click-through; this page never takes input. The draw loop runs only while
- * something is on the canvas.
+ * - a pill at the top saying what is going on, with a Stop button and the shortcut.
+ * The window is click-through except for the pill: the page tells main where the pill is
+ * and when the pointer is over it (main lets clicks through to it just then). The draw
+ * loop runs only while something is on the canvas.
  */
 
 const canvas = document.getElementById("stage") as HTMLCanvasElement;
@@ -27,7 +28,9 @@ const frame = document.getElementById("frame")!;
 const scan = document.getElementById("scan")!;
 const keys = document.getElementById("keys")!;
 const markPath = document.getElementById("markpath")!;
+const stopButton = document.getElementById("stop") as HTMLButtonElement;
 (pill.querySelector(".avatar") as HTMLElement).style.backgroundImage = `url(${trayUrl})`;
+stopButton.addEventListener("click", () => window.nanomuseDesktop?.stopHands());
 
 const ACCENT = "#0A66E4";
 const CYAN = "#06B6D4";
@@ -59,7 +62,7 @@ let pillTimer: ReturnType<typeof setTimeout> | null = null;
 
 const words = () => ({
   working: zh ? "nanoMuse 正在操作这台电脑" : "nanoMuse is using this computer",
-  stop: zh ? "停止" : "to stop",
+  stop: zh ? "停止" : "Stop",
   looking: zh ? "看一眼屏幕" : "looking at the screen",
   click: zh ? "点击" : "click",
   double: zh ? "双击" : "double-click",
@@ -137,6 +140,8 @@ function setStep(text: string): void {
   step.classList.remove("swap");
   void step.offsetWidth; // restart the animation
   step.classList.add("swap");
+  // the pill's width follows the words; the clickable region follows the pill
+  if (pill.classList.contains("on")) setTimeout(solid, 350);
 }
 
 function showPill(state: "" | "done" | "stopped" = ""): void {
@@ -151,6 +156,9 @@ function showPill(state: "" | "done" | "stopped" = ""): void {
   }
   pill.classList.add("on");
   frame.classList.add("on");
+  stopButton.textContent = words().stop;
+  // the pill has just changed size: tell main where it is once it has settled
+  setTimeout(solid, 350);
 }
 
 function hidePill(afterMs: number): void {
@@ -160,8 +168,38 @@ function hidePill(afterMs: number): void {
     pill.classList.remove("on");
     frame.classList.remove("on");
     keys.classList.remove("on");
+    solid();
   }, afterMs);
 }
+
+/** Where the pill is and whether the pointer is over it — the part of the stage that takes clicks. */
+let hovering = false;
+function solid(): void {
+  if (!pill.classList.contains("on") || pill.classList.contains("done") || pill.classList.contains("stopped")) {
+    hovering = false;
+    window.nanomuseDesktop?.solid(null);
+    return;
+  }
+  const r = pill.getBoundingClientRect();
+  window.nanomuseDesktop?.solid({ x: r.left, y: r.top, width: r.width, height: r.height, hover: hovering });
+}
+// macOS and Windows forward mouse moves to a click-through window: the pointer over the
+// pill makes it solid for that moment, leaving it makes the stage see-through again
+document.addEventListener("mousemove", (e) => {
+  if (!pill.classList.contains("on")) return;
+  const r = pill.getBoundingClientRect();
+  const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  if (over !== hovering) {
+    hovering = over;
+    solid();
+  }
+});
+pill.addEventListener("mouseleave", () => {
+  if (hovering) {
+    hovering = false;
+    solid();
+  }
+});
 
 function showKeys(html: string, forMs: number): void {
   keys.innerHTML = html;
@@ -222,7 +260,7 @@ function onHands(ev: HandsLive): void {
       frame.classList.remove("wait");
       what.textContent = w.working;
       setStep(ev.text ? `· ${ev.text}` : "");
-      hint.innerHTML = `<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Esc</kbd> ${esc(w.stop)}`;
+      hint.innerHTML = `<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Esc</kbd>`;
       showPill();
       report(true, ev.text ?? "", "");
       break;

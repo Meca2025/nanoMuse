@@ -61,7 +61,7 @@ export function IdentityForm({
   askUserName?: boolean;
   inputCls: string;
   /** the picker offers "draw a new one": the description goes to the chat (Settings only — setup has no model yet) */
-  onGenerate?: (description: string) => void;
+  onGenerate?: (description: string, style: string) => void;
 }) {
   const t = useT();
   const [seed, setSeed] = useState(7);
@@ -84,12 +84,6 @@ export function IdentityForm({
               aria-label={t("Name")}
               autoCapitalize="words"
             />
-            <div className="mt-1 flex justify-between text-[11.5px] text-muted">
-              <span>{t("1–20 characters. Empty means nanoMuse.")}</span>
-              <span>
-                {value.name.length}/{NAME_MAX}
-              </span>
-            </div>
           </div>
           <input
             value={value.tagline}

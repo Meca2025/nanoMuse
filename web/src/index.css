@@ -48,6 +48,10 @@
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
 }
 
+/* `dark:` follows the theme chosen under Settings → Appearance (<html data-theme>), not the
+   system: light is the default everywhere, dark only when picked (src/theme.ts). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* The palette is Muse's: near-white and near-black surfaces, one blue, grey for the agent's
    bubbles and light blue for yours. */
 :root {
@@ -60,21 +64,20 @@
   --om-accent: #0064d4;
   --om-bubble-user: #d8e9ff;
   --om-bubble-user-fg: #111112;
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --om-bg: #181819;
-    --om-surface: #202022;
-    --om-surface-2: #2a2a2d;
-    --om-border: #333337;
-    --om-fg: #ffffff;
-    --om-muted: #9d9da4;
-    --om-accent: #1793ff;
-    --om-bubble-user: #1c3d66;
-    --om-bubble-user-fg: #ffffff;
-  }
+html[data-theme="dark"] {
+  --om-bg: #181819;
+  --om-surface: #202022;
+  --om-surface-2: #2a2a2d;
+  --om-border: #333337;
+  --om-fg: #ffffff;
+  --om-muted: #9d9da4;
+  --om-accent: #1793ff;
+  --om-bubble-user: #1c3d66;
+  --om-bubble-user-fg: #ffffff;
+  color-scheme: dark;
 }
 
 html,

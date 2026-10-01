@@ -8,6 +8,7 @@ import asyncio
 import base64
 import json
 import queue
+import ssl
 import sys
 import threading
 import time
@@ -329,6 +330,35 @@ def test_client_refuses_to_hammer_on_bad_key(relay: FakeRelay) -> None:
                 break
             await asyncio.sleep(0.05)
         assert client.state == "refused"
+        await client.stop()
+
+    asyncio.run(scenario())
+
+
+def test_a_certificate_failure_is_a_disconnect_not_a_refusal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SSLCertVerificationError is a ValueError too; it used to land in the refused branch
+    and read as the hub refusing the device (a Mac whose bundled Python had no CA store)."""
+
+    async def scenario() -> None:
+        client = HubClient("wss://relay.test/v1/hub", "k", "pc-1", "Desk", actions=["info"])
+
+        async def bad_cert() -> None:
+            exc = ssl.SSLCertVerificationError("certificate verify failed")
+            exc.verify_message = "unable to get local issuer certificate"
+            raise exc
+
+        monkeypatch.setattr(client, "_session", bad_cert)
+        client.start()
+        for _ in range(100):
+            if client.state == "disconnected":
+                break
+            await asyncio.sleep(0.02)
+        assert client.state == "disconnected"
+        assert "certificate could not be verified" in client.state_detail
+        assert "unable to get local issuer certificate" in client.state_detail
+        assert client.running  # it keeps trying (slowly), rather than giving up
         await client.stop()
 
     asyncio.run(scenario())
@@ -896,3 +926,109 @@ def test_password_sign_in_and_account_management(
     assert client.get("/api/cloud").json()["signed_in"] is False
     assert service.app.vault.get("NANOMUSE_CLOUD_KEY") is None
     assert client.get("/api/cloud/sessions").status_code == 401
+
+
+# ----------------------------------------------------------------------------- the shared look
+WEBP_IDLE = b"RIFF\x00\x00\x00\x00WEBPVP8 " + b"\x01" * 40
+WEBP_HAPPY = b"RIFF\x00\x00\x00\x00WEBPVP8 " + b"\x02" * 40
+
+
+def _fake_profile_relay(
+    monkeypatch: pytest.MonkeyPatch, store: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """``/v1/me/profile`` on the relay, faked: ``store`` is the row, ``puts`` what came in."""
+    puts: list[dict[str, Any]] = []
+
+    async def fake_profile(self: CloudClient, with_face: bool = True) -> dict[str, Any]:
+        if with_face:
+            return dict(store)
+        return {k: v for k, v in store.items() if k != "face"}
+
+    async def fake_put(self: CloudClient, body: dict[str, Any]) -> dict[str, Any]:
+        puts.append(body)
+        store["rev"] = int(store.get("rev") or 0) + 1
+        store["device"] = str(body.get("device") or "")
+        for k in ("name", "avatar", "emoji", "color"):
+            store[k] = body.get(k, "")
+        if "face" in body:
+            store["face"] = body["face"]
+        store["has_face"] = bool(store.get("face"))
+        return {"rev": store["rev"], "device": store["device"]}
+
+    monkeypatch.setattr(CloudClient, "profile", fake_profile)
+    monkeypatch.setattr(CloudClient, "put_profile", fake_put)
+    monkeypatch.setattr("nanomuse.hub.profile.PUSH_DELAY_S", 0.05)
+    return puts
+
+
+def test_the_name_and_face_follow_the_account(hub_server, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, service, _llm, relay = hub_server
+    store: dict[str, Any] = {
+        "rev": 2,
+        "updated_at": 1,
+        "device": "phone-1",
+        "name": "小火",
+        "avatar": "face",
+        "emoji": "",
+        "color": "",
+        "style": "pixel",
+        "description": "a robot owl",
+        "has_face": True,
+        "face": {
+            "idle": base64.b64encode(WEBP_IDLE).decode(),
+            "happy": base64.b64encode(WEBP_HAPPY).decode(),
+        },
+    }
+    puts = _fake_profile_relay(monkeypatch, store)
+    sign_in(client)
+    # the relay's look is worn: the name, and the stills in the workspace behind the files API
+    wait_for(lambda: service.profile.name == "小火")
+    face = service.profile.avatar
+    assert face.startswith("sync-")
+    folder = service.workspace() / "avatar" / face
+    assert (folder / "idle.webp").read_bytes() == WEBP_IDLE
+    assert (folder / "happy.webp").read_bytes() == WEBP_HAPPY
+    assert (folder / "working.webp").read_bytes() == WEBP_IDLE  # a missing mood wears idle
+    assert client.get(f"/api/files/avatar/{face}/idle.webp").status_code == 200
+    assert service.hub.profile.rev == 2 and puts == []  # a pulled look is not pushed back
+    # a change here goes to the relay a moment later; a rename keeps the pictures there
+    client.put("/api/settings", json={"profile": {"name": "小火龙"}})
+    wait_for(lambda: puts)
+    assert puts[0]["name"] == "小火龙" and puts[0]["avatar"] == "face"
+    assert "face" not in puts[0] and puts[0]["device"] == service.hub.device_id
+    wait_for(lambda: service.hub.profile.rev == 3)
+    # the relay's word that another device changed it: pulled and worn
+    store.update(
+        rev=4, device="phone-1", avatar="emoji", emoji="🦉", color="#059669", has_face=False
+    )
+    store["face"] = None
+    relay.send({"type": "profile", "rev": 4, "device": "phone-1"})
+    wait_for(lambda: service.profile.emoji == "🦉")
+    assert service.profile.avatar == "" and service.profile.color == "#059669"
+    assert service.hub.profile.rev == 4 and len(puts) == 1
+    # the dragon chosen here is shared too; signing out forgets the rev, not the look
+    client.put("/api/settings", json={"profile": {"avatar": "dragon"}})
+    wait_for(lambda: len(puts) == 2)
+    assert puts[1]["avatar"] == "dragon" and store["rev"] == 5
+    client.post("/api/cloud/sign-out")
+    assert service.hub.profile.rev == 0 and service.profile.avatar == "dragon"
+
+
+def test_the_first_device_seeds_the_accounts_look(
+    hub_server, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, service, _llm, _relay = hub_server
+    store: dict[str, Any] = {"rev": 0, "name": "", "avatar": "", "has_face": False, "face": None}
+    puts = _fake_profile_relay(monkeypatch, store)
+    service.update_profile({"name": "Nova", "avatar": "", "emoji": "🪐", "color": "#7c3aed"})
+    assert puts == []  # not signed in: nothing to tell
+    sign_in(client)
+    wait_for(lambda: puts)
+    assert puts[0] == {
+        "device": service.hub.device_id,
+        "name": "Nova",
+        "avatar": "emoji",
+        "emoji": "🪐",
+        "color": "#7c3aed",
+    }
+    wait_for(lambda: service.hub.profile.rev == 1)

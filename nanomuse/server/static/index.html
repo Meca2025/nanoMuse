@@ -6,8 +6,17 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
     />
-    <meta name="theme-color" content="#181819" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#fcfcfc" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#fcfcfc" />
+    <script>
+      // light unless dark was chosen under Settings → Appearance (or "system"): applied
+      // before the first paint so a dark choice does not flash white
+      try {
+        var t = localStorage.getItem("nanomuse_theme") || "light";
+        if (t === "system") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = t;
+        if (t === "dark") document.querySelector('meta[name="theme-color"]').setAttribute("content", "#181819");
+      } catch (e) {}
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,8 +25,8 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>nanoMuse</title>
-    <script type="module" crossorigin src="/assets/index-CBOKB28A.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CajBvomr.css">
+    <script type="module" crossorigin src="/assets/index-BHeTuelK.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BiTmL6H3.css">
   </head>
   <body>
     <div id="root"></div>

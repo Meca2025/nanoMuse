@@ -3,11 +3,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { androidApp, keepRunningStatus, type KeepRunningStatus } from "../android";
 import { api, setToken } from "../api";
 import { DRAGON } from "../avatars";
+import { isDesktopApp } from "../desktop";
+import { openOwnKeySetup } from "../components/AllowanceWays";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
 import { BackBar } from "../components/BackBar";
 import { CommunityNotice } from "../components/CommunityNotice";
 import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
+import { setThemeSetting, useThemeSetting } from "../theme";
 import { disablePush, enablePush, pushState, type PushState } from "../push";
 import { useStore } from "../store";
 import type { Proactivity, PushInfo, UpdateView } from "../types";
@@ -38,12 +41,13 @@ const MODES: Array<{ id: "ask" | "strict" | "auto"; title: string; text: string;
 ];
 
 export function SettingsScreen() {
-  const { state, refreshSettings, setTab, toast, send } = useStore();
+  const { state, refreshSettings, setTab, toast } = useStore();
   const s = state.settings;
   const [identity, setIdentity] = useState<Identity>(() => identityOf(state.profile, DRAGON, AVATAR_COLORS[0]));
   const [saving, setSaving] = useState(false);
   const t = useT();
   const localeSetting = useLocaleSetting();
+  const themeSetting = useThemeSetting();
   const [release, setRelease] = useState<UpdateView | null>(null);
 
   useEffect(() => {
@@ -82,7 +86,7 @@ export function SettingsScreen() {
       <header className="safe-top shrink-0 px-5 pt-2 pb-3">
         <BackBar />
         <h1 className="text-[24px] font-bold tracking-tight">{t("You & {name}", { name: state.profile?.name ?? "nanoMuse" })}</h1>
-        <p className="text-[13px] text-muted">{t("Make it yours, and decide how careful it should be.")}</p>
+        <p className="text-[13px] text-muted">{t("Its name and look, how careful it is, how often it speaks up.")}</p>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">
@@ -93,10 +97,10 @@ export function SettingsScreen() {
             onChange={setIdentity}
             suggestions={false}
             inputCls={settingsInput}
-            onGenerate={(description) => {
-              // the chat draws it: the runtime reads the request, shows the cost, then four to choose from
+            onGenerate={(description, style) => {
+              // the studio runs in the chat: the card with the cost, then four to choose from
               setTab("chat");
-              void send("main", t("New avatar: {description}", { description })).catch((e: Error) => toast(e.message));
+              void api.avatarBegin(description, "main", style).catch((e: Error) => toast(t(e.message)));
             }}
           />
           <button
@@ -127,9 +131,7 @@ export function SettingsScreen() {
               >
                 <div className={cx("mt-0.5", m.id === "auto" ? "text-rose-500" : "text-accent")}>{m.icon}</div>
                 <div className="flex-1">
-                  <div className="font-medium text-[14.5px]">
-                    {t(m.title)} <span className="text-muted font-normal">· {m.id}</span>
-                  </div>
+                  <div className="font-medium text-[14.5px]">{t(m.title)}</div>
                   <div className="text-[12.5px] text-muted leading-snug mt-0.5">{t(m.text)}</div>
                 </div>
                 {s?.sentinel.mode === m.id && <Check size={18} className="text-accent mt-0.5" />}
@@ -138,7 +140,7 @@ export function SettingsScreen() {
           </div>
           {s && (
             <div className="text-[12.5px] text-muted leading-relaxed">
-              {t("Always asks for: {tools}.", { tools: s.sentinel.always_ask_tools.join(", ") || "—" })}{" "}
+              {t("Always asks before: {tools}.", { tools: s.sentinel.always_ask_tools.map((tool) => t(tool)).join(", ") || "—" })}{" "}
               {s.sentinel.taint_tracking && t("After reading private data, new network destinations need approval.")}
             </div>
           )}
@@ -213,12 +215,35 @@ export function SettingsScreen() {
               </span>
             </button>
           )}
+          {s?.llm.cloud && (
+            <button type="button" onClick={() => openOwnKeySetup(setTab)} className="w-full text-[13.5px] flex items-center justify-between">
+              <span className="text-muted">{t("Use my own API key")}</span>
+              <span className="text-[12.5px] text-muted flex items-center gap-1">
+                {t("OpenAI, Bailian, DeepSeek…")} <ChevronRight size={14} />
+              </span>
+            </button>
+          )}
           <Toggle
             label={t("Show thinking")}
             hint={t("Reveal the model's reasoning under each reply when the provider exposes it.")}
             checked={!!s?.agent.show_thinking}
             onChange={(v) => void update({ show_thinking: v })}
           />
+          <div className="flex items-center gap-3">
+            <label className="text-[13.5px] flex-1">
+              {t("Appearance")}
+              <span className="block text-[12px] text-muted">{t("This device only")}</span>
+            </label>
+            <select
+              value={themeSetting}
+              onChange={(e) => setThemeSetting(e.target.value as typeof themeSetting)}
+              className="rounded-2xl bg-surface-2 px-3 py-2 text-[13.5px] outline-none"
+            >
+              <option value="light">{t("Light")}</option>
+              <option value="dark">{t("Dark")}</option>
+              <option value="system">{t("Follow the system")}</option>
+            </select>
+          </div>
           <div className="flex items-center gap-3">
             <label className="text-[13.5px] flex-1">
               {t("App language")}
@@ -255,15 +280,12 @@ export function SettingsScreen() {
               <option value="Français">Français</option>
             </select>
           </div>
-          {s && (
-            <div className="text-[12.5px] text-muted">
-              {t("Tools: {tools}.", { tools: s.tools.map((tool) => tool.name).join(", ") })}{" "}
-              <button type="button" onClick={() => setTab("connections")} className="text-accent underline-offset-2 hover:underline">
-                {t("Connections")}
-              </button>{" "}
-              {t("is where email, the browser and MCP servers are plugged in.")}
-            </div>
-          )}
+          <button type="button" onClick={() => setTab("connections")} className="w-full text-[13.5px] flex items-center justify-between">
+            <span className="text-muted">{t("Connections")}</span>
+            <span className="text-[12.5px] text-muted flex items-center gap-1">
+              {t("E-mail, calendar, browser, MCP servers")} <ChevronRight size={14} />
+            </span>
+          </button>
         </Section>
 
         {/* About */}
@@ -512,7 +534,7 @@ function PushSettings({ name }: { name: string }) {
     <>
       <Toggle
         label={t("Let {name} notify this device", { name })}
-        hint={t("When it needs your approval, has a question, finished something in the background, or it is check-in time. Nothing is shown while the app is on screen.")}
+        hint={t("Approvals, questions, finished background work and check-ins; nothing while the app is on screen.")}
         checked={status === "on"}
         onChange={() => void toggle()}
         disabled={busy || !!blocked}
@@ -528,9 +550,9 @@ function PushSettings({ name }: { name: string }) {
           </button>
         </div>
       )}
-      <div className="text-[12.5px] text-muted">
-        {t("On a phone, add the app to the home screen first: then the icon shows a badge with what is waiting for you, and notifications open the right chat.")}
-      </div>
+      {!isDesktopApp() && (
+        <div className="text-[12.5px] text-muted">{t("On a phone, add the app to the home screen first; the icon then shows a badge and notifications open the right chat.")}</div>
+      )}
     </>
   );
 }
@@ -548,10 +570,7 @@ export function ProactivityDial({ value, onChange }: { value: Proactivity; onCha
   return (
     <div>
       <div className="flex items-center gap-3">
-        <div className="flex-1">
-          <div className="text-[14px]">{t("How much it does on its own")}</div>
-          <div className="text-[12.5px] text-muted leading-snug">{t(current.text)}</div>
-        </div>
+        <div className="flex-1 text-[13px] text-muted leading-snug">{t(current.text)}</div>
       </div>
       <div className="mt-2 grid grid-cols-4 gap-1 rounded-2xl bg-surface-2 p-1">
         {LEVELS.map((l) => (

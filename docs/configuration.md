@@ -330,6 +330,7 @@ approval_timeout = 3600          # seconds an approval card waits before countin
 cors_origins     = []            # only for the Vite dev server, e.g. ["http://localhost:5173"]
 max_upload_mb    = 25            # largest file the app may attach to a message
 update_check     = true          # Settings → About says when a newer release is out (GitHub Releases, every 6 h)
+start_grace      = 4             # seconds the services may take before the app answers anyway
 ```
 
 `update_check` asks `api.github.com` for the latest release at most every six hours and shows

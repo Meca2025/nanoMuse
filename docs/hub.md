@@ -93,6 +93,7 @@ the key in `hello` instead).
 ← error    {code, message, id?}   device_offline · not_controllable · self_call · unknown_call · too_large · bad_frame
 
 → devices  {}        → rename {name}        → forget {device_id}        → ping  ← pong
+← profile  {rev, device}       the account's name and look changed (PUT /v1/me/profile); fetch it
 ```
 
 Close codes: `4000` hello expected, `4001` bad key, `4002` bad device,
@@ -103,6 +104,15 @@ can be changed on the device. A `web` device is never a target and is not
 remembered. Bodies for `file.get`, `file.put` and `screen` carry the bytes in
 base64 (`data`) with `mime`; the desktop refuses files over 8 MB, the relay
 refuses frames over `HUB_FRAME_LIMIT`.
+
+The agent's name and look are the account's, not a device's: `GET` / `PUT
+/v1/me/profile` on the relay keep them (the dragon, an emoji on a colour, or a
+face drawn in the avatar studio with its five small stills), last writer wins,
+and a `profile` frame tells the other devices to fetch the new `rev`. The
+runtime does this in `nanomuse/hub/profile.py`, the phone in
+`io.github.nanomuse.cloud.ProfileSync`; the device that wrote it skips its own
+echo. Nothing else is synchronised — keys, providers and settings stay where
+they were entered.
 
 ## The code
 

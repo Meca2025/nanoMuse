@@ -317,6 +317,22 @@ object NanoMuseCloud {
         Contribution(account(context)!!, granted, r.optDouble("bonus_cny", 0.0))
     }
 
+    /**
+     * The agent's name and look as the account's devices share it (`rev` 0 = none yet); without
+     * the face's pictures when [withFace] is false. Blocking — [ProfileSync] calls it off the
+     * main thread.
+     */
+    fun profile(context: Context, withFace: Boolean): JSONObject {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        return call(context, "GET", if (withFace) "/v1/me/profile" else "/v1/me/profile?face=false", null, token = key)
+    }
+
+    /** This phone's name and look for the account (last writer wins); the new `rev`. Blocking. */
+    fun putProfile(context: Context, body: JSONObject): JSONObject {
+        val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
+        return call(context, "PUT", "/v1/me/profile", body, token = key)
+    }
+
     /** Delete everything this account contributed; returns how many turns went. */
     suspend fun deleteSamples(context: Context): Int = withContext(Dispatchers.IO) {
         val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
@@ -489,6 +505,7 @@ object NanoMuseCloud {
         if (reply.optBoolean("created", false)) prefs(context).edit().putBoolean(KEY_FRESH, true).apply()
         _signedIn.value = true
         io.github.nanomuse.hub.Hub.restart(context) // the new key joins the hub
+        ProfileSync.pullSoon(context) // the name and look the account's other devices wear
         return account(context)!!
     }
 
@@ -754,6 +771,7 @@ object NanoMuseCloud {
             .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
             .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_FRESH).remove(KEY_WARNED_GRANT)
             .apply()
+        ProfileSync.forget(context)
     }
 
     private fun call(context: Context, method: String, path: String, body: JSONObject?, token: String?): JSONObject {

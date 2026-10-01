@@ -216,6 +216,12 @@ class Settings:
     # images endpoint). Same key.
     dashscope_base: str = field(default_factory=lambda: _env("DASHSCOPE_BASE", "https://dashscope.aliyuncs.com/api/v1"))
     upstream_timeout_s: float = field(default_factory=lambda: float(_env("UPSTREAM_TIMEOUT_S", "180")))
+    # Pictures: DashScope allows an account only a couple of image tasks at a time and
+    # answers 429 past that, so the relay draws at most IMAGE_CONCURRENCY pictures at once
+    # for everyone together (the rest queue) and, on a 429 or 5xx, tries again up to
+    # IMAGE_RETRIES times with growing pauses before telling the app the provider is busy.
+    image_concurrency: int = field(default_factory=lambda: _int("IMAGE_CONCURRENCY", 2))
+    image_retries: int = field(default_factory=lambda: _int("IMAGE_RETRIES", 4))
     # JSON object merged into every chat request for fields the app did not set.
     # Qwen 3.x models think by default and a one-line answer can cost a
     # thousand reasoning tokens, so the shipped default turns that off; the app

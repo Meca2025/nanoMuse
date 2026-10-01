@@ -19,7 +19,6 @@ export function DevicesScreen() {
   const t = useT();
   const hub = state.hub;
   const hands = state.hands;
-  const name = state.profile?.name ?? "nanoMuse";
 
   const reload = async () => {
     try {
@@ -55,7 +54,7 @@ export function DevicesScreen() {
         <BackBar />
         <h1 className="text-[24px] font-bold tracking-tight">{t("Devices")}</h1>
         <p className="text-[13px] text-muted">
-          {t("Every device you sign in on has its own {name}; they meet on the hub, so one can ask another to do something where it is.", { name })}
+          {t("Devices signed in to the same account see each other; one can ask another to do something where it is.")}
         </p>
       </header>
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4">
@@ -131,7 +130,7 @@ export function DevicesScreen() {
           )}
         </section>
         <p className="px-1 text-[12px] text-muted leading-relaxed">
-          {t("A chat addressed to a device runs there: its own {name} does the work, you see every step here, and when it needs an approval the card shows up in this chat.", { name })}
+          {t("A chat addressed to a device runs there; you see every step here and answer its approvals.")}
         </p>
       </div>
     </div>
@@ -187,9 +186,8 @@ function ThisDeviceCard({ hub, onChange }: { hub: HubView; onChange: () => void 
             </button>
           </form>
         ) : (
-          <button type="button" onClick={() => setEditing(true)} className="flex items-center gap-2 text-[14px]">
-            <span className="font-medium">{hub.device.name}</span>
-            <Pencil size={13} className="text-muted" />
+          <button type="button" onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-[13px] text-muted hover:text-fg">
+            <Pencil size={13} /> {t("Rename this device")}
           </button>
         )}
         <Toggle
@@ -201,12 +199,12 @@ function ThisDeviceCard({ hub, onChange }: { hub: HubView; onChange: () => void 
         />
         <Toggle
           label={t("My other devices may operate it")}
-          hint={t("Off: the others only see it is here. On: they can run commands, read files and see its screen — each step still goes through the Sentinel.")}
+          hint={t("They can run commands, read files and see its screen here; each step still goes through the Sentinel.")}
           checked={hub.remote_control}
           disabled={busy}
           onChange={(v) => void update({ remote_control: v })}
         />
-        {hub.state === "refused" && hub.detail && <div className="rounded-2xl bg-amber-500/12 px-3 py-2 text-[12.5px] text-amber-700 dark:text-amber-300">{hub.detail}</div>}
+        {(hub.state === "refused" || hub.state === "disconnected") && hub.detail && <div className="rounded-2xl bg-amber-500/12 px-3 py-2 text-[12.5px] text-amber-700 dark:text-amber-300">{hub.detail}</div>}
       </div>
     </Card>
   );
@@ -246,7 +244,7 @@ function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => vo
         hands.task_active
           ? hands.task_text || t("On the screen now")
           : hands.available
-            ? t("Its own screen, mouse and keyboard — the last resort after the shell and the browser.")
+            ? t("Its own screen, mouse and keyboard, when the shell and the browser are not enough.")
             : hands.reason || t("Nothing can drive this screen yet.")
       }
       status={status}
@@ -255,7 +253,7 @@ function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => vo
       <div className="space-y-3">
         <Toggle
           label={t("Let it use this computer's screen")}
-          hint={t("It looks at a screenshot and clicks by position; every click carries the words under the cursor to the Sentinel. Paying, sending and deleting ask every time.")}
+          hint={t("It looks at a screenshot and clicks by position; paying, sending and deleting ask you first.")}
           checked={hands.enabled}
           disabled={busy}
           onChange={(v) => void set({ enabled: v })}

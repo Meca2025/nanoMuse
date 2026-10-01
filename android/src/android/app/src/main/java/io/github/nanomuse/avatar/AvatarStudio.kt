@@ -179,7 +179,8 @@ object AvatarStudio {
             },
             onFailure = { e ->
                 AppLogger.warning(TAG, "candidate $i failed: ${e.message}")
-                Slot.Failed(e.message ?: "failed")
+                // a provider still busy after the retries: a sentence, not its status line
+                Slot.Failed(if (looksRateLimited(e)) context.getString(R.string.nm_avatar_provider_busy) else e.message ?: "failed")
             },
         )
         // Atomic: the four candidates finish on different threads, and a plain

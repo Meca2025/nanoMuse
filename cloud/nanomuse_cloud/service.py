@@ -7,6 +7,7 @@ API module stays a thin translation of these calls into status codes.
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -792,6 +793,111 @@ class Cloud:
     # identity: samples carry the account id only, and are exported without it.
 
     SAMPLE_MAX_CHARS = 200_000
+
+    # -- the profile: the agent's name and look, the same on every device ----------------
+
+    PROFILE_MOODS = ("idle", "working", "waiting", "happy", "error")
+    PROFILE_AVATARS = ("dragon", "emoji", "face")
+    # one still, and the five together, as stored bytes (512 px WebP stills run 20–60 KB)
+    PROFILE_STILL_BYTES = 200 * 1024
+    PROFILE_FACE_BYTES = 800 * 1024
+
+    def profile(self, caller: Caller, with_face: bool = True) -> dict:
+        """What the account's devices wear: ``rev`` 0 and empty fields until one of them writes."""
+        row = self.db.profile(caller.account_id)
+        if row is None:
+            return {
+                "rev": 0,
+                "updated_at": None,
+                "device": "",
+                "name": "",
+                "avatar": "",
+                "emoji": "",
+                "color": "",
+                "style": "",
+                "description": "",
+                "face": None,
+            }
+        body = json.loads(row["body"] or "{}")
+        out = {
+            "rev": int(row["rev"]),
+            "updated_at": int(row["updated_at"]),
+            "device": str(row["device"]),
+            "name": str(body.get("name") or ""),
+            "avatar": str(body.get("avatar") or ""),
+            "emoji": str(body.get("emoji") or ""),
+            "color": str(body.get("color") or ""),
+            "style": str(body.get("style") or ""),
+            "description": str(body.get("description") or ""),
+            "has_face": bool(row["face"]),
+        }
+        if with_face:
+            out["face"] = json.loads(row["face"]) if row["face"] else None
+        return out
+
+    def put_profile(self, caller: Caller, device: str, data: dict) -> dict:
+        """Last writer wins. Only the look is kept — never a key, a message or a setting that
+        could reach the network. ``face`` absent keeps the stored pictures, null clears them,
+        a {mood: base64 WebP} map replaces them (``avatar`` "face" needs one or the other)."""
+        name = str(data.get("name") or "").strip()
+        avatar = str(data.get("avatar") or "").strip()
+        emoji = str(data.get("emoji") or "").strip()
+        color = str(data.get("color") or "").strip()
+        style = str(data.get("style") or "").strip()
+        description = str(data.get("description") or "").strip()
+        if not name or len(name) > 60:
+            raise CloudError(400, "bad_request", "name is 1–60 characters")
+        if avatar not in self.PROFILE_AVATARS:
+            raise CloudError(400, "bad_request", "avatar is dragon, emoji or face")
+        if len(emoji) > 16 or len(style) > 20 or len(description) > 200:
+            raise CloudError(400, "bad_request", "emoji, style or description too long")
+        if color and not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+            raise CloudError(400, "bad_request", "color is #rrggbb")
+        face: str | None
+        if "face" not in data:
+            face = None
+        elif data["face"] is None:
+            face = ""
+        else:
+            face = self._check_face(data["face"])
+        row = self.db.profile(caller.account_id)
+        if avatar == "face" and not (face or (face is None and row is not None and row["face"])):
+            raise CloudError(400, "bad_request", "a drawn face needs its pictures")
+        body = json.dumps(
+            {"name": name, "avatar": avatar, "emoji": emoji, "color": color, "style": style, "description": description},
+            ensure_ascii=False,
+        )
+        rev = self.db.put_profile(caller.account_id, device[:80], body, face)
+        self.note(caller.account_id, "profile.put", avatar)
+        return {"rev": rev, "device": device[:80]}
+
+    def _check_face(self, face: object) -> str:
+        if not isinstance(face, dict) or not face:
+            raise CloudError(400, "bad_request", "face is a {mood: base64} map")
+        kept: dict[str, str] = {}
+        total = 0
+        for mood, pic in face.items():
+            if mood not in self.PROFILE_MOODS or not isinstance(pic, str):
+                raise CloudError(400, "bad_request", f"face has an unknown mood {mood!r}")
+            try:
+                raw = base64.b64decode(pic, validate=True)
+            except (ValueError, binascii.Error):
+                raise CloudError(400, "bad_request", f"face.{mood} is not base64") from None
+            if not (raw.startswith(b"RIFF") and raw[8:12] == b"WEBP") and not raw.startswith(b"\x89PNG"):
+                raise CloudError(400, "bad_request", f"face.{mood} is not WebP or PNG")
+            if len(raw) > self.PROFILE_STILL_BYTES:
+                raise CloudError(413, "too_large", f"face.{mood} is over {self.PROFILE_STILL_BYTES // 1024} KB")
+            total += len(raw)
+            kept[mood] = pic
+        if "idle" not in kept:
+            raise CloudError(400, "bad_request", "face needs at least the idle still")
+        if total > self.PROFILE_FACE_BYTES:
+            raise CloudError(413, "too_large", f"the face is over {self.PROFILE_FACE_BYTES // 1024} KB in all")
+        return json.dumps(kept)
+
+    def delete_profile(self, caller: Caller) -> None:
+        self.db.delete_profile(caller.account_id)
+        self.note(caller.account_id, "profile.clear")
 
     def set_contribute(self, caller: Caller, on: bool) -> dict:
         """Joining the co-creation programme (turning contribution on) adds CONTRIBUTE_BONUS_CNY

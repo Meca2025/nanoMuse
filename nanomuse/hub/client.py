@@ -12,6 +12,7 @@ import asyncio
 import contextlib
 import json
 import platform
+import ssl
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -87,6 +88,8 @@ class _Pending:
 OnCall = Callable[[IncomingCall], Awaitable[None]]
 OnDevices = Callable[[list[dict[str, Any]]], None]
 OnState = Callable[[str, str], None]
+# the account's profile (name and look) changed on the relay: the frame, with its rev
+OnProfile = Callable[[dict[str, Any]], None]
 
 
 class HubClient:
@@ -101,6 +104,7 @@ class HubClient:
         on_call: OnCall | None = None,
         on_devices: OnDevices | None = None,
         on_state: OnState | None = None,
+        on_profile: OnProfile | None = None,
     ):
         self.url = url
         self.api_key = api_key
@@ -111,6 +115,7 @@ class HubClient:
         self.on_call = on_call
         self.on_devices = on_devices
         self.on_state = on_state
+        self.on_profile = on_profile
         self.devices: list[dict[str, Any]] = []
         self.connected = asyncio.Event()
         self.state = "stopped"
@@ -179,6 +184,14 @@ class HubClient:
                     delay = 60.0
                 else:
                     self._set_state("disconnected", f"HTTP {status}")
+            except ssl.SSLCertVerificationError as exc:
+                # (a ValueError too — it must not read as the hub refusing the device)
+                self.last_error = str(exc)
+                self._set_state(
+                    "disconnected",
+                    f"the relay's certificate could not be verified here: {exc.verify_message or exc}",
+                )
+                delay = 60.0
             except (InvalidURI, ValueError) as exc:
                 self.last_error = str(exc)
                 self._set_state("refused", str(exc))
@@ -268,6 +281,12 @@ class HubClient:
         elif kind == "devices":
             self.devices = list(frame.get("devices") or [])
             self._devices_changed()
+        elif kind == "profile":
+            if self.on_profile is not None:
+                try:
+                    self.on_profile(frame)
+                except Exception:  # noqa: BLE001
+                    logger.exception("hub on_profile")
         elif kind == "call":
             call = IncomingCall(
                 id=str(frame.get("id") or ""),

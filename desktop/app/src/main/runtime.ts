@@ -107,7 +107,8 @@ export class Runtime {
   private listeners(): string {
     try {
       if (process.platform === "win32") {
-        const out = execFileSync("netstat", ["-ano", "-p", "tcp"], { encoding: "utf8", timeout: 5000, windowsHide: true });
+        // a busy machine lists far more than the default 1 MB buffer holds (ENOBUFS otherwise)
+        const out = execFileSync("netstat", ["-ano", "-p", "tcp"], { encoding: "utf8", timeout: 5000, windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
         return out.split(/\r?\n/).filter((l) => l.includes(`:${this.port} `) || l.includes(`:${this.port}\t`)).join("\n") || "(netstat: nothing on the port)";
       }
       const out = execFileSync("lsof", ["-nP", `-iTCP:${this.port}`, "-sTCP:LISTEN"], { encoding: "utf8", timeout: 5000 });
@@ -161,6 +162,8 @@ export class Runtime {
       },
       stdio: ["ignore", log, log],
       detached: false,
+      // no console window for the runtime on Windows (its output goes to the log anyway)
+      windowsHide: true,
     });
     this.owned = true;
     this.stopping = false;
@@ -238,10 +241,21 @@ export class Runtime {
   /** A stopped runtime, in words (the system's language): the usual causes are recognised in its log. */
   private explainExit(lead?: string): string {
     const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
+    // a lead means the runtime is alive and silent, not stopped: a different set of causes
+    const alive = lead !== undefined;
     lead ??= zh ? "nanomuse serve 在就绪前就停止了。" : "nanomuse serve stopped before it was ready.";
     const tail = this.logTail(40);
     let hint = "";
-    if (/address already in use|EADDRINUSE|Errno 98|Errno 10048/i.test(tail)) {
+    if (alive && /still not serving after/.test(tail)) {
+      // the runtime's own watchdog wrote where every thread is; that is the report to send
+      hint = zh
+        ? "运行时进程还在，但一直没有开始监听。多半是安全软件或防火墙拦住了它在本机 127.0.0.1 上开端口——把 nanoMuse（resources\\runtime\\nanomuse.exe）加入白名单后再试。日志末尾记录了它卡住时每个线程的位置，报告问题时请一并附上。"
+        : "The runtime process is alive but never began to listen. Most often security software or a firewall is holding the port it opens on 127.0.0.1 — allow nanoMuse (resources\\runtime\\nanomuse.exe) there and try again. The end of the log records where every thread was when it stalled; please include it in a report.";
+    } else if (alive && !/starting: /.test(tail)) {
+      hint = zh
+        ? "运行时进程还在，但一直没有开始监听，也没有再写日志。多半是安全软件或防火墙拦住了它在本机 127.0.0.1 上开端口——把 nanoMuse（resources\\runtime\\nanomuse.exe）加入白名单后再试。"
+        : "The runtime process is alive but never began to listen, and wrote nothing more. Most often security software or a firewall is holding the port it opens on 127.0.0.1 — allow nanoMuse (resources\\runtime\\nanomuse.exe) there and try again.";
+    } else if (/address already in use|EADDRINUSE|Errno 98|Errno 10048/i.test(tail)) {
       hint = zh
         ? `端口 ${this.port} 被其他程序（或另一个 nanoMuse）占用。退出它，或设置 NANOMUSE_PORT。`
         : `Port ${this.port} is taken by another program (or another nanoMuse). Quit it, or set NANOMUSE_PORT.`;
@@ -251,7 +265,8 @@ export class Runtime {
         : `The data folder ${this.home} is not writable. Fix its permissions or set NANOMUSE_HOME.`;
     } else if (/cannot open display|DISPLAY|xdotool/i.test(tail)) {
       hint = zh ? "没有可用的显示器，Hands 需要一个桌面会话。" : "No display is available for the hands; the runtime still needs a desktop session.";
-    } else if (/config\.toml|TOMLDecodeError|does not understand/i.test(tail)) {
+    } else if (/TOMLDecodeError|does not understand|config\.toml has \d+ setting/i.test(tail)) {
+      // ("config.toml" alone also appears in the runtime's ordinary "no API key" advice)
       hint = zh ? "config.toml 读不出来；日志里有字段和行号。" : "config.toml could not be read; the log has the field and the line.";
     } else if (/ModuleNotFoundError|ImportError|No module named/i.test(tail)) {
       hint = zh
@@ -259,6 +274,10 @@ export class Runtime {
         : "The runtime is missing a Python package; reinstall nanoMuse or point NANOMUSE_BIN at a working one.";
     } else if (/WinError 1455|MemoryError|paging file/i.test(tail)) {
       hint = zh ? "内存不够运行时启动；关掉一些程序再试。" : "Not enough memory for the runtime to start; close some programs and try again.";
+    } else if (/GLIBC_[0-9.]+' not found/.test(tail)) {
+      hint = zh
+        ? "这台电脑的系统库（glibc）比自带运行时要求的旧。0.1.24 起的版本在 Ubuntu 20.04 / Debian 11 及更新的系统上都能运行——请安装最新版；更老的系统请用 pip 安装 nanomuse 后自行运行 nanomuse serve。"
+        : "This computer's system library (glibc) is older than the bundled runtime needs. Releases from 0.1.24 on run on Ubuntu 20.04 / Debian 11 and newer — install the latest; on an older system, pip install nanomuse and run nanomuse serve yourself.";
     } else if (/Failed to load Python DLL|_MEIPASS|PyInstaller|Cannot open self/i.test(tail)) {
       hint = zh
         ? "自带的运行时没能解包——安全软件可能拦住了它。把 nanoMuse 加入白名单，或重新安装。"

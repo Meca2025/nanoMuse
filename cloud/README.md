@@ -32,7 +32,13 @@ its base URL.
   `CLOUD_SECRET` so the operator's page can tell accounts apart; the database
   file on its own reveals none of them. Message content is forwarded, never
   written to disk. The database holds: hashed and encrypted identifier, key
-  hashes, token counts per request, and video task ids.
+  hashes, token counts per request, video task ids, and the profile below.
+- **One look on every device.** `GET` / `PUT` / `DELETE /v1/me/profile` keep
+  the agent's name and face for the account — the dragon, an emoji on a colour,
+  or a face drawn in the avatar studio with its five small stills (WebP, 200 KB
+  each at most) — last writer wins, with a `rev` that grows on every write.
+  Devices on the hub hear `{"type": "profile", "rev", "device"}` and fetch it;
+  `?face=false` leaves the pictures out. Never a key or a message.
 
 Errors carry a stable `code` the app can turn into a sentence:
 
@@ -47,6 +53,7 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 404 | `model_not_offered` | not on the menu |
 | 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `invite_url`, `contribute_bonus_available`, `own_key_docs` |
 | 429 | `code_too_often` / `rate_limited` / `daily_cap` | (`daily_cap` only with the legacy token cap on) |
+| 429 | `provider_busy` | the image provider answered 429 even after the relay queued and retried (`IMAGE_CONCURRENCY`, `IMAGE_RETRIES`); `retry_after` seconds in the body |
 | 502 | `upstream` | the provider failed; message passed through |
 | 503 | `upstream_unconfigured` | `UPSTREAM_KEY` missing |
 
@@ -89,6 +96,7 @@ for the full list. The ones that matter:
 |---|---|---|
 | `UPSTREAM_BASE` / `UPSTREAM_KEY` | Model Studio compatible-mode | where chat goes |
 | `DASHSCOPE_BASE` | Model Studio native | where pictures go (same key) |
+| `IMAGE_CONCURRENCY` / `IMAGE_RETRIES` | 2 / 4 | pictures drawn at once for everyone together (the provider allows an account only a couple), and how often a 429 or 5xx is retried with growing pauses before `429 provider_busy` |
 | `CHAT_DEFAULTS` | `{"enable_thinking": false}` | merged into chat requests for fields the app did not set |
 | `SIGNUP_OPEN` | `1` | anyone may sign in; `0` = members only (a private relay) |
 | `ALLOWED_IDENTIFIERS` | empty | comma-separated numbers / addresses of the **members**: no spend limit |

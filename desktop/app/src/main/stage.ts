@@ -1,13 +1,16 @@
 import { BrowserWindow, ipcMain, screen } from "electron";
 import { join } from "node:path";
-import type { StageConfig, StageReport } from "../shared/types";
+import type { SolidRect, StageConfig, StageReport } from "../shared/types";
 
 /**
  * The stage: a transparent, click-through, always-on-top window over the whole display
  * that draws the ring and the ripple where the hands are about to click — UI-TARS-desktop's
  * ScreenMarker, the way HandsStage did it on Android. It is created hidden at start so its
  * renderer can listen on /ws the whole time, shown while a hands task runs, hidden again
- * after. Nothing in it takes the mouse; a Stop is the global shortcut or the window.
+ * after. Only the pill at the top takes the mouse (its Stop button): on macOS and Windows
+ * mouse moves are forwarded to the page, which says when the pointer is over the pill and
+ * the window stops ignoring clicks for that moment; on Linux the window's shape is the
+ * pill, clickable inside and see-through everywhere else.
  */
 export class Stage {
   private win: BrowserWindow | null = null;
@@ -27,6 +30,26 @@ export class Stage {
       else this.hideSoon();
       this.onReport(r);
     });
+    ipcMain.on("stage:solid", (_e, rect: SolidRect | null) => this.solid(rect));
+  }
+
+  /** The pill (with its Stop) takes the mouse; the rest of the stage stays see-through. */
+  private solid(rect: SolidRect | null): void {
+    const win = this.win;
+    if (!win) return;
+    if (process.platform === "linux") {
+      // no mouse-move forwarding here: shape the window to the pill instead
+      if (rect) {
+        win.setIgnoreMouseEvents(false);
+        win.setShape([{ x: Math.floor(rect.x), y: Math.floor(rect.y), width: Math.ceil(rect.width), height: Math.ceil(rect.height) }]);
+      } else {
+        win.setShape([]);
+        win.setIgnoreMouseEvents(true, { forward: true });
+      }
+      return;
+    }
+    if (rect?.hover) win.setIgnoreMouseEvents(false);
+    else win.setIgnoreMouseEvents(true, { forward: true });
   }
 
   create(): void {

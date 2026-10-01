@@ -27,6 +27,7 @@ from nanomuse.agent import Incoming, MuseAgent
 from nanomuse.app import NanoMuseApp
 from nanomuse.avatar import AvatarStudio
 from nanomuse.bridge.server import Bridge
+from nanomuse.cloud import model_url
 from nanomuse.coding.service import CodingService
 from nanomuse.config import Settings
 from nanomuse.goals import Goal
@@ -505,6 +506,12 @@ class MuseService:
             self.profile.goal_interval_minutes,
             self.profile.quiet_hours,
         )
+        look_before = (
+            self.profile.name,
+            self.profile.avatar,
+            self.profile.emoji,
+            self.profile.color,
+        )
         self.profile = Profile.from_dict(merged)
         if before != (
             self.profile.proactivity,
@@ -515,6 +522,14 @@ class MuseService:
         self._save_profile()
         self._apply_profile()
         self.bus.publish({"kind": "profile", "profile": self.profile.to_dict()})
+        if look_before != (
+            self.profile.name,
+            self.profile.avatar,
+            self.profile.emoji,
+            self.profile.color,
+        ):
+            # the account's other devices wear the same name and face
+            self.hub.profile.changed()
         return self.profile
 
     # ------------------------------------------------------------------ threads
@@ -1936,7 +1951,16 @@ class MuseService:
                 "active": self.app.sandbox.active,
                 "status": self.app.sandbox.status,
             },
-            "llm": {"provider": s.llm.provider, "model": s.llm.model, "stream": s.llm.stream},
+            "llm": {
+                "provider": s.llm.provider,
+                "model": s.llm.model,
+                "stream": s.llm.stream,
+                # the account's model answers (Settings offers the own-key door then)
+                "cloud": bool(
+                    s.llm.base_url
+                    and s.llm.base_url.rstrip("/") == model_url(self.hub.cloud.base_url)
+                ),
+            },
             "agent": {
                 "language": s.agent.language,
                 "max_steps": s.agent.max_steps,

@@ -615,7 +615,7 @@ export interface SettingsView {
   };
   /** Each shell / python call in its own bubblewrap namespace (Linux); status says why not. */
   sandbox: { mode: "auto" | "bwrap" | "off"; active: boolean; status: string };
-  llm: { provider: string; model: string; stream: boolean };
+  llm: { provider: string; model: string; stream: boolean; cloud?: boolean };
   agent: { language: string; max_steps: number; show_thinking: boolean; workspace: string };
   connectors: { email: boolean; calendar: boolean; contacts: boolean; browser: boolean; gui: boolean; mcp: string[] };
   phone: PhoneStatus & { gui_enabled: boolean };

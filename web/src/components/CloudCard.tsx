@@ -118,7 +118,7 @@ export function CloudCard({
       {signedIn ? (
         <div className="space-y-3">
           <p className="text-[13px] text-muted leading-relaxed">
-            {t("Signed in as {hint}. Your devices meet on the hub; the relay can also be the model, with a free allowance.", { hint: account?.hint ?? "" })}
+            {t("Signed in as {hint}. Your devices meet here; the Cloud model comes with a free allowance.", { hint: account?.hint ?? "" })}
           </p>
           <div className="flex flex-wrap gap-2">
             {!account?.is_model && (
@@ -141,7 +141,7 @@ export function CloudCard({
           }}
         >
           <p className="text-[13px] text-muted leading-relaxed">
-            {t("Sign in with your phone number or e-mail address and the code it receives. No password; the key stays in the vault on this machine.")}
+            {t("A code goes to your phone or inbox; the key stays in the vault on this machine.")}
           </p>
           <div>
             <label className="text-[12px] text-muted">{t("Mainland China phone number or e-mail")}</label>

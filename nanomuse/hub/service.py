@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 from nanomuse.cloud import CLOUD_KEY, CloudClient, CloudError, model_url
 from nanomuse.hub import actions
 from nanomuse.hub.client import HubClient, HubError, IncomingCall
+from nanomuse.hub.profile import ProfileSync
 from nanomuse.logger import logger
 from nanomuse.server.events import now_iso
 
@@ -60,6 +61,8 @@ class HubService:
         self._incoming: dict[str, str] = {}
         self._tasks: set[asyncio.Task[Any]] = set()
         self._pending_code: str = ""
+        # the agent's name and look, shared with the account's other devices
+        self.profile = ProfileSync(self)
         self._ensure_identity()
 
     # ------------------------------------------------------------------ settings & identity
@@ -126,6 +129,9 @@ class HubService:
             task.add_done_callback(self._tasks.discard)
         if self.signed_in and self.settings.hub.enabled:
             await self.join()
+        if self.signed_in:
+            # the look the account's other devices wear, when it moved while we were away
+            self.profile.pull_soon()
 
     def _model_has_no_key(self) -> bool:
         """True when the configured model would be called with no key at all — not a local
@@ -201,6 +207,7 @@ class HubService:
             on_call=self.on_call,
             on_devices=lambda _devices: self.publish(),
             on_state=lambda _state, _detail: self.publish(),
+            on_profile=self.profile.on_frame,
         )
         self.client.start()
         self._sync_tools(True)
@@ -323,6 +330,8 @@ class HubService:
             await self.join()
         self.svc.connections._publish()
         self.publish()
+        # the account's name and look, if another device set them first
+        self.profile.pull_soon()
         # ``created`` rides along: a brand-new account is offered a password and the
         # co-creation programme right after (the clients' first-sign-in steps).
         return {**self.account_view(), "created": bool(data.get("created"))}
@@ -432,6 +441,7 @@ class HubService:
         for key in ("hint", "channel", "signed_in_at", "has_password", "account_id"):
             cloud.pop(key, None)
         self.data["cloud"] = cloud
+        self.profile.forget()
         self._save()
         if was_model:
             # the client would otherwise keep sending the revoked key

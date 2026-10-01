@@ -421,6 +421,9 @@ class ServerSettings(BaseModel):
     # Ask GitHub Releases (at most every six hours) whether a newer nanoMuse is out, and say so
     # under Settings → About. Nothing is downloaded or reported. NANOMUSE_NO_UPDATE_CHECK=1 also turns it off.
     update_check: bool = True
+    # How long the services (tools, MCP servers, the cloud account) may take before the
+    # socket opens anyway; past it the app answers and /api/health names the step still running.
+    start_grace: float = 4.0
 
 
 class Settings(BaseModel):
