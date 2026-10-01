@@ -136,7 +136,7 @@ Verified: a second hub client drove all six actions against the desktop (a real
 3840×2160 still, a timed-out `sleep` returning 124, `exists` / `not_found` / `too_large`
 codes as the runtime gives them), each one a toast; the switch off refused `shell` with
 `not_allowed` while `info` and `notify` kept working and the relay list showed the
-narrower action set; Laptop B's own Muse, asked in its chat to run a command "on kwai",
+narrower action set; Laptop B's own Muse, asked in its chat to run a command "on Desk A",
 did so through the relay after its own Sentinel approval and reported the output; a
 delegated `sleep 120` on Laptop B stopped there within two seconds of *Stop* here.
 
@@ -163,9 +163,9 @@ The fourth slice is the phone's `delegate` landing here — the desktop answers 
   and `stop` are behind the remote-control switch like the other actions; `approve` is
   always answered. A task's arrival and its end show as toasts.
 
-Verified with Laptop B's runtime as the asker: "ask kwai's Muse to run `uname -s` and
-`date +%M`" came back with the answer and a `kwai used bash: …` step; a write outside the
-dsh workspace raised dsh's gate, which appeared on Laptop B as "on kwai: bash: echo
+Verified with Laptop B's runtime as the asker: "ask Desk A's Muse to run `uname -s` and
+`date +%M`" came back with the answer and a `Desk A used bash: …` step; a write outside the
+dsh workspace raised dsh's gate, which appeared on Laptop B as "on Desk A: bash: echo
 outside > ~/…" and, approved there, let the desktop write the file and answer; a long
 `sleep` task stopped by `stop {call}` settled as "(stopped)" in three seconds with no
 child left; after a restart of dsh the next task from Laptop B resumed the same session

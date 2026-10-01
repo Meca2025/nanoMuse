@@ -64,7 +64,7 @@ is" (`delegate`; its approval requests come back here) exercise the tools. Renam
 agent or picking an emoji on that runtime changes the desktop's brand mark within
 seconds. The other way round, "run `uname -a` on <this computer's name>" in that
 runtime's chat runs here (after its own Sentinel approval) and shows as a toast;
-"ask kwai's Muse to …" there (`delegate`) runs as a session named *From Laptop B* here,
+"ask Desk A's Muse to …" there (`delegate`) runs as a session named *From Laptop B* here,
 with any approval it needs shown on Laptop B; the *Remote control* switch under *this
 computer* in the settings section turns all of that off — other devices then only see
 this computer and can notify it.
@@ -73,6 +73,24 @@ After changing `src/`, `pnpm build` and restart dsh (the client half is served f
 `lib/client.js`; append `?v=N` to the page URL if the browser keeps the old one).
 Changes to `cordis.patch.yml` or `presets/` also need a restart — bundle layers are
 read at boot.
+
+## In dsh's desktop app
+
+dsh's own desktop app ([`apps/desktop`](https://github.com/deepseek-ai/deepseek-harness/tree/master/apps/desktop))
+is an Electron shell around the same web app, with a profile named `desktop` that takes
+external plugins. The bundle goes in the same way as above: start the desktop app once
+so the profile exists, quit it fully, then
+
+```sh
+dsh plugin --profile desktop add /path/to/nanoMuse/harness/dsh-nanomuse   # or the package, once published
+```
+
+and start it again — the window comes up as nanoMuse ([docs/desktop-muse.md](../docs/desktop-muse.md)):
+the rail, the pinned face, our Settings and first run, the harness's own pages under
+*Advanced*. `dsh` here is the command the desktop app installs (*Manage dsh Command…* in
+its menu) or any dsh of the same version with `DSH_HOME` pointing at the app's home.
+The app's name, icon and About are still DeepSeek Harness's; our own build of the shell
+is the last phase in [docs/harness.md](../docs/harness.md#phases).
 
 ## Layout
 
