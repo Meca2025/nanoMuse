@@ -12,10 +12,11 @@ over the stock configuration and the plugins the patch names:
 
 | Row                | Half    | What it does                                                                                                                              |
 | ------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `nanomuse`         | host    | Serves the face's stills under `/nanomuse/assets/`.                                                                                        |
-| `nanomuse-cloud`   | host    | The account: sign-in by phone or e-mail code against the relay, the key in dsh's credential store, the account's chat models written into `dsh-llm-pi-ai` as the `nanoMuse Cloud` provider. Loopback API under `/nanomuse/cloud/`. |
-| `nanomuse` (client)| browser | The dragon in the sidebar's brand seat and the hero, the *nanoMuse* wordmark, the *nanoMuse account* section in Settings.                  |
-| `preset-nanomuse`  | patch   | An agent preset with nanoMuse's voice and the same tools as dsh's *Standard*, plus **Hands**: dsh's MCP client on `nanomuse mcp`, the runtime's `computer_screen`/`computer_act` over stdio. New sessions start from it. |
+| `nanomuse`         | host    | Serves the face's stills under `/nanomuse/assets/` — the dragon's, and the account's drawn face at `face/<id>/<mood>.webp`.                 |
+| `nanomuse-cloud`   | host    | The account: sign-in by phone or e-mail code against the relay, the key in dsh's credential store, the account's chat models written into `dsh-llm-pi-ai` as the `nanoMuse Cloud` provider. The hub client (this computer on the account's device list; answers `info` and `notify`), the profile pulled from the relay (name, face), the Hands/Reach calls in flight, all streamed to the browser over SSE. Loopback API under `/nanomuse/cloud/`. |
+| `nanomuse-reach`   | host    | **Reach**: the tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`, `device_notify`, `delegate` over the hub, approvals through dsh's card; a system-prompt context with the agent's name, its look and the devices online. |
+| `nanomuse` (client)| browser | The face (dragon, emoji or the drawn one, in five moods) in the sidebar's brand seat and the hero, the name the person gave it, the first run (meet → sign in / own key / later), the *nanoMuse account* section in Settings with the device list, the capsule at the top while Hands or Reach work (with Stop), toasts for notices from other devices. |
+| `preset-nanomuse`  | patch   | An agent preset with nanoMuse's voice and the same tools as dsh's *Standard*, plus **Hands**: dsh's MCP client on `nanomuse mcp`, the runtime's `computer_screen`/`computer_act` over stdio, and the Reach plugin. New sessions start from it. |
 | `system-prompt`, `agent-preset-registry`, `ui-brand-official` | patch | The persona for preset-free compositions, the default preset, and the stock brand mark stepping aside. |
 
 Everything else — the agent loop, tools, skills, goals, plan mode, compaction,
@@ -45,13 +46,23 @@ NANOMUSE_CLOUD_URL=http://127.0.0.1:8790 NANOMUSE_PY=/path/to/nanoMuse/.venv/bin
   /tmp/nm-dev/dsh/node_modules/.bin/dsh nanomuse --no-open --port 3082
 ```
 
-Open the printed `?token=` URL. Settings → *nanoMuse account* signs in; the account's
-models then appear in the model picker under *nanoMuse Cloud* and a new session
-answers through the relay, as nanoMuse. "What is on my screen?" makes it call
-`mcp__nanomuse__computer_screen` — the runtime's hands, started by dsh as a child
-process (`nanomuse mcp`; a display is needed for a picture). `dsh --profile nanomuse
---dump-config` shows the composed configuration with our rows marked `patched by
-dsh-nanomuse`.
+Open the printed `?token=` URL. The first run meets the agent and signs in (a local
+relay started with `CODE_SENDER=log` prints the code in its log); Settings → *nanoMuse
+account* does the same later. The account's models then appear in the model picker
+under *nanoMuse Cloud* and a new session answers through the relay, as nanoMuse. "What
+is on my screen?" makes it call `mcp__nanomuse__computer_screen` — the runtime's hands,
+started by dsh as a child process (`nanomuse mcp`; a display is needed for a picture) —
+with the capsule at the top while it works. `dsh --profile nanomuse --dump-config` shows
+the composed configuration with our rows marked `patched by dsh-nanomuse`.
+
+For Reach, put a second device on the same account: a dev runtime from the recipe in
+[docs/every-device.md](../docs/every-device.md) ("Debugging it all on one machine"),
+signed in with the same identifier, is enough — it appears under *Devices* in the
+settings section and in the agent's context, and "list the home folder on Laptop B",
+"run `uname -a` on Laptop B" (approval card first) and "ask Laptop B's Muse what time it
+is" (`delegate`; its approval requests come back here) exercise the tools. Renaming the
+agent or picking an emoji on that runtime changes the desktop's brand mark within
+seconds.
 
 After changing `src/`, `pnpm build` and restart dsh (the client half is served from
 `lib/client.js`; append `?v=N` to the page URL if the browser keeps the old one).
@@ -65,18 +76,33 @@ dsh-nanomuse/
   package.json          the bundle: dsh.bundle.patch, dsh.client (platform web, injected client packages)
   cordis.patch.yml      our layer over dsh-base + dsh-web-app
   presets/nanomuse.patch.yml   the agent preset (Standard's tools, nanoMuse's voice)
-  src/index.ts          host root row: the stills route
-  src/cloud.ts          host service `nanomuseCloud`: state, credential, provider row, loopback API
+  src/index.ts          host root row: the stills routes (the dragon's, the account's face)
+  src/cloud.ts          host service `nanomuseCloud`: state, credential, provider row, hub + profile owner,
+                        the Hands/Reach call tracker (tools/execute hook), SSE, loopback API
+  src/hub.ts            the hub as a client: hello/welcome/devices, calls out and in, reconnect (no Cordis)
+  src/profile.ts        the account profile on disk: pull when newer, face stills cached per face id
+  src/reach.ts          plugin `nanomuse-reach`: the device_* tools, delegate, the system-prompt context
   src/relay.ts          the relay as a client (plain fetch; tested against a fake relay)
-  src/client/           browser half: slots (brand mark/name, hero mark, settings section), locales (en, zh)
-  assets/               dragon-{idle,happy,waiting,error}.webp
-  build.mjs             esbuild: host ESM + client lazy-CJS factory + .d.ts
-  tests/                node:test
+  src/client/
+    index.ts            slot registrations: brand mark/name with moods, hero mark, onboarding step,
+                        settings section, overlay capsule
+    live.ts             the SSE store (profile, hub, calls, notices) behind useLive()
+    Avatar.tsx          the face in five moods: dragon stills, emoji on a colour, drawn face from the host
+    Onboarding.tsx      the first run: meet → sign in / own key / later → ready
+    SignIn.tsx          the two-step form (identifier → code), shared by onboarding and settings
+    CloudSection.tsx    Settings → nanoMuse account: account, look, devices (rename, forget), relay
+    Capsule.tsx         the pill while Hands/Reach work (face, bars, step, label, Stop) and the toasts
+    api.ts, locales.ts  the fetch helper and the en/zh copy
+  assets/               dragon-{idle,working,waiting,happy,error}.webp
+  build.mjs             esbuild: host ESM (split, so HubError is one class) + client lazy-CJS factory + .d.ts
+  tests/                node:test — the relay client against a fake relay, the hub client against a fake socket
 ```
 
 Secrets never pass through here: the account key lives in dsh's `.credentials.yaml`
 (as `NANOMUSE_CLOUD_TOKEN`), the state file `$DSH_HOME/nanomuse/cloud.json` holds the
-account's masked hint and model list only, both mode 0600.
+account's masked hint, model list and this computer's device id only, `profile.json`
+the name and look, all mode 0600. The hub key travels in the `hello` frame, as the
+browser's does.
 
 ## Licence and names
 

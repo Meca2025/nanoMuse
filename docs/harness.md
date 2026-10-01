@@ -66,18 +66,64 @@ and "what is on my screen?" is answered after one `mcp__nanomuse__computer_scree
 with a correct description of the desktop. [`harness/README.md`](../harness/README.md)
 has the recipe.
 
+The second slice adds what the Android app has around the chat, modelled on what
+[every-device.md](every-device.md) lists for the phone:
+
+- **The first run.** dsh's own first-run dialog asks for a DeepSeek key. The bundle
+  registers its step in that seat (the shipped id `deepseek-official` in the
+  `settings.onboarding` slot), so a fresh install meets the agent instead: the face, the
+  one-line slogan, what Hands, Reach and the Muse style are, then *sign in with a phone
+  number or e-mail (free)*, *use my own API key* (opens Models) or *later*. The step
+  completes itself when a model can already answer — the account, a DeepSeek key, a
+  provider the person added — unless it is reopened on purpose.
+- **Name, face and moods from the account.** The host pulls the relay's profile
+  (`/v1/me/profile`) when the hub says it changed and keeps it under
+  `$DSH_HOME/nanomuse/`; a drawn face's five stills are cached once per face id and served
+  at `/nanomuse/assets/face/<id>/<mood>.webp`. The sidebar brand mark and the hero wear
+  it — the dragon stills, an emoji on its colour, or the drawn face — *working* while a
+  session runs and *waiting* while one asks something; the brand name is the name the
+  person gave it on any device. A system-prompt context tells the model that name, so
+  "what is your name?" is answered with it. Renaming on the phone shows up on the
+  desktop within the hub's round trip, no restart.
+- **Reach.** A hub client (`hub.ts`, plain WebSocket, the key in the `hello` frame)
+  puts this computer on the account's device list as `pc-dsh-<id>` and answers `info` and
+  `notify` (a toast). A second plugin, `dsh-nanomuse/reach`, registers the tools the
+  phone and the runtime have: `devices`, `device_screen` (the still admitted as an image
+  when the model takes images), `device_shell` and `device_open` (dsh's approval card
+  first, with the command or URL in it), `device_files`, `device_notify`, and `delegate` —
+  the other device's own Muse runs the task, and when *it* asks for an approval the
+  question comes back here as an approval card and the answer travels back over the hub.
+  Settings → *nanoMuse account* lists the devices with online dots, renames this
+  computer and forgets offline ones.
+- **The capsule.** While Hands or Reach work, a pill at the top of the window shows the
+  face, moving bars, *Hands · step N* or *Reach · step N*, what it is doing ("on Laptop
+  B: uname -a", "asking Laptop B's Muse"), and *Stop*, which cancels the turn the way
+  the composer's stop does; the in-flight call ends with *aborted: the call was
+  stopped*. The host learns about the calls through dsh's `tools/execute` hook and
+  streams them, with the profile, the hub state and the notices, to the client over one
+  SSE connection (`/nanomuse/cloud/events`).
+
+Verified on the same scratch install with a second runtime on the account as *Laptop B*:
+the first run through to *Start*; `devices` and `device_files` on Laptop B; `device_shell`
+with the approval card and the result; `delegate` with Laptop B's approval requests
+relayed and answered (allow and reject) and *Stop* ending it; a `notify` from another
+device shown as a toast; the name and emoji set on Laptop B worn by the desktop's brand
+mark and hero within seconds, and "我叫小蓝" when asked.
+
 ## Where each part of nanoMuse goes
 
 | nanoMuse today (Python runtime)                         | On dsh                                                                                                                                       | State      |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | Cloud account, provider provisioning ([cloud.md](cloud.md)) | `dsh-nanomuse/cloud` service + `llm-pi-ai` provider + credential store                                                                    | done       |
-| Persona, agent name ([design.md](design.md))            | Agent preset `nanomuse` (`@deepseek-ai/dsh-persona`); the account's chosen name later from the profile                                        | done       |
-| The face in the UI ([avatar.md](avatar.md))             | Slots `sidebar.brand.*`, `conversation.hero.brand.mark`; stills from the host                                                                 | done       |
-| Avatar studio, face sync across devices                 | A settings page (slot `settings.section`) + host routes; the account's face pulled from the relay's profile, moods from agent events          | phase 2    |
-| First run                                               | dsh's first-run dialog asks for a DeepSeek key; ours should offer the Cloud sign-in first (a client plugin replacing that step)               | phase 2    |
-| Sentinel ([sentinel.md](sentinel.md))                   | dsh approval policies and the `tools/pre-execute` waterfall; our categories become an approval preset; the visible gate stays                | phase 2    |
+| Persona, agent name ([design.md](design.md))            | Agent preset `nanomuse` (`@deepseek-ai/dsh-persona`); the account's chosen name from the profile, in the brand seat and a system-prompt context | done       |
+| The face in the UI ([avatar.md](avatar.md))             | Slots `sidebar.brand.*`, `conversation.hero.brand.mark`; stills from the host; moods from the session status; the capsule while the hands work | done       |
+| Face sync across devices                                | `profile.ts` pulls the relay's profile on the hub's `profile` frame; drawn-face stills cached and served by the host                            | done       |
+| Avatar studio (drawing a new face here)                 | A settings page over the relay's image model; today a face is drawn on the phone and worn here                                                | phase 3    |
+| First run                                               | Our step in dsh's `settings.onboarding` seat: meet, sign in (free), own key, later                                                             | done       |
+| Sentinel ([sentinel.md](sentinel.md))                   | dsh approval policies and the `tools/pre-execute` waterfall; our categories become an approval preset; the visible gate stays                | phase 3    |
 | Hands — GUI control of this computer ([gui.md](gui.md)) | The Python hands over MCP (`nanomuse mcp`, mounted in the preset) — done; a native TypeScript driver behind dsh's computer-use seam (`ctx.computerUse.register`) later, so no Python is needed | done (bridge) |
-| Reach — the phone and other devices ([hub.md](hub.md), [every-device.md](every-device.md)) | A hub client service + `device_*` tools (`ctx.tools.register`) in TypeScript; the phone side unchanged                 | phase 3    |
+| Reach — the phone and other devices ([hub.md](hub.md), [every-device.md](every-device.md)) | `hub.ts` + `dsh-nanomuse/reach`: `devices`, `device_screen/shell/files/open/notify`, `delegate` with relayed approvals; this computer answers `info` and `notify`; the phone side unchanged | done       |
+| Being controlled from the phone (shell, files, screen, a task run here) | Handlers on the hub client for the remaining actions, behind dsh's approval; today the desktop only answers `info` and `notify`     | phase 3    |
 | Skills, schedule, goals, memory, sub-agents             | dsh's own (`skill`, `schedule`, `goals`, compaction, delegation) — ours are not ported                                                       | by design  |
 | Web UI, zh-CN                                           | dsh's web app (it ships zh); our strings in the bundle's locale table                                                                        | done       |
 | The desktop shell                                       | dsh's desktop app for now (Electron, DeepSeek Harness branding in About); our own shell and installer are the last step                       | phase 4    |
@@ -102,6 +148,19 @@ has the recipe.
   DeepSeek's own; the display name is in the provider row for when dsh uses it.
 - `dsh plugin add` needs pnpm on `PATH` and links the checkout, so `pnpm build` and a
   restart is the whole loop. Node 22.19+.
+- The `settings.onboarding` coordinator mounts one step at a time and only while the
+  main view is a blank session; it hands the step a fresh `complete` closure on every
+  render, so a step must decide once, on mount, or a re-render throws the person back to
+  its first view while they are typing a code.
+- `tools/execute` is an around-hook (`ctx.on('tools/execute', (exec, next) => …)`), which
+  is enough to know when a Hands or Reach call starts and ends without touching the
+  tools; the capsule and the step counter hang off it.
+- Images a tool returns must go through the attachment store (`attachments.saveImages`)
+  and only when `llm.resolveModelInfo(...).inputModalities` includes `image`; otherwise
+  the tool says what it saw in words — the MCP client does the same.
+- The hub has no cancel frame: stopping a `delegate` here ends the call, but the other
+  device's Muse finishes (or times out at its own approval) on its own. A `cancel` call
+  is the protocol change to make when the desktop also answers `task`.
 
 ## Names and licences
 
@@ -116,12 +175,13 @@ a community project with no affiliation — apply unchanged.
 
 1. **This slice** — account, face, voice, and Hands over MCP; verified on a scratch
    install. *Done, internal.*
-2. **Daily-driver on dsh** — first-run sign-in, avatar studio and face sync, the Sentinel
-   as an approval preset, the account's name; the person can live in it for ordinary
-   work on files and the web.
-3. **The nanoMuse features** — Reach as a hub client with the `device_*` tools, Hands
-   without Python (a native driver behind dsh's computer-use seam); this is what makes it
-   nanoMuse rather than a re-skinned dsh.
+2. **The Muse style and Reach** — the first run, the account's name, face and moods,
+   the capsule with Stop, the hub client, the `device_*` tools and `delegate` with
+   relayed approvals, the device list in Settings. *Done, internal.*
+3. **Daily-driver** — the desktop answers the phone (`shell`, `files`, `screen`, `task`
+   behind dsh's approval), the Sentinel as an approval preset, the avatar studio here,
+   Hands without Python (a native driver behind dsh's computer-use seam); the person can
+   live in it for ordinary work on files and the web.
 4. **Ship** — our own shell and installers, the downloads, the docs; `desktop/` retired.
 
 Until phase 4, `desktop/` is the desktop app and keeps getting its fixes.
