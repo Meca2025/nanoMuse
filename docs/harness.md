@@ -1,9 +1,9 @@
 # nanoMuse on DeepSeek Harness
 
 > **Status: internal preview, not released.** The code is in [`harness/`](../harness/)
-> on a private branch; nothing links to it from the product, the downloads or the site.
-> The desktop app people install is still [`desktop/`](desktop.md). This page is the
-> design and the plan.
+> on `main`; nothing links to it from the product, the downloads or the site. The desktop
+> app people install is still [`desktop/`](desktop.md). This page is the design and the
+> plan; [desktop-muse.md](desktop-muse.md) is what the window is meant to look like.
 
 ## The decision
 
@@ -171,6 +171,43 @@ outside > ~/…" and, approved there, let the desktop write the file and answer;
 child left; after a restart of dsh the next task from Laptop B resumed the same session
 and the Muse answered what it had been asked before.
 
+The fifth slice is the window itself — the Muse shape over dsh's web app, screen by
+screen in [desktop-muse.md](desktop-muse.md):
+
+- **The sidebar.** The bundle takes the `sidebar` seat (the stock `ui-sidebar` row is
+  switched off in the bundle layer) and lays it out as Muse does: a rail with the face,
+  Chats, Search, Devices and a hamburger; a chats column that is the harness's own
+  session list under our head; the panels the harness's other plugins register (the
+  plugin manager, schedules…) in the hamburger, not on the rail. The rail's face opens
+  Settings; the hamburger has Settings with its chord, Keyboard shortcuts, the panels,
+  collapse / expand, *Report an issue*.
+- **The header.** The face and the name pinned at the top centre of the conversation
+  (`conversation.header.leading`), with a status line — signed out, connecting,
+  connected with the devices online, thinking, *Hands · step N · what*, *Reach · step N ·
+  what*, asking you — and a *Stop* button beside it while a turn runs. The capsule of
+  the second slice becomes this line; its toasts stay.
+- **Settings.** The `sidebar.settings` seat too (the stock `ui-settings-general` row
+  off): a grouped nav — General, Account, Models, Agents, Devices — then every page
+  another plugin registers under *Advanced*, *Sign out* at the foot. The General page is
+  ours and declares `settings.general.item`, so the harness's own rows (permission
+  presets, language, appearance, font size, shortcuts…) mount in it, followed by an
+  About row that credits the harness and states the licence. The onboarding
+  coordinator and the `settings.open` chord are carried over; the harness's preview
+  notice, which stores its acknowledgement in the switched-off plugin's settings, is
+  passed through.
+- **The first run.** Welcome with the face and the slogan → sign in (free) / own key /
+  later → three cards (Hands, Files, Your other devices) with dots and *Skip* → ready.
+- **The theme.** Muse's light and dark tones over the harness's tokens
+  (`--dsw-alias-bg-base`, the sidebar fill, the bubbles, the layers), the accent from
+  the face's colour on the account.
+
+Verified in a browser against the scratch install and the dev relay: the three columns
+and the collapsed rail; the header through *not signed in* → *connected · 1 device
+online* → *thinking…* with *Stop* ending a running shell step in under a second; the
+first run from a signed-out state through sign-in, the three cards and *Open Devices*
+landing on the Devices page; Settings in both themes with the harness's General rows in
+our page.
+
 ## Where each part of nanoMuse goes
 
 | nanoMuse today (Python runtime)                         | On dsh                                                                                                                                       | State      |
@@ -180,7 +217,8 @@ and the Muse answered what it had been asked before.
 | The face in the UI ([avatar.md](avatar.md))             | Slots `sidebar.brand.*`, `conversation.hero.brand.mark`; stills from the host; moods from the session status; the capsule while the hands work | done       |
 | Face sync across devices                                | `profile.ts` pulls the relay's profile on the hub's `profile` frame; drawn-face stills cached and served by the host                            | done       |
 | Avatar studio (drawing a new face here)                 | A settings page over the relay's image model; today a face is drawn on the phone and worn here                                                | phase 4    |
-| First run                                               | Our step in dsh's `settings.onboarding` seat: meet, sign in (free), own key, later                                                             | done       |
+| First run                                               | Our step in dsh's `settings.onboarding` seat: welcome, sign in (free) / own key / later, three cards, ready                                   | done       |
+| The window ([desktop-muse.md](desktop-muse.md))         | The `sidebar` and `sidebar.settings` seats: rail + chats column, the pinned face and status line with Stop, grouped Settings with Advanced, Muse's tones | done       |
 | Sentinel ([sentinel.md](sentinel.md))                   | dsh approval policies and the `tools/pre-execute` waterfall; our categories become an approval preset; the visible gate stays                | phase 4    |
 | Hands — GUI control of this computer ([gui.md](gui.md)) | The Python hands over MCP (`nanomuse mcp`, mounted in the preset) — done; a native TypeScript driver behind dsh's computer-use seam (`ctx.computerUse.register`) later, so no Python is needed | done (bridge) |
 | Reach — the phone and other devices ([hub.md](hub.md), [every-device.md](every-device.md)) | `hub.ts` + `dsh-nanomuse/reach`: `devices`, `device_screen/shell/files/open/notify`, `delegate` with relayed approvals and `stop` on *Stop*; the phone side unchanged | done       |
@@ -257,10 +295,18 @@ a community project with no affiliation — apply unchanged.
    `open` and `screen` behind its remote-control switch, every call a toast, *Stop*
    stopping the delegated job on the other device; the phone's `delegate` runs in a dsh
    session here with its approvals relayed back. *Done, internal.*
-4. **Daily-driver** — the Sentinel as an approval preset, the avatar studio here, Hands
+4. **The window** — the Muse shape: the rail and the chats column, the pinned face with
+   the status line and Stop, grouped Settings with the harness's extras under Advanced,
+   the first run with its cards, the theme. *Done, internal.*
+5. **Daily-driver** — the Sentinel as an approval preset, the avatar studio here, Hands
    without Python (a native driver behind dsh's computer-use seam), a chosen workspace
    for tasks from other devices; the person can live in it for ordinary work on files
    and the web.
-5. **Ship** — our own shell and installers, the downloads, the docs; `desktop/` retired.
+6. **Ship** — the shell. dsh's own desktop app is an Electron wrapper around the same
+   web app with a `desktop` profile that takes external plugins (`dsh plugin --profile
+   desktop add …`), so the first nanoMuse desktop is that app with the bundle in its
+   profile; our own build of it — the name, the icon, the About, no analytics, our
+   update feed — and the installers, the downloads, the docs come after; `desktop/`
+   retired.
 
-Until phase 5, `desktop/` is the desktop app and keeps getting its fixes.
+Until phase 6, `desktop/` is the desktop app and keeps getting its fixes.

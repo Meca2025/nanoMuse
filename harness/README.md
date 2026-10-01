@@ -15,9 +15,9 @@ over the stock configuration and the plugins the patch names:
 | `nanomuse`         | host    | Serves the face's stills under `/nanomuse/assets/` — the dragon's, and the account's drawn face at `face/<id>/<mood>.webp`.                 |
 | `nanomuse-cloud`   | host    | The account: sign-in by phone or e-mail code against the relay, the key in dsh's credential store, the account's chat models written into `dsh-llm-pi-ai` as the `nanoMuse Cloud` provider. The hub client: this computer on the account's device list, answering `info` and `notify` always, `shell`, `files`, `file.get`, `file.put`, `open`, `screen` (the runtime's shapes, in `actions.ts`) and `task` (the phone's `delegate`, run in a dsh session "From <device>" with its approvals relayed back, in `task.ts`) while the remote-control switch is on. The profile pulled from the relay (name, face), the Hands/Reach calls in flight, the calls other devices made here, all streamed to the browser over SSE. Loopback API under `/nanomuse/cloud/`. |
 | `nanomuse-reach`   | host    | **Reach**: the tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`, `device_notify`, `delegate` over the hub, approvals through dsh's card, *Stop* stopping the delegated job on the other device; a system-prompt context with the agent's name, its look and the devices online. |
-| `nanomuse` (client)| browser | The face (dragon, emoji or the drawn one, in five moods) in the sidebar's brand seat and the hero, the name the person gave it, the first run (meet → sign in / own key / later), the *nanoMuse account* section in Settings with the device list and this computer's remote-control switch, the capsule at the top while Hands or Reach work (with Stop), toasts for notices from other devices and for what they did here. |
+| `nanomuse` (client)| browser | The window the way Muse shapes it ([docs/desktop-muse.md](../docs/desktop-muse.md)): the `sidebar` seat as a rail (face, Chats, Search, Devices, hamburger) plus the harness's chats column; the face, name and a live status line pinned above the conversation with *Stop*; the `sidebar.settings` seat as a grouped dialog (General with the harness's own rows, Account, Models, Agents, Devices, the other plugins' pages under Advanced, Sign out); the first run (welcome → sign in / own key / later → Hands, Files, Your other devices → ready); Muse's light and dark tones with the accent from the face's colour; toasts for notices from other devices and for what they did here. |
 | `preset-nanomuse`  | patch   | An agent preset with nanoMuse's voice and the same tools as dsh's *Standard*, plus **Hands**: dsh's MCP client on `nanomuse mcp`, the runtime's `computer_screen`/`computer_act` over stdio, and the Reach plugin. New sessions start from it. |
-| `system-prompt`, `agent-preset-registry`, `ui-brand-official` | patch | The persona for preset-free compositions, the default preset, and the stock brand mark stepping aside. |
+| `system-prompt`, `agent-preset-registry`, `ui-brand-official`, `ui-sidebar`, `ui-settings-general` | patch | The persona for preset-free compositions, the default preset, and the stock brand mark, sidebar and settings shell stepping aside for ours. |
 
 Everything else — the agent loop, tools, skills, goals, plan mode, compaction,
 sub-agents, MCP, the web UI — is dsh's, unchanged.
@@ -93,14 +93,21 @@ dsh-nanomuse/
   src/reach.ts          plugin `nanomuse-reach`: the device_* tools, delegate, the system-prompt context
   src/relay.ts          the relay as a client (plain fetch; tested against a fake relay)
   src/client/
-    index.ts            slot registrations: brand mark/name with moods, hero mark, onboarding step,
-                        settings section, overlay capsule
+    index.ts            slot registrations: the sidebar and settings seats, brand mark/name with moods,
+                        hero mark, the header, the Devices panel and section, onboarding steps, toasts
     live.ts             the SSE store (profile, hub, calls, notices) behind useLive()
+    styles.ts           Muse's tones over the harness's tokens (light/dark), the accent, every nm-* class
+    MuseSidebar.tsx     the rail (face, Chats, Search, Devices, hamburger) and the chats column
+    MuseHeader.tsx      the face, name and status line pinned above the conversation, with Stop
+    MuseSettings.tsx    the settings dialog: grouped nav, Advanced, Sign out; the General page; the onboarding coordinator
+    DevicesPanel.tsx    Settings → Devices and the rail's Devices page: this computer, the others, the switch
     Avatar.tsx          the face in five moods: dragon stills, emoji on a colour, drawn face from the host
-    Onboarding.tsx      the first run: meet → sign in / own key / later → ready
+    Onboarding.tsx      the first run: welcome → sign in / own key / later → Hands, Files, Your other devices → ready
     SignIn.tsx          the two-step form (identifier → code), shared by onboarding and settings
-    CloudSection.tsx    Settings → nanoMuse account: account, look, devices (rename, forget, this computer's remote-control switch), relay
-    Capsule.tsx         the pill while Hands/Reach work (face, bars, step, label, Stop) and the toasts
+    CloudSection.tsx    Settings → Account: the account, the look, the models, the relay, Open Devices
+    Capsule.tsx         the toasts (and the words for a Hands/Reach call, shared with the header)
+    icons.tsx, keys.ts, bus.ts, panels.ts
+                        inline icons; synthetic key chords for the harness's commands; the settings bus; panel ids
     api.ts, locales.ts  the fetch helper and the en/zh copy
   assets/               dragon-{idle,working,waiting,happy,error}.webp
   build.mjs             esbuild: host ESM (split, so HubError is one class) + client lazy-CJS factory + .d.ts
