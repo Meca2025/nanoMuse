@@ -329,6 +329,7 @@ export default class NanomuseCloud extends Service {
       await this.ctx.credentials.set(credentialRef(TOKEN_REF), signIn.apiKey)
       const models = await this.relay.models(signIn.apiKey)
       await this.writeProvider(models)
+      await this.adoptDefaultModel(models)
       this.state = { ...this.state, account: signIn.account, models }
       await this.writeState()
       this.signedInCache = true
@@ -350,6 +351,7 @@ export default class NanomuseCloud extends Service {
         // The row is rewritten when the menu changed — and when it is simply not there: a profile
         // made again around an account that is still signed in has the credential but no row.
         if (!sameModels(models, this.state.models ?? []) || !this.providerPresent()) await this.writeProvider(models)
+        await this.adoptDefaultModel(models)
         this.state = { ...this.state, account, models }
         await this.writeState()
         await this.profile.pull(token).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
@@ -439,6 +441,31 @@ export default class NanomuseCloud extends Service {
 
   private async writeProvider(models: RelayModel[]): Promise<void> {
     await this.ctx.settings.update(LLM_ROW, { providers: { [PROVIDER_ID]: this.providerRow(models) } })
+  }
+
+  /**
+   * New sessions answer through the account when nothing else would: dsh's stock default is
+   * DeepSeek's own provider, which has no key on a computer that signed in here instead. A
+   * choice the person made (any other provider, or a DeepSeek key) is left alone.
+   */
+  private async adoptDefaultModel(models: RelayModel[]): Promise<void> {
+    const chat = models.filter((m) => m.kind === 'chat')
+    const pick = chat.find((m) => m.recommended) ?? chat[0]
+    if (!pick) return
+    const svc = (this.ctx as unknown as { get(name: string): unknown }).get('agentDefaultModel') as
+      | { currentSelection(): { provider: string; model: string }; saveSelection(next: { provider: string; model: string }): Promise<void> }
+      | undefined
+    if (!svc) return
+    try {
+      const current = svc.currentSelection()
+      if (current.provider === PROVIDER_ID) return
+      if (current.provider !== 'deepseek-official' && current.provider !== 'deepseek-account') return
+      if (await this.otherProviderReady()) return
+      await svc.saveSelection({ provider: PROVIDER_ID, model: pick.id })
+      this.ctx.logger.info('nanomuse cloud: new sessions answer through %s/%s', PROVIDER_ID, pick.id)
+    } catch (error: unknown) {
+      this.ctx.logger.warn('nanomuse cloud: could not make the account model the default: %s', message(error))
+    }
   }
 
   private async forget(): Promise<void> {
