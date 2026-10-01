@@ -79,6 +79,9 @@ def _root(
     ),
 ) -> None:
     """nanoMuse — an open-source personal AI agent with a Sentinel gatekeeper."""
+    from nanomuse import loopback
+
+    loopback.install()  # Windows: a self-pipe that fails with a reason instead of hanging
 
 
 ConfigOpt = Annotated[Path | None, typer.Option("--config", "-c", help="Path to config.toml")]

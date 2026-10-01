@@ -4,6 +4,11 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Linux desktop app works again.** Every request to the 0.1.25 Linux runtime died with `No module named 'tkinter'`: `pyautogui`'s dependency `mouseinfo` *exits the interpreter* when tkinter is missing on Linux, and the frozen runtime leaves Tk out, so the first look at the hands — part of every state push — took the request down with it, and the window stayed on the welcome. The runtime now registers a stand-in `mouseinfo` before importing `pyautogui` (nothing ever opens the MouseInfo window), a backend whose set-up fails in any other way merely counts as unavailable, and `xdotool` is the fallback as before.
+- **Windows: a machine that intercepts its own loopback is told so, or served over `::1`.** On Windows, asyncio emulates its self-pipe with a TCP connection to 127.0.0.1 and waits for it without a timeout; on a computer where a proxy client routes every connection (Proxifier, Clash/V2Ray/Surge in TUN mode, a game accelerator) or security software swallows local connections, `nanomuse serve` sat there forever — alive, listening on nothing, the desktop app giving up after two minutes with "did not answer on /api/health". The runtime's `socket.socketpair` now waits three seconds, falls back to the IPv6 loopback when only IPv4 is taken, and otherwise stops with an explanation that names the usual culprits and what to set (`loopback blocked:`, `nanomuse/loopback.py`); the desktop shell makes the same test before it starts the runtime — over `::1` when 127.0.0.1 is taken, with the window pointed there — and shows the explanation at once instead of probing for two minutes.
+
 ## [0.1.25] - 2026-10-01 · Mirror
 
 ### Added
