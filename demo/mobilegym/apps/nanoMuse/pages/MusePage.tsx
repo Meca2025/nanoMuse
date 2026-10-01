@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { realNow } from '@/os/TimeService';
 import { IcOffline, IcWarning } from '../res/icons';
+import { attachFrame } from '../host';
 import { useNanoMuseStore } from '../state';
 import { useNanoMuseGestures } from '../hooks/useNanoMuseGestures';
 
 /**
  * The nanoMuse web app, full screen. `?thread=` and `?tab=` on this route are forwarded to
  * the web app's own deep links, which is how a tapped notification lands on the right chat.
+ * On a hosted showcase session the web app comes up lite (`?ui=lite`): the chat alone, no
+ * first-run setup — the rest of it stays behind the avatar.
  */
 export default function MusePage() {
   const serverUrl = useNanoMuseStore((s) => s.serverUrl);
@@ -33,8 +36,9 @@ export default function MusePage() {
     const tab = params.get('tab');
     if (thread) url.searchParams.set('thread', thread);
     if (tab) url.searchParams.set('tab', tab);
+    if (demo) url.searchParams.set('ui', 'lite');
     return url.toString();
-  }, [serverUrl, token, location.search]);
+  }, [serverUrl, token, demo, location.search]);
 
   const trouble = link === 'unauthorized' || link === 'unreachable';
   // a hosted showcase session that has run out: the server behind serverUrl is gone for good
@@ -52,6 +56,7 @@ export default function MusePage() {
         {src && (
           <iframe
             key={src}
+            ref={attachFrame}
             src={src}
             title="nanoMuse"
             className="absolute inset-0 w-full h-full border-0"

@@ -1,6 +1,7 @@
 import { createAppStoreWithActions } from '@/os/createAppStore';
 import { NANOMUSE_CONFIG } from './data';
 import { bridge } from './bridge';
+import { installHost } from './host';
 
 export type LinkState = 'off' | 'connecting' | 'online' | 'unauthorized' | 'unreachable';
 
@@ -100,3 +101,5 @@ bridge.sync();
 useNanoMuseStore.subscribe((s, prev) => {
   if (s.serverUrl !== prev.serverUrl || s.token !== prev.token || s.notify !== prev.notify) bridge.sync();
 });
+// the page around the phone (the showcase site) reaches this app through window.__NANOMUSE__
+installHost();

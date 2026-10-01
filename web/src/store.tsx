@@ -107,6 +107,12 @@ export interface AppState {
   handsLive: HandsLive | null;
   /** The avatar studio's session as the runtime last reported it (null until one runs). */
   studio: StudioSession | null;
+  /**
+   * `?ui=lite`: the chat alone, as the app is shown inside the simulated phone of the showcase
+   * (demo/mobilegym) — no tab bar, no first-run setup, the rest behind the avatar. Kept for
+   * the tab (sessionStorage) so a reload inside the frame stays lite.
+   */
+  lite: boolean;
 }
 
 type Action =
@@ -127,6 +133,26 @@ type Action =
   | { type: "draftFiles"; files: AttachmentInfo[] | null }
   | { type: "onboardingDismissed" }
   | { type: "toast"; toast: string | null };
+
+const LITE_KEY = "nanomuse.ui.lite";
+
+/** `?ui=lite` on this load, or remembered from an earlier one in this tab. */
+function liteFromUrl(): boolean {
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("ui") === "lite") {
+      sessionStorage.setItem(LITE_KEY, "1");
+      return true;
+    }
+    if (url.searchParams.get("ui") === "full") {
+      sessionStorage.removeItem(LITE_KEY);
+      return false;
+    }
+    return sessionStorage.getItem(LITE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 const initial: AppState = {
   connected: false,
@@ -162,6 +188,7 @@ const initial: AppState = {
   mishapAt: 0,
   hub: null,
   codingLive: {},
+  lite: liteFromUrl(),
   call: null,
   hands: null,
   handsLive: null,
@@ -565,17 +592,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     };
     const initial = new URL(window.location.href);
-    if (["thread", "tab", "draft", "attach"].some((k) => initial.searchParams.has(k))) {
+    if (["thread", "tab", "draft", "attach", "ui"].some((k) => initial.searchParams.has(k))) {
       openFromUrl(initial.href);
-      for (const k of ["thread", "tab", "draft", "attach"]) initial.searchParams.delete(k);
+      for (const k of ["thread", "tab", "draft", "attach", "ui"]) initial.searchParams.delete(k);
       window.history.replaceState({}, "", initial.toString());
     }
     const onMessage = (ev: MessageEvent) => {
       if (ev.data && ev.data.type === "open") openFromUrl(String(ev.data.url || "/"));
     };
     navigator.serviceWorker?.addEventListener("message", onMessage);
-    return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
+    // Inside another page's frame (the simulated phone of the showcase), the page may hand
+    // over a draft the same way a link does — `{type: "nanomuse:draft", text}` from the
+    // parent window, and only from it. Text in the composer is all it can do; sending is a tap.
+    const onParent = (ev: MessageEvent) => {
+      if (window.parent === window || ev.source !== window.parent) return;
+      const data = ev.data as { type?: unknown; text?: unknown } | null;
+      if (!data || data.type !== "nanomuse:draft" || typeof data.text !== "string") return;
+      dispatch({ type: "tab", tab: "chat" });
+      dispatch({ type: "draft", text: data.text.slice(0, 4000) });
+    };
+    window.addEventListener("message", onParent);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", onMessage);
+      window.removeEventListener("message", onParent);
+    };
   }, []);
+
+  // The embedding page learns when the app is up (and which agent it shows), so it can hand
+  // over a draft only once there is a composer to put it in.
+  useEffect(() => {
+    if (!state.loaded || window.parent === window) return;
+    window.parent.postMessage({ type: "nanomuse:ready", name: state.profile?.name ?? "" }, "*");
+  }, [state.loaded, state.profile?.name]);
 
   // The number on the app icon: cards waiting for you.
   useEffect(() => {

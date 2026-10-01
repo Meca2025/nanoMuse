@@ -1,10 +1,11 @@
 # The public face of the showcase: Caddy with the Cloudflare DNS module (for the wildcard
 # certificate the per-session hostnames need), the Cloudflare IP-ranges module (so that behind
-# Cloudflare's proxy the visitor's address is still the visitor's) and the built MobileGym with
-# the nanoMuse app installed and pointed at the gateway.
+# Cloudflare's proxy the visitor's address is still the visitor's), the built MobileGym with
+# the nanoMuse app installed and pointed at the gateway (as /phone.html), and the page around
+# the phone (site/page/) at /.
 #
 # Build context is the repository root (see docker-compose.yml), so the nanoMuse app module can
-# be copied straight from demo/mobilegym/apps/nanoMuse.
+# be copied straight from demo/mobilegym/apps/nanoMuse, and the page from demo/showcase/site.
 
 FROM node:22-bookworm-slim AS site
 ARG MOBILEGYM_REPO=https://github.com/Purewhiter/mobilegym.git
@@ -21,7 +22,10 @@ WORKDIR /src/mobilegym
 # extra dependency); --no-save keeps MobileGym's lockfile as upstream has it
 RUN npm ci --no-audit --no-fund \
  && npm install --no-save --no-audit --no-fund modern-screenshot@^4.7.0 \
- && VITE_NANOMUSE_DEMO="${NANOMUSE_DEMO}" npm run build
+ && VITE_NANOMUSE_DEMO="${NANOMUSE_DEMO}" npm run build \
+ && mv dist/index.html dist/phone.html
+COPY demo/showcase/site/page dist/page
+RUN cp dist/page/index.html dist/index.html
 
 FROM caddy:2-builder AS caddy-build
 # a Go module mirror for networks where proxy.golang.org is slow, e.g. GOPROXY=https://goproxy.cn,direct

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN" data-lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nanoMuse · 在浏览器里试</title>
+    <meta
+      name="description"
+      content="A simulated phone in your browser with a nanoMuse of your own on it, for a while: a new look, the apps on the phone operated for you, memory, reminders."
+    />
+    <link rel="icon" href="/page/mark.svg" />
+    <link rel="stylesheet" href="/page/page.css" />
+    <script>
+      // the language before the first paint, so nothing flashes: a remembered choice, else the browser's
+      (function () {
+        try {
+          var s = localStorage.getItem("nm-lang");
+          var l = s ? (s === "zh" ? "zh" : "en") : /^zh/i.test(navigator.language || "") ? "zh" : "en";
+          document.documentElement.setAttribute("data-lang", l);
+          document.documentElement.lang = l === "zh" ? "zh-CN" : "en";
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="https://nanomuse.cn/"><img src="/page/mark.svg" alt="" width="26" height="26" /><span>nanoMuse</span></a>
+      <span class="where"><i class="en">Try it in the browser</i><i class="zh">在浏览器里试</i></span>
+      <nav class="links">
+        <a href="https://nanomuse.cn/#download"><i class="en">Get the app</i><i class="zh">下载</i></a>
+        <a href="https://github.com/nano-muse/nanoMuse">GitHub</a>
+        <button class="lang" id="lang" type="button" aria-label="Switch language"><i class="en">中文</i><i class="zh">EN</i></button>
+      </nav>
+    </header>
+
+    <main class="stage">
+      <section class="phone-col">
+        <div class="device">
+          <iframe id="phone" src="/phone.html" title="nanoMuse on a simulated phone" allow="clipboard-write"></iframe>
+        </div>
+        <p class="status" id="status" aria-live="polite"><i class="en">Starting the phone…</i><i class="zh">手机启动中…</i></p>
+      </section>
+
+      <aside class="side">
+        <h1>
+          <i class="en">A phone in your browser, with a nanoMuse of your own on it.</i>
+          <i class="zh">浏览器里的一台手机，上面装着一个属于你的 nanoMuse。</i>
+        </h1>
+        <p class="lede">
+          <i class="en">
+            The phone is simulated — WeChat, Alipay, 12306 and two dozen more apps, re-created so an agent can use
+            them. The Muse on it is real: a private nanoMuse started for you on our server, for a while. Tap a line
+            below, or type anything into its chat.
+          </i>
+          <i class="zh">
+            手机是模拟的——微信、支付宝、12306 等二十多个常用应用，为了让智能体能上手操作而重做了一遍。上面的
+            Muse 是真的：我们在服务器上为你临时启动了一个专属的 nanoMuse。点下面任意一条试试，或者直接在它的对话框里输入任何话。
+          </i>
+        </p>
+
+        <div class="group" id="group-look">
+          <h2><i class="en">A new look</i><i class="zh">换个形象</i></h2>
+          <p class="why"><i class="en">Describe it and the Muse draws itself — four to pick from, then its poses.</i><i class="zh">说一句，它就把自己画出来：四张候选，选一张，再补齐表情。</i></p>
+          <button class="chip" type="button" data-en="Change your look to an orange cat with round glasses" data-zh="换个形象：一只戴圆框眼镜的橘猫"><i class="en">Change your look to an orange cat with round glasses</i><i class="zh">换个形象：一只戴圆框眼镜的橘猫</i></button>
+          <button class="chip" type="button" data-en="Become a little robot made of blue clay" data-zh="变成一个蓝色黏土做的小机器人"><i class="en">Become a little robot made of blue clay</i><i class="zh">变成一个蓝色黏土做的小机器人</i></button>
+        </div>
+
+        <div class="group">
+          <h2><i class="en">Let it use the phone</i><i class="zh">让它操作这台手机</i></h2>
+          <p class="why"><i class="en">It reads the screen and taps, types and swipes in the apps here — and asks before it sends, pays or deletes.</i><i class="zh">它看着屏幕，在这些应用里点、输、滑；发消息、付款、删除之前会先问你。</i></p>
+          <button class="chip" type="button" data-en="Open WeChat and tell me what Zhang Wei's latest message says" data-zh="打开微信，看看张伟最新发来的消息说了什么"><i class="en">Open WeChat and tell me what Zhang Wei's latest message says</i><i class="zh">打开微信，看看张伟最新发来的消息说了什么</i></button>
+          <button class="chip" type="button" data-en="Reply to Zhang Wei on WeChat: sure, what time?" data-zh="在微信里回复张伟：好啊，几点？"><i class="en">Reply to Zhang Wei on WeChat: sure, what time?</i><i class="zh">在微信里回复张伟：好啊，几点？</i></button>
+          <button class="chip" type="button" data-en="Use 12306 to find the earliest high-speed train from Shanghai to Nanjing tomorrow" data-zh="用 12306 查一下明天上海到南京最早的高铁"><i class="en">Use 12306 to find the earliest high-speed train from Shanghai to Nanjing tomorrow</i><i class="zh">用 12306 查一下明天上海到南京最早的高铁</i></button>
+          <button class="chip" type="button" data-en="Open the Weather app and tell me about Beijing tomorrow" data-zh="打开天气，看看北京明天怎么样"><i class="en">Open the Weather app and tell me about Beijing tomorrow</i><i class="zh">打开天气，看看北京明天怎么样</i></button>
+          <button class="chip" type="button" data-en="Make a note on this phone: meeting Friday at 3 pm" data-zh="在手机的笔记里新建一条：周五下午三点开会"><i class="en">Make a note on this phone: meeting Friday at 3 pm</i><i class="zh">在手机的笔记里新建一条：周五下午三点开会</i></button>
+        </div>
+
+        <div class="group">
+          <h2><i class="en">Remember, remind</i><i class="zh">记住、提醒</i></h2>
+          <p class="why"><i class="en">What you tell it stays with it; a reminder shows up in the phone's notification shade.</i><i class="zh">告诉它的事它会记住；到点的提醒会出现在手机的通知栏里。</i></p>
+          <button class="chip" type="button" data-en="Remember: I have an iced americano every morning" data-zh="记住：我每天早上要喝一杯冰美式"><i class="en">Remember: I have an iced americano every morning</i><i class="zh">记住：我每天早上要喝一杯冰美式</i></button>
+          <button class="chip" type="button" data-en="What do I usually drink in the morning?" data-zh="我早上一般喝什么？"><i class="en">What do I usually drink in the morning?</i><i class="zh">我早上一般喝什么？</i></button>
+          <button class="chip" type="button" data-en="Remind me in 2 minutes to stand up and stretch" data-zh="2 分钟后提醒我站起来活动一下"><i class="en">Remind me in 2 minutes to stand up and stretch</i><i class="zh">2 分钟后提醒我站起来活动一下</i></button>
+        </div>
+
+        <p class="hint">
+          <i class="en">A tap puts the line in the chat on the phone; you send it. Anything else you want to try, type it there.</i>
+          <i class="zh">点一下，这句话就填进手机里的对话框，由你来发送。想试别的，直接在那里输入就行。</i>
+        </p>
+
+        <div class="actions">
+          <button class="btn" id="open" type="button"><i class="en">Show nanoMuse</i><i class="zh">打开 nanoMuse</i></button>
+          <button class="btn" id="reset" type="button"><i class="en">Start over</i><i class="zh">重新开始</i></button>
+        </div>
+
+        <details class="how">
+          <summary><i class="en">How this runs</i><i class="zh">这是怎么跑起来的</i></summary>
+          <p>
+            <i class="en">
+              The phone is <a href="https://github.com/Purewhiter/mobilegym">MobileGym</a>: Android-style apps re-implemented for the
+              browser, with task stacks, intents and a notification shade — no emulator, no APK. nanoMuse's app on it is a
+              thin client. The agent itself does not fit inside a simulated phone (on a real one, the whole runtime
+              lives in the APK), so each visitor gets a container of their own on our server for a while, with a
+              model budget; the phone's screen is one of the things that Muse can see and touch. When the time is
+              up, the container and everything in it is gone.
+            </i>
+            <i class="zh">
+              这台手机是 <a href="https://github.com/Purewhiter/mobilegym">MobileGym</a>：把安卓风格的应用在浏览器里重做了一遍，有任务栈、Intent
+              和通知栏——没有模拟器，也不装 APK。手机里的 nanoMuse 是一个很薄的客户端。智能体本身塞不进一台模拟手机（真机上，整个运行时都在
+              APK 里），所以每位访客会在我们的服务器上得到一个专属容器，有时限、有模型额度；这台手机的屏幕是那个 Muse 能看能点的东西之一。时间到了，容器和里面的一切一起消失。
+            </i>
+          </p>
+          <p>
+            <i class="en">Want one that stays? <a href="https://nanomuse.cn/#download">Install nanoMuse</a> on your phone or computer — the same agent, yours for good.</i>
+            <i class="zh">想要一个一直在的？<a href="https://nanomuse.cn/#download">把 nanoMuse 装到</a>你的手机或电脑上——同一个智能体，永远是你的。</i>
+          </p>
+        </details>
+      </aside>
+    </main>
+
+    <footer class="foot">
+      <p>
+        <i class="en">
+          nanoMuse is a non-profit community project, free software under GPL-3.0-or-later. The phone is
+          <a href="https://github.com/Purewhiter/mobilegym">MobileGym</a> (Apache-2.0); its optional companion data is CC BY-NC 4.0. The
+          apps on it are re-creations for an agent to practise on, not the real services, and no trademark holder is affiliated.
+          Muse is a trademark of Meta Platforms, Inc.; nanoMuse is not affiliated with or endorsed by Meta.
+        </i>
+        <i class="zh">
+          nanoMuse 是非营利的社区项目，自由软件，许可证 GPL-3.0-or-later。这台手机是
+          <a href="https://github.com/Purewhiter/mobilegym">MobileGym</a>（Apache-2.0），其可选的配套数据为 CC BY-NC 4.0。手机里的应用是为了让智能体练习而重做的，不是真实服务，与各商标持有者无关。
+          Muse 是 Meta Platforms, Inc. 的商标；nanoMuse 与 Meta 无关，也未获其认可。
+        </i>
+      </p>
+    </footer>
+
+    <script src="/page/page.js"></script>
+  </body>
+</html>

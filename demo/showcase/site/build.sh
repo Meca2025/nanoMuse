@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
-# Build the phone for local development of the showcase: MobileGym with the nanoMuse app
-# installed and pointed at the gateway. Production builds the same thing inside
-# caddy/Dockerfile; this is for running the gateway on your machine with SITE_DIR.
+# Build the site for local development of the showcase: MobileGym with the nanoMuse app
+# installed and pointed at the gateway, as /phone.html, and the page around it (page/) at /.
+# Production builds the same thing inside caddy/Dockerfile; this is for running the gateway on
+# your machine with SITE_DIR.
 #
 #   demo/showcase/site/build.sh [/path/to/mobilegym]     # default: ./site/mobilegym (cloned)
 #   SITE_DIR=$PWD/demo/showcase/site/dist python -m showcase_gateway
@@ -21,4 +22,8 @@ cd "$checkout"
 VITE_NANOMUSE_DEMO="$gateway" npm run build
 rm -rf "$here/dist"
 cp -R dist "$here/dist"
+# the phone moves to /phone.html (its assets keep their absolute paths); the page takes /
+mv "$here/dist/index.html" "$here/dist/phone.html"
+cp -R "$here/page" "$here/dist/page"
+cp "$here/page/index.html" "$here/dist/index.html"
 echo "site built: $here/dist (gateway at $gateway)"
