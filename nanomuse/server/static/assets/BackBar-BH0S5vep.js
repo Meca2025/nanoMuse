@@ -1,1 +1,0 @@
-import{u as o,a as n,j as t,ao as r}from"./index-DkaVxHwr.js";function u({label:e="Chat"}){const{setTab:s}=o(),a=n();return t.jsxs("button",{type:"button",onClick:()=>s("chat"),className:"-ml-2 mb-1 flex items-center gap-0.5 rounded-full py-1 pl-1 pr-3 text-[14px] font-medium text-accent hover:bg-surface-2",children:[t.jsx(r,{size:19})," ",a(e)]})}export{u as B};

@@ -71,10 +71,7 @@ export function ConnectionsScreen() {
           {t("Connections")}
         </h1>
         <p className="text-[13px] text-muted">
-          {t(
-            "What {name} can reach. Keys and passwords go into the vault on your machine — the model never sees them.",
-            { name },
-          )}
+          {t("What {name} can reach; keys stay in the vault on this machine.", { name })}
         </p>
       </header>
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4">

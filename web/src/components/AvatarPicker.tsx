@@ -47,7 +47,7 @@ export function AvatarPicker({
   // a face from the studio: anything that is neither the dragon nor the emoji
   const studio = !emojiMode && !isDragon(value.avatar) ? value.avatar : null;
   const ring = "ring-[2.5px] ring-accent ring-offset-2 ring-offset-bg";
-  const tile = "relative aspect-square overflow-hidden rounded-full transition";
+  const tile = "relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-full transition";
   const submit = () => {
     const d = description.trim();
     if (!d || !onGenerate) return;
@@ -57,7 +57,7 @@ export function AvatarPicker({
   };
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="flex flex-wrap gap-3">
         <button
           type="button"
           aria-label={t("The dragon")}
@@ -88,7 +88,7 @@ export function AvatarPicker({
           aria-label={t("An emoji instead")}
           aria-pressed={emojiMode}
           onClick={() => onChange({ ...value, avatar: "" })}
-          className={cx("flex aspect-square items-center justify-center rounded-full text-[26px] transition", emojiMode ? ring : "opacity-90 hover:opacity-100")}
+          className={cx("flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full text-[26px] transition", emojiMode ? ring : "opacity-90 hover:opacity-100")}
           style={{ background: `linear-gradient(135deg, ${value.color}, color-mix(in srgb, ${value.color} 60%, #ffffff))` }}
         >
           {value.emoji}

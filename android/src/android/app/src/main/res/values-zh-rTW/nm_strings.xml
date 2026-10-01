@@ -407,7 +407,7 @@
     <string name="nm_avatar_share_tagline">你的個人 AI 智慧體，開源 · github.com/nano-muse/nanoMuse</string>
     <!-- 0.1.10 · Motion -->
     <string name="nm_media_title">圖像與影片模型</string>
-    <string name="nm_media_intro">Muse 的圖像和影片模型是官方內建的。nanoMuse 用的是你自己設定的三個模型：和你對話的對話模型、畫形象和你要的圖片的圖像模型、讓形象動起來和產生短片的影片模型。最省事的做法：一把阿里雲百煉的 key 三個全包——通義千問對話模型、qwen-image-3.0、wan2.2-i2v-flash。三個模型各自單獨選擇，任何一個都可以換成別的服務商、用它自己的 key。</string>
+    <string name="nm_media_intro">三個模型，各自單獨選擇：和你對話的對話模型、畫形象和圖片的圖像模型、讓形象動起來的影片模型。一把阿里雲百煉的 key 三個全包。</string>
     <string name="nm_media_section_chat">對話模型</string>
     <string name="nm_media_chat_footer">預設模型群組。所有對話、動態和每日例程都跑在它上面。</string>
     <string name="nm_media_section_image">圖像模型</string>
@@ -445,7 +445,7 @@
     <string name="nm_hands_on">已開啟</string>
     <string name="nm_hands_off">已關閉</string>
     <string name="nm_hands_this_phone">這台手機</string>
-    <string name="nm_hands_intro">對於沒有介面的 App，它可以像你一樣用手機：看一眼截圖，然後點、輸、滑。技能、命令列、瀏覽器能辦的會先用，螢幕是最後一步。預設關閉，需要你親自打開。</string>
+    <string name="nm_hands_intro">對於沒有介面的 App，它像你一樣用手機：看一眼截圖，然後點、輸、滑。技能、命令列、瀏覽器能辦的先用，螢幕是最後一步。預設關閉。</string>
     <string name="nm_hands_switch">允許操作螢幕</string>
     <string name="nm_hands_switch_footer">操作時螢幕頂部會有一個膠囊，顯示每一步和「停止」按鈕。登入、密碼、驗證碼永遠留給你自己輸。</string>
     <string name="nm_hands_status_off">已關閉——任務需要用到螢幕時它會告訴你</string>
@@ -513,9 +513,9 @@
     <!-- Reach (0.1.13): the phone drives your computer -->
     <string name="nm_pc_title">電腦</string>
     <string name="nm_pc_none_short">無</string>
-    <string name="nm_pc_intro">手機上說一句，電腦上就做：在它的終端機裡跑一條命令、取一個或放一個檔案、在它的瀏覽器裡打開一個頁面、看一眼它的螢幕，或者把整件事交給那邊的 nanoMuse 去做。只是單向的——手機操作電腦，反過來不行——每一次審批都在這裡、在送出之前決定。</string>
+    <string name="nm_pc_intro">手機上說一句，電腦上就做：一條命令、一個檔案、瀏覽器裡的一個頁面、看一眼它的螢幕，或者把整件事交給那邊的 nanoMuse。只有手機操作電腦，反過來不行；每一次審批都先在這裡決定。</string>
     <string name="nm_pc_hub_title">最簡單的辦法：裝桌面版，登同一個帳號</string>
-    <string name="nm_pc_hub_body">在電腦上安裝 nanoMuse 桌面版，用這台手機的帳號登入。幾秒鐘後它就出現在「帳號 → 裝置」裡——不限網路，有通知，還能接手整件任務。</string>
+    <string name="nm_pc_hub_body">在電腦上安裝 nanoMuse 桌面版，用這支手機的帳號登入；幾秒鐘後它就出現在「帳號 → 裝置」裡。</string>
     <string name="nm_pc_hub_download">取得 nanoMuse 桌面版</string>
     <string name="nm_pc_hub_account">帳號與裝置</string>
     <string name="nm_pc_section_paired">這個帳號下的電腦</string>
@@ -537,9 +537,9 @@
     <!-- nanoMuse Cloud：手機號/信箱驗證碼登入，贈送體驗額度 -->
     <string name="nm_setup_own_key">我有自己的 API key</string>
     <!-- nanoMuse: the first-run pages -->
-    <string name="nm_welcome_tagline">一個完全開源、Muse 風格的個人智慧體，裝在你的每一台裝置上。會聊天、畫圖、生成影片；會操作手機裡的應用程式；也能幫你使用電腦。</string>
+    <string name="nm_welcome_tagline">一個完全開源、Muse 風格的個人智慧體，裝在你的每一台裝置上。</string>
     <string name="nm_welcome_email">登入，免費開始</string>
-    <string name="nm_welcome_fine_print">需要一個帳號：它把你的幾台裝置連在一起，也承載免費的模型額度。現在和以後都不會收費。登入之後隨時可以改用自己的 API key。</string>
+    <string name="nm_welcome_fine_print">一個帳號連起你的幾台裝置，也承載免費的模型額度；不收費。登入之後隨時可以改用自己的 API key。</string>
     <string name="nm_setup_source_title">讓哪個模型來回答？</string>
     <string name="nm_setup_source_sub">你的帳號已經自帶了一個。也可以加上自己的 API key，隨時切換。</string>
     <string name="nm_setup_source_cloud">用 nanoMuse Cloud 的模型</string>
@@ -565,16 +565,16 @@
     <string name="nm_welcome_feat_hands_sub">訂車票、點外送、在應用程式裡查東西——你全程看著，隨時可以停</string>
     <string name="nm_welcome_feat_reach">Reach：從手機使用你的電腦</string>
     <string name="nm_welcome_feat_reach_sub">配對一台 Mac、Windows 或 Linux 電腦，在手機上派工作給它</string>
-    <string name="nm_welcome_notice">nanoMuse 是非營利的開源社群專案，永久免費。用手機號或信箱登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售。</string>
+    <string name="nm_welcome_notice">nanoMuse 是非營利的開源社群專案，永久免費。模型自帶一份由開發者承擔的免費額度，用完換自己的 key。預設不保存你的訊息，資料不會出售。</string>
     <string name="nm_welcome_hands_title">讓它替你操作手機</string>
-    <string name="nm_welcome_hands_sub">開啟兩項權限後，nanoMuse 就能替你打開應用程式、點按和輸入。操作期間螢幕上始終有一個顯示目前步驟和「停止」按鈕的膠囊；登入、密碼和驗證碼永遠由你自己來。</string>
+    <string name="nm_welcome_hands_sub">開啟兩項權限後，它就能替你打開應用程式、點按和輸入。螢幕上始終有顯示目前步驟和「停止」的膠囊；登入、密碼和驗證碼永遠由你自己來。</string>
     <string name="nm_welcome_hands_turn_on">去開啟</string>
     <string name="nm_welcome_skip">暫時跳過</string>
     <string name="nm_welcome_hands_fine_print">不開也不影響其他功能。之後隨時可以在「設定 → Hands」裡開啟。</string>
     <string name="nm_welcome_meet_fine_print">凡是無法撤回的事——刪除、傳送、付款——它都會先停下來問你。</string>
     <string name="nm_cloud_title">nanoMuse 雲</string>
     <string name="nm_cloud_signin_title">用 nanoMuse 雲開始</string>
-    <string name="nm_cloud_signin_subtitle">手機號或信箱收一個驗證碼；設過密碼的話也可以直接用密碼。每個帳號都有一份由開發者承擔的免費模型額度。</string>
+    <string name="nm_cloud_signin_subtitle">手機號或信箱收一個驗證碼；設過密碼的話也可以直接用密碼。</string>
     <string name="nm_cloud_mode_code">驗證碼登入</string>
     <string name="nm_cloud_mode_password">密碼登入</string>
     <string name="nm_cloud_password">密碼</string>
@@ -587,7 +587,7 @@
     <string name="nm_cloud_resend_in">%1$d 秒後可重發</string>
     <string name="nm_cloud_verify">登入</string>
     <string name="nm_cloud_debug_base">中繼伺服器（偵錯版）</string>
-    <string name="nm_cloud_fine_print">伺服器只保存信箱的雜湊值，以及每次請求的 token 數。你的訊息只轉送給模型，預設不保存，除非你選擇貢獻出來。隨時可以換成自己的 key。</string>
+    <string name="nm_cloud_fine_print">伺服器只保存帳號 id、打碼後的手機號或信箱、用量，以及你的智慧體的名字和形象——不保存訊息內容，除非你選擇貢獻出來。</string>
     <string name="nm_cloud_not_signed_in">尚未登入</string>
     <string name="nm_cloud_not_signed_in_sub">用手機號或信箱登入，送一份免費額度。你自己新增的服務商不受影響。</string>
     <string name="nm_cloud_sign_in">登入</string>
@@ -604,7 +604,7 @@
     <string name="nm_cloud_how_it_works">nanoMuse 雲在這個應用裡就是一個普通的服務商：它的模型列在「服務商」裡，也可以和你自己的模型放進同一個模型組。</string>
     <string name="nm_cloud_open_provider">服務商設定</string>
     <string name="nm_cloud_sign_out">登出</string>
-    <string name="nm_cloud_sign_out_sub">登出會讓伺服器作廢這台手機的 key，並移除這個服務商。額度跟著你的帳號，下次登入還在。</string>
+    <string name="nm_cloud_sign_out_sub">作廢這台手機的 key 並移除這個服務商；額度跟著帳號，下次登入還在。</string>
     <string name="nm_cloud_sign_out_confirm">會從這台手機上移除 nanoMuse 雲這個服務商和它的模型。聊天記錄會保留。</string>
     <string name="nm_cloud_row_remaining">剩餘 %1$s</string>
     <string name="nm_cloud_row_sign_in">登入</string>
@@ -619,8 +619,8 @@
     <string name="nm_cloud_err_bad_key">伺服器已不認識這台手機，請重新登入。</string>
     <string name="nm_cloud_err_out_of_tokens">額度用完了。</string>
     <string name="nm_cloud_err_daily_cap">今天的 token 配額用完了，明天恢復。</string>
-    <string name="nm_cloud_err_allowance">免費額度已用完。邀請一位新用戶 +¥5，加入共創計畫 +¥10，或在 設定 → 服務商 裡新增自己的 key——無論選哪個，登入和多裝置功能都不受影響。</string>
-    <string name="nm_cloud_warn_line">免費額度快用完了：還剩 ¥%1$s（共 ¥%2$s）。邀請一位新用戶 +¥5，加入共創計畫 +¥10，或換成自己的 key——都在「帳號」裡；無論哪種，登入都不受影響。</string>
+    <string name="nm_cloud_err_allowance">免費額度已用完。邀請一位新用戶 +¥5，加入共創計畫 +¥10，或在 設定 → 服務商 裡新增自己的 key。</string>
+    <string name="nm_cloud_warn_line">免費額度快用完了：還剩 ¥%1$s（共 ¥%2$s）。邀請一位新用戶 +¥5，加入共創計畫 +¥10，或換成自己的 key——都在「帳號」裡。</string>
     <string name="nm_cloud_err_rate_limited">請求太快了，稍等一下。</string>
     <string name="nm_cloud_err_unreachable">連不上 nanoMuse 雲，請檢查網路。</string>
     <string name="nm_cloud_err_generic">出了點問題。</string>
@@ -737,7 +737,7 @@
     <string name="nm_cloud_delete_account_confirm">帳號、登入記錄、用量和動態都會從伺服器刪除，無法復原。手機上的聊天記錄會保留。</string>
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">程式助手</string>
-    <string name="nm_coding_intro">你電腦上的 Cursor、Codex、Claude Code：在這裡看它們的會話和最近的回覆，直接給任何一個發訊息。由電腦上的 nanoMuse 讀取和驅動，它們的內容不會複製到手機上。</string>
+    <string name="nm_coding_intro">你電腦上的 Cursor、Codex、Claude Code：在這裡看它們的會話和最近的回覆，直接給任何一個發訊息。它們的內容不會複製到手機上。</string>
     <string name="nm_coding_no_computer">沒有在線的電腦帶程式助手。請在裝了 Cursor、Codex 或 Claude Code 的電腦上執行 nanoMuse，並用同一個帳號登入。</string>
     <string name="nm_coding_account_hint">這台手機登入的是 %1$s，電腦上要登同一個帳號。</string>
     <string name="nm_coding_refresh">重新整理</string>
@@ -767,11 +767,11 @@
     <string name="nm_cloud_allowance_used">已用 ¥%1$s · $%2$s</string>
     <string name="nm_cloud_allowance_of">共 ¥%1$s · $%2$s，不按天重置</string>
     <string name="nm_cloud_allowance_left">剩餘 ¥%1$s · $%2$s</string>
-    <string name="nm_cloud_allowance_why">每個帳號有 ¥%1$s 免費額度；邀請一位新用戶 +¥%2$s，加入共創計畫 +¥%3$s（一次）。用完可以換自己的 key（推薦阿里雲百煉），登入和多裝置功能不受影響。</string>
+    <string name="nm_cloud_allowance_why">起始 ¥%1$s，每邀請一位新用戶 +¥%2$s，加入共創計畫一次性 +¥%3$s；用完後換自己的 key 繼續。</string>
     <string name="nm_cloud_tokens_line">累計 %1$s tokens · 今天 %2$s</string>
     <string name="nm_cloud_notice_title">免費 · 開源 · 非營利 —— 開源共建，做屬於所有人的個人智能體</string>
     <string name="nm_cloud_notice_closing">歡迎回報問題、提需求、貢獻程式碼——每一次參與，都在讓個人智能體離所有人更近一步。</string>
-    <string name="nm_cloud_notice">nanoMuse 是非營利的開源社群專案，永久免費。用手機號或信箱登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換自己的 key（推薦阿里雲百煉）。預設不保存你的訊息，資料不會出售；隨時可以刪除帳號。</string>
+    <string name="nm_cloud_notice">nanoMuse 是非營利的開源社群專案，永久免費。模型自帶一份由開發者承擔的免費額度，用完換自己的 key。預設不保存你的訊息，資料不會出售；隨時可以刪除帳號。</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">來自你其他裝置的訊息</string>
     <string name="nm_hub_service_channel">與你的裝置保持連線</string>
@@ -788,7 +788,7 @@
 
     <string name="nm_hub_service_alone_short">只有這一台</string>
     <string name="nm_devices_title">裝置</string>
-    <string name="nm_devices_intro">登入同一帳號的每台裝置都是一個 Muse：這支手機、裝了 nanoMuse 桌面版的電腦、網頁主控台。它們之間可以互相交代事情——不必在同一個網路，經由 nanoMuse Cloud 中轉。</string>
+    <string name="nm_devices_intro">登入同一帳號的每台裝置——這支手機、你的電腦、網頁主控台——都可以互相交代事情，不必在同一個網路。</string>
     <string name="nm_devices_join">讓其他裝置能找到這支手機</string>
     <string name="nm_devices_join_sub">保持手機與雲端連線，其他裝置才能交代事情給它。開著時會有一則安靜的常駐通知。</string>
     <string name="nm_devices_remote_control">允許其他裝置操作這支手機</string>
