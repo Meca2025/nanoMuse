@@ -12,7 +12,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass, field, replace
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,11 @@ class ModelSpec:
     # The clip length when the app does not say (`parameters.duration` absent):
     # Wan 2.2 always makes five seconds, MiniMax four at the least.
     clip_seconds: float = 4.0
+    # On the menu (the list every account gets), or asked for by name by a member
+    # (Settings.unlisted_model): then `priced_as` names the menu model whose prices
+    # stand in for the unknown ones in the ledger.
+    listed: bool = True
+    priced_as: str = ""
 
     def to_public(self) -> dict:
         return {
@@ -63,6 +69,8 @@ class ModelSpec:
             },
             "nanomuse": {
                 "kind": self.kind,
+                "listed": self.listed,
+                "priced_as": self.priced_as,
                 "recommended": self.recommended,
                 "in_mult": self.in_mult,
                 "out_mult": self.out_mult,
@@ -174,6 +182,18 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
 # aliased: a MiniMax-shaped request body does not fit Wan, and the app's probe
 # simply finds the old model gone and stops animating.
 LEGACY_MODEL_IDS: dict[str, str] = {"qwen-image-3.0-pro": "qwen-image-3.0"}
+
+# What a model id may look like when a member types one (the provider's ids:
+# letters, digits, dots, dashes, underscores, a slash or a colon for namespaced ones).
+MODEL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/:-]{0,127}$")
+
+# What each kind of request can carry in and give back, for a model the menu does
+# not describe: the widest shape, and the provider says no when a model is narrower.
+_UNLISTED_MODALITIES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    "chat": (("text", "image"), ("text",)),
+    "image": (("text", "image"), ("image",)),
+    "video": (("text", "image"), ("video",)),
+}
 
 
 def _env(name: str, default: str = "") -> str:
@@ -301,6 +321,11 @@ class Settings:
     aliyun_sms_api: str = field(default_factory=lambda: _env("ALIYUN_SMS_API", "dypns"))
 
     models: tuple[ModelSpec, ...] = field(default_factory=_models_from_env)
+    # Members (the operator's list, or flagged on the account) may ask for any model the
+    # provider has under the operator's key, by its id, as long as it is used for what it
+    # is — a chat model for chat, an image model for pictures, a video model for clips.
+    # The menu stays the menu for everyone else. Off with CLOUD_ANY_MODEL_MEMBERS=0.
+    any_model_members: bool = field(default_factory=lambda: _env("CLOUD_ANY_MODEL_MEMBERS", "1") not in ("0", "false", "no"))
     # -- the operator's page, beyond the relay's own numbers ------------------------------
     # the site's traffic database (demo/showcase/mirror/traffic.py), mounted read-only into
     # the container; empty = the "visits and downloads" panel says so and shows nothing
@@ -319,6 +344,47 @@ class Settings:
         if alias and alias != model_id:
             return self.model(alias)
         return None
+
+    def unlisted_model(self, model_id: str, kind: str) -> ModelSpec | None:
+        """A model the menu does not carry, asked for by name for `kind` — what a
+        member may do (any_model_members). Its id goes upstream as it is; the ledger
+        prices it as the dearest menu model of its kind (`priced_as`), so the
+        operator's page errs on the high side rather than showing nothing. None when
+        the id is not shaped like one, or the kind is unknown."""
+        model_id = model_id.strip()
+        if kind not in _UNLISTED_MODALITIES or not MODEL_ID_RE.match(model_id):
+            return None
+        inputs, outputs = _UNLISTED_MODALITIES[kind]
+        spec = ModelSpec(
+            id=model_id,
+            name=model_id,
+            upstream=model_id,
+            kind=kind,
+            input_modalities=inputs,
+            output_modalities=outputs,
+            listed=False,
+        )
+        dearest = max(
+            (m for m in self.models if m.kind == kind),
+            key=lambda m: (m.price_in + m.price_out, m.price_image + m.price_image_2k, m.price_second),
+            default=None,
+        )
+        if dearest is None:
+            return spec
+        return replace(
+            spec,
+            priced_as=dearest.id,
+            in_mult=dearest.in_mult,
+            out_mult=dearest.out_mult,
+            per_image=dearest.per_image,
+            per_clip=dearest.per_clip,
+            price_in=dearest.price_in,
+            price_out=dearest.price_out,
+            price_image=dearest.price_image,
+            price_image_2k=dearest.price_image_2k,
+            price_second=dearest.price_second,
+            clip_seconds=dearest.clip_seconds,
+        )
 
     @property
     def unlimited(self) -> bool:

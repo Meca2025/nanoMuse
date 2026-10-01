@@ -647,6 +647,8 @@ class Cloud:
                 "hint": caller.hint,
                 "created_at": caller.account_created_at,
                 "member": caller.member,
+                # may name any model of the provider's for its kind (any_model_members)
+                "any_model": self.any_model(caller),
                 "has_password": caller.has_password,
                 "password_set_at": caller.password_set_at,
                 "sessions": len(self.db.keys_for(caller.account_id, live_only=True)),
@@ -722,12 +724,34 @@ class Cloud:
 
     # -- budget -------------------------------------------------------------------------
 
-    def model_for(self, model_id: str, kind: str) -> ModelSpec:
+    def any_model(self, caller: Caller | None) -> bool:
+        """May this caller name any model of the provider's, not only the menu's?"""
+        return bool(caller is not None and caller.member and self.s.any_model_members)
+
+    def model_for(self, model_id: str, kind: str, caller: Caller | None = None) -> ModelSpec:
+        """The model a request names, checked for `kind` (a chat model answers chat, an
+        image model draws, a video model films — never across). The menu for everyone;
+        for a member, with any_model_members on, any id shaped like one besides."""
         m = self.s.model(model_id)
-        if m is None or m.kind != kind:
-            offered = ", ".join(x.id for x in self.s.models if x.kind == kind)
-            raise CloudError(404, "model_not_offered", f"nanoMuse Cloud does not offer {model_id!r}; choose one of: {offered}")
-        return m
+        if m is not None and m.kind == kind:
+            return m
+        if m is None and self.any_model(caller):
+            unlisted = self.s.unlisted_model(model_id, kind)
+            if unlisted is not None:
+                return unlisted
+        offered = ", ".join(x.id for x in self.s.models if x.kind == kind)
+        if m is not None:
+            raise CloudError(404, "model_not_offered", f"{model_id!r} is a {m.kind} model, not a {kind} one; choose one of: {offered}")
+        more = ", or any model of the provider's by its id" if self.any_model(caller) else ""
+        raise CloudError(404, "model_not_offered", f"nanoMuse Cloud does not offer {model_id!r}; choose one of: {offered}{more}")
+
+    def models_for(self, caller: Caller) -> dict:
+        """The menu, and whether this account may name a model beyond it."""
+        return {
+            "object": "list",
+            "data": [m.to_public() for m in self.s.models],
+            "nanomuse": {"any_model": self.any_model(caller)},
+        }
 
     def check_budget(self, caller: Caller, minimum: int = 1, cost_uy: int = 0) -> None:
         """Each limit is off when its setting is 0; the per-minute one guards the
@@ -1018,14 +1042,14 @@ class Cloud:
         parts = []
         cost = 0
         if images:
-            m = self.model_for(image_model, "image") if image_model else next((x for x in self.s.models if x.kind == "image"), None)
+            m = self.model_for(image_model, "image", caller) if image_model else next((x for x in self.s.models if x.kind == "image"), None)
             if m is None:
                 raise CloudError(404, "model_not_offered", "nanoMuse Cloud offers no image model")
             c = m.image_cost_uy(size) * images
             cost += c
             parts.append({"kind": "image", "model": m.id, "count": images, "cny": self.s.uy_to_cny(c)})
         if clips:
-            m = self.model_for(video_model, "video") if video_model else next((x for x in self.s.models if x.kind == "video"), None)
+            m = self.model_for(video_model, "video", caller) if video_model else next((x for x in self.s.models if x.kind == "video"), None)
             if m is None:
                 raise CloudError(404, "model_not_offered", "nanoMuse Cloud offers no video model")
             c = m.video_cost_uy(m.clip_seconds) * clips

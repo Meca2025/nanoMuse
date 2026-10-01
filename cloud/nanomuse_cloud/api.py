@@ -311,13 +311,18 @@ def create_app(
 
     @app.get("/v1/models")
     async def models(caller: Caller = Depends(caller_dep)) -> dict:
-        return {"object": "list", "data": [m.to_public() for m in settings.models]}
+        return cloud.models_for(caller)
 
     @app.get("/v1/models/{model_id}")
-    async def model(model_id: str, caller: Caller = Depends(caller_dep)) -> dict:
+    async def model(model_id: str, kind: str = "", caller: Caller = Depends(caller_dep)) -> dict:
+        """One model: the menu's by id; for a member, also one the menu does not carry,
+        given the `kind` it is for (`?kind=chat`) — how an app checks a typed id."""
         m = settings.model(model_id)
+        if m is None and kind:
+            m = cloud.model_for(model_id, kind, caller)
         if m is None:
-            raise CloudError(404, "model_not_offered", f"nanoMuse Cloud does not offer {model_id!r}")
+            more = " on the menu; add ?kind=chat|image|video to ask for one beyond it" if cloud.any_model(caller) else ""
+            raise CloudError(404, "model_not_offered", f"nanoMuse Cloud does not offer {model_id!r}{more}")
         return m.to_public()
 
     # -- chat -----------------------------------------------------------------------------
@@ -325,7 +330,7 @@ def create_app(
     @app.post("/v1/chat/completions")
     async def chat(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         body = await _json(request)
-        spec = cloud.model_for(str(body.get("model", "")), "chat")
+        spec = cloud.model_for(str(body.get("model", "")), "chat", caller)
         cloud.check_budget(caller)
         request_id = uuid.uuid4().hex[:16]
         body["model"] = spec.upstream
@@ -510,7 +515,7 @@ def create_app(
     @app.post("/v1/images/generations")
     async def images_generations(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         body = await _json(request)
-        spec = cloud.model_for(str(body.get("model", "")), "image")
+        spec = cloud.model_for(str(body.get("model", "")), "image", caller)
         size = _size_param(body.get("size"))
         cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(size))
         prompt = str(body.get("prompt", "")).strip()
@@ -538,7 +543,7 @@ def create_app(
         size: str | None = Form(None),
         image: UploadFile = File(...),
     ) -> Response:
-        spec = cloud.model_for(model, "image")
+        spec = cloud.model_for(model, "image", caller)
         cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(_size_param(size)))
         if n != 1:
             raise CloudError(400, "bad_request", "nanoMuse Cloud draws one picture per request")
@@ -593,7 +598,7 @@ def create_app(
     @app.post("/api/v1" + VIDEO_PATH)
     async def video_synthesis(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         body = await _json(request)
-        spec = cloud.model_for(str(body.get("model", "")), "video")
+        spec = cloud.model_for(str(body.get("model", "")), "video", caller)
         # A probe (no input) costs nothing upstream and is not priced here either.
         probe = not body.get("input")
         clip_cost = 0 if probe else spec.video_cost_uy(_clip_seconds(body, spec))
@@ -637,7 +642,10 @@ def create_app(
             if status and status != task["status"]:
                 cloud.db.set_video_status(task_id, str(status))
             if status == "SUCCEEDED" and cloud.db.mark_video_charged(task_id):
-                spec = settings.model(task["model"])
+                try:
+                    spec = cloud.model_for(str(task["model"]), "video", caller)
+                except CloudError:
+                    spec = None  # a model gone from the menu since the task was submitted
                 if spec is not None:
                     charged = cloud.charge_video(caller, spec, task_id[:16], cost_uy=int(task["cost_uy"] or 0))
                     log.info("video task %s done for %s: charged %d", task_id[:12], caller.account_id[:8], charged)
@@ -647,7 +655,7 @@ def create_app(
     async def video_upload_policy(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         if request.query_params.get("action") != "getPolicy":
             raise CloudError(400, "bad_request", "action=getPolicy is the only upload call the relay makes")
-        spec = cloud.model_for(request.query_params.get("model", ""), "video")
+        spec = cloud.model_for(request.query_params.get("model", ""), "video", caller)
         cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=spec.video_cost_uy(spec.clip_seconds))
         try:
             r = await http.get(

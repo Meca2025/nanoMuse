@@ -117,10 +117,12 @@ export function ModelCard({
   onChange: () => void;
   compact?: boolean;
 }) {
-  const { toast } = useStore();
+  const { toast, state } = useStore();
   const t = useT();
   const [open, setOpen] = useState(!!compact);
   const presets = data.providers;
+  // a member of the relay may name any model of the provider's for its kind, not only the menu's
+  const anyModel = !!state.hub?.account?.any_model;
   const currentPreset =
     Object.entries(presets).find(
       ([id, p]) =>
@@ -425,9 +427,13 @@ export function ModelCard({
       <Field
         label={t("Model")}
         hint={
-          models.source === "live"
-            ? t("{n} models from the endpoint", { n: models.list.length })
-            : models.source === "loading"
+          p?.cloud && anyModel
+            ? t(
+                "Your account may name any model the provider has, not only these: type its id — a chat model here, a picture or clip model below — and it goes through as typed.",
+              )
+            : models.source === "live"
+              ? t("{n} models from the endpoint", { n: models.list.length })
+              : models.source === "loading"
               ? t("Asking the endpoint…")
               : models.list.length
                 ? t(
@@ -573,12 +579,14 @@ export function ModelCard({
             value={imageModel}
             options={models.image}
             onChange={setImageModel}
+            other={!p?.cloud || anyModel}
           />
           <StudioModelPick
             label={t("Clip model")}
             value={videoModel}
             options={models.video}
             onChange={setVideoModel}
+            other={!p?.cloud || anyModel}
           />
         </div>
       </Field>
@@ -2777,26 +2785,39 @@ function VaultCard({
 // ------------------------------------------------------------------ bits
 /** one of the studio's two model pickers: the endpoint's candidates when it lists any, a
  *  free field otherwise; the empty choice leaves the pick to the runtime */
+const OTHER_MODEL = "\u0000other";
+
+/** A model from the list, or — when `other` — one typed by its id (the list's last entry opens the field). */
 function StudioModelPick({
   label,
   value,
   options,
   onChange,
+  other = true,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (v: string) => void;
+  other?: boolean;
 }) {
   const t = useT();
   const listed = options.includes(value);
+  const [typing, setTyping] = useState(false);
   return (
     <label className="block text-[12.5px] text-muted">
       <span className="block mb-1">{label}</span>
-      {options.length && (listed || !value) ? (
+      {options.length && (listed || !value) && !typing ? (
         <select
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            if (e.target.value === OTHER_MODEL) {
+              setTyping(true);
+              onChange("");
+              return;
+            }
+            onChange(e.target.value);
+          }}
           className={cx(inputCls, "text-fg")}
         >
           <option value="">{t("Automatic")}</option>
@@ -2805,6 +2826,7 @@ function StudioModelPick({
               {m}
             </option>
           ))}
+          {other && <option value={OTHER_MODEL}>{t("Other model…")}</option>}
         </select>
       ) : (
         <input

@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Added
+
+- **Members may set any model the provider has** (relay 0.8.0). The menu is the menu for everyone; an account on the operator's list, or made a member on the admin page, may name any model under the operator's key by its id — a chat model for chat, an image model for pictures, a video model for clips, never across (`CLOUD_ANY_MODEL_MEMBERS=0` switches it off). The id goes upstream as typed; the ledger prices it as the dearest menu model of its kind and says so (`priced_as`). `/v1/models` and `/v1/me` carry `any_model` for the account, `GET /v1/models/<id>?kind=chat` checks a typed id, and the runtime remembers `member` / `any_model` on the account view. In the web app and the desktop app, Connections → the account's model says so and lets a picture or clip model be typed (*Other model…*); on the phone, the provider's *Add custom model* and the media screen's *Other model* field already did. It is how a member tries a model — DeepSeek's, say — before it goes on the menu.
+
 ### Changed
 
 - **The three hosts promise HTTPS for a year.** `nanomuse.cn`, `demo.nanomuse.dev` and `cloud.nanomuse.cn` send `Strict-Transport-Security: max-age=31536000` (this host only; subdomains make their own promise), next to the `nosniff` and referrer headers they already sent. The showcase `Caddyfile` is in `caddy fmt`'s shape, so Caddy stops warning about it at start.
