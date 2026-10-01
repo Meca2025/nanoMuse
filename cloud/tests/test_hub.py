@@ -3,6 +3,7 @@ pass calls; a second account sees nothing of it."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 
 import pytest
@@ -247,6 +248,8 @@ def test_the_profile_is_shared_and_announced(client):
     assert light["rev"] == 1 and light["name"] == "小火" and light["has_face"] is True and "face" not in light
     full = client.get("/v1/me/profile", headers=auth).json()
     assert set(full["face"]) == {"idle", "happy"} and full["device"] == "pc-1"
+    # the idle still's hash, so a device that already wears these pictures keeps its copy
+    assert light["face_id"] == hashlib.sha1(base64.b64decode(webp)).hexdigest()[:12] == full["face_id"]
 
     # a rename keeps the pictures; switching to an emoji drops them
     r = client.put("/v1/me/profile", headers=auth, json={"device": "phone-1", "name": "小火龙", "avatar": "face"})
@@ -255,7 +258,8 @@ def test_the_profile_is_shared_and_announced(client):
     r = client.put(
         "/v1/me/profile", headers=auth, json={"name": "小火龙", "avatar": "emoji", "emoji": "🦉", "color": "#0064d4", "face": None}
     )
-    assert r.status_code == 200 and client.get("/v1/me/profile", headers=auth).json()["face"] is None
+    after = client.get("/v1/me/profile", headers=auth).json()
+    assert r.status_code == 200 and after["face"] is None and after["face_id"] == ""
 
     # what is refused: a face without pictures, a stray mood, a picture that is not a picture
     bad = [

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import json
 import queue
 import ssl
@@ -948,11 +949,12 @@ def _fake_profile_relay(
         puts.append(body)
         store["rev"] = int(store.get("rev") or 0) + 1
         store["device"] = str(body.get("device") or "")
-        for k in ("name", "avatar", "emoji", "color"):
+        for k in ("name", "avatar", "emoji", "color", "style", "description"):
             store[k] = body.get(k, "")
         if "face" in body:
             store["face"] = body["face"]
         store["has_face"] = bool(store.get("face"))
+        store.pop("face_id", None)
         return {"rev": store["rev"], "device": store["device"]}
 
     monkeypatch.setattr(CloudClient, "profile", fake_profile)
@@ -1012,6 +1014,60 @@ def test_the_name_and_face_follow_the_account(hub_server, monkeypatch: pytest.Mo
     assert puts[1]["avatar"] == "dragon" and store["rev"] == 5
     client.post("/api/cloud/sign-out")
     assert service.hub.profile.rev == 0 and service.profile.avatar == "dragon"
+
+
+def test_a_device_keeps_the_face_it_drew_when_another_renames(
+    hub_server, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The studio's folder — the clips and ``face.json`` — stays when the account's pictures
+    are the ones this device already wears; its description and style travel to the rest."""
+    client, service, _llm, relay = hub_server
+    store: dict[str, Any] = {"rev": 0, "name": "", "avatar": "", "has_face": False, "face": None}
+    puts = _fake_profile_relay(monkeypatch, store)
+    folder = service.workspace() / "avatar" / "face-abc123"
+    folder.mkdir(parents=True)
+    for mood in ("idle", "working", "waiting", "happy", "error"):
+        (folder / f"{mood}.webp").write_bytes(WEBP_IDLE if mood != "happy" else WEBP_HAPPY)
+    (folder / "idle.mp4").write_bytes(b"clip")
+    (folder / "face.json").write_text(
+        json.dumps({"description": "a robot owl", "style": "pixel", "model": "draw-1"})
+    )
+    service.update_profile({"name": "Owl", "avatar": "face-abc123"})
+    sign_in(client)
+    wait_for(lambda: puts)
+    assert puts[0]["avatar"] == "face" and puts[0]["description"] == "a robot owl"
+    assert puts[0]["style"] == "pixel" and set(puts[0]["face"]) == {
+        "idle",
+        "working",
+        "waiting",
+        "happy",
+        "error",
+    }
+    wait_for(lambda: service.hub.profile.rev == 1)
+    # the phone renames; the relay carries the same pictures — and says so with face_id
+    store.update(rev=2, device="phone-1", name="Owlet")
+    store["face_id"] = hashlib.sha1(WEBP_IDLE).hexdigest()[:12]
+    relay.send({"type": "profile", "rev": 2, "device": "phone-1"})
+    wait_for(lambda: service.profile.name == "Owlet")
+    assert service.profile.avatar == "face-abc123" and (folder / "idle.mp4").is_file()
+    assert not [p for p in (service.workspace() / "avatar").iterdir() if p.name.startswith("sync-")]
+    # an older relay without face_id: the downloaded still is compared instead
+    store.update(rev=3, name="Owlet II")
+    store.pop("face_id")
+    relay.send({"type": "profile", "rev": 3, "device": "phone-1"})
+    wait_for(lambda: service.profile.name == "Owlet II")
+    assert service.profile.avatar == "face-abc123"
+    # different pictures from the phone: pulled into a sync folder with what they are
+    store.update(rev=4, description="a corgi", style="muse", face_id="other")
+    store["face"] = {"idle": base64.b64encode(WEBP_HAPPY).decode()}
+    relay.send({"type": "profile", "rev": 4, "device": "phone-1"})
+    wait_for(lambda: service.profile.avatar.startswith("sync-"))
+    info = json.loads(
+        (service.workspace() / "avatar" / service.profile.avatar / "face.json").read_text()
+    )
+    assert info["description"] == "a corgi" and info["style"] == "muse"
+    assert client.get("/api/avatar").json()["face"]["description"] == "a corgi"
+    assert len(puts) == 1  # nothing pulled was pushed back
 
 
 def test_the_first_device_seeds_the_accounts_look(

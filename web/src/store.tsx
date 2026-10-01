@@ -23,6 +23,7 @@ import type {
   Profile,
   SettingsView,
   StateSnapshot,
+  StudioSession,
   Status,
   ThreadMeta,
   TimelineEvent,
@@ -30,8 +31,8 @@ import type {
 } from "./types";
 
 /** Tab bar: chat · feed · ideas · goals · library. Memory, devices, connections and settings live behind the avatar. */
-export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "devices" | "connections" | "skills" | "you" | "account" | "coding";
-const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "devices", "connections", "skills", "you", "account", "coding"];
+export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "devices" | "connections" | "skills" | "you" | "account" | "coding" | "avatar";
+const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "devices", "connections", "skills", "you", "account", "coding", "avatar"];
 
 /** A coding run being followed live: the run itself and the steps that arrived so far. */
 export interface CodingLive {
@@ -104,6 +105,8 @@ export interface AppState {
   hands: HandsStatus | null;
   /** The latest live step of the hands, for the stage; cleared when the task ends. */
   handsLive: HandsLive | null;
+  /** The avatar studio's session as the runtime last reported it (null until one runs). */
+  studio: StudioSession | null;
 }
 
 type Action =
@@ -162,6 +165,7 @@ const initial: AppState = {
   call: null,
   hands: null,
   handsLive: null,
+  studio: null,
 };
 
 function upsertApproval(list: ApprovalEvent[], ev: TimelineEvent): ApprovalEvent[] {
@@ -403,6 +407,8 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
     }
     case "hands_state":
       return { ...state, hands: msg.hands };
+    case "studio":
+      return { ...state, studio: msg.current };
     case "hands": {
       const { kind: _kind, ...live } = msg;
       void _kind;

@@ -36,6 +36,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import io
+import json
 import re
 import shutil
 import time
@@ -69,6 +70,10 @@ CLIP_MAX_WAIT_S = 8 * 60
 # pictures in flight at once, and the pauses before a 429 is tried again
 IMAGE_AT_ONCE = 2
 IMAGE_PAUSES = (3.0, 6.0, 12.0)
+# video tasks in flight at once (the provider allows an account a couple), and the pauses
+# before a refused task is submitted again
+CLIPS_AT_ONCE = 2
+CLIP_PAUSES = (10.0, 20.0, 40.0)
 # how long a finished or abandoned session's candidates stay on disk
 SESSION_TTL_S = 24 * 3600
 
@@ -294,9 +299,17 @@ class StudioError(Exception):
     pass
 
 
+NO_IMAGE_MODEL = (
+    "No image model is set, so a new look cannot be drawn. Pick one under Connections → "
+    "Image & video models (the account's model draws with qwen-image; Alibaba Cloud Bailian "
+    "does too)."
+)
+
+
 @dataclass
 class Session:
     id: str
+    #: the chat the card is in; "" for a session run from the studio screen, which has no card
     thread: str
     event_id: str
     description: str
@@ -349,6 +362,7 @@ class AvatarStudio:
         # 429 past that): the four candidates and the four poses go two by two, and a 429
         # is waited out before it is shown
         self._gate = asyncio.Semaphore(IMAGE_AT_ONCE)
+        self._clip_gate = asyncio.Semaphore(CLIPS_AT_ONCE)
 
     async def _post_image(self, url: str, **kwargs: Any) -> httpx.Response:
         """One picture request, two at a time, tried again after a 429 with growing pauses."""
@@ -417,7 +431,26 @@ class AvatarStudio:
             "image_model": ep.image_model if ep else "",
             "video_model": ep.video_model if ep and ep.clips else "",
             "cloud": bool(ep and ep.cloud),
+            "host": ep.base_url.split("//", 1)[-1].split("/", 1)[0] if ep else "",
             "current": self.current.view() if self.current else None,
+            "face": self.face_info(),
+        }
+
+    def face_info(self) -> dict[str, Any] | None:
+        """The face the profile wears, when the studio drew it: its description, style and
+        the model (``avatar/<face>/face.json``, written when the poses land). None for the
+        dragon, the emoji, or a face from before the file was kept."""
+        face = self.svc.profile.avatar
+        if not face or face == "dragon":
+            return None
+        path = self.svc.workspace() / "avatar" / face / "face.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        return {
+            "id": face,
+            **{k: data.get(k) for k in ("description", "style", "model", "created")},
         }
 
     # ------------------------------------------------------------------ the chat
@@ -456,31 +489,37 @@ class AvatarStudio:
         ui = self.svc.ui
         ep = self.endpoint()
         if ep is None:
-            ui.emit(
-                {
-                    "type": "notice",
-                    "level": "warn",
-                    "text": "No image model is set, so a new look cannot be drawn. Pick one under Connections → Image & video models (the account's model draws with qwen-image; Alibaba Cloud Bailian does too).",
-                    "code": "no_image_model",
-                    "thread": thread,
-                }
-            )
-            return {"available": False}
+            if thread:
+                ui.emit(
+                    {
+                        "type": "notice",
+                        "level": "warn",
+                        "text": NO_IMAGE_MODEL,
+                        "code": "no_image_model",
+                        "thread": thread,
+                    }
+                )
+            return {"available": False, "message": NO_IMAGE_MODEL}
         if self.current is not None and self.current.stage not in ("done", "cancelled", "failed"):
             self.cancel(self.current.id, quiet=True)
         sid = uuid.uuid4().hex[:10]
-        event = ui.emit(
-            {
-                "type": "avatar",
-                "thread": thread,
-                "session": sid,
-                "stage": "estimate",
-                "description": description,
-                "style": style,
-            }
-        )
+        event_id = ""
+        if thread:
+            # from the chat (or Settings): a card in the chat follows the session; the studio
+            # screen has no card and watches the "studio" messages instead
+            event = ui.emit(
+                {
+                    "type": "avatar",
+                    "thread": thread,
+                    "session": sid,
+                    "stage": "estimate",
+                    "description": description,
+                    "style": style,
+                }
+            )
+            event_id = event["id"]
         session = Session(
-            id=sid, thread=thread, event_id=event["id"], description=description, style=style
+            id=sid, thread=thread, event_id=event_id, description=description, style=style
         )
         self.current = session
         session.cost = await self.estimate(ep)
@@ -530,7 +569,12 @@ class AvatarStudio:
         return cur
 
     def _patch(self, session: Session) -> None:
-        self.svc.ui.patch(session.thread, session.event_id, **session.view())
+        """The session's state to everyone looking: the card in the chat (when there is one)
+        and the studio screen (``{"kind": "studio", "current": …}`` over the socket)."""
+        if session.event_id:
+            self.svc.ui.patch(session.thread, session.event_id, **session.view())
+        if self.current is session:
+            self.svc.ui.bus.publish({"kind": "studio", "current": session.view()})
 
     async def start(self, session_id: str) -> dict[str, Any]:
         """The tap on *Draw*: the four candidates."""
@@ -600,6 +644,35 @@ class AvatarStudio:
         session.tasks.append(asyncio.create_task(self._pose(session, ep)))
         return session.view()
 
+    async def redraw_moods(self) -> dict[str, Any]:
+        """*Redraw the poses* for the face the profile wears, from its idle still — the phone's
+        menu item; what to do when a pose came out wrong or the clips were never made."""
+        face = self.svc.profile.avatar
+        ws = self.svc.workspace()
+        if not face or face == "dragon" or not (ws / "avatar" / face / "idle.webp").is_file():
+            raise StudioError("the profile wears no face from the studio")
+        ep = self.endpoint()
+        if ep is None:
+            raise StudioError("no image model")
+        if self.current is not None and self.current.stage not in ("done", "cancelled", "failed"):
+            self.cancel(self.current.id, quiet=True)
+        info = self.face_info() or {}
+        session = Session(
+            id=uuid.uuid4().hex[:10],
+            thread="",
+            event_id="",
+            description=str(info.get("description") or ""),
+            style=str(info.get("style") or DEFAULT_STYLE),
+            stage="posing",
+            candidates=[f"avatar/{face}/idle.webp", None, None, None],
+            chosen=0,
+            face=face,
+        )
+        self.current = session
+        self._patch(session)
+        session.tasks.append(asyncio.create_task(self._pose(session, ep)))
+        return session.view()
+
     async def _pose(self, session: Session, ep: Endpoint) -> None:
         assert session.face and session.chosen is not None
         ws = self.svc.workspace()
@@ -607,7 +680,8 @@ class AvatarStudio:
         face_dir = ws / "avatar" / session.face
         try:
             face_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(src, face_dir / "idle.webp")
+            if src.resolve() != (face_dir / "idle.webp").resolve():
+                shutil.copyfile(src, face_dir / "idle.webp")
             session.moods["idle"] = f"avatar/{session.face}/idle.webp"
             self._patch(session)
             png = await asyncio.to_thread(self._png_of, src)
@@ -631,6 +705,20 @@ class AvatarStudio:
                 if mood not in session.moods:
                     shutil.copyfile(face_dir / "idle.webp", face_dir / f"{mood}.webp")
                     session.moods[mood] = f"avatar/{session.face}/{mood}.webp"
+            await asyncio.to_thread(
+                (face_dir / "face.json").write_text,
+                json.dumps(
+                    {
+                        "description": session.description,
+                        "style": session.style,
+                        "model": ep.image_model,
+                        "clip_model": ep.video_model if ep.clips else "",
+                        "created": time.time(),
+                    },
+                    ensure_ascii=False,
+                ),
+                "utf-8",
+            )
             self.svc.update_profile({"avatar": session.face})
             if ep.clips:
                 # the face is on; the clips come after, one by one, and a failed one leaves its still
@@ -641,15 +729,16 @@ class AvatarStudio:
             session.stage = "done"
             session.message = "The new look is on."
             self._patch(session)
-            self.svc.ui.emit(
-                {
-                    "type": "notice",
-                    "level": "info",
-                    "text": "New look: {description}. Say what to change any time, or pick another under Settings.",
-                    "vars": {"description": session.description},
-                    "thread": session.thread,
-                }
-            )
+            if session.thread:
+                self.svc.ui.emit(
+                    {
+                        "type": "notice",
+                        "level": "info",
+                        "text": "New look: {description}. Say what to change any time, or pick another under Settings.",
+                        "vars": {"description": session.description},
+                        "thread": session.thread,
+                    }
+                )
             self._prune_sessions()
         except asyncio.CancelledError:
             raise
@@ -739,7 +828,13 @@ class AvatarStudio:
     # ------------------------------------------------------------------ clips
     async def _clip(self, ep: Endpoint, png: bytes, prompt: str) -> bytes:
         """One image-to-video clip through the asynchronous video API the phone's VideoGen
-        uses: the first frame to the provider's temporary storage, a task, polling, the MP4."""
+        uses: the first frame to the provider's temporary storage, a task, polling, the MP4.
+        Two at a time, and a task the provider refuses as too many (429) is submitted again
+        after a pause — four at once used to lose two of them."""
+        async with self._clip_gate:
+            return await self._clip_once(ep, png, prompt)
+
+    async def _clip_once(self, ep: Endpoint, png: bytes, prompt: str) -> bytes:
         host = ep.video_host
         model = ep.video_model.replace("t2v", "i2v")
         headers = self._headers(ep)
@@ -784,15 +879,20 @@ class AvatarStudio:
             "input": {"prompt": prompt, "img_url": f"oss://{key}"},
             "parameters": parameters,
         }
-        cr = await self._http.post(
-            f"{host}/api/v1/services/aigc/video-generation/video-synthesis",
-            json=body,
-            headers={
-                **headers,
-                "X-DashScope-Async": "enable",
-                "X-DashScope-OssResourceResolve": "enable",
-            },
-        )
+        for pause in (*CLIP_PAUSES, None):
+            cr = await self._http.post(
+                f"{host}/api/v1/services/aigc/video-generation/video-synthesis",
+                json=body,
+                headers={
+                    **headers,
+                    "X-DashScope-Async": "enable",
+                    "X-DashScope-OssResourceResolve": "enable",
+                },
+            )
+            if cr.status_code != 429 or pause is None:
+                break
+            logger.info("video provider busy (429); again in {:.0f}s", pause)
+            await asyncio.sleep(pause)
         if cr.status_code >= 400:
             raise StudioError(self._http_error(cr))
         task = str(((cr.json() or {}).get("output") or {}).get("task_id") or "")

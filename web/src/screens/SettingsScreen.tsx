@@ -97,11 +97,7 @@ export function SettingsScreen() {
             onChange={setIdentity}
             suggestions={false}
             inputCls={settingsInput}
-            onGenerate={(description, style) => {
-              // the studio runs in the chat: the card with the cost, then four to choose from
-              setTab("chat");
-              void api.avatarBegin(description, "main", style).catch((e: Error) => toast(t(e.message)));
-            }}
+            onStudio={() => setTab("avatar")}
           />
           <button
             type="button"
