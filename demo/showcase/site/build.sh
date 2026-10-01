@@ -12,6 +12,10 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)
 checkout=${1:-$here/mobilegym}
 gateway=${NANOMUSE_DEMO:-/api/demo}
+# the phone's media (app images, launcher widgets, icon themes) is MobileGym's companion
+# dataset: /cdn on our own origin (the gateway's CDN_DIR, the compose file's ./data), or
+# MobileGym's CDN — MOBILEGYM_CDN_BASE=https://cdn.mobilegym.dev — when it is not downloaded
+cdn=${MOBILEGYM_CDN_BASE:-/cdn}
 
 if [ ! -d "$checkout" ]; then
   git clone --depth 1 "${MOBILEGYM_REPO:-https://github.com/Purewhiter/mobilegym.git}" "$checkout"
@@ -19,7 +23,7 @@ fi
 cd "$checkout"
 [ -d node_modules ] || npm ci --no-audit --no-fund
 "$root/demo/mobilegym/install.sh" "$checkout"
-VITE_NANOMUSE_DEMO="$gateway" npm run build
+VITE_NANOMUSE_DEMO="$gateway" VITE_CDN_BASE="$cdn" npm run build
 rm -rf "$here/dist"
 cp -R dist "$here/dist"
 # the phone moves to /phone.html (its assets keep their absolute paths); the page takes /, with

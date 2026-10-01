@@ -244,9 +244,11 @@ MAIN_API_KEY=sk-... python -m showcase_gateway              # http://localhost:8
 `site/build.sh /path/to/mobilegym` builds from a checkout you already have. The page itself
 needs no bundler: edit `site/page/` and run `build.sh` again, or just
 `node site/compose.mjs /path/to/mobilegym site/page site/dist` to recompose it with
-MobileGym's chrome. Without MobileGym's companion data (`CDN_DIR`, or `./data/mobilegym-data`
-in the compose file) the launcher's theme widgets show their error cards, as on an upstream
-checkout without it.
+MobileGym's chrome. The phone's media is MobileGym's companion data at `/cdn` (`CDN_DIR`, or
+`./data/mobilegym-data` in the compose file); without it the launcher's theme widgets show their
+error cards and the media apps render empty, as on an upstream checkout without it — or build
+with `MOBILEGYM_CDN_BASE=https://cdn.mobilegym.dev` (a build arg of the same name in the compose
+file) and the phone takes it from MobileGym's CDN, as their own site does.
 
 `cd gateway && pytest` runs the gateway's tests (no Docker needed; the containers are faked).
 

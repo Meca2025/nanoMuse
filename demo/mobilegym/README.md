@@ -27,11 +27,12 @@ shell around the real nanoMuse web app:
   question*, and the last word of a background pass or check-in. Tapping one opens nanoMuse
   on that chat. A card you decide from another device takes its notification down again; the
   launcher icon carries the unread badge.
-- **Setup** — on first launch the app asks for the server address; paste the link
-  `nanomuse serve` prints (it carries the access token). The token is checked by opening the
-  server's WebSocket once, so the server needs no CORS configuration.
-- **The phone as the agent's hands** — with *Let nanoMuse operate this phone* ticked on the
-  setup page (on by default), the module also announces the simulator as a *device*: it lists
+- **The first page** — the Android app's welcome page (`FirstRunSetup.kt`): the dragon's face,
+  *Welcome to nanoMuse*, the one line, the three rows, a pill. In a checkout it asks for the
+  server address: paste the link `nanomuse serve` prints (it carries the access token). The
+  token is checked by opening the server's WebSocket once, so the server needs no CORS
+  configuration.
+- **The phone as the agent's hands** — the module announces the simulator as a *device*: it lists
   the installed apps, and answers the server's requests for the screen and for actions, the
   way the Android app does. The screen is what the Android app sends: a picture — the
   simulator's DOM rendered in the page (`modern-screenshot`) at 720×1600, twice the phone's
@@ -47,15 +48,16 @@ shell around the real nanoMuse web app:
   screenshots. Nothing is touched unless the server's own *Phone* switch is on too (`[gui]
   enabled`, or Connections → Phone in the app); [docs/gui.md](../../docs/gui.md) has the
   rest, including what asks for approval first.
-- **Two languages** — the setup page, the hosted-Muse card, the notifications and the capsule
-  follow the simulator's language (`__OS__.locale`, MobileGym's `useAppStrings` convention:
-  `res/strings.ts` holds 简体中文 and English).
+- **Two languages** — the first page, the notifications and the capsule follow the simulator's
+  language (`__OS__.locale`, MobileGym's `useAppStrings` convention: `res/strings.ts` holds
+  简体中文 and English; where the Android app has the same string, the wording is its).
 
-- **The hosted showcase** — built with `VITE_NANOMUSE_DEMO=/api/demo`, the setup page first
-  offers a Muse on the showcase server: one tap (or none, the first time) and the *showcase
-  gateway* ([`demo/showcase/`](../showcase/)) starts a private nanoMuse for this visitor, for a
-  while and within a model budget, with the option of the visitor's own model key. A normal
-  checkout has the variable empty and never asks the gateway for anything.
+- **The hosted showcase** — built with `VITE_NANOMUSE_DEMO=/api/demo`, the pill on the first
+  page starts a Muse on the showcase server: on its own the first time, a tap after that, and
+  the *showcase gateway* ([`demo/showcase/`](../showcase/)) starts a private nanoMuse for this
+  visitor, for a while and within a model budget; *I have my own API key* opens the fields for
+  the visitor's own model, *Connect your own nanoMuse* the form for a server of one's own. A
+  normal checkout has the variable empty and never asks the gateway for anything.
 
 The lighter variant needs nothing installed: open the simulator's own Browser app and go to the
 link `nanomuse serve` prints. That is the web app as any phone browser gets it — full screen, tab
@@ -105,8 +107,10 @@ checkout is edited. Run it again after pulling a newer nanoMuse.
   the same origin and uses it for the lines to try beside the phone. On a hosted session the
   web app is opened with `?ui=lite`: the phone layout whatever the window's width — the tabs
   the Android app has — with the first-run setup and the desktop hints off.
-- **Dark mode.** The web app inside the frame follows the browser's colour scheme (it cannot
-  see the simulator's); the setup page follows the simulator's.
+- **Dark mode.** The web app inside the frame picks light or dark by its own setting (it
+  cannot see the simulator's) and tells the shell which (`{type: "nanomuse:theme", theme}`),
+  so the strips above and below its frame match it; the first page follows the simulator's
+  theme.
 - **Deep links.** The OS hands the app `/?thread=<id>`; the shell forwards `thread` and `tab`
   to the web app's own deep links (`docs/app.md`).
 - **Not a MobileGym benchmark task.** The module declares its UI states and transitions like
@@ -117,7 +121,7 @@ checkout is edited. Run it again after pulling a newer nanoMuse.
 
 ```
 apps/nanoMuse/
-├── manifest.ts               id, names, icon, theme, splash
+├── manifest.ts               id, names, icon, theme (the web app's palette, the Android app's action blue)
 ├── NanoMuseApp.tsx           entry: router, theme vars, back handling, deep links
 ├── navigation.declaration.ts routes (/ and /setup), transitions, UI states
 ├── navigation.ts             go()/back() over the declaration
@@ -129,10 +133,11 @@ apps/nanoMuse/
 ├── stage.ts                  the capsule and the marks (the Android app's look): step, Stop, Your turn, approval, ring/trail/keys
 ├── host.ts                   window.__NANOMUSE__ for the page around the phone; drafts to the web app over postMessage
 ├── pages/MusePage.tsx        the web app, full screen (lite on a hosted session)
-├── pages/SetupPage.tsx       hosted Muse (showcase), or server address + token; the operate-this-phone switch
+├── pages/SetupPage.tsx       the welcome page (the Android app's): a hosted Muse on the showcase, own key, own server
 ├── hooks/useNanoMuseGestures.ts
 ├── data/                     defaults
 ├── res/strings.ts            简体中文 and English for the shell, the notifications and the capsule
-├── res/icons.tsx             the shell's icons; the launcher icon is the red panda
-└── res/mark.tsx              the red panda's head, generated by web/scripts/mascot-assets.mjs
+├── res/icons.tsx             the shell's icons; the launcher icon is the nanoMuse mark
+├── res/mark.tsx              the mark — the one-stroke N of assets/brand/nanomuse-mark.svg, as the Android launcher icon
+└── res/dragon-idle.webp      the dragon's face at rest, for the welcome page (web/public/avatars)
 ```

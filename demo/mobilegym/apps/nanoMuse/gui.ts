@@ -567,7 +567,8 @@ export async function act(raw: ActParams): Promise<ActResult> {
         start = { x: edge(cx + (sign * dx) / 2, PHONE_WIDTH), y: edge(cy + (sign * dy) / 2, PHONE_HEIGHT) };
         end = { x: edge(cx - (sign * dx) / 2, PHONE_WIDTH), y: edge(cy - (sign * dy) / 2, PHONE_HEIGHT) };
       }
-      stage.act('swipe', label, start, end);
+      // a scroll by direction is captioned as one ("Scroll up"), as on Android; a swipe between two points as a swipe
+      stage.act('swipe', label || (typeof params.x2 === 'number' ? '' : t().hands_scroll(params.direction ?? 'up')), start, end);
       await sleep(LEAD_MS);
       await input.swipe(toViewport(f, start.x, start.y), toViewport(f, end.x, end.y), { ms: SWIPE_MS, inertia: true });
       break;
@@ -591,7 +592,7 @@ export async function act(raw: ActParams): Promise<ActResult> {
     case 'open_app': {
       const id = resolveApp(String(params.app ?? ''));
       if (!id) throw new Error(`no app called '${params.app}' on this phone`);
-      stage.act('open_app', label || `${t().hands_open_app} · ${params.app ?? ''}`);
+      stage.act('open_app', label || t().hands_open_app(installedApps().find((a) => a.id === id)?.name ?? String(params.app ?? '')));
       if (os.launchApp) os.launchApp(id);
       else if (os.openApp) os.openApp(id);
       else throw new Error('the simulator cannot open apps (__OS__.launchApp missing)');
@@ -601,7 +602,7 @@ export async function act(raw: ActParams): Promise<ActResult> {
     }
     case 'wait': {
       const seconds = Math.min(10, Math.max(0.2, Number(params.seconds ?? 1)));
-      stage.act('wait', label);
+      stage.act('wait', label || t().hands_wait(Math.round(seconds)));
       await sleep(seconds * 1000);
       note = `waited ${seconds}s`;
       break;

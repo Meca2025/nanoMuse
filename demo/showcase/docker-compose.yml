@@ -19,6 +19,8 @@ services:
       dockerfile: demo/showcase/caddy/Dockerfile
       args:
         MOBILEGYM_REF: ${MOBILEGYM_REF:-main}
+        # the phone's media: /cdn here (./data/mobilegym-data), or https://cdn.mobilegym.dev without the dataset
+        MOBILEGYM_CDN_BASE: ${MOBILEGYM_CDN_BASE:-/cdn}
         GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
     image: ghcr.io/nano-muse/showcase-caddy:${SHOWCASE_TAG:-latest}
     restart: unless-stopped

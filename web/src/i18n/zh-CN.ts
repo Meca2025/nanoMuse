@@ -303,7 +303,7 @@ const zhCN: Record<string, string> = {
   Pages: "页面",
   Documents: "文档",
   Images: "图片",
-  "Pages, documents and files {name} made for you. Tap one to open it here.": "{name} 为你制作的页面、文档和文件。点击即可在此打开。",
+  "Pages, documents and files {name} made for you.": "{name} 为你制作的页面、文档和文件。",
   "Search files": "搜索文件",
   "No files match.": "没有匹配的文件。",
   "Nothing here yet. Ask {name} for a plan, a comparison page or a tracker and it lands in the Library.":
@@ -1387,7 +1387,7 @@ const zhCN: Record<string, string> = {
   "Set an image model first: Connections → Image & video models. The account's model draws with qwen-image; Alibaba Cloud Bailian does too.":
     "先设置图像模型：连接 → 图像与视频模型。账号自带的模型用 qwen-image 绘制，阿里云百炼也可以。",
   "Pick one": "挑一张",
-  "Tap one to select it. Draw four more any time; the old ones stay until you do.": "点一张选中它。随时可以再画四张；没重画之前旧的会留着。",
+  "Draw four more any time; the old ones stay until you do.": "随时可以再画四张；没重画之前旧的会留着。",
   "Use this one": "就用这个",
   "Next, its poses are drawn from it in the background — working, waiting for you, done, something wrong.": "接下来会在后台以它为底画出各个状态——干活、等你、搞定、出错。",
   "Keep the current look": "先不换了",

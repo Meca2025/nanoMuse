@@ -11,6 +11,7 @@ import {
 import { api, AuthError, connectWs, getToken } from "./api";
 import { t } from "./i18n";
 import { registerWorker, setAppBadge } from "./push";
+import { useTheme } from "./theme";
 import type {
   ApprovalEvent,
   AttachmentInfo,
@@ -620,11 +621,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // The embedding page learns when the app is up (and which agent it shows), so it can hand
-  // over a draft only once there is a composer to put it in.
+  // over a draft only once there is a composer to put it in — and which colour scheme the app
+  // is in, so the frame around it can match (`nanomuse:theme` again whenever that changes).
+  const theme = useTheme();
   useEffect(() => {
     if (!state.loaded || window.parent === window) return;
-    window.parent.postMessage({ type: "nanomuse:ready", name: state.profile?.name ?? "" }, "*");
+    window.parent.postMessage({ type: "nanomuse:ready", name: state.profile?.name ?? "", theme }, "*");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.loaded, state.profile?.name]);
+  useEffect(() => {
+    if (!state.loaded || window.parent === window) return;
+    window.parent.postMessage({ type: "nanomuse:theme", theme }, "*");
+  }, [state.loaded, theme]);
 
   // The number on the app icon: cards waiting for you.
   useEffect(() => {

@@ -133,8 +133,11 @@ export const host = { open: openApp, draft, reset, state: current, subscribe };
 export function installHost() {
   window.addEventListener('message', (ev: MessageEvent) => {
     if (!frame || ev.source !== frame.contentWindow) return;
-    const data = ev.data as { type?: unknown; name?: unknown } | null;
-    if (!data || data.type !== 'nanomuse:ready') return;
+    const data = ev.data as { type?: unknown; name?: unknown; theme?: unknown } | null;
+    if (!data || (data.type !== 'nanomuse:ready' && data.type !== 'nanomuse:theme')) return;
+    // the web app's colour scheme, so the strips around its frame match it (it cannot be seen from outside)
+    if (data.theme === 'light' || data.theme === 'dark') useNanoMuseStore.getState().setWebTheme(data.theme);
+    if (data.type !== 'nanomuse:ready') return;
     web = 'ready';
     name = typeof data.name === 'string' ? data.name : '';
     if (queued) {

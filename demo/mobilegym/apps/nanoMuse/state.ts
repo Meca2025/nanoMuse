@@ -26,6 +26,8 @@ interface NanoMuseState {
   demo: DemoRecord | null;
   /** Live state of the notification bridge's WebSocket. Not persisted. */
   link: LinkState;
+  /** The colour scheme the web app in the frame reports (light until it says otherwise). Not persisted. */
+  webTheme: 'light' | 'dark';
 }
 
 interface NanoMuseActions {
@@ -34,6 +36,7 @@ interface NanoMuseActions {
   setNotify: (on: boolean) => void;
   setGui: (on: boolean) => void;
   setLink: (link: LinkState) => void;
+  setWebTheme: (theme: 'light' | 'dark') => void;
 }
 
 const initialState: NanoMuseState = {
@@ -43,6 +46,7 @@ const initialState: NanoMuseState = {
   gui: NANOMUSE_CONFIG.gui,
   demo: null,
   link: 'off',
+  webTheme: 'light',
 };
 
 /** Normalise what people paste: a bare host, an origin, or the full `?token=` link. */
@@ -78,9 +82,12 @@ export const useNanoMuseStore = createAppStoreWithActions<NanoMuseState, NanoMus
     setLink(link) {
       set({ link });
     },
+    setWebTheme(webTheme) {
+      set({ webTheme });
+    },
   }),
   {
-    // `link` is runtime state: it always starts as 'off' and the bridge sets it
+    // `link` and `webTheme` are runtime state: the bridge and the web app set them
     partialize: (s) => ({ serverUrl: s.serverUrl, token: s.token, notify: s.notify, gui: s.gui, demo: s.demo }),
     afterHydration: () => bridge.sync(),
   },

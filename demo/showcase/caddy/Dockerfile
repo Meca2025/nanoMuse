@@ -11,6 +11,10 @@ FROM node:22-bookworm-slim AS site
 ARG MOBILEGYM_REPO=https://github.com/Purewhiter/mobilegym.git
 ARG MOBILEGYM_REF=main
 ARG NANOMUSE_DEMO=/api/demo
+# where the phone's media (MobileGym's companion dataset: app images, launcher widgets, icon
+# themes) comes from: /cdn on this origin (the gateway serves ./data/mobilegym-data there), or
+# MobileGym's own CDN, https://cdn.mobilegym.dev, when the dataset is not downloaded
+ARG MOBILEGYM_CDN_BASE=/cdn
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
@@ -22,7 +26,7 @@ WORKDIR /src/mobilegym
 # extra dependency); --no-save keeps MobileGym's lockfile as upstream has it
 RUN npm ci --no-audit --no-fund \
  && npm install --no-save --no-audit --no-fund modern-screenshot@^4.7.0 \
- && VITE_NANOMUSE_DEMO="${NANOMUSE_DEMO}" npm run build \
+ && VITE_NANOMUSE_DEMO="${NANOMUSE_DEMO}" VITE_CDN_BASE="${MOBILEGYM_CDN_BASE}" npm run build \
  && mv dist/index.html dist/phone.html
 # the page at /, with MobileGym's own chrome (gesture keys, State Builder, power) composed in
 COPY demo/showcase/site/page /src/site/page

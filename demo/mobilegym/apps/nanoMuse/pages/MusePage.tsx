@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { realNow } from '@/os/TimeService';
 import { IcOffline, IcWarning } from '../res/icons';
@@ -45,7 +45,13 @@ export default function MusePage() {
   const trouble = link === 'unauthorized' || link === 'unreachable';
   // a hosted showcase session that has run out: the server behind serverUrl is gone for good
   const demoOver = demo !== null && trouble && (realNow() / 1000 > demo.expiresAt || link === 'unauthorized');
-  const dark = useBrowserDark();
+  const webTheme = useNanoMuseStore((s) => s.webTheme);
+  const setWebTheme = useNanoMuseStore((s) => s.setWebTheme);
+  // a new frame comes up light (the web app's default) until it reports otherwise
+  useEffect(() => {
+    setWebTheme('light');
+  }, [src, setWebTheme]);
+  const dark = webTheme === 'dark';
   const palette = dark ? WEB_APP_DARK : WEB_APP_LIGHT;
 
   return (
@@ -85,27 +91,13 @@ export default function MusePage() {
         )}
       </div>
       {/* the simulator draws its gesture bar over the last 16 px; keep the web app's tab bar clear of it */}
-      <div className="h-4 shrink-0" style={{ background: palette.surface }} aria-hidden="true" />
+      <div className="h-4 shrink-0" style={{ background: palette.bg }} aria-hidden="true" />
     </div>
   );
 }
 
-// The web app inside the iframe follows the *browser's* colour scheme (it cannot see the
-// simulator's), so the strips above and below it match the browser, not the phone theme.
-const WEB_APP_LIGHT = { bg: '#f4f3fa', surface: '#ffffff' };
-const WEB_APP_DARK = { bg: '#0f0f14', surface: '#1a1a22' };
-
-function useBrowserDark(): boolean {
-  const query = useMemo(
-    () => (typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null),
-    [],
-  );
-  const [dark, setDark] = useState(query?.matches ?? false);
-  useEffect(() => {
-    if (!query) return;
-    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, [query]);
-  return dark;
-}
+// The web app's own palette (web/src/index.css: --om-bg, --om-surface). It picks light or dark
+// by its own setting, not the simulator's theme, and tells its host which — the strips above
+// and below its frame follow that, the way the Android app's status and gesture bars do.
+const WEB_APP_LIGHT = { bg: '#fcfcfc' };
+const WEB_APP_DARK = { bg: '#181819' };
