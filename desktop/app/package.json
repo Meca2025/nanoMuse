@@ -4,7 +4,7 @@
   "version": "0.1.26",
   "description": "nanoMuse for the desktop: the local runtime in a window, a tray, and a stage that shows where the hands are about to click.",
   "homepage": "https://nanomuse.cn/",
-  "license": "GPL-3.0-only",
+  "license": "GPL-3.0-or-later",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
