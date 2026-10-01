@@ -99,15 +99,25 @@ def _refused(exc: Refused) -> JSONResponse:
 
 
 class Spa(StaticFiles):
-    """Static files, and the app's ``index.html`` for any path that is not a file."""
+    """Static files, and the app's ``index.html`` for any path that is not a file.
+
+    Hashed assets (``/assets/*``) may be cached for good; everything else — the pages, the
+    phone's page in its frame, ``page/*`` — is revalidated on every visit, so a new build is
+    seen at once (the production Caddyfile does the same).
+    """
 
     async def get_response(self, path: str, scope) -> Response:  # noqa: ANN001
         try:
-            return await super().get_response(path, scope)
+            response = await super().get_response(path, scope)
         except Exception:  # noqa: BLE001 — StaticFiles raises HTTPException(404)
             if "." in path.rsplit("/", 1)[-1]:
                 raise
-            return FileResponse(os.path.join(self.directory or ".", "index.html"))
+            response = FileResponse(os.path.join(self.directory or ".", "index.html"))
+        if path.startswith("assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 def create_app(
