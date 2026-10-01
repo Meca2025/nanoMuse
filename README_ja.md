@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/app-icon.png" width="128" alt="nanoMuse アプリアイコン">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.svg" alt="nanoMuse — an open-source personal agent for every device you own">
 </p>
-
-<h1 align="center">nanoMuse</h1>
-
-<p align="center">完全オープンソースの、Muse スタイルのパーソナルエージェント。あなたのすべてのデバイスのために。</p>
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
@@ -33,7 +29,7 @@
 
 > このページは[英語版 README](README.md) の翻訳です。英語版が基準で、最新情報と完全なバージョン表はそちらにあります。
 
-nanoMuse は、完全オープンソースの Muse スタイルのパーソナルエージェントで、あなたのすべてのデバイスのためのものです。Meta の [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) のように、自分の名前と姿を持つひとりのエージェントが、質問に答えるのではなく物事を片づけ、アプリを閉じていても働き続け、あなたのことを覚え、取り消せない操作の前には立ち止まって確認します。Android アプリはエージェント全体を**スマートフォン上で**動かします。Linux のルートファイルシステム、シェル、ブラウザ、MCP、スキル、スケジュールタスクが APK の中にあり、モデルはあなたが用意します。API を持たないアプリのための「手」もあります —— あなたの許可のもと、スマートフォンの画面そのものを見て、タップします。そしてあなたのパソコンにも届きます。スマートフォンで言えば、パソコンで実行されます。デスクトップアプリと Web 版も提供中。iOS とグラスはこの後に続きます。自分のキー、またはオープンなリレーからのスタート枠、GPL-3.0 —— そして、あなた自身の Muse を作るための土台です。
+nanoMuse は、オープンソースのパーソナルエージェントで、あなたのすべてのデバイスのためのものです。Meta の [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) のように、自分の名前と姿を持つひとりのエージェントが、質問に答えるのではなく物事を片づけ、アプリを閉じていても働き続け、あなたのことを覚え、取り消せない操作の前には立ち止まって確認します。Android アプリはエージェント全体を**スマートフォン上で**動かします。Linux のルートファイルシステム、シェル、ブラウザ、MCP、スキル、スケジュールタスクが APK の中にあり、モデルはあなたが用意します。API を持たないアプリのための「手」もあります —— あなたの許可のもと、スマートフォンの画面そのものを見て、タップします。そしてあなたのパソコンにも届きます。スマートフォンで言えば、パソコンで実行されます。デスクトップアプリと Web 版も提供中。iOS とグラスはこの後に続きます。自分のキー、またはオープンなリレーからのスタート枠、GPL-3.0 —— そして、あなた自身の Muse を作るための土台です。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="同じ小さなドラゴンの五つの状態：休憩、作業中、待機、嬉しい、ごめんなさい">
