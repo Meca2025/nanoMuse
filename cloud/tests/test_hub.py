@@ -207,3 +207,65 @@ def test_reconnect_replaces_the_older_socket(client):
             frames = [second.receive_json(), second.receive_json()]
             assert all(f["type"] == "devices" for f in frames)
             assert all(len(f["devices"]) == 1 for f in frames)
+
+
+def test_the_profile_is_shared_and_announced(client):
+    """The agent's name and look live on the relay so every device of the account wears
+    the same one: a PUT from one device is a ``profile`` frame on the other's socket, and
+    the pictures are fetched only when asked for."""
+    import base64
+
+    key = sign_up(client, "13800138000")
+    auth = {"Authorization": f"Bearer {key}"}
+    assert client.get("/v1/me/profile", headers=auth).json()["rev"] == 0
+
+    webp = base64.b64encode(b"RIFF\x00\x00\x00\x00WEBPVP8 " + b"\x00" * 40).decode()
+    with connect(client, key) as phone, connect(client, key) as pc:
+        phone.send_json(hello("phone", "phone-1", "Pixel"))
+        phone.receive_json(), phone.receive_json()
+        pc.send_json(hello("computer", "pc-1", "desk"))
+        pc.receive_json(), pc.receive_json()
+        phone.receive_json()  # the devices broadcast for the pc's arrival
+
+        r = client.put(
+            "/v1/me/profile",
+            headers=auth,
+            json={
+                "device": "pc-1",
+                "name": "小火",
+                "avatar": "face",
+                "style": "pixel",
+                "description": "a robot owl",
+                "face": {"idle": webp, "happy": webp},
+            },
+        )
+        assert r.status_code == 200 and r.json()["rev"] == 1
+        assert phone.receive_json() == {"type": "profile", "rev": 1, "device": "pc-1"}
+        assert pc.receive_json() == {"type": "profile", "rev": 1, "device": "pc-1"}
+
+    light = client.get("/v1/me/profile", params={"face": "false"}, headers=auth).json()
+    assert light["rev"] == 1 and light["name"] == "小火" and light["has_face"] is True and "face" not in light
+    full = client.get("/v1/me/profile", headers=auth).json()
+    assert set(full["face"]) == {"idle", "happy"} and full["device"] == "pc-1"
+
+    # a rename keeps the pictures; switching to an emoji drops them
+    r = client.put("/v1/me/profile", headers=auth, json={"device": "phone-1", "name": "小火龙", "avatar": "face"})
+    assert r.status_code == 200 and r.json()["rev"] == 2
+    assert client.get("/v1/me/profile", headers=auth).json()["face"]["idle"] == webp
+    r = client.put(
+        "/v1/me/profile", headers=auth, json={"name": "小火龙", "avatar": "emoji", "emoji": "🦉", "color": "#0064d4", "face": None}
+    )
+    assert r.status_code == 200 and client.get("/v1/me/profile", headers=auth).json()["face"] is None
+
+    # what is refused: a face without pictures, a stray mood, a picture that is not a picture
+    bad = [
+        {"name": "x", "avatar": "face"},
+        {"name": "x", "avatar": "face", "face": {"idle": webp, "angry": webp}},
+        {"name": "x", "avatar": "face", "face": {"idle": base64.b64encode(b"hello").decode()}},
+        {"name": "", "avatar": "dragon"},
+        {"name": "x", "avatar": "emoji", "color": "blue"},
+    ]
+    for body in bad:
+        assert client.put("/v1/me/profile", headers=auth, json=body).status_code == 400, body
+    assert client.delete("/v1/me/profile", headers=auth).status_code == 204
+    assert client.get("/v1/me/profile", headers=auth).json()["rev"] == 0

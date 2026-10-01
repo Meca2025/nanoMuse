@@ -60,7 +60,7 @@ export function SignInGate() {
             <div className="mt-6 wide:hidden">{perks}</div>
             <CommunityNotice compact className="mt-6 wide:hidden" />
             <p className="mt-4 text-center text-[11.5px] leading-relaxed text-muted wide:mt-5">
-              {t("The relay keeps an account id, a masked identifier and usage counts — no message content.")}
+              {t("The relay keeps an account id, a masked identifier, usage counts and your agent's name and look — no message content.")}
             </p>
           </div>
         </div>

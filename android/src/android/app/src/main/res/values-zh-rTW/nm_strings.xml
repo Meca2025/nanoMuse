@@ -558,7 +558,7 @@
     <string name="nm_setup_contribute_what_sub">你的對話（訊息和回答，圖片只留標記），用來訓練社群自己的開源模型。</string>
     <string name="nm_setup_contribute_control">由你掌控</string>
     <string name="nm_setup_contribute_control_sub">不強制，預設關閉。隨時可以在「帳號」裡退出並刪除已貢獻的內容。</string>
-    <string name="nm_setup_contribute_fine_print">除此之外不保存別的：中繼只存帳號 id、打碼後的地址和用量計數。</string>
+    <string name="nm_setup_contribute_fine_print">除此之外不保存別的：中繼只存帳號 id、打碼後的地址、用量計數和智能體的名字與形象。</string>
     <string name="nm_welcome_feat_chat">對話、圖片、影片</string>
     <string name="nm_welcome_feat_chat_sub">能力不錯的模型，圖片與影片生成，工具、技能和記憶，都在你的手機上</string>
     <string name="nm_welcome_feat_hands">Hands：替你操作手機</string>

@@ -377,6 +377,8 @@ lang: "auto"
             tmp.delete()
         }
         _cachedMetadata.value = file.metadata
+        // nanoMuse: the agent's name is the account's — the other devices hear of a change
+        io.github.nanomuse.cloud.ProfileSync.changed()
     }
 
     /**

@@ -563,7 +563,7 @@
     <string name="nm_setup_contribute_what_sub">你的对话（消息和回答，图片只留标记），用来训练社区自己的开源模型。</string>
     <string name="nm_setup_contribute_control">由你掌控</string>
     <string name="nm_setup_contribute_control_sub">不强制，默认关闭。随时可以在「账号」里退出并删除已贡献的内容。</string>
-    <string name="nm_setup_contribute_fine_print">除此之外不保存别的：中继只存账号 id、打码后的地址和用量计数。</string>
+    <string name="nm_setup_contribute_fine_print">除此之外不保存别的：中继只存账号 id、打码后的地址、用量计数和智能体的名字与形象。</string>
     <string name="nm_welcome_feat_chat">对话、图片、视频</string>
     <string name="nm_welcome_feat_chat_sub">能力不错的模型，图片与视频生成，工具、技能和记忆，都在你的手机上</string>
     <string name="nm_welcome_feat_hands">Hands：替你操作手机</string>

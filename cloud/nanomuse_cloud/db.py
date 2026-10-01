@@ -133,6 +133,17 @@ CREATE TABLE IF NOT EXISTS samples (
 );
 CREATE INDEX IF NOT EXISTS samples_account ON samples(account_id, ts);
 CREATE INDEX IF NOT EXISTS samples_ts ON samples(ts);
+-- 0.7: the agent's name and look, so every device of an account wears the same one.
+-- Never a key or a message: a name, which face (the dragon, an emoji on a colour, or
+-- one drawn in the studio) and, for a drawn face, its five stills as WebP.
+CREATE TABLE IF NOT EXISTS profiles (
+    account_id    TEXT PRIMARY KEY REFERENCES accounts(id),
+    rev           INTEGER NOT NULL DEFAULT 0,  -- grows with every PUT; devices compare it
+    updated_at    INTEGER NOT NULL,
+    device        TEXT NOT NULL DEFAULT '',    -- the device that wrote it (it skips its own echo)
+    body          TEXT NOT NULL DEFAULT '{}',  -- name, avatar, emoji, color, style, description
+    face          TEXT NOT NULL DEFAULT ''     -- JSON {mood: base64 WebP} when avatar = "face"
+);
 """
 
 
@@ -336,6 +347,7 @@ class Database:
             c.execute("DELETE FROM events WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM video_tasks WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM devices WHERE account_id=?", (account_id,))
+            c.execute("DELETE FROM profiles WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM ledger WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM api_keys WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM accounts WHERE id=?", (account_id,))
@@ -844,6 +856,34 @@ class Database:
     def forget_device(self, account_id: str, device_id: str) -> None:
         with self.tx() as c:
             c.execute("DELETE FROM devices WHERE account_id=? AND id=?", (account_id, device_id))
+
+    # -- the profile (name and look shared by the account's devices) -----------------
+
+    def profile(self, account_id: str) -> sqlite3.Row | None:
+        with self._lock:
+            return self._conn.execute(
+                "SELECT rev, updated_at, device, body, face FROM profiles WHERE account_id=?", (account_id,)
+            ).fetchone()
+
+    def put_profile(self, account_id: str, device: str, body: str, face: str | None) -> int:
+        """Store the profile and return its new rev. ``face`` None keeps the stored face
+        (a rename should not cost the pictures a round trip); "" clears it."""
+        with self.tx() as c:
+            row = c.execute("SELECT rev, face FROM profiles WHERE account_id=?", (account_id,)).fetchone()
+            rev = (int(row["rev"]) if row else 0) + 1
+            kept = face if face is not None else (str(row["face"]) if row else "")
+            c.execute(
+                """INSERT INTO profiles(account_id, rev, updated_at, device, body, face) VALUES(?,?,?,?,?,?)
+                   ON CONFLICT(account_id) DO UPDATE SET
+                     rev=excluded.rev, updated_at=excluded.updated_at, device=excluded.device,
+                     body=excluded.body, face=excluded.face""",
+                (account_id, rev, now(), device, body, kept),
+            )
+            return rev
+
+    def delete_profile(self, account_id: str) -> None:
+        with self.tx() as c:
+            c.execute("DELETE FROM profiles WHERE account_id=?", (account_id,))
 
     # -- video tasks (the provider's async API, relayed) --------------------------
 

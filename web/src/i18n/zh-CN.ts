@@ -978,7 +978,7 @@ const zhCN: Record<string, string> = {
   // -- the community notice and the gate (0.1.22) --
   "One free account. It is what lets your phone and computers work as one and brings a model to start with.": "一个免费账号。有了它，手机和电脑就是同一个 nanoMuse，还自带一个可以先用起来的模型。",
   "It uses your phone and computers for you": "替你操作手机和电脑",
-  "The relay keeps an account id, a masked identifier and usage counts — no message content.": "中继只保存账号 id、打码后的邮箱和用量计数——不保存消息内容。",
+  "The relay keeps an account id, a masked identifier, usage counts and your agent's name and look — no message content.": "中继只保存账号 id、打码后的邮箱、用量计数和你的智能体的名字与形象——不保存消息内容。",
   "Free, open source, non-profit — open source, built together: a personal agent for all": "免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体",
   "nanoMuse is a non-profit open-source community project — free, forever. Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Messages are not stored unless you choose to contribute them; nothing is sold. Delete the account whenever you like.": "nanoMuse 是非盈利的开源社区项目，永久免费。用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key（推荐阿里云百炼）。默认不保存你的消息，数据不会出售；随时可以删除账号。",
   "Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach.": "欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。",

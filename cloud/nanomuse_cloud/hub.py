@@ -158,6 +158,15 @@ class Hub:
         frame = {"type": "devices", "devices": self.devices(account_id)}
         await asyncio.gather(*(c.send(frame) for c in conns))
 
+    async def broadcast_profile(self, account_id: str, rev: int, device: str) -> None:
+        """The account's name or look changed: every connected device of it hears the new
+        rev (and who wrote it, so the writer skips its own echo) and fetches the profile."""
+        conns = list(self.online.get(account_id, {}).values())
+        if not conns:
+            return
+        frame = {"type": "profile", "rev": rev, "device": device}
+        await asyncio.gather(*(c.send(frame) for c in conns))
+
     def forget(self, account_id: str, device_id: str) -> None:
         if device_id in self.online.get(account_id, {}):
             raise CloudError(409, "device_online", "That device is connected right now; sign it out there first")

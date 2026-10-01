@@ -506,6 +506,12 @@ class MuseService:
             self.profile.goal_interval_minutes,
             self.profile.quiet_hours,
         )
+        look_before = (
+            self.profile.name,
+            self.profile.avatar,
+            self.profile.emoji,
+            self.profile.color,
+        )
         self.profile = Profile.from_dict(merged)
         if before != (
             self.profile.proactivity,
@@ -516,6 +522,14 @@ class MuseService:
         self._save_profile()
         self._apply_profile()
         self.bus.publish({"kind": "profile", "profile": self.profile.to_dict()})
+        if look_before != (
+            self.profile.name,
+            self.profile.avatar,
+            self.profile.emoji,
+            self.profile.color,
+        ):
+            # the account's other devices wear the same name and face
+            self.hub.profile.changed()
         return self.profile
 
     # ------------------------------------------------------------------ threads

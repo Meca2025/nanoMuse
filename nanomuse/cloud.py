@@ -168,6 +168,15 @@ class CloudClient:
     async def me(self) -> dict[str, Any]:
         return await self._request("GET", "/v1/me")
 
+    async def profile(self, with_face: bool = True) -> dict[str, Any]:
+        """The agent's name and look as the account's devices share it (``rev`` 0 = none yet);
+        without the face's pictures when ``with_face`` is false."""
+        return await self._request("GET", "/v1/me/profile" + ("" if with_face else "?face=false"))
+
+    async def put_profile(self, body: dict[str, Any]) -> dict[str, Any]:
+        """This device's name and look for the account (last writer wins); the new ``rev``."""
+        return await self._request("PUT", "/v1/me/profile", body)
+
     async def set_contribute(self, on: bool) -> dict[str, Any]:
         """Keep (or stop keeping) this account's chat turns for the community's model."""
         return await self._request("POST", "/v1/me/contribute", {"on": on})

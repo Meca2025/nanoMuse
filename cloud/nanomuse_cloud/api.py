@@ -246,6 +246,29 @@ def create_app(
         body = await _json(request)
         return cloud.set_contribute(caller, bool(body.get("on")))
 
+    @app.get("/v1/me/profile")
+    async def me_profile(face: bool = True, caller: Caller = Depends(caller_dep)) -> dict:
+        """The agent's name and look, shared by the account's devices; ``?face=false`` leaves
+        the pictures out (a device checks ``rev`` first and fetches them only when it moved)."""
+        return cloud.profile(caller, with_face=face)
+
+    @app.put("/v1/me/profile")
+    async def me_put_profile(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+        """A device wrote the name or the look: stored (last writer wins) and every other
+        device of the account hears ``{"type": "profile", "rev"}`` on the hub."""
+        body = await _json(request)
+        device = str(body.pop("device", "") or "")
+        out = cloud.put_profile(caller, device, body)
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.broadcast_profile(caller.account_id, int(out["rev"]), device[:80])
+        return out
+
+    @app.delete("/v1/me/profile", status_code=204)
+    async def me_delete_profile(caller: Caller = Depends(caller_dep)) -> Response:
+        cloud.delete_profile(caller)
+        return Response(status_code=204)
+
     @app.delete("/v1/me/samples")
     async def me_delete_samples(caller: Caller = Depends(caller_dep)) -> dict:
         return {"deleted": cloud.delete_samples(caller)}

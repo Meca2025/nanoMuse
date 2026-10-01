@@ -59,7 +59,11 @@ The relay is the code in [`cloud/`](../cloud/README.md). It stores:
 - a timeline of account events — signed in, failed sign-in, password set or
   changed, signed out, refused for budget, upstream error — with a
   device name, a model or an error code as the detail, never message content;
-- the id of each video task, so only the account that started one can poll it.
+- the id of each video task, so only the account that started one can poll it;
+- the agent's name and look (`/v1/me/profile`): which face it wears — the dragon,
+  an emoji on a colour, or one drawn in the avatar studio, with that face's five
+  stills as small WebP pictures — so every device of the account shows the same
+  one. Never a key or a setting.
 
 It does not store message content, images or tool results; they are forwarded
 to the upstream model (Alibaba Cloud Model Studio) and the reply is streamed

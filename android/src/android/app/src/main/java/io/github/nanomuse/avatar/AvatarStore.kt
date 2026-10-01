@@ -75,12 +75,14 @@ object AvatarStore {
                 .put("created", System.currentTimeMillis()).toString(),
         )
         reload()
+        io.github.nanomuse.cloud.ProfileSync.changed()
     }
 
     fun putMood(mood: AgentMood, bitmap: Bitmap) {
         if (!baseFile().exists()) return
         write(moodFile(mood), bitmap)
         reload()
+        io.github.nanomuse.cloud.ProfileSync.changed()
     }
 
     /** Back to the built-in dragon. Candidates are kept so the user can pick again without paying. */
@@ -90,6 +92,7 @@ object AvatarStore {
         AgentMood.entries.forEach { moodFile(it).delete() }
         metaFile().delete()
         reload()
+        io.github.nanomuse.cloud.ProfileSync.changed()
     }
 
     fun write(file: File, bitmap: Bitmap) {

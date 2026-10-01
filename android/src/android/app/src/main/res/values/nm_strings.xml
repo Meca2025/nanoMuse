@@ -565,7 +565,7 @@
     <string name="nm_setup_contribute_what_sub">Your conversations — messages and replies, pictures as a marker — help train the community\'s own open model.</string>
     <string name="nm_setup_contribute_control">You stay in control</string>
     <string name="nm_setup_contribute_control_sub">Never required, off by default. Leave and delete what you gave at any time under Account.</string>
-    <string name="nm_setup_contribute_fine_print">Nothing else is kept: the relay stores an account id, a masked address and usage counts.</string>
+    <string name="nm_setup_contribute_fine_print">Nothing else is kept: the relay stores an account id, a masked address, usage counts and the agent\'s name and look.</string>
     <string name="nm_welcome_feat_chat">Chat, pictures, video</string>
     <string name="nm_welcome_feat_chat_sub">A capable model, image and video generation, tools, skills and memory — on your phone</string>
     <string name="nm_welcome_feat_hands">Hands: it uses your phone</string>

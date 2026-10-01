@@ -32,7 +32,13 @@ its base URL.
   `CLOUD_SECRET` so the operator's page can tell accounts apart; the database
   file on its own reveals none of them. Message content is forwarded, never
   written to disk. The database holds: hashed and encrypted identifier, key
-  hashes, token counts per request, and video task ids.
+  hashes, token counts per request, video task ids, and the profile below.
+- **One look on every device.** `GET` / `PUT` / `DELETE /v1/me/profile` keep
+  the agent's name and face for the account — the dragon, an emoji on a colour,
+  or a face drawn in the avatar studio with its five small stills (WebP, 200 KB
+  each at most) — last writer wins, with a `rev` that grows on every write.
+  Devices on the hub hear `{"type": "profile", "rev", "device"}` and fetch it;
+  `?face=false` leaves the pictures out. Never a key or a message.
 
 Errors carry a stable `code` the app can turn into a sentence:
 

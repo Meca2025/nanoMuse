@@ -49,8 +49,8 @@ described in [brand.md](brand.md).
 
 ## Privacy and permissions
 
-The relay keeps an account id, a masked identifier and usage counts — never message
-content ([privacy.md](privacy.md)). On the phone, API keys, the account key and Reach
+The relay keeps an account id, a masked identifier, usage counts and the agent's name and
+look (so your devices match) — never message content ([privacy.md](privacy.md)). On the phone, API keys, the account key and Reach
 pairing tokens are in `EncryptedSharedPreferences`; the backup rules
 (`res/xml/nanomuse_backup_rules.xml`, `nanomuse_data_extraction_rules.xml`) keep every
 secret store out of device backups and transfers. Hands needs the accessibility service
