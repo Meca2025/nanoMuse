@@ -52,12 +52,18 @@ shell around the real nanoMuse web app:
   language (`__OS__.locale`, MobileGym's `useAppStrings` convention: `res/strings.ts` holds
   简体中文 and English; where the Android app has the same string, the wording is its).
 
-- **The hosted showcase** — built with `VITE_NANOMUSE_DEMO=/api/demo`, the pill on the first
-  page starts a Muse on the showcase server: on its own the first time, a tap after that, and
-  the *showcase gateway* ([`demo/showcase/`](../showcase/)) starts a private nanoMuse for this
-  visitor, for a while and within a model budget; *I have my own API key* opens the fields for
-  the visitor's own model, *Connect your own nanoMuse* the form for a server of one's own. A
-  normal checkout has the variable empty and never asks the gateway for anything.
+- **The hosted showcase** — built with `VITE_NANOMUSE_DEMO=/api/demo`, the first page's pill
+  is the Android app's door: *Sign in — free*, nanoMuse Cloud's sign-in page (a mainland phone
+  number or an e-mail, a code or the account's password; the relay's refusals in the phone's
+  language), then the meet page, whose *Start* asks the *showcase gateway*
+  ([`demo/showcase/`](../showcase/)) for a private nanoMuse for this visitor, for a while and
+  within a model budget. The browser keeps the sign-in's ticket, so the next visit goes from
+  the welcome page straight to a Muse (*Signed in as 195\*\*\*\*0404 · Sign out* under the
+  pill). A showcase that asks for no sign-in (`DEMO_SIGNIN_REQUIRED=0`) starts on the first
+  tap. *I have my own API key* opens the fields for the visitor's own model, *Connect your own
+  nanoMuse* the form for a server of one's own, and a line under the pill says what this is —
+  a demo in a simulator — and where the app is. A normal checkout has the variable empty and
+  never asks the gateway for anything.
 
 The lighter variant needs nothing installed: open the simulator's own Browser app and go to the
 link `nanomuse serve` prints. That is the web app as any phone browser gets it — full screen, tab
@@ -133,7 +139,7 @@ apps/nanoMuse/
 ├── stage.ts                  the capsule and the marks (the Android app's look): step, Stop, Your turn, approval, ring/trail/keys
 ├── host.ts                   window.__NANOMUSE__ for the page around the phone; drafts to the web app over postMessage
 ├── pages/MusePage.tsx        the web app, full screen (lite on a hosted session)
-├── pages/SetupPage.tsx       the welcome page (the Android app's): a hosted Muse on the showcase, own key, own server
+├── pages/SetupPage.tsx       the welcome, sign-in and meet pages (the Android app's): a hosted Muse on the showcase, own key, own server
 ├── hooks/useNanoMuseGestures.ts
 ├── data/                     defaults
 ├── res/strings.ts            简体中文 and English for the shell, the notifications and the capsule

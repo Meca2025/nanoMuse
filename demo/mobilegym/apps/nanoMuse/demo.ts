@@ -16,9 +16,18 @@ export interface DemoInfo {
   demo_model: string | null;
   byok: boolean;
   byok_hosts: string[];
+  /** The showcase wants a nanoMuse Cloud sign-in before it starts a Muse (visitors.py). */
+  signin_required?: boolean;
   quota: { requests: number; tokens: number };
   active_sessions: number;
   max_sessions: number;
+}
+
+/** Who signed in, as the relay masks it — `195****0404`, `g…@gmail.com`; never the identifier. */
+export interface DemoVisitor {
+  hint: string;
+  channel: string;
+  created: boolean;
 }
 
 export interface DemoProvider {
@@ -70,13 +79,63 @@ export function fetchDemoInfo(gateway: string): Promise<DemoInfo> {
   return call<DemoInfo>(gateway, '/info');
 }
 
-export async function startDemoSession(gateway: string, provider?: DemoProvider): Promise<DemoSession> {
+/** A code to the phone or the inbox, through the gateway to nanoMuse Cloud. */
+export function requestSignInCode(gateway: string, identifier: string): Promise<void> {
+  return call<void>(gateway, '/signin/code', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ identifier }),
+  });
+}
+
+/** The code back → a ticket this browser keeps, and who it is. */
+export function verifySignInCode(
+  gateway: string,
+  identifier: string,
+  code: string,
+): Promise<{ ticket: string; visitor: DemoVisitor }> {
+  return call(gateway, '/signin/verify', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ identifier, code }),
+  });
+}
+
+/** The password way in, for accounts that set one under Account. */
+export function signInWithPassword(
+  gateway: string,
+  identifier: string,
+  password: string,
+): Promise<{ ticket: string; visitor: DemoVisitor }> {
+  return call(gateway, '/signin/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ identifier, password }),
+  });
+}
+
+/** Hands the ticket back; the next demo asks for a sign-in again. */
+export async function signOut(gateway: string, ticket: string): Promise<void> {
+  try {
+    await call<void>(gateway, '/signout', { method: 'POST', headers: { authorization: `Bearer ${ticket}` } });
+  } catch {
+    // the ticket lapses by itself in any case
+  }
+}
+
+export async function startDemoSession(
+  gateway: string,
+  provider?: DemoProvider,
+  ticket?: string,
+): Promise<DemoSession> {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (ticket) headers.authorization = `Bearer ${ticket}`;
   const raw = await call<{ id: string; server_url: string; token: string; expires_at: number; byok: boolean }>(
     gateway,
     '/session',
     {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers,
       body: JSON.stringify(provider ? { provider } : {}),
     },
   );

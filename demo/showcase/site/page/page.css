@@ -220,6 +220,20 @@ html[data-lang="en"] .zh, html[data-lang="zh"] .en { display: none; }
   letter-spacing: -0.02em;
   font-weight: 750;
 }
+/* the demo notice: the phone is a simulator, the app is the real thing */
+.notice {
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--action) 35%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--action) 6%, var(--card));
+}
+.notice p { margin: 0 0 7px; font-size: 12.5px; line-height: 1.4; color: var(--fg); }
+.notice b { font-weight: 700; }
+.notice-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.notice .btn { padding: 5px 11px; font-size: 12.5px; text-decoration: none; }
+.btn.primary { color: #fff; background: var(--action); border-color: var(--action); }
+.btn.primary:hover { filter: brightness(1.06); }
 .group {
   padding: 10px 12px 10px;
   margin-bottom: 10px;
@@ -270,9 +284,12 @@ html[data-lang="en"] .zh, html[data-lang="zh"] .en { display: none; }
 .fine a { color: inherit; text-decoration: underline; }
 
 /* shorter windows: the same panel, tighter */
-@media (max-height: 820px) {
+@media (max-height: 900px) {
   .side h1 { margin-bottom: 10px; font-size: clamp(17px, 1.4vw, 20px); }
   .group { padding: 8px 10px 8px; margin-bottom: 8px; border-radius: 14px; }
+  .notice { padding: 7px 10px; margin-bottom: 8px; border-radius: 14px; }
+  .notice p { font-size: 12px; margin-bottom: 5px; }
+  .notice .btn { padding: 4px 10px; font-size: 12px; }
   .group h2 { font-size: 13.5px; }
   .chip { margin-top: 4px; padding: 5px 10px; font-size: 13px; }
   .actions { margin-bottom: 6px; }

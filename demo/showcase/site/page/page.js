@@ -232,6 +232,8 @@
       text = tr("The phone is off — Click to start.", "手机关着——点屏幕上的「Click to start」开机。");
     } else if (!host) {
       text = tr("Starting the phone…", "手机启动中…");
+    } else if (!state.configured && info && info.signin_required && !state.signedIn) {
+      text = tr("Sign in on the phone — free — and it starts a Muse for you.", "在手机上登录（免费），它就为你启动一个 Muse。");
     } else if (!state || !state.configured) {
       text = tr("Starting a Muse for you…", "正在为你启动一个 Muse…");
     } else if (state.demo && Date.now() / 1000 > state.demo.expiresAt) {
@@ -287,7 +289,11 @@
         return;
       }
       if (state && !state.configured) {
-        say(tr("Your Muse is still starting; one moment.", "你的 Muse 还在启动，稍等一下。"));
+        say(
+          info && info.signin_required && !state.signedIn
+            ? tr("Sign in on the phone first; then try this.", "先在手机上登录，再试这句。")
+            : tr("Your Muse is still starting; one moment.", "你的 Muse 还在启动，稍等一下。"),
+        );
         return;
       }
       try {

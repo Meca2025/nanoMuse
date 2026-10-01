@@ -60,7 +60,7 @@ services:
       LISTEN_PORT: "8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - gateway-data:/data # trial credentials (SQLite), when TRIAL_ENABLED
+      - gateway-data:/data # SQLite: the visitors and their tickets, trial credentials, kept Muses
     networks:
       - edge
       - sessions

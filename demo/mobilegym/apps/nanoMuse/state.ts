@@ -24,6 +24,9 @@ interface NanoMuseState {
   gui: boolean;
   /** The hosted showcase session this phone is on, if any. */
   demo: DemoRecord | null;
+  /** The showcase's ticket from a nanoMuse Cloud sign-in (demo.ts), and who it is for. */
+  ticket: string;
+  visitor: { hint: string; channel: string } | null;
   /** Live state of the notification bridge's WebSocket. Not persisted. */
   link: LinkState;
   /** The colour scheme the web app in the frame reports (light until it says otherwise). Not persisted. */
@@ -37,6 +40,7 @@ interface NanoMuseActions {
   setGui: (on: boolean) => void;
   setLink: (link: LinkState) => void;
   setWebTheme: (theme: 'light' | 'dark') => void;
+  setVisitor: (ticket: string, visitor: { hint: string; channel: string } | null) => void;
 }
 
 const initialState: NanoMuseState = {
@@ -45,6 +49,8 @@ const initialState: NanoMuseState = {
   notify: NANOMUSE_CONFIG.notify,
   gui: NANOMUSE_CONFIG.gui,
   demo: null,
+  ticket: '',
+  visitor: null,
   link: 'off',
   webTheme: 'light',
 };
@@ -85,10 +91,21 @@ export const useNanoMuseStore = createAppStoreWithActions<NanoMuseState, NanoMus
     setWebTheme(webTheme) {
       set({ webTheme });
     },
+    setVisitor(ticket, visitor) {
+      set({ ticket, visitor: ticket ? visitor : null });
+    },
   }),
   {
     // `link` and `webTheme` are runtime state: the bridge and the web app set them
-    partialize: (s) => ({ serverUrl: s.serverUrl, token: s.token, notify: s.notify, gui: s.gui, demo: s.demo }),
+    partialize: (s) => ({
+      serverUrl: s.serverUrl,
+      token: s.token,
+      notify: s.notify,
+      gui: s.gui,
+      demo: s.demo,
+      ticket: s.ticket,
+      visitor: s.visitor,
+    }),
     afterHydration: () => bridge.sync(),
   },
 );

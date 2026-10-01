@@ -39,6 +39,7 @@ from .proxy import proxy_http, proxy_ws
 from .runner import DockerRunner
 from .sessions import Provider, Refused, SessionManager, check_provider
 from .trials import TrialManager, TrialStore
+from .visitors import VisitorBook, VisitorStore
 from .webpage import PAGE as WEB_PAGE
 
 log = logging.getLogger("showcase")
@@ -126,6 +127,7 @@ def create_app(
     client: httpx.AsyncClient | None = None,
     trials: TrialManager | None = None,
     accounts: AccountManager | None = None,
+    visitors: VisitorBook | None = None,
 ) -> FastAPI:
     http = client or httpx.AsyncClient(
         timeout=httpx.Timeout(300, connect=10), follow_redirects=False
@@ -141,6 +143,13 @@ def create_app(
             settings,
             manager.runner,
             AccountStore(settings.web_db if settings.web_enabled else ":memory:"),
+            http=http,
+            clock=manager.clock,
+        )
+    if visitors is None:
+        visitors = VisitorBook(
+            settings,
+            VisitorStore(settings.visitor_db if settings.demo_signin_required else ":memory:"),
             http=http,
             clock=manager.clock,
         )
@@ -228,6 +237,7 @@ def create_app(
             "video_model": settings.video_model if pictures.enabled and clips.enabled else None,
             "byok": settings.byok_enabled,
             "byok_hosts": list(settings.byok_hosts) if settings.byok_enabled else [],
+            "signin_required": visitors.required,
             "quota": {
                 "requests": settings.session_requests,
                 "tokens": settings.session_tokens,
@@ -237,7 +247,59 @@ def create_app(
             **manager.stats(),
             "trial": trials.stats(),
             "web": accounts.stats(),
+            "signin": visitors.stats(),
         }
+
+    # ------------------------------------------------------------- the visitor's sign-in
+    @app.post("/api/demo/signin/code", status_code=204)
+    async def signin_code(body: WebCodeIn, request: Request) -> Response:
+        try:
+            await visitors.request_code(
+                body.identifier.strip(), client_ip(request, settings.trust_proxy)
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return Response(status_code=204)
+
+    @app.post("/api/demo/signin/verify")
+    async def signin_verify(body: WebVerifyIn, request: Request) -> Response:
+        try:
+            ticket, visitor = await visitors.verify(
+                body.identifier.strip(),
+                body.code,
+                client_ip(request, settings.trust_proxy),
+                invite=body.invite.strip(),
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return JSONResponse(
+            {"ticket": ticket, "visitor": visitor.public()}, headers={"Cache-Control": "no-store"}
+        )
+
+    @app.post("/api/demo/signin/login")
+    async def signin_login(body: WebLoginIn, request: Request) -> Response:
+        try:
+            ticket, visitor = await visitors.login(
+                body.identifier.strip(), body.password, client_ip(request, settings.trust_proxy)
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return JSONResponse(
+            {"ticket": ticket, "visitor": visitor.public()}, headers={"Cache-Control": "no-store"}
+        )
+
+    @app.get("/api/demo/me")
+    async def signin_me(request: Request) -> Response:
+        try:
+            visitor = visitors.check(llm.bearer(request))
+        except Refused as exc:
+            return _refused(exc)
+        return JSONResponse({"visitor": visitor.public()}, headers={"Cache-Control": "no-store"})
+
+    @app.post("/api/demo/signout", status_code=204)
+    async def signin_out(request: Request) -> Response:
+        visitors.sign_out(llm.bearer(request))
+        return Response(status_code=204)
 
     # ------------------------------------------------------------- nanoMuse Web (accounts)
     @app.get("/web", include_in_schema=False)
@@ -293,6 +355,9 @@ def create_app(
     async def start(body: SessionIn, request: Request) -> Response:
         byok = None
         try:
+            # the ticket from the sign-in, when the showcase asks for one; a visitor who has
+            # not signed in is sent to the sign-in by the page
+            visitor = visitors.check(llm.bearer(request)) if visitors.required else None
             if body.provider is not None:
                 base_url = check_provider(
                     body.provider.base_url, settings.byok_hosts, manager.resolve
@@ -300,9 +365,16 @@ def create_app(
                 byok = Provider(
                     base_url, body.provider.api_key.strip(), body.provider.model.strip()
                 )
-            sess = await manager.create(client_ip(request, settings.trust_proxy), byok)
+            sess = await manager.create(
+                client_ip(request, settings.trust_proxy),
+                byok,
+                account=visitor.id if visitor else "",
+                hint=visitor.hint if visitor else "",
+            )
         except Refused as exc:
             return _refused(exc)
+        if visitor is not None:
+            visitors.started(visitor)
         return JSONResponse(sess.public(settings, manager.clock()), status_code=201)
 
     @app.get("/api/demo/session/{sid}")

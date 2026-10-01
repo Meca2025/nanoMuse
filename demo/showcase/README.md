@@ -69,6 +69,21 @@ the Cloudflare DNS module.
   429 and the agent tells the visitor.
 - **Per visitor (IP):** `PER_IP_ACTIVE` sessions at once, `PER_IP_DAILY` a day. `MAX_SESSIONS`
   overall.
+- **Who is trying it** (`DEMO_SIGNIN_REQUIRED=1`, the default): before the phone starts a Muse,
+  the visitor signs in to nanoMuse Cloud — the Android app's door, a code to a phone or an
+  inbox or the account's password — on the phone's own pages (`demo/mobilegym`,
+  `SetupPage.tsx`). The gateway puts the sign-in to the relay (`POST /v1/auth/code`,
+  `/verify`, `/login`, the visitor's address forwarded), notes the account — its opaque id, the
+  relay's masked identifier (`195****0404`, `g…@gmail.com`), the channel; never the identifier
+  itself — in `VISITOR_DB` (SQLite on the `gateway-data` volume), revokes the device key the
+  relay issued for the sign-in (the demo talks to the showcase's model, not to the account's
+  allowance) and hands the browser a ticket good for `VISITOR_TTL_S` (thirty days).
+  `POST /api/demo/session` wants the ticket as a bearer; without one it answers
+  `401 signin_required`, and the phone shows the sign-in. A first sign-in creates the Cloud
+  account, with its free allowance, so the day the person installs the app it is already
+  theirs. One account is one person wherever it signs in from: `PER_ACCOUNT_ACTIVE` Muses at
+  once, `PER_ACCOUNT_DAILY` a day, on top of the address limits. The session log names the
+  visitor by the masked identifier; `GET /api/demo/info` → `signin` counts them.
 - **Bring your own key:** the visitor can enter a provider URL, model and key on the setup page.
   The gateway keeps them in memory for the session and forwards with them (no budget of ours);
   the container never sees the key. Only `https://` to hosts in `BYOK_ALLOWED_HOSTS` (the usual
@@ -120,10 +135,12 @@ with the key shows what is left, and `/api/demo/info` carries the totals.
 
 The showcase gives a visitor a Muse for half an hour. With `WEB_ENABLED=1` the same gateway
 gives a *person* one that stays — a kept Muse per account, for anyone who would rather not
-install anything. With it off (the default), `/web/` redirects to the showcase site — the
-phone — so [nanomuse.cn/web/](https://nanomuse.cn/web/), which the project site's Caddy
-block hands to the gateway, stays the web entry either way. `/web/` is a sign-in page (served by the gateway; the site's Caddy block hands
-`/web/*` and `/api/web/*` over to it): an e-mail or a mobile number, then the six-digit code.
+install anything. With it off (the default, and what nanomuse.cn runs since 0.1.26: the
+phone in the browser, with its sign-in, took the web version's place), `/web/` redirects to
+the showcase site — the phone — so [nanomuse.cn/web/](https://nanomuse.cn/web/), which the
+project site's Caddy block hands to the gateway, stays the web entry either way. On, `/web/`
+is a sign-in page (served by the gateway; the site's Caddy block hands `/web/*` and
+`/api/web/*` over to it): an e-mail or a mobile number, then the six-digit code.
 The gateway asks nanoMuse Cloud for the code and checks it (`POST /v1/auth/code`,
 `/v1/auth/verify`, the visitor's address forwarded so the relay's per-address limits still
 count the right person), gets the account's key back, and starts — or wakes — the account's

@@ -126,6 +126,11 @@ def make_settings(**over) -> Settings:
         web_max_accounts=2,
         web_max_running=1,
         web_idle_stop_s=3600,
+        demo_signin_required=False,
+        per_account_active=1,
+        per_account_daily=2,
+        visitor_db=":memory:",
+        visitor_ttl_s=3600,
     )
     values.update(over)
     return replace(base, **values)
@@ -154,6 +159,7 @@ class Upstream:
         self.stream = False
         self.codes: dict[str, str] = {}  # the relay's: identifier → code
         self.keys_issued = 0
+        self.revoked: list[str] = []  # keys signed out again (the visitors' sign-in does)
         self.invites: list[str] = []  # the invite field of each verify, "" when none
         self.drawn: list[dict] = []  # Model Studio's picture requests
         self.draw_busy = 0  # how many 429s the drawing endpoint answers first
@@ -179,6 +185,10 @@ class Upstream:
                     ),
                 )
             self.codes[ident] = "246810"
+            return httpx.Response(204)
+        if request.url.path == "/v1/auth/sign-out":
+            auth = request.headers.get("authorization", "")
+            self.revoked.append(auth[7:] if auth.lower().startswith("bearer ") else "")
             return httpx.Response(204)
         if request.url.path == "/v1/auth/login":
             # the password way: one account has a password, the others say so

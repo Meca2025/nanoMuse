@@ -13,7 +13,7 @@ import { useNanoMuseStore, type DemoRecord, type LinkState } from './state';
  *   open()           bring the nanoMuse app to the front
  *   draft(text)      open it and put `text` in the chat's composer — sending is the person's tap
  *   reset()          end the hosted session and start a fresh Muse
- *   state()          where things stand: configured, link, the hosted session, the web app
+ *   state()          where things stand: configured, link, the hosted session, the web app, the sign-in
  *   subscribe(fn)    fn(state) now and on every change; returns the unsubscribe
  *
  * The web app inside the phone is on another origin (the session's hostname); the draft goes
@@ -36,6 +36,8 @@ export interface HostState {
   name: string;
   /** Whether a hosted showcase is available at all (set at build time). */
   hosted: boolean;
+  /** The visitor is signed in to nanoMuse Cloud for the showcase (holds a ticket). */
+  signedIn: boolean;
 }
 
 type Listener = (state: HostState) => void;
@@ -55,6 +57,7 @@ function current(): HostState {
     web,
     name,
     hosted: !!NANOMUSE_CONFIG.demoGateway,
+    signedIn: !!s.ticket,
   };
 }
 
@@ -147,7 +150,8 @@ export function installHost() {
     notify();
   });
   useNanoMuseStore.subscribe((s, prev) => {
-    if (s.serverUrl !== prev.serverUrl || s.link !== prev.link || s.demo !== prev.demo) notify();
+    if (s.serverUrl !== prev.serverUrl || s.link !== prev.link || s.demo !== prev.demo || s.ticket !== prev.ticket)
+      notify();
   });
   (window as unknown as { __NANOMUSE__?: typeof host }).__NANOMUSE__ = host;
 }

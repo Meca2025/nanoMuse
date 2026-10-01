@@ -1,16 +1,27 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { dragonIdle, IcBack, IcChat, IcHands, IcKey, IcReach, IcRetry } from '../res/icons';
+import { dragonIdle, IcBack, IcChat, IcCloud, IcHands, IcKey, IcReach, IcRetry } from '../res/icons';
 import { parseServerInput, useNanoMuseStore } from '../state';
 import { useNanoMuseGestures } from '../hooks/useNanoMuseGestures';
 import { NANOMUSE_CONFIG } from '../data';
-import { DemoError, fetchDemoInfo, startDemoSession, type DemoInfo, type DemoProvider } from '../demo';
+import {
+  DemoError,
+  fetchDemoInfo,
+  requestSignInCode,
+  signInWithPassword,
+  signOut,
+  startDemoSession,
+  verifySignInCode,
+  type DemoInfo,
+  type DemoProvider,
+} from '../demo';
 import { fmt, useNanoMuseStrings } from '../res/strings';
 
 /**
  * The first page — the Android app's welcome page (ui/onboarding/FirstRunSetup.kt), with the
  * same face, title, line, three rows and pill. On the hosted showcase (`demoGateway` set at
- * build time) the pill starts a private Muse on the showcase's server — on its own the first
- * time, a tap after that — and "I have my own API key" opens the three fields for one's own
+ * build time) the pill is the Android app's door — "Sign in — free", nanoMuse Cloud's sign-in,
+ * then the meet page — when the showcase asks for a sign-in, and starts a private Muse on the
+ * showcase's server otherwise; "I have my own API key" opens the three fields for one's own
  * model. "Connect your own nanoMuse" leads to the form for a server of one's own: paste the
  * link `nanomuse serve` prints (it carries the token), or the address and token separately.
  * The token is checked by opening the server's WebSocket once — the same thing the
@@ -24,27 +35,32 @@ export default function SetupPage() {
   const [own, setOwn] = useState(!gateway || Boolean(current && !demo));
 
   if (gateway && !own) {
-    return <WelcomePage gateway={gateway} autoStart={!current} onOwnServer={() => setOwn(true)} />;
+    return <ShowcaseFlow gateway={gateway} onOwnServer={() => setOwn(true)} />;
   }
   return <OwnServerPage onBack={gateway ? () => setOwn(false) : undefined} />;
 }
 
-type Phase = 'idle' | 'starting' | 'failed';
+/** Where the real thing is: the Android app and the desktop, on the project site. */
+const DOWNLOAD_URL = 'https://nanomuse.cn/#download';
 
-/** The welcome page with a Muse on the showcase server behind its pill. */
-function WelcomePage({
-  gateway,
-  autoStart,
-  onOwnServer,
-}: {
-  gateway: string;
-  autoStart: boolean;
-  onOwnServer: () => void;
-}) {
+type Phase = 'idle' | 'starting' | 'failed';
+type Step = 'welcome' | 'signin' | 'meet';
+
+/**
+ * The pages before a Muse on the showcase server. The welcome page first; when the showcase
+ * asks for a sign-in (visitors.py: the project wants to know who is trying), the pill leads
+ * to nanoMuse Cloud's sign-in and then to the meet page, the Android app's order; a visitor
+ * the browser remembers goes straight from the welcome page to a Muse.
+ */
+function ShowcaseFlow({ gateway, onOwnServer }: { gateway: string; onOwnServer: () => void }) {
   const configure = useNanoMuseStore((s) => s.configure);
+  const ticket = useNanoMuseStore((s) => s.ticket);
+  const visitor = useNanoMuseStore((s) => s.visitor);
+  const setVisitor = useNanoMuseStore((s) => s.setVisitor);
   const { go } = useNanoMuseGestures();
   const s = useNanoMuseStrings();
   const [info, setInfo] = useState<DemoInfo | null>(null);
+  const [step, setStep] = useState<Step>('welcome');
   const [phase, setPhase] = useState<Phase>('idle');
   const [message, setMessage] = useState('');
   const [ownKey, setOwnKey] = useState(false);
@@ -53,7 +69,6 @@ function WelcomePage({
     api_key: '',
     model: 'deepseek-flash',
   });
-  const started = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -65,11 +80,14 @@ function WelcomePage({
     };
   }, [gateway]);
 
+  const signinRequired = info?.signin_required ?? false;
+  const signedIn = Boolean(ticket);
+
   const start = async (withProvider?: DemoProvider) => {
     setPhase('starting');
     setMessage('');
     try {
-      const session = await startDemoSession(gateway, withProvider);
+      const session = await startDemoSession(gateway, withProvider, ticket || undefined);
       configure(session.serverUrl, session.token, { id: session.id, expiresAt: session.expiresAt, byok: session.byok });
       go('muse.open');
     } catch (err) {
@@ -79,25 +97,79 @@ function WelcomePage({
         setMessage(known ?? err.message);
         // no demo key on this server: the visitor has to bring one
         if (err.code === 'no_model') setOwnKey(true);
+        // the browser's sign-in is no longer good: through the sign-in again
+        if (err.code === 'signin_required' || err.code === 'signin_expired') {
+          setVisitor('', null);
+          setStep('signin');
+        }
       } else {
         setMessage(s.hosted_failed);
       }
     }
   };
 
-  useEffect(() => {
-    if (autoStart && !started.current) {
-      started.current = true;
-      void start();
-    }
-    // the first visit starts on its own; after that it is a tap
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart]);
+  const signOutHere = () => {
+    const old = ticket;
+    setVisitor('', null);
+    if (old) void signOut(gateway, old);
+    setStep('welcome');
+  };
 
   const minutes = info ? Math.round(info.session_ttl_s / 60) : null;
   const canOwnKey = info?.byok ?? true;
   const filled = Boolean(provider.base_url.trim() && provider.api_key.trim() && provider.model.trim());
+  const hostedFinePrint = minutes ? fmt(s.hosted_fine_print, minutes) : s.hosted_fine_print_a_while;
 
+  const keyFields = (
+    <div className="flex flex-col gap-2.5">
+      <Field type="url" value={provider.base_url} onChange={(v) => setProvider({ ...provider, base_url: v })} placeholder={s.hosted_base_url} />
+      <Field type="text" value={provider.model} onChange={(v) => setProvider({ ...provider, model: v })} placeholder={s.hosted_model} />
+      <Field type="password" value={provider.api_key} onChange={(v) => setProvider({ ...provider, api_key: v })} placeholder={s.hosted_api_key} />
+    </div>
+  );
+  const startPill = (
+    <Pill busy={phase === 'starting'} disabled={ownKey && !filled} onClick={() => void start(ownKey ? provider : undefined)}>
+      {phase === 'starting' ? s.hosted_starting : phase === 'failed' ? s.hosted_retry : s.setup_start}
+    </Pill>
+  );
+  const ownKeyToggle = canOwnKey ? (
+    <TextButton onClick={() => setOwnKey(!ownKey)}>{ownKey ? s.hosted_showcase_model : s.setup_own_key}</TextButton>
+  ) : null;
+
+  if (step === 'signin') {
+    return (
+      <SignInPage
+        gateway={gateway}
+        onBack={() => setStep('welcome')}
+        onSignedIn={(t, v) => {
+          setVisitor(t, v);
+          setMessage('');
+          setStep('meet');
+        }}
+      />
+    );
+  }
+
+  if (step === 'meet') {
+    return (
+      <Page
+        hero={<FaceDisc />}
+        title={fmt(s.meet_title, 'nanoMuse')}
+        subtitle={s.meet_sub}
+        message={message}
+        primary={startPill}
+        secondary={ownKeyToggle}
+        finePrint={ownKey ? s.hosted_key_fine_print : hostedFinePrint}
+        link={visitor ? <TextLink onClick={signOutHere}>{`${fmt(s.signin_signed_in_as, visitor.hint)} · ${s.signin_sign_out}`}</TextLink> : null}
+      >
+        {ownKey ? keyFields : <p className="text-[13px] text-app-text-muted text-center leading-snug px-2">{s.meet_fine_print}</p>}
+      </Page>
+    );
+  }
+
+  // the welcome page: the Android app's, with the one door — the account — when the
+  // showcase asks for it, and the pill straight to a Muse otherwise
+  const needsSignIn = signinRequired && !signedIn;
   return (
     <Page
       hero={<FaceDisc />}
@@ -105,56 +177,203 @@ function WelcomePage({
       subtitle={s.welcome_tagline}
       message={message}
       primary={
-        <Pill
-          busy={phase === 'starting'}
-          disabled={ownKey && !filled}
-          onClick={() => void start(ownKey ? provider : undefined)}
-        >
-          {phase === 'starting' ? s.hosted_starting : phase === 'failed' ? s.hosted_retry : s.setup_start}
-        </Pill>
+        needsSignIn ? (
+          <Pill onClick={() => setStep('signin')}>{s.welcome_signin}</Pill>
+        ) : (
+          startPill
+        )
       }
-      secondary={
-        canOwnKey ? (
-          <TextButton onClick={() => setOwnKey(!ownKey)}>{ownKey ? s.hosted_showcase_model : s.setup_own_key}</TextButton>
-        ) : null
+      secondary={needsSignIn ? null : ownKeyToggle}
+      finePrint={needsSignIn ? s.welcome_signin_fine_print : ownKey ? s.hosted_key_fine_print : hostedFinePrint}
+      link={
+        <>
+          {signedIn && visitor && (
+            <TextLink onClick={signOutHere}>{`${fmt(s.signin_signed_in_as, visitor.hint)} · ${s.signin_sign_out}`}</TextLink>
+          )}
+          <TextLink onClick={() => window.open(DOWNLOAD_URL, '_blank', 'noopener')}>{s.welcome_get_app}</TextLink>
+          <TextLink onClick={onOwnServer}>{s.setup_own_server}</TextLink>
+        </>
       }
-      finePrint={
-        ownKey
-          ? s.hosted_key_fine_print
-          : minutes
-            ? fmt(s.hosted_fine_print, minutes)
-            : s.hosted_fine_print_a_while
-      }
-      link={<TextLink onClick={onOwnServer}>{s.setup_own_server}</TextLink>}
     >
-      {ownKey ? (
-        <div className="flex flex-col gap-2.5">
-          <Field
-            type="url"
-            value={provider.base_url}
-            onChange={(v) => setProvider({ ...provider, base_url: v })}
-            placeholder={s.hosted_base_url}
-          />
-          <Field
-            type="text"
-            value={provider.model}
-            onChange={(v) => setProvider({ ...provider, model: v })}
-            placeholder={s.hosted_model}
-          />
-          <Field
-            type="password"
-            value={provider.api_key}
-            onChange={(v) => setProvider({ ...provider, api_key: v })}
-            placeholder={s.hosted_api_key}
-          />
-        </div>
+      {ownKey && !needsSignIn ? (
+        keyFields
       ) : (
         <div className="flex flex-col gap-2.5">
           <FeatureRow icon={<IcChat size={20} />} title={s.welcome_feat_chat} subtitle={s.welcome_feat_chat_sub} />
           <FeatureRow icon={<IcHands size={20} />} title={s.welcome_feat_hands} subtitle={s.welcome_feat_hands_sub} />
           <FeatureRow icon={<IcReach size={20} />} title={s.welcome_feat_reach} subtitle={s.welcome_feat_reach_sub} />
+          <NoticeCard title={s.welcome_notice_title} body={s.welcome_notice} closing={s.welcome_notice_closing} />
         </div>
       )}
+    </Page>
+  );
+}
+
+/** Where the project explains itself: the open-source section of the site (the APK's NOTICE_URL). */
+const NOTICE_URL = 'https://nanomuse.cn/#open-source';
+
+/** The Android welcome page's card (FirstRunSetup.kt NoticeCard): free, open source, non-profit; a tap opens the site. */
+function NoticeCard({ title, body, closing }: { title: string; body: string; closing: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.open(NOTICE_URL, '_blank', 'noopener')}
+      className="w-full text-left rounded-2xl p-4 mt-1.5 active:opacity-80"
+      style={{ background: 'var(--nm-fill)' }}
+    >
+      <p className="text-[14px] font-semibold leading-[19px]">{title}</p>
+      <p className="text-[13px] text-app-text-muted leading-[18px] mt-1.5">{body}</p>
+      <p className="text-[13px] text-app-text-muted leading-[18px] mt-1.5">{closing}</p>
+    </button>
+  );
+}
+
+type SignInMode = 'code' | 'password';
+
+/**
+ * nanoMuse Cloud's sign-in, the Android app's (ui/cloud/*): a phone number or an e-mail, a
+ * code sent to it — or the account's password. The relay's refusals come back by code and are
+ * said in the phone's language.
+ */
+function SignInPage({
+  gateway,
+  onBack,
+  onSignedIn,
+}: {
+  gateway: string;
+  onBack: () => void;
+  onSignedIn: (ticket: string, visitor: { hint: string; channel: string }) => void;
+}) {
+  const s = useNanoMuseStrings();
+  const [mode, setMode] = useState<SignInMode>('code');
+  const [identifier, setIdentifier] = useState('');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [sent, setSent] = useState(false);
+  const [wait, setWait] = useState(0);
+  const [busy, setBusy] = useState<'send' | 'verify' | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = setTimeout(() => setWait(wait - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [wait]);
+
+  const said = (err: unknown): string => {
+    if (err instanceof DemoError) {
+      const known = (s as Record<string, string>)[`relay_${err.code}`];
+      return known ?? err.message ?? s.relay_generic;
+    }
+    return s.relay_generic;
+  };
+
+  const send = async () => {
+    if (!identifier.trim()) {
+      setError(s.relay_bad_identifier);
+      return;
+    }
+    setBusy('send');
+    setError('');
+    try {
+      await requestSignInCode(gateway, identifier.trim());
+      setSent(true);
+      setWait(60);
+    } catch (err) {
+      setError(said(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!identifier.trim()) {
+      setError(s.relay_bad_identifier);
+      return;
+    }
+    if (mode === 'code' && !/^\d{6}$/.test(code.trim())) {
+      setError(s.relay_code_wrong);
+      return;
+    }
+    if (mode === 'password' && !password) {
+      setError(s.relay_bad_credentials);
+      return;
+    }
+    setBusy('verify');
+    setError('');
+    try {
+      const result =
+        mode === 'code'
+          ? await verifySignInCode(gateway, identifier.trim(), code.trim())
+          : await signInWithPassword(gateway, identifier.trim(), password);
+      onSignedIn(result.ticket, { hint: result.visitor.hint, channel: result.visitor.channel });
+    } catch (err) {
+      setError(said(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const canVerify = mode === 'code' ? sent && code.trim().length === 6 : password.length > 0;
+
+  return (
+    <Page
+      onBack={onBack}
+      hero={
+        <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center" style={{ background: 'var(--nm-fill)' }}>
+          <IcCloud size={28} />
+        </div>
+      }
+      title={s.signin_title}
+      subtitle={s.signin_sub}
+      message={error}
+      primary={
+        <Pill busy={busy === 'verify'} disabled={!canVerify} onClick={() => void submit()}>
+          {s.signin_verify}
+        </Pill>
+      }
+      secondary={
+        <TextButton
+          onClick={() => {
+            setMode(mode === 'code' ? 'password' : 'code');
+            setError('');
+          }}
+        >
+          {mode === 'code' ? s.signin_mode_password : s.signin_mode_code}
+        </TextButton>
+      }
+      finePrint={s.signin_fine_print}
+    >
+      <form onSubmit={submit} className="flex flex-col gap-2.5">
+        <Field
+          type="text"
+          value={identifier}
+          onChange={setIdentifier}
+          placeholder={s.signin_identifier_hint}
+          label={s.signin_identifier}
+          inputMode="email"
+        />
+        {mode === 'code' ? (
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Field type="text" value={code} onChange={setCode} placeholder="······" label={s.signin_code} inputMode="numeric" />
+            </div>
+            <button
+              type="button"
+              disabled={busy === 'send' || wait > 0}
+              onClick={() => void send()}
+              className="h-12 px-4 rounded-2xl text-[14px] font-medium text-app-primary disabled:text-app-text-muted flex-none"
+              style={{ background: 'var(--nm-fill)' }}
+            >
+              {wait > 0 ? fmt(s.signin_resend_in, wait) : sent ? s.signin_resend : s.signin_send_code}
+            </button>
+          </div>
+        ) : (
+          <Field type="password" value={password} onChange={setPassword} placeholder="" label={s.signin_password} />
+        )}
+        <button type="submit" className="hidden" />
+      </form>
     </Page>
   );
 }
@@ -258,7 +477,7 @@ function Page({
           <IcBack size={24} />
         </button>
       )}
-      <div className="flex-1 overflow-y-auto px-6">
+      <div className="flex-1 overflow-y-auto px-6 pb-3">
         <div className={`${onBack ? 'mt-2' : 'mt-8'} mb-5 flex flex-col items-center text-center`}>
           {hero}
           <h1 className="mt-5 text-[24px] font-semibold tracking-tight leading-tight">{title}</h1>
@@ -337,17 +556,19 @@ function Field({
   onChange,
   placeholder,
   label,
+  inputMode,
 }: {
   type: 'url' | 'text' | 'password';
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   label?: string;
+  inputMode?: 'url' | 'email' | 'numeric';
 }) {
   const input = (
     <input
       type={type}
-      inputMode={type === 'url' ? 'url' : undefined}
+      inputMode={inputMode ?? (type === 'url' ? 'url' : undefined)}
       autoCapitalize="off"
       autoCorrect="off"
       spellCheck={false}

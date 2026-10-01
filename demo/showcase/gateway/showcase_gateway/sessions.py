@@ -55,6 +55,8 @@ class Session:
     address: str = ""  # where the gateway reaches the container
     port: int = 8787
     byok: Provider | None = None
+    account: str = ""  # the visitor's account id, when the showcase asks for a sign-in
+    hint: str = ""  # the masked identifier, for the log and the admin
     last_seen: float = field(default=0.0)
     requests: int = 0
     tokens: int = 0
@@ -139,6 +141,7 @@ class SessionManager:
         self.clock = clock
         self.sessions: dict[str, Session] = {}
         self._starts: dict[str, deque[float]] = defaultdict(deque)  # per ip, last 24 h
+        self._account_starts: dict[str, deque[float]] = defaultdict(deque)  # per account
         self._day = _day_key(clock())
         self.day_requests = 0
         self.day_tokens = 0
@@ -197,7 +200,7 @@ class SessionManager:
     def active(self) -> list[Session]:
         return [s for s in self.sessions.values() if not s.ended]
 
-    def _check_policy(self, ip: str) -> None:
+    def _check_policy(self, ip: str, account: str = "") -> None:
         now = self.clock()
         active = self.active()
         if len(active) >= self.s.max_sessions:
@@ -214,6 +217,23 @@ class SessionManager:
             starts.popleft()
         if len(starts) >= self.s.per_ip_daily:
             raise Refused(429, "daily_limit", "That is all the demo sessions for today from here.")
+        if account:
+            # the same account from two browsers is still one person: one Muse at a time,
+            # and a day's worth of starts
+            theirs = [s for s in active if s.account == account]
+            if len(theirs) >= self.s.per_account_active:
+                raise Refused(
+                    429,
+                    "already_running",
+                    "You already have a demo running. Finish that one first.",
+                )
+            account_starts = self._account_starts[account]
+            while account_starts and now - account_starts[0] > 86400:
+                account_starts.popleft()
+            if len(account_starts) >= self.s.per_account_daily:
+                raise Refused(
+                    429, "daily_limit", "That is all the demo sessions for today on this account."
+                )
 
     def _env_for(self, sess: Session) -> dict[str, str]:
         s = self.s
@@ -250,7 +270,9 @@ class SessionManager:
         env.update(s.extra_env)
         return env
 
-    async def create(self, ip: str, byok: Provider | None = None) -> Session:
+    async def create(
+        self, ip: str, byok: Provider | None = None, account: str = "", hint: str = ""
+    ) -> Session:
         if byok and not self.s.byok_enabled:
             raise Refused(400, "byok_off", "Bringing your own key is turned off on this showcase.")
         if not byok and not self.s.main.configured:
@@ -259,7 +281,7 @@ class SessionManager:
             )
         async with self._lock:
             self._roll_day()
-            self._check_policy(ip)
+            self._check_policy(ip, account)
             now = self.clock()
             sid = _new_id()
             sess = Session(
@@ -272,10 +294,14 @@ class SessionManager:
                 container=f"nm-{sid}",
                 port=self.s.container_port,
                 byok=byok,
+                account=account,
+                hint=hint,
                 last_seen=now,
             )
             self.sessions[sid] = sess
             self._starts[ip].append(now)
+            if account:
+                self._account_starts[account].append(now)
         try:
             sess.address = await self.runner.start(sess.container, self._env_for(sess))
             await self._wait_ready(sess)
@@ -285,7 +311,13 @@ class SessionManager:
         except Exception as exc:  # noqa: BLE001
             await self.end(sid, reason="failed to start")
             raise Refused(503, "start_failed", "Could not start a demo Muse. Try again.") from exc
-        log.info("session %s started for %s (byok=%s)", sid, ip, byok is not None)
+        log.info(
+            "session %s started for %s (visitor=%s byok=%s)",
+            sid,
+            ip,
+            hint or "-",
+            byok is not None,
+        )
         return sess
 
     async def _wait_ready(self, sess: Session) -> None:
@@ -321,7 +353,12 @@ class SessionManager:
             return
         sess.ended = True
         log.info(
-            "session %s ended: %s (%d requests, %d tokens)", sid, reason, sess.requests, sess.tokens
+            "session %s ended: %s (visitor=%s, %d requests, %d tokens)",
+            sid,
+            reason,
+            sess.hint or "-",
+            sess.requests,
+            sess.tokens,
         )
         await self.runner.stop(sess.container)
         # keep the record a little so late requests get a clear "no such session"
