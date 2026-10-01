@@ -71,7 +71,7 @@ packages = ["nanomuse"]
 "config/config.example.toml" = "nanomuse/config.example.toml"
 
 [tool.hatch.build.targets.sdist]
-include = ["nanomuse", "config/config.example.toml", "README.md", "README_zh.md", "LICENSE"]
+include = ["nanomuse", "config/config.example.toml", "README.md", "README_*.md", "LICENSE"]
 
 [tool.ruff]
 line-length = 100
