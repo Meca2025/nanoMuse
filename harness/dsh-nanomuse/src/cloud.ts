@@ -9,19 +9,34 @@
  * OpenAI-compatible gateway — so the harness's own adapter talks to the relay
  * and the models appear in the picker. Nothing of ours sits in the model path.
  *
- * The browser half (`client/CloudSection.tsx`) drives this through a small
- * loopback HTTP API under `/nanomuse/cloud/*`, registered when the web server
- * is present; the headless and SDK profiles get the service without routes.
+ * Signed in, this computer is also a device of the account:
+ *
+ * - the **profile** (`profile.ts`): the agent's name and face come from the
+ *   account and follow the phone's avatar studio;
+ * - the **hub** (`hub.ts`): one socket to `/v1/hub`, so the phone lists this
+ *   computer, this computer's Muse reaches the phone (`reach.ts`), and a
+ *   `notify` from another device shows here;
+ * - the **hands tracker**: every Hands or Reach tool call in flight, so the
+ *   browser half can draw the capsule the Android app draws while it works.
+ *
+ * The browser half (`client/`) drives all of this through a small loopback HTTP
+ * API under `/nanomuse/cloud/*` — plain JSON plus one server-sent-events stream
+ * (`/events`) carrying the live state — registered when the web server is
+ * present; the headless and SDK profiles get the service without routes.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { hostname } from 'node:os'
+import { hostname, release, type } from 'node:os'
 import { dirname, join } from 'node:path'
+import { randomBytes } from 'node:crypto'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
+import { HubClient, type HubDevice } from './hub.ts'
+import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type RelayModel } from './relay.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -38,6 +53,10 @@ export const PROVIDER_ID = 'nanomuse'
 export const LLM_ROW = 'llm-pi-ai'
 /** Where the browser half talks to us. */
 export const API_PREFIX = '/nanomuse/cloud'
+/** What this device reports as its software. */
+export const VERSION = 'dsh-nanomuse 0.0.2'
+/** The hub actions this computer answers for the others (`docs/hub.md`). */
+export const ACTIONS = ['info', 'notify']
 
 export interface Config {
   /** The relay origin. */
@@ -57,37 +76,151 @@ export const Config: z<Config> = z.object({
 /** What the UI shows; never the key. */
 export interface CloudStatus {
   signedIn: boolean
+  /** A model can answer: the account's, or a key the person entered in Models. */
+  ready: boolean
   baseURL: string
   account?: Account
   models: RelayModel[]
+  profile: Profile
+  hub: HubState
   /** The last relay failure, for the card to show. */
   error?: { code: string; message: string }
+}
+
+export interface HubState {
+  connected: boolean
+  deviceId: string
+  deviceName: string
+  lastError?: string
+  devices: HubDevice[]
+}
+
+/** One Hands or Reach tool call in flight. */
+export interface HandsCall {
+  id: string
+  name: string
+  /** The few arguments the capsule reads: action, label, text, device, command, task. */
+  args: Record<string, string>
+  sessionId: string
+  since: number
+}
+
+/** A `notify` from another device, shown as a toast. */
+export interface Notice {
+  id: number
+  from: string
+  title: string
+  text: string
+  at: number
+}
+
+/** The live state the browser half mirrors over `/events`. */
+export interface LiveState {
+  cloud: { signedIn: boolean; hint: string }
+  profile: Profile
+  hub: HubState
+  hands: { calls: HandsCall[]; steps: number }
+  notices: Notice[]
 }
 
 interface State {
   account?: Account
   models?: RelayModel[]
+  deviceId?: string
+  deviceName?: string
 }
+
+/** Tool names whose calls the capsule follows. */
+export function isHandsTool(name: string): boolean {
+  return name.startsWith('mcp__nanomuse__') || name === 'devices' || name.startsWith('device_') || name === 'delegate'
+}
+
+const ARG_KEYS = ['action', 'label', 'text', 'device', 'command', 'task', 'path', 'url'] as const
 
 export default class NanomuseCloud extends Service {
   static inject = ['credentials', 'settings']
   static Config = Config
 
-  private readonly relay: Relay
+  readonly relay: Relay
+  readonly profile: ProfileStore
+  readonly hub: HubClient
   private state: State = {}
   private busy: Promise<unknown> = Promise.resolve()
+  private readonly streams = new Set<ServerResponse>()
+  private readonly calls = new Map<string, HandsCall>()
+  private steps = 0
+  private lastCallAt = 0
+  private notices: Notice[] = []
+  private noticeSeq = 0
+  private signedInCache = false
 
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'nanomuseCloud')
     this.relay = new Relay(config.baseURL)
+    this.profile = new ProfileStore(this.dir(), this.relay)
+    this.hub = new HubClient({
+      url: this.relay.hubURL,
+      key: () => this.token(),
+      device: () => ({
+        id: this.state.deviceId ?? '',
+        name: this.deviceName(),
+        kind: 'computer',
+        os: `${type()} ${release()}`.trim(),
+        version: VERSION,
+        actions: ACTIONS,
+      }),
+      log: (level, text) => this.ctx.logger[level](text),
+    })
   }
 
   async [Service.init](): Promise<void> {
     this.state = await this.readState()
+    if (!this.state.deviceId) {
+      this.state.deviceId = `pc-dsh-${randomBytes(6).toString('hex')}`
+      await this.writeState()
+    }
+    await this.profile.load()
+    this.profile.onChange(() => this.broadcast())
+    this.hub.onState(() => this.broadcast())
+    this.hub.onDevices(() => this.broadcast())
+    this.hub.onProfile(() => void this.pullProfile().catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error))))
+    this.hub.onUnauthorized(() => void this.serialize(() => this.forget()).catch(() => undefined))
+    this.hub.handle('info', async () => ({
+      name: this.deviceName(),
+      kind: 'computer',
+      os: type(),
+      os_version: release(),
+      runtime: VERSION,
+      actions: ACTIONS,
+    }))
+    this.hub.handle('notify', async (args, call) => {
+      this.notice(call.from.name || 'a device', String(args.title ?? ''), String(args.text ?? ''))
+      return { ok: true, shown: true }
+    })
+
     this.ctx.inject(['webServer'], (ctx) => {
       ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: API_PREFIX, handler: this.handle }), 'nanomuse cloud: api')
     })
+    this.ctx.inject(['tools'], (ctx) => {
+      ctx.on('tools/execute', async (exec, next) => {
+        if (!isHandsTool(exec.name)) return next()
+        this.began(exec.callId, exec.name, exec.arguments, exec.agent?.session.id ?? '')
+        try {
+          return await next()
+        } finally {
+          this.ended(exec.callId)
+        }
+      })
+    })
+    this.ctx.effect(() => () => {
+      this.hub.stop('shutting down')
+      for (const res of this.streams) res.end()
+      this.streams.clear()
+    }, 'nanomuse cloud: hub')
+
     if (this.state.account && (await this.token())) {
+      this.signedInCache = true
+      this.hub.start()
       // Refresh what the account looks like, quietly; the key may have been retired elsewhere.
       void this.refresh().catch((error: unknown) => {
         this.ctx.logger.warn('nanomuse cloud: could not refresh the account: %s', message(error))
@@ -100,13 +233,35 @@ export default class NanomuseCloud extends Service {
     return this.relay.origin
   }
 
+  /** Signed in, as far as the last check went (no credential read). */
+  get signedIn(): boolean {
+    return this.signedInCache
+  }
+
   async status(): Promise<CloudStatus> {
     const token = await this.token()
+    const signedIn = Boolean(token && this.state.account)
+    this.signedInCache = signedIn
     return {
-      signedIn: Boolean(token && this.state.account),
+      signedIn,
+      ready: signedIn || (await this.otherProviderReady()),
       baseURL: this.relay.origin,
       ...(this.state.account ? { account: this.state.account } : {}),
       models: this.state.models ?? [],
+      profile: this.profile.current(),
+      hub: this.hubState(),
+    }
+  }
+
+  /** The live state, as `/events` streams it. */
+  live(): LiveState {
+    const account = this.state.account
+    return {
+      cloud: { signedIn: this.signedInCache && Boolean(account), hint: account?.hint ?? '' },
+      profile: this.profile.current(),
+      hub: this.hubState(),
+      hands: { calls: [...this.calls.values()], steps: this.steps },
+      notices: this.notices,
     }
   }
 
@@ -122,9 +277,13 @@ export default class NanomuseCloud extends Service {
       await this.ctx.credentials.set(credentialRef(TOKEN_REF), signIn.apiKey)
       const models = await this.relay.models(signIn.apiKey)
       await this.writeProvider(models)
-      this.state = { account: signIn.account, models }
+      this.state = { ...this.state, account: signIn.account, models }
       await this.writeState()
+      this.signedInCache = true
       this.ctx.logger.info('nanomuse cloud: signed in as %s (%s)', signIn.account.hint, signIn.account.channel)
+      await this.profile.pull(signIn.apiKey, true).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
+      this.hub.restart()
+      this.broadcast()
       return this.status()
     })
   }
@@ -137,8 +296,10 @@ export default class NanomuseCloud extends Service {
       try {
         const [account, models] = await Promise.all([this.relay.me(token), this.relay.models(token)])
         if (!sameModels(models, this.state.models ?? [])) await this.writeProvider(models)
-        this.state = { account, models }
+        this.state = { ...this.state, account, models }
         await this.writeState()
+        await this.profile.pull(token).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
+        if (!this.hub.connected) this.hub.start()
       } catch (error: unknown) {
         if (error instanceof RelayError && error.status === 401) {
           await this.forget()
@@ -146,6 +307,7 @@ export default class NanomuseCloud extends Service {
         }
         throw error
       }
+      this.broadcast()
       return this.status()
     })
   }
@@ -164,6 +326,28 @@ export default class NanomuseCloud extends Service {
       await this.forget()
       return this.status()
     })
+  }
+
+  /** Fetch the account's look now (a `profile` frame, or the person asked). */
+  async pullProfile(force = false): Promise<Profile> {
+    const token = await this.token()
+    if (token) await this.profile.pull(token, force)
+    return this.profile.current()
+  }
+
+  /** Rename this computer on the account's list (kept locally too, for the next hello). */
+  async renameDevice(name: string): Promise<void> {
+    const clean = name.trim().slice(0, 60)
+    if (!clean) return
+    this.state = { ...this.state, deviceName: clean }
+    await this.writeState()
+    this.hub.rename(clean)
+    this.broadcast()
+  }
+
+  /** The current account key, for a plugin that speaks to the relay itself. */
+  token(): Promise<string | undefined> {
+    return this.ctx.credentials.resolve(credentialRef(TOKEN_REF)).then((r) => r?.value)
   }
 
   // -- the provider row -----------------------------------------------------------
@@ -189,6 +373,7 @@ export default class NanomuseCloud extends Service {
   }
 
   private async forget(): Promise<void> {
+    this.hub.stop('signed out')
     await this.ctx.credentials.unset(credentialRef(TOKEN_REF))
     try {
       await this.ctx.settings.mutate(LLM_ROW, [{ op: 'unset', path: ['providers', PROVIDER_ID] }])
@@ -196,28 +381,84 @@ export default class NanomuseCloud extends Service {
       // The row may never have had the provider (a sign-in that failed half-way).
       this.ctx.logger.debug('nanomuse cloud: provider row not removed: %s', message(error))
     }
-    this.state = {}
+    const { deviceId, deviceName } = this.state
+    this.state = { ...(deviceId ? { deviceId } : {}), ...(deviceName ? { deviceName } : {}) }
+    this.signedInCache = false
     await this.writeState()
+    await this.profile.reset()
+    this.broadcast()
+  }
+
+  /** Another model can answer without the account: a DeepSeek key, or a provider the person added. */
+  private async otherProviderReady(): Promise<boolean> {
+    try {
+      if ((await this.ctx.credentials.resolve(credentialRef('DEEPSEEK_API_KEY')))?.value) return true
+    } catch {
+      // no credential store answer: assume nothing
+    }
+    const llm = (this.ctx as unknown as { get(name: string): unknown }).get('llm') as { listProviders?: () => { id: string }[] } | undefined
+    const providers = llm?.listProviders?.() ?? []
+    return providers.some((p) => p.id !== 'deepseek-official' && p.id !== 'deepseek-account' && p.id !== PROVIDER_ID)
+  }
+
+  // -- hands and notices ----------------------------------------------------------------
+
+  private began(callId: string, name: string, args: unknown, sessionId: string): void {
+    const now = Date.now()
+    if (now - this.lastCallAt > 60_000 && this.calls.size === 0) this.steps = 0
+    this.lastCallAt = now
+    this.steps += 1
+    this.calls.set(callId, { id: callId, name, args: pickArgs(args), sessionId, since: now })
+    this.broadcast()
+  }
+
+  private ended(callId: string): void {
+    if (this.calls.delete(callId)) {
+      this.lastCallAt = Date.now()
+      this.broadcast()
+    }
+  }
+
+  private notice(from: string, title: string, text: string): void {
+    this.noticeSeq += 1
+    this.notices = [...this.notices.slice(-7), { id: this.noticeSeq, from, title: title.slice(0, 80), text: text.slice(0, 500), at: Date.now() }]
+    this.ctx.logger.info('nanomuse: notice from %s: %s', from, text.slice(0, 80))
+    this.broadcast()
   }
 
   // -- state ----------------------------------------------------------------------------
 
-  private async token(): Promise<string | undefined> {
-    return (await this.ctx.credentials.resolve(credentialRef(TOKEN_REF)))?.value
+  private hubState(): HubState {
+    return {
+      connected: this.hub.connected,
+      deviceId: this.state.deviceId ?? '',
+      deviceName: this.deviceName(),
+      ...(this.hub.lastError ? { lastError: this.hub.lastError } : {}),
+      devices: this.hub.devices,
+    }
   }
 
   private deviceName(): string {
-    return this.config.deviceName || hostname() || 'desktop'
+    return this.state.deviceName || this.config.deviceName || hostname() || 'desktop'
+  }
+
+  private dir(): string {
+    return this.config.statePath ? dirname(this.config.statePath) : join(dshHome(), 'nanomuse')
   }
 
   private statePath(): string {
-    return this.config.statePath || join(dshHome(), 'nanomuse', 'cloud.json')
+    return this.config.statePath || join(this.dir(), 'cloud.json')
   }
 
   private async readState(): Promise<State> {
     try {
       const raw = JSON.parse(await readFile(this.statePath(), 'utf8')) as State
-      return { ...(raw.account ? { account: raw.account } : {}), ...(raw.models ? { models: raw.models } : {}) }
+      return {
+        ...(raw.account ? { account: raw.account } : {}),
+        ...(raw.models ? { models: raw.models } : {}),
+        ...(typeof raw.deviceId === 'string' && raw.deviceId ? { deviceId: raw.deviceId } : {}),
+        ...(typeof raw.deviceName === 'string' && raw.deviceName ? { deviceName: raw.deviceName } : {}),
+      }
     } catch {
       return {}
     }
@@ -237,12 +478,45 @@ export default class NanomuseCloud extends Service {
 
   // -- the loopback API -------------------------------------------------------------
 
+  private broadcast(): void {
+    if (this.streams.size === 0) return
+    const data = `data: ${JSON.stringify(this.live())}\n\n`
+    for (const res of this.streams) {
+      try {
+        res.write(data)
+      } catch {
+        this.streams.delete(res)
+      }
+    }
+  }
+
+  private stream(req: IncomingMessage, res: ServerResponse): void {
+    res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' })
+    res.write(`retry: 2000\ndata: ${JSON.stringify(this.live())}\n\n`)
+    this.streams.add(res)
+    const beat = setInterval(() => {
+      try {
+        res.write(': beat\n\n')
+      } catch {
+        // closed below
+      }
+    }, 20_000)
+    const done = () => {
+      clearInterval(beat)
+      this.streams.delete(res)
+    }
+    req.on('close', done)
+    res.on('close', done)
+  }
+
   private readonly handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1')
     const route = url.pathname.slice(API_PREFIX.length) || '/'
     if (!sameOrigin(req)) return send(res, 403, { error: { code: 'forbidden', message: 'Same-origin requests only' } })
     try {
       if (req.method === 'GET' && route === '/status') return send(res, 200, await this.status())
+      if (req.method === 'GET' && route === '/events') return this.stream(req, res)
+      if (req.method === 'GET' && route === '/live') return send(res, 200, this.live())
       if (req.method === 'POST' && route === '/code') {
         const body = await json(req)
         await this.requestCode(String(body.identifier ?? ''))
@@ -254,6 +528,26 @@ export default class NanomuseCloud extends Service {
       }
       if (req.method === 'POST' && route === '/refresh') return send(res, 200, await this.refresh())
       if (req.method === 'POST' && route === '/sign-out') return send(res, 200, await this.signOut())
+      if (req.method === 'POST' && route === '/profile/refresh') return send(res, 200, await this.pullProfile(true))
+      if (req.method === 'POST' && route === '/devices/refresh') {
+        this.hub.refreshDevices()
+        return send(res, 204)
+      }
+      if (req.method === 'POST' && route === '/devices/rename') {
+        const body = await json(req)
+        await this.renameDevice(String(body.name ?? ''))
+        return send(res, 204)
+      }
+      if (req.method === 'POST' && route === '/devices/forget') {
+        const body = await json(req)
+        this.hub.forget(String(body.device_id ?? ''))
+        return send(res, 204)
+      }
+      if (req.method === 'POST' && route === '/notices/clear') {
+        this.notices = []
+        this.broadcast()
+        return send(res, 204)
+      }
       return send(res, 404, { error: { code: 'not_found', message: `No ${req.method ?? ''} ${route}` } })
     } catch (error: unknown) {
       if (error instanceof RelayError) {
@@ -270,6 +564,19 @@ export function dshHome(): string {
   const configured = process.env.DSH_HOME
   if (configured) return configured
   return join(process.env.HOME ?? process.env.USERPROFILE ?? '.', '.dsh')
+}
+
+/** The few arguments the capsule shows, as short strings. */
+export function pickArgs(args: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!args || typeof args !== 'object') return out
+  const record = args as Record<string, unknown>
+  for (const key of ARG_KEYS) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim()) out[key] = value.replace(/\s+/g, ' ').trim().slice(0, 80)
+    else if (typeof value === 'number') out[key] = String(value)
+  }
+  return out
 }
 
 function sameModels(a: RelayModel[], b: RelayModel[]): boolean {

@@ -35,12 +35,16 @@ const PLATFORM_MODULES = [
 await rm(new URL('./lib/', import.meta.url), { recursive: true, force: true })
 
 await build({
-  entryPoints: ['src/index.ts', 'src/cloud.ts', 'src/relay.ts'],
+  entryPoints: ['src/index.ts', 'src/cloud.ts', 'src/relay.ts', 'src/reach.ts', 'src/hub.ts', 'src/profile.ts'],
   outdir: 'lib',
   format: 'esm',
   platform: 'node',
   target: 'node22',
   bundle: true,
+  // One copy of hub.ts / profile.ts / relay.ts shared by cloud.js and reach.js, so an
+  // `instanceof HubError` in reach sees the class cloud's hub client throws.
+  splitting: true,
+  chunkNames: 'chunks/[name]-[hash]',
   sourcemap: true,
   packages: 'external',
   logLevel: 'warning',

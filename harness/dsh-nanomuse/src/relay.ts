@@ -54,6 +54,26 @@ export interface SignIn {
   account: Account
 }
 
+/** The account's profile as the relay keeps it (`docs/hub.md`): the agent's name and look. */
+export interface RelayProfile {
+  /** 0 until a device has written one. */
+  rev: number
+  /** The device that wrote this rev. */
+  device: string
+  name: string
+  /** `dragon`, `emoji`, `face` (one drawn in the avatar studio), or empty. */
+  avatar: string
+  emoji: string
+  color: string
+  style: string
+  description: string
+  hasFace: boolean
+  /** The hash of the idle still — a device wearing these pictures keeps its copy. */
+  faceId: string
+  /** `mood -> base64 WebP`, when asked for. */
+  face?: Record<string, string>
+}
+
 const JSON_HEADERS = { 'content-type': 'application/json' }
 
 async function fail(res: Response): Promise<never> {
@@ -146,6 +166,38 @@ export class Relay {
         inputModalities: Array.isArray(arch.input_modalities) ? arch.input_modalities.map(String) : ['text'],
       }
     })
+  }
+
+  /** The hub socket for this relay (`ws://` for a dev relay on plain HTTP). */
+  get hubURL(): string {
+    return `${this.origin.replace(/^http/, 'ws')}/v1/hub`
+  }
+
+  /**
+   * The account's name and look (`GET /v1/me/profile`). Without the face the
+   * answer is small; with it, the five stills come along as base64 WebP.
+   */
+  async profile(apiKey: string, withFace: boolean, signal?: AbortSignal): Promise<RelayProfile> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/profile?face=${withFace ? 'true' : 'false'}`, {
+      headers: this.auth(apiKey),
+      signal: signal ?? null,
+    })
+    if (!res.ok) await fail(res)
+    const body = (await res.json()) as Record<string, unknown>
+    const face = body.face && typeof body.face === 'object' ? (body.face as Record<string, unknown>) : undefined
+    return {
+      rev: Number(body.rev ?? 0),
+      device: String(body.device ?? ''),
+      name: String(body.name ?? ''),
+      avatar: String(body.avatar ?? ''),
+      emoji: String(body.emoji ?? ''),
+      color: String(body.color ?? ''),
+      style: String(body.style ?? ''),
+      description: String(body.description ?? ''),
+      hasFace: Boolean(body.has_face),
+      faceId: String(body.face_id ?? ''),
+      ...(face ? { face: Object.fromEntries(Object.entries(face).filter(([, v]) => typeof v === 'string')) as Record<string, string> } : {}),
+    }
   }
 
   /** Retire this device's key on the relay; a key the relay no longer knows is fine. */
