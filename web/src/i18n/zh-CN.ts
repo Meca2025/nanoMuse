@@ -303,7 +303,7 @@ const zhCN: Record<string, string> = {
   Pages: "页面",
   Documents: "文档",
   Images: "图片",
-  "Pages, documents and files {name} made for you. Tap one to open it here.": "{name} 为你制作的页面、文档和文件。点击即可在此打开。",
+  "Pages, documents and files {name} made for you.": "{name} 为你制作的页面、文档和文件。",
   "Search files": "搜索文件",
   "No files match.": "没有匹配的文件。",
   "Nothing here yet. Ask {name} for a plan, a comparison page or a tracker and it lands in the Library.":
@@ -1387,7 +1387,7 @@ const zhCN: Record<string, string> = {
   "Set an image model first: Connections → Image & video models. The account's model draws with qwen-image; Alibaba Cloud Bailian does too.":
     "先设置图像模型：连接 → 图像与视频模型。账号自带的模型用 qwen-image 绘制，阿里云百炼也可以。",
   "Pick one": "挑一张",
-  "Tap one to select it. Draw four more any time; the old ones stay until you do.": "点一张选中它。随时可以再画四张；没重画之前旧的会留着。",
+  "Draw four more any time; the old ones stay until you do.": "随时可以再画四张；没重画之前旧的会留着。",
   "Use this one": "就用这个",
   "Next, its poses are drawn from it in the background — working, waiting for you, done, something wrong.": "接下来会在后台以它为底画出各个状态——干活、等你、搞定、出错。",
   "Keep the current look": "先不换了",
@@ -1404,6 +1404,29 @@ const zhCN: Record<string, string> = {
   "Volcano Ark": "火山方舟",
   "this computer": "这台电脑",
   "Change model": "更换",
+
+  // ── The desktop's sidebar: the rail, the chats column, the menu ───────────────────
+  Search: "搜索",
+  "Search chats": "搜索对话",
+  "Side chats": "侧边对话",
+  "A side chat keeps one topic apart from the rest.": "一个侧边对话，把一个话题和其他的分开。",
+  "Report a bug": "报告问题",
+  "Developer tools": "开发者工具",
+  Developer: "开发者",
+  "The Coding screen — Cursor, Codex and the other coding agents on this computer — in the sidebar, and the runtime's address below. This device only.":
+    "在侧栏显示「编程」（这台电脑上的 Cursor、Codex 等编程智能体），并在下面显示运行时的地址。仅此设备。",
+  "Runtime:": "运行时：",
+  "the token is in the server_token file in the data folder": "令牌在数据目录的 server_token 文件里",
+  "The command line and the API": "命令行与 API",
+  "nanoMuse on DeepSeek Harness": "nanoMuse 的 DeepSeek Harness 版",
+  "Desktop app": "桌面应用",
+  "Start with the computer": "开机自动启动",
+  "Opens in the tray at sign-in; the agent's goals and check-ins run from then on.": "登录系统后在托盘里启动；从那时起，它的目标和定时检查就开始跑了。",
+  "In the tray": "托盘图标",
+  "The icon by the clock shows what the hands are doing and has Stop; closing the window keeps the agent running.": "时钟旁的图标显示它正在操作什么，并带「停止」；关掉窗口后它仍在后台运行。",
+  Shortcuts: "快捷键",
+  "Quick chat": "快速对话",
+  "Show the window": "打开窗口",
 };
 
 export default zhCN;

@@ -320,7 +320,7 @@
     <string name="nm_avatar_no_provider">先在 设置 → 模型提供方 里添加一个 OpenAI 兼容的提供方；形象用你自己的 key 生成。</string>
     <string name="nm_avatar_no_model">先设置图像模型（设置 → 图像与视频模型）。</string>
     <string name="nm_avatar_pick_title">挑一张</string>
-    <string name="nm_avatar_pick_body">点一张选中它。随时可以再画四张；没重画之前旧的会留着。</string>
+    <string name="nm_avatar_pick_body">随时可以再画四张；没重画之前旧的会留着。</string>
     <string name="nm_avatar_use_this">就用这个</string>
     <string name="nm_avatar_use_this_hint">接下来会在后台以它为底画出各个状态——干活、等你、搞定、出错。</string>
     <string name="nm_avatar_model_body">任何支持 OpenAI images 接口的提供方都行。阿里云百炼：qwen-image-3.0（状态图用 qwen-image-edit-max）。OpenAI：gpt-image-1。</string>

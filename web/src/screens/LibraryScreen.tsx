@@ -56,7 +56,7 @@ export function LibraryScreen() {
     <div className="flex h-full flex-col">
       <header className="safe-top shrink-0 px-5 pt-4 pb-2">
         <h1 className="text-[24px] font-bold tracking-tight">{t("Library")}</h1>
-        <p className="text-[13px] text-muted">{t("Pages, documents and files {name} made for you. Tap one to open it here.", { name })}</p>
+        <p className="text-[13px] text-muted">{t("Pages, documents and files {name} made for you.", { name })}</p>
         <label className="mt-3 flex items-center gap-2 rounded-2xl bg-surface-2 px-3 py-2">
           <Search size={16} className="text-muted" />
           <input

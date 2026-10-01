@@ -84,6 +84,12 @@ App 會檢查這個倉庫的 release 來更新。每個版本的發佈說明在 
 
 每個階段一個小版本，每個版本都是附 APK 的 GitHub release。最新消息與完整版本表見[英文 README](../../README.md#versions)；計畫與理由在 [docs/roadmap.md](../roadmap.md)；每個版本的說明在 [docs/releases/](../releases) 與 [CHANGELOG](../../CHANGELOG.md)。接下來依序是：iOS；在你自己的機器上跑網頁版（虛擬機、家用伺服器）；眼鏡。
 
+## 現在走到哪裡了
+
+nanoMuse 0.1 還是預覽版。智慧體、手機端、桌面端、網頁版和中繼每天都被做它的人用著，也都有我們知道的毛邊，和更多我們還不知道的——所以在你這裡哪裡壞了、你希望它能做什麼，是你能給我們最有用的東西。應用是給所有人用的；開發者的那一面——自己的模型和服務商、shell、MCP、技能、harness、執行時期的 API——都在設定和文件裡，打開就有。產品形態、執行時期的各個面、技能與外掛介面一段時間內還會快速變化，並逐步穩定下來；[CHANGELOG](../../CHANGELOG.md) 記錄改了什麼，[路線圖](../roadmap.md) 說接下來做什麼。
+
+我們想做的事比一個應用大：一個屬於使用者本人的個人智慧體，在任何人都能重複使用、重組的開放基礎設施上公開地做出來——執行時期、中繼、手機上的 Hands、裝置之間的 hub——也一起回答這樣的智慧體到底能走多遠。我們期待和世界各地的使用者與開發者一起找到答案：把你的想法在這裡變成現實，一個技能、一個連接器、一個模型、一台裝置或一份翻譯，讓 nanoMuse 周圍的生態長起來。
+
 ## 參與
 
 回報一個 bug、提一個需求、送一個 pull request——每一個都讓個人智慧代理離所有人更近一步：**[開 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [在 Discussions 提問或分享](https://github.com/nano-muse/nanoMuse/discussions) · [給倉庫一顆星](https://github.com/nano-muse/nanoMuse)**。免費額度、自己的 key 和你的資料怎麼運作：[docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md)。建置方式、慣例（`com.openminis.app` 保留、新程式碼放在 `io.github.nanomuse.*`、上游改動標 `// nanoMuse:`、commit 帶 `Signed-off-by`）與發版流程見 [CONTRIBUTING.md](../../CONTRIBUTING.md)。

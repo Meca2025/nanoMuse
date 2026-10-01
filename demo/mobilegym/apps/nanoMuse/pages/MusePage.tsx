@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { realNow } from '@/os/TimeService';
 import { IcOffline, IcWarning } from '../res/icons';
+import { attachFrame } from '../host';
 import { useNanoMuseStore } from '../state';
 import { useNanoMuseGestures } from '../hooks/useNanoMuseGestures';
+import { fmt, useNanoMuseStrings } from '../res/strings';
 
 /**
  * The nanoMuse web app, full screen. `?thread=` and `?tab=` on this route are forwarded to
  * the web app's own deep links, which is how a tapped notification lands on the right chat.
+ * On a hosted showcase session the web app comes up lite (`?ui=lite`): the chat alone, no
+ * first-run setup — the rest of it stays behind the avatar.
  */
 export default function MusePage() {
   const serverUrl = useNanoMuseStore((s) => s.serverUrl);
@@ -16,6 +20,7 @@ export default function MusePage() {
   const link = useNanoMuseStore((s) => s.link);
   const { bindTap, go } = useNanoMuseGestures();
   const location = useLocation();
+  const s = useNanoMuseStrings();
 
   // first launch: nothing configured yet → setup
   useEffect(() => {
@@ -33,13 +38,20 @@ export default function MusePage() {
     const tab = params.get('tab');
     if (thread) url.searchParams.set('thread', thread);
     if (tab) url.searchParams.set('tab', tab);
+    if (demo) url.searchParams.set('ui', 'lite');
     return url.toString();
-  }, [serverUrl, token, location.search]);
+  }, [serverUrl, token, demo, location.search]);
 
   const trouble = link === 'unauthorized' || link === 'unreachable';
   // a hosted showcase session that has run out: the server behind serverUrl is gone for good
   const demoOver = demo !== null && trouble && (realNow() / 1000 > demo.expiresAt || link === 'unauthorized');
-  const dark = useBrowserDark();
+  const webTheme = useNanoMuseStore((s) => s.webTheme);
+  const setWebTheme = useNanoMuseStore((s) => s.setWebTheme);
+  // a new frame comes up light (the web app's default) until it reports otherwise
+  useEffect(() => {
+    setWebTheme('light');
+  }, [src, setWebTheme]);
+  const dark = webTheme === 'dark';
   const palette = dark ? WEB_APP_DARK : WEB_APP_LIGHT;
 
   return (
@@ -52,6 +64,7 @@ export default function MusePage() {
         {src && (
           <iframe
             key={src}
+            ref={attachFrame}
             src={src}
             title="nanoMuse"
             className="absolute inset-0 w-full h-full border-0"
@@ -65,48 +78,26 @@ export default function MusePage() {
               {link === 'unauthorized' ? <IcWarning size={20} /> : <IcOffline size={20} />}
             </div>
             <div className="flex-1 min-w-0 text-[13px] leading-snug text-app-text">
-              {demoOver ? (
-                <>Your Muse on the showcase server has ended, and everything in it with it.</>
-              ) : link === 'unauthorized' ? (
-                <>The server refused this phone&apos;s token.</>
-              ) : (
-                <>
-                  Can&apos;t reach your Muse at <span className="font-mono break-all">{serverUrl}</span>. Retrying…
-                </>
-              )}
+              {demoOver ? s.muse_demo_over : link === 'unauthorized' ? s.muse_refused : fmt(s.muse_unreachable, serverUrl)}
             </div>
             <button
               type="button"
               {...bindTap('setup.open')}
               className="shrink-0 rounded-xl bg-app-primary text-app-on-primary text-[12.5px] font-semibold px-3 py-1.5"
             >
-              {demoOver ? 'New Muse' : 'Change server'}
+              {demoOver ? s.muse_new : s.muse_change_server}
             </button>
           </div>
         )}
       </div>
       {/* the simulator draws its gesture bar over the last 16 px; keep the web app's tab bar clear of it */}
-      <div className="h-4 shrink-0" style={{ background: palette.surface }} aria-hidden="true" />
+      <div className="h-4 shrink-0" style={{ background: palette.bg }} aria-hidden="true" />
     </div>
   );
 }
 
-// The web app inside the iframe follows the *browser's* colour scheme (it cannot see the
-// simulator's), so the strips above and below it match the browser, not the phone theme.
-const WEB_APP_LIGHT = { bg: '#f4f3fa', surface: '#ffffff' };
-const WEB_APP_DARK = { bg: '#0f0f14', surface: '#1a1a22' };
-
-function useBrowserDark(): boolean {
-  const query = useMemo(
-    () => (typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null),
-    [],
-  );
-  const [dark, setDark] = useState(query?.matches ?? false);
-  useEffect(() => {
-    if (!query) return;
-    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, [query]);
-  return dark;
-}
+// The web app's own palette (web/src/index.css: --om-bg, --om-surface). It picks light or dark
+// by its own setting, not the simulator's theme, and tells its host which — the strips above
+// and below its frame follow that, the way the Android app's status and gesture bars do.
+const WEB_APP_LIGHT = { bg: '#fcfcfc' };
+const WEB_APP_DARK = { bg: '#181819' };

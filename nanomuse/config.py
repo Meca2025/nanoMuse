@@ -65,6 +65,10 @@ class LLMSettings(BaseModel):
     # provider, qwen-image-3.0 on Alibaba Cloud Model Studio, none elsewhere.
     image_model: str = ""
     video_model: str = ""
+    # Where the asynchronous video API (`/api/v1/uploads`, `…/video-synthesis`, `/api/v1/tasks`)
+    # lives when it is not at the chat model's host — a relaying host, such as the showcase
+    # gateway, tells its runtimes this way. Empty: the chat host's root, on hosts that have it.
+    video_base_url: str = ""
     extra_headers: dict[str, str] = Field(default_factory=dict)
     extra_body: dict[str, Any] = Field(default_factory=dict)
 
@@ -567,6 +571,11 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
         "NANOMUSE_LLM_API_KEY": "api_key",
         "NANOMUSE_LLM_TOOL_MODE": "tool_mode",
         "NANOMUSE_LLM_VISION": "vision",
+        # the avatar studio's models on the chat model's host (docs/avatar.md); a hosted
+        # runtime is told them this way, the showcase gateway for one
+        "NANOMUSE_LLM_IMAGE_MODEL": "image_model",
+        "NANOMUSE_LLM_VIDEO_MODEL": "video_model",
+        "NANOMUSE_LLM_VIDEO_BASE_URL": "video_base_url",
     }
     for env, key in mapping.items():
         if (val := os.environ.get(env)) not in (None, ""):

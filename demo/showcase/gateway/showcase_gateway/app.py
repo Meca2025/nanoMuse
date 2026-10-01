@@ -32,11 +32,14 @@ from starlette.websockets import WebSocket
 
 from . import __version__, llm
 from .accounts import AccountManager, AccountStore
+from .clips import Clips, is_clip_path
 from .config import Settings
+from .images import Pictures, is_image_path
 from .proxy import proxy_http, proxy_ws
 from .runner import DockerRunner
 from .sessions import Provider, Refused, SessionManager, check_provider
 from .trials import TrialManager, TrialStore
+from .visitors import VisitorBook, VisitorStore
 from .webpage import PAGE as WEB_PAGE
 
 log = logging.getLogger("showcase")
@@ -97,15 +100,25 @@ def _refused(exc: Refused) -> JSONResponse:
 
 
 class Spa(StaticFiles):
-    """Static files, and the app's ``index.html`` for any path that is not a file."""
+    """Static files, and the app's ``index.html`` for any path that is not a file.
+
+    Hashed assets (``/assets/*``) may be cached for good; everything else — the pages, the
+    phone's page in its frame, ``page/*`` — is revalidated on every visit, so a new build is
+    seen at once (the production Caddyfile does the same).
+    """
 
     async def get_response(self, path: str, scope) -> Response:  # noqa: ANN001
         try:
-            return await super().get_response(path, scope)
+            response = await super().get_response(path, scope)
         except Exception:  # noqa: BLE001 — StaticFiles raises HTTPException(404)
             if "." in path.rsplit("/", 1)[-1]:
                 raise
-            return FileResponse(os.path.join(self.directory or ".", "index.html"))
+            response = FileResponse(os.path.join(self.directory or ".", "index.html"))
+        if path.startswith("assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 def create_app(
@@ -114,6 +127,7 @@ def create_app(
     client: httpx.AsyncClient | None = None,
     trials: TrialManager | None = None,
     accounts: AccountManager | None = None,
+    visitors: VisitorBook | None = None,
 ) -> FastAPI:
     http = client or httpx.AsyncClient(
         timeout=httpx.Timeout(300, connect=10), follow_redirects=False
@@ -132,6 +146,15 @@ def create_app(
             http=http,
             clock=manager.clock,
         )
+    if visitors is None:
+        visitors = VisitorBook(
+            settings,
+            VisitorStore(settings.visitor_db if settings.demo_signin_required else ":memory:"),
+            http=http,
+            clock=manager.clock,
+        )
+    pictures = Pictures(settings, http)
+    clips = Clips(settings, http)
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -210,13 +233,73 @@ def create_app(
             "idle_ttl_s": settings.idle_ttl_s,
             "demo_model": settings.main.model if settings.main.configured else None,
             "gui_model": settings.gui.model if settings.gui.configured else None,
+            "image_model": settings.image_model if pictures.enabled else None,
+            "video_model": settings.video_model if pictures.enabled and clips.enabled else None,
             "byok": settings.byok_enabled,
             "byok_hosts": list(settings.byok_hosts) if settings.byok_enabled else [],
-            "quota": {"requests": settings.session_requests, "tokens": settings.session_tokens},
+            "signin_required": visitors.required,
+            "quota": {
+                "requests": settings.session_requests,
+                "tokens": settings.session_tokens,
+                "pictures": settings.image_per_session if pictures.enabled else 0,
+                "clips": settings.clips_per_session if pictures.enabled and clips.enabled else 0,
+            },
             **manager.stats(),
             "trial": trials.stats(),
             "web": accounts.stats(),
+            "signin": visitors.stats(),
         }
+
+    # ------------------------------------------------------------- the visitor's sign-in
+    @app.post("/api/demo/signin/code", status_code=204)
+    async def signin_code(body: WebCodeIn, request: Request) -> Response:
+        try:
+            await visitors.request_code(
+                body.identifier.strip(), client_ip(request, settings.trust_proxy)
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return Response(status_code=204)
+
+    @app.post("/api/demo/signin/verify")
+    async def signin_verify(body: WebVerifyIn, request: Request) -> Response:
+        try:
+            ticket, visitor = await visitors.verify(
+                body.identifier.strip(),
+                body.code,
+                client_ip(request, settings.trust_proxy),
+                invite=body.invite.strip(),
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return JSONResponse(
+            {"ticket": ticket, "visitor": visitor.public()}, headers={"Cache-Control": "no-store"}
+        )
+
+    @app.post("/api/demo/signin/login")
+    async def signin_login(body: WebLoginIn, request: Request) -> Response:
+        try:
+            ticket, visitor = await visitors.login(
+                body.identifier.strip(), body.password, client_ip(request, settings.trust_proxy)
+            )
+        except Refused as exc:
+            return _refused(exc)
+        return JSONResponse(
+            {"ticket": ticket, "visitor": visitor.public()}, headers={"Cache-Control": "no-store"}
+        )
+
+    @app.get("/api/demo/me")
+    async def signin_me(request: Request) -> Response:
+        try:
+            visitor = visitors.check(llm.bearer(request))
+        except Refused as exc:
+            return _refused(exc)
+        return JSONResponse({"visitor": visitor.public()}, headers={"Cache-Control": "no-store"})
+
+    @app.post("/api/demo/signout", status_code=204)
+    async def signin_out(request: Request) -> Response:
+        visitors.sign_out(llm.bearer(request))
+        return Response(status_code=204)
 
     # ------------------------------------------------------------- nanoMuse Web (accounts)
     @app.get("/web", include_in_schema=False)
@@ -225,11 +308,10 @@ def create_app(
 
     @app.get("/web/", include_in_schema=False)
     async def web_page() -> Response:
+        # with the kept Muses switched off, the web entry is the phone in the browser — the
+        # showcase site — wherever /web was reached (the project site proxies it here)
         if not settings.web_enabled:
-            return HTMLResponse(
-                "<!doctype html><meta charset=utf-8><p>nanoMuse Web is not turned on here.",
-                status_code=404,
-            )
+            return RedirectResponse(settings.site_origin() + "/", status_code=302)
         return HTMLResponse(WEB_PAGE, headers={"Cache-Control": "no-store"})
 
     @app.get("/api/web/info")
@@ -273,6 +355,9 @@ def create_app(
     async def start(body: SessionIn, request: Request) -> Response:
         byok = None
         try:
+            # the ticket from the sign-in, when the showcase asks for one; a visitor who has
+            # not signed in is sent to the sign-in by the page
+            visitor = visitors.check(llm.bearer(request)) if visitors.required else None
             if body.provider is not None:
                 base_url = check_provider(
                     body.provider.base_url, settings.byok_hosts, manager.resolve
@@ -280,9 +365,16 @@ def create_app(
                 byok = Provider(
                     base_url, body.provider.api_key.strip(), body.provider.model.strip()
                 )
-            sess = await manager.create(client_ip(request, settings.trust_proxy), byok)
+            sess = await manager.create(
+                client_ip(request, settings.trust_proxy),
+                byok,
+                account=visitor.id if visitor else "",
+                hint=visitor.hint if visitor else "",
+            )
         except Refused as exc:
             return _refused(exc)
+        if visitor is not None:
+            visitors.started(visitor)
         return JSONResponse(sess.public(settings, manager.clock()), status_code=201)
 
     @app.get("/api/demo/session/{sid}")
@@ -339,6 +431,10 @@ def create_app(
         sess = manager.get(sid)
         if sess is None:
             return llm.refusal(Refused(404, "no_session", "this session has ended"))
+        if is_image_path(path):
+            return await pictures.handle(request, manager, sess, path)
+        if is_clip_path(path):
+            return await clips.handle(request, manager, sess, path)
         return await llm.forward(request, manager, http, sess, lane, path)
 
     # ------------------------------------------------------------- the site (development)

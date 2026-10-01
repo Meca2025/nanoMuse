@@ -84,6 +84,12 @@ Muse 및 앱의 토대인 런타임 OpenMinis와의 비교는 [영어 README](..
 
 단계마다 작은 버전 하나, 각각 APK가 포함된 GitHub 릴리스입니다. 소식과 전체 버전 표는 [영어 README](../../README.md#versions)에, 계획과 그 이유는 [docs/roadmap.md](../roadmap.md)에, 각 버전의 노트는 [docs/releases/](../releases)와 [CHANGELOG](../../CHANGELOG.md)에 있습니다. 그다음은 순서대로: iOS, 자신의 머신(VM, 홈 서버)에서 돌리는 웹 버전, 글래스.
 
+## 지금 어디까지 왔나
+
+nanoMuse 0.1은 프리뷰입니다. 에이전트, 휴대폰, 데스크톱, 웹, 릴레이 모두 만드는 사람들이 매일 쓸 수 있을 만큼 돌아갑니다 — 그리고 모두에 우리가 아는 거친 부분과 아직 모르는 더 많은 거친 부분이 있습니다. 그래서 여러분에게서 무엇이 깨졌는지, 무엇을 해 주길 바라는지가 우리에게 보내 줄 수 있는 가장 쓸모 있는 것입니다. 앱은 누구나 집어 들어 쓸 수 있게 만들었습니다. 개발자 쪽 — 자신의 모델과 공급자, 셸, MCP, 스킬, 하네스, 런타임 API — 은 설정과 문서 안에 있고, 켜면 쓸 수 있습니다. 제품의 모습, 런타임의 각 면, 스킬과 플러그인 인터페이스는 한동안 빠르게 바뀌다가 차츰 안정될 것입니다. 무엇이 바뀌었는지는 [CHANGELOG](../../CHANGELOG.md)에, 다음에 무엇을 할지는 [로드맵](../roadmap.md)에 있습니다.
+
+우리가 하려는 일은 앱 하나보다 큽니다. 쓰는 사람 자신의 것인 개인 에이전트를, 누구나 다시 쓰고 다시 조합할 수 있는 열린 기반 — 런타임, 릴레이, 휴대폰의 손, 기기 사이의 허브 — 위에서 공개된 채로 만들고, 그런 에이전트가 어디까지 갈 수 있는지에 함께 답하는 것입니다. 세계 곳곳의 사용자와 개발자와 함께 그 답을 찾아가길 기대합니다. 아이디어를 가져와 스킬, 커넥터, 모델, 기기, 번역으로 여기서 현실로 만들고, nanoMuse 주변의 생태계가 자라도록 함께해 주세요.
+
 ## 기여하기
 
 버그를 알리고, 기능을 요청하고, 풀 리퀘스트를 보내 주세요 — 하나하나가 개인 에이전트를 모두의 손에 더 가까이 가져옵니다: **[이슈 열기](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Discussions에서 묻거나 보여 주기](https://github.com/nano-muse/nanoMuse/discussions) · [저장소에 스타 주기](https://github.com/nano-muse/nanoMuse)**. 무료 사용량, 자신의 키, 데이터가 어떻게 다뤄지는지: [docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md). 빌드 환경, 규약(`com.openminis.app` 유지, 새 코드는 `io.github.nanomuse.*`에, 업스트림 수정에는 `// nanoMuse:`, 커밋에는 `Signed-off-by`), 릴리스 방법은 [CONTRIBUTING.md](../../CONTRIBUTING.md)에 있습니다.

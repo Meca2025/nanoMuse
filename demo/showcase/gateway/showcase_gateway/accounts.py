@@ -29,6 +29,7 @@ from typing import Any
 import httpx
 
 from .config import Settings
+from .relay import relay_request
 from .runner import Runner, RunnerError
 from .sessions import Refused
 
@@ -135,10 +136,6 @@ def _slug(account_id: str, salt: str) -> str:
     return "w" + base64.b32encode(digest[:8]).decode().rstrip("=").lower()[:11]
 
 
-class RelayError(Refused):
-    """The relay said no; passed to the browser with the relay's own code and message."""
-
-
 class AccountManager:
     def __init__(
         self,
@@ -161,30 +158,7 @@ class AccountManager:
     async def _relay(
         self, method: str, path: str, body: dict | None, ip: str, key: str = ""
     ) -> Any:
-        headers = {"Content-Type": "application/json", "X-Forwarded-For": ip}
-        if key:
-            headers["Authorization"] = f"Bearer {key}"
-        try:
-            r = await self.http.request(
-                method, f"{self.s.web_relay_url}{path}", json=body, headers=headers
-            )
-        except httpx.HTTPError as exc:
-            raise Refused(
-                502, "relay_unreachable", "nanoMuse Cloud is not reachable right now."
-            ) from exc
-        if r.status_code >= 400:
-            try:
-                err = r.json().get("error", {})
-            except ValueError:
-                err = {}
-            raise RelayError(
-                r.status_code if r.status_code < 500 else 502,
-                str(err.get("code") or "relay_error"),
-                str(err.get("message") or "nanoMuse Cloud refused the request."),
-            )
-        if r.status_code == 204 or not r.content:
-            return {}
-        return r.json()
+        return await relay_request(self.http, self.s.web_relay_url, method, path, body, ip, key)
 
     async def request_code(self, identifier: str, ip: str) -> None:
         if not self.s.web_enabled:

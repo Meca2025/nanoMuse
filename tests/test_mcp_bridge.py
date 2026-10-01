@@ -1,0 +1,122 @@
+"""The hands as an MCP server (`nanomuse mcp`, nanomuse/bridge/mcp_server.py): the tool
+listing another host sees, the gate that stands in for the Sentinel, the pictures in
+the result — and the server itself, driven over stdio by the SDK's client."""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from nanomuse.bridge.mcp_server import (
+    CONFIRMED,
+    call,
+    content_blocks,
+    exposed_schema,
+    gate,
+    hands_tools,
+    tool_listing,
+)
+from nanomuse.config import Settings
+from nanomuse.schema import ToolResult
+from tests.test_computer import fake_screen, make_link  # noqa: F401  # the fixture
+
+pytestmark = pytest.mark.usefixtures("fake_screen")
+
+
+def tools(settings: Settings) -> tuple[Any, Any]:
+    screen, act = hands_tools(settings, link=make_link(settings))
+    return screen, act
+
+
+def test_listing_is_the_runtime_tools_with_the_confirmed_flag(settings: Settings) -> None:
+    listing = tool_listing(list(tools(settings)))
+    assert [t["name"] for t in listing] == ["computer_screen", "computer_act"]
+    screen, act = listing
+    assert CONFIRMED not in screen["inputSchema"].get("properties", {})
+    assert CONFIRMED in act["inputSchema"]["properties"]
+    assert act["inputSchema"]["required"] == ["action"]
+    assert "ask, then call again" in act["description"]
+    # the runtime's own schema is untouched
+    _, act_tool = tools(settings)
+    assert CONFIRMED not in act_tool.parameters["properties"]
+    assert exposed_schema(act_tool) is not act_tool.parameters
+
+
+def test_gate_asks_for_what_the_sentinel_would_ask(settings: Settings) -> None:
+    screen, act = tools(settings)
+    assert gate(screen, {}) is None
+    assert gate(act, {"action": "click", "x": 1, "y": 2, "label": "Open"}) is None
+    refused = gate(act, {"action": "key", "keys": ["enter"]})
+    assert refused is not None and "press enter" in refused and CONFIRMED in refused
+    refused = gate(act, {"action": "type", "text": "hi", "submit": True})
+    assert refused is not None
+    refused = gate(act, {"action": "click", "x": 1, "y": 2, "label": "Pay now"})
+    assert refused is not None and "pay" in refused.lower()
+    assert gate(act, {"action": "key", "keys": ["enter"], CONFIRMED: True}) is None
+
+
+async def test_call_runs_the_tool_without_the_flag_and_returns_pictures(settings: Settings) -> None:
+    screen, act = tools(settings)
+    result = await call(screen, {})
+    assert result.ok and result.images
+    blocks = content_blocks(result)
+    assert blocks[0]["type"] == "text" and "Firefox" in blocks[0]["text"]
+    assert blocks[1]["type"] == "image" and blocks[1]["mimeType"] in ("image/jpeg", "image/png")
+
+    done = await call(act, {"action": "click", "x": 10, "y": 20, "label": "Open", CONFIRMED: True})
+    assert done.ok, done.error
+    assert act.link._backend.calls[0][0] == "click"  # type: ignore[union-attr]
+
+    refused = await call(act, {"action": "key", "keys": ["enter"]})
+    assert not refused.ok and "Not done" in (refused.error or "")
+    assert len(act.link._backend.calls) == 1  # type: ignore[union-attr]
+
+
+def test_content_blocks_skip_pictures_that_are_not_there(tmp_path: Path) -> None:
+    result = ToolResult(output="x", images=[str(tmp_path / "gone.png"), str(tmp_path / "odd.txt")])
+    (tmp_path / "odd.txt").write_text("not a picture")
+    assert [b["type"] for b in content_blocks(result)] == ["text"]
+
+
+async def test_server_over_stdio(tmp_path: Path) -> None:
+    """`nanomuse mcp` as another host runs it: the tools, a refused step, a look."""
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+
+    env = {
+        **os.environ,
+        "NANOMUSE_WORKSPACE": str(tmp_path / "ws"),
+        "NANOMUSE_DATA_DIR": str(tmp_path / "data"),
+        "NANOMUSE_CONFIG": str(tmp_path / "none.toml"),
+    }
+    params = StdioServerParameters(
+        command=sys.executable,
+        args=[
+            "-c",
+            f"import sys; sys.argv=['nanomuse','mcp']; sys.path.insert(0, {str(Path(__file__).resolve().parents[1])!r}); from nanomuse.cli import app; app()",
+        ],
+        env=env,
+    )
+    async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+        init = await session.initialize()
+        assert "nanoMuse" in (init.instructions or "")
+        listed = await session.list_tools()
+        assert sorted(t.name for t in listed.tools) == ["computer_act", "computer_screen"]
+        refused = await session.call_tool("computer_act", {"action": "key", "keys": ["enter"]})
+        assert getattr(refused, "is_error", getattr(refused, "isError", None)) is True
+        assert "Not done" in refused.content[0].text  # type: ignore[union-attr]
+        looked = await session.call_tool("computer_screen", {})
+        text = looked.content[0].text  # type: ignore[union-attr]
+        # a machine without a display answers with the reason, one with a display with the screen
+        assert isinstance(text, str) and text
+
+
+def test_cli_has_the_command() -> None:
+    from nanomuse.cli import app
+
+    names = {getattr(c, "name", None) or c.callback.__name__ for c in app.registered_commands}  # type: ignore[union-attr]
+    assert "mcp" in names

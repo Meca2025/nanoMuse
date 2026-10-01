@@ -24,6 +24,11 @@ const bridge: DesktopBridge = {
   report: (report: StageReport) => ipcRenderer.send("stage:report", report),
   solid: (rect: SolidRect | null) => ipcRenderer.send("stage:solid", rect),
   stopHands: () => ipcRenderer.send("hands:stop"),
+  loginItem: () => ipcRenderer.invoke("app:login-item") as Promise<boolean>,
+  setLoginItem: (on: boolean) => ipcRenderer.send("app:login-item:set", !!on),
+  onQuickChat: (cb: () => void) => {
+    ipcRenderer.on("quick-chat", () => cb());
+  },
 };
 
 contextBridge.exposeInMainWorld("nanomuseDesktop", bridge);

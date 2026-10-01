@@ -100,6 +100,16 @@ def make_settings(**over) -> Settings:
         daily_requests=100,
         daily_tokens=100_000,
         byok_hosts=("models.example", "byok.example", "localhost"),
+        image_model="qwen-image-3.0",
+        image_api_key="sk-draw",
+        image_base_url="https://draw.example/api/v1",
+        image_per_session=2,
+        daily_images=3,
+        video_model="wan2.2-i2v-flash",
+        video_api_key="sk-draw",
+        video_base_url="https://draw.example/api/v1",
+        clips_per_session=2,
+        daily_clips=3,
         trial_enabled=True,
         trial_db=":memory:",
         trial_tokens=1000,
@@ -116,6 +126,11 @@ def make_settings(**over) -> Settings:
         web_max_accounts=2,
         web_max_running=1,
         web_idle_stop_s=3600,
+        demo_signin_required=False,
+        per_account_active=1,
+        per_account_daily=2,
+        visitor_db=":memory:",
+        visitor_ttl_s=3600,
     )
     values.update(over)
     return replace(base, **values)
@@ -144,7 +159,13 @@ class Upstream:
         self.stream = False
         self.codes: dict[str, str] = {}  # the relay's: identifier → code
         self.keys_issued = 0
+        self.revoked: list[str] = []  # keys signed out again (the visitors' sign-in does)
         self.invites: list[str] = []  # the invite field of each verify, "" when none
+        self.drawn: list[dict] = []  # Model Studio's picture requests
+        self.draw_busy = 0  # how many 429s the drawing endpoint answers first
+        self.animated: list[httpx.Request] = []  # Model Studio's video tasks, as submitted
+        self.polls: dict[str, int] = {}  # task id → how often it was asked about
+        self.animate_busy = 0  # how many 429s the video endpoint answers first
 
     def relay(self, request: httpx.Request) -> httpx.Response:
         """A little nanoMuse Cloud: any identifier gets the code 246810."""
@@ -164,6 +185,10 @@ class Upstream:
                     ),
                 )
             self.codes[ident] = "246810"
+            return httpx.Response(204)
+        if request.url.path == "/v1/auth/sign-out":
+            auth = request.headers.get("authorization", "")
+            self.revoked.append(auth[7:] if auth.lower().startswith("bearer ") else "")
             return httpx.Response(204)
         if request.url.path == "/v1/auth/login":
             # the password way: one account has a password, the others say so
@@ -201,6 +226,55 @@ class Upstream:
             )
         return wire(404, "{}")
 
+    def draw(self, request: httpx.Request) -> httpx.Response:
+        """A little Model Studio: every picture is at its storage, as a URL; a video task is
+        pending the first time it is asked about and done the second."""
+        if request.url.path.endswith("/services/aigc/video-generation/video-synthesis"):
+            self.animated.append(request)
+            if self.animate_busy:
+                self.animate_busy -= 1
+                return wire(429, json.dumps({"message": "Throttling.RateQuota"}))
+            task = f"task-{len(self.animated)}"
+            return wire(
+                200,
+                json.dumps({"output": {"task_status": "PENDING", "task_id": task}}),
+                **{"content-type": "application/json"},
+            )
+        if "/api/v1/tasks/" in request.url.path:
+            task = request.url.path.rsplit("/", 1)[-1]
+            self.polls[task] = self.polls.get(task, 0) + 1
+            out: dict = {"task_id": task, "task_status": "RUNNING"}
+            if self.polls[task] >= 2:
+                out = {
+                    "task_id": task,
+                    "task_status": "SUCCEEDED",
+                    "video_url": f"https://oss.draw.example/v/{task}.mp4",
+                }
+            return wire(200, json.dumps({"output": out}), **{"content-type": "application/json"})
+        if not request.url.path.endswith("/services/aigc/multimodal-generation/generation"):
+            return wire(404, "{}")
+        self.drawn.append(json.loads(request.content))
+        if self.draw_busy:
+            self.draw_busy -= 1
+            return wire(429, json.dumps({"message": "Throttling.RateQuota"}))
+        return wire(
+            200,
+            json.dumps(
+                {
+                    "output": {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": [{"image": "https://oss.draw.example/p/1.png"}]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ),
+            **{"content-type": "application/json"},
+        )
+
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.calls.append(request)
         if request.url.path == "/api/health":
@@ -209,6 +283,12 @@ class Upstream:
             return wire(200, f"container says {request.url.path}", **{"x-upstream": "yes"})
         if request.url.host == "cloud.example":
             return self.relay(request)
+        if request.url.host == "draw.example":
+            return self.draw(request)
+        if request.url.host == "oss.draw.example":
+            if request.url.path.endswith(".mp4"):
+                return wire(200, "MP4BYTES", **{"content-type": "video/mp4"})
+            return wire(200, "PNGBYTES", **{"content-type": "image/png"})
         # a model provider
         if self.stream:
             body = (

@@ -280,7 +280,7 @@ export function AvatarStudioScreen() {
           <section className="space-y-3 px-1">
             <div>
               <h2 className="text-[17px] font-semibold">{t("Pick one")}</h2>
-              <p className="mt-0.5 text-[13px] leading-snug text-muted">{t("Tap one to select it. Draw four more any time; the old ones stay until you do.")}</p>
+              <p className="mt-0.5 text-[13px] leading-snug text-muted">{t("Draw four more any time; the old ones stay until you do.")}</p>
             </div>
             <div className="grid grid-cols-2 gap-3 wide:grid-cols-4">
               {candidates.map((c, i) => (

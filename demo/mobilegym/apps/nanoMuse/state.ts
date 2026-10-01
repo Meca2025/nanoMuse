@@ -1,6 +1,7 @@
 import { createAppStoreWithActions } from '@/os/createAppStore';
 import { NANOMUSE_CONFIG } from './data';
 import { bridge } from './bridge';
+import { installHost } from './host';
 
 export type LinkState = 'off' | 'connecting' | 'online' | 'unauthorized' | 'unreachable';
 
@@ -23,8 +24,13 @@ interface NanoMuseState {
   gui: boolean;
   /** The hosted showcase session this phone is on, if any. */
   demo: DemoRecord | null;
+  /** The showcase's ticket from a nanoMuse Cloud sign-in (demo.ts), and who it is for. */
+  ticket: string;
+  visitor: { hint: string; channel: string } | null;
   /** Live state of the notification bridge's WebSocket. Not persisted. */
   link: LinkState;
+  /** The colour scheme the web app in the frame reports (light until it says otherwise). Not persisted. */
+  webTheme: 'light' | 'dark';
 }
 
 interface NanoMuseActions {
@@ -33,6 +39,8 @@ interface NanoMuseActions {
   setNotify: (on: boolean) => void;
   setGui: (on: boolean) => void;
   setLink: (link: LinkState) => void;
+  setWebTheme: (theme: 'light' | 'dark') => void;
+  setVisitor: (ticket: string, visitor: { hint: string; channel: string } | null) => void;
 }
 
 const initialState: NanoMuseState = {
@@ -41,7 +49,10 @@ const initialState: NanoMuseState = {
   notify: NANOMUSE_CONFIG.notify,
   gui: NANOMUSE_CONFIG.gui,
   demo: null,
+  ticket: '',
+  visitor: null,
   link: 'off',
+  webTheme: 'light',
 };
 
 /** Normalise what people paste: a bare host, an origin, or the full `?token=` link. */
@@ -77,10 +88,24 @@ export const useNanoMuseStore = createAppStoreWithActions<NanoMuseState, NanoMus
     setLink(link) {
       set({ link });
     },
+    setWebTheme(webTheme) {
+      set({ webTheme });
+    },
+    setVisitor(ticket, visitor) {
+      set({ ticket, visitor: ticket ? visitor : null });
+    },
   }),
   {
-    // `link` is runtime state: it always starts as 'off' and the bridge sets it
-    partialize: (s) => ({ serverUrl: s.serverUrl, token: s.token, notify: s.notify, gui: s.gui, demo: s.demo }),
+    // `link` and `webTheme` are runtime state: the bridge and the web app set them
+    partialize: (s) => ({
+      serverUrl: s.serverUrl,
+      token: s.token,
+      notify: s.notify,
+      gui: s.gui,
+      demo: s.demo,
+      ticket: s.ticket,
+      visitor: s.visitor,
+    }),
     afterHydration: () => bridge.sync(),
   },
 );
@@ -100,3 +125,5 @@ bridge.sync();
 useNanoMuseStore.subscribe((s, prev) => {
   if (s.serverUrl !== prev.serverUrl || s.token !== prev.token || s.notify !== prev.notify) bridge.sync();
 });
+// the page around the phone (the showcase site) reaches this app through window.__NANOMUSE__
+installHost();

@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from showcase_gateway.config import sighted_default
 from showcase_gateway.llm import extract_usage, prepare_body
 from showcase_gateway.sessions import Refused, check_provider
 
@@ -33,6 +34,8 @@ async def test_a_visitor_gets_a_private_muse(world):
         assert env["NANOMUSE_LLM_API_KEY"] != settings.main.api_key
         assert env["NANOMUSE_SERVER_TOKEN"] == sess["token"]
         assert env["NANOMUSE_GUI_ENABLED"] == "1"
+        # no account to sign in to: the web app opens on the chat, not the Cloud sign-in
+        assert env["NANOMUSE_CLOUD_REQUIRED"] == "0"
         # the phone's traffic on the session host reaches the container
         host = sess["server_url"].split("//")[1]
         r = await c.get("/api/state?token=x", headers={"host": host})
@@ -225,3 +228,12 @@ def test_usage_parsing():
     assert prepare_body(b'{"stream": false}', "chat/completions") == b'{"stream": false}'
     assert b"include_usage" in prepare_body(b'{"stream": true}', "v1/chat/completions")
     assert prepare_body(b'{"stream": true}', "responses") == b'{"stream": true}'
+
+
+def test_the_operator_lane_gets_a_sighted_model_by_default():
+    # DeepSeek takes no images: the screens go to Model Studio's qwen3.8-27b on the same key
+    assert sighted_default("deepseek-v4-pro") == "qwen3.8-27b"
+    assert sighted_default("DeepSeek-V4-Flash") == "qwen3.8-27b"
+    # a sighted main model serves both lanes by itself
+    assert sighted_default("qwen3.8-27b") == "qwen3.8-27b"
+    assert sighted_default("qwen3.5-plus") == "qwen3.5-plus"

@@ -1,37 +1,67 @@
 import PackageManagerService from '@/os/PackageManagerService';
 import { domToPng } from 'modern-screenshot';
+import { stage } from './stage';
+import { t } from './res/strings';
 
 /**
  * The simulated phone as a device nanoMuse can operate.
  *
  * The server asks for two things over the notification bridge's WebSocket (see
  * `nanomuse.phone.link` on the Python side): the current *screen* — a screenshot, which app is
- * open, the screen size, whether the keyboard is up — and one *action* — tap, type, swipe, back,
- * home, open an app — by coordinates. That is the same contract the Android app fulfils with
- * `AccessibilityService.takeScreenshot()` and `dispatchGesture()`: no element tree on either,
- * because a real phone cannot be relied on to have one (WebViews, Flutter, games, protected
- * screens). The model looks at the picture and taps where a person would.
+ * open, the screen size, whether the keyboard is up, and the elements that say or do something
+ * — and one *action* — tap, type, swipe, back, home, open an app — by coordinates. That is the
+ * contract the Android app fulfils with `AccessibilityService.takeScreenshot()`, the
+ * accessibility tree and `dispatchGesture()`, and it is kept the same way here:
  *
- * The screenshot is rendered in the tab from the phone's DOM (`#root`, 360×800) with
- * modern-screenshot — MobileGym has no screenshot facility of its own — and actions go through
- * MobileGym's `__SIM_INPUT__` / `__OS__` runtime API, the same gestures its benchmark dispatches,
- * so a tap lands the way a finger would and the apps animate as they do for a person. A small
- * overlay shows where the finger went and what the agent is doing; it is not in the screenshot.
- *
- * Coordinates are phone coordinates (0…360 × 0…800), whatever the page scale; the conversion to
- * browser viewport pixels happens here.
+ * - The screenshot is rendered in the tab from the phone's DOM (`#root`, 360×800) with
+ *   modern-screenshot at twice the phone's pixels, 720×1600 — the width the Android app sends
+ *   (it downscales to 720) — so Chinese labels are legible to the screen model; coordinates come
+ *   back in that space and are halved here, as the Android app scales its own back up.
+ * - `nodes` is read from the DOM the way the Android app reads the accessibility tree: the
+ *   fields, buttons, links and texts that are on screen, each with its words, its centre and its
+ *   flags, at most 120, fields first.
+ * - Actions go through MobileGym's `__SIM_INPUT__` / `__OS__` runtime API, the same gestures
+ *   its benchmark dispatches, so a tap lands the way a finger would and the apps animate as
+ *   they do for a person. A password or code field is never typed into: the capsule asks the
+ *   person to do that part (*Your turn*, **Continue**), as the Android app does.
+ * - What a person sees meanwhile — the capsule, the ring where the finger is about to land,
+ *   the glow along the edges — is `stage.ts`, left out of the screenshot.
  */
 
 const PHONE_WIDTH = 360;
 const PHONE_HEIGHT = 800;
-/** Rendered pixels per phone pixel in the screenshot: 1 keeps it at 360×800 (~280 image tokens). */
-const SHOT_SCALE = 1;
+/** Rendered pixels per phone pixel in the screenshot (and the space the server taps in). */
+const SHOT_SCALE = 2;
 /** How long to let the UI settle after an action before reading the screen again. */
 const SETTLE_MS = 650;
+/** The ring shows where the finger will land this long before it does, so the eye gets there first. */
+const LEAD_MS = 360;
 /** Timing that looks like a person, not a script (MobileGym's benchmark uses the same ranges). */
 const TAP_GAP_MS = 120;
 const TYPE_MS_PER_CHAR = 40;
 const SWIPE_MS = 320;
+const MAX_NODES = 120;
+
+export interface ScreenNode {
+  id: string;
+  class: string;
+  text?: string;
+  desc?: string;
+  hint?: string;
+  res?: string;
+  cx: number;
+  cy: number;
+  box: [number, number, number, number];
+  clickable?: boolean;
+  long_clickable?: boolean;
+  editable?: boolean;
+  password?: boolean;
+  checked?: boolean;
+  scrollable?: boolean;
+  focused?: boolean;
+  selected?: boolean;
+  disabled?: boolean;
+}
 
 export interface ScreenPayload {
   app: string;
@@ -40,8 +70,9 @@ export interface ScreenPayload {
   width: number;
   height: number;
   keyboard: boolean;
-  /** base64 PNG of the phone, `width`×`height` × SHOT_SCALE */
+  /** base64 PNG of the phone, `width`×`height` */
   screenshot: string | null;
+  nodes?: ScreenNode[];
   note?: string;
 }
 
@@ -103,6 +134,9 @@ function simInput(): SimInput {
 function simOs(): SimOs {
   return (window as unknown as { __OS__?: SimOs }).__OS__ ?? {};
 }
+
+/** The screen as announced to the server: the picture's pixels. */
+export const SCREEN = { width: PHONE_WIDTH * SHOT_SCALE, height: PHONE_HEIGHT * SHOT_SCALE };
 
 /** Every installed app, as the agent may name it. */
 export function installedApps(): AppInfo[] {
@@ -168,7 +202,7 @@ const OVERLAY_ATTR = 'data-muse-overlay';
 
 /**
  * Render the phone to a PNG. `#root` carries the page's `transform: scale(...)`, which the
- * clone must not (the picture is the phone at its own 360×800); the agent's overlay is left out.
+ * clone must not (the picture is the phone at its own size); the agent's overlay is left out.
  */
 export async function screenshot(): Promise<string | null> {
   const root = phoneRoot();
@@ -207,133 +241,243 @@ export async function screenshot(): Promise<string | null> {
 /** How long the last capture took, for the console and the tests. */
 export let lastCaptureMs = 0;
 
-/** Read the phone's screen: the picture, and the little the simulator can say about it. */
-export async function readScreen(): Promise<ScreenPayload> {
+// ------------------------------------------------------------------ the elements
+
+const INTERACTIVE_TAGS = new Set(['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'SELECT', 'SUMMARY', 'LABEL', 'OPTION']);
+const INTERACTIVE_ROLES = new Set([
+  'button',
+  'link',
+  'tab',
+  'menuitem',
+  'menuitemcheckbox',
+  'menuitemradio',
+  'checkbox',
+  'switch',
+  'radio',
+  'option',
+  'textbox',
+  'searchbox',
+  'combobox',
+  'slider',
+  'listitem',
+]);
+const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'PATH', 'G', 'DEFS', 'USE', 'CIRCLE', 'RECT', 'LINE', 'POLYLINE', 'POLYGON', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME', 'BR', 'HR']);
+const SECRET = /密码|验证码|口令|password|passcode|passphrase|one-time|otp|verification code|security code|pin\b/i;
+
+const squeeze = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+function ownText(el: Element): string {
+  let out = '';
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) out += child.textContent ?? '';
+  }
+  return squeeze(out);
+}
+
+/** Whether the field is for a password or a code: typed by the person, never by the hands. */
+export function isSecretField(el: Element | null): boolean {
+  if (!el) return false;
+  if (el instanceof HTMLInputElement) {
+    if (el.type === 'password') return true;
+    const words = [el.name, el.placeholder, el.autocomplete, el.getAttribute('aria-label') ?? '', el.id].join(' ');
+    return SECRET.test(words) || el.autocomplete === 'one-time-code';
+  }
+  if (el instanceof HTMLTextAreaElement) return SECRET.test([el.name, el.placeholder, el.getAttribute('aria-label') ?? ''].join(' '));
+  return false;
+}
+
+function kindOf(el: Element, role: string, editable: boolean): string {
+  const tag = el.tagName;
+  if (editable) return 'EditText';
+  if (tag === 'INPUT') {
+    const type = (el as HTMLInputElement).type;
+    if (type === 'checkbox') return role === 'switch' ? 'Switch' : 'CheckBox';
+    if (type === 'radio') return 'RadioButton';
+    if (type === 'range') return 'SeekBar';
+    return 'Button';
+  }
+  if (role === 'switch') return 'Switch';
+  if (role === 'checkbox' || role === 'menuitemcheckbox') return 'CheckBox';
+  if (role === 'radio' || role === 'menuitemradio') return 'RadioButton';
+  if (role === 'tab') return 'Tab';
+  if (tag === 'A' || role === 'link') return 'Link';
+  if (tag === 'BUTTON' || role === 'button' || role === 'menuitem') return 'Button';
+  if (tag === 'IMG' || role === 'img') return 'ImageView';
+  if (tag === 'SELECT' || role === 'combobox') return 'Spinner';
+  return 'TextView';
+}
+
+/** An index path from the phone's root: stable while the tree is. */
+function indexPath(el: Element, root: Element): string {
+  const parts: number[] = [];
+  let node: Element | null = el;
+  while (node && node !== root) {
+    const parent: Element | null = node.parentElement;
+    if (!parent) break;
+    parts.unshift(Array.prototype.indexOf.call(parent.children, node));
+    node = parent;
+  }
+  return parts.join('.');
+}
+
+/**
+ * The elements that say or do something, in the picture's pixel space — what the Android app
+ * sends from the accessibility tree. The DOM stands in for the tree: fields, buttons, links,
+ * things with a role or a pointer cursor, and text leaves; what is off screen, invisible or
+ * under something else (a sheet, a dialog, the shade) is left out.
+ */
+export function collectNodes(): ScreenNode[] {
+  const root = phoneRoot();
+  const rootRect = root.getBoundingClientRect();
+  const scale = rootRect.width > 0 ? rootRect.width / PHONE_WIDTH : 1;
+  const active = document.activeElement;
+  const fields: ScreenNode[] = [];
+  const actives: ScreenNode[] = [];
+  const texts: ScreenNode[] = [];
+  const claimed = new Map<Element, string>(); // interactive element → its words (to skip the same text inside it)
+  const all = root.querySelectorAll('*');
+  for (const el of Array.from(all)) {
+    if (fields.length + actives.length + texts.length >= MAX_NODES * 2) break;
+    if (SKIP_TAGS.has(el.tagName.toUpperCase())) continue;
+    if (el.closest(`[${OVERLAY_ATTR}]`)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) continue;
+    if (r.right <= rootRect.left || r.left >= rootRect.right || r.bottom <= rootRect.top || r.top >= rootRect.bottom) continue;
+    const role = (el.getAttribute('role') ?? '').toLowerCase();
+    const tag = el.tagName;
+    const input = el instanceof HTMLInputElement ? el : null;
+    const editable =
+      (input !== null && !['button', 'submit', 'reset', 'checkbox', 'radio', 'range', 'file', 'hidden', 'image', 'color'].includes(input.type)) ||
+      tag === 'TEXTAREA' ||
+      (el as HTMLElement).isContentEditable ||
+      role === 'textbox' ||
+      role === 'searchbox';
+    const label = el.getAttribute('aria-label') ?? el.getAttribute('title') ?? (el instanceof HTMLImageElement ? el.alt : '') ?? '';
+    const hint = (el as HTMLInputElement).placeholder ?? '';
+    const own = ownText(el);
+    let interactive =
+      editable ||
+      INTERACTIVE_TAGS.has(tag) ||
+      INTERACTIVE_ROLES.has(role) ||
+      el.hasAttribute('onclick') ||
+      (el.hasAttribute('tabindex') && Number(el.getAttribute('tabindex')) >= 0);
+    let style: CSSStyleDeclaration | null = null;
+    if (!interactive && !own && !label) {
+      // a plain box: only worth a look if it scrolls or is clickable by its cursor
+      style = getComputedStyle(el);
+      if (style.cursor !== 'pointer') {
+        const scrolls = /(auto|scroll)/.test(style.overflowY + style.overflowX) && (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2);
+        if (!scrolls) continue;
+      } else interactive = true;
+    }
+    style = style ?? getComputedStyle(el);
+    if (style.visibility === 'hidden' || Number(style.opacity) < 0.05 || style.pointerEvents === 'none' && !own && !label) continue;
+    if (!interactive && style.cursor === 'pointer') interactive = true;
+    // the words: a text leaf's own text, an interactive element's whole text when short
+    let text = own;
+    if (!text && interactive) {
+      const whole = squeeze(el.textContent ?? '');
+      if (whole && whole.length <= 60) text = whole;
+    }
+    if (input && (input.type === 'text' || input.type === 'search' || input.type === 'email' || input.type === 'tel' || input.type === 'url' || input.type === 'number') && input.value) {
+      text = input.value;
+    }
+    if (!text && !label && !hint && !interactive && !editable) {
+      const scrolls = /(auto|scroll)/.test(style.overflowY + style.overflowX) && (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2);
+      if (!scrolls) continue;
+    }
+    // the same words inside something already listed as clickable: one entry is enough
+    if (!interactive && text) {
+      let p: Element | null = el.parentElement;
+      let dup = false;
+      while (p && p !== root) {
+        const words = claimed.get(p);
+        if (words !== undefined) {
+          dup = words === text || words.includes(text);
+          break;
+        }
+        p = p.parentElement;
+      }
+      if (dup) continue;
+    }
+    // what is under something else — a sheet, a dialog, the shade — is not on the screen
+    const cxv = Math.min(rootRect.right - 1, Math.max(rootRect.left, r.left + r.width / 2));
+    const cyv = Math.min(rootRect.bottom - 1, Math.max(rootRect.top, r.top + r.height / 2));
+    const hit = document.elementFromPoint(cxv, cyv);
+    if (hit && hit !== el && !el.contains(hit) && !hit.contains(el)) continue;
+    const left = Math.max(0, (r.left - rootRect.left) / scale);
+    const top = Math.max(0, (r.top - rootRect.top) / scale);
+    const right = Math.min(PHONE_WIDTH, (r.right - rootRect.left) / scale);
+    const bottom = Math.min(PHONE_HEIGHT, (r.bottom - rootRect.top) / scale);
+    const node: ScreenNode = {
+      id: indexPath(el, root),
+      class: kindOf(el, role, editable),
+      cx: Math.round(((left + right) / 2) * SHOT_SCALE),
+      cy: Math.round(((top + bottom) / 2) * SHOT_SCALE),
+      box: [Math.round(left * SHOT_SCALE), Math.round(top * SHOT_SCALE), Math.round(right * SHOT_SCALE), Math.round(bottom * SHOT_SCALE)],
+    };
+    if (text) node.text = text.slice(0, 80);
+    if (label && label !== text) node.desc = squeeze(label).slice(0, 80);
+    if (hint) node.hint = squeeze(hint).slice(0, 80);
+    if (el.id) node.res = el.id.slice(0, 80);
+    if (interactive) node.clickable = true;
+    if (editable) node.editable = true;
+    if (editable && isSecretField(el)) node.password = true;
+    if (input && (input.type === 'checkbox' || input.type === 'radio')) node.checked = input.checked;
+    else if (el.hasAttribute('aria-checked')) node.checked = el.getAttribute('aria-checked') === 'true';
+    else if (el.hasAttribute('aria-pressed')) node.checked = el.getAttribute('aria-pressed') === 'true';
+    if (/(auto|scroll)/.test(style.overflowY + style.overflowX) && (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2)) node.scrollable = true;
+    if (active === el || (active && el.contains(active) && editable)) node.focused = true;
+    if (el.getAttribute('aria-selected') === 'true' || el.hasAttribute('aria-current')) node.selected = true;
+    if ((el as HTMLButtonElement).disabled === true || el.getAttribute('aria-disabled') === 'true') node.disabled = true;
+    if (interactive) claimed.set(el, text);
+    (editable ? fields : interactive ? actives : texts).push(node);
+  }
+  return [...fields, ...actives, ...texts].slice(0, MAX_NODES);
+}
+
+// ------------------------------------------------------------------ the screen
+
+/** Read the phone's screen: the picture, the elements, and what the simulator can say about it. */
+export async function readScreen(quiet = false): Promise<ScreenPayload> {
   const os = simOs();
   const route = os.getAppRoute?.() ?? null;
   const appId = route?.app ?? '';
   const apps = installedApps();
   const appName = appId ? apps.find((a) => a.id === appId)?.name ?? appId : 'Home';
+  if (!quiet) stage.screen();
+  let nodes: ScreenNode[] = [];
+  try {
+    nodes = collectNodes();
+  } catch (err) {
+    console.warn('[nanoMuse] elements could not be read', err);
+  }
   const shot = await screenshot();
   return {
     app: appId || 'launcher',
     app_name: appName,
     route: route?.path ?? '',
-    width: PHONE_WIDTH,
-    height: PHONE_HEIGHT,
+    width: SCREEN.width,
+    height: SCREEN.height,
     keyboard: Boolean(os.keyboard?.isVisible?.()),
     screenshot: shot,
+    nodes,
     note: shot ? undefined : 'the screenshot could not be rendered',
   };
 }
 
-// ------------------------------------------------------------------ the overlay
-
-/**
- * What a person watching sees of the agent's hands: a ripple where it taps, a trail where it
- * swipes, a caption saying what it is doing. Lives inside `#root` so it scales with the phone;
- * `pointer-events: none` so it never gets in the way of the gestures themselves.
- */
-class TouchIndicator {
-  private layer: HTMLDivElement | null = null;
-  private caption: HTMLDivElement | null = null;
-  private captionTimer: ReturnType<typeof setTimeout> | null = null;
-
-  private ensure(): HTMLDivElement {
-    if (this.layer && this.layer.isConnected) return this.layer;
-    const layer = document.createElement('div');
-    layer.setAttribute(OVERLAY_ATTR, '');
-    layer.style.cssText =
-      'position:absolute;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;' +
-      'font:12px/1.35 system-ui,-apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif;';
-    if (!document.getElementById('muse-overlay-style')) {
-      const style = document.createElement('style');
-      style.id = 'muse-overlay-style';
-      style.textContent =
-        '@keyframes muse-ripple{0%{transform:translate(-50%,-50%) scale(.35);opacity:.9}' +
-        '100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}' +
-        '@keyframes muse-hold{0%{transform:translate(-50%,-50%) scale(.5);opacity:.85}' +
-        '100%{transform:translate(-50%,-50%) scale(1);opacity:.85}}' +
-        '@keyframes muse-fade{0%{opacity:1}100%{opacity:0}}' +
-        '@keyframes muse-caption{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:none}}';
-      document.head.appendChild(style);
-    }
-    phoneRoot().appendChild(layer);
-    this.layer = layer;
-    return layer;
-  }
-
-  /** A ring that grows and fades where the finger came down. */
-  ripple(x: number, y: number, holdMs = 0): void {
-    const layer = this.ensure();
-    const dot = document.createElement('div');
-    const size = 44;
-    dot.style.cssText =
-      `position:absolute;left:${x}px;top:${y}px;width:${size}px;height:${size}px;border-radius:50%;` +
-      'background:rgba(255,92,72,.28);border:2.5px solid rgba(255,92,72,.95);' +
-      'box-shadow:0 0 0 2px rgba(255,255,255,.7);' +
-      (holdMs > 0
-        ? `animation:muse-hold ${holdMs}ms ease-out forwards, muse-fade 300ms ease-out ${holdMs}ms forwards;`
-        : 'animation:muse-ripple 520ms ease-out forwards;');
-    layer.appendChild(dot);
-    setTimeout(() => dot.remove(), holdMs + 600);
-  }
-
-  /** A line from where the finger started to where it let go, drawn as it moves. */
-  trail(x1: number, y1: number, x2: number, y2: number, ms: number): void {
-    const layer = this.ensure();
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', `0 0 ${PHONE_WIDTH} ${PHONE_HEIGHT}`);
-    svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', String(x1));
-    line.setAttribute('y1', String(y1));
-    line.setAttribute('x2', String(x2));
-    line.setAttribute('y2', String(y2));
-    line.setAttribute('stroke', 'rgba(255,92,72,.9)');
-    line.setAttribute('stroke-width', '4');
-    line.setAttribute('stroke-linecap', 'round');
-    const length = Math.hypot(x2 - x1, y2 - y1);
-    line.setAttribute('stroke-dasharray', String(length));
-    line.setAttribute('stroke-dashoffset', String(length));
-    line.style.transition = `stroke-dashoffset ${ms}ms ease-out`;
-    svg.appendChild(line);
-    layer.appendChild(svg);
-    requestAnimationFrame(() => {
-      line.setAttribute('stroke-dashoffset', '0');
-    });
-    this.ripple(x1, y1);
-    setTimeout(() => this.ripple(x2, y2), ms);
-    svg.style.animation = `muse-fade 300ms ease-out ${ms + 250}ms forwards`;
-    setTimeout(() => svg.remove(), ms + 600);
-  }
-
-  /** One line at the bottom of the phone: what the agent is doing right now. */
-  say(text: string, ms = 2600): void {
-    const layer = this.ensure();
-    if (!this.caption || !this.caption.isConnected) {
-      const cap = document.createElement('div');
-      cap.style.cssText =
-        'position:absolute;left:14px;right:14px;bottom:52px;padding:8px 12px;border-radius:14px;' +
-        'background:rgba(20,20,24,.82);color:#fff;text-align:center;backdrop-filter:blur(6px);' +
-        'animation:muse-caption 180ms ease-out;';
-      layer.appendChild(cap);
-      this.caption = cap;
-    }
-    this.caption.textContent = text;
-    this.caption.style.opacity = '1';
-    if (this.captionTimer) clearTimeout(this.captionTimer);
-    this.captionTimer = setTimeout(() => {
-      if (this.caption) this.caption.style.opacity = '0';
-    }, ms);
-  }
-}
-
-export const indicator = new TouchIndicator();
-
 // ------------------------------------------------------------------ acting
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** The server's coordinates (the picture's pixels) → phone pixels. */
+function toPhone(params: ActParams): ActParams {
+  const p = { ...params };
+  for (const k of ['x', 'y', 'x2', 'y2'] as const) {
+    if (typeof p[k] === 'number') p[k] = (p[k] as number) / SHOT_SCALE;
+  }
+  return p;
+}
 
 function point(params: ActParams): { x: number; y: number } {
   if (typeof params.x === 'number' && typeof params.y === 'number') {
@@ -342,70 +486,63 @@ function point(params: ActParams): { x: number; y: number } {
   throw new Error(`\`${params.action}\` needs x and y`);
 }
 
-const ACTION_WORDS: Record<string, string> = {
-  tap: '点击',
-  double_tap: '双击',
-  long_press: '长按',
-  swipe: '滑动',
-  type: '输入',
-  enter: '回车',
-  back: '返回',
-  home: '回到桌面',
-  recents: '最近任务',
-  open_app: '打开',
-  wait: '等待',
-};
-
-function caption(params: ActParams): string {
-  const what = params.label?.trim();
-  if (what) return `Muse · ${what}`;
-  const word = ACTION_WORDS[params.action] ?? params.action;
-  if (params.action === 'type') return `Muse · 输入 “${String(params.text ?? '').slice(0, 24)}”`;
-  if (params.action === 'open_app') return `Muse · 打开 ${params.app ?? ''}`;
-  if (params.action === 'swipe' && params.direction) return `Muse · 滑动 ${params.direction}`;
-  return `Muse · ${word}`;
+/** The element a tap at phone coordinates would land on. */
+function elementAt(f: Frame, x: number, y: number): Element | null {
+  const v = toViewport(f, x, y);
+  const hit = document.elementFromPoint(v.x, v.y);
+  return hit && phoneRoot().contains(hit) ? hit : null;
 }
 
 /** One action, then the screen as it looks afterwards. */
-export async function act(params: ActParams): Promise<ActResult> {
+export async function act(raw: ActParams): Promise<ActResult> {
+  const params = toPhone(raw);
   const f = frame();
   const input = simInput();
   const os = simOs();
+  const label = params.label?.trim() ?? '';
   let note = 'ok';
-  indicator.say(caption(params));
   switch (params.action) {
-    case 'tap': {
-      const p = point(params);
-      indicator.ripple(p.x, p.y);
-      const v = toViewport(f, p.x, p.y);
-      input.tap(v.x, v.y);
-      break;
-    }
+    case 'tap':
     case 'double_tap': {
       const p = point(params);
-      indicator.ripple(p.x, p.y);
+      stage.act(params.action, label, p);
+      await sleep(LEAD_MS);
       const v = toViewport(f, p.x, p.y);
-      input.doubleTap(v.x, v.y);
+      if (params.action === 'tap') input.tap(v.x, v.y);
+      else input.doubleTap(v.x, v.y);
       break;
     }
     case 'long_press': {
       const p = point(params);
       const ms = Math.round(Math.min(5, Math.max(0.4, Number(params.seconds ?? 0.8))) * 1000);
-      indicator.ripple(p.x, p.y, ms);
+      stage.act(params.action, label, p, undefined, { holdMs: ms });
+      await sleep(LEAD_MS);
       const v = toViewport(f, p.x, p.y);
       await input.longPress(v.x, v.y, ms);
       break;
     }
     case 'type': {
-      if (typeof params.x === 'number' && typeof params.y === 'number') {
+      const text = String(params.text ?? '');
+      const hasPoint = typeof params.x === 'number' && typeof params.y === 'number';
+      const p = hasPoint ? point(params) : undefined;
+      // a password or a code is the person's to type: the capsule asks, the hands wait
+      const target = p ? elementAt(f, p.x, p.y) : document.activeElement;
+      if (isSecretField(target)) {
+        const went = await stage.takeOver(t().hands_secret_field);
+        note = went
+          ? 'that is a password or code field: the person was asked to fill it in and tapped Continue — go on from the screen as it is now'
+          : 'that is a password or code field: the person was asked to fill it in but did not continue; ask them in the chat';
+        break;
+      }
+      stage.act('type', label, p, undefined, { text });
+      if (p) {
         // focus the field first, like a finger would
-        const p = point(params);
-        indicator.ripple(p.x, p.y);
+        await sleep(LEAD_MS);
         const v = toViewport(f, p.x, p.y);
         input.tap(v.x, v.y);
         await sleep(TAP_GAP_MS);
       }
-      await input.type(String(params.text ?? ''), { clear: Boolean(params.clear), perCharMs: TYPE_MS_PER_CHAR });
+      await input.type(text, { clear: Boolean(params.clear), perCharMs: TYPE_MS_PER_CHAR });
       if (params.submit) {
         await sleep(TAP_GAP_MS);
         input.enter();
@@ -430,25 +567,32 @@ export async function act(params: ActParams): Promise<ActResult> {
         start = { x: edge(cx + (sign * dx) / 2, PHONE_WIDTH), y: edge(cy + (sign * dy) / 2, PHONE_HEIGHT) };
         end = { x: edge(cx - (sign * dx) / 2, PHONE_WIDTH), y: edge(cy - (sign * dy) / 2, PHONE_HEIGHT) };
       }
-      indicator.trail(start.x, start.y, end.x, end.y, SWIPE_MS);
+      // a scroll by direction is captioned as one ("Scroll up"), as on Android; a swipe between two points as a swipe
+      stage.act('swipe', label || (typeof params.x2 === 'number' ? '' : t().hands_scroll(params.direction ?? 'up')), start, end);
+      await sleep(LEAD_MS);
       await input.swipe(toViewport(f, start.x, start.y), toViewport(f, end.x, end.y), { ms: SWIPE_MS, inertia: true });
       break;
     }
     case 'enter':
+      stage.act('enter', label);
       input.enter();
       break;
     case 'back':
+      stage.act('back', label);
       input.back();
       break;
     case 'home':
+      stage.act('home', label);
       input.home();
       break;
     case 'recents':
+      stage.act('recents', label);
       input.recent();
       break;
     case 'open_app': {
       const id = resolveApp(String(params.app ?? ''));
       if (!id) throw new Error(`no app called '${params.app}' on this phone`);
+      stage.act('open_app', label || t().hands_open_app(installedApps().find((a) => a.id === id)?.name ?? String(params.app ?? '')));
       if (os.launchApp) os.launchApp(id);
       else if (os.openApp) os.openApp(id);
       else throw new Error('the simulator cannot open apps (__OS__.launchApp missing)');
@@ -458,6 +602,7 @@ export async function act(params: ActParams): Promise<ActResult> {
     }
     case 'wait': {
       const seconds = Math.min(10, Math.max(0.2, Number(params.seconds ?? 1)));
+      stage.act('wait', label || t().hands_wait(Math.round(seconds)));
       await sleep(seconds * 1000);
       note = `waited ${seconds}s`;
       break;
@@ -474,5 +619,7 @@ export async function act(params: ActParams): Promise<ActResult> {
   readScreen,
   act,
   screenshot,
+  collectNodes,
+  stage,
   captureMs: () => lastCaptureMs,
 };

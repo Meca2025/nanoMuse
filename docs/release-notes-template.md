@@ -4,7 +4,7 @@
      English first; the Chinese version of the same notes goes in the <details> block at the end.
      Codenames so far: Foundation, Identity, Home, Guardrails, Memory, Avatar, Welcome, Polish,
      Portrait, Motion, Hatch, Hands, Reach, Home, Stage, Palette, Open, Ensemble, Presence,
-     Footing, Commons, Welcome, Signal, Mirror (CHANGELOG.md has the list). One word, capitalised.
+     Footing, Commons, Welcome, Signal, Mirror, Window (CHANGELOG.md has the list). One word, capitalised.
 
      The shape follows the releases people know (nanobot's): a short story, then Highlights,
      Upgrade Notes, Community; What's Changed, New Contributors, Contributors and the Full
@@ -41,7 +41,7 @@
 
 **Free, open source, non-profit — open source, built together: a personal agent for all.** Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer — the account page says how much is left and how it grows; when it is gone, bring your own key, with a step-by-step guide. Messages are not stored unless you choose to contribute them; nothing is sold; delete the account whenever you like.
 
-Thank you to everyone who tried a build, reported what broke and asked for what was missing — every issue, idea and pull request brings a personal agent within everyone's reach. [Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [send a pull request](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [star the repo](https://github.com/nano-muse/nanoMuse).
+This is a preview, and the people building it use it every day; what breaks for you, and what you wish it did, is the most useful thing you can send. The apps are for anyone; the developer side is in the settings and the docs when you turn it on; the product and the skill and plugin interfaces will keep moving quickly for a while and settle as they go. What we are after is bigger than one app — a personal agent that belongs to the person who runs it, built in the open on infrastructure anyone can reuse, and a shared answer to how far such an agent can go — and we look forward to finding it out with users and developers everywhere. Thank you to everyone who tried a build, reported what broke and asked for what was missing — every issue, idea and pull request brings a personal agent within everyone's reach. [Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [send a pull request](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [star the repo](https://github.com/nano-muse/nanoMuse).
 
 Based on [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 (GPL-3.0), modified since 2026-09-24. The complete corresponding source of this build is tag `v<version>` plus the `android/deps/proot` submodule ([nano-muse/proot](https://github.com/nano-muse/proot)). The whole repository is GPL-3.0-or-later. nanoMuse is not affiliated with Meta; Muse is a trademark of Meta Platforms, Inc.
 

@@ -1,11 +1,12 @@
 import { LayoutGrid, Lightbulb, Loader2, MessageCircle, Newspaper, SquareCheckBig, WifiOff } from "lucide-react";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
-import { setToken } from "./api";
+import { api, setToken } from "./api";
 import { dragonUrl } from "./avatars";
 import { Avatar } from "./components/Avatar";
 import { DesktopRemoteHint } from "./components/DesktopRemoteHint";
 import { FileViewer } from "./components/FileViewer";
 import { FirstSignInSteps, useFirstSignIn } from "./components/FirstSignInSteps";
+import { desktopBridge } from "./desktop";
 import { Sidebar } from "./components/Sidebar";
 import { ChatScreen } from "./screens/ChatScreen";
 import { FeedScreen } from "./screens/FeedScreen";
@@ -58,6 +59,14 @@ export default function App() {
     document.title = name && name.toLowerCase() !== "nanomuse" ? `${name} · nanoMuse` : "nanoMuse";
   }, [state.profile?.name]);
 
+  // the desktop's quick-chat shortcut: to the chat, with the composer focused
+  useEffect(() => {
+    desktopBridge()?.onQuickChat?.(() => {
+      setTab("chat");
+      requestAnimationFrame(() => window.dispatchEvent(new Event("nanomuse:quick-chat")));
+    });
+  }, [setTab]);
+
   // `#devices` etc. opens a section straight away — the desktop tray menu links here.
   useEffect(() => {
     const jump = () => {
@@ -74,6 +83,13 @@ export default function App() {
   // programme); they float over whatever comes next — setup or the chat.
   const firstSteps = firstSignIn && state.hub?.account.signed_in ? <FirstSignInSteps /> : null;
 
+  // Lite (inside the showcase's phone): the runtime there is set up by its host, so the
+  // first-run setup has nothing to ask; mark it done and go straight to the chat.
+  const liteSetup = state.lite && state.settings !== null && !state.settings.onboarded;
+  useEffect(() => {
+    if (liteSetup) void api.onboarded(true).catch(() => undefined);
+  }, [liteSetup]);
+
   if (state.authError) return <TokenGate />;
   // Nothing has arrived from the runtime yet: say so, instead of an empty chat.
   if (!state.loaded) return <Connecting error={state.error} />;
@@ -82,7 +98,7 @@ export default function App() {
     return <SignInGate />;
   }
   // First run: the server has not seen setup finish and nothing has been said yet.
-  if (state.settings && !state.settings.onboarded && !state.onboardingDismissed && !state.threads.some((t) => t.events > 0)) {
+  if (!state.lite && state.settings && !state.settings.onboarded && !state.onboardingDismissed && !state.threads.some((t) => t.events > 0)) {
     return (
       <Suspense fallback={<Loading />}>
         <Onboarding />
@@ -99,17 +115,19 @@ export default function App() {
   // One column on the phone; on a wide screen (a full browser) and in the desktop app at any
   // width, a sidebar takes over from the tab bar and the chats sheet — same screens either side.
   return (
-    <div className="mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border wide:max-w-none wide:flex-row wide:border-x-0">
-      <div className="hidden wide:block wide:h-full">
-        <Sidebar />
-      </div>
+    <div className={cx("mx-auto flex h-[100dvh] max-w-[760px] flex-col bg-bg sm:border-x sm:border-border", !state.lite && "wide:max-w-none wide:flex-row wide:border-x-0")}>
+      {!state.lite && (
+        <div className="hidden wide:block wide:h-full">
+          <Sidebar />
+        </div>
+      )}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {!state.connected && state.loaded && (
           <div className="flex items-center justify-center gap-2 bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[12.5px] py-1">
             <WifiOff size={14} /> {t("Reconnecting to your nanoMuse…")}
           </div>
         )}
-        <DesktopRemoteHint />
+        {!state.lite && <DesktopRemoteHint />}
         <main className="mx-auto min-h-0 w-full flex-1 wide:max-w-[900px]">
           <Suspense fallback={<Loading />}>
             {state.tab === "chat" && <ChatScreen />}
@@ -127,7 +145,9 @@ export default function App() {
             {state.tab === "avatar" && <AvatarStudioScreen />}
           </Suspense>
         </main>
-        <nav className="safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 wide:hidden">
+        {/* lite (the phone in the showcase): the phone layout whatever the width — the tabs the
+            Android app has, no sidebar; only the first-run setup and the desktop hints are off */}
+        <nav className={cx("safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5", !state.lite && "wide:hidden")}>
         <ul className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/70 bg-surface p-1.5 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.18)]">
           {TABS.map((tab) => {
             const active = state.tab === tab.id;

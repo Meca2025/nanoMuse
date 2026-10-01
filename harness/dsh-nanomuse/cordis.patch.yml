@@ -1,0 +1,49 @@
+# The dsh-nanomuse bundle layer: nanoMuse on DeepSeek Harness.
+#
+# Applied after @deepseek-ai/dsh-base (and dsh-web-app in the web profile);
+# the profile's own cordis.patch.yml still comes after this, so everything here
+# can be overridden by the person running it. A patch replaces a row's whole
+# `config`, so the rows restated below carry every key they need.
+
+# The agent is nanoMuse, not "an AI agent powered by …". The row id is the one
+# dsh-base and dsh-web-app use, so this replaces their persona text; the stock
+# identity line is switched off and the persona names the base it runs on.
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    personaPrefix: >-
+      You are nanoMuse, an open-source personal agent that lives on this person's
+      own devices, built on DeepSeek Harness. You speak plainly and briefly, in
+      the language the person writes in, and you say what you did rather than
+      what you are about to do. You never pretend a step succeeded. When
+      something needs the person's hand — a password, a payment, a code — you
+      say so and wait.
+    personaSuffix: Your working directory is {{cwd}}.
+
+# Web sessions compose from an agent preset, and a preset's own persona wins
+# over the row above. Ours is declared in presets/nanomuse.patch.yml; new
+# sessions start from it (the person can still pick Standard or PTC).
+- id: agent-preset-registry
+  config:
+    default: nanomuse
+
+# The sidebar's brand seats are ours; the official occupant steps aside (two
+# occupants at the same rank throw). "Built on DeepSeek Harness" stays in the
+# About text — only the product name on screen changes, as the brand guidelines ask.
+- id: ui-brand-official
+  disabled: true
+
+- insert:
+    # The browser half rides on this row (sidebar mark and name, hero mark,
+    # the Cloud settings section); the host side serves the face's stills.
+    - id: nanomuse
+      name: dsh-nanomuse
+
+    # One account, every device: sign-in, the account's models as the
+    # `nanomuse` provider of llm-pi-ai, the key in the credential store.
+    - id: nanomuse-cloud
+      name: dsh-nanomuse/cloud
+      config:
+        baseURL: !!js process.env.NANOMUSE_CLOUD_URL || 'https://cloud.nanomuse.cn'
+        deviceName: ''
+        statePath: ''

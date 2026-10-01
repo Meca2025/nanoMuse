@@ -379,6 +379,20 @@ def test_a_plain_openai_provider_has_stills_only() -> None:
     assert not ep.clips
 
 
+def test_a_relaying_host_names_where_the_video_api_lives() -> None:
+    # the showcase gateway: the chat model behind an address nobody recognises, and the video
+    # API at the same address (`[llm] video_base_url`) — clips, through that host
+    ep = Endpoint(
+        base_url="http://gateway:8000/llm/abc/main",
+        api_key="k",
+        image_model="qwen-image-3.0",
+        cloud=False,
+        video_model="wan2.2-i2v-flash",
+        video_base_url="http://gateway:8000/llm/abc/main/",
+    )
+    assert ep.clips and ep.video_host == "http://gateway:8000/llm/abc/main"
+
+
 def test_clip_prompts_loop_on_a_white_background() -> None:
     for mood in CLIP_MOODS:
         p = clip_prompt(mood)

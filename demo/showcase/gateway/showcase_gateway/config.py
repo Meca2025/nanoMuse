@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 # Model providers a visitor may point their own key at. Anything else is refused so that the
 # gateway cannot be used to reach arbitrary hosts from the server.
@@ -60,6 +61,23 @@ class Lane:
         return bool(self.model and self.base_url and self.api_key)
 
 
+TEXT_ONLY_FAMILIES = ("deepseek",)
+SIGHTED_FALLBACK = "qwen3.8-27b"
+
+
+def sighted_default(main_model: str) -> str:
+    """The operator lane's model when ``GUI_MODEL`` is not set.
+
+    Hands reads a screenshot at every step, so the lane needs a model that takes images. The
+    main lane's model serves when it does; a text-only family (DeepSeek) falls back to Model
+    Studio's sighted ``qwen3.8-27b`` on the same host and key.
+    """
+    family = main_model.lower()
+    if any(family.startswith(prefix) for prefix in TEXT_ONLY_FAMILIES):
+        return SIGHTED_FALLBACK
+    return main_model
+
+
 @dataclass(frozen=True)
 class Settings:
     # --- how the outside reaches us
@@ -102,6 +120,19 @@ class Settings:
     byok_enabled: bool
     byok_hosts: tuple[str, ...]
 
+    # --- pictures for a new look of the Muse (images.py); image_model "" → none drawn here
+    image_model: str
+    image_api_key: str
+    image_base_url: str  # Model Studio's native API root
+    image_per_session: int
+    daily_images: int
+    # --- clips of the chosen face (clips.py); video_model "" → stills only
+    video_model: str
+    video_api_key: str
+    video_base_url: str  # Model Studio's native API root
+    clips_per_session: int
+    daily_clips: int
+
     # --- trial credentials for the phone app (see trials.py)
     trial_enabled: bool
     trial_db: str
@@ -125,18 +156,25 @@ class Settings:
     web_cpus: str
     web_device_name: str
     web_slug_salt: str
+    # the visitors: a nanoMuse Cloud sign-in before a demo Muse, so the showcase knows who
+    # is trying it; the sign-in goes to the relay at web_relay_url
+    demo_signin_required: bool
+    per_account_active: int
+    per_account_daily: int
+    visitor_db: str
+    visitor_ttl_s: int  # how long a sign-in on this browser lasts
 
     @classmethod
     def from_env(cls) -> Settings:
         main = Lane(
             provider=_str("MAIN_PROVIDER", "openai"),
-            model=_str("MAIN_MODEL", "qwen3.8-27b"),
+            model=_str("MAIN_MODEL", "deepseek-v4-pro"),
             base_url=_str("MAIN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
             api_key=_str("MAIN_API_KEY"),
         )
         gui = Lane(
             provider=_str("GUI_PROVIDER", main.provider),
-            model=_str("GUI_MODEL", main.model),
+            model=_str("GUI_MODEL", sighted_default(main.model)),
             base_url=_str("GUI_BASE_URL", main.base_url),
             api_key=_str("GUI_API_KEY", main.api_key),
         )
@@ -146,6 +184,10 @@ class Settings:
                 key, _, value = item.partition("=")
                 extra[key.strip()] = value.strip()
         hosts = tuple(h.strip().lower() for h in _str("BYOK_ALLOWED_HOSTS").split(",") if h.strip())
+        # the Muse's new looks are drawn with qwen-image on Model Studio; on by itself when the
+        # demo key is a Model Studio key (the same key draws), else only when IMAGE_MODEL says so
+        main_host = (urlparse(main.base_url).hostname or "").lower()
+        on_model_studio = main_host.endswith("aliyuncs.com")
         return cls(
             public_scheme=_str("PUBLIC_SCHEME", "https"),
             site_host=_str("SITE_HOST", "localhost"),
@@ -178,6 +220,18 @@ class Settings:
             daily_tokens=_int("DAILY_LLM_TOKENS", 6_000_000),
             byok_enabled=_bool("BYOK_ENABLED", True),
             byok_hosts=hosts or DEFAULT_BYOK_HOSTS,
+            image_model=_str("IMAGE_MODEL", "qwen-image-3.0" if on_model_studio else ""),
+            image_api_key=_str("IMAGE_API_KEY", main.api_key),
+            image_base_url=_str("IMAGE_BASE_URL", "https://dashscope.aliyuncs.com/api/v1"),
+            image_per_session=_int("IMAGE_PER_SESSION", 12),
+            daily_images=_int("DAILY_IMAGES", 400),
+            video_model=_str("VIDEO_MODEL", "wan2.2-i2v-flash" if on_model_studio else ""),
+            video_api_key=_str("VIDEO_API_KEY", _str("IMAGE_API_KEY", main.api_key)),
+            video_base_url=_str(
+                "VIDEO_BASE_URL", _str("IMAGE_BASE_URL", "https://dashscope.aliyuncs.com/api/v1")
+            ),
+            clips_per_session=_int("CLIPS_PER_SESSION", 4),
+            daily_clips=_int("DAILY_CLIPS", 120),
             trial_enabled=_bool("TRIAL_ENABLED", False),
             trial_db=_str("TRIAL_DB", "/data/trials.db"),
             trial_tokens=_int("TRIAL_TOKENS", 1_000_000),
@@ -200,10 +254,19 @@ class Settings:
             web_cpus=_str("WEB_CONTAINER_CPUS", "1"),
             web_device_name=_str("WEB_DEVICE_NAME", "Web"),
             web_slug_salt=_str("WEB_SLUG_SALT", "nanomuse-web"),
+            demo_signin_required=_bool("DEMO_SIGNIN_REQUIRED", True),
+            per_account_active=_int("PER_ACCOUNT_ACTIVE", 1),
+            per_account_daily=_int("PER_ACCOUNT_DAILY", 6),
+            visitor_db=_str("VISITOR_DB", "/data/visitors.db"),
+            visitor_ttl_s=_int("VISITOR_TTL_S", 30 * 86400),
         )
 
     def session_origin(self, sid: str) -> str:
         return f"{self.public_scheme}://{sid}.{self.session_domain}{self.public_port}"
+
+    def site_origin(self) -> str:
+        """The showcase site itself — the phone in the browser."""
+        return f"{self.public_scheme}://{self.site_host}{self.public_port}"
 
     def trial_base_url(self, trial_id: str, lane: str = "main") -> str:
         """Where a phone points its OpenAI-compatible client for a trial."""

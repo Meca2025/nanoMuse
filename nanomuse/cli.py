@@ -1490,6 +1490,30 @@ def version() -> None:
     console.print(f"nanomuse {__version__}")
 
 
+@app.command()
+def mcp(config: ConfigOpt = None) -> None:
+    """Serve this computer's screen and hands over MCP on stdio (for another host, e.g.
+    nanoMuse on DeepSeek Harness; see docs/harness.md). Nothing is printed on stdout but
+    the protocol; the config is read for [hands] and [gui] when it exists."""
+    import sys
+
+    from nanomuse.bridge.mcp_server import hands_tools, serve
+    from nanomuse.config import Settings
+
+    try:
+        settings = load_settings(config)
+    except FileNotFoundError:
+        settings = Settings()
+    except (tomllib.TOMLDecodeError, ValidationError) as exc:
+        print(f"nanomuse mcp: config.toml is not usable: {exc}", file=sys.stderr)
+        raise typer.Exit(1) from exc
+    try:
+        settings.agent.workspace.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    _run_async(serve(hands_tools(settings)))
+
+
 # ============================================================================ doctor
 @app.command()
 def doctor(

@@ -1,6 +1,8 @@
 import { NotificationService } from '@/os/NotificationService';
-import { act, installedApps, readScreen, type ActParams } from './gui';
+import { SCREEN, act, installedApps, readScreen, type ActParams } from './gui';
 import { manifest } from './manifest';
+import { fmt, t } from './res/strings';
+import { stage } from './stage';
 
 /**
  * The notification bridge.
@@ -12,9 +14,12 @@ import { manifest } from './manifest';
  * and results of background work. Tapping one opens the nanoMuse app on that chat.
  *
  * The same socket makes this simulated phone a device the agent can operate (see `gui.ts`):
- * after `hello` the module announces itself with `{"kind": "device", "gui": true}` and answers
- * the server's `device_request` messages — its screen as a picture, or one action by
- * coordinates — with `device_result`.
+ * after `hello` the module announces itself with `{"kind": "device", "gui": true, "capsule":
+ * true}` and answers the server's `device_request` messages — its screen as a picture, one
+ * action by coordinates, or a `task` event (`begin` / `end` / `notice`) for the capsule — with
+ * `device_result`. **Stop** on the capsule fails the request under way, and every one after
+ * it until the next task, with the `nanomuse:stop` marker the server reads as "the person
+ * stopped it on the phone" — the Android app's contract (docs/gui.md).
  */
 
 type LinkState = 'off' | 'connecting' | 'online' | 'unauthorized' | 'unreachable';
@@ -64,10 +69,43 @@ function threadRoute(thread: string): string {
 /** The agent's name as the user set it; learnt from the server's hello and profile updates. */
 let agentName = 'nanoMuse';
 
-/** Same titles the server uses for its Web Push notifications. */
+/** Same titles the server uses for its Web Push notifications, in the phone's language. */
 function backgroundTitle(about: string): string {
-  if (about.startsWith('Check-in: ')) return `${agentName} · check-in`;
+  const s = t();
+  if (about.startsWith('Check-in: ')) return fmt(s.notify_check_in, agentName);
+  if (about.startsWith('Reminder: ')) return fmt(s.notify_reminder, agentName);
+  if (about.startsWith('Routine: ')) return about.slice('Routine: '.length) || agentName;
+  if (about.startsWith('New mail: ')) return fmt(s.notify_new_mail, agentName);
+  if (about.startsWith('Coming up: ')) return fmt(s.notify_coming_up, agentName);
+  if (about.startsWith('Webhook: ')) return fmt(s.notify_webhook, agentName);
   return about.replace('Working on your goal: ', '') || agentName;
+}
+
+/** The marker the server reads as "stopped by the person on the device" (nanomuse.phone.link). */
+const STOP_MARKER = 'nanomuse:stop';
+
+/** The face the capsule shows: the dragon, or the studio's face on the server. */
+function faceUrl(serverUrl: string, token: string, avatar: string | undefined): string {
+  if (!serverUrl) return '';
+  if (!avatar || avatar === 'dragon') return `${serverUrl}/avatars/dragon-working.webp`;
+  return `${serverUrl}/api/files/avatar/${encodeURIComponent(avatar)}/working.webp?token=${encodeURIComponent(token)}`;
+}
+
+function setIdentity(serverUrl: string, token: string, profile: { name?: string; avatar?: string } | undefined): void {
+  if (profile?.name) agentName = profile.name;
+  const url = faceUrl(serverUrl, token, profile?.avatar);
+  if (!url) return;
+  const fallback = `${serverUrl}/avatars/dragon-working.webp`;
+  if (url === fallback) {
+    stage.setIdentity(agentName, url);
+    return;
+  }
+  // a studio face that cannot be loaded (gone, or not drawn yet) leaves the dragon
+  const probe = new Image();
+  probe.onload = () => stage.setIdentity(agentName, url);
+  probe.onerror = () => stage.setIdentity(agentName, fallback);
+  probe.src = url;
+  stage.setIdentity(agentName, fallback);
 }
 
 function firstLine(text: string, max = 140): string {
@@ -83,6 +121,37 @@ class MuseBridge {
   private backoff = RECONNECT_MIN_MS;
   /** timeline event id → notification id, so a resolved card takes its notification down */
   private shown = new Map<string, string>();
+  /** Stop was tapped on the capsule: every request fails until the next task begins. */
+  private stopped = false;
+  private stopWaiters: Array<(err: Error) => void> = [];
+  /** the chat the last approval or question came from — where Open on the capsule goes */
+  private lastThread = 'main';
+
+  constructor() {
+    stage.onStop = () => this.stop();
+    stage.onOpen = () => this.openApp(this.lastThread);
+  }
+
+  /** Stop on the capsule: fail what is under way, and what comes after, until a new task. */
+  private stop(): void {
+    this.stopped = true;
+    const err = new Error(`${STOP_MARKER}: stopped by the person on the phone`);
+    const waiters = this.stopWaiters;
+    this.stopWaiters = [];
+    for (const w of waiters) w(err);
+    stage.stopped();
+  }
+
+  /** Bring nanoMuse to the front, on a chat. */
+  private openApp(thread: string): void {
+    const os = (window as unknown as { __OS__?: { openApp?: (id: string, path?: string) => void; launchApp?: (id: string) => void } }).__OS__;
+    try {
+      if (os?.openApp) os.openApp(manifest.id, threadRoute(thread));
+      else os?.launchApp?.(manifest.id);
+    } catch {
+      // the launcher is not up yet
+    }
+  }
 
   attach(hooks: Hooks): void {
     this.hooks = hooks;
@@ -189,9 +258,24 @@ class MuseBridge {
       name: 'MobileGym',
       platform: 'mobilegym',
       gui: true,
+      capsule: true,
       apps: installedApps(),
-      screen: { width: 360, height: 800 },
+      screen: { width: SCREEN.width, height: SCREEN.height },
     });
+  }
+
+  /** A `task` request: the capsule follows the task. */
+  private task(params: Record<string, unknown>): void {
+    const event = String(params.event ?? '');
+    const text = String(params.text ?? '');
+    if (event === 'begin') {
+      this.stopped = false;
+      stage.begin(text);
+    } else if (event === 'end') {
+      stage.end();
+    } else if (event === 'notice') {
+      stage.notice(text);
+    }
   }
 
   private async serve(msg: { id: string; op: string; params?: Record<string, unknown> }): Promise<void> {
@@ -199,14 +283,33 @@ class MuseBridge {
       this.send({ kind: 'device_result', id: msg.id, ok: false, error: 'GUI operation is turned off on this phone' });
       return;
     }
+    const params = msg.params ?? {};
+    if (msg.op === 'task') {
+      this.task(params);
+      this.send({ kind: 'device_result', id: msg.id, ok: true, result: {} });
+      return;
+    }
+    if (this.stopped) {
+      this.send({ kind: 'device_result', id: msg.id, ok: false, error: `${STOP_MARKER}: stopped by the person on the phone` });
+      return;
+    }
+    // Stop on the capsule fails the request under way at once, whatever the gesture is doing
+    let halt: ((err: Error) => void) | null = null;
+    const halted = new Promise<never>((_, reject) => {
+      halt = reject;
+      this.stopWaiters.push(reject);
+    });
     try {
-      let result: unknown;
-      if (msg.op === 'screen') result = await readScreen();
-      else if (msg.op === 'act') result = await act((msg.params ?? {}) as unknown as ActParams);
+      let work: Promise<unknown>;
+      if (msg.op === 'screen') work = readScreen();
+      else if (msg.op === 'act') work = act(params as unknown as ActParams);
       else throw new Error(`unknown op '${msg.op}'`);
+      const result = await Promise.race([work, halted]);
       this.send({ kind: 'device_result', id: msg.id, ok: true, result });
     } catch (err) {
       this.send({ kind: 'device_result', id: msg.id, ok: false, error: err instanceof Error ? err.message : String(err) });
+    } finally {
+      this.stopWaiters = this.stopWaiters.filter((w) => w !== halt);
     }
   }
 
@@ -215,8 +318,8 @@ class MuseBridge {
     if (msg.kind === 'hello') {
       this.hooks.setLink('online');
       this.announce();
-      const named = (msg as { state: { profile?: { name?: string } } }).state.profile?.name;
-      if (named) agentName = named;
+      const { serverUrl, token } = this.hooks.get();
+      setIdentity(serverUrl, token, (msg as { state: { profile?: { name?: string; avatar?: string } } }).state.profile);
       if (!this.hooks.get().notify) return;
       const pending = (msg as { state: { pending_approvals?: TimelineEvent[] } }).state.pending_approvals ?? [];
       for (const ev of pending) this.notifyFor(ev);
@@ -227,9 +330,20 @@ class MuseBridge {
       return;
     }
     if (msg.kind === 'profile') {
-      const named = (msg as { profile?: { name?: string } }).profile?.name;
-      if (named) agentName = named;
+      const { serverUrl, token } = this.hooks.get();
+      setIdentity(serverUrl, token, (msg as { profile?: { name?: string; avatar?: string } }).profile);
       return;
+    }
+    if (msg.kind === 'event' || msg.kind === 'update') {
+      const ev = (msg as { event: TimelineEvent }).event;
+      if (ev.type === 'approval' || ev.type === 'question') {
+        if (ev.thread) this.lastThread = ev.thread;
+        // while the hands work, the capsule says a tap waits for the card in the chat
+        if (ev.type === 'approval' && stage.active) {
+          if (ev.status === 'pending') stage.approval(ev.summary ?? '');
+          else stage.resume();
+        }
+      }
     }
     if (!this.hooks.get().notify) return;
     if (msg.kind === 'event' || msg.kind === 'update') {
@@ -261,10 +375,11 @@ class MuseBridge {
   private notifyFor(ev: TimelineEvent): void {
     if (this.shown.has(ev.id)) return;
     const isApproval = ev.type === 'approval';
-    const body = isApproval ? [ev.summary, ev.purpose && `For: ${ev.purpose}`].filter(Boolean).join(' — ') : ev.text ?? '';
+    const s = t();
+    const body = isApproval ? [ev.summary, ev.purpose && fmt(s.notify_for, ev.purpose)].filter(Boolean).join(' — ') : ev.text ?? '';
     const item = NotificationService.push({
       appId: manifest.id,
-      title: isApproval ? `${agentName} needs your approval` : `${agentName} has a question`,
+      title: isApproval ? fmt(s.notify_approval, agentName) : fmt(s.notify_question, agentName),
       body: firstLine(body, 200),
       route: threadRoute(ev.thread),
       importance: 'high',

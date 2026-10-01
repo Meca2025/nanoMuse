@@ -165,7 +165,9 @@ async def test_switched_off(web):
     app = create_app(off, manager, client=accounts.http)
     async with app.router.lifespan_context(app):
         c = await client_for(app)
-        assert (await c.get("/web/")).status_code == 404
+        # the web entry is then the phone in the browser: the showcase site
+        r = await c.get("/web/")
+        assert r.status_code == 302 and r.headers["location"] == "http://localhost:8000/"
         r = await c.post("/api/web/code", json={"identifier": "a@example.com"})
         assert r.status_code == 404 and body(r)["error"] == "web_off"
 

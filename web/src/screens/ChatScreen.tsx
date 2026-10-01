@@ -547,6 +547,13 @@ function Composer({
   // previews are object URLs; let them go when the chip goes
   useEffect(() => () => pending.forEach((p) => p.preview?.startsWith("blob:") && URL.revokeObjectURL(p.preview)), [pending]);
 
+  // the desktop's quick-chat shortcut: the window is up, the cursor goes here
+  useEffect(() => {
+    const focus = () => ref.current?.focus();
+    window.addEventListener("nanomuse:quick-chat", focus);
+    return () => window.removeEventListener("nanomuse:quick-chat", focus);
+  }, []);
+
   const addFiles = (list: FileList | File[]) => {
     const files = Array.from(list).slice(0, Math.max(0, 10 - pending.length));
     if (files.length === 0) return;
@@ -772,17 +779,21 @@ export function ThreadList({
   onPick,
   onCleared,
   compact = false,
+  grouped = false,
 }: {
   threads: ThreadMeta[];
   active: string;
   onPick: (id: string) => void;
   onCleared?: () => void;
   compact?: boolean;
+  /** the main chat on its own, then the side chats under their own heading with a + (the desktop's chats column) */
+  grouped?: boolean;
 }) {
   const { state, toast, dispatch } = useStore();
   const t = useT();
   const [title, setTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const newInput = useRef<HTMLInputElement>(null);
   // devices of yours on the hub that a chat can be addressed to
   const devices: HubDevice[] = (state.hub?.devices ?? []).filter((d) => !d.this && d.kind !== "web" && d.online);
   const kindOf = (id: string) => state.hub?.devices.find((d) => d.id === id)?.kind ?? "phone";
@@ -832,10 +843,7 @@ export function ThreadList({
     }
   };
 
-  return (
-    <div>
-      <ul className={cx("divide-y divide-border overflow-hidden", compact ? "rounded-xl" : "rounded-2xl border border-border")}>
-        {threads.map((th) => (
+  const row = (th: ThreadMeta) => (
           <li key={th.id} className={cx("group flex items-center gap-2 px-3", compact ? "py-2 rounded-xl hover:bg-surface-2/60" : "py-2.5", th.id === active && "bg-surface-2/60")}>
             <button type="button" onClick={() => onPick(th.id)} className="flex-1 text-left min-w-0">
               <div className={cx("font-medium truncate flex items-center gap-2", compact ? "text-[13.5px]" : "text-[15px]")}>
@@ -865,8 +873,33 @@ export function ThreadList({
               </button>
             )}
           </li>
-        ))}
-      </ul>
+  );
+  const listCls = cx("divide-y divide-border overflow-hidden", compact ? "rounded-xl" : "rounded-2xl border border-border");
+  const heading = "px-3 pb-1 pt-3 text-[11.5px] font-semibold uppercase tracking-wide text-muted";
+
+  return (
+    <div>
+      {grouped ? (
+        <>
+          <div className={heading}>{t("Main chat")}</div>
+          <ul className={listCls}>{threads.filter((th) => th.id === "main").map(row)}</ul>
+          <div className={cx(heading, "flex items-center justify-between pr-1")}>
+            <span>{t("Side chats")}</span>
+            <button
+              type="button"
+              aria-label={t("New side chat")}
+              onClick={() => newInput.current?.focus()}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+            >
+              <Plus size={15} />
+            </button>
+          </div>
+          <ul className={listCls}>{threads.filter((th) => th.id !== "main").map(row)}</ul>
+          {threads.every((th) => th.id === "main") && <p className="px-3 py-2 text-[12px] text-muted">{t("A side chat keeps one topic apart from the rest.")}</p>}
+        </>
+      ) : (
+        <ul className={listCls}>{threads.map(row)}</ul>
+      )}
       {devices.length > 0 && (
         <div className="mt-4">
           <div className="mb-1.5 text-[12px] font-medium text-muted">{t("Ask one of your devices")}</div>
@@ -887,6 +920,7 @@ export function ThreadList({
       )}
       <div className={cx("flex gap-2", compact ? "mt-3" : "mt-4")}>
         <input
+          ref={newInput}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {

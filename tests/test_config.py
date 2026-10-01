@@ -38,9 +38,13 @@ action = "deny"
     assert s.sentinel.rules[0].action == "deny"
 
     monkeypatch.setenv("NANOMUSE_LLM_MODEL", "other-model")
+    monkeypatch.setenv("NANOMUSE_LLM_IMAGE_MODEL", "qwen-image-3.0")
+    monkeypatch.setenv("NANOMUSE_LLM_VIDEO_BASE_URL", "http://gateway:8000/llm/abc/main")
     monkeypatch.setenv("NANOMUSE_SENTINEL_MODE", "auto")
     s = load_settings(cfg)
     assert s.llm.model == "other-model"
+    assert s.llm.image_model == "qwen-image-3.0"
+    assert s.llm.video_base_url == "http://gateway:8000/llm/abc/main"
     assert s.sentinel.mode == "auto"
 
     # container-style overrides win over values set in the file
