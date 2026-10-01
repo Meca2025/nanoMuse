@@ -34,6 +34,8 @@ const QUICK_SHORTCUT = process.platform === "darwin" ? "Alt+Space" : "CommandOrC
 const screenshotFlag = process.argv.find((a) => a.startsWith("--screenshot="))?.slice("--screenshot=".length);
 /** dev flag: `--stage-demo` plays a scripted hands run into the stage (with --screenshot: captures it) */
 const stageDemo = process.argv.includes("--stage-demo");
+/** `--hidden`: start in the tray, no window — what the login item passes (Settings → Desktop app) */
+const startHidden = process.argv.includes("--hidden");
 
 function log(line: string): void {
   const stamped = `${new Date().toISOString().slice(11, 19)} ${line}`;
@@ -164,9 +166,10 @@ function rememberBounds(win: BrowserWindow): void {
   }
 }
 
-function createMainWindow(): BrowserWindow {
+function createMainWindow(show = true): BrowserWindow {
   const win = new BrowserWindow({
     ...savedBounds(),
+    show,
     minWidth: 720,
     minHeight: 560,
     title: "nanoMuse",
@@ -415,7 +418,8 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.on("app:login-item:set", (_event, on: boolean) => {
       if (!app.isPackaged) return;
       try {
-        app.setLoginItemSettings({ openAtLogin: !!on, openAsHidden: true });
+        // Windows and Linux pass --hidden along; macOS says so in wasOpenedAtLogin instead
+        app.setLoginItemSettings({ openAtLogin: !!on, args: ["--hidden"] });
       } catch (exc) {
         log(`login item: ${String(exc)}`);
       }
@@ -448,7 +452,9 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     buildTray();
-    mainWindow = createMainWindow();
+    // opened by the login item (--hidden), or by macOS at login: the tray only, until asked
+    const atLogin = startHidden || (process.platform === "darwin" && app.getLoginItemSettings().wasOpenedAtLogin);
+    mainWindow = createMainWindow(!atLogin);
 
     if (!globalShortcut.register(STOP_SHORTCUT, () => void stopHands())) log(`could not register ${STOP_SHORTCUT}`);
     if (!globalShortcut.register(SHOW_SHORTCUT, () => showMain())) log(`could not register ${SHOW_SHORTCUT}`);
