@@ -73,6 +73,15 @@
     }
   }
 
+  // A Muse from an earlier visit whose time is up, or that the server no longer knows.
+  function over(s) {
+    return !!(s && s.demo) && (Date.now() / 1000 > s.demo.expiresAt || s.link === "unauthorized");
+  }
+
+  var renewedAt = 0; // when the page started a fresh Muse by itself
+  function renewing() {
+    return renewedAt > 0 && Date.now() - renewedAt < 20000;
+  }
   function adopt() {
     var w = frameWindow();
     var api = w && w.__NANOMUSE__;
@@ -80,6 +89,13 @@
     host = api;
     api.subscribe(function (s) {
       state = s;
+      // Coming back to a Muse that is gone: start a fresh one without being asked (once).
+      if (!renewedAt && over(s)) {
+        renewedAt = Date.now();
+        Promise.resolve(api.reset()).catch(function () {
+          /* the status line says to Start over */
+        });
+      }
       render();
     });
     return true;
@@ -130,8 +146,10 @@
     } else if (!state || !state.configured) {
       text = tr("Starting a Muse for you…", "正在为你启动一个 Muse…");
     } else if (state.demo && Date.now() / 1000 > state.demo.expiresAt) {
-      text = tr("This Muse's time is up — Start over for a new one.", "这个 Muse 的时间到了——点「重新开始」再来一个。");
-      cls += " warn";
+      text = renewing()
+        ? tr("Starting a Muse for you…", "正在为你启动一个 Muse…")
+        : tr("This Muse's time is up — Start over for a new one.", "这个 Muse 的时间到了——点「重新开始」再来一个。");
+      if (!renewing()) cls += " warn";
     } else if (state.link === "unauthorized") {
       text = tr("The session has ended — Start over for a new one.", "会话已结束——点「重新开始」再来一个。");
       cls += " warn";
