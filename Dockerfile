@@ -30,7 +30,7 @@ RUN useradd --create-home --uid 1000 muse \
  && chown -R muse:muse /data /workspace /app
 
 WORKDIR /app
-COPY --chown=muse:muse pyproject.toml README.md README_zh.md LICENSE ./
+COPY --chown=muse:muse pyproject.toml README.md LICENSE ./
 COPY --chown=muse:muse nanomuse ./nanomuse
 COPY --chown=muse:muse config/config.example.toml ./config/config.example.toml
 

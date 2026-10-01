@@ -4,15 +4,15 @@
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh.md">简体中文</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh-TW.md">繁體中文</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_es.md">Español</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_fr.md">Français</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_id.md">Bahasa Indonesia</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ja.md">日本語</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ko.md">한국어</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ru.md">Русский</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_vi.md">Tiếng Việt</a>
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_zh.md">简体中文</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_zh-TW.md">繁體中文</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_es.md">Español</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_fr.md">Français</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_id.md">Bahasa Indonesia</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ja.md">日本語</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ko.md">한국어</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ru.md">Русский</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_vi.md">Tiếng Việt</a>
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 > [!IMPORTANT]
 > **Бесплатно, открыто, некоммерчески — персональный агент для всех.** nanoMuse — проект сообщества, бесплатный навсегда: войдите по номеру телефона или электронной почте, и модель придёт с бесплатным лимитом, который оплачивает разработчик; когда он кончится, подключите свой ключ. Сообщения не хранятся, если вы сами не решите ими поделиться; ничего не продаётся; аккаунт можно удалить в любой момент. **[Попробуйте в браузере](https://nanomuse.cn/web/)** или [скачайте приложение](https://github.com/nano-muse/nanoMuse/releases/latest).
 
-> Эта страница — перевод [английского README](README.md); он остаётся эталоном, в нём новости и полная таблица версий.
+> Эта страница — перевод [английского README](../../README.md); он остаётся эталоном, в нём новости и полная таблица версий.
 
 nanoMuse — открытый персональный агент для каждого вашего устройства: один агент со своим именем и обликом, как [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) от Meta, который делает дела, а не отвечает на вопросы, продолжает работать при закрытом приложении, помнит вас и останавливается спросить перед тем, чего нельзя отменить. Приложение для Android запускает агента целиком **на телефоне**: корневая файловая система Linux, оболочка, браузер, MCP, навыки и задачи по расписанию внутри APK, с моделью, которую вы приносите сами. У него есть «руки» для приложений, у которых никогда не было API, — собственный экран телефона, с вашего разрешения, — и он дотягивается до вашего компьютера: скажите на телефоне, и это будет сделано там. Настольное приложение и веб-версия тоже вышли; iOS и очки — следующие. Свой ключ или стартовый лимит от открытого ретранслятора, GPL-3.0 — и основа, на которой можно собрать собственного Muse.
 
@@ -53,18 +53,18 @@ nanoMuse — открытый персональный агент для каж�
 | **Любое приложение, с API или без** | Большая часть дня проходит в приложениях, у которых никогда не было API. Агент поднимается по лестнице: сначала навык, CLI или сервер MCP, затем страница, полученная с вашим логином, затем встроенный браузер и, если вы разрешите, собственный экран устройства — он смотрит и нажимает так, как сделали бы вы, — с теми же подтверждениями перед оплатой, отправкой или удалением. По умолчанию выключено. |
 | **Каждое устройство** | Один агент, и каждое ваше устройство — это пара рук и входная дверь: скажите на телефоне — произойдёт на ПК; скажите очкам — произойдёт на обоих. Телефон уже управляет вашим компьютером, настольное приложение и веб здесь; iOS и очки — следующие. |
 
-Сравнение с Muse и с OpenMinis — средой выполнения, на которой построено приложение: в [английском README](README.md#compared-with-muse-and-openminis). План и его обоснование: [docs/roadmap.md](docs/roadmap.md).
+Сравнение с Muse и с OpenMinis — средой выполнения, на которой построено приложение: в [английском README](../../README.md#compared-with-muse-and-openminis). План и его обоснование: [docs/roadmap.md](../roadmap.md).
 
 ## Установка
 
-Ничего устанавливать не нужно: войдите на [nanomuse.cn/web](https://nanomuse.cn/web/) по номеру телефона или электронной почте и коду — и у вас будет собственный nanoMuse на сервере проекта, сохраняющийся между визитами; это хорошо для первой пробы, а для каждого дня — приложения для телефона и компьютера ниже, с тем же аккаунтом. Для своих устройств — [загрузки](https://nanomuse.cn/#download): APK для Android, настольное приложение для Windows, macOS и Linux (`nanoMuse-Desktop-<version>-…`), терминальный бинарник (`nanomuse-desktop-terminal-<version>-…`) или `pipx install "git+https://github.com/nano-muse/nanoMuse"` с Python 3.11+. Если загрузки с GitHub у вас не работают, те же файлы лежат на зеркале проекта [nanomuse.cn/dl](https://nanomuse.cn/dl/) (синхронизируется в течение пятнадцати минут после релиза, проверяется по SHA-256); как устройства находят друг друга — в [docs/desktop.md](docs/desktop.md) и [docs/every-device.md](docs/every-device.md). На телефоне:
+Ничего устанавливать не нужно: войдите на [nanomuse.cn/web](https://nanomuse.cn/web/) по номеру телефона или электронной почте и коду — и у вас будет собственный nanoMuse на сервере проекта, сохраняющийся между визитами; это хорошо для первой пробы, а для каждого дня — приложения для телефона и компьютера ниже, с тем же аккаунтом. Для своих устройств — [загрузки](https://nanomuse.cn/#download): APK для Android, настольное приложение для Windows, macOS и Linux (`nanoMuse-Desktop-<version>-…`), терминальный бинарник (`nanomuse-desktop-terminal-<version>-…`) или `pipx install "git+https://github.com/nano-muse/nanoMuse"` с Python 3.11+. Если загрузки с GitHub у вас не работают, те же файлы лежат на зеркале проекта [nanomuse.cn/dl](https://nanomuse.cn/dl/) (синхронизируется в течение пятнадцати минут после релиза, проверяется по SHA-256); как устройства находят друг друга — в [docs/desktop.md](../desktop.md) и [docs/every-device.md](../every-device.md). На телефоне:
 
 1. Скачайте `nanoMuse-<version>-arm64.apk` из [последнего релиза](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 или новее, 64-битный телефон. При желании проверьте: `sha256sum -c nanoMuse-<version>-arm64.apk.sha256`.
 2. Откройте файл. Android один раз спросит разрешение на установку; все версии подписаны одним ключом, поэтому обновления ставятся поверх предыдущей и сохраняют ваши данные.
-3. Подключите модель. *Войти — бесплатно*: номер телефона (код придёт по SMS) или электронная почта — и у агента есть бесплатный лимит на [nanoMuse Cloud](docs/cloud.md): без ключа, без оплаты; страница аккаунта показывает, сколько осталось и как лимит растёт. Когда он кончится, подключите свой: [Alibaba Cloud Bailian](docs/own-key.md) — минуты за две, любая OpenAI-совместимая конечная точка с вашим ключом или один из OAuth-входов, встроенных в приложение. Затем, при желании, два разрешения, позволяющие агенту пользоваться приложениями телефона (можно пропустить), и первый разговор: он спросит, как вас называть, и выберет себе имя.
+3. Подключите модель. *Войти — бесплатно*: номер телефона (код придёт по SMS) или электронная почта — и у агента есть бесплатный лимит на [nanoMuse Cloud](../cloud.md): без ключа, без оплаты; страница аккаунта показывает, сколько осталось и как лимит растёт. Когда он кончится, подключите свой: [Alibaba Cloud Bailian](../own-key.md) — минуты за две, любая OpenAI-совместимая конечная точка с вашим ключом или один из OAuth-входов, встроенных в приложение. Затем, при желании, два разрешения, позволяющие агенту пользоваться приложениями телефона (можно пропустить), и первый разговор: он спросит, как вас называть, и выберет себе имя.
 4. Необязательно — *Настройки → Модели изображений и видео*: модель изображений (qwen-image-3.0 в Alibaba Cloud Model Studio, gpt-image-1 или любой провайдер с конечной точкой images OpenAI) позволяет агенту менять облик и рисовать; модель видео (wan2.2-i2v-flash в Model Studio) оживляет облик. У Muse это встроено; nanoMuse использует ваши модели, и агент скажет, если какой-то не хватает.
 
-Приложение проверяет релизы этого репозитория на наличие обновлений. Заметки к каждой версии — в [docs/releases/](docs/releases/) и [CHANGELOG](CHANGELOG.md).
+Приложение проверяет релизы этого репозитория на наличие обновлений. Заметки к каждой версии — в [docs/releases/](../releases) и [CHANGELOG](../../CHANGELOG.md).
 
 ## Что он умеет
 
@@ -82,15 +82,15 @@ nanoMuse — открытый персональный агент для каж�
 
 ## Версии
 
-По одной небольшой версии на этап, каждая — релиз на GitHub с APK. Новости и полная таблица версий — в [английском README](README.md#versions); план и его обоснование — в [docs/roadmap.md](docs/roadmap.md); заметки к каждой версии — в [docs/releases/](docs/releases/) и [CHANGELOG](CHANGELOG.md). Дальше по порядку: iOS; веб-версия на вашей собственной машине (виртуалка, домашний сервер); очки.
+По одной небольшой версии на этап, каждая — релиз на GitHub с APK. Новости и полная таблица версий — в [английском README](../../README.md#versions); план и его обоснование — в [docs/roadmap.md](../roadmap.md); заметки к каждой версии — в [docs/releases/](../releases) и [CHANGELOG](../../CHANGELOG.md). Дальше по порядку: iOS; веб-версия на вашей собственной машине (виртуалка, домашний сервер); очки.
 
 ## Участие
 
-Сообщите об ошибке, попросите функцию, пришлите pull request — каждый шаг приближает персонального агента к каждому: **[открыть issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [спросить или показать в Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [поставить звезду репозиторию](https://github.com/nano-muse/nanoMuse)**. Как устроены бесплатный лимит, свой ключ и ваши данные: [docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md). Настройка сборки, соглашения (`com.openminis.app` остаётся, новый код — в `io.github.nanomuse.*`, `// nanoMuse:` на правках upstream, `Signed-off-by` в коммитах) и порядок выпуска релизов: [CONTRIBUTING.md](CONTRIBUTING.md).
+Сообщите об ошибке, попросите функцию, пришлите pull request — каждый шаг приближает персонального агента к каждому: **[открыть issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [спросить или показать в Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [поставить звезду репозиторию](https://github.com/nano-muse/nanoMuse)**. Как устроены бесплатный лимит, свой ключ и ваши данные: [docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md). Настройка сборки, соглашения (`com.openminis.app` остаётся, новый код — в `io.github.nanomuse.*`, `// nanoMuse:` на правках upstream, `Signed-off-by` в коммитах) и порядок выпуска релизов: [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 ## Благодарности
 
-nanoMuse стоит на работе других людей; условия — в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Приложение построено на [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 — Linux под proot, оболочка, браузер, MCP, навыки, задачи по расписанию, исполнитель специальных возможностей; песочница — от [proot](https://github.com/proot-me/proot) и [Alpine Linux](https://alpinelinux.org/).
+nanoMuse стоит на работе других людей; условия — в [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md). Приложение построено на [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 — Linux под proot, оболочка, браузер, MCP, навыки, задачи по расписанию, исполнитель специальных возможностей; песочница — от [proot](https://github.com/proot-me/proot) и [Alpine Linux](https://alpinelinux.org/).
 
 ## Отказ от ответственности
 
@@ -98,4 +98,4 @@ nanoMuse — независимый проект сообщества. Он не
 
 ## Лицензия
 
-[GPL-3.0-or-later](LICENSE). Приложение для Android основано на OpenMinis 1.13 (GPL-3.0) и изменяется с 2026-09-24; см. [NOTICE](NOTICE) и [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Ранние версии Python-линии выпускались под MIT (тег `pre-openminis`).
+[GPL-3.0-or-later](../../LICENSE). Приложение для Android основано на OpenMinis 1.13 (GPL-3.0) и изменяется с 2026-09-24; см. [NOTICE](../../NOTICE) и [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md). Ранние версии Python-линии выпускались под MIT (тег `pre-openminis`).

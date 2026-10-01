@@ -4,15 +4,15 @@
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh.md">简体中文</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_zh-TW.md">繁體中文</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_es.md">Español</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_fr.md">Français</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_id.md">Bahasa Indonesia</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ja.md">日本語</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ko.md">한국어</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_ru.md">Русский</a> |
-  <a href="https://github.com/nano-muse/nanoMuse/blob/main/README_vi.md">Tiếng Việt</a>
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_zh.md">简体中文</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_zh-TW.md">繁體中文</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_es.md">Español</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_fr.md">Français</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_id.md">Bahasa Indonesia</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ja.md">日本語</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ko.md">한국어</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ru.md">Русский</a> |
+  <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_vi.md">Tiếng Việt</a>
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 > [!IMPORTANT]
 > **Gratis, open source, nirlaba — agen pribadi untuk semua orang.** nanoMuse adalah proyek komunitas, gratis selamanya: masuk dengan nomor telepon atau alamat e-mail dan modelnya datang dengan kuota gratis yang dibayar oleh pengembang; kalau habis, pakai kunci API-mu sendiri. Pesan tidak disimpan kecuali kamu memilih untuk menyumbangkannya; tidak ada yang dijual; hapus akun kapan saja. **[Coba di browser](https://nanomuse.cn/web/)**, atau [unduh aplikasinya](https://github.com/nano-muse/nanoMuse/releases/latest).
 
-> Halaman ini adalah terjemahan dari [README berbahasa Inggris](README.md), yang menjadi acuan dan memuat berita serta tabel versi lengkap.
+> Halaman ini adalah terjemahan dari [README berbahasa Inggris](../../README.md), yang menjadi acuan dan memuat berita serta tabel versi lengkap.
 
 nanoMuse adalah agen pribadi open source untuk setiap perangkat yang kamu miliki: satu agen dengan nama dan wajahnya sendiri, seperti [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) dari Meta, yang mengerjakan sesuatu alih-alih sekadar menjawab pertanyaan, terus bekerja saat aplikasi ditutup, mengingatmu, dan berhenti untuk bertanya sebelum melakukan apa pun yang tidak bisa kamu batalkan. Aplikasi Android menjalankan seluruh agen **di ponsel**: sistem berkas Linux, shell, browser, MCP, skill, dan tugas terjadwal ada di dalam APK, dengan model yang kamu bawa sendiri. Ia punya tangan untuk aplikasi yang tidak pernah punya API — layar ponsel itu sendiri, dengan izinmu — dan menjangkau komputermu: katakan di ponsel, selesai dikerjakan di sana. Aplikasi desktop dan versi web juga sudah tersedia; iOS dan kacamata menyusul. Kunci API-mu sendiri atau kuota awal dari relay terbuka, GPL-3.0 — dan fondasi untuk membangun Muse-mu sendiri.
 
@@ -53,18 +53,18 @@ Empat hal mendefinisikan proyek ini.
 | **Aplikasi apa pun, ada API atau tidak** | Sebagian besar hari kita berjalan lewat aplikasi yang tidak pernah punya API. Agen menaiki tangga — skill, CLI, atau server MCP dulu, lalu halaman yang diambil dengan login-mu, lalu browser di dalam aplikasi, dan, kalau kamu izinkan, layar perangkat itu sendiri, melihat dan mengetuk seperti yang kamu lakukan — dengan persetujuan yang sama sebelum membayar, mengirim, atau menghapus. Nonaktif secara bawaan. |
 | **Setiap perangkat** | Satu agen, dan setiap perangkat yang kamu miliki adalah sepasang tangan dan pintu masuk: katakan di ponsel, terjadi di PC-mu; katakan ke kacamatamu, terjadi di keduanya. Ponsel sudah bisa mengendalikan komputermu, aplikasi desktop dan web sudah ada; iOS dan kacamata menyusul. |
 
-Perbandingan dengan Muse dan dengan OpenMinis, runtime tempat aplikasi ini dibangun: di [README berbahasa Inggris](README.md#compared-with-muse-and-openminis). Rencana dan alasannya: [docs/roadmap.md](docs/roadmap.md).
+Perbandingan dengan Muse dan dengan OpenMinis, runtime tempat aplikasi ini dibangun: di [README berbahasa Inggris](../../README.md#compared-with-muse-and-openminis). Rencana dan alasannya: [docs/roadmap.md](../roadmap.md).
 
 ## Pemasangan
 
-Tidak perlu memasang apa pun: masuk di [nanomuse.cn/web](https://nanomuse.cn/web/) dengan nomor telepon atau e-mail dan sebuah kode, dan kamu mendapat nanoMuse milikmu sendiri di server proyek, tersimpan antar kunjungan — cocok untuk mencoba pertama kali; untuk sehari-hari, aplikasi ponsel dan desktop di bawah ini, dengan akun yang sama. Untuk perangkatmu sendiri — [unduhan](https://nanomuse.cn/#download): APK Android, aplikasi desktop untuk Windows, macOS, dan Linux (`nanoMuse-Desktop-<version>-…`), biner terminal (`nanomuse-desktop-terminal-<version>-…`), atau `pipx install "git+https://github.com/nano-muse/nanoMuse"` dengan Python 3.11+. Kalau unduhan GitHub gagal di tempatmu, berkas yang sama ada di cermin proyek, [nanomuse.cn/dl](https://nanomuse.cn/dl/) (disinkronkan dalam lima belas menit setelah rilis, diperiksa dengan SHA-256); [docs/desktop.md](docs/desktop.md) dan [docs/every-device.md](docs/every-device.md) menjelaskan bagaimana semuanya saling terhubung. Di ponsel:
+Tidak perlu memasang apa pun: masuk di [nanomuse.cn/web](https://nanomuse.cn/web/) dengan nomor telepon atau e-mail dan sebuah kode, dan kamu mendapat nanoMuse milikmu sendiri di server proyek, tersimpan antar kunjungan — cocok untuk mencoba pertama kali; untuk sehari-hari, aplikasi ponsel dan desktop di bawah ini, dengan akun yang sama. Untuk perangkatmu sendiri — [unduhan](https://nanomuse.cn/#download): APK Android, aplikasi desktop untuk Windows, macOS, dan Linux (`nanoMuse-Desktop-<version>-…`), biner terminal (`nanomuse-desktop-terminal-<version>-…`), atau `pipx install "git+https://github.com/nano-muse/nanoMuse"` dengan Python 3.11+. Kalau unduhan GitHub gagal di tempatmu, berkas yang sama ada di cermin proyek, [nanomuse.cn/dl](https://nanomuse.cn/dl/) (disinkronkan dalam lima belas menit setelah rilis, diperiksa dengan SHA-256); [docs/desktop.md](../desktop.md) dan [docs/every-device.md](../every-device.md) menjelaskan bagaimana semuanya saling terhubung. Di ponsel:
 
 1. Unduh `nanoMuse-<version>-arm64.apk` dari [rilis terbaru](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 atau lebih baru, ponsel 64-bit. Verifikasi dengan `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` kalau mau.
 2. Buka berkasnya. Android akan bertanya sekali untuk mengizinkan pemasangan; setiap versi ditandatangani dengan kunci yang sama, jadi pembaruan terpasang di atas versi sebelumnya dan datamu tetap ada.
-3. Sambungkan model. *Masuk — gratis*: nomor telepon (kode dikirim lewat SMS) atau alamat e-mail, dan agen mendapat kuota gratis di [nanoMuse Cloud](docs/cloud.md) — tanpa kunci, tanpa bayar; halaman akun menunjukkan sisa kuota dan cara bertambahnya. Kalau habis, bawa milikmu: [Alibaba Cloud Bailian](docs/own-key.md) dalam sekitar dua menit, endpoint apa pun yang kompatibel dengan OpenAI dengan kuncimu, atau salah satu login OAuth bawaan aplikasi. Lalu, kalau mau, dua izin yang membiarkan agen memakai aplikasi di ponselmu (bisa dilewati), dan percakapan pertama, yang menanyakan panggilanmu dan membiarkan agen memilih namanya sendiri.
+3. Sambungkan model. *Masuk — gratis*: nomor telepon (kode dikirim lewat SMS) atau alamat e-mail, dan agen mendapat kuota gratis di [nanoMuse Cloud](../cloud.md) — tanpa kunci, tanpa bayar; halaman akun menunjukkan sisa kuota dan cara bertambahnya. Kalau habis, bawa milikmu: [Alibaba Cloud Bailian](../own-key.md) dalam sekitar dua menit, endpoint apa pun yang kompatibel dengan OpenAI dengan kuncimu, atau salah satu login OAuth bawaan aplikasi. Lalu, kalau mau, dua izin yang membiarkan agen memakai aplikasi di ponselmu (bisa dilewati), dan percakapan pertama, yang menanyakan panggilanmu dan membiarkan agen memilih namanya sendiri.
 4. Opsional — *Pengaturan → Model gambar & video*: model gambar (qwen-image-3.0 di Alibaba Cloud Model Studio, gpt-image-1, atau penyedia mana pun dengan endpoint images OpenAI) membuat agen bisa mengganti wajah dan menggambar; model video (wan2.2-i2v-flash di Model Studio) membuat wajahnya bergerak. Muse punya semua itu bawaan; nanoMuse memakai milikmu, dan agen memberi tahu kalau ada yang belum ada.
 
-Aplikasi memeriksa rilis di repositori ini untuk pembaruan. Catatan rilis setiap versi ada di [docs/releases/](docs/releases/) dan [CHANGELOG](CHANGELOG.md).
+Aplikasi memeriksa rilis di repositori ini untuk pembaruan. Catatan rilis setiap versi ada di [docs/releases/](../releases) dan [CHANGELOG](../../CHANGELOG.md).
 
 ## Apa yang dilakukannya
 
@@ -82,15 +82,15 @@ Semuanya berjalan di ponsel; bagian lain dari OpenMinis — terminal, browser di
 
 ## Versi
 
-Satu versi kecil untuk setiap tahap, masing-masing sebuah rilis GitHub dengan APK. Berita dan tabel versi lengkap ada di [README berbahasa Inggris](README.md#versions); rencana dan alasannya di [docs/roadmap.md](docs/roadmap.md); catatan setiap versi di [docs/releases/](docs/releases/) dan [CHANGELOG](CHANGELOG.md). Setelah itu, berurutan: iOS; versi web di mesinmu sendiri (VM, server rumahan); kacamata.
+Satu versi kecil untuk setiap tahap, masing-masing sebuah rilis GitHub dengan APK. Berita dan tabel versi lengkap ada di [README berbahasa Inggris](../../README.md#versions); rencana dan alasannya di [docs/roadmap.md](../roadmap.md); catatan setiap versi di [docs/releases/](../releases) dan [CHANGELOG](../../CHANGELOG.md). Setelah itu, berurutan: iOS; versi web di mesinmu sendiri (VM, server rumahan); kacamata.
 
 ## Berkontribusi
 
-Laporkan bug, minta fitur, kirim pull request — masing-masing membawa agen pribadi lebih dekat ke jangkauan semua orang: **[buka issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [bertanya atau berbagi di Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [beri bintang repositori ini](https://github.com/nano-muse/nanoMuse)**. Cara kerja kuota gratis, kunci API-mu sendiri, dan datamu: [docs/cloud.md](docs/cloud.md) · [docs/own-key.md](docs/own-key.md) · [docs/privacy.md](docs/privacy.md). Penyiapan build, konvensi (`com.openminis.app` tetap, kode baru di `io.github.nanomuse.*`, `// nanoMuse:` pada perubahan upstream, `Signed-off-by` pada commit), dan cara rilis dibuat: [CONTRIBUTING.md](CONTRIBUTING.md).
+Laporkan bug, minta fitur, kirim pull request — masing-masing membawa agen pribadi lebih dekat ke jangkauan semua orang: **[buka issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [bertanya atau berbagi di Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [beri bintang repositori ini](https://github.com/nano-muse/nanoMuse)**. Cara kerja kuota gratis, kunci API-mu sendiri, dan datamu: [docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md). Penyiapan build, konvensi (`com.openminis.app` tetap, kode baru di `io.github.nanomuse.*`, `// nanoMuse:` pada perubahan upstream, `Signed-off-by` pada commit), dan cara rilis dibuat: [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 ## Ucapan terima kasih
 
-nanoMuse berdiri di atas karya orang lain; [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) memuat ketentuannya. Aplikasi ini dibangun di atas [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 — Linux via proot, shell, browser, MCP, skill, tugas terjadwal, eksekutor aksesibilitas; sandbox-nya berasal dari [proot](https://github.com/proot-me/proot) dan [Alpine Linux](https://alpinelinux.org/).
+nanoMuse berdiri di atas karya orang lain; [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) memuat ketentuannya. Aplikasi ini dibangun di atas [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 — Linux via proot, shell, browser, MCP, skill, tugas terjadwal, eksekutor aksesibilitas; sandbox-nya berasal dari [proot](https://github.com/proot-me/proot) dan [Alpine Linux](https://alpinelinux.org/).
 
 ## Penafian
 
@@ -98,4 +98,4 @@ nanoMuse adalah proyek komunitas independen. Ia tidak berafiliasi dengan, tidak 
 
 ## Lisensi
 
-[GPL-3.0-or-later](LICENSE). Aplikasi Android berbasis OpenMinis 1.13 (GPL-3.0), dimodifikasi sejak 2026-09-24; lihat [NOTICE](NOTICE) dan [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Versi-versi awal dari jalur Python dirilis di bawah MIT (tag `pre-openminis`).
+[GPL-3.0-or-later](../../LICENSE). Aplikasi Android berbasis OpenMinis 1.13 (GPL-3.0), dimodifikasi sejak 2026-09-24; lihat [NOTICE](../../NOTICE) dan [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md). Versi-versi awal dari jalur Python dirilis di bawah MIT (tag `pre-openminis`).
