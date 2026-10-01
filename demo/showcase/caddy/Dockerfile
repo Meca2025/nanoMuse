@@ -2,7 +2,7 @@
 # certificate the per-session hostnames need), the Cloudflare IP-ranges module (so that behind
 # Cloudflare's proxy the visitor's address is still the visitor's), the built MobileGym with
 # the nanoMuse app installed and pointed at the gateway (as /phone.html), and the page around
-# the phone (site/page/) at /.
+# the phone (site/page/, with MobileGym's own gesture keys and State Builder) at /.
 #
 # Build context is the repository root (see docker-compose.yml), so the nanoMuse app module can
 # be copied straight from demo/mobilegym/apps/nanoMuse, and the page from demo/showcase/site.
@@ -24,8 +24,10 @@ RUN npm ci --no-audit --no-fund \
  && npm install --no-save --no-audit --no-fund modern-screenshot@^4.7.0 \
  && VITE_NANOMUSE_DEMO="${NANOMUSE_DEMO}" npm run build \
  && mv dist/index.html dist/phone.html
-COPY demo/showcase/site/page dist/page
-RUN cp dist/page/index.html dist/index.html
+# the page at /, with MobileGym's own chrome (gesture keys, State Builder, power) composed in
+COPY demo/showcase/site/page /src/site/page
+COPY demo/showcase/site/compose.mjs /src/site/compose.mjs
+RUN node /src/site/compose.mjs /src/mobilegym /src/site/page dist
 
 FROM caddy:2-builder AS caddy-build
 # a Go module mirror for networks where proxy.golang.org is slow, e.g. GOPROXY=https://goproxy.cn,direct

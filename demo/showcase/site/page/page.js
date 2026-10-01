@@ -1,12 +1,14 @@
 // The page around the phone: the language, the status line, the lines to try, and the two
-// buttons. The phone is MobileGym in a frame on this origin; the nanoMuse app on it exposes
-// window.__NANOMUSE__ on that frame's window (demo/mobilegym/apps/nanoMuse/host.ts), which is
-// how a tap here becomes text in the chat there.
+// buttons. The phone is MobileGym in a frame on this origin, booted and framed by MobileGym's own
+// scripts (state-builder.js powers it on into #demo-frame and runs the State Builder; boot-hero.js
+// runs the gesture keys and the power button). The nanoMuse app on the phone exposes
+// window.__NANOMUSE__ on the frame's window (demo/mobilegym/apps/nanoMuse/host.ts), which is how
+// a tap here becomes text in the chat there.
 (function () {
   "use strict";
 
   var root = document.documentElement;
-  var phone = document.getElementById("phone");
+  var frame = document.getElementById("demo-frame");
   var status = document.getElementById("status");
   var lookGroup = document.getElementById("group-look");
 
@@ -40,17 +42,24 @@
     })
     .then(function (i) {
       info = i;
-      if (i && !i.image_model && lookGroup) {
-        // no image model on this showcase: the lines stay visible, but say why they will not draw
-        lookGroup.classList.add("off");
-        lookGroup.querySelectorAll(".chip").forEach(function (b) {
-          b.disabled = true;
-        });
+      if (i && lookGroup) {
         var why = lookGroup.querySelector(".why");
-        if (why) {
+        if (!i.image_model) {
+          // no image model on this showcase: the lines stay visible, but say why they will not draw
+          lookGroup.classList.add("off");
+          lookGroup.querySelectorAll(".chip").forEach(function (b) {
+            b.disabled = true;
+          });
+          if (why) {
+            why.innerHTML =
+              '<i class="en">This showcase has no image model, so the Muse keeps its dragon look here. Your own nanoMuse draws.</i>' +
+              '<i class="zh">这个展示站没有配图像模型，这里的 Muse 就一直是小龙的样子。你自己装的 nanoMuse 可以画。</i>';
+          }
+        } else if (!i.video_model && why) {
+          // pictures but no clips: the face will not move here
           why.innerHTML =
-            '<i class="en">This showcase has no image model, so the Muse keeps its dragon look here. Your own nanoMuse draws.</i>' +
-            '<i class="zh">这个展示站没有配图像模型，这里的 Muse 就一直是小龙的样子。你自己装的 nanoMuse 可以画。</i>';
+            '<i class="en">Describe it and the Muse draws itself — four to pick from, then its poses.</i>' +
+            '<i class="zh">说一句，它就把自己画出来：四张候选，选一张，再补齐表情。</i>';
         }
       }
       render();
@@ -59,19 +68,28 @@
       /* the status line manages without */
     });
 
-  // ---- the phone's nanoMuse app ---------------------------------------------------------
-  var host = null; // window.__NANOMUSE__ of the frame
-  var state = null; // what it last told us
-  var launched = false;
-  var flash = null; // a short message in the status line, over the regular one
-
-  function frameWindow() {
+  // ---- the phone -----------------------------------------------------------------------
+  // state-builder.js puts the phone's frame into #demo-frame when the boot button is pressed, and
+  // the boot button back when Power off is. The page presses the button for the visitor once.
+  function phoneWindow() {
+    var f = frame.querySelector("iframe");
     try {
-      return phone.contentWindow;
+      return f ? f.contentWindow : null;
     } catch (e) {
       return null;
     }
   }
+  function powerOn() {
+    var btn = document.getElementById("demo-boot-btn");
+    if (btn) btn.click();
+  }
+
+  // ---- the phone's nanoMuse app ---------------------------------------------------------
+  var hostWindow = null; // the frame's window the host below belongs to
+  var host = null; // window.__NANOMUSE__ of the frame
+  var state = null; // what it last told us
+  var launched = false;
+  var flash = null; // a short message in the status line, over the regular one
 
   // A Muse from an earlier visit whose time is up, or that the server no longer knows.
   function over(s) {
@@ -82,12 +100,13 @@
   function renewing() {
     return renewedAt > 0 && Date.now() - renewedAt < 20000;
   }
-  function adopt() {
-    var w = frameWindow();
+  function adopt(w) {
     var api = w && w.__NANOMUSE__;
     if (!api || host) return !!host;
     host = api;
+    hostWindow = w;
     api.subscribe(function (s) {
+      if (host !== api) return; // a phone that was powered off since
       state = s;
       // Coming back to a Muse that is gone: start a fresh one without being asked (once).
       if (!renewedAt && over(s)) {
@@ -100,11 +119,17 @@
     });
     return true;
   }
+  function forget() {
+    host = null;
+    hostWindow = null;
+    state = null;
+    launched = false;
+    render();
+  }
 
   // Bring nanoMuse to the front once the simulated phone has booted (a beat after
   // __OS__ appears, so the launcher is there to animate from).
-  function launch() {
-    var w = frameWindow();
+  function launch(w) {
     if (launched || !host || !w || !w.__OS__) return;
     launched = true;
     setTimeout(function () {
@@ -116,18 +141,43 @@
     }, 1200);
   }
 
-  function watch() {
-    var tries = 0;
-    var timer = setInterval(function () {
-      tries += 1;
-      adopt();
-      launch();
-      if ((host && launched) || tries > 150) clearInterval(timer);
-    }, 200);
+  // The phone comes and goes (Power off, Click to start); follow whichever frame is there.
+  setInterval(function () {
+    var w = phoneWindow();
+    if (!w) {
+      if (host) forget();
+      return;
+    }
+    if (host && hostWindow !== w) forget();
+    adopt(w);
+    launch(w);
+  }, 250);
+
+  // ---- the State Builder's drawer: beside the dock, level with the phone -------------------
+  // MobileGym's stylesheet places the drawer assuming the phone is centred in the row; here the
+  // panel shares the row, so the drawer follows the phone instead. Below 1280px their stylesheet
+  // puts the drawer into the flow under the phone, and this leaves it alone.
+  var drawer = document.getElementById("state-drawer");
+  var layout = document.querySelector(".demo-layout");
+  var rig = document.querySelector(".phone-rig");
+  function placeDrawer() {
+    if (!drawer || !layout || !rig) return;
+    if (window.innerWidth < 1280) {
+      drawer.style.left = "";
+      drawer.style.top = "";
+      return;
+    }
+    var l = layout.getBoundingClientRect();
+    var r = rig.getBoundingClientRect(); // the phone as drawn (scaled to the viewport's height)
+    // phone's right edge, the dock (14px gap, ~50px wide) and another 14px, as on their page
+    drawer.style.left = Math.round(r.right - l.left + 78) + "px";
+    drawer.style.top = Math.round(r.top - l.top) + "px";
   }
-  phone.addEventListener("load", watch);
-  // the frame may have loaded before this script ran
-  if (frameWindow() && frameWindow().document && frameWindow().document.readyState === "complete") watch();
+  if (drawer) {
+    new MutationObserver(placeDrawer).observe(drawer, { attributes: true, attributeFilter: ["data-open"] });
+    window.addEventListener("resize", placeDrawer);
+    placeDrawer();
+  }
 
   // ---- the status line ------------------------------------------------------------------
   function minutesLeft() {
@@ -141,6 +191,8 @@
     if (flash) {
       text = flash;
       cls += " flash";
+    } else if (!phoneWindow()) {
+      text = tr("The phone is off — Click to start.", "手机关着——点屏幕上的「Click to start」开机。");
     } else if (!host) {
       text = tr("Starting the phone…", "手机启动中…");
     } else if (!state || !state.configured) {
@@ -188,6 +240,11 @@
     chip.addEventListener("click", function () {
       var text = lang() === "zh" ? chip.getAttribute("data-zh") : chip.getAttribute("data-en");
       if (!text) return;
+      if (!phoneWindow()) {
+        powerOn();
+        say(tr("Turning the phone on; one moment.", "正在开机，稍等一下。"));
+        return;
+      }
       if (!host) {
         say(tr("The phone is still starting; one moment.", "手机还在启动，稍等一下。"));
         return;
@@ -215,7 +272,8 @@
   });
 
   document.getElementById("open").addEventListener("click", function () {
-    if (host) host.open();
+    if (!phoneWindow()) powerOn();
+    else if (host) host.open();
   });
   document.getElementById("reset").addEventListener("click", function () {
     if (!host) return;
@@ -233,4 +291,6 @@
   });
 
   render();
+  // the phone turns itself on; a beat after the page is there, so the switch-on is seen
+  setTimeout(powerOn, 400);
 })();

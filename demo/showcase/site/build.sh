@@ -22,8 +22,8 @@ cd "$checkout"
 VITE_NANOMUSE_DEMO="$gateway" npm run build
 rm -rf "$here/dist"
 cp -R dist "$here/dist"
-# the phone moves to /phone.html (its assets keep their absolute paths); the page takes /
+# the phone moves to /phone.html (its assets keep their absolute paths); the page takes /, with
+# MobileGym's own chrome (gesture keys, State Builder, power) composed in from the checkout
 mv "$here/dist/index.html" "$here/dist/phone.html"
-cp -R "$here/page" "$here/dist/page"
-cp "$here/page/index.html" "$here/dist/index.html"
+node "$here/compose.mjs" "$checkout" "$here/page" "$here/dist"
 echo "site built: $here/dist (gateway at $gateway)"
