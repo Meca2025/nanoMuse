@@ -136,8 +136,9 @@ export default function App() {
             {state.tab === "avatar" && <AvatarStudioScreen />}
           </Suspense>
         </main>
-        {/* lite: the chat is the app; the other screens stay reachable behind the avatar */}
-        <nav className={cx("safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5 wide:hidden", state.lite && "hidden")}>
+        {/* lite (the phone in the showcase): the phone layout whatever the width — the tabs the
+            Android app has, no sidebar; only the first-run setup and the desktop hints are off */}
+        <nav className={cx("safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5", !state.lite && "wide:hidden")}>
         <ul className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/70 bg-surface p-1.5 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.18)]">
           {TABS.map((tab) => {
             const active = state.tab === tab.id;

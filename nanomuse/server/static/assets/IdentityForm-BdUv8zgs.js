@@ -1,4 +1,4 @@
-import{c as N,a as b,r as x,j as a,a5 as M,d as m}from"./index-B-_xYjzw.js";import{b as v}from"./AvatarPicker-BW0vVG3m.js";/**
+import{c as N,a as b,r as x,j as a,a5 as M,d as m}from"./index-DaIFPQ3K.js";import{b as v}from"./AvatarPicker-CxlEl37N.js";/**
  * @license lucide-react v0.577.0 - ISC
  *
  * This source code is licensed under the ISC license.

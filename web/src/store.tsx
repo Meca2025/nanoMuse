@@ -108,9 +108,10 @@ export interface AppState {
   /** The avatar studio's session as the runtime last reported it (null until one runs). */
   studio: StudioSession | null;
   /**
-   * `?ui=lite`: the chat alone, as the app is shown inside the simulated phone of the showcase
-   * (demo/mobilegym) — no tab bar, no first-run setup, the rest behind the avatar. Kept for
-   * the tab (sessionStorage) so a reload inside the frame stays lite.
+   * `?ui=lite`: the app as it is shown inside the simulated phone of the showcase
+   * (demo/mobilegym) — the phone layout with its tabs at any width, no sidebar, no first-run
+   * setup and no desktop hints. Kept for the tab (sessionStorage) so a reload inside the frame
+   * stays lite.
    */
   lite: boolean;
 }
