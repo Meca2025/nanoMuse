@@ -54,6 +54,8 @@ function callKey(action: string | undefined): Words {
       return 'incomingOpen'
     case 'screen':
       return 'incomingScreen'
+    case 'task':
+      return 'incomingTask'
     default:
       return 'incomingOther'
   }

@@ -40,6 +40,7 @@ import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './ac
 import { HubClient, HubError, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type RelayModel } from './relay.ts'
+import { TaskRunner } from './task.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -139,6 +140,8 @@ interface State {
   deviceName?: string
   /** Absent means on — the runtime's default too. */
   remoteControl?: boolean
+  /** The session each other device's conversation lives in (`<device id>\n<conversation>` → session id). */
+  taskSessions?: Record<string, string>
 }
 
 /** Tool names whose calls the capsule follows. */
@@ -164,6 +167,8 @@ export default class NanomuseCloud extends Service {
   private notices: Notice[] = []
   private noticeSeq = 0
   private signedInCache = false
+  /** Tasks from other devices, once the session API is up. */
+  private tasks: TaskRunner | undefined
 
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'nanomuseCloud')
@@ -215,6 +220,35 @@ export default class NanomuseCloud extends Service {
     for (const action of REMOTE_ACTIONS) {
       this.hub.handle(action, (args, call) => this.remote(action, args, call.from.name || 'a device'))
     }
+    // A task from another device runs in a dsh session here; needs the session API, so only once it is up.
+    this.ctx.inject(['sessionController', 'approval'], (ctx) => {
+      const runner = new TaskRunner(ctx, {
+        deviceName: () => this.deviceName(),
+        log: (level, text) => this.ctx.logger[level](text),
+        notice: (from, text) => this.notice('call', from, '', text, 'task'),
+        recall: (key) => this.state.taskSessions?.[key],
+        remember: (key, sessionId) => {
+          this.state.taskSessions = { ...this.state.taskSessions, [key]: sessionId }
+          void this.writeState().catch((error: unknown) => this.ctx.logger.warn('nanomuse: state write failed: %s', message(error)))
+        },
+      })
+      this.tasks = runner
+      ctx.effect(() => runner.attach(), 'nanomuse cloud: tasks')
+      ctx.effect(
+        () =>
+          this.hub.handle('task', (args, call) => {
+            if (!this.remoteControl) throw new HubError('not_allowed', `${this.deviceName()} is set not to be operated from other devices`)
+            return runner.task(args, call)
+          }),
+        'nanomuse cloud: task',
+      )
+      ctx.effect(() => this.hub.handle('stop', (args, call) => runner.stop(args, call)), 'nanomuse cloud: stop')
+      ctx.effect(() => this.hub.handle('approve', (args) => runner.approve(args)), 'nanomuse cloud: approve')
+      ctx.effect(() => () => {
+        this.tasks = undefined
+      }, 'nanomuse cloud: tasks off')
+      if (this.hub.connected) this.hub.restart()
+    })
 
     this.ctx.inject(['webServer'], (ctx) => {
       ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: API_PREFIX, handler: this.handle }), 'nanomuse cloud: api')
@@ -464,7 +498,13 @@ export default class NanomuseCloud extends Service {
 
   /** The actions this computer announces: always `info` and `notify`, the rest with remote control on. */
   private actions(): string[] {
-    return this.remoteControl ? [...ACTIONS, ...REMOTE_ACTIONS] : [...ACTIONS]
+    const out = [...ACTIONS]
+    if (this.tasks) out.push('approve')
+    if (this.remoteControl) {
+      out.push(...REMOTE_ACTIONS)
+      if (this.tasks) out.push('task', 'stop')
+    }
+    return out
   }
 
   /** Another device running something here (`docs/hub.md`: the asker judged it; here the switch decides). */
@@ -512,6 +552,7 @@ export default class NanomuseCloud extends Service {
         ...(typeof raw.deviceId === 'string' && raw.deviceId ? { deviceId: raw.deviceId } : {}),
         ...(typeof raw.deviceName === 'string' && raw.deviceName ? { deviceName: raw.deviceName } : {}),
         ...(raw.remoteControl === false ? { remoteControl: false } : {}),
+        ...(raw.taskSessions && typeof raw.taskSessions === 'object' ? { taskSessions: raw.taskSessions } : {}),
       }
     } catch {
       return {}

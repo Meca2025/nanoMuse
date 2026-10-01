@@ -97,6 +97,7 @@ export const en = {
   incomingFilePut: '{from} put a file here: {what}',
   incomingOpen: '{from} opened here: {what}',
   incomingScreen: '{from} looked at this screen',
+  incomingTask: '{from} asked the Muse here: {what}',
   incomingOther: '{from}: {what}',
 }
 
@@ -192,6 +193,7 @@ export const zh: typeof en = {
   incomingFilePut: '{from} 放了一个文件到这里：{what}',
   incomingOpen: '{from} 在这里打开了：{what}',
   incomingScreen: '{from} 看了一眼这里的屏幕',
+  incomingTask: '{from} 请这里的 Muse 帮忙：{what}',
   incomingOther: '{from}：{what}',
 }
 
