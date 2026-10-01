@@ -101,7 +101,6 @@
     <string name="nm_goal_update_attention">Needs attention</string>
 
     <!-- Routines (scheduled tasks) inside the Goals tab -->
-    <string name="nm_routine_new">New routine</string>
     <string name="nm_routine_all">All routines</string>
     <string name="nm_routine_edit">Edit</string>
     <string name="nm_routine_runs">Run records</string>
@@ -120,7 +119,6 @@
     <string name="nm_idea_routine_created">Routine created — set the time and details.</string>
 
     <!-- Library tab -->
-    <string name="nm_library_title">Library</string>
     <string name="nm_library_artifacts">Artifacts</string>
     <string name="nm_library_media">Media</string>
     <string name="nm_library_empty_artifacts_title">Nothing created yet</string>
@@ -176,7 +174,6 @@
     <string name="nm_grants_header">nanoMuse remembered approvals</string>
     <string name="nm_grants_empty">Nothing remembered yet</string>
     <string name="nm_grants_revoke">Revoke</string>
-    <string name="nm_grants_revoke_all">Revoke all</string>
     <string name="nm_grants_revoke_confirm">Revoke this approval? The next time it comes up, you will be asked again.</string>
     <string name="nm_risk_remember_money">Remember and run next time in %1$s</string>
     <string name="nm_risk_remember_money_note">Confirmed with your screen lock. Payments in this one app or site will then run without a card; listed first under Settings → Permissions, where you can revoke it any time.</string>
@@ -240,7 +237,6 @@
     <string name="nm_cancel">Cancel</string>
     <string name="nm_save">Save</string>
     <string name="nm_sysfiles_title">System files</string>
-    <string name="nm_sysfiles_subtitle">SOUL, USER, MEMORY, feed preferences, HEARTBEAT</string>
     <string name="nm_sysfiles_sort_name">Name</string>
     <string name="nm_sysfiles_sort_recent">Recently changed</string>
     <string name="nm_sysfiles_sort_toggle">Change order</string>
@@ -291,7 +287,6 @@
 
     <!-- 0.1.6 · appearance -->
     <string name="nm_avatar_title">Avatar</string>
-    <string name="nm_avatar_settings_subtitle">Generate a face with your image model; it moves with what the agent is doing</string>
     <string name="nm_avatar_menu_soul">Name and style</string>
     <string name="nm_avatar_menu_model">Image model</string>
     <string name="nm_avatar_menu_regenerate_moods">Redraw the moods</string>
@@ -325,8 +320,6 @@
     <string name="nm_avatar_pick_body">You can draw four more any time; the old ones are kept until you do.</string>
     <string name="nm_avatar_use_this">Use this one</string>
     <string name="nm_avatar_use_this_hint">The moods — working, waiting, done, oops — are drawn from it next, in the background.</string>
-    <string name="nm_avatar_model_body">Any provider that speaks the OpenAI images API. Alibaba Model Studio: qwen-image-3.0 (moods via qwen-image-edit-max). OpenAI: gpt-image-1.</string>
-    <string name="nm_avatar_model_label">Model</string>
     <string name="nm_avatar_footer">Pictures are stored on this phone under minis-global/nanomuse/avatar. Each face costs five images from your provider: one you chose plus four moods.</string>
 
     <!-- First run (Muse-style welcome; the steps are OpenMinis' provider and model screens) -->
@@ -677,7 +670,6 @@
     <string name="nm_cloud_invite_share_text">Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my code %1$s: %2$s</string>
     <string name="nm_cloud_invite_count">%1$d friends joined</string>
     <string name="nm_cloud_invite_earned">¥%1$s added by invitations</string>
-    <string name="nm_cloud_left_today">¥%1$s left today</string>
     <string name="nm_cloud_invite_have">Have an invite code?</string>
     <string name="nm_cloud_invite_field">Invite code (optional)</string>
     <string name="nm_notice_github">Source on GitHub</string>
