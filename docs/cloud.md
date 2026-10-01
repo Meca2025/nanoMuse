@@ -99,7 +99,7 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 | invitations | each *new* person who signs up with your code adds **¥5** to your pool |
 | co-creation programme | joining (*Contribute conversations*, off by default) adds **¥10** once |
 | when it is gone | bring your own key — [Alibaba Cloud Bailian in about two minutes](own-key.md), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
-| members | the developer and the people they list have no limit |
+| members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips) by typing its id — *Other model…* in the apps' model picker |
 | rate | 30 requests per minute |
 | tokens | no ceiling; usage is metered and shown |
 

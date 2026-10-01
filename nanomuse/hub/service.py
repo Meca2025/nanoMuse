@@ -308,6 +308,8 @@ class HubService:
             "signed_in_at": now_iso(),
             "has_password": bool(account.get("has_password")),
             "account_id": str(account.get("id") or ""),
+            "member": bool(account.get("member")),
+            "any_model": bool(account.get("any_model")),
         }
         self._save()
         self._pending_code = ""
@@ -458,8 +460,15 @@ class HubService:
         account = data.get("account") if isinstance(data.get("account"), dict) else {}
         if account:
             cloud = dict(self.data.get("cloud") or {})
-            changed = cloud.get("has_password") != bool(account.get("has_password"))
-            cloud["has_password"] = bool(account.get("has_password"))
+            fresh = {
+                "has_password": bool(account.get("has_password")),
+                # a member, and (the relay's any_model) free to name any model of the
+                # provider's — the operator may grant or take back either between reads
+                "member": bool(account.get("member")),
+                "any_model": bool(account.get("any_model")),
+            }
+            changed = any(cloud.get(k) != v for k, v in fresh.items())
+            cloud.update(fresh)
             cloud["account_id"] = str(account.get("id") or cloud.get("account_id") or "")
             self.data["cloud"] = cloud
             if changed:
@@ -479,6 +488,8 @@ class HubService:
             "signed_in_at": cloud.get("signed_in_at"),
             "has_password": bool(cloud.get("has_password")),
             "account_id": str(cloud.get("account_id") or ""),
+            "member": bool(cloud.get("member")),
+            "any_model": bool(cloud.get("any_model")),
             "is_model": bool(
                 llm.base_url and llm.base_url.rstrip("/") == model_url(self.cloud.base_url)
             ),

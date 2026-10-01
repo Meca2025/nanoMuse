@@ -115,6 +115,7 @@ for the full list. The ones that matter:
 | `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` (SMS for phones, mail for addresses) |
 | `ALIYUN_SMS_API` | `dypns` | `dypns` (号码认证服务 `SendSmsVerifyCode`) or `dysms` (短信服务 `SendSms`) |
 | `CLOUD_MODELS` | Qwen chat + image, Wan video | JSON list to replace the menu, prices included |
+| `CLOUD_ANY_MODEL_MEMBERS` | `1` | members may name any model of the provider's for its kind (chat, image, video) — see below; `0` = the menu only |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
 
@@ -141,7 +142,18 @@ co-creation bonus and the operator's credit; a picture or a clip that would go
 over it is refused before it is made, a chat once the pool is spent. Clips are
 not counted apart: a clip is just the dearest line on the same allowance.
 Members — the identifiers in `ALLOWED_IDENTIFIERS`, or any account the
-operator marks on the admin page — have no limit. `/v1/me` carries a `spend`
+operator marks on the admin page — have no limit, and (with
+`CLOUD_ANY_MODEL_MEMBERS=1`, the default) may name **any model the provider has
+under the operator's key**, not only the menu's: the id goes upstream as typed,
+as long as it is used for what it is — a chat model at `/v1/chat/completions`,
+an image model at `/v1/images/*`, a video model under the video paths; never
+across. Pictures and clips travel through the provider's qwen-image / Wan-shaped
+APIs, so a model of another family gets the provider's answer. `/v1/models`
+says `nanomuse.any_model` for the account, `/v1/me` the same under `account`,
+and `GET /v1/models/<id>?kind=chat` checks a typed id (the answer's `listed` is
+false and `priced_as` names the menu model whose prices stand in for it in the
+ledger — the dearest of its kind, so the operator's page errs high). It is how
+a member tries a model before it goes on the menu. `/v1/me` carries a `spend`
 block (`total`, `grant`, `left`, `unlimited`, `warn` at 80 %, `usd_cny`,
 `total_usd`, `grant_usd`, `left_usd`, `today`, the bonus amounts and
 `own_key_docs`; the 0.4 names `daily_cap` / `left_today` / `resets_at` = 0

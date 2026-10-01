@@ -1131,6 +1131,9 @@ const zhCN: Record<string, string> = {
     "形象工作室画图用的模型，和对话模型在同一个服务商。「自动」用服务商自己的：账号走中继的图片模型，百炼 key 走 qwen-image。没有可用的图片模型时，不会提供换形象。",
   "Picture model": "图片模型",
   "Clip model": "短片模型",
+  "Other model…": "其他模型…",
+  "Your account may name any model the provider has, not only these: type its id — a chat model here, a picture or clip model below — and it goes through as typed.":
+    "你的账号可以使用服务商的任意模型，不限于这几个：直接输入模型 id——对话模型填在这里，图片或短片模型填在下面——会原样转发。",
   Automatic: "自动",
   "{n} pictures": "{n} 张图",
   "{n} pictures and {c} clips": "{n} 张图加 {c} 段短片",

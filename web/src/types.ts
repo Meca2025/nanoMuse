@@ -274,6 +274,10 @@ export interface CloudAccount {
   /** this runtime insists on an account (self-hosters may turn it off) */
   required?: boolean;
   has_password?: boolean;
+  /** on the operator's list: no spend limit */
+  member?: boolean;
+  /** may name any model of the provider's for its kind (chat, picture, clip), not only the menu's */
+  any_model?: boolean;
   /** on the answer to a code sign-in: the account was created by it (first sign-in ever) */
   created?: boolean;
   /** the opaque account id, never the identifier */
@@ -316,6 +320,7 @@ export interface CloudMe {
     hint: string;
     created_at: number;
     member: boolean;
+    any_model?: boolean;
     has_password: boolean;
     password_set_at: number | null;
     sessions: number;

@@ -1009,3 +1009,55 @@ def test_database_from_0_4_moves_to_the_lifetime_allowance(tmp_path):
     a = db2.create_account("h3", "email", "c***@x", 0, grant_uy=settings.allowance_uy)
     assert int(a["grant_uy"]) == 10_000_000
     db2.close()
+
+
+async def test_members_may_name_any_model_of_the_right_kind():
+    # The menu is the menu for everyone; a member may ask for any model the provider has
+    # under the operator's key, by its id, as long as it is used for what it is. The
+    # ledger prices it as the dearest menu model of its kind, marked as such.
+    app, client, sender, up, cloud = make_stack(allowed_identifiers="Me@Example.com", allowance_cny=0.5)
+    member = await sign_up(client, sender, identifier="me@example.com", device="desk")
+    guest = await sign_up(client, sender, identifier="13800138000", device="pixel")
+    mh = {"Authorization": f"Bearer {member['api_key']}"}
+    gh = {"Authorization": f"Bearer {guest['api_key']}"}
+    assert member["account"]["any_model"] is True and guest["account"]["any_model"] is False
+
+    # the menu says who may go beyond it
+    assert (await client.get("/v1/models", headers=mh)).json()["nanomuse"] == {"any_model": True}
+    assert (await client.get("/v1/models", headers=gh)).json()["nanomuse"] == {"any_model": False}
+
+    # a typed id is checked with the kind it is for
+    r = await client.get("/v1/models/deepseek-v4.1-flash", params={"kind": "chat"}, headers=mh)
+    assert r.status_code == 200
+    nm = r.json()["nanomuse"]
+    assert nm["listed"] is False and nm["kind"] == "chat" and nm["priced_as"] == "qwen3.8-27b"
+    r = await client.get("/v1/models/deepseek-v4.1-flash", headers=mh)
+    assert r.status_code == 404 and "kind=" in r.json()["error"]["message"]
+    r = await client.get("/v1/models/deepseek-v4.1-flash", params={"kind": "chat"}, headers=gh)
+    assert r.status_code == 404 and r.json()["error"]["code"] == "model_not_offered"
+    r = await client.get("/v1/models/not a model", params={"kind": "chat"}, headers=mh)
+    assert r.status_code == 404
+
+    # the chat goes upstream under the typed id, and is priced as the dearest chat model
+    body = {"model": "deepseek-v4.1-flash", "messages": [{"role": "user", "content": "hi"}]}
+    r = await client.post("/v1/chat/completions", json=body, headers=mh)
+    assert r.status_code == 200, r.text
+    assert up.state.requests[-1][2]["model"] == "deepseek-v4.1-flash"
+    assert r.json()["model"] == "deepseek-v4.1-flash"
+    me = (await client.get("/v1/me", headers=mh)).json()
+    assert me["recent"][0]["model"] == "deepseek-v4.1-flash"
+    assert me["recent"][0]["cost_cny"] == round((100 * 3.0 + 50 * 12.0) / 1_000_000, 4)
+
+    # not for a guest, and never across kinds — a menu model or a typed one
+    r = await client.post("/v1/chat/completions", json=body, headers=gh)
+    assert r.status_code == 404 and r.json()["error"]["code"] == "model_not_offered"
+    r = await client.post("/v1/chat/completions", json={**body, "model": "qwen-image-3.0"}, headers=mh)
+    assert r.status_code == 404 and "image model, not a chat" in r.json()["error"]["message"]
+    r = await client.post("/v1/images/generations", json={"model": "deepseek-v4.1-flash", "prompt": "a cat"}, headers=gh)
+    assert r.status_code == 404
+
+    # the permission is the operator's to switch off
+    object.__setattr__(app.state.settings, "any_model_members", False)
+    r = await client.post("/v1/chat/completions", json=body, headers=mh)
+    assert r.status_code == 404
+    assert (await client.get("/v1/me", headers=mh)).json()["account"]["any_model"] is False
