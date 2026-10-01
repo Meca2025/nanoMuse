@@ -121,7 +121,17 @@ adds the hub, the Cloud account and the hands to it.
   icon, native notifications, the **stage** — a transparent, click-through,
   always-on-top window that draws the ring and the ripple where the hands are
   about to click (UI-TARS-desktop's ScreenMarker, the way `HandsStage` redrew
-  it on Android) — and a global Stop shortcut. Packaged since 0.1.19:
+  it on Android) — and the global shortcuts: Stop (⌘⇧Esc / Ctrl+Shift+Esc),
+  the window (⌘⇧M / Ctrl+Shift+M) and quick chat (⌥ Space on a Mac,
+  Ctrl+Shift+Space elsewhere: the window up, the cursor in the composer).
+  Settings → *Desktop app* has *Start with the computer* and lists the
+  shortcuts; the tray icon shows what the hands are doing and has Stop, and
+  closing the window keeps the agent running. On a wide window the web app lays
+  itself out the way Muse's desktop does — a rail of icons with the agent on
+  top, the chats beside it while the chat is open, the content in the middle
+  with the agent's face and status pinned over it — and the developer side
+  (the Coding screen, the runtime's address) stays behind one switch in
+  Settings → *Developer*. Packaged since 0.1.19:
   `nanoMuse-Desktop-<version>-…` installers for Windows, macOS and Linux on every
   release ([desktop.md](desktop.md)).
 - **The standard-library binary** (`desktop/nanomuse_desktop`) stays as the

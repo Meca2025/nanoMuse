@@ -6,6 +6,7 @@ import { Avatar } from "./components/Avatar";
 import { DesktopRemoteHint } from "./components/DesktopRemoteHint";
 import { FileViewer } from "./components/FileViewer";
 import { FirstSignInSteps, useFirstSignIn } from "./components/FirstSignInSteps";
+import { desktopBridge } from "./desktop";
 import { Sidebar } from "./components/Sidebar";
 import { ChatScreen } from "./screens/ChatScreen";
 import { FeedScreen } from "./screens/FeedScreen";
@@ -57,6 +58,14 @@ export default function App() {
     const name = state.profile?.name?.trim();
     document.title = name && name.toLowerCase() !== "nanomuse" ? `${name} · nanoMuse` : "nanoMuse";
   }, [state.profile?.name]);
+
+  // the desktop's quick-chat shortcut: to the chat, with the composer focused
+  useEffect(() => {
+    desktopBridge()?.onQuickChat?.(() => {
+      setTab("chat");
+      requestAnimationFrame(() => window.dispatchEvent(new Event("nanomuse:quick-chat")));
+    });
+  }, [setTab]);
 
   // `#devices` etc. opens a section straight away — the desktop tray menu links here.
   useEffect(() => {

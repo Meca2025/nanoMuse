@@ -3,7 +3,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { androidApp, keepRunningStatus, type KeepRunningStatus } from "../android";
 import { api, setToken } from "../api";
 import { DRAGON } from "../avatars";
-import { isDesktopApp } from "../desktop";
+import { desktopBridge, isDesktopApp } from "../desktop";
+import { setDeveloperTools, useDeveloperTools } from "../devtools";
 import { openOwnKeySetup } from "../components/AllowanceWays";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
@@ -80,6 +81,17 @@ export function SettingsScreen() {
   const saved = identityOf(state.profile, "", AVATAR_COLORS[0]);
   const dirty = !!state.profile && (Object.keys(identity) as (keyof Identity)[]).some((k) => identity[k] !== saved[k]);
   const name = state.profile?.name ?? "nanoMuse";
+  const developer = useDeveloperTools();
+
+  // `#developer` (the sidebar's menu) lands on that section — once the settings are in, so
+  // the sections above it have their final height
+  const [wantDeveloper, setWantDeveloper] = useState(() => window.location.hash === "#developer");
+  useEffect(() => {
+    if (!wantDeveloper || !s) return;
+    setWantDeveloper(false);
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    requestAnimationFrame(() => document.getElementById("developer")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [wantDeveloper, s]);
 
   return (
     <div className="flex h-full flex-col">
@@ -282,6 +294,39 @@ export function SettingsScreen() {
               {t("E-mail, calendar, browser, MCP servers")} <ChevronRight size={14} />
             </span>
           </button>
+        </Section>
+
+        {/* The desktop app's own switches: the shell around this page */}
+        {isDesktopApp() && (
+          <Section title={t("Desktop app")}>
+            <DesktopAppSettings />
+          </Section>
+        )}
+
+        {/* The developer side, off unless asked for */}
+        <Section title={t("Developer")} id="developer">
+          <Toggle
+            label={t("Developer tools")}
+            hint={t("The Coding screen — Cursor, Codex and the other coding agents on this computer — in the sidebar, and the runtime's address below. This device only.")}
+            checked={developer}
+            onChange={setDeveloperTools}
+          />
+          {developer && (
+            <div className="text-[13px] text-muted space-y-1">
+              <div className="break-all">
+                {t("Runtime:")} {window.location.origin} · <span className="text-fg/70">{t("the token is in the server_token file in the data folder")}</span>
+              </div>
+              <div>
+                <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/cli.md" target="_blank" rel="noreferrer" className="text-accent underline-offset-2 hover:underline">
+                  {t("The command line and the API")}
+                </a>
+                {" · "}
+                <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/harness.md" target="_blank" rel="noreferrer" className="text-accent underline-offset-2 hover:underline">
+                  {t("nanoMuse on DeepSeek Harness")}
+                </a>
+              </div>
+            </div>
+          )}
         </Section>
 
         {/* About */}
@@ -623,9 +668,59 @@ export function QuietHours({ value, onChange }: { value: string; onChange: (v: s
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** The Electron shell's switches (desktop/app/src/main/index.ts): start with the computer, the shortcuts. */
+function DesktopAppSettings() {
+  const t = useT();
+  const bridge = desktopBridge();
+  const [openAtLogin, setOpenAtLogin] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void bridge?.loginItem?.().then((v) => {
+      if (live) setOpenAtLogin(v);
+    });
+    return () => {
+      live = false;
+    };
+  }, [bridge]);
+  const mac = bridge?.platform === "darwin";
+  const shortcuts: Array<[string, string]> = [
+    [t("Quick chat"), mac ? "⌥ Space" : "Ctrl+Shift+Space"],
+    [t("Show the window"), mac ? "⌘⇧M" : "Ctrl+Shift+M"],
+    [t("Stop the hands"), mac ? "⌘⇧Esc" : "Ctrl+Shift+Esc"],
+  ];
   return (
-    <section className="rounded-3xl bg-surface border border-border/70 shadow-sm p-4 space-y-3">
+    <>
+      {bridge?.setLoginItem && openAtLogin !== null && bridge.platform !== "linux" && (
+        <Toggle
+          label={t("Start with the computer")}
+          hint={t("Opens in the tray at sign-in; the agent's goals and check-ins run from then on.")}
+          checked={openAtLogin}
+          onChange={(v) => {
+            setOpenAtLogin(v);
+            bridge.setLoginItem?.(v);
+          }}
+        />
+      )}
+      <div className="text-[13.5px]">
+        {t("In the tray")}
+        <span className="block text-[12px] text-muted">{t("The icon by the clock shows what the hands are doing and has Stop; closing the window keeps the agent running.")}</span>
+      </div>
+      <div className="space-y-1">
+        <div className="text-[13.5px]">{t("Shortcuts")}</div>
+        {shortcuts.map(([label, keys]) => (
+          <div key={label} className="flex items-center justify-between text-[13px]">
+            <span className="text-muted">{label}</span>
+            <kbd className="rounded-md border border-border bg-surface-2 px-1.5 py-0.5 font-sans text-[12px] text-fg/80">{keys}</kbd>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
+  return (
+    <section id={id} className="rounded-3xl bg-surface border border-border/70 shadow-sm p-4 space-y-3 scroll-mt-4">
       <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{title}</h2>
       {children}
     </section>

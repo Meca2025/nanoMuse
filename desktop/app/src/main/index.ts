@@ -28,6 +28,8 @@ const logs: string[] = [];
 
 const STOP_SHORTCUT = "CommandOrControl+Shift+Escape";
 const SHOW_SHORTCUT = "CommandOrControl+Shift+M";
+// quick chat, as Muse has it: Option+Space on a Mac; elsewhere Alt+Space is the window menu
+const QUICK_SHORTCUT = process.platform === "darwin" ? "Alt+Space" : "CommandOrControl+Shift+Space";
 /** dev flag: `--screenshot=/tmp/x.png` writes the window and quits (a headless check) */
 const screenshotFlag = process.argv.find((a) => a.startsWith("--screenshot="))?.slice("--screenshot=".length);
 /** dev flag: `--stage-demo` plays a scripted hands run into the stage (with --screenshot: captures it) */
@@ -49,6 +51,7 @@ function log(line: string): void {
 const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
 const T = {
   show: zh ? "打开 nanoMuse" : "Open nanoMuse",
+  quickChat: zh ? "快速对话" : "Quick chat",
   devices: zh ? "设备" : "Devices",
   stop: zh ? "停止操作（Ctrl+Shift+Esc）" : "Stop the hands (Ctrl+Shift+Esc)",
   browser: zh ? "在浏览器中打开" : "Open in the browser",
@@ -219,6 +222,16 @@ function showMain(): void {
   }
 }
 
+/** The quick-chat shortcut: the window up and the composer ready — the web app does the focusing. */
+function quickChat(): void {
+  const fresh = !mainWindow;
+  showMain();
+  const win = mainWindow;
+  if (!win) return;
+  if (fresh) win.webContents.once("did-finish-load", () => win.webContents.send("quick-chat"));
+  else win.webContents.send("quick-chat");
+}
+
 function openDevices(): void {
   showMain();
   // the web app reads the hash on load and switches tabs (no-op on older builds)
@@ -351,6 +364,7 @@ function refreshTray(report: StageReport): void {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: T.show, click: () => showMain() },
+      { label: T.quickChat, accelerator: QUICK_SHORTCUT, click: () => quickChat() },
       { label: T.devices, click: () => openDevices() },
       { type: "separator" },
       { label: T.stop, enabled: report.active, click: () => void stopHands() },
@@ -396,6 +410,16 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.on("app:version", (event) => {
       event.returnValue = app.getVersion();
     });
+    // Settings → Desktop app → Start with the computer (not in a dev run: nothing to register)
+    ipcMain.handle("app:login-item", () => app.isPackaged && app.getLoginItemSettings().openAtLogin);
+    ipcMain.on("app:login-item:set", (_event, on: boolean) => {
+      if (!app.isPackaged) return;
+      try {
+        app.setLoginItemSettings({ openAtLogin: !!on, openAsHidden: true });
+      } catch (exc) {
+        log(`login item: ${String(exc)}`);
+      }
+    });
     runtime.onCrash = (code) => void onRuntimeCrash(code);
     if (process.platform === "darwin") {
       app.setAboutPanelOptions({ applicationName: "nanoMuse", applicationVersion: app.getVersion(), copyright: "GPL-3.0 · nano-muse community" });
@@ -428,6 +452,7 @@ if (!app.requestSingleInstanceLock()) {
 
     if (!globalShortcut.register(STOP_SHORTCUT, () => void stopHands())) log(`could not register ${STOP_SHORTCUT}`);
     if (!globalShortcut.register(SHOW_SHORTCUT, () => showMain())) log(`could not register ${SHOW_SHORTCUT}`);
+    if (!globalShortcut.register(QUICK_SHORTCUT, () => quickChat())) log(`could not register ${QUICK_SHORTCUT}`);
 
     if (screenshotFlag && !stageDemo) {
       mainWindow.webContents.once("did-finish-load", () => {

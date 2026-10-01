@@ -47,6 +47,11 @@ export interface DesktopBridge {
   /** the part of the stage that takes the mouse (the pill with its Stop), null for none */
   solid: (rect: SolidRect | null) => void;
   stopHands: () => void;
+  /** whether the app starts with the computer (the login item), and setting it — Settings → Desktop app */
+  loginItem: () => Promise<boolean>;
+  setLoginItem: (on: boolean) => void;
+  /** the quick-chat shortcut was pressed: main has shown the window; the web app focuses its composer */
+  onQuickChat: (cb: () => void) => void;
 }
 
 /** A rectangle of the stage window, in CSS pixels, that should take clicks. */
