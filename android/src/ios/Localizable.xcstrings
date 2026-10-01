@@ -102733,24 +102733,24 @@
         }
       }
     },
-    "A fully open-source, Muse-style personal agent for every device you own." : {
+    "An open-source personal agent for every device you own." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A fully open-source, Muse-style personal agent for every device you own."
+            "value" : "An open-source personal agent for every device you own."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "完全开源、Muse 风格的个人智能体，面向你的每一台设备。"
+            "value" : "开源的个人智能体，面向你的每一台设备。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "完全開源、Muse 風格的個人智能體，面向你的每一台裝置。"
+            "value" : "開源的個人智能體，面向你的每一台裝置。"
           }
         }
       }

@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/app-icon.png" width="128" alt="Biểu tượng ứng dụng nanoMuse">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.svg" alt="nanoMuse — an open-source personal agent for every device you own">
 </p>
-
-<h1 align="center">nanoMuse</h1>
-
-<p align="center">Trợ lý cá nhân theo phong cách Muse, mã nguồn mở hoàn toàn, cho mọi thiết bị bạn có.</p>
 
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/README.md">English</a> |
@@ -33,7 +29,7 @@
 
 > Trang này là bản dịch của [README tiếng Anh](README.md); bản tiếng Anh là bản tham chiếu, nơi có tin tức và bảng phiên bản đầy đủ.
 
-nanoMuse là một trợ lý cá nhân theo phong cách Muse, mã nguồn mở hoàn toàn, cho mọi thiết bị bạn có: một trợ lý duy nhất với tên và hình dáng riêng, giống [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) của Meta, làm việc thay vì chỉ trả lời câu hỏi, tiếp tục làm việc khi ứng dụng đã đóng, nhớ bạn, và dừng lại hỏi trước bất cứ việc gì bạn không thể hoàn tác. Ứng dụng Android chạy toàn bộ trợ lý **ngay trên điện thoại**: một hệ thống tệp gốc Linux, shell, trình duyệt, MCP, các kỹ năng và tác vụ theo lịch nằm trong APK, với mô hình do bạn mang đến. Nó có "đôi tay" cho những ứng dụng chưa bao giờ có API — chính màn hình điện thoại, với sự cho phép của bạn — và vươn tới máy tính của bạn: nói trên điện thoại, việc được làm xong ở đó. Ứng dụng máy tính và phiên bản web cũng đã có; iOS và kính thông minh sẽ đến sau. Khóa của riêng bạn hoặc một hạn mức khởi đầu từ relay mở, GPL-3.0 — và một nền tảng để bạn dựng Muse của riêng mình.
+nanoMuse là một trợ lý cá nhân mã nguồn mở cho mọi thiết bị bạn có: một trợ lý duy nhất với tên và hình dáng riêng, giống [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) của Meta, làm việc thay vì chỉ trả lời câu hỏi, tiếp tục làm việc khi ứng dụng đã đóng, nhớ bạn, và dừng lại hỏi trước bất cứ việc gì bạn không thể hoàn tác. Ứng dụng Android chạy toàn bộ trợ lý **ngay trên điện thoại**: một hệ thống tệp gốc Linux, shell, trình duyệt, MCP, các kỹ năng và tác vụ theo lịch nằm trong APK, với mô hình do bạn mang đến. Nó có "đôi tay" cho những ứng dụng chưa bao giờ có API — chính màn hình điện thoại, với sự cho phép của bạn — và vươn tới máy tính của bạn: nói trên điện thoại, việc được làm xong ở đó. Ứng dụng máy tính và phiên bản web cũng đã có; iOS và kính thông minh sẽ đến sau. Khóa của riêng bạn hoặc một hạn mức khởi đầu từ relay mở, GPL-3.0 — và một nền tảng để bạn dựng Muse của riêng mình.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="Cùng một chú rồng nhỏ trong năm trạng thái: nghỉ, đang làm việc, đang chờ, vui, xin lỗi">

@@ -53,7 +53,7 @@ struct AboutView: View {
                         .foregroundStyle(.tertiary)
                         // Selectable so it can be copied into a bug report.
                         .textSelection(.enabled)
-                    Text("A fully open-source, Muse-style personal agent for every device you own.")
+                    Text("An open-source personal agent for every device you own.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

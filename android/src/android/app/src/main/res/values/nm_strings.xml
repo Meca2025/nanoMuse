@@ -544,7 +544,7 @@
     <!-- nanoMuse Cloud: sign in with a phone/e-mail code for a starter allowance -->
     <string name="nm_setup_own_key">I have my own API key</string>
     <!-- nanoMuse: the first-run pages -->
-    <string name="nm_welcome_tagline">A fully open-source, Muse-style personal agent for every device you own.</string>
+    <string name="nm_welcome_tagline">An open-source personal agent for every device you own.</string>
     <string name="nm_welcome_email">Sign in — free</string>
     <string name="nm_welcome_fine_print">One account keeps your devices together and carries the free model use; nothing is charged. Your own API key can be added right after.</string>
     <string name="nm_setup_source_title">Which model answers?</string>
