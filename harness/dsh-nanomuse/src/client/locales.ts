@@ -48,7 +48,10 @@ export const en = {
   cancel: 'Cancel',
   deviceName: 'Name of this computer',
   devicesNone: 'No other device is signed in to this account yet. Sign in on the phone with the same number or e-mail and it appears here.',
-  devicesHint: 'Each device is a Muse of its own; this one can look at the phone’s screen, run commands in its sandbox and give its Muse whole tasks (ask it in the chat). The phone answers “info” from here; what else it allows is its own Remote-control switch.',
+  devicesHint: 'Each device is a Muse of its own; this one can look at the phone’s screen, run commands in its sandbox and give its Muse whole tasks (ask it in the chat). What the phone allows from here is its own Remote-control switch; the switch above is this computer’s.',
+  remoteControl: 'Remote control',
+  remoteControlOn: 'The phone and the other computers may run commands here, list and fetch files, open links and take a screenshot. Each one shows as a notice. “info” and notifications always work.',
+  remoteControlOff: 'Off: other devices only see that this computer is here and can send it notifications.',
   kindPhone: 'phone',
   kindComputer: 'computer',
   online: 'online',
@@ -88,6 +91,13 @@ export const en = {
   reachNotify: 'Notifying {device}',
   reachDelegate: 'Asking {device}’s Muse',
   reachDevices: 'Checking the devices',
+  // what another device did here
+  incomingShell: '{from} ran here: {what}',
+  incomingFileGet: '{from} fetched a file from here: {what}',
+  incomingFilePut: '{from} put a file here: {what}',
+  incomingOpen: '{from} opened here: {what}',
+  incomingScreen: '{from} looked at this screen',
+  incomingOther: '{from}: {what}',
 }
 
 export const zh: typeof en = {
@@ -136,7 +146,10 @@ export const zh: typeof en = {
   cancel: '取消',
   deviceName: '这台电脑的名字',
   devicesNone: '这个账号还没有别的设备。手机上用同一个手机号或邮箱登录，就会出现在这里。',
-  devicesHint: '每台设备都是一个自己的 Muse：这台电脑可以看手机屏幕、在手机的沙盒里运行命令、把整件事交给手机上的 Muse 去做（在聊天里说就行）。手机只会回答这里的「info」，其他的由它自己的「远程控制」开关决定。',
+  devicesHint: '每台设备都是一个自己的 Muse：这台电脑可以看手机屏幕、在手机的沙盒里运行命令、把整件事交给手机上的 Muse 去做（在聊天里说就行）。手机允许这边做什么，由它自己的「远程控制」开关决定；上面这个开关管的是这台电脑。',
+  remoteControl: '远程控制',
+  remoteControlOn: '手机和其他电脑可以在这里运行命令、查看和取走文件、打开链接、截一张屏幕。每一次都会在这里提示。「info」和通知始终可用。',
+  remoteControlOff: '已关：其他设备只能看到这台电脑在线，以及给它发通知。',
   kindPhone: '手机',
   kindComputer: '电脑',
   online: '在线',
@@ -174,6 +187,12 @@ export const zh: typeof en = {
   reachNotify: '正在通知 {device}',
   reachDelegate: '正在请 {device} 上的 Muse 帮忙',
   reachDevices: '正在看有哪些设备',
+  incomingShell: '{from} 在这里运行了：{what}',
+  incomingFileGet: '{from} 取走了这里的文件：{what}',
+  incomingFilePut: '{from} 放了一个文件到这里：{what}',
+  incomingOpen: '{from} 在这里打开了：{what}',
+  incomingScreen: '{from} 看了一眼这里的屏幕',
+  incomingOther: '{from}：{what}',
 }
 
 export type Words = keyof typeof en

@@ -53,6 +53,8 @@ export interface CallOptions {
   timeoutMs?: number | undefined
   /** Progress frames the target sends while it works (`event {id, body}`). */
   onEvent?: ((body: Record<string, unknown>) => void) | undefined
+  /** The frame id to use, when the caller needs it beforehand (to `stop {call}` a task). */
+  id?: string | undefined
 }
 
 /** The relay said no, or the target did. */
@@ -194,7 +196,7 @@ export class HubClient {
   /** Ask another device to do something; resolves with the `result` body. */
   call(to: string, action: string, args: Record<string, unknown>, options: CallOptions = {}): Promise<Record<string, unknown>> {
     if (!this.connected || !this.socket) return Promise.reject(new HubError('offline', 'This computer is not connected to the hub'))
-    const id = `${Date.now().toString(36)}-${(++this.seq).toString(36)}`
+    const id = options.id ?? this.nextId()
     return new Promise<Record<string, unknown>>((resolve, reject) => {
       const entry: Pending = {
         resolve,
@@ -220,6 +222,11 @@ export class HubClient {
       this.pending.set(id, entry)
       this.send({ type: 'call', id, to, action, args })
     })
+  }
+
+  /** A fresh frame id, unique for this connection's lifetime. */
+  nextId(): string {
+    return `${Date.now().toString(36)}-${(++this.seq).toString(36)}`
   }
 
   /** Rename this device on the account's list. */

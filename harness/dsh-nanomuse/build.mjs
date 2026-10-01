@@ -35,7 +35,7 @@ const PLATFORM_MODULES = [
 await rm(new URL('./lib/', import.meta.url), { recursive: true, force: true })
 
 await build({
-  entryPoints: ['src/index.ts', 'src/cloud.ts', 'src/relay.ts', 'src/reach.ts', 'src/hub.ts', 'src/profile.ts'],
+  entryPoints: ['src/index.ts', 'src/cloud.ts', 'src/relay.ts', 'src/reach.ts', 'src/hub.ts', 'src/profile.ts', 'src/actions.ts'],
   outdir: 'lib',
   format: 'esm',
   platform: 'node',

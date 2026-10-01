@@ -112,6 +112,13 @@ test('a call resolves with the result body, sees events, and fails on an error f
 
   const p4 = h.client.call('phone-1', 'info', {}, { timeoutMs: 10 })
   await assert.rejects(p4, (e) => e instanceof HubError && e.code === 'timeout')
+
+  // A caller may pick the id up front, so it can ask the device to `stop` that very call.
+  const id5 = h.client.nextId()
+  const p5 = h.client.call('phone-1', 'task', { text: 'later' }, { id: id5, timeoutMs: 1000 })
+  assert.equal(s.sent.at(-1).id, id5)
+  s.push({ type: 'result', id: id5, ok: true, body: { text: 'ok' } })
+  assert.deepEqual(await p5, { text: 'ok' })
   h.client.stop()
 })
 

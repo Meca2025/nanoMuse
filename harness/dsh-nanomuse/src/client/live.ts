@@ -40,16 +40,28 @@ export interface LiveCall {
 
 export interface LiveNotice {
   id: number
+  /** `notify`: words from another device; `call`: `action` ran here for `from`. */
+  kind: 'notify' | 'call'
   from: string
   title: string
   text: string
+  action?: string
   at: number
+}
+
+export interface LiveHub {
+  connected: boolean
+  deviceId: string
+  deviceName: string
+  remoteControl: boolean
+  lastError?: string
+  devices: LiveDevice[]
 }
 
 export interface Live {
   cloud: { signedIn: boolean; hint: string }
   profile: LiveProfile
-  hub: { connected: boolean; deviceId: string; deviceName: string; lastError?: string; devices: LiveDevice[] }
+  hub: LiveHub
   hands: { calls: LiveCall[]; steps: number }
   notices: LiveNotice[]
   /** Whether the stream is open; false before the first snapshot and while reconnecting. */
@@ -61,7 +73,7 @@ export const DEFAULT_PROFILE: LiveProfile = { rev: 0, name: 'nanoMuse', avatar: 
 const INITIAL: Live = {
   cloud: { signedIn: false, hint: '' },
   profile: DEFAULT_PROFILE,
-  hub: { connected: false, deviceId: '', deviceName: '', devices: [] },
+  hub: { connected: false, deviceId: '', deviceName: '', remoteControl: true, devices: [] },
   hands: { calls: [], steps: 0 },
   notices: [],
   streaming: false,

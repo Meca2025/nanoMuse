@@ -14,8 +14,9 @@
  * - the **profile** (`profile.ts`): the agent's name and face come from the
  *   account and follow the phone's avatar studio;
  * - the **hub** (`hub.ts`): one socket to `/v1/hub`, so the phone lists this
- *   computer, this computer's Muse reaches the phone (`reach.ts`), and a
- *   `notify` from another device shows here;
+ *   computer, this computer's Muse reaches the phone (`reach.ts`), a `notify`
+ *   from another device shows here, and — with *remote control* on, as it is
+ *   by default — the phone runs things here (`actions.ts`);
  * - the **hands tracker**: every Hands or Reach tool call in flight, so the
  *   browser half can draw the capsule the Android app draws while it works.
  *
@@ -26,7 +27,7 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { hostname, release, type } from 'node:os'
+import { arch, homedir, hostname, release, type, userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { Service, type Context } from '@deepseek-ai/cordis'
@@ -35,7 +36,8 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
-import { HubClient, type HubDevice } from './hub.ts'
+import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
+import { HubClient, HubError, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type RelayModel } from './relay.ts'
 
@@ -55,8 +57,10 @@ export const LLM_ROW = 'llm-pi-ai'
 export const API_PREFIX = '/nanomuse/cloud'
 /** What this device reports as its software. */
 export const VERSION = 'dsh-nanomuse 0.0.2'
-/** The hub actions this computer answers for the others (`docs/hub.md`). */
+/** The hub actions this computer answers whatever the remote-control switch says (`docs/hub.md`). */
 export const ACTIONS = ['info', 'notify']
+/** Incoming actions worth a toast — the ones that act or look, not a folder listing. */
+const TOAST_ACTIONS = new Set(['shell', 'file.get', 'file.put', 'open', 'screen'])
 
 export interface Config {
   /** The relay origin. */
@@ -91,6 +95,8 @@ export interface HubState {
   connected: boolean
   deviceId: string
   deviceName: string
+  /** Whether other devices may run things here (`shell`, `files`, `open`, `screen`…); `info` and `notify` always work. */
+  remoteControl: boolean
   lastError?: string
   devices: HubDevice[]
 }
@@ -105,12 +111,15 @@ export interface HandsCall {
   since: number
 }
 
-/** A `notify` from another device, shown as a toast. */
+/** A `notify` from another device, or something another device did here — shown as a toast. */
 export interface Notice {
   id: number
+  /** `notify`: words for the person; `call`: `action` ran here on `from`'s behalf. */
+  kind: 'notify' | 'call'
   from: string
   title: string
   text: string
+  action?: string
   at: number
 }
 
@@ -128,6 +137,8 @@ interface State {
   models?: RelayModel[]
   deviceId?: string
   deviceName?: string
+  /** Absent means on — the runtime's default too. */
+  remoteControl?: boolean
 }
 
 /** Tool names whose calls the capsule follows. */
@@ -167,7 +178,7 @@ export default class NanomuseCloud extends Service {
         kind: 'computer',
         os: `${type()} ${release()}`.trim(),
         version: VERSION,
-        actions: ACTIONS,
+        actions: this.actions(),
       }),
       log: (level, text) => this.ctx.logger[level](text),
     })
@@ -190,13 +201,20 @@ export default class NanomuseCloud extends Service {
       kind: 'computer',
       os: type(),
       os_version: release(),
+      arch: arch(),
+      user: userInfo().username,
+      home: homedir(),
+      cwd: process.cwd(),
       runtime: VERSION,
-      actions: ACTIONS,
+      actions: this.actions(),
     }))
     this.hub.handle('notify', async (args, call) => {
-      this.notice(call.from.name || 'a device', String(args.title ?? ''), String(args.text ?? ''))
+      this.notice('notify', call.from.name || 'a device', String(args.title ?? ''), String(args.text ?? ''))
       return { ok: true, shown: true }
     })
+    for (const action of REMOTE_ACTIONS) {
+      this.hub.handle(action, (args, call) => this.remote(action, args, call.from.name || 'a device'))
+    }
 
     this.ctx.inject(['webServer'], (ctx) => {
       ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: API_PREFIX, handler: this.handle }), 'nanomuse cloud: api')
@@ -345,6 +363,21 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
+  /** Whether other devices may run things here; `info` and `notify` always work. */
+  get remoteControl(): boolean {
+    return this.state.remoteControl !== false
+  }
+
+  /** Flip remote control; the hub hears the new action list in the next `hello`. */
+  async setRemoteControl(on: boolean): Promise<void> {
+    if (this.remoteControl === on) return
+    this.state = { ...this.state, remoteControl: on }
+    await this.writeState()
+    this.ctx.logger.info('nanomuse: remote control %s', on ? 'on' : 'off')
+    if (this.hub.connected) this.hub.restart()
+    this.broadcast()
+  }
+
   /** The current account key, for a plugin that speaks to the relay itself. */
   token(): Promise<string | undefined> {
     return this.ctx.credentials.resolve(credentialRef(TOKEN_REF)).then((r) => r?.value)
@@ -381,8 +414,8 @@ export default class NanomuseCloud extends Service {
       // The row may never have had the provider (a sign-in that failed half-way).
       this.ctx.logger.debug('nanomuse cloud: provider row not removed: %s', message(error))
     }
-    const { deviceId, deviceName } = this.state
-    this.state = { ...(deviceId ? { deviceId } : {}), ...(deviceName ? { deviceName } : {}) }
+    const { deviceId, deviceName, remoteControl } = this.state
+    this.state = { ...(deviceId ? { deviceId } : {}), ...(deviceName ? { deviceName } : {}), ...(remoteControl === false ? { remoteControl } : {}) }
     this.signedInCache = false
     await this.writeState()
     await this.profile.reset()
@@ -419,11 +452,30 @@ export default class NanomuseCloud extends Service {
     }
   }
 
-  private notice(from: string, title: string, text: string): void {
+  private notice(kind: Notice['kind'], from: string, title: string, text: string, action?: string): void {
     this.noticeSeq += 1
-    this.notices = [...this.notices.slice(-7), { id: this.noticeSeq, from, title: title.slice(0, 80), text: text.slice(0, 500), at: Date.now() }]
-    this.ctx.logger.info('nanomuse: notice from %s: %s', from, text.slice(0, 80))
+    this.notices = [
+      ...this.notices.slice(-7),
+      { id: this.noticeSeq, kind, from, title: title.slice(0, 80), text: text.slice(0, 500), ...(action ? { action } : {}), at: Date.now() },
+    ]
+    if (kind === 'notify') this.ctx.logger.info('nanomuse: notice from %s: %s', from, text.slice(0, 80))
     this.broadcast()
+  }
+
+  /** The actions this computer announces: always `info` and `notify`, the rest with remote control on. */
+  private actions(): string[] {
+    return this.remoteControl ? [...ACTIONS, ...REMOTE_ACTIONS] : [...ACTIONS]
+  }
+
+  /** Another device running something here (`docs/hub.md`: the asker judged it; here the switch decides). */
+  private async remote(action: RemoteAction, args: Record<string, unknown>, from: string): Promise<Record<string, unknown>> {
+    if (!this.remoteControl) throw new HubError('not_allowed', `${this.deviceName()} is set not to be operated from other devices`)
+    const summary = brief(action, args)
+    this.ctx.logger.info('nanomuse: %s asked %s here%s', from, action, summary ? `: ${summary}` : '')
+    const body = await runAction(action, args)
+    // Only what actually happened is worth a toast; a refused path is the asker's error to see.
+    if (TOAST_ACTIONS.has(action)) this.notice('call', from, '', summary, action)
+    return body
   }
 
   // -- state ----------------------------------------------------------------------------
@@ -433,6 +485,7 @@ export default class NanomuseCloud extends Service {
       connected: this.hub.connected,
       deviceId: this.state.deviceId ?? '',
       deviceName: this.deviceName(),
+      remoteControl: this.remoteControl,
       ...(this.hub.lastError ? { lastError: this.hub.lastError } : {}),
       devices: this.hub.devices,
     }
@@ -458,6 +511,7 @@ export default class NanomuseCloud extends Service {
         ...(raw.models ? { models: raw.models } : {}),
         ...(typeof raw.deviceId === 'string' && raw.deviceId ? { deviceId: raw.deviceId } : {}),
         ...(typeof raw.deviceName === 'string' && raw.deviceName ? { deviceName: raw.deviceName } : {}),
+        ...(raw.remoteControl === false ? { remoteControl: false } : {}),
       }
     } catch {
       return {}
@@ -541,6 +595,11 @@ export default class NanomuseCloud extends Service {
       if (req.method === 'POST' && route === '/devices/forget') {
         const body = await json(req)
         this.hub.forget(String(body.device_id ?? ''))
+        return send(res, 204)
+      }
+      if (req.method === 'POST' && route === '/devices/remote-control') {
+        const body = await json(req)
+        await this.setRemoteControl(body.on !== false)
         return send(res, 204)
       }
       if (req.method === 'POST' && route === '/notices/clear') {

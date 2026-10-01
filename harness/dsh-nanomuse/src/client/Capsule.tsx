@@ -13,6 +13,7 @@ import type { Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { call } from './api.ts'
 import { useLive, type LiveCall, type LiveNotice } from './live.ts'
+import type { Words } from './locales.ts'
 
 const LINGER_MS = 1800
 
@@ -38,6 +39,24 @@ export function describeCall(t: Translate, c: LiveCall): string {
   if (c.name === 'delegate') return t('reachDelegate', { device })
   if (c.name === 'devices') return t('reachDevices')
   return c.name
+}
+
+/** The toast line for something another device did here. */
+function callKey(action: string | undefined): Words {
+  switch (action) {
+    case 'shell':
+      return 'incomingShell'
+    case 'file.get':
+      return 'incomingFileGet'
+    case 'file.put':
+      return 'incomingFilePut'
+    case 'open':
+      return 'incomingOpen'
+    case 'screen':
+      return 'incomingScreen'
+    default:
+      return 'incomingOther'
+  }
 }
 
 export interface CapsuleProps {
@@ -80,7 +99,7 @@ export function makeCapsule({ t, stop }: CapsuleProps) {
 
     return h('div', { style: { position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none' } },
       shown ? h(Pill, { t, call: shown, live: Boolean(current), step: live.hands.steps, profile: live.profile, stopping, onStop }) : null,
-      h(Notices, { notices: live.notices }))
+      h(Notices, { t, notices: live.notices }))
   }
 }
 
@@ -143,13 +162,17 @@ function Bars({ live }: { live: boolean }): ReactNode {
 }
 
 /** The newest notice from another device, once each. */
-function Notices({ notices }: { notices: LiveNotice[] }): ReactNode {
+function Notices({ t, notices }: { t: Translate; notices: LiveNotice[] }): ReactNode {
   const [seen, setSeen] = useState(0)
   const latest = notices[notices.length - 1]
   if (!latest || latest.id <= seen) return null
+  const text =
+    latest.kind === 'call'
+      ? t(callKey(latest.action), { from: latest.from, what: latest.text })
+      : `${latest.from}${latest.title ? ` · ${latest.title}` : ''}: ${latest.text}`
   return h(Toast, {
     key: latest.id,
-    text: `${latest.from}${latest.title ? ` · ${latest.title}` : ''}: ${latest.text}`,
+    text,
     holdMs: 6000,
     onDone: () => {
       setSeen(latest.id)

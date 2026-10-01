@@ -1,5 +1,5 @@
 /** The loopback API the host half serves under `/nanomuse/cloud/*` (see `cloud.ts`). */
-import type { LiveDevice, LiveProfile } from './live.ts'
+import type { LiveHub, LiveProfile } from './live.ts'
 import type { Words } from './locales.ts'
 
 export type Translate = (key: Words, values?: Record<string, string | number>) => string
@@ -25,7 +25,7 @@ export interface CloudStatus {
   account?: Account
   models: Model[]
   profile: LiveProfile
-  hub: { connected: boolean; deviceId: string; deviceName: string; lastError?: string; devices: LiveDevice[] }
+  hub: LiveHub
   error?: { code: string; message: string }
 }
 

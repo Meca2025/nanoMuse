@@ -4,11 +4,11 @@
  * Talks to the host half over the loopback API (`/nanomuse/cloud/*`) and reads
  * the live state the host streams.
  */
-import { Button, Input, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Input, StateDot, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { call, column, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
-import { useLive, type LiveDevice } from './live.ts'
+import { useLive, type LiveHub } from './live.ts'
 import { SignIn } from './SignIn.tsx'
 
 type Phase = 'loading' | 'signedOut' | 'signedIn'
@@ -95,18 +95,23 @@ const deviceRow: Record<string, string | number> = { display: 'flex', gap: 10, a
 
 interface DevicesProps {
   t: Translate
-  hub: { connected: boolean; deviceId: string; deviceName: string; lastError?: string | undefined; devices: LiveDevice[] }
+  hub: LiveHub
 }
 
 /** This computer on the account, and the others, with online dots. */
 export function Devices({ t, hub }: DevicesProps): ReactNode {
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(hub.deviceName)
+  const [switching, setSwitching] = useState(false)
   const others = hub.devices.filter((d) => d.id !== hub.deviceId && d.kind !== 'web')
 
   const rename = (event: FormEvent) => {
     event.preventDefault()
     void call('devices/rename', { name }).then(() => setRenaming(false)).catch(() => undefined)
+  }
+  const setRemote = (on: boolean) => {
+    setSwitching(true)
+    void call('devices/remote-control', { on }).catch(() => undefined).finally(() => setSwitching(false))
   }
 
   return h('div', null,
@@ -119,6 +124,11 @@ export function Devices({ t, hub }: DevicesProps): ReactNode {
             h(Button, { variant: 'ghost', size: 'sm', type: 'button', onClick: () => setRenaming(false) }, t('cancel')))
         : h('span', { style: { flex: 1 } }, h('strong', null, hub.deviceName), ' · ', t('thisComputer'), ' · ', hub.connected ? t('hubConnected') : (hub.lastError ? t('hubOffline', { reason: hub.lastError }) : t('hubConnecting'))),
       renaming ? null : h(Button, { variant: 'ghost', size: 'sm', onClick: () => { setName(hub.deviceName); setRenaming(true) } }, t('rename'))),
+    h('div', { style: { ...deviceRow, paddingLeft: 20 } },
+      h('span', { style: { flex: 1 } },
+        h('div', null, t('remoteControl')),
+        h('div', { style: muted }, hub.remoteControl ? t('remoteControlOn') : t('remoteControlOff'))),
+      h(Switch, { checked: hub.remoteControl, onChange: setRemote, disabled: switching, label: t('remoteControl') })),
     others.length === 0
       ? h('div', { style: muted }, t('devicesNone'))
       : others.map((d) =>

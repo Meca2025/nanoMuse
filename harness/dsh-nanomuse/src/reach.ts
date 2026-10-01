@@ -333,7 +333,21 @@ export function apply(ctx: Context): void {
                 steps.push(`error: ${String(body.message ?? 'error').slice(0, 160)}`)
               }
             }
-            const body = await hub.call(d.id, 'task', { text: args.task, from: cloud.hub.devices.find((x) => x.id === hub.deviceId)?.name ?? 'computer' }, { signal: exec.signal, timeoutMs: 600_000, onEvent }).catch(fail)
+            // Stopping the turn here stops the job there too: the runtime's `stop {call}` ends
+            // the thread it opened for this call (`docs/hub.md`), so its approval does not hang.
+            const callId = hub.nextId()
+            const onAbort = () =>
+              void hub
+                .call(d.id, 'stop', { call: callId }, { timeoutMs: 10_000 })
+                .then((r) => ctx.logger.info('nanomuse reach: stop on %s: %s', d.name, r.stopped ? 'stopped' : 'nothing running'))
+                .catch((e: unknown) => ctx.logger.warn('nanomuse reach: stop on %s failed: %s', d.name, e instanceof Error ? e.message : String(e)))
+            exec.signal.addEventListener('abort', onAbort, { once: true })
+            let body: Record<string, unknown>
+            try {
+              body = await hub.call(d.id, 'task', { text: args.task, from: cloud.hub.devices.find((x) => x.id === hub.deviceId)?.name ?? 'computer' }, { id: callId, signal: exec.signal, timeoutMs: 600_000, onEvent }).catch(fail)
+            } finally {
+              exec.signal.removeEventListener('abort', onAbort)
+            }
             await Promise.allSettled([...pending])
             const answer = String(body.text ?? body.answer ?? '').trim() || '(no answer)'
             return { device: d.name, answer, steps: steps.slice(-12) }
