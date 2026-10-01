@@ -57,7 +57,7 @@ Muse との比較、そしてアプリの土台であるランタイム OpenMini
 
 ## インストール
 
-インストール不要：[nanomuse.cn/web](https://nanomuse.cn/web/) で電話番号かメールアドレスと認証コードでサインインすると、プロジェクトのサーバー上にあなた専用の nanoMuse ができ、次回も残っています —— まず試すのに向いています。毎日使うなら、以下のスマートフォンアプリとデスクトップアプリを同じアカウントで。自分のデバイス向けには[ダウンロード](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 用デスクトップアプリ（`nanoMuse-Desktop-<version>-…`）、ターミナル版バイナリ（`nanomuse-desktop-terminal-<version>-…`）、または Python 3.11+ で `pipx install "git+https://github.com/nano-muse/nanoMuse"`。GitHub からのダウンロードがうまくいかない場合は、同じファイルがプロジェクトのミラー [nanomuse.cn/dl](https://nanomuse.cn/dl/) にあります（リリース後15分以内に同期、SHA-256 で検証）。それぞれがどうつながるかは [docs/desktop.md](../desktop.md) と [docs/every-device.md](../every-device.md) に。スマートフォンでは：
+インストールせずにまず一目：[nanomuse.cn/web](https://nanomuse.cn/web/) を開くとブラウザの中にシミュレートされたスマートフォンが現れ、その中に専用の nanoMuse がいます。電話番号かメールアドレスと認証コードでサインインすれば試せます —— これはデモで、アプリとは大きく違います。本物は、以下のスマートフォンアプリとデスクトップアプリを同じアカウントで。自分のデバイス向けには[ダウンロード](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 用デスクトップアプリ（`nanoMuse-Desktop-<version>-…`）、ターミナル版バイナリ（`nanomuse-desktop-terminal-<version>-…`）、または Python 3.11+ で `pipx install "git+https://github.com/nano-muse/nanoMuse"`。GitHub からのダウンロードがうまくいかない場合は、同じファイルがプロジェクトのミラー [nanomuse.cn/dl](https://nanomuse.cn/dl/) にあります（リリース後15分以内に同期、SHA-256 で検証）。それぞれがどうつながるかは [docs/desktop.md](../desktop.md) と [docs/every-device.md](../every-device.md) に。スマートフォンでは：
 
 1. [最新リリース](https://github.com/nano-muse/nanoMuse/releases/latest)から `nanoMuse-<version>-arm64.apk` をダウンロード —— Android 8.0 以降、64 ビットの端末。必要なら `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` で検証してください。
 2. 開きます。Android がインストールの許可を一度だけ尋ねます。どのバージョンも同じキーで署名されているので、更新は前のバージョンに上書きされ、データは保持されます。

@@ -57,7 +57,7 @@ Muse 및 앱의 토대인 런타임 OpenMinis와의 비교는 [영어 README](..
 
 ## 설치
 
-설치할 것이 없습니다. [nanomuse.cn/web](https://nanomuse.cn/web/)에서 전화번호나 이메일과 인증 코드로 로그인하면 프로젝트 서버에 당신만의 nanoMuse가 생기고, 다음에 와도 그대로 있습니다 — 처음 써 보기에 좋습니다. 매일 쓰려면 아래의 휴대폰 앱과 데스크톱 앱을 같은 계정으로 쓰세요. 자신의 기기에는 [다운로드](https://nanomuse.cn/#download): Android APK, Windows / macOS / Linux용 데스크톱 앱(`nanoMuse-Desktop-<version>-…`), 터미널 바이너리(`nanomuse-desktop-terminal-<version>-…`), 또는 Python 3.11+에서 `pipx install "git+https://github.com/nano-muse/nanoMuse"`. GitHub 다운로드가 안 되는 곳이라면 같은 파일이 프로젝트 미러 [nanomuse.cn/dl](https://nanomuse.cn/dl/)에 있습니다(릴리스 후 15분 안에 동기화, SHA-256 검증). 기기들이 어떻게 만나는지는 [docs/desktop.md](../desktop.md)와 [docs/every-device.md](../every-device.md)에 있습니다. 휴대폰에서는:
+설치 없이 먼저 한번 보기: [nanomuse.cn/web](https://nanomuse.cn/web/)을 열면 브라우저 안에 시뮬레이션된 휴대폰이 나타나고, 그 안에 당신만의 nanoMuse가 있습니다. 전화번호나 이메일과 인증 코드로 로그인하면 써 볼 수 있습니다 — 데모이며, 앱과는 차이가 큽니다. 제대로 쓰려면 아래의 휴대폰 앱과 데스크톱 앱을 같은 계정으로 쓰세요. 자신의 기기에는 [다운로드](https://nanomuse.cn/#download): Android APK, Windows / macOS / Linux용 데스크톱 앱(`nanoMuse-Desktop-<version>-…`), 터미널 바이너리(`nanomuse-desktop-terminal-<version>-…`), 또는 Python 3.11+에서 `pipx install "git+https://github.com/nano-muse/nanoMuse"`. GitHub 다운로드가 안 되는 곳이라면 같은 파일이 프로젝트 미러 [nanomuse.cn/dl](https://nanomuse.cn/dl/)에 있습니다(릴리스 후 15분 안에 동기화, SHA-256 검증). 기기들이 어떻게 만나는지는 [docs/desktop.md](../desktop.md)와 [docs/every-device.md](../every-device.md)에 있습니다. 휴대폰에서는:
 
 1. [최신 릴리스](https://github.com/nano-muse/nanoMuse/releases/latest)에서 `nanoMuse-<version>-arm64.apk`를 내려받습니다 — Android 8.0 이상, 64비트 휴대폰. 원한다면 `sha256sum -c nanoMuse-<version>-arm64.apk.sha256`로 검증하세요.
 2. 파일을 엽니다. Android가 설치 허용을 한 번 묻습니다. 모든 버전이 같은 키로 서명되어 있어 업데이트는 이전 버전 위에 설치되고 데이터는 유지됩니다.

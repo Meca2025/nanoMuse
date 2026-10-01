@@ -1,8 +1,8 @@
 # The app
 
 > **Design record of the Python line** (`nanomuse/` + `web/`, tag `pre-openminis`): this is
-> the web app `nanomuse serve` serves — today the front door of the desktop app and of
-> nanomuse.cn/web. The phone app in `android/` is OpenMinis-based and described in
+> the web app `nanomuse serve` serves — today the front door of the desktop app, and of
+> a runtime opened in a browser tab (nanomuse.cn/web itself is the demo on a simulated phone). The phone app in `android/` is OpenMinis-based and described in
 > [android.md](android.md); its first run starts with the account sign-in, then the model.
 > The face everywhere is the bundled **dragon** — or one drawn for you in the
 > [avatar studio](avatar.md). The red panda and the dolls of earlier versions are gone

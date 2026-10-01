@@ -57,7 +57,7 @@ nanoMuse 是一個開源的個人智慧代理，為你的每一台裝置而生�
 
 ## 安裝
 
-什麼都不用裝：到 [nanomuse.cn/web](https://nanomuse.cn/web/) 用手機號碼或電子郵件收個驗證碼登入，就有一個屬於你的 nanoMuse 跑在專案的伺服器上，下次來還在——適合先試一試；要天天用，請裝下面的手機 App 和桌面版，同一個帳號。給你自己的裝置——[下載](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 桌面版（`nanoMuse-Desktop-<version>-…`）、終端機版（`nanomuse-desktop-terminal-<version>-…`），或用 Python 3.11+ 執行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；GitHub 的下載在哪裡不通，同樣的檔案也在專案的鏡像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（發佈後十五分鐘內同步，SHA-256 校驗）；[docs/desktop.md](../desktop.md) 與 [docs/every-device.md](../every-device.md) 說明它們怎麼連在一起。在手機上：
+什麼都不用裝就能先看一眼：[nanomuse.cn/web](https://nanomuse.cn/web/) 打開是瀏覽器裡的一台模擬手機，裡面有一個你自己的 nanoMuse，用手機號碼或電子郵件收個驗證碼登入就能試——這是示範，和 App 差得不少；要完整體驗，請裝下面的手機 App 和桌面版，同一個帳號。給你自己的裝置——[下載](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 桌面版（`nanoMuse-Desktop-<version>-…`）、終端機版（`nanomuse-desktop-terminal-<version>-…`），或用 Python 3.11+ 執行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；GitHub 的下載在哪裡不通，同樣的檔案也在專案的鏡像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（發佈後十五分鐘內同步，SHA-256 校驗）；[docs/desktop.md](../desktop.md) 與 [docs/every-device.md](../every-device.md) 說明它們怎麼連在一起。在手機上：
 
 1. 從[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下載 `nanoMuse-<version>-arm64.apk`——Android 8.0 或更新、64 位元手機。願意的話用 `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` 校驗。
 2. 開啟它。Android 會問一次是否允許安裝；每個版本都用同一把金鑰簽名，所以更新會覆蓋安裝並保留你的資料。

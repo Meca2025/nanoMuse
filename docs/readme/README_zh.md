@@ -71,7 +71,7 @@ nanoMuse 是一个开源的个人智能体，面向你的每一台设备。和 M
 
 ## 安装
 
-什么都不用装：在 [nanomuse.cn/web](https://nanomuse.cn/web/) 用手机号或邮箱收个验证码登录，就有一台属于你的 nanoMuse 跑在项目的服务器上，下次来还在——适合先试试；天天用的话，装下面的手机 App 和桌面版，登同一个账号。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-terminal-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；实测在国内直接从 GitHub 下载也是最快的；万一下不动，同样的文件在项目的备用镜像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（发布后十五分钟内同步，SHA-256 核对过）；它们怎么相遇见 [docs/desktop.md](../desktop.md) 和 [docs/every-device.md](../every-device.md)。手机上：
+什么都不用装就能先看一眼：[nanomuse.cn/web](https://nanomuse.cn/web/) 打开是浏览器里的一台模拟手机，里面有一个你自己的 nanoMuse，用手机号或邮箱收个验证码登录就能试——这是演示，和 App 差得不少；想要完整体验，装下面的手机 App 和桌面版，登同一个账号。想装在自己的设备上——[下载页](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 的桌面 App（`nanoMuse-Desktop-<版本>-…`）、终端版（`nanomuse-desktop-terminal-<版本>-…`），或者用 Python 3.11+ 执行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；实测在国内直接从 GitHub 下载也是最快的；万一下不动，同样的文件在项目的备用镜像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（发布后十五分钟内同步，SHA-256 核对过）；它们怎么相遇见 [docs/desktop.md](../desktop.md) 和 [docs/every-device.md](../every-device.md)。手机上：
 
 1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载 `nanoMuse-<版本>-arm64.apk`——Android 8.0 以上的 64 位手机。想校验就 `sha256sum -c nanoMuse-<版本>-arm64.apk.sha256`。
 2. 打开安装。Android 会问一次是否允许；每个版本都用同一把签名，直接覆盖安装升级，数据不丢。
