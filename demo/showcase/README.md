@@ -32,7 +32,7 @@ visitor's browser ──HTTPS──▶ Caddy ── demo.nanomuse.dev ──▶ 
    │   └ MobileGym phone (frame) └── <id>.s.nanomuse.dev ─────────────────▶ gateway ──▶ nm-<id>:8787
    │      └ nanoMuse app (iframe)                                                          │
    └──────────────────────────────────────────────────────────────────────────────┘        │
-                  models, pictures ◀── gateway ◀── /llm/<id>/{main,gui}[/images/*] ◀───────┘
+          models, pictures, clips ◀── gateway ◀── /llm/<id>/{main,gui}[/images/*|/api/v1/*] ◀─┘
 ```
 
 A session is one hostname (`<id>.s.nanomuse.dev`) because the nanoMuse web app and the
@@ -73,10 +73,20 @@ calls itself, on Model Studio's native multimodal endpoint with the demo key, th
 nanoMuse Cloud's relay does, and tells the container the model's name
 (`NANOMUSE_LLM_IMAGE_MODEL`). On by itself when `MAIN_BASE_URL` is a Model Studio host
 (`IMAGE_MODEL=qwen-image-3.0`), off with `IMAGE_MODEL=` empty; `IMAGE_PER_SESSION` (12) and
-`DAILY_IMAGES` (400) count apart from the chat budget. No clips: a video model would need
-the asynchronous video API too, and a demo Muse is gone in half an hour. A visitor's own key
-draws nothing through the gateway; `/api/demo/info` says `image_model: null` and the page
-greys the lines out.
+`DAILY_IMAGES` (400) count apart from the chat budget. A visitor's own key draws nothing
+through the gateway; `/api/demo/info` says `image_model: null` and the page greys the lines
+out.
+
+**Clips of the chosen face** (`gateway/showcase_gateway/clips.py`): after the stills the
+studio animates the face — four short clips, one per mood — through the asynchronous video
+API, which it looks for at `[llm] video_base_url`; the gateway names the session's own model
+address there (`NANOMUSE_LLM_VIDEO_BASE_URL`), so the four calls of a clip land on it: the
+upload policy, the first frame, the task, the polling. Model Studio wants the frame in its
+storage or at a public URL, neither of which a container without internet can manage, so the
+gateway stands in for the storage — the policy points back at it, the frame is kept a few
+minutes and goes up with the task inline — and the finished MP4 comes back through it too.
+`VIDEO_MODEL` (`wan2.2-i2v-flash` on a Model Studio host, empty for stills only),
+`CLIPS_PER_SESSION` (4, one face) and `DAILY_CLIPS` (120).
 
 ### Trial credentials for the phone app
 
@@ -228,7 +238,9 @@ needs no build: edit `site/page/` and run `build.sh` again (or copy the folder i
 A session that asks two or three things, one of them on the phone, is 5–15 model calls and
 20–60k tokens: about ¥0.05–0.2 at DeepSeek/百炼 prices. Two hundred sessions a day is ¥20–40.
 A new look is eight qwen-image pictures, about ¥2; `DAILY_IMAGES` (400) bounds that at ¥100 a
-day, `IMAGE_PER_SESSION` (12) at one face and half a redraw per visitor. The daily caps in
+day, `IMAGE_PER_SESSION` (12) at one face and half a redraw per visitor. The four clips of the
+chosen face are about ¥2 more with wan2.2-i2v-flash (4 s, 480P); `DAILY_CLIPS` (120) bounds
+that at ¥60 a day, `CLIPS_PER_SESSION` (4) at one face per visitor. The daily caps in
 `.env.example` (3,000 calls / 6M tokens) bound the chat's worst day at a few tens of yuan;
 lower them if you like. Put a spending alert on the provider accounts too — the gateway's
 counters live in memory and start from zero when it restarts.

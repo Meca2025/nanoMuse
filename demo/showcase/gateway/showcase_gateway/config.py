@@ -109,6 +109,12 @@ class Settings:
     image_base_url: str  # Model Studio's native API root
     image_per_session: int
     daily_images: int
+    # --- clips of the chosen face (clips.py); video_model "" → stills only
+    video_model: str
+    video_api_key: str
+    video_base_url: str  # Model Studio's native API root
+    clips_per_session: int
+    daily_clips: int
 
     # --- trial credentials for the phone app (see trials.py)
     trial_enabled: bool
@@ -195,6 +201,13 @@ class Settings:
             image_base_url=_str("IMAGE_BASE_URL", "https://dashscope.aliyuncs.com/api/v1"),
             image_per_session=_int("IMAGE_PER_SESSION", 12),
             daily_images=_int("DAILY_IMAGES", 400),
+            video_model=_str("VIDEO_MODEL", "wan2.2-i2v-flash" if on_model_studio else ""),
+            video_api_key=_str("VIDEO_API_KEY", _str("IMAGE_API_KEY", main.api_key)),
+            video_base_url=_str(
+                "VIDEO_BASE_URL", _str("IMAGE_BASE_URL", "https://dashscope.aliyuncs.com/api/v1")
+            ),
+            clips_per_session=_int("CLIPS_PER_SESSION", 4),
+            daily_clips=_int("DAILY_CLIPS", 120),
             trial_enabled=_bool("TRIAL_ENABLED", False),
             trial_db=_str("TRIAL_DB", "/data/trials.db"),
             trial_tokens=_int("TRIAL_TOKENS", 1_000_000),

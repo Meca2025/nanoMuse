@@ -59,6 +59,7 @@ class Session:
     requests: int = 0
     tokens: int = 0
     pictures: int = 0  # drawn for a new look (images.py), counted apart from the chat
+    clips: int = 0  # the chosen face animated (clips.py), counted apart again
     ended: bool = False
 
     @property
@@ -84,6 +85,8 @@ class Session:
                 "tokens_used": self.tokens,
                 "pictures": None if self.byok else settings.image_per_session,
                 "pictures_used": self.pictures,
+                "clips": None if self.byok else settings.clips_per_session,
+                "clips_used": self.clips,
             },
         }
 
@@ -140,6 +143,7 @@ class SessionManager:
         self.day_requests = 0
         self.day_tokens = 0
         self.day_pictures = 0
+        self.day_clips = 0
         self.internal_url = settings.internal_url
         self.resolve = _resolve  # DNS, replaceable in tests
         self._lock = asyncio.Lock()
@@ -188,6 +192,7 @@ class SessionManager:
             self.day_requests = 0
             self.day_tokens = 0
             self.day_pictures = 0
+            self.day_clips = 0
 
     def active(self) -> list[Session]:
         return [s for s in self.sessions.values() if not s.ended]
@@ -237,6 +242,11 @@ class SessionManager:
         # showcase's key only; a visitor's own provider is not asked to draw
         if s.image_model and s.image_api_key and not sess.byok:
             env["NANOMUSE_LLM_IMAGE_MODEL"] = s.image_model
+            # …and the chosen face animated (clips.py): the studio finds the video API at the
+            # session's own model address, where the gateway stands in for the provider
+            if s.video_model and s.video_api_key and s.video_base_url:
+                env["NANOMUSE_LLM_VIDEO_MODEL"] = s.video_model
+                env["NANOMUSE_LLM_VIDEO_BASE_URL"] = f"{base}/main"
         env.update(s.extra_env)
         return env
 
@@ -374,6 +384,27 @@ class SessionManager:
         self.day_pictures += 1
         self.touch(sess)
 
+    def check_clips(self, sess: Session) -> None:
+        """Whether one more clip of the face is within the session's and the day's share."""
+        self._roll_day()
+        if sess.clips >= self.s.clips_per_session:
+            raise Refused(
+                429,
+                "clip_budget",
+                "This demo Muse has made all the clips it may. A new session animates again.",
+            )
+        if self.day_clips >= self.s.daily_clips:
+            raise Refused(
+                429,
+                "daily_clips",
+                "The showcase has made today's share of clips. Come back tomorrow for a moving face.",
+            )
+
+    def record_clip(self, sess: Session) -> None:
+        sess.clips += 1
+        self.day_clips += 1
+        self.touch(sess)
+
     def stats(self) -> dict:
         self._roll_day()
         active = self.active()
@@ -384,4 +415,5 @@ class SessionManager:
             "day_requests": self.day_requests,
             "day_tokens": self.day_tokens,
             "day_pictures": self.day_pictures,
+            "day_clips": self.day_clips,
         }

@@ -32,6 +32,7 @@ from starlette.websockets import WebSocket
 
 from . import __version__, llm
 from .accounts import AccountManager, AccountStore
+from .clips import Clips, is_clip_path
 from .config import Settings
 from .images import Pictures, is_image_path
 from .proxy import proxy_http, proxy_ws
@@ -134,6 +135,7 @@ def create_app(
             clock=manager.clock,
         )
     pictures = Pictures(settings, http)
+    clips = Clips(settings, http)
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -213,12 +215,14 @@ def create_app(
             "demo_model": settings.main.model if settings.main.configured else None,
             "gui_model": settings.gui.model if settings.gui.configured else None,
             "image_model": settings.image_model if pictures.enabled else None,
+            "video_model": settings.video_model if pictures.enabled and clips.enabled else None,
             "byok": settings.byok_enabled,
             "byok_hosts": list(settings.byok_hosts) if settings.byok_enabled else [],
             "quota": {
                 "requests": settings.session_requests,
                 "tokens": settings.session_tokens,
                 "pictures": settings.image_per_session if pictures.enabled else 0,
+                "clips": settings.clips_per_session if pictures.enabled and clips.enabled else 0,
             },
             **manager.stats(),
             "trial": trials.stats(),
@@ -347,6 +351,8 @@ def create_app(
             return llm.refusal(Refused(404, "no_session", "this session has ended"))
         if is_image_path(path):
             return await pictures.handle(request, manager, sess, path)
+        if is_clip_path(path):
+            return await clips.handle(request, manager, sess, path)
         return await llm.forward(request, manager, http, sess, lane, path)
 
     # ------------------------------------------------------------- the site (development)
