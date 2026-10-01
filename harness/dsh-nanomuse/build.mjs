@@ -61,7 +61,7 @@ await build({
   sourcemap: true,
   external: PLATFORM_MODULES,
   jsx: 'automatic',
-  define: { 'process.env.NODE_ENV': '"production"' },
+  define: { 'process.env.NODE_ENV': '"production"', 'process.env.NANOMUSE_VERSION': JSON.stringify(pkg.version) },
   banner: { js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(pkg.name)}, factory: (require) => {\nvar module = { exports: {} }; var exports = module.exports;` },
   footer: { js: 'return module.exports; } });' },
   logLevel: 'warning',

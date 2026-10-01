@@ -131,6 +131,15 @@ export const en = {
   statusConnectedWith: 'Connected · {n} other device(s) online',
   statusThinking: 'Thinking…',
   statusWaiting: 'Waiting for you',
+  // settings
+  navGeneral: 'General',
+  navAccount: 'Account',
+  navAdvanced: 'Advanced',
+  close: 'Close',
+  devicesSummary: '{n} device(s) on the account, this computer included.',
+  devicesOpen: 'Open Devices',
+  versionTitle: 'About',
+  versionLine: 'nanoMuse on DeepSeek Harness · bundle {version} · GPL-3.0-or-later',
 }
 
 export const zh: typeof en = {
@@ -256,6 +265,14 @@ export const zh: typeof en = {
   statusConnectedWith: '已连接 · {n} 台设备在线',
   statusThinking: '思考中…',
   statusWaiting: '等你确认',
+  navGeneral: '通用',
+  navAccount: '账号',
+  navAdvanced: '高级',
+  close: '关闭',
+  devicesSummary: '账号下有 {n} 台设备（含这台电脑）。',
+  devicesOpen: '打开设备页',
+  versionTitle: '关于',
+  versionLine: 'nanoMuse，基于 DeepSeek Harness · 组件 {version} · GPL-3.0-or-later',
 }
 
 export type Words = keyof typeof en

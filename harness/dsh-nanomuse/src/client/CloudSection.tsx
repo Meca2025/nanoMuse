@@ -8,7 +8,9 @@ import { Button, Input, StateDot, Switch } from '@deepseek-ai/dsh-client-ui-prim
 import { createElement as h, useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { call, column, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
+import { settingsBus } from './bus.ts'
 import { useLive, type LiveHub } from './live.ts'
+import { DEVICES_PANEL } from './panels.ts'
 import { SignIn } from './SignIn.tsx'
 
 type Phase = 'loading' | 'signedOut' | 'signedIn'
@@ -75,7 +77,8 @@ export function makeCloudSection(t: Translate) {
         h('h3', { style: heading }, t('lookTitle')),
         h('div', { style: muted }, look.rev > 0 ? t('lookFrom', { name: look.name, look: lookWord }) : t('lookDefault')),
         h('h3', { style: heading }, t('devicesTitle')),
-        h(Devices, { t, hub: live.streaming ? live.hub : status.hub }),
+        h('div', { style: muted }, t('devicesSummary', { n: (live.streaming ? live.hub : status.hub).devices.filter((d) => d.kind !== 'web').length }), ' ',
+          h(Button, { variant: 'ghost', size: 'sm', onClick: () => { settingsBus.openSection?.(DEVICES_PANEL) } }, t('devicesOpen'))),
         error ? h('div', { style: errorStyle }, error) : null,
         h('div', { style: row },
           h(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: refresh }, t('refresh')),

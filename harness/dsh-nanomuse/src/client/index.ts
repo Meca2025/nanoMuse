@@ -11,6 +11,7 @@
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
+import { closeTopModal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useEffect } from 'react'
 import type { Translate } from './api.ts'
 import { Avatar, BrandName, type Mood } from './Avatar.tsx'
@@ -22,6 +23,7 @@ import { pressSettingsChord } from './keys.ts'
 import { useLive } from './live.ts'
 import { en, zh } from './locales.ts'
 import { MuseHeader, type UseSessionStatus } from './MuseHeader.tsx'
+import { createShellStore, makeGeneralSection, MuseSettings, type MuseSettingsProps, type OnboardingStep, type SectionRow } from './MuseSettings.tsx'
 import { MuseSidebar, type MuseSidebarProps, type PanelMeta } from './MuseSidebar.tsx'
 import { makeOnboarding, type OnboardingOwnerProps } from './Onboarding.tsx'
 import { DEVICES_PANEL, ISSUES_URL } from './panels.ts'
@@ -35,14 +37,16 @@ export const inject = ['slots', 'locale', 'layout', 'uiWorkspace', 'shortcuts']
 /** The slot and locale faces we use, named here so the plugin reads plainly. */
 interface SlotRegistrar {
   inject(name: string, body: () => unknown): unknown
-  register(options: Record<string, unknown>, component: (props: never) => unknown): unknown
+  register(options: Record<string, unknown>, component: (props: never) => unknown): () => void
   entriesOfSlot(name: string): { options: { id?: string; order?: number; label?: unknown } }[]
   subscribe(name: string, listener: () => void): () => void
+  getVersion(name: string): number
 }
 interface LocaleTable {
   register(ns: string, dicts: Record<string, Record<string, string>>): () => void
   bind(ns: string): (key: string, values?: Record<string, string | number>) => string
   subscribe(listener: () => void): () => void
+  getSnapshot(): { revision: number }
 }
 interface LayoutService {
   toggleSidebar(): void
@@ -53,6 +57,7 @@ interface WorkspaceNavigation {
 }
 interface ShortcutsService {
   catalog: unknown
+  register(command: Record<string, unknown>): () => void
 }
 
 interface SessionFace {
@@ -94,6 +99,7 @@ export function apply(ctx: ClientContext): void {
     ...raw,
     entriesOfSlot: (name) => raw.entriesOfSlot(name),
     subscribe: (name, listener) => raw.subscribe(name, listener),
+    getVersion: (name) => raw.getVersion(name),
     register: (options, component) => raw.register(options, component),
     inject: (name, body) => raw.inject(name, () => {
       try {
@@ -199,6 +205,98 @@ export function apply(ctx: ClientContext): void {
   slots.inject('conversation.header.leading', () =>
     slots.register({ name: 'conversation.header.leading', locale: 'nanomuse' }, ({ useSessionStatus }: { useSessionStatus?: UseSessionStatus }) =>
       h(MuseHeader, { t, stop, openProfile: () => { if (!openSettings()) pressSettingsChord() }, useSessionStatus })))
+
+  // The settings dialog, Muse-shaped, in the seat our sidebar declares; it
+  // declares the settings seats in turn, and the General page declares the
+  // rows seat. The ledger → nav-row projections are cached per ledger version
+  // and locale revision, the way the stock shell's were.
+  const shell = createShellStore()
+  let rowsVersion = -1
+  let rowsRevision = -1
+  let rows: readonly SectionRow[] = []
+  let stepsVersion = -1
+  let steps: readonly OnboardingStep[] = []
+  const sections = {
+    getSnapshot: () => {
+      const version = slots.getVersion('settings.section')
+      const revision = locale.getSnapshot().revision
+      if (version !== rowsVersion || revision !== rowsRevision) {
+        rowsVersion = version
+        rowsRevision = revision
+        rows = slots.entriesOfSlot('settings.section')
+          .map((e) => ({ id: e.options.id ?? '', order: e.options.order ?? 0, label: resolveSlotLabel(e.options.label as never) ?? '' }))
+          .sort((a, b) => a.order - b.order)
+      }
+      return rows
+    },
+    subscribe: (listener: () => void) => {
+      const offLedger = slots.subscribe('settings.section', listener)
+      const offLocale = locale.subscribe(listener)
+      return () => { offLedger(); offLocale() }
+    },
+  }
+  const onboardingSteps = {
+    getSnapshot: () => {
+      const version = slots.getVersion('settings.onboarding')
+      if (version !== stepsVersion) {
+        stepsVersion = version
+        steps = slots.entriesOfSlot('settings.onboarding')
+          .map((e) => ({ id: e.options.id ?? '', order: e.options.order ?? 0 }))
+          .sort((a, b) => a.order - b.order)
+      }
+      return steps
+    },
+    subscribe: (listener: () => void) => slots.subscribe('settings.onboarding', listener),
+  }
+  slots.inject('sidebar.settings', () => {
+    const disposeCommand = shortcuts.register({
+      id: 'settings.open',
+      label: () => t('menuSettings'),
+      aliases: ['settings', 'preferences'],
+      defaults: {
+        'desktop:macos': { code: 'Comma', modifiers: ['primary'] },
+        'desktop:windows': { code: 'Comma', modifiers: ['primary'] },
+        'desktop:linux': { code: 'Comma', modifiers: ['primary'] },
+        'web:macos': { code: 'Comma', modifiers: ['primary', 'alt'] },
+        'web:windows': { code: 'Comma', modifiers: ['primary', 'alt'] },
+      },
+      regions: ['page', 'editable', 'terminal'],
+      modals: ['settings'],
+      resolve: ({ modal }: { modal: string | null }) => {
+        if (modal !== null && modal !== 'settings') return { status: 'blocked', reason: 'modal' }
+        return { status: 'handled', run: () => { if (modal === 'settings') closeTopModal(document); else shell.open() } }
+      },
+    })
+    const disposeSlot = slots.register({
+      name: 'sidebar.settings',
+      locale: 'nanomuse',
+      children: {
+        'settings.launcher': { kind: 'single', scope: 'root' },
+        'settings.trigger': { kind: 'single', scope: 'root' },
+        'settings.header': { kind: 'single', scope: 'root' },
+        'settings.action': { kind: 'list', scope: 'root' },
+        'settings.close': { kind: 'single', scope: 'root' },
+        'settings.section': { kind: 'list', scope: 'root' },
+        'settings.onboarding': { kind: 'list', scope: 'root' },
+      },
+      inject: () => ({ store: shell, hooks: { sections, onboardingSteps } }),
+    }, (props: MuseSettingsProps) => h(MuseSettings, { ...props, t, store: shell }))
+    return () => { disposeCommand(); disposeSlot() }
+  })
+  slots.inject('settings.trigger', () => slots.register({ name: 'settings.trigger', locale: 'nanomuse' }, () => t('menuSettings')))
+  slots.inject('settings.header', () => slots.register({ name: 'settings.header', locale: 'nanomuse' }, () => t('menuSettings')))
+  slots.inject('settings.close', () => slots.register({ name: 'settings.close', locale: 'nanomuse' }, () => t('close')))
+  const GeneralSection = makeGeneralSection(t, process.env.NANOMUSE_VERSION ?? '')
+  slots.inject('settings.section', () => slots.register({
+    name: 'settings.section',
+    id: 'general',
+    order: 0,
+    label: () => t('navGeneral'),
+    locale: 'nanomuse',
+    children: { 'settings.general.item': { kind: 'list', scope: 'root' } },
+  }, GeneralSection))
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: DEVICES_PANEL, order: 25, label: () => t('railDevices'), locale: 'nanomuse' }, DevicesPanel))
 
   // The first run: meet the agent, sign in or use your own key — in the shipped
   // step's seat, below its priority so ours renders whichever registers first.

@@ -123,6 +123,9 @@ header[data-window-drag]:has(.nm-header) { position: relative; min-height: 104px
 .nm-settings-head { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 12px 14px 0; min-height: 36px; }
 .nm-settings-body { flex: 1; min-height: 0; overflow: auto; padding: 8px 28px 28px; }
 .nm-settings-body > * { max-width: 560px; }
+.nm-settings-body .nm-page { padding: 0; height: auto; overflow: visible; }
+.nm-settings-body .nm-page h1 { display: none; }
+.nm-general { display: flex; flex-direction: column; }
 .nm-close { width: 30px; height: 30px; border: 0; padding: 0; border-radius: 50%; background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .nm-close:hover { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
 .nm-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

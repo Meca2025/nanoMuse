@@ -41,6 +41,13 @@
 - id: ui-sidebar
   disabled: true
 
+# The settings dialog is ours as well — a grouped nav, the everyday pages
+# first and the harness's other pages under Advanced. Our shell declares the
+# same settings seats, and its General page declares the rows seat, so every
+# plugin's section and row mounts as before.
+- id: ui-settings-general
+  disabled: true
+
 - insert:
     # The browser half rides on this row (sidebar mark and name, hero mark,
     # the Cloud settings section); the host side serves the face's stills.
