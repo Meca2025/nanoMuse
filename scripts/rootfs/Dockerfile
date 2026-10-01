@@ -13,7 +13,7 @@ ARG NODE=1
 
 FROM --platform=$BUILDPLATFORM python:3.12-alpine AS wheel
 WORKDIR /src
-COPY pyproject.toml README.md README_zh.md LICENSE ./
+COPY pyproject.toml README.md LICENSE ./
 COPY config/config.example.toml ./config/config.example.toml
 COPY nanomuse ./nanomuse
 RUN pip install --no-cache-dir --quiet build && python -m build --wheel --outdir /wheels
