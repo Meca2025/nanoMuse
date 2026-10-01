@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 # Model providers a visitor may point their own key at. Anything else is refused so that the
 # gateway cannot be used to reach arbitrary hosts from the server.
@@ -102,6 +103,13 @@ class Settings:
     byok_enabled: bool
     byok_hosts: tuple[str, ...]
 
+    # --- pictures for a new look of the Muse (images.py); image_model "" → none drawn here
+    image_model: str
+    image_api_key: str
+    image_base_url: str  # Model Studio's native API root
+    image_per_session: int
+    daily_images: int
+
     # --- trial credentials for the phone app (see trials.py)
     trial_enabled: bool
     trial_db: str
@@ -146,6 +154,10 @@ class Settings:
                 key, _, value = item.partition("=")
                 extra[key.strip()] = value.strip()
         hosts = tuple(h.strip().lower() for h in _str("BYOK_ALLOWED_HOSTS").split(",") if h.strip())
+        # the Muse's new looks are drawn with qwen-image on Model Studio; on by itself when the
+        # demo key is a Model Studio key (the same key draws), else only when IMAGE_MODEL says so
+        main_host = (urlparse(main.base_url).hostname or "").lower()
+        on_model_studio = main_host.endswith("aliyuncs.com")
         return cls(
             public_scheme=_str("PUBLIC_SCHEME", "https"),
             site_host=_str("SITE_HOST", "localhost"),
@@ -178,6 +190,11 @@ class Settings:
             daily_tokens=_int("DAILY_LLM_TOKENS", 6_000_000),
             byok_enabled=_bool("BYOK_ENABLED", True),
             byok_hosts=hosts or DEFAULT_BYOK_HOSTS,
+            image_model=_str("IMAGE_MODEL", "qwen-image-3.0" if on_model_studio else ""),
+            image_api_key=_str("IMAGE_API_KEY", main.api_key),
+            image_base_url=_str("IMAGE_BASE_URL", "https://dashscope.aliyuncs.com/api/v1"),
+            image_per_session=_int("IMAGE_PER_SESSION", 12),
+            daily_images=_int("DAILY_IMAGES", 400),
             trial_enabled=_bool("TRIAL_ENABLED", False),
             trial_db=_str("TRIAL_DB", "/data/trials.db"),
             trial_tokens=_int("TRIAL_TOKENS", 1_000_000),
@@ -204,6 +221,10 @@ class Settings:
 
     def session_origin(self, sid: str) -> str:
         return f"{self.public_scheme}://{sid}.{self.session_domain}{self.public_port}"
+
+    def site_origin(self) -> str:
+        """The showcase site itself — the phone in the browser."""
+        return f"{self.public_scheme}://{self.site_host}{self.public_port}"
 
     def trial_base_url(self, trial_id: str, lane: str = "main") -> str:
         """Where a phone points its OpenAI-compatible client for a trial."""

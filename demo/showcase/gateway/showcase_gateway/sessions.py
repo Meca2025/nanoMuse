@@ -58,6 +58,7 @@ class Session:
     last_seen: float = field(default=0.0)
     requests: int = 0
     tokens: int = 0
+    pictures: int = 0  # drawn for a new look (images.py), counted apart from the chat
     ended: bool = False
 
     @property
@@ -81,6 +82,8 @@ class Session:
                 "tokens": None if self.byok else settings.session_tokens,
                 "requests_used": self.requests,
                 "tokens_used": self.tokens,
+                "pictures": None if self.byok else settings.image_per_session,
+                "pictures_used": self.pictures,
             },
         }
 
@@ -136,6 +139,7 @@ class SessionManager:
         self._day = _day_key(clock())
         self.day_requests = 0
         self.day_tokens = 0
+        self.day_pictures = 0
         self.internal_url = settings.internal_url
         self.resolve = _resolve  # DNS, replaceable in tests
         self._lock = asyncio.Lock()
@@ -183,6 +187,7 @@ class SessionManager:
             self._day = key
             self.day_requests = 0
             self.day_tokens = 0
+            self.day_pictures = 0
 
     def active(self) -> list[Session]:
         return [s for s in self.sessions.values() if not s.ended]
@@ -225,6 +230,10 @@ class SessionManager:
             "NANOMUSE_GUI_API_KEY": sess.llm_key,
             "NANOMUSE_LOG_LEVEL": "warning",
         }
+        # a new look for the Muse: pictures drawn through the gateway (images.py) — on the
+        # showcase's key only; a visitor's own provider is not asked to draw
+        if s.image_model and s.image_api_key and not sess.byok:
+            env["NANOMUSE_LLM_IMAGE_MODEL"] = s.image_model
         env.update(s.extra_env)
         return env
 
@@ -306,10 +315,14 @@ class SessionManager:
         asyncio.get_running_loop().call_later(300, self.sessions.pop, sid, None)
 
     # ------------------------------------------------------------------ model budget
-    def llm_lane(self, sess: Session, key: str | None, lane: str) -> Lane:
-        """Which upstream a container's model call goes to — after the budget check."""
+    def authenticate_key(self, sess: Session, key: str | None) -> None:
+        """The per-session key a container presents to the model proxy, or ``Refused``."""
         if not key or not secrets.compare_digest(key, sess.llm_key):
             raise Refused(401, "bad_key", "invalid api key")
+
+    def llm_lane(self, sess: Session, key: str | None, lane: str) -> Lane:
+        """Which upstream a container's model call goes to — after the budget check."""
+        self.authenticate_key(sess, key)
         if sess.byok:
             return Lane("openai", sess.byok.model, sess.byok.base_url, sess.byok.api_key)
         upstream = self.s.lane(lane)
@@ -337,6 +350,27 @@ class SessionManager:
             self.day_requests += 1
             self.day_tokens += tokens
 
+    def check_pictures(self, sess: Session) -> None:
+        """Whether one more picture for a new look is within the session's and the day's share."""
+        self._roll_day()
+        if sess.pictures >= self.s.image_per_session:
+            raise Refused(
+                429,
+                "picture_budget",
+                "This demo Muse has drawn all the pictures it may. A new session draws again.",
+            )
+        if self.day_pictures >= self.s.daily_images:
+            raise Refused(
+                429,
+                "daily_pictures",
+                "The showcase has drawn today's share of pictures. Come back tomorrow for a new look.",
+            )
+
+    def record_picture(self, sess: Session) -> None:
+        sess.pictures += 1
+        self.day_pictures += 1
+        self.touch(sess)
+
     def stats(self) -> dict:
         self._roll_day()
         active = self.active()
@@ -346,4 +380,5 @@ class SessionManager:
             "day": self._day,
             "day_requests": self.day_requests,
             "day_tokens": self.day_tokens,
+            "day_pictures": self.day_pictures,
         }

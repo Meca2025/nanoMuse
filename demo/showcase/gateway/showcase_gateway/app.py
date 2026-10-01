@@ -33,6 +33,7 @@ from starlette.websockets import WebSocket
 from . import __version__, llm
 from .accounts import AccountManager, AccountStore
 from .config import Settings
+from .images import Pictures, is_image_path
 from .proxy import proxy_http, proxy_ws
 from .runner import DockerRunner
 from .sessions import Provider, Refused, SessionManager, check_provider
@@ -132,6 +133,7 @@ def create_app(
             http=http,
             clock=manager.clock,
         )
+    pictures = Pictures(settings, http)
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -210,9 +212,14 @@ def create_app(
             "idle_ttl_s": settings.idle_ttl_s,
             "demo_model": settings.main.model if settings.main.configured else None,
             "gui_model": settings.gui.model if settings.gui.configured else None,
+            "image_model": settings.image_model if pictures.enabled else None,
             "byok": settings.byok_enabled,
             "byok_hosts": list(settings.byok_hosts) if settings.byok_enabled else [],
-            "quota": {"requests": settings.session_requests, "tokens": settings.session_tokens},
+            "quota": {
+                "requests": settings.session_requests,
+                "tokens": settings.session_tokens,
+                "pictures": settings.image_per_session if pictures.enabled else 0,
+            },
             **manager.stats(),
             "trial": trials.stats(),
             "web": accounts.stats(),
@@ -225,11 +232,10 @@ def create_app(
 
     @app.get("/web/", include_in_schema=False)
     async def web_page() -> Response:
+        # with the kept Muses switched off, the web entry is the phone in the browser — the
+        # showcase site — wherever /web was reached (the project site proxies it here)
         if not settings.web_enabled:
-            return HTMLResponse(
-                "<!doctype html><meta charset=utf-8><p>nanoMuse Web is not turned on here.",
-                status_code=404,
-            )
+            return RedirectResponse(settings.site_origin() + "/", status_code=302)
         return HTMLResponse(WEB_PAGE, headers={"Cache-Control": "no-store"})
 
     @app.get("/api/web/info")
@@ -339,6 +345,8 @@ def create_app(
         sess = manager.get(sid)
         if sess is None:
             return llm.refusal(Refused(404, "no_session", "this session has ended"))
+        if is_image_path(path):
+            return await pictures.handle(request, manager, sess, path)
         return await llm.forward(request, manager, http, sess, lane, path)
 
     # ------------------------------------------------------------- the site (development)

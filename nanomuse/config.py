@@ -567,6 +567,10 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
         "NANOMUSE_LLM_API_KEY": "api_key",
         "NANOMUSE_LLM_TOOL_MODE": "tool_mode",
         "NANOMUSE_LLM_VISION": "vision",
+        # the avatar studio's models on the chat model's host (docs/avatar.md); a hosted
+        # runtime is told them this way, the showcase gateway for one
+        "NANOMUSE_LLM_IMAGE_MODEL": "image_model",
+        "NANOMUSE_LLM_VIDEO_MODEL": "video_model",
     }
     for env, key in mapping.items():
         if (val := os.environ.get(env)) not in (None, ""):
