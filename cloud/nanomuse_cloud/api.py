@@ -69,6 +69,7 @@ import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, Request, Response, UploadFile, WebSocket
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.requests import ClientDisconnect
 
 from . import __version__
 from .config import ModelSpec, Settings
@@ -831,7 +832,13 @@ def create_app(
     # -- helpers ------------------------------------------------------------------------------------
 
     async def _json(request: Request) -> dict:
-        raw = await request.body()
+        try:
+            raw = await request.body()
+        except ClientDisconnect as e:
+            # the caller went away while its body was still arriving (a phone changing
+            # networks, a tab closed mid-request): nobody is there to answer, and it is not
+            # a server error worth a traceback in the log
+            raise CloudError(400, "client_disconnected", "The request ended before its body") from e
         if len(raw) > settings.max_request_bytes:
             raise CloudError(413, "too_large", "Request too large")
         try:

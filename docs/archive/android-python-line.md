@@ -10,7 +10,7 @@
 
 `android/` is a native shell around the web app, in two flavours:
 
-- **nanomuse.apk** (`local`) runs nanoMuse **on the phone itself**: the Python server, its tools and a small Alpine Linux live inside the app, unpacked on first start and run under a user-mode chroot. Nothing to install on a computer. arm64 phones, Android 8.0 or newer. How it works, what it can and cannot do: [local-runtime.md](local-runtime.md).
+- **nanomuse.apk** (`local`) runs nanoMuse **on the phone itself**: the Python server, its tools and a small Alpine Linux live inside the app, unpacked on first start and run under a user-mode chroot. Nothing to install on a computer. arm64 phones, Android 8.0 or newer. How it works, what it can and cannot do: [local-runtime.md](../local-runtime.md).
 - **nanomuse-connect.apk** (`connect`) is the **remote for a `nanomuse serve` on your computer** — the same web app in a WebView, plus what a browser tab cannot do on a home network: notifications while the app is closed. Web Push needs `https://` and a push service in the middle; the app keeps its own connection to your server instead. Any CPU.
 
 The local build offers both on its first screen (*Run on this phone* / *Connect to my computer*), so it is the one to download unless the phone is 32-bit or storage is tight.
@@ -20,8 +20,8 @@ What the shell adds over the browser tab:
 - **Connect by QR code.** Scan the code `nanomuse serve` prints; no typing addresses or tokens.
 - **Notifications in the background.** A foreground service keeps one WebSocket open to your server. Approvals, questions and the last word of background work arrive as Android notifications and open the right chat. A resolved approval takes its notification down again. Reconnects after a network change or a reboot.
 - **Attachments, downloads, links.** The file picker for the paperclip, downloads to the phone's Downloads folder, links opening in the real browser.
-- **The agent's browser.** While the app is connected, its own WebView is a browser the agent may use — offscreen, on a private virtual display so pages run at full speed with the app in the background — and *Take over* on a browser card slides that very page up for you to sign in or decide, then **Done**. In the local build this is the only browser there is; with a server it is used whenever the app is connected (`[browser] backend`). [browser.md](browser.md).
-- **Operating the screen.** With the *Phone* switch on (*Connections → Phone*) and the app's accessibility service enabled, the agent can look at the phone's screen and tap, type and swipe in its apps — the last rung after skills, fetches and the browser. Android 11 or newer. A capsule with the current step and a **Stop** button sits over the operated app the whole time; a `FLAG_SECURE` screen stays black to it and it refuses to type into password fields. [gui.md](gui.md).
+- **The agent's browser.** While the app is connected, its own WebView is a browser the agent may use — offscreen, on a private virtual display so pages run at full speed with the app in the background — and *Take over* on a browser card slides that very page up for you to sign in or decide, then **Done**. In the local build this is the only browser there is; with a server it is used whenever the app is connected (`[browser] backend`). [browser.md](../browser.md).
+- **Operating the screen.** With the *Phone* switch on (*Connections → Phone*) and the app's accessibility service enabled, the agent can look at the phone's screen and tap, type and swipe in its apps — the last rung after skills, fetches and the browser. Android 11 or newer. A capsule with the current step and a **Stop** button sits over the operated app the whole time; a `FLAG_SECURE` screen stays black to it and it refuses to type into password fields. [gui.md](../gui.md).
 - **Plain HTTP on the LAN.** Works with `http://192.168.x.x:8787` as is.
 
 Everything else is the same web app, served by your `nanomuse serve`.
@@ -40,7 +40,7 @@ nanomuse serve --host 0.0.0.0
 
 Tap **Scan QR code** and point the camera at the terminal. Or paste the printed link (`http://…:8787/?token=…`) into the field. The app checks the address and the token against the server before it keeps them.
 
-The app on the phone and the server on your computer need to reach each other: same Wi-Fi, or a VPN such as Tailscale, or the server behind a reverse proxy with TLS (`https://` works too). See [deployment.md](deployment.md) for reaching the server from outside your network.
+The app on the phone and the server on your computer need to reach each other: same Wi-Fi, or a VPN such as Tailscale, or the server behind a reverse proxy with TLS (`https://` works too). See [deployment.md](../deployment.md) for reaching the server from outside your network.
 
 ## Notifications
 
@@ -50,7 +50,7 @@ Updates arrive through the same connection, so there is nothing to configure on 
 
 ## Keeping it running
 
-Android stops apps that look idle, and the vendors' Android stops them sooner. The agent already does its part: it runs as a foreground service, holds the phone awake only while a task runs, and in local mode asks Android to wake it at the moment the next reminder, goal check-in or background pass is due (an alarm set for the runtime's `next_wake_at`; see [local-runtime.md](local-runtime.md#waking-up)). *Settings → Keep it running* shows the three switches that let it keep that promise on this phone, each with an *Allow* / *Open* button that jumps to Android's own page:
+Android stops apps that look idle, and the vendors' Android stops them sooner. The agent already does its part: it runs as a foreground service, holds the phone awake only while a task runs, and in local mode asks Android to wake it at the moment the next reminder, goal check-in or background pass is due (an alarm set for the runtime's `next_wake_at`; see [local-runtime.md](../local-runtime.md#waking-up)). *Settings → Keep it running* shows the three switches that let it keep that promise on this phone, each with an *Allow* / *Open* button that jumps to Android's own page:
 
 - **Battery** — *Unrestricted* or *Optimised*. Optimised means Android may freeze the process after a while with the screen off; routines and check-ins then wait until the phone wakes. The button raises Android's own dialog (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`).
 - **Display over other apps** — needed to bring the app to the front from the background (the *Open* button on a notice card) and for the status capsule while it works in other apps. Not needed for the GUI executor itself: its overlays come with the accessibility service.
@@ -75,7 +75,7 @@ cd android
 ./gradlew assembleConnectRelease  # app/build/outputs/apk/connect/release/app-connect-release.apk
 ```
 
-The `local` flavour also needs the root file system and PRoot in place first — `scripts/rootfs/build.sh` (Docker + QEMU) and `android/native/build-proot.sh` (the NDK) put them under `android/app/src/local/`; see [local-runtime.md](local-runtime.md#building-the-pieces). Then `./gradlew assembleLocalDebug`.
+The `local` flavour also needs the root file system and PRoot in place first — `scripts/rootfs/build.sh` (Docker + QEMU) and `android/native/build-proot.sh` (the NDK) put them under `android/app/src/local/`; see [local-runtime.md](../local-runtime.md#building-the-pieces). Then `./gradlew assembleLocalDebug`.
 
 Without a signing key the release build is signed with the debug key, which installs fine but cannot update a build signed with a different key. To sign properly, create a key once and keep it outside the repository:
 
@@ -109,12 +109,12 @@ The `versionName` in `android/app/build.gradle.kts` must match the tag, like the
 | `MainActivity.kt` | The WebView: loads `<server>/?token=…`, file picker, downloads, external links; the offline / starting / failure screen |
 | `NotifyService.kt` | Remote mode: foreground service with an OkHttp WebSocket to `/ws?token=…` |
 | `Notifier.kt` | Events → notifications, shared by both services |
-| `runtime/RuntimeService.kt`, `runtime/LocalRuntime.kt`, `runtime/TarUnpacker.kt` | Local mode: the runtime on the phone ([local-runtime.md](local-runtime.md)) |
+| `runtime/RuntimeService.kt`, `runtime/LocalRuntime.kt`, `runtime/TarUnpacker.kt` | Local mode: the runtime on the phone ([local-runtime.md](../local-runtime.md)) |
 | `Bridge.kt` | `window.NanoMuseAndroid` — the web app uses it to show phone settings instead of Web Push, to know the mode, and to read the accessibility service's state and open the settings that turn it on |
 | `DeviceLink.kt` | The device on the app's WebSocket: announces `gui` / `capsule` / the app list (again whenever the accessibility service comes or goes) and answers `screen`, `act`, `task` and `browser` requests |
 | `gui/MuseAccessibilityService.kt`, `gui/A11yExecutor.kt`, `gui/NodeTree.kt` | The screen executor: screenshot (downscaled to 720 px wide), gestures, global actions, typing with a clipboard fallback, the element tree with stable ids, an event-based wait for the UI to settle |
 | `gui/GuiOverlay.kt` | Two accessibility overlay windows: the finger marks (rings, lines, typed text, caption) and the capsule with the step and **Stop**, which grows into a notice card when the agent needs you; both hidden while a screenshot is taken |
-| `device/` | The phone's own capabilities as a loopback MCP server ([device.md](device.md)) |
+| `device/` | The phone's own capabilities as a loopback MCP server ([device.md](../device.md)) |
 | `runtime/WakeAlarms.kt` | Local mode: the alarm for the runtime's `next_wake_at` — exact when allowed, inexact otherwise — and the receiver that pokes the service |
 | `KeepRunning.kt` | The state of the battery, overlay and exact-alarm permissions, the vendor guess, and the intents that open the right settings page |
 | `Diagnostics.kt` | Crash files (`files/crashes/`, local only) and *Export logs* (a zip through a `FileProvider` to the share sheet) |

@@ -6,7 +6,7 @@
 # image failed to copy with Finder error -36 on some Macs). See docs/desktop.md.
 appId: io.github.nanomuse.desktop
 productName: nanoMuse
-copyright: GPL-3.0-only · the nanoMuse community
+copyright: GPL-3.0-or-later · the nanoMuse community
 artifactName: nanoMuse-Desktop-${version}-${os}-${arch}.${ext}
 directories:
   output: dist

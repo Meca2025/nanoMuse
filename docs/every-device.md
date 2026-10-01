@@ -173,24 +173,25 @@ reaching the RiskGate card (today a task the desk delegates is approved on the
 phone's screen only), the desk's Hands events shown while it works, a
 *Devices* entry in the drawer. None of it blocks the desktop work.
 
-## nanoMuse Web: a Muse with no device of yours
+## The browser: a demo on a simulated phone
 
-The same runtime, run for you: sign in at [nanomuse.cn/web](https://nanomuse.cn/web/)
-with an e-mail or a phone code and the showcase gateway
-(`demo/showcase/gateway/showcase_gateway/accounts.py`) starts a container of
-your own — the `ghcr.io/nano-muse/nanomuse` image with three named volumes
-(`/data`, `/workspace`, `/home/muse`), on a network next to the Cloud relay —
-seeded from the environment so it comes up signed in as the device *Web*, with
-the Cloud as its model and the first run behind it (`NANOMUSE_CLOUD_KEY`,
-`NANOMUSE_CLOUD_BASE_URL`, `NANOMUSE_HUB_NAME`, `NANOMUSE_ONBOARDED`;
-`nanomuse/hub/service.py`, `_seed_from_env`). The browser is sent to
-`https://<slug>.<SESSION_DOMAIN>/?token=…` (`s.nanomuse.dev` on the project's
-gateway; the sign-in itself is at nanomuse.cn/web), the door the phone's QR code opens.
-It has local hands of its own (a shell and files inside the container, the
-browser tool) and sits on the hub like any other device: the phone can ask it,
-it can ask the phone or the computer. Quiet for six hours, the container is
-stopped and its volumes kept; the next request wakes it. Details and the
-settings in [demo/showcase/README.md](../demo/showcase/README.md).
+[nanomuse.cn/web](https://nanomuse.cn/web/) leads to the showcase: a simulated
+phone in the browser (MobileGym, with the nanoMuse app brought to the front —
+`demo/mobilegym/apps/nanoMuse`) and, behind it, a private nanoMuse of the
+visitor's own that the showcase gateway starts for the visit — the
+`ghcr.io/nano-muse/nanomuse` image on a network with no way out but the
+gateway, talking with the showcase's model, gone when the visit ends. A visitor
+signs in to nanoMuse Cloud first (a code to a phone or an inbox, or the
+account's password; `demo/showcase/gateway/showcase_gateway/visitors.py`), so
+the project knows who is trying it and the same account is there on the day
+the app is installed. The page says so plainly: this is a demo, a long way from
+the Android app, and where the apps are.
+
+The earlier shape of the web — a kept Muse per Cloud account, with named
+volumes and a seat on the hub like any other device (`accounts.py`,
+`WEB_ENABLED=1`) — is still in the gateway for anyone who runs one, and off on
+the project's server since 0.1.26. Details and the settings in
+[demo/showcase/README.md](../demo/showcase/README.md).
 
 ## iOS, the web console, glasses
 
@@ -219,7 +220,7 @@ the hands elsewhere — the hub is already enough for them.
 
 ## Status
 
-| | Phone | Computer | nanoMuse Web | Web console | iOS |
+| | Phone | Computer | nanoMuse Web (`WEB_ENABLED=1`; the demo phone since 0.1.26) | Web console | iOS |
 |---|---|---|---|---|---|
 | Local shell / files / browser | yes | yes (runtime) | yes, inside its container | no hands | no |
 | Screen as a hand | Hands (0.1.12) | `computer_*` (0.1.19) | — | — | — |
@@ -230,7 +231,8 @@ the hands elsewhere — the hub is already enough for them.
 
 Released with 0.1.19: the APK, the desktop installers (`nanoMuse-Desktop-…`,
 [`.github/workflows/desktop-app.yml`](../.github/workflows/desktop-app.yml)),
-the terminal binary, and nanoMuse Web at nanomuse.cn/web.
+the terminal binary, and nanoMuse Web at nanomuse.cn/web (the demo on a
+simulated phone since 0.1.26).
 
 ## Debugging it all on one machine
 

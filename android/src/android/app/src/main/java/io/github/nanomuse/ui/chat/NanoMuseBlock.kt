@@ -16,7 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.CheckBoxOutlineBlank
 import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -146,7 +146,7 @@ private fun GoalUpdateCard(o: JSONObject) {
     CardFrame {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                if (done) Icons.Outlined.CheckBox else Icons.Outlined.TrendingUp,
+                if (done) Icons.Outlined.CheckBox else Icons.AutoMirrored.Outlined.TrendingUp,
                 contentDescription = null,
                 tint = tint,
                 modifier = Modifier.size(18.dp),

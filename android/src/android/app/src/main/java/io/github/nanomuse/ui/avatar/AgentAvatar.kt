@@ -168,10 +168,10 @@ fun AgentAvatar(
                     0f,
                     keyframes {
                         durationMillis = 420
-                        -1f at 60 with LinearEasing
-                        1f at 140 with LinearEasing
-                        -0.6f at 220 with LinearEasing
-                        0.6f at 300 with LinearEasing
+                        -1f at 60 using LinearEasing
+                        1f at 140 using LinearEasing
+                        -0.6f at 220 using LinearEasing
+                        0.6f at 300 using LinearEasing
                         0f at 420
                     },
                 )
@@ -279,7 +279,7 @@ fun AgentAvatarDisc(
 private fun LoopingClip(key: String, modifier: Modifier = Modifier, open: (android.media.MediaPlayer) -> Unit) {
     var ready by remember(key) { mutableStateOf(false) }
     val player = remember(key) { android.media.MediaPlayer() }
-    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     androidx.compose.runtime.DisposableEffect(key) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             runCatching {

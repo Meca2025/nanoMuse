@@ -55,6 +55,7 @@ check_version pyproject.toml "^version = \"$version\""
 check_version desktop/nanomuse_desktop/__init__.py "^__version__ = \"$version\""
 check_version desktop/app/package.json "\"version\": \"$version\""
 check_version web/package.json "\"version\": \"$version\""
+check_version CITATION.cff "^version: $version$"
 [ $versions_ok = 1 ] || { echo "the versions above disagree — bump them first" >&2; exit 1; }
 
 # Signature + badging of one APK; exits on the debug key unless allowed.

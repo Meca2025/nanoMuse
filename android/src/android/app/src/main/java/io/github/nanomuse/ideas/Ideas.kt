@@ -1,5 +1,6 @@
 package io.github.nanomuse.ideas
 
+import io.github.nanomuse.stringOrNull
 import android.content.Context
 import com.openminis.app.logging.AppLogger
 import org.json.JSONObject
@@ -54,8 +55,8 @@ object Ideas {
                                     body = o.optString("body", ""),
                                     kind = runCatching { IdeaKind.valueOf(o.optString("kind", "CHAT").uppercase()) }.getOrDefault(IdeaKind.CHAT),
                                     prompt = o.optString("prompt", o.getString("title")),
-                                    time = o.optString("time", null).takeIf { !it.isNullOrBlank() },
-                                    category = o.optString("category", null).takeIf { !it.isNullOrBlank() },
+                                    time = o.stringOrNull("time")?.takeIf { it.isNotBlank() },
+                                    category = o.stringOrNull("category")?.takeIf { it.isNotBlank() },
                                 ),
                             )
                         }

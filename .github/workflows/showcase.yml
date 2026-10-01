@@ -65,7 +65,7 @@ jobs:
             type=sha,prefix=sha-
           labels: |
             org.opencontainers.image.title=nanoMuse showcase — Caddy and the phone
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=GPL-3.0-or-later
 
       - name: Build and push (caddy)
         uses: docker/build-push-action@v7
@@ -89,7 +89,7 @@ jobs:
             type=sha,prefix=sha-
           labels: |
             org.opencontainers.image.title=nanoMuse showcase — session gateway
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=GPL-3.0-or-later
 
       - name: Build and push (gateway)
         uses: docker/build-push-action@v7

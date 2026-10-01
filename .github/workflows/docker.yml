@@ -51,7 +51,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=nanoMuse
             org.opencontainers.image.description=Open-source version of Meta's Muse personal agent: phone app, Sentinel gatekeeper, credential vault, memory and goals. Bring your own model.
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=GPL-3.0-or-later
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -84,7 +84,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=nanoMuse (with browser)
             org.opencontainers.image.description=nanoMuse with Chromium bundled for the browser tool.
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=GPL-3.0-or-later
 
       - name: Build and push (browser)
         uses: docker/build-push-action@v7

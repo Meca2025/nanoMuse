@@ -99,7 +99,6 @@
     <string name="nm_goal_update_attention">需要留意</string>
 
     <!-- 目标页里的例程（定时任务） -->
-    <string name="nm_routine_new">新建例程</string>
     <string name="nm_routine_all">全部例程</string>
     <string name="nm_routine_edit">编辑</string>
     <string name="nm_routine_runs">运行记录</string>
@@ -118,7 +117,6 @@
     <string name="nm_idea_routine_created">例程已创建，去设定时间和细节。</string>
 
     <!-- 资源库 -->
-    <string name="nm_library_title">资源库</string>
     <string name="nm_library_artifacts">构件</string>
     <string name="nm_library_media">影音内容</string>
     <string name="nm_library_empty_artifacts_title">还没有创建任何内容</string>
@@ -174,7 +172,6 @@
     <string name="nm_grants_header">nanoMuse 记住的授权</string>
     <string name="nm_grants_empty">还没有记住任何授权</string>
     <string name="nm_grants_revoke">撤销</string>
-    <string name="nm_grants_revoke_all">全部撤销</string>
     <string name="nm_grants_revoke_confirm">撤销这条授权？下次遇到会重新问你。</string>
     <string name="nm_risk_remember_money">记住，下次在 %1$s 里直接执行</string>
     <string name="nm_risk_remember_money_note">需要验证锁屏。之后只在这一个应用或网站里的付款不再弹卡片；它会排在「设置 → 权限」的最前面，随时可以撤销。</string>
@@ -238,7 +235,6 @@
     <string name="nm_cancel">取消</string>
     <string name="nm_save">保存</string>
     <string name="nm_sysfiles_title">系统文件</string>
-    <string name="nm_sysfiles_subtitle">SOUL、USER、MEMORY、动态偏好、HEARTBEAT</string>
     <string name="nm_sysfiles_sort_name">名称</string>
     <string name="nm_sysfiles_sort_recent">最近修改</string>
     <string name="nm_sysfiles_sort_toggle">切换排序</string>
@@ -289,7 +285,6 @@
 
     <!-- 0.1.6 · appearance -->
     <string name="nm_avatar_title">形象</string>
-    <string name="nm_avatar_settings_subtitle">用你的图像模型画一个形象；它会随着工作状态动起来</string>
     <string name="nm_avatar_menu_soul">名字与风格</string>
     <string name="nm_avatar_menu_model">图像模型</string>
     <string name="nm_avatar_menu_regenerate_moods">重画状态</string>
@@ -323,8 +318,6 @@
     <string name="nm_avatar_pick_body">随时可以再画四张；没重画之前旧的会留着。</string>
     <string name="nm_avatar_use_this">就用这个</string>
     <string name="nm_avatar_use_this_hint">接下来会在后台以它为底画出各个状态——干活、等你、搞定、出错。</string>
-    <string name="nm_avatar_model_body">任何支持 OpenAI images 接口的提供方都行。阿里云百炼：qwen-image-3.0（状态图用 qwen-image-edit-max）。OpenAI：gpt-image-1。</string>
-    <string name="nm_avatar_model_label">模型</string>
     <string name="nm_avatar_footer">图片存在这台手机的 minis-global/nanomuse/avatar 下。每换一次形象会向你的提供方要五张图：你选的那张加四个状态。</string>
 
     <!-- 首次运行 -->
@@ -675,7 +668,6 @@
     <string name="nm_cloud_invite_share_text">来和我一起用 nanoMuse——完全开源的个人智能体，免费使用。用我的邀请码 %1$s 注册：%2$s</string>
     <string name="nm_cloud_invite_count">已邀请 %1$d 位</string>
     <string name="nm_cloud_invite_earned">邀请带来 ¥%1$s</string>
-    <string name="nm_cloud_left_today">今天还剩 ¥%1$s</string>
     <string name="nm_cloud_invite_have">有邀请码？</string>
     <string name="nm_cloud_invite_field">邀请码（选填）</string>
     <string name="nm_notice_github">GitHub 源码</string>

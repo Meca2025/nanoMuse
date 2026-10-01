@@ -9,7 +9,6 @@
 # is not dependable. Behind the proxy the visitor's address arrives in X-Forwarded-For; Caddy
 # believes it only from Cloudflare's own ranges (fetched by the cloudflare-ip module), so the
 # gateway's per-visitor limits see visitors, not Cloudflare.
-
 {
 	email {$ACME_EMAIL}
 	servers {
@@ -34,6 +33,8 @@
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+		# a year of HTTPS-only for this host (its subdomains are not promised)
+		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
 

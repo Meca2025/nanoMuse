@@ -62,7 +62,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: desktop/app/package-lock.json
       - name: Linux packages the runtime and the installers need

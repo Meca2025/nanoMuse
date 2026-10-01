@@ -4,6 +4,23 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Changed
+
+- **The three hosts promise HTTPS for a year.** `nanomuse.cn`, `demo.nanomuse.dev` and `cloud.nanomuse.cn` send `Strict-Transport-Security: max-age=31536000` (this host only; subdomains make their own promise), next to the `nosniff` and referrer headers they already sent. The showcase `Caddyfile` is in `caddy fmt`'s shape, so Caddy stops warning about it at start.
+- **One licence in every label.** The runtime, browser, showcase gateway and showcase Caddy images said `MIT` in their OCI labels, the gateway's `pyproject.toml` too, and the desktop app's `package.json` said `GPL-3.0-only`; all now say what the repository's LICENSE says, `GPL-3.0-or-later`. The showcase gateway is 0.2.0 in both places it carries a version (it had 0.1.0 in one and 0.1.1 in the other).
+- **The Android app reads optional JSON strings through one helper** (`JSONObject.stringOrNull`). `optString(key, null)` on Android gives back the *text* "null" for a JSON `null`, and the goals, their check-ins and the ideas the model proposes carry explicit nulls; a goal's session, task and last note, a check-in's status and note, an idea's time and category now come back as nothing instead of "null". Eight strings nothing referred to are gone from the three `nm_strings.xml` (742 each), and the deprecated Compose APIs the app still used — the mirrored icons (`Feed`, `Logout`, `OpenInNew`, `TrendingUp`, `LibraryBooks`, `InsertDriveFile`), `LocalLifecycleOwner` from `lifecycle-runtime-compose`, `using` in the avatar's keyframes, an opt-in instead of a suppression on the home bus — are replaced; 31 compiler warnings in nanoMuse's own code are 5.
+
+- **The desktop app is on a supported Electron.** Electron 33 left support a year ago; the shell is on Electron 44 now (Chromium's current security fixes with it), built by electron-vite 5 on Vite 7 and packed by electron-builder 26 — `npm audit` of the desktop app goes from sixteen advisories (one critical, in `tar` under the old packer) to none. Electron 44 has no `openAsHidden` any more: *Start with the computer* registers the login item with a `--hidden` argument instead (macOS says so through `wasOpenedAtLogin`), and the app comes up in the tray without a window when it was started that way.
+- **The web app builds on Vite 8.** Vite 5.4 carried a path-traversal advisory in its dev server and `@vitejs/plugin-react` 4 warned at every test run under Vitest 4; the app is built by Vite 8 with plugin-react 6 now (`npm audit`: none), in under a second, with the shared helpers in a chunk of their own (`util-*.js`) next to the screens that were already split. Same screens, same strings, same look.
+
+### Fixed
+
+- **The relay no longer logs a traceback when a client disconnects mid-request** (relay 0.7.2). A phone changing networks or a tab closed while its body was still arriving raised `ClientDisconnect` inside the chat route, which the server logged as `Exception in ASGI application` with forty lines of stack — seven times a day. It is a quiet `400 client_disconnected` now, to a caller that is not there to read it.
+- **The docs say what nanomuse.cn/web is now.** The Install paragraph of the README in its ten languages, the *every device* page, the design record of the web app and the roadmap still described the kept Muse per account; they describe the demo on the simulated phone, and keep the kept-Muse lane as what `WEB_ENABLED=1` runs.
+- **The archived design record of the Python-line Android app links to its neighbours again.**
+- **Dependabot watches every package.** The desktop app's npm packages, the relay's and the showcase gateway's Python packages and the four Dockerfiles were outside its config — which is how the desktop app sat on an end-of-life Electron; it covers them now, with Electron majors as PRs of their own.
+- **`CITATION.cff` names the current version.** It had stayed at 0.1.11; the release script now checks it with the other version fields, so it cannot fall behind again. `docs/archive/android-python-line.md` moved into `archive/` with its relative links unchanged; they point one level up now.
+
 ## [0.1.26] - 2026-10-02 · Window
 
 ### Added
