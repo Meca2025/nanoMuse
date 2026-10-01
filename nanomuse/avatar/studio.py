@@ -276,6 +276,9 @@ class Endpoint:
     cloud: bool
     # the image-to-video model, when the host has the asynchronous video API (relay, Model Studio)
     video_model: str = ""
+    # the video API on another host than the chat model's (`[llm] video_base_url`): a relaying
+    # host such as the showcase gateway, which has no model host name to recognise
+    video_base_url: str = ""
 
     @property
     def dashscope(self) -> bool:
@@ -286,12 +289,16 @@ class Endpoint:
     @property
     def clips(self) -> bool:
         """Whether clips can be made here: a video model on a host that speaks the video API."""
-        return bool(self.video_model) and (self.cloud or self.dashscope)
+        return bool(self.video_model) and (
+            self.cloud or self.dashscope or bool(self.video_base_url)
+        )
 
     @property
     def video_host(self) -> str:
         """Where ``/api/v1/uploads``, ``/api/v1/services/aigc/video-generation/…`` and
-        ``/api/v1/tasks/…`` live: the relay's root, or Model Studio's."""
+        ``/api/v1/tasks/…`` live: the relay's root, Model Studio's, or the host named."""
+        if self.video_base_url:
+            return self.video_base_url.rstrip("/")
         return re.split(r"/compatible-mode|/api/v1|/v1$", self.base_url, maxsplit=1)[0].rstrip("/")
 
 
@@ -401,6 +408,7 @@ class AvatarStudio:
             image_model=(llm.image_model or "").strip(),
             cloud=cloud,
             video_model=(llm.video_model or "").strip(),
+            video_base_url=(llm.video_base_url or "").strip().rstrip("/"),
         )
         if not ep.image_model:
             if cloud:
@@ -410,7 +418,7 @@ class AvatarStudio:
         if not ep.video_model:
             if cloud:
                 ep.video_model = self._cloud_model("video", DASHSCOPE_VIDEO_MODEL)
-            elif ep.dashscope:
+            elif ep.dashscope or ep.video_base_url:
                 ep.video_model = DASHSCOPE_VIDEO_MODEL
         return ep if ep.image_model else None
 
