@@ -75,8 +75,9 @@ the Cloudflare DNS module.
   providers), never to an address inside the server's network.
 
 Two lanes: `main` (the model that talks to the visitor) and `gui` (the one that reads screens
-and taps; many small calls with a screenshot each). The default is 阿里云百炼's `qwen3.8-27b`
-for both — it reads screenshots, so one key does everything. Set `GUI_*` to split the lanes.
+and taps; many small calls with a screenshot each). The defaults are 阿里云百炼's `deepseek-v4-pro`
+for the talk and, because DeepSeek takes no images, `qwen3.8-27b` for the screens — one key,
+one host. A sighted `MAIN_MODEL` serves both lanes by itself; set `GUI_*` to split them.
 
 **Pictures for a new look** (`gateway/showcase_gateway/images.py`): "换个形象：一只橘猫" in the
 chat is the avatar studio's ([docs/avatar.md](../../docs/avatar.md)) — eight pictures: four

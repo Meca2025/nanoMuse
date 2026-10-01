@@ -61,6 +61,23 @@ class Lane:
         return bool(self.model and self.base_url and self.api_key)
 
 
+TEXT_ONLY_FAMILIES = ("deepseek",)
+SIGHTED_FALLBACK = "qwen3.8-27b"
+
+
+def sighted_default(main_model: str) -> str:
+    """The operator lane's model when ``GUI_MODEL`` is not set.
+
+    Hands reads a screenshot at every step, so the lane needs a model that takes images. The
+    main lane's model serves when it does; a text-only family (DeepSeek) falls back to Model
+    Studio's sighted ``qwen3.8-27b`` on the same host and key.
+    """
+    family = main_model.lower()
+    if any(family.startswith(prefix) for prefix in TEXT_ONLY_FAMILIES):
+        return SIGHTED_FALLBACK
+    return main_model
+
+
 @dataclass(frozen=True)
 class Settings:
     # --- how the outside reaches us
@@ -144,13 +161,13 @@ class Settings:
     def from_env(cls) -> Settings:
         main = Lane(
             provider=_str("MAIN_PROVIDER", "openai"),
-            model=_str("MAIN_MODEL", "qwen3.8-27b"),
+            model=_str("MAIN_MODEL", "deepseek-v4-pro"),
             base_url=_str("MAIN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
             api_key=_str("MAIN_API_KEY"),
         )
         gui = Lane(
             provider=_str("GUI_PROVIDER", main.provider),
-            model=_str("GUI_MODEL", main.model),
+            model=_str("GUI_MODEL", sighted_default(main.model)),
             base_url=_str("GUI_BASE_URL", main.base_url),
             api_key=_str("GUI_API_KEY", main.api_key),
         )
