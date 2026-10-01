@@ -20,6 +20,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { Markdown } from "../components/Markdown";
+import { TabHeader } from "../components/TabHeader";
 import { intlLocale, localLabel, t, useLocale, useT } from "../i18n";
 import { useStore } from "../store";
 import type { CalendarData, CalendarEvent, FeedItem, FeedPost, FeedPostsData, UpcomingData } from "../types";
@@ -78,10 +79,8 @@ export function FeedScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-4 pb-3">
-        <h1 className="text-[24px] font-bold tracking-tight">{t("Feed")}</h1>
-        <p className="text-[13px] text-muted">{t("Written for you by {name}, from what it knows — plus what it did while you were away.", { name })}</p>
-      </header>
+      <TabHeader title={t("Feed")} />
+      <p className="shrink-0 px-5 pb-2 text-[13px] text-muted">{t("Written for you by {name}, from what it knows — plus what it did while you were away.", { name })}</p>
 
       <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4">
         <FeedInstructions data={posts} name={name} onChange={setPosts} />

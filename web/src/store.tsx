@@ -91,6 +91,8 @@ export interface AppState {
   onboardingDismissed: boolean;
   tab: Tab;
   toast: string | null;
+  /** The chats drawer (the phone's hamburger) is open. */
+  drawer: boolean;
   /** When the agent last went from working to idle (ms since epoch; 0 = never). The face is pleased for a moment. */
   finishedAt: number;
   /** When a tool call last failed or was refused (ms since epoch; 0 = never). The face is worried for a moment. */
@@ -129,6 +131,7 @@ type Action =
   | { type: "goals"; goals: Goal[] }
   | { type: "settings"; settings: SettingsView }
   | { type: "tab"; tab: Tab }
+  | { type: "drawer"; open: boolean }
   | { type: "feedSeen"; at: string }
   | { type: "viewer"; path: string | null }
   | { type: "draft"; text: string | null }
@@ -186,6 +189,7 @@ const initial: AppState = {
   onboardingDismissed: false,
   tab: "chat",
   toast: null,
+  drawer: false,
   finishedAt: 0,
   mishapAt: 0,
   hub: null,
@@ -286,6 +290,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, settings: action.settings, profile: action.settings.profile };
     case "tab":
       return { ...state, tab: action.tab };
+    case "drawer":
+      return { ...state, drawer: action.open };
     case "feedSeen":
       localStorage.setItem(FEED_SEEN_KEY, action.at);
       return { ...state, feedSeenAt: action.at };
@@ -475,6 +481,8 @@ interface StoreValue {
   refreshSettings: () => Promise<void>;
   refreshHub: () => Promise<void>;
   setTab: (tab: Tab) => void;
+  /** Open or close the chats drawer (the phone's hamburger). */
+  setDrawer: (open: boolean) => void;
   openThread: (thread: string) => void;
   markFeedSeen: (at: string) => void;
   openFile: (path: string | null) => void;
@@ -670,6 +678,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       refreshSettings,
       refreshHub,
       setTab: (tab) => dispatch({ type: "tab", tab }),
+      setDrawer: (open) => dispatch({ type: "drawer", open }),
       openThread: (thread) => dispatch({ type: "activeThread", thread }),
       markFeedSeen: (at) => dispatch({ type: "feedSeen", at }),
       openFile: (path) => dispatch({ type: "viewer", path }),

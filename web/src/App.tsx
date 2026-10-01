@@ -4,6 +4,7 @@ import { api, setToken } from "./api";
 import { dragonUrl } from "./avatars";
 import { Avatar } from "./components/Avatar";
 import { DesktopRemoteHint } from "./components/DesktopRemoteHint";
+import { ChatsDrawer } from "./components/ChatsDrawer";
 import { FileViewer } from "./components/FileViewer";
 import { FirstSignInSteps, useFirstSignIn } from "./components/FirstSignInSteps";
 import { desktopBridge } from "./desktop";
@@ -39,13 +40,14 @@ function Loading() {
   );
 }
 
-/** The tab bar: five icons in a floating pill, as in Muse. Memory and Settings are behind the avatar. */
+/** The five glyphs: outlined at rest, filled with the page's ink when selected — the fill is the state. */
+const glyph = (active: boolean) => ({ size: 26, strokeWidth: active ? 2 : 1.7, fill: active ? "currentColor" : "none", fillOpacity: active ? 0.18 : 0 });
 const TABS: Array<{ id: Tab; label: string; icon: (active: boolean) => ReactNode }> = [
-  { id: "chat", label: "Chat", icon: (a) => <MessageCircle size={22} strokeWidth={a ? 2.2 : 1.8} /> },
-  { id: "feed", label: "Feed", icon: (a) => <Newspaper size={22} strokeWidth={a ? 2.2 : 1.8} /> },
-  { id: "ideas", label: "Ideas", icon: (a) => <Lightbulb size={22} strokeWidth={a ? 2.2 : 1.8} /> },
-  { id: "goals", label: "Goals", icon: (a) => <SquareCheckBig size={22} strokeWidth={a ? 2.2 : 1.8} /> },
-  { id: "library", label: "Library", icon: (a) => <LayoutGrid size={22} strokeWidth={a ? 2.2 : 1.8} /> },
+  { id: "chat", label: "Chat", icon: (a) => <MessageCircle {...glyph(a)} /> },
+  { id: "feed", label: "Feed", icon: (a) => <Newspaper {...glyph(a)} /> },
+  { id: "ideas", label: "Ideas", icon: (a) => <Lightbulb {...glyph(a)} /> },
+  { id: "goals", label: "Goals", icon: (a) => <SquareCheckBig {...glyph(a)} /> },
+  { id: "library", label: "Library", icon: (a) => <LayoutGrid {...glyph(a)} /> },
 ];
 
 export default function App() {
@@ -145,38 +147,37 @@ export default function App() {
             {state.tab === "avatar" && <AvatarStudioScreen />}
           </Suspense>
         </main>
-        {/* lite (the phone in the showcase): the phone layout whatever the width — the tabs the
-            Android app has, no sidebar; only the first-run setup and the desktop hints are off */}
-        <nav className={cx("safe-bottom shrink-0 bg-bg px-4 pb-2.5 pt-1.5", !state.lite && "wide:hidden")}>
-        <ul className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/70 bg-surface p-1.5 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.18)]">
-          {TABS.map((tab) => {
-            const active = state.tab === tab.id;
-            const badge = tab.id === "chat" ? pendingApprovals : tab.id === "feed" ? feedUnseen : tab.id === "goals" ? proposals : 0;
-            return (
-              <li key={tab.id}>
-                <button
-                  type="button"
-                  onClick={() => setTab(tab.id)}
-                  aria-label={t(tab.label)}
-                  aria-current={active ? "page" : undefined}
-                  className={cx(
-                    "relative flex h-11 w-[52px] items-center justify-center rounded-full transition",
-                    active ? "bg-surface-2 text-fg" : "text-fg/65 hover:text-fg",
-                  )}
-                >
-                  {tab.icon(active)}
-                  {badge > 0 && (
-                    <span className="absolute right-2 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-                      {badge}
-                    </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+        {/* Muse's bottom bar, as the Android app draws it: a plain strip, five glyphs, the current one
+            filled and dark, the others outlined and softer — no labels, no pill. In lite (the phone in
+            the showcase) it shows whatever the width; otherwise a wide window has the sidebar instead. */}
+        <nav className={cx("safe-bottom shrink-0 bg-bg", !state.lite && "wide:hidden")}>
+          <ul className="flex h-14 items-center justify-evenly">
+            {TABS.map((tab) => {
+              const active = state.tab === tab.id;
+              const badge = tab.id === "chat" ? pendingApprovals : tab.id === "feed" ? feedUnseen : tab.id === "goals" ? proposals : 0;
+              return (
+                <li key={tab.id}>
+                  <button
+                    type="button"
+                    onClick={() => setTab(tab.id)}
+                    aria-label={t(tab.label)}
+                    aria-current={active ? "page" : undefined}
+                    className={cx("relative flex h-12 w-12 items-center justify-center rounded-full transition", active ? "text-fg" : "text-fg/70 hover:text-fg")}
+                  >
+                    {tab.icon(active)}
+                    {badge > 0 && (
+                      <span className="absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                        {badge}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
       </div>
+      <ChatsDrawer />
       <FileViewer path={state.viewer} onClose={() => openFile(null)} />
       {firstSteps}
       {state.toast && (

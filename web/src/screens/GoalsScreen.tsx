@@ -28,6 +28,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { Sheet } from "../components/Sheet";
+import { TabHeader } from "../components/TabHeader";
 import { getLocale, intlLocale, t, useT } from "../i18n";
 import { useStore } from "../store";
 import type { Goal, GoalCategory, GoalStep } from "../types";
@@ -174,11 +175,7 @@ export function GoalsScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-4 pb-2 flex items-center gap-3">
-        <div className="flex-1">
-          <h1 className="text-[24px] font-bold tracking-tight">{t("Goals")}</h1>
-          <p className="text-[13px] text-muted">{t("Long-running things {name} is tracking and moving forward for you.", { name })}</p>
-        </div>
+      <TabHeader title={t("Goals")}>
         <button
           type="button"
           onClick={() => setCreating(true)}
@@ -187,7 +184,8 @@ export function GoalsScreen() {
         >
           <Plus size={22} />
         </button>
-      </header>
+      </TabHeader>
+      <p className="shrink-0 px-5 pb-2 text-[13px] text-muted">{t("Long-running things {name} is tracking and moving forward for you.", { name })}</p>
 
       {used.size > 0 && (
         <div className="shrink-0 flex gap-1.5 overflow-x-auto px-4 pb-2.5 no-scrollbar">

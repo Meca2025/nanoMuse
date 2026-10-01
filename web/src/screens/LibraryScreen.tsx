@@ -1,6 +1,7 @@
 import { CalendarDays, Code2, FileImage, FileSpreadsheet, FileText, Globe, Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api, fileUrl } from "../api";
+import { TabHeader } from "../components/TabHeader";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { FileInfo } from "../types";
@@ -54,8 +55,8 @@ export function LibraryScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-4 pb-2">
-        <h1 className="text-[24px] font-bold tracking-tight">{t("Library")}</h1>
+      <TabHeader title={t("Library")} />
+      <div className="shrink-0 px-5 pb-2">
         <p className="text-[13px] text-muted">{t("Pages, documents and files {name} made for you.", { name })}</p>
         <label className="mt-3 flex items-center gap-2 rounded-2xl bg-surface-2 px-3 py-2">
           <Search size={16} className="text-muted" />
@@ -81,7 +82,7 @@ export function LibraryScreen() {
             </button>
           ))}
         </div>
-      </header>
+      </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-6">
         {files === null && (

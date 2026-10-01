@@ -411,6 +411,18 @@ html.desktop[data-platform="darwin"] .titlebar-room {
 .sheet-in {
   animation: om-sheet 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* the chats drawer sliding in from the left (the phone's hamburger) */
+@keyframes om-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+.drawer-in {
+  animation: om-drawer-in 0.2s ease-out;
+}
 
 /* Calls: the presence in the middle breathes while it thinks; the rings around it take the
    colour of who is talking. */
