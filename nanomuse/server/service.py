@@ -27,6 +27,7 @@ from nanomuse.agent import Incoming, MuseAgent
 from nanomuse.app import NanoMuseApp
 from nanomuse.avatar import AvatarStudio
 from nanomuse.bridge.server import Bridge
+from nanomuse.cloud import model_url
 from nanomuse.coding.service import CodingService
 from nanomuse.config import Settings
 from nanomuse.goals import Goal
@@ -1936,7 +1937,16 @@ class MuseService:
                 "active": self.app.sandbox.active,
                 "status": self.app.sandbox.status,
             },
-            "llm": {"provider": s.llm.provider, "model": s.llm.model, "stream": s.llm.stream},
+            "llm": {
+                "provider": s.llm.provider,
+                "model": s.llm.model,
+                "stream": s.llm.stream,
+                # the account's model answers (Settings offers the own-key door then)
+                "cloud": bool(
+                    s.llm.base_url
+                    and s.llm.base_url.rstrip("/") == model_url(self.hub.cloud.base_url)
+                ),
+            },
             "agent": {
                 "language": s.agent.language,
                 "max_steps": s.agent.max_steps,

@@ -72,12 +72,23 @@ IMAGE_PAUSES = (3.0, 6.0, 12.0)
 # how long a finished or abandoned session's candidates stay on disk
 SESSION_TTL_S = 24 * 3600
 
-# Muse's house style for the candidates (the phone's default, ``Style.MUSE``)
-STYLE = (
-    "cute 3D character render in the style of a collectible vinyl toy, soft matte materials "
-    "with subtle sheen, rounded simplified forms, big friendly eyes, soft studio lighting with "
-    "gentle shadows, pastel accents"
-)
+# the looks a face can be drawn in — the phone's ``AvatarStudio.Style``, same ids and words,
+# so a description drawn on either device comes out alike; Muse's house style is the default
+STYLES = {
+    "muse": (
+        "cute 3D character render in the style of a collectible vinyl toy, soft matte materials "
+        "with subtle sheen, rounded simplified forms, big friendly eyes, soft studio lighting with "
+        "gentle shadows, pastel accents"
+    ),
+    "flat": "flat vector illustration, soft pastel colours, clean simple shapes, subtle shading",
+    "clay": "3D clay render, soft studio lighting, matte rounded forms, gentle colours",
+    "watercolor": "gentle watercolour painting, soft edges, light paper texture",
+    "pixel": "crisp pixel art, limited palette, clean silhouette",
+    "line": "minimal line drawing with two accent colours on cream, confident strokes",
+    "sticker": "glossy sticker style, thick white outline, bold saturated colours",
+}
+DEFAULT_STYLE = "muse"
+STYLE = STYLES[DEFAULT_STYLE]
 VARIATIONS = (
     "variation 1: the most typical, classic colouring",
     "variation 2: a different breed or colour pattern, lighter tones",
@@ -96,14 +107,15 @@ CLIP_ACTIONS = {
     "working": "The character wears headphones and types busily on the small laptop in front of it, nodding slightly to the rhythm, focused and content.",
 }
 CLIP_TAIL = (
-    " Plain white background, static camera, no zoom, no cuts, soft even studio lighting, the same 3D toy "
-    "look as the picture throughout, nothing else appears in the frame, and the motion loops naturally "
+    " Plain white background, static camera, no zoom, no cuts, soft even studio lighting, the same {look} "
+    "as the picture throughout, nothing else appears in the frame, and the motion loops naturally "
     "with the character back in its starting pose at the end."
 )
 
 
-def clip_prompt(mood: str) -> str:
-    return CLIP_ACTIONS[mood] + CLIP_TAIL
+def clip_prompt(mood: str, style: str = DEFAULT_STYLE) -> str:
+    look = "3D toy look" if style == "muse" else "art style"
+    return CLIP_ACTIONS[mood] + CLIP_TAIL.format(look=look)
 
 
 MOOD_INSTRUCTIONS = {
@@ -236,10 +248,11 @@ def parse_choice(text: str) -> int | str | None:
     return None
 
 
-def build_prompt(description: str, index: int) -> str:
+def build_prompt(description: str, index: int, style: str = DEFAULT_STYLE) -> str:
     subject = description.strip().rstrip(".。!！,，")
+    look = STYLES.get(style, STYLE)
     return (
-        f"A cute character based on: {subject}. {STYLE}. Full body, standing, facing the viewer, "
+        f"A cute character based on: {subject}. {look}. Full body, standing, facing the viewer, "
         "centred, whole figure visible with margin on all sides, big head and small body, friendly expression, "
         f"pure white background, soft ground shadow only. {VARIATIONS[index % CANDIDATES]}. "
         "Square composition. No text, no watermark, no border, no props other than what is described, one character only."
@@ -287,6 +300,7 @@ class Session:
     thread: str
     event_id: str
     description: str
+    style: str = DEFAULT_STYLE
     created: float = field(default_factory=time.time)
     stage: str = "estimate"  # estimate · drawing · choose · posing · done · cancelled · failed
     cost: dict[str, Any] = field(default_factory=dict)
@@ -304,6 +318,7 @@ class Session:
             "session": self.id,
             "stage": self.stage,
             "description": self.description,
+            "style": self.style,
             "cost": self.cost,
             "candidates": list(self.candidates),
             "errors": list(self.errors),
@@ -430,8 +445,14 @@ class AvatarStudio:
         asyncio.ensure_future(self.begin(thread, description))
         return True
 
-    async def begin(self, thread: str, description: str) -> dict[str, Any]:
-        """Open a session: the card with what it will cost, waiting for a tap."""
+    async def begin(
+        self, thread: str, description: str, style: str = DEFAULT_STYLE
+    ) -> dict[str, Any]:
+        """Open a session: the card with what it will cost, waiting for a tap.
+
+        ``style`` is one of :data:`STYLES` (the phone's list); anything else is Muse's."""
+        if style not in STYLES:
+            style = DEFAULT_STYLE
         ui = self.svc.ui
         ep = self.endpoint()
         if ep is None:
@@ -455,9 +476,12 @@ class AvatarStudio:
                 "session": sid,
                 "stage": "estimate",
                 "description": description,
+                "style": style,
             }
         )
-        session = Session(id=sid, thread=thread, event_id=event["id"], description=description)
+        session = Session(
+            id=sid, thread=thread, event_id=event["id"], description=description, style=style
+        )
         self.current = session
         session.cost = await self.estimate(ep)
         self._patch(session)
@@ -533,7 +557,7 @@ class AvatarStudio:
 
     async def _draw_candidate(self, session: Session, ep: Endpoint, index: int) -> None:
         try:
-            png = await self._generate(ep, build_prompt(session.description, index))
+            png = await self._generate(ep, build_prompt(session.description, index, session.style))
             rel = f"avatar/sessions/{session.id}/c{index}.webp"
             await asyncio.to_thread(self._save_still, rel, png)
             session.candidates[index] = rel
@@ -642,7 +666,7 @@ class AvatarStudio:
         async def one(mood: str) -> None:
             try:
                 png = await asyncio.to_thread(self._png_of, face_dir / f"{mood}.webp")
-                mp4 = await self._clip(ep, png, clip_prompt(mood))
+                mp4 = await self._clip(ep, png, clip_prompt(mood, session.style))
                 rel = f"avatar/{session.face}/{mood}.mp4"
                 await asyncio.to_thread((face_dir / f"{mood}.mp4").write_bytes, mp4)
                 session.clips[mood] = rel
@@ -938,8 +962,10 @@ class AvatarStudio:
 __all__ = [
     "CANDIDATES",
     "CLIP_MOODS",
+    "DEFAULT_STYLE",
     "MOODS",
     "PICTURES_PER_FACE",
+    "STYLES",
     "AvatarStudio",
     "Endpoint",
     "Session",

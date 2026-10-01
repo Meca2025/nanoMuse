@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { androidApp, keepRunningStatus, type KeepRunningStatus } from "../android";
 import { api, setToken } from "../api";
 import { DRAGON } from "../avatars";
+import { openOwnKeySetup } from "../components/AllowanceWays";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
 import { BackBar } from "../components/BackBar";
@@ -39,7 +40,7 @@ const MODES: Array<{ id: "ask" | "strict" | "auto"; title: string; text: string;
 ];
 
 export function SettingsScreen() {
-  const { state, refreshSettings, setTab, toast, send } = useStore();
+  const { state, refreshSettings, setTab, toast } = useStore();
   const s = state.settings;
   const [identity, setIdentity] = useState<Identity>(() => identityOf(state.profile, DRAGON, AVATAR_COLORS[0]));
   const [saving, setSaving] = useState(false);
@@ -95,10 +96,10 @@ export function SettingsScreen() {
             onChange={setIdentity}
             suggestions={false}
             inputCls={settingsInput}
-            onGenerate={(description) => {
-              // the chat draws it: the runtime reads the request, shows the cost, then four to choose from
+            onGenerate={(description, style) => {
+              // the studio runs in the chat: the card with the cost, then four to choose from
               setTab("chat");
-              void send("main", t("New avatar: {description}", { description })).catch((e: Error) => toast(e.message));
+              void api.avatarBegin(description, "main", style).catch((e: Error) => toast(t(e.message)));
             }}
           />
           <button
@@ -212,6 +213,14 @@ export function SettingsScreen() {
               <span className="text-muted">{t("Provider / model")}</span>
               <span className="font-mono text-[12.5px] flex items-center gap-1">
                 {s.llm.model} <ChevronRight size={14} className="text-muted" />
+              </span>
+            </button>
+          )}
+          {s?.llm.cloud && (
+            <button type="button" onClick={() => openOwnKeySetup(setTab)} className="w-full text-[13.5px] flex items-center justify-between">
+              <span className="text-muted">{t("Use my own API key")}</span>
+              <span className="text-[12.5px] text-muted flex items-center gap-1">
+                {t("OpenAI, Bailian, DeepSeek…")} <ChevronRight size={14} />
               </span>
             </button>
           )}

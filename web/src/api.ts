@@ -142,7 +142,7 @@ export const api = {
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
   /** the avatar studio: whether a face can be drawn, and the session under way */
   avatarView: () => request<{ available: boolean; image_model: string; cloud: boolean; current: Record<string, unknown> | null }>("/api/avatar"),
-  avatarBegin: (description: string, thread = "main") => request<Record<string, unknown>>("/api/avatar/begin", json({ description, thread })),
+  avatarBegin: (description: string, thread = "main", style = "muse") => request<Record<string, unknown>>("/api/avatar/begin", json({ description, thread, style })),
   avatarStart: (session: string) => request<Record<string, unknown>>("/api/avatar/start", json({ session })),
   avatarChoose: (session: string, index: number) => request<Record<string, unknown>>("/api/avatar/choose", json({ session, index })),
   avatarCancel: (session: string) => request<Record<string, unknown>>("/api/avatar/cancel", json({ session })),

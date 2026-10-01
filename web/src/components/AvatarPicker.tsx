@@ -13,6 +13,17 @@ export interface AvatarChoice {
   color: string;
 }
 
+/** The looks a face can be drawn in — the phone's list, same ids; the runtime knows the words. */
+export const AVATAR_STYLES: { id: string; label: string }[] = [
+  { id: "muse", label: "3D toy (Muse)" },
+  { id: "flat", label: "Flat" },
+  { id: "clay", label: "3D clay" },
+  { id: "watercolor", label: "Watercolour" },
+  { id: "pixel", label: "Pixel" },
+  { id: "line", label: "Line" },
+  { id: "sticker", label: "Sticker" },
+];
+
 /**
  * The dragon, a face drawn for you in the avatar studio (when the profile has one, or when
  * `onGenerate` is given: describe it and the chat draws four to choose from), plus an emoji on
@@ -25,12 +36,13 @@ export function AvatarPicker({
 }: {
   value: AvatarChoice;
   onChange: (v: AvatarChoice) => void;
-  /** asked for a new face: the description typed; the caller hands it to the chat */
-  onGenerate?: (description: string) => void;
+  /** asked for a new face: the description typed and the style picked; the caller starts the studio */
+  onGenerate?: (description: string, style: string) => void;
 }) {
   const t = useT();
   const [describing, setDescribing] = useState(false);
   const [description, setDescription] = useState("");
+  const [style, setStyle] = useState("muse");
   const emojiMode = value.avatar === "";
   // a face from the studio: anything that is neither the dragon nor the emoji
   const studio = !emojiMode && !isDragon(value.avatar) ? value.avatar : null;
@@ -39,7 +51,7 @@ export function AvatarPicker({
   const submit = () => {
     const d = description.trim();
     if (!d || !onGenerate) return;
-    onGenerate(d);
+    onGenerate(d, style);
     setDescription("");
     setDescribing(false);
   };
@@ -84,7 +96,19 @@ export function AvatarPicker({
       </div>
       {describing && onGenerate && (
         <div className="rounded-2xl bg-surface-2 p-3 space-y-2">
-          <p className="text-[12.5px] text-muted">{t("Describe the new look; the chat draws four to choose from and shows the cost first.")}</p>
+          <p className="text-[12.5px] text-muted">{t("One sentence is enough. Four are drawn to choose from; the cost shows first.")}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {AVATAR_STYLES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setStyle(s.id)}
+                className={cx("rounded-full border px-2.5 py-1 text-[12.5px]", style === s.id ? "border-accent bg-accent/10 text-accent" : "border-border text-muted")}
+              >
+                {t(s.label)}
+              </button>
+            ))}
+          </div>
           <div className="flex gap-2">
             <input
               value={description}
@@ -100,7 +124,7 @@ export function AvatarPicker({
               className="min-w-0 flex-1 rounded-xl bg-bg px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-accent/40"
             />
             <button type="button" onClick={submit} disabled={!description.trim()} className="rounded-xl bg-accent px-3 py-2 text-[13.5px] font-medium text-accent-fg disabled:opacity-40">
-              {t("Draw")}
+              {t("Draw four")}
             </button>
           </div>
         </div>

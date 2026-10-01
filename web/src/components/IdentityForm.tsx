@@ -61,7 +61,7 @@ export function IdentityForm({
   askUserName?: boolean;
   inputCls: string;
   /** the picker offers "draw a new one": the description goes to the chat (Settings only — setup has no model yet) */
-  onGenerate?: (description: string) => void;
+  onGenerate?: (description: string, style: string) => void;
 }) {
   const t = useT();
   const [seed, setSeed] = useState(7);

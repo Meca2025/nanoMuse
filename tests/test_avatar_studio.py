@@ -79,6 +79,15 @@ def test_build_prompt_varies_by_index() -> None:
     assert "white background" in a
 
 
+def test_build_prompt_draws_in_the_phones_styles() -> None:
+    # the same ids as the phone's AvatarStudio.Style; an unknown one is Muse's 3D toy
+    assert "vinyl toy" in build_prompt("a robot owl", 0)
+    assert "watercolour" in build_prompt("a robot owl", 0, "watercolor")
+    assert "pixel art" in build_prompt("a robot owl", 0, "pixel")
+    assert "vinyl toy" in build_prompt("a robot owl", 0, "no-such-style")
+    assert "3D toy look" in clip_prompt("idle") and "3D toy look" not in clip_prompt("idle", "flat")
+
+
 def _png(colour: tuple[int, int, int]) -> bytes:
     out = io.BytesIO()
     Image.new("RGB", (64, 64), colour).save(out, "PNG")
@@ -241,11 +250,14 @@ def test_a_busy_provider_is_waited_out_two_pictures_at_a_time(studio_server, mon
 
 def test_cancel_and_redraw(studio_server) -> None:
     client, service, fake = studio_server
-    r = client.post("/api/avatar/begin", json={"description": "a small fox"})
+    # the picker in Settings sends the style too (the phone's list); the card carries it
+    r = client.post("/api/avatar/begin", json={"description": "a small fox", "style": "pixel"})
     assert r.status_code == 200 and r.json()["stage"] == "estimate"
+    assert r.json()["style"] == "pixel"
     sid = r.json()["session"]
     client.post("/api/avatar/start", json={"session": sid})
     _wait(lambda: _avatar_event(client)["stage"] == "choose")
+    assert all("pixel art" in g["prompt"] for g in fake.generations[:4])
     # "regenerate" by words draws four more
     client.post("/api/threads/main/send", json={"text": "重新生成"})
     _wait(lambda: len(fake.generations) >= 8)

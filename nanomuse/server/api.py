@@ -35,7 +35,7 @@
     GET  /api/vault  PUT|DELETE /api/vault/{name}   (names only ever come back)
     POST /api/onboarded
     GET  /api/avatar                      the avatar studio: can a face be drawn, the session under way
-    POST /api/avatar/begin {description}  a session: the card with the cost in the chat
+    POST /api/avatar/begin {description, style?}  a session: the card with the cost in the chat
     POST /api/avatar/start|choose|cancel {session, index?}   draw (or redraw) the four, pick one, stop
     WS   /ws?token=…                     live events
 
@@ -282,6 +282,8 @@ class CloudModelBody(BaseModel):
 class AvatarBeginBody(BaseModel):
     description: str = Field(min_length=1, max_length=200)
     thread: str = MAIN_THREAD
+    # one of the studio's STYLES (the phone's list); Muse's 3D toy look when left out
+    style: str = Field(default="muse", max_length=20)
 
 
 class AvatarSessionBody(BaseModel):
@@ -891,7 +893,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.post("/api/avatar/begin", dependencies=dep)
     async def avatar_begin(body: AvatarBeginBody) -> dict[str, Any]:
         """A new session from a description: the card with the cost appears in the chat."""
-        return await svc.avatar.begin(body.thread, body.description.strip())
+        return await svc.avatar.begin(body.thread, body.description.strip(), body.style)
 
     @app.post("/api/avatar/start", dependencies=dep)
     async def avatar_start(body: AvatarSessionBody) -> dict[str, Any]:
