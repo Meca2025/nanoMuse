@@ -1,5 +1,6 @@
 package io.github.nanomuse.goals
 
+import io.github.nanomuse.stringOrNull
 import android.content.Context
 import com.openminis.app.MinisApp
 import com.openminis.app.R
@@ -78,8 +79,8 @@ object GoalFlow {
                 store.applyUpdate(
                     goalId = goalId,
                     progress = if (o.has("progress")) o.optInt("progress") else null,
-                    status = o.optString("status", null),
-                    note = o.optString("note", null),
+                    status = o.stringOrNull("status"),
+                    note = o.stringOrNull("note"),
                 )
             }
         }
@@ -106,7 +107,7 @@ object GoalFlow {
         val goal = Goal(
             title = title.take(60),
             why = o.optString("why").trim(),
-            category = GoalCategory.fromKey(o.optString("category", null)),
+            category = GoalCategory.fromKey(o.stringOrNull("category")),
             checkEveryHours = everyHours,
             checkHour = h,
             checkMinute = m,

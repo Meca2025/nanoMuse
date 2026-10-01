@@ -1,5 +1,6 @@
 package io.github.nanomuse.goals
 
+import io.github.nanomuse.stringOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -78,7 +79,7 @@ data class Goal(
             id = o.optString("id", UUID.randomUUID().toString()),
             title = o.optString("title", ""),
             why = o.optString("why", ""),
-            category = GoalCategory.fromKey(o.optString("category", null)),
+            category = GoalCategory.fromKey(o.stringOrNull("category")),
             checkEveryHours = o.optInt("checkEveryHours", 0),
             checkHour = o.optInt("checkHour", 9),
             checkMinute = o.optInt("checkMinute", 0),
@@ -87,9 +88,9 @@ data class Goal(
             } ?: emptyList(),
             progress = o.optInt("progress", 0).coerceIn(0, 100),
             status = runCatching { GoalStatus.valueOf(o.optString("status", "ACTIVE")) }.getOrDefault(GoalStatus.ACTIVE),
-            sessionId = if (o.has("sessionId")) o.optString("sessionId", null) else null,
-            taskId = if (o.has("taskId")) o.optString("taskId", null) else null,
-            lastNote = if (o.has("lastNote")) o.optString("lastNote", null) else null,
+            sessionId = o.stringOrNull("sessionId"),
+            taskId = o.stringOrNull("taskId"),
+            lastNote = o.stringOrNull("lastNote"),
             lastCheckedAt = if (o.has("lastCheckedAt")) o.optLong("lastCheckedAt") else null,
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
             updatedAt = o.optLong("updatedAt", System.currentTimeMillis()),
