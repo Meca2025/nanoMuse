@@ -2,13 +2,38 @@
 # month, merged when the checks are green (CONTRIBUTING.md, "Commits and pull requests").
 version: 2
 updates:
+  # the runtime, the relay and the showcase gateway: one PR each
   - package-ecosystem: pip
-    directory: /
+    directories: ["/", "/cloud", "/demo/showcase/gateway"]
     schedule:
       interval: monthly
     groups:
       python:
         patterns: ["*"]
+    labels: ["dependencies"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # the desktop app: minors and patches in one PR; Electron and electron-builder majors as
+  # their own PRs, since an Electron line is supported for about eight months and the app
+  # should not sit on one past its end of life again. @types/node follows Electron's Node,
+  # Vite follows electron-vite's peer range, TypeScript's majors are a hand upgrade.
+  - package-ecosystem: npm
+    directory: /desktop/app
+    schedule:
+      interval: monthly
+    groups:
+      desktop:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     labels: ["dependencies"]
     commit-message:
       prefix: chore
@@ -44,8 +69,9 @@ updates:
       prefix: chore
       include: scope
 
+  # the runtime image, the relay, the showcase gateway and its Caddy
   - package-ecosystem: docker
-    directory: /
+    directories: ["/", "/cloud", "/demo/showcase/gateway", "/demo/showcase/caddy"]
     schedule:
       interval: monthly
     labels: ["dependencies"]
