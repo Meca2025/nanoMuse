@@ -17,7 +17,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 - **The relay no longer logs a traceback when a client disconnects mid-request** (relay 0.7.2). A phone changing networks or a tab closed while its body was still arriving raised `ClientDisconnect` inside the chat route, which the server logged as `Exception in ASGI application` with forty lines of stack — seven times a day. It is a quiet `400 client_disconnected` now, to a caller that is not there to read it.
 - **The docs say what nanomuse.cn/web is now.** The Install paragraph of the README in its ten languages, the *every device* page, the design record of the web app and the roadmap still described the kept Muse per account; they describe the demo on the simulated phone, and keep the kept-Muse lane as what `WEB_ENABLED=1` runs.
-- **The archived design record of the Python-line Android app links to its neighbours again.** `docs/archive/android-python-line.md` moved into `archive/` with its relative links unchanged; they point one level up now.
+- **The archived design record of the Python-line Android app links to its neighbours again.**
+- **`CITATION.cff` names the current version.** It had stayed at 0.1.11; the release script now checks it with the other version fields, so it cannot fall behind again. `docs/archive/android-python-line.md` moved into `archive/` with its relative links unchanged; they point one level up now.
 
 ## [0.1.26] - 2026-10-02 · Window
 
