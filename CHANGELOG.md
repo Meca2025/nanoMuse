@@ -10,6 +10,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Changed
 
+- **nanomuse.cn/web's sign-in page fits a landscape window too.** From 900px the words — the brand, *Try nanoMuse*, four short points (nothing to install; a model with a free allowance; it keeps everything; the same account everywhere) and the two notices — sit on the left and the form on the right, both centred, as the desktop app's page does; a phone keeps the single column with the points as a small grid under the form. The first screen used to be one long column with everything in it.
 - **A device keeps the face it drew when another device renames** (relay 0.7.1). A rename on the phone used to come back to the desktop as "a face from the account": the same pictures downloaded again into `avatar/sync-<hash>/`, worn under that name, and the clips the studio had made and the face's description left behind (so *Redraw the poses* said there was none) — and the phone did the same the other way. The relay now names the pictures it holds (`face_id`, the hash of the idle still), a device whose worn face has that hash takes the name and nothing else (an older relay is checked against the downloaded still), and the face's description and style travel with it, so the other devices show what it is and can redraw its poses with their own image model. Two clips at a time, and a clip the video provider refuses as too many (429) is submitted again after a pause — four at once used to lose two of them.
 
 ### Fixed
