@@ -57,7 +57,7 @@ export const LLM_ROW = 'llm-pi-ai'
 /** Where the browser half talks to us. */
 export const API_PREFIX = '/nanomuse/cloud'
 /** What this device reports as its software. */
-export const VERSION = 'dsh-nanomuse 0.0.2'
+export const VERSION = `dsh-nanomuse ${process.env.NANOMUSE_VERSION ?? '0.0.0'}`
 /** The hub actions this computer answers whatever the remote-control switch says (`docs/hub.md`). */
 export const ACTIONS = ['info', 'notify']
 /** Incoming actions worth a toast — the ones that act or look, not a folder listing. */
@@ -319,7 +319,7 @@ export default class NanomuseCloud extends Service {
 
   /** Step one: a code to the phone or the mailbox. */
   async requestCode(identifier: string): Promise<void> {
-    await this.relay.requestCode(identifier.trim())
+    await this.serialize(() => this.relay.requestCode(identifier.trim()))
   }
 
   /** Step two: the code for the key; wires the provider and remembers the account. */

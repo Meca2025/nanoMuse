@@ -72,6 +72,7 @@ export function MuseHeader({ t, stop, openProfile, useSessionStatus }: MuseHeade
     }
     return undefined
   }, [current, shown])
+  useEffect(() => () => { if (linger.current) clearTimeout(linger.current) }, [])
   useEffect(() => { if (activity.running.length === 0) setStopping(false) }, [activity.running.length])
 
   const busy = activity.running.length > 0

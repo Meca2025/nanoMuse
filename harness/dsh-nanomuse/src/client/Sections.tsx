@@ -67,8 +67,9 @@ export function makeComputerSection(t: Translate) {
         ? h('div', { className: 'nm-card' },
             row('accessibility', t('obAccessibility'), t('obAccessibilitySub')),
             row('screen', t('obScreen'), t('obScreenSub')),
-            h('div', { className: 'nm-row' },
-              h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('accessibility') } }, t('cuOpenSettings'))))
+            h('div', { className: 'nm-row', style: { gap: 12, flexWrap: 'wrap' } },
+              h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('accessibility') } }, t('cuOpenSettingsAccessibility')),
+              h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('screen') } }, t('cuOpenSettingsScreen'))))
         : h('p', null, t('cuNotGated')),
       h('div', { className: 'nm-card' },
         h('div', { className: 'nm-row' },

@@ -12,7 +12,7 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { closeTopModal } from '@deepseek-ai/dsh-client-ui-primitives'
-import { createElement as h, useEffect } from 'react'
+import { createElement as h, useEffect, useRef } from 'react'
 import type { Translate } from './api.ts'
 import { Avatar, BrandName, type Mood } from './Avatar.tsx'
 import { bridge } from './bridge.ts'
@@ -171,7 +171,9 @@ export function apply(ctx: ClientContext): void {
       if (!button || !card || button.closest('[data-approval-scroll]')) return
       const actions = Array.from(card.querySelectorAll(':scope > div > :last-child button'))
       if (!actions.includes(button)) return
-      record(card, actions.indexOf(button) === actions.length - 1 ? 'allowed' : 'rejected')
+      // the harness renders Allow as its primary button and last in the DOM; either sign will do
+      const primary = /_primary/.test(button.className) || actions.indexOf(button) === actions.length - 1
+      record(card, primary ? 'allowed' : 'rejected')
     }
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Enter' && event.key !== 'Escape') return
@@ -410,8 +412,15 @@ export function apply(ctx: ClientContext): void {
   // General plugin's settings, which this bundle switches off; the About row
   // credits the harness instead, so the step passes straight through.
   const PassThrough = (props: OnboardingOwnerProps): null => {
-    const { complete } = props
-    useEffect(() => { complete() }, [complete])
+    // the coordinator hands over a new `complete` closure on every render; call it once
+    const done = useRef(false)
+    const complete = useRef(props.complete)
+    complete.current = props.complete
+    useEffect(() => {
+      if (done.current) return
+      done.current = true
+      complete.current()
+    }, [])
     return null
   }
   slots.inject('settings.onboarding', () =>

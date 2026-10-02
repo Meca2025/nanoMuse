@@ -65,7 +65,8 @@ function Spinner(): ReactNode {
 /** Six boxes over one real input, so paste, IME and autofill all land in the same place. */
 function CodeBoxes({ value, onChange, disabled, label }: { value: string; onChange(next: string): void; disabled: boolean; label: string }): ReactNode {
   const input = useRef<HTMLInputElement>(null)
-  useEffect(() => { input.current?.focus() }, [])
+  // focus on mount, and again when a wrong code has been cleared (a disabled input loses focus)
+  useEffect(() => { if (!disabled) input.current?.focus() }, [disabled])
   const digits = value.replace(/\D/g, '').slice(0, 6)
   return h('div', { className: 'nm-code', onClick: () => input.current?.focus() },
     h('input', {
@@ -194,9 +195,15 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
     const verify = (value: string) => {
       if (busy || value.length !== 6) return
       void run(async () => {
-        const next = await call<CloudStatus>('verify', { identifier: identifier.trim(), code: value })
-        setCode('')
-        signedIn(next)
+        try {
+          const next = await call<CloudStatus>('verify', { identifier: identifier.trim(), code: value })
+          setCode('')
+          signedIn(next)
+        } catch (err: unknown) {
+          // a wrong code leaves empty boxes, not six digits to delete one by one
+          setCode('')
+          throw err
+        }
       })
     }
     const login = (event: FormEvent) => {
@@ -244,7 +251,10 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
         h(CodeBoxes, { value: code, disabled: busy, label: t('code'), onChange: (next) => { setCode(next); if (next.length === 6) verify(next) } }),
         error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
         h(Pill, { disabled: busy || code.length !== 6, onClick: () => verify(code), className: 'nm-ob-wide' }, busy ? t('signingIn') : t('obNext')),
-        h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setView('password') } }, t('obOtherWay')))
+        h('div', { className: 'nm-ob-links' },
+          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setView('password') } }, t('obOtherWay')),
+          h('span', { className: 'nm-ob-sep', 'aria-hidden': true }, '·'),
+          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setCode(''); setView('identifier') } }, t('obChangeIdentifier'))))
     } else if (view === 'password') {
       body = h('form', { className: 'nm-ob-center nm-ob-form', onSubmit: login },
         h('h1', { className: 'nm-ob-title' }, t('obPasswordTitle')),
@@ -252,7 +262,10 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
         h('input', { className: 'nm-field', type: 'password', value: password, placeholder: t('obPassword'), autoComplete: 'current-password', autoFocus: true, 'aria-label': t('obPassword'), onChange: (e: FormEvent<HTMLInputElement>) => setPassword(e.currentTarget.value) }),
         error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
         h(Pill, { type: 'submit', disabled: busy || password.length === 0, className: 'nm-ob-wide' }, busy ? t('signingIn') : t('obSignIn')),
-        h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setView('code') } }, t('obUseCode')))
+        h('div', { className: 'nm-ob-links' },
+          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setView('code') } }, t('obUseCode')),
+          h('span', { className: 'nm-ob-sep', 'aria-hidden': true }, '·'),
+          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setPassword(''); setView('identifier') } }, t('obChangeIdentifier'))))
     } else if (view === 'wait') {
       body = h('div', { className: 'nm-ob-center' }, h(Spinner))
     } else if (view === 'ready') {
