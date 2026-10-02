@@ -3,11 +3,21 @@
 #
 #   scripts/desktop-app/package-mac.sh <arch>          # arm64 | x64
 #
-# 1. ad-hoc code signature over the whole bundle (`codesign -s -`). Nothing is notarized — there
-#    is no Apple developer account behind a non-profit community project — but a sealed ad-hoc
-#    bundle is what Gatekeeper knows how to talk about ("Apple could not verify…", with *Open
-#    Anyway* in System Settings → Privacy & Security). An unsigned bundle it calls "damaged" and
-#    offers to move to the Trash, and on Apple silicon unsigned code does not run at all.
+# 1. a code signature over the whole bundle. Without a certificate in the environment it is
+#    ad-hoc (`codesign -s -`): nothing is notarized, but a sealed ad-hoc bundle is what Gatekeeper
+#    knows how to talk about ("Apple could not verify…", with *Open Anyway* in System Settings →
+#    Privacy & Security). An unsigned bundle it calls "damaged" and offers to move to the Trash,
+#    and on Apple silicon unsigned code does not run at all.
+#    With the credentials below (the workflow passes the repository secrets of the same names;
+#    docs/desktop.md says how they are made), the bundle is signed with the Developer ID
+#    Application certificate under the hardened runtime, with the entitlements in
+#    desktop/app/resources/entitlements.mac.plist, notarized with notarytool and stapled — then
+#    it opens like any other app:
+#      MAC_CERT_P12_BASE64, MAC_CERT_PASSWORD     the certificate, exported from Keychain Access as .p12
+#      APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_P8
+#                                                an App Store Connect API key (the .p8's text) for notarytool
+#      APPLE_TEAM_ID                              optional; checked against the certificate when set
+#    The certificate alone signs without notarizing (Gatekeeper then still asks once).
 # 2. nanoMuse-Desktop-<version>-mac-<arch>.zip — `ditto`, the way Finder makes archives, which
 #    keeps symlinks, resource forks and permissions; unzip, drag to Applications.
 # 3. nanoMuse-Desktop-<version>-mac-<arch>.dmg — an APFS image made with `hdiutil` directly.
@@ -22,13 +32,66 @@ app="$(ls -d "$app_dir"/dist/mac*/nanoMuse.app | head -1)"
 out="$app_dir/dist"
 name="nanoMuse-Desktop-$version-mac-$arch"
 
-echo "== ad-hoc signature"
+# ---------------------------------------------------------------------------- the identity
+identity="-"
+sign_flags=(--timestamp=none)
+work="$(mktemp -d)"
+keychain=""
+cleanup() {
+  if [ -n "$keychain" ]; then security delete-keychain "$keychain" 2>/dev/null || true; fi
+  rm -rf "$work"
+}
+trap cleanup EXIT
+
+if [ -n "${MAC_CERT_P12_BASE64:-}" ]; then
+  echo "== Developer ID certificate"
+  # a keychain of its own, so nothing of the machine's is touched and nothing stays behind
+  keychain="$work/build.keychain-db"
+  kpass="$(uuidgen)"
+  security create-keychain -p "$kpass" "$keychain"
+  security set-keychain-settings -lut 21600 "$keychain"
+  security unlock-keychain -p "$kpass" "$keychain"
+  printf '%s' "$MAC_CERT_P12_BASE64" | base64 --decode > "$work/cert.p12"
+  security import "$work/cert.p12" -k "$keychain" -P "${MAC_CERT_PASSWORD:-}" -T /usr/bin/codesign -T /usr/bin/security >/dev/null
+  rm -f "$work/cert.p12"
+  security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$kpass" "$keychain" >/dev/null
+  # search this keychain too, in front of the user's
+  # shellcheck disable=SC2046
+  security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '" ')
+  identity="$(security find-identity -v -p codesigning "$keychain" | awk -F'"' '/Developer ID Application/ {print $2; exit}')"
+  [ -n "$identity" ] || { echo "the certificate carries no 'Developer ID Application' identity" >&2; exit 1; }
+  if [ -n "${APPLE_TEAM_ID:-}" ] && [[ "$identity" != *"($APPLE_TEAM_ID)"* ]]; then
+    echo "the certificate's team is not APPLE_TEAM_ID ($identity)" >&2; exit 1
+  fi
+  echo "signing as: $identity"
+  sign_flags=(--timestamp --options runtime --entitlements "$app_dir/resources/entitlements.mac.plist")
+fi
+
+# ---------------------------------------------------------------------------- the signature
+echo "== signature"
 # inner code first: the bundled runtime's executables and libraries are loose files under
 # Resources, which --deep does not visit
 find "$app/Contents/Resources/runtime" -type f \( -perm -u+x -o -name "*.so" -o -name "*.dylib" \) -print0 \
-  | xargs -0 -n 50 codesign --force --sign - --timestamp=none 2>/dev/null || true
-codesign --force --deep --sign - --timestamp=none "$app"
+  | xargs -0 -n 50 codesign --force --sign "$identity" "${sign_flags[@]}" 2>/dev/null || true
+codesign --force --deep --sign "$identity" "${sign_flags[@]}" "$app"
 codesign --verify --deep --strict "$app" && echo "signature ok"
+
+# ---------------------------------------------------------------------------- notarization
+notarize() { # file — submits it, waits, and fails the build when Apple refuses
+  xcrun notarytool submit "$1" --key "$work/AuthKey.p8" --key-id "$APP_STORE_CONNECT_KEY_ID" \
+    --issuer "$APP_STORE_CONNECT_ISSUER_ID" --wait --timeout 45m
+}
+notarized=0
+if [ "$identity" != "-" ] && [ -n "${APP_STORE_CONNECT_KEY_P8:-}" ]; then
+  echo "== notarization (the app)"
+  printf '%s\n' "$APP_STORE_CONNECT_KEY_P8" > "$work/AuthKey.p8"
+  ditto -c -k --sequesterRsrc --keepParent "$app" "$work/for-notary.zip"
+  notarize "$work/for-notary.zip"
+  xcrun stapler staple "$app" && echo "stapled"
+  notarized=1
+elif [ "$identity" != "-" ]; then
+  echo "signed, not notarized: no App Store Connect key in the environment"
+fi
 
 echo "== zip"
 rm -f "$out/$name.zip"
@@ -42,6 +105,14 @@ rm -f "$out/$name.dmg"
 hdiutil create -volname "nanoMuse $version" -srcfolder "$stage" -ov -fs APFS -format UDZO -quiet "$out/$name.dmg"
 rm -rf "$stage"
 hdiutil verify -quiet "$out/$name.dmg" && echo "dmg ok"
+if [ "$identity" != "-" ]; then
+  codesign --force --sign "$identity" --timestamp "$out/$name.dmg"
+  if [ "$notarized" = 1 ]; then
+    echo "== notarization (the dmg)"
+    notarize "$out/$name.dmg"
+    xcrun stapler staple "$out/$name.dmg" && echo "dmg stapled"
+  fi
+fi
 
 # electron-builder's own mac artifacts, if any, must not go on the release next to these
 find "$out" -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.blockmap" \) ! -name "$name.*" -delete

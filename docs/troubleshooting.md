@@ -32,7 +32,7 @@ Start with `nanomuse doctor`: it prints the config file in use, the data directo
 
 **macOS: Finder "can't complete the operation … error code -36" while dragging nanoMuse.app out of the dmg (0.1.20–0.1.21).** The image was HFS+; since 0.1.22 the dmg is APFS and the release also carries a `.zip` of the app — download it, double-click to unpack, drag `nanoMuse.app` to Applications.
 
-**macOS: "nanoMuse.app is damaged and can't be opened" or "Apple could not verify…".** There is no Apple developer certificate behind the project, so the bundle is ad-hoc signed and macOS asks once. Open it, dismiss the dialog, then System Settings → Privacy & Security → *Open Anyway* (or, from a terminal, `xattr -dr com.apple.quarantine /Applications/nanoMuse.app`). Windows shows "Windows protected your PC" for the same reason: *More info* → *Run anyway*.
+**macOS: "nanoMuse.app is damaged and can't be opened" or "Apple could not verify…".** Builds made without an Apple developer certificate are ad-hoc signed, so macOS asks once (a release signed and notarized with the project's Developer ID — `desktop/app/README.md` says when that is — opens without the question). Open it, dismiss the dialog, then System Settings → Privacy & Security → *Open Anyway* (or, from a terminal, `xattr -dr com.apple.quarantine /Applications/nanoMuse.app`). Windows shows "Windows protected your PC" for the same reason: *More info* → *Run anyway*.
 
 **The Android app says "Refused by the relay — sign in again" under Devices.** The relay no longer accepts this phone's key (signed out everywhere, or the account was deleted). Sign out and in again on the Account screen; the hub joins again on its own.
 

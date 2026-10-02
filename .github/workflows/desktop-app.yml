@@ -12,8 +12,11 @@
 # build all four, and a tag uploads the installers to the release of the same name — the one
 # scripts/release-apk.sh creates with the APK — retrying until it exists. "Run workflow" with a
 # release tag does the same for a release that already exists (a platform fixed afterwards).
-# No developer certificate: Windows asks for "Run anyway", macOS for Open Anyway in System
-# Settings → Privacy & Security (docs/desktop.md).
+# No Windows certificate: Windows asks for "Run anyway". macOS: with the Apple secrets below in
+# the repository (MAC_CERT_P12_BASE64, MAC_CERT_PASSWORD, APP_STORE_CONNECT_KEY_ID,
+# APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_P8, APPLE_TEAM_ID — docs/desktop.md says how
+# they are made) package-mac.sh signs with the Developer ID, notarizes and staples; without them
+# the bundle is ad-hoc signed and macOS asks for Open Anyway in System Settings → Privacy & Security.
 name: desktop app
 
 on:
@@ -104,9 +107,16 @@ jobs:
           npm ci
           npm run typecheck
           npm run dist
-      - name: The app (macOS — ad-hoc signed, zip and APFS dmg by hand)
+      - name: The app (macOS — signed and notarized with the Apple secrets, ad-hoc without; zip and APFS dmg by hand)
         if: runner.os == 'macOS'
         working-directory: desktop/app
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
         run: |
           npm ci
           npm run typecheck
