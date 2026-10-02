@@ -150,15 +150,28 @@ export function ModelCard({
     list: string[];
     image: string[];
     video: string[];
+    // nanoMuse Cloud, for a member: the menu and the other models under the Cloud key, grouped
+    menu: string[];
+    catalog: string[];
+    imageCatalog: string[];
+    videoCatalog: string[];
+    vision: string[];
     source: "live" | "catalogue" | "loading";
   }>({
     list: presets[currentPreset]?.models ?? [],
     image: [],
     video: [],
+    menu: [],
+    catalog: [],
+    imageCatalog: [],
+    videoCatalog: [],
+    vision: [],
     source: "catalogue",
   });
   // true once the user edits the model field by hand in this session: that value is never replaced
   const [typed, setTyped] = useState(false);
+  // a member on nanoMuse Cloud picks from the grouped list; this flips the field to typing an id
+  const [typingModel, setTypingModel] = useState(false);
 
   useEffect(() => {
     setModel(data.llm.model);
@@ -193,6 +206,11 @@ export function ModelCard({
               list: r.models,
               image: r.image_models ?? [],
               video: r.video_models ?? [],
+              menu: r.menu ?? [],
+              catalog: r.catalog ?? [],
+              imageCatalog: r.image_catalog ?? [],
+              videoCatalog: r.video_catalog ?? [],
+              vision: r.vision ?? [],
               source: r.source,
             });
             // a model left over from another provider yields to what this endpoint actually serves
@@ -206,6 +224,11 @@ export function ModelCard({
                 list: p?.models ?? [],
                 image: [],
                 video: [],
+                menu: [],
+                catalog: [],
+                imageCatalog: [],
+                videoCatalog: [],
+                vision: [],
                 source: "catalogue",
               }),
           );
@@ -238,8 +261,14 @@ export function ModelCard({
       list: next.models ?? [],
       image: [],
       video: [],
+      menu: [],
+      catalog: [],
+      imageCatalog: [],
+      videoCatalog: [],
+      vision: [],
       source: "catalogue",
     });
+    setTypingModel(false);
     setImageModel("");
     setVideoModel("");
     setTyped(false);
@@ -419,7 +448,12 @@ export function ModelCard({
       <Field
         label={t("Model")}
         hint={
-          p?.cloud && anyModel
+          p?.cloud && anyModel && models.catalog.length
+            ? t(
+                "{n} models your account may use: the menu first, then everything else the provider lists under the Cloud key. Pick one; the ones beyond the menu are priced as the dearest menu model of their kind.",
+                { n: models.list.length },
+              )
+            : p?.cloud && anyModel
             ? t(
                 "Your account may name any model the provider has, not only these: type its id — a chat model here, a picture or clip model below — and it goes through as typed.",
               )
@@ -434,26 +468,74 @@ export function ModelCard({
                 : undefined
         }
       >
-        <input
-          list="om-models"
-          value={model}
-          onChange={(e) => {
-            setModel(e.target.value);
-            setTyped(true);
-          }}
-          className={inputCls}
-          placeholder={t("model name")}
-          autoCapitalize="off"
-          autoCorrect="off"
-        />
-        <datalist id="om-models">
-          {models.list.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
+        {p?.cloud && models.catalog.length > 0 && !typingModel && (!model || models.list.includes(model)) ? (
+          // a member: the whole list to pick from, in groups — no id to type
+          <select
+            value={model}
+            onChange={(e) => {
+              if (e.target.value === OTHER_MODEL) {
+                setTypingModel(true);
+                return;
+              }
+              setModel(e.target.value);
+              setTyped(true);
+            }}
+            className={cx(inputCls, "text-fg")}
+          >
+            {!model && <option value="">{t("model name")}</option>}
+            <optgroup label={t("Menu")}>
+              {models.menu.map((m) => (
+                <option key={m} value={m}>
+                  {models.vision.includes(m) ? `${m} · ${t("reads pictures")}` : m}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label={t("More models on your account")}>
+              {models.catalog.map((m) => (
+                <option key={m} value={m}>
+                  {models.vision.includes(m) ? `${m} · ${t("reads pictures")}` : m}
+                </option>
+              ))}
+            </optgroup>
+            <option value={OTHER_MODEL}>{t("Type a model id…")}</option>
+          </select>
+        ) : (
+          <>
+            <input
+              list="om-models"
+              value={model}
+              onChange={(e) => {
+                setModel(e.target.value);
+                setTyped(true);
+              }}
+              className={inputCls}
+              placeholder={t("model name")}
+              autoCapitalize="off"
+              autoCorrect="off"
+              autoFocus={typingModel}
+            />
+            <datalist id="om-models">
+              {models.list.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+            {p?.cloud && models.catalog.length > 0 && (
+              <button
+                type="button"
+                className="mt-1.5 text-[12px] text-accent"
+                onClick={() => {
+                  setTypingModel(false);
+                  if (!models.list.includes(model)) setModel(models.menu[0] ?? models.list[0] ?? "");
+                }}
+              >
+                {t("Pick from the list")}
+              </button>
+            )}
+          </>
+        )}
         {models.list.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {models.list.slice(0, 8).map((m) => (
+            {(models.menu.length ? models.menu : models.list).slice(0, 8).map((m) => (
               <button
                 key={m}
                 type="button"
@@ -569,14 +651,16 @@ export function ModelCard({
           <StudioModelPick
             label={t("Picture model")}
             value={imageModel}
-            options={models.image}
+            options={models.image.filter((m) => !models.imageCatalog.includes(m))}
+            more={models.imageCatalog}
             onChange={setImageModel}
             other={!p?.cloud || anyModel}
           />
           <StudioModelPick
             label={t("Clip model")}
             value={videoModel}
-            options={models.video}
+            options={models.video.filter((m) => !models.videoCatalog.includes(m))}
+            more={models.videoCatalog}
             onChange={setVideoModel}
             other={!p?.cloud || anyModel}
           />
@@ -2784,22 +2868,25 @@ function StudioModelPick({
   label,
   value,
   options,
+  more = [],
   onChange,
   other = true,
 }: {
   label: string;
   value: string;
   options: string[];
+  /** a second group — on nanoMuse Cloud, the other models under the Cloud key a member may use */
+  more?: string[];
   onChange: (v: string) => void;
   other?: boolean;
 }) {
   const t = useT();
-  const listed = options.includes(value);
+  const listed = options.includes(value) || more.includes(value);
   const [typing, setTyping] = useState(false);
   return (
     <label className="block text-[12.5px] text-muted">
       <span className="block mb-1">{label}</span>
-      {options.length && (listed || !value) && !typing ? (
+      {(options.length || more.length) && (listed || !value) && !typing ? (
         <select
           value={value}
           onChange={(e) => {
@@ -2813,11 +2900,30 @@ function StudioModelPick({
           className={cx(inputCls, "text-fg")}
         >
           <option value="">{t("Automatic")}</option>
-          {options.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
+          {more.length ? (
+            <optgroup label={t("Menu")}>
+              {options.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </optgroup>
+          ) : (
+            options.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))
+          )}
+          {more.length > 0 && (
+            <optgroup label={t("More models on your account")}>
+              {more.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </optgroup>
+          )}
           {other && <option value={OTHER_MODEL}>{t("Other model…")}</option>}
         </select>
       ) : (

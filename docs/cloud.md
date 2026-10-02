@@ -95,9 +95,15 @@ policy says so, the page says so next to the switch, and accounts from before
 keep the choice they had made; a self-hosted relay sets its own default with
 `IMPROVE_DEFAULT`. The operator sees the kept turns on the admin page's *Data
 controls* panel (how many accounts have it on, turns by day, model and app,
-the newest turns) and exports them as JSON lines without account ids
-(`GET /v1/admin/samples/export`). The relay does not know where anyone is: the
-apps never send a location, and IP addresses are not recorded.
+the newest turns, every account's kept conversations in full) and exports them
+as JSON lines without account ids or addresses (`GET /v1/admin/samples/export`,
+`?account_id=` for one account's). The relay does not receive a location — the
+apps never send one — but from relay 0.10 it records the network address and
+the client software (`User-Agent`: the Android app and its version, the
+runtime on Windows / macOS / Linux, a browser) with each sign-in, request,
+event and device, and keeps the account's first and last address; the admin
+page shows them per account and per address (`GET /v1/admin/address?ip=`), and
+they are deleted with the account.
 
 nanoMuse is a community project and charges nothing. The public relay at
 `cloud.nanomuse.cn` is paid for by the developer, so each account has a pool
@@ -109,7 +115,7 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 | free allowance | **¥10 per account**, across chat, pictures and clips; it does not reset |
 | invitations | each *new* person who signs up with your code adds **¥5** to your pool — and ¥5 to theirs |
 | when it is gone | bring your own key — [Alibaba Cloud Bailian in about two minutes](own-key.md), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
-| members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips) by typing its id — *Other model…* in the apps' model picker |
+| members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips): the apps' model picker lists them after the menu as *More models on your account* (relay 0.10 reads the provider's list under the Cloud key), and an id can still be typed — *Other model…* |
 | rate | 30 requests per minute |
 | tokens | no ceiling; usage is metered and shown |
 

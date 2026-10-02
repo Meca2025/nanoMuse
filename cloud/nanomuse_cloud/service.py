@@ -21,6 +21,7 @@ import time
 from contextlib import closing
 from dataclasses import dataclass
 
+from .client import client_version, platform_of
 from .config import ModelSpec, Settings
 from .crypto import IdentifierCrypto
 from .db import Database, now
@@ -200,19 +201,7 @@ def _load_meta(text: str) -> dict:
     return value if isinstance(value, dict) else {}
 
 
-def _platform_of(ua: str) -> str:
-    """The app behind a kept turn, from the user agent the clients send: the Android app,
-    the runtime on each system (which serves the web app, the desktop and the harness),
-    a browser, or something else."""
-    ua = str(ua or "")
-    if ua.startswith("nanoMuse-Android"):
-        return "android"
-    if ua.startswith("nanoMuse/"):
-        system = ua[ua.find("(") + 1 : ua.find(")")].lower() if "(" in ua and ")" in ua else ""
-        return {"windows": "windows", "darwin": "macos", "linux": "linux"}.get(system, "runtime")
-    if ua.startswith("Mozilla/"):
-        return "browser"
-    return "other"
+_platform_of = platform_of  # the app behind a kept turn, from its user agent (client.py)
 
 
 @dataclass(frozen=True)
@@ -567,7 +556,7 @@ class Cloud:
         caller = self._caller(_sha256(bearer))
         if caller is None:
             raise CloudError(401, "bad_key", "This key is no longer valid; sign in again in the app")
-        self.db.touch_key(caller.key_hash)
+        self.db.touch_key(caller.key_hash, caller.account_id)
         return caller
 
     def sign_out(self, caller: Caller) -> None:
@@ -782,6 +771,8 @@ class Cloud:
                 d["detail"] = json.loads(extra)
             except ValueError:
                 pass
+        if "ua" in d:
+            d["platform"] = platform_of(d.get("ua") or "")
         return d
 
     # -- budget -------------------------------------------------------------------------
@@ -1060,6 +1051,24 @@ class Cloud:
             platforms[name] = platforms.get(name, 0) + int(r["n"])
         hints = {r["id"]: r["hint"] for r in self.db.list_accounts(limit=5000)}
         recent = [{**smp, "hint": hints.get(smp["account_id"], "?")} for smp in self.admin_samples(None, 0, 30)]
+        # every account with turns kept, as the way in to each one's data (the drawer pages
+        # through all of them)
+        by_account = [
+            {
+                "account_id": r["account_id"],
+                "hint": r["hint"],
+                "channel": r["channel"],
+                "contribute": bool(r["contribute"]),
+                "created_at": int(r["created_at"]),
+                "samples": int(r["n"]),
+                "prompt_tokens": int(r["prompt_tokens"] or 0),
+                "completion_tokens": int(r["completion_tokens"] or 0),
+                "first_ts": int(r["first_ts"]),
+                "last_ts": int(r["last_ts"]),
+                "models": sorted(m for m in str(r["models"] or "").split(",") if m),
+            }
+            for r in self.db.samples_by_account()
+        ]
         counts = self.db.account_counts()
         total = int(counts.get("total", 0) or 0)
         on = self.db.contributors()
@@ -1095,6 +1104,7 @@ class Cloud:
                 for r in self.db.samples_by_model(since)
             ],
             "by_platform": sorted(({"platform": k, "samples": v} for k, v in platforms.items()), key=lambda x: -x["samples"]),
+            "by_account": by_account,
             "recent": recent,
         }
 
@@ -1134,20 +1144,23 @@ class Cloud:
             d["meta"] = _load_meta(d["meta"])
             if cut:
                 d["meta"]["truncated"] = True
+            d["platform"] = platform_of(d["meta"].get("ua", ""))
             out.append(d)
         return out
 
-    def export_samples(self, since: int = 0):
+    def export_samples(self, since: int = 0, account_id: str | None = None):
         """Every contributed conversation as JSON lines, without the account id: the
-        training set is about what was said, not who said it."""
+        training set is about what was said, not who said it. With ``account_id``, one
+        account's turns only (the operator reading one person's data in full)."""
         before = 0
         while True:
-            rows = self.db.samples(None, since, 1000, before)
+            rows = self.db.samples(account_id, since, 1000, before)
             if not rows:
                 return
             for r in rows:
                 messages, cut = _load_messages(r["request"])
                 meta = _load_meta(r["meta"])
+                meta.pop("ip", None)  # the training set says what was said, not from where
                 if cut:
                     meta["truncated"] = True
                 d = {
@@ -1274,6 +1287,9 @@ class Cloud:
             d["spent_cny"] = self.s.uy_to_cny(int(d.pop("spent_uy", 0) or 0))
             self._pool_fields(d, spent_cny=d["spent_cny"])
             d["contribute"] = bool(d.get("contribute"))
+            d["last_platform"] = platform_of(d.get("last_ua") or "")
+            d["last_version"] = client_version(d.get("last_ua") or "")
+            d["last_seen_at"] = int(d["last_seen_at"]) if d.get("last_seen_at") else None
             out.append(d)
         return out
 
@@ -1516,10 +1532,30 @@ class Cloud:
         self._pool_fields(a, spent_cny=self.s.uy_to_cny(spent_total))
         a["invited"] = [{"id": r["id"], "hint": r["hint"], "created_at": int(r["created_at"])} for r in self.db.invitees(account_id)]
         a["contribute"] = bool(a.get("contribute"))
-        a["samples"] = self.db.sample_count(account_id) if a["contribute"] else 0
+        # turns kept while the switch was on stay until the person deletes them: count them
+        # whether or not it is on now, so the operator sees what is there
+        a["samples"] = self.db.sample_count(account_id)
+        a["last_seen_at"] = int(a["last_seen_at"]) if a.get("last_seen_at") else None
+        a["last_platform"] = platform_of(a.get("last_ua") or "")
+        a["last_version"] = client_version(a.get("last_ua") or "")
         spent_today = self.db.spent_since(account_id, day_start)
+        ledger = self.ledger_page(account_id, limit=60)
+        events = self.events_page(account_id, limit=80)
         return {
             "account": a,
+            # 0.10: where the account was seen from, over everything the relay recorded
+            "addresses": [
+                {
+                    "ip": r["ip"],
+                    "n": int(r["n"] or 0),
+                    "first_seen": int(r["first_seen"] or 0),
+                    "last_seen": int(r["last_seen"] or 0),
+                    "platforms": sorted({platform_of(u) for u in str(r["uas"] or "").split(",") if u}),
+                }
+                for r in self.db.addresses_for(account_id)
+            ],
+            "ledger_total": ledger["total"],
+            "events_total": events["total"],
             "spend": {
                 "today_cny": self.s.uy_to_cny(spent_today),
                 "total_cny": self.s.uy_to_cny(spent_total),
@@ -1546,13 +1582,48 @@ class Cloud:
                     "created_at": int(k["created_at"]),
                     "last_used_at": int(k["last_used_at"]) if k["last_used_at"] else None,
                     "revoked_at": int(k["revoked_at"]) if k["revoked_at"] else None,
+                    "ip": k["ip"] or "",
+                    "ua": k["ua"] or "",
+                    "platform": platform_of(k["ua"] or ""),
+                    "version": client_version(k["ua"] or ""),
                 }
                 for k in self.db.keys_for(account_id)
             ],
             "devices": [dict(d) for d in self.db.devices_for(account_id)],
-            "recent": [self._ledger_row(r) for r in self.db.recent_ledger(account_id, limit=60)],
-            "events": [dict(r) for r in self.db.events_for(account_id, 80)],
+            "recent": ledger["rows"],
+            "events": events["rows"],
         }
+
+    def ledger_page(self, account_id: str, limit: int = 100, before_id: int = 0) -> dict:
+        """One page of an account's statement, newest first, with the count of the whole
+        — the operator's page reads it to the first line, page by page."""
+        rows = [self._ledger_row(r) for r in self.db.recent_ledger(account_id, limit=limit, before_id=before_id)]
+        return {"rows": rows, "total": self.db.ledger_count(account_id)}
+
+    def events_page(self, account_id: str, limit: int = 100, before_id: int = 0) -> dict:
+        rows = []
+        for r in self.db.events_for(account_id, limit, before_id):
+            d = dict(r)
+            d["platform"] = platform_of(d.get("ua") or "")
+            rows.append(d)
+        return {"rows": rows, "total": self.db.event_count(account_id)}
+
+    def admin_address(self, ip: str) -> dict:
+        """One address: the accounts seen from it — for the operator checking whether two
+        accounts are one person, or one address is many people."""
+        ip = ip.strip()[:64]
+        rows = [
+            {
+                "id": r["id"],
+                "hint": r["hint"],
+                "channel": r["channel"],
+                "created_at": int(r["created_at"]),
+                "n": int(r["n"] or 0),
+                "last_seen": int(r["last_seen"] or 0),
+            }
+            for r in self.db.accounts_at_address(ip)
+        ]
+        return {"ip": ip, "accounts": rows}
 
     def admin_events(self, limit: int = 200, kinds: tuple[str, ...] | None = None) -> list[dict]:
         hints = {r["id"]: r["hint"] for r in self.db.list_accounts(limit=5000)}

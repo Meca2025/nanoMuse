@@ -526,6 +526,58 @@ def test_a_signed_in_runtime_with_no_model_key_makes_the_relay_its_model(
         assert settings2.llm.base_url == "http://localhost:11434/v1"
 
 
+def test_the_model_picker_groups_the_menu_and_the_models_under_the_key(
+    settings: Settings, relay: FakeRelay, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Relay 0.10 lists, for a member, the usable models under the operator's key after the
+    menu (`nanomuse.catalog`); /api/llm/models for the Cloud preset hands the pickers the
+    whole list in groups — menu, the rest, the picture / clip models likewise — plus which
+    chat models read pictures. Nothing to type: the member picks."""
+    settings.server.token = "secret-token"
+    settings.cloud.base_url = relay.base_url
+
+    def entry(
+        mid: str, kind: str = "chat", listed: bool = True, vision: bool = False, rec: bool = False
+    ) -> dict[str, Any]:
+        inputs = ["text", "image"] if vision or kind != "chat" else ["text"]
+        out = ["text"] if kind == "chat" else [kind]
+        nm: dict[str, Any] = {"kind": kind, "listed": listed, "recommended": rec}
+        if not listed:
+            nm.update(catalog=True, vision=vision)
+        return {
+            "id": mid,
+            "architecture": {"input_modalities": inputs, "output_modalities": out},
+            "nanomuse": nm,
+        }
+
+    async def fake_models(self: CloudClient) -> list[dict[str, Any]]:
+        return [
+            entry("qwen3.8-flash"),
+            entry("qwen3.8-27b", vision=True, rec=True),
+            entry("qwen-image-3.0", "image"),
+            entry("wan2.2-t2v-plus", "video"),
+            entry("deepseek-v4.1-flash", listed=False),
+            entry("qwen3-vl-plus", listed=False, vision=True),
+            entry("wan2.7-image", "image", listed=False),
+        ]
+
+    monkeypatch.setattr(CloudClient, "models", fake_models)
+    service = MuseService(settings, llm=MockLLM([]))
+    service.app.vault.set("NANOMUSE_CLOUD_KEY", "member-key")
+    with TestClient(create_app(settings, service)) as client:
+        client.headers["Authorization"] = "Bearer secret-token"
+        got = client.post("/api/llm/models", json={"preset": "nanomuse_cloud"}).json()
+    assert got["source"] == "live"
+    assert got["models"] == ["qwen3.8-27b", "qwen3.8-flash", "deepseek-v4.1-flash", "qwen3-vl-plus"]
+    assert got["menu"] == ["qwen3.8-27b", "qwen3.8-flash"]
+    assert got["catalog"] == ["deepseek-v4.1-flash", "qwen3-vl-plus"]
+    assert got["image_models"] == ["qwen-image-3.0", "wan2.7-image"] and got["image_catalog"] == [
+        "wan2.7-image"
+    ]
+    assert got["video_models"] == ["wan2.2-t2v-plus"] and got["video_catalog"] == []
+    assert got["vision"] == ["qwen3.8-27b", "qwen3-vl-plus"]
+
+
 def test_task_from_a_device_runs_in_a_visible_side_chat(hub_server) -> None:
     client, service, llm, relay = hub_server
     sign_in(client)

@@ -19,6 +19,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import secrets
 from typing import Any
 
 import httpx
@@ -155,6 +156,7 @@ def create_app(
         )
     pictures = Pictures(settings, http)
     clips = Clips(settings, http)
+    manager.on_end = visitors.ended  # the visit row gets what the demo used
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -269,6 +271,7 @@ def create_app(
                 body.code,
                 client_ip(request, settings.trust_proxy),
                 invite=body.invite.strip(),
+                ua=request.headers.get("user-agent", ""),
             )
         except Refused as exc:
             return _refused(exc)
@@ -280,7 +283,10 @@ def create_app(
     async def signin_login(body: WebLoginIn, request: Request) -> Response:
         try:
             ticket, visitor = await visitors.login(
-                body.identifier.strip(), body.password, client_ip(request, settings.trust_proxy)
+                body.identifier.strip(),
+                body.password,
+                client_ip(request, settings.trust_proxy),
+                ua=request.headers.get("user-agent", ""),
             )
         except Refused as exc:
             return _refused(exc)
@@ -373,9 +379,38 @@ def create_app(
             )
         except Refused as exc:
             return _refused(exc)
-        if visitor is not None:
-            visitors.started(visitor)
+        visitors.started(visitor, sess, request.headers.get("user-agent", ""))
         return JSONResponse(sess.public(settings, manager.clock()), status_code=201)
+
+    @app.get("/api/demo/admin")
+    async def demo_admin(request: Request, account: str = "", days: int = 30) -> Response:
+        """The operator's view of the visitors — who signed in from where and with what, the
+        demos started and what each used — for the relay's admin page (``WEB_ADMIN_URL``
+        there, this ``SHOWCASE_ADMIN_TOKEN`` here). Without a token the route is not there."""
+        if not settings.admin_token:
+            return JSONResponse({"error": "not_found"}, status_code=404)
+        given = request.headers.get("x-admin-token", "")
+        if not given or not secrets.compare_digest(given, settings.admin_token):
+            return JSONResponse({"error": "forbidden"}, status_code=403)
+        out = visitors.admin(account.strip()[:80], max(1, min(days, 365)))
+        if not account:
+            out["active"] = [
+                {
+                    "id": s_.id,
+                    "visitor": s_.account,
+                    "hint": s_.hint,
+                    "ip": s_.ip,
+                    "started": s_.created_at,
+                    "requests": s_.requests,
+                    "tokens": s_.tokens,
+                    "pictures": s_.pictures,
+                    "clips": s_.clips,
+                    "byok": s_.byok is not None,
+                }
+                for s_ in manager.sessions.values()
+                if not s_.ended
+            ]
+        return JSONResponse(out, headers={"Cache-Control": "no-store"})
 
     @app.get("/api/demo/session/{sid}")
     async def show(sid: str, request: Request) -> Response:

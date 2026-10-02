@@ -1,9 +1,13 @@
 """One call to nanoMuse Cloud's relay, the way the gateway makes them.
 
 Shared by the kept Muses (accounts.py) and the visitors' sign-in (visitors.py): the
-visitor's address goes along as ``X-Forwarded-For`` so the relay's own rate limits see the
-person and not the gateway, and the relay's refusals come back with their own code and
-message, for the page to show in the visitor's language.
+visitor's address goes along as ``X-Forwarded-For`` — and, when given, the browser string as
+``User-Agent`` — so the relay's own rate limits and records see the person and not the
+gateway, and the relay's refusals come back with their own code and message, for the page to
+show in the visitor's language. For the header to arrive as sent, the gateway must reach the
+relay directly (``WEB_RELAY_URL=http://nanomuse-relay:8787`` on the shared Docker network):
+Caddy in front of the public name replaces ``X-Forwarded-For`` from a client it does not
+trust with that client's own address, and the relay would see the gateway.
 """
 
 from __future__ import annotations
@@ -27,8 +31,11 @@ async def relay_request(
     body: dict | None,
     ip: str,
     key: str = "",
+    ua: str = "",
 ) -> Any:
     headers = {"Content-Type": "application/json", "X-Forwarded-For": ip}
+    if ua:
+        headers["User-Agent"] = ua[:200]
     if key:
         headers["Authorization"] = f"Bearer {key}"
     try:

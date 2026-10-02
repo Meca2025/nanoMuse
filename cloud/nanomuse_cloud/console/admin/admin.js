@@ -21,7 +21,7 @@
     kOnline: "在线设备", kOnlineSub: (k, s) => `记住了 ${k} 台 · ${s} 个有效登录`, kSignals: "今天的信号",
     kSignalsSub: (s) => `${s.sign_ins} 次登录 · ${s.sign_in_failures} 次失败 · ${s.budget_refusals} 次超额 · ${s.upstream_errors} 次上游错误 · ${s.calls} 通电话`,
     byKind: "按类型", byModel: "按模型", byDay: (d) => `每日花费 · 最近 ${d} 天`, top: (d) => `花费最多 · 最近 ${d} 天`, events: "最近动态", accounts: "全部账号", config: "当前配置",
-    kinds: { chat: "对话", image: "图片", video: "视频", realtime: "实时通话" },
+    kinds: { chat: "对话", image: "图片", video: "视频", realtime: "实时通话", grant: "加 tokens", credit: "加额度" },
     thWho: "账号", thJoined: "注册", thSpent: "花费 累计 / 今天", thTokens: "tokens 累计 / 今天", thReqs: "请求", thActive: "最近活跃", thDevices: "设备",
     never: "从未", phone: "手机", email: "邮箱", disabled: "已停用", locked: "已锁定", member: "成员", listed: "白名单", password: "密码", noAccounts: "还没有人登录过。", search: "搜索提示 / ID…",
     reqs: (n) => `${fmt(n)} 次`, tokens: (n) => `${fmt(n)} tokens`, seconds: (n) => `${fmt(n)} 秒`, pictures: (n) => `${fmt(n)} 张`, inOut: (i, o) => `输入 ${fmt(i)} · 输出 ${fmt(o)}`,
@@ -33,7 +33,18 @@
     // drawer
     spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "总额度", noCap: "无上限", left: "剩余", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
     sessions: "登录（含已退出）", revoked: "已退出", via: { code: "验证码", password: "密码" }, lastUsed: "最近使用", devices: "设备", firstSeen: "首次", lastSeen: "最近",
-    ledger: "最近请求", timeline: "时间线", none: "—", online: "在线", offline: "离线", version: "版本",
+    ledger: "全部请求", timeline: "时间线", none: "—", online: "在线", offline: "离线", version: "版本",
+    // 0.10: addresses and clients; every line, page by page; whole conversations
+    thClient: "客户端 / IP", addresses: "地址 / IP", addrNote: "登录、每次请求和每条动态记录到的来访地址（经 Caddy 转发时取真实地址）。点一个地址，看从它登录过的所有账号。", addrOnly: "只在这个账号见过", addrShared: (n) => `还有 ${n} 个账号从这个地址来过`,
+    atAddress: (ip) => `从 ${ip} 来过的账号`, back: "返回账号", times: (n) => `${fmt(n)} 次`, firstIp: "首次地址", lastIp: "最近地址", lastClient: "最近客户端", lastSeenAt: "最近出现",
+    shown: (n, total) => `已显示 ${fmt(n)} / 共 ${fmt(total)} 条`, allShown: (total) => `共 ${fmt(total)} 条，已全部显示`, loadMore: "加载更多",
+    samplesAll: "保存的对话", exportThis: "导出这个账号的 JSONL", expand: "展开完整对话", collapse: "收起", roles: { system: "系统", user: "用户", assistant: "回答", tool: "工具返回" }, toolCall: "调用工具", omitted: "（未保存）", lengthNote: (n) => `${fmt(n)} 条消息`,
+    byAccount: "按用户", bHint: "账号", bTurns: "对话", bTokens: "tokens 输入 / 输出", bFirst: "最早", bLast: "最近", bModels: "模型", bSwitch: "开关", bOn: "开", bOff: "关", noByAccount: "还没有账号保存过对话。",
+    demo: (d) => `在线体验（demo.nanomuse.dev）· 最近 ${d} 天`, demoOff: "还没接上：gateway 设 SHOWCASE_ADMIN_TOKEN，relay 设 WEB_ADMIN_URL（…/api/demo/admin）和 WEB_ADMIN_TOKEN。", demoVisitors: "访客", demoVisits: "体验次数", demoActive: "正在体验", demoNoSignin: "未要求登录", demoCreated: "在这里注册的",
+    dvHint: "访客", dvSignins: "登录", dvSessions: "体验", dvFirst: "首次", dvLast: "最近", dvClient: "客户端 / IP", dvNone: "还没有人体验过。", dtWhen: "开始", dtLength: "时长", dtUsed: "用量", dtWhy: "结束原因", dtRunning: "进行中", dtByok: "自带 key", dtAnon: "未登录",
+    usedLine: (v) => [`${fmt(v.requests)} 次`, `${fmt(v.tokens)} tokens`, v.pictures ? `${fmt(v.pictures)} 张图` : "", v.clips ? `${fmt(v.clips)} 段视频` : ""].filter(Boolean).join(" · "), dur: (s) => (s < 60 ? `${Math.round(s)} 秒` : s < 3600 ? `${Math.round(s / 60)} 分钟` : `${(s / 3600).toFixed(1)} 小时`),
+    demoOfAccount: "在线体验记录", demoAccountLine: (v) => `登录 ${fmt(v.signins)} 次 · 体验 ${fmt(v.sessions)} 次 · 首次 ${when(v.first_seen)} · 最近 ${when(v.last_seen)}${v.created ? " · 账号在体验页注册" : ""}`, demoNoneHere: "这个账号没有在线体验过。",
+    recorded: "我们记录了什么", recordedNote: "每个账号：手机号 / 邮箱（加密）、注册与最近出现时间、首次和最近来访地址、最近客户端（平台、版本）；每次登录：设备名、方式、地址、客户端；每次请求：模型、token 数、费用、地址、客户端；每条动态：类型、地址、客户端；每台设备：名称、系统、版本、地址。开启「帮助改进」的账号另有对话内容。全部随账号删除。",
     grant: "加额度", grantPrompt: (who) => `给 ${who} 加多少 tokens？负数扣减。`, credit: "加额度", creditPrompt: (who) => `给 ${who} 加多少元额度？（直接进入总额度，不过期）`, creditNote: "备注（比如 PR #12）", poolLine: (g, l, n, b) => `总额度 ${g}${l === null ? "" : `（剩 ${l}）`} · 邀请了 ${n} 人${b ? " · 领过早期共创奖励" : ""}`, invitedBy: "邀请人", disable: "停用", enable: "恢复", makeMember: "设为成员", unmakeMember: "取消成员",
     memberConfirm: (who) => `把 ${who} 设为成员？成员不受额度限制，费用由你承担。`, listedNote: "在服务器白名单里，改 ALLOWED_IDENTIFIERS 才能取消",
     disableConfirm: (who) => `停用 ${who}？TA 的所有设备会立刻断开，再登录会被拒。`, remove: "删除账号",
@@ -44,7 +55,7 @@
     realtime: "实时通话", on: "开", off: "关", pwMin: (n) => `密码至少 ${n} 位`,
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `输入 ${p.per_m_input} / 输出 ${p.per_m_output} 每百万 tokens` : null,
       p.per_image ? `每张 ${p.per_image}${p.per_image_2k ? `（2k ${p.per_image_2k}）` : ""}` : null, p.per_second ? `每秒 ${p.per_second}` : null].filter(Boolean).join("；"),
-    foot: "手机号 / 邮箱只在打开某个账号时用管理口令解出来看；数据库里存的是加密后的值。对话文字只有在账号开启了「帮助改进 nanoMuse 的 AI 模型」时才保存，并且只存用户写的、模型回答的和它调用的工具（见「数据控制」）。请不要把这个页面截图发出去。金额按模型服务商的北京地区标价估算。",
+    foot: "手机号 / 邮箱只在打开某个账号时用管理口令解出来看；数据库里存的是加密后的值。来访地址和客户端信息随每次登录、请求和动态一起记录，删账号时一并删除。对话文字只有在账号开启了「帮助改进 nanoMuse 的 AI 模型」时才保存，并且只存用户写的、模型回答的和它调用的工具（见「数据控制」）。请不要把这个页面截图发出去。金额按模型服务商的北京地区标价估算。",
     // trends and the site
     trends: (d) => `账号趋势 · 最近 ${d} 天`, site: (d) => `官网访问与下载 · 最近 ${d} 天`, siteOff: "还没接上访问统计：服务器上装 nanomuse-traffic（demo/showcase/mirror/traffic.py），relay 设 TRAFFIC_DB 指向它的数据库。",
     siteUpdated: (t) => `更新于 ${t}`, siteNote: "来自 Caddy 的访问日志（保留 7 天）：按天计数，访客用当天的随机盐对地址和浏览器做哈希，不存 IP。",
@@ -54,7 +65,7 @@
     devices: "设备", devKinds: { phone: "手机", computer: "电脑", web: "网页版" }, invitesTitle: "邀请", invitesLine: (f) => `${fmt(f.with_code)} 人生成了邀请码 · ${fmt(f.inviters)} 人邀请成功 · ${fmt(f.invited)} 人经邀请注册`,
     // data controls
     data: (d) => `数据控制 · 最近 ${d} 天`, dOn: "开启「帮助改进」的账号", dOnSub: (on, total) => `共 ${fmt(total)} 个账号 · ${fmt(on)} 开启 · ${fmt(Math.max(0, total - on))} 关闭`, dOff: "主动关闭过的账号", dOffSub: "曾经把开关关掉的人数", dTurns: "保存的对话", dTurnsSub: (all, acc) => `累计 ${fmt(all)} 轮 · 来自 ${fmt(acc)} 个账号`, dTokens: "保存对话的 tokens", dTokensSub: (i, o) => `输入 ${fmt(i)} · 输出 ${fmt(o)}`, dDefault: (on) => on ? "新账号默认开启（IMPROVE_DEFAULT=1）" : "新账号默认关闭（IMPROVE_DEFAULT=0）", dKeeps: () => "保存：用户写的、模型回答的、它选择调用的工具，以及模型、token 数、客户端和语言。不保存：系统提示（记忆、SOUL、指令）、工具返回的内容、图片 / 音频 / 视频、用户的身份。",
-    mTurns: "保存的对话", mTurnAccounts: "有对话保存的账号", mOn: "开启", mDefaultOn: "默认开启（新账号）", mOff: "关闭", mDeleted: "删除", dModels: "按模型", dApps: "按客户端", dRecent: "最近保存的对话", dPlatforms: { android: "Android", windows: "Windows 上的 runtime", macos: "macOS 上的 runtime", linux: "Linux 上的 runtime", runtime: "runtime", browser: "浏览器", other: "其他" },
+    mTurns: "保存的对话", mTurnAccounts: "有对话保存的账号", mOn: "开启", mDefaultOn: "默认开启（新账号）", mOff: "关闭", mDeleted: "删除", dModels: "按模型", dApps: "按客户端", dRecent: "最近保存的对话（点开账号看全部）", dPlatforms: { android: "Android", windows: "Windows 上的 runtime", macos: "macOS 上的 runtime", linux: "Linux 上的 runtime", runtime: "runtime", browser: "浏览器", other: "其他" },
     webTitle: "网页版（nanomuse.cn/web）", webLine: (w) => (w ? `${fmt(w.accounts)} 个账号有自己的 Muse（上限 ${fmt(w.max_accounts)}）· ${fmt(w.running)} 个在运行（上限 ${fmt(w.max_running)}）` : "未接入：relay 设 WEB_INFO_URL 指向 gateway 的 /api/web/info。"), webOff: "网页版未开启",
   } : {
     title: "nanoMuse Cloud admin", tokenLabel: "Admin token", tokenHint: "The line in /opt/nanomuse/relay/ADMIN_TOKEN.txt on the server; it stays in this tab only.",
@@ -66,7 +77,7 @@
     kOnline: "Devices online", kOnlineSub: (k, s) => `${k} remembered · ${s} live sign-ins`, kSignals: "Signals today",
     kSignalsSub: (s) => `${s.sign_ins} sign-ins · ${s.sign_in_failures} failed · ${s.budget_refusals} over budget · ${s.upstream_errors} upstream errors · ${s.calls} calls`,
     byKind: "By kind", byModel: "By model", byDay: (d) => `Spend by day · last ${d} days`, top: (d) => `Top spenders · last ${d} days`, events: "Activity", accounts: "All accounts", config: "Configuration",
-    kinds: { chat: "Chat", image: "Pictures", video: "Video", realtime: "Calls" },
+    kinds: { chat: "Chat", image: "Pictures", video: "Video", realtime: "Calls", grant: "Tokens granted", credit: "Credit" },
     thWho: "Account", thJoined: "Joined", thSpent: "Spent all / today", thTokens: "Tokens all / today", thReqs: "Requests", thActive: "Last active", thDevices: "Devices",
     never: "never", phone: "phone", email: "e-mail", disabled: "disabled", locked: "locked", member: "member", listed: "listed", password: "password", noAccounts: "Nobody has signed in yet.", search: "Search hint / id…",
     reqs: (n) => `${fmt(n)} req`, tokens: (n) => `${fmt(n)} tokens`, seconds: (n) => `${fmt(n)} s`, pictures: (n) => `${fmt(n)} pictures`, inOut: (i, o) => `${fmt(i)} in · ${fmt(o)} out`,
@@ -77,7 +88,17 @@
     },
     spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Pool", noCap: "no cap", left: "left", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
     sessions: "Sign-ins (incl. revoked)", revoked: "revoked", via: { code: "code", password: "password" }, lastUsed: "last used", devices: "Devices", firstSeen: "first", lastSeen: "last",
-    ledger: "Recent requests", timeline: "Timeline", none: "—", online: "online", offline: "offline", version: "Version",
+    ledger: "All requests", timeline: "Timeline", none: "—", online: "online", offline: "offline", version: "Version",
+    thClient: "Client / IP", addresses: "Addresses / IP", addrNote: "The address recorded with sign-ins, every request and every event (the real one behind Caddy). Click one to see every account seen from it.", addrOnly: "only this account", addrShared: (n) => `${n} other accounts came from this address`,
+    atAddress: (ip) => `Accounts seen from ${ip}`, back: "Back to the account", times: (n) => `${fmt(n)}×`, firstIp: "First address", lastIp: "Last address", lastClient: "Last client", lastSeenAt: "Last seen",
+    shown: (n, total) => `${fmt(n)} of ${fmt(total)} shown`, allShown: (total) => `all ${fmt(total)} shown`, loadMore: "Load more",
+    samplesAll: "Kept conversations", exportThis: "Export this account's JSONL", expand: "Show the whole conversation", collapse: "Collapse", roles: { system: "system", user: "user", assistant: "reply", tool: "tool result" }, toolCall: "tool call", omitted: "(not kept)", lengthNote: (n) => `${fmt(n)} messages`,
+    byAccount: "By account", bHint: "Account", bTurns: "Turns", bTokens: "Tokens in / out", bFirst: "First", bLast: "Last", bModels: "Models", bSwitch: "Switch", bOn: "on", bOff: "off", noByAccount: "No account has kept turns yet.",
+    demo: (d) => `The phone in the browser (demo.nanomuse.dev) · last ${d} days`, demoOff: "Not connected: set SHOWCASE_ADMIN_TOKEN on the gateway and WEB_ADMIN_URL (…/api/demo/admin) with WEB_ADMIN_TOKEN on the relay.", demoVisitors: "Visitors", demoVisits: "Demos", demoActive: "Running now", demoNoSignin: "no sign-in asked", demoCreated: "signed up here",
+    dvHint: "Visitor", dvSignins: "Sign-ins", dvSessions: "Demos", dvFirst: "First", dvLast: "Last", dvClient: "Client / IP", dvNone: "Nobody has tried it yet.", dtWhen: "Started", dtLength: "Length", dtUsed: "Used", dtWhy: "Ended because", dtRunning: "running", dtByok: "own key", dtAnon: "not signed in",
+    usedLine: (v) => [`${fmt(v.requests)} req`, `${fmt(v.tokens)} tokens`, v.pictures ? `${fmt(v.pictures)} pictures` : "", v.clips ? `${fmt(v.clips)} clips` : ""].filter(Boolean).join(" · "), dur: (s) => (s < 60 ? `${Math.round(s)} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`),
+    demoOfAccount: "The phone in the browser", demoAccountLine: (v) => `${fmt(v.signins)} sign-ins · ${fmt(v.sessions)} demos · first ${when(v.first_seen)} · last ${when(v.last_seen)}${v.created ? " · the account was created on the demo page" : ""}`, demoNoneHere: "This account has not tried the demo.",
+    recorded: "What is recorded", recordedNote: "Per account: phone / e-mail (encrypted), joined and last seen, first and last address, last client (platform, version); per sign-in: device name, way in, address, client; per request: model, tokens, cost, address, client; per event: kind, address, client; per device: name, OS, version, address. Accounts with “help improve” on also have the text of their turns. All of it goes with the account when it is deleted.",
     grant: "Grant", grantPrompt: (who) => `How many tokens for ${who}? Negative takes away.`, credit: "Add credit", creditPrompt: (who) => `How many yuan for ${who}? (straight into the pool; never expires)`, creditNote: "Note (say, PR #12)", poolLine: (g, l, n, b) => `pool ${g}${l === null ? "" : ` (${l} left)`} · ${n} invited${b ? " · took the early co-creation bonus" : ""}`, invitedBy: "invited by", disable: "Disable", enable: "Enable", makeMember: "Make member", unmakeMember: "Unmake member",
     memberConfirm: (who) => `Make ${who} a member? Members have no allowance limit; you pay their bill.`, listedNote: "on the server's list; edit ALLOWED_IDENTIFIERS to remove",
     disableConfirm: (who) => `Disable ${who}? Every device of theirs drops at once and cannot sign in again.`, remove: "Delete account",
@@ -87,7 +108,7 @@
     realtime: "Real-time calls", on: "on", off: "off", pwMin: (n) => `passwords ≥ ${n} chars`,
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `${p.per_m_input} in / ${p.per_m_output} out per M tokens` : null,
       p.per_image ? `${p.per_image} a picture${p.per_image_2k ? ` (${p.per_image_2k} at 2k)` : ""}` : null, p.per_second ? `${p.per_second} a second` : null].filter(Boolean).join("; "),
-    foot: "A phone number or address is decrypted only when you open that account, with the admin token; the database holds ciphertext. The text of a chat is kept only while the account has “Help improve nanoMuse's AI models” on, and only what the person wrote, what the model answered and the tools it called (see Data controls). Do not share screenshots of this page. Money is estimated at the provider's Beijing list prices.",
+    foot: "A phone number or address is decrypted only when you open that account, with the admin token; the database holds ciphertext. Network addresses and the client are recorded with every sign-in, request and event, and go when the account is deleted. The text of a chat is kept only while the account has “Help improve nanoMuse's AI models” on, and only what the person wrote, what the model answered and the tools it called (see Data controls). Do not share screenshots of this page. Money is estimated at the provider's Beijing list prices.",
     trends: (d) => `Accounts · last ${d} days`, site: (d) => `The site: visits and downloads · last ${d} days`, siteOff: "No traffic figures yet: install nanomuse-traffic on the server (demo/showcase/mirror/traffic.py) and point the relay's TRAFFIC_DB at its database.",
     siteUpdated: (t) => `updated ${t}`, siteNote: "From Caddy's access log (kept seven days): counted by day; a visitor is a hash of address and browser under a salt made for that day. No addresses are stored.",
     sPages: "Page views", sVisitors: "Visitors", sBots: "Crawlers / monitors", sMirror: "Mirror downloads", sGithub: "GitHub downloads", sStars: "Stars", sPeriod: "this period", sDelta: (n) => (n > 0 ? `+${fmt(n)} this period` : n < 0 ? `${fmt(n)} this period` : "no change this period"),
@@ -96,7 +117,7 @@
     devices: "Devices", devKinds: { phone: "phones", computer: "computers", web: "web" }, invitesTitle: "Invites", invitesLine: (f) => `${fmt(f.with_code)} made an invite code · ${fmt(f.inviters)} brought someone · ${fmt(f.invited)} came through one`,
     // data controls
     data: (d) => `Data controls · last ${d} days`, dOn: "Accounts with “help improve” on", dOnSub: (on, total) => `${fmt(total)} accounts · ${fmt(on)} on · ${fmt(Math.max(0, total - on))} off`, dOff: "Accounts that turned it off", dOffSub: "ever switched it off themselves", dTurns: "Kept turns", dTurnsSub: (all, acc) => `${fmt(all)} in all · from ${fmt(acc)} accounts`, dTokens: "Tokens in kept turns", dTokensSub: (i, o) => `${fmt(i)} in · ${fmt(o)} out`, dDefault: (on) => on ? "New accounts start with it on (IMPROVE_DEFAULT=1)" : "New accounts start with it off (IMPROVE_DEFAULT=0)", dKeeps: (k) => `Kept: ${k.kept.join(", ")}. Not kept: ${k.not_kept.join(", ")}.`,
-    mTurns: "Kept turns", mTurnAccounts: "Accounts with turns kept", mOn: "Turned on", mDefaultOn: "On by default (new accounts)", mOff: "Turned off", mDeleted: "Deleted", dModels: "By model", dApps: "By app", dRecent: "Newest kept turns", dPlatforms: { android: "Android", windows: "runtime on Windows", macos: "runtime on macOS", linux: "runtime on Linux", runtime: "runtime", browser: "browser", other: "other" },
+    mTurns: "Kept turns", mTurnAccounts: "Accounts with turns kept", mOn: "Turned on", mDefaultOn: "On by default (new accounts)", mOff: "Turned off", mDeleted: "Deleted", dModels: "By model", dApps: "By app", dRecent: "Newest kept turns (open the account for all of them)", dPlatforms: { android: "Android", windows: "runtime on Windows", macos: "runtime on macOS", linux: "runtime on Linux", runtime: "runtime", browser: "browser", other: "other" },
     webTitle: "nanoMuse Web (nanomuse.cn/web)", webLine: (w) => (w ? `${fmt(w.accounts)} accounts with a Muse of their own (cap ${fmt(w.max_accounts)}) · ${fmt(w.running)} running (cap ${fmt(w.max_running)})` : "Not connected: set the relay's WEB_INFO_URL to the gateway's /api/web/info."), webOff: "nanoMuse Web is off",
   };
 
@@ -139,7 +160,7 @@
 
   const SS = window.sessionStorage;
   let token = SS.getItem("nm.admin") || "";
-  let ov = null, accounts = null, usage = null, series = null, traffic = null, dataView = null, err = "", days = Number(SS.getItem("nm.admin.days") || 30), filter = "", filtered = null, q = "";
+  let ov = null, accounts = null, usage = null, series = null, traffic = null, dataView = null, demoView = null, err = "", days = Number(SS.getItem("nm.admin.days") || 30), filter = "", filtered = null, q = "";
   let detail = null, detailErr = "";
 
   const app = document.getElementById("app");
@@ -169,7 +190,7 @@
     try {
       [ov, accounts, usage] = await Promise.all([api("GET", `/v1/admin/overview?days=${days}`), api("GET", "/v1/admin/accounts"), api("GET", `/v1/admin/usage?days=${Math.min(days, 90)}`)]);
       // the two newer views: a relay from before them, or a hiccup, leaves the panels out
-      [series, traffic, dataView] = await Promise.all([api("GET", `/v1/admin/series?days=${days}`).catch(() => null), api("GET", `/v1/admin/traffic?days=${days}`).catch(() => null), api("GET", `/v1/admin/data?days=${days}`).catch(() => null)]);
+      [series, traffic, dataView, demoView] = await Promise.all([api("GET", `/v1/admin/series?days=${days}`).catch(() => null), api("GET", `/v1/admin/traffic?days=${days}`).catch(() => null), api("GET", `/v1/admin/data?days=${days}`).catch(() => null), api("GET", `/v1/admin/demo?days=${days}`).catch(() => null)]);
       err = "";
     } catch (e) {
       if (e.message !== "admin") err = e.message;
@@ -294,17 +315,16 @@
     const kpi = (k, v, sub) => h("div", { class: "kpi flat" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v), sub ? h("div", { class: "s" }, sub) : null);
     const pct = acc.total ? `${Math.round((acc.share || 0) * 100)}%` : "–";
     const ranks = (items, name, value) => items && items.length ? (() => { const max = Math.max(1, ...items.map(value)); return h("div", { class: "ranks" }, ...items.slice(0, 12).map((x) => h("div", { class: "rank" }, h("span", { class: "n" }, name(x)), h("i", { style: `width:${Math.round(100 * value(x) / max)}%` }), h("b", {}, fmt(value(x)))))); })() : h("div", { class: "empty" }, T.none);
-    const text = (m) => !m ? "" : typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.map((p) => p && p.type === "text" ? p.text : p && p.omitted ? `[${p.type}]` : "").join(" ") : "";
-    const recent = (dv.recent || []).map((smp) => {
-      const msgs = Array.isArray(smp.request) ? smp.request : [];
-      const lastUser = [...msgs].reverse().find((m) => m && m.role === "user");
-      return h("div", { class: "row tap", style: "align-items:flex-start", onclick: () => openAccount(smp.account_id) }, h("div", { class: "txt", style: "white-space:pre-wrap;word-break:break-word" },
-        h("div", { class: "s" }, `${when(smp.ts)} · ${smp.hint || ""} · `, h("code", {}, smp.model || ""), ` · ${T.inOut(smp.prompt_tokens, smp.completion_tokens)}`, smp.meta && smp.meta.ua ? ` · ${T.dPlatforms[platformOf(smp.meta.ua)] || ""}` : ""),
-        h("div", { class: "t", style: "white-space:pre-wrap" }, h("b", {}, `${T.user}: `), text(lastUser).slice(0, 300)),
-        h("div", { class: "t", style: "margin-top:4px;white-space:pre-wrap" }, h("b", {}, `${T.assistant}: `), String(smp.response || "").slice(0, 400))));
-    });
+    const recent = (dv.recent || []).map((smp) => sampleRow(smp, { who: true }));
+    const byAccount = dv.by_account || [];
+    const accountRows = byAccount.map((x) => h("tr", { onclick: () => openAccount(x.account_id) },
+      h("td", {}, h("div", { class: "who" }, h("div", { class: "disc" }, initial(x)), h("div", { style: "min-width:0" }, h("div", { class: "n" }, x.hint || x.account_id.slice(0, 8)), h("div", { class: "tags" }, h("span", { class: "pill" }, x.channel === "phone" ? T.phone : T.email), h("span", { class: "pill " + (x.contribute ? "cyan" : "") }, x.contribute ? T.bOn : T.bOff))))),
+      h("td", { class: "num" }, fmt(x.samples)),
+      h("td", { class: "num hide-sm" }, `${fmt(x.prompt_tokens)} / ${fmt(x.completion_tokens)}`),
+      h("td", { class: "hide-sm" }, when(x.first_ts)), h("td", {}, when(x.last_ts)),
+      h("td", { class: "hide-sm" }, ...(x.models || []).map((m) => h("code", { style: "margin-right:6px" }, m)))));
     return h("div", { class: "panel span" },
-      h("h2", {}, T.data(days), h("span", { class: "sp" }), h("span", { class: "fine" }, T.dDefault(!!dv.default_on)), tot.samples ? h("button", { class: "btn quiet sm", style: "margin-left:10px", onclick: exportSamples }, T.exportSamples) : null),
+      h("h2", {}, T.data(days), h("span", { class: "sp" }), h("span", { class: "fine" }, T.dDefault(!!dv.default_on)), tot.samples ? h("button", { class: "btn quiet sm", style: "margin-left:10px", onclick: () => exportSamples() }, T.exportSamples) : null),
       h("div", { class: "kpis in-panel" },
         kpi(T.dOn, `${fmt(acc.on || 0)} · ${pct}`, T.dOnSub(acc.on || 0, acc.total || 0)), kpi(T.dOff, fmt(acc.turned_off_ever || 0), T.dOffSub),
         kpi(T.dTurns, fmt(per.samples || 0), T.dTurnsSub(tot.samples || 0, acc.with_samples || 0)), kpi(T.dTokens, fmt((per.prompt_tokens || 0) + (per.completion_tokens || 0)), T.dTokensSub(per.prompt_tokens || 0, per.completion_tokens || 0))),
@@ -315,9 +335,80 @@
         h("div", {}, h("h3", {}, T.dModels), ranks(dv.by_model, (x) => x.model, (x) => x.samples)),
         h("div", {}, h("h3", {}, T.dApps), ranks(dv.by_platform, (x) => T.dPlatforms[x.platform] || x.platform, (x) => x.samples)),
         h("div", {}, h("h3", {}, T.dRecent), recent.length ? h("div", { class: "list", style: "max-height:380px;overflow:auto" }, ...recent) : h("div", { class: "empty" }, T.noSamples))),
+      h("h3", { style: "padding:0 16px" }, T.byAccount, h("span", { class: "pill", style: "margin-left:8px" }, byAccount.length)),
+      accountRows.length ? h("div", { class: "ledger", style: "padding:0 16px 8px" }, h("table", {}, h("thead", {}, h("tr", {},
+        h("th", {}, T.bHint), h("th", { class: "num" }, T.bTurns), h("th", { class: "num hide-sm" }, T.bTokens), h("th", { class: "hide-sm" }, T.bFirst), h("th", {}, T.bLast), h("th", { class: "hide-sm" }, T.bModels))),
+        h("tbody", {}, ...accountRows))) : h("div", { class: "empty" }, T.noByAccount),
       h("div", { class: "fine", style: "padding:0 16px 12px" }, dv.keeps ? T.dKeeps(dv.keeps) : "", " ", T.samplesNote));
   }
+  /** One demo on the phone in the browser: when, how long, from where and with what, what it used, why it ended. */
+  function visitRow(v, withWho) {
+    const running = !v.ended;
+    const length = (v.ended || Date.now() / 1000) - v.started;
+    return h("div", { class: "row" + (withWho && v.visitor ? " tap" : ""), onclick: withWho && v.visitor ? () => openAccount(v.visitor) : null },
+      h("span", { class: "tile " + (running ? "ok" : "grey"), html: ICON.web }),
+      h("div", { class: "txt" }, h("div", { class: "t" }, when(v.started), withWho ? [" · ", v.hint ? h("span", { style: "color:var(--ink-2);font-weight:400" }, v.hint) : h("span", { class: "pill" }, T.dtAnon)] : null,
+        running ? [" ", h("span", { class: "pill ok" }, T.dtRunning)] : null, v.byok ? [" ", h("span", { class: "pill violet" }, T.dtByok)] : null),
+        h("div", { class: "s" }, [`${T.dtLength} ${T.dur(length)}`, T.usedLine(v), v.reason ? `${T.dtWhy} ${v.reason}` : "", v.ua ? (platformOf(v.ua) === "browser" ? browserOf(v.ua) : clientLine(v.ua)) : ""].filter(Boolean).join(" · "), v.ip ? [" · ", ipChip(v.ip, v.visitor)] : null)),
+      h("code", { class: "fine" }, v.id));
+  }
+  const browserOf = (ua) => { ua = String(ua || ""); const os = /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows" : /Mac OS/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : ""; const b = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : ""; return [os, b].filter(Boolean).join(" ") || ua.split(" ")[0]; };
+  /** The phone in the browser: every visitor with where from and with what, the demos running now and the period's demos. */
+  function demoPanel() {
+    const dv = demoView;
+    if (!dv) return null;
+    if (!dv.available) return h("div", { class: "panel span" }, h("h2", {}, T.demo(days)), h("div", { class: "empty" }, T.demoOff));
+    const kpi = (k, v, sub) => h("div", { class: "kpi flat" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v), sub ? h("div", { class: "s" }, sub) : null);
+    const visitors = dv.visitors || [], visits = dv.visits || [], active = dv.active || [];
+    const rows = visitors.map((v) => h("tr", { onclick: () => openAccount(v.id) },
+      h("td", {}, h("div", { class: "who" }, h("div", { class: "disc" }, initial(v)), h("div", { style: "min-width:0" }, h("div", { class: "n" }, v.hint || v.id.slice(0, 8)), h("div", { class: "tags" }, h("span", { class: "pill" }, v.channel === "sms" || v.channel === "phone" ? T.phone : T.email), v.created ? h("span", { class: "pill cyan" }, T.demoCreated) : null)))),
+      h("td", { class: "num" }, fmt(v.signins)), h("td", { class: "num" }, fmt(v.sessions)),
+      h("td", { class: "hide-sm" }, when(v.first_seen)), h("td", {}, ago(v.last_seen)),
+      h("td", { class: "hide-sm" }, v.last_ua ? h("div", {}, browserOf(v.last_ua)) : null, v.last_ip ? h("div", {}, ipChip(v.last_ip, v.id), v.first_ip && v.first_ip !== v.last_ip ? [" ", h("span", { class: "fine" }, `(${T.firstIp} `, ipChip(v.first_ip, v.id), ")")] : null) : null)));
+    return h("div", { class: "panel span" },
+      h("h2", {}, T.demo(days), h("span", { class: "sp" }), dv.signin_required === false ? h("span", { class: "fine" }, T.demoNoSignin) : null),
+      h("div", { class: "kpis in-panel" }, kpi(T.demoVisitors, fmt(dv.visitors_total || 0)), kpi(T.demoVisits, fmt(visits.length), `/ ${fmt(dv.visits_total || 0)}`), kpi(T.demoActive, fmt(active.length))),
+      h("div", { class: "cols3", style: "grid-template-columns: 3fr 2fr" },
+        h("div", {}, h("h3", {}, T.demoVisitors, h("span", { class: "pill", style: "margin-left:6px" }, visitors.length)), rows.length ? h("div", { class: "ledger", style: "max-height:420px;overflow:auto" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, T.dvHint), h("th", { class: "num" }, T.dvSignins), h("th", { class: "num" }, T.dvSessions), h("th", { class: "hide-sm" }, T.dvFirst), h("th", {}, T.dvLast), h("th", { class: "hide-sm" }, T.dvClient))), h("tbody", {}, ...rows))) : h("div", { class: "empty" }, T.dvNone)),
+        h("div", {}, h("h3", {}, T.demoVisits, h("span", { class: "pill", style: "margin-left:6px" }, visits.length)), h("div", { class: "list feed", style: "max-height:420px;overflow:auto" }, ...active.map((v) => visitRow(v, true)), ...visits.filter((v) => !active.some((a) => a.id === v.id)).map((v) => visitRow(v, true)), !(active.length + visits.length) ? h("div", { class: "empty" }, T.none) : null))));
+  }
   const platformOf = (ua) => { ua = String(ua || ""); if (ua.startsWith("nanoMuse-Android")) return "android"; if (ua.startsWith("nanoMuse/")) { const m = /\(([^)]*)\)/.exec(ua); return { windows: "windows", darwin: "macos", linux: "linux" }[(m ? m[1] : "").toLowerCase()] || "runtime"; } return ua.startsWith("Mozilla/") ? "browser" : "other"; };
+  const versionOf = (ua) => { const m = /^nanoMuse(?:-Android)?\/([0-9][^\s(]*)/.exec(String(ua || "")); return m ? m[1] : ""; };
+  const clientLine = (ua) => { if (!ua) return ""; const p = T.dPlatforms[platformOf(ua)] || ""; const v = versionOf(ua); return [p, v ? `v${v}` : ""].filter(Boolean).join(" "); };
+  const ipChip = (ip, fromAccount) => (ip ? h("code", { class: "ip tap", title: T.atAddress(ip), onclick: (e) => { e.stopPropagation(); openAddress(ip, fromAccount); } }, ip) : null);
+  /** Everything a kept message holds, in order: text parts, omitted parts named, tool calls with their arguments. */
+  const msgText = (m) => !m ? "" : typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.map((p) => p && p.type === "text" ? p.text : p && p.omitted ? `[${p.type} ${T.omitted}]` : "").filter(Boolean).join("\n") : "";
+  function messageBlock(m) {
+    const role = (m && m.role) || "?";
+    const parts = [h("b", { class: "role " + role }, (T.roles[role] || role) + ": ")];
+    const txt = msgText(m);
+    if (m && m.omitted && !txt) parts.push(h("i", { class: "fine" }, T.omitted)); else parts.push(txt);
+    for (const c of Array.isArray(m && m.tool_calls) ? m.tool_calls : []) {
+      const f = c && c.function ? c.function : {};
+      parts.push(h("div", { class: "toolcall" }, h("span", { class: "pill violet" }, T.toolCall), " ", h("code", {}, f.name || ""), f.arguments ? h("pre", {}, typeof f.arguments === "string" ? f.arguments : JSON.stringify(f.arguments, null, 1)) : null));
+    }
+    return h("div", { class: "msg " + role }, ...parts);
+  }
+  /** One kept turn: the header line, then the last thing the person said and the reply in full — and the
+      whole exchange (every message, every tool call) when expanded. `who` adds the account's hint and a tap into it. */
+  function sampleRow(smp, opts = {}) {
+    const msgs = Array.isArray(smp.request) ? smp.request : [];
+    const lastUser = [...msgs].reverse().find((m) => m && m.role === "user");
+    const meta = smp.meta || {};
+    let open = false;
+    const body = h("div", {});
+    const toggle = h("button", { class: "btn quiet sm", style: "margin-top:6px", onclick: (e) => { e.stopPropagation(); open = !open; paint(); } });
+    const paint = () => {
+      toggle.textContent = open ? T.collapse : `${T.expand} · ${T.lengthNote(msgs.length + 1)}`;
+      body.replaceChildren(...(open
+        ? [...msgs.map(messageBlock), messageBlock({ role: "assistant", content: String(smp.response || "") })]
+        : [messageBlock({ role: "user", content: msgText(lastUser) }), messageBlock({ role: "assistant", content: String(smp.response || "") })]));
+    };
+    paint();
+    const head = h("div", { class: "s" }, when(smp.ts), opts.who && smp.hint ? [" · ", h("span", { class: "tap", onclick: (e) => { e.stopPropagation(); openAccount(smp.account_id); } }, smp.hint)] : null,
+      " · ", h("code", {}, smp.model || ""), ` · ${T.inOut(smp.prompt_tokens, smp.completion_tokens)}`, meta.ua ? ` · ${clientLine(meta.ua) || String(meta.ua).split(" ")[0]}` : "", meta.lang ? ` · ${meta.lang}` : "", meta.ip ? [" · ", ipChip(meta.ip, smp.account_id)] : null, smp.cut ? ` · ${zh ? "已截断" : "cut"}` : "");
+    return h("div", { class: "row sample", style: "align-items:flex-start" }, h("div", { class: "txt", style: "white-space:pre-wrap;word-break:break-word;min-width:0" }, head, body, toggle));
+  }
   /** The relay's own series: sign-ins, accounts, invites, the data switch, calls — and the devices and nanoMuse Web as they stand. */
   function trendsPanel() {
     const sr = series;
@@ -338,12 +429,12 @@
         h("b", {}, T.invitesTitle), h("span", {}, T.invitesLine({ with_code: 0, inviters: 0, invited: 0, ...(sr.invites || {}) })),
         h("b", {}, T.webTitle), h("span", {}, sr.web && sr.web.enabled === false ? T.webOff : T.webLine(sr.web))));
   }
-  function eventRow(e, withWho) {
+  function eventRow(e, withWho, accountId) {
     const [tone, icon] = EVENT_STYLE[e.kind] || ["grey", ICON.person];
     return h("div", { class: "row" + (withWho && e.account_id ? " tap" : ""), onclick: withWho && e.account_id ? () => openAccount(e.account_id) : null },
       h("span", { class: "tile " + tone, html: icon }),
       h("div", { class: "txt" }, h("div", { class: "t" }, T.eventName[e.kind] || e.kind, withWho && e.hint ? [" · ", h("span", { style: "color:var(--ink-2);font-weight:400" }, e.hint)] : null),
-        h("div", { class: "s" }, [when(e.ts), e.detail].filter(Boolean).join(" · "))));
+        h("div", { class: "s" }, [when(e.ts), e.detail, e.ua ? clientLine(e.ua) : ""].filter(Boolean).join(" · "), e.ip ? [" · ", ipChip(e.ip, accountId || e.account_id)] : null)));
   }
   const deviceIcon = (k) => (k === "phone" ? ICON.phone : k === "web" ? ICON.web : ICON.computer);
 
@@ -383,14 +474,14 @@
 
   // ── the drawer: one account ────────────────────────────────────
   let drawerEl = null;
-  function closeDrawer() { if (drawerEl) { drawerEl.remove(); drawerEl = null; } detail = null; }
+  function closeDrawer() { if (drawerEl) { drawerEl.remove(); drawerEl = null; } detail = null; address = null; }
   /** The whole training set as a file: fetched with the admin token (a bare link could not carry it).
       What can go wrong is said in words: the browser's "Failed to fetch" covers a dropped connection,
       a proxy in the way and a token that stopped working alike. */
-  async function exportSamples() {
+  async function exportSamples(accountId) {
     let r;
     try {
-      r = await fetch("/v1/admin/samples/export", { headers: { "X-Admin-Token": token }, cache: "no-store" });
+      r = await fetch(`/v1/admin/samples/export${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ""}`, { headers: { "X-Admin-Token": token }, cache: "no-store" });
     } catch (_) { alert(T.exportFailed(T.offline)); return; }
     if (r.status === 401) { token = ""; SS.removeItem("nm.admin"); err = T.wrong; draw(); return; }
     if (!r.ok) { alert(T.exportFailed(`HTTP ${r.status}${r.statusText ? " " + r.statusText : ""}`)); return; }
@@ -398,24 +489,69 @@
     try { blob = await r.blob(); } catch (_) { alert(T.exportFailed(T.exportCut)); return; }
     if (!blob.size) { alert(T.exportEmpty); return; }
     const url = URL.createObjectURL(blob);
-    const a = h("a", { href: url, download: `nanomuse-samples-${new Date().toISOString().slice(0, 10)}.jsonl` });
+    const a = h("a", { href: url, download: `nanomuse-samples-${accountId ? accountId.slice(0, 8) + "-" : ""}${new Date().toISOString().slice(0, 10)}.jsonl` });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
+  function ensureDrawer() {
+    if (drawerEl) return;
+    drawerEl = h("div", { class: "drawer-scrim", onclick: (e) => { if (e.target === drawerEl) closeDrawer(); } }, h("div", { class: "drawer" }, h("div", { class: "empty" }, T.loading)));
+    document.body.append(drawerEl);
+    const onKey = (e) => { if (e.key === "Escape") { closeDrawer(); document.removeEventListener("keydown", onKey); } };
+    document.addEventListener("keydown", onKey);
+  }
   async function openAccount(id) {
-    if (!drawerEl) {
-      drawerEl = h("div", { class: "drawer-scrim", onclick: (e) => { if (e.target === drawerEl) closeDrawer(); } }, h("div", { class: "drawer" }, h("div", { class: "empty" }, T.loading)));
-      document.body.append(drawerEl);
-      const onKey = (e) => { if (e.key === "Escape") { closeDrawer(); document.removeEventListener("keydown", onKey); } };
-      document.addEventListener("keydown", onKey);
-    }
+    ensureDrawer();
+    address = null;
     try { detail = await api("GET", `/v1/admin/accounts/${encodeURIComponent(id)}?days=${days}`); detailErr = ""; }
     catch (e) { detail = null; detailErr = e.message; }
     if (drawerEl) drawDrawer();
   }
+  /** One address across accounts, in the drawer; `fromAccount` is where "back" goes. */
+  let address = null;
+  async function openAddress(ip, fromAccount) {
+    ensureDrawer();
+    try { address = { ...(await api("GET", `/v1/admin/address?ip=${encodeURIComponent(ip)}`)), from: fromAccount || (detail && detail.account && detail.account.id) || "" }; detailErr = ""; }
+    catch (e) { address = { ip, accounts: [], from: fromAccount || "" }; detailErr = e.message; }
+    if (drawerEl) drawDrawer();
+  }
+  function drawAddress(box) {
+    const list = address.accounts || [];
+    box.replaceChildren(...[
+      h("div", { class: "head" }, h("h2", {}, T.atAddress(address.ip)), h("button", { class: "round", html: ICON.close, onclick: closeDrawer })),
+      address.from ? h("div", { class: "acts", style: "padding:0 16px 10px" }, h("button", { class: "btn quiet sm", onclick: () => openAccount(address.from) }, "← " + T.back)) : null,
+      detailErr ? h("div", { class: "hint bad" }, detailErr) : null,
+      h("div", { class: "card" }, list.length ? list.map((x) => h("div", { class: "row tap", onclick: () => openAccount(x.id) },
+        h("span", { class: "tile" + (x.id === address.from ? "" : " grey"), html: ICON.person }),
+        h("div", { class: "txt" }, h("div", { class: "t" }, x.hint || x.id.slice(0, 8), " ", h("span", { class: "pill" }, x.channel === "phone" ? T.phone : T.email)),
+          h("div", { class: "s" }, `${T.times(x.n)} · ${T.lastSeen} ${ago(x.last_seen)} · ${T.thJoined} ${dateOf(x.created_at)}`)),
+        h("code", { class: "fine" }, x.id.slice(0, 8)))) : h("div", { class: "empty" }, T.none)),
+      h("div", { class: "fine", style: "padding:10px 16px" }, T.addrNote)].filter(Boolean));
+  }
+  /** A list that reads on, page by page, to the first line: `fetchPage(before)` → {rows, total}; `row(r)` draws one. */
+  function pagedList(firstRows, total, fetchPage, row, cls) {
+    const box = h("div", { class: cls || "" });
+    let rows = firstRows.slice(), lastId = rows.length ? rows[rows.length - 1].id : 0, busy = false;
+    const foot = h("div", { class: "pager fine" });
+    const paint = () => {
+      const more = rows.length < total && lastId;
+      foot.replaceChildren(...[h("span", {}, more ? T.shown(rows.length, total) : T.allShown(total)), more ? h("button", { class: "btn quiet sm", style: "margin-left:10px", onclick: loadMore }, busy ? T.loading : T.loadMore) : null].filter(Boolean));
+    };
+    async function loadMore() {
+      if (busy) return; busy = true; paint();
+      try { const page = await fetchPage(lastId); rows = rows.concat(page.rows || []); total = page.total || total; if (page.rows && page.rows.length) lastId = page.rows[page.rows.length - 1].id; else total = rows.length; body.append(...(page.rows || []).map(row)); }
+      catch (e) { foot.replaceChildren(h("span", { class: "bad" }, e.message)); busy = false; return; }
+      busy = false; paint();
+    }
+    const body = h("div", {}, ...rows.map(row));
+    paint();
+    box.append(...[rows.length ? body : h("div", { class: "empty" }, T.none), total ? foot : null].filter(Boolean));
+    return box;
+  }
   function drawDrawer() {
     const box = drawerEl.firstChild;
+    if (address) { drawAddress(box); return; }
     if (!detail) { box.replaceChildren(h("div", { class: "head" }, h("h2", {}, "…"), h("button", { class: "round", html: ICON.close, onclick: closeDrawer })), h("div", { class: "empty" }, detailErr || T.loading)); return; }
     const s = (ov && ov.settings) || {}, rate = Number(s.usd_cny || 0), kinds = s.model_kinds || {};
     const a = detail.account, sp = detail.spend || {}, u = detail.usage || {}, p = u.period || {};
@@ -433,7 +569,10 @@
       h("div", { class: "card" },
         h("div", { class: "identity" }, h("div", { class: "disc" }, initial(a)),
           h("div", { class: "who" }, h("div", { class: "n" }, a.hint, " ", h("span", { class: "fine" }, `· ${T.identifierNote}`)),
-            h("div", { class: "m" }, `${dateOf(a.created_at)} · `, h("code", {}, a.id)), h("div", { class: "tags", style: "margin-top:6px" }, ...tags))),
+            h("div", { class: "m" }, `${dateOf(a.created_at)} · `, h("code", {}, a.id)),
+            h("div", { class: "m", style: "margin-top:4px" }, `${T.lastSeenAt} ${a.last_seen_at ? ago(a.last_seen_at) : T.never}`, a.last_ua ? [` · ${T.lastClient} ${clientLine(a.last_ua) || a.last_ua}`] : null,
+              a.last_ip ? [` · ${T.lastIp} `, ipChip(a.last_ip, a.id)] : null, a.first_ip && a.first_ip !== a.last_ip ? [` · ${T.firstIp} `, ipChip(a.first_ip, a.id)] : null),
+            h("div", { class: "tags", style: "margin-top:6px" }, ...tags))),
         h("div", { class: "stats" },
           h("div", {}, h("div", { class: "k" }, T.spendTotal), h("div", { class: "v", title: usd(sp.total_cny, rate) }, money(sp.total_cny)), cap > 0 ? h("div", { class: "meter", style: "margin-top:6px" }, h("i", { class: frac >= 1 ? "bad" : frac >= 0.8 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null, h("div", { class: "k", style: "margin-top:4px" }, cap > 0 ? `${T.cap} ${money(cap)} · ${T.left} ${money(sp.left_cny || 0)}` : T.noCap)),
           h("div", {}, h("div", { class: "k" }, T.spendToday), h("div", { class: "v", title: usd(sp.today_cny, rate) }, money(sp.today_cny)), h("div", { class: "k", style: "margin-top:4px" }, T.tokens(a.used))),
@@ -452,45 +591,67 @@
         h("div", { class: "label", style: "margin:12px 16px 4px" }, T.usageTotal), kindRows(u.total && u.total.by_kind, rate)),
       h("div", { class: "label" }, T.byDay(p.days || days)), h("div", { class: "card" }, dayBars(p.by_day, p.days || days, s.day_offset_h, rate)),
       h("div", { class: "label" }, T.byModel), h("div", { class: "card" }, modelRows(p.by_model, rate, kinds)),
-      h("div", { class: "label" }, T.sessions), h("div", { class: "card" }, (detail.sessions || []).length ? (detail.sessions || []).map((k) => h("div", { class: "row" },
+      h("div", { class: "label" }, T.addresses, ` · ${fmt((detail.addresses || []).length)}`), h("div", { class: "card" }, (detail.addresses || []).length ? (detail.addresses || []).map((x) => h("div", { class: "row tap", onclick: () => openAddress(x.ip, a.id) },
+        h("span", { class: "tile grey", html: ICON.web }),
+        h("div", { class: "txt" }, h("div", { class: "t" }, h("code", {}, x.ip), " ", ...(x.platforms || []).map((p) => h("span", { class: "pill", style: "margin-left:4px" }, T.dPlatforms[p] || p))),
+          h("div", { class: "s" }, `${T.times(x.n)} · ${T.firstSeen} ${when(x.first_seen)} · ${T.lastSeen} ${when(x.last_seen)}`)))) : h("div", { class: "empty" }, T.none),
+        h("div", { class: "fine", style: "padding:6px 16px 10px" }, T.addrNote)),
+      h("div", { class: "label" }, T.sessions, ` · ${fmt((detail.sessions || []).length)}`), h("div", { class: "card" }, (detail.sessions || []).length ? (detail.sessions || []).map((k) => h("div", { class: "row" },
         h("span", { class: "tile" + (k.revoked_at ? " grey" : ""), html: /web|网页|browser/i.test(k.device || "") ? ICON.web : /phone|android|手机|iphone/i.test(k.device || "") ? ICON.phone : ICON.computer }),
         h("div", { class: "txt" }, h("div", { class: "t" }, k.device || "—", k.revoked_at ? [" ", h("span", { class: "pill" }, T.revoked)] : null),
-          h("div", { class: "s" }, `${T.via[k.via] || k.via} · ${when(k.created_at)}${k.last_used_at ? ` · ${T.lastUsed} ${ago(k.last_used_at)}` : ""}`)),
+          h("div", { class: "s" }, `${T.via[k.via] || k.via} · ${when(k.created_at)}${k.last_used_at ? ` · ${T.lastUsed} ${ago(k.last_used_at)}` : ""}`, k.ua ? ` · ${clientLine(k.ua) || String(k.ua).split(" ")[0]}` : "", k.ip ? [" · ", ipChip(k.ip, a.id)] : null)),
         h("code", { class: "fine" }, k.prefix))) : h("div", { class: "empty" }, T.none)),
-      h("div", { class: "label" }, T.devices), h("div", { class: "card" }, (detail.devices || []).length ? (detail.devices || []).map((d) => h("div", { class: "row" },
+      h("div", { class: "label" }, T.devices, ` · ${fmt((detail.devices || []).length)}`), h("div", { class: "card" }, (detail.devices || []).length ? (detail.devices || []).map((d) => h("div", { class: "row" },
         h("span", { class: "tile" + (d.online ? "" : " grey"), html: deviceIcon(d.kind) }),
         h("div", { class: "txt" }, h("div", { class: "t" }, d.name || d.id, " ", h("span", { class: "pill " + (d.online ? "ok" : "") }, d.online ? T.online : T.offline)),
-          h("div", { class: "s" }, [d.kind, d.os, d.version ? "v" + d.version : "", d.last_seen ? `${T.lastSeen} ${ago(d.last_seen)}` : "", d.first_seen ? `${T.firstSeen} ${dateOf(d.first_seen)}` : ""].filter(Boolean).join(" · "))),
+          h("div", { class: "s" }, [d.kind, d.os, d.version ? "v" + d.version : "", d.last_seen ? `${T.lastSeen} ${ago(d.last_seen)}` : "", d.first_seen ? `${T.firstSeen} ${dateOf(d.first_seen)}` : ""].filter(Boolean).join(" · "), d.ip ? [" · ", ipChip(d.ip, a.id)] : null)),
         Array.isArray(d.actions) && d.actions.length ? h("span", { class: "pill", title: d.actions.join(", ") }, d.actions.length) : null)) : h("div", { class: "empty" }, T.none)),
-      h("div", { class: "label" }, T.ledger), h("div", { class: "card ledger" }, (detail.recent || []).length ? h("table", {}, h("tbody", {}, ...(detail.recent || []).slice(0, 40).map((r) => h("tr", {},
-        h("td", {}, when(r.ts)), h("td", {}, h("span", { class: "pill " + ({ chat: "blue", image: "violet", video: "cyan", realtime: "ok" }[r.kind] || "") }, T.kinds[r.kind] || r.kind)), h("td", {}, h("code", {}, r.model || "")),
-        h("td", { class: "num" }, r.kind === "chat" ? T.inOut(r.prompt_tokens, r.completion_tokens) : fmt(r.charged)), h("td", { class: "num" }, money(r.cost_cny)))))) : h("div", { class: "empty" }, T.none)),
-      h("div", { class: "label" }, T.timeline), h("div", { class: "card feed" }, (detail.events || []).length ? (detail.events || []).map((e) => eventRow(e, false)) : h("div", { class: "empty" }, T.none)),
-      ...(a.contribute || a.samples ? [h("div", { class: "label" }, T.samples, ` · ${fmt(a.samples || 0)}`), h("div", { class: "card" }, h("div", { class: "fine", style: "padding:10px 16px 0" }, T.samplesNote), samplesBox(a.id))] : []),
+      h("div", { class: "label" }, T.ledger, ` · ${fmt(detail.ledger_total || (detail.recent || []).length)}`), h("div", { class: "card ledger" },
+        pagedList(detail.recent || [], detail.ledger_total || (detail.recent || []).length, (before) => api("GET", `/v1/admin/accounts/${encodeURIComponent(a.id)}/ledger?limit=200&before=${before}`), (r) => ledgerLine(r, a.id), "lines")),
+      h("div", { class: "label" }, T.timeline, ` · ${fmt(detail.events_total || (detail.events || []).length)}`), h("div", { class: "card feed" },
+        pagedList(detail.events || [], detail.events_total || (detail.events || []).length, (before) => api("GET", `/v1/admin/accounts/${encodeURIComponent(a.id)}/events?limit=200&before=${before}`), (e) => eventRow(e, false, a.id))),
+      ...(detail.demo ? [h("div", { class: "label" }, T.demoOfAccount, ` · ${fmt(detail.demo.visits_total || 0)}`), h("div", { class: "card feed" },
+        detail.demo.visitor ? h("div", { class: "fine", style: "padding:10px 16px 4px" }, T.demoAccountLine(detail.demo.visitor), detail.demo.visitor.last_ua ? ` · ${browserOf(detail.demo.visitor.last_ua)}` : "") : null,
+        (detail.demo.visits || []).length ? (detail.demo.visits || []).map((v) => visitRow(v, false)) : h("div", { class: "empty" }, T.demoNoneHere))] : []),
+      ...(a.contribute || a.samples ? [h("div", { class: "label" }, T.samplesAll, ` · ${fmt(a.samples || 0)}`), h("div", { class: "card" },
+        h("div", { class: "acts", style: "padding:10px 16px 0" }, a.samples ? h("button", { class: "btn quiet sm", onclick: () => exportSamples(a.id) }, T.exportThis) : null),
+        h("div", { class: "fine", style: "padding:6px 16px 0" }, T.samplesNote), samplesBox(a.id))] : []),
+      h("div", { class: "fine", style: "padding:14px 4px 4px" }, h("b", {}, T.recorded), " ", T.recordedNote),
     );
   }
+  /** One statement line: when, kind, model, what it took, what it cost — and, 0.10, from where and with what. */
+  function ledgerLine(r, accountId) {
+    return h("div", { class: "line" },
+      h("span", { class: "c when" }, when(r.ts)),
+      h("span", { class: "c" }, h("span", { class: "pill " + ({ chat: "blue", image: "violet", video: "cyan", realtime: "ok", grant: "ok", credit: "ok" }[r.kind] || "") }, T.kinds[r.kind] || r.kind)),
+      h("span", { class: "c grow" }, h("code", {}, r.model || ""), r.detail && r.detail.from ? h("span", { class: "fine" }, ` ${r.detail.from}`) : null, r.detail && r.detail.note ? h("span", { class: "fine" }, ` ${r.detail.note}`) : null),
+      h("span", { class: "c num" }, r.kind === "chat" ? T.inOut(r.prompt_tokens, r.completion_tokens) : r.kind === "grant" || r.kind === "credit" ? (r.detail && r.detail.credit_uy ? money(r.detail.credit_uy / 1e6) : fmt(-r.charged)) : fmt(r.charged)),
+      h("span", { class: "c num" }, money(r.cost_cny)),
+      h("span", { class: "c fine" }, r.ua ? clientLine(r.ua) : "", r.ip ? [" ", ipChip(r.ip, accountId)] : null));
+  }
 
-  /** The turns one account contributed, newest first, loaded on demand; each shows the last user message and the reply. */
+  /** Every turn one account kept, newest first, page by page to the first; each row is the whole turn (sampleRow). */
   function samplesBox(accountId) {
     const box = h("div", {}, h("div", { class: "empty" }, T.loading));
-    let before = 0;
-    const draw = (items, total) => {
-      const nodes = items.map((smp) => {
-        const msgs = Array.isArray(smp.request) ? smp.request : [];
-        const lastUser = [...msgs].reverse().find((m) => m && m.role === "user");
-        const text = (m) => !m ? "" : typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.map((p) => p && p.type === "text" ? p.text : p && p.omitted ? `[${p.type}]` : "").join(" ") : "";
-        return h("div", { class: "row", style: "align-items:flex-start" }, h("div", { class: "txt", style: "white-space:pre-wrap;word-break:break-word" },
-          h("div", { class: "s" }, `${when(smp.ts)} · `, h("code", {}, smp.model || ""), ` · ${T.inOut(smp.prompt_tokens, smp.completion_tokens)}`, smp.meta && smp.meta.ua ? ` · ${String(smp.meta.ua).split(" ")[0]}` : ""),
-          h("div", { class: "t", style: "white-space:pre-wrap" }, h("b", {}, `${T.user}: `), text(lastUser).slice(0, 600)),
-          h("div", { class: "t", style: "margin-top:4px;white-space:pre-wrap" }, h("b", {}, `${T.assistant}: `), String(smp.response || "").slice(0, 900))));
-      });
-      const more = items.length && total > (box.childElementCount + items.length) ? h("button", { class: "btn quiet sm", style: "margin:8px 16px 12px", onclick: () => load() }, T.more) : null;
-      if (before === 0) box.replaceChildren(...(nodes.length ? nodes : [h("div", { class: "empty" }, T.noSamples)]), more); else { box.querySelectorAll("button").forEach((b) => b.remove()); box.append(...nodes, more); }
-      if (items.length) before = items[items.length - 1].ts;
+    let before = 0, shown = 0, total = 0;
+    const list = h("div", {});
+    const foot = h("div", { class: "pager fine" });
+    const paint = () => {
+      const more = shown < total && before;
+      foot.replaceChildren(...[h("span", {}, more ? T.shown(shown, total) : T.allShown(total)), more ? h("button", { class: "btn quiet sm", style: "margin-left:10px", onclick: load }, T.loadMore) : null].filter(Boolean));
     };
     const load = async () => {
-      try { const r = await api("GET", `/v1/admin/samples?account_id=${encodeURIComponent(accountId)}&limit=20${before ? `&before=${before}` : ""}`); draw(r.samples || [], r.total || 0); }
-      catch (e) { box.replaceChildren(h("div", { class: "hint bad" }, e.message)); }
+      try {
+        const r = await api("GET", `/v1/admin/samples?account_id=${encodeURIComponent(accountId)}&limit=20${before ? `&before=${before}` : ""}`);
+        const items = r.samples || [];
+        total = r.total || 0;
+        if (shown === 0) box.replaceChildren(...[items.length ? list : h("div", { class: "empty" }, T.noSamples), total ? foot : null].filter(Boolean));
+        list.append(...items.map((smp) => sampleRow(smp)));
+        shown += items.length;
+        before = items.length ? items[items.length - 1].ts : 0;
+        if (!items.length) total = shown;
+        paint();
+      } catch (e) { box.replaceChildren(h("div", { class: "hint bad" }, e.message)); }
     };
     load();
     return box;
@@ -501,7 +662,7 @@
     const s = ov.settings || {}, rate = Number(s.usd_cny || 0), kinds = s.model_kinds || {};
     const c = ov.accounts || {}, today = ov.today || {}, week = ov.week || {}, period = ov.period || {}, sig = ov.signals_today || {};
     const list = (accounts && accounts.accounts) || [];
-    const shown = q ? list.filter((a) => (a.hint || "").includes(q) || (a.identifier || "").includes(q) || (a.id || "").startsWith(q)) : list;
+    const shown = q ? list.filter((a) => (a.hint || "").includes(q) || (a.identifier || "").includes(q) || (a.id || "").startsWith(q) || (a.last_ip || "").includes(q)) : list;
     const kpi = (k, v, sub, small) => h("div", { class: "kpi" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v, small ? h("small", {}, small) : null), h("div", { class: "s", title: sub }, sub));
     const spendKpi = (label, t) => kpi(`${T.kSpent} · ${label}`, money(t.cost_cny), T.kSpentSub(t.requests, t.charged), usd(t.cost_cny, rate));
 
@@ -519,6 +680,7 @@
       h("td", { class: "num hide-sm" }, fmt(a.used), h("span", { class: "sub" }, fmt(a.used_today))),
       h("td", { class: "num hide-sm" }, fmt(a.requests)),
       h("td", { class: "hide-sm" }, a.last_active_at ? ago(a.last_active_at) : T.never, h("span", { class: "sub" }, `${a.live_keys || 0} ${zh ? "个登录" : "sign-ins"}`)),
+      h("td", { class: "hide-sm" }, a.last_ua || a.last_ip ? [a.last_ua ? h("div", {}, clientLine(a.last_ua) || String(a.last_ua).split(" ")[0]) : null, a.last_ip ? h("div", {}, ipChip(a.last_ip, a.id)) : null] : T.none),
       h("td", {}, (a.devices || []).length ? h("div", { class: "dev" }, ...(a.devices || []).map((d) => h("span", { title: `${d.kind || ""} ${d.os || ""} · ${d.online ? T.online : ago(d.last_seen)}` }, h("i", { class: "dot" + (d.online ? " on" : "") }), d.name || d.id))) : T.none),
     ));
 
@@ -536,10 +698,10 @@
         spendKpi(T.today, today), spendKpi(T.week, week), spendKpi(T.period(days), period),
         kpi(T.kOnline, fmt(ov.online_devices), T.kOnlineSub(c.devices || 0, c.live_keys || 0)),
         kpi(T.kSignals, fmt((sig.sign_ins || 0) + (sig.calls || 0)), T.kSignalsSub({ sign_ins: 0, sign_in_failures: 0, budget_refusals: 0, upstream_errors: 0, calls: 0, ...sig })),
-        (() => { const ct = ov.contributions || {}; const k = kpi(T.kSamples, fmt(ct.samples || 0), T.kSamplesSub(ct.accounts || 0)); if (ct.samples) k.append(h("button", { class: "btn quiet sm", style: "margin-top:6px", onclick: exportSamples }, T.exportSamples)); return k; })()),
+        (() => { const ct = ov.contributions || {}; const k = kpi(T.kSamples, fmt(ct.samples || 0), T.kSamplesSub(ct.accounts || 0)); if (ct.samples) k.append(h("button", { class: "btn quiet sm", style: "margin-top:6px", onclick: () => exportSamples() }, T.exportSamples)); return k; })()),
       h("div", { class: "grid" },
         h("div", { class: "panel span" }, h("h2", {}, T.byDay(Math.min(days, 90))), dayBars(usage && usage.days, Math.min(days, 90), s.day_offset_h, rate)),
-        trendsPanel(), dataPanel(), sitePanel(),
+        trendsPanel(), dataPanel(), demoPanel(), sitePanel(),
         h("div", { class: "panel" }, h("h2", {}, `${T.byKind} · ${T.today}`), kindRows(today.by_kind, rate), h("h2", {}, `${T.byKind} · ${T.period(days)}`), kindRows(period.by_kind, rate)),
         h("div", { class: "panel" }, h("h2", {}, `${T.byModel} · ${T.period(days)}`), modelRows(period.by_model, rate, kinds)),
         h("div", { class: "panel" }, h("h2", {}, T.top(days)), (ov.top_accounts || []).length ? (ov.top_accounts || []).map((t) => h("div", { class: "row tap", onclick: () => openAccount(t.account_id) },
@@ -555,7 +717,7 @@
           rows.length ? h("table", {},
             h("thead", {}, h("tr", {},
               h("th", {}, T.thWho), h("th", { class: "hide-sm" }, T.thJoined), h("th", { class: "num" }, T.thSpent), h("th", { class: "num hide-sm" }, T.thTokens),
-              h("th", { class: "num hide-sm" }, T.thReqs), h("th", { class: "hide-sm" }, T.thActive), h("th", {}, T.thDevices))),
+              h("th", { class: "num hide-sm" }, T.thReqs), h("th", { class: "hide-sm" }, T.thActive), h("th", { class: "hide-sm" }, T.thClient), h("th", {}, T.thDevices))),
             h("tbody", {}, ...rows)) : h("div", { class: "empty" }, T.noAccounts)),
         h("div", { class: "panel span" },
           h("h2", {}, T.config),

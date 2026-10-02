@@ -26,6 +26,28 @@ def fake_upstream() -> FastAPI:
     up = FastAPI()
     up.state.requests = []
 
+    # what the provider lists under the key: chat and picture models, and the spoken / heard /
+    # embedded ones the catalog leaves out (ids only, as Model Studio's compatible mode gives them)
+    up.state.catalog_ids = [
+        "qwen3.8-27b",
+        "deepseek-v4.1-flash",
+        "qwen3-vl-plus",
+        "vanchin/deepseek-v3",
+        "qwen-image-edit-max",
+        "wan2.7-image",
+        "qwen3-tts-flash",
+        "qwen3.7-text-embedding",
+        "qwen3-omni-flash-realtime",
+        "fun-asr-flash-2026-06-15",
+    ]
+
+    @up.get("/compat/v1/models")
+    async def models(request: Request):
+        up.state.requests.append(("models", dict(request.headers), None))
+        if up.state.catalog_ids is None:  # the provider is down
+            return JSONResponse(status_code=503, content={"error": {"message": "unavailable"}})
+        return {"object": "list", "data": [{"id": i, "object": "model", "owned_by": "system"} for i in up.state.catalog_ids]}
+
     @up.post("/compat/v1/chat/completions")
     async def chat(request: Request):
         body = await request.json()
@@ -793,6 +815,241 @@ async def test_admin_sees_identifiers_and_people_can_leave(stack):
     assert (await client.post("/v1/admin/delete", headers=admin, json={"identifier": "138 0013 8000"})).status_code == 404
 
 
+async def test_the_operator_sees_addresses_clients_and_every_line(stack):
+    """0.10: sign-ins, requests and events carry the address and the client; the account view
+    lists the addresses, the statement and the timeline page through to the first line, and
+    one address can be looked up across accounts. The training export drops the address."""
+    app, client, sender, up, cloud = stack
+    phone = {"X-Forwarded-For": "203.0.113.7, 10.0.0.1", "User-Agent": "nanoMuse-Android/0.1.27 (Pixel 8)"}
+    desk = {"X-Forwarded-For": "198.51.100.2", "User-Agent": "nanoMuse/0.1.27 (linux)"}
+    r = await client.post("/v1/auth/code", json={"identifier": "13800138000"}, headers=phone)
+    assert r.status_code == 204
+    code = sender.sent[-1][1]
+    r = await client.post("/v1/auth/verify", json={"identifier": "13800138000", "code": code, "device": "pixel"}, headers=phone)
+    data = r.json()
+    headers = {"Authorization": f"Bearer {data['api_key']}", **phone}
+    admin = {"X-Admin-Token": "admin"}
+    for _ in range(3):
+        r = await client.post(
+            "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+        )
+        assert r.status_code == 200
+    # the same person from the desk, with the password way in
+    r = await client.post("/v1/auth/password", headers=headers, json={"password": "correct horse"})
+    assert r.status_code == 204
+    r = await client.post("/v1/auth/login", json={"identifier": "13800138000", "password": "correct horse", "device": "desk"}, headers=desk)
+    assert r.status_code == 200
+    desk_headers = {"Authorization": f"Bearer {r.json()['api_key']}", **desk}
+    r = await client.post(
+        "/v1/chat/completions", headers=desk_headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert r.status_code == 200
+
+    acc = (await client.get(f"/v1/admin/accounts/{data['account']['id']}", headers=admin)).json()
+    a = acc["account"]
+    assert (
+        a["first_ip"] == "203.0.113.7"
+        and a["last_ip"] == "198.51.100.2"
+        and a["last_platform"] == "linux"
+        and a["last_version"] == "0.1.27"
+    )
+    assert a["last_seen_at"] is not None
+    assert [(s["device"], s["ip"], s["platform"], s["version"]) for s in acc["sessions"]] == [
+        ("pixel", "203.0.113.7", "android", "0.1.27"),
+        ("desk", "198.51.100.2", "linux", "0.1.27"),
+    ]
+    addresses = {x["ip"]: x for x in acc["addresses"]}
+    assert set(addresses) == {"203.0.113.7", "198.51.100.2"}
+    assert addresses["203.0.113.7"]["platforms"] == ["android"] and addresses["203.0.113.7"]["n"] >= 4
+    opening = sum(1 for r_ in acc["recent"] if r_["kind"] in ("grant", "credit"))  # the sign-up's opening lines
+    total = 4 + opening
+    assert acc["ledger_total"] == total and acc["events_total"] >= 4
+    assert {r_["ip"] for r_ in acc["recent"] if r_["kind"] == "chat"} == {"203.0.113.7", "198.51.100.2"}
+    assert all(e["ip"] for e in acc["events"])
+
+    # the statement, two lines at a time, to the first one
+    seen, before = [], 0
+    while True:
+        page = (
+            await client.get(
+                f"/v1/admin/accounts/{data['account']['id']}/ledger?limit=2{f'&before={before}' if before else ''}", headers=admin
+            )
+        ).json()
+        assert page["total"] == total
+        if not page["rows"]:
+            break
+        seen += page["rows"]
+        before = page["rows"][-1]["id"]
+    assert len(seen) == total and [r_["kind"] for r_ in seen][-1] == "grant"
+    assert [r_["id"] for r_ in seen] == sorted((r_["id"] for r_ in seen), reverse=True)
+    page = (await client.get(f"/v1/admin/accounts/{data['account']['id']}/events?limit=1000", headers=admin)).json()
+    assert page["total"] == len(page["rows"]) and {e["kind"] for e in page["rows"]} >= {
+        "account.created",
+        "sign_in.code",
+        "sign_in.password",
+        "password.set",
+    }
+
+    # one address, across accounts
+    found = (await client.get("/v1/admin/address?ip=203.0.113.7", headers=admin)).json()
+    assert [x["hint"] for x in found["accounts"]] == ["138****8000"] and found["accounts"][0]["n"] >= 4
+    assert (await client.get("/v1/admin/address", headers=admin)).status_code == 400
+    listing = (await client.get("/v1/admin/accounts", headers=admin)).json()["accounts"]
+    assert listing[0]["last_ip"] == "198.51.100.2" and listing[0]["last_platform"] == "linux"
+
+    # with "help improve" on, the kept turn carries the address for the operator — and the
+    # training export leaves it out
+    r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
+    assert r.status_code == 200
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "kept"}]}
+    )
+    assert r.status_code == 200
+    kept = (await client.get("/v1/admin/samples", headers=admin)).json()["samples"]
+    assert kept[0]["meta"]["ip"] == "203.0.113.7" and kept[0]["platform"] == "android"
+    exported = (await client.get(f"/v1/admin/samples/export?account_id={data['account']['id']}", headers=admin)).text
+    line = json.loads(exported.strip())
+    assert "ip" not in line["meta"] and "account_id" not in line and line["response"] == "hi"
+    view = (await client.get("/v1/admin/data", headers=admin)).json()
+    assert [(x["hint"], x["samples"]) for x in view["by_account"]] == [("138****8000", 1)]
+
+
+async def test_the_showcase_visitors_reach_the_admin_page(monkeypatch):
+    """0.10: with WEB_ADMIN_URL + WEB_ADMIN_TOKEN the relay passes the gateway's visitors view
+    through (/v1/admin/demo) and puts one account's demos in its drawer; without them the
+    panel is told so and the drawer carries None."""
+    app, client, sender, up, cloud = make_stack(web_admin_url="http://gateway/api/demo/admin", web_admin_token="shh")
+    seen: list[httpx.Request] = []
+
+    def gateway(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.headers.get("x-admin-token") != "shh":
+            return httpx.Response(403, json={"error": "forbidden"})
+        account = request.url.params.get("account", "")
+        if account:
+            return httpx.Response(
+                200,
+                json={
+                    "visitor": {"id": account, "hint": "so…", "signins": 2, "sessions": 1, "first_ip": "1.2.3.4", "last_ip": "5.6.7.8"},
+                    "visits": [{"id": "abc", "ip": "5.6.7.8"}],
+                    "visits_total": 1,
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "signin_required": True,
+                "visitors": [{"id": "x", "hint": "so…"}],
+                "visitors_total": 1,
+                "visits": [],
+                "visits_total": 0,
+                "days": int(request.url.params.get("days", 0)),
+                "active": [],
+            },
+        )
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr("nanomuse_cloud.api.httpx.AsyncClient", lambda *a, **kw: real(transport=httpx.MockTransport(gateway)))
+    admin = {"X-Admin-Token": "admin"}
+    view = (await client.get("/v1/admin/demo?days=7", headers=admin)).json()
+    assert view["available"] is True and view["visitors_total"] == 1 and view["days"] == 7
+    data = await sign_up(client, sender)
+    acc = (await client.get(f"/v1/admin/accounts/{data['account']['id']}", headers=admin)).json()
+    assert acc["demo"]["visitor"]["first_ip"] == "1.2.3.4" and acc["demo"]["visits_total"] == 1
+    assert seen[-1].url.params["account"] == data["account"]["id"]
+
+    # not configured: the panel says so, the drawer has nothing to show
+    monkeypatch.undo()
+    app2, client2, sender2, up2, cloud2 = make_stack()
+    assert (await client2.get("/v1/admin/demo", headers=admin)).json() == {"available": False}
+    data2 = await sign_up(client2, sender2)
+    assert (await client2.get(f"/v1/admin/accounts/{data2['account']['id']}", headers=admin)).json()["demo"] is None
+
+
+async def test_members_see_the_models_under_the_key_and_pick():
+    """0.10: GET /v1/models for a member carries, after the menu, the usable models the
+    provider lists under the operator's key — sorted into chat and pictures by their ids,
+    the spoken / heard / embedded ones left out — so the apps' pickers offer them. Guests see
+    the menu alone; the list is cached and a provider that stops answering leaves it in place."""
+    app, client, sender, up, cloud = make_stack(allowed_identifiers="Me@Example.com", allowance_cny=0.5)
+    member = await sign_up(client, sender, identifier="me@example.com", device="desk")
+    guest = await sign_up(client, sender, identifier="13800138000", device="pixel")
+    mh = {"Authorization": f"Bearer {member['api_key']}"}
+    gh = {"Authorization": f"Bearer {guest['api_key']}"}
+
+    menu_ids = [m.id for m in cloud.s.models]
+    listing = (await client.get("/v1/models", headers=mh)).json()
+    ids = [m["id"] for m in listing["data"]]
+    assert ids[: len(menu_ids)] == menu_ids  # the menu first, in its order
+    extra = {m["id"]: m for m in listing["data"] if m["nanomuse"].get("catalog")}
+    assert set(extra) == {"deepseek-v4.1-flash", "qwen3-vl-plus", "vanchin/deepseek-v3", "qwen-image-edit-max", "wan2.7-image"}
+    assert extra["deepseek-v4.1-flash"]["nanomuse"]["kind"] == "chat" and extra["deepseek-v4.1-flash"]["nanomuse"]["listed"] is False
+    assert extra["deepseek-v4.1-flash"]["nanomuse"]["priced_as"] == "qwen3.8-27b"
+    assert extra["deepseek-v4.1-flash"]["architecture"]["input_modalities"] == ["text"]  # not known to read pictures
+    assert extra["qwen3-vl-plus"]["nanomuse"]["vision"] is True and extra["qwen3-vl-plus"]["architecture"]["input_modalities"] == [
+        "text",
+        "image",
+    ]
+    assert extra["qwen-image-edit-max"]["nanomuse"]["kind"] == "image" and extra["wan2.7-image"]["architecture"]["output_modalities"] == [
+        "image"
+    ]
+    assert listing["nanomuse"]["catalog"] == {"models": 5, "error": ""}
+    # the provider was asked with the operator's key, once; the second read is from the cache
+    asked = [q for q in up.state.requests if q[0] == "models"]
+    assert len(asked) == 1 and asked[0][1]["authorization"] == "Bearer sk-upstream"
+    await client.get("/v1/models", headers=mh)
+    assert len([q for q in up.state.requests if q[0] == "models"]) == 1
+    # a guest: the menu, nothing more
+    glist = (await client.get("/v1/models", headers=gh)).json()
+    assert [m["id"] for m in glist["data"]] == menu_ids and glist["nanomuse"] == {"any_model": False}
+    # a catalog model chats under its own id, priced as the dearest menu model
+    r = await client.post(
+        "/v1/chat/completions", json={"model": "vanchin/deepseek-v3", "messages": [{"role": "user", "content": "hi"}]}, headers=mh
+    )
+    assert r.status_code == 200, r.text
+    assert [q for q in up.state.requests if q[0] == "chat"][-1][2]["model"] == "vanchin/deepseek-v3"
+    # the provider goes quiet: the list stands, the error is said
+    app.state.catalog.fetched_at = 0
+    up.state.catalog_ids = None  # the provider answers 503
+    listing = (await client.get("/v1/models", headers=mh)).json()
+    assert len([m for m in listing["data"] if m["nanomuse"].get("catalog")]) == 5
+    assert listing["nanomuse"]["catalog"]["models"] == 5 and listing["nanomuse"]["catalog"]["error"]
+
+
+def test_the_catalog_sorts_ids_by_their_shape():
+    from nanomuse_cloud.catalog import classify
+
+    assert classify("qwen3.8-27b") == ("chat", True)  # the 3.5+ generations read pictures
+    assert classify("deepseek-v4.1-flash") == ("chat", False)
+    assert classify("qwen3-vl-plus") == ("chat", True)
+    assert classify("qvq-max") == ("chat", True)
+    assert classify("gui-plus") == ("chat", True)
+    assert classify("vanchin/deepseek-ocr") == ("chat", True)
+    assert classify("kimi-k2.5") == ("chat", True) and classify("kimi-k2-thinking") == ("chat", False)
+    assert classify("qwen-mt-plus") == ("chat", False)
+    assert (
+        classify("qwen-image-3.0")[0] == "image" and classify("wan2.7-image-pro")[0] == "image" and classify("z-image-turbo")[0] == "image"
+    )
+    assert (
+        classify("wan2.2-i2v-flash")[0] == "video" and classify("wan2.2-t2v-plus")[0] == "video" and classify("wan2.6-kf2v")[0] == "video"
+    )
+    for other in (
+        "qwen3-tts-flash",
+        "qwen3-asr-flash-realtime",
+        "MiniMax/speech-02-hd",
+        "qwen3.7-text-embedding",
+        "qwen3.7-text-rerank",
+        "qwen3-omni-flash",
+        "qwen3.8-livetranslate-flash-realtime",
+        "qwen-audio-3.0-asr-flash",
+        "qwen3-s2s-flash-realtime-2025-09-22",
+        "sre-gpu-auto-handle",
+        "not a model",
+        "",
+    ):
+        assert classify(other) == ("other", False), other
+
+
 def test_code_mail_has_text_and_html_in_both_languages():
     from nanomuse_cloud.senders import compose_code_mail
 
@@ -891,7 +1148,9 @@ async def test_data_controls_keep_the_training_view_only_and_are_deletable(stack
     assert first["request"][2] == {"role": "tool", "tool_call_id": "c1", "content": "", "omitted": True}
     dumped = json.dumps(first)
     assert "AAAA" not in dumped and "Ada" not in dumped and "SECRET" not in dumped
-    assert first["meta"] == {"ua": "nanoMuse-Android/0.1.27", "lang": "zh-CN"}
+    # 0.10: the address goes with the turn for the operator (the test client has none)
+    assert first["meta"] == {"ua": "nanoMuse-Android/0.1.27", "lang": "zh-CN", "ip": first["meta"]["ip"]}
+    assert first["platform"] == "android"
     assert first["prompt_tokens"] == 100 and first["completion_tokens"] == 50
     account = (await client.get(f"/v1/admin/accounts/{data['account']['id']}", headers=admin)).json()["account"]
     assert account["contribute"] is True and account["samples"] == 2
@@ -1108,8 +1367,8 @@ async def test_members_may_name_any_model_of_the_right_kind():
     gh = {"Authorization": f"Bearer {guest['api_key']}"}
     assert member["account"]["any_model"] is True and guest["account"]["any_model"] is False
 
-    # the menu says who may go beyond it
-    assert (await client.get("/v1/models", headers=mh)).json()["nanomuse"] == {"any_model": True}
+    # the menu says who may go beyond it (0.10: and lists what the key has, for members — below)
+    assert (await client.get("/v1/models", headers=mh)).json()["nanomuse"]["any_model"] is True
     assert (await client.get("/v1/models", headers=gh)).json()["nanomuse"] == {"any_model": False}
 
     # a typed id is checked with the kind it is for

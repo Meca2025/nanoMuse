@@ -643,6 +643,11 @@ class Connections:
         ``body``: ``base_url`` (or ``preset``), and ``api_key`` when the user has typed one
         that is not saved yet; otherwise the vault key is used when the endpoint is the
         configured one. Never touches settings — what the user typed in the form stays.
+
+        For nanoMuse Cloud the answer also says which chat models are on the relay's menu
+        and which are the other usable models under the operator's key (``menu`` /
+        ``catalog``, likewise ``image_catalog`` / ``video_catalog``), and which chat models
+        read pictures (``vision``), so the pickers show a member the whole list in groups.
         """
         preset_id = str(body.get("preset") or "")
         if preset_id == self.CLOUD_PRESET:
@@ -664,7 +669,28 @@ class Connections:
             # the relay says what each model does; the studio's pickers take it from here
             image = [str(m["id"]) for m in hub.models if _modality(m) == "image"]
             video = [str(m["id"]) for m in hub.models if _modality(m) == "video"]
-            return {"models": chat, "image_models": image, "video_models": video, "source": "live"}
+            # relay 0.10: a member's list carries, after the menu, the usable models under the
+            # operator's key (`nanomuse.catalog`); the pickers show them as a second group
+            listed = {
+                str(m["id"]) for m in hub.models if (m.get("nanomuse") or {}).get("listed", True)
+            }
+            vision = [
+                str(m["id"])
+                for m in hub.models
+                if _modality(m) == "chat"
+                and "image" in ((m.get("architecture") or {}).get("input_modalities") or [])
+            ]
+            return {
+                "models": chat,
+                "image_models": image,
+                "video_models": video,
+                "source": "live",
+                "menu": [i for i in chat if i in listed],
+                "catalog": [i for i in chat if i not in listed],
+                "image_catalog": [i for i in image if i not in listed],
+                "video_catalog": [i for i in video if i not in listed],
+                "vision": vision,
+            }
         preset = PROVIDERS.get(preset_id) or {}
         base_url = normalize_base_url(str(body.get("base_url") or preset.get("base_url") or ""))
         catalogue: list[str] = list(preset.get("models") or [])

@@ -42,11 +42,20 @@ window and quits; with `--stage-demo` it writes the stage instead.
 `.github/workflows/desktop-app.yml` does the same on every `v*` tag, attaching
 `nanoMuse-Desktop-<version>-…` (`.exe`, `.dmg` + `.zip`, `.AppImage`, `.deb`) to the
 release. On macOS electron-builder only lays out the `.app` (`npm run dist:dir`);
-`scripts/desktop-app/package-mac.sh arm64|x64` ad-hoc signs it and writes the zip
+`scripts/desktop-app/package-mac.sh arm64|x64` signs it and writes the zip
 (`ditto`) and an APFS dmg (`hdiutil`) — electron-builder's HFS+ image failed to
-copy with Finder error -36 on some Macs. There is no developer certificate: macOS
-shows "Apple could not verify" (Open Anyway in System Settings → Privacy &
-Security), Windows "Run anyway" ([docs/troubleshooting.md](../../docs/troubleshooting.md)).
+copy with Finder error -36 on some Macs. The signature is ad-hoc unless the Apple
+credentials are in the environment — the workflow passes the repository secrets
+`MAC_CERT_P12_BASE64`, `MAC_CERT_PASSWORD` (a *Developer ID Application*
+certificate exported as .p12), `APP_STORE_CONNECT_KEY_ID`,
+`APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_KEY_P8` (an App Store Connect
+API key, for `notarytool`) and `APPLE_TEAM_ID` — in which case the script signs
+with the Developer ID under the hardened runtime
+(`resources/entitlements.mac.plist`), notarizes the app and the dmg and staples
+the tickets, and the app opens like any other. Without them macOS shows "Apple
+could not verify" (Open Anyway in System Settings → Privacy & Security); Windows,
+with no certificate either way, "Run anyway"
+([docs/troubleshooting.md](../../docs/troubleshooting.md)).
 The shell starts the runtime in its data folder with `NANOMUSE_DATA_DIR` and
 `NANOMUSE_WORKSPACE` set, so nothing is written next to the executable.
 The tray has **About nanoMuse** (version, runtime, shortcuts) and **Check for

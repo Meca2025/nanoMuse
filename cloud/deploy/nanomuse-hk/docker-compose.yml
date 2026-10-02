@@ -22,6 +22,9 @@ services:
       # nanoMuse Web's numbers from the showcase gateway on the edge network
       TRAFFIC_DB: /srv/nanomuse-cloud/traffic/traffic.db
       WEB_INFO_URL: http://gateway:8000/api/web/info
+      # the showcase's visitors — where from, with what, every demo — for the admin page;
+      # WEB_ADMIN_TOKEN in .env, the same value as the gateway's SHOWCASE_ADMIN_TOKEN
+      WEB_ADMIN_URL: http://gateway:8000/api/demo/admin
     volumes:
       - ./data:/srv/nanomuse-cloud/data
       - /var/lib/nanomuse-traffic:/srv/nanomuse-cloud/traffic:ro

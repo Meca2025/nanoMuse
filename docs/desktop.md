@@ -31,6 +31,9 @@ every release, built by `.github/workflows/desktop-app.yml`) —
 is described in [every-device.md](every-device.md); this binary stays the
 zero-install fallback. `serve` keeps it connected in the background without a
 terminal chat, so the phone can reach the computer while you are away from it.
+A third shape is a preview: nanoMuse as a bundle of plugins for DeepSeek
+Harness Desktop, `nanoMuse-Harness-<v>.tgz` on every release from 0.1.27 —
+[harness/README.md](../harness/README.md), [harness.md](harness.md).
 
 ## Two directions
 

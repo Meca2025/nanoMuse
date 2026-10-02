@@ -109,6 +109,7 @@ for the full list. The ones that matter:
 | `DAY_OFFSET_H` | 8 | the operator's reports group by local day, midnight UTC+8 (Beijing) |
 | `TRAFFIC_DB` | empty | the site's daily traffic counts (`demo/showcase/mirror/traffic.py`), mounted read-only, for the operator's page; empty = that panel says it is not connected |
 | `WEB_INFO_URL` | empty | nanoMuse Web's gateway (`http://gateway:8000/api/web/info` on the same docker network) for its account and session counts on the operator's page |
+| `WEB_ADMIN_URL`, `WEB_ADMIN_TOKEN` | empty | the showcase gateway's `/api/demo/admin` and its `SHOWCASE_ADMIN_TOKEN`: who tried the phone in the browser from where and with what, every demo and what it used — a panel on the operator's page and a section in the account drawer (relay 0.10) |
 | `USD_CNY` | 7.1 | for showing dollars next to yuan; display only |
 | `SIGNUP_TOKENS` | 0 (no ceiling) | starter token grant per account, the older allowance |
 | `DAILY_CAP_TOKENS` | 0 (off) | tokens per account per day |
@@ -117,6 +118,8 @@ for the full list. The ones that matter:
 | `ALIYUN_SMS_API` | `dypns` | `dypns` (号码认证服务 `SendSmsVerifyCode`) or `dysms` (短信服务 `SendSms`) |
 | `CLOUD_MODELS` | Qwen chat + image, Wan video | JSON list to replace the menu, prices included |
 | `CLOUD_ANY_MODEL_MEMBERS` | `1` | members may name any model of the provider's for its kind (chat, image, video) — see below; `0` = the menu only |
+| `CLOUD_CATALOG` | `1` | list the usable models under the operator's key after the menu in a member's `/v1/models`, read from the provider's own `/models` (0.10) — see below; `0` = the menu only, a member types an id |
+| `CLOUD_CATALOG_TTL_S` | `3600` | how long that list is kept before the provider is asked again |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
 
@@ -154,7 +157,18 @@ says `nanomuse.any_model` for the account, `/v1/me` the same under `account`,
 and `GET /v1/models/<id>?kind=chat` checks a typed id (the answer's `listed` is
 false and `priced_as` names the menu model whose prices stand in for it in the
 ledger — the dearest of its kind, so the operator's page errs high). It is how
-a member tries a model before it goes on the menu. `/v1/me` carries a `spend`
+a member tries a model before it goes on the menu. From 0.10 a member does not
+have to know the id: with `CLOUD_CATALOG=1` (the default) the relay reads the
+provider's own `/models` under the operator's key (once an hour,
+`CLOUD_CATALOG_TTL_S`), sorts the ids by their shape into chat and picture
+models — the spoken, heard, embedding and rerank ones are left out, and a
+video model is not on the compatible list (`catalog.py`) — and lists them in
+the member's `/v1/models` after the menu, each with `catalog: true`, `listed:
+false`, `priced_as` and `vision` (whether the chat model reads pictures); the
+answer's `nanomuse.catalog` says how many and the provider's error if the list
+could not be refreshed (the last one stands). The apps' pickers then show the
+menu and *More models on your account* as two groups, and a guest sees the
+menu alone. `/v1/me` carries a `spend`
 block (`total`, `grant`, `left`, `unlimited`, `warn` at 80 %, `usd_cny`,
 `total_usd`, `grant_usd`, `left_usd`, `today`, the bonus amounts and
 `own_key_docs`; the 0.4 names `daily_cap` / `left_today` / `resets_at` = 0
@@ -182,10 +196,22 @@ errors) and the timeline across accounts with a kind filter. The
 accounts table shows the masked hint; opening one account
 (`/v1/admin/accounts/{id}`) decrypts its phone number or address for that
 view only and shows its spend by kind / model / day, sign-ins (device names,
-revoked ones too), remembered devices with presence, the recent requests and
-its timeline, with the grant / member / disable / delete buttons. The text
-of a chat is on the page only for accounts with *Help improve nanoMuse's AI
-models* on, and only the training view of it (below). Identifiers are kept AES-GCM-encrypted with a key derived from
+revoked ones too), remembered devices with presence, every request and its
+whole timeline — page by page to the first line
+(`/v1/admin/accounts/{id}/ledger` and `/events`, `?before=&limit=`) — with
+the grant / member / disable / delete buttons. From relay 0.10 the relay
+records the network address and the client (`User-Agent`) with each sign-in,
+request, event and device, and the account's first / last address and last
+client: the accounts table has a *Client / IP* column, the drawer an
+*Addresses / IP* section (how often, first, last, platforms) and the address
+on every row, and an address opens the accounts seen from it
+(`/v1/admin/address?ip=`). The text of a chat is on the page only for
+accounts with *Help improve nanoMuse's AI models* on, and only the training
+view of it (below); every account that kept turns is in the *By account*
+table of the Data controls panel, and its conversations are read in full in
+the drawer — each turn expands to every message and tool call — with an
+export of that account's turns (`/v1/admin/samples/export?account_id=`).
+Identifiers are kept AES-GCM-encrypted with a key derived from
 `CLOUD_SECRET`. A person can also remove themselves: `POST /v1/auth/delete`
 with their key deletes the account, its keys, ledger and devices.
 
@@ -198,7 +224,14 @@ holds; and, with `TRAFFIC_DB`, the project site's visits and downloads:
 page views, visitors, crawlers, downloads per file from the mirror next to
 GitHub's own download counts, stars, referring sites, the pages. The traffic
 database is written by `demo/showcase/mirror/traffic.py` from Caddy's access
-log — daily counts only; the script never stores an address.
+log — daily counts only; the script never stores an address. A fourth panel,
+*The phone in the browser*, comes from the showcase gateway through
+`/v1/admin/demo` (`WEB_ADMIN_URL` + `WEB_ADMIN_TOKEN`): every visitor who
+signed in there with the address and browser of the first and the latest
+visit, the demos running now and the period's demos — when, how long, from
+where, with what, what each used (requests, tokens, pictures, clips) and why it
+ended — and the same for one account in its drawer (the visitor id there is
+the account id here).
 
 ### Web console
 

@@ -6514,12 +6514,6 @@ class ChatViewModel(
         }
     }
 
-    /** The card goes once a way was taken (or the person moved on). */
-    fun nmDismissAllowance() {
-        _nmAllowance.value = null
-        _messages.value = _messages.value.filterNot { it.id == nmAllowanceCardId }
-    }
-
     /**
      * Waits for the candidate tiles to finish (every slot Ready or Failed) and then says so in
      * the chat — "pick one" when at least one picture came, what went wrong when none did.

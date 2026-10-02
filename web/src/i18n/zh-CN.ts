@@ -1132,6 +1132,12 @@ const zhCN: Record<string, string> = {
   "Picture model": "图片模型",
   "Clip model": "短片模型",
   "Other model…": "其他模型…",
+  "More models on your account": "账号可用的更多模型",
+  "reads pictures": "能看图",
+  "Type a model id…": "手动输入模型 id…",
+  "Pick from the list": "从列表里选",
+  "{n} models your account may use: the menu first, then everything else the provider lists under the Cloud key. Pick one; the ones beyond the menu are priced as the dearest menu model of their kind.":
+    "账号可用的模型共 {n} 个：先是菜单，然后是服务商在 Cloud 这把 key 下列出的其他模型。直接选就行；菜单之外的按同类里最贵的菜单模型计费。",
   "Your account may name any model the provider has, not only these: type its id — a chat model here, a picture or clip model below — and it goes through as typed.":
     "你的账号可以使用服务商的任意模型，不限于这几个：直接输入模型 id——对话模型填在这里，图片或短片模型填在下面——会原样转发。",
   Automatic: "自动",

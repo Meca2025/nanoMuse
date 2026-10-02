@@ -18,6 +18,8 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
+from . import client as _client
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS accounts (
     id            TEXT PRIMARY KEY,
@@ -221,6 +223,21 @@ class Database:
         # 0.5: one lifetime pool instead of a daily cap; the co-creation bonus, once
         add("accounts", "grant_uy", "INTEGER NOT NULL DEFAULT 0")
         add("accounts", "contribute_bonus_at", "INTEGER")
+        # 0.10: the address and the client software behind sign-ins, requests, events and
+        # devices (client.py) — the operator's page reads them; nothing else does
+        for col, ddl in (
+            ("first_ip", "TEXT NOT NULL DEFAULT ''"),
+            ("last_ip", "TEXT NOT NULL DEFAULT ''"),
+            ("last_ua", "TEXT NOT NULL DEFAULT ''"),
+            ("last_seen_at", "INTEGER"),
+        ):
+            add("accounts", col, ddl)
+        for table in ("api_keys", "events", "ledger"):
+            add(table, "ip", "TEXT NOT NULL DEFAULT ''")
+            add(table, "ua", "TEXT NOT NULL DEFAULT ''")
+        add("devices", "ip", "TEXT NOT NULL DEFAULT ''")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS ledger_ip ON ledger(ip) WHERE ip<>''")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS api_keys_ip ON api_keys(ip) WHERE ip<>''")
 
     def seed_grants(self, allowance_uy: int) -> int:
         """Accounts from before 0.5 start the new model with what they have spent so far plus
@@ -319,10 +336,12 @@ class Database:
         account_id = account_id or self.new_account_id()
         t = now()
         grant_uy = max(0, int(grant_uy))
+        who = _client.current()
         with self.tx() as c:
             c.execute(
-                "INSERT INTO accounts(id, id_hash, channel, hint, created_at, granted, identifier_enc, grant_uy) VALUES (?,?,?,?,?,?,?,?)",
-                (account_id, id_hash, channel, hint, t, grant, identifier_enc, grant_uy),
+                "INSERT INTO accounts(id, id_hash, channel, hint, created_at, granted, identifier_enc, grant_uy, "
+                "first_ip, last_ip, last_ua, last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (account_id, id_hash, channel, hint, t, grant, identifier_enc, grant_uy, who.ip, who.ip, who.ua, t),
             )
             if grant:
                 c.execute(
@@ -440,6 +459,18 @@ class Database:
                 """SELECT model, COUNT(*) AS n, SUM(prompt_tokens) AS prompt_tokens, SUM(completion_tokens) AS completion_tokens
                    FROM samples WHERE ts>=? GROUP BY model ORDER BY n DESC""",
                 (since,),
+            ).fetchall()
+
+    def samples_by_account(self) -> list[sqlite3.Row]:
+        """Every account that has turns kept, with how many, their tokens, the first and the
+        last — the operator's way in to one person's data, newest activity first."""
+        with self._lock:
+            return self._conn.execute(
+                """SELECT s.account_id, a.hint, a.channel, a.contribute, a.created_at,
+                          COUNT(*) AS n, SUM(s.prompt_tokens) AS prompt_tokens, SUM(s.completion_tokens) AS completion_tokens,
+                          MIN(s.ts) AS first_ts, MAX(s.ts) AS last_ts, GROUP_CONCAT(DISTINCT s.model) AS models
+                   FROM samples s JOIN accounts a ON a.id=s.account_id
+                   GROUP BY s.account_id ORDER BY last_ts DESC""",
             ).fetchall()
 
     def samples_meta(self, since: int) -> list[sqlite3.Row]:
@@ -583,10 +614,11 @@ class Database:
     # -- keys ----------------------------------------------------------------
 
     def insert_key(self, key_hash: str, prefix: str, account_id: str, device: str, via: str = "code") -> None:
+        who = _client.current()
         with self.tx() as c:
             c.execute(
-                "INSERT INTO api_keys(key_hash, prefix, account_id, device, created_at, via) VALUES (?,?,?,?,?,?)",
-                (key_hash, prefix, account_id, device[:80], now(), via),
+                "INSERT INTO api_keys(key_hash, prefix, account_id, device, created_at, via, ip, ua) VALUES (?,?,?,?,?,?,?,?)",
+                (key_hash, prefix, account_id, device[:80], now(), via, who.ip, who.ua),
             )
 
     def key(self, key_hash: str) -> sqlite3.Row | None:
@@ -599,9 +631,18 @@ class Database:
                 (key_hash,),
             ).fetchone()
 
-    def touch_key(self, key_hash: str) -> None:
+    def touch_key(self, key_hash: str, account_id: str = "") -> None:
+        """A request with this key: when it was last used, and — with the account known —
+        where the account was last seen from and with what."""
+        t = now()
+        who = _client.current()
         with self.tx() as c:
-            c.execute("UPDATE api_keys SET last_used_at=? WHERE key_hash=?", (now(), key_hash))
+            c.execute("UPDATE api_keys SET last_used_at=? WHERE key_hash=?", (t, key_hash))
+            if account_id and (who.ip or who.ua):
+                c.execute(
+                    "UPDATE accounts SET last_ip=?, last_ua=?, last_seen_at=?, first_ip=CASE WHEN first_ip='' THEN ? ELSE first_ip END WHERE id=?",
+                    (who.ip, who.ua, t, who.ip, account_id),
+                )
 
     def revoke_key(self, key_hash: str) -> None:
         with self.tx() as c:
@@ -637,27 +678,40 @@ class Database:
     # -- events (the account's own history; the operator's audit) -------------------
 
     def add_event(self, account_id: str, kind: str, detail: str = "") -> None:
+        who = _client.current()
         with self.tx() as c:
             c.execute(
-                "INSERT INTO events(account_id, ts, kind, detail) VALUES (?,?,?,?)",
-                (account_id or "", now(), kind, (detail or "")[:200]),
+                "INSERT INTO events(account_id, ts, kind, detail, ip, ua) VALUES (?,?,?,?,?,?)",
+                (account_id or "", now(), kind, (detail or "")[:200], who.ip, who.ua),
             )
 
-    def events_for(self, account_id: str, limit: int = 50) -> list[sqlite3.Row]:
+    def events_for(self, account_id: str, limit: int = 50, before_id: int = 0) -> list[sqlite3.Row]:
+        """Newest first; ``before_id`` (an event id) pages further back."""
         with self._lock:
-            return self._conn.execute(
-                "SELECT ts, kind, detail FROM events WHERE account_id=? ORDER BY id DESC LIMIT ?", (account_id, limit)
-            ).fetchall()
+            q = "SELECT id, ts, kind, detail, ip, ua FROM events WHERE account_id=?"
+            args: list = [account_id]
+            if before_id:
+                q += " AND id<?"
+                args.append(before_id)
+            args.append(max(1, min(limit, 1000)))
+            return self._conn.execute(q + " ORDER BY id DESC LIMIT ?", args).fetchall()
+
+    def event_count(self, account_id: str) -> int:
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) AS n FROM events WHERE account_id=?", (account_id,)).fetchone()
+        return int(row["n"]) if row else 0
 
     def events_recent(self, limit: int = 100, kinds: tuple[str, ...] | None = None) -> list[sqlite3.Row]:
         with self._lock:
             if kinds:
                 marks = ",".join("?" * len(kinds))
                 return self._conn.execute(
-                    f"SELECT account_id, ts, kind, detail FROM events WHERE kind IN ({marks}) ORDER BY id DESC LIMIT ?",
+                    f"SELECT account_id, ts, kind, detail, ip, ua FROM events WHERE kind IN ({marks}) ORDER BY id DESC LIMIT ?",
                     (*kinds, limit),
                 ).fetchall()
-            return self._conn.execute("SELECT account_id, ts, kind, detail FROM events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+            return self._conn.execute(
+                "SELECT account_id, ts, kind, detail, ip, ua FROM events ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
 
     def event_counts(self, since: int) -> dict[str, int]:
         with self._lock:
@@ -686,12 +740,26 @@ class Database:
         account has spent is always the ledger's sum, so there is nothing else to keep."""
         charged = max(0, int(charged))
         cost_uy = max(0, int(cost_uy))
+        who = _client.current()
         with self.tx() as c:
             c.execute("UPDATE accounts SET used=used+? WHERE id=?", (charged, account_id))
             c.execute(
-                "INSERT INTO ledger(account_id, ts, kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy, extra) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?)",
-                (account_id, now(), kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy, extra or ""),
+                "INSERT INTO ledger(account_id, ts, kind, model, prompt_tokens, completion_tokens, charged, request_id, cost_uy, extra, ip, ua) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    account_id,
+                    now(),
+                    kind,
+                    model,
+                    prompt_tokens,
+                    completion_tokens,
+                    charged,
+                    request_id,
+                    cost_uy,
+                    extra or "",
+                    who.ip,
+                    who.ua,
+                ),
             )
 
     USAGE_KINDS = ("chat", "image", "video", "realtime")
@@ -853,25 +921,70 @@ class Database:
             ).fetchone()
         return int(r[0])
 
-    def recent_ledger(self, account_id: str, limit: int = 30) -> list[sqlite3.Row]:
+    def recent_ledger(self, account_id: str, limit: int = 30, before_id: int = 0) -> list[sqlite3.Row]:
+        """Newest first; ``before_id`` (a ledger id) pages further back, to the first line."""
+        with self._lock:
+            q = "SELECT id, ts, kind, model, prompt_tokens, completion_tokens, charged, cost_uy, extra, ip, ua FROM ledger WHERE account_id=?"
+            args: list = [account_id]
+            if before_id:
+                q += " AND id<?"
+                args.append(before_id)
+            args.append(max(1, min(limit, 1000)))
+            return self._conn.execute(q + " ORDER BY id DESC LIMIT ?", args).fetchall()
+
+    def ledger_count(self, account_id: str) -> int:
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) AS n FROM ledger WHERE account_id=?", (account_id,)).fetchone()
+        return int(row["n"]) if row else 0
+
+    def addresses_for(self, account_id: str) -> list[sqlite3.Row]:
+        """Every address the account was seen from, across sign-ins, requests and events:
+        how often, first and last — the operator's view of where an account lives."""
         with self._lock:
             return self._conn.execute(
-                "SELECT ts, kind, model, prompt_tokens, completion_tokens, charged, cost_uy, extra FROM ledger WHERE account_id=? ORDER BY id DESC LIMIT ?",
-                (account_id, limit),
+                """SELECT ip, SUM(n) AS n, MIN(first) AS first_seen, MAX(last) AS last_seen,
+                          GROUP_CONCAT(DISTINCT ua) AS uas
+                   FROM (
+                     SELECT ip, COUNT(*) AS n, MIN(ts) AS first, MAX(ts) AS last, ua FROM ledger WHERE account_id=? AND ip<>'' GROUP BY ip, ua
+                     UNION ALL
+                     SELECT ip, COUNT(*) AS n, MIN(created_at) AS first, MAX(created_at) AS last, ua FROM api_keys WHERE account_id=? AND ip<>'' GROUP BY ip, ua
+                     UNION ALL
+                     SELECT ip, COUNT(*) AS n, MIN(ts) AS first, MAX(ts) AS last, ua FROM events WHERE account_id=? AND ip<>'' GROUP BY ip, ua
+                   ) GROUP BY ip ORDER BY last_seen DESC""",
+                (account_id, account_id, account_id),
+            ).fetchall()
+
+    def accounts_at_address(self, ip: str) -> list[sqlite3.Row]:
+        """The accounts seen from one address (sign-ins, requests, events): the same person
+        on two accounts, or a household — the operator decides which."""
+        with self._lock:
+            return self._conn.execute(
+                """SELECT a.id, a.hint, a.channel, a.created_at, SUM(x.n) AS n, MAX(x.last) AS last_seen
+                   FROM (
+                     SELECT account_id, COUNT(*) AS n, MAX(ts) AS last FROM ledger WHERE ip=? GROUP BY account_id
+                     UNION ALL
+                     SELECT account_id, COUNT(*) AS n, MAX(created_at) AS last FROM api_keys WHERE ip=? GROUP BY account_id
+                     UNION ALL
+                     SELECT account_id, COUNT(*) AS n, MAX(ts) AS last FROM events WHERE ip=? AND account_id<>'' GROUP BY account_id
+                   ) x JOIN accounts a ON a.id=x.account_id
+                   GROUP BY a.id ORDER BY last_seen DESC""",
+                (ip, ip, ip),
             ).fetchall()
 
     # -- devices (the hub) ---------------------------------------------------------
 
     def upsert_device(self, account_id: str, device_id: str, name: str, kind: str, os: str, version: str, actions: str) -> None:
         t = now()
+        ip = _client.current().ip
         with self.tx() as c:
             c.execute(
-                """INSERT INTO devices(account_id, id, name, kind, os, version, actions, first_seen, last_seen)
-                   VALUES(?,?,?,?,?,?,?,?,?)
+                """INSERT INTO devices(account_id, id, name, kind, os, version, actions, first_seen, last_seen, ip)
+                   VALUES(?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(account_id, id) DO UPDATE SET
                      name=excluded.name, kind=excluded.kind, os=excluded.os, version=excluded.version,
-                     actions=excluded.actions, last_seen=excluded.last_seen""",
-                (account_id, device_id, name, kind, os, version, actions, t, t),
+                     actions=excluded.actions, last_seen=excluded.last_seen,
+                     ip=CASE WHEN excluded.ip<>'' THEN excluded.ip ELSE devices.ip END""",
+                (account_id, device_id, name, kind, os, version, actions, t, t, ip),
             )
 
     def touch_device(self, account_id: str, device_id: str) -> None:
@@ -881,7 +994,7 @@ class Database:
     def devices_for(self, account_id: str) -> list[sqlite3.Row]:
         with self._lock:
             return self._conn.execute(
-                "SELECT id, name, kind, os, version, actions, first_seen, last_seen FROM devices WHERE account_id=? ORDER BY last_seen DESC",
+                "SELECT id, name, kind, os, version, actions, first_seen, last_seen, ip FROM devices WHERE account_id=? ORDER BY last_seen DESC",
                 (account_id,),
             ).fetchall()
 

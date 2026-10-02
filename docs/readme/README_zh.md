@@ -19,13 +19,13 @@
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="GitHub stars"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="下载量"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/%E5%9C%A8%E6%B5%8F%E8%A7%88%E5%99%A8%E9%87%8C%E8%AF%95-nanomuse.cn%2Fweb-5B4EE6" alt="在浏览器里试"></a>
+  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-nanomuse.cn%2Fweb-5B4EE6" alt="在线体验"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%E7%BD%91%E7%AB%99-nanomuse.cn-0a66e4" alt="网站"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
 </p>
 
 > [!IMPORTANT]
-> **免费 · 开源 · 非盈利 —— 做属于所有人的个人智能体。** nanoMuse 是社区项目，永久免费：用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key。数据不会出售；服务器保存什么写在[隐私政策](https://nanomuse.cn/privacy/)里，「设置 → 数据控制」由你决定；账号随时可以删除。**[在浏览器里试试](https://nanomuse.cn/web/)**，或者[下载 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
+> **免费 · 开源 · 非盈利 —— 做属于所有人的个人智能体。** nanoMuse 是社区项目，永久免费：用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key。数据不会出售；服务器保存什么写在[隐私政策](https://nanomuse.cn/privacy/)里，「设置 → 数据控制」由你决定；账号随时可以删除。**[在线体验](https://nanomuse.cn/web/)**，或者[下载 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
 
 nanoMuse 是一个开源的个人智能体，面向你的每一台设备。和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一样，它是一个有名字、有自己形象的智能体：不只回答问题，而是动手做事；App 关掉了也继续干活；记得你；遇到无法撤销的操作会先停下来问你。Android App 把整个智能体跑在**手机上**：Linux 根文件系统、shell、浏览器、MCP、技能和定时任务都在 APK 里，模型由你自己带。它有一双手，能去碰那些没有 API 的 App——经你允许后，直接操作手机屏幕；也能伸到你的电脑上：在手机上说一句，事情在电脑上办好。桌面 App 和网页版也已经有了；接下来是 iOS 和眼镜。用自己的 key，或者领一份开源中转服务的体验额度；GPL-3.0——可以在它的基础上定制一个属于自己的 Muse。
 
@@ -42,6 +42,7 @@ nanoMuse 是一个开源的个人智能体，面向你的每一台设备。和 M
 
 ## 动态
 
+- **2026-10-02 · 0.1.27「Ledger」** — 中继保存你哪些对话，由一个开关说了算：每个 App 的「设置 → 数据控制」取代共创计划（邀请改为双方各得 ¥5）；会员从 Cloud key 下的模型列表里选，不用手敲 id；运营者的页面看得到每一条——谁从哪儿、用什么登录，每次请求是什么，演示站的访客也在——隐私政策写明记了什么；DeepSeek Harness 版桌面端以预览发布（`nanoMuse-Harness-0.1.27.tgz`）；Android 单元测试重新能编译。[发布说明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.27)。
 - **2026-10-02 · 0.1.26「Window」** — 浏览器里的手机取代了网页版：[nanomuse.cn/web](https://nanomuse.cn/web/) 打开是一台模拟手机，里面有一个你自己的 Muse，用的是 DeepSeek V4 Pro；体验前先登录 nanoMuse 云（这个账号在 App 里同样能用），页面上明说这是演示、App 在哪里下载；桌面版的布局向 Muse 看齐——图标栏、旁边的对话列表、左侧分节的设置——加上快速对话快捷键、「开机自动启动」，开发者的那一面收进一个开关；README 多了「现在走到哪儿了」一节，十种语言放在 `docs/readme/`；Linux 桌面版恢复可用，Windows 上拦截本机回环的机器会被明确告知。
 - **2026-10-01 · 0.1.25「Mirror」** — 名字和形象跟着账号走：在任一设备改名或换形象，其他设备片刻之后就一样（中转 0.7）；桌面版操作电脑时屏幕顶部有「停止」；网页和桌面版的形象工作室有手机上那七种画风；所有界面默认浅色，「外观」里可选；运行时先开端口再启动其余部分，桌面壳能分清启动慢、`config.toml` 有错和 glibc 太旧；macOS 运行时用自带的证书链验证中转，电脑不再显示「被拒绝」；登录页适配横屏窗口；注册后第三步就能填自己的 key，设置里也有入口；生图在中转排队重试而不是报 429；每个页面的字都少了。[发布说明](../releases/v0.1.25.md)。
 - **2026-10-01 · 0.1.24「Signal」** — 手机号在每个平台都能登录（验证码走短信；设过密码两者都能用）；网页和桌面版的形象动起来了——小龙的四段短片，工作室在有视频模型时也给新形象做短片；电脑只有登录这一种接入方式，局域网脚本去掉，电脑不在时手机会说明自己登的是哪个账号；登录了账号但没配 key 的运行时自动用中转；启动慢的时候两边都会说走到哪一步；Linux 运行时兼容 glibc 2.31；Hands 关着也找得到；门面更清爽，下载默认走 GitHub，nanomuse.cn/web 多了密码登录。[发布说明](../releases/v0.1.24.md)。
@@ -141,6 +142,7 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | [0.1.24](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.24) | Signal | 手机号在各平台登录（短信验证码，密码两者通用）；网页和桌面版的形象会动，工作室做短片；电脑只靠登录接入，去掉局域网脚本；没 key 的账号自动用中转；两端的启动诊断；Linux 运行时兼容 glibc 2.31；更清爽的门面 |
 | [0.1.25](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.25) | Mirror | 名字和形象跟着账号到每台设备；桌面 stage 上的「停止」；网页和桌面版的七种画风；默认浅色，「外观」可选；先开端口，桌面报错框说清原因；macOS 上验证中转证书；横屏登录页；注册后一步就能填自己的 key；生图排队不报错；每页字更少 |
 | [0.1.26](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.26) | Window | 浏览器里的手机取代网页版，先登录云账号，模型换成 DeepSeek V4 Pro；桌面版按 Muse 的布局来，加快速对话，开发者功能收进开关；十种语言的 README 放进 `docs/readme/`，多了「现在走到哪儿了」；修好 Linux 桌面版和 Windows 回环拦截的提示。 |
+| [0.1.27](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.27) | Ledger | 数据控制取代共创计划，邀请双方得额度；会员从 Cloud key 下的模型里选；运营者看每一条，带地址和客户端；DeepSeek Harness 版桌面端预览；Android 单元测试恢复。 |
 | 0.2.0 | Beta | 头几周使用后的打磨；第一个 beta |
 
 **再之后**，依次：iOS；部署在你自己机器上——一台 VM、一台家里的服务器——的网页版，用同一个网关；眼镜。每加一台设备，同一个智能体就多一双手、多一个入口。项目起步时的 Python 线——智能体和它的 Sentinel、网页 App、模拟手机——冻结在 tag [`pre-openminis`](https://github.com/nano-muse/nanoMuse/releases/tag/pre-openminis)，文档在 [docs/](../../docs)，是桌面和网页这两个入口的底座。

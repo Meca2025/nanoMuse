@@ -20,7 +20,7 @@
   function setLang(l) {
     root.setAttribute("data-lang", l);
     root.lang = l === "zh" ? "zh-CN" : "en";
-    document.title = l === "zh" ? "nanoMuse · 在浏览器里试" : "nanoMuse · Try it in the browser";
+    document.title = l === "zh" ? "nanoMuse · 在线体验" : "nanoMuse · Try it in the browser";
     try {
       localStorage.setItem("nm-lang", l);
     } catch (e) {

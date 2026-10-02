@@ -8,4 +8,4 @@ and the model providers so that the demo key never leaves the server and every s
 budget. Sessions end after a fixed time or when nobody has used them for a while.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

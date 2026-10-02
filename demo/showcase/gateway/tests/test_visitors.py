@@ -87,6 +87,84 @@ async def test_a_demo_needs_a_sign_in(showcase):
         assert info["signin"]["visitors"] == 1
 
 
+async def test_the_operator_sees_where_visitors_came_from_and_what_each_demo_used(showcase):
+    """0.3: the sign-in and every demo keep the address and the browser; a visit row per
+    demo with what it used; GET /api/demo/admin hands it to the relay's admin page."""
+    settings, runner, upstream, clock, book, app = showcase
+    settings = make_settings(demo_signin_required=True, admin_token="shh")
+    manager = SessionManager(settings, runner, http=book.http, clock=clock)
+    app = create_app(settings, manager, client=book.http, visitors=book)
+    async with await client_for(app) as c:
+        # no token, wrong token: not for the public
+        assert (await c.get("/api/demo/admin")).status_code == 403
+        assert (await c.get("/api/demo/admin", headers={"x-admin-token": "no"})).status_code == 403
+
+        r = await c.post(
+            "/api/demo/signin/code",
+            json={"identifier": "someone@example.com"},
+            headers={"x-forwarded-for": "1.2.3.4"},
+        )
+        assert r.status_code == 204
+        r = await c.post(
+            "/api/demo/signin/verify",
+            json={"identifier": "someone@example.com", "code": "246810"},
+            headers={"x-forwarded-for": "1.2.3.4", "user-agent": "Mozilla/5.0 (Android 14) Chrome"},
+        )
+        ticket = r.json()["ticket"]
+        v = book.store.get("acct-someone-at-example.com")
+        assert (v.first_ip, v.last_ip, v.signins) == ("1.2.3.4", "1.2.3.4", 1)
+        assert v.last_ua.startswith("Mozilla/5.0 (Android 14)")
+
+        # a demo from another address: the visitor's latest moves, the first stays
+        auth = {
+            "authorization": f"Bearer {ticket}",
+            "x-forwarded-for": "5.6.7.8",
+            "user-agent": "Mozilla/5.0 (X11; Linux) Firefox",
+        }
+        r = await c.post("/api/demo/session", json={}, headers=auth)
+        assert r.status_code == 201, r.text
+        sess = r.json()
+        v = book.store.get("acct-someone-at-example.com")
+        assert (v.first_ip, v.last_ip) == ("1.2.3.4", "5.6.7.8")
+        # the Muse talks to the model twice, then the visitor stops it
+        for _ in range(2):
+            rr = await c.post(
+                f"/llm/{sess['id']}/main/chat/completions",
+                headers={"authorization": f"Bearer {manager.sessions[sess['id']].llm_key}"},
+                json={"model": "demo-model", "messages": [{"role": "user", "content": "hi"}]},
+            )
+            assert rr.status_code == 200, rr.text
+        r = await c.delete(
+            f"/api/demo/session/{sess['id']}", headers={"authorization": f"Bearer {sess['token']}"}
+        )
+        assert r.status_code == 204
+
+        admin = {"x-admin-token": "shh"}
+        view = (await c.get("/api/demo/admin", headers=admin)).json()
+        assert view["visitors_total"] == 1 and view["visits_total"] == 1 and view["active"] == []
+        [visitor] = view["visitors"]
+        assert (
+            visitor["hint"] == "so…"
+            and visitor["last_ip"] == "5.6.7.8"
+            and visitor["sessions"] == 1
+        )
+        [visit] = view["visits"]
+        assert visit["visitor"] == "acct-someone-at-example.com" and visit["ip"] == "5.6.7.8"
+        assert visit["ua"].startswith("Mozilla/5.0 (X11; Linux)") and visit["byok"] == 0
+        assert visit["requests"] == 2 and visit["tokens"] > 0 and visit["ended"] is not None
+        assert visit["reason"] == "ended by the visitor"
+        # one visitor's visits, for the account drawer
+        mine = (
+            await c.get("/api/demo/admin?account=acct-someone-at-example.com", headers=admin)
+        ).json()
+        assert mine["visitor"]["first_ip"] == "1.2.3.4" and [x["id"] for x in mine["visits"]] == [
+            sess["id"]
+        ]
+        # the public info still says only the counts
+        info = (await c.get("/api/demo/info")).json()
+        assert info["signin"] == {"signin_required": True, "visitors": 1, "visitors_7d": 1}
+
+
 async def test_one_account_is_one_person(showcase):
     settings, runner, upstream, clock, book, app = showcase
     async with await client_for(app) as c:

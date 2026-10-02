@@ -1,8 +1,10 @@
 # nanoMuse on DeepSeek Harness
 
-> **Status: internal preview, not released.** The code is in [`harness/`](../harness/)
-> on `main`; nothing links to it from the product, the downloads or the site. The desktop
-> app people install is still [`desktop/`](desktop.md). This page is the design and the
+> **Status: preview.** The code is in [`harness/`](../harness/) on `main`, and from
+> 0.1.27 every release carries the bundle packed — `nanoMuse-Harness-<v>.tgz`, for
+> DeepSeek Harness Desktop ([harness/README.md](../harness/README.md) says how to put it
+> in). The desktop app most people install is still [`desktop/`](desktop.md); our own
+> build of the dsh shell is ahead ([Phases](#phases)). This page is the design and the
 > plan; [desktop-muse.md](desktop-muse.md) is what the window is meant to look like.
 
 ## The decision
@@ -302,11 +304,18 @@ a community project with no affiliation — apply unchanged.
    without Python (a native driver behind dsh's computer-use seam), a chosen workspace
    for tasks from other devices; the person can live in it for ordinary work on files
    and the web.
-6. **Ship** — the shell. dsh's own desktop app is an Electron wrapper around the same
-   web app with a `desktop` profile that takes external plugins (`dsh plugin --profile
-   desktop add …`), so the first nanoMuse desktop is that app with the bundle in its
-   profile; our own build of it — the name, the icon, the About, no analytics, our
-   update feed — and the installers, the downloads, the docs come after; `desktop/`
-   retired.
+6. **Ship** — the shell, in two steps. dsh's own desktop app is an Electron wrapper
+   around the same web app with a `desktop` profile that takes external plugins (`dsh
+   plugin --profile desktop add …`), so the first nanoMuse desktop is that app with the
+   bundle in its profile: **from 0.1.27 every release carries the bundle packed,
+   `nanoMuse-Harness-<v>.tgz`, with the install in [harness/README.md](../harness/README.md)
+   — a preview, next to the desktop app, not instead of it** (`.github/workflows/harness.yml`
+   builds, tests, packs it and installs the tarball into a fresh dsh profile). Our own
+   build of the shell — the name, the icon, the About, no analytics, our update feed —
+   and its installers, the downloads and the docs come after (dsh's `apps/desktop` packs
+   with electron-builder for macOS and Windows; its pipeline also prepares a private
+   Host and a primary runtime and signs on both platforms, so that build is a project of
+   its own, and a signed macOS build needs an Apple Developer account); `desktop/`
+   retired then.
 
-Until phase 6, `desktop/` is the desktop app and keeps getting its fixes.
+Until phase 6 is whole, `desktop/` is the desktop app and keeps getting its fixes.

@@ -95,7 +95,7 @@ i.en,i.zh{font-style:normal}
 <div class="page">
   <section class="words">
     <div class="brand"><img src="https://nanomuse.cn/assets/icon-512.png" alt=""><div><b>nanoMuse Web</b>
-    <small><i class="zh">在浏览器里用，不用下载</i><i class="en">In the browser, nothing to install</i></small></div></div>
+    <small><i class="zh">打开网页就能用，不用下载</i><i class="en">In the browser, nothing to install</i></small></div></div>
     <h1 class="title"><i class="zh">试试 nanoMuse</i><i class="en">Try nanoMuse</i></h1>
     <p><i class="zh">手机号或邮箱收个验证码，一分钟后就有一台属于你的 nanoMuse，模型自带。</i><i class="en">A phone number or an e-mail, a code, and a minute later a nanoMuse of your own is here, model included.</i></p>
   </section>
