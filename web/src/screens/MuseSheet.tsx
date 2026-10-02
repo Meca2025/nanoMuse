@@ -252,7 +252,7 @@ function ApprovalsView({ onDone }: { onDone: () => void }) {
           <button type="button" onClick={() => openThread(ev.thread)} className="mb-1 px-1 text-[12px] font-semibold uppercase tracking-wide text-muted hover:text-accent">
             {titleOf(ev.thread)} · {timeShort(ev.ts)}
           </button>
-          <div className="-ml-11 -mr-8">
+          <div className="rounded-[22px] border border-border/70">
             <ApprovalCard event={ev} onDecide={(approved, scope) => decide(ev.id, approved, scope).catch((e: Error) => toast(e.message))} />
           </div>
         </div>
