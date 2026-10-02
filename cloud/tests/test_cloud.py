@@ -48,12 +48,48 @@ def fake_upstream() -> FastAPI:
             return JSONResponse(status_code=503, content={"error": {"message": "unavailable"}})
         return {"object": "list", "data": [{"id": i, "object": "model", "owned_by": "system"} for i in up.state.catalog_ids]}
 
+    # what the probes find (catalog.py): the retired model answers 4xx, these read the picture
+    up.state.retired = {"qwen-1.8b-chat"}
+    up.state.sighted = {"qwen3-vl-plus", "deepseek-v4.1-flash", "qwen3.8-27b"}
+
     @up.post("/compat/v1/chat/completions")
     async def chat(request: Request):
         body = await request.json()
         up.state.requests.append(("chat", dict(request.headers), body))
         if body.get("model") == "boom":
             return JSONResponse(status_code=500, content={"error": {"message": "upstream exploded"}})
+        if body.get("model") in up.state.retired:
+            return JSONResponse(status_code=400, content={"error": {"message": "Model not exist.", "code": "invalid_parameter_error"}})
+        if body.get("reasoning_effort") not in (None, "none") and body.get("enable_thinking") is False:
+            # Model Studio's actual refusal of an app's thinking level next to the relay's old default
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {"message": "'reasoning_effort' must be 'none' when 'enable_thinking' is false", "code": "InvalidParameter"}
+                },
+            )
+        pictured = any(
+            isinstance(m.get("content"), list)
+            and any(p.get("type") == "image_url" for p in m["content"] if isinstance(p, dict))
+            and any("colour" in str(p.get("text", "")) for p in m["content"] if isinstance(p, dict))  # the probe's question
+            for m in body.get("messages") or []
+            if isinstance(m, dict)
+        )
+        if pictured and not body.get("stream"):
+            seen = body.get("model") in up.state.sighted
+            return {
+                "id": "c1",
+                "object": "chat.completion",
+                "model": body["model"],
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "Red." if seen else "I cannot see pictures."},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 30, "completion_tokens": 3, "total_tokens": 33},
+            }
         if body.get("stream"):
 
             async def gen():
@@ -146,11 +182,13 @@ def stack():
     return app, client, sender, up, cloud
 
 
-async def sign_up(client, sender, identifier="13800138000", device="pixel", invite=""):
-    r = await client.post("/v1/auth/code", json={"identifier": identifier})
+async def sign_up(client, sender, identifier="13800138000", device="pixel", invite="", headers=None):
+    r = await client.post("/v1/auth/code", json={"identifier": identifier}, headers=headers)
     assert r.status_code == 204, r.text
     ident, code = sender.sent[-1]
-    r = await client.post("/v1/auth/verify", json={"identifier": identifier, "code": code, "device": device, "invite": invite})
+    r = await client.post(
+        "/v1/auth/verify", json={"identifier": identifier, "code": code, "device": device, "invite": invite}, headers=headers
+    )
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -961,7 +999,7 @@ async def test_the_showcase_visitors_reach_the_admin_page(monkeypatch):
     # not configured: the panel says so, the drawer has nothing to show
     monkeypatch.undo()
     app2, client2, sender2, up2, cloud2 = make_stack()
-    assert (await client2.get("/v1/admin/demo", headers=admin)).json() == {"available": False}
+    assert (await client2.get("/v1/admin/demo", headers=admin)).json() == {"available": False, "places": {}}
     data2 = await sign_up(client2, sender2)
     assert (await client2.get(f"/v1/admin/accounts/{data2['account']['id']}", headers=admin)).json()["demo"] is None
 
@@ -970,8 +1008,9 @@ async def test_members_see_the_models_under_the_key_and_pick():
     """0.10: GET /v1/models for a member carries, after the menu, the usable models the
     provider lists under the operator's key — sorted into chat and pictures by their ids,
     the spoken / heard / embedded ones left out — so the apps' pickers offer them. Guests see
-    the menu alone; the list is cached and a provider that stops answering leaves it in place."""
-    app, client, sender, up, cloud = make_stack(allowed_identifiers="Me@Example.com", allowance_cny=0.5)
+    the menu alone; the list is cached and a provider that stops answering leaves it in place.
+    (Names only here — the probes are the next test.)"""
+    app, client, sender, up, cloud = make_stack(allowed_identifiers="Me@Example.com", allowance_cny=0.5, catalog_probe=False)
     member = await sign_up(client, sender, identifier="me@example.com", device="desk")
     guest = await sign_up(client, sender, identifier="13800138000", device="pixel")
     mh = {"Authorization": f"Bearer {member['api_key']}"}
@@ -985,15 +1024,17 @@ async def test_members_see_the_models_under_the_key_and_pick():
     assert set(extra) == {"deepseek-v4.1-flash", "qwen3-vl-plus", "vanchin/deepseek-v3", "qwen-image-edit-max", "wan2.7-image"}
     assert extra["deepseek-v4.1-flash"]["nanomuse"]["kind"] == "chat" and extra["deepseek-v4.1-flash"]["nanomuse"]["listed"] is False
     assert extra["deepseek-v4.1-flash"]["nanomuse"]["priced_as"] == "qwen3.8-27b"
-    assert extra["deepseek-v4.1-flash"]["architecture"]["input_modalities"] == ["text"]  # not known to read pictures
+    assert extra["vanchin/deepseek-v3"]["architecture"]["input_modalities"] == ["text"]  # not known to read pictures
+    assert extra["deepseek-v4.1-flash"]["nanomuse"]["vision"] is True  # DeepSeek V4 on Model Studio reads them
     assert extra["qwen3-vl-plus"]["nanomuse"]["vision"] is True and extra["qwen3-vl-plus"]["architecture"]["input_modalities"] == [
         "text",
         "image",
     ]
+    assert extra["qwen3-vl-plus"]["nanomuse"]["verified"] is False  # the name's word, no probe asked
     assert extra["qwen-image-edit-max"]["nanomuse"]["kind"] == "image" and extra["wan2.7-image"]["architecture"]["output_modalities"] == [
         "image"
     ]
-    assert listing["nanomuse"]["catalog"] == {"models": 5, "error": ""}
+    assert listing["nanomuse"]["catalog"] == {"models": 5, "error": "", "probing": False}
     # the provider was asked with the operator's key, once; the second read is from the cache
     asked = [q for q in up.state.requests if q[0] == "models"]
     assert len(asked) == 1 and asked[0][1]["authorization"] == "Bearer sk-upstream"
@@ -1020,7 +1061,8 @@ def test_the_catalog_sorts_ids_by_their_shape():
     from nanomuse_cloud.catalog import classify
 
     assert classify("qwen3.8-27b") == ("chat", True)  # the 3.5+ generations read pictures
-    assert classify("deepseek-v4.1-flash") == ("chat", False)
+    assert classify("deepseek-v4.1-flash") == ("chat", True)  # V4 reads them on Model Studio (checked)
+    assert classify("vanchin/deepseek-v3") == ("chat", False)
     assert classify("qwen3-vl-plus") == ("chat", True)
     assert classify("qvq-max") == ("chat", True)
     assert classify("gui-plus") == ("chat", True)
@@ -1048,6 +1090,260 @@ def test_the_catalog_sorts_ids_by_their_shape():
         "",
     ):
         assert classify(other) == ("other", False), other
+    assert classify("deepseek-v4-pro") == ("chat", True) and classify("deepseek-v3.2") == ("chat", False)
+
+
+async def test_the_catalog_asks_each_model_whether_it_answers_and_sees():
+    """0.11: after the list is read, every chat model is asked two one-word questions in the
+    background; a model the provider refuses (retired) is left off the list, the vision flag
+    is what the model answered about the red square, and the answers are kept in the
+    database so a restart does not ask again. The admin page sees the whole of it."""
+    up0 = fake_upstream()
+    ids = list(up0.state.catalog_ids) + ["qwen-1.8b-chat", "qwen-plus"]
+    app, client, sender, up, cloud = make_stack(allowed_identifiers="Me@Example.com", allowance_cny=0.5)
+    up.state.catalog_ids = ids
+    member = await sign_up(client, sender, identifier="me@example.com", device="desk")
+    mh = {"Authorization": f"Bearer {member['api_key']}"}
+    admin = {"X-Admin-Token": "admin"}
+
+    first = (await client.get("/v1/models", headers=mh)).json()
+    catalog = app.state.catalog
+    assert first["nanomuse"]["catalog"]["probing"] is True or catalog._probing is not None
+    await catalog._probing  # the background round
+    probes = [q for q in up.state.requests if q[0] == "chat"]
+    # the retired model was asked once (its refusal is the answer); the rest twice (text, then the picture)
+    by_model: dict[str, int] = {}
+    for q in probes:
+        by_model[q[2]["model"]] = by_model.get(q[2]["model"], 0) + 1
+    assert by_model["qwen-1.8b-chat"] == 1 and by_model["qwen-plus"] == 2 and by_model["deepseek-v4.1-flash"] == 2
+    assert "qwen-image-edit-max" not in by_model  # picture models are not asked
+
+    listing = (await client.get("/v1/models", headers=mh)).json()
+    extra = {m["id"]: m for m in listing["data"] if m["nanomuse"].get("catalog")}
+    assert "qwen-1.8b-chat" not in extra  # the provider's "no" takes it off the list
+    assert extra["qwen-plus"]["nanomuse"]["vision"] is False and extra["qwen-plus"]["nanomuse"]["verified"] is True
+    assert extra["qwen-plus"]["architecture"]["input_modalities"] == ["text"]
+    assert extra["vanchin/deepseek-v3"]["nanomuse"]["vision"] is False  # the name guessed right; now verified
+    assert extra["deepseek-v4.1-flash"]["nanomuse"]["vision"] is True and extra["deepseek-v4.1-flash"]["nanomuse"]["verified"] is True
+    assert extra["deepseek-v4.1-flash"]["architecture"]["input_modalities"] == ["text", "image"]
+    assert listing["nanomuse"]["catalog"]["models"] == 6 and listing["nanomuse"]["catalog"]["probing"] is False
+
+    # kept: a second catalog over the same database asks nothing more
+    n_before = len([q for q in up.state.requests if q[0] == "chat"])
+    from nanomuse_cloud.catalog import Catalog
+
+    again = Catalog(ttl_s=3600, probe_ttl_s=7 * 86400, store=cloud.db)
+    await again.get(app.state.http, cloud.s.upstream_base, cloud.s.upstream_key)
+    if again._probing is not None:
+        await again._probing
+    assert len([q for q in up.state.requests if q[0] == "chat"]) == n_before
+    assert {e.id for e in again.entries} == {e.id for e in catalog.entries}
+
+    # the admin page: what the key has, which were refused, with the provider's words
+    r = await client.get("/v1/admin/catalog", headers=admin)
+    assert r.status_code == 200, r.text
+    summary = r.json()
+    assert summary["enabled"] and summary["probe"] and summary["pending"] == 0
+    assert [u["id"] for u in summary["unusable"]] == ["qwen-1.8b-chat"] and "Model not exist" in summary["unusable"][0]["note"]
+    assert {m["id"]: m["vision"] for m in summary["models"] if m["kind"] == "chat"}["deepseek-v4.1-flash"] is True
+
+
+async def test_the_thinking_default_follows_what_the_request_already_says():
+    """The shipped default (`enable_thinking: false`) saves reasoning tokens — but an app that
+    sets a thinking level sends `reasoning_effort`, and Model Studio refuses that next to
+    `enable_thinking: false`. The relay reads what the request says about reasoning, in any
+    of the dialects, and sets the default accordingly."""
+    from nanomuse_cloud.api import apply_chat_defaults, thinking_requested
+
+    d = {"enable_thinking": False}
+    for body, wants in (
+        ({}, None),
+        ({"enable_thinking": True}, True),
+        ({"thinking": {"type": "enabled"}}, True),
+        ({"thinking": {"type": "disabled"}}, False),
+        ({"thinking": True}, True),
+        ({"reasoning_effort": "low"}, True),
+        ({"reasoning_effort": "none"}, False),
+        ({"thinking_budget": 2000}, True),
+    ):
+        assert thinking_requested(body) is wants, body
+    silent: dict = {"model": "m"}
+    apply_chat_defaults(silent, d)
+    assert silent["enable_thinking"] is False
+    effort: dict = {"reasoning_effort": "medium"}
+    apply_chat_defaults(effort, d)
+    assert effort == {"reasoning_effort": "medium", "enable_thinking": True}
+    none: dict = {"reasoning_effort": "none"}
+    apply_chat_defaults(none, d)
+    assert none == {"reasoning_effort": "none", "enable_thinking": False}
+    # declined one way, asked another: the decline wins and the effort is made consistent
+    mixed: dict = {"thinking": {"type": "disabled"}, "reasoning_effort": "high"}
+    apply_chat_defaults(mixed, d)
+    assert mixed["enable_thinking"] is False and mixed["reasoning_effort"] == "none"
+    explicit: dict = {"enable_thinking": True, "reasoning_effort": "low"}
+    apply_chat_defaults(explicit, d)
+    assert explicit == {"enable_thinking": True, "reasoning_effort": "low"}
+
+    # end to end: the request that used to come back 400 goes through
+    app, client, sender, up, cloud = make_stack(catalog_probe=False)
+    data = await sign_up(client, sender, identifier="13800138000", device="pixel")
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    r = await client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "qwen3.8-27b", "reasoning_effort": "low", "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert r.status_code == 200, r.text
+    sent = [q for q in up.state.requests if q[0] == "chat"][-1][2]
+    assert sent["enable_thinking"] is True and sent["reasoning_effort"] == "low"
+
+
+async def test_an_upstream_refusal_is_written_down_with_the_providers_words():
+    """The `upstream.error` event names the model and keeps the provider's message, so the
+    admin page says why a request failed — never what was asked."""
+    from nanomuse_cloud.api import upstream_detail
+
+    raw = b'{"error":{"message":"\'reasoning_effort\' must be \'none\' when \'enable_thinking\' is false","code":"InvalidParameter"}}'
+    assert upstream_detail("chat", 400, "qwen3.8-27b", raw) == (
+        "chat 400 qwen3.8-27b: 'reasoning_effort' must be 'none' when 'enable_thinking' is false"
+    )
+    assert upstream_detail("chat", 502, "m", b"<html>bad gateway</html>") == "chat 502 m"
+    assert upstream_detail("chat", 400, "m", b'{"message": "plain\\nlines"}') == "chat 400 m: plain lines"
+
+    app, client, sender, up, cloud = make_stack(catalog_probe=False)
+    data = await sign_up(client, sender, identifier="13800138000", device="pixel")
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    up.state.retired.add("qwen3.8-flash")
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-flash", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert r.status_code == 400
+    events = (await client.get("/v1/me/events", headers=headers)).json()["events"]
+    err = next(e for e in events if e["kind"] == "upstream.error")
+    assert err["detail"] == "chat 400 qwen3.8-flash: Model not exist."
+    # the streaming path says the same
+    r = await client.post(
+        "/v1/chat/completions",
+        headers=headers,
+        json={"model": "qwen3.8-flash", "stream": True, "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert r.status_code == 200 and b"Model not exist" in r.content
+    events = (await client.get("/v1/me/events", headers=headers)).json()["events"]
+    assert sum(1 for e in events if e["detail"] == "chat 400 qwen3.8-flash: Model not exist.") == 2
+
+
+def tiny_xdb(ranges: list[tuple[str, str, str]]) -> bytes:
+    """A real xdb (structure 3, IPv4) with just these ranges — the format geo.py reads:
+    header, 256×256 vector index, the segment index, the region strings."""
+    import ipaddress
+    import struct
+
+    HEADER, CELLS = 256, 256 * 256
+    segs = sorted((int(ipaddress.ip_address(a)), int(ipaddress.ip_address(b)), r.encode()) for a, b, r in ranges)
+    index_start = HEADER + CELLS * 8
+    index_len = 14 * len(segs)
+    data_start = index_start + index_len
+    data, ptrs, p = b"", [], data_start
+    for _, _, region in segs:
+        ptrs.append((p, len(region)))
+        data += region
+        p += len(region)
+    index = b"".join(struct.pack("<IIHI", s, e, ln, ptr) for (s, e, _), (ptr, ln) in zip(segs, ptrs, strict=True))
+    vector = bytearray(CELLS * 8)
+    # each (first, second octet) cell gets the byte range of the entries that can hold it
+    by_cell: dict[int, list[int]] = {}
+    for i, (s, e, _) in enumerate(segs):
+        for cell in range(s >> 16, (e >> 16) + 1):
+            by_cell.setdefault(cell, []).append(i)
+    for cell, rows in by_cell.items():
+        struct.pack_into("<II", vector, cell * 8, index_start + 14 * rows[0], index_start + 14 * (rows[-1] + 1))
+    header = bytearray(HEADER)
+    struct.pack_into("<HHIII", header, 0, 3, 1, 0, index_start, data_start)
+    struct.pack_into("<HH", header, 16, 4, 4)
+    return bytes(header) + bytes(vector) + index + data
+
+
+async def test_addresses_come_with_where_they_are(tmp_path):
+    """0.11: the admin page's answers carry `places` — country, province, city — for the
+    addresses they show, read from ip2region's file in the data directory (nothing is sent
+    anywhere); private addresses are "本地网络"; an address the file does not know is left
+    out; a missing file means places stay unknown and the page is told."""
+    from nanomuse_cloud.geo import Geo, Xdb, collect_ips, group_places, parse_region
+
+    db = tmp_path / "ip2region_v4.xdb"
+    db.write_bytes(
+        tiny_xdb(
+            [
+                ("1.2.3.0", "1.2.3.255", "中国|浙江省|杭州市|阿里|CN"),
+                ("8.8.8.0", "8.8.8.255", "United States|California|0|Google LLC|US"),
+                ("1.2.4.0", "1.2.4.255", "中国|北京市|北京市|联通|CN"),
+            ]
+        )
+    )
+    x = Xdb.load(db)
+    import ipaddress
+
+    assert x.search(ipaddress.ip_address("1.2.3.4").packed) == "中国|浙江省|杭州市|阿里|CN"
+    assert x.search(ipaddress.ip_address("1.2.4.200").packed).startswith("中国|北京市")
+    assert x.search(ipaddress.ip_address("1.2.5.1").packed) == "" and x.search(ipaddress.ip_address("9.9.9.9").packed) == ""
+    p = parse_region("中国|浙江省|杭州市|阿里|CN")
+    assert (p.country, p.province, p.city, p.isp, p.code, p.text) == ("中国", "浙江省", "杭州市", "阿里", "CN", "中国 · 浙江省 · 杭州市")
+    assert parse_region("中国|北京市|北京市|联通|CN").text == "中国 · 北京市"
+    assert parse_region("United States|California|0|Google LLC|US").text == "United States · California"
+    assert parse_region("中国|华东|浙江省|杭州市|阿里").province == "浙江省"  # the older layout
+    assert parse_region("0|0|0|0|0").country == ""
+
+    geo = Geo(str(db))
+    assert geo.ready and geo.status()["families"] == [4]
+    assert geo.place("1.2.3.4").text == "中国 · 浙江省 · 杭州市" and geo.place("::ffff:8.8.8.8").code == "US"
+    assert geo.place("10.0.0.1").local and geo.place("127.0.0.1").text == "本地网络"
+    assert geo.place("9.9.9.9") is None and geo.place("not an ip") is None and geo.place("") is None
+    assert geo.place("2400:3200::1") is None  # no IPv6 file
+    assert collect_ips({"a": [{"ip": "1.2.3.4", "x": {"last_ip": "8.8.8.8", "first_ip": ""}}], "ip": "10.0.0.1"}) == {
+        "1.2.3.4",
+        "8.8.8.8",
+        "10.0.0.1",
+    }
+    grouped = group_places([("1.2.3.4", 5), ("1.2.3.9", 1), ("8.8.8.8", 2), ("9.9.9.9", 7), ("10.0.0.1", 1)], geo)
+    assert [(g["country"], g["province"], g["n"], g["ips"]) for g in grouped] == [
+        ("", "", 7, 1),
+        ("中国", "浙江省", 6, 2),
+        ("United States", "California", 2, 1),
+        ("本地网络", "", 1, 1),
+    ]
+
+    # through the relay: a sign-in from Hangzhou, and the page's answers say so
+    app, client, sender, up, cloud = make_stack(geoip_db=str(db), catalog_probe=False)
+    assert app.state.geo.ready
+    data = await sign_up(client, sender, identifier="13800138000", device="pixel", headers={"X-Forwarded-For": "1.2.3.4"})
+    headers = {"Authorization": f"Bearer {data['api_key']}", "X-Forwarded-For": "1.2.3.4"}
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert r.status_code == 200
+    admin = {"X-Admin-Token": "admin"}
+    listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
+    assert listing["accounts"][0]["last_ip"] == "1.2.3.4" and listing["places"]["1.2.3.4"]["text"] == "中国 · 浙江省 · 杭州市"
+    account_id = data["account"]["id"]
+    detail = (await client.get(f"/v1/admin/accounts/{account_id}", headers=admin)).json()
+    assert detail["places"]["1.2.3.4"]["city"] == "杭州市"
+    addr = (await client.get("/v1/admin/address", headers=admin, params={"ip": "1.2.3.4"})).json()
+    assert addr["place"]["province"] == "浙江省" and addr["accounts"][0]["id"] == account_id
+    unknown = (await client.get("/v1/admin/address", headers=admin, params={"ip": "9.9.9.9"})).json()
+    assert unknown["place"] is None
+    overview = (await client.get("/v1/admin/overview", headers=admin)).json()
+    assert overview["geo"]["ready"] is True
+    places = (await client.get("/v1/admin/places", headers=admin, params={"days": 7})).json()
+    assert places["geo"]["ready"] and places["demo_visitors"] is None  # no showcase gateway configured
+    assert places["accounts"] == [{"country": "中国", "code": "CN", "province": "浙江省", "n": 1, "ips": 1}]
+    assert places["requests"][0]["n"] == 1 and places["signins"][0]["country"] == "中国" and places["new_accounts"][0]["n"] == 1
+
+    # no file, no fetch (an in-memory database has no directory): places stay unknown, honestly
+    app2, client2, *_ = make_stack(catalog_probe=False)
+    assert not app2.state.geo.enabled
+    overview2 = (await client2.get("/v1/admin/overview", headers=admin)).json()
+    assert overview2["geo"] == {"enabled": False, "ready": False, "families": [], "error": "", "fetching": False, "file": ""}
+    assert overview2["places"] == {}
 
 
 def test_code_mail_has_text_and_html_in_both_languages():
@@ -1104,7 +1400,7 @@ async def test_data_controls_keep_the_training_view_only_and_are_deletable(stack
     assert me["contribute"]["on"] is False and me["contribute"]["samples"] == 0 and me["contribute"]["default_on"] is False
     assert me["contribute"]["privacy_url"] == "https://nanomuse.cn/privacy/" and "what you wrote" in me["contribute"]["keeps"]["kept"]
     assert me["contribute"]["bonus_cny"] == 0 and me["contribute"]["bonus_available"] is False
-    assert (await client.get("/v1/admin/samples", headers=admin)).json() == {"samples": [], "total": 0}
+    assert (await client.get("/v1/admin/samples", headers=admin)).json() == {"samples": [], "total": 0, "places": {}}
 
     r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
     assert r.status_code == 200

@@ -8,11 +8,21 @@ back into chat, image and video by the shape of the id, and lists the usable one
 — so the apps' pickers show them and the person chooses rather than types.
 
 What the provider lists carries no modalities (``id``, ``object``, ``owned_by`` and a date), so
-the sorting is by name: ``image`` in the id is a picture model, ``t2v``/``i2v`` and their kin a
-clip model, speech / transcription / embedding / reranking / live-translation ids are left
-out (they do not answer chat completions), everything else is a chat model, with a vision
-hint for the families known to read pictures. A wrong guess costs nothing: the kind is checked
-again when the model is used, and an id a member types still works as before.
+the first sorting is by name: ``image`` in the id is a picture model, ``t2v``/``i2v`` and their
+kin a clip model, speech / transcription / embedding / reranking / live-translation ids are
+left out (they do not answer chat completions), everything else is a chat model, with a
+vision hint for the families known to read pictures.
+
+Names lie, though — DeepSeek V4 on Model Studio reads pictures, half the ``qwen-*`` ids are
+retired and answer 4xx — so since 0.11 the relay *asks each chat model* once (``probe``): a
+one-word text request, and if that is answered, a one-word question about a small red
+picture. A model that refuses the text request is left off the list; one that names the
+colour is marked as reading pictures (``input_modalities`` carries ``image``), one that does
+not is marked text-only. The answers are kept in the database for ``CLOUD_CATALOG_PROBE_TTL_S``
+(a week) and the probing runs in the background after each refresh of the list, a few models
+at a time, so no request waits for it. ``CLOUD_CATALOG_PROBE=0`` leaves the names to speak for
+themselves, as before. A wrong guess still costs nothing: the kind is checked again when the
+model is used, and an id a member types works as before.
 
 Cached for ``CLOUD_CATALOG_TTL_S`` (an hour); a provider that does not answer leaves the last
 good list in place, or none. ``CLOUD_CATALOG=0`` switches the whole thing off.
@@ -21,10 +31,14 @@ good list in place, or none. ``CLOUD_CATALOG=0`` switches the whole thing off.
 from __future__ import annotations
 
 import asyncio
+import base64
+import json
 import logging
 import re
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
+from typing import Protocol
 
 import httpx
 
@@ -40,10 +54,22 @@ _NOT_FOR_US = re.compile(
 _VIDEO = re.compile(r"(^|[-/_.])(t2v|i2v|kf2v|s2v|r2v|v2v|video|animate|seedance|veo|sora)([-/_.]|$)")
 _IMAGE = re.compile(r"(^|[-/_.])(image|t2i|i2i|seedream|flux|stable-diffusion|sdxl|dall-e|imagen|z-image)([-/_.]|$)|image")
 # chat models known to read pictures: the VL and QVQ lines, OCR, the GUI model, the Qwen
-# generations that are multimodal from the start (3.5 on), Kimi K2.5 on, GPT-4o/5, Gemini, Claude
+# generations that are multimodal from the start (3.5 on), Kimi K2.5 on, DeepSeek V4 on
+# (checked on Model Studio), GPT-4o/5, Gemini, Claude — the guess before the probe answers
 _VISION = re.compile(
-    r"(^|[-/_.])(vl|qvq|vision|ocr|gui|gpt-4o|gpt-5|gemini|claude|kimi-k2\.[5-9]|kimi-k[3-9])([-/_.]|$)|qwen3\.[5-9]|qwen[4-9]"
+    r"(^|[-/_.])(vl|qvq|vision|ocr|gui|gpt-4o|gpt-5|gemini|claude|kimi-k2\.[5-9]|kimi-k[3-9])([-/_.]|$)"
+    r"|qwen3\.[5-9]|qwen[4-9]|deepseek-v[4-9]"
 )
+
+# the probe: one word back, and the colour of a 16×16 red square (a PNG of 83 bytes)
+PROBE_TEXT = "Reply with the single word OK."
+PROBE_PICTURE_QUESTION = "What colour is this picture? Answer with one word."
+_RED_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAGklEQVR42mO8IyLCQApgYiARjGoY1TB0NAAATz0BJHAVIksAAAAASUVORK5CYII="
+)
+_RED_WORDS = re.compile(r"red|crimson|scarlet|红|赤", re.IGNORECASE)
+PROBE_TIMEOUT_S = 30.0
+PROBE_CONCURRENCY = 3
 
 
 def classify(model_id: str) -> tuple[str, bool]:
@@ -67,21 +93,90 @@ class Entry:
     id: str
     kind: str
     vision: bool = False
+    verified: bool = False  # the vision flag comes from the probe, not the name
+
+
+@dataclass
+class Probe:
+    """What one chat model answered: whether it answers at all, whether it saw the picture."""
+
+    model_id: str
+    works: bool
+    vision: bool
+    checked_at: int
+    note: str = ""
+
+
+class ProbeStore(Protocol):
+    """Where the probes are kept between restarts (db.py)."""
+
+    def probes(self) -> list[Probe]: ...
+
+    def save_probe(self, probe: Probe) -> None: ...
+
+
+def _message_text(obj: object) -> str:
+    if not isinstance(obj, dict):
+        return ""
+    for ch in obj.get("choices") or []:
+        msg = ch.get("message") if isinstance(ch, dict) else None
+        if isinstance(msg, dict):
+            content = msg.get("content")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                return " ".join(str(p.get("text") or "") for p in content if isinstance(p, dict))
+    return ""
+
+
+def _error_text(r: httpx.Response) -> str:
+    try:
+        obj = r.json()
+        err = obj.get("error") if isinstance(obj, dict) else None
+        if isinstance(err, dict):
+            return " ".join(str(err.get("message") or err.get("code") or "").split())[:200]
+    except ValueError:
+        pass
+    return f"HTTP {r.status_code}"
 
 
 @dataclass
 class Catalog:
-    """The provider's list, sorted and cached; one fetch at a time."""
+    """The provider's list, sorted and cached; one fetch at a time; probed in the background."""
 
     ttl_s: int = 3600
+    probe_ttl_s: int = 7 * 86400
+    store: ProbeStore | None = None  # None: no probing, the names speak for themselves
     entries: list[Entry] = field(default_factory=list)
     fetched_at: float = 0.0
     error: str = ""
+    _raw: list[Entry] = field(default_factory=list)  # the sorted list before the probes have their say
+    _probes: dict[str, Probe] = field(default_factory=dict)
+    _loaded: bool = False
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    _probing: asyncio.Task | None = None
 
     @property
     def fresh(self) -> bool:
         return bool(self.fetched_at) and time.time() - self.fetched_at < self.ttl_s
+
+    @property
+    def probing(self) -> bool:
+        return self._probing is not None and not self._probing.done()
+
+    @property
+    def probes(self) -> dict[str, Probe]:
+        self._load()
+        return self._probes
+
+    def _load(self) -> None:
+        if self._loaded or self.store is None:
+            return
+        self._loaded = True
+        try:
+            self._probes = {p.model_id: p for p in self.store.probes()}
+        except Exception as exc:  # noqa: BLE001 — a database that cannot be read leaves the names
+            log.warning("catalog: the probes could not be read (%s)", exc)
 
     async def get(self, http: httpx.AsyncClient, base: str, key: str) -> list[Entry]:
         """The usable models under the key, from the cache when it is fresh."""
@@ -91,6 +186,8 @@ class Catalog:
             # another request may have refreshed it while this one waited for the lock
             if not self.fresh:
                 await self._refresh(http, base, key)
+        if self.store is not None and self._raw and not self.probing:
+            self._probing = asyncio.create_task(self.probe(http, base, key))
         return self.entries
 
     async def _refresh(self, http: httpx.AsyncClient, base: str, key: str) -> None:
@@ -115,7 +212,123 @@ class Catalog:
             kind, vision = classify(mid)
             if kind != "other":
                 out.append(Entry(id=mid, kind=kind, vision=vision))
-        self.entries = out
+        self._raw = out
+        self._apply()
         self.error = ""
         self.fetched_at = time.time()
-        log.info("catalog: %d models under the key, %d usable", len(ids), len(out))
+        log.info("catalog: %d models under the key, %d usable", len(ids), len(self.entries))
+
+    def _apply(self) -> None:
+        """The list the members see: the names' sorting, corrected by what the probes found —
+        a model that does not answer is left off, the vision flag is the probe's."""
+        self._load()
+        out: list[Entry] = []
+        for e in self._raw:
+            p = self._probes.get(e.id) if e.kind == "chat" else None
+            if p is None:
+                out.append(Entry(id=e.id, kind=e.kind, vision=e.vision))
+            elif p.works:
+                out.append(Entry(id=e.id, kind=e.kind, vision=p.vision, verified=True))
+        self.entries = out
+
+    def _stale(self, entries: Iterable[Entry]) -> list[Entry]:
+        self._load()
+        cutoff = time.time() - self.probe_ttl_s
+        return [e for e in entries if e.kind == "chat" and (e.id not in self._probes or self._probes[e.id].checked_at < cutoff)]
+
+    async def probe(self, http: httpx.AsyncClient, base: str, key: str) -> int:
+        """Ask every chat model the probes have no fresh word on; a few at a time. Returns
+        how many were asked. A model that does not answer at all (timeout, 5xx) is asked
+        again next time; only a 4xx — the provider's "no" — is written down."""
+        todo = self._stale(self._raw)
+        if not todo:
+            return 0
+        sem = asyncio.Semaphore(PROBE_CONCURRENCY)
+        asked = 0
+
+        async def one(entry: Entry) -> None:
+            nonlocal asked
+            async with sem:
+                probe = await probe_model(http, base, key, entry.id)
+            if probe is None:
+                return
+            asked += 1
+            self._probes[entry.id] = probe
+            if self.store is not None:
+                try:
+                    self.store.save_probe(probe)
+                except Exception as exc:  # noqa: BLE001 — the answer still serves this run
+                    log.warning("catalog: probe of %s not saved (%s)", entry.id, exc)
+
+        await asyncio.gather(*(one(e) for e in todo))
+        self._apply()
+        seen = [p for p in self._probes.values() if p.model_id in {e.id for e in self._raw}]
+        log.info(
+            "catalog: probed %d models; %d answer, %d of them read pictures, %d do not answer",
+            asked,
+            sum(1 for p in seen if p.works),
+            sum(1 for p in seen if p.works and p.vision),
+            sum(1 for p in seen if not p.works),
+        )
+        return asked
+
+    def summary(self) -> dict:
+        """For the admin page: what the key has, and what the probes said."""
+        self._load()
+        raw_ids = {e.id for e in self._raw}
+        refused = sorted((p for p in self._probes.values() if p.model_id in raw_ids and not p.works), key=lambda p: p.model_id)
+        unusable = [{"id": p.model_id, "note": p.note, "checked_at": p.checked_at} for p in refused]
+        return {
+            "fetched_at": int(self.fetched_at) if self.fetched_at else None,
+            "error": self.error,
+            "probing": self.probing,
+            "models": [{"id": e.id, "kind": e.kind, "vision": e.vision, "verified": e.verified} for e in self.entries],
+            "unusable": unusable,
+            "pending": len(self._stale(self._raw)),
+        }
+
+
+async def probe_model(http: httpx.AsyncClient, base: str, key: str, model_id: str) -> Probe | None:
+    """Two small requests to one chat model. None when the provider did not answer (the
+    question stays open); a Probe otherwise — `works` false on a 4xx, `vision` from whether
+    the model named the colour of the red square."""
+    url = f"{base.rstrip('/')}/chat/completions"
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+
+    async def ask(messages: list[dict], thinking_off: bool) -> httpx.Response | None:
+        body: dict = {"model": model_id, "messages": messages, "max_tokens": 16}
+        if thinking_off:
+            body["enable_thinking"] = False
+        try:
+            return await http.post(url, headers=headers, content=json.dumps(body).encode(), timeout=PROBE_TIMEOUT_S)
+        except httpx.HTTPError as exc:
+            log.debug("catalog: probe of %s did not get through (%s)", model_id, type(exc).__name__)
+            return None
+
+    r = await ask([{"role": "user", "content": PROBE_TEXT}], thinking_off=True)
+    if r is not None and r.status_code == 400 and "thinking" in _error_text(r).lower():
+        r = await ask([{"role": "user", "content": PROBE_TEXT}], thinking_off=False)  # a thinking-only model
+    if r is None or r.status_code >= 500:
+        return None
+    checked = int(time.time())
+    if r.status_code >= 400:
+        return Probe(model_id=model_id, works=False, vision=False, checked_at=checked, note=_error_text(r))
+    picture = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": PROBE_PICTURE_QUESTION},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(_RED_PNG).decode()}},
+            ],
+        }
+    ]
+    p = await ask(picture, thinking_off=True)
+    if p is None or p.status_code >= 500:
+        return None  # the first half was answered, but the question of pictures stays open
+    if p.status_code >= 400:
+        return Probe(model_id=model_id, works=True, vision=False, checked_at=checked, note=_error_text(p))
+    try:
+        answer = _message_text(p.json())
+    except ValueError:
+        answer = ""
+    return Probe(model_id=model_id, works=True, vision=bool(_RED_WORDS.search(answer)), checked_at=checked, note=answer.strip()[:60])

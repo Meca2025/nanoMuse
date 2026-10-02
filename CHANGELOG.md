@@ -4,6 +4,16 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Added
+
+- **The admin page says where people are** (relay 0.11.0). Every address on the operator's page — in the accounts table, the account drawer, the sign-ins, the statement, the timeline, the showcase's visitors — is named with its country, province and city, looked up in an offline copy of [ip2region](https://github.com/lionsoul2014/ip2region)'s database (Apache-2.0; city level in China, country and state elsewhere) that the relay fetches once after start into its data directory (`ip2region_v4.xdb`, 11 MB) and reads in memory: no third party is asked about a visitor, nothing more is stored. The admin answers that carry addresses add `places` (`{ip: {country, code, province, city, isp, text}}`), the address drawer says where the address is, and a *Where from* panel (`GET /v1/admin/places?days=`) counts accounts by their latest address, new accounts, sign-ins, requests and demo visitors by country and province. `CLOUD_GEOIP=0` switches it off; `CLOUD_GEOIP_DB` / `CLOUD_GEOIP_URL` name the file, `CLOUD_GEOIP_V6_URL` adds the IPv6 file; the overview's `geo` block says whether the file is there, being fetched, or failed, and the panel says so.
+- **The relay checks each catalog model instead of guessing from its name** (relay 0.11.0). After the provider's list is read, every chat model on it is asked, in the background and three at a time, to reply with one word and then to name the colour of a small red square: a model the provider refuses (retired, say) is left off the list, `vision` is what the model answered — DeepSeek V4 on Model Studio reads pictures, and its name does not say so — and `verified: true` marks an entry the probes have confirmed; the answers are kept in the database (`model_probes`) for a week (`CLOUD_CATALOG_PROBE_TTL_S`; `CLOUD_CATALOG_PROBE=0` goes by the names). `/v1/models` carries `input_modalities` from it and `nanomuse.catalog.probing`; `GET /v1/admin/catalog` and a *Model catalog* panel on the admin page show which models answer, which see, which were refused and with what words.
+
+### Fixed
+
+- **A thinking level set in an app no longer makes the Cloud model refuse** (relay 0.11.0). The relay's shipped `CHAT_DEFAULTS` adds `enable_thinking: false` to save reasoning tokens, and Model Studio refuses that next to a `reasoning_effort` other than `none` — so a member who turned thinking on in the Android app got a 400 on every message. The relay now reads what the request says about reasoning (`enable_thinking`, `thinking`, `reasoning_effort`, `thinking_budget`) and sets the default accordingly, and makes an explicit "off" consistent.
+- **An upstream error is written down with the model and the provider's words.** The `upstream.error` timeline entry said `chat 400`; it says `chat 400 qwen3.8-27b: 'reasoning_effort' must be 'none' when …` — the model and the first line of the provider's message, never what was asked — so the operator reads why a request failed. The devices hub no longer logs a traceback when a device's socket closes under its receive loop.
+
 ## [0.1.27] - 2026-10-02 · Ledger
 
 ### Added

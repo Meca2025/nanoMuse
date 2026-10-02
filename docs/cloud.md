@@ -103,7 +103,10 @@ the client software (`User-Agent`: the Android app and its version, the
 runtime on Windows / macOS / Linux, a browser) with each sign-in, request,
 event and device, and keeps the account's first and last address; the admin
 page shows them per account and per address (`GET /v1/admin/address?ip=`), and
-they are deleted with the account.
+they are deleted with the account. From relay 0.11 the admin page also says
+where an address is — country, province, city — looked up in an offline copy
+of ip2region's database on the relay's own disk; no third party is asked, and
+nothing more is stored (the place is computed when the page is drawn).
 
 nanoMuse is a community project and charges nothing. The public relay at
 `cloud.nanomuse.cn` is paid for by the developer, so each account has a pool

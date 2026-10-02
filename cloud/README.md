@@ -120,6 +120,10 @@ for the full list. The ones that matter:
 | `CLOUD_ANY_MODEL_MEMBERS` | `1` | members may name any model of the provider's for its kind (chat, image, video) — see below; `0` = the menu only |
 | `CLOUD_CATALOG` | `1` | list the usable models under the operator's key after the menu in a member's `/v1/models`, read from the provider's own `/models` (0.10) — see below; `0` = the menu only, a member types an id |
 | `CLOUD_CATALOG_TTL_S` | `3600` | how long that list is kept before the provider is asked again |
+| `CLOUD_CATALOG_PROBE` | `1` | ask each chat model on that list, once, whether it answers and whether it reads a picture (0.11) — see below; `0` = go by the names |
+| `CLOUD_CATALOG_PROBE_TTL_S` | 7 days | how long a model's answers stand before it is asked again |
+| `CLOUD_GEOIP` | `1` | name where an address is on the operator's page — country, province, city — from ip2region's offline database, fetched once into the data directory (0.11); `0` = addresses only |
+| `CLOUD_GEOIP_DB`, `CLOUD_GEOIP_URL`, `CLOUD_GEOIP_V6_URL` | next to the database; the project's `ip2region_v4.xdb`; empty | the file, where to fetch it, and the IPv6 file (37 MB) for a relay reached over IPv6 |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
 
@@ -168,7 +172,23 @@ false`, `priced_as` and `vision` (whether the chat model reads pictures); the
 answer's `nanomuse.catalog` says how many and the provider's error if the list
 could not be refreshed (the last one stands). The apps' pickers then show the
 menu and *More models on your account* as two groups, and a guest sees the
-menu alone. `/v1/me` carries a `spend`
+menu alone. Names are a guess, and a wrong guess costs a person a feature —
+DeepSeek V4 on Model Studio reads pictures, nothing in its name says so, and
+an id the provider has retired still appears on `/models` — so from 0.11 the
+relay checks (`CLOUD_CATALOG_PROBE=1`): after the list is read, each chat
+model is asked, in the background and three at a time, to reply with one
+word and then to name the colour of a small red square; a model the provider
+refuses is left off the list, `vision` is what the model answered, and
+`verified: true` marks an entry the probes have confirmed (the name's guess
+stands while a probe is pending). The answers are kept in the database
+(`model_probes`) for `CLOUD_CATALOG_PROBE_TTL_S`, a week by default, so a
+restart asks nothing again; `/v1/admin/catalog` shows the whole of it — which
+models answer, which see, which were refused and with what words — and the
+operator's page has a *Model catalog* panel. The relay also reads what a
+request says about reasoning before it applies `CHAT_DEFAULTS`: an app that
+sends `reasoning_effort` (or `thinking`, `thinking_budget`) asked for
+thinking, and the shipped `enable_thinking: false` would make Model Studio
+refuse the pair, so the default follows the request. `/v1/me` carries a `spend`
 block (`total`, `grant`, `left`, `unlimited`, `warn` at 80 %, `usd_cny`,
 `total_usd`, `grant_usd`, `left_usd`, `today`, the bonus amounts and
 `own_key_docs`; the 0.4 names `daily_cap` / `left_today` / `resets_at` = 0
@@ -232,6 +252,21 @@ visit, the demos running now and the period's demos — when, how long, from
 where, with what, what each used (requests, tokens, pictures, clips) and why it
 ended — and the same for one account in its drawer (the visitor id there is
 the account id here).
+
+From 0.11 every address on the page is named: country, province and city
+from ip2region's offline database ([lionsoul2014/ip2region](https://github.com/lionsoul2014/ip2region),
+Apache-2.0; city level in China, country and state elsewhere), which the
+relay fetches once after start into its data directory (`CLOUD_GEOIP_DB`,
+`ip2region_v4.xdb`, 11 MB) and reads in memory — no third party is ever asked
+about a visitor. Every admin answer that carries addresses adds `places`
+(`{ip: {country, code, province, city, isp, text}}`), the address drawer
+says where the address is, and a *Where from* panel (`/v1/admin/places?days=`)
+counts accounts (by their latest address), new accounts, sign-ins, requests
+and the showcase's visitors by country and province; the `geo` block in
+`/v1/admin/overview` says whether the file is there, still being fetched, or
+failed (the panel then says so and the page works without places).
+`CLOUD_GEOIP=0` switches it off. It is where the network exit is — a phone on
+mobile data or a proxy shows up elsewhere — so the page says "guessed".
 
 ### Web console
 

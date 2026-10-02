@@ -80,6 +80,7 @@ from . import __version__
 from . import client as client_info
 from .catalog import Catalog
 from .config import ModelSpec, Settings
+from .geo import Geo, collect_ips, group_places
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
 from .service import Caller, Cloud, CloudError, dumps, estimate_tokens, prompt_chars, usage_from_json
@@ -93,6 +94,65 @@ def error_response(status: int, code: str, message: str, extra: dict | None = No
     return JSONResponse(
         status_code=status, content={"error": {"message": message, "type": "nanomuse_cloud", "code": code, **(extra or {})}}
     )
+
+
+def thinking_requested(body: dict) -> bool | None:
+    """What a chat request says about reasoning, in any of the dialects the apps speak:
+    True when it asks for it (`enable_thinking: true`, `thinking: {"type": "enabled"}`, a
+    `reasoning_effort` other than `none`, a `thinking_budget`), False when it declines, None
+    when it says nothing."""
+    if "enable_thinking" in body:
+        return bool(body["enable_thinking"])
+    thinking = body.get("thinking")
+    if isinstance(thinking, bool):
+        return thinking
+    if isinstance(thinking, dict) and thinking.get("type") in ("enabled", "disabled"):
+        return thinking["type"] == "enabled"
+    effort = body.get("reasoning_effort")
+    if isinstance(effort, str) and effort.strip():
+        return effort.strip().lower() != "none"
+    if body.get("thinking_budget"):
+        return True
+    return None
+
+
+def apply_chat_defaults(body: dict, defaults: dict) -> None:
+    """The operator's defaults (CHAT_DEFAULTS, `{"enable_thinking": false}` as shipped) go
+    in where the request is silent. Reasoning is one thing said in several ways, so the
+    `enable_thinking` default follows what the request already said with `reasoning_effort`
+    or `thinking` — Model Studio refuses `reasoning_effort: low` next to `enable_thinking:
+    false` ("'reasoning_effort' must be 'none' when 'enable_thinking' is false"), which is
+    exactly what an app's thinking-level badge plus the shipped default used to produce."""
+    wants = thinking_requested(body)
+    for k, v in defaults.items():
+        if k == "enable_thinking" and wants is not None:
+            body.setdefault("enable_thinking", wants)
+            continue
+        body.setdefault(k, v)
+    effort = body.get("reasoning_effort")
+    if body.get("enable_thinking") is False and isinstance(effort, str) and effort.strip().lower() != "none":
+        body["reasoning_effort"] = "none"
+
+
+def upstream_detail(kind: str, status: int, model: str, raw: bytes | str) -> str:
+    """The line an `upstream.error` event keeps: the kind, the status, the model and the
+    provider's own words (its `error.message`, one line, trimmed) — enough to see *why* a
+    request failed from the admin page, never the request's content."""
+    message = ""
+    try:
+        obj = json.loads(raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw)
+        err = obj.get("error") if isinstance(obj, dict) else None
+        if isinstance(err, dict):
+            message = str(err.get("message") or err.get("code") or "")
+        elif isinstance(err, str):
+            message = err
+        elif isinstance(obj, dict):
+            message = str(obj.get("message") or "")
+    except (ValueError, AttributeError, UnicodeDecodeError):
+        message = ""
+    message = " ".join(message.split())
+    line = f"{kind} {status} {model}".strip()
+    return f"{line}: {message[:200]}" if message else line
 
 
 # where the provider keeps the pictures it makes: its own API host and Alibaba Cloud OSS buckets
@@ -126,8 +186,12 @@ def create_app(
         follow_redirects=False,
     )
 
+    # where an address is (geo.py) — the file is fetched in the background on start
+    geo = Geo(settings.geoip_path, settings.geoip_url, settings.geoip_v6_url, enabled=settings.geoip_enabled)
+
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        geo.ensure()
         try:
             yield
         finally:
@@ -137,6 +201,14 @@ def create_app(
     app.state.cloud = cloud
     app.state.settings = settings
     app.state.http = http
+    app.state.geo = geo
+
+    def with_places(out: dict) -> dict:
+        """The admin page's answers carry addresses; this adds ``places`` — ``{ip: place}``
+        for the ones the database knows — so every address is shown with where it is."""
+        geo.ensure()  # a fetch that failed earlier is tried again after a while
+        out["places"] = geo.places(collect_ips(out)) if geo.ready else {}
+        return out
 
     @app.exception_handler(CloudError)
     async def _cloud_error(_: Request, e: CloudError) -> JSONResponse:
@@ -326,7 +398,11 @@ def create_app(
 
     # -- models ------------------------------------------------------------------------
 
-    catalog = Catalog(ttl_s=settings.catalog_ttl_s)
+    catalog = Catalog(
+        ttl_s=settings.catalog_ttl_s,
+        probe_ttl_s=settings.catalog_probe_ttl_s,
+        store=cloud.db if settings.catalog_probe else None,
+    )
     app.state.catalog = catalog
 
     @app.get("/v1/models")
@@ -349,12 +425,13 @@ def create_app(
             pub = spec.to_public()
             pub["nanomuse"]["catalog"] = True
             pub["nanomuse"]["vision"] = e.vision
-            if e.kind == "chat" and not e.vision:
-                pub["architecture"]["input_modalities"] = ["text"]
+            pub["nanomuse"]["verified"] = e.verified  # the probe's word, not the name's
+            if e.kind == "chat":
+                pub["architecture"]["input_modalities"] = ["text", "image"] if e.vision else ["text"]
             out["data"].append(pub)
             added += 1
         # how many the key has beyond the menu, and why none if none (the provider's answer)
-        out["nanomuse"]["catalog"] = {"models": added, "error": catalog.error}
+        out["nanomuse"]["catalog"] = {"models": added, "error": catalog.error, "probing": catalog.probing}
         return out
 
     @app.get("/v1/models/{model_id}")
@@ -378,8 +455,7 @@ def create_app(
         cloud.check_budget(caller)
         request_id = uuid.uuid4().hex[:16]
         body["model"] = spec.upstream
-        for k, v in settings.chat_defaults.items():
-            body.setdefault(k, v)
+        apply_chat_defaults(body, settings.chat_defaults)
         stream = bool(body.get("stream"))
         if stream:
             opts = body.get("stream_options") if isinstance(body.get("stream_options"), dict) else {}
@@ -413,7 +489,7 @@ def create_app(
                 log.warning("upstream error: %s", e)
                 raise CloudError(502, "upstream", "The model provider did not answer") from e
             if r.status_code >= 400:
-                cloud.note(caller.account_id, "upstream.error", f"chat {r.status_code}")
+                cloud.note(caller.account_id, "upstream.error", upstream_detail("chat", r.status_code, spec.id, r.content))
                 return _relay_error(r)
             try:
                 obj = r.json()
@@ -442,7 +518,7 @@ def create_app(
                 async with http.stream("POST", url, headers=headers, content=dumps(body).encode()) as r:
                     if r.status_code >= 400:
                         raw = await r.aread()
-                        cloud.note(caller.account_id, "upstream.error", f"chat {r.status_code}")
+                        cloud.note(caller.account_id, "upstream.error", upstream_detail("chat", r.status_code, spec.id, raw))
                         failed = True
                         err = _relay_error_body(r.status_code, raw)
                         yield f"data: {dumps(err)}\n\n".encode()
@@ -475,7 +551,7 @@ def create_app(
                             yield (line + "\n").encode()
             except httpx.HTTPError as e:
                 log.warning("upstream stream error: %s", e)
-                cloud.note(caller.account_id, "upstream.error", "chat stream broke")
+                cloud.note(caller.account_id, "upstream.error", f"chat stream broke {spec.id}: {type(e).__name__}")
                 failed = usage is None and text_len == 0
                 err = {"error": {"message": "The model provider stopped answering", "type": "nanomuse_cloud", "code": "upstream"}}
                 yield f"data: {dumps(err)}\n\n".encode()
@@ -764,7 +840,7 @@ def create_app(
         if hub is not None:
             for a in accounts:
                 a["devices"] = [{k: d[k] for k in ("id", "name", "kind", "os", "online", "last_seen")} for d in hub.devices(a["id"])]
-        return {"accounts": accounts, "settings": {**cloud.admin_settings(), "version": __version__}}
+        return with_places({"accounts": accounts, "settings": {**cloud.admin_settings(), "version": __version__}})
 
     @app.get("/v1/admin/usage", dependencies=[Depends(admin_dep)])
     async def admin_usage(days: int = 14) -> dict:
@@ -776,7 +852,8 @@ def create_app(
         hub = getattr(app.state, "hub", None)
         out["online_devices"] = hub.online_count() if hub is not None else 0
         out["version"] = __version__
-        return out
+        out["geo"] = geo.status()
+        return with_places(out)
 
     @app.get("/v1/admin/series", dependencies=[Depends(admin_dep)])
     async def admin_series(days: int = 30) -> dict:
@@ -819,11 +896,43 @@ def create_app(
         """The phone in the browser: who tried it from where and with what, every demo and
         what it used (the showcase gateway's /api/demo/admin, passed through)."""
         data = await demo_admin({"days": max(1, min(days, 365))})
-        return {"available": data is not None, **(data or {})}
+        return with_places({"available": data is not None, **(data or {})})
 
     @app.get("/v1/admin/traffic", dependencies=[Depends(admin_dep)])
     async def admin_traffic(days: int = 30) -> dict:
         return cloud.admin_traffic(max(1, min(days, 365)))
+
+    @app.get("/v1/admin/places", dependencies=[Depends(admin_dep)])
+    async def admin_places(days: int = 30) -> dict:
+        """Where people are: accounts by their latest address, and the period's requests,
+        sign-ins and new accounts by address — counted by country and province (ip2region);
+        the showcase's visitors too when its gateway answers. `geo` says whether the
+        database is there at all."""
+        days = max(1, min(days, 365))
+        geo.ensure()
+        counts = cloud.db.address_counts(int(time.time()) - days * 86400)
+        out: dict = {"days": days, "geo": geo.status()}
+        for key, rows in counts.items():
+            out[key] = group_places(rows, geo) if geo.ready else []
+        demo = await demo_admin({"days": days})
+        if demo is not None and geo.ready:
+            by_ip: dict[str, int] = {}
+            for v in demo.get("visitors") or []:
+                ip = v.get("last_ip") or v.get("first_ip") or ""
+                if ip:
+                    by_ip[ip] = by_ip.get(ip, 0) + 1
+            out["demo_visitors"] = group_places(list(by_ip.items()), geo)
+        else:
+            out["demo_visitors"] = None
+        return out
+
+    @app.get("/v1/admin/catalog", dependencies=[Depends(admin_dep)])
+    async def admin_catalog() -> dict:
+        """The models under the key beyond the menu, and what the probes found: which
+        answer, which read pictures, which the provider refuses."""
+        if settings.catalog_enabled:
+            await catalog.get(app.state.http, settings.upstream_base, settings.upstream_key)
+        return {"enabled": settings.catalog_enabled, "probe": settings.catalog_probe, **catalog.summary()}
 
     @app.get("/v1/admin/data", dependencies=[Depends(admin_dep)])
     async def admin_data(days: int = 30) -> dict:
@@ -837,7 +946,7 @@ def create_app(
             out["devices"] = hub.devices(account_id)
         # the showcase's record of this person (the visitor id there is the account id here)
         out["demo"] = await demo_admin({"account": account_id})
-        return out
+        return with_places(out)
 
     @app.get("/v1/admin/accounts/{account_id}/ledger", dependencies=[Depends(admin_dep)])
     async def admin_account_ledger(account_id: str, limit: int = 200, before: int = 0) -> dict:
@@ -845,33 +954,38 @@ def create_app(
         last row shown. Every line is reachable this way."""
         if cloud.db.account(account_id) is None:
             raise CloudError(404, "no_account", "No such account")
-        return cloud.ledger_page(account_id, max(1, min(limit, 1000)), max(0, before))
+        return with_places(cloud.ledger_page(account_id, max(1, min(limit, 1000)), max(0, before)))
 
     @app.get("/v1/admin/accounts/{account_id}/events", dependencies=[Depends(admin_dep)])
     async def admin_account_events(account_id: str, limit: int = 200, before: int = 0) -> dict:
         if cloud.db.account(account_id) is None:
             raise CloudError(404, "no_account", "No such account")
-        return cloud.events_page(account_id, max(1, min(limit, 1000)), max(0, before))
+        return with_places(cloud.events_page(account_id, max(1, min(limit, 1000)), max(0, before)))
 
     @app.get("/v1/admin/address", dependencies=[Depends(admin_dep)])
     async def admin_address(ip: str = "") -> dict:
-        """The accounts seen from one address."""
+        """The accounts seen from one address, and where it is."""
         if not ip.strip():
             raise CloudError(400, "bad_request", "Say which address: ?ip=…")
-        return cloud.admin_address(ip)
+        out = cloud.admin_address(ip)
+        place = geo.place(ip.strip())
+        out["place"] = place.as_dict() if place is not None else None
+        return with_places(out)
 
     @app.get("/v1/admin/events", dependencies=[Depends(admin_dep)])
     async def admin_events(limit: int = 200, kind: str = "") -> dict:
         kinds = tuple(k.strip() for k in kind.split(",") if k.strip()) or None
-        return {"events": cloud.admin_events(limit, kinds)}
+        return with_places({"events": cloud.admin_events(limit, kinds)})
 
     @app.get("/v1/admin/samples", dependencies=[Depends(admin_dep)])
     async def admin_samples(account_id: str = "", limit: int = 100, since: int = 0, before: int = 0) -> dict:
         """Contributed chat turns — only from accounts that turned contribution on."""
-        return {
-            "samples": cloud.admin_samples(account_id or None, since, limit, before),
-            "total": cloud.db.sample_count(account_id or None),
-        }
+        return with_places(
+            {
+                "samples": cloud.admin_samples(account_id or None, since, limit, before),
+                "total": cloud.db.sample_count(account_id or None),
+            }
+        )
 
     @app.get("/v1/admin/samples/export", dependencies=[Depends(admin_dep)])
     async def admin_samples_export(since: int = 0, account_id: str = "") -> Response:

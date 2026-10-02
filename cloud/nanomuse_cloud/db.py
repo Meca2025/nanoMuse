@@ -19,6 +19,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from . import client as _client
+from .catalog import Probe
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS accounts (
@@ -145,6 +146,15 @@ CREATE TABLE IF NOT EXISTS profiles (
     device        TEXT NOT NULL DEFAULT '',    -- the device that wrote it (it skips its own echo)
     body          TEXT NOT NULL DEFAULT '{}',  -- name, avatar, emoji, color, style, description
     face          TEXT NOT NULL DEFAULT ''     -- JSON {mood: base64 WebP} when avatar = "face"
+);
+-- 0.11: what each chat model under the operator's key answered when asked (catalog.py):
+-- whether it answers at all, whether it read the red square. Operator data, no person's.
+CREATE TABLE IF NOT EXISTS model_probes (
+    model_id      TEXT PRIMARY KEY,
+    works         INTEGER NOT NULL,            -- 0: the provider refused the one-word request (4xx)
+    vision        INTEGER NOT NULL,            -- 1: it named the colour of the picture
+    checked_at    INTEGER NOT NULL,
+    note          TEXT NOT NULL DEFAULT ''     -- the refusal, or the answer, trimmed
 );
 """
 
@@ -954,6 +964,26 @@ class Database:
                 (account_id, account_id, account_id),
             ).fetchall()
 
+    def address_counts(self, since: int) -> dict[str, list[tuple[str, int]]]:
+        """``(ip, n)`` rows for the "where from" table: accounts by their latest address,
+        the period's requests by address (the ledger), its sign-ins by address (the keys)
+        and its new accounts by first address."""
+        with self._lock:
+            accounts = self._conn.execute("SELECT last_ip AS ip, COUNT(*) AS n FROM accounts WHERE last_ip<>'' GROUP BY last_ip").fetchall()
+            requests = self._conn.execute("SELECT ip, COUNT(*) AS n FROM ledger WHERE ts>=? AND ip<>'' GROUP BY ip", (since,)).fetchall()
+            signins = self._conn.execute(
+                "SELECT ip, COUNT(*) AS n FROM api_keys WHERE created_at>=? AND ip<>'' GROUP BY ip", (since,)
+            ).fetchall()
+            new = self._conn.execute(
+                "SELECT first_ip AS ip, COUNT(*) AS n FROM accounts WHERE created_at>=? AND first_ip<>'' GROUP BY first_ip", (since,)
+            ).fetchall()
+        return {
+            "accounts": [(r["ip"], int(r["n"])) for r in accounts],
+            "requests": [(r["ip"], int(r["n"])) for r in requests],
+            "signins": [(r["ip"], int(r["n"])) for r in signins],
+            "new_accounts": [(r["ip"], int(r["n"])) for r in new],
+        }
+
     def accounts_at_address(self, ip: str) -> list[sqlite3.Row]:
         """The accounts seen from one address (sign-ins, requests, events): the same person
         on two accounts, or a household — the operator decides which."""
@@ -1056,3 +1086,28 @@ class Database:
         with self.tx() as c:
             cur = c.execute("UPDATE video_tasks SET charged=1 WHERE task_id=? AND charged=0", (task_id,))
             return cur.rowcount == 1
+
+    # -- the catalog's probes (catalog.py) ----------------------------------------
+
+    def probes(self) -> list[Probe]:
+        with self._lock:
+            rows = self._conn.execute("SELECT model_id, works, vision, checked_at, note FROM model_probes").fetchall()
+        return [
+            Probe(
+                model_id=r["model_id"],
+                works=bool(r["works"]),
+                vision=bool(r["vision"]),
+                checked_at=int(r["checked_at"]),
+                note=r["note"] or "",
+            )
+            for r in rows
+        ]
+
+    def save_probe(self, probe: Probe) -> None:
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO model_probes(model_id, works, vision, checked_at, note) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(model_id) DO UPDATE SET works=excluded.works, vision=excluded.vision, "
+                "checked_at=excluded.checked_at, note=excluded.note",
+                (probe.model_id, 1 if probe.works else 0, 1 if probe.vision else 0, int(probe.checked_at), probe.note[:200]),
+            )

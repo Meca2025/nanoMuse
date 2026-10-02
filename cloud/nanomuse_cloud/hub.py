@@ -229,7 +229,9 @@ class Hub:
             while True:
                 try:
                     raw = await ws.receive_text()
-                except WebSocketDisconnect:
+                except (WebSocketDisconnect, RuntimeError):
+                    # RuntimeError: Starlette's WebSocketDisconnected, when the socket was closed
+                    # under this loop (the same device connected again and took its place)
                     break
                 if len(raw) > self.frame_limit:
                     await conn.send({"type": "error", "code": "too_large", "message": f"Frames are capped at {self.frame_limit} bytes"})
