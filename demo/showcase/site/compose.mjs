@@ -55,9 +55,23 @@ function fragment(html, startTag, tag) {
 }
 
 const theirs = readFileSync(join(web, "index.html"), "utf8");
+
+// nanoMuse first in the dock: its launcher icon (the mark on a white tile) above MobileGym's
+// State Builder tabs, with a divider between. It carries no data-studio-tab, so their script
+// leaves it alone; page.js brings the app to the front on a tap and lights it while it is there.
+const nanomuseTab = `
+          <button type="button" class="state-dock-tab nm-dock-app" data-nanomuse-open aria-pressed="false" aria-label="nanoMuse" title="nanoMuse">
+            <span class="state-dock-tab-icon state-dock-tab-icon-img"><img src="/page/mark.svg" alt="" /></span>
+          </button>
+          <span class="state-dock-divider" aria-hidden="true"></span>`;
+function withNanoMuseFirst(dock) {
+  const open = dock.indexOf(">") + 1; // the end of the <aside …> tag
+  return dock.slice(0, open) + nanomuseTab + dock.slice(open);
+}
+
 const pieces = {
   "gesture-guide": fragment(theirs, '<aside class="gesture-guide ui"', "aside"),
-  "state-dock": fragment(theirs, '<aside class="state-dock ui"', "aside") + '\n<span class="state-dock-hint" aria-hidden="true">Patch state</span>',
+  "state-dock": withNanoMuseFirst(fragment(theirs, '<aside class="state-dock ui"', "aside")) + '\n<span class="state-dock-hint" aria-hidden="true">Patch state</span>',
   "state-drawer": fragment(theirs, '<aside id="state-drawer"', "aside"),
 };
 // their icons move under /page/icons/ (the page is served from /, their page from its own dir)

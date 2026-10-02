@@ -157,6 +157,17 @@ html[data-lang="en"] .zh, html[data-lang="zh"] .en { display: none; }
   .hero-demo .phone-rig .state-dock-hint { left: calc(100% + 16px); top: calc(100% + 16px); }
 }
 
+/* nanoMuse first in the dock (compose.mjs puts it above their State Builder tabs): the launcher
+   icon — the mark on a white tile — lit while nanoMuse is the app on the screen */
+.nm-dock-app .state-dock-tab-icon-img {
+  background: #fff;
+  border: 1px solid rgba(28, 25, 23, 0.12);
+  padding: 2px;
+}
+.nm-dock-app .state-dock-tab-icon-img img { object-fit: contain; }
+.nm-dock-app[aria-pressed="true"] { background: #1c1917; }
+.nm-dock-app[aria-pressed="true"] .state-dock-tab-icon-img { border-color: transparent; }
+
 /* the boot button that fills the screen before the phone is on (state-builder.js swaps it for
    the phone's frame; the page presses it for the visitor) */
 .boot {
