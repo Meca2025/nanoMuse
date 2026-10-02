@@ -1,1 +1,0 @@
-import{c as e,k as t,s as n,w as r}from"./util-x7FROH4x.js";var i=e();function a({label:e=`Chat`}){let{setTab:a}=n(),o=r();return(0,i.jsxs)(`button`,{type:`button`,onClick:()=>a(`chat`),className:`-ml-2 mb-1 flex items-center gap-0.5 rounded-full py-1 pl-1 pr-3 text-[14px] font-medium text-accent hover:bg-surface-2`,children:[(0,i.jsx)(t,{size:19}),` `,o(e)]})}export{a as t};

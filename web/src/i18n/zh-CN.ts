@@ -1434,6 +1434,32 @@ const zhCN: Record<string, string> = {
   Shortcuts: "快捷键",
   "Quick chat": "快速对话",
   "Show the window": "打开窗口",
+
+  // the Feed the way the Android app draws it
+  "Feed settings": "动态设置",
+  "About the feed": "动态版块说明",
+  "Your feed is driven by the instruction below. Any edit you make here applies to every post from now on.": "你的动态版块由以下指示驱动。你对此提示做出的任何编辑都将应用于今后的动态帖子。",
+  "Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.": "为我打造一个关于我兴趣的动态版块。保持内容简洁直接，确保可快速浏览，尽量避免点击诱饵。",
+  "Got it": "知道了",
+  "Write it now": "现在写一版",
+  "Your feed is not ready yet": "你的动态版块尚未准备就绪",
+  "As we get to know each other, new posts will show up here. Once a day, while background work is on, I read what I remember about you — your memory, your goals, your instructions — and write a few short posts.":
+    "随着我们相互了解，新的帖子会显示在这里。后台工作开着时，我每天读一遍记得的关于你的东西——记忆、目标、你的指示——然后写几条简短的帖子。",
+  "One sentence steers it": "一句话就能调整",
+  "Tap the sliders at the top right to tell me what you want more of, or have me write the first day now.": "点右上角的滑杆，告诉我你想多看什么，或者让我现在就写第一天。",
+  Discuss: "讨论",
+  "About this post": "这条帖子的信息",
+  "Delete this post": "删除这条",
+  Written: "写于",
+  Note: "随记",
+  Files: "文件",
+  Fun: "休闲",
+  "Let's talk about this post from my feed:": "聊聊我动态里的这一条：",
+  "Post type": "类型",
+  morning: "上午",
+  afternoon: "下午",
+  evening: "晚上",
+  "{weekday} {part}": "{weekday}{part}",
 };
 
 export default zhCN;

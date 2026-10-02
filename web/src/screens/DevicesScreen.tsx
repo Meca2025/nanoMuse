@@ -1,7 +1,7 @@
 import { Check, Globe, Hand, MessageSquare, Monitor, Pencil, RefreshCw, Smartphone, Square, Trash2, Wifi } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
 import { CloudCard } from "../components/CloudCard";
 import { Card, Toggle, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { useT } from "../i18n";
@@ -50,13 +50,7 @@ export function DevicesScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <h1 className="text-[24px] font-bold tracking-tight">{t("Devices")}</h1>
-        <p className="text-[13px] text-muted">
-          {t("Devices signed in to the same account see each other; one can ask another to do something where it is.")}
-        </p>
-      </header>
+      <PageBar title={t("Devices")} description={t("Devices signed in to the same account see each other; one can ask another to do something where it is.")} />
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4">
         <CloudCard account={hub?.account ?? null} onChange={() => void reload()} />
         {hub && <ThisDeviceCard hub={hub} onChange={() => void reload()} />}

@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { api, fileUrl } from "../api";
 import { DRAGON, dragonClipUrl, dragonUrl, isDragon, studioClipUrl, studioUrl } from "../avatars";
 import { AVATAR_STYLES } from "../components/AvatarPicker";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
+import { MuseRoundButton } from "../components/MuseHeader";
 import { primaryBtn, secondaryBtn } from "../components/Form";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -107,23 +108,14 @@ export function AvatarStudioScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-[24px] font-bold tracking-tight">{t("Avatar studio")}</h1>
-            <p className="text-[13px] text-muted">{t("Draw a look with your image model; it moves with what it is doing.")}</p>
-          </div>
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              aria-label={t("More")}
-              aria-expanded={menu}
-              onClick={() => setMenu((v) => !v)}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-surface text-fg/80 hover:bg-surface-2"
-            >
-              <MoreHorizontal size={18} />
-            </button>
+      <PageBar
+        title={t("Avatar studio")}
+        description={t("Draw a look with your image model; it moves with what it is doing.")}
+        actions={
+          <div className="relative">
+            <MuseRoundButton small onClick={() => setMenu((v) => !v)} label={t("More")} expanded={menu}>
+              <MoreHorizontal size={20} />
+            </MuseRoundButton>
             {menu && (
               <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-2xl border border-border/70 bg-surface py-1 text-[14px] shadow-lg">
                 <MenuItem
@@ -162,8 +154,8 @@ export function AvatarStudioScreen() {
               </div>
             )}
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5" onClick={() => menu && setMenu(false)}>
         {/* the face as it is */}

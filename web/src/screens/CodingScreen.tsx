@@ -1,7 +1,8 @@
 import { ArrowUp, Bot, ChevronRight, FolderOpen, Loader2, MonitorSmartphone, Plus, RefreshCw, Square, TerminalSquare, Wrench } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "../api";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
+import { MuseRoundButton } from "../components/MuseHeader";
 import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { Markdown } from "../components/Markdown";
 import { Sheet } from "../components/Sheet";
@@ -76,18 +77,15 @@ export function CodingScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-[24px] font-bold tracking-tight">{t("Coding agents")}</h1>
-            <p className="text-[13px] text-muted">{t("Cursor, Codex and Claude Code — see what they are doing, and tell them things from anywhere.")}</p>
-          </div>
-          <button type="button" onClick={() => void load()} aria-label={t("Refresh")} className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-fg/70 hover:text-fg">
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-          </button>
-        </div>
-      </header>
+      <PageBar
+        title={t("Coding agents")}
+        description={t("Cursor, Codex and Claude Code — see what they are doing, and tell them things from anywhere.")}
+        actions={
+          <MuseRoundButton small onClick={() => void load()} label={t("Refresh")}>
+            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+          </MuseRoundButton>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4">
         {/* where */}

@@ -8,7 +8,7 @@ import { setDeveloperTools, useDeveloperTools } from "../devtools";
 import { openOwnKeySetup } from "../components/AllowanceWays";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
 import { CommunityNotice } from "../components/CommunityNotice";
 import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
 import { setThemeSetting, useThemeSetting } from "../theme";
@@ -106,11 +106,7 @@ export function SettingsScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <h1 className="text-[24px] font-bold tracking-tight">{t("You & {name}", { name: state.profile?.name ?? "nanoMuse" })}</h1>
-        <p className="text-[13px] text-muted">{t("Its name and look, how careful it is, how often it speaks up.")}</p>
-      </header>
+      <PageBar title={t("Settings")} description={t("Its name and look, how careful it is, how often it speaks up.")} />
 
       <div className="flex min-h-0 flex-1">
         {/* on a wide window, the sections down the left — the shape of Muse's settings */}

@@ -1,4 +1,4 @@
-import { Archive, Home, MessageSquare, Monitor, MonitorSmartphone, Search, Settings, Smartphone, SquarePen, Terminal, Trash2, X } from "lucide-react";
+import { FileText, Home, MessageSquare, Monitor, MonitorSmartphone, Search, Settings, Smartphone, SquarePen, Terminal, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { useStore } from "../store";
@@ -93,11 +93,8 @@ export function ChatsDrawer() {
           <Row icon={<Terminal size={20} />} label={t("Coding agents")} selected={state.tab === "coding"} onClick={() => go("coding")} />
         )}
 
-        <div className="mt-3 flex items-center justify-between px-5 pb-1">
+        <div className="mt-3 px-5 pb-1">
           <span className="text-[14px] font-medium text-muted">{t("Side chats")}</span>
-          <span className="text-muted/60" aria-hidden="true">
-            <Archive size={16} />
-          </span>
         </div>
         {side.length === 0 && !query ? (
           <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
@@ -128,6 +125,9 @@ export function ChatsDrawer() {
         <div className="flex items-center gap-2 border-t border-border px-3 pt-2 pb-2">
           <button type="button" onClick={() => go("you")} aria-label={t("Settings")} className="flex h-10 w-10 items-center justify-center rounded-full text-fg hover:bg-surface-2">
             <Settings size={20} />
+          </button>
+          <button type="button" onClick={() => go("memory")} aria-label={t("Memory")} className="-ml-1 flex h-10 w-10 items-center justify-center rounded-full text-fg hover:bg-surface-2">
+            <FileText size={20} />
           </button>
           <label className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-surface-2 px-3 py-2">
             <Search size={16} className="shrink-0 text-muted" />

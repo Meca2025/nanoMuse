@@ -93,10 +93,12 @@ export function TabHeader({
           )
         }
       />
-      <div className="flex shrink-0 items-center gap-3 pr-5">
-        <MusePageTitle className="flex-1">{title}</MusePageTitle>
-        {children}
-      </div>
+      {(title || children) && (
+        <div className="flex shrink-0 items-center gap-3 pr-5">
+          <MusePageTitle className="flex-1">{title}</MusePageTitle>
+          {children}
+        </div>
+      )}
       <MuseSheet open={activityOpen} onClose={() => setActivityOpen(false)} />
     </>
   );

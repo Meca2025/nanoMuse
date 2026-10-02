@@ -1,7 +1,8 @@
-import { ChevronLeft, ChevronRight, FileCode2, Link2, Loader2, Pencil, Play, Plus, Trash2, Wand2 } from "lucide-react";
+import { ChevronRight, FileCode2, Link2, Loader2, Pencil, Play, Plus, Trash2, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
+import { MuseRoundButton } from "../components/MuseHeader";
 import { Markdown } from "../components/Markdown";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -78,24 +79,15 @@ export function SkillsScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-[24px] font-bold tracking-tight">{t("Skills")}</h1>
-            <p className="text-[13px] text-muted">
-              {t("How {name} does a job, written down once. Start one in chat with /name, or just ask — it picks the skill that fits.", { name })}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="shrink-0 mt-1 rounded-2xl bg-accent text-accent-fg px-3 py-2 text-[13.5px] font-medium flex items-center gap-1.5"
-          >
-            <Plus size={15} /> {t("New")}
-          </button>
-        </div>
-      </header>
+      <PageBar
+        title={t("Skills")}
+        description={t("How {name} does a job, written down once. Start one in chat with /name, or just ask — it picks the skill that fits.", { name })}
+        actions={
+          <MuseRoundButton small onClick={() => setAdding(true)} label={t("New")}>
+            <Plus size={20} />
+          </MuseRoundButton>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-5">
         {data === null && (
@@ -228,21 +220,20 @@ function SkillView({ name, onBack, onUse, onGone }: { name: string; onBack: () =
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <button type="button" onClick={onBack} className="-ml-2 mb-1 flex items-center gap-0.5 rounded-full py-1 pl-1 pr-3 text-[14px] font-medium text-accent hover:bg-surface-2">
-          <ChevronLeft size={19} /> {t("Skills")}
-        </button>
-        {skill && (
-          <>
-            <h1 className="text-[22px] font-bold tracking-tight font-mono">/{skill.name}</h1>
-            <p className="text-[13px] text-muted">
+      <PageBar
+        onBack={onBack}
+        backLabel={t("Skills")}
+        title={skill ? <span className="font-mono">/{skill.name}</span> : t("Skills")}
+        description={
+          skill && (
+            <>
               {skill.source === "built-in" ? t("Built in") : t("Yours")}
               {skill.updated_at ? ` · ${t("updated {when}", { when: relativeTime(skill.updated_at) })}` : ""}
               {skill.metadata.author ? ` · ${skill.metadata.author}` : ""}
-            </p>
-          </>
-        )}
-      </header>
+            </>
+          )
+        }
+      />
       <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4">
         {!skill && (
           <div className="py-10 flex justify-center text-muted">
@@ -328,17 +319,15 @@ function SkillEditor({ initial, onCancel, onSaved }: { initial?: SkillDetail; on
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <button type="button" onClick={onCancel} className="-ml-2 mb-1 flex items-center gap-0.5 rounded-full py-1 pl-1 pr-3 text-[14px] font-medium text-accent hover:bg-surface-2">
-          <ChevronLeft size={19} /> {t("Back")}
-        </button>
-        <h1 className="text-[22px] font-bold tracking-tight">{initial ? t("Edit skill") : t("New skill")}</h1>
-        <p className="text-[13px] text-muted">
-          {initial?.source === "built-in"
+      <PageBar
+        onBack={onCancel}
+        title={initial ? t("Edit skill") : t("New skill")}
+        description={
+          initial?.source === "built-in"
             ? t("Saving makes a copy of yours with the same name; it replaces the built-in one.")
-            : t("A SKILL.md: a name and a one-line description up top, then the steps in Markdown.")}
-        </p>
-      </header>
+            : t("A SKILL.md: a name and a one-line description up top, then the steps in Markdown.")
+        }
+      />
       <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4">
         {!initial && (
           <div className="rounded-3xl bg-surface border border-border/70 shadow-sm p-3.5 space-y-2">

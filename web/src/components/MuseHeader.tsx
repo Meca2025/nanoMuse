@@ -108,22 +108,33 @@ export function MuseRoundButton({
   label,
   children,
   dot = false,
+  small = false,
   className,
+  disabled = false,
+  expanded,
 }: {
   onClick: () => void;
   label: string;
   children: ReactNode;
   /** a small accent dot at the top right (something is waiting behind it) */
   dot?: boolean;
+  /** the 40px disc of a page bar rather than the 44px one of the home header */
+  small?: boolean;
   className?: string;
+  disabled?: boolean;
+  /** for a button that opens a menu */
+  expanded?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
+      aria-expanded={expanded}
+      disabled={disabled}
       className={cx(
-        "relative flex h-11 w-11 items-center justify-center rounded-full bg-surface text-fg shadow-[0_1px_4px_rgba(0,0,0,0.14)] hover:bg-surface-2 dark:border dark:border-border dark:shadow-none",
+        "relative flex items-center justify-center rounded-full bg-surface text-fg shadow-[0_1px_4px_rgba(0,0,0,0.14)] hover:bg-surface-2 disabled:opacity-50 dark:border dark:border-border dark:shadow-none",
+        small ? "h-10 w-10" : "h-11 w-11",
         className,
       )}
     >
