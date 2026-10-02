@@ -36,7 +36,7 @@ const zhCN: Record<string, string> = {
   "Reply below to continue.": "在下方回复以继续。",
   "{name} is working — anything you send now is picked up right away.": "{name} 正在工作——你现在发送的内容会被立刻处理。",
   "Working…": "处理中…",
-  "Idle · tap the avatar for activity": "空闲 · 点击头像查看活动",
+  "Thinking…": "思考中…",
   "Load earlier messages": "加载更早的消息",
   "New side chat": "新建旁聊",
   "New side chat, e.g. “Trip to Kyoto”": "新建旁聊，例如“京都之旅”",
@@ -95,7 +95,7 @@ const zhCN: Record<string, string> = {
   browser: "浏览器",
   email: "邮件",
   secret: "密钥",
-  "Waiting for you": "等待你的回复",
+  "Waiting for you": "等你确认",
   Answer: "回答",
   LIVE: "实时",
   BROWSER: "浏览器",
@@ -478,8 +478,8 @@ const zhCN: Record<string, string> = {
   "Set reminder": "设置提醒",
   "Set routine": "设置例程",
   at: "于",
-  "1 approval waiting for you": "1 项审批等待你处理",
-  "{n} approvals waiting for you": "{n} 项审批等待你处理",
+  "1 approval waiting for you": "需要你批准",
+  "{n} approvals waiting for you": "{n} 项需要你批准",
   "{n} approval": "{n} 项审批",
 
   // ── Settings ──────────────────────────────────────────────────────────────────────

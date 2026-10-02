@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { markFiles, matchFile } from "./Markdown";
+import { markFiles, matchFile, splitBlocks } from "./Markdown";
 
 const files = ["kyoto-notes/packing-list.html", "notes/plan.md", "reports/plan.md", "budget.csv"];
 
@@ -43,5 +43,34 @@ describe("markFiles", () => {
     expect(markFiles("draft/packing-list.html", files)).toBe("draft/packing-list.html");
     expect(markFiles("plan.md is either", files)).toBe("plan.md is either"); // two plan.md files
     expect(markFiles("nothing here", [])).toBe("nothing here");
+  });
+});
+
+describe("splitBlocks", () => {
+  it("makes one bubble per paragraph and keeps a list together", () => {
+    const blocks = splitBlocks("Hello.\n\nTwo things:\n- a\n- b\n\nDone.");
+    expect(blocks.map((b) => b.text)).toEqual(["Hello.", "Two things:\n- a\n- b", "Done."]);
+    expect(blocks.every((b) => !b.bare)).toBe(true);
+  });
+
+  it("keeps fenced code whole, blank lines included, and marks it bare", () => {
+    const blocks = splitBlocks("Run this:\n\n```sh\nls\n\npwd\n```\n\nThen stop.");
+    expect(blocks).toEqual([
+      { text: "Run this:", bare: false },
+      { text: "```sh\nls\n\npwd\n```", bare: true },
+      { text: "Then stop.", bare: false },
+    ]);
+  });
+
+  it("gives tables their own frame and folds a heading into what follows", () => {
+    const blocks = splitBlocks("## Plan\n\nFirst step.\n\n| a | b |\n|---|---|\n| 1 | 2 |");
+    expect(blocks).toEqual([
+      { text: "## Plan\n\nFirst step.", bare: false },
+      { text: "| a | b |\n|---|---|\n| 1 | 2 |", bare: true },
+    ]);
+  });
+
+  it("returns nothing for an empty reply", () => {
+    expect(splitBlocks("  \n\n")).toEqual([]);
   });
 });

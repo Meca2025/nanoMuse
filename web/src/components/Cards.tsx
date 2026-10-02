@@ -309,7 +309,7 @@ export function ApprovalCard({
                 onClick={() => onDecide(true, "once")}
                 className="flex-1 rounded-full bg-accent py-2.5 text-[15px] font-semibold text-accent-fg transition active:scale-[0.98]"
               >
-                {t("Allow")}
+                {t("Allow once")}
               </button>
             </div>
             {standing.length > 0 ? (

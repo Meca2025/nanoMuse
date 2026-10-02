@@ -1,4 +1,4 @@
-import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Phone, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
+import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, Phone, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, fileUrl } from "../api";
 import { AllowanceHeadsUp } from "../components/AllowanceWays";
@@ -6,8 +6,9 @@ import { AvatarOptionsCard } from "../components/AvatarOptionsCard";
 import { BrowserViewer } from "../components/BrowserViewer";
 import { MicButton, useDictation } from "../components/Dictation";
 import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
-import { Markdown } from "../components/Markdown";
+import { Markdown, splitBlocks } from "../components/Markdown";
 import { MuseHeader, MuseRoundButton } from "../components/MuseHeader";
+import { MoreMenu } from "../components/TabHeader";
 import { localLabel, useT } from "../i18n";
 import { useStore } from "../store";
 import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, UserEvent } from "../types";
@@ -15,7 +16,7 @@ import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
 
 export function ChatScreen() {
-  const { state, send, decide, loadEvents, openFile, toast, setDrawer } = useStore();
+  const { state, send, decide, loadEvents, openFile, toast, setDrawer, setTab } = useStore();
   const t = useT();
   const { profile, status, activeThread, threads } = state;
   // undefined until the first fetch for this thread has returned — don't flash the empty state
@@ -65,10 +66,11 @@ export function ChatScreen() {
     if (waitingHere > 0 && !(here && status.state === "working")) {
       return waitingHere > 1 ? t("{n} approvals waiting for you", { n: waitingHere }) : t("1 approval waiting for you");
     }
-    if (!here) return thread?.busy ? t("Working…") : t("Idle · tap the avatar for activity");
-    if (status.state === "idle" && !thread?.busy) return t("Idle · tap the avatar for activity");
+    // Idle shows nothing under the name, as on the phone: the tag is just the name.
+    if (!here) return thread?.busy ? t("Thinking…") : undefined;
+    if (status.state === "idle" && !thread?.busy) return undefined;
     if (status.detail) return status.detail;
-    return status.state === "waiting" ? t("Waiting for you") : t("Working…");
+    return status.state === "waiting" ? t("Waiting for you") : t("Thinking…");
   }, [status, thread, activeThread, waitingHere, t]);
 
   const pendingApprovals = events.filter((e) => e.type === "approval" && e.status === "pending").length;
@@ -95,11 +97,7 @@ export function ChatScreen() {
             <Menu size={22} />
           </MuseRoundButton>
         }
-        trailing={
-          <MuseRoundButton onClick={() => setActivityOpen(true)} label={t("Menu")}>
-            <MoreHorizontal size={22} />
-          </MuseRoundButton>
-        }
+        trailing={<MoreMenu actions={[{ label: t("Coding agents"), onClick: () => setTab("coding") }]} />}
         under={
           thread && thread.id !== "main" ? (
             thread.device ? (
@@ -311,7 +309,7 @@ function UserBubble({ event, onOpenFile }: { event: UserEvent; onOpenFile: (path
         </button>
       ))}
       {event.text && (
-        <div className="bubble-user max-w-full rounded-[20px] rounded-br-md bg-bubble-user px-4 py-2.5 text-bubble-user-fg">
+        <div className="bubble-user max-w-full rounded-[20px] bg-bubble-user px-4 py-2.5 text-bubble-user-fg">
           <div className="md text-[15px] leading-[1.45] whitespace-pre-wrap break-words">{event.text}</div>
         </div>
       )}
@@ -361,6 +359,7 @@ function AssistantBubble({
 }) {
   const [showReasoning, setShowReasoning] = useState(false);
   const t = useT();
+  const blocks = useMemo(() => splitBlocks(text), [text]);
   return (
     <div className={cx("rise flex items-end gap-2 pr-10", continued && "-mt-1")}>
       <div className="min-w-0 max-w-full">
@@ -374,15 +373,29 @@ function AssistantBubble({
             {reasoning}
           </div>
         )}
-        <div className={cx("rounded-[20px] rounded-bl-md bg-surface-2 px-4 py-2.5", spoken && "border border-accent/15")}>
-          {spoken && (
-            <div className="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-accent/80">
-              <Phone size={10} /> {t("said on a call")}
+        {/* Muse's grey bubbles: one per block of the reply; code and tables carry their own frame */}
+        {blocks.map((b, i) =>
+          b.bare ? (
+            <div key={i} className="my-1 max-w-full">
+              <Markdown text={b.text} files={files} onOpenFile={onOpenFile} />
             </div>
-          )}
-          <Markdown text={text} files={files} onOpenFile={onOpenFile} />
-          {streaming && <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-accent/70 animate-pulse rounded-sm" />}
-        </div>
+          ) : (
+            <div key={i} className={cx("my-1 max-w-[340px] rounded-[20px] bg-surface-2 px-3.5 py-2.5 wide:max-w-[600px]", spoken && "border border-accent/15")}>
+              {spoken && i === 0 && (
+                <div className="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-accent/80">
+                  <Phone size={10} /> {t("said on a call")}
+                </div>
+              )}
+              <Markdown text={b.text} files={files} onOpenFile={onOpenFile} />
+              {streaming && i === blocks.length - 1 && <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-accent/70 animate-pulse rounded-sm" />}
+            </div>
+          ),
+        )}
+        {blocks.length === 0 && streaming && (
+          <div className="my-1 rounded-[20px] bg-surface-2 px-3.5 py-2.5">
+            <span className="inline-block w-1.5 h-4 align-middle bg-accent/70 animate-pulse rounded-sm" />
+          </div>
+        )}
       </div>
     </div>
   );
