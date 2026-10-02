@@ -6,10 +6,10 @@ import org.json.JSONObject
 /**
  * The relay's "the free allowance is used up" answer, caught on its way through the model
  * client. nanoMuse Cloud refuses a model call with HTTP 429 and a structured body
- * (`error.code = "allowance_exhausted"` plus what is left, the pool, the invite link, whether
- * the co-creation bonus is still open, and the guide for one's own key). The generic client
- * maps every 429 to "rate limited", so the body would be lost; this keeps the last one for a
- * few seconds so the chat can show the three ways on instead of a bare error.
+ * (`error.code = "allowance_exhausted"` plus what is left, the pool, the invite link, what an
+ * invitation adds to each side, and the guide for one's own key). The generic client maps
+ * every 429 to "rate limited", so the body would be lost; this keeps the last one for a few
+ * seconds so the chat can show the two ways on instead of a bare error.
  */
 object AllowanceSignal {
     /** What the relay said, in yuan. */
@@ -17,7 +17,9 @@ object AllowanceSignal {
         val leftCny: Double,
         val grantCny: Double,
         val inviteUrl: String,
-        val contributeBonusAvailable: Boolean,
+        /** What a sign-up with the link adds to the inviter and to the new account; 0 = unknown. */
+        val inviteBonusCny: Double,
+        val inviteeBonusCny: Double,
         val ownKeyDocs: String,
         val at: Long = System.currentTimeMillis(),
     )
@@ -33,7 +35,8 @@ object AllowanceSignal {
             leftCny = err.optDouble("left", 0.0),
             grantCny = err.optDouble("grant", 0.0),
             inviteUrl = err.optString("invite_url", ""),
-            contributeBonusAvailable = err.optBoolean("contribute_bonus_available", false),
+            inviteBonusCny = err.optDouble("invite_bonus_cny", 0.0),
+            inviteeBonusCny = err.optDouble("invitee_bonus_cny", 0.0),
             ownKeyDocs = err.optString("own_key_docs", ""),
         )
     }
@@ -53,7 +56,8 @@ object AllowanceSignal {
             leftCny = a.leftCny.coerceAtLeast(0.0),
             grantCny = a.grantCny,
             inviteUrl = a.inviteUrl,
-            contributeBonusAvailable = a.contributeBonusAvailable,
+            inviteBonusCny = a.inviteBonusCny,
+            inviteeBonusCny = a.inviteeBonusCny,
             ownKeyDocs = a.ownKeyDocs,
         )
     }

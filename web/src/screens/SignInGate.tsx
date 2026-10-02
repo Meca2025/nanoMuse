@@ -2,6 +2,7 @@ import { Cloud, Hand, MonitorSmartphone, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Avatar } from "../components/Avatar";
 import { CommunityNotice } from "../components/CommunityNotice";
+import { PRIVACY_URL } from "../components/DataControls";
 import { SignIn } from "../components/SignIn";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -60,7 +61,11 @@ export function SignInGate() {
             <div className="mt-6 wide:hidden">{perks}</div>
             <CommunityNotice compact className="mt-6 wide:hidden" />
             <p className="mt-4 text-center text-[11.5px] leading-relaxed text-muted wide:mt-5">
-              {t("The relay keeps an account id, a masked identifier, usage counts and your agent's name and look — no message content.")}
+              {t("The relay keeps an account id, a masked identifier, usage counts and your agent's name and look; what else, and what is yours to switch off, is in the")}{" "}
+              <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-fg">
+                {t("privacy policy")}
+              </a>
+              .
             </p>
           </div>
         </div>

@@ -9,6 +9,7 @@ import {
   Clapperboard,
   Cloud,
   Code2,
+  DatabaseZap,
   Hand,
   Info,
   LogOut,
@@ -37,6 +38,7 @@ import { AVATAR_COLORS } from "../components/AvatarPicker";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
 import { PageBar } from "../components/BackBar";
 import { CommunityNotice } from "../components/CommunityNotice";
+import { DataControls, PRIVACY_URL } from "../components/DataControls";
 import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
 import { setThemeSetting, useThemeSetting } from "../theme";
 import { disablePush, enablePush, pushState, type PushState } from "../push";
@@ -124,6 +126,7 @@ export function SettingsScreen() {
     { id: "model", title: t("Model") },
     { id: "appearance", title: t("Appearance") },
     ...(isDesktopApp() ? [{ id: "desktop" as const, title: t("Desktop app") }] : []),
+    { id: "data", title: t("Data controls") },
     { id: "developer", title: t("Developer") },
     { id: "about", title: t("About") },
   ];
@@ -394,6 +397,13 @@ export function SettingsScreen() {
           </Section>
         )}
 
+        {/* Data controls: the one switch over what the relay keeps, the shape of Muse's */}
+        {show("data") && (
+        <Section title={t("Data controls")} id="data" plain={!wide}>
+          <DataControls flush />
+        </Section>
+        )}
+
         {/* The developer side, off unless asked for */}
         {show("developer") && (
         <Section title={t("Developer")} id="developer" plain={!wide}>
@@ -465,8 +475,8 @@ export function SettingsScreen() {
   );
 }
 
-type SectionId = "who" | "sentinel" | "proactivity" | "notifications" | "keep-running" | "model" | "appearance" | "desktop" | "developer" | "about";
-const SECTION_IDS: SectionId[] = ["who", "sentinel", "proactivity", "notifications", "keep-running", "model", "appearance", "desktop", "developer", "about"];
+type SectionId = "who" | "sentinel" | "proactivity" | "notifications" | "keep-running" | "model" | "appearance" | "desktop" | "data" | "developer" | "about";
+const SECTION_IDS: SectionId[] = ["who", "sentinel", "proactivity", "notifications", "keep-running", "model", "appearance", "desktop", "data", "developer", "about"];
 
 /**
  * The phone's Settings: Muse's bar, then white cards of outlined-glyph rows on the grey
@@ -558,6 +568,8 @@ function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen:
             </>
           )}
           <MuseDivider />
+          <MuseRow icon={<DatabaseZap size={22} />} label={t("Data controls")} onClick={() => onOpen("data")} />
+          <MuseDivider />
           <MuseRow icon={<Code2 size={22} />} label={t("Developer")} onClick={() => onOpen("developer")} />
         </MuseCard>
 
@@ -565,7 +577,7 @@ function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen:
         <MuseCard className="mb-3">
           <MuseRow icon={<Info size={22} />} label={t("About nanoMuse")} value={release?.newer && release.latest ? t("{version} is out", { version: release.latest }) : undefined} onClick={() => onOpen("about")} />
           <MuseDivider />
-          <MuseRow icon={<Hand size={22} />} label={t("Privacy policy")} onClick={() => window.open("https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md", "_blank", "noopener")} external />
+          <MuseRow icon={<Hand size={22} />} label={t("Privacy policy")} onClick={() => window.open(PRIVACY_URL, "_blank", "noopener")} external />
           <MuseDivider />
           <MuseRow icon={<MessageSquareWarning size={22} />} label={t("Feedback")} onClick={() => window.open("https://github.com/nano-muse/nanoMuse/issues/new/choose", "_blank", "noopener")} external />
         </MuseCard>

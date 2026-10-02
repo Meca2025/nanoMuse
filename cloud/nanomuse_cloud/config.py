@@ -267,22 +267,31 @@ class Settings:
     # ALLOWANCE_CNY yuan of the operator's provider bill (0 = no limit), counted
     # at the list prices above across chat, pictures and clips alike — a clip is
     # not counted apart, it just costs more. The pool grows by INVITE_BONUS_CNY
-    # for each friend who signs up with the account's code, once by
-    # CONTRIBUTE_BONUS_CNY when the person joins the co-creation programme
-    # (contributes their conversations), and by whatever the operator credits.
-    # The members below (ALLOWED_IDENTIFIERS, or flagged by the operator) have
-    # no limit. DAY_OFFSET_H only groups the operator's reports by local day
+    # for each friend who signs up with the account's code — the friend's pool
+    # grows by the same (0.9) — and by whatever the operator credits. The
+    # members below (ALLOWED_IDENTIFIERS, or flagged by the operator) have no
+    # limit. DAY_OFFSET_H only groups the operator's reports by local day
     # (8 = Beijing). USD_CNY is for display: the apps show both currencies.
     allowance_cny: float = field(default_factory=lambda: float(_env("ALLOWANCE_CNY", "10")))
     invite_bonus_cny: float = field(default_factory=lambda: float(_env("INVITE_BONUS_CNY", "5")))
-    contribute_bonus_cny: float = field(default_factory=lambda: float(_env("CONTRIBUTE_BONUS_CNY", "10")))
     day_offset_h: int = field(default_factory=lambda: _int("DAY_OFFSET_H", 8))
+    # Data controls (0.9): "Help improve nanoMuse's AI models" keeps the text of an
+    # account's chat turns — what the person wrote and what the model answered, the
+    # model's tool calls, never the system prompt, a tool's result or a picture — for
+    # the community's own model. IMPROVE_DEFAULT is what an account *created from now
+    # on* starts with (1 = on until the person turns it off under Settings → Data
+    # controls; 0 = off until they turn it on). Accounts from before keep their own
+    # setting either way. State the default in the relay's privacy policy.
+    improve_default: bool = field(default_factory=lambda: _env("IMPROVE_DEFAULT", "0") in ("1", "true", "yes"))
     usd_cny: float = field(default_factory=lambda: float(_env("USD_CNY", "7.1")))
     # INVITE_URL is the link the apps offer to share; the code is appended.
     # OWN_KEY_DOCS is the guide the apps open when the allowance is used up and
     # the person wants to bring their own model key.
     invite_url: str = field(default_factory=lambda: _env("INVITE_URL", "https://nanomuse.cn/web/?invite="))
     own_key_docs: str = field(default_factory=lambda: _env("OWN_KEY_DOCS", "https://nanomuse.cn/own-key"))
+    # PRIVACY_URL is the policy the apps link from Data controls and the sign-in
+    # pages — the one that states what this relay keeps and its default above.
+    privacy_url: str = field(default_factory=lambda: _env("PRIVACY_URL", "https://nanomuse.cn/privacy/"))
 
     code_ttl_s: int = field(default_factory=lambda: _int("CODE_TTL_S", 600))
     code_per_identifier_10m: int = field(default_factory=lambda: _int("CODE_PER_IDENTIFIER_10M", 3))

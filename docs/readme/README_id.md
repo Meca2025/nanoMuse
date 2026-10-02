@@ -25,7 +25,7 @@
 </p>
 
 > [!IMPORTANT]
-> **Gratis, open source, nirlaba — agen pribadi untuk semua orang.** nanoMuse adalah proyek komunitas, gratis selamanya: masuk dengan nomor telepon atau alamat e-mail dan modelnya datang dengan kuota gratis yang dibayar oleh pengembang; kalau habis, pakai kunci API-mu sendiri. Pesan tidak disimpan kecuali kamu memilih untuk menyumbangkannya; tidak ada yang dijual; hapus akun kapan saja. **[Coba di browser](https://nanomuse.cn/web/)**, atau [unduh aplikasinya](https://github.com/nano-muse/nanoMuse/releases/latest).
+> **Gratis, open source, nirlaba — agen pribadi untuk semua orang.** nanoMuse adalah proyek komunitas, gratis selamanya: masuk dengan nomor telepon atau alamat e-mail dan modelnya datang dengan kuota gratis yang dibayar oleh pengembang; kalau habis, pakai kunci API-mu sendiri. Tidak ada yang dijual; apa yang disimpan relay ada di [kebijakan privasi](https://nanomuse.cn/privacy/), dan *Pengaturan → Kontrol data* ada di tanganmu; hapus akun kapan saja. **[Coba di browser](https://nanomuse.cn/web/)**, atau [unduh aplikasinya](https://github.com/nano-muse/nanoMuse/releases/latest).
 
 > Halaman ini adalah terjemahan dari [README berbahasa Inggris](../../README.md), yang menjadi acuan dan memuat berita serta tabel versi lengkap.
 

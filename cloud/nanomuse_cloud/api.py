@@ -10,8 +10,8 @@
     GET  /v1/me/sessions                                        → live sign-ins (device, via, when; the current one marked)
     DELETE /v1/me/sessions/{prefix}                             → 204 (sign one device out)
     GET  /v1/me/events                                          → the account's own timeline (sign-ins, password changes…)
-    POST /v1/me/contribute {on}                                 → join the co-creation programme: keep my chat turns for the community's model (off by default; +CONTRIBUTE_BONUS_CNY once)
-    DELETE /v1/me/samples                                       → delete everything I contributed
+    POST /v1/me/contribute {on}                                 → Data controls: "help improve nanoMuse's AI models" — keep the text of my chat turns (the default for new accounts is IMPROVE_DEFAULT)
+    DELETE /v1/me/samples                                       → delete every turn kept from me
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
     POST /v1/auth/sign-out-all {all?}                           → {signed_out} (every other device; all=true takes this one too)
     POST /v1/auth/delete                                        → 204 (the whole account, every key)
@@ -38,9 +38,10 @@
     GET  /v1/admin/usage      X-Admin-Token  ?days=14           → charged tokens and yuan per day and kind
     GET  /v1/admin/overview   X-Admin-Token  ?days=30           → the dashboard: accounts, today / week / period by kind and model, signals, events
     GET  /v1/admin/events     X-Admin-Token  ?limit=200&kind=…  → the timeline across accounts (never message content)
-    GET  /v1/admin/series     X-Admin-Token  ?days=30           → by day: sign-ins, new / active accounts, invites, co-creation joins; devices by kind and OS; nanoMuse Web's counts
+    GET  /v1/admin/series     X-Admin-Token  ?days=30           → by day: sign-ins, new / active accounts, invites, data switches turned on; devices by kind and OS; nanoMuse Web's counts
     GET  /v1/admin/traffic    X-Admin-Token  ?days=30           → the site: pages, visitors, downloads per file, referrers, GitHub stars and release downloads (TRAFFIC_DB)
-    GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → contributed turns (opted-in accounts only)
+    GET  /v1/admin/data       X-Admin-Token  ?days=30           → Data controls: accounts with the switch on, kept turns by day / model / app, switches on and off, the newest turns
+    GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → kept turns (accounts with the switch on only)
     GET  /v1/admin/samples/export X-Admin-Token ?since=         → the same as JSON lines, without account ids
 
 The video paths mirror the provider's own so the app's VideoGen, which
@@ -752,6 +753,10 @@ def create_app(
     @app.get("/v1/admin/traffic", dependencies=[Depends(admin_dep)])
     async def admin_traffic(days: int = 30) -> dict:
         return cloud.admin_traffic(max(1, min(days, 365)))
+
+    @app.get("/v1/admin/data", dependencies=[Depends(admin_dep)])
+    async def admin_data(days: int = 30) -> dict:
+        return cloud.admin_data(max(1, min(days, 365)))
 
     @app.get("/v1/admin/accounts/{account_id}", dependencies=[Depends(admin_dep)])
     async def admin_account(account_id: str, days: int = 30) -> dict:

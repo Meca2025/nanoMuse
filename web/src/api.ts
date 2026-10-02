@@ -138,8 +138,7 @@ export const api = {
   cloudEvents: (limit = 50) => request<{ events: CloudEvent[] }>(`/api/cloud/events?limit=${limit}`),
   cloudDelete: () => request<CloudAccount>("/api/cloud/delete", json({})),
   cloudMe: () => request<CloudMe>("/api/cloud/me"),
-  cloudContribute: (on: boolean) =>
-    request<{ on: boolean; samples: number; bonus_cny?: number; bonus_granted?: boolean; bonus_available?: boolean }>("/api/cloud/contribute", json({ on })),
+  cloudContribute: (on: boolean) => request<{ on: boolean; samples: number; default_on?: boolean; privacy_url?: string }>("/api/cloud/contribute", json({ on })),
   cloudDeleteSamples: () => request<{ deleted: number }>("/api/cloud/samples", { method: "DELETE" }),
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
   /** the avatar studio: whether a face can be drawn, and the session under way */

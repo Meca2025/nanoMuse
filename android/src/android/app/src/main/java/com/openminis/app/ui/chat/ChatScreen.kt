@@ -4417,14 +4417,13 @@ fun ChatScreen(
                                 onConfirm = { viewModel.nmConfirmAvatar() },
                                 onDismiss = { viewModel.nmDeclineAvatar() },
                             )
-                            // nanoMuse: the relay refused the turn for a spent allowance — the three ways on.
+                            // nanoMuse: the relay refused the turn for a spent allowance — the two ways on.
                             is FlatChatItem.NanoMuseAllowance -> {
                                 val info by viewModel.nmAllowance.collectAsState()
                                 info?.let {
                                     io.github.nanomuse.ui.cloud.AllowanceWaysCard(
                                         info = it,
                                         exhausted = true,
-                                        onChanged = { viewModel.nmDismissAllowance() },
                                     )
                                 }
                             }

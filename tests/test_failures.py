@@ -37,9 +37,10 @@ def test_relay_refusals_are_named_by_code():
     assert describe_failure(exc)[0] == "provider"
 
 
-def test_an_exhausted_allowance_carries_the_three_ways_on():
-    """relay 0.5: ``429 allowance_exhausted`` says what is left and where invite,
-    co-creation and one's own key lead; the notice passes that on for the card."""
+def test_an_exhausted_allowance_carries_the_ways_on():
+    """relay 0.9: ``429 allowance_exhausted`` says what is left and where an invitation
+    (+¥5 for both sides) and one's own key lead; the notice passes that on for the card.
+    The 0.5 co-creation fields ride along as the relay still sends them (false / 0)."""
     body = {
         "code": "allowance_exhausted",
         "message": "Your free allowance (¥10) is used up. …",
@@ -47,22 +48,29 @@ def test_an_exhausted_allowance_carries_the_three_ways_on():
         "grant": 10,
         "invite_url": "https://nanomuse.cn/web/?invite=ABCD2345",
         "invite_bonus_cny": 5,
-        "contribute_bonus_available": True,
-        "contribute_bonus_cny": 10,
+        "invitee_bonus_cny": 5,
+        "contribute_bonus_available": False,
+        "contribute_bonus_cny": 0,
         "own_key_docs": "https://nanomuse.cn/own-key",
         "type": "nanomuse_cloud",
     }
     exc = _status_error(openai.RateLimitError, 429, body)
     code, text = describe_failure(exc)
-    assert code == "allowance" and "co-creation" in text and "keep working" in text
+    assert (
+        code == "allowance"
+        and "Invite a friend" in text
+        and "co-creation" not in text
+        and "keep working" in text
+    )
     notice = failure_notice(exc, "t1")
     assert notice["code"] == "allowance" and notice["allowance"] == {
         "left": 0,
         "grant": 10,
         "invite_url": "https://nanomuse.cn/web/?invite=ABCD2345",
         "invite_bonus_cny": 5,
-        "contribute_bonus_available": True,
-        "contribute_bonus_cny": 10,
+        "invitee_bonus_cny": 5,
+        "contribute_bonus_available": False,
+        "contribute_bonus_cny": 0,
         "own_key_docs": "https://nanomuse.cn/own-key",
     }
     # any other failure carries no such block

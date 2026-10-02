@@ -335,7 +335,7 @@ class HubService:
         # the account's name and look, if another device set them first
         self.profile.pull_soon()
         # ``created`` rides along: a brand-new account is offered a password and the
-        # co-creation programme right after (the clients' first-sign-in steps).
+        # model source right after (the clients' first-sign-in steps).
         return {**self.account_view(), "created": bool(data.get("created"))}
 
     def _llm_is_cloud(self) -> bool:

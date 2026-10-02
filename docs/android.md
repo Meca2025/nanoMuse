@@ -25,7 +25,7 @@ About*).
 3. **Sign in.** The first screen is the account: a phone number or an e-mail address,
    a code — or a password once you have set one. It is what lets your devices work as one
    ([hub.md](hub.md)) and brings a model to start with ([cloud.md](cloud.md): ¥10 free per
-   account, ¥5 more per friend invited, ¥10 more for joining the co-creation programme; then [your own key](own-key.md)). Then choose which model answers: the account's
+   account, ¥5 more for each friend invited — and ¥5 for them; then [your own key](own-key.md)). Then choose which model answers: the account's
    own, or a key of your own (any OpenAI-compatible endpoint, or the OAuth sign-ins the
    app ships with). Running everything yourself with no account at all is the runtime's
    `cloud.required = false`; the phone app asks for the account.

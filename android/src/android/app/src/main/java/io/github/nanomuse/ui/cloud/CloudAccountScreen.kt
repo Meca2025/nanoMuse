@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.BugReport
@@ -49,7 +50,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -104,6 +104,7 @@ fun CloudAccountScreen(
     onSignIn: () -> Unit,
     onOpenProvider: (instanceId: String) -> Unit,
     onOpenModelGroups: () -> Unit,
+    onOpenDataControls: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -300,7 +301,7 @@ fun CloudAccountScreen(
                             if (a.limited && a.allowanceCny > 0) {
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    text = stringResource(R.string.nm_cloud_allowance_why, money(a.allowanceCny), money(a.inviteBonusCny), money(a.contributeBonusCny)),
+                                    text = stringResource(R.string.nm_cloud_allowance_why, money(a.allowanceCny), money(a.inviteBonusCny)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -448,7 +449,7 @@ fun CloudAccountScreen(
                     }
                 }
 
-                // -- the three ways on, when the pool is spent or nearly ------------------------
+                // -- the two ways on, when the pool is spent or nearly --------------------------
                 if (a != null && a.limited && (a.exhausted || a.warn)) {
                     MuseGap()
                     AllowanceWaysCard(
@@ -456,69 +457,26 @@ fun CloudAccountScreen(
                             leftCny = a.leftCny.coerceAtLeast(0.0),
                             grantCny = a.grantCny,
                             inviteUrl = a.inviteUrl,
-                            contributeBonusAvailable = a.contributeBonusAvailable,
+                            inviteBonusCny = a.inviteBonusCny,
+                            inviteeBonusCny = a.inviteeBonusCny,
                             ownKeyDocs = a.ownKeyDocs,
                         ),
                         exhausted = a.exhausted,
                         modifier = Modifier.padding(horizontal = 16.dp),
-                        onChanged = { account = NanoMuseCloud.account(context) },
                     )
                 }
 
-                // -- the co-creation programme: off by default, the person's own switch ----------
+                // -- data controls: the switch lives under Settings; here, how it stands ---------
                 if (a != null) {
-                    MuseSectionLabel(stringResource(R.string.nm_cloud_contribute_title))
+                    MuseSectionLabel(stringResource(R.string.nm_data_title))
                     MuseCard {
                         MuseRow(
-                            title = when {
-                                a.contribute -> stringResource(R.string.nm_cloud_contribute_on, a.samples)
-                                a.contributeBonusAvailable && a.contributeBonusCny > 0 -> stringResource(R.string.nm_cloud_contribute_off_bonus, money(a.contributeBonusCny))
-                                else -> stringResource(R.string.nm_cloud_contribute_off)
-                            },
-                            chevron = false,
-                            onClick = {
-                                if (busy) return@MuseRow
-                                busy = true
-                                scope.launch {
-                                    try {
-                                        val r = NanoMuseCloud.setContribute(context, !a.contribute)
-                                        account = r.account
-                                        if (r.bonusGranted) notice = context.getString(R.string.nm_cloud_contribute_joined, money(r.bonusCny))
-                                    } catch (e: Exception) { error = NanoMuseCloud.describe(context, e) }
-                                    busy = false
-                                }
-                            },
-                            trailing = {
-                                Switch(checked = a.contribute, enabled = !busy, onCheckedChange = { on ->
-                                    if (busy) return@Switch
-                                    busy = true
-                                    scope.launch {
-                                        try {
-                                            val r = NanoMuseCloud.setContribute(context, on)
-                                            account = r.account
-                                            if (r.bonusGranted) notice = context.getString(R.string.nm_cloud_contribute_joined, money(r.bonusCny))
-                                        } catch (e: Exception) { error = NanoMuseCloud.describe(context, e) }
-                                        busy = false
-                                    }
-                                })
-                            },
+                            title = stringResource(R.string.nm_data_improve),
+                            icon = Icons.Outlined.Storage,
+                            value = stringResource(if (a.contribute) R.string.nm_data_status_on else R.string.nm_data_status_off) +
+                                if (a.samples > 0) " · " + stringResource(R.string.nm_data_turns, a.samples) else "",
+                            onClick = onOpenDataControls,
                         )
-                        Text(
-                            text = stringResource(R.string.nm_cloud_contribute_why),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
-                        )
-                        if (a.samples > 0) {
-                            MuseRowDivider(inset = 16.dp)
-                            MuseRow(
-                                title = stringResource(R.string.nm_cloud_contribute_delete),
-                                icon = Icons.Outlined.DeleteOutline,
-                                titleColor = MaterialTheme.colorScheme.error,
-                                chevron = false,
-                                onClick = { confirm = Confirm.DELETE_SAMPLES },
-                            )
-                        }
                     }
                 }
 
@@ -689,7 +647,6 @@ fun CloudAccountScreen(
                             Confirm.SIGN_OUT -> R.string.nm_cloud_sign_out_here
                             Confirm.SIGN_OUT_ALL -> R.string.nm_cloud_sign_out_everywhere
                             Confirm.DELETE -> R.string.nm_cloud_delete_account
-                            Confirm.DELETE_SAMPLES -> R.string.nm_cloud_contribute_delete
                         },
                     ),
                 )
@@ -701,7 +658,6 @@ fun CloudAccountScreen(
                             Confirm.SIGN_OUT -> R.string.nm_cloud_sign_out_confirm
                             Confirm.SIGN_OUT_ALL -> R.string.nm_cloud_sign_out_everywhere_confirm
                             Confirm.DELETE -> R.string.nm_cloud_delete_account_confirm
-                            Confirm.DELETE_SAMPLES -> R.string.nm_cloud_contribute_delete_confirm
                         },
                     ),
                 )
@@ -717,11 +673,6 @@ fun CloudAccountScreen(
                                     Confirm.SIGN_OUT -> { NanoMuseCloud.signOut(context); leave() }
                                     Confirm.SIGN_OUT_ALL -> { NanoMuseCloud.signOutEverywhere(context, includingThis = true); leave() }
                                     Confirm.DELETE -> { NanoMuseCloud.deleteAccount(context); leave() }
-                                    Confirm.DELETE_SAMPLES -> {
-                                        val n = NanoMuseCloud.deleteSamples(context)
-                                        notice = context.getString(R.string.nm_cloud_contribute_deleted, n)
-                                        account = NanoMuseCloud.account(context)
-                                    }
                                 }
                             } catch (e: Exception) {
                                 error = NanoMuseCloud.describe(context, e)
@@ -732,7 +683,7 @@ fun CloudAccountScreen(
                     },
                 ) {
                     Text(
-                        stringResource(if (which == Confirm.DELETE || which == Confirm.DELETE_SAMPLES) R.string.delete else R.string.nm_cloud_sign_out),
+                        stringResource(if (which == Confirm.DELETE) R.string.delete else R.string.nm_cloud_sign_out),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -757,7 +708,7 @@ fun CloudAccountScreen(
     }
 }
 
-private enum class Confirm { SIGN_OUT, SIGN_OUT_ALL, DELETE, DELETE_SAMPLES }
+private enum class Confirm { SIGN_OUT, SIGN_OUT_ALL, DELETE }
 
 /** Set, change or remove the password; the relay decides whether the current one is needed. */
 @Composable
@@ -947,6 +898,7 @@ private fun eventLabel(kind: String): String = when (kind) {
     "contribute.on" -> stringResource(R.string.nm_cloud_ev_contribute_on)
     "contribute.off" -> stringResource(R.string.nm_cloud_ev_contribute_off)
     "contribute.deleted" -> stringResource(R.string.nm_cloud_ev_contribute_deleted)
+    "contribute.default" -> stringResource(R.string.nm_cloud_ev_contribute_default)
     "invite.accepted" -> stringResource(R.string.nm_cloud_ev_invite_accepted)
     "invite.used" -> stringResource(R.string.nm_cloud_ev_invite_used)
     "credit.granted" -> stringResource(R.string.nm_cloud_ev_credit_granted)

@@ -25,7 +25,7 @@
 </p>
 
 > [!IMPORTANT]
-> **Gratuito, de código abierto, sin ánimo de lucro: un agente personal para todos.** nanoMuse es un proyecto comunitario, gratuito para siempre: inicia sesión con un número de teléfono o un correo electrónico y el modelo viene con una asignación gratuita que paga el desarrollador; cuando se agota, trae tu propia clave. Los mensajes no se guardan salvo que decidas contribuirlos; nada se vende; borra la cuenta cuando quieras. **[Pruébalo en el navegador](https://nanomuse.cn/web/)** o [descarga la app](https://github.com/nano-muse/nanoMuse/releases/latest).
+> **Gratuito, de código abierto, sin ánimo de lucro: un agente personal para todos.** nanoMuse es un proyecto comunitario, gratuito para siempre: inicia sesión con un número de teléfono o un correo electrónico y el modelo viene con una asignación gratuita que paga el desarrollador; cuando se agota, trae tu propia clave. Nada se vende; lo que el relay conserva está en la [política de privacidad](https://nanomuse.cn/privacy/), y *Ajustes → Control de datos* es tuyo; borra la cuenta cuando quieras. **[Pruébalo en el navegador](https://nanomuse.cn/web/)** o [descarga la app](https://github.com/nano-muse/nanoMuse/releases/latest).
 
 > Esta página es una traducción del [README en inglés](../../README.md), que es la referencia y contiene las novedades y la tabla completa de versiones.
 

@@ -93,6 +93,35 @@ def _strip_binary(messages: list) -> list:
     return out
 
 
+# What a kept turn holds — the words the apps show under Data controls and the privacy
+# policy repeats. _training_view enforces them: this is a promise, not a description.
+SAMPLE_KEEPS = {
+    "kept": ["what you wrote", "what the model answered", "the tool calls it chose", "model, token counts, app and language"],
+    "not_kept": ["the system prompt (memory, SOUL, instructions)", "what tools returned", "pictures, audio and clips", "who you are"],
+}
+
+
+def _training_view(messages: list) -> list:
+    """The turn as the community's model may learn from it: what the person wrote and what
+    the model answered, with the tool calls the model chose — not the system prompt (the
+    person's memory, SOUL and instructions), not what a tool returned (their files, their
+    screen, what another app showed them), not a picture or a clip (a marker where one was)."""
+    out: list[dict] = []
+    for m in _strip_binary(messages):
+        role = m.get("role")
+        if role == "user":
+            out.append({"role": "user", "content": m.get("content", "")})
+        elif role == "assistant":
+            kept: dict = {"role": "assistant", "content": m.get("content", "")}
+            if m.get("tool_calls"):
+                kept["tool_calls"] = m["tool_calls"]
+            out.append(kept)
+        elif role == "tool":
+            out.append({"role": "tool", "tool_call_id": str(m.get("tool_call_id", "")), "content": "", "omitted": True})
+        # system, developer and anything else: never kept
+    return out
+
+
 def _fit_messages(messages: list, max_chars: int) -> tuple[str, bool]:
     """The messages as JSON within ``max_chars`` — whole messages dropped from the middle
     (the system prompt and the last exchange kept), then the longest text cut — so that what
@@ -171,6 +200,21 @@ def _load_meta(text: str) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _platform_of(ua: str) -> str:
+    """The app behind a kept turn, from the user agent the clients send: the Android app,
+    the runtime on each system (which serves the web app, the desktop and the harness),
+    a browser, or something else."""
+    ua = str(ua or "")
+    if ua.startswith("nanoMuse-Android"):
+        return "android"
+    if ua.startswith("nanoMuse/"):
+        system = ua[ua.find("(") + 1 : ua.find(")")].lower() if "(" in ua and ")" in ua else ""
+        return {"windows": "windows", "darwin": "macos", "linux": "linux"}.get(system, "runtime")
+    if ua.startswith("Mozilla/"):
+        return "browser"
+    return "other"
+
+
 @dataclass(frozen=True)
 class Caller:
     key_hash: str
@@ -193,12 +237,13 @@ class Caller:
     # Invitations (0.4): the code this person hands out and how many came.
     invite_code: str = ""
     invites: int = 0
-    # The lifetime pool (0.5), micro-yuan: the allowance, plus what invites, the co-creation
-    # bonus and the operator added. What is spent is the ledger's sum, read when needed.
+    # The lifetime pool (0.5), micro-yuan: the allowance, plus what invites and the operator
+    # added (and, for accounts from before 0.9, the co-creation bonus of the time). What is
+    # spent is the ledger's sum, read when needed.
     grant_uy: int = 0
     contribute_bonus_at: int | None = None
-    # The person chose to contribute their conversations (0.4): only then does the
-    # relay keep what was said, for the community's own model.
+    # Data controls: "Help improve nanoMuse's AI models" is on for this account — only then
+    # does the relay keep the text of what was said (service.keep_sample says exactly what).
     contribute: bool = False
 
     @property
@@ -225,11 +270,12 @@ class Cloud:
         self.member_hashes: frozenset[str] = frozenset(i.hash(settings.hmac_key) for i in self._listed_identifiers())
         if settings.signup_open:
             log.info(
-                "sign-up is open: %d member(s) without a limit, everyone else ¥%.2f in all (+¥%.2f an invite, +¥%.2f for co-creation)",
+                "sign-up is open: %d member(s) without a limit, everyone else ¥%.2f in all (+¥%.2f an invite, to both sides); "
+                "new accounts start with 'help improve the models' %s",
                 len(self.member_hashes),
                 settings.allowance_cny,
                 settings.invite_bonus_cny,
-                settings.contribute_bonus_cny,
+                "on" if settings.improve_default else "off",
             )
         else:
             log.warning("SIGNUP_OPEN=0: private relay, only the %d listed identifier(s) may sign in", len(self.member_hashes))
@@ -326,6 +372,11 @@ class Cloud:
                 id_hash, ident.channel, ident.hint, self.s.signup_tokens, enc, account_id=account_id, grant_uy=self.s.allowance_uy
             )
             self.db.add_event(account_id, "account.created", ident.channel)
+            if self.s.improve_default:
+                # the relay's default for a new account, said on its timeline as such (not as a
+                # choice the person made); it is theirs to turn off under Data controls
+                self.db.set_contribute(account_id, True)
+                self.db.add_event(account_id, "contribute.default", "on")
             self._accept_invite(account_id, invite)
         elif account["disabled"]:
             raise CloudError(403, "account_disabled", "This account is disabled")
@@ -351,10 +402,11 @@ class Cloud:
             self.db.add_event(new_account_id, "invite.unknown")
             return
         bonus_uy = self.s.cny_to_uy(self.s.invite_bonus_cny)
+        # the same bonus to both sides (0.9): the inviter's pool and the newcomer's
         self.db.record_invite(inviter["id"], new_account_id, bonus_uy)
         self.db.add_event(inviter["id"], "invite.accepted", new_account_id[:8])
         self.db.add_event(new_account_id, "invite.used", inviter["id"][:8])
-        log.info("invite: %s brought %s (+¥%.2f)", inviter["id"][:8], new_account_id[:8], self.s.invite_bonus_cny)
+        log.info("invite: %s brought %s (+¥%.2f each)", inviter["id"][:8], new_account_id[:8], self.s.invite_bonus_cny)
 
     def invite_code_for(self, caller: Caller) -> str:
         """The account's code, made on first ask (no confusable letters)."""
@@ -378,6 +430,8 @@ class Cloud:
             "url": self.s.invite_url + code if self.s.invite_url else "",
             "invites": caller.invites,
             "bonus_cny": self.s.invite_bonus_cny,
+            # 0.9: the friend who signs up with the code gets the same
+            "invitee_bonus_cny": self.s.invite_bonus_cny,
             "earned_cny": earned,
             # 0.4 names, one more version: the money invites brought (there is no separate
             # credit any more, it is all one pool) and no clips to count
@@ -603,17 +657,14 @@ class Cloud:
             "grant_uy": grant,
             "left_uy": left,
             "warn": bool(limited and grant > 0 and spent_uy * 5 >= grant * 4),
-            "contribute_bonus_available": self.s.contribute_bonus_cny > 0 and caller.contribute_bonus_at is None,
         }
 
     def _exhausted(self, caller: Caller, a: dict) -> CloudError:
-        ways = [f"invite a friend (+¥{self.s.invite_bonus_cny:g} each)"]
-        if a["contribute_bonus_available"]:
-            ways.append(f"join the co-creation programme (+¥{self.s.contribute_bonus_cny:g}, once)")
-        ways.append("add your own model key (Alibaba Cloud Bailian has a free tier)")
         message = (
             f"Your free allowance (¥{self.s.uy_to_cny(a['grant_uy']):g}) is used up. "
-            f"Three ways on: {'; '.join(ways)}. Your sign-in and your devices keep working either way."
+            f"Two ways on: invite a friend (+¥{self.s.invite_bonus_cny:g} for each of you); "
+            "add your own model key (Alibaba Cloud Bailian has a free tier). "
+            "Your sign-in and your devices keep working either way."
         )
         return CloudError(
             429,
@@ -624,8 +675,10 @@ class Cloud:
                 "grant": self.s.uy_to_cny(a["grant_uy"]),
                 "invite_url": (self.s.invite_url + self.invite_code_for(caller)) if self.s.invite_url else "",
                 "invite_bonus_cny": self.s.invite_bonus_cny,
-                "contribute_bonus_available": a["contribute_bonus_available"],
-                "contribute_bonus_cny": self.s.contribute_bonus_cny,
+                "invitee_bonus_cny": self.s.invite_bonus_cny,
+                # 0.5 names, kept for the apps of the time: there is no co-creation bonus any more
+                "contribute_bonus_available": False,
+                "contribute_bonus_cny": 0,
                 "own_key_docs": self.s.own_key_docs,
             },
         )
@@ -684,8 +737,10 @@ class Cloud:
                 # how the pool grows, for the account page
                 "allowance_cny": self.s.allowance_cny,
                 "invite_bonus_cny": self.s.invite_bonus_cny,
-                "contribute_bonus_cny": self.s.contribute_bonus_cny,
-                "contribute_bonus_available": a["contribute_bonus_available"],
+                "invitee_bonus_cny": self.s.invite_bonus_cny,
+                # 0.5 names, kept for the apps of the time: there is no co-creation bonus any more
+                "contribute_bonus_cny": 0,
+                "contribute_bonus_available": False,
                 "own_key_docs": self.s.own_key_docs,
                 # 0.4 names, one more version: apps from before 0.5 draw a "today / cap" bar;
                 # with the pool in `daily_cap` and the total in `today` that bar is the right
@@ -699,11 +754,18 @@ class Cloud:
             },
             "invite": self.invite_view(caller),
             "clips": self.clips_view(),
+            # Data controls: the switch, what has been kept (counted even when the switch is
+            # off now, so the person sees there is something to delete), the relay's default
+            # for new accounts and what exactly a kept turn holds.
             "contribute": {
                 "on": caller.contribute,
-                "samples": self.db.sample_count(caller.account_id) if caller.contribute else 0,
-                "bonus_cny": self.s.contribute_bonus_cny,
-                "bonus_available": a["contribute_bonus_available"],
+                "samples": self.db.sample_count(caller.account_id),
+                "default_on": self.s.improve_default,
+                "keeps": SAMPLE_KEEPS,
+                "privacy_url": self.s.privacy_url,
+                # 0.5 names: there is no bonus for the switch any more
+                "bonus_cny": 0,
+                "bonus_available": False,
                 "bonus_at": caller.contribute_bonus_at,
             },
             "models": [m.to_public() for m in self.s.models],
@@ -809,12 +871,14 @@ class Cloud:
         """An event on the account's timeline (never message content)."""
         self.db.add_event(account_id, kind, detail)
 
-    # -- contributed conversations ---------------------------------------------------------
+    # -- data controls: "Help improve nanoMuse's AI models" ----------------------------------
     #
-    # Off for everyone until they turn it on. With it on, each chat request's messages and
-    # the model's reply are kept for the community's own model — nothing else changes, and
-    # the person can turn it off and delete what they gave at any time. Never the person's
-    # identity: samples carry the account id only, and are exported without it.
+    # With the switch on, each chat request's conversation and the model's reply are kept
+    # for the community's own model — nothing else changes, and the person can turn it off
+    # and delete what was kept at any time (Settings → Data controls on every app). What a
+    # kept turn holds is exactly SAMPLE_KEEPS below; keep_sample enforces it. Never the
+    # person's identity: samples carry the account id only, and are exported without it.
+    # The default for a new account is the relay's IMPROVE_DEFAULT (config.py).
 
     SAMPLE_MAX_CHARS = 200_000
 
@@ -937,33 +1001,102 @@ class Cloud:
         self.note(caller.account_id, "profile.clear")
 
     def set_contribute(self, caller: Caller, on: bool) -> dict:
-        """Joining the co-creation programme (turning contribution on) adds CONTRIBUTE_BONUS_CNY
-        to the pool the first time — once for the account's lifetime, so switching it off and
-        on again earns nothing more, and the samples already given are not taken back."""
-        granted = False
+        """The switch under Data controls. Turning it off keeps what was kept until the person
+        deletes it (delete_samples) — the count stays visible so they know there is something
+        to delete. Nothing is credited for it either way (the 0.5 bonus is gone)."""
         if on != caller.contribute:
             self.db.set_contribute(caller.account_id, on)
             self.note(caller.account_id, "contribute.on" if on else "contribute.off")
-        if on and self.s.contribute_bonus_cny > 0 and caller.contribute_bonus_at is None:
-            bonus_uy = self.s.cny_to_uy(self.s.contribute_bonus_cny)
-            granted = self.db.grant_contribute_bonus(caller.account_id, bonus_uy)
-            if granted:
-                self.note(caller.account_id, "contribute.bonus", f"¥{self.s.contribute_bonus_cny:g}")
-        row = self.db.account(caller.account_id)
-        bonus_at = int(row["contribute_bonus_at"]) if row is not None and row["contribute_bonus_at"] else None
         return {
             "on": on,
-            "samples": self.db.sample_count(caller.account_id) if on else 0,
-            "bonus_cny": self.s.contribute_bonus_cny,
-            "bonus_granted": granted,
-            "bonus_available": self.s.contribute_bonus_cny > 0 and bonus_at is None,
-            "bonus_at": bonus_at,
+            "samples": self.db.sample_count(caller.account_id),
+            "default_on": self.s.improve_default,
+            "keeps": SAMPLE_KEEPS,
+            "privacy_url": self.s.privacy_url,
+            # 0.5 names, for the apps of the time
+            "bonus_cny": 0,
+            "bonus_granted": False,
+            "bonus_available": False,
+            "bonus_at": caller.contribute_bonus_at,
         }
 
     def delete_samples(self, caller: Caller) -> int:
         n = self.db.delete_samples(caller.account_id)
         self.note(caller.account_id, "contribute.deleted", f"{n} conversations")
         return n
+
+    def admin_data(self, days: int = 30) -> dict:
+        """The operator's view of Data controls: how many accounts have the switch on, how
+        many turns were kept, by day, model and app, how often it is turned on and off —
+        and the newest turns themselves (the account only as its masked hint)."""
+        t = now()
+        off = self.s.day_offset_h * 3600
+        since = self.s.day_start(t) - 86400 * max(0, days - 1)
+        by_day = {int(r["day"]): r for r in self.db.samples_by_day(since, off)}
+        events: dict[int, dict[str, int]] = {}
+        for r in self.db.events_by_day(since, off):
+            events.setdefault(int(r["day"]), {})[str(r["kind"])] = int(r["n"])
+        rows = []
+        for i in range(days):
+            d = since + i * 86400
+            s = by_day.get(d)
+            e = events.get(d, {})
+            rows.append(
+                {
+                    "day": d,
+                    "samples": int(s["n"]) if s else 0,
+                    "accounts": int(s["accounts"]) if s else 0,
+                    "prompt_tokens": int(s["prompt_tokens"] or 0) if s else 0,
+                    "completion_tokens": int(s["completion_tokens"] or 0) if s else 0,
+                    "turned_on": e.get("contribute.on", 0),
+                    "turned_off": e.get("contribute.off", 0),
+                    "default_on": e.get("contribute.default", 0),
+                    "deleted": e.get("contribute.deleted", 0),
+                }
+            )
+        platforms: dict[str, int] = {}
+        for r in self.db.samples_meta(since):
+            name = _platform_of(_load_meta(r["meta"]).get("ua", ""))
+            platforms[name] = platforms.get(name, 0) + int(r["n"])
+        hints = {r["id"]: r["hint"] for r in self.db.list_accounts(limit=5000)}
+        recent = [{**smp, "hint": hints.get(smp["account_id"], "?")} for smp in self.admin_samples(None, 0, 30)]
+        counts = self.db.account_counts()
+        total = int(counts.get("total", 0) or 0)
+        on = self.db.contributors()
+        period = self.db.samples_totals(since)
+        ever = self.db.samples_totals(0)
+        return {
+            "generated_at": t,
+            "default_on": self.s.improve_default,
+            "keeps": SAMPLE_KEEPS,
+            "accounts": {
+                "total": total,
+                "on": on,
+                "off": max(0, total - on),
+                "share": (on / total) if total else 0.0,
+                "turned_off_ever": self.db.event_accounts("contribute.off"),
+                "with_samples": int(ever["accounts"] or 0),
+            },
+            "totals": {
+                "samples": int(ever["n"] or 0),
+                "prompt_tokens": int(ever["prompt_tokens"] or 0),
+                "completion_tokens": int(ever["completion_tokens"] or 0),
+            },
+            "period": {
+                "days": days,
+                "samples": int(period["n"] or 0),
+                "accounts": int(period["accounts"] or 0),
+                "prompt_tokens": int(period["prompt_tokens"] or 0),
+                "completion_tokens": int(period["completion_tokens"] or 0),
+            },
+            "days": rows,
+            "by_model": [
+                {"model": r["model"], "samples": int(r["n"]), "tokens": int(r["prompt_tokens"] or 0) + int(r["completion_tokens"] or 0)}
+                for r in self.db.samples_by_model(since)
+            ],
+            "by_platform": sorted(({"platform": k, "samples": v} for k, v in platforms.items()), key=lambda x: -x["samples"]),
+            "recent": recent,
+        }
 
     def keep_sample(
         self,
@@ -975,10 +1108,11 @@ class Cloud:
         completion_tokens: int,
         meta: dict | None = None,
     ) -> None:
-        """Called after a chat turn for a contributing account; anything else is a no-op."""
+        """Called after a chat turn for an account with the switch on; anything else is a
+        no-op. Only the training view of the turn is written (_training_view)."""
         if not caller.contribute:
             return
-        request, cut = _fit_messages(_strip_binary(messages), self.SAMPLE_MAX_CHARS)
+        request, cut = _fit_messages(_training_view(messages), self.SAMPLE_MAX_CHARS)
         meta = dict(meta or {})
         if cut or len(response) > self.SAMPLE_MAX_CHARS:
             meta["truncated"] = True
@@ -1439,11 +1573,14 @@ class Cloud:
             "allowance_cny": self.s.allowance_cny,
             "allowance_usd": self.s.cny_to_usd(self.s.allowance_cny),
             "invite_bonus_cny": self.s.invite_bonus_cny,
-            "contribute_bonus_cny": self.s.contribute_bonus_cny,
+            "invitee_bonus_cny": self.s.invite_bonus_cny,
+            "contribute_bonus_cny": 0,
+            "improve_default": self.s.improve_default,
             "usd_cny": self.s.usd_cny,
             "day_offset_h": self.s.day_offset_h,
             "invite_url": self.s.invite_url,
             "own_key_docs": self.s.own_key_docs,
+            "privacy_url": self.s.privacy_url,
             "contributors": self.db.contributors(),
             "allowed_identifiers": [s.strip() for s in self.s.allowed_identifiers.split(",") if s.strip()],
             "sender": self.s.sender,

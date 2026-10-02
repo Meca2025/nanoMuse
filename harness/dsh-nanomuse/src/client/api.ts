@@ -10,6 +10,8 @@ export interface Account {
   hint: string
   member: boolean
   tokens: { unlimited: boolean; granted: number; used: number; remaining: number }
+  /** Data controls (relay 0.9); absent on an older relay. */
+  contribute?: { on: boolean; samples: number; defaultOn?: boolean; privacyUrl: string }
 }
 
 export interface Model {

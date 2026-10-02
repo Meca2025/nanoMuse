@@ -39,7 +39,7 @@
 
 ## Community
 
-**Free, open source, non-profit — open source, built together: a personal agent for all.** Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer — the account page says how much is left and how it grows; when it is gone, bring your own key, with a step-by-step guide. Messages are not stored unless you choose to contribute them; nothing is sold; delete the account whenever you like.
+**Free, open source, non-profit — open source, built together: a personal agent for all.** Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer — the account page says how much is left and how it grows; when it is gone, bring your own key, with a step-by-step guide. Nothing is sold; what the relay keeps is in the privacy policy (nanomuse.cn/privacy), and *Settings → Data controls* is yours; delete the account whenever you like.
 
 This is a preview, and the people building it use it every day; what breaks for you, and what you wish it did, is the most useful thing you can send. The apps are for anyone; the developer side is in the settings and the docs when you turn it on; the product and the skill and plugin interfaces will keep moving quickly for a while and settle as they go. What we are after is bigger than one app — a personal agent that belongs to the person who runs it, built in the open on infrastructure anyone can reuse, and a shared answer to how far such an agent can go — and we look forward to finding it out with users and developers everywhere. Thank you to everyone who tried a build, reported what broke and asked for what was missing — every issue, idea and pull request brings a personal agent within everyone's reach. [Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [send a pull request](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [star the repo](https://github.com/nano-muse/nanoMuse).
 
@@ -78,7 +78,7 @@ Based on [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 (GPL-3.0), mod
 
 ### 社区
 
-**免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体。** 用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担——还剩多少、怎么增加，账号页里写得清楚；用完可以换自己的 key，有一步步的教程。默认不保存你的消息，数据不会出售，随时可以删除账号。
+**免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体。** 用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担——还剩多少、怎么增加，账号页里写得清楚；用完可以换自己的 key，有一步步的教程。数据不会出售；服务器保存什么写在隐私政策里（nanomuse.cn/privacy），「设置 → 数据控制」由你决定；随时可以删除账号。
 
 谢谢每一位装过试过、报过问题、提过需求的人——每一个 issue、想法和 PR，都在让个人智能体离所有人更近一步。[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [发 PR](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [点个 Star](https://github.com/nano-muse/nanoMuse)。
 

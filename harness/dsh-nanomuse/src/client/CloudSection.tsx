@@ -15,6 +15,9 @@ import { SignIn } from './SignIn.tsx'
 
 type Phase = 'loading' | 'signedOut' | 'signedIn'
 
+/** Where the privacy policy is when the relay did not name one. */
+const PRIVACY_URL = 'https://nanomuse.cn/privacy/'
+
 /** Build the section component around the translator the plugin bound. */
 export function makeCloudSection(t: Translate) {
   return function CloudSection(): ReactNode {
@@ -51,6 +54,16 @@ export function makeCloudSection(t: Translate) {
     }
     const signOut = () => void run(async () => apply(await call<CloudStatus>('sign-out', {})))
     const refresh = () => void run(async () => apply(await call<CloudStatus>('refresh', {})))
+    const [notice, setNotice] = useState<string | undefined>()
+    const setContribute = (on: boolean) => void run(async () => { setNotice(undefined); apply(await call<CloudStatus>('data/contribute', { on })) })
+    const deleteSamples = () => {
+      if (!window.confirm(t('dataDeleteConfirm'))) return
+      void run(async () => {
+        const next = await call<CloudStatus & { deleted: number }>('data/delete-samples', {})
+        apply(next)
+        setNotice(t('dataDeleted', { n: next.deleted }))
+      })
+    }
 
     const profile = live.streaming ? live.profile : status?.profile
     const header = h('div', { style: row },
@@ -79,6 +92,23 @@ export function makeCloudSection(t: Translate) {
         h('h3', { style: heading }, t('devicesTitle')),
         h('div', { style: muted }, t('devicesSummary', { n: (live.streaming ? live.hub : status.hub).devices.filter((d) => d.kind !== 'web').length }), ' ',
           h(Button, { variant: 'ghost', size: 'sm', onClick: () => { settingsBus.openSection?.(DEVICES_PANEL) } }, t('devicesOpen'))),
+        // Data controls: the one switch over what the relay keeps, the shape of Muse's own.
+        h('h3', { style: heading }, t('dataTitle')),
+        a.contribute
+          ? h('div', null,
+              h('div', { style: { ...row, justifyContent: 'space-between' } },
+                h('span', null, t('dataImprove')),
+                h(Switch, { checked: a.contribute.on, onChange: setContribute, disabled: busy, label: t('dataImprove') })),
+              h('div', { style: muted },
+                t('dataWhy'), ' ',
+                a.contribute.defaultOn === undefined ? '' : t(a.contribute.defaultOn ? 'dataDefaultOn' : 'dataDefaultOff'), ' ',
+                a.contribute.samples > 0 ? t('dataKept', { n: a.contribute.samples }) : '', ' ',
+                h('a', { href: a.contribute.privacyUrl || PRIVACY_URL, target: '_blank', rel: 'noopener noreferrer' }, t('dataPrivacy'))),
+              a.contribute.samples > 0
+                ? h('div', { style: { marginTop: 6 } }, h(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: deleteSamples }, t('dataDelete')))
+                : null,
+              notice ? h('div', { style: muted }, notice) : null)
+          : h('div', { style: muted }, t('dataOlderRelay')),
         error ? h('div', { style: errorStyle }, error) : null,
         h('div', { style: row },
           h(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: refresh }, t('refresh')),

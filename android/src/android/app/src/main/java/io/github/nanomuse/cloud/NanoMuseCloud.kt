@@ -66,8 +66,8 @@ object NanoMuseCloud {
     private const val KEY_LEFT = "cloud.left_cny"
     private const val KEY_WARN = "cloud.warn"
     private const val KEY_ALLOWANCE = "cloud.allowance_cny"
-    private const val KEY_CONTRIBUTE_BONUS = "cloud.contribute_bonus_cny"
-    private const val KEY_CONTRIBUTE_BONUS_AVAILABLE = "cloud.contribute_bonus_available"
+    // 0.1.27: an invitation credits both sides (relay 0.9)
+    private const val KEY_INVITEE_BONUS = "cloud.invitee_bonus_cny"
     private const val KEY_OWN_KEY_DOCS = "cloud.own_key_docs"
     private const val KEY_ACCOUNT_ID = "cloud.account_id"
     private const val KEY_CREATED_AT = "cloud.created_at"
@@ -81,11 +81,17 @@ object NanoMuseCloud {
     private const val KEY_INVITES = "cloud.invites"
     private const val KEY_INVITE_BONUS = "cloud.invite_bonus_cny"
     private const val KEY_INVITE_EARNED = "cloud.invite_earned_cny"
+    // 0.1.27: data controls (relay 0.9) — the switch, what is kept, how new accounts start
     private const val KEY_CONTRIBUTE = "cloud.contribute"
-    /** The code sign-in created the account: the first-run setup owes the password and co-creation steps. */
+    private const val KEY_CONTRIBUTE_DEFAULT = "cloud.contribute_default"
+    private const val KEY_PRIVACY_URL = "cloud.privacy_url"
+    /** The code sign-in created the account: the first-run setup owes the password step. */
     private const val KEY_FRESH = "cloud.fresh_account"
     private const val KEY_WARNED_GRANT = "cloud.warned_grant"
     private const val KEY_SAMPLES = "cloud.samples"
+
+    /** Where the privacy policy is when the relay did not name one. */
+    const val PRIVACY_URL = "https://nanomuse.cn/privacy/"
 
     class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
 
@@ -140,18 +146,16 @@ object NanoMuseCloud {
         val spentTodayCny: Double = 0.0,
         val spentTotalCny: Double = 0.0,
         /**
-         * The pool for the account's lifetime (relay 0.5): the allowance plus what invites, the
-         * co-creation bonus and the operator added; 0 = no limit (a member, or an open relay).
+         * The pool for the account's lifetime (relay 0.5): the allowance plus what invites and
+         * the operator added; 0 = no limit (a member, or an open relay).
          */
         val grantCny: Double = 0.0,
         /** What is left of the pool; negative when there is no limit. */
         val leftCny: Double = -1.0,
         /** The relay's 80 % heads-up. */
         val warn: Boolean = false,
-        /** How the pool grows, for the account page: the starting allowance and the bonuses. */
+        /** How the pool grows, for the account page: the starting allowance. */
         val allowanceCny: Double = 0.0,
-        val contributeBonusCny: Double = 0.0,
-        val contributeBonusAvailable: Boolean = false,
         /** The guide for bringing one's own key; empty on an older relay. */
         val ownKeyDocs: String = "",
         /** Yuan per dollar, for showing both; 0 when the relay did not say. */
@@ -174,10 +178,19 @@ object NanoMuseCloud {
         /** Friends who signed up with the code, what each adds, and what they added in all. */
         val invites: Int = 0,
         val inviteBonusCny: Double = 0.0,
+        /** What the new account gets for signing up with a code (relay 0.9); 0 on an older relay. */
+        val inviteeBonusCny: Double = 0.0,
         val inviteEarnedCny: Double = 0.0,
-        /** The person chose to contribute their chat turns to the community's model; how many so far. */
+        /**
+         * Data controls — "Help improve nanoMuse's AI models": whether the relay keeps this
+         * account's chat turns for the community's model, and how many it holds so far.
+         */
         val contribute: Boolean = false,
         val samples: Int = 0,
+        /** How the relay starts new accounts (relay 0.9); null when it did not say. */
+        val contributeDefaultOn: Boolean? = null,
+        /** The relay's privacy policy; empty when it did not say. */
+        val privacyUrl: String = "",
     ) {
         val remaining: Long get() = (granted - used).coerceAtLeast(0)
         /** 0..1 of the grant still unspent. */
@@ -260,8 +273,6 @@ object NanoMuseCloud {
             leftCny = p.getFloat(KEY_LEFT, -1f).toDouble(),
             warn = p.getBoolean(KEY_WARN, false),
             allowanceCny = p.getFloat(KEY_ALLOWANCE, 0f).toDouble(),
-            contributeBonusCny = p.getFloat(KEY_CONTRIBUTE_BONUS, 0f).toDouble(),
-            contributeBonusAvailable = p.getBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, false),
             ownKeyDocs = p.getString(KEY_OWN_KEY_DOCS, "") ?: "",
             usdCny = p.getFloat(KEY_USD_CNY, 0f).toDouble(),
             accountId = p.getString(KEY_ACCOUNT_ID, "") ?: "",
@@ -274,9 +285,12 @@ object NanoMuseCloud {
             inviteUrl = p.getString(KEY_INVITE_URL, "") ?: "",
             invites = p.getInt(KEY_INVITES, 0),
             inviteBonusCny = p.getFloat(KEY_INVITE_BONUS, 0f).toDouble(),
+            inviteeBonusCny = p.getFloat(KEY_INVITEE_BONUS, 0f).toDouble(),
             inviteEarnedCny = p.getFloat(KEY_INVITE_EARNED, 0f).toDouble(),
             contribute = p.getBoolean(KEY_CONTRIBUTE, false),
             samples = p.getInt(KEY_SAMPLES, 0),
+            contributeDefaultOn = if (p.contains(KEY_CONTRIBUTE_DEFAULT)) p.getBoolean(KEY_CONTRIBUTE_DEFAULT, false) else null,
+            privacyUrl = p.getString(KEY_PRIVACY_URL, "") ?: "",
         )
     }
 
@@ -296,25 +310,22 @@ object NanoMuseCloud {
         return true
     }
 
-    /** The relay's answer to joining or leaving the co-creation programme. */
-    data class Contribution(val account: Account, val bonusGranted: Boolean, val bonusCny: Double)
-
     /**
-     * Join (or leave) the co-creation programme: keep this account's chat turns for the
-     * community's own model. Joining adds the relay's bonus to the pool the first time.
+     * Data controls — flip "Help improve nanoMuse's AI models": while on, the relay keeps this
+     * account's chat turns (the training view: what was written, what was answered, the tool
+     * calls) for the community's own model. Nothing about the allowance changes. Returns the
+     * account as the relay now describes it.
      */
-    suspend fun setContribute(context: Context, on: Boolean): Contribution = withContext(Dispatchers.IO) {
+    suspend fun setContribute(context: Context, on: Boolean): Account = withContext(Dispatchers.IO) {
         val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
         val r = call(context, "POST", "/v1/me/contribute", JSONObject().put("on", on), token = key)
-        prefs(context).edit()
+        val e = prefs(context).edit()
             .putBoolean(KEY_CONTRIBUTE, r.optBoolean("on", on))
             .putInt(KEY_SAMPLES, r.optInt("samples", 0))
-            .putBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, r.optBoolean("bonus_available", false))
-            .apply()
-        // the pool changed: read it back so the page shows the new numbers
-        val granted = r.optBoolean("bonus_granted", false)
-        if (granted) runCatching { refresh(context) }
-        Contribution(account(context)!!, granted, r.optDouble("bonus_cny", 0.0))
+        if (r.has("default_on")) e.putBoolean(KEY_CONTRIBUTE_DEFAULT, r.optBoolean("default_on", false))
+        r.optString("privacy_url", "").takeIf { it.isNotBlank() }?.let { e.putString(KEY_PRIVACY_URL, it) }
+        e.apply()
+        account(context)!!
     }
 
     /**
@@ -333,7 +344,7 @@ object NanoMuseCloud {
         return call(context, "PUT", "/v1/me/profile", body, token = key)
     }
 
-    /** Delete everything this account contributed; returns how many turns went. */
+    /** Delete every turn the relay kept from this account; returns how many went. */
     suspend fun deleteSamples(context: Context): Int = withContext(Dispatchers.IO) {
         val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
         val n = call(context, "DELETE", "/v1/me/samples", null, token = key).optInt("deleted", 0)
@@ -687,8 +698,7 @@ object NanoMuseCloud {
             )
             .putBoolean(KEY_WARN, spend.optBoolean("warn", false))
             .putFloat(KEY_ALLOWANCE, spend.optDouble("allowance_cny", 0.0).toFloat())
-            .putFloat(KEY_CONTRIBUTE_BONUS, spend.optDouble("contribute_bonus_cny", 0.0).toFloat())
-            .putBoolean(KEY_CONTRIBUTE_BONUS_AVAILABLE, spend.optBoolean("contribute_bonus_available", false))
+            .putFloat(KEY_INVITEE_BONUS, spend.optDouble("invitee_bonus_cny", reply.optJSONObject("invite")?.optDouble("invitee_bonus_cny", 0.0) ?: 0.0).toFloat())
             .putString(KEY_OWN_KEY_DOCS, spend.optString("own_key_docs", ""))
             .putFloat(KEY_USD_CNY, spend.optDouble("usd_cny", 0.0).toFloat())
             .putString(KEY_ACCOUNT_ID, account.optString("id"))
@@ -704,6 +714,12 @@ object NanoMuseCloud {
             .putFloat(KEY_INVITE_EARNED, (reply.optJSONObject("invite")?.optDouble("earned_cny", 0.0) ?: 0.0).toFloat())
             .putBoolean(KEY_CONTRIBUTE, reply.optJSONObject("contribute")?.optBoolean("on", false) ?: false)
             .putInt(KEY_SAMPLES, reply.optJSONObject("contribute")?.optInt("samples", 0) ?: 0)
+            .putString(KEY_PRIVACY_URL, reply.optJSONObject("contribute")?.optString("privacy_url", "").orEmpty())
+            .also { e ->
+                // relay 0.9 says how new accounts start; an older one does not, and the page says nothing
+                val ct = reply.optJSONObject("contribute")
+                if (ct != null && ct.has("default_on")) e.putBoolean(KEY_CONTRIBUTE_DEFAULT, ct.optBoolean("default_on", false)) else e.remove(KEY_CONTRIBUTE_DEFAULT)
+            }
             .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
             .apply()
         migrateMediaModels(context, reply.optJSONArray("models"))
@@ -765,11 +781,11 @@ object NanoMuseCloud {
             .remove(KEY_INSTANCE).remove(KEY_CHANNEL).remove(KEY_HINT)
             .remove(KEY_GRANTED).remove(KEY_USED).remove(KEY_USED_TODAY).remove(KEY_DAILY_CAP).remove(KEY_UNLIMITED).remove(KEY_CHECKED_AT)
             .remove(KEY_MEMBER).remove(KEY_SPENT_TODAY).remove(KEY_SPENT_TOTAL).remove(KEY_USD_CNY)
-            .remove(KEY_GRANT).remove(KEY_LEFT).remove(KEY_WARN).remove(KEY_ALLOWANCE).remove(KEY_CONTRIBUTE_BONUS)
-            .remove(KEY_CONTRIBUTE_BONUS_AVAILABLE).remove(KEY_OWN_KEY_DOCS)
+            .remove(KEY_GRANT).remove(KEY_LEFT).remove(KEY_WARN).remove(KEY_ALLOWANCE).remove(KEY_INVITEE_BONUS)
+            .remove(KEY_OWN_KEY_DOCS)
             .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_USAGE)
             .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
-            .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_FRESH).remove(KEY_WARNED_GRANT)
+            .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_CONTRIBUTE_DEFAULT).remove(KEY_PRIVACY_URL).remove(KEY_FRESH).remove(KEY_WARNED_GRANT)
             .apply()
         ProfileSync.forget(context)
     }

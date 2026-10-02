@@ -1,9 +1,9 @@
-import { Check, Clapperboard, Copy, Gift, Image as ImageIcon, KeyRound, Loader2, LogOut, MessageCircle, Phone, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { Check, Clapperboard, Copy, DatabaseZap, Gift, Image as ImageIcon, KeyRound, Loader2, LogOut, MessageCircle, Phone, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { AllowanceWays } from "../components/AllowanceWays";
 import { PageBar } from "../components/BackBar";
-import { Toggle, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
+import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { SignIn } from "../components/SignIn";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -14,7 +14,8 @@ import { cx } from "../util";
  * Your nanoMuse Cloud account: who you are signed in as, what has been used (by kind — chat,
  * pictures, clips — and by model), the password, every device signed in, and the
  * way out (sign out here, everywhere, or delete the account). Everything the relay knows
- * about you is on this one screen; nothing on it is message content.
+ * about you is on this one screen; what the relay keeps of your chats is one switch away, under
+ * Settings → Data controls.
  */
 export function AccountScreen() {
   const { state, toast, setTab } = useStore();
@@ -63,7 +64,7 @@ export function AccountScreen() {
             {me && <Allowance me={me} onChanged={() => void load()} />}
             {me?.invite?.code && <Invite me={me} />}
             {me && <Usage me={me} />}
-            {me && <Contribute me={me} onChanged={() => void load()} />}
+            {me && <DataControlsLink me={me} />}
             <Password account={account} onChanged={() => void load()} />
             <Sessions sessions={sessions} loading={loading} onChanged={() => void load()} />
             {events && events.length > 0 && <Timeline events={events} />}
@@ -137,8 +138,7 @@ function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
     grant,
     invite_url: me.invite?.url,
     invite_bonus_cny: spend.invite_bonus_cny ?? me.invite?.bonus_cny,
-    contribute_bonus_available: spend.contribute_bonus_available ?? me.contribute?.bonus_available,
-    contribute_bonus_cny: spend.contribute_bonus_cny ?? me.contribute?.bonus_cny,
+    invitee_bonus_cny: spend.invitee_bonus_cny ?? me.invite?.invitee_bonus_cny,
     own_key_docs: spend.own_key_docs,
   };
   return (
@@ -174,10 +174,9 @@ function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
       )}
       {limited && (
         <p className="text-[12.5px] text-muted">
-          {t("¥{allowance} to start, +¥{invite} per friend you invite, +¥{contribute} once for the co-creation programme; after that, your own key keeps the model going.", {
+          {t("¥{allowance} to start, +¥{invite} for each friend you invite — and +¥{invite} for them; after that, your own key keeps the model going.", {
             allowance: (spend.allowance_cny ?? 10).toFixed(0),
             invite: (info.invite_bonus_cny ?? 5).toFixed(0),
-            contribute: (info.contribute_bonus_cny ?? 10).toFixed(0),
           })}
         </p>
       )}
@@ -187,57 +186,32 @@ function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
 }
 
 /**
- * The co-creation programme: off by default. Joined, the relay keeps each chat turn (messages
- * and reply, pictures as a marker) for the community's own model — and adds the one-time
- * bonus to the allowance; the person can leave and delete what they gave at any time. The
- * only way message content ever reaches the relay's disk.
+ * Where the one switch over what the relay keeps lives: Settings → Data controls. The account
+ * page only says how it stands and leads there.
  */
-function Contribute({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
+function DataControlsLink({ me }: { me: CloudMe }) {
   const t = useT();
-  const { toast } = useStore();
-  const [busy, setBusy] = useState(false);
+  const { setTab } = useStore();
   const ct = me.contribute ?? { on: false, samples: 0 };
-  const bonus = ct.bonus_cny ?? me.spend.contribute_bonus_cny ?? 0;
-  const bonusAvailable = ct.bonus_available ?? me.spend.contribute_bonus_available ?? false;
-  const flip = async (on: boolean) => {
-    setBusy(true);
-    try {
-      const r = await api.cloudContribute(on);
-      if (on && r.bonus_granted) toast(t("Joined — ¥{bonus} added to your allowance.", { bonus: (r.bonus_cny ?? bonus).toFixed(0) }));
-      onChanged();
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const wipe = async () => {
-    if (!window.confirm(t("The conversations you contributed are removed from the server. This cannot be undone."))) return;
-    setBusy(true);
-    try {
-      const r = await api.cloudDeleteSamples();
-      toast(t("{n} turns deleted", { n: String(r.deleted) }));
-      onChanged();
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
+  const open = () => {
+    window.location.hash = "data";
+    setTab("you");
   };
   return (
-    <Section title={t("Co-creation programme")}>
-      <Toggle
-        label={ct.on ? t("Joined — {n} turns contributed so far", { n: String(ct.samples) }) : bonusAvailable && bonus > 0 ? t("Not joined — joining adds ¥{bonus} to your allowance, once", { bonus: bonus.toFixed(0) }) : t("Not joined — nothing you say is kept")}
-        hint={t("When you join, each turn with the model (your messages and its reply; pictures as a marker) is kept on the server to train the community's own open model. Never required, off by default; leave and delete what you gave at any time.")}
-        checked={ct.on}
-        disabled={busy}
-        onChange={(v) => void flip(v)}
-      />
-      {ct.samples > 0 && (
-        <button type="button" disabled={busy} onClick={() => void wipe()} className={cx(secondaryBtn, "inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300")}>
-          <Trash2 size={14} /> {t("Delete what I contributed")}
-        </button>
-      )}
+    <Section title={t("Data controls")}>
+      <button type="button" onClick={open} className="flex w-full items-center gap-3 text-left">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-fg">
+          <DatabaseZap size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-medium">{t("Help improve nanoMuse's AI models")}</span>
+          <span className="block text-[12.5px] text-muted">
+            {ct.on ? t("On") : t("Off")}
+            {ct.samples > 0 && ` · ${t("{n} turns kept so far", { n: String(ct.samples) })}`}
+          </span>
+        </span>
+        <span className="text-[13px] font-medium text-accent">{t("Open")}</span>
+      </button>
     </Section>
   );
 }
@@ -273,7 +247,7 @@ function Invite({ me }: { me: CloudMe }) {
   return (
     <Section title={t("Invite a friend")}>
       <p className="text-[12.5px] text-muted">
-        {t("Each new person who signs up with your code adds ¥{bonus} to your allowance. It never expires.", { bonus: inv.bonus_cny.toFixed(0) })}
+        {t("Each new person who signs up with your code adds ¥{bonus} to your allowance — and ¥{bonus} to theirs. It never expires.", { bonus: inv.bonus_cny.toFixed(0) })}
       </p>
       <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2/70 px-3 py-2">
         <div>
@@ -527,6 +501,16 @@ const EVENT_LABELS: Record<string, string> = {
   "budget.refused": "A request was refused: the allowance is used up",
   "call.ended": "Call ended",
   "upstream.error": "The model provider returned an error",
+  "credit.granted": "Allowance added",
+  "invite.accepted": "Signed up with a friend's code",
+  "invite.used": "A friend signed up with your code",
+  "invite.unknown": "An invite code was not recognised",
+  "contribute.default": "Data controls: on for new accounts",
+  "contribute.on": "Data controls: help improve turned on",
+  "contribute.off": "Data controls: help improve turned off",
+  "contribute.deleted": "Data controls: kept conversations deleted",
+  "profile.put": "Agent's name and look saved",
+  "profile.clear": "Agent's name and look cleared",
 };
 
 function Timeline({ events }: { events: CloudEvent[] }) {

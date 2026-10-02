@@ -65,28 +65,39 @@ The relay is the code in [`cloud/`](../cloud/README.md). It stores:
   stills as small WebP pictures — so every device of the account shows the same
   one. Never a key or a setting.
 
-It does not store message content, images or tool results; they are forwarded
-to the upstream model (Alibaba Cloud Model Studio) and the reply is streamed
-back. Every response carries an `X-Nanomuse-Request` id so a problem report
+Images and tool results are never stored, and message content only as the
+*Data controls* section below says — with the switch off, nothing: the request
+is forwarded to the upstream model (Alibaba Cloud Model Studio) and the reply
+is streamed back. Every response carries an `X-Nanomuse-Request` id so a problem report
 can be matched to a ledger row without any content being logged. Deleting the
 account (`POST /v1/auth/delete` with the account's key) removes all of it. See
 [privacy.md](privacy.md).
 
 ## Allowance
 
-### Contributing conversations (off by default)
+### Data controls
 
-*Account → Contribute conversations* is a switch each person owns. Off — the
-default — the relay forwards a chat request and keeps nothing of it. On, each
-turn is kept: the messages sent (pictures replaced by a marker), the model's
-reply, the token counts and the app's platform and language from the request
-headers, tied to the account id only. The point is a training set for the
-community's own open model. The person can turn it off and delete what they
-gave at any time; deleting the account deletes it too. The operator sees these
-turns on the admin page for contributing accounts only and exports them as
-JSON lines without account ids (`GET /v1/admin/samples/export`). The relay
-does not know where anyone is: the apps never send a location, and IP
-addresses are not recorded.
+*Settings → Data controls → Help improve nanoMuse's AI models* is a switch each
+person owns, the same on the phone, the web app, the desktop and the console.
+Off, the relay forwards a chat request and keeps nothing of it. On, each turn
+is kept as a training view: what you wrote, what the model answered and the
+tool calls it chose, with the model, the token counts and the app's platform
+and language from the request headers, tied to the account id only — never the
+system prompt (your memory, SOUL and instructions), never what a tool returned
+(your files, your screen, what another app showed), never a picture, a clip or
+a voice note (a marker stands where one was). The point is a training set for
+the community's own open model. The page shows how many turns are kept; turn
+the switch off at any time (nothing more is kept) and delete what was kept
+with one tap; deleting the account deletes it too. Nothing is credited for
+the switch either way. On `cloud.nanomuse.cn` the switch is **on for accounts
+created from relay 0.9 on, until the person turns it off** — the privacy
+policy says so, the page says so next to the switch, and accounts from before
+keep the choice they had made; a self-hosted relay sets its own default with
+`IMPROVE_DEFAULT`. The operator sees the kept turns on the admin page's *Data
+controls* panel (how many accounts have it on, turns by day, model and app,
+the newest turns) and exports them as JSON lines without account ids
+(`GET /v1/admin/samples/export`). The relay does not know where anyone is: the
+apps never send a location, and IP addresses are not recorded.
 
 nanoMuse is a community project and charges nothing. The public relay at
 `cloud.nanomuse.cn` is paid for by the developer, so each account has a pool
@@ -96,8 +107,7 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 |---|---|
 | sign-up | open to anyone with a mainland China mobile number or an e-mail address |
 | free allowance | **¥10 per account**, across chat, pictures and clips; it does not reset |
-| invitations | each *new* person who signs up with your code adds **¥5** to your pool |
-| co-creation programme | joining (*Contribute conversations*, off by default) adds **¥10** once |
+| invitations | each *new* person who signs up with your code adds **¥5** to your pool — and ¥5 to theirs |
 | when it is gone | bring your own key — [Alibaba Cloud Bailian in about two minutes](own-key.md), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
 | members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips) by typing its id — *Other model…* in the apps' model picker |
 | rate | 30 requests per minute |
@@ -115,11 +125,11 @@ shows the estimate and what is left before it draws.
 *Settings → nanoMuse Cloud* shows what was used of the pool in ¥ and $, what
 is left, and how the pool grows. At 80 % the app says so once; when the pool
 is spent the relay refuses with `allowance_exhausted` and the app shows the
-three ways on: your own key (Alibaba Cloud Bailian first — the provider form
-opens pre-filled, [guide](own-key.md)), an invitation (+¥5 a head), or the
-co-creation programme (+¥10, once). Other relays may set other rules
-(`ALLOWANCE_CNY`, `INVITE_BONUS_CNY`, `CONTRIBUTE_BONUS_CNY`, `SIGNUP_OPEN`,
-`ALLOWED_IDENTIFIERS`; see [`cloud/README.md`](../cloud/README.md)).
+two ways on: your own key (Alibaba Cloud Bailian first — the provider form
+opens pre-filled, [guide](own-key.md)) or an invitation (+¥5 for each of you).
+Other relays may set other rules (`ALLOWANCE_CNY`, `INVITE_BONUS_CNY`,
+`SIGNUP_OPEN`, `ALLOWED_IDENTIFIERS`; see
+[`cloud/README.md`](../cloud/README.md)).
 
 ## Running your own
 

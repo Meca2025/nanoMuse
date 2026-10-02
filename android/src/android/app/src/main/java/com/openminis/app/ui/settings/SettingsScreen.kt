@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CloudQueue // nanoMuse: nanoMuse Cloud row
 import androidx.compose.material.icons.outlined.Computer // nanoMuse: Computers row
 import androidx.compose.material.icons.outlined.TouchApp // nanoMuse: Hands row
+import androidx.compose.material.icons.outlined.Storage // nanoMuse: Data controls row
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.BugReport
@@ -101,6 +102,7 @@ fun SettingsScreen(
     onMediaModelsClick: () -> Unit = {}, // nanoMuse: Settings → Image & video models
     onCloudClick: () -> Unit = {}, // nanoMuse: Settings → nanoMuse Cloud (the starter allowance)
     onHandsClick: () -> Unit = {}, // nanoMuse: Settings → Hands (the screen as a hand)
+    onDataControlsClick: () -> Unit = {}, // nanoMuse: Settings → Data controls (what nanoMuse Cloud keeps)
     onComputersClick: () -> Unit = {}, // nanoMuse: Settings → Computers (the phone drives a PC)
     onCodingClick: () -> Unit = {}, // nanoMuse: Settings → Coding agents (Cursor/Codex/Claude Code on the account's computers)
     onPermissionsClick: () -> Unit = {},
@@ -299,6 +301,9 @@ fun SettingsScreen(
             io.github.nanomuse.ui.muse.MuseCard {
                 io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.settings_section_appearance), icon = Icons.Outlined.Palette, onClick = onAppearanceClick)
                 io.github.nanomuse.ui.muse.MuseRowDivider()
+                // nanoMuse: data controls — the one switch over what nanoMuse Cloud keeps of the chats.
+                io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.nm_data_title), icon = Icons.Outlined.Storage, onClick = onDataControlsClick)
+                io.github.nanomuse.ui.muse.MuseRowDivider()
                 io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.settings_section_logs), icon = Icons.Outlined.Description, onClick = onLogsClick)
             }
             io.github.nanomuse.ui.muse.MuseGap()
@@ -310,8 +315,8 @@ fun SettingsScreen(
                 io.github.nanomuse.ui.muse.MuseRow(
                     title = stringResource(R.string.settings_privacy_policy),
                     icon = Icons.Outlined.FrontHand,
-                    // iOS canonical URL — ContentView.swift / AddProviderView.swift
-                    onClick = { openExternalUrl(context, "https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md") },
+                    // nanoMuse: the policy on the site (docs/privacy.md is its source)
+                    onClick = { openExternalUrl(context, io.github.nanomuse.cloud.NanoMuseCloud.PRIVACY_URL) },
                 )
                 io.github.nanomuse.ui.muse.MuseRowDivider()
                 io.github.nanomuse.ui.muse.MuseRow(
