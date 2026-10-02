@@ -414,6 +414,49 @@ class Database:
         with self._lock:
             return int(self._conn.execute("SELECT COUNT(*) FROM accounts WHERE contribute=1").fetchone()[0])
 
+    def samples_totals(self, since: int) -> sqlite3.Row:
+        """How many turns were kept since ``since``, by how many accounts, and their tokens."""
+        with self._lock:
+            return self._conn.execute(
+                """SELECT COUNT(*) AS n, COUNT(DISTINCT account_id) AS accounts,
+                          SUM(prompt_tokens) AS prompt_tokens, SUM(completion_tokens) AS completion_tokens
+                   FROM samples WHERE ts>=?""",
+                (since,),
+            ).fetchone()
+
+    def samples_by_day(self, since: int, offset_s: int) -> list[sqlite3.Row]:
+        """Kept turns per local day (``offset_s`` east of UTC): count, accounts, tokens."""
+        with self._lock:
+            return self._conn.execute(
+                f"""SELECT {self._DAY} AS day, COUNT(*) AS n, COUNT(DISTINCT account_id) AS accounts,
+                           SUM(prompt_tokens) AS prompt_tokens, SUM(completion_tokens) AS completion_tokens
+                    FROM samples WHERE ts>=? GROUP BY day ORDER BY day""",
+                (offset_s, offset_s, offset_s, since),
+            ).fetchall()
+
+    def samples_by_model(self, since: int) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute(
+                """SELECT model, COUNT(*) AS n, SUM(prompt_tokens) AS prompt_tokens, SUM(completion_tokens) AS completion_tokens
+                   FROM samples WHERE ts>=? GROUP BY model ORDER BY n DESC""",
+                (since,),
+            ).fetchall()
+
+    def samples_meta(self, since: int) -> list[sqlite3.Row]:
+        """The distinct meta strings of the period with their counts (the app and language
+        behind each turn), for the operator to group — a few hundred rows at most."""
+        with self._lock:
+            return self._conn.execute(
+                "SELECT meta, COUNT(*) AS n FROM samples WHERE ts>=? GROUP BY meta ORDER BY n DESC LIMIT 2000", (since,)
+            ).fetchall()
+
+    def event_accounts(self, kind: str) -> int:
+        """How many distinct accounts ever had an event of this kind on their timeline."""
+        with self._lock:
+            return int(
+                self._conn.execute("SELECT COUNT(DISTINCT account_id) FROM events WHERE kind=? AND account_id<>''", (kind,)).fetchone()[0]
+            )
+
     def set_disabled(self, account_id: str, disabled: bool) -> None:
         with self.tx() as c:
             c.execute("UPDATE accounts SET disabled=? WHERE id=?", (1 if disabled else 0, account_id))
@@ -440,15 +483,21 @@ class Database:
             return cur.rowcount == 1
 
     def record_invite(self, inviter_id: str, invitee_id: str, bonus_uy: int) -> None:
-        """A new account signed up with the inviter's code: the inviter's pool grows by the bonus."""
+        """A new account signed up with the inviter's code: both pools grow by the bonus —
+        the inviter's (``from: invite``) and the newcomer's (``from: invited``)."""
         t = now()
         bonus_uy = max(0, int(bonus_uy))
         with self.tx() as c:
             c.execute("UPDATE accounts SET invited_by=? WHERE id=? AND invited_by=''", (inviter_id, invitee_id))
             c.execute("UPDATE accounts SET invites=invites+1, grant_uy=grant_uy+? WHERE id=?", (bonus_uy, inviter_id))
+            c.execute("UPDATE accounts SET grant_uy=grant_uy+? WHERE id=?", (bonus_uy, invitee_id))
             c.execute(
                 "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
                 (inviter_id, t, "credit", 0, json.dumps({"credit_uy": bonus_uy, "from": "invite", "friend": invitee_id[:8]})),
+            )
+            c.execute(
+                "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
+                (invitee_id, t, "credit", 0, json.dumps({"credit_uy": bonus_uy, "from": "invited", "friend": inviter_id[:8]})),
             )
 
     def add_credit(self, account_id: str, credit_uy: int, note: str = "") -> None:
@@ -460,23 +509,6 @@ class Database:
                 "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
                 (account_id, now(), "credit", 0, json.dumps({"credit_uy": credit_uy, "from": "operator", "note": note[:200]})),
             )
-
-    def grant_contribute_bonus(self, account_id: str, bonus_uy: int) -> bool:
-        """The co-creation bonus, once per account: False when it was granted before."""
-        bonus_uy = max(0, int(bonus_uy))
-        t = now()
-        with self.tx() as c:
-            cur = c.execute(
-                "UPDATE accounts SET grant_uy=grant_uy+?, contribute_bonus_at=? WHERE id=? AND contribute_bonus_at IS NULL",
-                (bonus_uy, t, account_id),
-            )
-            if not cur.rowcount:
-                return False
-            c.execute(
-                "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
-                (account_id, t, "credit", 0, json.dumps({"credit_uy": bonus_uy, "from": "contribute"})),
-            )
-        return True
 
     def invitees(self, inviter_id: str, limit: int = 50) -> list[sqlite3.Row]:
         with self._lock:

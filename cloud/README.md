@@ -51,7 +51,7 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 402 | `out_of_tokens` | grant used up — top up with the admin endpoint |
 | 403 | `account_disabled` | |
 | 404 | `model_not_offered` | not on the menu |
-| 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `invite_url`, `contribute_bonus_available`, `own_key_docs` |
+| 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `invite_url`, `invite_bonus_cny`, `own_key_docs` |
 | 429 | `code_too_often` / `rate_limited` / `daily_cap` | (`daily_cap` only with the legacy token cap on) |
 | 429 | `provider_busy` | the image provider answered 429 even after the relay queued and retried (`IMAGE_CONCURRENCY`, `IMAGE_RETRIES`); `retry_after` seconds in the body |
 | 502 | `upstream` | the provider failed; message passed through |
@@ -101,8 +101,9 @@ for the full list. The ones that matter:
 | `SIGNUP_OPEN` | `1` | anyone may sign in; `0` = members only (a private relay) |
 | `ALLOWED_IDENTIFIERS` | empty | comma-separated numbers / addresses of the **members**: no spend limit |
 | `ALLOWANCE_CNY` | 10 | yuan per non-member account **for its lifetime**, at the list prices below; 0 = no limit |
-| `INVITE_BONUS_CNY` | 5 | added to the inviter's pool per new person who signs up with their code |
-| `CONTRIBUTE_BONUS_CNY` | 10 | added once when the person joins the co-creation programme (contributes conversations) |
+| `INVITE_BONUS_CNY` | 5 | added to **both** pools — the inviter's and the newcomer's — per new person who signs up with the code |
+| `IMPROVE_DEFAULT` | `0` | what *Help improve nanoMuse's AI models* (Data controls) starts as for accounts created from now on: `1` = on until the person turns it off, `0` = off until they turn it on; existing accounts keep their setting. State it in your privacy policy |
+| `PRIVACY_URL` | `https://nanomuse.cn/privacy/` | the policy the apps link from Data controls and the sign-in pages — the one that says what this relay keeps and its default |
 | `INVITE_URL` | `https://nanomuse.cn/web/?invite=` | the link the apps offer to share; the code is appended |
 | `OWN_KEY_DOCS` | `https://nanomuse.cn/own-key` | the guide the apps open for bringing one's own key |
 | `DAY_OFFSET_H` | 8 | the operator's reports group by local day, midnight UTC+8 (Beijing) |
@@ -137,8 +138,8 @@ Every request is priced in yuan at the provider's Beijing list prices (set per
 model: `price_in` / `price_out` per million tokens, `price_image` and
 `price_image_2k` per picture, `price_second` per second of video) and stored
 in the ledger next to the token count. A non-member account has one pool for
-its lifetime — `ALLOWANCE_CNY` (¥10 by default), grown by invites, the
-co-creation bonus and the operator's credit; a picture or a clip that would go
+its lifetime — `ALLOWANCE_CNY` (¥10 by default), grown by invites (both
+sides) and the operator's credit; a picture or a clip that would go
 over it is refused before it is made, a chat once the pool is spent. Clips are
 not counted apart: a clip is just the dearest line on the same allowance.
 Members — the identifiers in `ALLOWED_IDENTIFIERS`, or any account the
@@ -159,8 +160,8 @@ block (`total`, `grant`, `left`, `unlimited`, `warn` at 80 %, `usd_cny`,
 `own_key_docs`; the 0.4 names `daily_cap` / `left_today` / `resets_at` = 0
 for one more version) and each model in `/v1/models` carries its
 `nanomuse.price_cny`, so the apps show what was spent in both currencies. The
-refusal, `429 allowance_exhausted`, says what is left and where the three ways
-on lead (invite, co-creation, one's own key) — sign-in and the hub are never
+refusal, `429 allowance_exhausted`, says what is left and where the two ways
+on lead (invite a friend, one's own key) — sign-in and the hub are never
 gated, only the model routes. The admin page shows spend per account and per
 day (`DAY_OFFSET_H`) in ¥ and $.
 
@@ -182,15 +183,15 @@ accounts table shows the masked hint; opening one account
 (`/v1/admin/accounts/{id}`) decrypts its phone number or address for that
 view only and shows its spend by kind / model / day, sign-ins (device names,
 revoked ones too), remembered devices with presence, the recent requests and
-its timeline, with the grant / member / disable / delete buttons. What
-anyone said to a model is nowhere on the page — it is never stored.
-Identifiers are kept AES-GCM-encrypted with a key derived from
+its timeline, with the grant / member / disable / delete buttons. The text
+of a chat is on the page only for accounts with *Help improve nanoMuse's AI
+models* on, and only the training view of it (below). Identifiers are kept AES-GCM-encrypted with a key derived from
 `CLOUD_SECRET`. A person can also remove themselves: `POST /v1/auth/delete`
 with their key deletes the account, its keys, ledger and devices.
 
 Two more panels come from `/v1/admin/series` and `/v1/admin/traffic`: the
 relay's own numbers by day (sign-ins, new and active accounts, sign-ups
-through an invite, co-creation joins, calls, refusals, upstream errors),
+through an invite, data switches turned on, calls, refusals, upstream errors),
 the remembered devices by kind and system, the invite funnel and — with
 `WEB_INFO_URL` — how many nanoMuse Web accounts and sessions the gateway
 holds; and, with `TRAFFIC_DB`, the project site's visits and downloads:
@@ -207,23 +208,51 @@ talk to, and an account sheet (`/v1/me`) with the allowance, usage by kind
 and by model, the sign-ins with a way to revoke each, the recent activity,
 set / change / remove the password, sign out here or everywhere.
 
-### Invitations, co-creation and the one pool (0.5)
+### Invitations and the one pool (0.5, both sides since 0.9)
 
 Every account has an eight-letter invite code (`GET /v1/me/invite`: the code,
 the share link `INVITE_URL` + code, who came, what they brought). A new person
 who signs up with it — `invite` in `POST /v1/auth/verify`; the web app and the
 console pick it up from `?invite=…` — adds `INVITE_BONUS_CNY` to the inviter's
-pool; the second sign-in of the same person, one's own code and an unknown
-code add nothing (and are not errors). Joining the co-creation programme
-(`POST /v1/me/contribute {on: true}`) adds `CONTRIBUTE_BONUS_CNY` once for the
-account's lifetime (`contribute_bonus_at`); leaving and re-joining earns
-nothing more. `GET /v1/estimate?images=5&clips=4` says what a job would cost
+pool **and the same to their own** (ledger `from: invite` / `from: invited`);
+the second sign-in of the same person, one's own code and an unknown code add
+nothing (and are not errors). Until 0.9 joining the co-creation programme
+added ¥10 once (`contribute_bonus_at` remembers who took it); that bonus is
+gone, and the data switch earns nothing either way.
+`GET /v1/estimate?images=5&clips=4` says what a job would cost
 next to what is left, so the app can ask before a new face is made. The
 operator credits an account — a merged pull request, a good bug report — with
 `POST /v1/admin/credit {identifier | account_id, cny, note?}` (or the *Add
 credit* button on the admin page). A database from 0.4 is moved over on the
 first start: every account's pool becomes what it had spent plus the
 allowance plus any unused 0.4 credit, so nobody starts in debt.
+
+### Data controls (0.9)
+
+*Help improve nanoMuse's AI models* is one switch per account, under Settings →
+Data controls on every app and on the console's account sheet
+(`/v1/me.contribute`, `POST /v1/me/contribute {on}`). With it on, each chat turn
+through the relay is kept in `samples` — **the training view only**: what the
+person wrote, what the model answered and the tool calls it chose, plus the
+model id, token counts and the app and language headers. Never the system
+prompt (the person's memory, SOUL and instructions), never what a tool
+returned (their files, their screen, what another app showed), never a
+picture, a clip or a voice note (a marker stands where one was), and never
+next to who they are: a sample carries the account id only and the export
+(`GET /v1/admin/samples/export`, JSON lines) leaves even that out. The person
+sees the count, turns the switch off at any time (nothing more is kept; what
+was kept stays counted so they know there is something to delete) and deletes
+what was kept with `DELETE /v1/me/samples`; deleting the account deletes them
+too. `IMPROVE_DEFAULT` is what an account **created from now on** starts with —
+`0` (the code's default) off until the person turns it on, `1` on until they
+turn it off; an account from before keeps its own setting, and a default-on
+account's timeline says `contribute.default` rather than `contribute.on`, so
+the operator can tell a choice from a default. Say the default in the privacy
+policy you link as `PRIVACY_URL`; the apps show it next to the switch. The
+operator's page has a *Data controls* panel from `GET /v1/admin/data`: how many
+accounts have the switch on (and how many ever turned it off), turns kept by
+day, model and app, switches turned on / default-on / off / deleted by day,
+tokens, the newest turns, and the export.
 
 ## Operating
 

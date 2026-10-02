@@ -244,21 +244,24 @@ async def clip(client, key: str, prompt: str = "a dragon waves"):
 
 
 async def test_invites_and_the_operator_grow_the_one_pool():
-    """A friend's code at sign-up adds the bonus to the inviter's pool; clips are not
-    counted apart — a clip is just a dearer line on the same allowance; the operator
-    can add more; the estimate says what a new face costs before it is made."""
-    app, client, sender, up, cloud, settings = make(allowance_cny=0.6, invite_bonus_cny=3, contribute_bonus_cny=0)
+    """A friend's code at sign-up adds the bonus to both pools, the inviter's and the
+    newcomer's; clips are not counted apart — a clip is just a dearer line on the same
+    allowance; the operator can add more; the estimate says what a new face costs before
+    it is made."""
+    app, client, sender, up, cloud, settings = make(allowance_cny=0.6, invite_bonus_cny=3)
     a = await sign_up(client, sender, "dev-a@example.com", "pixel")
     ka = a["api_key"]
     inv = (await client.get("/v1/me/invite", headers=auth(ka))).json()
     assert len(inv["code"]) == 8 and inv["url"] == "https://nanomuse.cn/web/?invite=" + inv["code"]
-    assert inv["invites"] == 0 and inv["bonus_cny"] == 3 and inv["earned_cny"] == 0 and inv["friends"] == []
+    assert (
+        inv["invites"] == 0 and inv["bonus_cny"] == 3 and inv["invitee_bonus_cny"] == 3 and inv["earned_cny"] == 0 and inv["friends"] == []
+    )
     assert (await client.get("/v1/me", headers=auth(ka))).json()["invite"]["code"] == inv["code"]  # stable
     assert a["clips"]["unlimited"] is True and a["spend"]["grant"] == 0.6 and a["spend"]["left"] == 0.6
-    # no co-creation bonus on this relay (CONTRIBUTE_BONUS_CNY=0): nothing is offered
+    # there is no co-creation bonus (0.9): the 0.5 fields say so for the apps of the time
     assert a["spend"]["contribute_bonus_available"] is False and a["contribute"]["bonus_available"] is False
 
-    # B signs up with A's code, typed sloppily: A's pool grows; B signing in again does not count twice.
+    # B signs up with A's code, typed sloppily: both pools grow; B signing in again does not count twice.
     async def verify(identifier: str, device: str, invite: str):
         await client.post("/v1/auth/code", json={"identifier": identifier})
         _, code = sender.sent[-1]
@@ -268,17 +271,18 @@ async def test_invites_and_the_operator_grow_the_one_pool():
 
     sloppy = inv["code"][:4].lower() + "-" + inv["code"][4:].lower()
     b = await verify("dev-b@example.com", "mac", sloppy)
-    assert b["created"] is True and b["invite"]["invites"] == 0 and b["spend"]["grant"] == 0.6
+    assert b["created"] is True and b["invite"]["invites"] == 0 and b["spend"]["grant"] == 3.6 and b["spend"]["left"] == 3.6
+    assert b["recent"][0]["kind"] == "credit" and b["recent"][0]["detail"]["from"] == "invited"
     me_a = (await client.get("/v1/me", headers=auth(ka))).json()
     assert me_a["invite"]["invites"] == 1 and me_a["invite"]["earned_cny"] == 3 and me_a["spend"]["grant"] == 3.6
     assert me_a["spend"]["left"] == 3.6 and me_a["invite"]["friends"][0]["hint"].endswith("example.com")
     assert me_a["recent"][0]["kind"] == "credit" and me_a["recent"][0]["detail"]["from"] == "invite"
     again = await verify("dev-b@example.com", "ipad", inv["code"])
-    assert again["created"] is False
+    assert again["created"] is False and again["spend"]["grant"] == 3.6
     assert (await client.get("/v1/me", headers=auth(ka))).json()["invite"]["invites"] == 1
     # an unknown code (or one's own) is not an error: the person is signed in, nobody is paid
     c = await verify("13900001111", "pixel", "NOPE1234")
-    assert c["created"] is True
+    assert c["created"] is True and c["spend"]["grant"] == 0.6
     assert (await client.get("/v1/me", headers=auth(ka))).json()["invite"]["invites"] == 1
 
     # Clips: ¥0.5 each here (five seconds at ¥0.10). Seven fit in A's ¥3.6; the eighth
@@ -297,29 +301,29 @@ async def test_invites_and_the_operator_grow_the_one_pool():
     r = await client.post(VIDEO, headers=auth(ka), json={"model": "wan2.2-i2v-flash", "input": {}, "parameters": {}})
     assert r.status_code == 400
 
-    # B has ¥0.6: one clip fits, a second does not. The estimate said so beforehand.
-    kb = b["api_key"]
-    est = (await client.get("/v1/estimate", params={"images": 5, "clips": 4}, headers=auth(kb))).json()
+    # C (no inviter) has ¥0.6: one clip fits, a second does not. The estimate said so beforehand.
+    kc = c["api_key"]
+    est = (await client.get("/v1/estimate", params={"images": 5, "clips": 4}, headers=auth(kc))).json()
     assert est["cny"] == 2.9 and est["left_cny"] == 0.6 and est["grant_cny"] == 0.6 and est["affordable"] is False
     assert est["unlimited"] is False and est["clips_ok"] is True and est["left_today_cny"] == 0.6
     assert [p["kind"] for p in est["parts"]] == ["image", "video"] and est["parts"][1]["seconds"] == 5
-    est = (await client.get("/v1/estimate", params={"clips": 1}, headers=auth(kb))).json()
+    est = (await client.get("/v1/estimate", params={"clips": 1}, headers=auth(kc))).json()
     assert est["cny"] == 0.5 and est["affordable"] is True
-    assert (await clip(client, kb)).status_code == 200
-    r = await clip(client, kb)
+    assert (await clip(client, kc)).status_code == 200
+    r = await clip(client, kc)
     assert r.status_code == 429 and r.json()["error"]["code"] == "allowance_exhausted"
 
-    # The operator credits B for a pull request: straight into the pool.
+    # The operator credits C for a pull request: straight into the pool.
     admin = {"X-Admin-Token": "admin"}
-    r = await client.post("/v1/admin/credit", headers=admin, json={"identifier": "dev-b@example.com", "cny": 10, "note": "PR #12"})
+    r = await client.post("/v1/admin/credit", headers=admin, json={"identifier": "13900001111", "cny": 10, "note": "PR #12"})
     assert r.status_code == 200 and r.json()["grant_cny"] == 10.6 and r.json()["left_cny"] == 10.1 and "grant_uy" not in r.json()
-    est = (await client.get("/v1/estimate", params={"images": 5, "clips": 4}, headers=auth(kb))).json()
+    est = (await client.get("/v1/estimate", params={"images": 5, "clips": 4}, headers=auth(kc))).json()
     assert est["affordable"] is True and est["left_cny"] == 10.1
-    assert (await clip(client, kb)).status_code == 200
-    me_b = (await client.get("/v1/me", headers=auth(kb))).json()
-    assert me_b["spend"]["total"] == 1.0 and me_b["spend"]["left"] == 9.6 and me_b["recent"][0]["kind"] == "video"
-    assert any(row["kind"] == "credit" and row["detail"].get("note") == "PR #12" for row in me_b["recent"])
-    r = await client.post("/v1/admin/credit", headers=admin, json={"identifier": "dev-b@example.com", "cny": 5000})
+    assert (await clip(client, kc)).status_code == 200
+    me_c = (await client.get("/v1/me", headers=auth(kc))).json()
+    assert me_c["spend"]["total"] == 1.0 and me_c["spend"]["left"] == 9.6 and me_c["recent"][0]["kind"] == "video"
+    assert any(row["kind"] == "credit" and row["detail"].get("note") == "PR #12" for row in me_c["recent"])
+    r = await client.post("/v1/admin/credit", headers=admin, json={"identifier": "13900001111", "cny": 5000})
     assert r.status_code == 400
 
     # The operator's views carry it all.
@@ -330,7 +334,7 @@ async def test_invites_and_the_operator_grow_the_one_pool():
     assert detail["account"]["invited"][0]["hint"].endswith("example.com") and detail["spend"]["left_cny"] == 0.1
     assert "clips_used" not in detail["account"]
     s = (await client.get("/v1/admin/accounts", headers=admin)).json()["settings"]
-    assert s["invite_bonus_cny"] == 3 and s["allowance_cny"] == 0.6 and s["contribute_bonus_cny"] == 0
+    assert s["invite_bonus_cny"] == 3 and s["invitee_bonus_cny"] == 3 and s["allowance_cny"] == 0.6 and s["contribute_bonus_cny"] == 0
     kinds = {e["kind"] for e in (await client.get("/v1/admin/events", headers=admin)).json()["events"]}
     assert {"invite.accepted", "invite.used", "invite.unknown", "credit.granted", "budget.refused"} <= kinds
 

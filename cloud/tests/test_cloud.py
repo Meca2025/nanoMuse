@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import dataclasses
 import json
 
 import httpx
@@ -123,11 +124,11 @@ def stack():
     return app, client, sender, up, cloud
 
 
-async def sign_up(client, sender, identifier="13800138000", device="pixel"):
+async def sign_up(client, sender, identifier="13800138000", device="pixel", invite=""):
     r = await client.post("/v1/auth/code", json={"identifier": identifier})
     assert r.status_code == 204, r.text
     ident, code = sender.sent[-1]
-    r = await client.post("/v1/auth/verify", json={"identifier": identifier, "code": code, "device": device})
+    r = await client.post("/v1/auth/verify", json={"identifier": identifier, "code": code, "device": device, "invite": invite})
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -491,7 +492,6 @@ async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
         per_minute_requests=0,
         allowance_cny=0.002,
         invite_bonus_cny=5,
-        contribute_bonus_cny=10,
         usd_cny=7.0,
     )
     admin = {"X-Admin-Token": "admin"}
@@ -512,8 +512,10 @@ async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
         "today_usd": 0,
         "allowance_cny": 0.002,
         "invite_bonus_cny": 5,
-        "contribute_bonus_cny": 10,
-        "contribute_bonus_available": True,
+        "invitee_bonus_cny": 5,
+        # the 0.5 co-creation bonus is gone; the names stay for the apps of the time
+        "contribute_bonus_cny": 0,
+        "contribute_bonus_available": False,
         "own_key_docs": "https://nanomuse.cn/own-key",
         # what a 0.4 app still reads: the pool as the "cap", no midnight
         "daily_cap": 0.002,
@@ -542,7 +544,7 @@ async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
     assert me["recent"][0]["cost_cny"] == 0.0009
     # Chats are priced after the fact, so one starts as long as anything is left:
     # the second and third go through (¥0.0027), the fourth does not — and the
-    # refusal says what is left and where the three ways on lead.
+    # refusal says what is left and where the two ways on lead.
     for _ in range(2):
         assert (
             await client.post(
@@ -562,16 +564,22 @@ async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
         err["invite_url"].startswith("https://nanomuse.cn/web/?invite=")
         and len(err["invite_url"]) == len("https://nanomuse.cn/web/?invite=") + 8
     )
-    assert err["contribute_bonus_available"] is True and err["contribute_bonus_cny"] == 10 and err["invite_bonus_cny"] == 5
+    assert "co-creation" not in err["message"] and "invite a friend" in err["message"] and "own model key" in err["message"]
+    assert err["invite_bonus_cny"] == 5 and err["invitee_bonus_cny"] == 5
+    assert err["contribute_bonus_available"] is False and err["contribute_bonus_cny"] == 0
     # A picture that would go over is refused before it is drawn.
     r = await client.post("/v1/images/generations", headers=headers, json={"model": "qwen-image-3.0", "prompt": "a dragon"})
     assert r.status_code == 429 and not any(k == "image" for k, _, _ in up.state.requests)
-    # Joining the co-creation programme adds ¥10, once: the chat goes through again.
+    # The data switch earns nothing (there is no co-creation bonus any more) …
     r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
-    assert r.status_code == 200 and r.json()["bonus_granted"] is True and r.json()["bonus_available"] is False
+    assert r.status_code == 200 and r.json()["bonus_granted"] is False and r.json()["bonus_available"] is False
+    me = (await client.get("/v1/me", headers=headers)).json()
+    assert me["spend"]["grant"] == 0.002 and me["spend"]["left"] == 0 and me["contribute"]["on"] is True
+    # … the operator's credit does (¥10): the chat goes through again.
+    r = await client.post("/v1/admin/credit", headers=admin, json={"identifier": "13800138000", "cny": 10, "note": "thanks"})
+    assert r.status_code == 200
     me = (await client.get("/v1/me", headers=headers)).json()
     assert me["spend"]["grant"] == 10.002 and me["spend"]["left"] == round(10.002 - 0.0027, 4) and me["spend"]["warn"] is False
-    assert me["contribute"]["on"] is True and me["contribute"]["bonus_available"] is False and me["contribute"]["bonus_at"]
     r = await client.post(
         "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
     )
@@ -601,13 +609,13 @@ async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
     listing = (await client.get("/v1/admin/accounts", headers=admin)).json()
     s = listing["settings"]
     assert s["signup_open"] is True and s["allowance_cny"] == 0.002 and s["usd_cny"] == 7.0
-    assert s["invite_bonus_cny"] == 5 and s["contribute_bonus_cny"] == 10 and s["contributors"] == 1
+    assert s["invite_bonus_cny"] == 5 and s["invitee_bonus_cny"] == 5 and s["contributors"] == 1 and s["improve_default"] is False
     assert "daily_cap_cny" not in s and "video_clips_free" not in s
     assert s["prices"]["qwen-image-3.0"]["per_image"] == 0.18
     by_id = {a["identifier"]: a for a in listing["accounts"]}
     g, m = by_id["+8613800138000"], by_id["me@example.com"]
     assert g["member"] is False and g["spent_today_cny"] == 0.0036 and g["spent_cny"] == 0.0036
-    assert g["grant_cny"] == 10.002 and g["left_cny"] == round(10.002 - 0.0036, 4) and g["contribute_bonus_at"]
+    assert g["grant_cny"] == 10.002 and g["left_cny"] == round(10.002 - 0.0036, 4) and g["contribute_bonus_at"] is None
     assert "credit_uy" not in g and "grant_uy" not in g and "clips_bonus" not in g
     assert m["member"] is True and m["listed"] is True and m["unlimited"] is False and m["left_cny"] is None
     usage = (await client.get("/v1/admin/usage", headers=admin)).json()["days"]
@@ -823,10 +831,11 @@ def test_a_video_task_seen_twice_stays_charged():
     assert row is not None and row["charged"] == 1
 
 
-async def test_contributed_conversations_are_opt_in_and_deletable(stack):
-    """Off by default: nothing about a chat turn is kept. On: the messages (pictures
-    replaced by a marker) and the reply land in ``samples`` for the operator, exported
-    without the account id; off again or a delete removes them."""
+async def test_data_controls_keep_the_training_view_only_and_are_deletable(stack):
+    """With IMPROVE_DEFAULT unset the switch starts off: nothing about a chat turn is kept.
+    On: what the person wrote and what the model answered (its tool calls with it) land in
+    ``samples`` — never the system prompt, a tool's result or a picture — for the operator,
+    exported without the account id; a delete removes them, and the switch earns nothing."""
     app, client, sender, up, cloud = stack
     data = await sign_up(client, sender, identifier="dev-a@example.com")
     headers = {"Authorization": f"Bearer {data['api_key']}"}
@@ -835,29 +844,35 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     r = await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
     assert r.status_code == 200
     me = (await client.get("/v1/me", headers=headers)).json()
-    assert me["contribute"] == {"on": False, "samples": 0, "bonus_cny": 10, "bonus_available": True, "bonus_at": None}
+    assert me["contribute"]["on"] is False and me["contribute"]["samples"] == 0 and me["contribute"]["default_on"] is False
+    assert me["contribute"]["privacy_url"] == "https://nanomuse.cn/privacy/" and "what you wrote" in me["contribute"]["keeps"]["kept"]
+    assert me["contribute"]["bonus_cny"] == 0 and me["contribute"]["bonus_available"] is False
     assert (await client.get("/v1/admin/samples", headers=admin)).json() == {"samples": [], "total": 0}
 
     r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
     assert r.status_code == 200
-    assert r.json() == {
-        "on": True,
-        "samples": 0,
-        "bonus_cny": 10,
-        "bonus_granted": True,
-        "bonus_available": False,
-        "bonus_at": r.json()["bonus_at"],
-    }
-    assert r.json()["bonus_at"] > 0
-    # a plain reply, with a picture in the request
-    picture = {
-        "role": "user",
-        "content": [{"type": "text", "text": "what is this"}, {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}],
-    }
+    assert r.json()["on"] is True and r.json()["samples"] == 0 and r.json()["bonus_granted"] is False
+    # a full agent turn: system prompt, a picture, a tool call and its result
+    turn = [
+        {"role": "system", "content": "SOUL and memory: the person's name is Ada"},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "what is this"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}},
+            ],
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "read", "arguments": "{}"}}],
+        },
+        {"role": "tool", "tool_call_id": "c1", "content": "SECRET FILE CONTENTS"},
+    ]
     r = await client.post(
         "/v1/chat/completions",
-        headers={**headers, "User-Agent": "nanoMuse/0.1.22 (Android)", "Accept-Language": "zh-CN"},
-        json={"model": "qwen3.8-27b", "messages": [picture]},
+        headers={**headers, "User-Agent": "nanoMuse-Android/0.1.27", "Accept-Language": "zh-CN"},
+        json={"model": "qwen3.8-27b", "messages": turn},
     )
     assert r.status_code == 200
     # and a streamed one
@@ -870,35 +885,106 @@ async def test_contributed_conversations_are_opt_in_and_deletable(stack):
     got = (await client.get("/v1/admin/samples", headers=admin)).json()
     assert got["total"] == 2 and [s["response"] for s in got["samples"]] == ["你好，世界", "hi"]
     first = got["samples"][1]
+    assert [m["role"] for m in first["request"]] == ["user", "assistant", "tool"]
     assert first["request"][0]["content"] == [{"type": "text", "text": "what is this"}, {"type": "image_url", "omitted": True}]
-    assert "AAAA" not in json.dumps(first)
-    assert first["meta"] == {"ua": "nanoMuse/0.1.22 (Android)", "lang": "zh-CN"}
+    assert first["request"][1]["tool_calls"][0]["function"]["name"] == "read"
+    assert first["request"][2] == {"role": "tool", "tool_call_id": "c1", "content": "", "omitted": True}
+    dumped = json.dumps(first)
+    assert "AAAA" not in dumped and "Ada" not in dumped and "SECRET" not in dumped
+    assert first["meta"] == {"ua": "nanoMuse-Android/0.1.27", "lang": "zh-CN"}
     assert first["prompt_tokens"] == 100 and first["completion_tokens"] == 50
     account = (await client.get(f"/v1/admin/accounts/{data['account']['id']}", headers=admin)).json()["account"]
     assert account["contribute"] is True and account["samples"] == 2
     overview = (await client.get("/v1/admin/overview", headers=admin)).json()
     assert overview["contributions"] == {"accounts": 1, "samples": 2}
+    # the operator's data view: who has it on, what came in, by day / model / app, the newest turns
+    dv = (await client.get("/v1/admin/data?days=7", headers=admin)).json()
+    assert dv["default_on"] is False and dv["accounts"]["on"] == 1 and dv["accounts"]["total"] == 1 and dv["accounts"]["share"] == 1.0
+    assert dv["totals"]["samples"] == 2 and dv["period"]["samples"] == 2 and dv["period"]["accounts"] == 1
+    assert len(dv["days"]) == 7 and dv["days"][-1]["samples"] == 2 and dv["days"][-1]["turned_on"] == 1 and dv["days"][-1]["accounts"] == 1
+    assert len(dv["by_model"]) == 1 and dv["by_model"][0]["model"] == "qwen3.8-27b" and dv["by_model"][0]["samples"] == 2
+    assert dv["by_model"][0]["tokens"] == dv["period"]["prompt_tokens"] + dv["period"]["completion_tokens"] > 0
+    assert sorted(dv["by_platform"], key=lambda x: x["platform"]) == [
+        {"platform": "android", "samples": 1},
+        {"platform": "other", "samples": 1},
+    ]
+    assert [s["response"] for s in dv["recent"]] == ["你好，世界", "hi"] and dv["recent"][0]["hint"] == data["account"]["hint"]
     # the export has no account ids
     r = await client.get("/v1/admin/samples/export", headers=admin)
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/x-ndjson")
     lines = [json.loads(ln) for ln in r.text.splitlines() if ln]
     assert len(lines) == 2 and all("account_id" not in ln for ln in lines)
     assert {ln["response"] for ln in lines} == {"hi", "你好，世界"}
-    # the person's own delete
+    # off again: nothing more is kept, but what was kept stays counted until the person deletes it
+    r = await client.post("/v1/me/contribute", headers=headers, json={"on": False})
+    assert r.json()["on"] is False and r.json()["samples"] == 2 and r.json()["bonus_granted"] is False
+    r = await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
+    assert (await client.get("/v1/admin/samples", headers=admin)).json()["total"] == 2
+    assert (await client.get("/v1/me", headers=headers)).json()["contribute"]["samples"] == 2
     r = await client.delete("/v1/me/samples", headers=headers)
     assert r.json() == {"deleted": 2}
-    r = await client.post("/v1/me/contribute", headers=headers, json={"on": False})
-    assert r.json()["on"] is False and r.json()["samples"] == 0 and r.json()["bonus_granted"] is False
-    r = await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
-    assert (await client.get("/v1/admin/samples", headers=admin)).json()["total"] == 0
+    assert (await client.get("/v1/me", headers=headers)).json()["contribute"]["samples"] == 0
     kinds = [e["kind"] for e in (await client.get("/v1/me/events", headers=headers)).json()["events"]]
-    assert {"contribute.on", "contribute.off", "contribute.deleted"} <= set(kinds)
+    assert {"contribute.on", "contribute.off", "contribute.deleted"} <= set(kinds) and "contribute.default" not in kinds
+    dv = (await client.get("/v1/admin/data?days=1", headers=admin)).json()
+    assert (
+        dv["accounts"]["on"] == 0
+        and dv["accounts"]["turned_off_ever"] == 1
+        and dv["days"][0]["turned_off"] == 1
+        and dv["days"][0]["deleted"] == 1
+    )
     # deleting the account takes any samples with it
     await client.post("/v1/me/contribute", headers=headers, json={"on": True})
     await client.post("/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": msgs})
     assert cloud.db.sample_count() == 1
     assert (await client.post("/v1/auth/delete", headers=headers)).status_code == 204
     assert cloud.db.sample_count() == 0
+
+
+async def test_improve_default_applies_to_new_accounts_only():
+    """IMPROVE_DEFAULT=1: an account made from now on starts with the switch on, said on its
+    timeline as the relay's default (not as a choice), and may turn it off; an account from
+    before keeps what it had. The invite bonus goes to both sides either way."""
+    app, client, sender, up, cloud = make_stack(allowance_cny=10, invite_bonus_cny=5)
+    before = await sign_up(client, sender, identifier="dev-a@example.com")
+    assert before["contribute"]["on"] is False
+    cloud.s = dataclasses.replace(cloud.s, improve_default=True)  # the operator sets IMPROVE_DEFAULT=1 and restarts
+    me = (await client.get("/v1/me", headers={"Authorization": f"Bearer {before['api_key']}"})).json()
+    assert me["contribute"]["on"] is False and me["contribute"]["default_on"] is True
+    code = (await client.get("/v1/me/invite", headers={"Authorization": f"Bearer {before['api_key']}"})).json()["code"]
+
+    after = await sign_up(client, sender, identifier="dev-b@example.com", invite=code)
+    assert after["contribute"]["on"] is True and after["contribute"]["samples"] == 0 and after["contribute"]["default_on"] is True
+    headers = {"Authorization": f"Bearer {after['api_key']}"}
+    kinds = [e["kind"] for e in (await client.get("/v1/me/events", headers=headers)).json()["events"]]
+    assert "contribute.default" in kinds and "contribute.on" not in kinds
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert r.status_code == 200 and cloud.db.sample_count() == 1
+    # +¥5 for each of them: the newcomer's pool is ¥15, the inviter's too
+    assert after["spend"]["grant"] == 15 and after["invite"]["invitee_bonus_cny"] == 5
+    credits = [r_["detail"] for r_ in after["recent"] if r_["kind"] == "credit"]
+    assert {"credit_uy": 5_000_000, "from": "invited", "friend": before["account"]["id"][:8]} in credits
+    me = (await client.get("/v1/me", headers={"Authorization": f"Bearer {before['api_key']}"})).json()
+    assert me["spend"]["grant"] == 15 and me["invite"]["invites"] == 1 and me["invite"]["earned_cny"] == 5
+    # the newcomer turns it off: nothing more is kept
+    r = await client.post("/v1/me/contribute", headers=headers, json={"on": False})
+    assert r.json()["on"] is False and r.json()["samples"] == 1
+    await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert cloud.db.sample_count() == 1
+    dv = (await client.get("/v1/admin/data?days=1", headers={"X-Admin-Token": "admin"})).json()
+    assert dv["default_on"] is True and dv["accounts"] == {
+        "total": 2,
+        "on": 0,
+        "off": 2,
+        "share": 0.0,
+        "turned_off_ever": 1,
+        "with_samples": 1,
+    }
+    assert dv["days"][0]["default_on"] == 1 and dv["days"][0]["turned_off"] == 1 and dv["days"][0]["turned_on"] == 0
 
 
 def test_long_samples_are_cut_whole_and_old_cut_rows_still_load():
