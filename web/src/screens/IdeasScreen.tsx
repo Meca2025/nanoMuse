@@ -1,38 +1,25 @@
-import {
-  BookOpen,
-  CalendarCheck,
-  ChevronRight,
-  FileText,
-  HeartPulse,
-  House,
-  Loader2,
-  PiggyBank,
-  RefreshCw,
-  Search,
-  Sparkles,
-  Target,
-  Users,
-} from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Loader2, MessageCircle, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
+import { Sheet } from "../components/Sheet";
 import { TabHeader } from "../components/TabHeader";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { Idea, IdeasData } from "../types";
 import { relativeTime } from "../util";
 
-/** The areas an idea can belong to, in the order they are listed; icon and label for each. */
-const AREAS: Array<{ id: string; label: string; icon: (size: number) => ReactNode }> = [
-  { id: "planning", label: "Planning", icon: (s) => <CalendarCheck size={s} /> },
-  { id: "goals", label: "Goals", icon: (s) => <Target size={s} /> },
-  { id: "research", label: "Research", icon: (s) => <Search size={s} /> },
-  { id: "money", label: "Money", icon: (s) => <PiggyBank size={s} /> },
-  { id: "health", label: "Health", icon: (s) => <HeartPulse size={s} /> },
-  { id: "home", label: "Home", icon: (s) => <House size={s} /> },
-  { id: "learning", label: "Learning", icon: (s) => <BookOpen size={s} /> },
-  { id: "people", label: "People", icon: (s) => <Users size={s} /> },
-  { id: "files", label: "Files & tools", icon: (s) => <FileText size={s} /> },
-  { id: "fun", label: "Just for you", icon: (s) => <Sparkles size={s} /> },
+/** The areas an idea can belong to, in the order they are listed; the emoji Muse puts in front of a row, and the label. */
+const AREAS: Array<{ id: string; label: string; emoji: string }> = [
+  { id: "planning", label: "Planning", emoji: "🗓️" },
+  { id: "goals", label: "Goals", emoji: "🎯" },
+  { id: "research", label: "Research", emoji: "🔍" },
+  { id: "money", label: "Money", emoji: "💰" },
+  { id: "health", label: "Health", emoji: "🌿" },
+  { id: "home", label: "Home", emoji: "🏠" },
+  { id: "learning", label: "Learning", emoji: "📚" },
+  { id: "people", label: "People", emoji: "👥" },
+  { id: "files", label: "Files & tools", emoji: "📄" },
+  { id: "fun", label: "Just for you", emoji: "🎈" },
 ];
 
 /** Muse "always thinks about what it can do for you" — suggestions from goals, memory and recent chat. */
@@ -62,7 +49,17 @@ export function IdeasScreen() {
   }, []);
 
   const groups = groupByArea(data?.ideas ?? []);
+  const [selected, setSelected] = useState<{ idea: Idea; emoji: string } | null>(null);
+  // The runtime's starter ideas are English; the dictionary carries them, model-written ones pass through.
+  const sendIdea = (idea: Idea) => {
+    setSelected(null);
+    void send("main", t(idea.prompt));
+    openThread("main");
+  };
 
+  // Muse's Ideas page: a big title, then rows of "emoji · bold pitch · grey detail" grouped under
+  // section headers (the first group has none). Tapping a row opens a small sheet that says what
+  // the idea will do and offers to do it.
   return (
     <div className="flex h-full flex-col">
       <TabHeader title={t("Ideas")}>
@@ -71,51 +68,60 @@ export function IdeasScreen() {
           onClick={() => void load(true)}
           disabled={loading}
           aria-label={t("Refresh ideas")}
-          className="h-10 w-10 rounded-full bg-surface-2 text-accent flex items-center justify-center disabled:opacity-60"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-fg shadow-[0_1px_4px_rgba(0,0,0,0.14)] disabled:opacity-60 dark:border dark:border-border dark:shadow-none"
         >
           {loading ? <Loader2 size={20} className="animate-spin" /> : <RefreshCw size={19} />}
         </button>
       </TabHeader>
-      <p className="shrink-0 px-5 pb-2 text-[13px] text-muted">{t("Things {name} could do for you, based on your goals, memory and recent conversations.", { name })}</p>
-      <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-5">
-        {data && (
-          <div className="px-1 text-[12px] text-muted">
-            {data.source === "model" ? t("Generated {when}", { when: relativeTime(data.generated_at) }) : t("Starter ideas — refresh once {name} knows you better.", { name })}
-          </div>
-        )}
-        {groups.map(({ area, ideas }) => (
+      <div className="flex-1 overflow-y-auto pb-6">
+        {groups.map(({ area, ideas }, index) => (
           <section key={area.id}>
-            <div className="mb-1.5 flex items-center gap-2 px-1 text-[13px] font-semibold text-muted">
-              <span className="text-fg/70">{area.icon(15)}</span> {t(area.label)}
-            </div>
-            <ul className="overflow-hidden rounded-[22px] border border-border/70 bg-surface">
+            {index > 0 && <h2 className="px-5 pt-[22px] pb-1 text-[20px] font-bold">{t(area.label)}</h2>}
+            <ul>
               {ideas.map((idea) => (
-                <li key={idea.title} className="border-b border-border/60 last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void send("main", idea.prompt);
-                      openThread("main");
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition active:bg-surface-2/70"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-medium leading-snug">{idea.title}</span>
-                      {idea.detail && <span className="mt-0.5 block text-[13px] leading-snug text-muted">{idea.detail}</span>}
+                <li key={idea.title}>
+                  <button type="button" onClick={() => setSelected({ idea, emoji: area.emoji })} className="flex w-full items-start gap-4 px-5 py-3.5 text-left active:bg-surface-2/70">
+                    <span className="flex w-10 shrink-0 justify-center text-[28px] leading-[34px]">{area.emoji}</span>
+                    <span className="min-w-0 flex-1 space-y-1">
+                      <span className="block text-[16px] font-semibold leading-[22px]">{t(idea.title)}</span>
+                      {idea.detail && <span className="line-clamp-4 block text-[13.5px] leading-[19px] text-muted">{t(idea.detail)}</span>}
                     </span>
-                    <ChevronRight size={16} className="shrink-0 text-muted/70" />
                   </button>
+                  <div className="ml-[76px] mr-5 border-b border-border/70" />
                 </li>
               ))}
             </ul>
           </section>
         ))}
+        {data && (
+          <div className="px-5 pt-4 text-[12.5px] text-muted">
+            {data.source === "model" ? t("Generated {when}", { when: relativeTime(data.generated_at) }) : t("Starter ideas — refresh once {name} knows you better.", { name })}
+          </div>
+        )}
         {!data && loading && (
-          <div className="py-10 text-center text-muted flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-2 py-10 text-muted">
             <Loader2 className="animate-spin" size={18} /> {t("Thinking about what I could do for you…")}
           </div>
         )}
       </div>
+
+      <Sheet open={selected !== null} onClose={() => setSelected(null)}>
+        {selected && (
+          <div className="px-1 pb-2">
+            <div className="flex items-center gap-3">
+              <span className="text-[30px] leading-none">{selected.emoji}</span>
+              <h3 className="flex-1 text-[18px] font-bold leading-6">{t(selected.idea.title)}</h3>
+            </div>
+            {selected.idea.detail && <p className="mt-3 text-[15px] leading-[22px]">{t(selected.idea.detail)}</p>}
+            <div className="mt-3.5 flex items-center gap-1.5 text-[13px] text-muted">
+              <MessageCircle size={16} /> {t("Starts a conversation")}
+            </div>
+            <button type="button" onClick={() => sendIdea(selected.idea)} className="mt-[22px] flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-accent-fg">
+              <MessageCircle size={18} /> {t("Send to chat")}
+            </button>
+          </div>
+        )}
+      </Sheet>
     </div>
   );
 }

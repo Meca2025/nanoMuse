@@ -197,7 +197,7 @@ const zhCN: Record<string, string> = {
   People: "人际",
   "Files & tools": "文件与工具",
   "Just for you": "专属于你",
-  Tracking: "持续跟进",
+  Tracking: "追踪",
   "Checked on a schedule": "按计划定期查看",
   "Step by step, until done": "一步步推进，直到完成",
   "Show {n} more": "再显示 {n} 项",
@@ -1460,6 +1460,48 @@ const zhCN: Record<string, string> = {
   afternoon: "下午",
   evening: "晚上",
   "{weekday} {part}": "{weekday}{part}",
+
+  // Ideas, the phone's sheet
+  "Starts a conversation": "会开始一段对话",
+  "Send to chat": "发到聊天",
+
+  // Goals, the phone's page
+  "Nothing tracked yet": "尚未追踪任何内容",
+  "Create a goal": "创建目标",
+  "Pick a category and tell me the goal you have in mind. I'll shape a plan with you and keep improving it as you go.": "选择一个类别，告诉我你想要的目标，我将为你量身定制一个计划，并随着你的成长不断改进。",
+  "Create a {category} goal": "创建{category}目标",
+  "First, we'll shape the goal together in the chat. I'll ask a few questions so I understand exactly what you're after.": "首先，我们将在聊天中一起完善目标。我会问几个问题，准确了解你的目标。",
+  "Once it's set, I'll track your progress here.": "目标设置后，我会在这里追踪你的进度。",
+  "Let's go": "开始吧",
+  "I'd like to create a {category} goal. Ask me a few short questions, one at a time — what exactly I want, why and by when, how often to check in — then create it with concrete steps using the goals tool.":
+    "我想创建一个{category}目标。请一次问我一个简短的问题——我具体想达成什么、为什么以及什么时候、多久检查一次——然后用 goals 工具把它建成带具体步骤的目标。",
+  "Mark as done": "标记为已完成",
+  "Mark as not done": "标记为未完成",
+
+  // the runtime's starter ideas (nanomuse/server/service.py STARTER_IDEAS)
+  "Plan my week": "规划我的一周",
+  "Tell me what's on your plate and I'll turn it into a realistic plan with the important things first.": "告诉我你手头有什么，我把它排成一份切实可行的计划，重要的事放前面。",
+  "Help me plan my week. Ask me what I need to get done, then propose a schedule.": "帮我规划这一周。先问我有哪些事要做，然后给出一份日程安排。",
+  "Research & compare options": "调研并比较选项",
+  "Laptops, flights, insurance, a new phone plan — I'll gather the facts and compare them for you.": "笔记本、机票、保险、新的手机套餐——我帮你收集事实并逐项比较。",
+  "I need to make a purchase decision. Ask me what I'm choosing between, then research and compare the options.": "我要做一个购买决定。先问我在哪些选项之间选择，然后调研并比较它们。",
+  "Set up a long-term goal": "建立一个长期目标",
+  "Share a goal (learn a language, run a 10k, save for a trip) and I'll break it into steps and keep track.": "说一个目标（学一门语言、跑完 10 公里、攒一次旅行的钱），我把它拆成步骤并持续跟进。",
+  "I want to set up a long-term goal. Ask me about it, then create a plan with concrete steps and track it.": "我想建立一个长期目标。先问问我，然后制定一份带具体步骤的计划并跟进。",
+  "Tell me about yourself": "介绍一下你自己",
+  "The more I know about your preferences, routines and constraints, the more useful I get. I'll remember what matters.": "我越了解你的偏好、作息和限制，就越能帮上忙。重要的事我会记住。",
+  "Ask me a few questions about myself so you can help me better, and remember the answers.": "问我几个关于我自己的问题，好让你更了解我，并记住答案。",
+  "Build a quick tracker": "做一个简单的追踪表",
+  "Spending, habits, workouts, reading — I can write a small script or document to track it for you.": "开支、习惯、锻炼、阅读——我可以写一个小脚本或文档帮你记录。",
+  "Build me a simple tracker. Ask me what I want to track and how, then create it in the workspace.": "帮我做一个简单的追踪表。先问我想记录什么、怎么记，然后在工作区里建好。",
+
+  // Library, the phone's two-way split
+  Artifacts: "构件",
+  Media: "影音内容",
+  "Nothing created yet": "还没有创建任何内容",
+  "Documents, tables and pages I write for you will show up here.": "我为你写的文档、表格和页面会显示在这里。",
+  "No media yet": "还没有影音内容",
+  "Photos, screenshots and recordings I produce will show up here.": "我生成的图片、截图和录音会显示在这里。",
 };
 
 export default zhCN;
