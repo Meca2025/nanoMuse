@@ -183,7 +183,7 @@
     <string name="nm_feed_session_title">動態</string>
     <string name="nm_feed_routine_label">寫動態</string>
     <string name="nm_feed_prompt">寫今天的動態。</string>
-    <string name="nm_feed_default_preferences">為我打造一個關於我興趣的動態版塊。保持內容簡潔直接，確保可快速瀏覽，盡量避免點擊誘餌。</string>
+    <string name="nm_feed_default_preferences">幫我做一個關於我關心的事的動態。短一點、直接一點，掃一眼就能看完，別搞標題黨。</string>
     <string name="nm_feed_intro_title">動態版塊說明</string>
     <string name="nm_feed_intro_desc">你的動態版塊由以下指示驅動。你對此提示做出的任何編輯都將套用於今後的動態貼文。</string>
     <string name="nm_feed_edit">編輯</string>
@@ -261,7 +261,7 @@
     <string name="nm_import_intro">把別的助手已經了解的你帶過來。用下面這段提示詞去問它，把回答貼到這裡，就會追加到 GLOBAL.md 的「匯入」一節——你的 agent 每次對話開始都會讀到。</string>
     <string name="nm_import_step1">去問你的另一個助手</string>
     <string name="nm_import_step2">把它的回答貼進來</string>
-    <string name="nm_import_prompt">請把你記住的關於我的資訊整理成簡潔的要點：我是誰、喜歡被怎麼稱呼、住在哪裡和時區、做什麼工作、現在在忙什麼、我的偏好和習慣，以及你被要求一直做或絕不做的事。純文字，不要標題，不要包含密碼等敏感資訊。</string>
+    <string name="nm_import_prompt">把你記得的關於我的事整理成幾條簡短要點：我是誰、喜歡別人怎麼稱呼我、住在哪裡、什麼時區、做什麼工作、最近在忙什麼、我的偏好和習慣，還有我交代過你一定要做或絕對不要做的事。純文字，不要標題，密碼之類的敏感資訊不要寫。</string>
     <string name="nm_import_copy_prompt">複製提示詞</string>
     <string name="nm_import_from_hint">來自（可選）——如 ChatGPT、Claude</string>
     <string name="nm_import_paste_hint">把要點貼到這裡</string>
@@ -337,6 +337,10 @@
     <string name="nm_appearance_header_model_title">在名字下方顯示模型</string>
     <string name="nm_appearance_header_model_footer">Muse 只顯示名字。開啟後名字下方會顯示模型群組和服務商 · 模型，點它可以切換。關閉時模型在 ••• → 模型和設定裡。</string>
     <string name="nm_chat_menu_model">模型</string>
+    <string name="nm_model_switched">這個對話已換成 %1$s</string>
+    <string name="nm_model_switched_sticky">已換成 %1$s，新對話也用它</string>
+    <string name="nm_picker_more_models">帳號還能用的更多模型</string>
+    <string name="nm_picker_more_models_note">不在選單裡，但你的帳號可以用；按選單裡最接近的模型計費。看螢幕只有你自己選了才會用到它們。</string>
     <string name="nm_attach_commands">指令</string>
     <string name="nm_composer_placeholder">訊息</string>
 
@@ -394,7 +398,7 @@
     <string name="nm_avatar_share_button">分享形象</string>
     <string name="nm_avatar_share_later">以後再說</string>
     <string name="nm_avatar_share_title">分享我的虛擬形象</string>
-    <string name="nm_avatar_share_subtitle">選一張卡片，透過系統分享送出。</string>
+    <string name="nm_avatar_share_subtitle">選一張卡片，用系統分享送出。</string>
     <string name="nm_avatar_share_system">分享</string>
     <string name="nm_avatar_share_bubble">你好，我是你的個人 AI 智慧體%1$s。nanoMuse——開源、在手機上本地執行。</string>
     <string name="nm_avatar_share_tagline">你的個人 AI 智慧體，開源 · github.com/nano-muse/nanoMuse</string>
@@ -461,8 +465,14 @@
     <string name="nm_hands_need_ok">就緒</string>
     <string name="nm_hands_need_set_up">去設定</string>
     <string name="nm_hands_section_model">看螢幕的模型</string>
-    <string name="nm_hands_model_auto">自動——對話模型能看圖就用它，否則用視覺模型群組</string>
-    <string name="nm_hands_model_footer">每一步都會把一張截圖傳給這個模型。小一點的視覺模型就夠用，也更省錢。</string>
+    <string name="nm_hands_model_auto">自動——你選的對話模型能看圖就用它，否則用 nanoMuse 雲的看屏模型，再否則用視覺模型群組</string>
+    <string name="nm_hands_model_footer">每一步都會把一張截圖傳給這個模型。小一點的視覺模型就夠用，也更省錢。雲端選單之外的模型只有你自己選了才會用。</string>
+    <string name="nm_hands_why_chosen">在這裡選的</string>
+    <string name="nm_hands_why_chat">你選的對話模型</string>
+    <string name="nm_hands_why_group">預設模型群組裡第一個能看圖的</string>
+    <string name="nm_hands_why_menu">nanoMuse 雲的看屏模型</string>
+    <string name="nm_hands_why_vision_group">你的視覺模型群組</string>
+    <string name="nm_hands_why_any">唯一一個啟用了、又能看圖的模型</string>
     <string name="nm_hands_section_rules">它會怎麼做</string>
     <string name="nm_hands_rule_ladder">螢幕排最後：先試技能、命令列、瀏覽器。</string>
     <string name="nm_hands_rule_secrets">從不代輸密碼、驗證碼、卡號——遇到就把手機交還給你。</string>
@@ -599,7 +609,7 @@
     <string name="nm_cloud_err_not_invited">這是一台私人中轉，這個信箱不在名單上。</string>
     <string name="nm_cloud_err_send_failed">驗證碼沒發出去，請稍後再試。</string>
     <string name="nm_cloud_err_phone_region">簡訊驗證碼目前只支援中國大陸手機號，海外使用者請改用信箱登入。</string>
-    <string name="nm_cloud_err_disabled">這個帳號已被停用。</string>
+    <string name="nm_cloud_err_disabled">這個帳號已停用。</string>
     <string name="nm_cloud_err_bad_key">伺服器已不認識這台手機，請重新登入。</string>
     <string name="nm_cloud_err_out_of_tokens">額度用完了。</string>
     <string name="nm_cloud_err_daily_cap">今天的 token 配額用完了，明天恢復。</string>
@@ -614,7 +624,7 @@
     <string name="nm_cloud_err_password_wrong">目前的密碼不對。</string>
     <string name="nm_cloud_err_password_required">請先輸入目前的密碼。</string>
     <string name="nm_cloud_err_password_short">密碼至少 8 位。</string>
-    <string name="nm_cloud_err_password_weak">這個密碼太容易被猜到。</string>
+    <string name="nm_cloud_err_password_weak">這個密碼太好猜了。</string>
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">%1$s 加入</string>
     <string name="nm_cloud_account_id">帳號 %1$s…</string>
@@ -677,7 +687,7 @@
     <string name="nm_data_why">開啟後，你與 nanoMuse Cloud 模型對話的文字——你寫的、它回答的，以及它選擇呼叫的工具——會保存在中繼上，用來訓練社群自己的開源模型。不保存你的記憶和 SOUL（系統提示）、工具回傳的內容和圖片，也不和你的身分放在一起。用自己的 API key 時，對話不經過中繼。</string>
     <string name="nm_data_default_on">新帳號預設開啟。</string>
     <string name="nm_data_default_off">新帳號預設關閉。</string>
-    <string name="nm_data_kept">目前已保存 %1$d 輪對話。</string>
+    <string name="nm_data_kept">已保存 %1$d 輪對話。</string>
     <string name="nm_data_on_toast">已開啟。隨時可以在這裡關閉。</string>
     <string name="nm_data_off_toast">已關閉。之後的對話不再保存。</string>
     <string name="nm_data_delete">刪除已保存的對話</string>
@@ -807,7 +817,7 @@
     <string name="nm_hub_err_unknown_action">電腦上的 nanoMuse 版本較舊，不認識這個操作。</string>
     <string name="nm_hub_err_bad_key">中繼上已登出，請重新登入。</string>
     <string name="nm_hub_err_generic">電腦沒能完成。</string>
-    <string name="nm_devices_refused">被中繼拒絕——請重新登入</string>
+    <string name="nm_devices_refused">中繼拒絕了連線——重新登入一下</string>
     <string name="nm_devices_notifications_hint">允許通知，手機才能在背景保持可聯。</string>
     <string name="nm_library_share_failed">檔案沒能分享出去。</string>
 </resources>

@@ -127,7 +127,8 @@ fun HandsScreen(onBack: () -> Unit, onOpenProviders: () -> Unit) {
                 icon = Icons.Outlined.Visibility,
                 title = stringResource(R.string.nm_hands_need_model),
                 ok = readiness.model != null,
-                okText = readiness.model?.label ?: "",
+                // the model and how it was arrived at, so "why qwen-vl-max?" has its answer here
+                okText = readiness.model?.let { m -> m.label + " · " + stringResource(whyText(m.why)) } ?: "",
                 fixText = stringResource(R.string.nm_hands_need_model_fix),
                 onFix = onOpenProviders,
                 showDivider = !readiness.androidOk,
@@ -213,6 +214,16 @@ private fun openAccessibilitySettings(context: Context) {
     } catch (_: Throwable) {
         runCatching { context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
+}
+
+/** The sentence for how the screen model was arrived at ([Hands.screenModel]). */
+private fun whyText(why: Hands.Why): Int = when (why) {
+    Hands.Why.CHOSEN -> R.string.nm_hands_why_chosen
+    Hands.Why.CHAT -> R.string.nm_hands_why_chat
+    Hands.Why.GROUP -> R.string.nm_hands_why_group
+    Hands.Why.MENU -> R.string.nm_hands_why_menu
+    Hands.Why.VISION_GROUP -> R.string.nm_hands_why_vision_group
+    Hands.Why.ANY -> R.string.nm_hands_why_any
 }
 
 private fun openOverlaySettings(context: Context) {

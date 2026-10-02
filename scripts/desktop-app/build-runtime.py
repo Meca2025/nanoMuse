@@ -5,6 +5,7 @@ picks it up as an extra resource.
 
     python scripts/desktop-app/build-runtime.py            # from a venv with .[hands] and pyinstaller
     python scripts/desktop-app/build-runtime.py --check    # then start it once and ask /api/health
+    python scripts/desktop-app/build-runtime.py --target harness/desktop/runtime   # for nanoMuse Harness
 
 Needs: the repository's Python environment with `pip install -e ".[hands]" pyinstaller`.
 The web app must already be built into nanomuse/server/static (it is committed).
@@ -34,7 +35,7 @@ def run(*cmd: str, **kw) -> None:
     subprocess.run(cmd, check=True, **kw)
 
 
-def build() -> Path:
+def build(target: Path) -> Path:
     shutil.rmtree(DIST, ignore_errors=True)
     run(
         sys.executable,
@@ -53,11 +54,11 @@ def build() -> Path:
     exe = built / ("nanomuse.exe" if sys.platform == "win32" else "nanomuse")
     if not exe.exists():
         raise SystemExit(f"PyInstaller produced nothing at {exe}")
-    shutil.rmtree(TARGET, ignore_errors=True)
-    shutil.copytree(built, TARGET)
-    size = sum(p.stat().st_size for p in TARGET.rglob("*") if p.is_file()) // (1024 * 1024)
-    print(f"runtime: {TARGET} ({size} MB)")
-    return TARGET / exe.name
+    shutil.rmtree(target, ignore_errors=True)
+    shutil.copytree(built, target)
+    size = sum(p.stat().st_size for p in target.rglob("*") if p.is_file()) // (1024 * 1024)
+    print(f"runtime: {target} ({size} MB)")
+    return target / exe.name
 
 
 def check(exe: Path) -> None:
@@ -132,11 +133,19 @@ def main() -> None:
     ap.add_argument(
         "--check-only", action="store_true", help="only check the runtime already built"
     )
+    ap.add_argument(
+        "--target",
+        default=str(TARGET),
+        help="where the built runtime goes (default desktop/app/runtime; nanoMuse Harness uses harness/desktop/runtime)",
+    )
     args = ap.parse_args()
+    target = Path(args.target)
+    if not target.is_absolute():
+        target = ROOT / target
     if args.check_only:
-        exe = TARGET / ("nanomuse.exe" if sys.platform == "win32" else "nanomuse")
+        exe = target / ("nanomuse.exe" if sys.platform == "win32" else "nanomuse")
     else:
-        exe = build()
+        exe = build(target)
     if args.check or args.check_only:
         check(exe)
 

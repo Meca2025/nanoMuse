@@ -1,11 +1,13 @@
 # nanoMuse on DeepSeek Harness
 
-> **Status: preview.** The code is in [`harness/`](../harness/) on `main`, and from
-> 0.1.27 every release carries the bundle packed — `nanoMuse-Harness-<v>.tgz`, for
-> DeepSeek Harness Desktop ([harness/README.md](../harness/README.md) says how to put it
-> in). The desktop app most people install is still [`desktop/`](desktop.md); our own
-> build of the dsh shell is ahead ([Phases](#phases)). This page is the design and the
-> plan; [desktop-muse.md](desktop-muse.md) is what the window is meant to look like.
+> **Status: preview.** The code is in [`harness/`](../harness/) on `main`. From 0.1.27
+> every release carries the bundle packed — `nanoMuse-Harness-<v>.tgz`, for DeepSeek
+> Harness Desktop — and from 0.1.28 **nanoMuse Harness**, our own desktop app with the
+> harness and the bundle inside, as installers for Windows, macOS and Linux
+> ([harness/README.md](../harness/README.md) has both). The desktop app most people
+> install is still [`desktop/`](desktop.md) until this one is whole ([Phases](#phases)).
+> This page is the design and the plan; [desktop-muse.md](desktop-muse.md) is what the
+> window is meant to look like.
 
 ## The decision
 
@@ -228,7 +230,7 @@ our page.
 | A task run here for the phone (`task`)                  | `task.ts`: the phone's `delegate` lands in a dsh session ("From <device>", resumed next time), its run streamed back as the runtime's event frames, its approvals relayed to the asker, `stop {call}` honoured | done       |
 | Skills, schedule, goals, memory, sub-agents             | dsh's own (`skill`, `schedule`, `goals`, compaction, delegation) — ours are not ported                                                       | by design  |
 | Web UI, zh-CN                                           | dsh's web app (it ships zh); our strings in the bundle's locale table                                                                        | done       |
-| The desktop shell                                       | dsh's desktop app for now (Electron, DeepSeek Harness branding in About); our own shell and installer are the last step                       | phase 5    |
+| The desktop shell                                       | `harness/desktop`: our Electron shell, the harness's Host as a child in Node mode, dsh + the bundle + the runtime for the hands inside; installers for Windows, macOS, Linux from `harness-desktop.yml` | done (unsigned) |
 | Browser demo at nanomuse.cn/web                         | Stays on the Python runtime                                                                                                                  | unchanged  |
 | The phone                                               | Stays on the Python runtime; meets the desktop through the account and Reach                                                                 | unchanged  |
 
@@ -308,14 +310,27 @@ a community project with no affiliation — apply unchanged.
    around the same web app with a `desktop` profile that takes external plugins (`dsh
    plugin --profile desktop add …`), so the first nanoMuse desktop is that app with the
    bundle in its profile: **from 0.1.27 every release carries the bundle packed,
-   `nanoMuse-Harness-<v>.tgz`, with the install in [harness/README.md](../harness/README.md)
-   — a preview, next to the desktop app, not instead of it** (`.github/workflows/harness.yml`
-   builds, tests, packs it and installs the tarball into a fresh dsh profile). Our own
-   build of the shell — the name, the icon, the About, no analytics, our update feed —
-   and its installers, the downloads and the docs come after (dsh's `apps/desktop` packs
-   with electron-builder for macOS and Windows; its pipeline also prepares a private
-   Host and a primary runtime and signs on both platforms, so that build is a project of
-   its own, and a signed macOS build needs an Apple Developer account); `desktop/`
-   retired then.
+   `nanoMuse-Harness-<v>.tgz`, with the install in [harness/README.md](../harness/README.md)**
+   (`.github/workflows/harness.yml` builds, tests, packs it and installs the tarball into
+   a fresh dsh profile). **From 0.1.28 the second step is there too: nanoMuse Harness**,
+   our own shell in [`harness/desktop/`](../harness/desktop/) — not dsh's `apps/desktop`
+   rebuilt (its pipeline prepares a private Host, a primary runtime and hardware-token
+   signing, a project of its own), but a small Electron app that does what that one does
+   at its core: starts the harness's Host as a child process with its own binary in Node
+   mode (`ELECTRON_RUN_AS_NODE`, `--expose-internals`; the harness's `require-builtin`
+   addon fingerprints the Electron it was built for, so the shell pins `44.0.0`), from a
+   `dsh` that npm installed under `resources/dsh` together with the bundle at build time,
+   against a profile of its own under `~/.nanomuse/harness` that names the bundle and
+   links it from the copy inside the app. The runtime for the hands rides along as it does
+   in `desktop/app`, and `NANOMUSE_PY` points the preset at it. `harness-desktop.yml`
+   builds the Windows installer, the macOS dmg/zip for both architectures and the Linux
+   AppImage/deb on every release tag, boots each packaged harness once in Node mode as a
+   check, and attaches them to the release. Unsigned for now, like the other desktop app
+   (the same Apple secrets sign and notarize the macOS build when they are set).
+7. **Daily-driver on the new shell** — signing on both platforms, an update feed of our
+   own, the macOS close-to-Dock and Windows tray behaviour the harness's desktop has, a
+   chosen workspace for tasks from other devices; then `desktop/` retires and the site's
+   desktop downloads point here.
 
-Until phase 6 is whole, `desktop/` is the desktop app and keeps getting its fixes.
+Until phase 7 is whole, `desktop/` is the desktop app most people install and keeps
+getting its fixes; nanoMuse Harness is the one to try the Muse on the harness with.

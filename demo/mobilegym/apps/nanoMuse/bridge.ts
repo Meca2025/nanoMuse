@@ -454,6 +454,13 @@ class MuseBridge {
           if (ev.status === 'pending') stage.approval(ev.summary ?? '');
           else stage.resume();
         }
+      } else if (ev.type === 'assistant' && ev.final && ev.source !== 'background' && stage.active) {
+        // The chat run that was using the hands has said its last word, so the task is over
+        // whatever became of its `end` (a socket that blinked at that very moment, say). The
+        // capsule must not stay on "step 6, looking" over a conversation that has finished.
+        const wentSomewhere = stage.steps > 0;
+        stage.end();
+        if (wentSomewhere) this.comeBack();
       }
     }
     if (!this.hooks.get().notify) return;

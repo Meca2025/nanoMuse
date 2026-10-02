@@ -3032,7 +3032,21 @@ fun ChatScreen(
                             // picker opens from here.
                             if (nmHideModelRows) {
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.nm_chat_menu_model)) },
+                                    text = {
+                                        // the model answering right now, so the menu says what
+                                        // "Model" would change
+                                        Column {
+                                            Text(stringResource(R.string.nm_chat_menu_model))
+                                            if (modelName.isNotBlank()) {
+                                                Text(
+                                                    modelName,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                )
+                                            }
+                                        }
+                                    },
                                     onClick = {
                                         showChatMenu = false
                                         showModelPicker = true
@@ -7211,6 +7225,19 @@ fun ChatScreen(
                 } else {
                     viewModel.selectEntry(entryId)
                     showModelPicker = false
+                    // nanoMuse: a pick among the Cloud's models is meant as "the model from
+                    // now on" — the default group follows it, and a line says so, since the
+                    // picker's own binding is per chat and the next new chat would otherwise
+                    // have gone back to the recommended model without a word.
+                    if (entry != null && io.github.nanomuse.cloud.NanoMuseCloud.owns(context, entry)) {
+                        val name = entry.model.displayName.ifBlank { entry.model.id }
+                        val sticks = io.github.nanomuse.cloud.NanoMuseCloud.followPick(context, entryId)
+                        android.widget.Toast.makeText(
+                            context,
+                            context.getString(if (sticks) R.string.nm_model_switched_sticky else R.string.nm_model_switched, name),
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                 }
             },
             onDismiss = { showModelPicker = false },

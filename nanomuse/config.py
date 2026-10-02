@@ -301,6 +301,10 @@ class GUISettings(BaseModel):
     max_steps: int = 0
     # How long to wait for the phone to answer one request (screen or action).
     device_timeout_s: float = 20.0
+    # How long a running task waits for a phone whose connection dropped to come back
+    # (the Android app and the phone module reconnect within seconds; a page in a browser
+    # that was switched away may take longer) before the task is given up. 0 = not at all.
+    reconnect_grace_s: float = 30.0
     # Words on a screen (or a target element) that make an action *sensitive*: paying,
     # transferring money, sending, deleting, placing an order. Approval is asked every
     # time; no standing grant covers them. Kept specific on purpose — "支付" alone would

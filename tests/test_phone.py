@@ -600,6 +600,75 @@ async def test_operator_reads_nodes_shows_the_capsule_and_obeys_stop(settings: S
     assert records[-1]["status"] == "stopped"
 
 
+async def test_operator_waits_for_a_phone_that_drops_and_comes_back(settings: Settings):
+    """The phone module in a browser tab loses its socket for a few seconds (a 1006 drop, a
+    reconnect with backoff): the task is not given up; the operator waits up to
+    `reconnect_grace_s` for a phone to be connected again, and the task goes on from the
+    screen it then sends. While the phone is away the link still holds the task, so the
+    returning phone's hello sets its capsule right. A phone that does not come back ends
+    the task with a plain message — and the capsule still hears `end`."""
+    link = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
+    phone = CapsulePhone(link, [HOME_SCREEN, PAY_SCREEN, PAY_SCREEN])
+
+    # the first action's answer never comes: the socket drops under it
+    dropped = asyncio.get_running_loop().create_future()
+
+    async def send(msg: dict[str, Any]) -> None:
+        if msg["op"] == "act" and not dropped.done():
+            dropped.set_result(msg["id"])
+            link.detach("conn-1")  # the socket closed: pending requests fail with DeviceGone
+            return
+        await CapsulePhone.send(phone, msg)
+
+    phone.device.send = send
+    llm = MockLLM(
+        [
+            labelled("Tap the 支付宝 icon", "click", coordinate=[372, 59]),
+            labelled("Report the result", "answer", text="done after the drop"),
+        ]
+    )
+    operator, _ = make_operator(
+        settings, link, llm, AutoApproveUI(), max_steps=6, reconnect_grace_s=5.0
+    )
+
+    async def come_back() -> None:
+        await dropped
+        await asyncio.sleep(0.3)
+        assert link.task is not None and link.task["goal"] == "付款"  # the hello would carry this
+        phone.device = link.attach(
+            "conn-2",
+            {"name": "Pixel", "platform": "android", "gui": True, "capsule": True},
+            phone.send,
+        )
+
+    outcome, _ = await asyncio.gather(operator.run("付款"), come_back())
+    assert outcome.status == "done" and outcome.message == "done after the drop", outcome.message
+    assert outcome.steps == 2
+    # the capsule heard begin on the old socket and end on the new one
+    assert [t["event"] for t in phone.tasks] == ["begin", "end"]
+
+    # and when nobody comes back within the grace, the task ends saying so
+    link2 = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
+    phone2 = CapsulePhone(link2, [HOME_SCREEN])
+
+    async def send2(msg: dict[str, Any]) -> None:
+        if msg["op"] == "act":
+            link2.detach("conn-1")
+            return
+        await CapsulePhone.send(phone2, msg)
+
+    phone2.device.send = send2
+    llm2 = MockLLM(
+        [labelled("Tap", "click", coordinate=[372, 59]), labelled("Never", "answer", text="x")]
+    )
+    operator2, _ = make_operator(
+        settings, link2, llm2, AutoApproveUI(), max_steps=6, reconnect_grace_s=0.4
+    )
+    outcome2 = await operator2.run("付款")
+    assert outcome2.status == "failed" and "did not come back within 0.4s" in outcome2.message
+    assert link2.task is None  # the end was recorded even though no phone heard it
+
+
 async def test_operator_tells_the_capsule_when_it_needs_the_user(settings: Settings):
     link = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
     phone = CapsulePhone(link, [PAY_SCREEN])

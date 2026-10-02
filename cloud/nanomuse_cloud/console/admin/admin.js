@@ -67,6 +67,11 @@
     data: (d) => `数据控制 · 最近 ${d} 天`, dOn: "开启「帮助改进」的账号", dOnSub: (on, total) => `共 ${fmt(total)} 个账号 · ${fmt(on)} 开启 · ${fmt(Math.max(0, total - on))} 关闭`, dOff: "主动关闭过的账号", dOffSub: "曾经把开关关掉的人数", dTurns: "保存的对话", dTurnsSub: (all, acc) => `累计 ${fmt(all)} 轮 · 来自 ${fmt(acc)} 个账号`, dTokens: "保存对话的 tokens", dTokensSub: (i, o) => `输入 ${fmt(i)} · 输出 ${fmt(o)}`, dDefault: (on) => on ? "新账号默认开启（IMPROVE_DEFAULT=1）" : "新账号默认关闭（IMPROVE_DEFAULT=0）", dKeeps: () => "保存：用户写的、模型回答的、它选择调用的工具，以及模型、token 数、客户端和语言。不保存：系统提示（记忆、SOUL、指令）、工具返回的内容、图片 / 音频 / 视频、用户的身份。",
     mTurns: "保存的对话", mTurnAccounts: "有对话保存的账号", mOn: "开启", mDefaultOn: "默认开启（新账号）", mOff: "关闭", mDeleted: "删除", dModels: "按模型", dApps: "按客户端", dRecent: "最近保存的对话（点开账号看全部）", dPlatforms: { android: "Android", windows: "Windows 上的 runtime", macos: "macOS 上的 runtime", linux: "Linux 上的 runtime", runtime: "runtime", browser: "浏览器", other: "其他" },
     webTitle: "网页版（nanomuse.cn/web）", webLine: (w) => (w ? `${fmt(w.accounts)} 个账号有自己的 Muse（上限 ${fmt(w.max_accounts)}）· ${fmt(w.running)} 个在运行（上限 ${fmt(w.max_running)}）` : "未接入：relay 设 WEB_INFO_URL 指向 gateway 的 /api/web/info。"), webOff: "网页版未开启",
+    // 0.11: where people are, and the models under the key
+    places: (d) => `地区 · 最近 ${d} 天`, placesNote: "按来访地址推断（ip2region 离线库，国内到城市、国外到国家 / 州），不请求任何第三方；只是网络出口所在地，用手机流量或代理时会偏。", placesOff: "地理库还没就绪：relay 启动后会自动下载 ip2region_v4.xdb（约 11 MB）到数据目录；CLOUD_GEOIP=0 可关闭。", placesFetching: "正在下载地理库…", placesError: (e) => `地理库下载失败：${e}`,
+    pCountry: "国家 / 地区", pProvince: "省 / 州", pAccounts: "账号", pNew: "新注册", pSignins: "登录", pRequests: "请求", pDemo: "体验访客", pUnknown: "未知", pLocal: "本地网络", pNone: "还没有来访记录。", pAccountsNote: "账号按最近一次来访地址计",
+    catalog: "模型目录", catalogNote: "key 下能用的模型（菜单之外）：relay 向每个模型各问一句话、再给一张品红色小图，确认它能回答、能不能看图；答案保存 7 天。客户端拿到的「能看图」就是这里的结果。", catalogOff: "模型目录未开启（CLOUD_CATALOG=0）。", catalogNames: "按名字推断，未逐个验证（CLOUD_CATALOG_PROBE=0）。", catalogProbing: "正在验证…", catalogPending: (n) => `${fmt(n)} 个待验证`, catalogFetched: (t) => `列表更新于 ${t}`, catalogError: (e) => `读取列表失败：${e}`,
+    cModel: "模型", cKind: "类型", cSees: "看图", cVerified: "已验证", cYes: "是", cNo: "否", cUnusable: "服务商拒绝的模型（不出现在客户端）", cNoUnusable: "没有被拒绝的模型。", cCount: (n, v) => `${fmt(n)} 个对话模型 · ${fmt(v)} 个能看图`,
   } : {
     title: "nanoMuse Cloud admin", tokenLabel: "Admin token", tokenHint: "The line in /opt/nanomuse/relay/ADMIN_TOKEN.txt on the server; it stays in this tab only.",
     enter: "Open", wrong: "That token is not right.", offline: "Cannot reach the server.", refresh: "Refresh", lock: "Lock", loading: "Loading…",
@@ -119,6 +124,10 @@
     data: (d) => `Data controls · last ${d} days`, dOn: "Accounts with “help improve” on", dOnSub: (on, total) => `${fmt(total)} accounts · ${fmt(on)} on · ${fmt(Math.max(0, total - on))} off`, dOff: "Accounts that turned it off", dOffSub: "ever switched it off themselves", dTurns: "Kept turns", dTurnsSub: (all, acc) => `${fmt(all)} in all · from ${fmt(acc)} accounts`, dTokens: "Tokens in kept turns", dTokensSub: (i, o) => `${fmt(i)} in · ${fmt(o)} out`, dDefault: (on) => on ? "New accounts start with it on (IMPROVE_DEFAULT=1)" : "New accounts start with it off (IMPROVE_DEFAULT=0)", dKeeps: (k) => `Kept: ${k.kept.join(", ")}. Not kept: ${k.not_kept.join(", ")}.`,
     mTurns: "Kept turns", mTurnAccounts: "Accounts with turns kept", mOn: "Turned on", mDefaultOn: "On by default (new accounts)", mOff: "Turned off", mDeleted: "Deleted", dModels: "By model", dApps: "By app", dRecent: "Newest kept turns (open the account for all of them)", dPlatforms: { android: "Android", windows: "runtime on Windows", macos: "runtime on macOS", linux: "runtime on Linux", runtime: "runtime", browser: "browser", other: "other" },
     webTitle: "nanoMuse Web (nanomuse.cn/web)", webLine: (w) => (w ? `${fmt(w.accounts)} accounts with a Muse of their own (cap ${fmt(w.max_accounts)}) · ${fmt(w.running)} running (cap ${fmt(w.max_running)})` : "Not connected: set the relay's WEB_INFO_URL to the gateway's /api/web/info."), webOff: "nanoMuse Web is off",
+    places: (d) => `Where from · last ${d} days`, placesNote: "Guessed from the address (ip2region's offline database: city level in China, country / state elsewhere); no third party is asked. It is where the network exit is — mobile data and proxies skew it.", placesOff: "The location database is not here yet: the relay fetches ip2region_v4.xdb (about 11 MB) into its data directory after start; CLOUD_GEOIP=0 turns this off.", placesFetching: "Fetching the location database…", placesError: (e) => `The location database could not be fetched: ${e}`,
+    pCountry: "Country / region", pProvince: "Province / state", pAccounts: "Accounts", pNew: "New", pSignins: "Sign-ins", pRequests: "Requests", pDemo: "Demo visitors", pUnknown: "unknown", pLocal: "local network", pNone: "No visits recorded yet.", pAccountsNote: "accounts by their latest address",
+    catalog: "Model catalog", catalogNote: "The models under the key beyond the menu: the relay asks each one a one-word question and then shows it a small magenta picture, to learn whether it answers and whether it sees; the answers stand for seven days. The “sees pictures” the apps show is what is here.", catalogOff: "The catalog is off (CLOUD_CATALOG=0).", catalogNames: "Guessed from names, not checked one by one (CLOUD_CATALOG_PROBE=0).", catalogProbing: "Checking…", catalogPending: (n) => `${fmt(n)} to check`, catalogFetched: (t) => `list read ${t}`, catalogError: (e) => `The list could not be read: ${e}`,
+    cModel: "Model", cKind: "Kind", cSees: "Sees pictures", cVerified: "Checked", cYes: "yes", cNo: "no", cUnusable: "Models the provider refuses (not offered to the apps)", cNoUnusable: "None refused.", cCount: (n, v) => `${fmt(n)} chat models · ${fmt(v)} see pictures`,
   };
 
   const moneyN = (v) => { const c = Number(v || 0); return c >= 100 ? c.toFixed(0) : c >= 1 ? c.toFixed(2) : c > 0 && c < 0.01 ? c.toFixed(4) : c.toFixed(2); };
@@ -160,8 +169,14 @@
 
   const SS = window.sessionStorage;
   let token = SS.getItem("nm.admin") || "";
-  let ov = null, accounts = null, usage = null, series = null, traffic = null, dataView = null, demoView = null, err = "", days = Number(SS.getItem("nm.admin.days") || 30), filter = "", filtered = null, q = "";
+  let ov = null, accounts = null, usage = null, series = null, traffic = null, dataView = null, demoView = null, placesView = null, catalogView = null, err = "", days = Number(SS.getItem("nm.admin.days") || 30), filter = "", filtered = null, q = "";
   let detail = null, detailErr = "";
+  // 0.11: every answer that shows addresses carries `places` ({ip: {country, province, city, text…}});
+  // they are kept across answers so an address is named wherever it appears
+  const PLACES = new Map();
+  const mergePlaces = (j) => { if (j && j.places && typeof j.places === "object") for (const [ip, p] of Object.entries(j.places)) PLACES.set(ip, p); return j; };
+  const placeOf = (ip) => PLACES.get(ip) || null;
+  const placeText = (p) => (!p ? "" : p.local ? T.pLocal : p.text || "");
 
   const app = document.getElementById("app");
   const h = (tag, attrs = {}, ...kids) => {
@@ -183,14 +198,14 @@
     if (r.status === 204) return null;
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error((j.error && j.error.message) || r.statusText);
-    return j;
+    return mergePlaces(j);
   }
 
   async function load() {
     try {
       [ov, accounts, usage] = await Promise.all([api("GET", `/v1/admin/overview?days=${days}`), api("GET", "/v1/admin/accounts"), api("GET", `/v1/admin/usage?days=${Math.min(days, 90)}`)]);
-      // the two newer views: a relay from before them, or a hiccup, leaves the panels out
-      [series, traffic, dataView, demoView] = await Promise.all([api("GET", `/v1/admin/series?days=${days}`).catch(() => null), api("GET", `/v1/admin/traffic?days=${days}`).catch(() => null), api("GET", `/v1/admin/data?days=${days}`).catch(() => null), api("GET", `/v1/admin/demo?days=${days}`).catch(() => null)]);
+      // the newer views: a relay from before them, or a hiccup, leaves the panels out
+      [series, traffic, dataView, demoView, placesView, catalogView] = await Promise.all([api("GET", `/v1/admin/series?days=${days}`).catch(() => null), api("GET", `/v1/admin/traffic?days=${days}`).catch(() => null), api("GET", `/v1/admin/data?days=${days}`).catch(() => null), api("GET", `/v1/admin/demo?days=${days}`).catch(() => null), api("GET", `/v1/admin/places?days=${days}`).catch(() => null), api("GET", "/v1/admin/catalog").catch(() => null)]);
       err = "";
     } catch (e) {
       if (e.message !== "admin") err = e.message;
@@ -372,10 +387,68 @@
         h("div", {}, h("h3", {}, T.demoVisitors, h("span", { class: "pill", style: "margin-left:6px" }, visitors.length)), rows.length ? h("div", { class: "ledger", style: "max-height:420px;overflow:auto" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, T.dvHint), h("th", { class: "num" }, T.dvSignins), h("th", { class: "num" }, T.dvSessions), h("th", { class: "hide-sm" }, T.dvFirst), h("th", {}, T.dvLast), h("th", { class: "hide-sm" }, T.dvClient))), h("tbody", {}, ...rows))) : h("div", { class: "empty" }, T.dvNone)),
         h("div", {}, h("h3", {}, T.demoVisits, h("span", { class: "pill", style: "margin-left:6px" }, visits.length)), h("div", { class: "list feed", style: "max-height:420px;overflow:auto" }, ...active.map((v) => visitRow(v, true)), ...visits.filter((v) => !active.some((a) => a.id === v.id)).map((v) => visitRow(v, true)), !(active.length + visits.length) ? h("div", { class: "empty" }, T.none) : null))));
   }
+  /** 0.11: where people are — one table by country and province across accounts, new accounts, sign-ins, requests and demo visitors. */
+  function placesPanel() {
+    const pv = placesView;
+    if (!pv) return null;
+    const g = pv.geo || {};
+    const title = h("h2", {}, T.places(days));
+    if (!g.ready) {
+      const why = g.error ? T.placesError(g.error) : g.fetching ? T.placesFetching : T.placesOff;
+      return h("div", { class: "panel span" }, title, h("div", { class: "empty" }, why));
+    }
+    const cols = [["accounts", T.pAccounts], ["new_accounts", T.pNew], ["signins", T.pSignins], ["requests", T.pRequests]];
+    if (pv.demo_visitors) cols.push(["demo_visitors", T.pDemo]);
+    const cells = new Map();
+    for (const [key] of cols) for (const r of pv[key] || []) {
+      const k = `${r.country}|${r.province}`;
+      const c = cells.get(k) || { country: r.country, code: r.code, province: r.province, n: {} };
+      c.n[key] = (c.n[key] || 0) + r.n;
+      cells.set(k, c);
+    }
+    const rows = [...cells.values()].sort((a, b) => (b.n.accounts || 0) - (a.n.accounts || 0) || (b.n.requests || 0) - (a.n.requests || 0) || (b.n.demo_visitors || 0) - (a.n.demo_visitors || 0));
+    const name = (c) => (c.country === "本地网络" ? T.pLocal : c.country || T.pUnknown);
+    // the country line sums its provinces; a country with one unnamed province is one line
+    const byCountry = new Map();
+    for (const c of rows) { const k = c.country; const e = byCountry.get(k) || { country: c.country, code: c.code, n: {}, provinces: [] }; for (const [key, v] of Object.entries(c.n)) e.n[key] = (e.n[key] || 0) + v; if (c.province) e.provinces.push(c); byCountry.set(k, e); }
+    const out = [];
+    for (const e of [...byCountry.values()].sort((a, b) => (b.n.accounts || 0) - (a.n.accounts || 0) || (b.n.requests || 0) - (a.n.requests || 0))) {
+      out.push(h("tr", { class: "country" }, h("td", {}, h("b", {}, name(e)), e.code ? h("span", { class: "fine", style: "margin-left:6px" }, e.code) : null), h("td", { class: "hide-sm" }, ""), ...cols.map(([key]) => h("td", { class: "num" }, e.n[key] ? fmt(e.n[key]) : h("span", { class: "fine" }, "·")))));
+      for (const c of e.provinces.sort((a, b) => (b.n.accounts || 0) - (a.n.accounts || 0) || (b.n.requests || 0) - (a.n.requests || 0)))
+        out.push(h("tr", { class: "province" }, h("td", {}, ""), h("td", { class: "hide-sm" }, c.province), ...cols.map(([key]) => h("td", { class: "num fine" }, c.n[key] ? fmt(c.n[key]) : "·"))));
+    }
+    return h("div", { class: "panel span" }, title,
+      out.length ? h("div", { class: "ledger", style: "max-height:460px;overflow:auto" }, h("table", { class: "places" }, h("thead", {}, h("tr", {}, h("th", {}, T.pCountry), h("th", { class: "hide-sm" }, T.pProvince), ...cols.map(([, label]) => h("th", { class: "num" }, label)))), h("tbody", {}, ...out))) : h("div", { class: "empty" }, T.pNone),
+      h("div", { class: "fine", style: "margin-top:8px" }, `${T.pAccountsNote} · ${T.placesNote}`));
+  }
+  /** 0.11: the models under the key and what the probes found. */
+  function catalogPanel() {
+    const cv = catalogView;
+    if (!cv) return null;
+    const title = h("h2", {}, T.catalog);
+    if (!cv.enabled) return h("div", { class: "panel" }, title, h("div", { class: "empty" }, T.catalogOff));
+    const chat = (cv.models || []).filter((m) => m.kind === "chat"), others = (cv.models || []).filter((m) => m.kind !== "chat");
+    const tick = (v) => h("span", { class: "pill " + (v ? "ok" : "grey") }, v ? T.cYes : T.cNo);
+    const note = [cv.error ? T.catalogError(cv.error) : "", cv.fetched_at ? T.catalogFetched(when(cv.fetched_at)) : "", !cv.probe ? T.catalogNames : cv.probing ? T.catalogProbing : "", cv.probe && cv.pending ? T.catalogPending(cv.pending) : ""].filter(Boolean).join(" · ");
+    const rows = chat.sort((a, b) => a.id.localeCompare(b.id)).map((m) => h("tr", {}, h("td", {}, h("code", {}, m.id)), h("td", {}, tick(m.vision)), h("td", { class: "hide-sm" }, cv.probe ? tick(m.verified) : h("span", { class: "fine" }, "·"))));
+    return h("div", { class: "panel" }, title,
+      h("div", { class: "fine", style: "margin-bottom:8px" }, T.cCount(chat.length, chat.filter((m) => m.vision).length), note ? ` · ${note}` : ""),
+      rows.length ? h("div", { class: "ledger", style: "max-height:360px;overflow:auto" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, T.cModel), h("th", {}, T.cSees), h("th", { class: "hide-sm" }, T.cVerified))), h("tbody", {}, ...rows))) : h("div", { class: "empty" }, T.none),
+      others.length ? h("div", { class: "fine", style: "margin-top:8px" }, ...others.sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id)).map((m) => h("span", { class: "pill", style: "margin:2px 4px 2px 0" }, `${T.kinds[m.kind] || m.kind} · ${m.id}`))) : null,
+      h("h3", { style: "margin-top:12px" }, T.cUnusable),
+      (cv.unusable || []).length ? h("div", { class: "list" }, ...cv.unusable.map((u) => h("div", { class: "row" }, h("span", { class: "tile bad", html: ICON.warn }), h("div", { class: "txt" }, h("div", { class: "t" }, h("code", {}, u.id)), h("div", { class: "s" }, u.note || "", u.checked_at ? ` · ${when(u.checked_at)}` : ""))))) : h("div", { class: "fine" }, T.cNoUnusable),
+      h("div", { class: "fine", style: "margin-top:8px" }, T.catalogNote));
+  }
   const platformOf = (ua) => { ua = String(ua || ""); if (ua.startsWith("nanoMuse-Android")) return "android"; if (ua.startsWith("nanoMuse/")) { const m = /\(([^)]*)\)/.exec(ua); return { windows: "windows", darwin: "macos", linux: "linux" }[(m ? m[1] : "").toLowerCase()] || "runtime"; } return ua.startsWith("Mozilla/") ? "browser" : "other"; };
   const versionOf = (ua) => { const m = /^nanoMuse(?:-Android)?\/([0-9][^\s(]*)/.exec(String(ua || "")); return m ? m[1] : ""; };
   const clientLine = (ua) => { if (!ua) return ""; const p = T.dPlatforms[platformOf(ua)] || ""; const v = versionOf(ua); return [p, v ? `v${v}` : ""].filter(Boolean).join(" "); };
-  const ipChip = (ip, fromAccount) => (ip ? h("code", { class: "ip tap", title: T.atAddress(ip), onclick: (e) => { e.stopPropagation(); openAddress(ip, fromAccount); } }, ip) : null);
+  // an address, and where it is when the relay knows (0.11) — one click opens every account seen from it
+  const ipChip = (ip, fromAccount) => {
+    if (!ip) return null;
+    const p = placeOf(ip), txt = placeText(p);
+    const chip = h("code", { class: "ip tap", title: T.atAddress(ip), onclick: (e) => { e.stopPropagation(); openAddress(ip, fromAccount); } }, ip);
+    return txt ? h("span", { class: "ipp" }, chip, h("span", { class: "place", title: p.isp || "" }, txt)) : chip;
+  };
   /** Everything a kept message holds, in order: text parts, omitted parts named, tool calls with their arguments. */
   const msgText = (m) => !m ? "" : typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.map((p) => p && p.type === "text" ? p.text : p && p.omitted ? `[${p.type} ${T.omitted}]` : "").filter(Boolean).join("\n") : "";
   function messageBlock(m) {
@@ -518,8 +591,10 @@
   }
   function drawAddress(box) {
     const list = address.accounts || [];
+    const p = address.place || placeOf(address.ip);
     box.replaceChildren(...[
       h("div", { class: "head" }, h("h2", {}, T.atAddress(address.ip)), h("button", { class: "round", html: ICON.close, onclick: closeDrawer })),
+      p ? h("div", { class: "fine", style: "padding:0 16px 8px" }, h("span", { class: "place big" }, placeText(p)), p.isp ? ` · ${p.isp}` : "") : null,
       address.from ? h("div", { class: "acts", style: "padding:0 16px 10px" }, h("button", { class: "btn quiet sm", onclick: () => openAccount(address.from) }, "← " + T.back)) : null,
       detailErr ? h("div", { class: "hint bad" }, detailErr) : null,
       h("div", { class: "card" }, list.length ? list.map((x) => h("div", { class: "row tap", onclick: () => openAccount(x.id) },
@@ -701,9 +776,10 @@
         (() => { const ct = ov.contributions || {}; const k = kpi(T.kSamples, fmt(ct.samples || 0), T.kSamplesSub(ct.accounts || 0)); if (ct.samples) k.append(h("button", { class: "btn quiet sm", style: "margin-top:6px", onclick: () => exportSamples() }, T.exportSamples)); return k; })()),
       h("div", { class: "grid" },
         h("div", { class: "panel span" }, h("h2", {}, T.byDay(Math.min(days, 90))), dayBars(usage && usage.days, Math.min(days, 90), s.day_offset_h, rate)),
-        trendsPanel(), dataPanel(), demoPanel(), sitePanel(),
+        trendsPanel(), placesPanel(), dataPanel(), demoPanel(), sitePanel(),
         h("div", { class: "panel" }, h("h2", {}, `${T.byKind} · ${T.today}`), kindRows(today.by_kind, rate), h("h2", {}, `${T.byKind} · ${T.period(days)}`), kindRows(period.by_kind, rate)),
         h("div", { class: "panel" }, h("h2", {}, `${T.byModel} · ${T.period(days)}`), modelRows(period.by_model, rate, kinds)),
+        catalogPanel(),
         h("div", { class: "panel" }, h("h2", {}, T.top(days)), (ov.top_accounts || []).length ? (ov.top_accounts || []).map((t) => h("div", { class: "row tap", onclick: () => openAccount(t.account_id) },
           h("span", { class: "tile grey", html: ICON.person }), h("div", { class: "txt" }, h("div", { class: "t" }, t.hint), h("div", { class: "s" }, `${T.reqs(t.requests)} · ${T.tokens(t.charged)}`)),
           h("span", { class: "v" }, h("b", {}, money(t.cost_cny))))) : h("div", { class: "empty" }, T.none)),

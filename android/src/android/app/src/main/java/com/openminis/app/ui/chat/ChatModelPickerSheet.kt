@@ -329,8 +329,12 @@ internal fun ModelPickerSheet(
     val allInstanceIds = remember(config) {
         config.instances.filter { it.isEnabled }.map { it.id }.toSet()
     }
+    // nanoMuse: the Cloud provider opens expanded — for most people it is the only provider,
+    // and a collapsed card hid the fact that there is anything to switch to.
+    val nmContext = LocalContext.current
+    val nmCloudId = remember(config) { io.github.nanomuse.cloud.NanoMuseCloud.instance(nmContext)?.id }
     var collapsedInstanceIds by remember(allInstanceIds) {
-        mutableStateOf(allInstanceIds)
+        mutableStateOf(if (nmCloudId != null) allInstanceIds - nmCloudId else allInstanceIds)
     }
 
     /**
@@ -363,8 +367,18 @@ internal fun ModelPickerSheet(
             .filter { it.isEnabled }
             .map { instance ->
                 val pt = System.nanoTime()
-                val entries = config.modelEntries.filter {
+                var entries = config.modelEntries.filter {
                     it.providerInstanceId == instance.id && !it.isHidden
+                }
+                // nanoMuse: the Cloud's menu first, in the menu's order; the catalog beyond
+                // it (models a member may name) after, so the recommended ones are on top.
+                if (instance.id == nmCloudId) {
+                    val menu = io.github.nanomuse.cloud.NanoMuseCloud.menuModelIds(nmContext)
+                    val rank = menu.withIndex().associate { (i, id) -> id to i }
+                    entries = entries.sortedWith(
+                        compareBy<ModelEntry> { if (io.github.nanomuse.cloud.NanoMuseCloud.isCatalogModel(nmContext, it.model.id)) 1 else 0 }
+                            .thenBy { rank[it.model.id] ?: Int.MAX_VALUE },
+                    )
                 }
                 val filtered = if (searchText.isEmpty()) entries
                 else entries.filter {
@@ -1108,7 +1122,33 @@ internal fun ModelPickerSheet(
                                         }
                                     }
                                 } else {
+                                    // nanoMuse: where the Cloud's menu ends and its catalog begins
+                                    val nmFirstCatalog = if (instance.id == nmCloudId) {
+                                        entries.indexOfFirst { io.github.nanomuse.cloud.NanoMuseCloud.isCatalogModel(nmContext, it.model.id) }
+                                    } else {
+                                        -1
+                                    }
                                     entries.forEachIndexed { index, entry ->
+                                        if (index == nmFirstCatalog && index > 0) {
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                                                thickness = 0.5.dp,
+                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                            )
+                                            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 4.dp)) {
+                                                Text(
+                                                    stringResource(R.string.nm_picker_more_models),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                                Text(
+                                                    stringResource(R.string.nm_picker_more_models_note),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                )
+                                            }
+                                        }
                                         val isSelected = activeEntryId == entry.id && selectedGroupId == null
                                         val dotColor = providerDotColor(instance.providerType)
                                         // Last row clips its own bottom so the

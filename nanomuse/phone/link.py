@@ -88,6 +88,12 @@ class DeviceError(RuntimeError):
 STOP_MARKER = "nanomuse:stop"
 
 
+class DeviceGone(DeviceError):
+    """The phone's socket is gone — it dropped under a request, or none is connected. Not
+    the phone's fault and often brief (a phone module reconnects within seconds), so the
+    operator waits a little for it to come back before the task is given up."""
+
+
 class DeviceStopped(DeviceError):
     """The user pressed Stop on the phone: the task ends and the agent asks what to do."""
 
@@ -159,7 +165,7 @@ class PhoneLink:
         logger.info("phone disconnected: {}", device.name)
         for req_id, fut in list(self._pending.items()):
             if req_id.startswith(conn_id + ":") and not fut.done():
-                fut.set_exception(DeviceError("the phone disconnected"))
+                fut.set_exception(DeviceGone("the phone disconnected"))
         self._changed()
 
     def _changed(self) -> None:
@@ -189,6 +195,17 @@ class PhoneLink:
     def connected(self) -> bool:
         return self.device is not None
 
+    async def wait_connected(self, timeout_s: float) -> bool:
+        """Wait up to ``timeout_s`` for a phone that can do GUI work to be connected —
+        for the operator, after the phone dropped in the middle of a task."""
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + max(0.0, timeout_s)
+        while not self.connected:
+            if loop.time() >= deadline:
+                return False
+            await asyncio.sleep(min(0.5, max(0.0, deadline - loop.time())))
+        return True
+
     def status(self) -> dict[str, Any]:
         d = self.device
         return {
@@ -208,7 +225,7 @@ class PhoneLink:
     ) -> dict[str, Any]:
         device = device or self.device
         if device is None or device.send is None:
-            raise DeviceError(
+            raise DeviceGone(
                 "no phone is connected. Open the nanoMuse app on the phone (with GUI operation "
                 "turned on) or the MobileGym module, then try again."
             )
@@ -221,7 +238,7 @@ class PhoneLink:
                     {"kind": "device_request", "id": req_id, "op": op, "params": params or {}}
                 )
             except Exception as exc:  # noqa: BLE001 - a socket that closed under us
-                raise DeviceError(f"the phone's connection failed: {exc}") from exc
+                raise DeviceGone(f"the phone's connection failed: {exc}") from exc
             return await asyncio.wait_for(fut, timeout or self.timeout_s)
         except TimeoutError:
             raise DeviceError(
@@ -294,4 +311,12 @@ class PhoneLink:
         )
 
 
-__all__ = ["STOP_MARKER", "Device", "DeviceError", "DeviceStopped", "PhoneLink", "Sender"]
+__all__ = [
+    "STOP_MARKER",
+    "Device",
+    "DeviceError",
+    "DeviceGone",
+    "DeviceStopped",
+    "PhoneLink",
+    "Sender",
+]

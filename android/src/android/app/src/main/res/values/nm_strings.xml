@@ -344,6 +344,10 @@
     <string name="nm_appearance_header_model_title">Show the model under the name</string>
     <string name="nm_appearance_header_model_footer">Muse shows only the name. Turn this on to see the model group and provider · model under it; tap them to switch. Off, the model is under ••• → Model and in Settings.</string>
     <string name="nm_chat_menu_model">Model</string>
+    <string name="nm_model_switched">Switched to %1$s for this chat</string>
+    <string name="nm_model_switched_sticky">Switched to %1$s — new chats use it too</string>
+    <string name="nm_picker_more_models">More models on your account</string>
+    <string name="nm_picker_more_models_note">Not on the menu, but usable with your account; billed like the menu\'s closest model. The screen is read with one of these only when you pick it.</string>
     <string name="nm_attach_commands">Commands</string>
     <string name="nm_composer_placeholder">Message</string>
 
@@ -468,8 +472,14 @@
     <string name="nm_hands_need_ok">Ready</string>
     <string name="nm_hands_need_set_up">Set up</string>
     <string name="nm_hands_section_model">The screen model</string>
-    <string name="nm_hands_model_auto">Automatic — the chat model when it can see, else the Vision Group</string>
-    <string name="nm_hands_model_footer">Every step sends one screenshot to this model. Smaller vision models are fine here and cost less.</string>
+    <string name="nm_hands_model_auto">Automatic — the chat model you picked when it can see, else nanoMuse Cloud\'s screen model, else the Vision Group</string>
+    <string name="nm_hands_model_footer">Every step sends one screenshot to this model. Smaller vision models are fine here and cost less. A model from the Cloud\'s wider catalog is used only when you pick it.</string>
+    <string name="nm_hands_why_chosen">chosen here</string>
+    <string name="nm_hands_why_chat">the chat model you picked</string>
+    <string name="nm_hands_why_group">first in your default group that can see</string>
+    <string name="nm_hands_why_menu">nanoMuse Cloud\'s screen model</string>
+    <string name="nm_hands_why_vision_group">your Vision Group</string>
+    <string name="nm_hands_why_any">the only enabled model that can see</string>
     <string name="nm_hands_section_rules">How it behaves</string>
     <string name="nm_hands_rule_ladder">The screen comes last: a skill, a command or the browser first.</string>
     <string name="nm_hands_rule_secrets">Never types passwords, codes or card numbers — it hands the phone to you.</string>

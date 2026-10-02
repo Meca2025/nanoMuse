@@ -91,6 +91,13 @@
 .ip { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--fill); color: var(--ink-2); white-space: nowrap; }
 .ip.tap { cursor: pointer; }
 .ip.tap:hover { background: var(--action); color: #fff; }
+/* 0.11: an address with where it is */
+.ipp { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.place { font-size: 12px; color: var(--ink-3); }
+.place.big { font-size: 13.5px; color: var(--ink-2); font-weight: 500; }
+table.places tr.province td { font-size: 12.5px; }
+table.places tr.province td:first-child { border-left: 2px solid var(--fill); }
+table.places tr.country td { border-top: 1px solid var(--line, var(--fill)); }
 .pager { display: flex; align-items: center; gap: 8px; padding: 8px 16px 10px; border-top: 1px solid var(--hairline); }
 .pager .btn.sm { width: auto; padding: 4px 10px; font-size: 12px; border-radius: 8px; }
 .drawer .lines .line { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid var(--hairline); font-size: 12.5px; }

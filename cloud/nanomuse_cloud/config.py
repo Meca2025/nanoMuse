@@ -340,6 +340,11 @@ class Settings:
     # CLOUD_CATALOG=0 switches it off; the list is re-read every CLOUD_CATALOG_TTL_S.
     catalog_enabled: bool = field(default_factory=lambda: _env("CLOUD_CATALOG", "1") not in ("0", "false", "no"))
     catalog_ttl_s: int = field(default_factory=lambda: int(_env("CLOUD_CATALOG_TTL_S", "3600")))
+    # 0.11: each chat model on the list is asked once whether it answers and whether it
+    # reads a picture (two one-word requests on the operator's key, in the background);
+    # the answers stand for CLOUD_CATALOG_PROBE_TTL_S. CLOUD_CATALOG_PROBE=0: names only.
+    catalog_probe: bool = field(default_factory=lambda: _env("CLOUD_CATALOG_PROBE", "1") not in ("0", "false", "no"))
+    catalog_probe_ttl_s: int = field(default_factory=lambda: int(_env("CLOUD_CATALOG_PROBE_TTL_S", str(7 * 86400))))
     # -- the operator's page, beyond the relay's own numbers ------------------------------
     # the site's traffic database (demo/showcase/mirror/traffic.py), mounted read-only into
     # the container; empty = the "visits and downloads" panel says so and shows nothing
@@ -352,6 +357,33 @@ class Settings:
     # used — shown on the admin page and in the account drawer; empty = not asked
     web_admin_url: str = field(default_factory=lambda: _env("WEB_ADMIN_URL"))
     web_admin_token: str = field(default_factory=lambda: _env("WEB_ADMIN_TOKEN"))
+    # 0.11: where an address is — country, province, city — from ip2region's database
+    # (Apache-2.0), fetched once into the data directory and read in memory; no third party
+    # is asked. CLOUD_GEOIP=0 switches it off; CLOUD_GEOIP_DB names the file (default: next
+    # to the database); CLOUD_GEOIP_URL where to fetch it; CLOUD_GEOIP_V6_URL adds the IPv6
+    # file (37 MB) for relays reached over IPv6 — empty = IPv4 only.
+    geoip_enabled: bool = field(default_factory=lambda: _env("CLOUD_GEOIP", "1") not in ("0", "false", "no"))
+    geoip_db: str = field(default_factory=lambda: _env("CLOUD_GEOIP_DB"))
+    geoip_url: str = field(
+        default_factory=lambda: _env(
+            "CLOUD_GEOIP_URL", "https://raw.githubusercontent.com/lionsoul2014/ip2region/master/data/ip2region_v4.xdb"
+        )
+    )
+    geoip_v6_url: str = field(default_factory=lambda: _env("CLOUD_GEOIP_V6_URL"))
+
+    @property
+    def geoip_path(self) -> str:
+        """The IPv4 file: CLOUD_GEOIP_DB, else ``ip2region_v4.xdb`` beside the database
+        (nothing for an in-memory database, so tests ask no network)."""
+        if not self.geoip_enabled:
+            return ""
+        if self.geoip_db:
+            return self.geoip_db
+        if self.database == ":memory:" or self.database.startswith("file:"):
+            return ""
+        import os.path
+
+        return os.path.join(os.path.dirname(self.database) or ".", "ip2region_v4.xdb")
 
     def model(self, model_id: str) -> ModelSpec | None:
         for m in self.models:

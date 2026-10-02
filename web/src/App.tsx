@@ -124,7 +124,12 @@ export default function App() {
         </div>
       )}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {!state.connected && state.loaded && (
+        {state.gone && (
+          <div className="flex items-center justify-center gap-2 bg-surface-2 text-muted text-[12.5px] py-1">
+            <WifiOff size={14} /> {t(state.lite ? "This demo has ended." : "This nanoMuse has stopped. Reload the page once it is running again.")}
+          </div>
+        )}
+        {!state.gone && !state.connected && state.loaded && (
           <div className="flex items-center justify-center gap-2 bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[12.5px] py-1">
             <WifiOff size={14} /> {t("Reconnecting to your nanoMuse…")}
           </div>

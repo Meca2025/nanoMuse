@@ -55,6 +55,8 @@ export interface AppState {
   connected: boolean;
   loaded: boolean;
   authError: boolean;
+  /** the runtime behind this page has ended (the gateway closed the socket for good) */
+  gone: boolean;
   error: string | null;
   version: string;
   profile: Profile | null;
@@ -124,6 +126,7 @@ type Action =
   | { type: "ws"; msg: WsMessage }
   | { type: "connection"; connected: boolean }
   | { type: "authError" }
+  | { type: "gone" }
   | { type: "error"; error: string | null }
   | { type: "events"; thread: string; events: TimelineEvent[]; hasMore: boolean; prepend?: boolean }
   | { type: "eventsFailed"; thread: string }
@@ -163,6 +166,7 @@ const initial: AppState = {
   connected: false,
   loaded: false,
   authError: false,
+  gone: false,
   error: null,
   version: "",
   profile: null,
@@ -262,6 +266,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, connected: action.connected };
     case "authError":
       return { ...state, authError: true, connected: false };
+    case "gone":
+      return { ...state, gone: true, connected: false };
     case "error":
       return { ...state, error: action.error };
     case "events": {
@@ -507,6 +513,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       onOpen: () => dispatch({ type: "connection", connected: true }),
       onClose: () => dispatch({ type: "connection", connected: false }),
       onAuthError: () => dispatch({ type: "authError" }),
+      onGone: () => dispatch({ type: "gone" }),
     });
     wsRef.current = ws;
     api.state()

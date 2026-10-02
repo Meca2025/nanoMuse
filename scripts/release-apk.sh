@@ -57,6 +57,7 @@ check_version desktop/app/package.json "\"version\": \"$version\""
 check_version web/package.json "\"version\": \"$version\""
 check_version CITATION.cff "^version: $version$"
 check_version harness/dsh-nanomuse/package.json "\"version\": \"$version\""
+check_version harness/desktop/package.json "\"version\": \"$version\""
 [ $versions_ok = 1 ] || { echo "the versions above disagree — bump them first" >&2; exit 1; }
 
 # Signature + badging of one APK; exits on the debug key unless allowed.

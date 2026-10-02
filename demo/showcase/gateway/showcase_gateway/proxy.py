@@ -56,19 +56,24 @@ def _clean_code(code: int | None) -> int:
     return code
 
 
-async def proxy_ws(ws: WebSocket, url: str, on_activity) -> None:
+async def proxy_ws(ws: WebSocket, url: str, on_activity, label: str = "") -> None:
+    """One browser socket relayed to the session's runtime, both ways, until either side
+    closes; the close code travels across. `label` (the session id) names the socket in
+    the log, with who closed it and with what code — the question a stuck phone raises."""
+    who = label or url
     try:
         upstream = await websockets.connect(url, open_timeout=10, max_size=16 * 2**20)
     except websockets.InvalidStatus as exc:
-        log.info("upstream refused %s: %s", url, exc.response.status_code)
+        log.info("ws %s: upstream refused (%s)", who, exc.response.status_code)
         await ws.close(code=1008)
         return
     except (OSError, TimeoutError, websockets.WebSocketException) as exc:
-        log.info("upstream %s: %s", url, exc)
+        log.info("ws %s: upstream not reachable (%s: %s)", who, type(exc).__name__, exc)
         await ws.close(code=1011)
         return
 
     await ws.accept()
+    log.info("ws %s: open", who)
 
     async def to_upstream() -> int:
         while True:
@@ -101,15 +106,25 @@ async def proxy_ws(ws: WebSocket, url: str, on_activity) -> None:
             task.cancel()
         if up in done:
             code = up.result() if not up.cancelled() and up.exception() is None else 1011
+            log.info(
+                "ws %s: the runtime closed (%s)",
+                who,
+                code if up.exception() is None else repr(up.exception()),
+            )
             try:
                 await ws.close(code=_clean_code(code))
             except RuntimeError:
                 pass  # the client went first
         else:
             code = down.result() if down.exception() is None else 1000
+            log.info(
+                "ws %s: the browser closed (%s)",
+                who,
+                code if down.exception() is None else repr(down.exception()),
+            )
             await upstream.close(code=_clean_code(code))
-    except WebSocketDisconnect:
-        pass
+    except WebSocketDisconnect as exc:
+        log.info("ws %s: the browser went away (%s)", who, exc.code)
     finally:
         for task in (down, up):
             task.cancel()

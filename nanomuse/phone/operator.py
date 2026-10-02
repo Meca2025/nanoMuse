@@ -39,7 +39,7 @@ from typing import Any
 from nanomuse.config import GUISettings
 from nanomuse.llm.base import BaseLLM
 from nanomuse.logger import logger
-from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped, PhoneLink
+from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceGone, DeviceStopped, PhoneLink
 from nanomuse.phone.screen import Screen
 from nanomuse.phone.trace import Trace
 from nanomuse.schema import Function, Message, ToolCall, ToolResult
@@ -710,9 +710,9 @@ class PhoneOperator:
         try:
             if app:
                 await self._act({"action": "open_app", "app": app, "label": f"open {app}"}, outcome)
-                screen = self.link.last_screen or await self.link.screen()
+                screen = self.link.last_screen or await self._screen_patient()
             else:
-                screen = await self.link.screen()
+                screen = await self._screen_patient()
         except DeviceStopped as exc:
             outcome.status, outcome.message = "stopped", str(exc)
             return
@@ -817,7 +817,7 @@ class PhoneOperator:
 
             try:
                 fresh = self.link.last_screen if not result.error else None
-                screen = fresh if fresh is not None else await self.link.screen()
+                screen = fresh if fresh is not None else await self._screen_patient()
             except DeviceStopped as exc:
                 outcome.status, outcome.message = "stopped", str(exc)
                 break
@@ -829,6 +829,29 @@ class PhoneOperator:
             outcome.message = f"stopped after {self.settings.max_steps} steps"
 
     # ------------------------------------------------------------------ helpers
+    async def _screen_patient(self) -> Screen:
+        """The screen — and when the phone's connection is gone, a wait of up to
+        ``reconnect_grace_s`` for it to come back before the task is given up. A phone
+        module in a browser tab reconnects in seconds; the task should survive that, and
+        the capsule on the phone is told the task is still on when it says hello again."""
+        grace = self.settings.reconnect_grace_s
+        try:
+            return await self.link.screen()
+        except DeviceGone as exc:
+            if grace <= 0:
+                raise
+            logger.info(
+                "{}: the connection dropped ({}); waiting up to {:g}s for it to come back",
+                self.dialect.noun,
+                exc,
+                grace,
+            )
+            if not await self.link.wait_connected(grace):
+                raise DeviceGone(
+                    f"the {self.dialect.noun} disconnected and did not come back within {grace:g}s"
+                ) from exc
+            return await self.link.screen()
+
     async def _decide(
         self, instruction: str, steps: list[str], screen: Screen
     ) -> tuple[Step | None, str, int]:

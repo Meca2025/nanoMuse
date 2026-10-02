@@ -209,14 +209,16 @@ def create_app(
             target, touch = None, None
         if target is None:
             # accept first: a close before the handshake reaches the browser as a bare failure,
-            # the code only travels on an open socket (the phone module reads 4404 as "gone")
+            # the code only travels on an open socket (the phone module and the web app read
+            # 4404 as "gone" and stop reconnecting)
             await ws.accept()
             await ws.close(code=4404, reason="this session has ended")
+            log.info("ws %s: gone (4404)", ws.path_params["sid"])
             return
         url = f"{target.ws_base}{ws.url.path}"
         if ws.url.query:
             url += f"?{ws.url.query}"
-        await proxy_ws(ws, url, touch)
+        await proxy_ws(ws, url, touch, label=ws.path_params["sid"])
 
     session_router = Router(
         routes=[

@@ -1,0 +1,192 @@
+# nanoMuse Harness — the desktop built on DeepSeek Harness (harness/desktop, Electron), with
+# dsh and the nanoMuse bundle staged inside and the runtime for the hands bundled:
+#
+#   Windows  nanoMuse-Harness-<v>-win-x64.exe        (NSIS installer)
+#   macOS    nanoMuse-Harness-<v>-mac-arm64.dmg / -x64.dmg  (+ .zip)
+#   Linux    nanoMuse-Harness-<v>-linux-x64.AppImage / .deb
+#
+# Each platform builds the bundle (harness/dsh-nanomuse: pnpm build, test, pack), stages dsh
+# next to it with npm (scripts/prepare-dsh.mjs — the platform's own native prebuilds), builds
+# the runtime (scripts/desktop-app/build-runtime.py --target harness/desktop/runtime, the same
+# PyInstaller build the other desktop app carries), wraps it all with electron-builder, and
+# then boots the unpacked app's harness once in Node mode (scripts/smoke.mjs) to see the Host
+# come up with the bundle's rows. On macOS electron-builder only lays out the .app;
+# scripts/desktop-app/package-mac.sh ad-hoc signs it (or signs and notarizes with the Apple
+# secrets, as for the desktop app) and writes the zip and an APFS dmg.
+# A push that touches harness/desktop builds Linux only; "Run workflow" and the release tags
+# `v*` build all four, and a tag uploads the installers to the release of the same name — the
+# one scripts/release-apk.sh creates with the APK — retrying until it exists. "Run workflow"
+# with a release tag does the same for a release that already exists.
+name: harness desktop
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["harness/desktop/**", "scripts/desktop-app/**", ".github/workflows/harness-desktop.yml"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Attach the installers to this existing release (v0.1.28, say); empty builds only"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    name: which platforms
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        shell: bash
+        env:
+          FULL: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          LINUX='{"os":"ubuntu-22.04","label":"linux-x64"}'
+          ALL="[{\"os\":\"windows-latest\",\"label\":\"windows-x64\"},{\"os\":\"macos-latest\",\"label\":\"macos-arm64\"},{\"os\":\"macos-15-intel\",\"label\":\"macos-x64\"},$LINUX]"
+          if [ "$FULL" = "true" ]; then echo "matrix=$ALL" >> "$GITHUB_OUTPUT"; else echo "matrix=[$LINUX]" >> "$GITHUB_OUTPUT"; fi
+
+  build:
+    name: ${{ matrix.label }}
+    needs: plan
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: harness/desktop/package-lock.json
+      - name: Linux packages the runtime and the installers need
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xdotool libfuse2 rpm
+      - name: The bundle
+        working-directory: harness/dsh-nanomuse
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          pnpm typecheck
+          pnpm test
+          VERSION=$(node -p "require('./package.json').version")
+          SHELL_VERSION=$(node -p "require('../desktop/package.json').version")
+          if [ "$VERSION" != "$SHELL_VERSION" ]; then
+            echo "harness/dsh-nanomuse is $VERSION, harness/desktop is $SHELL_VERSION — the release recipe bumps both" >&2
+            exit 1
+          fi
+      - name: The harness, staged
+        working-directory: harness/desktop
+        shell: bash
+        run: node scripts/prepare-dsh.mjs
+      - name: The runtime for the hands
+        if: runner.os != 'Linux'
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          # cryptography 49 stopped shipping Intel Mac wheels; the source build links Homebrew's
+          # OpenSSL, which PyInstaller then mixes up with Python's own. The last universal2
+          # wheel carries its OpenSSL inside.
+          if [ "${{ matrix.label }}" = "macos-x64" ]; then python -m pip install "cryptography<49"; fi
+          python -m pip install -e ".[hands]" pyinstaller
+          python scripts/desktop-app/build-runtime.py --check --target harness/desktop/runtime
+      - name: The runtime for the hands (Linux — inside Debian 11, so it runs on glibc 2.31 and newer)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src -e HOME=/tmp/home python:3.12-bullseye bash -euo pipefail -c '
+            python -m pip install --upgrade pip
+            python -m pip install -e ".[hands]" pyinstaller
+            python scripts/desktop-app/build-runtime.py --check --target harness/desktop/runtime
+            chown -R '"$(id -u):$(id -g)"' harness/desktop/runtime build *.egg-info 2>/dev/null || true
+          '
+          ls harness/desktop/runtime | head
+      - name: The app
+        if: runner.os != 'macOS'
+        working-directory: harness/desktop
+        shell: bash
+        run: |
+          npm ci
+          npm run typecheck
+          npm run dist
+      - name: The app (macOS — signed and notarized with the Apple secrets, ad-hoc without; zip and APFS dmg by hand)
+        if: runner.os == 'macOS'
+        working-directory: harness/desktop
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+          APP_DIR: harness/desktop
+          APP_NAME: nanoMuse Harness
+          ARTIFACT: nanoMuse-Harness
+        run: |
+          npm ci
+          npm run typecheck
+          npm run dist:dir
+          ../../scripts/desktop-app/package-mac.sh "${{ matrix.label == 'macos-arm64' && 'arm64' || 'x64' }}"
+      - name: Boot the packaged harness once
+        working-directory: harness/desktop
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            macOS) node scripts/smoke.mjs --app "$(ls -d dist/mac*/ | head -1)" ;;
+            Windows) node scripts/smoke.mjs --app dist/win-unpacked ;;
+            *) node scripts/smoke.mjs --app dist/linux-unpacked ;;
+          esac
+      - name: What was built
+        shell: bash
+        working-directory: harness/desktop
+        run: ls -la dist | grep -Ev "^total|builder-|\.blockmap|\.yml$" || true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nanomuse-harness-${{ matrix.label }}
+          path: |
+            harness/desktop/dist/*.AppImage
+            harness/desktop/dist/*.deb
+            harness/desktop/dist/*.exe
+            harness/desktop/dist/*.dmg
+            harness/desktop/dist/*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          # the release is created by scripts/release-apk.sh right after it pushes the tag;
+          # give it up to fifteen minutes
+          for i in $(seq 1 90); do
+            if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then break; fi
+            sleep 10
+          done
+          gh release view "$TAG" -R "$REPO" >/dev/null
+          (cd packages && sha256sum * > SHA256SUMS-harness-desktop.txt && cat SHA256SUMS-harness-desktop.txt)
+          gh release upload "$TAG" packages/* -R "$REPO" --clobber
