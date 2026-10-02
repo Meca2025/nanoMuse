@@ -666,6 +666,14 @@ fun AppNavigation(
                 onSignIn = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
                 onOpenProvider = { id -> navController.safeNavigate(Routes.providerDetail(id)) },
                 onOpenModelGroups = { navController.safeNavigate(Routes.MODEL_GROUPS) },
+                onOpenDataControls = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_DATA_CONTROLS) },
+            )
+        }
+        // nanoMuse: Settings → Data controls — the switch over what nanoMuse Cloud keeps of the chats.
+        composable(io.github.nanomuse.ui.cloud.ROUTE_DATA_CONTROLS) {
+            io.github.nanomuse.ui.cloud.DataControlsScreen(
+                onBack = { navController.safePopBackStack() },
+                onSignIn = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
             )
         }
         // nanoMuse: the phone's screen as a hand — the switch, what it needs, the screen model.
@@ -771,6 +779,7 @@ fun AppNavigation(
                 onMediaModelsClick = { navController.safeNavigate(io.github.nanomuse.ui.media.ROUTE_MEDIA_MODELS) }, // nanoMuse
                 onCloudClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) }, // nanoMuse
                 onHandsClick = { navController.safeNavigate(io.github.nanomuse.ui.hands.ROUTE_HANDS) }, // nanoMuse
+                onDataControlsClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_DATA_CONTROLS) }, // nanoMuse
                 onComputersClick = { navController.safeNavigate(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) }, // nanoMuse
                 onCodingClick = { navController.safeNavigate(io.github.nanomuse.ui.coding.ROUTE_CODING) }, // nanoMuse
                 onPermissionsClick = { navController.safeNavigate(Routes.PERMISSIONS) },

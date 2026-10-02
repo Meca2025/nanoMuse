@@ -41,7 +41,6 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -138,13 +137,12 @@ object FirstRunSetup {
     fun needed(signedIn: Boolean, hasProviders: Boolean, hasSessions: Boolean, done: Boolean): Boolean =
         !signedIn || !hasProviders || (!hasSessions && !done)
 
-    enum class Stage { WELCOME, PASSWORD, CONTRIBUTE, SOURCE, MODELS, HANDS, MEET }
+    enum class Stage { WELCOME, PASSWORD, SOURCE, MODELS, HANDS, MEET }
 
     /**
      * The page to show, from what the app has. A sign-in that *created* the account
-     * ([fresh]) is followed by two short, skippable pages — a password, so the next device
-     * signs in without a code, and the co-creation programme, which adds to the allowance
-     * once; both can be changed under Account later.
+     * ([fresh]) is followed by one short, skippable page — a password, so the next device
+     * signs in without a code; it can be set under Account later.
      */
     fun stage(
         signedIn: Boolean,
@@ -155,11 +153,9 @@ object FirstRunSetup {
         handsPossible: Boolean = Build.VERSION.SDK_INT >= Hands.MIN_SDK,
         fresh: Boolean = false,
         passwordAnswered: Boolean = true,
-        contributeAnswered: Boolean = true,
     ): Stage = when {
         !signedIn -> Stage.WELCOME
         fresh && !passwordAnswered -> Stage.PASSWORD
-        fresh && !contributeAnswered -> Stage.CONTRIBUTE
         !sourceChosen -> Stage.SOURCE
         !hasGroups && !modelsSkipped -> Stage.MODELS
         !handsSeen && handsPossible -> Stage.HANDS
@@ -168,13 +164,13 @@ object FirstRunSetup {
 
     /** The dot that lights for a stage: account · phone · meet (the model pages fold into the first). */
     fun dot(stage: Stage): Int = when (stage) {
-        Stage.WELCOME, Stage.PASSWORD, Stage.CONTRIBUTE, Stage.SOURCE, Stage.MODELS -> 0
+        Stage.WELCOME, Stage.PASSWORD, Stage.SOURCE, Stage.MODELS -> 0
         Stage.HANDS -> 1
         Stage.MEET -> 2
     }
 }
 
-private const val PRIVACY_URL = "https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md"
+private const val PRIVACY_URL = NanoMuseCloud.PRIVACY_URL
 
 @Composable
 fun FirstRunSetupScreen(
@@ -191,13 +187,12 @@ fun FirstRunSetupScreen(
     var modelsSkipped by remember { mutableStateOf(false) }
     var handsSeen by remember { mutableStateOf(FirstRunSetup.handsGuideSeen(context)) }
     var sourceChosen by remember { mutableStateOf(FirstRunSetup.sourceChosen(context)) }
-    // a sign-in that created the account owes two pages; answered (or skipped) once each
+    // a sign-in that created the account owes the password page; answered (or skipped) once
     var fresh by remember(signedIn) { mutableStateOf(signedIn && NanoMuseCloud.freshAccount(context)) }
     var passwordAnswered by remember { mutableStateOf(false) }
-    var contributeAnswered by remember { mutableStateOf(false) }
     val stage = FirstRunSetup.stage(
         signedIn, hasGroups, sourceChosen, modelsSkipped, handsSeen,
-        fresh = fresh, passwordAnswered = passwordAnswered, contributeAnswered = contributeAnswered,
+        fresh = fresh, passwordAnswered = passwordAnswered,
     )
     val onSurface = MaterialTheme.colorScheme.onSurface
 
@@ -228,9 +223,8 @@ fun FirstRunSetupScreen(
             ) { current ->
                 when (current) {
                     FirstRunSetup.Stage.WELCOME -> WelcomePage(onSignIn = onSignIn)
-                    FirstRunSetup.Stage.PASSWORD -> PasswordPage(onDone = { passwordAnswered = true })
-                    FirstRunSetup.Stage.CONTRIBUTE -> ContributePage(
-                        onDone = { NanoMuseCloud.clearFreshAccount(context); contributeAnswered = true; fresh = false },
+                    FirstRunSetup.Stage.PASSWORD -> PasswordPage(
+                        onDone = { NanoMuseCloud.clearFreshAccount(context); passwordAnswered = true; fresh = false },
                     )
                     FirstRunSetup.Stage.SOURCE -> SourcePage(
                         onCloud = { FirstRunSetup.markSourceChosen(context); sourceChosen = true },
@@ -368,52 +362,6 @@ private fun PasswordPage(onDone: () -> Unit) {
             isError = again.isNotEmpty() && again != next,
             modifier = Modifier.fillMaxWidth(),
         )
-        error?.let {
-            Spacer(Modifier.height(8.dp))
-            Text(it, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-/**
- * The co-creation programme, offered once to a new account: conversations help train the
- * community's own open model, and the relay adds to the allowance once. Off by default,
- * never required; Account has the switch and the delete button later.
- */
-@Composable
-private fun ContributePage(onDone: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val bonus = remember { NanoMuseCloud.account(context)?.contributeBonusCny?.takeIf { it > 0 } ?: 10.0 }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val bonusText = if (bonus >= 10) String.format(java.util.Locale.ROOT, "%.0f", bonus) else String.format(java.util.Locale.ROOT, "%.2f", bonus).trimEnd('0').trimEnd('.')
-    Page(
-        hero = { HeroGlyph(Icons.Outlined.Favorite) },
-        title = stringResource(R.string.nm_setup_contribute_title),
-        subtitle = stringResource(R.string.nm_setup_contribute_sub, bonusText),
-        primaryLabel = stringResource(R.string.nm_setup_contribute_join, bonusText),
-        onPrimary = {
-            if (busy) return@Page
-            busy = true
-            error = null
-            scope.launch {
-                try {
-                    NanoMuseCloud.setContribute(context, true)
-                    onDone()
-                } catch (e: Exception) {
-                    error = NanoMuseCloud.describe(context, e)
-                }
-                busy = false
-            }
-        },
-        secondaryLabel = stringResource(R.string.nm_setup_contribute_not_now),
-        onSecondary = onDone,
-        finePrint = stringResource(R.string.nm_setup_contribute_fine_print),
-    ) {
-        FeatureRow(Icons.Outlined.Favorite, stringResource(R.string.nm_setup_contribute_what), stringResource(R.string.nm_setup_contribute_what_sub))
-        Spacer(Modifier.height(10.dp))
-        FeatureRow(Icons.Outlined.Key, stringResource(R.string.nm_setup_contribute_control), stringResource(R.string.nm_setup_contribute_control_sub))
         error?.let {
             Spacer(Modifier.height(8.dp))
             Text(it, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
