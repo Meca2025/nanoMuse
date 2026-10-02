@@ -35,7 +35,18 @@ case "$app_dir" in /*) ;; *) app_dir="$here/$app_dir" ;; esac
 app_name="${APP_NAME:-nanoMuse}"
 artifact="${ARTIFACT:-nanoMuse-Desktop}"
 version="$(node -p "require('$app_dir/package.json').version")"
-app="$(ls -d "$app_dir"/dist/mac*/"$app_name".app | head -1)"
+app="$(ls -d "$app_dir"/dist/mac*/"$app_name".app 2>/dev/null | head -1 || true)"
+if [ ! -d "$app" ]; then
+  # electron-builder names the bundle after `executableName` when the config sets one
+  # (nanoMuse Harness builds as nanomuse-harness.app); what people drag into Applications
+  # should carry the product's name, so the bundle is renamed before it is signed
+  found="$(ls -d "$app_dir"/dist/mac*/*.app 2>/dev/null | head -1 || true)"
+  if [ -d "$found" ]; then
+    app="$(dirname "$found")/$app_name.app"
+    mv "$found" "$app"
+    echo "renamed $(basename "$found") -> $app_name.app"
+  fi
+fi
 [ -d "$app" ] || { echo "no $app_name.app under $app_dir/dist — run 'npm run dist:dir' first" >&2; exit 1; }
 out="$app_dir/dist"
 name="$artifact-$version-mac-$arch"
