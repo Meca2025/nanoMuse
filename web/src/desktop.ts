@@ -12,7 +12,7 @@ export interface DesktopBridge {
   loginItem?: () => Promise<boolean>;
   setLoginItem?: (on: boolean) => void;
   /** the quick-chat shortcut was pressed: the window is up, the composer should take focus */
-  onQuickChat?: (cb: () => void) => void;
+  onQuickChat?: (cb: () => void) => void | (() => void);
 }
 
 declare global {

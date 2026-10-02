@@ -121,7 +121,10 @@ export function Sidebar() {
                     {item.badge}
                   </span>
                 ) : item.dot ? (
-                  <span className="absolute right-3 top-2 h-2 w-2 rounded-full border-2 border-surface bg-emerald-500" />
+                  <>
+                    <span aria-hidden="true" className="absolute right-3 top-2 h-2 w-2 rounded-full border-2 border-surface bg-emerald-500" />
+                    <span className="sr-only">{t("{n} online", { n: online })}</span>
+                  </>
                 ) : null}
               </button>
             );

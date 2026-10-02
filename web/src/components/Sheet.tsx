@@ -1,7 +1,8 @@
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useT } from "../i18n";
+import { useFocusTrap } from "./useFocusTrap";
 
 /** Bottom sheet on phones, centered dialog on wide screens. */
 export function Sheet({
@@ -18,6 +19,8 @@ export function Sheet({
   footer?: ReactNode;
 }) {
   const t = useT();
+  const panel = useRef<HTMLDivElement>(null);
+  useFocusTrap(panel, open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -30,6 +33,7 @@ export function Sheet({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
       <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={onClose} />
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         className="sheet-in relative w-full sm:max-w-lg max-h-[92dvh] flex flex-col bg-surface rounded-t-3xl sm:rounded-3xl shadow-2xl border border-border"

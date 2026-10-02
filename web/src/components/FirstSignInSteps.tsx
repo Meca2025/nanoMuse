@@ -1,7 +1,8 @@
 import { ArrowRight, CloudCog, KeyRound, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
+import { useFocusTrap } from "./useFocusTrap";
 import { useStore } from "../store";
 import { cx } from "../util";
 import { openOwnKeySetup } from "./AllowanceWays";
@@ -92,10 +93,12 @@ export function FirstSignInSteps() {
     openOwnKeySetup(setTab);
   };
 
+  const panel = useRef<HTMLDivElement>(null);
+  useFocusTrap(panel, true);
   const mismatch = again.length > 0 && again !== password;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px] sm:items-center" role="dialog" aria-modal="true">
-      <div className="safe-bottom w-full max-w-[520px] rounded-t-[28px] bg-bg p-6 shadow-2xl sm:rounded-[28px]">
+      <div ref={panel} className="safe-bottom w-full max-w-[520px] rounded-t-[28px] bg-bg p-6 shadow-2xl sm:rounded-[28px]">
         <div className="mb-4 flex gap-1">
           <span className={cx("h-1.5 w-5 rounded-full bg-accent")} />
           <span className={cx("h-1.5 rounded-full transition-all", step === "source" ? "w-5 bg-accent" : "w-1.5 bg-border")} />

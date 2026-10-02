@@ -63,10 +63,13 @@ export default function App() {
 
   // the desktop's quick-chat shortcut: to the chat, with the composer focused
   useEffect(() => {
-    desktopBridge()?.onQuickChat?.(() => {
+    const off = desktopBridge()?.onQuickChat?.(() => {
       setTab("chat");
       requestAnimationFrame(() => window.dispatchEvent(new Event("nanomuse:quick-chat")));
     });
+    return () => {
+      if (typeof off === "function") off();
+    };
   }, [setTab]);
 
   // `#devices` etc. opens a section straight away — the desktop tray menu links here.
