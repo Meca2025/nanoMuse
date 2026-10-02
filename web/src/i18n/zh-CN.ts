@@ -1502,6 +1502,16 @@ const zhCN: Record<string, string> = {
   "Documents, tables and pages I write for you will show up here.": "我为你写的文档、表格和页面会显示在这里。",
   "No media yet": "还没有影音内容",
   "Photos, screenshots and recordings I produce will show up here.": "我生成的图片、截图和录音会显示在这里。",
+
+  // Settings, the phone's list of rows
+  "No model yet": "还没有模型",
+  "Add a provider and pick its models": "添加一个提供商并选择模型",
+  "Image & video models": "图像与视频模型",
+  "Name & personality": "名字与人格",
+  "About nanoMuse": "关于 nanoMuse",
+  "Privacy policy": "隐私政策",
+  Feedback: "反馈问题",
+  none: "无",
 };
 
 export default zhCN;
