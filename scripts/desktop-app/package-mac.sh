@@ -22,15 +22,23 @@
 #    keeps symlinks, resource forks and permissions; unzip, drag to Applications.
 # 3. nanoMuse-Desktop-<version>-mac-<arch>.dmg — an APFS image made with `hdiutil` directly.
 #    electron-builder's HFS+ image copied with Finder error -36 on some Macs (0.1.20, 0.1.21).
+#
+# The same script packages nanoMuse Harness (harness/desktop, the desktop built on DeepSeek
+# Harness) with three variables: APP_DIR=harness/desktop APP_NAME="nanoMuse Harness"
+# ARTIFACT=nanoMuse-Harness. Its inner code is the staged dsh under Resources/dsh (Node
+# addons and libraries) besides the runtime.
 set -euo pipefail
 arch="${1:?arch: arm64 | x64}"
 here="$(cd "$(dirname "$0")/../.." && pwd)"
-app_dir="$here/desktop/app"
+app_dir="${APP_DIR:-$here/desktop/app}"
+case "$app_dir" in /*) ;; *) app_dir="$here/$app_dir" ;; esac
+app_name="${APP_NAME:-nanoMuse}"
+artifact="${ARTIFACT:-nanoMuse-Desktop}"
 version="$(node -p "require('$app_dir/package.json').version")"
-app="$(ls -d "$app_dir"/dist/mac*/nanoMuse.app | head -1)"
-[ -d "$app" ] || { echo "no nanoMuse.app under $app_dir/dist — run 'npm run dist:dir' first" >&2; exit 1; }
+app="$(ls -d "$app_dir"/dist/mac*/"$app_name".app | head -1)"
+[ -d "$app" ] || { echo "no $app_name.app under $app_dir/dist — run 'npm run dist:dir' first" >&2; exit 1; }
 out="$app_dir/dist"
-name="nanoMuse-Desktop-$version-mac-$arch"
+name="$artifact-$version-mac-$arch"
 
 # ---------------------------------------------------------------------------- the identity
 identity="-"
@@ -69,10 +77,13 @@ fi
 
 # ---------------------------------------------------------------------------- the signature
 echo "== signature"
-# inner code first: the bundled runtime's executables and libraries are loose files under
-# Resources, which --deep does not visit
-find "$app/Contents/Resources/runtime" -type f \( -perm -u+x -o -name "*.so" -o -name "*.dylib" \) -print0 \
-  | xargs -0 -n 50 codesign --force --sign "$identity" "${sign_flags[@]}" 2>/dev/null || true
+# inner code first: the bundled runtime's executables and libraries, and the staged harness's
+# Node addons, are loose files under Resources, which --deep does not visit
+for inner in runtime dsh; do
+  [ -d "$app/Contents/Resources/$inner" ] || continue
+  find "$app/Contents/Resources/$inner" -type f \( -perm -u+x -o -name "*.so" -o -name "*.dylib" -o -name "*.node" \) -print0 \
+    | xargs -0 -n 50 codesign --force --sign "$identity" "${sign_flags[@]}" 2>/dev/null || true
+done
 codesign --force --deep --sign "$identity" "${sign_flags[@]}" "$app"
 codesign --verify --deep --strict "$app" && echo "signature ok"
 
@@ -102,7 +113,7 @@ stage="$(mktemp -d)"
 cp -R "$app" "$stage/"
 ln -s /Applications "$stage/Applications"
 rm -f "$out/$name.dmg"
-hdiutil create -volname "nanoMuse $version" -srcfolder "$stage" -ov -fs APFS -format UDZO -quiet "$out/$name.dmg"
+hdiutil create -volname "$app_name $version" -srcfolder "$stage" -ov -fs APFS -format UDZO -quiet "$out/$name.dmg"
 rm -rf "$stage"
 hdiutil verify -quiet "$out/$name.dmg" && echo "dmg ok"
 if [ "$identity" != "-" ]; then
