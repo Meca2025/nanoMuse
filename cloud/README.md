@@ -177,7 +177,7 @@ DeepSeek V4 on Model Studio reads pictures, nothing in its name says so, and
 an id the provider has retired still appears on `/models` — so from 0.11 the
 relay checks (`CLOUD_CATALOG_PROBE=1`): after the list is read, each chat
 model is asked, in the background and three at a time, to reply with one
-word and then to name the colour of a small red square; a model the provider
+word and then to name the colour of a small magenta square; a model the provider
 refuses is left off the list, `vision` is what the model answered, and
 `verified: true` marks an entry the probes have confirmed (the name's guess
 stands while a probe is pending). The answers are kept in the database

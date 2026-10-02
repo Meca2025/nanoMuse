@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     face          TEXT NOT NULL DEFAULT ''     -- JSON {mood: base64 WebP} when avatar = "face"
 );
 -- 0.11: what each chat model under the operator's key answered when asked (catalog.py):
--- whether it answers at all, whether it read the red square. Operator data, no person's.
+-- whether it answers at all, whether it saw the magenta square. Operator data, no person's.
 CREATE TABLE IF NOT EXISTS model_probes (
     model_id      TEXT PRIMARY KEY,
     works         INTEGER NOT NULL,            -- 0: the provider refused the one-word request (4xx)

@@ -13,6 +13,8 @@ const zhCN: Record<string, string> = {
   "Main chat": "主要聊天",
   "Side chat": "旁聊",
   "Reconnecting to your nanoMuse…": "正在重新连接你的 nanoMuse…",
+  "This demo has ended.": "这次体验已经结束。",
+  "This nanoMuse has stopped. Reload the page once it is running again.": "这个 nanoMuse 已停止。等它重新运行后，刷新页面即可。",
   "Reconnecting…": "重新连接中…",
   "Connect to your nanoMuse": "连接到你的 nanoMuse",
   "This app talks to the nanoMuse server you run yourself. Scan the QR code printed by":

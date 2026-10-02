@@ -61,13 +61,15 @@ _VISION = re.compile(
     r"|qwen3\.[5-9]|qwen[4-9]|deepseek-v[4-9]"
 )
 
-# the probe: one word back, and the colour of a 16×16 red square (a PNG of 83 bytes)
+# the probe: one word back, and the colour of a 32×32 magenta square (a PNG of 97 bytes).
+# Magenta, not red: a model that cannot see guesses, and "red" is the guess it makes most —
+# a 1.5B text model passed the red square on the first run. Nobody guesses magenta.
 PROBE_TEXT = "Reply with the single word OK."
 PROBE_PICTURE_QUESTION = "What colour is this picture? Answer with one word."
-_RED_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAGklEQVR42mO8IyLCQApgYiARjGoY1TB0NAAATz0BJHAVIksAAAAASUVORK5CYII="
+_PROBE_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKElEQVR42u3NQQEAAAQEsKN/Z0rw2wqsJpNPnWcCgUAgEAgEAoHgygK1WwI+eS9jvgAAAABJRU5ErkJggg=="
 )
-_RED_WORDS = re.compile(r"red|crimson|scarlet|红|赤", re.IGNORECASE)
+_SEEN_WORDS = re.compile(r"magenta|fuchsia|purple|violet|pink|品红|洋红|紫|粉", re.IGNORECASE)
 PROBE_TIMEOUT_S = 30.0
 PROBE_CONCURRENCY = 3
 
@@ -291,7 +293,7 @@ class Catalog:
 async def probe_model(http: httpx.AsyncClient, base: str, key: str, model_id: str) -> Probe | None:
     """Two small requests to one chat model. None when the provider did not answer (the
     question stays open); a Probe otherwise — `works` false on a 4xx, `vision` from whether
-    the model named the colour of the red square."""
+    the model named the colour of the magenta square."""
     url = f"{base.rstrip('/')}/chat/completions"
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
@@ -308,7 +310,8 @@ async def probe_model(http: httpx.AsyncClient, base: str, key: str, model_id: st
     r = await ask([{"role": "user", "content": PROBE_TEXT}], thinking_off=True)
     if r is not None and r.status_code == 400 and "thinking" in _error_text(r).lower():
         r = await ask([{"role": "user", "content": PROBE_TEXT}], thinking_off=False)  # a thinking-only model
-    if r is None or r.status_code >= 500:
+    # 5xx and 429 (the key's rate, not the model) say nothing about the model: ask again later
+    if r is None or r.status_code >= 500 or r.status_code == 429:
         return None
     checked = int(time.time())
     if r.status_code >= 400:
@@ -318,12 +321,12 @@ async def probe_model(http: httpx.AsyncClient, base: str, key: str, model_id: st
             "role": "user",
             "content": [
                 {"type": "text", "text": PROBE_PICTURE_QUESTION},
-                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(_RED_PNG).decode()}},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(_PROBE_PNG).decode()}},
             ],
         }
     ]
     p = await ask(picture, thinking_off=True)
-    if p is None or p.status_code >= 500:
+    if p is None or p.status_code >= 500 or p.status_code == 429:
         return None  # the first half was answered, but the question of pictures stays open
     if p.status_code >= 400:
         return Probe(model_id=model_id, works=True, vision=False, checked_at=checked, note=_error_text(p))
@@ -331,4 +334,4 @@ async def probe_model(http: httpx.AsyncClient, base: str, key: str, model_id: st
         answer = _message_text(p.json())
     except ValueError:
         answer = ""
-    return Probe(model_id=model_id, works=True, vision=bool(_RED_WORDS.search(answer)), checked_at=checked, note=answer.strip()[:60])
+    return Probe(model_id=model_id, works=True, vision=bool(_SEEN_WORDS.search(answer)), checked_at=checked, note=answer.strip()[:60])

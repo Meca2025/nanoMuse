@@ -346,12 +346,28 @@ export const api = {
   pushTest: () => request<TestResult & { sent?: number }>("/api/push/test", { method: "POST" }),
 };
 
+/** The runtime behind this page is gone for good — the showcase gateway closes a socket with
+ *  this code when the demo session has ended or was never there (no point reconnecting). */
+export const WS_GONE = 4404;
+/** The token is not right: a sign-in is needed, not a retry. */
+export const WS_UNAUTHORIZED = 4401;
+
+/** Which way a closed socket goes: `retry` with backoff, `auth` (ask for the token), or
+ *  `gone` (stop — the runtime behind the page has ended). Pure, for the tests. */
+export function closeOutcome(code: number): "retry" | "auth" | "gone" {
+  if (code === WS_UNAUTHORIZED) return "auth";
+  if (code === WS_GONE) return "gone";
+  return "retry";
+}
+
 /** WebSocket with automatic reconnect. Returns a disposer. */
 export function connectWs(handlers: {
   onMessage: (msg: WsMessage) => void;
   onOpen?: () => void;
   onClose?: () => void;
   onAuthError?: () => void;
+  /** the runtime has ended (gateway close 4404): no more retries */
+  onGone?: () => void;
 }): { send: (msg: unknown) => boolean; close: () => void } {
   let ws: WebSocket | null = null;
   let closed = false;
@@ -376,8 +392,16 @@ export function connectWs(handlers: {
     };
     ws.onclose = (ev) => {
       handlers.onClose?.();
-      if (ev.code === 4401) {
+      const outcome = closeOutcome(ev.code);
+      if (outcome === "auth") {
         handlers.onAuthError?.();
+        return;
+      }
+      if (outcome === "gone") {
+        // the gateway says the session behind this page is over: a page that kept
+        // reconnecting every few seconds for hours was what the production logs showed
+        closed = true;
+        handlers.onGone?.();
         return;
       }
       if (closed) return;

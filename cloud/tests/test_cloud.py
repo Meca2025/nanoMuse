@@ -84,7 +84,7 @@ def fake_upstream() -> FastAPI:
                 "choices": [
                     {
                         "index": 0,
-                        "message": {"role": "assistant", "content": "Red." if seen else "I cannot see pictures."},
+                        "message": {"role": "assistant", "content": "Magenta." if seen else "Red."},
                         "finish_reason": "stop",
                     }
                 ],
@@ -1096,7 +1096,7 @@ def test_the_catalog_sorts_ids_by_their_shape():
 async def test_the_catalog_asks_each_model_whether_it_answers_and_sees():
     """0.11: after the list is read, every chat model is asked two one-word questions in the
     background; a model the provider refuses (retired) is left off the list, the vision flag
-    is what the model answered about the red square, and the answers are kept in the
+    is what the model answered about the magenta square (a blind model guesses red), and the answers are kept in the
     database so a restart does not ask again. The admin page sees the whole of it."""
     up0 = fake_upstream()
     ids = list(up0.state.catalog_ids) + ["qwen-1.8b-chat", "qwen-plus"]
