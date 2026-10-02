@@ -12,6 +12,7 @@
  */
 import { createElement as h, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
+import { Avatar } from './Avatar.tsx'
 import { IconCalendar, IconChat, IconDevices, IconMenu, IconPanelLeft, IconPlus, IconPuzzle, IconSearch, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
 import { openShortcutsReference, pressSettingsChord } from './keys.ts'
 import { useLive } from './live.ts'
@@ -180,11 +181,14 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
     { id: 'issue', label: t('menuReport'), icon: h(IconBug, { size: 16 }), onSelect: () => { window.open(issuesUrl, '_blank', 'noopener') } },
   ]
 
+  // Muse's rail starts with Chats (a dot while the agent works); the agent's face is
+  // the pinned header and the drawer, not a rail button. The brand mark stays mounted
+  // (hidden) for the accent and keep-awake effects it carries.
+  const busy = typeof useSessions === 'function' ? useSessions((state) => state.ids.some((id) => state.byId[id]?.running === true)) : false
   const rail = h('nav', { className: 'nm-rail', 'aria-label': t('railLabel') },
     h('div', { className: 'nm-rail-top', 'data-window-drag': true }),
-    h('button', { type: 'button', className: 'nm-rail-avatar', title: live.profile.name || t('brand'), 'aria-label': t('railProfile'), onClick: openProfile },
-      renderSlot('sidebar.brand.mark', { size: 36 })),
-    h(RailButton, { label: t('railChats'), active: active === null, onClick: showChats }, h(IconChat, { size: 21 })),
+    h('div', { className: 'nm-hidden' }, renderSlot('sidebar.brand.mark', { size: 36 })),
+    h(RailButton, { label: t('railChats'), active: active === null, dot: busy, onClick: showChats }, h(IconChat, { size: 21 })),
     h(RailButton, { label: t('railSearch'), onClick: search }, h(IconSearch, { size: 21 })),
     schedules
       ? h(RailButton, { label: schedules.label, active: active === SCHEDULES_PANEL, onClick: () => selectPanel(SCHEDULES_PANEL) },
@@ -193,6 +197,7 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
     h(RailButton, { label: t('railDevices'), active: active === DEVICES_PANEL, dot: onlineOthers > 0, onClick: () => selectPanel(DEVICES_PANEL) }, h(IconDevices, { size: 21 })),
     h('div', { className: 'nm-rail-spacer' }),
     collapsed ? h(RailButton, { label: t('railNew'), onClick: startSession }, h(IconPlus, { size: 21 })) : null,
+    collapsed ? h(RailButton, { label: t('railProfile'), onClick: openProfile }, h('span', { className: 'nm-rail-face' }, h(Avatar, { size: 22, profile: live.profile }))) : null,
     h(RailButton, { label: t('railMore'), expanded: menuAnchor !== null, onClick: () => setMenuAnchor((current) => (current ? null : menuButton.current)), buttonRef: (el) => { menuButton.current = el } }, h(IconMenu, { size: 21 })),
     // The settings shell lives in this seat: its trigger is hidden here (the
     // menu opens it), but its dialog and the onboarding steps mount through it.

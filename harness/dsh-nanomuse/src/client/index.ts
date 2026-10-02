@@ -133,10 +133,11 @@ export function apply(ctx: ClientContext): void {
   const shell = createShellStore()
 
   ctx.effect(() => locale.register('nanomuse', { en, zh }), 'nanomuse: dictionaries')
+  const t = locale.bind('nanomuse') as Translate
   ctx.effect(() => ensureStyles(), 'nanomuse: stylesheet')
   // The Muse composer and column unless the Developer switch asks for the harness's own.
   ctx.effect(() => {
-    const apply = () => setMuseMode(!getPrefs().showHarness)
+    const apply = () => setMuseMode(!getPrefs().showHarness, t('cpPlaceholder'))
     apply()
     return subscribePrefs(apply)
   }, 'nanomuse: muse mode')
@@ -150,6 +151,14 @@ export function apply(ctx: ClientContext): void {
     observer.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
     return () => observer.disconnect()
   }, 'nanomuse: window theme')
+  // Programmatic focus can scroll the frame sideways (the right sidebar waits off-canvas); keep it put.
+  ctx.effect(() => {
+    const guard = () => {
+      for (const frame of document.querySelectorAll<HTMLElement>('[class*="_frame"]')) if (frame.scrollLeft !== 0) frame.scrollLeft = 0
+    }
+    document.addEventListener('focusin', guard, true)
+    return () => document.removeEventListener('focusin', guard, true)
+  }, 'nanomuse: frame guard')
   // What the person answered on approval cards, for the drawer's Approvals tab.
   ctx.effect(() => {
     const record = (card: Element, outcome: 'allowed' | 'rejected') => {
@@ -178,7 +187,6 @@ export function apply(ctx: ClientContext): void {
       document.removeEventListener('keydown', onKey, true)
     }
   }, 'nanomuse: approval records')
-  const t = locale.bind('nanomuse') as Translate
 
   // Settings opens through whatever shell occupies `sidebar.settings`: the
   // bus carries the opener our own shell registers; without one the sidebar

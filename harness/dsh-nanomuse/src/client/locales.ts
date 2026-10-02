@@ -227,6 +227,7 @@ export const en = {
   chMain: 'Main chat',
   chSide: 'Side chats',
   chNewSide: 'New side chat',
+  chBlank: 'New chat',
   chEmpty: 'No side chats yet. Press + to start one for things apart from the main chat.',
   chNoMatch: 'No chat matches',
   chMakeMain: 'Make this the main chat',
@@ -304,6 +305,7 @@ export const en = {
   dataSignedOut: 'Sign in and this page decides what nanoMuse Cloud keeps.',
   // the composer
   cpAttach: 'Add files',
+  cpPlaceholder: 'Message',
 }
 
 export const zh: typeof en = {
@@ -522,6 +524,7 @@ export const zh: typeof en = {
   chMain: '主要聊天',
   chSide: '旁聊',
   chNewSide: '新旁聊',
+  chBlank: '新聊天',
   chEmpty: '还没有旁聊。点 + 开一个，处理和主聊天无关的事。',
   chNoMatch: '没有匹配的聊天',
   chMakeMain: '设为主要聊天',
@@ -599,6 +602,7 @@ export const zh: typeof en = {
   dataSignedOut: '登录后，这里可以决定 nanoMuse Cloud 保留什么。',
   // the composer
   cpAttach: '添加文件',
+  cpPlaceholder: '消息',
 }
 
 export type Words = keyof typeof en

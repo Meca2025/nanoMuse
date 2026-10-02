@@ -29,10 +29,11 @@ export function setAccent(color: string | undefined): void {
 }
 
 /** Whether the harness's own controls show (`false`: the Muse composer and column). */
-export function setMuseMode(on: boolean): void {
+export function setMuseMode(on: boolean, placeholder?: string): void {
   const root = document.documentElement
   if (on) root.setAttribute('data-nm-muse', '')
   else root.removeAttribute('data-nm-muse')
+  if (placeholder !== undefined) root.style.setProperty('--nm-placeholder', JSON.stringify(placeholder))
 }
 
 const CSS = `
@@ -118,8 +119,9 @@ html[data-nanomuse] body { font-family: var(--nm-font); }
 /* ---- sidebar: icon rail + chats column -------------------------------- */
 .nm-sidebar { display: flex; height: 100%; min-height: 0; color: var(--dsw-alias-label-primary); background: var(--nm-base); }
 .nm-rail { width: var(--nm-rail); flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 12px; box-sizing: border-box; }
-.nm-rail-top { height: 2px; flex: none; }
-html[data-platform='darwin'] .nm-rail-top { height: 30px; }
+.nm-rail-top { height: 12px; flex: none; }
+html[data-platform='darwin'] .nm-rail-top { height: 78px; }
+.nm-rail-face { display: inline-flex; border-radius: 50%; overflow: hidden; }
 .nm-rail-avatar { width: 44px; height: 44px; margin: 2px 0 10px; border: 0; padding: 0; border-radius: 50%; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .nm-rail-avatar:focus-visible { outline: 2px solid var(--nm-accent); outline-offset: 2px; }
 .nm-rail-btn { position: relative; width: 44px; height: 44px; border: 0; padding: 0; border-radius: 13px; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 120ms, color 120ms; }
@@ -200,7 +202,12 @@ header[data-window-drag]:has(.nm-header) { position: relative; min-height: 108px
 html[data-nm-muse] [data-composer-card] { display: flex !important; flex-direction: row !important; flex-wrap: wrap; align-items: flex-end; gap: 2px 4px; padding: 5px 5px 5px 6px !important; border-radius: 26px !important; background: var(--nm-field) !important; box-shadow: 0 0 0 1px var(--nm-field-border), 0 6px 24px rgba(0,0,0,0.10) !important; }
 html[data-nm-muse] [data-composer-card] > [data-input-scroll] { flex: 1 1 120px; min-width: 0; order: 0; margin: 0 !important; }
 html[data-nm-muse] [data-composer-card] > [data-input-scroll] [contenteditable] { min-height: 34px !important; padding: 5px 6px 5px 8px !important; }
-html[data-nm-muse] [data-composer-card] [data-composer-placeholder] { inset: 5px 6px auto 8px !important; }
+html[data-nm-muse] [data-composer-card] [data-composer-placeholder] { inset: 5px 6px auto 8px !important; color: transparent !important; }
+html[data-nm-muse] [data-composer-card] [data-composer-placeholder]::before { content: var(--nm-placeholder, "Message"); position: absolute; inset: 0 auto auto 0; color: var(--dsw-alias-label-tertiary); white-space: nowrap; }
+/* An empty chat: no greeting, the composer sits at the bottom like Muse's. */
+html[data-nm-muse] [data-conversation-scroll]:has([class*="_composerHero"]) { justify-content: flex-end; }
+html[data-nm-muse] [class*="_composerHero"] > [class*="_root"]:first-child { display: none; }
+html[data-nm-muse] [class*="_composerHero"] > [class*="_heroWorkspaceRow"] { margin-bottom: 2px; }
 html[data-nm-muse] [data-composer-card] > div:last-child { display: contents; }
 html[data-nm-muse] [data-composer-card] > div:last-child > div:first-child { order: -1; gap: 2px; }
 html[data-nm-muse] [data-composer-card] > div:last-child > div:last-child { order: 1; margin-left: 0 !important; }
@@ -215,17 +222,37 @@ html[data-nm-muse] [data-composer-card] [class*="_primary"]:disabled { backgroun
 html[data-nm-muse] [data-composer-card] ~ [class*="_dock"] { display: none !important; }
 /* The user's words: a tinted bubble on the right. The agent's: a quiet grey one. */
 html[data-nm-muse] [data-chat-flow-kind="user"] [class*="_bubble"] { background: var(--nm-user-bubble) !important; color: var(--dsw-alias-label-primary); border-radius: 18px !important; padding: 9px 14px !important; }
-html[data-nm-muse] [data-chat-flow-kind="assistant-step"] > [class*="_root"] > [class*="_body"] { width: fit-content; max-width: 100%; box-sizing: border-box; background: var(--nm-agent-bubble); border-radius: 20px; padding: 10px 16px; }
-html[data-nm-muse] [data-chat-flow-kind="assistant-step"] > [class*="_root"] > [class*="_body"]:empty { display: none; }
+html[data-nm-muse] [data-chat-flow-kind="assistant-step"] [data-slot="conversation.chat.node"] > [class*="_root"] > [class*="_body"] { width: fit-content; max-width: 100%; box-sizing: border-box; background: var(--nm-agent-bubble); border-radius: 20px; padding: 10px 16px; }
+html[data-nm-muse] [data-chat-flow-kind="assistant-step"] [data-slot="conversation.chat.node"] > [class*="_root"] > [class*="_body"]:empty { display: none; }
+html[data-nm-muse] [data-chat-flow-kind="assistant-step"] [data-slot="conversation.chat.node"] > [class*="_root"] > [class*="_body"] > [class*="_markdown"] > :first-child { margin-top: 0; }
+html[data-nm-muse] [data-chat-flow-kind="assistant-step"] [data-slot="conversation.chat.node"] > [class*="_root"] > [class*="_body"] > [class*="_markdown"] > :last-child { margin-bottom: 0; }
+/* Timestamps and per-message actions appear on hover, as Muse keeps its chat quiet. */
+html[data-nm-muse] [data-chat-flow-kind="user"] [class*="_actions"][data-clock],
+html[data-nm-muse] [data-chat-flow-kind="turn-tail"] [class*="_actions"][data-clock] { opacity: 0; transition: opacity 160ms; }
+html[data-nm-muse] [data-chat-flow-kind="user"]:hover [class*="_actions"][data-clock],
+html[data-nm-muse] [data-chat-flow-kind="user"] [class*="_actions"][data-clock]:focus-within,
+html[data-nm-muse] [data-chat-flow-kind="turn-tail"]:hover [class*="_actions"][data-clock],
+html[data-nm-muse] [data-chat-flow-kind="turn-tail"] [class*="_actions"][data-clock]:focus-within { opacity: 1; }
+/* The session header keeps only what Muse shows up there: Invite and the corner. */
+html[data-nm-muse] [data-slot="conversation.session.header"] [class*="_titleCluster"] { display: none; }
+html[data-nm-muse] [data-slot="conversation.session.header"] [class*="_titleRow"] { justify-content: flex-end; }
+html[data-nm-muse] [data-slot="conversation.session.header"] [data-conversation-tabs] { display: none; }
+html[data-nm-muse] [data-slot="conversation.session.header.utilities"] > *:not(:first-child) { display: none; }
 /* The approval card: a dark rounded card with a shield, Allow in blue. */
-html[data-nanomuse] [data-approval-key] > div { background: var(--nm-card) !important; border-radius: 18px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.18) !important; padding: 14px 16px !important; }
-html[data-nanomuse] [data-approval-key] > div > :first-child { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
+/* The approval card, Muse-shaped: shield + headline, Allow (blue) first, then Reject. */
+html[data-nanomuse] [data-approval-key] > div { background: var(--nm-card) !important; border: 1px solid var(--nm-divider) !important; border-radius: 18px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.18) !important; padding: 14px 16px !important; outline: none !important; }
+html[data-nanomuse] [data-approval-key] > div > :first-child { font-size: 12px; color: var(--dsw-alias-label-tertiary); background: transparent !important; padding: 0 !important; border: 0 !important; margin-bottom: 6px; }
 html[data-nanomuse] [data-approval-key] > div > :first-child::before { content: ''; display: inline-block; width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px; background: currentColor; -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 5 6.2v5.3c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6.2z"/><path d="m9 12 2 2 4-4"/></svg>') center / contain no-repeat; mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 5 6.2v5.3c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6.2z"/><path d="m9 12 2 2 4-4"/></svg>') center / contain no-repeat; }
-html[data-nanomuse] [data-approval-key] [data-approval-scroll] > :first-child { font-size: 15px; font-weight: 600; color: var(--dsw-alias-label-primary); }
-html[data-nanomuse] [data-approval-key] > div > :last-child button { border-radius: 999px !important; min-height: 36px; padding: 0 20px !important; font-weight: 500; }
+html[data-nanomuse] [data-approval-key] [data-approval-scroll] > :first-child { font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--dsw-alias-label-primary); }
+html[data-nanomuse] [data-approval-key] > div > :last-child { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+html[data-nanomuse] [data-approval-key] > div > :last-child button { border-radius: 999px !important; min-height: 36px; padding: 0 20px !important; font-weight: 500; border: 0 !important; box-shadow: none !important; }
+html[data-nanomuse] [data-approval-key] > div > :last-child button:last-child { background: var(--nm-blue) !important; color: #fff !important; }
+html[data-nanomuse] [data-approval-key] > div > :last-child button:last-child:hover { filter: brightness(1.08); }
+html[data-nanomuse] [data-approval-key] > div > :last-child button:not(:last-child) { background: var(--nm-field) !important; color: var(--dsw-alias-label-primary) !important; }
 
 /* ---- the profile drawer ------------------------------------------------ */
-.nm-pf { position: fixed; top: 0; right: 0; bottom: 0; width: 310px; z-index: 60; display: flex; flex-direction: column; background: var(--nm-base); color: var(--dsw-alias-label-primary); border-left: 1px solid var(--nm-divider); box-shadow: -12px 0 40px rgba(0,0,0,0.18); outline: none; animation: nm-slide-in 180ms ease-out; }
+.nm-pf { position: fixed; top: 0; right: 0; bottom: 0; width: 310px; z-index: 60; display: flex; flex-direction: column; background: var(--nm-base); color: var(--dsw-alias-label-primary); border-left: 1px solid var(--nm-divider); outline: none; animation: nm-slide-in 180ms ease-out; }
+html[data-nm-profile] [class*="_centerCol"] { padding-right: 310px; box-sizing: border-box; }
 @keyframes nm-slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 .nm-pf-top { flex: none; display: flex; align-items: center; padding: 10px 10px 0; min-height: 40px; }
 html[data-platform='darwin'] .nm-pf-top { padding-top: 12px; }

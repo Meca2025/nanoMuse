@@ -229,7 +229,7 @@ export function MuseChats({ t, useSessions, useSessionStatus, useWorkspaces, act
             key: chat.id,
             t,
             chat,
-            label: chat.displayTitle,
+            label: chat.blank ? t('chBlank') : chat.displayTitle,
             main: false,
             pinned: pinnedSet.has(chat.id),
             selected: current === chat.id,

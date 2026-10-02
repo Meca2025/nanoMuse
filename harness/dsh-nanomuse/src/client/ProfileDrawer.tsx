@@ -61,20 +61,18 @@ function Drawer({ t, openSchedules, useSessions, useSessionStatus }: ProfileDraw
   const [menu, setMenu] = useState(false)
   const panel = useRef<HTMLDivElement>(null)
 
+  // Like Muse's panel it stays beside the chat until closed (×, Escape); the
+  // chat column makes room for it meanwhile.
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') profileBus.close() }
-    const onPointer = (event: PointerEvent) => {
-      const target = event.target as Element
-      if (panel.current?.contains(target)) return
-      // The rail's face and the header's face toggle the drawer themselves.
-      if (target.closest('.nm-rail-avatar, .nm-header-face')) return
-      profileBus.close()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (panel.current?.contains(document.activeElement) || document.activeElement === document.body) profileBus.close()
     }
     document.addEventListener('keydown', onKey)
-    document.addEventListener('pointerdown', onPointer, true)
+    document.documentElement.setAttribute('data-nm-profile', '')
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.removeEventListener('pointerdown', onPointer, true)
+      document.documentElement.removeAttribute('data-nm-profile')
     }
   }, [])
   useEffect(() => { panel.current?.focus() }, [])
