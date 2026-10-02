@@ -1,19 +1,23 @@
 /**
- * The Muse-shaped left column in the harness's `sidebar` seat: an icon rail
- * (the agent's face, Chats, Search, the harness's global panels such as
- * Schedules, Devices, and a menu in the corner for everything else) beside a
- * chats column that hosts the harness's own workspace and session browser.
- * Collapsed, only the rail remains. The seven child seats the stock sidebar
- * declares are declared here too, so every occupant of them — the brand mark,
- * the panel glyphs, the browser, the settings shell, footer actions — mounts
- * exactly as before; only the frame around them is ours.
+ * The Muse-shaped left column in the harness's `sidebar` seat: an icon rail —
+ * the agent's face (its profile), Chats, Search, the harness's Schedules,
+ * Devices, and a menu in the corner for settings, shortcuts, plugins and
+ * reporting a problem — beside the chats column (search, the main chat, the
+ * side chats). Collapsed, only the rail remains. The seven child seats the
+ * stock sidebar declares are declared here too, so every occupant of them —
+ * the brand mark, the panel glyphs, the browser, the settings shell, footer
+ * actions — mounts exactly as before; only the frame around them is ours, and
+ * the harness's workspace browser takes the column's place when the person
+ * turns the Developer switch on.
  */
 import { createElement as h, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconCalendar, IconChat, IconDevices, IconMenu, IconPanelLeft, IconPlus, IconPuzzle, IconSearch, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
 import { openShortcutsReference, pressSettingsChord } from './keys.ts'
 import { useLive } from './live.ts'
+import { MuseChats, type ChatActions, type UseSessionList, type UseStatusMap, type UseWorkspaceList } from './MuseChats.tsx'
 import { DEVICES_PANEL } from './panels.ts'
+import { usePrefs } from './prefs.ts'
 
 /** The id the harness's Schedules plugin registers its global panel under. */
 const SCHEDULES_PANEL = 'schedules'
@@ -21,6 +25,7 @@ const SCHEDULES_PANEL = 'schedules'
 const PLUGINS_PANEL = 'plugins'
 
 const COLLAPSE_SETTLE_MS = 150
+const RAIL = 66
 
 export interface PanelMeta {
   id: string
@@ -40,10 +45,16 @@ export interface MuseSidebarProps {
   selectPanel(id: string | null): void
   /** Open the settings dialog when the shell exposes a way; the sidebar falls back to its trigger. */
   openSettings?: (() => boolean) | undefined
+  /** Open the agent's profile drawer. */
+  openProfile(): void
   issuesUrl: string
+  chatActions: ChatActions
   usePanels<S>(selector: (panels: readonly PanelMeta[]) => S): S
   usePanelInfo<S>(selector: (info: { activePanelId: string | null }) => S): S
   useShortcuts<S>(selector: (rows: readonly { id: string; keys: readonly string[]; aria?: string }[]) => S): S
+  useSessions?: UseSessionList | undefined
+  useSessionStatus?: UseStatusMap | undefined
+  useWorkspaces?: UseWorkspaceList | undefined
 }
 
 interface RailButtonProps {
@@ -108,16 +119,17 @@ function CornerMenu({ anchor, items, onClose }: { anchor: HTMLElement; items: (M
 }
 
 export function MuseSidebar(props: MuseSidebarProps): ReactNode {
-  const { collapsed, width, t, renderSlot, startSession, toggleSidebar, selectPanel, openSettings: openSettingsHook, issuesUrl, usePanels, usePanelInfo, useShortcuts } = props
+  const { collapsed, width, t, renderSlot, startSession, toggleSidebar, selectPanel, openSettings: openSettingsHook, openProfile, issuesUrl, chatActions, usePanels, usePanelInfo, useShortcuts, useSessions, useSessionStatus, useWorkspaces } = props
   const live = useLive()
+  const prefs = usePrefs()
   const panels = usePanels((rows) => rows)
   const active = usePanelInfo((info) => info.activePanelId)
   const settingsShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'settings.open'))
   const shortcutsShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'shortcuts.open'))
-  const newShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'session.new'))
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   const menuButton = useRef<HTMLButtonElement | null>(null)
   const column = useRef<HTMLDivElement>(null)
+  const searchField = useRef<HTMLInputElement | null>(null)
   const settingsSeat = useRef<HTMLDivElement>(null)
 
   // Settings: the shell's own way when it offers one, else the trigger the
@@ -150,9 +162,9 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
   const search = () => {
     selectPanel(null)
     if (collapsed) toggleSidebar()
-    // The browser's own search field is the first text input in the column.
     window.setTimeout(() => {
-      const input = column.current?.querySelector<HTMLInputElement>('input[type="text"], input:not([type])')
+      // Our search field, or the browser's own (the first text input in the column).
+      const input = searchField.current ?? column.current?.querySelector<HTMLInputElement>('input[type="search"], input[type="text"], input:not([type])')
       input?.focus()
     }, collapsed ? COLLAPSE_SETTLE_MS + 50 : 0)
   }
@@ -170,36 +182,40 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
 
   const rail = h('nav', { className: 'nm-rail', 'aria-label': t('railLabel') },
     h('div', { className: 'nm-rail-top', 'data-window-drag': true }),
-    h('button', { type: 'button', className: 'nm-rail-avatar', title: live.profile.name || t('brand'), 'aria-label': t('railProfile'), onClick: openSettings },
+    h('button', { type: 'button', className: 'nm-rail-avatar', title: live.profile.name || t('brand'), 'aria-label': t('railProfile'), onClick: openProfile },
       renderSlot('sidebar.brand.mark', { size: 36 })),
-    h(RailButton, { label: t('railChats'), active: active === null, onClick: showChats }, h(IconChat, { size: 20 })),
-    h(RailButton, { label: t('railSearch'), onClick: search }, h(IconSearch, { size: 20 })),
+    h(RailButton, { label: t('railChats'), active: active === null, onClick: showChats }, h(IconChat, { size: 21 })),
+    h(RailButton, { label: t('railSearch'), onClick: search }, h(IconSearch, { size: 21 })),
     schedules
       ? h(RailButton, { label: schedules.label, active: active === SCHEDULES_PANEL, onClick: () => selectPanel(SCHEDULES_PANEL) },
-          renderSlot('sidebar.panellist', { size: 20, active: active === SCHEDULES_PANEL }, { only: SCHEDULES_PANEL, fallback: h(IconCalendar, { size: 20 }) }))
+          renderSlot('sidebar.panellist', { size: 21, active: active === SCHEDULES_PANEL }, { only: SCHEDULES_PANEL, fallback: h(IconCalendar, { size: 21 }) }))
       : null,
-    h(RailButton, { label: t('railDevices'), active: active === DEVICES_PANEL, dot: onlineOthers > 0, onClick: () => selectPanel(DEVICES_PANEL) }, h(IconDevices, { size: 20 })),
+    h(RailButton, { label: t('railDevices'), active: active === DEVICES_PANEL, dot: onlineOthers > 0, onClick: () => selectPanel(DEVICES_PANEL) }, h(IconDevices, { size: 21 })),
     h('div', { className: 'nm-rail-spacer' }),
-    collapsed ? h(RailButton, { label: t('railNew'), onClick: startSession }, h(IconPlus, { size: 20 })) : null,
-    h(RailButton, { label: t('railMore'), expanded: menuAnchor !== null, onClick: () => setMenuAnchor((current) => (current ? null : menuButton.current)), buttonRef: (el) => { menuButton.current = el } }, h(IconMenu, { size: 20 })),
+    collapsed ? h(RailButton, { label: t('railNew'), onClick: startSession }, h(IconPlus, { size: 21 })) : null,
+    h(RailButton, { label: t('railMore'), expanded: menuAnchor !== null, onClick: () => setMenuAnchor((current) => (current ? null : menuButton.current)), buttonRef: (el) => { menuButton.current = el } }, h(IconMenu, { size: 21 })),
     // The settings shell lives in this seat: its trigger is hidden here (the
     // menu opens it), but its dialog and the onboarding steps mount through it.
     h('div', { ref: settingsSeat, className: 'nm-hidden' }, renderSlot('sidebar.settings', { wide: false })),
     h('div', { className: 'nm-hidden' }, renderSlot('sidebar.toggle.badge', {})))
 
+  const browser = prefs.showHarness || typeof useSessions !== 'function'
   const chats = wide
-    ? h('div', { ref: column, className: `nm-col${collapsed ? ' nm-fading' : ''}`, style: { width: Math.max(0, (collapsed ? lastWideWidth.current : width) - 56) } },
-        h('div', { className: 'nm-col-head', 'data-window-drag': true },
-          h('span', null, t('railChats')),
-          h('div', { className: 'nm-col-head-actions' },
-            h('button', { type: 'button', className: 'nm-icon-btn', title: `${t('railNew')}${keysHint(newShortcut?.keys) ? ` (${keysHint(newShortcut?.keys)})` : ''}`, 'aria-label': t('railNew'), 'aria-keyshortcuts': newShortcut?.aria, onClick: startSession }, h(IconPlus, { size: 18 })),
-            h('button', { type: 'button', className: 'nm-icon-btn', title: t('menuCollapse'), 'aria-label': t('menuCollapse'), onClick: toggleSidebar }, h(IconPanelLeft, { size: 18 })))),
-        h('div', { className: 'nm-col-body' },
-          renderSlot('sidebar.workspaces', { wide: true, expandSidebar: () => { if (collapsed) toggleSidebar() } })),
+    ? h('div', { ref: column, className: `nm-col${collapsed ? ' nm-fading' : ''}`, style: { width: Math.max(0, (collapsed ? lastWideWidth.current : width) - RAIL) } },
+        h('div', { className: 'nm-col-top', 'data-window-drag': true }),
+        browser
+          ? h('div', { className: 'nm-col-body' },
+              h('div', { className: 'nm-col-head' },
+                h('span', null, t('railChats')),
+                h('div', { className: 'nm-col-head-actions' },
+                  h('button', { type: 'button', className: 'nm-icon-btn', title: t('railNew'), 'aria-label': t('railNew'), onClick: startSession }, h(IconPlus, { size: 18 })))),
+              renderSlot('sidebar.workspaces', { wide: true, expandSidebar: () => { if (collapsed) toggleSidebar() } }))
+          : h('div', { className: 'nm-col-body' },
+              h(MuseChats, { t, useSessions, useSessionStatus, useWorkspaces, actions: chatActions, searchRef: (el) => { searchField.current = el } })),
         h('div', { className: 'nm-col-foot' }, renderSlot('sidebar.footer.action', { wide: true })))
     : null
 
-  return h('div', { className: 'nm-sidebar', style: { width: wide ? (collapsed ? lastWideWidth.current : width) : 56 } },
+  return h('div', { className: 'nm-sidebar', style: { width: wide ? (collapsed ? lastWideWidth.current : width) : RAIL } },
     rail,
     chats,
     menuAnchor ? h(CornerMenu, { anchor: menuAnchor, items: menuItems, onClose: () => setMenuAnchor(null) }) : null)

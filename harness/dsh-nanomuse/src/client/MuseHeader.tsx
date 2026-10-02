@@ -119,7 +119,7 @@ export function MuseHeader({ t, stop, openProfile, useSessionStatus }: MuseHeade
     h('button', { type: 'button', className: `nm-header-face ${ring}`.trim(), 'aria-label': live.profile.name || t('brand'), title: t('railProfile'), onClick: openProfile },
       h(Avatar, { size: 44, profile: live.profile, mood })),
     h('div', { className: 'nm-header-name' }, live.profile.name || t('brand')),
-    h('div', { className: `nm-header-status${busy ? ' nm-live' : ''}` },
+    h('div', { className: `nm-header-status nm-header-chip${busy ? ' nm-live' : activity.waiting ? ' nm-wait' : ''}` },
       h('span', { className: `nm-status-dot ${dot}`.trim(), 'aria-hidden': true }),
       h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, line),
       busy ? h('button', { type: 'button', className: 'nm-stop', disabled: stopping, onClick: onStop }, h(IconStop, { size: 14 }), t('capsuleStop')) : null))

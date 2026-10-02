@@ -39,7 +39,7 @@ import z from '@deepseek-ai/schemastery'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
 import { HubClient, HubError, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
-import { Relay, RelayError, type Account, type RelayModel } from './relay.ts'
+import { Relay, RelayError, type Account, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner } from './task.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -324,20 +324,65 @@ export default class NanomuseCloud extends Service {
 
   /** Step two: the code for the key; wires the provider and remembers the account. */
   verify(identifier: string, code: string): Promise<CloudStatus> {
+    return this.serialize(async () => this.adopt(await this.relay.verify(identifier.trim(), code, this.deviceName())))
+  }
+
+  /** The other way in: the account's password instead of a code. */
+  login(identifier: string, password: string): Promise<CloudStatus> {
+    return this.serialize(async () => this.adopt(await this.relay.login(identifier.trim(), password, this.deviceName())))
+  }
+
+  /** A fresh key from either way in: wire the provider, remember the account, wear its look. */
+  private async adopt(signIn: SignIn): Promise<CloudStatus> {
+    await this.ctx.credentials.set(credentialRef(TOKEN_REF), signIn.apiKey)
+    const models = await this.relay.models(signIn.apiKey)
+    await this.writeProvider(models)
+    await this.adoptDefaultModel(models)
+    this.state = { ...this.state, account: signIn.account, models }
+    await this.writeState()
+    this.signedInCache = true
+    this.ctx.logger.info('nanomuse cloud: signed in as %s (%s)', signIn.account.hint, signIn.account.channel)
+    await this.profile.pull(signIn.apiKey, true).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
+    this.hub.restart()
+    this.broadcast()
+    return this.status()
+  }
+
+  /** The account's invite code and link; nothing without an account. */
+  async invite(): Promise<Invite | undefined> {
+    const token = await this.token()
+    if (!token || !this.state.account) return undefined
+    return this.relay.invite(token)
+  }
+
+  /**
+   * Rename the agent, or give it an emoji face, for every device of the account:
+   * written to the relay, worn here at once (the other devices hear the hub's
+   * `profile` frame and pull). A drawn face keeps its pictures when only the
+   * name moves.
+   */
+  writeProfile(patch: { name?: string; avatar?: 'dragon' | 'emoji'; emoji?: string; color?: string }): Promise<Profile> {
     return this.serialize(async () => {
-      const signIn = await this.relay.verify(identifier.trim(), code, this.deviceName())
-      await this.ctx.credentials.set(credentialRef(TOKEN_REF), signIn.apiKey)
-      const models = await this.relay.models(signIn.apiKey)
-      await this.writeProvider(models)
-      await this.adoptDefaultModel(models)
-      this.state = { ...this.state, account: signIn.account, models }
-      await this.writeState()
-      this.signedInCache = true
-      this.ctx.logger.info('nanomuse cloud: signed in as %s (%s)', signIn.account.hint, signIn.account.channel)
-      await this.profile.pull(signIn.apiKey, true).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
-      this.hub.restart()
+      const token = await this.token()
+      const current = this.profile.current()
+      const name = (patch.name ?? current.name).trim().slice(0, 60) || current.name || 'nanoMuse'
+      const avatar = patch.avatar ?? current.avatar
+      const write: ProfileWrite = {
+        name,
+        avatar,
+        emoji: avatar === 'emoji' ? (patch.emoji ?? current.emoji ?? '').slice(0, 16) || '✨' : '',
+        color: avatar === 'emoji' ? (patch.color ?? current.color) || '#0064d4' : '',
+        style: current.style,
+        description: current.description,
+      }
+      if (token && this.state.account) {
+        const rev = await this.relay.putProfile(token, write, this.deviceName())
+        await this.profile.pull(token, true).catch(() => this.profile.wearLocal({ ...current, ...write, rev }))
+      } else {
+        await this.profile.wearLocal({ ...current, ...write, rev: current.rev })
+      }
       this.broadcast()
-      return this.status()
+      return this.profile.current()
     })
   }
 
@@ -685,6 +730,23 @@ export default class NanomuseCloud extends Service {
       if (req.method === 'POST' && route === '/verify') {
         const body = await json(req)
         return send(res, 200, await this.verify(String(body.identifier ?? ''), String(body.code ?? '')))
+      }
+      if (req.method === 'POST' && route === '/login') {
+        const body = await json(req)
+        return send(res, 200, await this.login(String(body.identifier ?? ''), String(body.password ?? '')))
+      }
+      if (req.method === 'GET' && route === '/invite') {
+        const invite = await this.invite()
+        return invite ? send(res, 200, invite) : send(res, 404, { error: { code: 'signed_out', message: 'Sign in first' } })
+      }
+      if (req.method === 'POST' && route === '/profile') {
+        const body = await json(req)
+        const patch: Parameters<typeof this.writeProfile>[0] = {}
+        if (typeof body.name === 'string') patch.name = body.name
+        if (body.avatar === 'dragon' || body.avatar === 'emoji') patch.avatar = body.avatar
+        if (typeof body.emoji === 'string') patch.emoji = body.emoji
+        if (typeof body.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.color)) patch.color = body.color
+        return send(res, 200, await this.writeProfile(patch))
       }
       if (req.method === 'POST' && route === '/refresh') return send(res, 200, await this.refresh())
       if (req.method === 'POST' && route === '/sign-out') return send(res, 200, await this.signOut())

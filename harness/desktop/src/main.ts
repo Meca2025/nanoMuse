@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, Menu, nativeImage, shell } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
@@ -388,6 +388,70 @@ function iconPath(): string {
   return join(ownResources(), "app-icon.png");
 }
 
+/** The Muse window colours: near-black in the dark, paper in the light (the bundle's stylesheet agrees). */
+const BASE_DARK = "#171717";
+const BASE_LIGHT = "#f9f9f9";
+
+type PermissionKind = "accessibility" | "screen" | "microphone";
+type PermissionState = "granted" | "denied" | "not-determined" | "not-needed";
+
+/** Where one permission the hands use stands; only macOS gates them. */
+function permissionState(kind: PermissionKind): PermissionState {
+  if (process.platform !== "darwin") return "not-needed";
+  if (kind === "accessibility") return systemPreferences.isTrustedAccessibilityClient(false) ? "granted" : "denied";
+  const status = systemPreferences.getMediaAccessStatus(kind);
+  if (status === "granted") return "granted";
+  if (status === "not-determined") return "not-determined";
+  return "denied";
+}
+
+const PERMISSION_PANES: Record<PermissionKind, string> = {
+  accessibility: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+  screen: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+  microphone: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+};
+
+let awakeBlocker: number | null = null;
+
+/** The requests the preload bridge forwards from the web client (see preload.ts). */
+function registerBridge(): void {
+  ipcMain.handle("nanomuse:info", () => ({ version: app.getVersion(), platform: process.platform, arch: process.arch }));
+  ipcMain.handle("nanomuse:permissions", () => ({
+    accessibility: permissionState("accessibility"),
+    screen: permissionState("screen"),
+    microphone: permissionState("microphone"),
+  }));
+  ipcMain.handle("nanomuse:permissions:request", async (_e, kind: PermissionKind) => {
+    if (process.platform !== "darwin") return "not-needed" satisfies PermissionState;
+    if (kind === "accessibility") {
+      // the system's own dialog, which also lists the app in the Accessibility pane
+      if (!systemPreferences.isTrustedAccessibilityClient(true)) void shell.openExternal(PERMISSION_PANES.accessibility);
+    } else if (kind === "microphone") {
+      await systemPreferences.askForMediaAccess("microphone").catch(() => false);
+    } else {
+      // Screen Recording has no prompt API: the pane is where the switch is
+      void shell.openExternal(PERMISSION_PANES.screen);
+    }
+    return permissionState(kind);
+  });
+  ipcMain.handle("nanomuse:permissions:settings", (_e, kind: PermissionKind) => {
+    if (process.platform === "darwin" && PERMISSION_PANES[kind]) void shell.openExternal(PERMISSION_PANES[kind]);
+  });
+  ipcMain.handle("nanomuse:open-external", (_e, url: string) => {
+    if (typeof url === "string" && /^https?:\/\//.test(url)) void shell.openExternal(url);
+  });
+  ipcMain.handle("nanomuse:keep-awake", (_e, on: boolean) => {
+    if (on && awakeBlocker === null) awakeBlocker = powerSaveBlocker.start("prevent-display-sleep");
+    else if (!on && awakeBlocker !== null) {
+      powerSaveBlocker.stop(awakeBlocker);
+      awakeBlocker = null;
+    }
+  });
+  ipcMain.handle("nanomuse:theme", (_e, theme: string) => {
+    mainWindow?.setBackgroundColor(theme === "dark" ? BASE_DARK : BASE_LIGHT);
+  });
+}
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
@@ -396,10 +460,10 @@ function createWindow(): BrowserWindow {
     minHeight: 620,
     title: "nanoMuse",
     icon: process.platform === "darwin" ? undefined : nativeImage.createFromPath(iconPath()),
-    backgroundColor: "#ffffff",
+    backgroundColor: nativeTheme.shouldUseDarkColors ? BASE_DARK : BASE_LIGHT,
     show: false,
     autoHideMenuBar: process.platform !== "darwin",
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false, preload: join(__dirname, "preload.js") },
   });
   win.once("ready-to-show", () => win.show());
   // the harness names its document after itself; the window keeps ours
@@ -544,6 +608,7 @@ if (!app.requestSingleInstanceLock()) {
     website: "https://nanomuse.cn/",
   });
   app.whenReady().then(async () => {
+    registerBridge();
     buildMenu();
     log(`nanoMuse Harness ${app.getVersion()} starting (${process.platform} ${process.arch}, packaged=${app.isPackaged})`);
     try {
