@@ -136,16 +136,40 @@
     }, 1200);
   }
 
+  // nanoMuse's icon at the top of the dock beside the phone (compose.mjs puts it there): a tap
+  // brings the app to the front — or turns the phone on — and it is lit while the app is on
+  // the screen.
+  var dockApp = document.querySelector("[data-nanomuse-open]");
+  function showApp() {
+    if (!phoneWindow()) powerOn();
+    else if (host) host.open();
+  }
+  function lightDock() {
+    if (!dockApp) return;
+    var front = false;
+    if (host) {
+      try {
+        front = !!host.state().front;
+      } catch (e) {
+        /* a phone that is going away */
+      }
+    }
+    dockApp.setAttribute("aria-pressed", front ? "true" : "false");
+  }
+  if (dockApp) dockApp.addEventListener("click", showApp);
+
   // The phone comes and goes (Power off, Click to start); follow whichever frame is there.
   setInterval(function () {
     var w = phoneWindow();
     if (!w) {
       if (host) forget();
+      lightDock();
       return;
     }
     if (host && hostWindow !== w) forget();
     adopt(w);
     launch(w);
+    lightDock();
   }, 250);
 
   // ---- the stage fits the screen ----------------------------------------------------------
@@ -314,10 +338,7 @@
     });
   });
 
-  document.getElementById("open").addEventListener("click", function () {
-    if (!phoneWindow()) powerOn();
-    else if (host) host.open();
-  });
+  document.getElementById("open").addEventListener("click", showApp);
   document.getElementById("reset").addEventListener("click", function () {
     if (!host) return;
     var ok = window.confirm(

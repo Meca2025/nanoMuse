@@ -29,9 +29,13 @@ bill, an SMS, a 12306 order, the weather — patched into the running phone), an
 They are not copied into this repository: `site/compose.mjs` lifts the markup from the
 checkout's `web/index.html` at build time and takes its `styles.css`, `state-builder.js`,
 `boot-hero.js` and icons as they are (one default changed: the phone's address is
-`/phone.html`), so an upstream change arrives with the next build. Our column — the lines to
-try, the status, *Show nanoMuse* / *Start over* — sits beside the phone; below 1280px their
-chrome folds under the phone and the column follows.
+`/phone.html`), so an upstream change arrives with the next build. One thing is added to the
+dock, first in it: nanoMuse's launcher icon, a shortcut — a tap brings the app to the front
+(or turns the phone on), and it is lit while nanoMuse is the app on the screen; it carries no
+State Builder tab, so their script leaves it alone (`page.js` handles it, reading `front` from
+`window.__NANOMUSE__.state()`). Our column — the lines to try, the status, *Show nanoMuse* /
+*Start over* — sits beside the phone; below 1280px their chrome folds under the phone and the
+column follows.
 
 Nothing about the phone runs on the server. MobileGym is a React app: the whole simulated
 phone lives in the visitor's tab (~400 MB of *their* memory). The server runs three things:

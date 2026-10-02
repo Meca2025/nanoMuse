@@ -13,7 +13,8 @@ import { useNanoMuseStore, type DemoRecord, type LinkState } from './state';
  *   open()           bring the nanoMuse app to the front
  *   draft(text)      open it and put `text` in the chat's composer — sending is the person's tap
  *   reset()          end the hosted session and start a fresh Muse
- *   state()          where things stand: configured, link, the hosted session, the web app, the sign-in
+ *   state()          where things stand: configured, link, the hosted session, the web app, the sign-in,
+ *                    whether nanoMuse is the app on the screen
  *   subscribe(fn)    fn(state) now and on every change; returns the unsubscribe
  *
  * The web app inside the phone is on another origin (the session's hostname); the draft goes
@@ -38,6 +39,16 @@ export interface HostState {
   hosted: boolean;
   /** The visitor is signed in to nanoMuse Cloud for the showcase (holds a ticket). */
   signedIn: boolean;
+  /** nanoMuse is the app on the screen right now (the page's dock lights its icon). */
+  front: boolean;
+}
+
+type OSWindow = Window & {
+  __OS__?: { launchApp?: (id: string) => void; getState?: () => { activeAppId?: string | null } };
+};
+
+function os() {
+  return (window as OSWindow).__OS__;
 }
 
 type Listener = (state: HostState) => void;
@@ -58,6 +69,7 @@ function current(): HostState {
     name,
     hosted: !!NANOMUSE_CONFIG.demoGateway,
     signedIn: !!s.ticket,
+    front: os()?.getState?.()?.activeAppId === NANOMUSE_CONFIG.appId,
   };
 }
 
@@ -93,8 +105,7 @@ export function attachFrame(el: HTMLIFrameElement | null) {
 }
 
 function openApp() {
-  const os = (window as unknown as { __OS__?: { launchApp?: (id: string) => void } }).__OS__;
-  os?.launchApp?.(NANOMUSE_CONFIG.appId);
+  os()?.launchApp?.(NANOMUSE_CONFIG.appId);
 }
 
 function draft(text: string) {

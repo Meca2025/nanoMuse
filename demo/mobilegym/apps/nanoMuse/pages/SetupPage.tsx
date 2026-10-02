@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FocusEvent, type FormEvent, type ReactNode } from 'react';
+import { useKeyboard } from '@/os/keyboard';
 import { dragonIdle, IcBack, IcChat, IcCloud, IcHands, IcKey, IcReach, IcRetry } from '../res/icons';
 import { parseServerInput, useNanoMuseStore } from '../state';
 import { useNanoMuseGestures } from '../hooks/useNanoMuseGestures';
@@ -466,6 +467,21 @@ function Page({
   link?: ReactNode;
   onBack?: () => void;
 }) {
+  // The simulator's keyboard takes 320 of the 800px and the OS shrinks the page by that much
+  // (MobileGym's adjustResize). The fields are in the scroll area between the title and the
+  // pill, so with the keyboard up the hero, the text button and the fine print step aside
+  // (data-hide-on-keyboard, hidden by the OS) and the field being typed in is scrolled into the
+  // scroll area's view — the OS's own scroll-on-focus measures against the page's bottom, not
+  // against this scroll area's, so a field hidden under the pill's column stayed hidden.
+  const { height: keyboard } = useKeyboard();
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (keyboard <= 0) return;
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => reveal(scroller.current, document.activeElement));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [keyboard]);
   return (
     <div
       className="h-full w-full flex flex-col bg-app-bg text-app-text pt-10"
@@ -477,10 +493,18 @@ function Page({
           <IcBack size={24} />
         </button>
       )}
-      <div className="flex-1 overflow-y-auto px-6 pb-3">
+      <div
+        ref={scroller}
+        className="flex-1 overflow-y-auto px-6 pb-3"
+        onFocus={(e: FocusEvent<HTMLDivElement>) => {
+          if (keyboard > 0) reveal(scroller.current, e.target);
+        }}
+      >
         <div className={`${onBack ? 'mt-2' : 'mt-8'} mb-5 flex flex-col items-center text-center`}>
-          {hero}
-          <h1 className="mt-5 text-[24px] font-semibold tracking-tight leading-tight">{title}</h1>
+          <div data-hide-on-keyboard className="mb-5">
+            {hero}
+          </div>
+          <h1 className="text-[24px] font-semibold tracking-tight leading-tight">{title}</h1>
           <p className="mt-2 text-[14px] text-app-text-muted leading-snug">{subtitle}</p>
         </div>
         {children}
@@ -488,12 +512,28 @@ function Page({
       </div>
       <div className="px-6 pb-7 pt-3 flex flex-col items-center gap-2">
         {primary}
-        {secondary}
-        {finePrint && <p className="text-[12px] text-app-text-muted text-center leading-snug">{finePrint}</p>}
-        {link}
+        {(secondary || finePrint || link) && (
+          <div data-hide-on-keyboard className="flex flex-col items-center gap-2">
+            {secondary}
+            {finePrint && <p className="text-[12px] text-app-text-muted text-center leading-snug">{finePrint}</p>}
+            {link}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+/** Scroll `container` the least that shows `target` (with its label) whole, 8px clear of the edges. */
+function reveal(container: HTMLElement | null, target: EventTarget | Element | null) {
+  if (!container || !(target instanceof HTMLElement) || !container.contains(target)) return;
+  const shown = target.closest('label') ?? target;
+  const t = shown.getBoundingClientRect();
+  const c = container.getBoundingClientRect();
+  const below = t.bottom - (c.bottom - 8);
+  const above = c.top + 8 - t.top;
+  if (below > 0) container.scrollBy({ top: below, behavior: 'smooth' });
+  else if (above > 0) container.scrollBy({ top: -above, behavior: 'smooth' });
 }
 
 /** The dragon's face at rest on its warm disc — AgentAvatarDisc(mood = IDLE, 104.dp). */
