@@ -29,6 +29,10 @@
 {$SITE_HOST} {
 	import cloudflare_dns
 	encode zstd gzip
+	# nothing here takes more than an attachment; a body beyond this is cut off, not buffered
+	request_body {
+		max_size 64MB
+	}
 
 	header {
 		X-Content-Type-Options nosniff
@@ -75,6 +79,9 @@
 *.{$SESSION_DOMAIN} {
 	import cloudflare_dns
 	header -Server
+	request_body {
+		max_size 64MB
+	}
 	reverse_proxy gateway:8000
 }
 

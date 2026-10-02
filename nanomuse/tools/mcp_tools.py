@@ -173,13 +173,15 @@ class MCPManager:
             return streams[0], streams[1]
         if not cfg.command:
             raise ValueError(f"MCP server '{cfg.name}' needs either `command` or `url`")
-        import os
-
         from mcp import StdioServerParameters
-        from mcp.client.stdio import stdio_client
+        from mcp.client.stdio import get_default_environment, stdio_client
 
+        # the library's default environment (PATH, HOME, …) plus what the config names;
+        # the runtime's own credentials stay out of the server's process
         params = StdioServerParameters(
-            command=cfg.command, args=cfg.args, env={**os.environ, **cfg.env} if cfg.env else None
+            command=cfg.command,
+            args=cfg.args,
+            env={**get_default_environment(), **cfg.env} if cfg.env else None,
         )
         streams = await self._stack.enter_async_context(stdio_client(params))
         return streams[0], streams[1]

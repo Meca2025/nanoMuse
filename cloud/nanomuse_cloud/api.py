@@ -335,7 +335,7 @@ def create_app(
         if not password:
             raise CloudError(400, "password_required", "Enter the password")
         device = str(body.get("device", ""))[:80]
-        key, caller = await asyncio.to_thread(cloud.login_password, ident, password, device)
+        key, caller = await asyncio.to_thread(cloud.login_password, ident, password, device, client_ip(request))
         me = cloud.me(caller)
         return {"api_key": key, "created": False, **me}
 

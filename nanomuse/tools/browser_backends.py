@@ -340,8 +340,9 @@ class PlaywrightBackend(BrowserBackend):
     ) -> dict[str, Any]:
         await self.ensure()
         # the context's request API shares its cookie jar: a signed-in request
+        # redirects come back to the caller, which checks where they point before following
         resp = await self._context.request.fetch(
-            url, method=method.upper(), headers=headers or None, data=body
+            url, method=method.upper(), headers=headers or None, data=body, max_redirects=0
         )
         text = await resp.text()
         return {"status": resp.status, "headers": dict(resp.headers), "body": text, "url": resp.url}

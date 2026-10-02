@@ -31,6 +31,7 @@ from nanomuse.contacts import OWN
 from nanomuse.logger import logger
 from nanomuse.schema import Message
 from nanomuse.search import WebSearchProvider
+from nanomuse.server.events import keep_task
 from nanomuse.tools import (
     Calendar,
     Contacts,
@@ -470,7 +471,7 @@ class Connections:
         self.svc.app.llm = new
         for t in self.svc.threads.values():
             t.agent.llm = new
-        asyncio.get_event_loop().create_task(old.close())
+        keep_task(asyncio.get_running_loop().create_task(old.close()))
         logger.info(
             "model switched to {} @ {}", self.settings.llm.model, self.settings.llm.base_url
         )

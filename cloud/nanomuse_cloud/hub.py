@@ -105,7 +105,8 @@ class Hub:
         self.db: Database = cloud.db
         self.frame_limit = frame_limit
         self.online: dict[str, dict[str, Connection]] = {}
-        self.pending: dict[str, Pending] = {}
+        # keyed (account, call id): ids are the callers' own and only unique within an account
+        self.pending: dict[tuple[str, str], Pending] = {}
 
     # -- presence -------------------------------------------------------------------
 
@@ -296,18 +297,23 @@ class Hub:
 
     async def _fail_pending_for(self, gone: Connection) -> None:
         """A device left: every call it was carrying out is answered `device_offline`; calls it made are dropped."""
-        for call_id, p in list(self.pending.items()):
+        for key, p in list(self.pending.items()):
             if p.account_id != gone.account_id:
                 continue
             if p.target == gone.device_id:
-                del self.pending[call_id]
+                del self.pending[key]
                 caller = self.online.get(p.account_id, {}).get(p.caller)
                 if caller:
                     await caller.send(
-                        {"type": "error", "id": call_id, "code": "device_offline", "message": f"{gone.name} disconnected before answering"}
+                        {
+                            "type": "error",
+                            "id": p.call_id,
+                            "code": "device_offline",
+                            "message": f"{gone.name} disconnected before answering",
+                        }
                     )
             elif p.caller == gone.device_id:
-                del self.pending[call_id]
+                del self.pending[key]
 
     @staticmethod
     async def _close(ws: WebSocket, code: int, reason: str) -> None:
@@ -365,14 +371,14 @@ class Hub:
             await conn.send({"type": "error", "id": call_id, "code": "self_call", "message": "That is this device"})
             return
         await self._sweep()
-        self.pending[call_id] = Pending(call_id=call_id, caller=conn.device_id, target=to, account_id=conn.account_id)
+        self.pending[(conn.account_id, call_id)] = Pending(call_id=call_id, caller=conn.device_id, target=to, account_id=conn.account_id)
         args = frame.get("args") if isinstance(frame.get("args"), dict) else {}
         await target.send({"type": "call", "id": call_id, "from": conn.brief(), "action": action, "args": args})
 
     async def _answer(self, conn: Connection, frame: dict) -> None:
         call_id = str(frame.get("id") or "")
-        p = self.pending.get(call_id)
-        if p is None or p.account_id != conn.account_id or p.target != conn.device_id:
+        p = self.pending.get((conn.account_id, call_id))
+        if p is None or p.target != conn.device_id:
             # Unknown or not this device's call: nothing to deliver to. Tell the sender once.
             await conn.send(
                 {"type": "error", "id": call_id, "code": "unknown_call", "message": "No call with that id is waiting on this device"}
@@ -380,7 +386,7 @@ class Hub:
             return
         caller = self.online.get(p.account_id, {}).get(p.caller)
         if frame.get("type") == "result":
-            del self.pending[call_id]
+            del self.pending[(conn.account_id, call_id)]
         if caller is None:
             return
         out = {k: v for k, v in frame.items() if k in ("type", "id", "ok", "body", "error", "message")}
@@ -390,12 +396,12 @@ class Hub:
     async def _sweep(self) -> None:
         """Calls nobody answered in time are dropped, and the caller hears so instead of waiting for its own clock."""
         cutoff = now() - CALL_TTL_S
-        for call_id, p in list(self.pending.items()):
+        for key, p in list(self.pending.items()):
             if p.started < cutoff:
-                del self.pending[call_id]
+                del self.pending[key]
                 caller = self.online.get(p.account_id, {}).get(p.caller)
                 if caller:
-                    await caller.send({"type": "error", "id": call_id, "code": "timeout", "message": "the device did not answer in time"})
+                    await caller.send({"type": "error", "id": p.call_id, "code": "timeout", "message": "the device did not answer in time"})
 
 
 def _loads(raw: str):

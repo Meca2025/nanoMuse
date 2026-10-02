@@ -1722,3 +1722,29 @@ async def test_members_may_name_any_model_of_the_right_kind():
     r = await client.post("/v1/chat/completions", json=body, headers=mh)
     assert r.status_code == 404
     assert (await client.get("/v1/me", headers=mh)).json()["account"]["any_model"] is False
+
+
+async def test_wrong_passwords_from_one_network_are_capped_across_accounts():
+    """A list of numbers tried once each never trips the per-account lockout; the per-network
+    ceiling does. Codes still work from there, and another network is not affected."""
+    app, client, sender, up, cloud = make_stack(login_fail_per_ip_hour=3)
+    for who in ("13800138000", "13900001111"):
+        data = await sign_up(client, sender, identifier=who, device="phone")
+        auth = {"Authorization": f"Bearer {data['api_key']}"}
+        assert (await client.post("/v1/auth/password", headers=auth, json={"password": "correct horse"})).status_code == 204
+    bad = {"X-Forwarded-For": "203.0.113.9"}
+    for who in ("13800138000", "13900001111", "13700000000"):
+        r = await client.post("/v1/auth/login", json={"identifier": who, "password": "nope", "device": "d"}, headers=bad)
+        assert r.status_code == 401 and r.json()["error"]["code"] == "bad_credentials"
+    # the fourth try from that address is refused before the password is even looked at
+    r = await client.post("/v1/auth/login", json={"identifier": "13800138000", "password": "correct horse", "device": "d"}, headers=bad)
+    assert r.status_code == 429 and r.json()["error"]["code"] == "locked"
+    assert "network" in r.json()["error"]["message"]
+    # a code from the same address still works, and the right password from elsewhere does too
+    assert (await client.post("/v1/auth/code", json={"identifier": "13800138000"}, headers=bad)).status_code == 204
+    r = await client.post(
+        "/v1/auth/login",
+        json={"identifier": "13800138000", "password": "correct horse", "device": "d"},
+        headers={"X-Forwarded-For": "198.51.100.5"},
+    )
+    assert r.status_code == 200

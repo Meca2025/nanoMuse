@@ -137,6 +137,16 @@ def test_python_reach_decides_the_risk(tmp_path: Path):
     proc = py.assess({"code": "import subprocess\nsubprocess.run(['ls'])"})
     assert proc.risk == RiskLevel.SENSITIVE and proc.egress
     assert set(code_reach("import shutil\nshutil.rmtree('x')")) == {"deletion"}
+    # modules fetched by name and attributes looked up by string are named on the card
+    dynamic = py.assess({"code": "m = __import__('sub' + 'process')\nm.run(['ls'])"})
+    assert (
+        dynamic.risk == RiskLevel.SENSITIVE
+        and "loads code or modules by name" in dynamic.warnings[0]
+    )
+    assert "dynamic code" in code_reach("import importlib\nimportlib.import_module('socket')")
+    assert "dynamic code" in code_reach("getattr(os, 'sys' + 'tem')('id')")
+    assert "dynamic code" in code_reach("exec(open('x.py').read())")
+    assert "dynamic code" not in code_reach("x = {'a': 1}\nprint(x.get('a'))")
     # a workspace under /tmp or /home: absolute paths inside it are not "outside"
     inside = py.assess({"code": f"open('{tmp_path.as_posix()}/list.html', 'w').write('<p>')"})
     assert inside.risk == RiskLevel.MODERATE and not inside.warnings

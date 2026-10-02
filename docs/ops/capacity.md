@@ -38,7 +38,8 @@ against 79 k completion tokens on one day — so input price is what matters, wh
 the operator tested everything, under ¥10 a day since. Budget them separately.
 
 **A demo session** (browser phone): capped at 80 LLM requests / 300 k tokens / 12 pictures /
-4 clips in 30 minutes, 6 sessions per account per day. The one full session observed used
+4 clips in 30 minutes, 6 sessions per account per day (production's `SESSION_LLM_REQUESTS=80`;
+the gateway's shipped default is 60). The one full session observed used
 19 requests and 236 k tokens ≈ **¥0.5**; a session that hits every cap costs about
 ¥0.8 (chat) + ¥2.2 (pictures) + ¥2 (clips) ≈ **¥5**. A visitor who tries once or twice costs
 about ¥1; the worst a single account can do in a day is 6 × ¥5 = ¥30.

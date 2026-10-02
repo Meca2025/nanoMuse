@@ -302,6 +302,9 @@ class Settings:
     password_min_len: int = field(default_factory=lambda: _int("PASSWORD_MIN_LEN", 8))
     password_max_attempts: int = field(default_factory=lambda: _int("PASSWORD_MAX_ATTEMPTS", 5))
     lockout_s: int = field(default_factory=lambda: _int("LOCKOUT_S", 900))
+    # Wrong passwords from one network address across all accounts per hour; the
+    # per-account lockout above does not stop a list of numbers tried once each.
+    login_fail_per_ip_hour: int = field(default_factory=lambda: _int("LOGIN_FAIL_PER_IP_HOUR", 30))
     # How long after a code sign-in a password may be set without the old one
     # (the "forgot my password" path: sign in with a code, set a new one).
     password_reset_window_s: int = field(default_factory=lambda: _int("PASSWORD_RESET_WINDOW_S", 1800))

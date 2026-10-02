@@ -411,3 +411,45 @@ def test_profiles():
     assert custom.name == "custom" and custom.width == 320 and custom.height == 4320
     assert custom.user_agent == mobile.user_agent  # kept from the base
     assert profile_named("nonsense").name == "desktop"
+
+
+async def test_fetch_checks_every_redirect_hop(tmp_path: Path, monkeypatch):
+    """A public page may answer with a redirect into the LAN; each hop gets the same look."""
+    backend = FakeBackend()
+    tool, _ = tool_with(backend, tmp_path)
+    answers = {
+        "https://shop.example/go": {
+            "status": 302,
+            "headers": {"Location": "/landing"},
+            "body": "",
+            "url": "https://shop.example/go",
+        },
+        "https://shop.example/landing": {
+            "status": 200,
+            "headers": {"content-type": "text/html"},
+            "body": "<b>landed</b>",
+            "url": "https://shop.example/landing",
+        },
+        "https://shop.example/inside": {
+            "status": 307,
+            "headers": {"location": "http://169.254.169.254/latest/meta-data/"},
+            "body": "",
+            "url": "https://shop.example/inside",
+        },
+    }
+
+    async def fetch(url, method="GET", headers=None, body=None):
+        backend.calls.append(("fetch", (url, method, body)))
+        return answers[url]
+
+    monkeypatch.setattr(backend, "fetch", fetch)
+    monkeypatch.setattr(
+        "nanomuse.tools.browser._is_private_host", lambda host: host.startswith("169.254.")
+    )
+    res = await tool.execute(action="fetch", url="https://shop.example/go")
+    assert (
+        res.ok and "HTTP 200 https://shop.example/landing" in res.output and "landed" in res.output
+    )
+    res = await tool.execute(action="fetch", url="https://shop.example/inside")
+    assert not res.ok and "redirect to a private or local address" in (res.error or "")
+    assert not any(c[1][0].startswith("http://169.254") for c in backend.calls if c[0] == "fetch")

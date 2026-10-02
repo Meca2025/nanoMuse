@@ -250,6 +250,7 @@ class Cloud:
         self.db = db or Database(settings.database)
         self.sender = sender or make_sender(settings)
         self.crypto = IdentifierCrypto(settings.identifier_key)
+        self._login_failures: dict[str, list[int]] = {}
         if settings.dev_mode:
             log.warning("CLOUD_SECRET is not set: development mode, identifiers hashed with a fixed key")
         if settings.unlimited:
@@ -340,7 +341,7 @@ class Cloud:
         if attempts > self.s.code_max_attempts:
             self.db.consume_code(int(row["id"]))
             raise CloudError(400, "code_expired", "Too many tries; ask for a new code")
-        if not secrets.compare_digest(row["code_hash"], _sha256(code.strip())):
+        if not secrets.compare_digest(str(row["code_hash"]).encode(), _sha256(code.strip()).encode()):
             raise CloudError(400, "code_wrong", "That code is not right")
         self.db.consume_code(int(row["id"]))
         return self.sign_in(ident, device, "code", invite)
@@ -490,8 +491,10 @@ class Cloud:
         self.db.set_password(caller.account_id, "")
         self.db.add_event(caller.account_id, "password.cleared")
 
-    def login_password(self, ident: Identifier, password: str, device: str) -> tuple[str, Caller]:
+    def login_password(self, ident: Identifier, password: str, device: str, ip: str = "") -> tuple[str, Caller]:
         """Sign in on a new device with the password instead of waiting for a code."""
+        if ip and self._login_failures_from(ip) >= self.s.login_fail_per_ip_hour > 0:
+            raise CloudError(429, "locked", "Too many wrong passwords from this network; wait a while or sign in with a code")
         if not self.allowed(ident):
             raise CloudError(403, "not_invited", "This relay is private; that address is not on its list")
         account = self.db.account_by_hash(ident.hash(self.s.hmac_key))
@@ -499,6 +502,7 @@ class Cloud:
             # Same answer as a wrong password: the sign-in form must not tell
             # whether a number has an account.
             hash_password("x")  # keep the timing alike
+            self._note_login_failure(ip)
             self.db.add_event("", "sign_in.failed", ident.channel)
             raise CloudError(401, "bad_credentials", "That address and password do not match")
         if account["disabled"]:
@@ -510,6 +514,7 @@ class Cloud:
             raise CloudError(400, "no_password", "This account has no password yet; sign in with a code and set one under Account")
         if not check_password(password, account["password_hash"]):
             left = self.db.login_failed(account["id"], self.s.password_max_attempts, self.s.lockout_s)
+            self._note_login_failure(ip)
             self.db.add_event(account["id"], "sign_in.failed", device)
             if left == 0:
                 raise CloudError(429, "locked", "Too many wrong passwords; wait a while or sign in with a code")
@@ -518,6 +523,26 @@ class Cloud:
         key, caller = self._issue_key(account["id"], device, via="password")
         self.db.add_event(account["id"], "sign_in.password", device)
         return key, caller
+
+    def _login_failures_from(self, ip: str) -> int:
+        """Wrong passwords this network address has sent in the last hour."""
+        cutoff = now() - 3600
+        stamps = [t for t in self._login_failures.get(ip, ()) if t >= cutoff]
+        if stamps:
+            self._login_failures[ip] = stamps
+        else:
+            self._login_failures.pop(ip, None)
+        return len(stamps)
+
+    def _note_login_failure(self, ip: str) -> None:
+        if not ip:
+            return
+        if len(self._login_failures) >= 10_000 and ip not in self._login_failures:
+            # a flood of addresses: forget the oldest rather than grow without bound
+            cutoff = now() - 3600
+            for stale in [k for k, v in self._login_failures.items() if not v or v[-1] < cutoff]:
+                del self._login_failures[stale]
+        self._login_failures.setdefault(ip, []).append(now())
 
     # -- keys -------------------------------------------------------------------------
 

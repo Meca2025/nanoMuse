@@ -29,6 +29,7 @@ from typing import Any
 
 from nanomuse import __version__
 from nanomuse.computer.screen import take_screenshot
+from nanomuse.tools.shell import scrubbed_env
 
 OUTPUT_LIMIT = 200_000
 FILE_LIMIT = 8 * 1024 * 1024  # base64 inside one hub frame
@@ -105,6 +106,7 @@ def shell(command: str, cwd: str | None = None, timeout: float = 120) -> dict[st
             command,
             shell=True,
             cwd=str(expand(cwd)) if cwd else None,
+            env=scrubbed_env(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

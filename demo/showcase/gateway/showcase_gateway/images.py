@@ -141,17 +141,19 @@ class Pictures:
             "authorization": f"Bearer {self.s.image_api_key}",
             "content-type": "application/json",
         }
-        async with self.gate:
-            for pause in (*PAUSES, None):
+        for pause in (*PAUSES, None):
+            # the gate is held for the request only: a pause before a retry must not keep
+            # another visitor's picture waiting
+            async with self.gate:
                 try:
                     r = await self.http.post(url, headers=headers, content=json.dumps(payload))
                 except httpx.HTTPError as exc:
                     log.warning("image provider: %s", exc)
                     raise Refused(502, "upstream", "The image provider did not answer.") from exc
-                if r.status_code != 429 and r.status_code < 500 or pause is None:
-                    break
-                log.info("image provider HTTP %s; again in %.0fs", r.status_code, pause)
-                await asyncio.sleep(pause)
+            if r.status_code != 429 and r.status_code < 500 or pause is None:
+                break
+            log.info("image provider HTTP %s; again in %.0fs", r.status_code, pause)
+            await asyncio.sleep(pause)
         if r.status_code == 429:
             raise Refused(429, "provider_busy", "The image provider is busy; try again shortly.")
         if r.status_code >= 400:
