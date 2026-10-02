@@ -29,7 +29,7 @@ _TOO_LONG = (
 _RELAY: dict[str, tuple[str, str]] = {
     "allowance_exhausted": (
         "allowance",
-        "The free allowance is used up. Invite a friend (+¥5), join the co-creation programme (+¥10), or add your own model key under Connections — your sign-in and your devices keep working either way.",
+        "The free allowance is used up. Invite a friend (+¥5 for each of you) or add your own model key under Connections — your sign-in and your devices keep working either way.",
     ),
     "daily_cap": (
         "allowance",
@@ -91,12 +91,14 @@ def _relay_code(exc: BaseException) -> str | None:
 
 
 # What the relay says beside the words when the allowance is spent: what is left, the
-# invite link, whether the co-creation bonus is still to be had, the own-key guide.
+# invite link and bonus (the same for both sides since relay 0.9), the own-key guide.
+# The 0.5 co-creation fields ride along for the apps of the time (always false / 0 now).
 _ALLOWANCE_FIELDS = (
     "left",
     "grant",
     "invite_url",
     "invite_bonus_cny",
+    "invitee_bonus_cny",
     "contribute_bonus_available",
     "contribute_bonus_cny",
     "own_key_docs",
@@ -159,6 +161,6 @@ def failure_notice(exc: BaseException, thread_id: str) -> dict[str, Any]:
     }
     allowance = allowance_detail(exc)
     if allowance is not None:
-        # the apps draw the three ways on (invite / co-creation / own key) from this
+        # the apps draw the ways on (invite a friend / own key) from this
         notice["allowance"] = allowance
     return notice

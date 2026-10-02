@@ -1032,7 +1032,8 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
 
     @app.post("/api/cloud/contribute", dependencies=dep)
     async def cloud_contribute(body: CloudContributeBody) -> dict[str, Any]:
-        """Opt in to (or out of) contributing chat turns to the community's model."""
+        """Data controls: turn "Help improve nanoMuse's AI models" on or off for the account
+        (the relay keeps the text of chat turns only while it is on)."""
         try:
             return await svc.hub.set_contribute(body.on)
         except CloudError as exc:
