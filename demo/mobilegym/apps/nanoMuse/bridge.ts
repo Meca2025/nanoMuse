@@ -20,6 +20,13 @@ import { stage } from './stage';
  * `device_result`. **Stop** on the capsule fails the request under way, and every one after
  * it until the next task, with the `nanomuse:stop` marker the server reads as "the person
  * stopped it on the phone" — the Android app's contract (docs/gui.md).
+ *
+ * When a task is over — its `end`, or Stop — the phone comes back to nanoMuse, where the
+ * agent's report is, the way the Android app brings itself to the front after its hands are
+ * done. The capsule does not depend on the `end` arriving: the server's `hello` carries the
+ * task under way (`state.phone.task`), so a socket that reconnects sets the capsule from
+ * that — a task still on gets its capsule back, a task that ended meanwhile takes it down —
+ * and a socket that closes for good takes it down at once.
  */
 
 type LinkState = 'off' | 'connecting' | 'online' | 'unauthorized' | 'unreachable';
@@ -53,17 +60,38 @@ interface TimelineEvent {
   tool?: string;
 }
 
+/** The server's word on the phone in its `hello`: `task` is the one under way, `null` when none
+ * (an older server has no `task` key at all — then it is not known). */
+interface PhoneState {
+  task?: { goal?: string; since?: number } | null;
+}
+
 type WsMessage =
-  | { kind: 'hello'; state: { pending_approvals?: TimelineEvent[] } }
+  | { kind: 'hello'; state: { pending_approvals?: TimelineEvent[]; phone?: PhoneState } }
   | { kind: 'event' | 'update'; event: TimelineEvent }
   | { kind: 'device_request'; id: string; op: string; params?: Record<string, unknown> }
   | { kind: string };
 
 const RECONNECT_MIN_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
+/** A socket lost under a task: this long for it to come back before the capsule comes down. */
+const LINK_LOST_MS = 15000;
+/** The tick (or the cross) is seen this long before the phone comes back to nanoMuse. */
+const COME_BACK_MS = 1300;
 
 function threadRoute(thread: string): string {
   return `/?thread=${encodeURIComponent(thread)}`;
+}
+
+/** MobileGym's runtime API, as far as this module needs it (the simulator owns its types). */
+interface SimOs {
+  openApp?: (id: string, path?: string) => void;
+  launchApp?: (id: string) => void;
+  getState?: () => { activeAppId?: string | null } | null;
+}
+
+function simOs(): SimOs | undefined {
+  return (window as unknown as { __OS__?: SimOs }).__OS__;
 }
 
 /** The agent's name as the user set it; learnt from the server's hello and profile updates. */
@@ -126,10 +154,22 @@ class MuseBridge {
   private stopWaiters: Array<(err: Error) => void> = [];
   /** the chat the last approval or question came from — where Open on the capsule goes */
   private lastThread = 'main';
+  private lostTimer: ReturnType<typeof setTimeout> | null = null;
+  private backTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     stage.onStop = () => this.stop();
     stage.onOpen = () => this.openApp(this.lastThread);
+    stage.onGone = () => this.comeBack();
+  }
+
+  /** The task is over without a word from the server: the capsule comes down, and if the
+   * hands went anywhere, the phone comes back to nanoMuse — the report is there. */
+  private gone(): void {
+    if (!stage.active) return;
+    const wentSomewhere = stage.steps > 0;
+    stage.reset();
+    if (wentSomewhere) this.comeBack();
   }
 
   /** Stop on the capsule: fail what is under way, and what comes after, until a new task. */
@@ -139,18 +179,40 @@ class MuseBridge {
     const waiters = this.stopWaiters;
     this.stopWaiters = [];
     for (const w of waiters) w(err);
+    const wasOn = stage.active;
     stage.stopped();
+    // as on Android: the hands are off the phone, the chat (which asks what to do next) comes up
+    if (wasOn) this.comeBack();
   }
 
   /** Bring nanoMuse to the front, on a chat. */
   private openApp(thread: string): void {
-    const os = (window as unknown as { __OS__?: { openApp?: (id: string, path?: string) => void; launchApp?: (id: string) => void } }).__OS__;
     try {
+      const os = simOs();
       if (os?.openApp) os.openApp(manifest.id, threadRoute(thread));
       else os?.launchApp?.(manifest.id);
     } catch {
       // the launcher is not up yet
     }
+  }
+
+  /**
+   * After the capsule's last moment, nanoMuse to the front as it was — the chat the task was
+   * given in, with the agent's report arriving — unless it is there already. What the Android
+   * app's `HandsCapsule.bringAppToFront` does once its hands are done.
+   */
+  private comeBack(): void {
+    if (this.backTimer) clearTimeout(this.backTimer);
+    this.backTimer = setTimeout(() => {
+      this.backTimer = null;
+      try {
+        const os = simOs();
+        if (os?.getState?.()?.activeAppId === manifest.id) return;
+        os?.launchApp?.(manifest.id);
+      } catch {
+        // the launcher is not up
+      }
+    }, COME_BACK_MS);
   }
 
   attach(hooks: Hooks): void {
@@ -179,6 +241,8 @@ class MuseBridge {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    // the settings changed under a task: whatever was on, this phone is no longer in it
+    this.linkLost(true);
     if (this.ws) {
       const ws = this.ws;
       this.ws = null;
@@ -232,9 +296,11 @@ class MuseBridge {
         // the server rejected the token (4401), or the showcase gateway says this session is
         // gone (4404): no point retrying until the settings change
         this.hooks.setLink('unauthorized');
+        this.linkLost(true);
         return;
       }
       this.hooks.setLink('unreachable');
+      this.linkLost(false);
       this.reconnectTimer = setTimeout(() => {
         this.reconnectTimer = null;
         if (this.key === settingsKey) this.open();
@@ -272,10 +338,54 @@ class MuseBridge {
       this.stopped = false;
       stage.begin(text);
     } else if (event === 'end') {
+      // over: the tick, then back to nanoMuse — if the hands went anywhere (a task that
+      // ended before its first action left the phone where it was)
+      const wentSomewhere = stage.active && stage.steps > 0;
       stage.end();
+      if (wentSomewhere) this.comeBack();
     } else if (event === 'notice') {
       stage.notice(text);
     }
+  }
+
+  /**
+   * The server's `hello` says whether a task is on. The capsule follows that rather than the
+   * `end` alone: a socket that reconnects in the middle of a task gets its capsule back, one
+   * that reconnects after the task ended (its `end` lost with the old socket) takes it down.
+   * An older server says nothing (`task` missing): then nothing is assumed.
+   */
+  private syncTask(phone: PhoneState | undefined): void {
+    if (this.lostTimer) {
+      clearTimeout(this.lostTimer);
+      this.lostTimer = null;
+    }
+    if (!phone || phone.task === undefined) return;
+    if (phone.task) {
+      if (!stage.active && this.hooks?.get().gui) {
+        this.stopped = false;
+        stage.begin(String(phone.task.goal ?? ''));
+      }
+    } else {
+      this.gone();
+    }
+  }
+
+  /**
+   * The socket closed under a task. For good (the token refused, the session gone, the
+   * settings changed): the capsule comes down now. Otherwise the reconnect's `hello` sets it
+   * right — and if none comes within LINK_LOST_MS, it comes down anyway.
+   */
+  private linkLost(forGood: boolean): void {
+    if (!stage.active) return;
+    if (forGood) {
+      this.gone();
+      return;
+    }
+    if (this.lostTimer) return; // the clock runs from the first loss, not the last retry
+    this.lostTimer = setTimeout(() => {
+      this.lostTimer = null;
+      if (!this.ws) this.gone();
+    }, LINK_LOST_MS);
   }
 
   private async serve(msg: { id: string; op: string; params?: Record<string, unknown> }): Promise<void> {
@@ -320,6 +430,7 @@ class MuseBridge {
       this.announce();
       const { serverUrl, token } = this.hooks.get();
       setIdentity(serverUrl, token, (msg as { state: { profile?: { name?: string; avatar?: string } } }).state.profile);
+      this.syncTask((msg as { state: { phone?: PhoneState } }).state.phone);
       if (!this.hooks.get().notify) return;
       const pending = (msg as { state: { pending_approvals?: TimelineEvent[] } }).state.pending_approvals ?? [];
       for (const ev of pending) this.notifyFor(ev);

@@ -24,6 +24,12 @@ import { t } from './res/strings';
  * (so the screenshot leaves it out: the model never sees any of it and cannot tap its own Stop
  * button). Only the capsule's buttons take a touch; the rest lets touches — and the injected
  * gestures — through. A capsule in the way of a tap moves to the bottom for that step.
+ *
+ * The capsule follows the server's `task` events (`begin` / `end` / `notice`, bridge.ts). An
+ * `end` can fail to arrive — the socket dropped just then, the server gave up on the task — so
+ * it never relies on one alone: the bridge sets it from the server's word on reconnect
+ * (`reset` / `begin`), and a capsule left "working" with nothing from the server for
+ * `STALE_MS` comes down by itself rather than stay on its last step for good.
  */
 
 const PHONE_WIDTH = 360;
@@ -34,6 +40,12 @@ const ACCENT = '#0A66E4';
 const CYAN = '#06B6D4';
 const RING_MS = 1300;
 const TRAIL_MS = 720;
+/**
+ * A task that is on has the server asking for the screen or an action every step; "working"
+ * with nothing at all for this long means the task is gone and its end never got here. Long
+ * enough for the slowest model turn (one step is seconds, a stuck one a minute or two).
+ */
+const STALE_MS = 180_000;
 const FONT = '600 11.5px -apple-system, "PingFang SC", "Noto Sans CJK SC", "Segoe UI", system-ui, sans-serif';
 
 export type PillState = 'working' | 'turn' | 'approval' | 'notice' | 'done' | 'stopped';
@@ -167,6 +179,7 @@ export class Stage {
   private pillTimer: ReturnType<typeof setTimeout> | null = null;
   private keysTimer: ReturnType<typeof setTimeout> | null = null;
   private lowTimer: ReturnType<typeof setTimeout> | null = null;
+  private staleTimer: ReturnType<typeof setTimeout> | null = null;
   private continueWaiters: Array<() => void> = [];
 
   /** Whether a task is on (between `begin` and `end`/`stopped`). */
@@ -180,6 +193,8 @@ export class Stage {
 
   onStop: (() => void) | null = null;
   onOpen: (() => void) | null = null;
+  /** The capsule came down by itself (nothing from the server for STALE_MS); `steps` says how far it got. */
+  onGone: (() => void) | null = null;
 
   // ------------------------------------------------------------------ building
   private ensure(): HTMLDivElement {
@@ -299,6 +314,22 @@ export class Stage {
     this.openBtn.style.display = state === 'approval' || state === 'notice' ? '' : 'none';
     this.pill.classList.add('on');
     this.frame.classList.add('on');
+    this.watch();
+  }
+
+  /** "Working" with nothing from the server for STALE_MS: the task is gone, and so is the capsule. */
+  private watch(): void {
+    if (this.staleTimer) clearTimeout(this.staleTimer);
+    this.staleTimer = null;
+    if (!this.active || this.state !== 'working') return;
+    this.staleTimer = setTimeout(() => {
+      this.staleTimer = null;
+      if (!this.active || this.state !== 'working') return;
+      console.info('[nanoMuse] nothing from the server for a while: the task is taken as over');
+      const went = this.steps > 0;
+      this.reset();
+      if (went) this.onGone?.();
+    }, STALE_MS);
   }
 
   /** A task started: the capsule slides in. */
@@ -321,7 +352,10 @@ export class Stage {
     void this.scan.offsetWidth;
     this.scan.classList.add('go');
     setTimeout(() => this.frame.classList.remove('look'), 380);
-    if (this.active && this.state === 'working') this.setDetail(t().hands_looking);
+    if (this.active && this.state === 'working') {
+      this.setDetail(t().hands_looking);
+      this.watch(); // the server is there: the task is on
+    }
   }
 
   /** One action: the words in the capsule, the mark on the screen. Phone coordinates. */
@@ -400,13 +434,11 @@ export class Stage {
     this.show('notice', t().hands_question(this.name), text);
   }
 
-  /** The task ended: a green tick, then gone. */
+  /** The task ended: a green tick, then gone. Nothing when it already ended here (Stop). */
   end(): void {
-    if (!this.layer?.isConnected || !this.pill.classList.contains('on')) {
-      this.active = false;
-      return;
-    }
+    if (!this.active) return;
     this.active = false;
+    if (!this.layer?.isConnected || !this.pill.classList.contains('on')) return;
     this.show('done', this.name, t().hands_done);
     this.hideAfter(1100);
   }
@@ -417,6 +449,24 @@ export class Stage {
     this.continueWaiters = [];
     this.show('stopped', this.name, t().hands_stopped);
     this.hideAfter(1100);
+  }
+
+  /**
+   * The task is gone without a word — the link said so, or the server's state on reconnect
+   * did, or nothing came for too long: the capsule comes down quietly, no tick and no cross.
+   */
+  reset(): void {
+    this.active = false;
+    this.continueWaiters = [];
+    if (this.pillTimer) {
+      clearTimeout(this.pillTimer);
+      this.pillTimer = null;
+    }
+    if (this.staleTimer) {
+      clearTimeout(this.staleTimer);
+      this.staleTimer = null;
+    }
+    this.hide();
   }
 
   private hideAfter(ms: number): void {

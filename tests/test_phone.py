@@ -166,6 +166,9 @@ class CapsulePhone(FakePhone):
         super().__init__(link, screens)
         self.tasks: list[dict[str, Any]] = []
         self.stop_after = stop_after  # the n-th action comes back "nanomuse:stop"
+        self.hang = False  # a phone that never answers a screen or an action
+        self.hung = 0  # how many requests it swallowed that way
+        self.hold_next_task = False  # the next task event is recorded but never answered
         self.device = link.attach(
             "conn-1",
             {"name": "Pixel", "platform": "android", "gui": True, "capsule": True},
@@ -175,9 +178,15 @@ class CapsulePhone(FakePhone):
     async def send(self, msg: dict[str, Any]) -> None:
         if msg["op"] == "task":
             self.tasks.append(msg["params"])
+            if self.hold_next_task:
+                self.hold_next_task = False
+                return
             asyncio.get_running_loop().call_soon(
                 self.link.resolve, {"kind": "device_result", "id": msg["id"], "ok": True}
             )
+            return
+        if self.hang:
+            self.hung += 1
             return
         if msg["op"] == "act" and self.stop_after and len(self.acts) + 1 >= self.stop_after:
             self.acts.append(msg["params"])
@@ -602,6 +611,82 @@ async def test_operator_tells_the_capsule_when_it_needs_the_user(settings: Setti
     assert phone.tasks[1]["text"] == "请你自己输入支付密码"
 
 
+async def test_operator_tells_the_capsule_the_task_is_over_whatever_happened(settings: Settings):
+    """A model that fails or a chat run that is cancelled must not leave the capsule on the
+    phone at its last step: the task's end reaches the device whichever way it ended."""
+    link = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
+    phone = CapsulePhone(link, [HOME_SCREEN])
+
+    def boom(_messages: list[Any]) -> LLMResponse:
+        raise RuntimeError("the model is down")
+
+    operator, _ = make_operator(settings, link, MockLLM([boom]), AutoApproveUI(), max_steps=3)
+    with pytest.raises(RuntimeError):
+        await operator.run("open wechat")
+    assert [t["event"] for t in phone.tasks] == ["begin", "end"]
+    assert link.task is None
+
+    # the chat run is cancelled while the phone is being asked for its screen
+    phone.tasks.clear()
+    phone.hang = True
+    running = asyncio.ensure_future(operator.run("open wechat"))
+    for _ in range(100):  # until the operator is waiting on the phone (no timed sleep: Windows)
+        if phone.hung:
+            break
+        await asyncio.sleep(0)
+    assert phone.hung == 1
+    assert link.task is not None and link.task["goal"] == "open wechat"
+    assert link.status()["task"] == link.task
+    running.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+    assert [t["event"] for t in phone.tasks] == ["begin", "end"]
+    assert link.task is None
+
+    # and a cancel that lands while the phone has "begin" and has not answered it yet (the
+    # phone holds the answer: one that arrives in the same tick as the cancel would, on
+    # Python 3.11's wait_for, swallow the cancel — a quirk of that version, not the test's)
+    phone.tasks.clear()
+    phone.hang = False
+    phone.hold_next_task = True
+    running = asyncio.ensure_future(operator.run("open wechat"))
+    for _ in range(100):
+        if phone.tasks:
+            break
+        await asyncio.sleep(0)
+    assert [t["event"] for t in phone.tasks] == ["begin"]
+    running.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+    assert [t["event"] for t in phone.tasks] == ["begin", "end"]
+    assert link.task is None
+
+
+async def test_link_remembers_the_task_for_a_phone_that_comes_back():
+    """The task under way is in the link's status whether or not a capsule heard of it, so a
+    phone that reconnects sets its capsule from the server's word; and a socket that fails
+    under a request is a DeviceError like any other, not a crash of the task."""
+    link = PhoneLink()
+    assert link.status()["task"] is None
+    await link.task_event("begin", "订一张去杭州的票")  # no phone connected at all
+    assert link.status()["task"] is not None
+    assert link.status()["task"]["goal"] == "订一张去杭州的票"
+    await link.task_event("end")
+    assert link.task is None
+
+    async def broken(_msg: dict[str, Any]) -> None:
+        raise RuntimeError("socket closed")
+
+    link.attach("c", {"name": "P", "platform": "android", "gui": True, "capsule": True}, broken)
+    with pytest.raises(DeviceError) as info:
+        await link.screen()
+    assert "connection failed" in str(info.value)
+    await link.task_event("begin", "x")  # never raises, and the task is still remembered
+    assert link.task is not None
+    await link.task_event("notice", "a question")
+    assert link.task is None
+
+
 async def test_link_raises_device_stopped_on_the_marker():
     link = PhoneLink()
     sent: list[dict[str, Any]] = []
@@ -771,6 +856,7 @@ def test_gui_switch_and_device_handshake(settings: Settings):
             "connected": False,
             "device": None,
             "last_screen": None,
+            "task": None,
             "gui_enabled": False,
         }
 

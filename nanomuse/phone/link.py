@@ -20,6 +20,11 @@ button). A device whose user pressed Stop answers the next request with an error
 contains ``nanomuse:stop``; that becomes :class:`DeviceStopped` here and ends the task. The
 device is a single user's own phone: when more than one is connected, the most recent one
 with the capability asked for is *the* phone.
+
+The task under way is part of :meth:`PhoneLink.status` (``"task": {"goal", "since"}`` or
+``null``), which the server puts in every socket's ``hello``: a phone whose socket dropped
+during a task — or just as it ended, so that the ``end`` never reached it — sets its capsule
+from that when it reconnects, instead of keeping the last step on the screen.
 """
 
 from __future__ import annotations
@@ -105,6 +110,10 @@ class PhoneLink:
         # app's phone card.
         self.last_screen: Screen | None = None
         self.on_change: Callable[[], None] | None = None
+        # The phone task under way (``{"goal", "since"}``), from the capsule's ``begin`` to its
+        # ``end`` / ``notice`` — in the device's ``hello`` state, so a phone that reconnects
+        # in the middle of a task (or after its end was lost) sets its capsule right.
+        self.task: dict[str, Any] | None = None
 
     # ------------------------------------------------------------------ devices
     def attach(self, conn_id: str, info: dict[str, Any], send: Sender) -> Device:
@@ -186,6 +195,7 @@ class PhoneLink:
             "connected": d is not None,
             "device": d.to_dict() if d else None,
             "last_screen": self.last_screen.to_dict() if self.last_screen else None,
+            "task": self.task,
         }
 
     # ------------------------------------------------------------------ requests
@@ -206,9 +216,12 @@ class PhoneLink:
         fut: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
         self._pending[req_id] = fut
         try:
-            await device.send(
-                {"kind": "device_request", "id": req_id, "op": op, "params": params or {}}
-            )
+            try:
+                await device.send(
+                    {"kind": "device_request", "id": req_id, "op": op, "params": params or {}}
+                )
+            except Exception as exc:  # noqa: BLE001 - a socket that closed under us
+                raise DeviceError(f"the phone's connection failed: {exc}") from exc
             return await asyncio.wait_for(fut, timeout or self.timeout_s)
         except TimeoutError:
             raise DeviceError(
@@ -245,7 +258,15 @@ class PhoneLink:
 
     async def task_event(self, event: str, text: str = "") -> None:
         """Tell the phone a task begins or ends, or show the user a notice on its screen —
-        best effort, only for a device that shows a capsule; never raises."""
+        best effort, only for a device that shows a capsule; never raises.
+
+        The task is remembered here whether or not the phone heard: a phone that comes back
+        (its socket dropped in the middle of the task, or just as it ended) reads
+        ``status()["task"]`` in its ``hello`` and sets its capsule from that."""
+        if event == "begin":
+            self.task = {"goal": text[:200], "since": time.time()}
+        elif event in ("end", "notice"):
+            self.task = None
         device = self.device
         if device is None or not device.capsule:
             return
@@ -255,6 +276,8 @@ class PhoneLink:
             )
         except DeviceError as exc:
             logger.debug("phone task event {} not delivered: {}", event, exc)
+        except Exception as exc:  # noqa: BLE001 - the capsule is a courtesy, never the task
+            logger.debug("phone task event {} failed: {}", event, exc)
 
     async def browser(
         self, op: str, params: dict[str, Any] | None = None, timeout: float | None = None
