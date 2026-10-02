@@ -5,7 +5,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.1.26";
+  const VERSION = "0.1.27";
 
   // ── i18n ────────────────────────────────────────────────────────
   const zh = (navigator.language || "").toLowerCase().startsWith("zh");
