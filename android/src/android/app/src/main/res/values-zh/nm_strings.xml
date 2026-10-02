@@ -342,6 +342,10 @@
     <string name="nm_appearance_header_model_title">在名字下方显示模型</string>
     <string name="nm_appearance_header_model_footer">Muse 只显示名字。打开后名字下方会显示模型组和服务商 · 模型，点它可以切换。关闭时模型在 ••• → 模型和设置里。</string>
     <string name="nm_chat_menu_model">模型</string>
+    <string name="nm_model_switched">这个对话已换成 %1$s</string>
+    <string name="nm_model_switched_sticky">已换成 %1$s，新对话也用它</string>
+    <string name="nm_picker_more_models">账号还能用的更多模型</string>
+    <string name="nm_picker_more_models_note">不在菜单里，但你的账号可以用；按菜单里最接近的模型计费。看屏幕只有你自己选了才会用到它们。</string>
     <string name="nm_attach_commands">命令</string>
     <string name="nm_composer_placeholder">消息</string>
 
@@ -466,8 +470,14 @@
     <string name="nm_hands_need_ok">就绪</string>
     <string name="nm_hands_need_set_up">去设置</string>
     <string name="nm_hands_section_model">看屏幕的模型</string>
-    <string name="nm_hands_model_auto">自动——对话模型能看图就用它，否则用视觉模型组</string>
-    <string name="nm_hands_model_footer">每一步都会把一张截图发给这个模型。小一点的视觉模型就够用，也更省钱。</string>
+    <string name="nm_hands_model_auto">自动——你选的对话模型能看图就用它，否则用 nanoMuse 云的看屏模型，再否则用视觉模型组</string>
+    <string name="nm_hands_model_footer">每一步都会把一张截图发给这个模型。小一点的视觉模型就够用，也更省钱。云端菜单之外的模型只有你自己选了才会用。</string>
+    <string name="nm_hands_why_chosen">在这里选的</string>
+    <string name="nm_hands_why_chat">你选的对话模型</string>
+    <string name="nm_hands_why_group">默认模型组里第一个能看图的</string>
+    <string name="nm_hands_why_menu">nanoMuse 云的看屏模型</string>
+    <string name="nm_hands_why_vision_group">你的视觉模型组</string>
+    <string name="nm_hands_why_any">唯一一个启用了、又能看图的模型</string>
     <string name="nm_hands_section_rules">它会怎么做</string>
     <string name="nm_hands_rule_ladder">屏幕排最后：先试技能、命令行、浏览器。</string>
     <string name="nm_hands_rule_secrets">从不代输密码、验证码、卡号——遇到就把手机交还给你。</string>

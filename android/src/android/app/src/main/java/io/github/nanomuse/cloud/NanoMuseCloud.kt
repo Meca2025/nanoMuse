@@ -6,6 +6,7 @@ import com.openminis.app.BuildConfig
 import com.openminis.app.MinisApp
 import com.openminis.app.R
 import com.openminis.app.data.model.LLMModel
+import com.openminis.app.data.model.ModelEntry
 import com.openminis.app.data.model.ModelGroup
 import com.openminis.app.data.model.ProviderCredential
 import com.openminis.app.data.model.ProviderInstance
@@ -89,6 +90,13 @@ object NanoMuseCloud {
     private const val KEY_FRESH = "cloud.fresh_account"
     private const val KEY_WARNED_GRANT = "cloud.warned_grant"
     private const val KEY_SAMPLES = "cloud.samples"
+    /** The relay's menu and what lies beyond it, so the picker and the hands can tell them apart. */
+    private const val KEY_MENU_IDS = "cloud.menu_ids"
+    private const val KEY_CATALOG_IDS = "cloud.catalog_ids"
+    private const val KEY_RECOMMENDED = "cloud.recommended"
+    private const val KEY_SIGHTED = "cloud.sighted"
+    private const val KEY_MODELS_AT = "cloud.models_at"
+    private const val MODELS_FRESH_MS = 60 * 60 * 1000L
 
     /** Where the privacy policy is when the relay did not name one. */
     const val PRIVACY_URL = "https://nanomuse.cn/privacy/"
@@ -511,6 +519,9 @@ object NanoMuseCloud {
         // includes modalities so the picture model is recognised as one.
         runCatching { repo.refreshModels(inst) }
         provisionDefaults(context, repo, inst, reply.optJSONArray("models"))
+        // the menu as sent with the key; the catalog beyond it comes with the first /v1/models
+        rememberModels(context, reply.optJSONArray("models"), stamp = false)
+        runCatching { syncModels(context, apiKey) }
 
         saveAccount(context, reply)
         if (reply.optBoolean("created", false)) prefs(context).edit().putBoolean(KEY_FRESH, true).apply()
@@ -527,6 +538,10 @@ object NanoMuseCloud {
         try {
             val me = call(context, "GET", "/v1/me", null, token = key)
             saveAccount(context, me)
+            // the menu and the catalog move slowly: once an hour is plenty
+            if (System.currentTimeMillis() - prefs(context).getLong(KEY_MODELS_AT, 0) > MODELS_FRESH_MS) {
+                runCatching { syncModels(context, key) }
+            }
             account(context)
         } catch (e: CloudException) {
             if (e.status == 401) {
@@ -645,6 +660,87 @@ object NanoMuseCloud {
         val out = model.optJSONObject("architecture")?.optJSONArray("output_modalities")
         val mods = (0 until (out?.length() ?: 0)).map { out!!.optString(it) }
         return "image" in mods && "text" !in mods
+    }
+
+    // -- the menu and the catalog ------------------------------------------------------------
+
+    /**
+     * Ask the relay for its models and remember which are the menu's and which the catalog's
+     * (`nanomuse.catalog`: usable under the operator's key but not on the menu — a member may
+     * name them; the relay has checked whether they take pictures). The app's own entries
+     * carry none of this: OpenMinis reads `/v1/models` as any provider's list.
+     */
+    private suspend fun syncModels(context: Context, apiKey: String) {
+        val reply = call(context, "GET", "/v1/models", null, token = apiKey)
+        rememberModels(context, reply.optJSONArray("data"), stamp = true)
+    }
+
+    private fun rememberModels(context: Context, models: JSONArray?, stamp: Boolean) {
+        val items = (0 until (models?.length() ?: 0)).mapNotNull { models?.optJSONObject(it) }
+        if (items.isEmpty()) return
+        val menu = mutableListOf<String>()
+        val catalog = mutableListOf<String>()
+        for (m in items) {
+            val id = m.optString("id").takeIf { it.isNotBlank() } ?: continue
+            val nm = m.optJSONObject("nanomuse")
+            if (nm?.optBoolean("catalog") == true) catalog.add(id) else menu.add(id)
+        }
+        fun sees(m: JSONObject): Boolean {
+            val mods = m.optJSONObject("architecture")?.optJSONArray("input_modalities")
+            return (0 until (mods?.length() ?: 0)).any { mods!!.optString(it) == "image" }
+        }
+        val chats = items.filter { !drawsOnly(it) && it.optJSONObject("nanomuse")?.optBoolean("catalog") != true }
+        val recommended = chats.firstOrNull { it.optJSONObject("nanomuse")?.optBoolean("recommended") == true } ?: chats.firstOrNull()
+        // the menu's model for the screen: the recommended one when it sees, else the first that does
+        val sighted = (if (recommended != null && sees(recommended)) recommended else chats.firstOrNull { sees(it) })?.optString("id")
+        prefs(context).edit().apply {
+            putString(KEY_MENU_IDS, menu.joinToString(","))
+            // the list sent with the key is the menu alone: it must not erase a catalog we know
+            if (stamp || catalog.isNotEmpty()) putString(KEY_CATALOG_IDS, catalog.joinToString(","))
+            putString(KEY_RECOMMENDED, recommended?.optString("id") ?: "")
+            putString(KEY_SIGHTED, sighted ?: "")
+            if (stamp) putLong(KEY_MODELS_AT, System.currentTimeMillis())
+        }.apply()
+    }
+
+    private fun ids(context: Context, key: String): Set<String> =
+        prefs(context).getString(key, null)?.split(',')?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+
+    /** The menu's model ids, in the menu's order (empty when the relay has not been asked yet). */
+    fun menuModelIds(context: Context): List<String> =
+        prefs(context).getString(KEY_MENU_IDS, null)?.split(',')?.filter { it.isNotBlank() } ?: emptyList()
+
+    /** True for a model the relay serves beyond its menu (the catalog); false for the menu's and for the unknown. */
+    fun isCatalogModel(context: Context, modelId: String): Boolean = modelId in ids(context, KEY_CATALOG_IDS)
+
+    /** The menu's recommended chat model, if the relay said. */
+    fun recommendedModelId(context: Context): String? = prefs(context).getString(KEY_RECOMMENDED, null)?.takeIf { it.isNotBlank() }
+
+    /** The menu's model for looking at the screen: the recommended one when it sees pictures, else the first that does. */
+    fun sightedModelId(context: Context): String? = prefs(context).getString(KEY_SIGHTED, null)?.takeIf { it.isNotBlank() }
+
+    /** Is this entry served by the relay? (Null when the person is not signed in.) */
+    fun owns(context: Context, entry: ModelEntry): Boolean = instance(context)?.id == entry.providerInstanceId
+
+    /**
+     * The person picked one of our models in the chat's picker: the next chats follow it. The
+     * picker's own binding is per chat, and a new chat starts from the default group — ours,
+     * with the recommended model first — so a choice made in the picker was undone by the
+     * next "New chat" (a member who chose deepseek-v4.1-flash found every new chat back on
+     * qwen3.8-27b). Moving the pick to the front of our group is what makes it stick; a
+     * group of the person's own is never touched. True when new chats will follow the pick.
+     */
+    fun followPick(context: Context, entryId: String): Boolean {
+        val repo = repo(context) ?: return false
+        val inst = instance(context) ?: return false
+        val config = repo.config.value
+        val entry = config.modelEntries.firstOrNull { it.id == entryId && it.providerInstanceId == inst.id } ?: return false
+        if (drawsOrFilms(entry.model) || ImageGen.looksLikeImageModel(entry.model.id)) return false
+        val group = config.modelGroups.firstOrNull { it.id == repo.defaultPrimaryGroupId && it.name == LABEL } ?: return false
+        if (group.memberEntryIds.firstOrNull() == entryId) return true
+        val members = (listOf(entryId) + group.memberEntryIds.filter { it != entryId }).toMutableList()
+        repo.updateGroup(group.copy(memberEntryIds = members))
+        return true
     }
 
     /** A picture or video model is no chat model, whatever its name says. */
@@ -786,6 +882,7 @@ object NanoMuseCloud {
             .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_USAGE)
             .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
             .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_CONTRIBUTE_DEFAULT).remove(KEY_PRIVACY_URL).remove(KEY_FRESH).remove(KEY_WARNED_GRANT)
+            .remove(KEY_MENU_IDS).remove(KEY_CATALOG_IDS).remove(KEY_RECOMMENDED).remove(KEY_SIGHTED).remove(KEY_MODELS_AT)
             .apply()
         ProfileSync.forget(context)
     }
