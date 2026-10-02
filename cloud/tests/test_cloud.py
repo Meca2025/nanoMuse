@@ -892,6 +892,58 @@ async def test_the_operator_sees_addresses_clients_and_every_line(stack):
     assert [(x["hint"], x["samples"]) for x in view["by_account"]] == [("138****8000", 1)]
 
 
+async def test_the_showcase_visitors_reach_the_admin_page(monkeypatch):
+    """0.10: with WEB_ADMIN_URL + WEB_ADMIN_TOKEN the relay passes the gateway's visitors view
+    through (/v1/admin/demo) and puts one account's demos in its drawer; without them the
+    panel is told so and the drawer carries None."""
+    app, client, sender, up, cloud = make_stack(web_admin_url="http://gateway/api/demo/admin", web_admin_token="shh")
+    seen: list[httpx.Request] = []
+
+    def gateway(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.headers.get("x-admin-token") != "shh":
+            return httpx.Response(403, json={"error": "forbidden"})
+        account = request.url.params.get("account", "")
+        if account:
+            return httpx.Response(
+                200,
+                json={
+                    "visitor": {"id": account, "hint": "so…", "signins": 2, "sessions": 1, "first_ip": "1.2.3.4", "last_ip": "5.6.7.8"},
+                    "visits": [{"id": "abc", "ip": "5.6.7.8"}],
+                    "visits_total": 1,
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "signin_required": True,
+                "visitors": [{"id": "x", "hint": "so…"}],
+                "visitors_total": 1,
+                "visits": [],
+                "visits_total": 0,
+                "days": int(request.url.params.get("days", 0)),
+                "active": [],
+            },
+        )
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr("nanomuse_cloud.api.httpx.AsyncClient", lambda *a, **kw: real(transport=httpx.MockTransport(gateway)))
+    admin = {"X-Admin-Token": "admin"}
+    view = (await client.get("/v1/admin/demo?days=7", headers=admin)).json()
+    assert view["available"] is True and view["visitors_total"] == 1 and view["days"] == 7
+    data = await sign_up(client, sender)
+    acc = (await client.get(f"/v1/admin/accounts/{data['account']['id']}", headers=admin)).json()
+    assert acc["demo"]["visitor"]["first_ip"] == "1.2.3.4" and acc["demo"]["visits_total"] == 1
+    assert seen[-1].url.params["account"] == data["account"]["id"]
+
+    # not configured: the panel says so, the drawer has nothing to show
+    monkeypatch.undo()
+    app2, client2, sender2, up2, cloud2 = make_stack()
+    assert (await client2.get("/v1/admin/demo", headers=admin)).json() == {"available": False}
+    data2 = await sign_up(client2, sender2)
+    assert (await client2.get(f"/v1/admin/accounts/{data2['account']['id']}", headers=admin)).json()["demo"] is None
+
+
 def test_code_mail_has_text_and_html_in_both_languages():
     from nanomuse_cloud.senders import compose_code_mail
 

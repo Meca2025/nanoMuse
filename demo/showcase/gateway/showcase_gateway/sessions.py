@@ -10,6 +10,7 @@ import secrets
 import socket
 import time
 from collections import defaultdict, deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
@@ -150,6 +151,8 @@ class SessionManager:
         self.internal_url = settings.internal_url
         self.resolve = _resolve  # DNS, replaceable in tests
         self._lock = asyncio.Lock()
+        # told when a session ends, with the reason — the visitors' book closes its visit row
+        self.on_end: Callable[[Session, str], None] | None = None
 
     # ------------------------------------------------------------------ lifecycle
     async def startup(self) -> None:
@@ -360,6 +363,11 @@ class SessionManager:
             sess.requests,
             sess.tokens,
         )
+        if self.on_end is not None:
+            try:
+                self.on_end(sess, reason)
+            except Exception:  # a record for the operator; never holds the stop up
+                log.exception("on_end hook failed for %s", sid)
         await self.runner.stop(sess.container)
         # keep the record a little so late requests get a clear "no such session"
         asyncio.get_running_loop().call_later(300, self.sessions.pop, sid, None)

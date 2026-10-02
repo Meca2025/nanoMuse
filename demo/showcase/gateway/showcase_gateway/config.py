@@ -163,6 +163,9 @@ class Settings:
     per_account_daily: int
     visitor_db: str
     visitor_ttl_s: int  # how long a sign-in on this browser lasts
+    # the operator's view of the visitors (GET /api/demo/admin with X-Admin-Token), read by
+    # the relay's admin page; empty = the route answers 404
+    admin_token: str
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -259,6 +262,7 @@ class Settings:
             per_account_daily=_int("PER_ACCOUNT_DAILY", 6),
             visitor_db=_str("VISITOR_DB", "/data/visitors.db"),
             visitor_ttl_s=_int("VISITOR_TTL_S", 30 * 86400),
+            admin_token=_str("SHOWCASE_ADMIN_TOKEN", ""),
         )
 
     def session_origin(self, sid: str) -> str:

@@ -37,6 +37,9 @@ log = logging.getLogger("showcase.visitors")
 DEVICE_NAME = "Showcase"  # what the relay's device list calls the sign-in, briefly
 
 
+UA_MAX = 160
+
+
 @dataclass
 class Visitor:
     id: str  # the relay's account id (opaque)
@@ -46,13 +49,45 @@ class Visitor:
     last_seen: float
     sessions: int = 0  # demo Muses started
     created: bool = False  # the first sign-in here created the Cloud account
+    # where from and with what (0.3): the address of the first and the latest sign-in or
+    # demo, the latest browser string, how many times the person signed in here
+    first_ip: str = ""
+    last_ip: str = ""
+    last_ua: str = ""
+    signins: int = 0
 
     def public(self) -> dict[str, Any]:
         return {"hint": self.hint, "channel": self.channel, "created": self.created}
 
+    def admin(self) -> dict[str, Any]:
+        """For the operator (the relay's admin page): everything the gateway knows."""
+        return {
+            "id": self.id,
+            "hint": self.hint,
+            "channel": self.channel,
+            "created": self.created,
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+            "sessions": self.sessions,
+            "signins": self.signins,
+            "first_ip": self.first_ip,
+            "last_ip": self.last_ip,
+            "last_ua": self.last_ua,
+        }
+
+    def seen(self, ip: str, ua: str, now: float) -> None:
+        self.last_seen = now
+        if ip:
+            self.last_ip = ip
+            if not self.first_ip:
+                self.first_ip = ip
+        if ua:
+            self.last_ua = ua[:UA_MAX]
+
 
 class VisitorStore:
-    """SQLite: one row per visitor, one per ticket (hashed). ``:memory:`` in tests."""
+    """SQLite: one row per visitor, one per ticket (hashed), one per demo started (a
+    *visit*: when, from where, with what browser, what it used). ``:memory:`` in tests."""
 
     def __init__(self, path: str) -> None:
         self.db = sqlite3.connect(path, check_same_thread=False)
@@ -65,8 +100,26 @@ class VisitorStore:
                  created INTEGER NOT NULL DEFAULT 0);
                CREATE TABLE IF NOT EXISTS tickets (
                  hash TEXT PRIMARY KEY, visitor TEXT NOT NULL, issued_at REAL NOT NULL,
-                 expires_at REAL NOT NULL);"""
+                 expires_at REAL NOT NULL);
+               CREATE TABLE IF NOT EXISTS visits (
+                 id TEXT PRIMARY KEY, visitor TEXT NOT NULL DEFAULT '', hint TEXT NOT NULL DEFAULT '',
+                 ip TEXT NOT NULL DEFAULT '', ua TEXT NOT NULL DEFAULT '',
+                 started REAL NOT NULL, ended REAL, reason TEXT NOT NULL DEFAULT '',
+                 requests INTEGER NOT NULL DEFAULT 0, tokens INTEGER NOT NULL DEFAULT 0,
+                 pictures INTEGER NOT NULL DEFAULT 0, clips INTEGER NOT NULL DEFAULT 0,
+                 byok INTEGER NOT NULL DEFAULT 0);
+               CREATE INDEX IF NOT EXISTS visits_visitor ON visits(visitor, started);"""
         )
+        # 0.3: the columns the store did not have before
+        have = {r["name"] for r in self.db.execute("PRAGMA table_info(visitors)")}
+        for col, ddl in (
+            ("first_ip", "TEXT NOT NULL DEFAULT ''"),
+            ("last_ip", "TEXT NOT NULL DEFAULT ''"),
+            ("last_ua", "TEXT NOT NULL DEFAULT ''"),
+            ("signins", "INTEGER NOT NULL DEFAULT 0"),
+        ):
+            if col not in have:
+                self.db.execute(f"ALTER TABLE visitors ADD COLUMN {col} {ddl}")
         self.db.commit()
 
     def get(self, visitor_id: str) -> Visitor | None:
@@ -75,11 +128,26 @@ class VisitorStore:
 
     def put(self, v: Visitor) -> None:
         self.db.execute(
-            """INSERT INTO visitors (id, hint, channel, first_seen, last_seen, sessions, created)
-               VALUES (?, ?, ?, ?, ?, ?, ?)
+            """INSERT INTO visitors (id, hint, channel, first_seen, last_seen, sessions, created,
+                                     first_ip, last_ip, last_ua, signins)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET hint=excluded.hint, channel=excluded.channel,
-                 last_seen=excluded.last_seen, sessions=excluded.sessions""",
-            (v.id, v.hint, v.channel, v.first_seen, v.last_seen, v.sessions, int(v.created)),
+                 last_seen=excluded.last_seen, sessions=excluded.sessions,
+                 first_ip=CASE WHEN visitors.first_ip='' THEN excluded.first_ip ELSE visitors.first_ip END,
+                 last_ip=excluded.last_ip, last_ua=excluded.last_ua, signins=excluded.signins""",
+            (
+                v.id,
+                v.hint,
+                v.channel,
+                v.first_seen,
+                v.last_seen,
+                v.sessions,
+                int(v.created),
+                v.first_ip,
+                v.last_ip,
+                v.last_ua,
+                v.signins,
+            ),
         )
         self.db.commit()
 
@@ -88,6 +156,62 @@ class VisitorStore:
 
     def count_since(self, when: float) -> int:
         row = self.db.execute("SELECT COUNT(*) FROM visitors WHERE last_seen >= ?", (when,))
+        return int(row.fetchone()[0])
+
+    def visitors(self, limit: int = 500) -> list[dict[str, Any]]:
+        rows = self.db.execute(
+            "SELECT * FROM visitors ORDER BY last_seen DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [self._visitor(r).admin() for r in rows]
+
+    # --- visits: one row per demo Muse started -------------------------------------
+    def visit_started(
+        self, sid: str, visitor_id: str, hint: str, ip: str, ua: str, now: float, byok: bool
+    ) -> None:
+        self.db.execute(
+            """INSERT OR REPLACE INTO visits (id, visitor, hint, ip, ua, started, byok)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (sid, visitor_id, hint, ip, (ua or "")[:UA_MAX], now, int(byok)),
+        )
+        self.db.commit()
+
+    def visit_ended(
+        self,
+        sid: str,
+        now: float,
+        reason: str,
+        requests: int,
+        tokens: int,
+        pictures: int,
+        clips: int,
+    ) -> None:
+        self.db.execute(
+            """UPDATE visits SET ended=?, reason=?, requests=?, tokens=?, pictures=?, clips=?
+               WHERE id=?""",
+            (now, reason[:80], requests, tokens, pictures, clips, sid),
+        )
+        self.db.commit()
+
+    def visits(
+        self, visitor_id: str = "", limit: int = 200, since: float = 0
+    ) -> list[dict[str, Any]]:
+        if visitor_id:
+            rows = self.db.execute(
+                "SELECT * FROM visits WHERE visitor=? AND started>=? ORDER BY started DESC LIMIT ?",
+                (visitor_id, since, limit),
+            ).fetchall()
+        else:
+            rows = self.db.execute(
+                "SELECT * FROM visits WHERE started>=? ORDER BY started DESC LIMIT ?",
+                (since, limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def visit_count(self, visitor_id: str = "") -> int:
+        if visitor_id:
+            row = self.db.execute("SELECT COUNT(*) FROM visits WHERE visitor=?", (visitor_id,))
+        else:
+            row = self.db.execute("SELECT COUNT(*) FROM visits")
         return int(row.fetchone()[0])
 
     def issue(self, visitor_id: str, now: float, ttl_s: int) -> str:
@@ -120,6 +244,10 @@ class VisitorStore:
             last_seen=row["last_seen"],
             sessions=int(row["sessions"]),
             created=bool(row["created"]),
+            first_ip=row["first_ip"] or "",
+            last_ip=row["last_ip"] or "",
+            last_ua=row["last_ua"] or "",
+            signins=int(row["signins"] or 0),
         )
 
 
@@ -146,30 +274,34 @@ class VisitorBook:
     def required(self) -> bool:
         return self.s.demo_signin_required
 
-    async def _relay(self, method: str, path: str, body: dict | None, ip: str, key: str = ""):
-        return await relay_request(self.http, self.s.web_relay_url, method, path, body, ip, key)
+    async def _relay(
+        self, method: str, path: str, body: dict | None, ip: str, key: str = "", ua: str = ""
+    ):
+        return await relay_request(self.http, self.s.web_relay_url, method, path, body, ip, key, ua)
 
     async def request_code(self, identifier: str, ip: str) -> None:
         await self._relay("POST", "/v1/auth/code", {"identifier": identifier}, ip)
 
     async def verify(
-        self, identifier: str, code: str, ip: str, invite: str = ""
+        self, identifier: str, code: str, ip: str, invite: str = "", ua: str = ""
     ) -> tuple[str, Visitor]:
         """The code the relay sent → a ticket for this browser. ``invite`` is a friend's
         code, passed along only when given."""
         payload: dict[str, str] = {"identifier": identifier, "code": code, "device": DEVICE_NAME}
         if invite:
             payload["invite"] = invite
-        data = await self._relay("POST", "/v1/auth/verify", payload, ip)
-        return await self._admit(data, ip)
+        data = await self._relay("POST", "/v1/auth/verify", payload, ip, ua=ua)
+        return await self._admit(data, ip, ua)
 
-    async def login(self, identifier: str, password: str, ip: str) -> tuple[str, Visitor]:
+    async def login(
+        self, identifier: str, password: str, ip: str, ua: str = ""
+    ) -> tuple[str, Visitor]:
         """The password way in, for accounts that set one; the relay's answer is passed on."""
         payload = {"identifier": identifier, "password": password, "device": DEVICE_NAME}
-        data = await self._relay("POST", "/v1/auth/login", payload, ip)
-        return await self._admit(data, ip)
+        data = await self._relay("POST", "/v1/auth/login", payload, ip, ua=ua)
+        return await self._admit(data, ip, ua)
 
-    async def _admit(self, data: dict[str, Any], ip: str) -> tuple[str, Visitor]:
+    async def _admit(self, data: dict[str, Any], ip: str, ua: str = "") -> tuple[str, Visitor]:
         info = data.get("account") if isinstance(data.get("account"), dict) else {}
         visitor_id = str(info.get("id") or "")
         if not visitor_id:
@@ -190,8 +322,9 @@ class VisitorBook:
         else:
             visitor.hint = str(info.get("hint") or visitor.hint)
             visitor.channel = str(info.get("channel") or visitor.channel)
-            visitor.last_seen = now
             log.info("visitor %s is back", visitor.hint)
+        visitor.seen(ip if ip != "?" else "", ua, now)
+        visitor.signins += 1
         self.store.put(visitor)
         # the key the relay issued for this sign-in is not needed: the demo Muse talks to the
         # showcase's model. Revoke it so the account's device list does not fill up with
@@ -199,7 +332,7 @@ class VisitorBook:
         key = str(data.get("api_key") or "")
         if key:
             try:
-                await self._relay("POST", "/v1/auth/sign-out", None, ip, key)
+                await self._relay("POST", "/v1/auth/sign-out", None, ip, key, ua)
             except Refused as exc:
                 log.info("could not revoke the sign-in key (%s); it idles", exc.code)
         return self.store.issue(visitor.id, now, self.s.visitor_ttl_s), visitor
@@ -217,10 +350,33 @@ class VisitorBook:
         if ticket:
             self.store.revoke(ticket)
 
-    def started(self, visitor: Visitor) -> None:
-        visitor.sessions += 1
-        visitor.last_seen = self.clock()
-        self.store.put(visitor)
+    def started(self, visitor: Visitor | None, sess: Any = None, ua: str = "") -> None:
+        """A demo Muse started: the visitor's count and whereabouts, and a visit row — also
+        for a demo without a sign-in (``visitor`` None), which the operator still sees."""
+        now = self.clock()
+        if visitor is not None:
+            visitor.sessions += 1
+            visitor.seen(getattr(sess, "ip", "") if sess is not None else "", ua, now)
+            self.store.put(visitor)
+        if sess is not None:
+            self.store.visit_started(
+                sess.id,
+                visitor.id if visitor else "",
+                visitor.hint if visitor else "",
+                "" if sess.ip == "?" else sess.ip,
+                ua,
+                now,
+                bool(getattr(sess, "byok", None)),
+            )
+
+    def ended(self, sess: Any, reason: str = "") -> None:
+        """The session manager's word that a demo is over: what it used goes on its row."""
+        try:
+            self.store.visit_ended(
+                sess.id, self.clock(), reason, sess.requests, sess.tokens, sess.pictures, sess.clips
+            )
+        except sqlite3.Error as exc:  # the record is for the operator; the demo is not held up
+            log.warning("could not close the visit row for %s: %s", sess.id, exc)
 
     def stats(self) -> dict[str, Any]:
         now = self.clock()
@@ -228,4 +384,26 @@ class VisitorBook:
             "signin_required": self.required,
             "visitors": self.store.count(),
             "visitors_7d": self.store.count_since(now - 7 * 86400),
+        }
+
+    def admin(self, visitor_id: str = "", days: int = 30) -> dict[str, Any]:
+        """The operator's view (``GET /api/demo/admin``): every visitor with where from and
+        with what, and the demos started — one visitor's when ``visitor_id`` is given, else
+        the period's newest. The relay's admin page shows it next to the account."""
+        now = self.clock()
+        if visitor_id:
+            v = self.store.get(visitor_id)
+            return {
+                "visitor": v.admin() if v else None,
+                "visits": self.store.visits(visitor_id, limit=500),
+                "visits_total": self.store.visit_count(visitor_id),
+            }
+        since = now - max(1, days) * 86400
+        return {
+            "signin_required": self.required,
+            "visitors": self.store.visitors(),
+            "visitors_total": self.store.count(),
+            "visits": self.store.visits(limit=500, since=since),
+            "visits_total": self.store.visit_count(),
+            "days": days,
         }

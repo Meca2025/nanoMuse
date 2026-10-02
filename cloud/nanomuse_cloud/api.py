@@ -43,6 +43,7 @@
     GET  /v1/admin/events     X-Admin-Token  ?limit=200&kind=…  → the timeline across accounts (never message content)
     GET  /v1/admin/series     X-Admin-Token  ?days=30           → by day: sign-ins, new / active accounts, invites, data switches turned on; devices by kind and OS; nanoMuse Web's counts
     GET  /v1/admin/traffic    X-Admin-Token  ?days=30           → the site: pages, visitors, downloads per file, referrers, GitHub stars and release downloads (TRAFFIC_DB)
+    GET  /v1/admin/demo       X-Admin-Token  ?days=30           → the phone in the browser: visitors with addresses and browsers, every demo and what it used (WEB_ADMIN_URL)
     GET  /v1/admin/data       X-Admin-Token  ?days=30           → Data controls: accounts with the switch on, kept turns by day / model / app / account, switches on and off, the newest turns
     GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → kept turns (accounts with the switch on only)
     GET  /v1/admin/samples/export X-Admin-Token ?since=&account_id= → the same as JSON lines, without account ids or addresses
@@ -771,6 +772,27 @@ def create_app(
             return None
         return data if isinstance(data, dict) else None
 
+    async def demo_admin(params: dict) -> dict | None:
+        """The showcase's visitors from its gateway (WEB_ADMIN_URL with WEB_ADMIN_TOKEN):
+        None when not configured or not answering."""
+        if not settings.web_admin_url or not settings.web_admin_token:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as c:
+                r = await c.get(settings.web_admin_url, params=params, headers={"X-Admin-Token": settings.web_admin_token})
+                r.raise_for_status()
+                data = r.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    @app.get("/v1/admin/demo", dependencies=[Depends(admin_dep)])
+    async def admin_demo(days: int = 30) -> dict:
+        """The phone in the browser: who tried it from where and with what, every demo and
+        what it used (the showcase gateway's /api/demo/admin, passed through)."""
+        data = await demo_admin({"days": max(1, min(days, 365))})
+        return {"available": data is not None, **(data or {})}
+
     @app.get("/v1/admin/traffic", dependencies=[Depends(admin_dep)])
     async def admin_traffic(days: int = 30) -> dict:
         return cloud.admin_traffic(max(1, min(days, 365)))
@@ -785,6 +807,8 @@ def create_app(
         hub = getattr(app.state, "hub", None)
         if hub is not None:
             out["devices"] = hub.devices(account_id)
+        # the showcase's record of this person (the visitor id there is the account id here)
+        out["demo"] = await demo_admin({"account": account_id})
         return out
 
     @app.get("/v1/admin/accounts/{account_id}/ledger", dependencies=[Depends(admin_dep)])

@@ -109,6 +109,7 @@ for the full list. The ones that matter:
 | `DAY_OFFSET_H` | 8 | the operator's reports group by local day, midnight UTC+8 (Beijing) |
 | `TRAFFIC_DB` | empty | the site's daily traffic counts (`demo/showcase/mirror/traffic.py`), mounted read-only, for the operator's page; empty = that panel says it is not connected |
 | `WEB_INFO_URL` | empty | nanoMuse Web's gateway (`http://gateway:8000/api/web/info` on the same docker network) for its account and session counts on the operator's page |
+| `WEB_ADMIN_URL`, `WEB_ADMIN_TOKEN` | empty | the showcase gateway's `/api/demo/admin` and its `SHOWCASE_ADMIN_TOKEN`: who tried the phone in the browser from where and with what, every demo and what it used — a panel on the operator's page and a section in the account drawer (relay 0.10) |
 | `USD_CNY` | 7.1 | for showing dollars next to yuan; display only |
 | `SIGNUP_TOKENS` | 0 (no ceiling) | starter token grant per account, the older allowance |
 | `DAILY_CAP_TOKENS` | 0 (off) | tokens per account per day |
@@ -210,7 +211,14 @@ holds; and, with `TRAFFIC_DB`, the project site's visits and downloads:
 page views, visitors, crawlers, downloads per file from the mirror next to
 GitHub's own download counts, stars, referring sites, the pages. The traffic
 database is written by `demo/showcase/mirror/traffic.py` from Caddy's access
-log — daily counts only; the script never stores an address.
+log — daily counts only; the script never stores an address. A fourth panel,
+*The phone in the browser*, comes from the showcase gateway through
+`/v1/admin/demo` (`WEB_ADMIN_URL` + `WEB_ADMIN_TOKEN`): every visitor who
+signed in there with the address and browser of the first and the latest
+visit, the demos running now and the period's demos — when, how long, from
+where, with what, what each used (requests, tokens, pictures, clips) and why it
+ended — and the same for one account in its drawer (the visitor id there is
+the account id here).
 
 ### Web console
 

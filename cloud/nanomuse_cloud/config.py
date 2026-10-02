@@ -342,6 +342,11 @@ class Settings:
     # nanoMuse Web's gateway on the same docker network (http://gateway:8000/api/web/info):
     # how many kept accounts and running sessions; empty = not asked
     web_info_url: str = field(default_factory=lambda: _env("WEB_INFO_URL"))
+    # the showcase's visitors (demo.nanomuse.dev/api/demo/admin, its SHOWCASE_ADMIN_TOKEN):
+    # who tried the phone in the browser from where and with what, every demo and what it
+    # used — shown on the admin page and in the account drawer; empty = not asked
+    web_admin_url: str = field(default_factory=lambda: _env("WEB_ADMIN_URL"))
+    web_admin_token: str = field(default_factory=lambda: _env("WEB_ADMIN_TOKEN"))
 
     def model(self, model_id: str) -> ModelSpec | None:
         for m in self.models:

@@ -90,7 +90,15 @@ the Cloudflare DNS module.
   account, with its free allowance, so the day the person installs the app it is already
   theirs. One account is one person wherever it signs in from: `PER_ACCOUNT_ACTIVE` Muses at
   once, `PER_ACCOUNT_DAILY` a day, on top of the address limits. The session log names the
-  visitor by the masked identifier; `GET /api/demo/info` → `signin` counts them.
+  visitor by the masked identifier; `GET /api/demo/info` → `signin` counts them. The book
+  also keeps, per visitor, the address and browser string of the first and the latest
+  sign-in or demo and how many sign-ins, and one *visit* row per demo started — when, from
+  which address, with which browser, whether it brought its own key, and when it ended with
+  what it used (requests, tokens, pictures, clips) and why (gateway 0.3). With
+  `SHOWCASE_ADMIN_TOKEN` set, `GET /api/demo/admin` (header `X-Admin-Token`) hands all of it
+  to the operator — `?account=<id>` for one visitor's — and the relay's admin page shows it
+  (`WEB_ADMIN_URL` / `WEB_ADMIN_TOKEN` there) next to the account; without the token the
+  route is not there.
 - **Bring your own key:** the visitor can enter a provider URL, model and key on the setup page.
   The gateway keeps them in memory for the session and forwards with them (no budget of ours);
   the container never sees the key. Only `https://` to hosts in `BYOK_ALLOWED_HOSTS` (the usual
