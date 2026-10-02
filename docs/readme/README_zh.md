@@ -42,6 +42,7 @@ nanoMuse 是一个开源的个人智能体，面向你的每一台设备。和 M
 
 ## 动态
 
+- **2026-10-03 · 0.1.29「Likeness」** — nanoMuse Harness 按 Muse 桌面版的样子一屏一屏重做：整窗的首次启动（欢迎 → 手机号或邮箱登录 → 验证码 → 一张一张卡片请求权限 → 就绪）、带主要聊天和旁聊的会话列表、钉在对话上方的形象和名字加状态与「停止」、胶囊形输入框、Muse 式的权限卡、聊天旁边带审核记录的个人面板、按 Muse 分页的设置；macOS 上窗口没有标题栏。macOS 安装包重新能打出来了。[发布说明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.29)。
 - **2026-10-03 · 0.1.28「Harness」** — DeepSeek Harness 版桌面端做成了安装包：Windows、macOS、Linux 三个平台的 nanoMuse Harness，harness、nanoMuse 插件包和负责「手」的运行时都在里面，不用先装任何东西；运营者页面上的每个地址都用离线数据库标出国家、省份和城市，账号、登录和访客按地区汇总；中继逐个验证 catalog 模型的能力，不再看名字猜；Android App 里选的模型会一直是它，「手」也用它；手机任务不再因断线而失败，网页应用不再向已结束的会话重连；把还像翻译腔的中文改自然；[5000 元能撑多少](../ops/capacity.md)。[发布说明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.28)。
 - **2026-10-02 · 0.1.27「Ledger」** — 中继保存你哪些对话，由一个开关说了算：每个 App 的「设置 → 数据控制」取代共创计划（邀请改为双方各得 ¥5）；会员从 Cloud key 下的模型列表里选，不用手敲 id；运营者的页面看得到每一条——谁从哪儿、用什么登录，每次请求是什么，演示站的访客也在——隐私政策写明记了什么；DeepSeek Harness 版桌面端以预览发布（`nanoMuse-Harness-0.1.27.tgz`）；Android 单元测试重新能编译。[发布说明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.27)。
 - **2026-10-02 · 0.1.26「Window」** — 浏览器里的手机取代了网页版：[nanomuse.cn/web](https://nanomuse.cn/web/) 打开是一台模拟手机，里面有一个你自己的 Muse，用的是 DeepSeek V4 Pro；体验前先登录 nanoMuse 云（这个账号在 App 里同样能用），页面上明说这是演示、App 在哪里下载；桌面版的布局向 Muse 看齐——图标栏、旁边的对话列表、左侧分节的设置——加上快速对话快捷键、「开机自动启动」，开发者的那一面收进一个开关；README 多了「现在走到哪儿了」一节，十种语言放在 `docs/readme/`；Linux 桌面版恢复可用，Windows 上拦截本机回环的机器会被明确告知。
@@ -145,6 +146,7 @@ App 是修改过的 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13：�
 | [0.1.26](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.26) | Window | 浏览器里的手机取代网页版，先登录云账号，模型换成 DeepSeek V4 Pro；桌面版按 Muse 的布局来，加快速对话，开发者功能收进开关；十种语言的 README 放进 `docs/readme/`，多了「现在走到哪儿了」；修好 Linux 桌面版和 Windows 回环拦截的提示。 |
 | [0.1.27](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.27) | Ledger | 数据控制取代共创计划，邀请双方得额度；会员从 Cloud key 下的模型里选；运营者看每一条，带地址和客户端；DeepSeek Harness 版桌面端预览；Android 单元测试恢复。 |
 | [0.1.28](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.28) | Harness | nanoMuse Harness——DeepSeek Harness 版桌面端——做成 Windows、macOS、Linux 安装包；管理页能看出人在哪儿；catalog 模型逐个验证；选的模型一直是它，「手」也用它；手机任务不怕断线；中文更自然；经费估算。 |
+| [0.1.29](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.29) | Likeness | nanoMuse Harness 按 Muse 桌面版一屏一屏重做：首次启动、会话列表、对话上方的形象、胶囊输入框、权限卡、带审核记录的个人面板、Muse 式的设置分页；macOS 安装包重新能打出来。 |
 | 0.2.0 | Beta | 头几周使用后的打磨；第一个 beta |
 
 **再之后**，依次：iOS；部署在你自己机器上——一台 VM、一台家里的服务器——的网页版，用同一个网关；眼镜。每加一台设备，同一个智能体就多一双手、多一个入口。项目起步时的 Python 线——智能体和它的 Sentinel、网页 App、模拟手机——冻结在 tag [`pre-openminis`](https://github.com/nano-muse/nanoMuse/releases/tag/pre-openminis)，文档在 [docs/](../../docs)，是桌面和网页这两个入口的底座。

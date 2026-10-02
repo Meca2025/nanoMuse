@@ -1,7 +1,7 @@
 {
   "name": "nanomuse-desktop-app",
   "private": true,
-  "version": "0.1.28",
+  "version": "0.1.29",
   "description": "nanoMuse for the desktop: the local runtime in a window, a tray, and a stage that shows where the hands are about to click.",
   "homepage": "https://nanomuse.cn/",
   "license": "GPL-3.0-or-later",
