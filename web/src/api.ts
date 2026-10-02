@@ -266,7 +266,20 @@ export const api = {
   testLLM: () => request<TestResult>("/api/connections/llm/test", { method: "POST" }),
   /** the models an endpoint offers: its own /models when it answers, else the preset's catalogue */
   llmModels: (body: { preset?: string; base_url?: string; api_key?: string }) =>
-    request<{ models: string[]; image_models?: string[]; video_models?: string[]; source: "live" | "catalogue"; error?: string }>(
+    request<{
+      models: string[];
+      image_models?: string[];
+      video_models?: string[];
+      // nanoMuse Cloud, relay 0.10: the chat models on the menu and the other usable ones under
+      // the operator's key (a member's list), likewise for pictures / clips; which chat models read pictures
+      menu?: string[];
+      catalog?: string[];
+      image_catalog?: string[];
+      video_catalog?: string[];
+      vision?: string[];
+      source: "live" | "catalogue";
+      error?: string;
+    }>(
       "/api/llm/models",
       json(body),
     ),

@@ -26,6 +26,28 @@ def fake_upstream() -> FastAPI:
     up = FastAPI()
     up.state.requests = []
 
+    # what the provider lists under the key: chat and picture models, and the spoken / heard /
+    # embedded ones the catalog leaves out (ids only, as Model Studio's compatible mode gives them)
+    up.state.catalog_ids = [
+        "qwen3.8-27b",
+        "deepseek-v4.1-flash",
+        "qwen3-vl-plus",
+        "vanchin/deepseek-v3",
+        "qwen-image-edit-max",
+        "wan2.7-image",
+        "qwen3-tts-flash",
+        "qwen3.7-text-embedding",
+        "qwen3-omni-flash-realtime",
+        "fun-asr-flash-2026-06-15",
+    ]
+
+    @up.get("/compat/v1/models")
+    async def models(request: Request):
+        up.state.requests.append(("models", dict(request.headers), None))
+        if up.state.catalog_ids is None:  # the provider is down
+            return JSONResponse(status_code=503, content={"error": {"message": "unavailable"}})
+        return {"object": "list", "data": [{"id": i, "object": "model", "owned_by": "system"} for i in up.state.catalog_ids]}
+
     @up.post("/compat/v1/chat/completions")
     async def chat(request: Request):
         body = await request.json()
@@ -944,6 +966,90 @@ async def test_the_showcase_visitors_reach_the_admin_page(monkeypatch):
     assert (await client2.get(f"/v1/admin/accounts/{data2['account']['id']}", headers=admin)).json()["demo"] is None
 
 
+async def test_members_see_the_models_under_the_key_and_pick():
+    """0.10: GET /v1/models for a member carries, after the menu, the usable models the
+    provider lists under the operator's key — sorted into chat and pictures by their ids,
+    the spoken / heard / embedded ones left out — so the apps' pickers offer them. Guests see
+    the menu alone; the list is cached and a provider that stops answering leaves it in place."""
+    app, client, sender, up, cloud = make_stack(allowed_identifiers="Me@Example.com", allowance_cny=0.5)
+    member = await sign_up(client, sender, identifier="me@example.com", device="desk")
+    guest = await sign_up(client, sender, identifier="13800138000", device="pixel")
+    mh = {"Authorization": f"Bearer {member['api_key']}"}
+    gh = {"Authorization": f"Bearer {guest['api_key']}"}
+
+    menu_ids = [m.id for m in cloud.s.models]
+    listing = (await client.get("/v1/models", headers=mh)).json()
+    ids = [m["id"] for m in listing["data"]]
+    assert ids[: len(menu_ids)] == menu_ids  # the menu first, in its order
+    extra = {m["id"]: m for m in listing["data"] if m["nanomuse"].get("catalog")}
+    assert set(extra) == {"deepseek-v4.1-flash", "qwen3-vl-plus", "vanchin/deepseek-v3", "qwen-image-edit-max", "wan2.7-image"}
+    assert extra["deepseek-v4.1-flash"]["nanomuse"]["kind"] == "chat" and extra["deepseek-v4.1-flash"]["nanomuse"]["listed"] is False
+    assert extra["deepseek-v4.1-flash"]["nanomuse"]["priced_as"] == "qwen3.8-27b"
+    assert extra["deepseek-v4.1-flash"]["architecture"]["input_modalities"] == ["text"]  # not known to read pictures
+    assert extra["qwen3-vl-plus"]["nanomuse"]["vision"] is True and extra["qwen3-vl-plus"]["architecture"]["input_modalities"] == [
+        "text",
+        "image",
+    ]
+    assert extra["qwen-image-edit-max"]["nanomuse"]["kind"] == "image" and extra["wan2.7-image"]["architecture"]["output_modalities"] == [
+        "image"
+    ]
+    assert listing["nanomuse"]["catalog"] == {"models": 5, "error": ""}
+    # the provider was asked with the operator's key, once; the second read is from the cache
+    asked = [q for q in up.state.requests if q[0] == "models"]
+    assert len(asked) == 1 and asked[0][1]["authorization"] == "Bearer sk-upstream"
+    await client.get("/v1/models", headers=mh)
+    assert len([q for q in up.state.requests if q[0] == "models"]) == 1
+    # a guest: the menu, nothing more
+    glist = (await client.get("/v1/models", headers=gh)).json()
+    assert [m["id"] for m in glist["data"]] == menu_ids and glist["nanomuse"] == {"any_model": False}
+    # a catalog model chats under its own id, priced as the dearest menu model
+    r = await client.post(
+        "/v1/chat/completions", json={"model": "vanchin/deepseek-v3", "messages": [{"role": "user", "content": "hi"}]}, headers=mh
+    )
+    assert r.status_code == 200, r.text
+    assert [q for q in up.state.requests if q[0] == "chat"][-1][2]["model"] == "vanchin/deepseek-v3"
+    # the provider goes quiet: the list stands, the error is said
+    app.state.catalog.fetched_at = 0
+    up.state.catalog_ids = None  # the provider answers 503
+    listing = (await client.get("/v1/models", headers=mh)).json()
+    assert len([m for m in listing["data"] if m["nanomuse"].get("catalog")]) == 5
+    assert listing["nanomuse"]["catalog"]["models"] == 5 and listing["nanomuse"]["catalog"]["error"]
+
+
+def test_the_catalog_sorts_ids_by_their_shape():
+    from nanomuse_cloud.catalog import classify
+
+    assert classify("qwen3.8-27b") == ("chat", True)  # the 3.5+ generations read pictures
+    assert classify("deepseek-v4.1-flash") == ("chat", False)
+    assert classify("qwen3-vl-plus") == ("chat", True)
+    assert classify("qvq-max") == ("chat", True)
+    assert classify("gui-plus") == ("chat", True)
+    assert classify("vanchin/deepseek-ocr") == ("chat", True)
+    assert classify("kimi-k2.5") == ("chat", True) and classify("kimi-k2-thinking") == ("chat", False)
+    assert classify("qwen-mt-plus") == ("chat", False)
+    assert (
+        classify("qwen-image-3.0")[0] == "image" and classify("wan2.7-image-pro")[0] == "image" and classify("z-image-turbo")[0] == "image"
+    )
+    assert (
+        classify("wan2.2-i2v-flash")[0] == "video" and classify("wan2.2-t2v-plus")[0] == "video" and classify("wan2.6-kf2v")[0] == "video"
+    )
+    for other in (
+        "qwen3-tts-flash",
+        "qwen3-asr-flash-realtime",
+        "MiniMax/speech-02-hd",
+        "qwen3.7-text-embedding",
+        "qwen3.7-text-rerank",
+        "qwen3-omni-flash",
+        "qwen3.8-livetranslate-flash-realtime",
+        "qwen-audio-3.0-asr-flash",
+        "qwen3-s2s-flash-realtime-2025-09-22",
+        "sre-gpu-auto-handle",
+        "not a model",
+        "",
+    ):
+        assert classify(other) == ("other", False), other
+
+
 def test_code_mail_has_text_and_html_in_both_languages():
     from nanomuse_cloud.senders import compose_code_mail
 
@@ -1261,8 +1367,8 @@ async def test_members_may_name_any_model_of_the_right_kind():
     gh = {"Authorization": f"Bearer {guest['api_key']}"}
     assert member["account"]["any_model"] is True and guest["account"]["any_model"] is False
 
-    # the menu says who may go beyond it
-    assert (await client.get("/v1/models", headers=mh)).json()["nanomuse"] == {"any_model": True}
+    # the menu says who may go beyond it (0.10: and lists what the key has, for members — below)
+    assert (await client.get("/v1/models", headers=mh)).json()["nanomuse"]["any_model"] is True
     assert (await client.get("/v1/models", headers=gh)).json()["nanomuse"] == {"any_model": False}
 
     # a typed id is checked with the kind it is for

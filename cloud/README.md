@@ -118,6 +118,8 @@ for the full list. The ones that matter:
 | `ALIYUN_SMS_API` | `dypns` | `dypns` (号码认证服务 `SendSmsVerifyCode`) or `dysms` (短信服务 `SendSms`) |
 | `CLOUD_MODELS` | Qwen chat + image, Wan video | JSON list to replace the menu, prices included |
 | `CLOUD_ANY_MODEL_MEMBERS` | `1` | members may name any model of the provider's for its kind (chat, image, video) — see below; `0` = the menu only |
+| `CLOUD_CATALOG` | `1` | list the usable models under the operator's key after the menu in a member's `/v1/models`, read from the provider's own `/models` (0.10) — see below; `0` = the menu only, a member types an id |
+| `CLOUD_CATALOG_TTL_S` | `3600` | how long that list is kept before the provider is asked again |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
 
@@ -155,7 +157,18 @@ says `nanomuse.any_model` for the account, `/v1/me` the same under `account`,
 and `GET /v1/models/<id>?kind=chat` checks a typed id (the answer's `listed` is
 false and `priced_as` names the menu model whose prices stand in for it in the
 ledger — the dearest of its kind, so the operator's page errs high). It is how
-a member tries a model before it goes on the menu. `/v1/me` carries a `spend`
+a member tries a model before it goes on the menu. From 0.10 a member does not
+have to know the id: with `CLOUD_CATALOG=1` (the default) the relay reads the
+provider's own `/models` under the operator's key (once an hour,
+`CLOUD_CATALOG_TTL_S`), sorts the ids by their shape into chat and picture
+models — the spoken, heard, embedding and rerank ones are left out, and a
+video model is not on the compatible list (`catalog.py`) — and lists them in
+the member's `/v1/models` after the menu, each with `catalog: true`, `listed:
+false`, `priced_as` and `vision` (whether the chat model reads pictures); the
+answer's `nanomuse.catalog` says how many and the provider's error if the list
+could not be refreshed (the last one stands). The apps' pickers then show the
+menu and *More models on your account* as two groups, and a guest sees the
+menu alone. `/v1/me` carries a `spend`
 block (`total`, `grant`, `left`, `unlimited`, `warn` at 80 %, `usd_cny`,
 `total_usd`, `grant_usd`, `left_usd`, `today`, the bonus amounts and
 `own_key_docs`; the 0.4 names `daily_cap` / `left_today` / `resets_at` = 0

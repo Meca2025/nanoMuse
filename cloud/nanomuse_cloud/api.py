@@ -15,7 +15,7 @@
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
     POST /v1/auth/sign-out-all {all?}                           → {signed_out} (every other device; all=true takes this one too)
     POST /v1/auth/delete                                        → 204 (the whole account, every key)
-    GET  /v1/models                                             → OpenAI list, with modalities
+    GET  /v1/models                                             → OpenAI list, with modalities; for a member, the usable models under the operator's key after the menu (catalog: true)
     POST /v1/chat/completions                                   → forwarded; stream or not
     POST /v1/images/generations                                 → DashScope native, returned as b64_json
     POST /v1/images/edits     multipart                         → same, with the picture
@@ -78,6 +78,7 @@ from starlette.requests import ClientDisconnect
 
 from . import __version__
 from . import client as client_info
+from .catalog import Catalog
 from .config import ModelSpec, Settings
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
@@ -325,9 +326,36 @@ def create_app(
 
     # -- models ------------------------------------------------------------------------
 
+    catalog = Catalog(ttl_s=settings.catalog_ttl_s)
+    app.state.catalog = catalog
+
     @app.get("/v1/models")
     async def models(caller: Caller = Depends(caller_dep)) -> dict:
-        return cloud.models_for(caller)
+        """The menu — and, for a member who may name any model, the usable models under the
+        operator's key after it (`listed: false`, `catalog: true`), so the apps' pickers
+        offer them (catalog.py). The menu's entries come first, in the menu's order."""
+        out = cloud.models_for(caller)
+        if not (settings.catalog_enabled and out["nanomuse"].get("any_model")):
+            return out
+        entries = await catalog.get(app.state.http, settings.upstream_base, settings.upstream_key)
+        menu = {m["id"] for m in out["data"]}
+        added = 0
+        for e in entries:
+            if e.id in menu:
+                continue
+            spec = settings.unlisted_model(e.id, e.kind)
+            if spec is None:
+                continue
+            pub = spec.to_public()
+            pub["nanomuse"]["catalog"] = True
+            pub["nanomuse"]["vision"] = e.vision
+            if e.kind == "chat" and not e.vision:
+                pub["architecture"]["input_modalities"] = ["text"]
+            out["data"].append(pub)
+            added += 1
+        # how many the key has beyond the menu, and why none if none (the provider's answer)
+        out["nanomuse"]["catalog"] = {"models": added, "error": catalog.error}
+        return out
 
     @app.get("/v1/models/{model_id}")
     async def model(model_id: str, kind: str = "", caller: Caller = Depends(caller_dep)) -> dict:

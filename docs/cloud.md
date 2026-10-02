@@ -115,7 +115,7 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 | free allowance | **¥10 per account**, across chat, pictures and clips; it does not reset |
 | invitations | each *new* person who signs up with your code adds **¥5** to your pool — and ¥5 to theirs |
 | when it is gone | bring your own key — [Alibaba Cloud Bailian in about two minutes](own-key.md), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
-| members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips) by typing its id — *Other model…* in the apps' model picker |
+| members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips): the apps' model picker lists them after the menu as *More models on your account* (relay 0.10 reads the provider's list under the Cloud key), and an id can still be typed — *Other model…* |
 | rate | 30 requests per minute |
 | tokens | no ceiling; usage is metered and shown |
 

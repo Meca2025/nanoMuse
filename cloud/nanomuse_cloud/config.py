@@ -335,6 +335,11 @@ class Settings:
     # is — a chat model for chat, an image model for pictures, a video model for clips.
     # The menu stays the menu for everyone else. Off with CLOUD_ANY_MODEL_MEMBERS=0.
     any_model_members: bool = field(default_factory=lambda: _env("CLOUD_ANY_MODEL_MEMBERS", "1") not in ("0", "false", "no"))
+    # 0.10: the models under the operator's key, read from the provider's own /models and
+    # listed for members after the menu (catalog.py), so they pick instead of typing.
+    # CLOUD_CATALOG=0 switches it off; the list is re-read every CLOUD_CATALOG_TTL_S.
+    catalog_enabled: bool = field(default_factory=lambda: _env("CLOUD_CATALOG", "1") not in ("0", "false", "no"))
+    catalog_ttl_s: int = field(default_factory=lambda: int(_env("CLOUD_CATALOG_TTL_S", "3600")))
     # -- the operator's page, beyond the relay's own numbers ------------------------------
     # the site's traffic database (demo/showcase/mirror/traffic.py), mounted read-only into
     # the container; empty = the "visits and downloads" panel says so and shows nothing
