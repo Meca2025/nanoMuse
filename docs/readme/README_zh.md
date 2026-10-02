@@ -19,13 +19,13 @@
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="GitHub stars"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="下载量"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/%E5%9C%A8%E6%B5%8F%E8%A7%88%E5%99%A8%E9%87%8C%E8%AF%95-nanomuse.cn%2Fweb-5B4EE6" alt="在浏览器里试"></a>
+  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-nanomuse.cn%2Fweb-5B4EE6" alt="在线体验"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%E7%BD%91%E7%AB%99-nanomuse.cn-0a66e4" alt="网站"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
 </p>
 
 > [!IMPORTANT]
-> **免费 · 开源 · 非盈利 —— 做属于所有人的个人智能体。** nanoMuse 是社区项目，永久免费：用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key。数据不会出售；服务器保存什么写在[隐私政策](https://nanomuse.cn/privacy/)里，「设置 → 数据控制」由你决定；账号随时可以删除。**[在浏览器里试试](https://nanomuse.cn/web/)**，或者[下载 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
+> **免费 · 开源 · 非盈利 —— 做属于所有人的个人智能体。** nanoMuse 是社区项目，永久免费：用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key。数据不会出售；服务器保存什么写在[隐私政策](https://nanomuse.cn/privacy/)里，「设置 → 数据控制」由你决定；账号随时可以删除。**[在线体验](https://nanomuse.cn/web/)**，或者[下载 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
 
 nanoMuse 是一个开源的个人智能体，面向你的每一台设备。和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一样，它是一个有名字、有自己形象的智能体：不只回答问题，而是动手做事；App 关掉了也继续干活；记得你；遇到无法撤销的操作会先停下来问你。Android App 把整个智能体跑在**手机上**：Linux 根文件系统、shell、浏览器、MCP、技能和定时任务都在 APK 里，模型由你自己带。它有一双手，能去碰那些没有 API 的 App——经你允许后，直接操作手机屏幕；也能伸到你的电脑上：在手机上说一句，事情在电脑上办好。桌面 App 和网页版也已经有了；接下来是 iOS 和眼镜。用自己的 key，或者领一份开源中转服务的体验额度；GPL-3.0——可以在它的基础上定制一个属于自己的 Muse。
 
