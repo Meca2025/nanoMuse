@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Fixed
+
+- **The macOS builds of nanoMuse Harness package again.** electron-builder names the bundle after `executableName` (`nanomuse-harness.app`), which `scripts/desktop-app/package-mac.sh` did not look for; it now takes the bundle electron-builder left and renames it to the product's name before signing, so the zip and the dmg carry `nanoMuse Harness.app`. The bundle's shell test compares real paths, so the macOS temp dir under `/private/var` passes. Both found by the first macOS run of `harness-desktop.yml`; the 0.1.28 installers were built from `main` with these fixes.
+
 ## [0.1.28] - 2026-10-03 · Harness
 
 ### Added
