@@ -70,30 +70,28 @@ export function MuseSwitchRow({
   disabled?: boolean;
   onChange: (v: boolean) => void;
 }) {
+  // the whole row is the switch (one control for a screen reader); the knob is decoration
   return (
-    <MuseRow
-      icon={icon}
-      label={label}
-      value={value}
-      onClick={disabled ? undefined : () => onChange(!checked)}
-      trailing={<MuseSwitch checked={checked} disabled={disabled} onChange={onChange} label={label} />}
-    />
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cx("flex min-h-[54px] w-full items-center gap-3.5 px-4 py-2 text-left", disabled ? "opacity-60" : "hover:bg-surface-2/60")}
+    >
+      {icon && <span className="shrink-0 text-fg">{icon}</span>}
+      <span className={cx("min-w-0 truncate text-[16px] leading-[21px]", value ? "max-w-[60%] shrink-0" : "flex-1")}>{label}</span>
+      {value && <span className="min-w-0 flex-1 truncate pl-3 text-right text-[14px] leading-[18px] text-muted">{value}</span>}
+      <MuseSwitch checked={checked} />
+    </button>
   );
 }
 
-export function MuseSwitch({ checked, disabled = false, onChange, label }: { checked: boolean; disabled?: boolean; onChange: (v: boolean) => void; label: string }) {
+/** The knob alone, decorative; put it inside a control that carries the switch role. */
+export function MuseSwitch({ checked }: { checked: boolean }) {
   return (
-    <span
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      aria-disabled={disabled || undefined}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (!disabled) onChange(!checked);
-      }}
-      className={cx("relative h-7 w-12 shrink-0 rounded-full transition", checked ? "bg-accent" : "bg-surface-2 border border-border", disabled && "opacity-50")}
-    >
+    <span aria-hidden className={cx("relative h-7 w-12 shrink-0 rounded-full transition", checked ? "bg-accent" : "bg-surface-2 border border-border")}>
       <span className={cx("absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition", checked ? "left-[22px]" : "left-0.5")} />
     </span>
   );
