@@ -25,7 +25,7 @@
 </p>
 
 > [!IMPORTANT]
-> **Miễn phí, mã nguồn mở, phi lợi nhuận — một trợ lý cá nhân cho tất cả mọi người.** nanoMuse là dự án cộng đồng, miễn phí mãi mãi: đăng nhập bằng số điện thoại hoặc e-mail và mô hình đi kèm một hạn mức miễn phí do nhà phát triển chi trả; khi dùng hết, hãy dùng khóa API của riêng bạn. Tin nhắn không được lưu trừ khi bạn chọn đóng góp chúng; không có gì được đem bán; xóa tài khoản bất cứ lúc nào bạn muốn. **[Dùng thử trên trình duyệt](https://nanomuse.cn/web/)**, hoặc [tải ứng dụng](https://github.com/nano-muse/nanoMuse/releases/latest).
+> **Miễn phí, mã nguồn mở, phi lợi nhuận — một trợ lý cá nhân cho tất cả mọi người.** nanoMuse là dự án cộng đồng, miễn phí mãi mãi: đăng nhập bằng số điện thoại hoặc e-mail và mô hình đi kèm một hạn mức miễn phí do nhà phát triển chi trả; khi dùng hết, hãy dùng khóa API của riêng bạn. Không có gì được đem bán; relay lưu những gì được ghi trong [chính sách quyền riêng tư](https://nanomuse.cn/privacy/), và *Cài đặt → Kiểm soát dữ liệu* là của bạn; xóa tài khoản bất cứ lúc nào bạn muốn. **[Dùng thử trên trình duyệt](https://nanomuse.cn/web/)**, hoặc [tải ứng dụng](https://github.com/nano-muse/nanoMuse/releases/latest).
 
 > Trang này là bản dịch của [README tiếng Anh](../../README.md); bản tiếng Anh là bản tham chiếu, nơi có tin tức và bảng phiên bản đầy đủ.
 

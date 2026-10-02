@@ -25,7 +25,7 @@
 </p>
 
 > [!IMPORTANT]
-> **免費 · 開源 · 非營利 —— 做屬於所有人的個人智慧代理。** nanoMuse 是社群專案，永久免費：用手機號碼或電子郵件登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換成自己的 key。預設不保存你的訊息，資料不會出售，帳號隨時可以刪除。**[在瀏覽器裡試試](https://nanomuse.cn/web/)**，或[下載 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
+> **免費 · 開源 · 非營利 —— 做屬於所有人的個人智慧代理。** nanoMuse 是社群專案，永久免費：用手機號碼或電子郵件登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換成自己的 key。資料不會出售；伺服器保存什麼寫在[隱私權政策](https://nanomuse.cn/privacy/)裡，「設定 → 資料控制」由你決定；帳號隨時可以刪除。**[在瀏覽器裡試試](https://nanomuse.cn/web/)**，或[下載 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
 
 > 這一頁是 [英文 README](../../README.md) 的譯文；英文版是基準，最新消息與完整版本表都在那裡。
 
