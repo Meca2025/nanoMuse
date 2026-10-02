@@ -43,6 +43,7 @@ from dataclasses import dataclass, field
 from fastapi import WebSocket, WebSocketDisconnect
 
 from . import __version__
+from . import client as _client
 from .db import Database
 from .service import Caller, Cloud, CloudError
 
@@ -69,6 +70,7 @@ class Connection:
     os: str = ""
     version: str = ""
     actions: list[str] = field(default_factory=list)
+    ip: str = ""  # 0.10: where the socket came from, for the operator
     connected_at: int = field(default_factory=now)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     closed: bool = False
@@ -130,6 +132,7 @@ class Hub:
                     "online": c is not None,
                     "last_seen": now() if c else int(row["last_seen"]),
                     "controllable": row["kind"] != "web",
+                    "ip": (c.ip if c else "") or row["ip"],
                 }
             )
         for c in live.values():
@@ -146,6 +149,7 @@ class Hub:
                     "online": True,
                     "last_seen": now(),
                     "controllable": c.kind != "web",
+                    "ip": c.ip,
                 }
             )
         out.sort(key=lambda d: (not d["online"], d["kind"] == "web", -d["last_seen"]))
@@ -259,6 +263,7 @@ class Hub:
             os=str(dev.get("os") or "")[:60],
             version=str(dev.get("version") or "")[:40],
             actions=actions,
+            ip=_client.current().ip,
         )
 
     async def _attach(self, conn: Connection) -> None:

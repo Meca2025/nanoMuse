@@ -793,6 +793,105 @@ async def test_admin_sees_identifiers_and_people_can_leave(stack):
     assert (await client.post("/v1/admin/delete", headers=admin, json={"identifier": "138 0013 8000"})).status_code == 404
 
 
+async def test_the_operator_sees_addresses_clients_and_every_line(stack):
+    """0.10: sign-ins, requests and events carry the address and the client; the account view
+    lists the addresses, the statement and the timeline page through to the first line, and
+    one address can be looked up across accounts. The training export drops the address."""
+    app, client, sender, up, cloud = stack
+    phone = {"X-Forwarded-For": "203.0.113.7, 10.0.0.1", "User-Agent": "nanoMuse-Android/0.1.27 (Pixel 8)"}
+    desk = {"X-Forwarded-For": "198.51.100.2", "User-Agent": "nanoMuse/0.1.27 (linux)"}
+    r = await client.post("/v1/auth/code", json={"identifier": "13800138000"}, headers=phone)
+    assert r.status_code == 204
+    code = sender.sent[-1][1]
+    r = await client.post("/v1/auth/verify", json={"identifier": "13800138000", "code": code, "device": "pixel"}, headers=phone)
+    data = r.json()
+    headers = {"Authorization": f"Bearer {data['api_key']}", **phone}
+    admin = {"X-Admin-Token": "admin"}
+    for _ in range(3):
+        r = await client.post(
+            "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+        )
+        assert r.status_code == 200
+    # the same person from the desk, with the password way in
+    r = await client.post("/v1/auth/password", headers=headers, json={"password": "correct horse"})
+    assert r.status_code == 204
+    r = await client.post("/v1/auth/login", json={"identifier": "13800138000", "password": "correct horse", "device": "desk"}, headers=desk)
+    assert r.status_code == 200
+    desk_headers = {"Authorization": f"Bearer {r.json()['api_key']}", **desk}
+    r = await client.post(
+        "/v1/chat/completions", headers=desk_headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert r.status_code == 200
+
+    acc = (await client.get(f"/v1/admin/accounts/{data['account']['id']}", headers=admin)).json()
+    a = acc["account"]
+    assert (
+        a["first_ip"] == "203.0.113.7"
+        and a["last_ip"] == "198.51.100.2"
+        and a["last_platform"] == "linux"
+        and a["last_version"] == "0.1.27"
+    )
+    assert a["last_seen_at"] is not None
+    assert [(s["device"], s["ip"], s["platform"], s["version"]) for s in acc["sessions"]] == [
+        ("pixel", "203.0.113.7", "android", "0.1.27"),
+        ("desk", "198.51.100.2", "linux", "0.1.27"),
+    ]
+    addresses = {x["ip"]: x for x in acc["addresses"]}
+    assert set(addresses) == {"203.0.113.7", "198.51.100.2"}
+    assert addresses["203.0.113.7"]["platforms"] == ["android"] and addresses["203.0.113.7"]["n"] >= 4
+    opening = sum(1 for r_ in acc["recent"] if r_["kind"] in ("grant", "credit"))  # the sign-up's opening lines
+    total = 4 + opening
+    assert acc["ledger_total"] == total and acc["events_total"] >= 4
+    assert {r_["ip"] for r_ in acc["recent"] if r_["kind"] == "chat"} == {"203.0.113.7", "198.51.100.2"}
+    assert all(e["ip"] for e in acc["events"])
+
+    # the statement, two lines at a time, to the first one
+    seen, before = [], 0
+    while True:
+        page = (
+            await client.get(
+                f"/v1/admin/accounts/{data['account']['id']}/ledger?limit=2{f'&before={before}' if before else ''}", headers=admin
+            )
+        ).json()
+        assert page["total"] == total
+        if not page["rows"]:
+            break
+        seen += page["rows"]
+        before = page["rows"][-1]["id"]
+    assert len(seen) == total and [r_["kind"] for r_ in seen][-1] == "grant"
+    assert [r_["id"] for r_ in seen] == sorted((r_["id"] for r_ in seen), reverse=True)
+    page = (await client.get(f"/v1/admin/accounts/{data['account']['id']}/events?limit=1000", headers=admin)).json()
+    assert page["total"] == len(page["rows"]) and {e["kind"] for e in page["rows"]} >= {
+        "account.created",
+        "sign_in.code",
+        "sign_in.password",
+        "password.set",
+    }
+
+    # one address, across accounts
+    found = (await client.get("/v1/admin/address?ip=203.0.113.7", headers=admin)).json()
+    assert [x["hint"] for x in found["accounts"]] == ["138****8000"] and found["accounts"][0]["n"] >= 4
+    assert (await client.get("/v1/admin/address", headers=admin)).status_code == 400
+    listing = (await client.get("/v1/admin/accounts", headers=admin)).json()["accounts"]
+    assert listing[0]["last_ip"] == "198.51.100.2" and listing[0]["last_platform"] == "linux"
+
+    # with "help improve" on, the kept turn carries the address for the operator — and the
+    # training export leaves it out
+    r = await client.post("/v1/me/contribute", headers=headers, json={"on": True})
+    assert r.status_code == 200
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "kept"}]}
+    )
+    assert r.status_code == 200
+    kept = (await client.get("/v1/admin/samples", headers=admin)).json()["samples"]
+    assert kept[0]["meta"]["ip"] == "203.0.113.7" and kept[0]["platform"] == "android"
+    exported = (await client.get(f"/v1/admin/samples/export?account_id={data['account']['id']}", headers=admin)).text
+    line = json.loads(exported.strip())
+    assert "ip" not in line["meta"] and "account_id" not in line and line["response"] == "hi"
+    view = (await client.get("/v1/admin/data", headers=admin)).json()
+    assert [(x["hint"], x["samples"]) for x in view["by_account"]] == [("138****8000", 1)]
+
+
 def test_code_mail_has_text_and_html_in_both_languages():
     from nanomuse_cloud.senders import compose_code_mail
 
@@ -891,7 +990,9 @@ async def test_data_controls_keep_the_training_view_only_and_are_deletable(stack
     assert first["request"][2] == {"role": "tool", "tool_call_id": "c1", "content": "", "omitted": True}
     dumped = json.dumps(first)
     assert "AAAA" not in dumped and "Ada" not in dumped and "SECRET" not in dumped
-    assert first["meta"] == {"ua": "nanoMuse-Android/0.1.27", "lang": "zh-CN"}
+    # 0.10: the address goes with the turn for the operator (the test client has none)
+    assert first["meta"] == {"ua": "nanoMuse-Android/0.1.27", "lang": "zh-CN", "ip": first["meta"]["ip"]}
+    assert first["platform"] == "android"
     assert first["prompt_tokens"] == 100 and first["completion_tokens"] == 50
     account = (await client.get(f"/v1/admin/accounts/{data['account']['id']}", headers=admin)).json()["account"]
     assert account["contribute"] is True and account["samples"] == 2

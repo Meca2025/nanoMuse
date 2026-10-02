@@ -182,10 +182,22 @@ errors) and the timeline across accounts with a kind filter. The
 accounts table shows the masked hint; opening one account
 (`/v1/admin/accounts/{id}`) decrypts its phone number or address for that
 view only and shows its spend by kind / model / day, sign-ins (device names,
-revoked ones too), remembered devices with presence, the recent requests and
-its timeline, with the grant / member / disable / delete buttons. The text
-of a chat is on the page only for accounts with *Help improve nanoMuse's AI
-models* on, and only the training view of it (below). Identifiers are kept AES-GCM-encrypted with a key derived from
+revoked ones too), remembered devices with presence, every request and its
+whole timeline — page by page to the first line
+(`/v1/admin/accounts/{id}/ledger` and `/events`, `?before=&limit=`) — with
+the grant / member / disable / delete buttons. From relay 0.10 the relay
+records the network address and the client (`User-Agent`) with each sign-in,
+request, event and device, and the account's first / last address and last
+client: the accounts table has a *Client / IP* column, the drawer an
+*Addresses / IP* section (how often, first, last, platforms) and the address
+on every row, and an address opens the accounts seen from it
+(`/v1/admin/address?ip=`). The text of a chat is on the page only for
+accounts with *Help improve nanoMuse's AI models* on, and only the training
+view of it (below); every account that kept turns is in the *By account*
+table of the Data controls panel, and its conversations are read in full in
+the drawer — each turn expands to every message and tool call — with an
+export of that account's turns (`/v1/admin/samples/export?account_id=`).
+Identifiers are kept AES-GCM-encrypted with a key derived from
 `CLOUD_SECRET`. A person can also remove themselves: `POST /v1/auth/delete`
 with their key deletes the account, its keys, ledger and devices.
 

@@ -87,6 +87,31 @@
 .drawer .ledger tbody tr { cursor: default; }
 .drawer .ledger tbody tr:hover td { background: transparent; }
 .drawer .bars { height: 90px; }
+/* 0.10: addresses, statement lines that page to the first, whole conversations */
+.ip { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--fill); color: var(--ink-2); white-space: nowrap; }
+.ip.tap { cursor: pointer; }
+.ip.tap:hover { background: var(--action); color: #fff; }
+.pager { display: flex; align-items: center; gap: 8px; padding: 8px 16px 10px; border-top: 1px solid var(--hairline); }
+.pager .btn.sm { width: auto; padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+.drawer .lines .line { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid var(--hairline); font-size: 12.5px; }
+.drawer .lines .line:last-child { border-bottom: 0; }
+.drawer .lines .c { white-space: nowrap; }
+.drawer .lines .c.when { color: var(--ink-3); min-width: 92px; }
+.drawer .lines .c.grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.drawer .lines .c.num { font-variant-numeric: tabular-nums; text-align: right; }
+.drawer .acts .btn.sm { padding: 5px 10px; font-size: 12px; }
+.drawer .row .s { white-space: normal; line-height: 1.5; }
+.row.sample { border-bottom: 1px solid var(--hairline); padding: 10px 16px; }
+.row.sample:last-child { border-bottom: 0; }
+.row.sample .s .tap { cursor: pointer; color: var(--action); }
+.row.sample .btn.sm { width: auto; padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+.msg { margin-top: 6px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.msg .role { font-weight: 600; }
+.msg.user .role { color: var(--action); }
+.msg.assistant .role { color: var(--ok); }
+.msg.system .role, .msg.tool .role { color: var(--ink-3); }
+.msg .toolcall { margin: 4px 0 0 12px; font-size: 12.5px; }
+.msg .toolcall pre { margin: 4px 0 0; padding: 6px 8px; background: var(--fill); border-radius: 8px; font-size: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
 @media (max-width: 900px) {
   .admin .grid { grid-template-columns: 1fr; }
   .admin th.hide-sm, .admin td.hide-sm { display: none; }

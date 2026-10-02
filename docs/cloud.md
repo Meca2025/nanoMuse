@@ -95,9 +95,15 @@ policy says so, the page says so next to the switch, and accounts from before
 keep the choice they had made; a self-hosted relay sets its own default with
 `IMPROVE_DEFAULT`. The operator sees the kept turns on the admin page's *Data
 controls* panel (how many accounts have it on, turns by day, model and app,
-the newest turns) and exports them as JSON lines without account ids
-(`GET /v1/admin/samples/export`). The relay does not know where anyone is: the
-apps never send a location, and IP addresses are not recorded.
+the newest turns, every account's kept conversations in full) and exports them
+as JSON lines without account ids or addresses (`GET /v1/admin/samples/export`,
+`?account_id=` for one account's). The relay does not receive a location — the
+apps never send one — but from relay 0.10 it records the network address and
+the client software (`User-Agent`: the Android app and its version, the
+runtime on Windows / macOS / Linux, a browser) with each sign-in, request,
+event and device, and keeps the account's first and last address; the admin
+page shows them per account and per address (`GET /v1/admin/address?ip=`), and
+they are deleted with the account.
 
 nanoMuse is a community project and charges nothing. The public relay at
 `cloud.nanomuse.cn` is paid for by the developer, so each account has a pool

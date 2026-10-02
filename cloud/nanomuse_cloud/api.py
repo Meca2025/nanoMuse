@@ -34,15 +34,18 @@
     POST /v1/admin/unlimited  X-Admin-Token  {account_id | identifier, unlimited}  → a member: no limit
     POST /v1/admin/delete     X-Admin-Token  {account_id | identifier}
     GET  /v1/admin/accounts   X-Admin-Token                     → with identifiers in clear, tokens and money
-    GET  /v1/admin/accounts/{id} X-Admin-Token ?days=30         → one account in full: usage by kind/model/day, sign-ins, devices, timeline
+    GET  /v1/admin/accounts/{id} X-Admin-Token ?days=30         → one account in full: usage by kind/model/day, sign-ins, devices, addresses, timeline
+    GET  /v1/admin/accounts/{id}/ledger X-Admin-Token ?limit=&before= → the account's statement, every line, page by page (before = last id shown)
+    GET  /v1/admin/accounts/{id}/events X-Admin-Token ?limit=&before= → the account's timeline, every entry, page by page
+    GET  /v1/admin/address    X-Admin-Token  ?ip=…              → the accounts seen from one address
     GET  /v1/admin/usage      X-Admin-Token  ?days=14           → charged tokens and yuan per day and kind
     GET  /v1/admin/overview   X-Admin-Token  ?days=30           → the dashboard: accounts, today / week / period by kind and model, signals, events
     GET  /v1/admin/events     X-Admin-Token  ?limit=200&kind=…  → the timeline across accounts (never message content)
     GET  /v1/admin/series     X-Admin-Token  ?days=30           → by day: sign-ins, new / active accounts, invites, data switches turned on; devices by kind and OS; nanoMuse Web's counts
     GET  /v1/admin/traffic    X-Admin-Token  ?days=30           → the site: pages, visitors, downloads per file, referrers, GitHub stars and release downloads (TRAFFIC_DB)
-    GET  /v1/admin/data       X-Admin-Token  ?days=30           → Data controls: accounts with the switch on, kept turns by day / model / app, switches on and off, the newest turns
+    GET  /v1/admin/data       X-Admin-Token  ?days=30           → Data controls: accounts with the switch on, kept turns by day / model / app / account, switches on and off, the newest turns
     GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → kept turns (accounts with the switch on only)
-    GET  /v1/admin/samples/export X-Admin-Token ?since=         → the same as JSON lines, without account ids
+    GET  /v1/admin/samples/export X-Admin-Token ?since=&account_id= → the same as JSON lines, without account ids or addresses
 
 The video paths mirror the provider's own so the app's VideoGen, which
 already speaks that API, only needs to point its host at the relay.
@@ -73,6 +76,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.requests import ClientDisconnect
 
 from . import __version__
+from . import client as client_info
 from .config import ModelSpec, Settings
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
@@ -141,6 +145,16 @@ def create_app(
         if fwd:
             return fwd.split(",")[0].strip()
         return request.client.host if request.client else ""
+
+    @app.middleware("http")
+    async def _remember_client(request: Request, call_next):
+        # the address and the client software behind this request, for the rows the
+        # database writes while it is handled (client.py)
+        token = client_info.set_current(client_info.from_headers(request.headers, request.client.host if request.client else None))
+        try:
+            return await call_next(request)
+        finally:
+            client_info.reset(token)
 
     def caller_dep(authorization: str | None = Header(default=None)) -> Caller:
         token = None
@@ -349,12 +363,14 @@ def create_app(
         url = settings.upstream_base.rstrip("/") + "/chat/completions"
         headers = upstream_headers()
         fallback_prompt_tokens = math.ceil(prompt_chars(body.get("messages") or []) / 3)
-        # For an account that opted in, the turn is kept once it is answered (service.keep_sample);
-        # the platform and language hints come from the headers, never an address.
+        # For an account that opted in, the turn is kept once it is answered (service.keep_sample)
+        # with the platform and language hints from the headers and, since 0.10, the address
+        # (the export for training drops the address along with the account id).
         sample_meta = (
             {
                 "ua": (request.headers.get("user-agent") or "")[:120],
                 "lang": (request.headers.get("accept-language") or "")[:40],
+                "ip": client_ip(request),
             }
             if caller.contribute
             else None
@@ -676,16 +692,21 @@ def create_app(
 
         @app.websocket("/v1/hub")
         async def hub_socket(ws: WebSocket) -> None:
-            # Header auth for apps; browsers authenticate in the hello frame instead.
-            caller: Caller | None = None
-            auth = ws.headers.get("authorization")
-            if auth and auth.lower().startswith("bearer "):
-                try:
-                    caller = cloud.authenticate(auth[7:].strip())
-                except CloudError as e:
-                    await ws.close(code=4001, reason=e.code)
-                    return
-            await hub.serve(ws, caller)
+            # the socket's address and client, for the device rows written while it is open
+            token = client_info.set_current(client_info.from_headers(ws.headers, ws.client.host if ws.client else None))
+            try:
+                # Header auth for apps; browsers authenticate in the hello frame instead.
+                caller: Caller | None = None
+                auth = ws.headers.get("authorization")
+                if auth and auth.lower().startswith("bearer "):
+                    try:
+                        caller = cloud.authenticate(auth[7:].strip())
+                    except CloudError as e:
+                        await ws.close(code=4001, reason=e.code)
+                        return
+                await hub.serve(ws, caller)
+            finally:
+                client_info.reset(token)
 
         @app.get("/v1/devices")
         async def devices(caller: Caller = Depends(caller_dep)) -> dict:
@@ -766,6 +787,27 @@ def create_app(
             out["devices"] = hub.devices(account_id)
         return out
 
+    @app.get("/v1/admin/accounts/{account_id}/ledger", dependencies=[Depends(admin_dep)])
+    async def admin_account_ledger(account_id: str, limit: int = 200, before: int = 0) -> dict:
+        """One page of the account's statement, newest first; `before` is the id of the
+        last row shown. Every line is reachable this way."""
+        if cloud.db.account(account_id) is None:
+            raise CloudError(404, "no_account", "No such account")
+        return cloud.ledger_page(account_id, max(1, min(limit, 1000)), max(0, before))
+
+    @app.get("/v1/admin/accounts/{account_id}/events", dependencies=[Depends(admin_dep)])
+    async def admin_account_events(account_id: str, limit: int = 200, before: int = 0) -> dict:
+        if cloud.db.account(account_id) is None:
+            raise CloudError(404, "no_account", "No such account")
+        return cloud.events_page(account_id, max(1, min(limit, 1000)), max(0, before))
+
+    @app.get("/v1/admin/address", dependencies=[Depends(admin_dep)])
+    async def admin_address(ip: str = "") -> dict:
+        """The accounts seen from one address."""
+        if not ip.strip():
+            raise CloudError(400, "bad_request", "Say which address: ?ip=…")
+        return cloud.admin_address(ip)
+
     @app.get("/v1/admin/events", dependencies=[Depends(admin_dep)])
     async def admin_events(limit: int = 200, kind: str = "") -> dict:
         kinds = tuple(k.strip() for k in kind.split(",") if k.strip()) or None
@@ -780,17 +822,19 @@ def create_app(
         }
 
     @app.get("/v1/admin/samples/export", dependencies=[Depends(admin_dep)])
-    async def admin_samples_export(since: int = 0) -> Response:
-        """The training set as JSON lines (one turn per line, no account ids). One whole
-        response with its length, not a stream: the set is small, and a stream that
-        stopped short — a proxy compressing it, the connection dropping — reached the
-        browser as "Failed to fetch" with nothing to say why."""
-        body = "".join(cloud.export_samples(since)).encode()
+    async def admin_samples_export(since: int = 0, account_id: str = "") -> Response:
+        """The training set as JSON lines (one turn per line, no account ids, no addresses);
+        with `account_id`, one account's turns. One whole response with its length, not a
+        stream: the set is small, and a stream that stopped short — a proxy compressing it,
+        the connection dropping — reached the browser as "Failed to fetch" with nothing to
+        say why."""
+        body = "".join(cloud.export_samples(since, account_id or None)).encode()
+        name = f"nanomuse-samples-{account_id[:8]}-{since}" if account_id else f"nanomuse-samples-{since}"
         return Response(
             body,
             media_type="application/x-ndjson",
             headers={
-                "Content-Disposition": f'attachment; filename="nanomuse-samples-{since}.jsonl"',
+                "Content-Disposition": f'attachment; filename="{name}.jsonl"',
                 "Cache-Control": "no-store",
                 "Content-Length": str(len(body)),
             },
