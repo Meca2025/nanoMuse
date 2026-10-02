@@ -167,6 +167,7 @@ class CapsulePhone(FakePhone):
         self.tasks: list[dict[str, Any]] = []
         self.stop_after = stop_after  # the n-th action comes back "nanomuse:stop"
         self.hang = False  # a phone that never answers a screen or an action
+        self.hung = 0  # how many requests it swallowed that way
         self.device = link.attach(
             "conn-1",
             {"name": "Pixel", "platform": "android", "gui": True, "capsule": True},
@@ -181,6 +182,7 @@ class CapsulePhone(FakePhone):
             )
             return
         if self.hang:
+            self.hung += 1
             return
         if msg["op"] == "act" and self.stop_after and len(self.acts) + 1 >= self.stop_after:
             self.acts.append(msg["params"])
@@ -624,9 +626,27 @@ async def test_operator_tells_the_capsule_the_task_is_over_whatever_happened(set
     phone.tasks.clear()
     phone.hang = True
     running = asyncio.ensure_future(operator.run("open wechat"))
-    await asyncio.sleep(0.01)
+    for _ in range(100):  # until the operator is waiting on the phone (no timed sleep: Windows)
+        if phone.hung:
+            break
+        await asyncio.sleep(0)
+    assert phone.hung == 1
     assert link.task is not None and link.task["goal"] == "open wechat"
     assert link.status()["task"] == link.task
+    running.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+    assert [t["event"] for t in phone.tasks] == ["begin", "end"]
+    assert link.task is None
+
+    # and a cancel that lands while "begin" itself is on its way to the phone
+    phone.tasks.clear()
+    running = asyncio.ensure_future(operator.run("open wechat"))
+    for _ in range(100):
+        if phone.tasks:
+            break
+        await asyncio.sleep(0)
+    assert [t["event"] for t in phone.tasks] == ["begin"]
     running.cancel()
     with pytest.raises(asyncio.CancelledError):
         await running

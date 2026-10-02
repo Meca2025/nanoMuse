@@ -673,8 +673,10 @@ class PhoneOperator:
             trace.end(outcome)
             return outcome
 
-        await self.link.task_event("begin", goal)
         try:
+            # inside the try: a cancel that lands while the capsule is being told "begin"
+            # must still be followed by the end, or the link would keep the task for good
+            await self.link.task_event("begin", goal)
             await self._steps(instruction, app, outcome, trace)
         finally:
             # Whatever way the task ended — done, a question, Stop, a device that went away,
