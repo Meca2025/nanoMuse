@@ -120,8 +120,12 @@ html[data-nanomuse] body { font-family: var(--nm-font); }
 .nm-sidebar { display: flex; height: 100%; min-height: 0; color: var(--dsw-alias-label-primary); background: var(--nm-base); }
 .nm-rail { width: var(--nm-rail); flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 12px; box-sizing: border-box; }
 .nm-rail-top { height: 12px; flex: none; }
-html[data-platform='darwin'] .nm-rail-top { height: 78px; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-rail-top { height: 78px; }
 .nm-rail-face { display: inline-flex; border-radius: 50%; overflow: hidden; }
+/* macOS, no title bar: the empty tops of the rail, the column and the chat are drag handles. */
+html[data-nm-platform='darwin'] [data-window-drag], html[data-nm-platform='darwin'] .nm-ob, html[data-nm-platform='darwin'] [data-slot="conversation.session.header"] > :first-child { -webkit-app-region: drag; }
+html[data-nm-platform='darwin'] :is([data-window-drag], .nm-ob, [data-slot="conversation.session.header"]) :is(button, a, input, select, textarea, [contenteditable], [role="button"], [role="dialog"], [role="menu"]) { -webkit-app-region: no-drag; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-main-top { height: 12px; }
 .nm-rail-avatar { width: 44px; height: 44px; margin: 2px 0 10px; border: 0; padding: 0; border-radius: 50%; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .nm-rail-avatar:focus-visible { outline: 2px solid var(--nm-accent); outline-offset: 2px; }
 .nm-rail-btn { position: relative; width: 44px; height: 44px; border: 0; padding: 0; border-radius: 13px; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 120ms, color 120ms; }
@@ -133,7 +137,7 @@ html[data-platform='darwin'] .nm-rail-top { height: 78px; }
 .nm-col { flex: 1; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--nm-divider); opacity: 1; transition: opacity 150ms; }
 .nm-col.nm-fading { opacity: 0; }
 .nm-col-top { height: 10px; flex: none; }
-html[data-platform='darwin'] .nm-col-top { height: 36px; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-col-top { height: 10px; }
 .nm-col-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px 4px 16px; font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
 .nm-col-head-actions { display: flex; gap: 2px; }
 .nm-col-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -255,7 +259,7 @@ html[data-nanomuse] [data-approval-key] > div > :last-child button:not(:last-chi
 html[data-nm-profile] [class*="_centerCol"] { padding-right: 310px; box-sizing: border-box; }
 @keyframes nm-slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 .nm-pf-top { flex: none; display: flex; align-items: center; padding: 10px 10px 0; min-height: 40px; }
-html[data-platform='darwin'] .nm-pf-top { padding-top: 12px; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-pf-top { padding-top: 12px; }
 .nm-pf-head { flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 20px 16px; }
 .nm-pf-face { position: relative; }
 .nm-pf-pen { position: absolute; right: -2px; bottom: 0; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--nm-base); background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
@@ -368,7 +372,7 @@ html[data-platform='darwin'] .nm-pf-top { padding-top: 12px; }
 .nm-code:focus-within .nm-code-caret { border-color: var(--nm-blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nm-blue) 25%, transparent); }
 .nm-ob-slide-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
 .nm-ob-pager { position: absolute; top: 16px; right: 18px; display: flex; gap: 6px; }
-html[data-platform='darwin'] .nm-ob-pager { top: 14px; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-ob-pager { top: 14px; }
 .nm-ob-pager-btn { width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .nm-ob-pager-btn:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary); }
 .nm-ob-pager-btn:disabled { opacity: 0.35; cursor: default; }

@@ -22,27 +22,43 @@ attach button and a microphone; while the agent works the send button becomes a 
 square. Light, dark and system themes, an accent colour, system typography; nothing
 decorative, every surface a flat tone one step from its neighbour.
 
-**nanoMuse on dsh.** The same three columns, from dsh's `sidebar` seat:
+**nanoMuse on dsh.** The same window, screen for screen, from dsh's `sidebar` seat and a
+stylesheet over the harness's stable DOM hooks (`data-composer-card`,
+`data-chat-flow-kind`, `data-approval-key`…):
 
-- The rail: the agent's face (opens the profile and settings), Chats, Search, Devices,
-  a spacer, then the hamburger. Schedules and the harness's own panels appear here only
-  when their plugin is installed, and the rest of the harness's panel list is in the
-  hamburger, not on the rail.
-- The chats column: the harness's own session list (workspaces, groups, search, new
-  chat), under our column head; it collapses to the rail alone with the toggle (or
-  the harness's `⌘/Ctrl B` in the desktop shell).
+- The rail, in Muse's order: Chats (a dot while the agent works), Search, Devices, then
+  the harness's Schedules when its plugin is installed; a spacer; the hamburger at the
+  foot. No face on the rail — as in Muse, the face is the pinned header and the profile
+  panel. On macOS the window has no title bar: the traffic lights sit over the rail's
+  empty top, which is a drag handle, and full screen takes the clearance away.
+- The chats column: a *Search* field with a *···* menu (archived chats), **Main chat**
+  — one session that stays at the top, the first one or the one you chose with *Make
+  main chat* — and **Side chats** with a *+*: every other session, pinned first, each
+  with a *···* for *Make main chat*, *Pin*, *Rename* (inline), *Archive*. A blank
+  session reads *New chat*; a dot marks a running one, a mark one that waits for you.
+  It collapses to the rail alone.
 - Above the conversation, in the harness's `conversation.header.leading` seat, the face
-  and name are pinned at the top centre with the status line: *not signed in* /
-  *connecting* / *connected · N devices online* / *thinking…* / *Hands · step N · what it
-  is doing* / *Reach · step N · on Laptop B: …* / *asking you*. A *Stop* button sits
-  beside the status while a turn runs and stops every running session.
-- Theme: the harness's light and dark palettes are overridden to Muse's tones (white
-  surfaces with a `#f4f4f6` sidebar; `#1c1c1e` with a `#151517` sidebar in the dark)
-  and the accent colour follows the face's colour from the account, so a face coloured
-  on the phone colours the desktop too.
-- The composer is the harness's. It keeps the model picker, which Muse hides: with an
-  account, members may type any model id on the relay's key (chat, image or video) —
-  see [cloud.md](cloud.md#allowance) — so the picker earns its place.
+  and name are pinned at the top centre with the status chip: *connected* / *not signed
+  in* / *thinking…* / *Hands · step N · what it is doing* / *Reach · step N · on Laptop
+  B: …* / *waiting for you*; a *Stop* button beside it while a turn runs. The chip tints
+  while the agent works and while it waits for an answer. Clicking the face opens the
+  profile panel. At the top right, *Invite* (with an account), then the harness's
+  right-sidebar toggle; the harness's own title row, tabs (*Conversation* / *Trace*)
+  and session actions are hidden — the chat rows carry rename, pin and archive.
+- The conversation: your messages in bubbles toned from the accent on the right, the
+  agent's in large-radius grey bubbles on the left, timestamps and the per-message
+  actions on hover only; an empty chat has no greeting — the composer waits at the
+  bottom, as in Muse, with the workspace and preset row above it.
+- The composer is one pill: *+* (attach), *Message*, the send disc (the stop square
+  while a turn runs). The harness's model picker, permission mode and plan toggle are
+  hidden from it — the model lives in Settings → Models and the default permission mode
+  in General, as in Muse — and come back with *Show DeepSeek Harness controls* under
+  General. No microphone: dsh's web profile has no dictation.
+- Theme: the harness's light and dark palettes are overridden to Muse's tones (`#f9f9f9`
+  surfaces, `#e3e4e6` agent bubbles in the light; `#171717` with `#242424` bubbles and
+  `#2b2b2b` fields in the dark) and the accent follows the face's colour on the account,
+  so a face coloured on the phone colours the desktop too. The desktop shell paints the
+  window in the same base colour, so a resize never flashes white in the dark.
 
 ## The first run
 
@@ -51,26 +67,33 @@ loading page, then a carousel asking to allow the agent to use the computer: one
 per permission (accessibility for clicking and typing; screen recording for
 screenshots), each with an *Allow* button, fine print, *Skip*.
 
-**nanoMuse on dsh.** The step in the harness's `settings.onboarding` seat (we take the
-shipped step's id, so a fresh install meets the agent instead of being asked for a
-DeepSeek key):
+**nanoMuse on dsh.** The same sheets, full-window, in the harness's `settings.onboarding`
+seat (we take the shipped step's id, so a fresh install meets the agent instead of being
+asked for a DeepSeek key):
 
-1. **Welcome** — the face, *Welcome to nanoMuse*, the slogan, what it can do in one
-   sentence; *Sign in with a phone number or e-mail (free)*, *Use my own API key*
-   (opens Models), *Later*. Footer: *Built on DeepSeek Harness · open source*.
-2. **Sign in** — the same two calls the phone uses (`/v1/auth/code`, `/v1/auth/verify`);
-   a mainland number gets an SMS, anything else an e-mail.
-3. **Three cards**, ‹ › and dots to move, *Skip* at the foot: **Hands** (what it can do
-   on this screen; anything that sends, pays or deletes is asked first; Stop is at the
-   top), **Files** (a chat runs in one workspace folder, chosen in the composer), **Your
-   other devices** (sign in on the phone with the same number and the two see each
-   other; *Open Devices*).
-4. **Ready** — the face, *<name> is ready*, *Start*.
+1. **Welcome** — the face, *Welcome to nanoMuse*, one blue *Sign in* pill; under it, in
+   small type, *Use my own API key* (opens Models) · *Later*.
+2. **Sign in or create an account** — one field, *Phone number or e-mail*, the fine print
+   with the terms and the privacy policy, *Continue*; the same two calls the phone uses
+   (`/v1/auth/code`, `/v1/auth/verify`).
+3. **Enter your code** — *A code was sent to …* with *Resend*, six code boxes that verify
+   themselves on the sixth digit, *Next*, *Try another way* (a password, for accounts
+   that set one: `/v1/auth/login`).
+4. A spinner while the account is adopted (models, name, face), then the **permissions
+   carousel**, ‹ › top right, *Continue* and *Skip* on each: **Allow nanoMuse to use
+   your computer?** on macOS only — *Accessibility* and *Screen recording* rows, each
+   with *Allow* that asks the system through the desktop shell and turns into a green
+   check as the system grants it (polled, and again when the window gets focus; the
+   shell can open the System Settings pane); **Allow nanoMuse to access your files?** —
+   the workspace folder, *Change* opens the native folder picker and creates the
+   workspace; **Your other devices** — this computer, the devices on the account that
+   are online, *Open* for the phone app otherwise.
+5. **nanoMuse is ready** — the face, a beat, and the window fades in.
 
 The step completes itself when a model can already answer (the account, a key, a
-provider the person added) and does not show again. There is no OS permission card:
-Hands on Linux and Windows need none, and on macOS the accessibility and screen
-recording prompts are the system's own and come up on the first use.
+provider the person added) and does not show again. In a plain browser (dsh without the
+shell) the computer card is left out: there is no bridge to the system there, and Hands
+on Linux and Windows need no permission.
 
 ## The profile and the face
 
@@ -79,12 +102,16 @@ pen (*change avatar* / *edit name*), tabs for the profile, the approval log (wha
 allowed, when, "allowed for this task" / "always allowed"), activity, more. A new face
 is drawn in the chat: four candidates in a grid, pick one, the agent confirms in words.
 
-**nanoMuse on dsh.** The face opens Settings → Account: the name and the look as the
-account has them (the dragon, an emoji on a colour, or the drawn face), the allowance,
-the models. Changing the name or drawing a face is done on the phone today and shows up
-here within the hub's round trip; the studio on the desktop is phase 4
-([harness.md](harness.md#phases)). The approval log is the harness's own conversation
-record: each approval card stays in the transcript where it was answered.
+**nanoMuse on dsh.** The face at the top opens the same panel, 310 px on the right,
+beside the chat (the chat makes room; × or Escape closes it): the avatar at 86 px with a
+pen — *Change look* (the dragon, or an emoji on a colour, written to the account and
+worn on every device) and *Edit name* — the name, *Connected* / *Not signed in* /
+*Offline*, and a segmented control of four tabs: **Activity** (the sessions and the
+hub's notices, *Today* and *Earlier*), **Approvals** (what you allowed or rejected on
+the approval cards, with when; kept on this computer), **Schedule** (opens the harness's
+schedules panel), **Memory** (what the account carries from device to device and the
+agent's description). Drawing a face from four candidates is the phone's studio; the
+desktop wears what the account has.
 
 ## Computer use
 
@@ -95,12 +122,19 @@ permission cards in the chat — *allow <name> to take a screenshot?* / *write a
 with *Allow (this task)*, *Always allow*, *Deny*.
 
 **nanoMuse on dsh.** Hands are the runtime's `computer_screen` / `computer_act` over
-MCP, so what the model sees is the screenshot it asked for and the status line says
-*Hands · step N · click "Save"* while it works; the harness's approval card is the
-permission card (*allow once* / *reject*, and its permission presets for the standing
-answer), with the Sentinel's reasons ([sentinel.md](sentinel.md)) in it. The live stage — the controlled screen
-inside the window — is not built: on the desktop the controlled screen *is* the screen.
-What the phone app shows while its Hands work ([gui.md](gui.md)) is the model.
+MCP, so what the model sees is the screenshot it asked for and the status chip says
+*Hands · step N · click "Save"* while it works. The harness's approval card is restyled
+into Muse's permission card — a shield, the headline, the detail, *Allow once* in blue
+first and *Reject* in grey — and every answer is written to the profile panel's
+*Approvals* tab; the Sentinel's reasons ([sentinel.md](sentinel.md)) are in the
+headline. dsh decides *once* or *rejected*; the standing answer is its permission mode
+(General → the default for new chats). Settings → **Computer use** shows the two macOS
+permissions with *Allow* and *Open System Settings* (through the desktop shell), *Keep
+the screen awake while it works* (the shell holds a power-save blocker while a session
+runs) and the note that anything that sends, pays or deletes is asked first. The live
+stage — the controlled screen inside the window — is not built: on the desktop the
+controlled screen *is* the screen. What the phone app shows while its Hands work
+([gui.md](gui.md)) is the model.
 
 ## Settings
 
@@ -118,19 +152,27 @@ stock General plugin switched off in the bundle layer:
 - **General** — the harness's own rows (permission presets, language, appearance, font
   size, shortcuts, developer tools…) mount in our page through the `settings.general.item`
   seat, then *About*: nanoMuse, built on DeepSeek Harness, the bundle's version, the
-  licence.
+  licence; and *Developer*: *Show DeepSeek Harness controls* (the model picker, the
+  modes, the workspace browser in place of the chats column).
 - **Account** — the nanoMuse account: sign in or the masked identifier, the allowance,
   the look, the models, *Open Devices*.
 - **Models**, **Agents** — the harness's pages, unchanged.
+- **Computer use** — the system permissions (macOS), keep awake, the risk note.
 - **Devices** — this computer (its name, the remote-control switch that lets the phone
   run things here) and the other devices on the account, online dots, *Forget*.
+- **Data controls** — *We take your privacy seriously* with the privacy policy, *Help
+  improve nanoMuse's AI models* (the relay's switch, with how many turns it kept and
+  *Delete*), as on every other app.
+- **Help & support** — the docs, the site, discussions, report an issue, the version.
+- **Legal** — the licence, the Meta trademark notice, the acknowledgements (DeepSeek
+  Harness, OpenMinis), the privacy policy and the terms.
 - **Advanced** — every page another plugin registers (the harness's plugin manager,
   archived sessions…), grouped at the bottom so they are there and out of the way.
 - **Sign out** at the foot while signed in.
 
-Dictation, wallet, message channels, data export and the OS-level toggles are not there:
-dsh has no equivalent of the first three in its web profile, and the last belong to the
-shell (phase 5).
+Connectors, dictation, wallet, secure storage and message channels are not there: dsh's
+web profile has no equivalent, and the Cloud has no wallet — members have an allowance
+([cloud.md](cloud.md#allowance)).
 
 ## The rail's other rooms — Feed, Ideas, Goals, Library
 

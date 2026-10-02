@@ -463,9 +463,14 @@ function createWindow(): BrowserWindow {
     backgroundColor: nativeTheme.shouldUseDarkColors ? BASE_DARK : BASE_LIGHT,
     show: false,
     autoHideMenuBar: process.platform !== "darwin",
+    // macOS: no title bar, the traffic lights sit over the rail (Muse's window); the
+    // web app marks its drag regions once the preload tells it the platform.
+    ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 16, y: 18 } } : {}),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false, preload: join(__dirname, "preload.js") },
   });
   win.once("ready-to-show", () => win.show());
+  win.on("enter-full-screen", () => win.webContents.send("nanomuse:fullscreen", true));
+  win.on("leave-full-screen", () => win.webContents.send("nanomuse:fullscreen", false));
   // the harness names its document after itself; the window keeps ours
   win.on("page-title-updated", (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(({ url }) => {

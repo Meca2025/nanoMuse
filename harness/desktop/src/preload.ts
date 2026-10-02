@@ -38,3 +38,18 @@ const bridge = {
 export type NanomuseHarnessBridge = typeof bridge;
 
 contextBridge.exposeInMainWorld("nanomuseHarness", bridge);
+
+// The window has no title bar on macOS (the traffic lights sit over the rail, as in
+// Muse's window), so the page marks the platform on the document and the nanoMuse
+// bundle adds the clearance and the drag regions; full screen drops the clearance.
+// (The harness's own `data-platform` is not used: it would expect the harness's
+// desktop keyboard bridge.)
+const mark = () => {
+  document.documentElement.dataset.nmPlatform = process.platform;
+};
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mark, { once: true });
+else mark();
+ipcRenderer.on("nanomuse:fullscreen", (_event, on: boolean) => {
+  if (on) document.documentElement.setAttribute("data-nm-fullscreen", "");
+  else document.documentElement.removeAttribute("data-nm-fullscreen");
+});
