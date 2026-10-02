@@ -1,4 +1,31 @@
-import { Box, Check, ChevronRight, LogOut, Moon, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
+import {
+  BarChart3,
+  BatteryFull,
+  Bell,
+  Box,
+  Brain,
+  Check,
+  ChevronRight,
+  Clapperboard,
+  Cloud,
+  Code2,
+  Hand,
+  Info,
+  LogOut,
+  MessageSquareWarning,
+  Monitor,
+  Moon,
+  Palette,
+  Plug,
+  Puzzle,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Smile,
+  Sparkles,
+  TerminalSquare,
+  Zap,
+} from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { androidApp, keepRunningStatus, type KeepRunningStatus } from "../android";
 import { api, setToken } from "../api";
@@ -8,13 +35,15 @@ import { setDeveloperTools, useDeveloperTools } from "../devtools";
 import { openOwnKeySetup } from "../components/AllowanceWays";
 import { AVATAR_COLORS } from "../components/AvatarPicker";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
 import { CommunityNotice } from "../components/CommunityNotice";
 import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
 import { setThemeSetting, useThemeSetting } from "../theme";
 import { disablePush, enablePush, pushState, type PushState } from "../push";
 import { useStore } from "../store";
 import type { Proactivity, PushInfo, UpdateView } from "../types";
+import { MuseCaption, MuseCard, MuseDivider, MuseRow } from "../components/MuseList";
+import { useWide } from "../useWide";
 import { cx } from "../util";
 import { Toggle } from "../components/Form";
 
@@ -82,53 +111,75 @@ export function SettingsScreen() {
   const dirty = !!state.profile && (Object.keys(identity) as (keyof Identity)[]).some((k) => identity[k] !== saved[k]);
   const name = state.profile?.name ?? "nanoMuse";
   const developer = useDeveloperTools();
-  const sections: Array<{ id: string; title: string }> = [
+  // One page on a wide window (the sections down the left, the way Muse's desktop settings
+  // read); on the phone the list of rows the Android app draws, each opening its own page.
+  const wide = useWide() && !state.lite;
+  const [page, setPage] = useState<SectionId | null>(null);
+  const sections: Array<{ id: SectionId; title: string }> = [
     { id: "who", title: name },
     { id: "sentinel", title: t("Safety · Sentinel") },
     { id: "proactivity", title: t("Proactivity") },
     { id: "notifications", title: t("Notifications") },
-    ...(keepRunningStatus() ? [{ id: "keep-running", title: t("Keep it running") }] : []),
+    ...(keepRunningStatus() ? [{ id: "keep-running" as const, title: t("Keep it running") }] : []),
     { id: "model", title: t("Model") },
-    ...(isDesktopApp() ? [{ id: "desktop", title: t("Desktop app") }] : []),
+    { id: "appearance", title: t("Appearance") },
+    ...(isDesktopApp() ? [{ id: "desktop" as const, title: t("Desktop app") }] : []),
     { id: "developer", title: t("Developer") },
     { id: "about", title: t("About") },
   ];
+  const show = (id: SectionId) => wide || page === id;
 
-  // `#developer` (the sidebar's menu) lands on that section — once the settings are in, so
-  // the sections above it have their final height
-  const [wantDeveloper, setWantDeveloper] = useState(() => window.location.hash === "#developer");
+  // `#developer` (the sidebar's menu), `#who` (the agent page's Edit) and the other section
+  // ids land on that section — once the settings are in, so the sections above it have
+  // their final height; on the phone they open that page.
+  const [wanted, setWanted] = useState<SectionId | null>(() => {
+    const id = window.location.hash.slice(1);
+    return SECTION_IDS.includes(id as SectionId) ? (id as SectionId) : null;
+  });
   useEffect(() => {
-    if (!wantDeveloper || !s) return;
-    setWantDeveloper(false);
+    if (!wanted || !s) return;
+    setWanted(null);
     history.replaceState(null, "", window.location.pathname + window.location.search);
-    requestAnimationFrame(() => document.getElementById("developer")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [wantDeveloper, s]);
+    if (!wide) {
+      setPage(wanted);
+      return;
+    }
+    requestAnimationFrame(() => document.getElementById(wanted)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [wanted, s, wide]);
+
+  if (!wide && page === null) {
+    return <SettingsHome release={release} onOpen={setPage} />;
+  }
+  const current = sections.find((x) => x.id === page);
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <h1 className="text-[24px] font-bold tracking-tight">{t("You & {name}", { name: state.profile?.name ?? "nanoMuse" })}</h1>
-        <p className="text-[13px] text-muted">{t("Its name and look, how careful it is, how often it speaks up.")}</p>
-      </header>
+      {wide ? (
+        <PageBar title={t("Settings")} description={t("Its name and look, how careful it is, how often it speaks up.")} />
+      ) : (
+        <PageBar title={current?.title ?? t("Settings")} onBack={() => setPage(null)} backLabel={t("Settings")} />
+      )}
 
       <div className="flex min-h-0 flex-1">
         {/* on a wide window, the sections down the left — the shape of Muse's settings */}
-        <nav className="hidden wide:flex w-[188px] shrink-0 flex-col gap-0.5 self-start pl-4 pr-2 pt-1" aria-label={t("Settings")}>
-          {sections.map((sec) => (
-            <button
-              key={sec.id}
-              type="button"
-              onClick={() => document.getElementById(sec.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="truncate rounded-xl px-3 py-1.5 text-left text-[13px] font-medium text-fg/75 hover:bg-surface-2 hover:text-fg"
-            >
-              {sec.title}
-            </button>
-          ))}
-        </nav>
+        {wide && (
+          <nav className="flex w-[188px] shrink-0 flex-col gap-0.5 self-start pl-4 pr-2 pt-1" aria-label={t("Settings")}>
+            {sections.map((sec) => (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => document.getElementById(sec.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="truncate rounded-xl px-3 py-1.5 text-left text-[13px] font-medium text-fg/75 hover:bg-surface-2 hover:text-fg"
+              >
+                {sec.title}
+              </button>
+            ))}
+          </nav>
+        )}
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-5">
         {/* who it is */}
-        <Section title={name} id="who">
+        {show("who") && (
+        <Section title={name} id="who" plain={!wide}>
           <IdentityForm
             value={identity}
             onChange={setIdentity}
@@ -145,9 +196,11 @@ export function SettingsScreen() {
             {t("Save")}
           </button>
         </Section>
+        )}
 
         {/* Sentinel */}
-        <Section title={t("Safety · Sentinel")} id="sentinel">
+        {show("sentinel") && (
+        <Section title={t("Safety · Sentinel")} id="sentinel" plain={!wide}>
           <p className="text-[13px] text-muted -mt-1">
             {t("A separate gatekeeper reviews every action. Pick how often it should check in with you.")}
           </p>
@@ -196,9 +249,11 @@ export function SettingsScreen() {
             </div>
           )}
         </Section>
+        )}
 
         {/* Proactivity */}
-        <Section title={t("Proactivity")} id="proactivity">
+        {show("proactivity") && (
+        <Section title={t("Proactivity")} id="proactivity" plain={!wide}>
           <ProactivityDial value={state.profile?.proactivity ?? "default"} onChange={(v) => void update({ profile: { proactivity: v } })} />
           <div className="flex items-center gap-3">
             <label className="text-[13.5px] flex-1">
@@ -225,21 +280,25 @@ export function SettingsScreen() {
           </div>
           <QuietHours value={state.profile?.quiet_hours ?? ""} onChange={(v) => void update({ profile: { quiet_hours: v } })} />
         </Section>
+        )}
 
         {/* Notifications */}
-        <Section title={t("Notifications")} id="notifications">
+        {show("notifications") && (
+        <Section title={t("Notifications")} id="notifications" plain={!wide}>
           {androidApp() ? <PhoneAppSettings name={state.profile?.name ?? "nanoMuse"} /> : <PushSettings name={state.profile?.name ?? "nanoMuse"} />}
         </Section>
+        )}
 
         {/* Keep it running: only the Android app has anything to say here */}
-        {keepRunningStatus() && (
-          <Section title={t("Keep it running")} id="keep-running">
+        {keepRunningStatus() && show("keep-running") && (
+          <Section title={t("Keep it running")} id="keep-running" plain={!wide}>
             <KeepRunningSettings name={state.profile?.name ?? "nanoMuse"} />
           </Section>
         )}
 
         {/* Model */}
-        <Section title={t("Model")} id="model">
+        {show("model") && (
+        <Section title={t("Model")} id="model" plain={!wide}>
           {s && (
             <button type="button" onClick={() => setTab("connections")} className="w-full text-[13.5px] flex items-center justify-between">
               <span className="text-muted">{t("Provider / model")}</span>
@@ -256,6 +315,18 @@ export function SettingsScreen() {
               </span>
             </button>
           )}
+          <button type="button" onClick={() => setTab("connections")} className="w-full text-[13.5px] flex items-center justify-between">
+            <span className="text-muted">{t("Connections")}</span>
+            <span className="text-[12.5px] text-muted flex items-center gap-1">
+              {t("E-mail, calendar, browser, MCP servers")} <ChevronRight size={14} />
+            </span>
+          </button>
+        </Section>
+        )}
+
+        {/* Appearance: this device's theme and language, the agent's reply language */}
+        {show("appearance") && (
+        <Section title={t("Appearance")} id="appearance" plain={!wide}>
           <Toggle
             label={t("Show thinking")}
             hint={t("Reveal the model's reasoning under each reply when the provider exposes it.")}
@@ -313,23 +384,19 @@ export function SettingsScreen() {
               <option value="Français">Français</option>
             </select>
           </div>
-          <button type="button" onClick={() => setTab("connections")} className="w-full text-[13.5px] flex items-center justify-between">
-            <span className="text-muted">{t("Connections")}</span>
-            <span className="text-[12.5px] text-muted flex items-center gap-1">
-              {t("E-mail, calendar, browser, MCP servers")} <ChevronRight size={14} />
-            </span>
-          </button>
         </Section>
+        )}
 
         {/* The desktop app's own switches: the shell around this page */}
-        {isDesktopApp() && (
-          <Section title={t("Desktop app")} id="desktop">
+        {isDesktopApp() && show("desktop") && (
+          <Section title={t("Desktop app")} id="desktop" plain={!wide}>
             <DesktopAppSettings />
           </Section>
         )}
 
         {/* The developer side, off unless asked for */}
-        <Section title={t("Developer")} id="developer">
+        {show("developer") && (
+        <Section title={t("Developer")} id="developer" plain={!wide}>
           <Toggle
             label={t("Developer tools")}
             hint={t("The Coding screen — Cursor, Codex and the other coding agents on this computer — in the sidebar, and the runtime's address below. This device only.")}
@@ -353,9 +420,11 @@ export function SettingsScreen() {
             </div>
           )}
         </Section>
+        )}
 
         {/* About */}
-        <Section title={t("About")} id="about">
+        {show("about") && (
+        <Section title={t("About")} id="about" plain={!wide}>
           <CommunityNotice />
           <div className="text-[13px] text-muted space-y-1">
             <div>
@@ -389,7 +458,118 @@ export function SettingsScreen() {
             <LogOut size={16} /> {androidApp() ? t("Disconnect from this server") : t("Forget this device's access token")}
           </button>
         </Section>
+        )}
       </div>
+      </div>
+    </div>
+  );
+}
+
+type SectionId = "who" | "sentinel" | "proactivity" | "notifications" | "keep-running" | "model" | "appearance" | "desktop" | "developer" | "about";
+const SECTION_IDS: SectionId[] = ["who", "sentinel", "proactivity", "notifications", "keep-running", "model", "appearance", "desktop", "developer", "about"];
+
+/**
+ * The phone's Settings: Muse's bar, then white cards of outlined-glyph rows on the grey
+ * canvas, grouped the way the Android app groups them — the model, the agent, how it
+ * behaves, the app, about — each row opening its own page or screen.
+ */
+function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen: (id: SectionId) => void }) {
+  const { state, setTab } = useStore();
+  const t = useT();
+  const s = state.settings;
+  const hub = state.hub;
+  const name = state.profile?.name ?? "nanoMuse";
+  const themeSetting = useThemeSetting();
+  const others = hub?.devices.filter((d) => !d.this && d.kind !== "web") ?? [];
+  const computers = others.filter((d) => d.kind === "computer");
+  const coding = others.filter((d) => d.online && d.actions?.includes("coding.sessions"));
+  const mode = s?.sentinel.mode;
+  const modeLabel = mode === "ask" ? t("Balanced") : mode === "strict" ? t("Cautious") : mode === "auto" ? t("Hands-off") : "";
+  const level = state.profile?.proactivity ?? "default";
+  const levelLabel = level === "off" ? t("Off") : level === "low" ? t("Low") : level === "high" ? t("High") : t("Default");
+  const themeLabel = themeSetting === "dark" ? t("Dark") : themeSetting === "light" ? t("Light") : t("Follow the system");
+  const none = t("none");
+  return (
+    <div className="flex h-full flex-col">
+      <PageBar title={t("Settings")} />
+      <div className="flex-1 overflow-y-auto pb-8 pt-2">
+        {/* the model: where Muse's plan card stands */}
+        <MuseCard className="mb-3">
+          <button type="button" onClick={() => setTab("connections")} className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-2/60">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[16px] font-medium leading-[21px]">{s?.llm.model || t("No model yet")}</span>
+              <span className="mt-0.5 block truncate text-[12.5px] leading-4 text-muted">
+                {s ? (s.llm.cloud ? "nanoMuse Cloud" : s.llm.provider) : t("Add a provider and pick its models")}
+              </span>
+            </span>
+            <span className="text-[14px] font-medium text-accent">{t("Change")}</span>
+          </button>
+          <MuseDivider />
+          <MuseRow icon={<Cloud size={22} />} label="nanoMuse Cloud" value={hub?.account.signed_in ? hub.account.hint : t("Sign in")} onClick={() => setTab("account")} />
+          <MuseDivider />
+          <MuseRow icon={<Clapperboard size={22} />} label={t("Image & video models")} onClick={() => setTab("connections")} />
+          <MuseDivider />
+          <MuseRow icon={<BarChart3 size={22} />} label={t("Usage")} onClick={() => setTab("account")} />
+        </MuseCard>
+
+        {/* the agent */}
+        <MuseCard className="mb-3">
+          <MuseRow icon={<Sparkles size={22} />} label={t("Name & personality")} value={name} onClick={() => onOpen("who")} />
+          <MuseDivider />
+          <MuseRow icon={<Smile size={22} />} label={t("Avatar")} onClick={() => setTab("avatar")} />
+          <MuseDivider />
+          <MuseRow icon={<Brain size={22} />} label={t("Memory")} onClick={() => setTab("memory")} />
+          {s?.skills?.enabled !== false && (
+            <>
+              <MuseDivider />
+              <MuseRow icon={<Puzzle size={22} />} label={t("Skills")} value={s ? String(s.skills.count) : undefined} onClick={() => setTab("skills")} />
+            </>
+          )}
+          <MuseDivider />
+          <MuseRow icon={<Plug size={22} />} label={t("Connections")} value={s?.connectors.mcp.length ? `${s.connectors.mcp.length} MCP` : undefined} onClick={() => setTab("connections")} />
+          <MuseDivider />
+          <MuseRow icon={<Monitor size={22} />} label={t("Devices")} value={computers.length ? String(computers.length) : none} onClick={() => setTab("devices")} />
+          <MuseDivider />
+          <MuseRow icon={<TerminalSquare size={22} />} label={t("Coding agents")} value={coding.length ? String(coding.length) : none} onClick={() => setTab("coding")} />
+        </MuseCard>
+
+        {/* how it behaves */}
+        <MuseCard className="mb-3">
+          <MuseRow icon={<ShieldCheck size={22} />} label={t("Safety · Sentinel")} value={modeLabel} onClick={() => onOpen("sentinel")} />
+          <MuseDivider />
+          <MuseRow icon={<Zap size={22} />} label={t("Proactivity")} value={levelLabel} onClick={() => onOpen("proactivity")} />
+          <MuseDivider />
+          <MuseRow icon={<Bell size={22} />} label={t("Notifications")} onClick={() => onOpen("notifications")} />
+          {keepRunningStatus() && (
+            <>
+              <MuseDivider />
+              <MuseRow icon={<BatteryFull size={22} />} label={t("Keep it running")} onClick={() => onOpen("keep-running")} />
+            </>
+          )}
+        </MuseCard>
+
+        {/* the app */}
+        <MuseCard className="mb-3">
+          <MuseRow icon={<Palette size={22} />} label={t("Appearance")} value={themeLabel} onClick={() => onOpen("appearance")} />
+          {isDesktopApp() && (
+            <>
+              <MuseDivider />
+              <MuseRow icon={<Monitor size={22} />} label={t("Desktop app")} onClick={() => onOpen("desktop")} />
+            </>
+          )}
+          <MuseDivider />
+          <MuseRow icon={<Code2 size={22} />} label={t("Developer")} onClick={() => onOpen("developer")} />
+        </MuseCard>
+
+        {/* about */}
+        <MuseCard className="mb-3">
+          <MuseRow icon={<Info size={22} />} label={t("About nanoMuse")} value={release?.newer && release.latest ? t("{version} is out", { version: release.latest }) : undefined} onClick={() => onOpen("about")} />
+          <MuseDivider />
+          <MuseRow icon={<Hand size={22} />} label={t("Privacy policy")} onClick={() => window.open("https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md", "_blank", "noopener")} external />
+          <MuseDivider />
+          <MuseRow icon={<MessageSquareWarning size={22} />} label={t("Feedback")} onClick={() => window.open("https://github.com/nano-muse/nanoMuse/issues/new/choose", "_blank", "noopener")} external />
+        </MuseCard>
+        <MuseCaption>nanoMuse {state.version}</MuseCaption>
       </div>
     </div>
   );
@@ -744,10 +924,11 @@ function DesktopAppSettings() {
   );
 }
 
-function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
+/** A settings card; `plain` is the phone's page, where the bar above already names it. */
+function Section({ title, children, id, plain = false }: { title: string; children: ReactNode; id?: string; plain?: boolean }) {
   return (
-    <section id={id} className="rounded-3xl bg-surface border border-border/70 shadow-sm p-4 space-y-3 scroll-mt-4">
-      <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{title}</h2>
+    <section id={id} className={cx("space-y-3 scroll-mt-4", plain ? "pt-1" : "rounded-3xl bg-surface border border-border/70 shadow-sm p-4")}>
+      {!plain && <h2 className="text-[12px] font-semibold uppercase tracking-wide text-muted">{title}</h2>}
       {children}
     </section>
   );

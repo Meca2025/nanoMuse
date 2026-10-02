@@ -225,7 +225,9 @@ export function ApprovalCard({
 }) {
   const [showArgs, setShowArgs] = useState(false);
   const [more, setMore] = useState(false);
+  const [overflows, setOverflows] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const t = useT();
   const pending = event.status === "pending";
   const sensitive = event.risk === "sensitive";
@@ -233,28 +235,34 @@ export function ApprovalCard({
   // "at example.com" for the web, "to alice@…" for mail; a program name (shell) is in the summary already
   const host = event.egress_target || (["web_fetch", "browser", "web_search"].includes(event.tool) ? event.target : null);
   const recipient = event.tool === "send_email" ? event.target : null;
+  const hasArgs = Object.values(event.args ?? {}).some((v) => v !== undefined && v !== null && v !== "");
+  // The preview shows the first lines, as on the phone; the rest unfolds on request.
+  useEffect(() => {
+    const el = previewRef.current;
+    if (el && !showArgs) setOverflows(el.scrollHeight > el.clientHeight + 2);
+  }, [event.args, showArgs]);
   // Expanding the card near the bottom of the chat must not hide the new buttons under the tab bar.
   useEffect(() => {
-    if (more || showArgs) cardRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [more, showArgs]);
+    if (showArgs || more) cardRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [showArgs, more]);
   return (
-    <div className="rise flex justify-start pr-4" ref={cardRef}>
+    <div className="rise flex justify-start" ref={cardRef}>
       <div
         className={cx(
-          "w-full max-w-md overflow-hidden rounded-[22px] border bg-surface shadow-[0_4px_20px_-10px_rgba(0,0,0,0.18)]",
-          pending ? (sensitive ? "border-rose-400/60" : "border-border") : "border-border/70",
+          "w-full max-w-[600px] overflow-hidden rounded-[22px] bg-surface shadow-[0_2px_12px_rgba(0,0,0,0.12)] dark:border dark:border-border dark:shadow-none",
+          pending && sensitive && "border border-rose-400/60",
         )}
       >
         <div className="flex items-start gap-3 px-4 pt-4 pb-2">
-          <div className={cx("mt-0.5 rounded-full p-2", sensitive ? "bg-rose-500/12 text-rose-500" : "bg-surface-2 text-fg/80")}>
-            {sensitive ? <ShieldAlert size={18} /> : toolIcon(event.tool, 18)}
+          <div className={cx("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", sensitive ? "bg-rose-500/12 text-rose-500" : "bg-surface-2 text-fg")}>
+            {sensitive ? <ShieldAlert size={22} /> : toolIcon(event.tool, 22)}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5 text-[12.5px] font-medium text-muted">
               <span>{event.remote ? t("{name} on {device} wants to", { name, device: event.remote.name }) : t("{name} wants to", { name })}</span>
               {event.remote && <DevicePill device={event.remote.name} />}
             </div>
-            <div className="mt-0.5 break-words text-[15.5px] font-semibold leading-snug">{event.summary}</div>
+            <div className="mt-0.5 break-words text-[17px] font-semibold leading-[22px]">{event.summary}</div>
             {host ? (
               <div className="mt-1 flex items-center gap-1 text-[13px] text-muted">
                 <Globe size={12} /> <span className="truncate">{t("at {host}", { host })}</span>
@@ -281,59 +289,62 @@ export function ApprovalCard({
             ))}
           </div>
         )}
-        <div className="px-4 pb-2">
-          <button type="button" className="flex items-center gap-1 text-[12.5px] text-accent" onClick={() => setShowArgs((s) => !s)}>
-            {showArgs ? <ChevronDown size={13} /> : <ChevronRight size={13} />} {t("Exactly what will run")}
-          </button>
-          {showArgs && (
-            <>
-              <ArgsList args={event.args} />
-              {event.reasons?.length > 0 && (
-                <div className="mt-1.5 text-[12px] text-muted">{t("Why it asks: {reasons}", { reasons: event.reasons.join(" · ") })}</div>
-              )}
-            </>
-          )}
-        </div>
-        {pending ? (
-          <div className="flex flex-col gap-2 px-3 pb-3 pt-1">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => onDecide(false, "once")}
-                className="flex-1 rounded-full bg-surface-2 py-2.5 text-[15px] font-semibold transition active:scale-[0.98]"
-              >
-                {t("Deny")}
-              </button>
-              <button
-                type="button"
-                onClick={() => onDecide(true, "once")}
-                className="flex-1 rounded-full bg-accent py-2.5 text-[15px] font-semibold text-accent-fg transition active:scale-[0.98]"
-              >
-                {t("Allow")}
-              </button>
-            </div>
-            {standing.length > 0 ? (
-              <>
-                <button type="button" className="self-center text-[12.5px] text-muted" onClick={() => setMore((m) => !m)}>
-                  {more ? t("Fewer options") : t("Allow {subject} for longer…", { subject: grantSubject(event.tool, event.target) })}
-                </button>
-                {more && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {standing.map((scope) => (
-                      <button
-                        key={scope}
-                        type="button"
-                        onClick={() => onDecide(true, scope)}
-                        className="rounded-2xl bg-surface-2 px-3 py-2 text-left text-[13px] font-medium leading-snug"
-                      >
-                        {scopeLabel(scope, event.tool, event.target)}
-                      </button>
-                    ))}
-                  </div>
+        {/* the preview, as on the phone: a grey box with exactly what will run, the first lines */}
+        {(hasArgs || event.reasons?.length > 0) && (
+          <div className="px-4 pb-2">
+            <div className="rounded-xl bg-surface-2 px-3 py-2.5">
+              <div className="text-[11px] font-medium text-muted">{t("Exactly what will run")}</div>
+              <div ref={previewRef} className={cx("-mt-1", !showArgs && "max-h-40 overflow-hidden")}>
+                <ArgsList args={event.args} />
+                {event.reasons?.length > 0 && (
+                  <div className="mt-1.5 text-[12px] text-muted">{t("Why it asks: {reasons}", { reasons: event.reasons.join(" · ") })}</div>
                 )}
-              </>
+              </div>
+              {(overflows || showArgs) && (
+                <button type="button" className="mt-1 flex items-center gap-1 text-[12.5px] text-accent" onClick={() => setShowArgs((s) => !s)}>
+                  {showArgs ? <ChevronDown size={13} /> : <ChevronRight size={13} />} {showArgs ? t("Fewer options") : t("Show all")}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        {pending ? (
+          <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
+            <button
+              type="button"
+              onClick={() => onDecide(true, "once")}
+              className="h-[46px] w-full rounded-full bg-accent text-[15px] font-semibold text-accent-fg transition active:scale-[0.98]"
+            >
+              {t("Allow once")}
+            </button>
+            {/* the phone's two grey pills — this task, always — the other scopes behind "more" */}
+            {standing
+              .filter((scope) => more || scope === "task" || scope === "always")
+              .map((scope) => (
+                <button
+                  key={scope}
+                  type="button"
+                  onClick={() => onDecide(true, scope)}
+                  className="h-11 w-full truncate rounded-full bg-surface-2 px-4 text-[15px] font-medium transition active:scale-[0.98]"
+                >
+                  {scopeLabel(scope, event.tool, event.target)}
+                </button>
+              ))}
+            <button
+              type="button"
+              onClick={() => onDecide(false, "once")}
+              className="h-11 w-full rounded-full bg-surface-2 text-[15px] font-medium transition active:scale-[0.98]"
+            >
+              {t("Deny")}
+            </button>
+            {standing.length === 0 ? (
+              <div className="text-center text-[12px] text-muted">{t("This kind of action is approved one at a time.")}</div>
             ) : (
-              <div className="self-center text-[12px] text-muted">{t("This kind of action is approved one at a time.")}</div>
+              !more && standing.some((scope) => scope !== "task" && scope !== "always") && (
+                <button type="button" className="self-center text-[12.5px] text-muted" onClick={() => setMore(true)}>
+                  {t("Allow {subject} for longer…", { subject: grantSubject(event.tool, event.target) })}
+                </button>
+              )
             )}
           </div>
         ) : (

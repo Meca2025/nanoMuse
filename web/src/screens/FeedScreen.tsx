@@ -3,23 +3,25 @@ import {
   Bell,
   CalendarClock,
   CalendarDays,
-  ChevronDown,
   FileText,
+  Info,
   Loader2,
   Mail,
   MapPin,
+  MessageCircle,
   MessageCircleQuestion,
   Moon,
-  PenLine,
-  RefreshCw,
   ShieldAlert,
+  SlidersHorizontal,
   Sparkles,
-  Trash2,
   Webhook,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { Markdown } from "../components/Markdown";
+import { MuseRoundButton } from "../components/MuseHeader";
+import { Sheet } from "../components/Sheet";
+import { TabHeader } from "../components/TabHeader";
 import { intlLocale, localLabel, t, useLocale, useT } from "../i18n";
 import { useStore } from "../store";
 import type { CalendarData, CalendarEvent, FeedItem, FeedPost, FeedPostsData, UpcomingData } from "../types";
@@ -76,39 +78,90 @@ export function FeedScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const groups = useMemo(() => groupByDay(items ?? []), [items, locale]);
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [infoPost, setInfoPost] = useState<FeedPost | null>(null);
+  const [introAck, setIntroAck] = useState(() => localStorage.getItem(INTRO_ACK_KEY) === "1");
+  const [writing, setWriting] = useState(false);
+  const ackIntro = () => {
+    localStorage.setItem(INTRO_ACK_KEY, "1");
+    setIntroAck(true);
+  };
+  const writeNow = async () => {
+    setWriting(true);
+    try {
+      const d = await api.refreshFeedPosts();
+      setPosts(d);
+      if (d.error) toast(t("Could not write posts: {error}", { error: d.error }));
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setWriting(false);
+    }
+  };
+  /** "Discuss" on a post: the follow-up it suggested, or the post itself, into the main chat. */
+  const discuss = (p: FeedPost) => {
+    void send("main", p.prompt || `${t("Let's talk about this post from my feed:")}\n\n**${p.title}**\n\n${p.body.slice(0, 1200)}`);
+    openThread("main");
+  };
+  const postDays = useMemo(() => groupPostsByDay(posts?.posts ?? []), [posts]);
+  const noPosts = posts !== null && posts.posts.length === 0;
+
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-4 pb-3">
-        <h1 className="text-[24px] font-bold tracking-tight">{t("Feed")}</h1>
-        <p className="text-[13px] text-muted">{t("Written for you by {name}, from what it knows — plus what it did while you were away.", { name })}</p>
-      </header>
+      <TabHeader
+        title=""
+        trailing={
+          <MuseRoundButton onClick={() => setSettingsOpen(true)} label={t("Feed settings")}>
+            <SlidersHorizontal size={22} />
+          </MuseRoundButton>
+        }
+      />
 
-      <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4">
-        <FeedInstructions data={posts} name={name} onChange={setPosts} />
-        {posts && posts.posts.length > 0 && (
-          <section className="space-y-3">
-            {posts.posts.map((p) => (
-              <PostCard
-                key={p.id}
-                post={p}
-                name={name}
-                onAsk={() => {
-                  void send("main", p.prompt);
-                  openThread("main");
-                }}
-                onDelete={async () => {
-                  try {
-                    await api.deleteFeedPost(p.id);
-                    setPosts((d) => (d ? { ...d, posts: d.posts.filter((x) => x.id !== p.id) } : d));
-                  } catch (e) {
-                    toast((e as Error).message);
-                  }
-                }}
-              />
+      <div className="flex-1 overflow-y-auto px-3.5 pb-7">
+        {/* Muse's feed: a day heading, white cards; the first card explains what drives it */}
+        {postDays.length === 0 && (
+          <>
+            <DayTitle text={dayLabel(todayKey(), new Date())} />
+            {!introAck && <IntroCard instructions={posts?.instructions ?? ""} onEdit={() => setSettingsOpen(true)} onAck={ackIntro} />}
+            {noPosts && (
+              <>
+                <StaticCard emoji="🖼️" title={t("Your feed is not ready yet")} body={t("As we get to know each other, new posts will show up here. Once a day, while background work is on, I read what I remember about you — your memory, your goals, your instructions — and write a few short posts.")} />
+                <StaticCard emoji="📝" title={t("One sentence steers it")} body={t("Tap the sliders at the top right to tell me what you want more of, or have me write the first day now.")} />
+                <FeedCard>
+                  <div className="p-4">
+                    {writing ? (
+                      <div className="flex items-center justify-center gap-2.5 text-[15px]">
+                        <Loader2 size={18} className="animate-spin text-accent" /> {t("Writing…")}
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => void writeNow()} className="h-[46px] w-full rounded-full bg-accent text-[15px] font-semibold text-accent-fg">
+                        {t("Write it now")}
+                      </button>
+                    )}
+                  </div>
+                </FeedCard>
+              </>
+            )}
+          </>
+        )}
+        {postDays.map(([day, list], i) => (
+          <section key={day}>
+            <DayTitle text={dayLabel(day, new Date(list[0].ts))} />
+            {i === 0 && !introAck && <IntroCard instructions={posts?.instructions ?? ""} onEdit={() => setSettingsOpen(true)} onAck={ackIntro} />}
+            {i === 0 && writing && (
+              <FeedCard>
+                <div className="flex items-center gap-2.5 p-4 text-[15px]">
+                  <Loader2 size={18} className="animate-spin text-accent" /> {t("Writing…")}
+                </div>
+              </FeedCard>
+            )}
+            {list.map((p) => (
+              <PostCard key={p.id} post={p} onDiscuss={() => discuss(p)} onInfo={() => setInfoPost(p)} />
             ))}
           </section>
-        )}
+        ))}
 
+        <div className="space-y-4 px-0.5 pt-3">
         {upcoming && <NextUp data={upcoming} name={name} onSettings={() => setTab("you")} onGoals={() => setTab("goals")} />}
         {calendar?.configured && <TodayBlock data={calendar} onAsk={() => openThread("main")} />}
 
@@ -141,126 +194,265 @@ export function FeedScreen() {
             </ul>
           </section>
         ))}
+        </div>
       </div>
+
+      <FeedSettingsSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        data={posts}
+        writing={writing}
+        onChange={setPosts}
+        onWriteNow={() => void writeNow()}
+      />
+      <Sheet open={infoPost !== null} onClose={() => setInfoPost(null)} title={infoPost?.title}>
+        {infoPost && (
+          <div className="space-y-3 px-1 pb-2">
+            <InfoRow label={t("Post type")} value={areaLabel(infoPost.area)} />
+            <InfoRow label={t("Written")} value={new Date(infoPost.ts).toLocaleString(intlLocale(), { dateStyle: "medium", timeStyle: "short" })} />
+            <button
+              type="button"
+              onClick={async () => {
+                const id = infoPost.id;
+                setInfoPost(null);
+                try {
+                  await api.deleteFeedPost(id);
+                  setPosts((d) => (d ? { ...d, posts: d.posts.filter((x) => x.id !== id) } : d));
+                } catch (e) {
+                  toast((e as Error).message);
+                }
+              }}
+              className="w-full rounded-full bg-surface-2 py-2.5 text-[15px] font-medium text-rose-500"
+            >
+              {t("Delete this post")}
+            </button>
+          </div>
+        )}
+      </Sheet>
     </div>
   );
 }
 
-/** "Feed instructions": one prompt that steers what gets written here, and a way to ask for a batch now. */
-function FeedInstructions({ data, name, onChange }: { data: FeedPostsData | null; name: string; onChange: (d: FeedPostsData) => void }) {
-  const { toast } = useStore();
+const INTRO_ACK_KEY = "nanomuse.feed.introAck";
+
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Posts grouped by local day, newest day first (the posts come newest first already). */
+function groupPostsByDay(posts: FeedPost[]): Array<[string, FeedPost[]]> {
+  const map = new Map<string, FeedPost[]>();
+  for (const p of posts) {
+    const d = new Date(p.ts);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const list = map.get(key);
+    if (list) list.push(p);
+    else map.set(key, [p]);
+  }
+  return [...map.entries()];
+}
+
+/** "Thursday morning" for today, "Yesterday" for the day before, "Monday · Sep 22" further back. */
+function dayLabel(day: string, at: Date): string {
+  const today = todayKey();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  const weekday = at.toLocaleDateString(intlLocale(), { weekday: "long" });
+  if (day === today) {
+    const hour = new Date().getHours();
+    const part = hour < 12 ? t("morning") : hour < 18 ? t("afternoon") : t("evening");
+    return t("{weekday} {part}", { weekday, part });
+  }
+  if (day === yKey) return t("Yesterday");
+  return `${weekday} · ${at.toLocaleDateString(intlLocale(), { month: "short", day: "numeric" })}`;
+}
+
+function DayTitle({ text }: { text: string }) {
+  return <h2 className="px-1.5 pt-3.5 pb-2 text-[22px] font-bold leading-7">{text}</h2>;
+}
+
+/** White card frame shared by every card on the page. */
+function FeedCard({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cx("my-1.5 overflow-hidden rounded-[18px] bg-surface dark:border dark:border-border", className)}>{children}</div>;
+}
+
+const AREA_EMOJI: Record<string, string> = {
+  planning: "🗓️",
+  research: "🔍",
+  goals: "🎯",
+  money: "💰",
+  health: "🌿",
+  home: "🏠",
+  learning: "📚",
+  people: "👥",
+  files: "📄",
+  fun: "🎈",
+};
+
+function areaLabel(area: string): string {
+  switch (area) {
+    case "planning":
+      return t("Planning");
+    case "research":
+      return t("Research");
+    case "goals":
+      return t("Goals");
+    case "money":
+      return t("Money");
+    case "health":
+      return t("Health");
+    case "home":
+      return t("Home");
+    case "learning":
+      return t("Learning");
+    case "people":
+      return t("People");
+    case "files":
+      return t("Files");
+    case "fun":
+      return t("Fun");
+    default:
+      return t("Note");
+  }
+}
+
+/** Muse's post: an emoji tile, the title, the body, a footer of discuss · info. */
+function PostCard({ post, onDiscuss, onInfo }: { post: FeedPost; onDiscuss: () => void; onInfo: () => void }) {
   const t = useT();
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState<"save" | "write" | null>(null);
-  useEffect(() => {
-    if (data && !editing) setText(data.instructions);
-  }, [data, editing]);
-  const save = async () => {
-    setBusy("save");
-    try {
-      onChange(await api.setFeedInstructions(text));
-      setEditing(false);
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  };
-  const write = async () => {
-    setBusy("write");
-    try {
-      const d = await api.refreshFeedPosts();
-      onChange(d);
-      if (d.error) toast(t("Could not write posts: {error}", { error: d.error }));
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  };
-  const empty = !data?.instructions;
   return (
-    <section className="rounded-[22px] border border-border/70 bg-surface px-4 py-3">
-      <div className="flex items-center gap-2">
-        <PenLine size={16} className="text-accent" />
-        <div className="flex-1 text-[14.5px] font-semibold">{t("Feed instructions")}</div>
-        <button
-          type="button"
-          onClick={() => void write()}
-          disabled={busy !== null || !data}
-          className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-[12.5px] font-medium text-fg disabled:opacity-60"
-        >
-          {busy === "write" ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-          {busy === "write" ? t("Writing…") : data?.posts.length ? t("New posts") : t("Write my feed")}
-        </button>
-      </div>
-      {editing ? (
-        <div className="mt-2.5">
-          <textarea
-            autoFocus
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={4}
-            maxLength={2000}
-            placeholder={t("e.g. Keep me up to date on cycling and Rust. A nudge on my goals every morning. Short posts, no fluff.")}
-            className="w-full resize-none rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[14px] leading-snug outline-none focus:ring-2 focus:ring-accent/40"
-          />
-          <div className="mt-2 flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(false)} className="rounded-full px-3.5 py-1.5 text-[13px] text-muted">
-              {t("Cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={busy !== null}
-              className="rounded-full bg-accent px-4 py-1.5 text-[13px] font-semibold text-accent-fg disabled:opacity-60"
-            >
-              {t("Save")}
-            </button>
+    <FeedCard>
+      <article className="pl-3.5 pr-2.5 pt-3.5 pb-1.5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-[22px] leading-none">{AREA_EMOJI[post.area] ?? "📝"}</div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[16px] font-semibold leading-[22px]">{post.title}</h3>
+            <div className="md mt-1 text-[15px] leading-[22px] text-fg/85">
+              <Markdown text={post.body} />
+            </div>
           </div>
         </div>
-      ) : (
-        <button type="button" onClick={() => setEditing(true)} className="mt-1.5 block w-full text-left">
-          <div className={cx("text-[13.5px] leading-snug", empty ? "text-muted" : "text-fg/90 line-clamp-3")}>
-            {empty ? t("Tell {name} what you would like to read here — topics to follow, nudges on your goals, a morning plan, the tone. It writes a few posts a day from that and what it knows about you.", { name }) : data?.instructions}
-          </div>
-          <div className="mt-1 text-[12.5px] font-medium text-accent">{empty ? t("Write instructions") : t("Edit")}</div>
-        </button>
-      )}
-    </section>
+        <div className="mt-1.5 flex items-center">
+          <button type="button" onClick={onDiscuss} className="flex items-center gap-1.5 rounded-full px-2 py-2 text-[14px] hover:bg-surface-2">
+            <MessageCircle size={22} strokeWidth={1.8} /> {t("Discuss")}
+          </button>
+          <button type="button" onClick={onInfo} aria-label={t("About this post")} className="ml-auto rounded-full p-2 hover:bg-surface-2">
+            <Info size={22} strokeWidth={1.8} />
+          </button>
+        </div>
+      </article>
+    </FeedCard>
   );
 }
 
-function PostCard({ post, name, onAsk, onDelete }: { post: FeedPost; name: string; onAsk: () => void; onDelete: () => void }) {
+/** Muse's "About the feed" card: what drives it, the sentence itself, Edit / Got it. */
+function IntroCard({ instructions, onEdit, onAck }: { instructions: string; onEdit: () => void; onAck: () => void }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
-  const long = post.body.length > 320;
   return (
-    <article className="rounded-[22px] border border-border/70 bg-surface px-4 pt-3.5 pb-3 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.18)]">
-      <div className="flex items-start gap-2">
-        <h3 className="flex-1 text-[16px] font-semibold leading-snug">{post.title}</h3>
-        <button type="button" onClick={onDelete} aria-label={t("Remove")} className="-mr-1.5 -mt-1 rounded-full p-1.5 text-muted/70 hover:bg-surface-2 hover:text-fg">
-          <Trash2 size={15} />
-        </button>
+    <FeedCard>
+      <div className="px-4 py-3.5">
+        <div className="text-[17px] font-semibold">{t("About the feed")}</div>
+        <p className="mt-1 text-[13px] leading-[18px] text-muted">{t("Your feed is driven by the instruction below. Any edit you make here applies to every post from now on.")}</p>
       </div>
-      <div className={cx("md mt-1.5 text-[14.5px] leading-[1.5]", !open && long && "line-clamp-6")}>
-        <Markdown text={post.body} />
-      </div>
-      {long && !open && (
-        <button type="button" onClick={() => setOpen(true)} className="mt-1 flex items-center gap-0.5 text-[13px] font-medium text-accent">
-          {t("Read more")} <ChevronDown size={14} />
-        </button>
-      )}
-      <div className="mt-2.5 flex items-center gap-2 text-[12px] text-muted">
-        <span>{relativeTime(post.ts)}</span>
-        {post.prompt && (
-          <button type="button" onClick={onAsk} className="ml-auto flex items-center gap-1 font-medium text-accent">
-            {t("Ask {name}", { name })} <ArrowRight size={13} />
+      <div className="border-t border-border/70 px-4 py-3.5">
+        <p className="text-[15px] leading-[22px]">{instructions || t("Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.")}</p>
+        <div className="mt-3.5 flex justify-end gap-2.5">
+          <button type="button" onClick={onEdit} className="rounded-full bg-surface-2 px-6 py-2.5 text-[15px] font-medium">
+            {t("Edit")}
           </button>
-        )}
+          <button type="button" onClick={onAck} className="rounded-full bg-accent px-6 py-2.5 text-[15px] font-semibold text-accent-fg">
+            {t("Got it")}
+          </button>
+        </div>
       </div>
-    </article>
+    </FeedCard>
+  );
+}
+
+function StaticCard({ emoji, title, body }: { emoji: string; title: string; body: string }) {
+  return (
+    <FeedCard>
+      <div className="flex items-start gap-3 p-3.5">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-[22px] leading-none">{emoji}</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[16px] font-semibold leading-[22px]">{title}</div>
+          <p className="mt-1 text-[15px] leading-[22px] text-fg/85">{body}</p>
+        </div>
+      </div>
+    </FeedCard>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3 text-[14.5px]">
+      <span className="w-14 shrink-0 text-muted">{label}</span>
+      <span className="min-w-0 flex-1 break-words">{value}</span>
+    </div>
+  );
+}
+
+/** The sliders sheet: the steering sentence and "Write it now". */
+function FeedSettingsSheet({
+  open,
+  onClose,
+  data,
+  writing,
+  onChange,
+  onWriteNow,
+}: {
+  open: boolean;
+  onClose: () => void;
+  data: FeedPostsData | null;
+  writing: boolean;
+  onChange: (d: FeedPostsData) => void;
+  onWriteNow: () => void;
+}) {
+  const { toast } = useStore();
+  const t = useT();
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (open) setText(data?.instructions ?? "");
+  }, [open, data]);
+  const save = async () => {
+    setSaving(true);
+    try {
+      onChange(await api.setFeedInstructions(text));
+      onClose();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Sheet open={open} onClose={onClose} title={t("Feed")}>
+      <div className="space-y-3 px-1 pb-2">
+        <p className="text-[13px] leading-[18px] text-muted">{t("Your feed is driven by the instruction below. Any edit you make here applies to every post from now on.")}</p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={4}
+          maxLength={2000}
+          placeholder={t("Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.")}
+          className="w-full resize-none rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[15px] leading-snug outline-none focus:ring-2 focus:ring-accent/40"
+        />
+        <button
+          type="button"
+          onClick={onWriteNow}
+          disabled={writing || !data}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-surface-2 py-2.5 text-[15px] font-medium disabled:opacity-60"
+        >
+          {writing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} className="text-accent" />}
+          {writing ? t("Writing…") : t("Write it now")}
+        </button>
+        <button type="button" onClick={() => void save()} disabled={saving} className="h-[46px] w-full rounded-full bg-accent text-[15px] font-semibold text-accent-fg disabled:opacity-60">
+          {t("Save")}
+        </button>
+      </div>
+    </Sheet>
   );
 }
 

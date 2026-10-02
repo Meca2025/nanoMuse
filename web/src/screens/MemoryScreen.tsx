@@ -1,7 +1,7 @@
 import { Brain, Plus, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { MemoryChange, MemoryItem } from "../types";
@@ -93,29 +93,24 @@ export function MemoryScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-[24px] font-bold tracking-tight">{t("Memory")}</h1>
-            <p className="text-[13px] text-muted">
-              {t("What {name} remembers about you. Read it, add to it, or make {name} forget — nothing here is hidden from you.", { name })}
-            </p>
-          </div>
-          {items.length >= 2 && (
+      <PageBar
+        title={t("Memory")}
+        description={t("What {name} remembers about you. Read it, add to it, or make {name} forget — nothing here is hidden from you.", { name })}
+        actions={
+          items.length >= 2 && (
             <button
               type="button"
               disabled={tidying}
               onClick={() => void tidy()}
               title={t("Merge lines that say the same thing and drop what was never a fact about you. Every change can be undone.")}
-              className="shrink-0 mt-1 rounded-2xl bg-surface border border-border/70 px-3 py-2 text-[13.5px] font-medium flex items-center gap-1.5 disabled:opacity-50"
+              className="flex h-10 items-center gap-1.5 rounded-full bg-surface px-3.5 text-[13.5px] font-medium shadow-[0_1px_4px_rgba(0,0,0,0.14)] disabled:opacity-50 dark:border dark:border-border dark:shadow-none"
             >
               <Sparkles size={15} className={tidying ? "animate-pulse text-accent" : "text-accent"} />
               {tidying ? t("Tidying…") : t("Tidy up")}
             </button>
-          )}
-        </div>
-      </header>
+          )
+        }
+      />
 
       <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-5">
         <div className="rounded-3xl bg-surface border border-border/70 shadow-sm p-3.5 space-y-2.5">

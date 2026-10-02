@@ -2,7 +2,7 @@ import { Check, Clapperboard, Copy, Gift, Image as ImageIcon, KeyRound, Loader2,
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { AllowanceWays } from "../components/AllowanceWays";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
 import { Toggle, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { SignIn } from "../components/SignIn";
 import { useT } from "../i18n";
@@ -47,11 +47,7 @@ export function AccountScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <h1 className="text-[24px] font-bold tracking-tight">{t("Account")}</h1>
-        <p className="text-[13px] text-muted">{signedIn ? t("nanoMuse Cloud · one account for all your devices") : t("Sign in to nanoMuse Cloud")}</p>
-      </header>
+      <PageBar title={t("Account")} description={signedIn ? t("nanoMuse Cloud · one account for all your devices") : t("Sign in to nanoMuse Cloud")} />
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4">
         {!signedIn ? (

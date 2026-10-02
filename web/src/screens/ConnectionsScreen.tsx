@@ -30,7 +30,7 @@ import {
 import { accessibilityState, androidApp } from "../android";
 import { api } from "../api";
 import { takePresetHint } from "../components/AllowanceWays";
-import { BackBar } from "../components/BackBar";
+import { PageBar } from "../components/BackBar";
 import { CloudCard } from "../components/CloudCard";
 import { Card, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { useT } from "../i18n";
@@ -65,15 +65,7 @@ export function ConnectionsScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="safe-top shrink-0 px-5 pt-2 pb-3">
-        <BackBar />
-        <h1 className="text-[24px] font-bold tracking-tight">
-          {t("Connections")}
-        </h1>
-        <p className="text-[13px] text-muted">
-          {t("What {name} can reach; keys stay in the vault on this machine.", { name })}
-        </p>
-      </header>
+      <PageBar title={t("Connections")} description={t("What {name} can reach; keys stay in the vault on this machine.", { name })} />
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4">
         {error && (
           <div className="rounded-2xl bg-rose-500/12 text-rose-700 dark:text-rose-300 p-3 text-[13.5px]">

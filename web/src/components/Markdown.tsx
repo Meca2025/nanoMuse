@@ -46,6 +46,52 @@ function inlineCode(props: ComponentPropsWithoutRef<"code">): boolean {
   return !String(props.className ?? "").includes("language-") && !text.includes("\n");
 }
 
+/**
+ * Muse breaks a long reply into several bubbles — one per top-level block (a paragraph, a list,
+ * a heading with what follows it). Fenced code, tables and raw HTML stay whole and are marked
+ * `bare`, since they carry their own frame. Blocks are split on blank lines outside fences.
+ */
+export function splitBlocks(text: string): Array<{ text: string; bare: boolean }> {
+  const out: Array<{ text: string; bare: boolean }> = [];
+  let buf: string[] = [];
+  let fence: string | null = null;
+  const flush = () => {
+    const body = buf.join("\n").trim();
+    buf = [];
+    if (!body) return;
+    const t = body.trimStart();
+    const bare = t.startsWith("```") || t.startsWith("~~~") || t.startsWith("|") || t.startsWith("<");
+    const last = out[out.length - 1];
+    // a heading is the title of the block after it, not a bubble of its own
+    if (last && !last.bare && /^#{1,6}\s/.test(last.text) && !last.text.includes("\n") && !bare) {
+      last.text = `${last.text}\n\n${body}`;
+      return;
+    }
+    out.push({ text: body, bare });
+  };
+  for (const line of text.split("\n")) {
+    const open = /^\s*(```|~~~)/.exec(line);
+    if (fence) {
+      buf.push(line);
+      if (open && open[1] === fence) fence = null;
+      continue;
+    }
+    if (open) {
+      if (buf.length) flush();
+      fence = open[1];
+      buf.push(line);
+      continue;
+    }
+    if (line.trim() === "") {
+      flush();
+      continue;
+    }
+    buf.push(line);
+  }
+  flush();
+  return out;
+}
+
 export function Markdown({
   text,
   files = [],

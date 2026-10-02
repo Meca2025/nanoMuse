@@ -14,8 +14,11 @@ The page (`site/page/`) is plain HTML and a little script, with MobileGym in a f
 same origin as `/phone.html`; it talks to the nanoMuse app on the phone through
 `window.__NANOMUSE__` on that frame (open, draft, reset, state, subscribe — see
 `demo/mobilegym/README.md`) and the app passes drafts on to the web app over `postMessage`.
-On a hosted session the web app runs lite (`?ui=lite`): the phone layout at any width, with
-the tabs the Android app has, and no first-run setup.
+On a hosted session the web app runs lite (`?ui=lite`): the phone layout at any width, drawn
+the way the Android app draws it — the face on its disc with the name tag under it, the round
+hamburger and ••• menu, the chats drawer, the five tabs (chat, feed, ideas, goals, library) and
+their pages, Settings as the phone's list of rows, the agent page behind the face, the
+approval card — and no first-run setup.
 
 **The phone keeps MobileGym's own chrome.** Around the frame are the pieces of
 [mobilegym.dev](https://mobilegym.dev/)'s page, nothing cut down: the Gesture Guide on the

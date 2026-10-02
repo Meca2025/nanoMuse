@@ -1,14 +1,14 @@
-import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, MoreHorizontal, Phone, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
+import { ArrowUp, ChevronDown, FileText, Loader2, Menu, MessageSquarePlus, Monitor, MonitorSmartphone, Moon, Phone, Plus, Smartphone, Table2, Trash2, Wand2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, fileUrl } from "../api";
 import { AllowanceHeadsUp } from "../components/AllowanceWays";
-import { Avatar } from "../components/Avatar";
 import { AvatarOptionsCard } from "../components/AvatarOptionsCard";
 import { BrowserViewer } from "../components/BrowserViewer";
 import { MicButton, useDictation } from "../components/Dictation";
 import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
-import { Markdown } from "../components/Markdown";
-import { Sheet } from "../components/Sheet";
+import { Markdown, splitBlocks } from "../components/Markdown";
+import { MuseHeader, MuseRoundButton } from "../components/MuseHeader";
+import { MoreMenu } from "../components/TabHeader";
 import { localLabel, useT } from "../i18n";
 import { useStore } from "../store";
 import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, UserEvent } from "../types";
@@ -16,7 +16,7 @@ import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
 
 export function ChatScreen() {
-  const { state, send, decide, loadEvents, openThread, openFile, toast } = useStore();
+  const { state, send, decide, loadEvents, openFile, toast, setDrawer, setTab } = useStore();
   const t = useT();
   const { profile, status, activeThread, threads } = state;
   // undefined until the first fetch for this thread has returned — don't flash the empty state
@@ -26,7 +26,6 @@ export function ChatScreen() {
   const stream = state.streams[activeThread];
   const thread = threads.find((t) => t.id === activeThread);
   const [activityOpen, setActivityOpen] = useState(false);
-  const [threadsOpen, setThreadsOpen] = useState(false);
   // the browser card being watched (or driven) full-screen
   const [browserView, setBrowserView] = useState<string | null>(null);
   const name = profile?.name ?? "nanoMuse";
@@ -67,10 +66,11 @@ export function ChatScreen() {
     if (waitingHere > 0 && !(here && status.state === "working")) {
       return waitingHere > 1 ? t("{n} approvals waiting for you", { n: waitingHere }) : t("1 approval waiting for you");
     }
-    if (!here) return thread?.busy ? t("Working…") : t("Idle · tap the avatar for activity");
-    if (status.state === "idle" && !thread?.busy) return t("Idle · tap the avatar for activity");
+    // Idle shows nothing under the name, as on the phone: the tag is just the name.
+    if (!here) return thread?.busy ? t("Thinking…") : undefined;
+    if (status.state === "idle" && !thread?.busy) return undefined;
     if (status.detail) return status.detail;
-    return status.state === "waiting" ? t("Waiting for you") : t("Working…");
+    return status.state === "waiting" ? t("Waiting for you") : t("Thinking…");
   }, [status, thread, activeThread, waitingHere, t]);
 
   const pendingApprovals = events.filter((e) => e.type === "approval" && e.status === "pending").length;
@@ -82,71 +82,39 @@ export function ChatScreen() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header: the agent in the middle, what it is doing under its name; chats left, menu right */}
-      <header className="safe-top shrink-0 bg-bg">
-        <div className="relative flex items-start justify-between px-3 pt-2 pb-1">
-          <button
-            type="button"
-            onClick={() => setThreadsOpen(true)}
-            aria-label={t("Chats")}
-            className={cx(
-              "relative flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg wide:invisible",
-              activeThread !== "main" && "text-accent",
-            )}
-          >
-            <Menu size={20} />
-            {threads.length > 1 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-accent" />}
-          </button>
-          <button type="button" aria-label={t("Activity")} className="flex min-w-0 flex-1 flex-col items-center px-2 pt-0.5" onClick={() => setActivityOpen(true)}>
-            <span className="relative">
-              <Avatar profile={profile} status={status} size={48} />
-              {queued > 0 && (
-                <span className="pointer-events-none absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-bg bg-rose-500 px-1 text-[10.5px] font-bold text-white">
-                  {queued}
-                </span>
-              )}
-            </span>
-            <span className="mt-1 max-w-full truncate text-[13px] font-semibold leading-tight">{name}</span>
-            <span
-              className={cx(
-                "mt-0.5 flex max-w-full items-center gap-1 truncate text-[12px] leading-tight",
-                status.state === "idle" && !thread?.busy ? "text-muted" : "text-accent",
-              )}
-            >
-              {((status.state === "working" && status.thread === activeThread) || thread?.busy) && waitingHere === 0 && (
-                <Loader2 size={11} className="shrink-0 animate-spin" />
-              )}
-              <span className="truncate">{statusLine}</span>
-            </span>
-            {thread && thread.id !== "main" && (
-              <span className="mt-1 flex max-w-full items-center gap-1.5">
-                {thread.device ? (
-                  <span className="flex max-w-full items-center gap-1 rounded-full bg-accent/12 px-2.5 py-0.5 text-[11.5px] font-medium text-accent">
-                    {deviceOnline === false ? <span className="h-1.5 w-1.5 rounded-full bg-border" /> : <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
-                    <span className="truncate">{t("on {device}", { device: thread.device_name || thread.device })}</span>
-                  </span>
-                ) : thread.remote_from ? (
-                  <span className="flex max-w-full items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">
-                    <MonitorSmartphone size={11} /> <span className="truncate">{t("from {device}", { device: thread.remote_from.name })}</span>
-                  </span>
-                ) : (
-                  <span className="truncate rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">{thread.title}</span>
-                )}
+      {/* Header: Muse's — the face on its disc, the name tag with what it is doing, the round hamburger and menu */}
+      <MuseHeader
+        profile={profile}
+        status={status}
+        name={name}
+        statusLine={statusLine}
+        statusTone={status.state === "idle" && !thread?.busy ? "muted" : "accent"}
+        spinning={((status.state === "working" && status.thread === activeThread) || !!thread?.busy) && waitingHere === 0}
+        badge={queued}
+        onAvatar={() => setActivityOpen(true)}
+        leading={
+          <MuseRoundButton onClick={() => setDrawer(true)} label={t("Chats")} dot={threads.length > 1 && activeThread !== "main"} className="wide:invisible">
+            <Menu size={22} />
+          </MuseRoundButton>
+        }
+        trailing={<MoreMenu actions={[{ label: t("Coding agents"), onClick: () => setTab("coding") }]} />}
+        under={
+          thread && thread.id !== "main" ? (
+            thread.device ? (
+              <span className="flex max-w-full items-center gap-1 rounded-full bg-accent/12 px-2.5 py-0.5 text-[11.5px] font-medium text-accent">
+                {deviceOnline === false ? <span className="h-1.5 w-1.5 rounded-full bg-border" /> : <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                <span className="truncate">{t("on {device}", { device: thread.device_name || thread.device })}</span>
               </span>
-            )}
-          </button>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setActivityOpen(true)}
-              aria-label={t("Menu")}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg/80 hover:text-fg"
-            >
-              <MoreHorizontal size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
+            ) : thread.remote_from ? (
+              <span className="flex max-w-full items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">
+                <MonitorSmartphone size={11} /> <span className="truncate">{t("from {device}", { device: thread.remote_from.name })}</span>
+              </span>
+            ) : (
+              <span className="truncate rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">{thread.title}</span>
+            )
+          ) : undefined
+        }
+      />
 
       {/* Timeline */}
       <div ref={listRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
@@ -214,16 +182,6 @@ export function ChatScreen() {
 
       <MuseSheet open={activityOpen} onClose={() => setActivityOpen(false)} />
       {browserView && <BrowserViewer thread={activeThread} eventId={browserView} onClose={() => setBrowserView(null)} />}
-      <ThreadsSheet
-        open={threadsOpen}
-        onClose={() => setThreadsOpen(false)}
-        threads={threads}
-        active={activeThread}
-        onPick={(id) => {
-          openThread(id);
-          setThreadsOpen(false);
-        }}
-      />
     </div>
   );
 }
@@ -351,7 +309,7 @@ function UserBubble({ event, onOpenFile }: { event: UserEvent; onOpenFile: (path
         </button>
       ))}
       {event.text && (
-        <div className="bubble-user max-w-full rounded-[20px] rounded-br-md bg-bubble-user px-4 py-2.5 text-bubble-user-fg">
+        <div className="bubble-user max-w-full rounded-[20px] bg-bubble-user px-4 py-2.5 text-bubble-user-fg">
           <div className="md text-[15px] leading-[1.45] whitespace-pre-wrap break-words">{event.text}</div>
         </div>
       )}
@@ -401,6 +359,7 @@ function AssistantBubble({
 }) {
   const [showReasoning, setShowReasoning] = useState(false);
   const t = useT();
+  const blocks = useMemo(() => splitBlocks(text), [text]);
   return (
     <div className={cx("rise flex items-end gap-2 pr-10", continued && "-mt-1")}>
       <div className="min-w-0 max-w-full">
@@ -414,15 +373,29 @@ function AssistantBubble({
             {reasoning}
           </div>
         )}
-        <div className={cx("rounded-[20px] rounded-bl-md bg-surface-2 px-4 py-2.5", spoken && "border border-accent/15")}>
-          {spoken && (
-            <div className="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-accent/80">
-              <Phone size={10} /> {t("said on a call")}
+        {/* Muse's grey bubbles: one per block of the reply; code and tables carry their own frame */}
+        {blocks.map((b, i) =>
+          b.bare ? (
+            <div key={i} className="my-1 max-w-full">
+              <Markdown text={b.text} files={files} onOpenFile={onOpenFile} />
             </div>
-          )}
-          <Markdown text={text} files={files} onOpenFile={onOpenFile} />
-          {streaming && <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-accent/70 animate-pulse rounded-sm" />}
-        </div>
+          ) : (
+            <div key={i} className={cx("my-1 max-w-[340px] rounded-[20px] bg-surface-2 px-3.5 py-2.5 wide:max-w-[600px]", spoken && "border border-accent/15")}>
+              {spoken && i === 0 && (
+                <div className="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-accent/80">
+                  <Phone size={10} /> {t("said on a call")}
+                </div>
+              )}
+              <Markdown text={b.text} files={files} onOpenFile={onOpenFile} />
+              {streaming && i === blocks.length - 1 && <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-accent/70 animate-pulse rounded-sm" />}
+            </div>
+          ),
+        )}
+        {blocks.length === 0 && streaming && (
+          <div className="my-1 rounded-[20px] bg-surface-2 px-3.5 py-2.5">
+            <span className="inline-block w-1.5 h-4 align-middle bg-accent/70 animate-pulse rounded-sm" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -459,7 +432,6 @@ function TypingIndicator({ label }: { label?: string }) {
 }
 
 function EmptyChat({ name, device, onSend }: { name: string; device?: string; onSend: (text: string) => void }) {
-  const { state } = useStore();
   const t = useT();
   const starters = device
     ? [t("What is on your screen right now?"), t("Which folder are you in, and what is in it?"), t("Check for updates and tell me what needs a restart")]
@@ -469,9 +441,9 @@ function EmptyChat({ name, device, onSend }: { name: string; device?: string; on
         t("Research and compare two options for me"),
         t("Set up a long-term goal and track it"),
       ];
+  // The face is already in the header above; here the agent speaks, as it does on the phone.
   return (
-    <div className="flex flex-col items-center text-center px-6 pt-8 pb-6 gap-3">
-      <Avatar profile={state.profile} size={96} />
+    <div className="flex flex-col items-center text-center px-6 pt-10 pb-6 gap-3">
       <div className="text-[20px] font-semibold">{device ? t("This chat goes to {device}.", { device }) : t("Hi, I'm {name}.", { name })}</div>
       <p className="text-muted text-[14.5px] leading-snug max-w-sm">
         {device
@@ -745,30 +717,6 @@ function Composer({
         </button>
       </div>
     </form>
-  );
-}
-
-function ThreadsSheet({
-  open,
-  onClose,
-  threads,
-  active,
-  onPick,
-}: {
-  open: boolean;
-  onClose: () => void;
-  threads: ThreadMeta[];
-  active: string;
-  onPick: (id: string) => void;
-}) {
-  const t = useT();
-  return (
-    <Sheet open={open} onClose={onClose} title={t("Chats")}>
-      <p className="text-[13px] text-muted mb-3">
-        {t("The main chat is one long conversation. Side chats keep a separate context for a project — memory, goals and approvals are shared.")}
-      </p>
-      <ThreadList threads={threads} active={active} onPick={onPick} onCleared={onClose} />
-    </Sheet>
   );
 }
 
