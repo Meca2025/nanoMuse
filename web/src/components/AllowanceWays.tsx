@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, KeyRound, Loader2, Share2, Sparkles, Users, X } from "lucide-react";
+import { Copy, ExternalLink, KeyRound, Share2, Sparkles, Users, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
@@ -8,16 +8,16 @@ import { primaryBtn, secondaryBtn } from "./Form";
 
 /**
  * What the relay says beside a `429 allowance_exhausted` (and what `/v1/me.spend` carries):
- * the numbers and where the three ways on lead. Every field is optional so a card can be
+ * the numbers and where the two ways on lead. Every field is optional so a card can be
  * drawn from an older relay's reply too.
  */
 export interface AllowanceInfo {
   left?: number | null;
   grant?: number;
   invite_url?: string;
+  /** what an invitation adds to the inviter's pool — and (relay 0.9) to the friend's */
   invite_bonus_cny?: number;
-  contribute_bonus_available?: boolean;
-  contribute_bonus_cny?: number;
+  invitee_bonus_cny?: number;
   own_key_docs?: string;
 }
 
@@ -47,31 +47,27 @@ export function takePresetHint(): string | null {
 }
 
 /**
- * The three ways on when the free allowance is (nearly) spent: one's own model key
- * (阿里云百炼 first — free quota for new accounts, one key for chat, pictures and video),
- * inviting a friend, joining the co-creation programme. Sign-in and the devices keep
- * working whichever is chosen: the allowance only gates the model.
+ * The two ways on when the free allowance is (nearly) spent: one's own model key
+ * (阿里云百炼 first — free quota for new accounts, one key for chat, pictures and video)
+ * and inviting a friend (the bonus goes to both). Sign-in and the devices keep working
+ * whichever is chosen: the allowance only gates the model.
  */
 export function AllowanceWays({
   info,
   exhausted,
   compact,
-  onChanged,
 }: {
   info: AllowanceInfo;
   /** true = the pool is spent (the card leads with that); false = the 80 % heads-up */
   exhausted: boolean;
   /** inside the chat: tighter spacing, no big title */
   compact?: boolean;
-  /** after the co-creation bonus was taken (the account page reloads) */
+  /** kept for the callers of 0.5 (nothing on the card changes the account any more) */
   onChanged?: () => void;
 }) {
   const t = useT();
   const { toast, setTab } = useStore();
-  const [joining, setJoining] = useState(false);
-  const [joined, setJoined] = useState(false);
   const inviteBonus = info.invite_bonus_cny ?? 5;
-  const contributeBonus = info.contribute_bonus_cny ?? 10;
   const docs = info.own_key_docs || OWN_KEY_DOCS;
   const link = info.invite_url || "";
 
@@ -96,20 +92,6 @@ export function AllowanceWays({
     }
     await copy(text);
   };
-  const join = async () => {
-    setJoining(true);
-    try {
-      await api.cloudContribute(true);
-      setJoined(true);
-      toast(t("Joined — ¥{bonus} added to your allowance.", { bonus: contributeBonus.toFixed(0) }));
-      onChanged?.();
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setJoining(false);
-    }
-  };
-
   const lead = exhausted
     ? t("The free allowance is used up.")
     : t("Nearly used up: ¥{left} of ¥{grant} left.", { left: (info.left ?? 0).toFixed(2), grant: (info.grant ?? 0).toFixed(0) });
@@ -118,7 +100,7 @@ export function AllowanceWays({
     <div className={cx("space-y-2.5", !compact && "pt-1")}>
       <div>
         <div className={cx("font-semibold", compact ? "text-[13.5px]" : "text-[15px]")}>{lead}</div>
-        <div className="mt-0.5 text-[12.5px] text-muted">{t("Three ways on — your sign-in and your devices keep working either way.")}</div>
+        <div className="mt-0.5 text-[12.5px] text-muted">{t("Two ways on — your sign-in and your devices keep working either way.")}</div>
       </div>
 
       <Way icon={<KeyRound size={16} />} tone="bg-accent/12 text-accent" title={t("Use your own model key")}>
@@ -135,7 +117,7 @@ export function AllowanceWays({
         </div>
       </Way>
 
-      <Way icon={<Users size={16} />} tone="bg-violet-500/12 text-violet-600 dark:text-violet-300" title={t("Invite a friend: +¥{bonus} for each new person who signs up with your link.", { bonus: inviteBonus.toFixed(0) })}>
+      <Way icon={<Users size={16} />} tone="bg-violet-500/12 text-violet-600 dark:text-violet-300" title={t("Invite a friend: +¥{bonus} for you and +¥{bonus} for them, for each new person who signs up with your link.", { bonus: inviteBonus.toFixed(0) })}>
         {link ? (
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => void share()} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
@@ -152,20 +134,6 @@ export function AllowanceWays({
         )}
       </Way>
 
-      {(info.contribute_bonus_available || joined) && contributeBonus > 0 && (
-        <Way icon={<Sparkles size={16} />} tone="bg-emerald-500/12 text-emerald-700 dark:text-emerald-300" title={t("Join the co-creation programme: +¥{bonus}, once.", { bonus: contributeBonus.toFixed(0) })}>
-          <p className="text-[12.5px] text-muted">
-            {t("Your conversations (messages and replies; pictures as a marker) help train the community's own open model. Never required — leave and delete what you gave at any time.")}
-          </p>
-          {joined ? (
-            <div className="text-[12.5px] font-medium text-emerald-700 dark:text-emerald-300">{t("Joined — ¥{bonus} added to your allowance.", { bonus: contributeBonus.toFixed(0) })}</div>
-          ) : (
-            <button type="button" disabled={joining} onClick={() => void join()} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
-              {joining ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {t("Join")}
-            </button>
-          )}
-        </Way>
-      )}
     </div>
   );
 }
@@ -226,8 +194,7 @@ export function AllowanceHeadsUp() {
           grant,
           invite_url: me.invite?.url,
           invite_bonus_cny: s.invite_bonus_cny,
-          contribute_bonus_available: s.contribute_bonus_available,
-          contribute_bonus_cny: s.contribute_bonus_cny,
+          invitee_bonus_cny: s.invitee_bonus_cny,
           own_key_docs: s.own_key_docs,
         });
       })
@@ -253,9 +220,8 @@ export function AllowanceHeadsUp() {
       <Sparkles size={14} className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         {t("Nearly used up: ¥{left} of ¥{grant} left.", { left: (info.left ?? 0).toFixed(2), grant: (info.grant ?? 0).toFixed(0) })}{" "}
-        {t("Invite a friend (+¥{invite}), join the co-creation programme (+¥{contribute}) or bring your own key — your sign-in keeps working either way.", {
+        {t("Invite a friend (+¥{invite} for each of you) or bring your own key — your sign-in keeps working either way.", {
           invite: (info.invite_bonus_cny ?? 5).toFixed(0),
-          contribute: (info.contribute_bonus_cny ?? 10).toFixed(0),
         })}{" "}
         <button
           type="button"

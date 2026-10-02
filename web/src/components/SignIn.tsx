@@ -106,7 +106,7 @@ export function SignIn({
     setError(null);
     try {
       const r = await api.cloudVerify(id, code.trim(), invite.trim());
-      // a brand-new account is owed two short steps (password, co-creation) — see FirstSignInSteps
+      // a brand-new account is owed two short steps (password, model source) — see FirstSignInSteps
       if (r.created) markFirstSignIn();
       setCode("");
       setSent(false);
@@ -207,7 +207,7 @@ export function SignIn({
                 placeholder="ABCD2345"
                 className={cx(inputCls, "mt-1 tracking-[0.2em] uppercase")}
               />
-              <p className="mt-1.5 text-[12px] text-muted">{t("A friend's code counts for a new account: they get ¥5 more allowance.")}</p>
+              <p className="mt-1.5 text-[12px] text-muted">{t("A friend's code counts for a new account: you both get ¥5 more allowance.")}</p>
             </div>
           ) : (
             <button type="button" onClick={() => setInviteOpen(true)} className="text-[12px] text-muted underline-offset-2 hover:underline">

@@ -1,4 +1,4 @@
-import { ArrowRight, CloudCog, HeartHandshake, KeyRound, Loader2 } from "lucide-react";
+import { ArrowRight, CloudCog, KeyRound, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
@@ -8,13 +8,12 @@ import { openOwnKeySetup } from "./AllowanceWays";
 import { inputCls, primaryBtn, secondaryBtn } from "./Form";
 
 /**
- * Three short, skippable steps right after an account is *created* (the relay said
- * ``created: true``), the same three the phone asks: a password, so the next device signs in
- * without waiting for a code; the co-creation programme, which adds ¥10 to the allowance
- * once; and which model answers — the account's own, or a key of one's own (that door leads
- * to Connections with 阿里云百炼 preselected). Each can be done or undone later under Account
- * and Connections. The flag lives in sessionStorage so a reload mid-way does not lose the
- * steps, and is cleared once they are done or skipped.
+ * Two short, skippable steps right after an account is *created* (the relay said
+ * ``created: true``), the same two the phone asks: a password, so the next device signs in
+ * without waiting for a code; and which model answers — the account's own, or a key of
+ * one's own (that door leads to Connections with 阿里云百炼 preselected). Each can be done or
+ * undone later under Account and Connections. The flag lives in sessionStorage so a reload
+ * mid-way does not lose the steps, and is cleared once they are done or skipped.
  */
 const FLAG = "nm.cloud.first_sign_in";
 const EVENT = "nm:first-sign-in";
@@ -60,19 +59,11 @@ export function useFirstSignIn(): boolean {
 export function FirstSignInSteps() {
   const t = useT();
   const { toast, refreshHub, setTab } = useStore();
-  const [step, setStep] = useState<"password" | "contribute" | "source">("password");
+  const [step, setStep] = useState<"password" | "source">("password");
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [bonus, setBonus] = useState<number | null>(null);
-  useEffect(() => {
-    // the relay's bonus figure, for the button; ¥10 when it has not said
-    api
-      .cloudMe()
-      .then((me) => setBonus(me.spend?.contribute_bonus_cny ?? me.contribute?.bonus_cny ?? 10))
-      .catch(() => setBonus(10));
-  }, []);
 
   const done = async () => {
     clearFirstSignIn();
@@ -88,20 +79,6 @@ export function FirstSignInSteps() {
       toast(t("Password set."));
       setPassword("");
       setAgain("");
-      setStep("contribute");
-    } catch (e) {
-      setError(t((e as Error).message));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const join = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await api.cloudContribute(true);
-      toast(r.bonus_granted ? t("Joined — ¥{bonus} added to your allowance.", { bonus: String(r.bonus_cny ?? bonus ?? 10) }) : t("Joined the co-creation programme."));
       setStep("source");
     } catch (e) {
       setError(t((e as Error).message));
@@ -121,7 +98,6 @@ export function FirstSignInSteps() {
       <div className="safe-bottom w-full max-w-[520px] rounded-t-[28px] bg-bg p-6 shadow-2xl sm:rounded-[28px]">
         <div className="mb-4 flex gap-1">
           <span className={cx("h-1.5 w-5 rounded-full bg-accent")} />
-          <span className={cx("h-1.5 rounded-full transition-all", step !== "password" ? "w-5 bg-accent" : "w-1.5 bg-border")} />
           <span className={cx("h-1.5 rounded-full transition-all", step === "source" ? "w-5 bg-accent" : "w-1.5 bg-border")} />
         </div>
 
@@ -157,7 +133,7 @@ export function FirstSignInSteps() {
             </div>
             {error && <div className="rounded-2xl bg-rose-500/12 px-3 py-2 text-[12.5px] text-rose-700 dark:text-rose-300">{error}</div>}
             <div className="flex gap-2">
-              <button type="button" disabled={busy} onClick={() => setStep("contribute")} className={secondaryBtn}>
+              <button type="button" disabled={busy} onClick={() => setStep("source")} className={secondaryBtn}>
                 {t("Skip")}
               </button>
               <button type="submit" disabled={busy || password.length < 8 || password !== again} className={cx(primaryBtn, "flex-1 py-3")}>
@@ -165,7 +141,7 @@ export function FirstSignInSteps() {
               </button>
             </div>
           </form>
-        ) : step === "source" ? (
+        ) : (
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/12 text-accent">
@@ -198,31 +174,6 @@ export function FirstSignInSteps() {
               </button>
               <button type="button" disabled={busy} onClick={() => void done()} className={cx(primaryBtn, "flex-1 py-3")}>
                 {t("Use the nanoMuse Cloud model")} <ArrowRight size={16} />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/12 text-cyan-600 dark:text-cyan-300">
-                <HeartHandshake size={20} />
-              </span>
-              <div>
-                <h2 className="text-[20px] font-bold tracking-tight">{t("Join the co-creation programme?")}</h2>
-                <p className="mt-1 text-[13.5px] leading-relaxed text-muted">
-                  {t("nanoMuse is built by its community. If you join, your conversations (messages and replies; pictures as a marker) help train the community's own open model, and ¥{n} is added to your allowance once. Never required, off by default; leave and delete what you gave at any time under Account.", {
-                    n: String(bonus ?? 10),
-                  })}
-                </p>
-              </div>
-            </div>
-            {error && <div className="rounded-2xl bg-rose-500/12 px-3 py-2 text-[12.5px] text-rose-700 dark:text-rose-300">{error}</div>}
-            <div className="flex gap-2">
-              <button type="button" disabled={busy} onClick={() => setStep("source")} className={secondaryBtn}>
-                {t("Not now")}
-              </button>
-              <button type="button" disabled={busy} onClick={() => void join()} className={cx(primaryBtn, "flex-1 py-3")}>
-                {busy ? <Loader2 size={15} className="animate-spin" /> : null} {t("Join, +¥{n}", { n: String(bonus ?? 10) })} <ArrowRight size={16} />
               </button>
             </div>
           </div>

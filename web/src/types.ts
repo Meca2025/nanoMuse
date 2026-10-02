@@ -110,8 +110,7 @@ export interface NoticeEvent extends BaseEvent {
     grant?: number;
     invite_url?: string;
     invite_bonus_cny?: number;
-    contribute_bonus_available?: boolean;
-    contribute_bonus_cny?: number;
+    invitee_bonus_cny?: number;
     own_key_docs?: string;
   };
 }
@@ -348,17 +347,21 @@ export interface CloudMe {
     usd_cny?: number;
     allowance_cny?: number;
     invite_bonus_cny?: number;
-    contribute_bonus_cny?: number;
-    contribute_bonus_available?: boolean;
+    /** relay 0.9: the friend who signs up with the code gets the same */
+    invitee_bonus_cny?: number;
     own_key_docs?: string;
     daily_cap: number;
     credit_left?: number;
     left_today?: number | null;
   };
   /** Relay 0.4/0.5: the account's invite code and what came of it (`earned_cny` since 0.5). */
-  invite?: { code: string; url: string; invites: number; bonus_cny: number; earned_cny?: number; friends: Array<{ hint: string; joined_at: number }> };
-  /** Relay 0.4/0.5: the co-creation programme — whether this account contributes its chat turns, how many so far, and the one-time bonus. */
-  contribute?: { on: boolean; samples: number; bonus_cny?: number; bonus_available?: boolean; bonus_at?: number | null };
+  invite?: { code: string; url: string; invites: number; bonus_cny: number; invitee_bonus_cny?: number; earned_cny?: number; friends: Array<{ hint: string; joined_at: number }> };
+  /**
+   * Data controls: whether "Help improve nanoMuse's AI models" is on for this account, how many
+   * turns the relay keeps, what the relay's default for new accounts is (0.9), what a kept turn
+   * holds and where its privacy policy is.
+   */
+  contribute?: { on: boolean; samples: number; default_on?: boolean; keeps?: { kept: string[]; not_kept: string[] }; privacy_url?: string };
   /** Relay 0.4 counted clips; 0.5 no longer does (always unlimited here). */
   clips?: { unlimited: boolean; allowed: number | null; used: number; left: number | null; per_face: number };
   models?: Array<{ id: string; name?: string; nanomuse?: { kind?: string; recommended?: boolean } }>;
