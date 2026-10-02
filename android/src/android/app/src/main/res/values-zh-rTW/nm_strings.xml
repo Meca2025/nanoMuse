@@ -170,6 +170,7 @@
     <string name="nm_grants_revoke_confirm">撤銷這條授權？下次遇到會重新問你。</string>
     <string name="nm_risk_remember_money">記住，下次在 %1$s 裡直接執行</string>
     <string name="nm_risk_remember_money_note">需要驗證螢幕鎖。之後只有這一個應用程式或網站裡的付款不再彈出卡片；它會排在「設定 → 權限」的最前面，隨時可以撤銷。</string>
+    <string name="nm_risk_remember_money_needs_lock">要記住付款，請先為手機設定螢幕鎖（設定 → 安全性）：記住時會用它來確認。</string>
     <string name="nm_risk_lock_title">確認是你本人</string>
     <string name="nm_risk_lock_subtitle">nanoMuse 將記住 %1$s 裡的付款許可，之後不再逐次詢問。</string>
     <string name="nm_risk_remembered_toast">已記住 · 可在「設定 → 權限」裡撤銷</string>

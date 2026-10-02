@@ -22,6 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 from pydantic import PrivateAttr
 
@@ -42,7 +43,20 @@ from nanomuse.tools.web import _is_private_host, host_of
 VIEWPORT = PROFILES["desktop"].viewport
 
 # what a fetch hands back to the model at most
+FETCH_MAX_HOPS = 5
 FETCH_MAX_CHARS = 20_000
+
+
+def _redirect_target(result: dict[str, Any], base: str) -> str | None:
+    """Where a redirect answer points (absolute), or ``None`` for a final answer."""
+    status = int(result.get("status") or 0)
+    if status not in (301, 302, 303, 307, 308):
+        return None
+    headers = {str(k).lower(): str(v) for k, v in (result.get("headers") or {}).items()}
+    location = headers.get("location", "").strip()
+    if not location:
+        return None
+    return urljoin(str(result.get("url") or base), location)
 
 
 @dataclass
@@ -439,6 +453,18 @@ class Browser(BaseTool):
         if host is None or await asyncio.to_thread(_is_private_host, host):
             return ToolResult.fail(f"refusing to fetch a private or local address: {url}")
         result = await backend.fetch(url, method=(method or "GET").upper(), body=body)
+        # a public page may answer with a redirect into the LAN; each hop gets the same look
+        for _ in range(FETCH_MAX_HOPS):
+            location = _redirect_target(result, url)
+            if location is None:
+                break
+            next_host = host_of(location)
+            if next_host is None or await asyncio.to_thread(_is_private_host, next_host):
+                return ToolResult.fail(
+                    f"refusing to follow a redirect to a private or local address: {location}"
+                )
+            url = location
+            result = await backend.fetch(url, method="GET")
         text = str(result.get("body") or "")
         ctype = str((result.get("headers") or {}).get("content-type", ""))
         note = ""

@@ -33,10 +33,10 @@ export interface CloudStatus {
 
 const API = 'nanomuse/cloud'
 
-/** GET for `status`, POST for everything else; 204 resolves to undefined. */
+/** GET when there is no body (`status`, `invite` — the read-only routes), POST with one; 204 resolves to undefined. */
 export async function call<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API}/${path}`, {
-    method: body === undefined && path === 'status' ? 'GET' : 'POST',
+    method: body === undefined ? 'GET' : 'POST',
     headers: { 'content-type': 'application/json', 'x-nanomuse': '1' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })

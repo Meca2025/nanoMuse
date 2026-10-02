@@ -5,7 +5,7 @@ import { AllowanceWays } from "../components/AllowanceWays";
 import { PageBar } from "../components/BackBar";
 import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { SignIn } from "../components/SignIn";
-import { useT } from "../i18n";
+import { useT, intlLocale } from "../i18n";
 import { useStore } from "../store";
 import type { CloudAccount, CloudEvent, CloudMe, CloudSession, UsageRow } from "../types";
 import { cx } from "../util";
@@ -101,7 +101,7 @@ function Identity({ account, me }: { account: CloudAccount | null; me: CloudMe |
           <div className="truncate text-[18px] font-semibold tracking-tight">{hint}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-muted">
             <span>{account?.channel === "phone" || account?.channel === "sms" ? t("Mobile number") : t("E-mail")}</span>
-            {since && <span>· {t("since {date}", { date: since.toLocaleDateString() })}</span>}
+            {since && <span>· {t("since {date}", { date: since.toLocaleDateString(intlLocale()) })}</span>}
             {me?.account.member && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
                 <ShieldCheck size={11} /> {t("Unlimited")}
@@ -471,7 +471,7 @@ function Sessions({ sessions, loading, onChanged }: { sessions: CloudSession[] |
                   {s.current && <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[10.5px] font-semibold text-accent">{t("This one")}</span>}
                 </div>
                 <div className="truncate text-[12px] text-muted">
-                  {s.via === "password" ? t("password") : t("code")} · {t("since {date}", { date: new Date(s.created_at * 1000).toLocaleDateString() })}
+                  {s.via === "password" ? t("password") : t("code")} · {t("since {date}", { date: new Date(s.created_at * 1000).toLocaleDateString(intlLocale()) })}
                   {s.last_used_at ? ` · ${t("used {when}", { when: relative(s.last_used_at, t) })}` : ""}
                 </div>
               </div>
@@ -589,5 +589,5 @@ function relative(ts: number, t: (s: string, v?: Record<string, string | number>
   if (s < 3600) return t("{n} min ago", { n: Math.floor(s / 60) });
   if (s < 86400) return t("{n} h ago", { n: Math.floor(s / 3600) });
   if (s < 86400 * 7) return t("{n} d ago", { n: Math.floor(s / 86400) });
-  return new Date(ts * 1000).toLocaleDateString();
+  return new Date(ts * 1000).toLocaleDateString(intlLocale());
 }

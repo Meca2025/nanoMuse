@@ -25,6 +25,20 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
+_BACKGROUND: set[asyncio.Task[Any]] = set()
+
+
+def keep_task(task: asyncio.Task[Any]) -> asyncio.Task[Any]:
+    """Hold a reference to a fire-and-forget task until it is done.
+
+    The event loop keeps only weak references to tasks; one created and dropped in the
+    same breath can be collected half-way. The set here holds it, and lets go when done.
+    """
+    _BACKGROUND.add(task)
+    task.add_done_callback(_BACKGROUND.discard)
+    return task
+
+
 def new_id(prefix: str = "e") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
 

@@ -34,7 +34,9 @@ appear; a phone never does.
 | Claude Code | `~/.claude/projects/<workspace-slug>/<id>.jsonl` | `claude -p --output-format stream-json --verbose --permission-mode acceptEdits [--resume <id>] "<text>"` |
 
 Reading is best effort: a line that does not parse is skipped, a missing
-directory is an agent with no sessions. A session lists its agent, id, title
+directory is an agent with no sessions. The `~` is the user's home unless
+`NANOMUSE_CODING_HOME` names another directory (a container that mounts the
+host's CLI homes somewhere else, or a test). A session lists its agent, id, title
 (the first user message), workspace, timestamps, message count, the last
 exchange and whether it is `resumable`. Cursor IDE chats can be read but not
 resumed from the CLI (`resumable: false`, `source: "ide"`): a message to one

@@ -161,7 +161,9 @@ async def relay(
                     yield chunk
             finally:
                 payload = b"".join(chunks)
-                record(extract_usage(payload) or (sent + len(payload)) // 4)
+                # a refusal streamed as an event is not a reply the session paid for
+                if resp.status_code < 400:
+                    record(extract_usage(payload) or (sent + len(payload)) // 4)
 
         return StreamingResponse(
             stream(),

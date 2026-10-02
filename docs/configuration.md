@@ -29,6 +29,9 @@ These win over the file. They cover the settings people change most often and wh
 | `NANOMUSE_BROWSER_BACKEND` | `browser.backend`: `auto`, `playwright` or `device` |
 | `NANOMUSE_GUI_ENABLED=1`, `NANOMUSE_GUI_PROVIDER`, `NANOMUSE_GUI_MODEL`, `NANOMUSE_GUI_BASE_URL`, `NANOMUSE_GUI_API_KEY` | `[gui]` — operating the phone, and the model that does it |
 | `NANOMUSE_VAULT_KEY` | Fernet key for the vault (default: `<data_dir>/vault.key`) |
+| `NANOMUSE_CLOUD_BASE_URL`, `NANOMUSE_CLOUD_REQUIRED` | `[cloud]` — the relay a hosted runtime signs in against, and whether a nanoMuse Cloud account is required ([cloud.md](cloud.md); the relay's own variables are in [cloud/README.md](../cloud/README.md)) |
+| `NANOMUSE_HUB_NAME` | `hub.name`, what this device is called on the other devices |
+| `NANOMUSE_CODING_HOME` | where the coding CLIs' own homes (`~/.codex`, `~/.claude`, …) are looked for, default the user's home ([coding-agents.md](coding-agents.md)) |
 | `NANOMUSE_LOG_LEVEL` | `log_level` |
 
 ## `[llm]`

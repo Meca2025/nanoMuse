@@ -155,6 +155,54 @@ def upstream_detail(kind: str, status: int, model: str, raw: bytes | str) -> str
     return f"{line}: {message[:200]}" if message else line
 
 
+# the provider's content check saying no — Bailian's native and OpenAI-compatible spellings
+CONTENT_CHECK_MARKS = ("data_inspection_failed", "datainspectionfailed", "inappropriate content", "green net")
+
+
+def content_check_refusal(raw: bytes | str) -> bool:
+    """True when the provider refused because its content check rejected the words, not
+    because anything was wrong with the request — the person needs different words, not a
+    bug report."""
+    text = (raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw).lower()
+    return any(mark in text for mark in CONTENT_CHECK_MARKS)
+
+
+def relay_error_body(status: int, raw: bytes) -> dict:
+    """What the app is told when the provider says no. A 400 is about the request and
+    the provider's own words are the useful ones — except a content check, which gets a
+    plain sentence; everything else is the relay's problem (its key, its quota, the
+    provider's day) and is said in words that do not send the person hunting for an API
+    key they never had. The provider's text rides along under ``upstream`` for the curious
+    and for bug reports."""
+    upstream = ""
+    try:
+        up = json.loads(raw)
+        if isinstance(up, dict):
+            e = up.get("error")
+            if isinstance(e, dict) and e.get("message"):
+                upstream = str(e["message"])[:300]
+            elif up.get("message"):
+                upstream = str(up["message"])[:300]
+    except ValueError:
+        pass
+    if status == 400 and content_check_refusal(raw):
+        message, code = "The model provider's content check declined this request; try different words", "content_rejected"
+    elif status == 400:
+        message, code = upstream or "The model provider refused the request", "upstream_400"
+    elif status in (401, 403):
+        message, code = "The relay's model provider refused its key; the operator has been told", "upstream_auth"
+    elif status == 404:
+        message, code = "The model provider does not know this model right now", "upstream_model"
+    elif status == 429:
+        message, code = "The model provider is busy; try again in a moment", "upstream_busy"
+    else:
+        message, code = "The model provider is having trouble; try again in a moment", f"upstream_{status}"
+    err: dict = {"message": message, "type": "upstream", "code": code}
+    if upstream and (status != 400 or code == "content_rejected"):
+        err["upstream"] = upstream
+    return {"error": err}
+
+
 # where the provider keeps the pictures it makes: its own API host and Alibaba Cloud OSS buckets
 PROVIDER_HOST_SUFFIXES = (".aliyuncs.com", ".alicdn.com")
 
@@ -287,7 +335,7 @@ def create_app(
         if not password:
             raise CloudError(400, "password_required", "Enter the password")
         device = str(body.get("device", ""))[:80]
-        key, caller = await asyncio.to_thread(cloud.login_password, ident, password, device)
+        key, caller = await asyncio.to_thread(cloud.login_password, ident, password, device, client_ip(request))
         me = cloud.me(caller)
         return {"api_key": key, "created": False, **me}
 
@@ -520,7 +568,7 @@ def create_app(
                         raw = await r.aread()
                         cloud.note(caller.account_id, "upstream.error", upstream_detail("chat", r.status_code, spec.id, raw))
                         failed = True
-                        err = _relay_error_body(r.status_code, raw)
+                        err = relay_error_body(r.status_code, raw)
                         yield f"data: {dumps(err)}\n\n".encode()
                         yield b"data: [DONE]\n\n"
                         return
@@ -550,7 +598,7 @@ def create_app(
                         else:
                             yield (line + "\n").encode()
             except httpx.HTTPError as e:
-                log.warning("upstream stream error: %s", e)
+                log.warning("upstream stream error: %s %s", type(e).__name__, e)
                 cloud.note(caller.account_id, "upstream.error", f"chat stream broke {spec.id}: {type(e).__name__}")
                 failed = usage is None and text_len == 0
                 err = {"error": {"message": "The model provider stopped answering", "type": "nanomuse_cloud", "code": "upstream"}}
@@ -613,6 +661,8 @@ def create_app(
             except ValueError:
                 pass
             log.warning("dashscope image HTTP %s: %s", r.status_code, r.text[:300])
+            if r.status_code == 400 and content_check_refusal(r.content):
+                raise CloudError(400, "content_rejected", "The image provider's content check declined this prompt; try different words")
             raise CloudError(502, "upstream", f"The image provider refused ({r.status_code}{': ' + msg if msg else ''})")
         try:
             image_url = r.json()["output"]["choices"][0]["message"]["content"][0]["image"]
@@ -1082,44 +1132,12 @@ def create_app(
                     text += msg["content"]
         return text
 
-    def _relay_error_body(status: int, raw: bytes) -> dict:
-        """What the app is told when the provider says no. A 400 is about the request and
-        the provider's own words are the useful ones; everything else is the relay's problem
-        (its key, its quota, the provider's day) and is said in words that do not send the
-        person hunting for an API key they never had. The provider's text rides along under
-        ``upstream`` for the curious and for bug reports."""
-        upstream = ""
-        try:
-            up = json.loads(raw)
-            if isinstance(up, dict):
-                e = up.get("error")
-                if isinstance(e, dict) and e.get("message"):
-                    upstream = str(e["message"])[:300]
-                elif up.get("message"):
-                    upstream = str(up["message"])[:300]
-        except ValueError:
-            pass
-        if status == 400:
-            message, code = upstream or "The model provider refused the request", "upstream_400"
-        elif status in (401, 403):
-            message, code = "The relay's model provider refused its key; the operator has been told", "upstream_auth"
-        elif status == 404:
-            message, code = "The model provider does not know this model right now", "upstream_model"
-        elif status == 429:
-            message, code = "The model provider is busy; try again in a moment", "upstream_busy"
-        else:
-            message, code = "The model provider is having trouble; try again in a moment", f"upstream_{status}"
-        err: dict = {"message": message, "type": "upstream", "code": code}
-        if upstream and status != 400:
-            err["upstream"] = upstream
-        return {"error": err}
-
     def _relay_error(r: httpx.Response) -> JSONResponse:
         # The provider's own status codes would confuse the app (its 401 is not
         # the user's 401), so everything from upstream comes back as 502 except
         # 400s about the request itself, which are the caller's to see.
         status = 400 if r.status_code == 400 else 502
         log.warning("upstream HTTP %s: %s", r.status_code, r.text[:300])
-        return JSONResponse(status_code=status, content=_relay_error_body(r.status_code, r.content))
+        return JSONResponse(status_code=status, content=relay_error_body(r.status_code, r.content))
 
     return app

@@ -13,12 +13,16 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import Field
 
+from nanomuse import __version__
 from nanomuse.config import SearchSettings
 from nanomuse.schema import RiskLevel, ToolResult
 from nanomuse.search import WebSearchProvider
 from nanomuse.tools.base import BaseTool, CallAssessment
 
-USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) nanoMuse/0.1 (+https://github.com/nano-muse/nanoMuse)"
+USER_AGENT = (
+    f"Mozilla/5.0 (X11; Linux x86_64) nanoMuse/{__version__} "
+    "(+https://github.com/nano-muse/nanoMuse)"
+)
 
 
 def host_of(url: str) -> str | None:

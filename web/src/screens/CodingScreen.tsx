@@ -6,7 +6,7 @@ import { MuseRoundButton } from "../components/MuseHeader";
 import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { Markdown } from "../components/Markdown";
 import { Sheet } from "../components/Sheet";
-import { useT } from "../i18n";
+import { useT, intlLocale } from "../i18n";
 import { useStore, type CodingLive } from "../store";
 import type { CodingAgent, CodingRun, CodingSession } from "../types";
 import { cx } from "../util";
@@ -581,5 +581,5 @@ function relative(ts: number, t: (s: string, v?: Record<string, string | number>
   if (s < 3600) return t("{n} min ago", { n: Math.floor(s / 60) });
   if (s < 86400) return t("{n} h ago", { n: Math.floor(s / 3600) });
   if (s < 86400 * 7) return t("{n} d ago", { n: Math.floor(s / 86400) });
-  return new Date(ts * 1000).toLocaleDateString();
+  return new Date(ts * 1000).toLocaleDateString(intlLocale());
 }

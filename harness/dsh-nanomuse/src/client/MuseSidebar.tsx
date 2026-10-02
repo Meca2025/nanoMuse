@@ -13,6 +13,7 @@
 import { createElement as h, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
+import { openLink } from './bridge.ts'
 import { IconCalendar, IconChat, IconDevices, IconMenu, IconPanelLeft, IconPlus, IconPuzzle, IconSearch, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
 import { openShortcutsReference, pressSettingsChord } from './keys.ts'
 import { useLive } from './live.ts'
@@ -178,7 +179,7 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
     ...others.map((p) => ({ id: p.id, label: p.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: p.id })), onSelect: () => selectPanel(p.id) })),
     { id: 'toggle', label: collapsed ? t('menuExpand') : t('menuCollapse'), icon: h(IconPanelLeft, { size: 16 }), onSelect: toggleSidebar },
     'sep',
-    { id: 'issue', label: t('menuReport'), icon: h(IconBug, { size: 16 }), onSelect: () => { window.open(issuesUrl, '_blank', 'noopener') } },
+    { id: 'issue', label: t('menuReport'), icon: h(IconBug, { size: 16 }), onSelect: () => openLink(issuesUrl) },
   ]
 
   // Muse's rail starts with Chats (a dot while the agent works); the agent's face is

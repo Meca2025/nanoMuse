@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -411,7 +412,16 @@ const PERMISSION_PANES: Record<PermissionKind, string> = {
   microphone: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
 };
 
+/** The only links that leave the app: http(s) with a host. */
+const EXTERNAL_URL = /^https?:\/\/[^/]/;
 let awakeBlocker: number | null = null;
+
+function releaseAwake(): void {
+  if (awakeBlocker !== null) {
+    powerSaveBlocker.stop(awakeBlocker);
+    awakeBlocker = null;
+  }
+}
 
 /** The requests the preload bridge forwards from the web client (see preload.ts). */
 function registerBridge(): void {
@@ -423,6 +433,7 @@ function registerBridge(): void {
   }));
   ipcMain.handle("nanomuse:permissions:request", async (_e, kind: PermissionKind) => {
     if (process.platform !== "darwin") return "not-needed" satisfies PermissionState;
+    if (!(kind in PERMISSION_PANES)) return "denied" satisfies PermissionState;
     if (kind === "accessibility") {
       // the system's own dialog, which also lists the app in the Accessibility pane
       if (!systemPreferences.isTrustedAccessibilityClient(true)) void shell.openExternal(PERMISSION_PANES.accessibility);
@@ -435,17 +446,14 @@ function registerBridge(): void {
     return permissionState(kind);
   });
   ipcMain.handle("nanomuse:permissions:settings", (_e, kind: PermissionKind) => {
-    if (process.platform === "darwin" && PERMISSION_PANES[kind]) void shell.openExternal(PERMISSION_PANES[kind]);
+    if (process.platform === "darwin" && typeof kind === "string" && kind in PERMISSION_PANES) void shell.openExternal(PERMISSION_PANES[kind]);
   });
   ipcMain.handle("nanomuse:open-external", (_e, url: string) => {
-    if (typeof url === "string" && /^https?:\/\//.test(url)) void shell.openExternal(url);
+    if (typeof url === "string" && EXTERNAL_URL.test(url)) void shell.openExternal(url);
   });
   ipcMain.handle("nanomuse:keep-awake", (_e, on: boolean) => {
-    if (on && awakeBlocker === null) awakeBlocker = powerSaveBlocker.start("prevent-display-sleep");
-    else if (!on && awakeBlocker !== null) {
-      powerSaveBlocker.stop(awakeBlocker);
-      awakeBlocker = null;
-    }
+    if (on === true && awakeBlocker === null) awakeBlocker = powerSaveBlocker.start("prevent-display-sleep");
+    else if (on !== true) releaseAwake();
   });
   ipcMain.handle("nanomuse:theme", (_e, theme: string) => {
     mainWindow?.setBackgroundColor(theme === "dark" ? BASE_DARK : BASE_LIGHT);
@@ -474,14 +482,15 @@ function createWindow(): BrowserWindow {
   // the harness names its document after itself; the window keeps ours
   win.on("page-title-updated", (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:/.test(url)) void shell.openExternal(url);
+    if (EXTERNAL_URL.test(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (e, url) => {
     if (hostUrl && url.startsWith(new URL(hostUrl).origin)) return;
-    if (url.startsWith("file:")) return;
+    // our own pages (the loading page) and nothing else from disk
+    if (url.startsWith("file:") && url.startsWith(pathToFileURL(ownResources()).href)) return;
     e.preventDefault();
-    if (/^https?:/.test(url)) void shell.openExternal(url);
+    if (EXTERNAL_URL.test(url)) void shell.openExternal(url);
   });
   win.webContents.session.setPermissionRequestHandler((_wc, permission, callback) => {
     // the microphone for voice input; nothing else is asked for
@@ -634,6 +643,7 @@ if (!app.requestSingleInstanceLock()) {
     if (process.platform !== "darwin") app.quit();
   });
   app.on("before-quit", (e) => {
+    releaseAwake();
     if (quitting) return;
     quitting = true;
     if (child) {

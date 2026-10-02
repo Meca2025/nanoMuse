@@ -87,6 +87,15 @@ _REACH: list[tuple[str, re.Pattern[str]]] = [
     ),
     ("environment", re.compile(r"\bos\.(environ|getenv|putenv)\b")),
     (
+        # a module fetched by name or an attribute looked up by string slips past the
+        # patterns above; naming it on the card is the honest answer
+        "dynamic code",
+        re.compile(
+            r"\b(__import__|importlib|getattr\s*\(\s*(os|sys|builtins|subprocess)\b|"
+            r"globals\s*\(\s*\)\s*\[|eval\s*\(|exec\s*\(|compile\s*\()"
+        ),
+    ),
+    (
         "deletion",
         re.compile(
             r"\b(shutil\.rmtree|os\.(remove|unlink|rmdir|removedirs)|Path\([^)]*\)\.unlink)\b"
@@ -104,6 +113,7 @@ _REACH_LABELS = {
     "network": "reaches the network",
     "processes": "starts other programs",
     "environment": "reads environment variables",
+    "dynamic code": "loads code or modules by name",
     "deletion": "deletes files",
     "outside the workspace": "touches paths outside the workspace",
 }

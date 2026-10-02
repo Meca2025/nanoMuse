@@ -1321,6 +1321,7 @@ const zhCN: Record<string, string> = {
   "The account's free allowance is used up. Add your own model key under Connections to keep going.": "这个账号的免费额度已经用完。在「连接」里填上你自己的模型 key 就能继续。",
   "Too many requests at once; wait a moment and try again.": "请求太密集了，稍等一下再试。",
   "The model provider is busy; try again in a moment.": "模型服务商正忙，稍后再试。",
+  "The model provider's content check declined this request; try different words.": "模型服务商的内容审核没有放行这次请求，换个说法再试。",
   "The relay's model provider refused its key; the operator has been told. Your own key under Connections works meanwhile.": "中继的模型服务商拒绝了它的 key，运营者已收到通知。这期间可以在「连接」里用你自己的 key。",
   "The model provider does not know this model right now; pick another under Connections.": "模型服务商暂时不认识这个模型，在「连接」里换一个。",
   "nanoMuse Cloud has no model key configured; the operator has been told.": "nanoMuse Cloud 还没有配置模型 key，运营者已收到通知。",

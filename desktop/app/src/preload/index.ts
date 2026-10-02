@@ -27,7 +27,9 @@ const bridge: DesktopBridge = {
   loginItem: () => ipcRenderer.invoke("app:login-item") as Promise<boolean>,
   setLoginItem: (on: boolean) => ipcRenderer.send("app:login-item:set", !!on),
   onQuickChat: (cb: () => void) => {
-    ipcRenderer.on("quick-chat", () => cb());
+    const handler = () => cb();
+    ipcRenderer.on("quick-chat", handler);
+    return () => ipcRenderer.removeListener("quick-chat", handler);
   },
 };
 

@@ -213,7 +213,7 @@ def create_app(
             # 4404 as "gone" and stop reconnecting)
             await ws.accept()
             await ws.close(code=4404, reason="this session has ended")
-            log.info("ws %s: gone (4404)", ws.path_params["sid"])
+            log.debug("ws %s: gone (4404)", ws.path_params["sid"])
             return
         url = f"{target.ws_base}{ws.url.path}"
         if ws.url.query:
@@ -392,7 +392,7 @@ def create_app(
         if not settings.admin_token:
             return JSONResponse({"error": "not_found"}, status_code=404)
         given = request.headers.get("x-admin-token", "")
-        if not given or not secrets.compare_digest(given, settings.admin_token):
+        if not given or not secrets.compare_digest(given.encode(), settings.admin_token.encode()):
             return JSONResponse({"error": "forbidden"}, status_code=403)
         out = visitors.admin(account.strip()[:80], max(1, min(days, 365)))
         if not account:

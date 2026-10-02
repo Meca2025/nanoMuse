@@ -525,9 +525,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => ws.close();
   }, []);
 
+  const loadGeneration = useRef<Record<string, number>>({});
   const loadEvents = useCallback(async (thread: string, before?: string) => {
+    // a fresh load (not a scroll-back) supersedes any earlier one still in flight for
+    // the same thread: the older answer is dropped when it finally comes
+    const generation = before ? undefined : (loadGeneration.current[thread] = (loadGeneration.current[thread] ?? 0) + 1);
     try {
       const data = await api.events(thread, 150, before);
+      if (generation !== undefined && loadGeneration.current[thread] !== generation) return;
       dispatch({ type: "events", thread, events: data.events, hasMore: data.has_more, prepend: !!before });
     } catch (e) {
       if (e instanceof AuthError) dispatch({ type: "authError" });

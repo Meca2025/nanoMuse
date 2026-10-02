@@ -194,14 +194,16 @@ function createMainWindow(show = true): BrowserWindow {
   win.on("move", onBounds);
   void win.loadURL(runtime.appUrl());
   // links to elsewhere open in the system browser; the app stays on its own origin
+  // only http(s) links leave the app: a file: or custom-scheme URL from page content is dropped
+  const external = (url: string) => /^https?:\/\/[^/]/.test(url);
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith(runtime.base)) void shell.openExternal(url);
+    if (!url.startsWith(runtime.base) && external(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (e, url) => {
     if (!url.startsWith(runtime.base)) {
       e.preventDefault();
-      void shell.openExternal(url);
+      if (external(url)) void shell.openExternal(url);
     }
   });
   win.on("close", (e) => {

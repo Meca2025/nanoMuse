@@ -21,6 +21,9 @@ def main() -> None:
     # httpx logs every upstream URL at INFO; the relay's own line per request is enough.
     logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = Settings()
+    if settings.dev_mode and settings.sender != "log":
+        # identifiers would be hashed with a public fixed key while real codes go out
+        raise SystemExit("CLOUD_SECRET is not set; a relay that sends codes (CODE_SENDER != log) must have one")
     app = create_app(settings)
     uvicorn.run(
         app,

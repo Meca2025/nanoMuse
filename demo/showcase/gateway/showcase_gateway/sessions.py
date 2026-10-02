@@ -343,7 +343,11 @@ class SessionManager:
 
     def authenticate(self, sid: str, token: str | None) -> Session:
         sess = self.get(sid)
-        if sess is None or not token or not secrets.compare_digest(token, sess.token):
+        if (
+            sess is None
+            or not token
+            or not secrets.compare_digest(token.encode(), sess.token.encode())
+        ):
             raise Refused(404, "no_session", "No such session.")
         return sess
 
@@ -375,7 +379,7 @@ class SessionManager:
     # ------------------------------------------------------------------ model budget
     def authenticate_key(self, sess: Session, key: str | None) -> None:
         """The per-session key a container presents to the model proxy, or ``Refused``."""
-        if not key or not secrets.compare_digest(key, sess.llm_key):
+        if not key or not secrets.compare_digest(key.encode(), sess.llm_key.encode()):
             raise Refused(401, "bad_key", "invalid api key")
 
     def llm_lane(self, sess: Session, key: str | None, lane: str) -> Lane:

@@ -602,8 +602,11 @@ function connect(): void {
       if (hands?.task_active) onHands({ kind: "hands", event: "begin", text: hands.task_text ?? "" });
     }
   };
-  socket.onclose = () => {
+  socket.onclose = (ev) => {
     socket = null;
+    // 4401: the token is wrong until a new config arrives; 4404: the runtime says this
+    // connection is gone for good — neither gets better by asking again right away
+    if (ev.code === 4401 || ev.code === 4404) return;
     setTimeout(connect, backoff);
     backoff = Math.min(backoff * 1.7, 10_000);
   };

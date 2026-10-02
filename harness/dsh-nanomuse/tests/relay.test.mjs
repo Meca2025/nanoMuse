@@ -48,6 +48,22 @@ function fakeRelay() {
       })
     }
     if (req.url === '/v1/auth/sign-out') return json(401, { error: { code: 'unauthorized', message: 'already gone' } })
+    if (req.url === '/v1/auth/login') {
+      if (body.password !== 'correct horse') return json(401, { error: { code: 'password_wrong', message: 'That password is not right.' } })
+      return json(200, {
+        api_key: 'sk-test-device-key',
+        account: { id: 'acc_1', channel: 'phone', hint: '138****0000', member: false },
+        tokens: { unlimited: false, granted: 1000, used: 10, remaining: 990 },
+      })
+    }
+    if (req.url === '/v1/me/invite') {
+      if (req.headers.authorization !== 'Bearer sk-test-device-key') return json(401, { error: { code: 'unauthorized', message: 'no' } })
+      return json(200, { code: 'ABCD12', url: 'https://nanomuse.cn/i/ABCD12', invites: 2, bonus_cny: 5, earned_cny: 10 })
+    }
+    if (req.url?.startsWith('/v1/me/profile')) {
+      if (req.headers.authorization !== 'Bearer sk-test-device-key') return json(401, { error: { code: 'unauthorized', message: 'no' } })
+      return json(200, { rev: 3, device: 'desk', name: '豆沙包', avatar: 'dragon', emoji: '', color: '#2F6DB5', style: '', description: '', has_face: false, face_id: '' })
+    }
     json(404, { error: { code: 'not_found', message: 'nothing here' } })
   })
   return { server, seen }
@@ -136,4 +152,38 @@ test('data controls: me carries the switch, setContribute and deleteSamples spea
   assert.equal(await relay.deleteSamples('sk-test-device-key'), 2)
   assert.equal(seen.at(-1).method, 'DELETE')
   assert.equal(seen.at(-1).url, '/v1/me/samples')
+})
+
+test('login posts the password and maps the key; a wrong one carries the relay code', async () => {
+  const signIn = await relay.login('13800138000', 'correct horse', 'desk')
+  assert.equal(signIn.apiKey, 'sk-test-device-key')
+  assert.equal(signIn.created, false)
+  assert.equal(signIn.account.hint, '138****0000')
+  const last = seen.at(-1)
+  assert.equal(last.method, 'POST')
+  assert.equal(last.url, '/v1/auth/login')
+  assert.deepEqual(last.body, { identifier: '13800138000', password: 'correct horse', device: 'desk' })
+  await assert.rejects(relay.login('13800138000', 'wrong', 'desk'), (err) => err instanceof RelayError && err.status === 401 && err.code === 'password_wrong')
+})
+
+test('invite is a GET with the bearer key and reads code, link and bonus', async () => {
+  const invite = await relay.invite('sk-test-device-key')
+  const last = seen.at(-1)
+  assert.equal(last.method, 'GET')
+  assert.equal(last.url, '/v1/me/invite')
+  assert.equal(last.auth, 'Bearer sk-test-device-key')
+  assert.deepEqual(invite, { code: 'ABCD12', url: 'https://nanomuse.cn/i/ABCD12', invites: 2, bonusCny: 5, earnedCny: 10 })
+  await assert.rejects(relay.invite('sk-wrong'), (err) => err instanceof RelayError && err.status === 401)
+})
+
+test('profile asks for the face only when told and maps the account\'s look', async () => {
+  const small = await relay.profile('sk-test-device-key', false)
+  assert.equal(seen.at(-1).url, '/v1/me/profile?face=false')
+  assert.equal(small.name, '豆沙包')
+  assert.equal(small.avatar, 'dragon')
+  assert.equal(small.rev, 3)
+  assert.equal(small.hasFace, false)
+  assert.equal('face' in small, false)
+  await relay.profile('sk-test-device-key', true)
+  assert.equal(seen.at(-1).url, '/v1/me/profile?face=true')
 })

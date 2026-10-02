@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from nanomuse.logger import logger
+from nanomuse.server.events import keep_task
 
 VAPID_FILE = "push-vapid.json"
 SUBSCRIPTIONS_FILE = "push-subscriptions.json"
@@ -172,7 +173,7 @@ class PushService:
         except RuntimeError:
             self._send_all(payload)
             return
-        loop.create_task(asyncio.to_thread(self._send_all, payload))
+        keep_task(loop.create_task(asyncio.to_thread(self._send_all, payload)))
 
     def _send_all(self, payload: dict[str, Any]) -> None:
         from pywebpush import WebPushException, webpush

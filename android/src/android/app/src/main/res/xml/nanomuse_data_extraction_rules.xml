@@ -9,6 +9,7 @@
         <exclude domain="sharedpref" path="backup_rclone_secrets.xml" />
         <exclude domain="sharedpref" path="minis_device_identity.xml" />
         <exclude domain="sharedpref" path="__androidx_security_crypto_encrypted_prefs__.xml" />
+        <exclude domain="file" path="minis-global/nanomuse/grants.json" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="nanomuse_secure.xml" />
@@ -17,5 +18,6 @@
         <exclude domain="sharedpref" path="backup_rclone_secrets.xml" />
         <exclude domain="sharedpref" path="minis_device_identity.xml" />
         <exclude domain="sharedpref" path="__androidx_security_crypto_encrypted_prefs__.xml" />
+        <exclude domain="file" path="minis-global/nanomuse/grants.json" />
     </device-transfer>
 </data-extraction-rules>

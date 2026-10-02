@@ -1248,7 +1248,11 @@ class MuseService:
         """A request to a trigger's webhook URL. Wrong id or key → KeyError (the caller
         answers 404 for both, so the URL cannot be probed); too soon → RuntimeError."""
         item = self.app.triggers.get(trigger_id)
-        if item is None or item.kind != "hook" or not secrets.compare_digest(item.secret, key):
+        if (
+            item is None
+            or item.kind != "hook"
+            or not secrets.compare_digest(item.secret.encode(), (key or "").encode())
+        ):
             raise KeyError(trigger_id)
         if item.status != "active":
             raise ValueError(f"trigger is {item.status}")

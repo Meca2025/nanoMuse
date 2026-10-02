@@ -115,9 +115,14 @@ function SettingsPanel({ t, rows, renderSlot, activeId, onSelect, onClose }: Pan
     onClick: () => onSelect(row.id),
   }, navIcon(row.id), h('span', { className: 'nm-settings-cell-label' }, row.id === 'nanomuse-cloud' ? t('navAccount') : row.label))
 
+  const [signOutError, setSignOutError] = useState<string | undefined>()
   const signOut = () => {
     setSigningOut(true)
-    void call('sign-out', {}).catch(() => undefined).finally(() => setSigningOut(false))
+    setSignOutError(undefined)
+    void call('sign-out', {})
+      .then(() => onClose())
+      .catch((err: unknown) => setSignOutError(t('failed', { message: (err as Error).message })))
+      .finally(() => setSigningOut(false))
   }
 
   return createPortal(
@@ -132,7 +137,8 @@ function SettingsPanel({ t, rows, renderSlot, activeId, onSelect, onClose }: Pan
           live.cloud.signedIn
             ? h('div', { className: 'nm-settings-foot' },
                 h('button', { type: 'button', className: 'nm-settings-cell', disabled: signingOut, onClick: signOut },
-                  h(IconLogOut, { size: 16 }), h('span', { className: 'nm-settings-cell-label' }, signingOut ? t('signingOut') : t('signOut'))))
+                  h(IconLogOut, { size: 16 }), h('span', { className: 'nm-settings-cell-label' }, signingOut ? t('signingOut') : t('signOut'))),
+                signOutError ? h('div', { className: 'nm-ob-error', role: 'alert', style: { padding: '4px 12px' } }, signOutError) : null)
             : null),
         h('div', { className: 'nm-settings-content' },
           h('div', { className: 'nm-settings-head' },

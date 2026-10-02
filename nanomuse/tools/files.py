@@ -63,6 +63,10 @@ def pdf_text(path: Path, max_pages: int = 60) -> str:
     return text
 
 
+# an unbounded `search` over a home directory would walk for minutes; this is plenty
+SEARCH_MAX_ENTRIES = 50_000
+
+
 class Files(BaseTool):
     name: str = "files"
     description: str = (
@@ -119,7 +123,7 @@ class Files(BaseTool):
             resolved = self._resolve(path)
             inside = self._inside_workspace(resolved)
         except Exception:  # noqa: BLE001 - reported at execution time
-            inside = True
+            inside = False  # a path that cannot be resolved does not get the workspace's trust
         if action in ("write", "append"):
             risk = RiskLevel.MODERATE if inside else RiskLevel.SENSITIVE
             return CallAssessment(
@@ -180,12 +184,21 @@ class Files(BaseTool):
                     return ToolResult.fail("`pattern` is required")
                 root = self._resolve(path)
                 matches = []
+                scanned = 0
+                note = ""
                 for p in root.rglob("*"):
+                    scanned += 1
                     if p.is_file() and fnmatch.fnmatch(p.relative_to(root).as_posix(), pattern):
                         matches.append(p.relative_to(self.workspace.resolve()).as_posix())
                     if len(matches) >= 200:
                         break
-                return ToolResult(output="\n".join(matches) or "(no matches)")
+                    if scanned >= SEARCH_MAX_ENTRIES:
+                        note = (
+                            f"\n(stopped after {SEARCH_MAX_ENTRIES} entries; "
+                            "search a narrower `path`)"
+                        )
+                        break
+                return ToolResult(output=("\n".join(matches) or "(no matches)") + note)
             return ToolResult.fail(f"unknown action '{action}' – use read/write/append/list/search")
         except (PermissionError, FileNotFoundError, IsADirectoryError, OSError) as exc:
             return ToolResult.fail(str(exc))
