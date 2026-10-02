@@ -36,6 +36,17 @@ export interface Account {
     used: number
     remaining: number
   }
+  /** Data controls — "Help improve nanoMuse's AI models" (relay 0.9); absent on an older relay. */
+  contribute?: DataControls
+}
+
+/** The switch over what the relay keeps of the account's chats, and what it holds so far. */
+export interface DataControls {
+  on: boolean
+  samples: number
+  /** How the relay starts new accounts; undefined when it did not say. */
+  defaultOn?: boolean
+  privacyUrl: string
 }
 
 /** One model the account may use, as `GET /v1/models` lists it. */
@@ -89,9 +100,21 @@ async function fail(res: Response): Promise<never> {
   throw new RelayError(res.status, code, message)
 }
 
+function toDataControls(ct: unknown): DataControls | undefined {
+  if (!ct || typeof ct !== 'object') return undefined
+  const c = ct as Record<string, unknown>
+  return {
+    on: Boolean(c.on),
+    samples: Number(c.samples ?? 0),
+    ...(typeof c.default_on === 'boolean' ? { defaultOn: c.default_on } : {}),
+    privacyUrl: String(c.privacy_url ?? ''),
+  }
+}
+
 function toAccount(me: Record<string, unknown>): Account {
   const account = (me.account ?? {}) as Record<string, unknown>
   const tokens = (me.tokens ?? {}) as Record<string, unknown>
+  const contribute = toDataControls(me.contribute)
   return {
     id: String(account.id ?? ''),
     channel: String(account.channel ?? ''),
@@ -103,6 +126,7 @@ function toAccount(me: Record<string, unknown>): Account {
       used: Number(tokens.used ?? 0),
       remaining: Number(tokens.remaining ?? 0),
     },
+    ...(contribute ? { contribute } : {}),
   }
 }
 
@@ -198,6 +222,34 @@ export class Relay {
       faceId: String(body.face_id ?? ''),
       ...(face ? { face: Object.fromEntries(Object.entries(face).filter(([, v]) => typeof v === 'string')) as Record<string, string> } : {}),
     }
+  }
+
+  /**
+   * Data controls: flip "Help improve nanoMuse's AI models". While on, the relay keeps the
+   * account's chat turns (what was written, what was answered, the tool calls) for the
+   * community's own model; the allowance is not touched.
+   */
+  async setContribute(apiKey: string, on: boolean, signal?: AbortSignal): Promise<DataControls> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/contribute`, {
+      method: 'POST',
+      headers: { ...this.auth(apiKey), ...JSON_HEADERS },
+      body: JSON.stringify({ on }),
+      signal: signal ?? null,
+    })
+    if (!res.ok) await fail(res)
+    return toDataControls(await res.json()) ?? { on, samples: 0, privacyUrl: '' }
+  }
+
+  /** Delete every turn the relay kept from the account; how many went. */
+  async deleteSamples(apiKey: string, signal?: AbortSignal): Promise<number> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/samples`, {
+      method: 'DELETE',
+      headers: this.auth(apiKey),
+      signal: signal ?? null,
+    })
+    if (!res.ok) await fail(res)
+    const body = (await res.json().catch(() => ({}))) as { deleted?: number }
+    return Number(body.deleted ?? 0)
   }
 
   /** Retire this device's key on the relay; a key the relay no longer knows is fine. */

@@ -368,6 +368,33 @@ export default class NanomuseCloud extends Service {
     })
   }
 
+  /** Data controls: flip the switch on the relay and keep the account row current. */
+  setContribute(on: boolean): Promise<CloudStatus> {
+    return this.serialize(async () => {
+      const token = await this.token()
+      if (!token || !this.state.account) return this.status()
+      const contribute = await this.relay.setContribute(token, on)
+      this.state = { ...this.state, account: { ...this.state.account, contribute } }
+      await this.writeState()
+      return this.status()
+    })
+  }
+
+  /** Data controls: delete what the relay kept; the count goes to zero. */
+  deleteSamples(): Promise<CloudStatus & { deleted: number }> {
+    return this.serialize(async () => {
+      const token = await this.token()
+      if (!token || !this.state.account) return { ...(await this.status()), deleted: 0 }
+      const deleted = await this.relay.deleteSamples(token)
+      const previous = this.state.account.contribute
+      if (previous) {
+        this.state = { ...this.state, account: { ...this.state.account, contribute: { ...previous, samples: 0 } } }
+        await this.writeState()
+      }
+      return { ...(await this.status()), deleted }
+    })
+  }
+
   /** Retire this device's key and take the provider out of the picker. */
   signOut(): Promise<CloudStatus> {
     return this.serialize(async () => {
@@ -661,6 +688,11 @@ export default class NanomuseCloud extends Service {
       }
       if (req.method === 'POST' && route === '/refresh') return send(res, 200, await this.refresh())
       if (req.method === 'POST' && route === '/sign-out') return send(res, 200, await this.signOut())
+      if (req.method === 'POST' && route === '/data/contribute') {
+        const body = await json(req)
+        return send(res, 200, await this.setContribute(body.on !== false))
+      }
+      if (req.method === 'POST' && route === '/data/delete-samples') return send(res, 200, await this.deleteSamples())
       if (req.method === 'POST' && route === '/profile/refresh') return send(res, 200, await this.pullProfile(true))
       if (req.method === 'POST' && route === '/devices/refresh') {
         this.hub.refreshDevices()

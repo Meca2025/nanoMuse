@@ -22,7 +22,7 @@ export const strings = {
   setup_own_server: '连接自己的 nanoMuse',
   welcome_get_app: '这是模拟器里的演示；完整体验请下载 App',
   welcome_notice_title: '免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体',
-  welcome_notice: 'nanoMuse 是非盈利的开源社区项目，永久免费。模型自带一份由开发者承担的免费额度，用完换自己的 key。默认不保存你的消息，数据不会出售。',
+  welcome_notice: 'nanoMuse 是非盈利的开源社区项目，永久免费。模型自带一份由开发者承担的免费额度，用完换自己的 key。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。',
   welcome_notice_closing: '欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。',
   // the sign-in before a Muse on the showcase (nm_welcome_email / nm_cloud_* on Android)
   welcome_signin: '登录，免费开始',
@@ -164,7 +164,7 @@ export const stringsEn: Record<NanoMuseStringKey, string> = {
   welcome_get_app: 'A demo in a simulator; for the real thing, get the app',
   welcome_notice_title: 'Free, open source, non-profit — open source, built together: a personal agent for all',
   welcome_notice:
-    'nanoMuse is a non-profit open-source community project — free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Messages are not stored unless you choose to contribute them; nothing is sold.',
+    'nanoMuse is a non-profit open-source community project — free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours.',
   welcome_notice_closing: "Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach.",
   welcome_signin: 'Sign in — free',
   welcome_signin_fine_print:

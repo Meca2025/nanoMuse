@@ -33,8 +33,11 @@ function fakeRelay() {
       return json(200, {
         account: { id: 'acc_1', channel: 'email', hint: 'de***@example.com', member: true },
         tokens: { unlimited: true, granted: 0, used: 30605, remaining: 0 },
+        contribute: { on: true, samples: 2, default_on: true, privacy_url: 'https://nanomuse.cn/privacy/' },
       })
     }
+    if (req.url === '/v1/me/contribute') return json(200, { on: body.on, samples: 2, default_on: true, privacy_url: 'https://nanomuse.cn/privacy/' })
+    if (req.url === '/v1/me/samples' && req.method === 'DELETE') return json(200, { deleted: 2 })
     if (req.url === '/v1/models') {
       return json(200, {
         data: [
@@ -120,4 +123,17 @@ test('models keeps kind, recommendation and modalities, with defaults', async ()
 test('signOut tolerates a key the relay no longer knows', async () => {
   await relay.signOut('sk-test-device-key')
   assert.equal(seen.at(-1).url, '/v1/auth/sign-out')
+})
+
+test('data controls: me carries the switch, setContribute and deleteSamples speak relay 0.9', async () => {
+  const account = await relay.me('sk-test-device-key')
+  assert.deepEqual(account.contribute, { on: true, samples: 2, defaultOn: true, privacyUrl: 'https://nanomuse.cn/privacy/' })
+  const off = await relay.setContribute('sk-test-device-key', false)
+  assert.equal(seen.at(-1).url, '/v1/me/contribute')
+  assert.deepEqual(seen.at(-1).body, { on: false })
+  assert.equal(off.on, false)
+  assert.equal(off.samples, 2)
+  assert.equal(await relay.deleteSamples('sk-test-device-key'), 2)
+  assert.equal(seen.at(-1).method, 'DELETE')
+  assert.equal(seen.at(-1).url, '/v1/me/samples')
 })
