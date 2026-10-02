@@ -163,7 +163,17 @@ private fun RiskApprovalCard(request: RiskRequest) {
                     android.widget.Toast.makeText(context, remembered, android.widget.Toast.LENGTH_LONG).show()
                 }
                 Spacer(Modifier.height(8.dp))
-                if (request.needsCredential) {
+                if (request.needsCredential && !DeviceCredential.available(context)) {
+                    // No screen lock: there is nothing to confirm the highest tier with, so it is
+                    // not offered; the card still allows this once.
+                    Text(
+                        stringResource(R.string.nm_risk_remember_money_needs_lock),
+                        fontSize = 11.5.sp,
+                        lineHeight = 15.sp,
+                        color = ChatColors.secondaryText,
+                        modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp),
+                    )
+                } else if (request.needsCredential) {
                     // The highest tier: a deliberate choice, confirmed with the screen lock.
                     RememberWithLockPill(
                         label = stringResource(R.string.nm_risk_remember_money, target),
@@ -203,7 +213,8 @@ private fun RememberWithLockPill(label: String, title: String, subtitle: String,
         onClick = {
             val activity = context.findActivity()
             when {
-                !DeviceCredential.available(context) -> onConfirmed()
+                // without a screen lock the pill is not shown; should it be tapped anyway, nothing is remembered
+                !DeviceCredential.available(context) -> Unit
                 DeviceCredential.promptsItself() && activity != null ->
                     DeviceCredential.confirm(activity, title, subtitle) { ok -> if (ok) onConfirmed() }
                 else -> DeviceCredential.keyguardIntent(context, title, subtitle)?.let { launcher.launch(it) } ?: onConfirmed()

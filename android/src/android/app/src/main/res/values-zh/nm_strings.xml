@@ -175,6 +175,7 @@
     <string name="nm_grants_revoke_confirm">撤销这条授权？下次遇到会重新问你。</string>
     <string name="nm_risk_remember_money">记住，下次在 %1$s 里直接执行</string>
     <string name="nm_risk_remember_money_note">需要验证锁屏。之后只在这一个应用或网站里的付款不再弹卡片；它会排在「设置 → 权限」的最前面，随时可以撤销。</string>
+    <string name="nm_risk_remember_money_needs_lock">要记住付款，请先给手机设置锁屏（设置 → 安全）：记住时会用它来确认。</string>
     <string name="nm_risk_lock_title">确认是你本人</string>
     <string name="nm_risk_lock_subtitle">nanoMuse 将记住 %1$s 里的付款许可，之后不再逐次询问。</string>
     <string name="nm_risk_remembered_toast">已记住 · 可在「设置 → 权限」里撤销</string>

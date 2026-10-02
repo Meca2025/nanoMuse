@@ -211,22 +211,23 @@ class HandsOperator(private val context: Context) {
                         lastResult = "the user did it themselves and says to continue; look at the screen as it is now."
                     }
                     is HandsAction.Click, is HandsAction.DoubleTap, is HandsAction.LongPress -> {
-                        val target = action.tapTarget.orEmpty()
-                        val gate = approveTap(svc, opts.sessionId, target)
-                        if (gate.denied != null) {
-                            trace(traceDir, steps, parsed.thought, reply, "refused: ${gate.denied}", lastScreen)
-                            return finish(Outcome.Infeasible("the user did not allow the tap “${target.take(40)}” — ${gate.denied}"), steps, runId, lastScreen, traceDir, log, model.label)
-                        }
-                        // A remembered approval, or a payment that ran on one: the chat model
-                        // sees it in the log and tells the user where it lives.
-                        gate.notice?.let { log += it }
-                        if (stop.get()) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
                         val (px, py) = when (action) {
                             is HandsAction.Click -> action.at.toPixels(screenW, screenH)
                             is HandsAction.DoubleTap -> action.at.toPixels(screenW, screenH)
                             is HandsAction.LongPress -> action.at.toPixels(screenW, screenH)
                             else -> 0 to 0
                         }
+                        // the label the model gave, read next to what the screen itself says is there
+                        val target = action.tapTarget.orEmpty()
+                        val gate = approveTap(svc, opts.sessionId, target, ScreenWords.at(svc, px, py))
+                        if (gate.denied != null) {
+                            trace(traceDir, steps, parsed.thought, reply, "refused: ${gate.denied}", lastScreen)
+                            return finish(Outcome.Infeasible("the user did not allow the tap “${gate.shown.take(40)}” — ${gate.denied}"), steps, runId, lastScreen, traceDir, log, model.label)
+                        }
+                        // A remembered approval, or a payment that ran on one: the chat model
+                        // sees it in the log and tells the user where it lives.
+                        gate.notice?.let { log += it }
+                        if (stop.get()) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
                         // The ring first, where the finger is about to land; the capsule steps
                         // aside when it is in the way and lets the touch through while it lands.
                         capsule.dodge(px, py)
@@ -342,17 +343,18 @@ class HandsOperator(private val context: Context) {
     }
 
     /** Null [denied] when the tap may go ahead; [notice] is what the chat model should pass on. */
-    private data class TapGate(val denied: String? = null, val notice: String? = null)
+    private data class TapGate(val denied: String? = null, val notice: String? = null, val shown: String = "")
 
     /**
      * The approval card for a tap whose label says pay, send, post or delete. The app is in the
      * background, so the request also arrives as a notification; the capsule offers Open.
      */
-    private fun approveTap(svc: MinisAccessibilityService, sessionId: String?, target: String): TapGate {
-        val cls = TapWords.classify(target) ?: return TapGate()
+    private fun approveTap(svc: MinisAccessibilityService, sessionId: String?, target: String, onScreen: String?): TapGate {
+        val shown = TapWords.shown(target, onScreen)
+        val cls = TapWords.classify(target, onScreen) ?: return TapGate(shown = shown)
         val (pkg, _) = svc.foregroundPackage()
         val appLabel = HandsApps.labelOf(context, pkg)
-        val short = target.take(40)
+        val short = shown.take(40)
         val assessment = RiskAssessment(cls, TapWords.reason(cls, short, appLabel), appLabel?.let { "app:$it" })
         capsule.approval(context.getString(com.openminis.app.R.string.nm_hands_approval_detail, short))
         val outcome = runBlocking {
@@ -366,8 +368,8 @@ class HandsOperator(private val context: Context) {
         }
         capsule.working(0, context.getString(com.openminis.app.R.string.nm_hands_looking))
         return when (outcome) {
-            is GateOutcome.Allowed -> TapGate(notice = outcome.notice)
-            is GateOutcome.Denied -> TapGate(denied = outcome.message)
+            is GateOutcome.Allowed -> TapGate(notice = outcome.notice, shown = shown)
+            is GateOutcome.Denied -> TapGate(denied = outcome.message, shown = shown)
         }
     }
 

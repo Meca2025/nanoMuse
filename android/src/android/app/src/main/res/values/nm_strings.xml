@@ -177,6 +177,7 @@
     <string name="nm_grants_revoke_confirm">Revoke this approval? The next time it comes up, you will be asked again.</string>
     <string name="nm_risk_remember_money">Remember and run next time in %1$s</string>
     <string name="nm_risk_remember_money_note">Confirmed with your screen lock. Payments in this one app or site will then run without a card; listed first under Settings → Permissions, where you can revoke it any time.</string>
+    <string name="nm_risk_remember_money_needs_lock">To remember payments, set a screen lock first (Settings → Security): remembering one is confirmed with it.</string>
     <string name="nm_risk_lock_title">Confirm it is you</string>
     <string name="nm_risk_lock_subtitle">nanoMuse will remember payment approvals for %1$s and run them without asking.</string>
     <string name="nm_risk_remembered_toast">Remembered · see Settings → Permissions to revoke</string>

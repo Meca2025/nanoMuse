@@ -32,6 +32,27 @@ object TapWords {
         else -> null
     }
 
+    /**
+     * The class of a tap judged by two accounts of the button: the label the screen model
+     * reported and the text the accessibility tree has at the point the finger lands. The
+     * stricter of the two wins, so a model that calls a pay button "Next" still stops.
+     */
+    fun classify(reported: String, onScreen: String?): RiskClass? {
+        val a = classify(reported)
+        val b = onScreen?.let { classify(it) }
+        return listOfNotNull(a, b).minByOrNull { rank(it) }
+    }
+
+    /** The label worth showing on the card: the model's, or the screen's when it has none. */
+    fun shown(reported: String, onScreen: String?): String =
+        reported.trim().ifBlank { onScreen?.trim().orEmpty() }
+
+    private fun rank(cls: RiskClass): Int = when (cls) {
+        RiskClass.MONEY -> 0
+        RiskClass.DESTRUCTIVE -> 1
+        else -> 2
+    }
+
     /** The reason line for the card, from the class and the label. */
     fun reason(cls: RiskClass, short: String, where: String?): String = when (cls) {
         RiskClass.MONEY -> "taps “$short” — looks like a payment"

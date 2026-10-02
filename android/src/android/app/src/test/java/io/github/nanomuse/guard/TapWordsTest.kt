@@ -37,6 +37,26 @@ class TapWordsTest {
         assertEquals(RiskClass.MONEY, TapWords.classify("Delete and pay"))
     }
 
+    @Test fun `the screen's own words count next to the model's label`() {
+        // the model calls the button "Next"; the accessibility tree says it pays
+        assertEquals(RiskClass.MONEY, TapWords.classify("Next", "确认支付 ¥128"))
+        // the model's label is enough on its own
+        assertEquals(RiskClass.OUTBOUND, TapWords.classify("发送", null))
+        // the stricter of the two wins whichever side it is on
+        assertEquals(RiskClass.MONEY, TapWords.classify("删除", "Pay now"))
+        assertEquals(RiskClass.MONEY, TapWords.classify("Pay now", "删除"))
+        // ordinary on both counts
+        assertNull(TapWords.classify("搜索", "搜索 车票"))
+        assertNull(TapWords.classify("", null))
+    }
+
+    @Test fun `the card shows the model's label, or the screen's when it gave none`() {
+        assertEquals("Next", TapWords.shown("Next", "确认支付"))
+        assertEquals("确认支付", TapWords.shown("", "确认支付"))
+        assertEquals("确认支付", TapWords.shown("  ", " 确认支付 "))
+        assertEquals("", TapWords.shown("", null))
+    }
+
     @Test fun `secret fields are recognised`() {
         for (f in listOf("密码", "Password", "验证码", "SMS code", "OTP", "PIN", "captcha", "CVV", "安全码", "口令")) {
             assertTrue(f, TapWords.looksSecret(f))
