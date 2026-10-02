@@ -1,7 +1,7 @@
 // This computer's hands for the other devices: the shapes and limits the runtime's
 // `nanomuse/hub/actions.py` has, so a phone cannot tell the two apart.
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -10,7 +10,8 @@ import { brief, expand, fileGet, filePut, files, open, pngSize, run, screen, she
 const posix = process.platform !== 'win32'
 
 async function scratch(work) {
-  const dir = await mkdtemp(join(tmpdir(), 'nanomuse-actions-'))
+  // realpath: macOS hands out /var/folders/… for a directory that is really under /private/var, and `pwd` says so
+  const dir = await realpath(await mkdtemp(join(tmpdir(), 'nanomuse-actions-')))
   try {
     return await work(dir)
   } finally {
