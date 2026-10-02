@@ -4,6 +4,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.28] - 2026-10-03 · Harness
+
 ### Added
 
 - **nanoMuse Harness: the desktop built on DeepSeek Harness, as installers.** Until now the Muse on the harness was a tarball for people who already ran DeepSeek Harness Desktop; `harness/desktop` is a desktop app of our own — Windows (`nanoMuse-Harness-<v>-win-x64.exe`), macOS (`-mac-arm64.dmg`, `-mac-x64.dmg`, and `.zip`), Linux (`.AppImage`, `.deb`) — with the harness, the nanoMuse bundle and the runtime for the hands inside, so nothing is installed at first launch and no Node, pnpm or Python is needed on the machine. The shell starts the harness's Host as a child process with its own Electron binary in Node mode (the way DeepSeek Harness's desktop does; Electron pinned to `44.0.0`, the version the harness's `require-builtin` addon accepts), against a profile of its own under `~/.nanomuse/harness` that names the bundle and links it from the copy inside the app; it loads the Host's URL in a window titled nanoMuse, opens external links in the browser, and when the Host does not come up puts the reason and the log's tail on the clipboard for an issue. `.github/workflows/harness-desktop.yml` builds all of it per platform on a release tag, boots each packaged harness once in Node mode as a check, and attaches the installers to the release. Unsigned for now, like the other desktop app ([harness/README.md](harness/README.md), [docs/harness.md](docs/harness.md)).

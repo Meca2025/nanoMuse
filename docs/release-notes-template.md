@@ -4,7 +4,7 @@
      English first; the Chinese version of the same notes goes in the <details> block at the end.
      Codenames so far: Foundation, Identity, Home, Guardrails, Memory, Avatar, Welcome, Polish,
      Portrait, Motion, Hatch, Hands, Reach, Home, Stage, Palette, Open, Ensemble, Presence,
-     Footing, Commons, Welcome, Signal, Mirror, Window, Ledger (CHANGELOG.md has the list). One word, capitalised.
+     Footing, Commons, Welcome, Signal, Mirror, Window, Ledger, Harness (CHANGELOG.md has the list). One word, capitalised.
 
      The shape follows the releases people know (nanobot's): a short story, then Highlights,
      Upgrade Notes, Community; What's Changed, New Contributors, Contributors and the Full

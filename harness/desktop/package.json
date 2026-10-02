@@ -1,7 +1,7 @@
 {
   "name": "nanomuse-harness-desktop",
   "private": true,
-  "version": "0.1.27",
+  "version": "0.1.28",
   "description": "nanoMuse Harness: the nanoMuse desktop built on DeepSeek Harness — the harness's web app in a window of our own, with nanoMuse's account, face, voice, Hands and Reach as plugins and the runtime for the hands bundled.",
   "homepage": "https://nanomuse.cn/",
   "license": "GPL-3.0-or-later",
