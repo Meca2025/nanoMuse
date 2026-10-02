@@ -1512,6 +1512,13 @@ const zhCN: Record<string, string> = {
   "Privacy policy": "隐私政策",
   Feedback: "反馈问题",
   none: "无",
+
+  // The agent page behind the face
+  "Change avatar": "更换虚拟形象",
+  "Edit name": "编辑名称",
+  Daily: "每日",
+  "Soul & memory": "SOUL 与记忆",
+  "Handle with care": "请谨慎访问",
 };
 
 export default zhCN;

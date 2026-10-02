@@ -2,28 +2,20 @@ import {
   AlarmClock,
   Ban,
   Bell,
-  Brain,
-  Square,
-  TerminalSquare,
-  UserRound,
   CalendarClock,
   Check,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
+  Clock,
   Copy,
+  Fingerprint,
   Loader2,
   Mail,
-  MonitorSmartphone,
   Pencil,
   Play,
-  Plug,
   Repeat,
-  ShieldAlert,
   ShieldCheck,
   ShieldOff,
-  SlidersHorizontal,
-  Wand2,
+  Square,
   Webhook,
   X,
 } from "lucide-react";
@@ -49,123 +41,43 @@ import type {
 import { cx, relativeTime, timeShort } from "../util";
 import { describeCadence } from "./GoalsScreen";
 
-type View = "menu" | "activity" | "approvals" | "permissions" | "upcoming";
+type Pane = 0 | 1 | 2 | 3;
 
 /**
- * Tap the avatar: the menu behind your nanoMuse. What it has been doing (activity log),
- * what is waiting for you (approvals queue, across every chat), what it is allowed to do
- * (permissions), what it will do next (upcoming), plus its memory and settings.
+ * Tap the face: Muse's agent page, the way the Android app draws it — the face with its pen
+ * badge, the name, "online" (or what it is doing), and four panes under a glyph switch: what
+ * it did (the activity log), the approvals it holds (what is waiting for you, then the standing
+ * permissions), its daily work (background passes, reminders, routines, triggers), and its
+ * soul & memory.
  */
 export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state, setTab, draft } = useStore();
-  const [view, setView] = useState<View>("menu");
+  const { state, setTab, draft, toast } = useStore();
+  const [pane, setPane] = useState<Pane>(0);
+  const [pen, setPen] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const name = state.profile?.name ?? "nanoMuse";
   const pending = state.pendingApprovals.length;
   const t = useT();
 
   useEffect(() => {
-    if (open) setView(pending > 0 ? "approvals" : "menu");
+    if (open) {
+      setPane(pending > 0 ? 1 : 0);
+      setPen(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const go = (tab: "memory" | "skills" | "connections" | "devices" | "you" | "coding" | "account" | "avatar") => {
+  const go = (tab: "memory" | "you" | "avatar", hash?: string) => {
     onClose();
+    if (hash) history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${hash}`);
     setTab(tab);
   };
-
-  const titles: Record<View, string> = {
-    menu: "",
-    activity: t("Activity"),
-    approvals: t("Approvals"),
-    permissions: t("Permissions"),
-    upcoming: t("Upcoming"),
-  };
-
-  return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title={
-        <div className="flex items-center gap-1.5">
-          {view !== "menu" && (
-            <button type="button" onClick={() => setView("menu")} aria-label={t("Back")} className="-ml-2 p-1 rounded-full text-muted hover:bg-surface-2">
-              <ChevronLeft size={20} />
-            </button>
-          )}
-          <span>{titles[view]}</span>
-        </div>
-      }
-    >
-      {view === "menu" && (
-        <Menu
-          name={name}
-          pending={pending}
-          onPick={(v) => setView(v)}
-          onMemory={() => go("memory")}
-          onSkills={() => go("skills")}
-          onConnections={() => go("connections")}
-          onDevices={() => go("devices")}
-          onCoding={() => go("coding")}
-          onAccount={() => go("account")}
-          onSettings={() => go("you")}
-          onStudio={() => go("avatar")}
-          onChangeLook={() => {
-            // the phone's "Change the avatar": the sentence is put in the chat box to finish
-            draft(t("Change your avatar to "));
-            onClose();
-            setTab("chat");
-          }}
-        />
-      )}
-      {view === "activity" && <ActivityView open={open} />}
-      {view === "approvals" && <ApprovalsView onDone={() => setView("menu")} />}
-      {view === "permissions" && <PermissionsView open={open} />}
-      {view === "upcoming" && <UpcomingView onSettings={() => go("you")} />}
-    </Sheet>
-  );
-}
-
-// ------------------------------------------------------------------ menu
-function Menu({
-  name,
-  pending,
-  onPick,
-  onMemory,
-  onSkills,
-  onConnections,
-  onDevices,
-  onCoding,
-  onAccount,
-  onSettings,
-  onStudio,
-  onChangeLook,
-}: {
-  name: string;
-  pending: number;
-  onPick: (v: View) => void;
-  onMemory: () => void;
-  onSkills: () => void;
-  onConnections: () => void;
-  onDevices: () => void;
-  onCoding: () => void;
-  onAccount: () => void;
-  onSettings: () => void;
-  onStudio: () => void;
-  onChangeLook: () => void;
-}) {
-  const { state, toast } = useStore();
-  const hub = state.hub;
-  const others = hub?.devices.filter((d) => !d.this && d.kind !== "web") ?? [];
-  const online = others.filter((d) => d.online).length;
-  const t = useT();
-  const [stopping, setStopping] = useState(false);
-  const [pen, setPen] = useState(false);
-  const mode = state.settings?.sentinel.mode;
-  const c = state.settings?.connectors;
-  const connected = [c?.email && t("email"), c?.calendar && t("calendar"), c?.browser && t("browser"), c?.mcp.length ? `${c.mcp.length} MCP` : null].filter(Boolean);
   const working = state.status.state === "working";
   const statusLine =
-    state.status.state === "idle" ? t("Idle — nothing running right now") : state.status.detail || t(state.status.state);
+    pending > 0 ? (pending > 1 ? t("{n} approvals waiting for you", { n: pending }) : t("1 approval waiting for you"))
+    : working ? state.status.detail || t("Thinking…")
+    : state.status.state === "waiting" ? t("Waiting for you")
+    : t("online");
   const stop = async () => {
     setStopping(true);
     try {
@@ -177,37 +89,54 @@ function Menu({
       setStopping(false);
     }
   };
+
+  const panes: Array<{ icon: ReactNode; label: string; badge?: number }> = [
+    { icon: <ClipboardList size={22} />, label: t("Activity") },
+    { icon: <ShieldCheck size={22} />, label: t("Approvals"), badge: pending },
+    { icon: <Clock size={22} />, label: t("Daily") },
+    { icon: <Fingerprint size={22} />, label: t("Soul & memory") },
+  ];
+
   return (
-    <div className="pb-2">
-      <div className="flex flex-col items-center px-4 pt-1 pb-3 text-center">
+    <Sheet open={open} onClose={onClose}>
+      <div className="flex flex-col items-center px-1 pb-3 text-center">
         <div className="relative">
-          <Avatar profile={state.profile} status={state.status} size={84} />
-          {/* the pen, as on the phone: the look, the name, the studio */}
+          <Avatar profile={state.profile} status={state.status} size={72} />
+          {/* the pen badge, bottom-right of the face: the look, the name, the studio */}
           <button
             type="button"
             aria-label={t("Edit")}
             aria-expanded={pen}
             onClick={() => setPen((v) => !v)}
-            className="absolute -bottom-0.5 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-border/70 bg-surface text-fg/80 shadow-sm hover:bg-surface-2"
+            className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-surface text-fg shadow-[0_1px_4px_rgba(0,0,0,0.18)] hover:bg-surface-2 dark:border dark:border-border"
           >
             <Pencil size={13} />
           </button>
           {pen && (
             <div className="absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-border/70 bg-surface py-1 text-left text-[14px] shadow-lg">
-              <button type="button" onClick={onChangeLook} className="block w-full px-4 py-2.5 text-left hover:bg-surface-2">
-                {t("Change the look")}
+              <button
+                type="button"
+                onClick={() => {
+                  // the phone's "Change avatar": the sentence is put in the chat box to finish
+                  draft(t("Change your avatar to "));
+                  onClose();
+                  setTab("chat");
+                }}
+                className="block w-full px-4 py-2.5 text-left hover:bg-surface-2"
+              >
+                {t("Change avatar")}
               </button>
-              <button type="button" onClick={onSettings} className="block w-full px-4 py-2.5 text-left hover:bg-surface-2">
-                {t("Edit the name")}
+              <button type="button" onClick={() => go("you", "who")} className="block w-full px-4 py-2.5 text-left hover:bg-surface-2">
+                {t("Edit name")}
               </button>
-              <button type="button" onClick={onStudio} className="block w-full px-4 py-2.5 text-left text-muted hover:bg-surface-2">
+              <button type="button" onClick={() => go("avatar")} className="block w-full px-4 py-2.5 text-left text-muted hover:bg-surface-2">
                 {t("Avatar studio…")}
               </button>
             </div>
           )}
         </div>
-        <div className="mt-2.5 text-[20px] font-semibold tracking-tight">{name}</div>
-        <div className={cx("mt-0.5 flex items-center gap-1.5 text-[13px]", working ? "text-fg" : "text-muted")}>
+        <div className="mt-2.5 text-[21px] font-semibold leading-[26px]">{name}</div>
+        <div className={cx("mt-0.5 flex items-center gap-1.5 text-[14px]", working || pending > 0 ? "text-fg" : "text-muted")}>
           {working && <Loader2 size={13} className="animate-spin text-accent" />}
           <span className="line-clamp-2">{statusLine}</span>
         </div>
@@ -221,92 +150,69 @@ function Menu({
             <Square size={12} fill="currentColor" /> {t("Stop")}
           </button>
         )}
-        <div className="mt-1.5 text-[12px] text-muted">
-          {state.settings?.llm.model ?? "—"} · {mode === "ask" ? t("balanced") : mode === "strict" ? t("cautious") : mode === "auto" ? t("hands-off") : ""}
-        </div>
       </div>
-      <div className="grid grid-cols-4 gap-1 rounded-[22px] bg-surface-2/70 p-1.5">
-        <SegmentButton icon={<ShieldAlert size={20} />} label={t("Approvals")} badge={pending} onClick={() => onPick("approvals")} />
-        <SegmentButton icon={<ClipboardList size={20} />} label={t("Activity")} onClick={() => onPick("activity")} />
-        <SegmentButton icon={<ShieldCheck size={20} />} label={t("Permissions")} onClick={() => onPick("permissions")} />
-        <SegmentButton icon={<Bell size={20} />} label={t("Upcoming")} dot={!!state.profile?.proactive} onClick={() => onPick("upcoming")} />
+
+      {/* Muse's four-way switch: glyphs on a bar, a pill under the current one */}
+      <div role="tablist" className="mb-5 flex rounded-2xl bg-surface-2/60 p-1">
+        {panes.map((p, i) => (
+          <button
+            key={p.label}
+            type="button"
+            role="tab"
+            aria-selected={pane === i}
+            aria-label={p.label}
+            title={p.label}
+            onClick={() => setPane(i as Pane)}
+            className={cx("relative flex h-11 flex-1 items-center justify-center rounded-[13px] text-fg transition", pane === i && "bg-surface shadow-sm")}
+          >
+            {p.icon}
+            {p.badge ? (
+              <span className="absolute right-1.5 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{p.badge}</span>
+            ) : null}
+          </button>
+        ))}
       </div>
-      <ul className="mt-3 divide-y divide-border/70 rounded-3xl border border-border/70 overflow-hidden">
-        <MenuRow icon={<Brain size={19} />} label={t("Memory")} hint={t("What {name} remembers about you", { name })} onClick={onMemory} />
-        {state.settings?.skills?.enabled !== false && (
-          <MenuRow
-            icon={<Wand2 size={19} />}
-            label={t("Skills")}
-            hint={
-              state.settings?.skills
-                ? t("{n} ways of doing a job, {yours} of them yours", { n: state.settings.skills.count, yours: state.settings.skills.yours })
-                : t("How {name} does a job, written down once", { name })
-            }
-            onClick={onSkills}
-          />
-        )}
-        <MenuRow
-          icon={<Plug size={19} />}
-          label={t("Connections")}
-          hint={connected.length ? t("Model, {list}", { list: connected.join(", ") }) : t("Model, email, calendar, browser, MCP servers")}
-          onClick={onConnections}
-        />
-        <MenuRow
-          icon={<MonitorSmartphone size={19} />}
-          label={t("Devices")}
-          hint={
-            !hub?.account.signed_in
-              ? t("Your phone and computers, working together")
-              : others.length
-                ? t("{n} other devices, {online} online", { n: others.length, online })
-                : t("Signed in as {hint}; no other device yet", { hint: hub.account.hint })
-          }
-          onClick={onDevices}
-        />
-        <MenuRow icon={<TerminalSquare size={19} />} label={t("Coding agents")} hint={t("Cursor, Codex, Claude Code — here and on your other computers")} onClick={onCoding} />
-        <MenuRow
-          icon={<UserRound size={19} />}
-          label={t("Account")}
-          hint={hub?.account.signed_in ? t("{hint} · usage, password, sign-ins", { hint: hub.account.hint }) : t("Sign in to nanoMuse Cloud")}
-          onClick={onAccount}
-        />
-        <MenuRow icon={<SlidersHorizontal size={19} />} label={t("Settings")} hint={t("Name, style, how careful it is")} onClick={onSettings} />
-      </ul>
+
+      {pane === 0 && <ActivityView open={open} />}
+      {pane === 1 && (
+        <>
+          {pending > 0 && <ApprovalsView onDone={() => undefined} />}
+          <PermissionsView open={open} />
+        </>
+      )}
+      {pane === 2 && <UpcomingView onSettings={() => go("you", "proactivity")} />}
+      {pane === 3 && <SoulPane name={name} onEdit={() => go("you", "who")} onMemory={() => go("memory")} />}
+    </Sheet>
+  );
+}
+
+// ------------------------------------------------------------------ soul & memory
+/** The phone's last pane: the name with an Edit button, then the SOUL and Memory cards. */
+function SoulPane({ name, onEdit, onMemory }: { name: string; onEdit: () => void; onMemory: () => void }) {
+  const { state } = useStore();
+  const t = useT();
+  const tagline = state.profile?.tagline?.trim() ?? "";
+  return (
+    <div className="pb-2">
+      <div className="px-1 text-[15px]">{name}</div>
+      <button type="button" onClick={onEdit} className="mt-2 flex h-[50px] w-full items-center justify-center gap-2 rounded-2xl bg-surface-2/70 text-[15px] font-medium hover:bg-surface-2">
+        <Pencil size={18} /> {t("Edit")}
+      </button>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <FileCard title="SOUL" caption={t("Handle with care")} foot={tagline} colors="from-[#7d6bc7] to-[#574494]" onClick={onEdit} />
+        <FileCard title={t("Memory")} caption={t("Handle with care")} foot={state.settings?.memory_enabled === false ? t("Off") : ""} colors="from-[#b0413e] to-[#7a1f1f]" onClick={onMemory} />
+      </div>
     </div>
   );
 }
 
-function SegmentButton({ icon, label, badge, dot, onClick }: { icon: ReactNode; label: string; badge?: number; dot?: boolean; onClick: () => void }) {
+function FileCard({ title, caption, foot, colors, onClick }: { title: string; caption: string; foot: string; colors: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="relative flex flex-col items-center gap-1 rounded-2xl bg-surface px-1 py-2.5 text-fg shadow-sm transition active:scale-95"
-    >
-      <span className="text-fg/80">{icon}</span>
-      <span className="text-[11px] font-medium leading-none">{label}</span>
-      {badge ? (
-        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10.5px] font-bold text-white">{badge}</span>
-      ) : dot ? (
-        <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" />
-      ) : null}
+    <button type="button" onClick={onClick} className={cx("flex h-[130px] flex-col items-start rounded-[18px] bg-gradient-to-b p-3.5 text-left text-white transition active:scale-[0.98]", colors)}>
+      <span className="text-[17px] font-semibold">{title}</span>
+      <span className="mt-0.5 text-[11px] text-white/85">{caption}</span>
+      <span className="mt-auto text-[12px] text-white/90">{foot}</span>
     </button>
-  );
-}
-
-function MenuRow({ icon, label, hint, badge, onClick }: { icon: ReactNode; label: string; hint: string; badge?: number; onClick: () => void }) {
-  return (
-    <li>
-      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/60 active:bg-surface-2">
-        <span className="text-accent">{icon}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-medium leading-tight">{label}</span>
-          <span className="block text-[12.5px] text-muted truncate">{hint}</span>
-        </span>
-        {badge ? <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[11.5px] font-bold text-white">{badge}</span> : null}
-        <ChevronRight size={17} className="text-muted" />
-      </button>
-    </li>
   );
 }
 

@@ -129,19 +129,23 @@ export function SettingsScreen() {
   ];
   const show = (id: SectionId) => wide || page === id;
 
-  // `#developer` (the sidebar's menu) lands on that section — once the settings are in, so
-  // the sections above it have their final height
-  const [wantDeveloper, setWantDeveloper] = useState(() => window.location.hash === "#developer");
+  // `#developer` (the sidebar's menu), `#who` (the agent page's Edit) and the other section
+  // ids land on that section — once the settings are in, so the sections above it have
+  // their final height; on the phone they open that page.
+  const [wanted, setWanted] = useState<SectionId | null>(() => {
+    const id = window.location.hash.slice(1);
+    return SECTION_IDS.includes(id as SectionId) ? (id as SectionId) : null;
+  });
   useEffect(() => {
-    if (!wantDeveloper || !s) return;
-    setWantDeveloper(false);
+    if (!wanted || !s) return;
+    setWanted(null);
     history.replaceState(null, "", window.location.pathname + window.location.search);
     if (!wide) {
-      setPage("developer");
+      setPage(wanted);
       return;
     }
-    requestAnimationFrame(() => document.getElementById("developer")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [wantDeveloper, s, wide]);
+    requestAnimationFrame(() => document.getElementById(wanted)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [wanted, s, wide]);
 
   if (!wide && page === null) {
     return <SettingsHome release={release} onOpen={setPage} />;
@@ -462,6 +466,7 @@ export function SettingsScreen() {
 }
 
 type SectionId = "who" | "sentinel" | "proactivity" | "notifications" | "keep-running" | "model" | "appearance" | "desktop" | "developer" | "about";
+const SECTION_IDS: SectionId[] = ["who", "sentinel", "proactivity", "notifications", "keep-running", "model", "appearance", "desktop", "developer", "about"];
 
 /**
  * The phone's Settings: Muse's bar, then white cards of outlined-glyph rows on the grey
