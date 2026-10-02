@@ -26,6 +26,7 @@ original Qwen ``mobile_use`` tool restored and our device actions on the other e
 
 from __future__ import annotations
 
+import asyncio
 import itertools
 import json
 import re
@@ -672,9 +673,38 @@ class PhoneOperator:
             trace.end(outcome)
             return outcome
 
+        await self.link.task_event("begin", goal)
+        try:
+            await self._steps(instruction, app, outcome, trace)
+        finally:
+            # Whatever way the task ended — done, a question, Stop, a device that went away,
+            # a model that failed, the chat run cancelled — the capsule on the device hears
+            # that it is over. Left on the screen it would stay on its last step for good.
+            try:
+                trace.end(outcome)
+            finally:
+                await self._task_over(outcome)
+        return outcome
+
+    async def _task_over(self, outcome: Outcome) -> None:
+        """``notice`` when the user has to come to the chat; ``end`` for everything else.
+        Shielded, so that a cancelled chat run still gets the word out (3 s at most)."""
+        if outcome.status in ("ask", "blocked"):
+            # the user is looking at the operated app, not at the chat: say so there
+            event, text = "notice", outcome.message or outcome.status
+        else:
+            event, text = "end", ""
+        try:
+            await asyncio.shield(self.link.task_event(event, text))
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - never the task's own outcome
+            logger.debug("phone task {} not reported to the capsule: {}", event, exc)
+
+    async def _steps(self, instruction: str, app: str, outcome: Outcome, trace: Trace) -> None:
+        """The loop itself: ``outcome`` is filled in whichever way it ends."""
         steps: list[str] = []  # the "Action:" sentences, with results appended
         recent: list[str] = []  # the last tool calls, to notice loops
-        await self.link.task_event("begin", goal)
         try:
             if app:
                 await self._act({"action": "open_app", "app": app, "label": f"open {app}"}, outcome)
@@ -683,14 +713,10 @@ class PhoneOperator:
                 screen = await self.link.screen()
         except DeviceStopped as exc:
             outcome.status, outcome.message = "stopped", str(exc)
-            trace.end(outcome)
-            await self.link.task_event("end")
-            return outcome
+            return
         except DeviceError as exc:
             outcome.message = str(exc)
-            trace.end(outcome)
-            await self.link.task_event("end")
-            return outcome
+            return
 
         refusals = 0
         # No step cap unless configured: the task runs until it is done, asks, is stopped
@@ -799,14 +825,6 @@ class PhoneOperator:
         else:
             outcome.status = "max_steps"
             outcome.message = f"stopped after {self.settings.max_steps} steps"
-
-        trace.end(outcome)
-        if outcome.status in ("ask", "blocked"):
-            # the user is looking at the operated app, not at the chat: say so there
-            await self.link.task_event("notice", outcome.message or outcome.status)
-        else:
-            await self.link.task_event("end")
-        return outcome
 
     # ------------------------------------------------------------------ helpers
     async def _decide(

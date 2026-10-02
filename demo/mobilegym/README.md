@@ -44,7 +44,11 @@ shell around the real nanoMuse web app:
   **Stop**; before a tap lands, a ring with the action's words marks the target, a trail each
   swipe, a chip what is being typed; a password or code field is not typed into — the capsule
   says *Your turn*, the person fills it in and taps *Continue*; an approval the agent waits
-  for and a question it has become a card with *Open*. The marks are left out of the
+  for and a question it has become a card with *Open*. When the task is over — a tick, or
+  *Stopped* — the phone comes back to nanoMuse, where the report is, as the Android app
+  brings itself to the front; and the capsule follows the server's word on the task
+  (`phone.task` in the socket's `hello`) rather than the one `end` message, so a socket that
+  drops mid-task does not leave it on the screen. The marks are left out of the
   screenshots. Nothing is touched unless the server's own *Phone* switch is on too (`[gui]
   enabled`, or Connections → Phone in the app); [docs/gui.md](../../docs/gui.md) has the
   rest, including what asks for approval first.
