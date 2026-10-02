@@ -1,11 +1,13 @@
 # nanoMuse on DeepSeek Harness
 
-> Internal preview. This directory is the start of the next desktop: nanoMuse as a
-> set of plugins on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-> (`dsh`), instead of our own Electron shell around the Python runtime. Nothing here is
-> released, packaged or linked from the product; the current desktop app in
-> [`desktop/`](../desktop/) is what people get. Why and where it goes:
-> [docs/harness.md](../docs/harness.md).
+> Preview. This directory is the start of the next desktop: nanoMuse as a set of
+> plugins on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+> (`dsh`), instead of our own Electron shell around the Python runtime. From 0.1.27 the
+> bundle ships with every release as `nanoMuse-Harness-<v>.tgz`, for people who run
+> DeepSeek Harness Desktop and want the Muse in it (below, *In dsh's desktop app*); the
+> current desktop app in [`desktop/`](../desktop/) stays the one for everyone else, and
+> our own build of the dsh shell — name, icon, About, installers — is still ahead. Why
+> and where it goes: [docs/harness.md](../docs/harness.md).
 
 `dsh-nanomuse/` is one **bundle** — a package dsh loads into a profile, carrying a patch
 over the stock configuration and the plugins the patch names:
@@ -78,19 +80,26 @@ read at boot.
 
 dsh's own desktop app ([`apps/desktop`](https://github.com/deepseek-ai/deepseek-harness/tree/master/apps/desktop))
 is an Electron shell around the same web app, with a profile named `desktop` that takes
-external plugins. The bundle goes in the same way as above: start the desktop app once
-so the profile exists, quit it fully, then
+external plugins. The bundle goes in the same way as above. Every release carries it
+packed, `nanoMuse-Harness-<v>.tgz` with its line in `SHA256SUMS-harness.txt` (built by
+`.github/workflows/harness.yml`, which also installs the tarball into a fresh dsh
+profile to be sure it loads): install DeepSeek Harness Desktop 0.2.0-rc.2 from
+[its releases](https://github.com/deepseek-ai/deepseek-harness/releases), start it once
+so the `desktop` profile exists, quit it fully, then
 
 ```sh
-dsh plugin --profile desktop add /path/to/nanoMuse/harness/dsh-nanomuse   # or the package, once published
+dsh plugin --profile desktop add ~/Downloads/nanoMuse-Harness-0.1.27.tgz   # or the source tree, /path/to/nanoMuse/harness/dsh-nanomuse
 ```
 
 and start it again — the window comes up as nanoMuse ([docs/desktop-muse.md](../docs/desktop-muse.md)):
 the rail, the pinned face, our Settings and first run, the harness's own pages under
 *Advanced*. `dsh` here is the command the desktop app installs (*Manage dsh Command…* in
-its menu) or any dsh of the same version with `DSH_HOME` pointing at the app's home.
-The app's name, icon and About are still DeepSeek Harness's; our own build of the shell
-is the last phase in [docs/harness.md](../docs/harness.md#phases).
+its menu) or any dsh of the same version with `DSH_HOME` pointing at the app's home;
+`dsh plugin --profile desktop remove dsh-nanomuse` takes it out again. Hands need the
+runtime on this computer too (`pipx install "git+https://github.com/nano-muse/nanoMuse"`,
+or `NANOMUSE_PY` pointing at it) — the preset starts `nanomuse mcp` for them. The app's
+name, icon and About are still DeepSeek Harness's; our own build of the shell is the
+last phase in [docs/harness.md](../docs/harness.md#phases).
 
 ## Layout
 
