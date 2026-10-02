@@ -15,12 +15,17 @@ import { createElement as h, useCallback, useEffect, useId, useRef, useState, us
 import { createPortal } from 'react-dom'
 import { call, type Translate } from './api.ts'
 import { settingsBus } from './bus.ts'
-import { IconArchive, IconClose, IconCpu, IconDatabase, IconDevices, IconLogOut, IconPuzzle, IconSettings, IconSliders, IconSparkle, IconUser } from './icons.tsx'
+import { IconArchive, IconClose, IconCpu, IconDatabase, IconDevices, IconHand, IconHelp, IconLogOut, IconPuzzle, IconScale, IconSettings, IconShield, IconSliders, IconSparkle, IconUser } from './icons.tsx'
 import { useLive } from './live.ts'
 import type { RenderSlot } from './MuseSidebar.tsx'
+import { DeveloperRows } from './Sections.tsx'
 
 /** The pages that make up the everyday group, in Muse's order; the rest are Advanced. */
-const PRIMARY: readonly string[] = ['general', 'nanomuse-cloud', 'models', 'agent-presets', 'nanomuse-devices']
+export const COMPUTER_SECTION = 'nanomuse-computer'
+export const DATA_SECTION = 'nanomuse-data'
+export const HELP_SECTION = 'nanomuse-help'
+export const LEGAL_SECTION = 'nanomuse-legal'
+const PRIMARY: readonly string[] = ['general', 'nanomuse-cloud', 'models', 'agent-presets', COMPUTER_SECTION, 'nanomuse-devices', DATA_SECTION, HELP_SECTION, LEGAL_SECTION]
 
 export interface SectionRow {
   id: string
@@ -70,6 +75,10 @@ function navIcon(id: string): ReactNode {
     case 'models': return h(IconDatabase, { size: 16 })
     case 'agent-presets': return h(IconSparkle, { size: 16 })
     case 'nanomuse-devices': return h(IconDevices, { size: 16 })
+    case COMPUTER_SECTION: return h(IconHand, { size: 16 })
+    case DATA_SECTION: return h(IconShield, { size: 16 })
+    case HELP_SECTION: return h(IconHelp, { size: 16 })
+    case LEGAL_SECTION: return h(IconScale, { size: 16 })
     case 'plugins': return h(IconPuzzle, { size: 16 })
     case 'archived-sessions': return h(IconArchive, { size: 16 })
     case 'account': return h(IconCpu, { size: 16 })
@@ -203,6 +212,7 @@ export function makeGeneralSection(t: Translate, version: string) {
       h('div', { className: 'nm-row', style: { fontSize: 13 } },
         h('div', { className: 'nm-row-main' },
           h('span', { className: 'nm-row-title' }, t('versionTitle')),
-          h('span', { className: 'nm-row-sub' }, t('versionLine', { version })))))
+          h('span', { className: 'nm-row-sub' }, t('versionLine', { version })))),
+      h(DeveloperRows, { t }))
   }
 }

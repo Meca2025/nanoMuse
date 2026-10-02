@@ -19,7 +19,11 @@ type Phase = 'loading' | 'signedOut' | 'signedIn'
 const PRIVACY_URL = 'https://nanomuse.cn/privacy/'
 
 /** Build the section component around the translator the plugin bound. */
-export function makeCloudSection(t: Translate) {
+/**
+ * @param part - `account`: the account page (who is signed in, the models, the look, the
+ * devices); `data`: the Data controls page alone — Muse keeps the two apart in its nav.
+ */
+export function makeCloudSection(t: Translate, part: 'account' | 'data' = 'account') {
   return function CloudSection(): ReactNode {
     const live = useLive()
     const [phase, setPhase] = useState<Phase>('loading')
@@ -81,6 +85,30 @@ export function makeCloudSection(t: Translate) {
       const chat = status.models.filter((m) => m.kind === 'chat')
       const look = profile ?? status.profile
       const lookWord = look.avatar === 'face' ? t('lookFace') : look.avatar === 'emoji' ? t('lookEmoji', { emoji: look.emoji }) : t('lookDragon')
+      const dataControls = a.contribute
+        ? h('div', null,
+            h('div', { style: { ...row, justifyContent: 'space-between' } },
+              h('span', null, t('dataImprove')),
+              h(Switch, { checked: a.contribute.on, onChange: setContribute, disabled: busy, label: t('dataImprove') })),
+            h('div', { style: muted },
+              t('dataWhy'), ' ',
+              a.contribute.defaultOn === undefined ? '' : t(a.contribute.defaultOn ? 'dataDefaultOn' : 'dataDefaultOff'), ' ',
+              a.contribute.samples > 0 ? t('dataKept', { n: a.contribute.samples }) : '', ' ',
+              h('a', { href: a.contribute.privacyUrl || PRIVACY_URL, target: '_blank', rel: 'noopener noreferrer' }, t('dataPrivacy'))),
+            a.contribute.samples > 0
+              ? h('div', { style: { marginTop: 6 } }, h(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: deleteSamples }, t('dataDelete')))
+              : null,
+            notice ? h('div', { style: muted }, notice) : null)
+        : h('div', { style: muted }, t('dataOlderRelay'))
+      if (part === 'data') {
+        return h('section', { style: { ...column, maxWidth: 560 } },
+          h('div', { className: 'nm-card', style: { padding: '14px 16px' } },
+            h('div', { style: { fontWeight: 600, marginBottom: 4 } }, t('dataPrivacyTitle')),
+            h('div', { style: muted }, t('dataPrivacyText'), ' ',
+              h('a', { href: a.contribute?.privacyUrl || PRIVACY_URL, target: '_blank', rel: 'noopener noreferrer' }, t('dataPrivacy')))),
+          dataControls,
+          error ? h('div', { style: errorStyle }, error) : null)
+      }
       return h('section', { style: { ...column, maxWidth: 560 } },
         header,
         h('div', null, t('signedInAs', { hint: a.hint, channel: t(a.channel === 'phone' ? 'phone' : 'email') }), a.member ? ` · ${t('member')}` : ''),
@@ -94,21 +122,7 @@ export function makeCloudSection(t: Translate) {
           h(Button, { variant: 'ghost', size: 'sm', onClick: () => { settingsBus.openSection?.(DEVICES_PANEL) } }, t('devicesOpen'))),
         // Data controls: the one switch over what the relay keeps, the shape of Muse's own.
         h('h3', { style: heading }, t('dataTitle')),
-        a.contribute
-          ? h('div', null,
-              h('div', { style: { ...row, justifyContent: 'space-between' } },
-                h('span', null, t('dataImprove')),
-                h(Switch, { checked: a.contribute.on, onChange: setContribute, disabled: busy, label: t('dataImprove') })),
-              h('div', { style: muted },
-                t('dataWhy'), ' ',
-                a.contribute.defaultOn === undefined ? '' : t(a.contribute.defaultOn ? 'dataDefaultOn' : 'dataDefaultOff'), ' ',
-                a.contribute.samples > 0 ? t('dataKept', { n: a.contribute.samples }) : '', ' ',
-                h('a', { href: a.contribute.privacyUrl || PRIVACY_URL, target: '_blank', rel: 'noopener noreferrer' }, t('dataPrivacy'))),
-              a.contribute.samples > 0
-                ? h('div', { style: { marginTop: 6 } }, h(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: deleteSamples }, t('dataDelete')))
-                : null,
-              notice ? h('div', { style: muted }, notice) : null)
-          : h('div', { style: muted }, t('dataOlderRelay')),
+        dataControls,
         error ? h('div', { style: errorStyle }, error) : null,
         h('div', { style: row },
           h(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: refresh }, t('refresh')),
@@ -116,6 +130,7 @@ export function makeCloudSection(t: Translate) {
         h('div', { style: muted }, t('relay', { baseURL: status.baseURL })))
     }
 
+    if (part === 'data') return h('section', { style: column }, h('div', { style: muted }, t('dataSignedOut')))
     return h('section', { style: column },
       header,
       error ? h('div', { style: errorStyle }, error) : null,

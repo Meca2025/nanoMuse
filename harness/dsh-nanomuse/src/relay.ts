@@ -65,6 +65,26 @@ export interface SignIn {
   account: Account
 }
 
+/** The account's invite code and what it has brought (`GET /v1/me/invite`, trimmed: no friends' hints). */
+export interface Invite {
+  code: string
+  url: string
+  invites: number
+  /** What a friend who signs up with the code gets, and what the inviter earns — the same figure. */
+  bonusCny: number
+  earnedCny: number
+}
+
+/** What the desktop may write to the account's profile: the name and the simple looks. */
+export interface ProfileWrite {
+  name: string
+  avatar: 'dragon' | 'emoji' | 'face'
+  emoji: string
+  color: string
+  style: string
+  description: string
+}
+
 /** The account's profile as the relay keeps it (`docs/hub.md`): the agent's name and look. */
 export interface RelayProfile {
   /** 0 until a device has written one. */
@@ -165,6 +185,50 @@ export class Relay {
     if (!res.ok) await fail(res)
     const body = (await res.json()) as Record<string, unknown>
     return { apiKey: String(body.api_key ?? ''), created: Boolean(body.created), account: toAccount(body) }
+  }
+
+  /** The password way in, for people who set one (`POST /v1/auth/login`). */
+  async login(identifier: string, password: string, device: string, signal?: AbortSignal): Promise<SignIn> {
+    const res = await this.fetchImpl(`${this.origin}/v1/auth/login`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ identifier, password, device: device.slice(0, 80) }),
+      signal: signal ?? null,
+    })
+    if (!res.ok) await fail(res)
+    const body = (await res.json()) as Record<string, unknown>
+    return { apiKey: String(body.api_key ?? ''), created: false, account: toAccount(body) }
+  }
+
+  /** The account's invite code and link, and what inviting has brought (`GET /v1/me/invite`). */
+  async invite(apiKey: string, signal?: AbortSignal): Promise<Invite> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/invite`, { headers: this.auth(apiKey), signal: signal ?? null })
+    if (!res.ok) await fail(res)
+    const body = (await res.json()) as Record<string, unknown>
+    return {
+      code: String(body.code ?? ''),
+      url: String(body.url ?? ''),
+      invites: Number(body.invites ?? 0),
+      bonusCny: Number(body.bonus_cny ?? 0),
+      earnedCny: Number(body.earned_cny ?? 0),
+    }
+  }
+
+  /**
+   * Write the agent's name and look for every device of the account
+   * (`PUT /v1/me/profile`, last writer wins). Only the fields given move; a
+   * drawn face stays as it is, since the desktop has no studio of its own.
+   */
+  async putProfile(apiKey: string, body: ProfileWrite, device: string, signal?: AbortSignal): Promise<number> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/profile`, {
+      method: 'PUT',
+      headers: { ...this.auth(apiKey), ...JSON_HEADERS },
+      body: JSON.stringify({ ...body, device: device.slice(0, 80) }),
+      signal: signal ?? null,
+    })
+    if (!res.ok) await fail(res)
+    const out = (await res.json().catch(() => ({}))) as { rev?: number }
+    return Number(out.rev ?? 0)
   }
 
   /** Who the key belongs to and what is left of the allowance. */

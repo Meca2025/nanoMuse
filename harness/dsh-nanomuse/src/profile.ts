@@ -117,6 +117,15 @@ export class ProfileStore {
     await this.wear(DEFAULT_PROFILE)
   }
 
+  /**
+   * Wear a look written here (a rename, an emoji face) without a pull: for a
+   * desktop with no account, or while the relay is unreachable. A drawn face
+   * keeps its pictures only while `avatar` stays `face`.
+   */
+  async wearLocal(next: Partial<Profile>): Promise<void> {
+    await this.wear(normalize({ ...this.profile, ...next }))
+  }
+
   private async storeFace(apiKey: string, light: RelayProfile): Promise<string | undefined> {
     const faceId = light.faceId
     if (!FACE_ID.test(faceId)) return undefined
