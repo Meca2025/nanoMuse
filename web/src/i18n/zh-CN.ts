@@ -1520,6 +1520,7 @@ const zhCN: Record<string, string> = {
   Daily: "每日",
   "Soul & memory": "SOUL 与记忆",
   "Handle with care": "请谨慎访问",
+  "This device's name": "这台设备的名字",
 };
 
 export default zhCN;

@@ -9,7 +9,6 @@ import {
   Clapperboard,
   Cloud,
   Code2,
-  ExternalLink,
   Hand,
   Info,
   LogOut,
@@ -43,6 +42,7 @@ import { setThemeSetting, useThemeSetting } from "../theme";
 import { disablePush, enablePush, pushState, type PushState } from "../push";
 import { useStore } from "../store";
 import type { Proactivity, PushInfo, UpdateView } from "../types";
+import { MuseCaption, MuseCard, MuseDivider, MuseRow } from "../components/MuseList";
 import { useWide } from "../useWide";
 import { cx } from "../util";
 import { Toggle } from "../components/Form";
@@ -494,7 +494,7 @@ function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen:
       <PageBar title={t("Settings")} />
       <div className="flex-1 overflow-y-auto pb-8 pt-2">
         {/* the model: where Muse's plan card stands */}
-        <SettingsCard>
+        <MuseCard className="mb-3">
           <button type="button" onClick={() => setTab("connections")} className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-2/60">
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[16px] font-medium leading-[21px]">{s?.llm.model || t("No model yet")}</span>
@@ -504,82 +504,74 @@ function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen:
             </span>
             <span className="text-[14px] font-medium text-accent">{t("Change")}</span>
           </button>
-          <SettingsRow icon={<Cloud size={22} />} label="nanoMuse Cloud" value={hub?.account.signed_in ? hub.account.hint : t("Sign in")} onClick={() => setTab("account")} divider />
-          <SettingsRow icon={<Clapperboard size={22} />} label={t("Image & video models")} onClick={() => setTab("connections")} divider />
-          <SettingsRow icon={<BarChart3 size={22} />} label={t("Usage")} onClick={() => setTab("account")} divider />
-        </SettingsCard>
+          <MuseDivider />
+          <MuseRow icon={<Cloud size={22} />} label="nanoMuse Cloud" value={hub?.account.signed_in ? hub.account.hint : t("Sign in")} onClick={() => setTab("account")} />
+          <MuseDivider />
+          <MuseRow icon={<Clapperboard size={22} />} label={t("Image & video models")} onClick={() => setTab("connections")} />
+          <MuseDivider />
+          <MuseRow icon={<BarChart3 size={22} />} label={t("Usage")} onClick={() => setTab("account")} />
+        </MuseCard>
 
         {/* the agent */}
-        <SettingsCard>
-          <SettingsRow icon={<Sparkles size={22} />} label={t("Name & personality")} value={name} onClick={() => onOpen("who")} />
-          <SettingsRow icon={<Smile size={22} />} label={t("Avatar")} onClick={() => setTab("avatar")} divider />
-          <SettingsRow icon={<Brain size={22} />} label={t("Memory")} onClick={() => setTab("memory")} divider />
+        <MuseCard className="mb-3">
+          <MuseRow icon={<Sparkles size={22} />} label={t("Name & personality")} value={name} onClick={() => onOpen("who")} />
+          <MuseDivider />
+          <MuseRow icon={<Smile size={22} />} label={t("Avatar")} onClick={() => setTab("avatar")} />
+          <MuseDivider />
+          <MuseRow icon={<Brain size={22} />} label={t("Memory")} onClick={() => setTab("memory")} />
           {s?.skills?.enabled !== false && (
-            <SettingsRow icon={<Puzzle size={22} />} label={t("Skills")} value={s ? String(s.skills.count) : undefined} onClick={() => setTab("skills")} divider />
+            <>
+              <MuseDivider />
+              <MuseRow icon={<Puzzle size={22} />} label={t("Skills")} value={s ? String(s.skills.count) : undefined} onClick={() => setTab("skills")} />
+            </>
           )}
-          <SettingsRow icon={<Plug size={22} />} label={t("Connections")} value={s?.connectors.mcp.length ? `${s.connectors.mcp.length} MCP` : undefined} onClick={() => setTab("connections")} divider />
-          <SettingsRow icon={<Monitor size={22} />} label={t("Devices")} value={computers.length ? String(computers.length) : none} onClick={() => setTab("devices")} divider />
-          <SettingsRow icon={<TerminalSquare size={22} />} label={t("Coding agents")} value={coding.length ? String(coding.length) : none} onClick={() => setTab("coding")} divider />
-        </SettingsCard>
+          <MuseDivider />
+          <MuseRow icon={<Plug size={22} />} label={t("Connections")} value={s?.connectors.mcp.length ? `${s.connectors.mcp.length} MCP` : undefined} onClick={() => setTab("connections")} />
+          <MuseDivider />
+          <MuseRow icon={<Monitor size={22} />} label={t("Devices")} value={computers.length ? String(computers.length) : none} onClick={() => setTab("devices")} />
+          <MuseDivider />
+          <MuseRow icon={<TerminalSquare size={22} />} label={t("Coding agents")} value={coding.length ? String(coding.length) : none} onClick={() => setTab("coding")} />
+        </MuseCard>
 
         {/* how it behaves */}
-        <SettingsCard>
-          <SettingsRow icon={<ShieldCheck size={22} />} label={t("Safety · Sentinel")} value={modeLabel} onClick={() => onOpen("sentinel")} />
-          <SettingsRow icon={<Zap size={22} />} label={t("Proactivity")} value={levelLabel} onClick={() => onOpen("proactivity")} divider />
-          <SettingsRow icon={<Bell size={22} />} label={t("Notifications")} onClick={() => onOpen("notifications")} divider />
-          {keepRunningStatus() && <SettingsRow icon={<BatteryFull size={22} />} label={t("Keep it running")} onClick={() => onOpen("keep-running")} divider />}
-        </SettingsCard>
+        <MuseCard className="mb-3">
+          <MuseRow icon={<ShieldCheck size={22} />} label={t("Safety · Sentinel")} value={modeLabel} onClick={() => onOpen("sentinel")} />
+          <MuseDivider />
+          <MuseRow icon={<Zap size={22} />} label={t("Proactivity")} value={levelLabel} onClick={() => onOpen("proactivity")} />
+          <MuseDivider />
+          <MuseRow icon={<Bell size={22} />} label={t("Notifications")} onClick={() => onOpen("notifications")} />
+          {keepRunningStatus() && (
+            <>
+              <MuseDivider />
+              <MuseRow icon={<BatteryFull size={22} />} label={t("Keep it running")} onClick={() => onOpen("keep-running")} />
+            </>
+          )}
+        </MuseCard>
 
         {/* the app */}
-        <SettingsCard>
-          <SettingsRow icon={<Palette size={22} />} label={t("Appearance")} value={themeLabel} onClick={() => onOpen("appearance")} />
-          {isDesktopApp() && <SettingsRow icon={<Monitor size={22} />} label={t("Desktop app")} onClick={() => onOpen("desktop")} divider />}
-          <SettingsRow icon={<Code2 size={22} />} label={t("Developer")} onClick={() => onOpen("developer")} divider />
-        </SettingsCard>
+        <MuseCard className="mb-3">
+          <MuseRow icon={<Palette size={22} />} label={t("Appearance")} value={themeLabel} onClick={() => onOpen("appearance")} />
+          {isDesktopApp() && (
+            <>
+              <MuseDivider />
+              <MuseRow icon={<Monitor size={22} />} label={t("Desktop app")} onClick={() => onOpen("desktop")} />
+            </>
+          )}
+          <MuseDivider />
+          <MuseRow icon={<Code2 size={22} />} label={t("Developer")} onClick={() => onOpen("developer")} />
+        </MuseCard>
 
         {/* about */}
-        <SettingsCard>
-          <SettingsRow icon={<Info size={22} />} label={t("About nanoMuse")} value={release?.newer && release.latest ? t("{version} is out", { version: release.latest }) : undefined} onClick={() => onOpen("about")} />
-          <SettingsRow icon={<Hand size={22} />} label={t("Privacy policy")} onClick={() => window.open("https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md", "_blank", "noopener")} divider external />
-          <SettingsRow icon={<MessageSquareWarning size={22} />} label={t("Feedback")} onClick={() => window.open("https://github.com/nano-muse/nanoMuse/issues/new/choose", "_blank", "noopener")} divider external />
-        </SettingsCard>
-        <p className="px-8 py-2 text-[13px] leading-[18px] text-muted">nanoMuse {state.version}</p>
+        <MuseCard className="mb-3">
+          <MuseRow icon={<Info size={22} />} label={t("About nanoMuse")} value={release?.newer && release.latest ? t("{version} is out", { version: release.latest }) : undefined} onClick={() => onOpen("about")} />
+          <MuseDivider />
+          <MuseRow icon={<Hand size={22} />} label={t("Privacy policy")} onClick={() => window.open("https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md", "_blank", "noopener")} external />
+          <MuseDivider />
+          <MuseRow icon={<MessageSquareWarning size={22} />} label={t("Feedback")} onClick={() => window.open("https://github.com/nano-muse/nanoMuse/issues/new/choose", "_blank", "noopener")} external />
+        </MuseCard>
+        <MuseCaption>nanoMuse {state.version}</MuseCaption>
       </div>
     </div>
-  );
-}
-
-/** Muse's card: 16px corners, white on the grey canvas, 16px in from the edges. */
-function SettingsCard({ children }: { children: ReactNode }) {
-  return <div className="mx-4 mb-3 overflow-hidden rounded-2xl bg-surface dark:border dark:border-border">{children}</div>;
-}
-
-/** Muse's settings row: a bare glyph in ink, the label, a grey value, a chevron. */
-function SettingsRow({
-  icon,
-  label,
-  value,
-  onClick,
-  divider = false,
-  external = false,
-}: {
-  icon: ReactNode;
-  label: string;
-  value?: string;
-  onClick: () => void;
-  divider?: boolean;
-  external?: boolean;
-}) {
-  return (
-    <>
-      {divider && <div className="ml-[52px] border-t border-border/60" />}
-      <button type="button" onClick={onClick} className="flex min-h-[54px] w-full items-center gap-3.5 px-4 py-2 text-left hover:bg-surface-2/60">
-        <span className="shrink-0 text-fg">{icon}</span>
-        <span className={cx("min-w-0 truncate text-[16px] leading-[21px]", value ? "max-w-[60%] shrink-0" : "flex-1")}>{label}</span>
-        {value && <span className="min-w-0 flex-1 truncate pl-3 text-right text-[14px] leading-[18px] text-muted">{value}</span>}
-        {external ? <ExternalLink size={16} className="shrink-0 text-muted/70" /> : <ChevronRight size={18} className="shrink-0 text-muted/70" />}
-      </button>
-    </>
   );
 }
 
