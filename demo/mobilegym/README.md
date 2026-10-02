@@ -111,8 +111,12 @@ checkout is edited. Run it again after pulling a newer nanoMuse.
   `open()`, `draft(text)`, `reset()`, `state()`, `subscribe(fn)` — the way MobileGym exposes
   `__OS__`. The showcase's page (`demo/showcase/site/page/`) puts the simulator in a frame on
   the same origin and uses it for the lines to try beside the phone. On a hosted session the
-  web app is opened with `?ui=lite`: the phone layout whatever the window's width — the tabs
-  the Android app has — with the first-run setup and the desktop hints off.
+  web app is opened with `?ui=lite`: the phone layout whatever the window's width, drawn the
+  way the Android app draws it (the home chrome, the chats drawer, the five tabs and their
+  pages, Settings as a list of rows, the agent page behind the face, the approval card), with
+  the first-run setup and the desktop hints off. The Android app's own things — Hands on the
+  phone's screen, the system files, the battery and background switches — have no counterpart
+  here; the simulator is the screen the agent operates instead.
 - **Dark mode.** The web app inside the frame picks light or dark by its own setting (it
   cannot see the simulator's) and tells the shell which (`{type: "nanomuse:theme", theme}`),
   so the strips above and below its frame match it; the first page follows the simulator's
