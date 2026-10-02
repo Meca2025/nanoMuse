@@ -36,7 +36,7 @@ const zhCN: Record<string, string> = {
   "Message {name}": "给 {name} 发消息",
   "Answer {name}…": "回复 {name}…",
   "Reply below to continue.": "在下方回复以继续。",
-  "{name} is working — anything you send now is picked up right away.": "{name} 正在工作——你现在发送的内容会被立刻处理。",
+  "{name} is working — anything you send now is picked up right away.": "{name} 正在工作——你现在发的消息会马上接着处理。",
   "Working…": "处理中…",
   "Thinking…": "思考中…",
   "Load earlier messages": "加载更早的消息",
@@ -316,9 +316,9 @@ const zhCN: Record<string, string> = {
 
   // ── Memory ────────────────────────────────────────────────────────────────────────
   Memory: "记忆",
-  "What {name} remembers about you": "{name} 记住的关于你的事",
+  "What {name} remembers about you": "{name} 记得你的哪些事",
   "What {name} remembers about you. Read it, add to it, or make {name} forget — nothing here is hidden from you.":
-    "{name} 记住的关于你的事。你可以阅读、补充，或让 {name} 忘掉——这里没有任何内容对你隐藏。",
+    "{name} 对你的了解都在这里。你可以翻看、补充，或让 {name} 忘掉——没有什么是瞒着你的。",
   "Tell {name} something to remember, e.g. “I'm vegetarian” or “My sister's birthday is 14 May”":
     "告诉 {name} 要记住的事，例如“我是素食者”或“我妹妹的生日是 5 月 14 日”",
   Remember: "记住",
@@ -333,7 +333,7 @@ const zhCN: Record<string, string> = {
   "Tidy up": "整理",
   "Tidying…": "整理中…",
   "Merge lines that say the same thing and drop what was never a fact about you. Every change can be undone.":
-    "合并意思相同的条目，去掉并非关于你的事实的内容。每处改动都可以撤销。",
+    "把意思相同的条目合并，删掉那些并不是你本人情况的内容。每处改动都能撤销。",
   "Nothing to tidy — {n} memories, all distinct.": "无需整理——{n} 条记忆，互不重复。",
   "Tidied: {merged} merged, {dropped} dropped. Undo below if needed.":
     "已整理：合并 {merged} 条，去掉 {dropped} 条。如有需要可在下方撤销。",
@@ -355,7 +355,7 @@ const zhCN: Record<string, string> = {
   working: "工作中",
   waiting: "等待中",
   Activity: "活动",
-  "Every action, including refused ones": "每一次操作，包括被拒绝的",
+  "Every action, including refused ones": "每一步操作，包括被拦下的",
   Approvals: "审批",
   "Actions your nanoMuse wants to take but cannot without you. Each one shows what will run and why; a permission you grant is bound to that exact tool and target.":
     "这些是你的 nanoMuse 想做、但没有你点头就不能做的事。每一项都写明要运行什么、为什么；你给的许可只对那个具体的工具和对象有效。",
@@ -446,7 +446,7 @@ const zhCN: Record<string, string> = {
   "Inbox checked {when}; {name} looks every {n} min.": "收件箱{when}检查过；{name}每 {n} 分钟查看一次。",
   "{name} will look at the inbox shortly, then every {n} min.": "{name}稍后会查看收件箱，之后每 {n} 分钟一次。",
   "Each time it happens {name} does the work in the chat it was set from and reports in the Feed. A mail or a request is treated as data, never as instructions.":
-    "每次发生时，{name}会在设置它的对话里完成工作并在动态中汇报。邮件或请求只作为数据，绝不当作指令。",
+    "每次触发时，{name} 会在设定它的那个对话里把事做完，再到动态里汇报。邮件和请求的内容只当资料看，绝不当作指令执行。",
   "Webhook ready": "Webhook 已就绪",
   "POST anything to this URL and the work starts. The key is in the URL — share it only with the program that will call it.":
     "向这个地址 POST 任意内容即可开始工作。密钥就在地址里——只交给要调用它的程序。",
@@ -542,7 +542,7 @@ const zhCN: Record<string, string> = {
     "这个浏览器没有推送服务（内嵌浏览器通常没有）。请在手机上使用 Chrome、Edge、Firefox 或 Safari 16.4+。",
   "Notifications are blocked for this site in the browser settings": "浏览器设置中已屏蔽此站点的通知",
   "Blocked for this site. Allow notifications in the browser's site settings, then try again.":
-    "此站点已被屏蔽。请在浏览器的站点设置中允许通知，然后重试。",
+    "通知在这个站点被关掉了。到浏览器的站点设置里允许通知，再试一次。",
   "The server was installed without pywebpush.": "服务器安装时未包含 pywebpush。",
   "On a phone, add the app to the home screen first; the icon then shows a badge and notifications open the right chat.": "手机上请先把应用添加到主屏幕；图标会显示角标，通知会打开对应的对话。",
   Model: "模型",
@@ -733,7 +733,7 @@ const zhCN: Record<string, string> = {
   "Plan a 3-day trip to Kyoto in November on a mid-range budget": "规划一次 11 月的京都三日游，预算中等",
   "Compare the three best mid-range e-readers and make me a table": "比较三款最好的中端电子阅读器，做成表格",
   "Set up a goal: run a 10k in 12 weeks, and check in on me weekly": "建立一个目标：12 周内跑完 10 公里，每周跟我确认进度",
-  "Find this week's top stories about small language models and summarise them": "找出本周关于小语言模型的头条新闻并总结",
+  "Find this week's top stories about small language models and summarise them": "找找本周关于小语言模型的重要新闻，总结一下",
   "Approvals.": "审批。",
   "When it wants to do something that matters — send mail, run a command, reach a new site — a card appears. Allow once, for this task, or always.":
     "当它想做重要的事——发邮件、运行命令、访问新网站——会弹出一张卡片。可以允许一次、本次任务或始终允许。",
@@ -1060,7 +1060,7 @@ const zhCN: Record<string, string> = {
   "The hub refused this device — sign in again.": "中继拒绝了这台设备——请重新登录。",
   "The hub is off on this device.": "这台设备没有开启中继。",
   "Your other devices": "你的其他设备",
-  "Sign in above to see them.": "先在上面登录，才能看到它们。",
+  "Sign in above to see them.": "先在上面登录，就能看到。",
   "{n} online": "{n} 台在线",
   "None yet — open nanoMuse on your phone and sign in with the same account.": "还没有——在手机上打开 nanoMuse，用同一个账号登录。",
   "None yet — sign in on your phone as {hint}, the account this device uses.": "还没有——手机上请登录 {hint}，也就是这台设备用的账号。",
@@ -1274,7 +1274,7 @@ const zhCN: Record<string, string> = {
   // ── Voice input (the browser's own speech recognition) ───────────────────────────
   "Voice input": "语音输入",
   "Stop voice input": "停止语音输入",
-  "The microphone is not allowed. Allow it in the browser and try again.": "麦克风未被允许。请在浏览器里允许后再试。",
+  "The microphone is not allowed. Allow it in the browser and try again.": "没有拿到麦克风权限。在浏览器里允许后再试一次。",
   "Voice input stopped ({code}).": "语音输入中断了（{code}）。",
   "said on a call": "通话中说的",
 
@@ -1302,7 +1302,7 @@ const zhCN: Record<string, string> = {
   "Tell {agent}…": "对 {agent} 说…",
   "Nothing readable in this chat yet.": "这个对话里还没有可读的内容。",
   "via nanoMuse": "经 nanoMuse",
-  "Continued as a new chat: the agent could not reopen the old one.": "已作为新对话继续：助手无法重新打开原来的那个。",
+  "Continued as a new chat: the agent could not reopen the old one.": "原来的对话打不开了，已经另起一个新对话接着聊。",
   "Made in the IDE: your message starts a new chat in the same workspace, with the last exchange quoted.": "这是 IDE 里的对话：你的消息会在同一工作区开一个新对话，并带上上一轮的内容。",
   "Continue in a new chat…": "在新对话里接着说…",
   "starting…": "启动中…",
@@ -1457,12 +1457,12 @@ const zhCN: Record<string, string> = {
   "Feed settings": "动态设置",
   "About the feed": "动态版块说明",
   "Your feed is driven by the instruction below. Any edit you make here applies to every post from now on.": "你的动态版块由以下指示驱动。你对此提示做出的任何编辑都将应用于今后的动态帖子。",
-  "Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.": "为我打造一个关于我兴趣的动态版块。保持内容简洁直接，确保可快速浏览，尽量避免点击诱饵。",
+  "Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.": "给我做一个关于我关心的事的动态。短一点、直接一点，扫一眼就能看完，别搞标题党。",
   "Got it": "知道了",
   "Write it now": "现在写一版",
   "Your feed is not ready yet": "你的动态版块尚未准备就绪",
   "As we get to know each other, new posts will show up here. Once a day, while background work is on, I read what I remember about you — your memory, your goals, your instructions — and write a few short posts.":
-    "随着我们相互了解，新的帖子会显示在这里。后台工作开着时，我每天读一遍记得的关于你的东西——记忆、目标、你的指示——然后写几条简短的帖子。",
+    "等我们更熟一些，新内容就会出现在这里。开着后台工作时，我每天会把记得的你的事——记忆、目标、你的交代——过一遍，然后写几条短帖。",
   "One sentence steers it": "一句话就能调整",
   "Tap the sliders at the top right to tell me what you want more of, or have me write the first day now.": "点右上角的滑杆，告诉我你想多看什么，或者让我现在就写第一天。",
   Discuss: "讨论",
@@ -1502,13 +1502,13 @@ const zhCN: Record<string, string> = {
   "Help me plan my week. Ask me what I need to get done, then propose a schedule.": "帮我规划这一周。先问我有哪些事要做，然后给出一份日程安排。",
   "Research & compare options": "调研并比较选项",
   "Laptops, flights, insurance, a new phone plan — I'll gather the facts and compare them for you.": "笔记本、机票、保险、新的手机套餐——我帮你收集事实并逐项比较。",
-  "I need to make a purchase decision. Ask me what I'm choosing between, then research and compare the options.": "我要做一个购买决定。先问我在哪些选项之间选择，然后调研并比较它们。",
+  "I need to make a purchase decision. Ask me what I'm choosing between, then research and compare the options.": "我想买个东西，拿不定主意。先问我在哪几个里面挑，然后帮我查一查、比一比。",
   "Set up a long-term goal": "建立一个长期目标",
   "Share a goal (learn a language, run a 10k, save for a trip) and I'll break it into steps and keep track.": "说一个目标（学一门语言、跑完 10 公里、攒一次旅行的钱），我把它拆成步骤并持续跟进。",
   "I want to set up a long-term goal. Ask me about it, then create a plan with concrete steps and track it.": "我想建立一个长期目标。先问问我，然后制定一份带具体步骤的计划并跟进。",
   "Tell me about yourself": "介绍一下你自己",
   "The more I know about your preferences, routines and constraints, the more useful I get. I'll remember what matters.": "我越了解你的偏好、作息和限制，就越能帮上忙。重要的事我会记住。",
-  "Ask me a few questions about myself so you can help me better, and remember the answers.": "问我几个关于我自己的问题，好让你更了解我，并记住答案。",
+  "Ask me a few questions about myself so you can help me better, and remember the answers.": "问我几个关于我的问题，好更了解我，然后把答案记住。",
   "Build a quick tracker": "做一个简单的追踪表",
   "Spending, habits, workouts, reading — I can write a small script or document to track it for you.": "开支、习惯、锻炼、阅读——我可以写一个小脚本或文档帮你记录。",
   "Build me a simple tracker. Ask me what I want to track and how, then create it in the workspace.": "帮我做一个简单的追踪表。先问我想记录什么、怎么记，然后在工作区里建好。",
