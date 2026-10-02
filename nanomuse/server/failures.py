@@ -40,6 +40,10 @@ _RELAY: dict[str, tuple[str, str]] = {
         "The account's free allowance is used up. Add your own model key under Connections to keep going.",
     ),
     "rate_limited": ("busy", "Too many requests at once; wait a moment and try again."),
+    "content_rejected": (
+        "request",
+        "The model provider's content check declined this request; try different words.",
+    ),
     "upstream_busy": ("busy", "The model provider is busy; try again in a moment."),
     "upstream_auth": (
         "relay",

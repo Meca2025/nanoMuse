@@ -1232,6 +1232,26 @@ async def test_an_upstream_refusal_is_written_down_with_the_providers_words():
     assert sum(1 for e in events if e["detail"] == "chat 400 qwen3.8-flash: Model not exist.") == 2
 
 
+def test_a_content_check_refusal_is_said_plainly():
+    """Bailian's content check says no in two spellings; both become one plain sentence with
+    a stable code (`content_rejected`), not the provider's "green net" words — and an image
+    prompt it declines is a 400 about the words, not a 502 about the provider."""
+    from nanomuse_cloud.api import content_check_refusal, relay_error_body
+
+    native = b'{"request_id":"x","code":"DataInspectionFailed","message":"Green net check rejected text (input)"}'
+    compat = b'{"error":{"code":"data_inspection_failed","message":"Input data may contain inappropriate content.","type":"invalid_request_error"}}'
+    other = b'{"error":{"message":"Model not exist.","code":"InvalidParameter"}}'
+    assert content_check_refusal(native) and content_check_refusal(compat) and not content_check_refusal(other)
+    for raw in (native, compat):
+        err = relay_error_body(400, raw)["error"]
+        assert err["code"] == "content_rejected"
+        assert err["message"].startswith("The model provider's content check declined")
+        assert "upstream" in err  # the provider's words ride along for bug reports
+    # an ordinary 400 still passes the provider's own words through, as before
+    assert relay_error_body(400, other)["error"] == {"message": "Model not exist.", "type": "upstream", "code": "upstream_400"}
+    assert relay_error_body(429, other)["error"]["code"] == "upstream_busy"
+
+
 def tiny_xdb(ranges: list[tuple[str, str, str]]) -> bytes:
     """A real xdb (structure 3, IPv4) with just these ranges — the format geo.py reads:
     header, 256×256 vector index, the segment index, the region strings."""

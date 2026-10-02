@@ -54,7 +54,9 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `invite_url`, `invite_bonus_cny`, `own_key_docs` |
 | 429 | `code_too_often` / `rate_limited` / `daily_cap` | (`daily_cap` only with the legacy token cap on) |
 | 429 | `provider_busy` | the image provider answered 429 even after the relay queued and retried (`IMAGE_CONCURRENCY`, `IMAGE_RETRIES`); `retry_after` seconds in the body |
-| 502 | `upstream` | the provider failed; message passed through |
+| 400 | `content_rejected` | the provider's content check declined the words (a chat request or an image prompt); the provider's own line rides along under `upstream` |
+| 400 | `upstream_400` | any other refusal of the request itself; the provider's message passed through |
+| 502 | `upstream` / `upstream_auth` / `upstream_model` / `upstream_busy` / `upstream_<status>` | the provider failed; a plain sentence, the provider's line under `upstream` |
 | 503 | `upstream_unconfigured` | `UPSTREAM_KEY` missing |
 
 ## Run it
