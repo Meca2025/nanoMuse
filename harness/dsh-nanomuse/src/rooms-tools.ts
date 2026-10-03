@@ -8,11 +8,12 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-system-prompt'
+import type {} from './cloud.ts'
 import type {} from './rooms.ts'
 import { AREAS } from './rooms.ts'
 
 export const name = 'nanomuse-rooms-tools'
-export const inject = ['tools', 'nanomuseRooms']
+export const inject = ['tools', 'nanomuseRooms', 'nanomuseCloud']
 
 export function apply(ctx: Context): void {
   const rooms = ctx.nanomuseRooms
@@ -150,6 +151,31 @@ export function apply(ctx: Context): void {
     'nanomuse rooms: draw_new_look',
   )
 
+  ctx.effect(
+    () =>
+      ctx.tools.register(
+        defineTool({
+          name: 'take_name',
+          description: 'Take the name the person gave you: it becomes your name on every device (under your face, in the chats). Call it only when they named you or asked you to change your name.',
+          parameters: {
+            name: { type: 'string', required: true, description: 'The name, at most 60 characters.' },
+          },
+          output: {
+            schema: { type: 'object', properties: { name: { type: 'string' } }, additionalProperties: false },
+            render: (_args, value) => [{ type: 'text', text: `Your name is now ${value.name}.` }],
+          },
+          async execute(args) {
+            const name = String(args.name ?? '').trim().slice(0, 60)
+            if (!name) throw new Error('A name is needed.')
+            const profile = await ctx.nanomuseCloud.writeProfile({ name })
+            return { name: profile.name }
+          },
+          presentCall: (args) => ({ card: 'generic', title: `Take the name ${args.name || ''}`, kind: 'other', rawInput: args }),
+        }),
+      ),
+    'nanomuse rooms: take_name',
+  )
+
   ctx.inject(['systemPrompt'], (ctx) => {
     ctx.effect(
       () =>
@@ -159,6 +185,8 @@ export function apply(ctx: Context): void {
           text: () => {
             const goals = rooms.goals
             const lines: string[] = []
+            const persona = rooms.persona
+            if (persona) lines.push('Who you are, as the person wrote it in your IDENTITY.md and SOUL.md (follow it):', persona, '')
             if (goals.length) {
               lines.push("The person's goals (their Goals room; update them with goals_room_update):")
               for (const goal of goals.slice(0, 12)) lines.push(`- ${goal.id} · ${goal.title} (${goal.category}, ${goal.status})${goal.summary ? `: ${goal.summary}` : ''}`)

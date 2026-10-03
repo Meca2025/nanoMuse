@@ -8,8 +8,9 @@
 import { createElement as h, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconComment, IconFeed, IconHeart, IconRefresh, IconSliders } from './icons.tsx'
+import { FEED_PANEL } from './panels.ts'
 import { markFeedSeen, nav, roomsCall, useRooms, type FeedPost } from './rooms.ts'
-import { ago, Empty, Markdown, MoreButton, Sheet } from './ui.tsx'
+import { ago, Empty, Markdown, MoreButton, RoomToggle, Sheet } from './ui.tsx'
 
 export function makeFeedPanel(t: Translate) {
   return function FeedPanel(): ReactNode {
@@ -24,12 +25,14 @@ export function makeFeedPanel(t: Translate) {
     const refresh = () => { setError(undefined); roomsCall('feed/refresh', {}).catch(fail) }
     const discuss = (post: FeedPost) => {
       setError(undefined)
-      roomsCall<{ sessionId: string }>('feed/discuss', { id: post.id }).then(({ sessionId }) => { nav.openSession(sessionId); nav.showChats() }).catch(fail)
+      // the chat opens beside the feed, the post's words already in it (Muse's 讨论)
+      roomsCall<{ sessionId: string }>('feed/discuss', { id: post.id }).then(({ sessionId }) => { nav.openSession(sessionId); nav.split(FEED_PANEL) }).catch(fail)
     }
 
     return h('div', { className: 'nm-room' },
       h('div', { className: 'nm-room-top', 'data-window-drag': true }),
       h('div', { className: 'nm-room-head' },
+        h(RoomToggle, { t, panel: FEED_PANEL }),
         h('h1', { className: 'nm-room-title' }, t('railFeed')),
         h('div', { className: 'nm-room-actions' },
           rooms.busy.feed ? h('span', { className: 'nm-room-busy' }, h('span', { className: 'nm-spinner nm-spinner-sm' }), t('feedWriting')) : null,

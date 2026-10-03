@@ -14,6 +14,7 @@ import pytest
 from nanomuse.bridge.mcp_server import (
     CONFIRMED,
     call,
+    connector_tools,
     content_blocks,
     exposed_schema,
     gate,
@@ -44,6 +45,24 @@ def test_listing_is_the_runtime_tools_with_the_confirmed_flag(settings: Settings
     _, act_tool = tools(settings)
     assert CONFIRMED not in act_tool.parameters["properties"]
     assert exposed_schema(act_tool) is not act_tool.parameters
+
+
+def test_connectors_come_along_when_config_turns_them_on(settings: Settings) -> None:
+    # the default config: the address book is on, the mailbox and the calendar are not
+    assert [t.name for t in connector_tools(settings)] == ["contacts"]
+    settings.connectors.email.enabled = True
+    settings.connectors.calendar.enabled = True
+    names = [t.name for t in connector_tools(settings)]
+    assert names == ["read_emails", "send_email", "calendar", "contacts"]
+    listing = tool_listing(
+        hands_tools(settings, link=make_link(settings)) + connector_tools(settings)
+    )
+    assert [t["name"] for t in listing][:2] == ["computer_screen", "computer_act"]
+    assert {"read_emails", "send_email", "calendar", "contacts"} <= {t["name"] for t in listing}
+    settings.connectors.contacts.enabled = False
+    settings.connectors.email.enabled = False
+    settings.connectors.calendar.enabled = False
+    assert connector_tools(settings) == []
 
 
 def test_gate_asks_for_what_the_sentinel_would_ask(settings: Settings) -> None:
@@ -132,7 +151,12 @@ async def test_server_over_stdio(tmp_path: Path) -> None:
         init = await session.initialize()
         assert "nanoMuse" in (init.instructions or "")
         listed = await session.list_tools()
-        assert sorted(t.name for t in listed.tools) == ["computer_act", "computer_screen"]
+        # the hands, plus the address book the default config keeps on
+        assert sorted(t.name for t in listed.tools) == [
+            "computer_act",
+            "computer_screen",
+            "contacts",
+        ]
         refused = await session.call_tool("computer_act", {"action": "key", "keys": ["enter"]})
         assert getattr(refused, "is_error", getattr(refused, "isError", None)) is True
         assert "Not done" in refused.content[0].text  # type: ignore[union-attr]

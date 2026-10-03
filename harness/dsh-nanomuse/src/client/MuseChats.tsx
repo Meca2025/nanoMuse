@@ -68,6 +68,16 @@ function readMain(): string | undefined {
     return undefined
   }
 }
+/** The session this computer treats as the main chat, if it has picked one. */
+export function mainChatId(): string | undefined {
+  return readMain()
+}
+const mainListeners = new Set<() => void>()
+/** The first run names the main chat before the list has seen it; the list is told. */
+export function setMainChatId(id: string): void {
+  writeMain(id)
+  for (const listener of mainListeners) listener()
+}
 function writeMain(id: string | undefined): void {
   try {
     if (id) window.localStorage.setItem(MAIN_KEY, id)
@@ -136,11 +146,13 @@ function ChatRow({ t, chat, label, main, pinned, selected, useSessionStatus, act
     if (event.key === 'Enter') { event.preventDefault(); commit() }
     if (event.key === 'Escape') { event.preventDefault(); setEditing(false) }
   }
+  // Muse's row menu: pin, rename, archive (Muse says delete; the harness keeps
+  // archived chats under the column's menu) — and ours: make this the main chat.
   const items: MenuItem[] = [
-    ...(main ? [] : [{ id: 'main', label: t('chMakeMain'), onSelect: onMakeMain }]),
     ...(main ? [] : [{ id: 'pin', label: pinned ? t('chUnpin') : t('chPin'), onSelect: () => { void (pinned ? actions.unpinSession(chat.id) : actions.pinSession(chat.id)).catch(() => undefined) } }]),
     { id: 'rename', label: t('chRename'), onSelect: () => { setDraft(label); setEditing(true) } },
     ...(main ? [] : [{ id: 'archive', label: t('chArchive'), onSelect: () => { void actions.archiveSession(chat.id).catch(() => undefined) } }]),
+    ...(main ? [] : [{ id: 'main', label: t('chMakeMain'), onSelect: onMakeMain }]),
   ]
 
   return h('div', { className: `nm-chat-row${selected ? ' nm-selected' : ''}${main ? ' nm-main' : ''}`, 'data-session-id': chat.id },
@@ -163,6 +175,11 @@ export function MuseChats({ t, useSessions, useSessionStatus, useWorkspaces, act
   const pinned = typeof useWorkspaces === 'function' ? useWorkspaces((w) => w.pinnedSessionIds) : []
   const [query, setQuery] = useState('')
   const [mainStored, setMainStored] = useState<string | undefined>(readMain)
+  useEffect(() => {
+    const listener = () => setMainStored(readMain())
+    mainListeners.add(listener)
+    return () => { mainListeners.delete(listener) }
+  }, [])
   const [headMenu, setHeadMenu] = useState<HTMLElement | null>(null)
   const headMore = useRef<HTMLButtonElement | null>(null)
 

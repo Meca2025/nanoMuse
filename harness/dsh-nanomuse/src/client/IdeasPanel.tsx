@@ -8,8 +8,9 @@
 import { createElement as h, useMemo, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconBulb, IconCheckCircle, IconRefresh } from './icons.tsx'
+import { IDEAS_PANEL } from './panels.ts'
 import { nav, roomsCall, useRooms, type Idea } from './rooms.ts'
-import { Empty, MoreButton, Sheet } from './ui.tsx'
+import { Empty, MoreButton, RoomToggle, Sheet } from './ui.tsx'
 
 export function makeIdeasPanel(t: Translate) {
   return function IdeasPanel(): ReactNode {
@@ -38,7 +39,7 @@ export function makeIdeasPanel(t: Translate) {
       setStarting(true)
       setError(undefined)
       roomsCall<{ sessionId: string }>('ideas/start', { id: idea.id })
-        .then(({ sessionId }) => { setOpen(undefined); nav.openSession(sessionId); nav.showChats() })
+        .then(({ sessionId }) => { setOpen(undefined); nav.openSession(sessionId); nav.split(IDEAS_PANEL) })
         .catch(fail)
         .finally(() => setStarting(false))
     }
@@ -47,6 +48,7 @@ export function makeIdeasPanel(t: Translate) {
     return h('div', { className: 'nm-room' },
       h('div', { className: 'nm-room-top', 'data-window-drag': true }),
       h('div', { className: 'nm-room-head' },
+        h(RoomToggle, { t, panel: IDEAS_PANEL }),
         h('h1', { className: 'nm-room-title' }, t('railIdeas')),
         h('div', { className: 'nm-room-actions' },
           rooms.busy.ideas ? h('span', { className: 'nm-room-busy' }, h('span', { className: 'nm-spinner nm-spinner-sm' }), t('ideasThinking')) : null,
@@ -85,7 +87,7 @@ function IdeaCard({ t, idea, starting, onClose, onStart }: { t: Translate; idea:
     footer: h('div', { className: 'nm-sheet-actions' },
       h('span', { style: { flex: 1 } }),
       started
-        ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => { nav.openSession(idea.started!); nav.showChats(); onClose() } }, t('ideaOpenChat'))
+        ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => { nav.openSession(idea.started!); nav.split(IDEAS_PANEL); onClose() } }, t('ideaOpenChat'))
         : h('button', { type: 'button', className: 'nm-pill nm-pill-sm', disabled: starting, onClick: onStart }, starting ? t('ideaStarting') : t('ideaStart'))) },
     h('div', { className: 'nm-idea-card' },
       idea.detail ? h('p', { className: 'nm-sheet-lead' }, idea.detail) : null,

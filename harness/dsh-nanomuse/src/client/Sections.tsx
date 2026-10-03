@@ -9,7 +9,8 @@
 import { createElement as h, Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { bridge, gatedPermissions, keyLabel, openLink, type DesktopPrefs, type PermissionKind, type PermissionState } from './bridge.ts'
-import { IconBug, IconCheck, IconChevronRight, IconFile, IconLink, IconScale, IconShield } from './icons.tsx'
+import { settingsBus } from './bus.ts'
+import { IconBug, IconCheck, IconChevronRight, IconFile, IconLink, IconPlay, IconScale, IconShield } from './icons.tsx'
 import { useLive } from './live.ts'
 import { ISSUES_URL } from './panels.ts'
 import { setPrefs, usePrefs } from './prefs.ts'
@@ -92,6 +93,7 @@ export function makeHelpSection(t: Translate, version: string) {
         h(LinkRow, { icon: h(IconLink, { size: 18 }), title: t('helpDiscuss'), onClick: () => openLink(DISCUSS_URL) }),
         h(LinkRow, { icon: h(IconBug, { size: 18 }), title: t('helpIssue'), onClick: () => openLink(ISSUES_URL) })),
       h('div', { className: 'nm-card' },
+        h(LinkRow, { icon: h(IconPlay, { size: 18 }), title: t('helpFirstRun'), sub: t('helpFirstRunSub'), onClick: () => { settingsBus.openOnboarding?.('deepseek-official') } }),
         h('div', { className: 'nm-row' },
           h('div', { className: 'nm-row-main' },
             h('span', { className: 'nm-row-title' }, t('helpVersion')),
@@ -160,4 +162,114 @@ export function AppBehaviorRows({ t }: { t: Translate }): ReactNode {
     row('openAtLogin', t('abOpenAtLogin'), t('abOpenAtLoginSub')),
     row('menuBar', b.platform === 'darwin' ? t('abMenuBar') : t('abTray'), t('abMenuBarSub')),
     row('quickChat', t('abQuickChat', { key: keyLabel(prefs.quickChatKey, b.platform) }), t('abQuickChatSub'))))
+}
+
+// ---- Wallet, Secure storage, Channels: Muse's pages, with what is true here ----------
+
+/**
+ * Wallet. Muse keeps payment methods here; nanoMuse pays for nothing on the person's
+ * behalf, and says so — the page explains what happens when something costs money, and
+ * points at the usage quota that *is* an account balance of sorts.
+ */
+export function makeWalletSection(t: Translate, openSection: (id: string) => void) {
+  return function WalletSection(): ReactNode {
+    return h('div', { className: 'nm-section' },
+      h('p', null, t('wlLead')),
+      h('h2', null, t('wlMethods')),
+      h('div', { className: 'nm-card' },
+        h('div', { className: 'nm-row' },
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, t('wlNone')),
+            h('span', { className: 'nm-row-sub nm-wrap' }, t('wlNoneSub'))))),
+      h('h2', null, t('wlHow')),
+      h('div', { className: 'nm-card' },
+        h('div', { className: 'nm-row' },
+          h('span', { className: 'nm-row-icon' }, h(IconShield, { size: 18 })),
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, t('wlAsks')),
+            h('span', { className: 'nm-row-sub nm-wrap' }, t('wlAsksSub')))),
+        h(LinkRow, { icon: h(IconLink, { size: 18 }), title: t('wlUsage'), sub: t('wlUsageSub'), onClick: () => openSection('general') })),
+      h('p', { className: 'nm-fine' }, t('wlFine')))
+  }
+}
+
+interface Folders { home: string; library: string; downloads: string; state: string }
+
+/**
+ * Secure storage: what nanoMuse keeps that is secret or personal, and where — files on this
+ * machine readable by this user alone (mode 0600), nothing in the system keychain. Each row
+ * says what it is; the folder opens in the file manager.
+ */
+export function makeStorageSection(t: Translate, loadFolders: () => Promise<Folders>, reveal: (which: keyof Folders) => void) {
+  return function StorageSection(): ReactNode {
+    const live = useLive()
+    const [folders, setFolders] = useState<Folders | undefined>()
+    useEffect(() => { void loadFolders().then(setFolders).catch(() => undefined) }, [])
+    const entry = (title: string, sub: string, file: string) =>
+      h('div', { className: 'nm-row' },
+        h('span', { className: 'nm-row-icon' }, h(IconFile, { size: 18 })),
+        h('div', { className: 'nm-row-main' },
+          h('span', { className: 'nm-row-title' }, title),
+          h('span', { className: 'nm-row-sub nm-wrap' }, sub, folders ? h('span', { className: 'nm-path' }, `${folders.state}/${file}`) : null)))
+    return h('div', { className: 'nm-section' },
+      h('p', null, t('ssLead')),
+      h('h2', null, t('ssKept')),
+      h('div', { className: 'nm-card' },
+        entry(t('ssAccount'), live.cloud.signedIn ? t('ssAccountSub', { hint: live.cloud.hint }) : t('ssAccountOut'), 'cloud.json'),
+        entry(t('ssProfile'), t('ssProfileSub'), 'profile.json'),
+        entry(t('ssRooms'), t('ssRoomsSub'), 'rooms.json'),
+        entry(t('ssFaces'), t('ssFacesSub'), 'faces/')),
+      h('div', { className: 'nm-card' },
+        h(LinkRow, { icon: h(IconLink, { size: 18 }), title: t('ssReveal'), sub: folders?.state ?? '', onClick: () => reveal('state') })),
+      h('h2', null, t('ssNotKept')),
+      h('div', { className: 'nm-card' },
+        h('div', { className: 'nm-row' },
+          h('span', { className: 'nm-row-icon' }, h(IconShield, { size: 18 })),
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, t('ssKeychain')),
+            h('span', { className: 'nm-row-sub nm-wrap' }, t('ssKeychainSub')))),
+        h('div', { className: 'nm-row' },
+          h('span', { className: 'nm-row-icon' }, h(IconShield, { size: 18 })),
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, t('ssPasswords')),
+            h('span', { className: 'nm-row-sub nm-wrap' }, t('ssPasswordsSub'))))),
+      h('p', { className: 'nm-fine' }, t('ssFine')))
+  }
+}
+
+/**
+ * Message channels: the ways to reach the agent. Here that is this window, the invite
+ * link (the chat from a phone's browser, signed in to the same account) and the other
+ * devices on the account — no third-party messengers, and the page says so.
+ */
+export function makeChannelsSection(t: Translate, openSection: (id: string) => void, devicesSection: string) {
+  return function ChannelsSection(): ReactNode {
+    const live = useLive()
+    const others = live.hub.devices.filter((d) => d.kind !== 'web')
+    const b = bridge()
+    return h('div', { className: 'nm-section' },
+      h('p', null, t('mcLead')),
+      h('h2', null, t('mcConnected')),
+      h('div', { className: 'nm-card' },
+        h('div', { className: 'nm-row' },
+          h('span', { className: 'nm-row-icon' }, h(IconCheck, { size: 18 })),
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, b ? t('mcDesktop') : t('mcBrowser')),
+            h('span', { className: 'nm-row-sub nm-wrap' }, t('mcDesktopSub'))),
+          h('span', { className: 'nm-state nm-state-on' }, t('cnOn'))),
+        h('div', { className: 'nm-row' },
+          h('span', { className: 'nm-row-icon' }, h(IconLink, { size: 18 })),
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, t('mcInvite')),
+            h('span', { className: 'nm-row-sub nm-wrap' }, live.cloud.signedIn ? t('mcInviteSub') : t('mcInviteOut'))),
+          h('span', { className: live.cloud.signedIn ? 'nm-state nm-state-on' : 'nm-state' }, live.cloud.signedIn ? t('cnOn') : t('cnOff'))),
+        h(LinkRow, { icon: h(IconLink, { size: 18 }), title: t('mcDevices'), sub: others.length ? t('mcDevicesSub', { n: others.length }) : t('mcDevicesNone'), onClick: () => openSection(devicesSection) })),
+      h('h2', null, t('mcOthers')),
+      h('div', { className: 'nm-card' },
+        h('div', { className: 'nm-row' },
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, t('mcNoThirdParty')),
+            h('span', { className: 'nm-row-sub nm-wrap' }, t('mcNoThirdPartySub'))))),
+      h('p', { className: 'nm-fine' }, t('mcFine')))
+  }
 }

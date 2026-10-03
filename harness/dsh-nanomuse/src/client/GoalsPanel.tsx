@@ -8,9 +8,10 @@
  */
 import { createElement as h, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
-import { IconAlarm, IconBriefcase, IconCheck, IconCheckCircle, IconChevronRight, IconDollar, IconHeartLine, IconMonitor, IconPalette, IconTarget, IconUsers } from './icons.tsx'
+import { IconAlarm, IconBriefcase, IconCheck, IconCheckCircle, IconChevronRight, IconCircleDot, IconDollar, IconHeartLine, IconMonitor, IconPalette, IconTarget, IconUsers } from './icons.tsx'
+import { GOALS_PANEL } from './panels.ts'
 import { nav, roomsCall, useRooms, type Category, type Goal, type GoalAutomation } from './rooms.ts'
-import { dayLabel, Empty, MoreButton, Sheet } from './ui.tsx'
+import { dayLabel, Empty, MoreButton, RoomToggle, Sheet } from './ui.tsx'
 import type { Words } from './locales.ts'
 
 const CATEGORIES: { id: Category; label: Words; icon: (p: { size: number }) => ReactNode; examples: Words[] }[] = [
@@ -20,6 +21,7 @@ const CATEGORIES: { id: Category; label: Words; icon: (p: { size: number }) => R
   { id: 'career', label: 'catCareer', icon: IconBriefcase, examples: ['exCareer1', 'exCareer2', 'exCareer3'] },
   { id: 'hobbies', label: 'catHobbies', icon: IconPalette, examples: ['exHobby1', 'exHobby2', 'exHobby3'] },
   { id: 'productivity', label: 'catProductivity', icon: IconMonitor, examples: ['exProd1', 'exProd2', 'exProd3'] },
+  { id: 'other', label: 'catOther', icon: IconCircleDot, examples: [] },
 ]
 
 export function makeGoalsPanel(t: Translate) {
@@ -27,6 +29,7 @@ export function makeGoalsPanel(t: Translate) {
     const rooms = useRooms()
     const [openId, setOpenId] = useState<string | undefined>()
     const [creating, setCreating] = useState<Category | undefined>()
+    const [beginning, setBeginning] = useState<Category | undefined>()
     const [showDone, setShowDone] = useState(false)
     const [error, setError] = useState<string | undefined>()
     const open = rooms.goals.find((g) => g.id === openId)
@@ -40,18 +43,30 @@ export function makeGoalsPanel(t: Translate) {
       setOpenId(undefined)
       roomsCall('goals/delete', { id: goal.id }).catch(fail)
     }
+    // a goal's chat opens beside the room, the way Muse splits the window for goals
+    const beside = (sessionId: string) => { nav.openSession(sessionId); nav.split(GOALS_PANEL) }
     const checkIn = (goal: Goal) => {
-      roomsCall<{ sessionId: string }>('goals/check-in', { id: goal.id }).then(({ sessionId }) => { setOpenId(undefined); nav.openSession(sessionId); nav.showChats() }).catch(fail)
+      roomsCall<{ sessionId: string }>('goals/check-in', { id: goal.id }).then(({ sessionId }) => { setOpenId(undefined); beside(sessionId) }).catch(fail)
     }
-    const openChat = (goal: Goal) => { setOpenId(undefined); nav.openSession(goal.sessionId); nav.showChats() }
+    const openChat = (goal: Goal) => { setOpenId(undefined); beside(goal.sessionId) }
+    // a category row begins the planning chat: the agent asks what the goal is (Muse's flow);
+    // the sheet with examples stays one step away, from the row's menu, for typing it out
+    const begin = (category: Category) => {
+      if (beginning) return
+      setBeginning(category)
+      setError(undefined)
+      roomsCall<Goal>('goals/begin', { category }).then((goal) => beside(goal.sessionId)).catch(fail).finally(() => setBeginning(undefined))
+    }
 
     return h('div', { className: 'nm-room' },
       h('div', { className: 'nm-room-top', 'data-window-drag': true }),
       h('div', { className: 'nm-room-head' },
+        h(RoomToggle, { t, panel: GOALS_PANEL }),
         h('h1', { className: 'nm-room-title' }, t('railGoals')),
         h('div', { className: 'nm-room-actions' },
           h(MoreButton, { label: t('more'), size: 36, items: [
             { id: 'done', label: showDone ? t('goalsHideDone') : t('goalsShowDone', { n: done.length }), onSelect: () => setShowDone((v) => !v) },
+            { id: 'typed', label: t('goalTypeOut'), onSelect: () => setCreating('other') },
           ] }))),
       h('div', { className: 'nm-room-body' },
         h('div', { className: 'nm-room-inner nm-goals' },
@@ -68,12 +83,12 @@ export function makeGoalsPanel(t: Translate) {
                   : null),
           h('section', { className: 'nm-goals-create' },
             h('h2', { className: 'nm-room-h2' }, t('goalsCreate')),
-            CATEGORIES.map((c) => h('button', { key: c.id, type: 'button', className: 'nm-cat-row', onClick: () => setCreating(c.id) },
+            CATEGORIES.map((c) => h('button', { key: c.id, type: 'button', className: 'nm-cat-row', disabled: beginning !== undefined, 'aria-busy': beginning === c.id, onClick: () => begin(c.id) },
               h('span', { className: 'nm-cat-icon' }, h(c.icon, { size: 19 })),
               h('span', { className: 'nm-cat-label' }, t(c.label)),
-              h(IconChevronRight, { size: 16, className: 'nm-row-chevron' })))))),
+              beginning === c.id ? h('span', { className: 'nm-spinner nm-spinner-sm' }) : h(IconChevronRight, { size: 16, className: 'nm-row-chevron' })))))),
       open ? h(GoalCard, { t, goal: open, automations: rooms.automations[open.id] ?? [], lang: rooms.lang, onClose: () => setOpenId(undefined), onCheckIn: () => checkIn(open), onChat: () => openChat(open), onDone: () => setStatus(open, open.status === 'done' ? 'tracking' : 'done'), onDelete: () => remove(open), onFail: fail }) : null,
-      creating ? h(CreateGoal, { t, category: creating, onClose: () => setCreating(undefined), onCreated: (goal) => { setCreating(undefined); nav.openSession(goal.sessionId); nav.showChats() } }) : null)
+      creating ? h(CreateGoal, { t, category: creating, onClose: () => setCreating(undefined), onCreated: (goal) => { setCreating(undefined); beside(goal.sessionId) } }) : null)
   }
 }
 

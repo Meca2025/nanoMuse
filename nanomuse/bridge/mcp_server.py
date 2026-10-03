@@ -5,7 +5,8 @@ this computer's screen and hands the way it gets any other capability: as an MCP
 on stdio. The two tools are the runtime's own ``computer_screen`` and ``computer_act``
 (:mod:`nanomuse.tools.computer`), with their descriptions and schemas, so a model that
 knows one host knows the other; ``computer_task`` stays home, because the host's model
-runs the loop itself.
+runs the loop itself. The connectors ``config.toml`` turns on — ``read_emails`` /
+``send_email``, ``calendar``, ``contacts`` — come along (:func:`connector_tools`).
 
 What the Sentinel does in the runtime, the bridge does at the model's level: a call the
 runtime would ask the person about — Enter or a submit, a heavy shortcut, a click on words
@@ -49,6 +50,37 @@ def hands_tools(settings: Settings, link: ComputerLink | None = None) -> list[Ba
     """The screen and the hands of this computer, as the runtime builds them."""
     link = link or ComputerLink(settings.hands, shots_dir=settings.agent.workspace / "screenshots")
     return [ComputerScreen(link=link), ComputerAct(link=link, gui=settings.gui)]
+
+
+def connector_tools(settings: Settings) -> list[BaseTool]:
+    """The connectors ``config.toml`` turns on — the mailbox, the calendar feeds, the
+    address book — built as :class:`nanomuse.app.NanoMuseApp` builds them, so a host
+    gets ``read_emails`` / ``send_email`` / ``calendar`` / ``contacts`` next to the hands
+    (the desktop's Connectors page lists them as connected once they show up here)."""
+    from nanomuse.calendar.feeds import CalendarFeeds
+    from nanomuse.contacts.book import ContactBook
+    from nanomuse.tools.calendar_tool import Calendar
+    from nanomuse.tools.contacts_tool import Contacts
+    from nanomuse.tools.email_tool import ReadEmails, SendEmail
+    from nanomuse.vault.vault import CredentialVault
+
+    c = settings.connectors
+    if not (c.email.enabled or c.calendar.enabled or c.contacts.enabled):
+        return []
+    vault = CredentialVault(settings.vault_file, settings.vault_key_file)
+    book = ContactBook(
+        c.contacts, vault=vault, own_file=settings.contacts_file, cache_file=settings.contacts_cache
+    )
+    tools: list[BaseTool] = []
+    if c.email.enabled:
+        tools.append(ReadEmails(settings=c.email, vault=vault))
+        tools.append(SendEmail(settings=c.email, vault=vault, book=book))
+    if c.calendar.enabled:
+        feeds = CalendarFeeds(c.calendar, vault=vault, cache_file=settings.calendar_cache)
+        tools.append(Calendar(feeds=feeds, workspace=settings.agent.workspace))
+    if c.contacts.enabled:
+        tools.append(Contacts(book=book))
+    return tools
 
 
 def confirm_secret() -> str:

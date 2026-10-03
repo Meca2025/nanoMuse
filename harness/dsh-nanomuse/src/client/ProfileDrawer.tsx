@@ -2,28 +2,33 @@
  * The agent's profile, the panel the Muse desktop slides in from the right
  * when its face is clicked: the big face with a pencil badge (change the look,
  * edit the name), the name, a line for how it is connected, and four tabs —
- * Activity (today's chats and what ran in them), Approvals (the answers given
- * on approval cards), Schedule (the harness's schedules) and Memory (what
- * follows the account: the name, the look, the personality). The name and the
- * simple looks are written to the account through the host, so the phone
+ * Activity (what each chat did, day by day; an entry opens the task's steps),
+ * Approvals (the answers given on approval cards), Reminders (the goals'
+ * automations) and Identity (the name with an Edit pill, and the agent's own
+ * documents — SOUL.md and MEMORY.md — which open in the editor). The name and
+ * the simple looks are written to the account through the host, so the phone
  * wears them too.
  */
 import { createElement as h, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { call, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { profileBus, useProfileOpen } from './bus.ts'
-import { IconBrain, IconCheck, IconClock, IconClose, IconList, IconPencil, IconShield } from './icons.tsx'
+import { IconAlarm, IconBell, IconCheck, IconChevronDown, IconClock, IconClose, IconList, IconPencil, IconShield, IconSparkle, IconSpinner, IconSquare } from './icons.tsx'
 import { studioBus } from './AvatarStudio.tsx'
-import { ImportMemorySheet, MemoryList } from './Memory.tsx'
 import { useLive, type LiveProfile } from './live.ts'
 import type { ChatListState, ChatStatus } from './MuseChats.tsx'
 import { usePrefs } from './prefs.ts'
+import { useRooms, type ActivityRecord, type GoalAutomation } from './rooms.ts'
+import { TaskDetail } from './TaskDetail.tsx'
+import { ago, clockLabel, dayLabel } from './ui.tsx'
+import { win } from './win.ts'
 
-type Tab = 'activity' | 'approvals' | 'schedule' | 'memory'
+type Tab = 'activity' | 'approvals' | 'reminders' | 'identity'
 
 export interface ProfileDrawerProps {
   t: Translate
   openSchedules(): void
+  stop(sessionId: string): Promise<void>
   useSessions?: (<S>(selector: (state: ChatListState) => S) => S) | undefined
   useSessionStatus?: (<S>(selector: (snapshot: ReadonlyMap<string, ChatStatus>) => S) => S) | undefined
 }
@@ -31,37 +36,22 @@ export interface ProfileDrawerProps {
 const EMOJI_CHOICES = ['✨', '🐉', '🌙', '🍀', '🦊', '🐼', '🌸', '⚡', '🎧', '🫧']
 const COLOR_CHOICES = ['#0064d4', '#c8743a', '#7a4ea8', '#2f9e5f', '#c0392b', '#e0a13a', '#1d8a8a', '#5b6b7a']
 
-function timeOf(at: number, t: Translate): string {
-  const diff = Math.max(0, Date.now() - at)
-  const minutes = Math.round(diff / 60_000)
-  if (minutes < 1) return t('justNow')
-  if (minutes < 60) return t('minutesAgo', { n: minutes })
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return t('hoursAgo', { n: hours })
-  return t('daysAgo', { n: Math.round(hours / 24) })
-}
-
-function startOfToday(): number {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
-}
-
-export function makeProfileDrawer(t: Translate) {
-  return function ProfileDrawer({ openSchedules, useSessions, useSessionStatus }: Omit<ProfileDrawerProps, 't'>): ReactNode {
+export function makeProfileDrawer(t: Translate, stop: (sessionId: string) => Promise<void>) {
+  return function ProfileDrawer({ openSchedules, useSessions, useSessionStatus }: Omit<ProfileDrawerProps, 't' | 'stop'>): ReactNode {
     const open = useProfileOpen()
     if (!open) return null
-    return h(Drawer, { t, openSchedules, useSessions, useSessionStatus })
+    return h(Drawer, { t, stop, openSchedules, useSessions, useSessionStatus })
   }
 }
 
-function Drawer({ t, openSchedules, useSessions, useSessionStatus }: ProfileDrawerProps): ReactNode {
+function Drawer({ t, stop, openSchedules, useSessions, useSessionStatus }: ProfileDrawerProps): ReactNode {
   const live = useLive()
+  const rooms = useRooms()
   const prefs = usePrefs()
   const [tab, setTab] = useState<Tab>('activity')
-  const [importing, setImporting] = useState(false)
   const [editing, setEditing] = useState<'none' | 'name' | 'look'>('none')
   const [menu, setMenu] = useState(false)
+  const [detail, setDetail] = useState<string | null>(null)
   const panel = useRef<HTMLDivElement>(null)
 
   // Like Muse's panel it stays beside the chat until closed (×, Escape); the
@@ -81,54 +71,35 @@ function Drawer({ t, openSchedules, useSessions, useSessionStatus }: ProfileDraw
   useEffect(() => { panel.current?.focus() }, [])
 
   const name = live.profile.name || t('brand')
+  // the status line under the name follows what the agent is doing right now
+  const running = rooms.activity.find((r) => r.status === 'running' || r.status === 'waiting')
   let status: ReactNode
-  if (!live.cloud.signedIn) status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot' }), t('pfSignedOut'))
+  if (running) status = h('span', { className: 'nm-pf-status nm-live' }, h(IconSpinner, { size: 13 }), statusWords(t, running))
+  else if (!live.cloud.signedIn) status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot' }), t('pfSignedOut'))
   else if (live.hub.connected) status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot nm-on' }), t('pfConnected'))
   else status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot nm-wait' }), t('pfOffline'))
 
   const tabs: { id: Tab; label: string; icon: ReactNode }[] = [
     { id: 'activity', label: t('pfActivity'), icon: h(IconList, { size: 17 }) },
     { id: 'approvals', label: t('pfApprovals'), icon: h(IconShield, { size: 17 }) },
-    { id: 'schedule', label: t('pfSchedule'), icon: h(IconClock, { size: 17 }) },
-    { id: 'memory', label: t('pfMemory'), icon: h(IconBrain, { size: 17 }) },
+    { id: 'reminders', label: t('pfReminders'), icon: h(IconClock, { size: 17 }) },
+    { id: 'identity', label: t('pfIdentity'), icon: h(IconSparkle, { size: 17 }) },
   ]
 
   let body: ReactNode
   if (editing === 'name') body = h(NameEditor, { t, profile: live.profile, onDone: () => setEditing('none') })
   else if (editing === 'look') body = h(LookEditor, { t, profile: live.profile, onDone: () => setEditing('none') })
-  else if (tab === 'activity') body = h(Activity, { t, name, useSessions, useSessionStatus })
-  else if (tab === 'approvals') {
-    body = prefs.approvals.length === 0
-      ? h('p', { className: 'nm-pf-empty' }, t('pfApprovalsEmpty', { name }))
-      : h('div', { className: 'nm-pf-rows' }, prefs.approvals.map((a, i) => h('div', { key: `${a.at}-${i}`, className: 'nm-pf-row' },
-          h('span', { className: 'nm-pf-row-icon' }, h(IconShield, { size: 18 })),
-          h('div', { className: 'nm-pf-row-main' },
-            h('div', { className: 'nm-pf-row-title' }, a.reason || a.toolName),
-            h('div', { className: 'nm-pf-row-sub' }, `${a.outcome === 'allowed' ? t('pfAllowed') : t('pfDenied')} · ${timeOf(a.at, t)}`)))))
-  } else if (tab === 'schedule') {
-    body = h('div', { className: 'nm-pf-stack' },
-      h('p', { className: 'nm-pf-empty' }, t('pfScheduleEmpty', { name })),
-      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => { profileBus.close(); openSchedules() } }, t('pfOpenSchedules')))
-  } else {
-    body = h('div', { className: 'nm-pf-stack' },
-      h('p', { className: 'nm-pf-empty' }, t('pfMemoryText', { name })),
-      h(MemoryList, { t, onImport: () => setImporting(true) }),
-      live.profile.description
-        ? h('div', { className: 'nm-pf-row' },
-            h('div', { className: 'nm-pf-row-main' },
-              h('div', { className: 'nm-pf-row-title' }, t('pfDescription')),
-              h('div', { className: 'nm-pf-row-sub nm-wrap' }, live.profile.description)))
-        : null,
-      live.profile.avatar === 'face' ? h('p', { className: 'nm-pf-empty' }, t('pfFaceNote')) : null,
-      importing ? h(ImportMemorySheet, { t, onClose: () => setImporting(false) }) : null)
-  }
+  else if (tab === 'activity') body = h(Activity, { t, name, stop, useSessions, open: (id) => setDetail(id) })
+  else if (tab === 'approvals') body = h(Approvals, { t, name, approvals: prefs.approvals })
+  else if (tab === 'reminders') body = h(Reminders, { t, name, openSchedules: () => { profileBus.close(); openSchedules() } })
+  else body = h(Identity, { t, name, onEditName: () => setEditing('name') })
 
   return h('aside', { ref: panel, tabIndex: -1, className: 'nm-pf', role: 'complementary', 'aria-label': name },
     h('div', { className: 'nm-pf-top', 'data-window-drag': true },
       h('button', { type: 'button', className: 'nm-icon-btn', 'aria-label': t('close'), onClick: () => profileBus.close() }, h(IconClose, { size: 16 }))),
     h('div', { className: 'nm-pf-head' },
       h('div', { className: 'nm-pf-face' },
-        h(Avatar, { size: 86, profile: live.profile, mood: 'idle' }),
+        h(Avatar, { size: 86, profile: live.profile, mood: running ? 'working' : 'idle' }),
         h('button', { type: 'button', className: 'nm-pf-pen', 'aria-label': t('pfEditName'), 'aria-haspopup': 'menu', 'aria-expanded': menu, onClick: () => setMenu((m) => !m) }, h(IconPencil, { size: 13 })),
         menu
           ? h('div', { className: 'nm-menu nm-pf-menu', role: 'menu' },
@@ -141,38 +112,140 @@ function Drawer({ t, openSchedules, useSessions, useSessionStatus }: ProfileDraw
       ? h('div', { className: 'nm-seg', role: 'tablist' }, tabs.map((item) =>
           h('button', { key: item.id, type: 'button', role: 'tab', className: `nm-seg-btn${tab === item.id ? ' nm-active' : ''}`, 'aria-selected': tab === item.id, 'aria-label': item.label, title: item.label, onClick: () => setTab(item.id) }, item.icon)))
       : null,
-    h('div', { className: 'nm-pf-body' }, body))
+    h('div', { className: 'nm-pf-body' }, body),
+    detail ? h(TaskDetail, { t, sessionId: detail, useSessions, onClose: () => setDetail(null) }) : null)
 }
 
-function Activity({ t, name, useSessions, useSessionStatus }: { t: Translate; name: string; useSessions: ProfileDrawerProps['useSessions']; useSessionStatus: ProfileDrawerProps['useSessionStatus'] }): ReactNode {
+/** The words under the face for a running task: the step under way, else "working". */
+export function statusWords(t: Translate, record: ActivityRecord): string {
+  if (record.status === 'waiting') return t('statusWaiting')
+  const name = record.current?.name ?? ''
+  const base = name.replace(/^mcp__[^_]+(?:_[^_]+)*?__/, '')
+  if (!name) return record.steps.length <= 1 ? t('statusPlanning') : t('statusWorking')
+  if (/screen|look|see|observe/i.test(base)) return t('statusLooking')
+  if (/computer|act|click|type|key|mouse|press|open_app/i.test(base)) return t('statusComputer')
+  if (/web_search|search/i.test(base)) return t('statusSearching')
+  if (/web_fetch|fetch|read_file|glob|grep/i.test(base)) return t('statusReading')
+  if (/write|edit|create|str_replace|present/i.test(base)) return t('statusWriting')
+  if (/bash|pwsh|shell|command/i.test(base)) return t('statusRunning')
+  if (/ask_user|question/i.test(base)) return t('statusAsking')
+  if (/draw|image|studio/i.test(base)) return t('statusDrawing')
+  if (/schedule|remind/i.test(base)) return t('statusScheduling')
+  return t('statusWorking')
+}
+
+function Activity({ t, name, stop, useSessions, open }: { t: Translate; name: string; stop(id: string): Promise<void>; useSessions: ProfileDrawerProps['useSessions']; open(id: string): void }): ReactNode {
   const live = useLive()
-  const sessions = typeof useSessions === 'function'
-    ? useSessions((s) => s.ids.map((id) => s.byId[id]).filter((c) => c !== undefined && c.origin !== 'subagent' && !c.blank))
-    : []
-  const statuses = typeof useSessionStatus === 'function' ? useSessionStatus((m) => m) : undefined
-  interface Row { at: number; title: string; sub: string; live: boolean }
-  const rows: Row[] = sessions.map((c) => {
-    const status = statuses?.get(c!.id)
-    const waiting = status?.pendingInteraction !== undefined
-    const running = status?.running ?? c!.running
-    return { at: c!.updatedAt, title: c!.displayTitle, sub: waiting ? t('chWaiting') : running ? t('chRunning') : timeOf(c!.updatedAt, t), live: running || waiting }
-  })
-  for (const notice of live.notices) rows.push({ at: notice.at, title: notice.title, sub: `${notice.from} · ${timeOf(notice.at, t)}`, live: false })
+  const rooms = useRooms()
+  const titles = typeof useSessions === 'function'
+    ? useSessions((s) => new Map(s.ids
+      .map((id) => [id, s.byId[id]] as [string, ChatListState['byId'][string] | undefined])
+      .filter((pair): pair is [string, NonNullable<ChatListState['byId'][string]>] => pair[1] !== undefined && pair[1].origin !== 'subagent')
+      .map(([id, c]) => [id, c.displayTitle] as const)))
+    : new Map<string, string>()
+  const [stopping, setStopping] = useState<string | null>(null)
+  interface Row { id: string; at: number; title: string; sub: string; state: 'live' | 'done' | 'error' | 'avatar' | 'notice' }
+  const rows: Row[] = rooms.activity
+    .filter((r) => titles.size === 0 || titles.has(r.sessionId))
+    .map((r) => ({
+      id: r.sessionId,
+      at: r.updatedAt,
+      title: titles.get(r.sessionId) || r.request || t('chUntitled'),
+      sub: r.status === 'running' || r.status === 'waiting' ? statusWords(t, r) : r.words || r.request,
+      state: r.status === 'running' || r.status === 'waiting' ? 'live' : r.status === 'error' ? 'error' : r.steps.some((s) => /draw_new_look|studio/.test(s.name)) ? 'avatar' : 'done',
+    }))
+  for (const notice of live.notices) rows.push({ id: '', at: notice.at, title: notice.title, sub: notice.from, state: 'notice' })
   rows.sort((a, b) => b.at - a.at)
   if (rows.length === 0) return h('p', { className: 'nm-pf-empty' }, t('pfNoActivity', { name }))
-  const today = startOfToday()
-  const recent = rows.filter((r) => r.at >= today)
-  const earlier = rows.filter((r) => r.at < today)
-  const list = (items: Row[]) => items.slice(0, 30).map((r, i) => h('div', { key: `${r.at}-${i}`, className: 'nm-pf-row' },
-    h('span', { className: `nm-pf-row-icon${r.live ? ' nm-live' : ''}` }, h(r.live ? IconClock : IconCheck, { size: 18 })),
-    h('div', { className: 'nm-pf-row-main' },
-      h('div', { className: 'nm-pf-row-title' }, r.title),
-      h('div', { className: 'nm-pf-row-sub' }, r.sub))))
+  const groups = new Map<string, Row[]>()
+  for (const row of rows.slice(0, 60)) {
+    const label = dayLabel(t, row.at, rooms.lang)
+    const list = groups.get(label) ?? []
+    list.push(row)
+    groups.set(label, list)
+  }
+  const icon = (row: Row) => row.state === 'live' ? h(IconSpinner, { size: 18 }) : row.state === 'avatar' ? h(IconSparkle, { size: 18 }) : h(IconCheck, { size: 18 })
+  return h('div', { className: 'nm-pf-rows' }, [...groups].map(([label, items]) => h('div', { key: label },
+    h('div', { className: 'nm-pf-day' }, label),
+    items.map((r, i) => h('div', { key: `${r.id}-${r.at}-${i}`, className: `nm-pf-row nm-pf-task${r.id ? ' nm-clickable' : ''}`, role: r.id ? 'button' : undefined, tabIndex: r.id ? 0 : undefined, onClick: () => { if (r.id) open(r.id) }, onKeyDown: (e: KeyboardEvent) => { if (r.id && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(r.id) } } },
+      h('span', { className: `nm-pf-row-icon${r.state === 'live' ? ' nm-live' : r.state === 'error' ? ' nm-err' : ''}` }, icon(r)),
+      h('div', { className: 'nm-pf-row-main' },
+        h('div', { className: 'nm-pf-row-title' }, r.title),
+        r.sub ? h('div', { className: 'nm-pf-row-sub' }, r.sub) : null),
+      r.state === 'live' && r.id
+        ? h('button', { type: 'button', className: 'nm-pf-stop', title: t('capsuleStop'), 'aria-label': t('capsuleStop'), disabled: stopping === r.id, onClick: (e: MouseEvent) => { e.stopPropagation(); setStopping(r.id); void stop(r.id).finally(() => setStopping(null)) } }, h(IconSquare, { size: 14 }))
+        : h('span', { className: 'nm-pf-row-time' }, clockLabel(r.at, rooms.lang)))))))
+}
+
+function Approvals({ t, name, approvals }: { t: Translate; name: string; approvals: { at: number; toolName: string; reason: string; outcome: 'allowed' | 'rejected' }[] }): ReactNode {
+  const [openRow, setOpenRow] = useState<number | null>(null)
+  if (approvals.length === 0) return h('p', { className: 'nm-pf-empty' }, t('pfApprovalsEmpty', { name }))
   return h('div', { className: 'nm-pf-rows' },
-    recent.length > 0 ? h('div', { className: 'nm-pf-day' }, t('pfToday')) : null,
-    list(recent),
-    earlier.length > 0 ? h('div', { className: 'nm-pf-day' }, t('pfEarlier')) : null,
-    list(earlier))
+    h('div', { className: 'nm-pf-day' }, t('pfApprovalLog')),
+    approvals.map((a, i) => h('div', { key: `${a.at}-${i}`, className: 'nm-pf-row nm-pf-approval', onClick: () => setOpenRow(openRow === i ? null : i) },
+      h('span', { className: 'nm-pf-row-icon' }, h(IconShield, { size: 18 })),
+      h('div', { className: 'nm-pf-row-main' },
+        h('div', { className: 'nm-pf-row-title' }, firstWords(a.reason || a.toolName, openRow === i ? 400 : 60)),
+        h('div', { className: 'nm-pf-row-sub' }, `${a.outcome === 'allowed' ? t('pfAllowed') : t('pfDenied')} · ${ago(t, a.at)}`)),
+      h('span', { className: `nm-pf-row-chev${openRow === i ? ' nm-open' : ''}` }, h(IconChevronDown, { size: 16 })))))
+}
+
+function firstWords(text: string, n: number): string {
+  const s = text.replace(/\s+/g, ' ').trim()
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s
+}
+
+function Reminders({ t, name, openSchedules }: { t: Translate; name: string; openSchedules(): void }): ReactNode {
+  const rooms = useRooms()
+  const all: { goal: string; automation: GoalAutomation }[] = []
+  for (const goal of rooms.goals) for (const automation of rooms.automations[goal.id] ?? []) all.push({ goal: goal.title, automation })
+  const once = all.filter((a) => !/^(daily|weekly|cron|every)/.test(a.automation.rule))
+  const recurring = all.filter((a) => /^(daily|weekly|cron|every)/.test(a.automation.rule))
+  const when = (a: GoalAutomation) => {
+    const next = Date.parse(a.next)
+    if (Number.isFinite(next)) return `${dayLabel(t, next, rooms.lang)}, ${clockLabel(next, rooms.lang)}`
+    return a.rule
+  }
+  const row = (entry: { goal: string; automation: GoalAutomation }, icon: ReactNode) => h('div', { key: entry.automation.id, className: 'nm-pf-row' },
+    h('span', { className: 'nm-pf-row-icon' }, icon),
+    h('div', { className: 'nm-pf-row-main' },
+      h('div', { className: 'nm-pf-row-title' }, entry.automation.title || entry.goal),
+      h('div', { className: 'nm-pf-row-sub' }, `${when(entry.automation)}${entry.automation.title ? ` · ${entry.goal}` : ''}`)))
+  if (all.length === 0) {
+    return h('div', { className: 'nm-pf-stack' },
+      h('p', { className: 'nm-pf-empty' }, t('pfRemindersEmpty', { name })),
+      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: openSchedules }, t('pfOpenSchedules')))
+  }
+  return h('div', { className: 'nm-pf-rows' },
+    once.length ? h('div', { className: 'nm-pf-day' }, t('pfRemindersOnce')) : null,
+    once.map((entry) => row(entry, h(IconBell, { size: 18 }))),
+    recurring.length ? h('div', { className: 'nm-pf-day' }, t('pfRemindersDaily')) : null,
+    recurring.map((entry) => row(entry, h(IconAlarm, { size: 18 }))),
+    h('div', { className: 'nm-pf-foot' }, h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: openSchedules }, t('pfOpenSchedules'))))
+}
+
+function Identity({ t, name, onEditName }: { t: Translate; name: string; onEditName(): void }): ReactNode {
+  const rooms = useRooms()
+  const live = useLive()
+  const memoryAt = rooms.memory.reduce((max, m) => Math.max(max, m.at), 0)
+  const stamp = (at: number) => (at ? new Date(at).toLocaleDateString(rooms.lang || undefined, { year: '2-digit', month: '2-digit', day: '2-digit' }) : t('pfDocUntouched'))
+  const openDoc = (doc: 'identity' | 'soul' | 'memory') => { win.openDoc({ kind: 'own', doc }); win.touchRecent(`own:${doc}`, doc === 'identity' ? 'IDENTITY.md' : doc === 'soul' ? 'SOUL.md' : 'MEMORY.md') }
+  return h('div', { className: 'nm-pf-stack' },
+    h('div', { className: 'nm-pf-card' },
+      h('div', { className: 'nm-pf-card-name' }, name),
+      live.profile.description ? h('div', { className: 'nm-pf-card-sub' }, live.profile.description) : null,
+      h('div', { className: 'nm-pf-card-actions' },
+        h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm nm-pill-wide', onClick: () => openDoc('identity') }, h(IconPencil, { size: 14 }), t('pfEdit')),
+        h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: onEditName }, t('pfEditName')))),
+    h('button', { type: 'button', className: 'nm-pf-doc nm-pf-doc-soul', onClick: () => openDoc('soul') },
+      h('div', { className: 'nm-pf-doc-title' }, 'SOUL'),
+      h('div', { className: 'nm-pf-doc-sub' }, t('pfDocOpen')),
+      h('div', { className: 'nm-pf-doc-foot' }, h('span', null, stamp(rooms.docs.soulAt)), h('span', { 'aria-hidden': true }, '♥'))),
+    h('button', { type: 'button', className: 'nm-pf-doc nm-pf-doc-memory', onClick: () => openDoc('memory') },
+      h('div', { className: 'nm-pf-doc-title' }, t('pfMemory')),
+      h('div', { className: 'nm-pf-doc-sub' }, rooms.memory.length ? t('pfMemoryCount', { n: rooms.memory.length }) : t('pfDocOpen')),
+      h('div', { className: 'nm-pf-doc-foot' }, h('span', null, stamp(memoryAt)), h('span', { 'aria-hidden': true }, '♥'))),
+    live.profile.avatar === 'face' ? h('p', { className: 'nm-pf-empty' }, t('pfFaceNote')) : null)
 }
 
 function NameEditor({ t, profile, onDone }: { t: Translate; profile: LiveProfile; onDone(): void }): ReactNode {
