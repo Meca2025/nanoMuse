@@ -11,6 +11,7 @@ import { Avatar } from './Avatar.tsx'
 import { settingsBus } from './bus.ts'
 import { useLive, type LiveHub } from './live.ts'
 import { DEVICES_PANEL } from './panels.ts'
+import { DataRows } from './Memory.tsx'
 import { SignIn } from './SignIn.tsx'
 
 type Phase = 'loading' | 'signedOut' | 'signedIn'
@@ -107,7 +108,9 @@ export function makeCloudSection(t: Translate, part: 'account' | 'data' = 'accou
             h('div', { style: muted }, t('dataPrivacyText'), ' ',
               h('a', { href: a.contribute?.privacyUrl || PRIVACY_URL, target: '_blank', rel: 'noopener noreferrer' }, t('dataPrivacy')))),
           dataControls,
-          error ? h('div', { style: errorStyle }, error) : null)
+          error ? h('div', { style: errorStyle }, error) : null,
+          h('h3', { style: heading }, t('dataLocalTitle')),
+          h(DataRows, { t }))
       }
       return h('section', { style: { ...column, maxWidth: 560 } },
         header,
@@ -130,7 +133,7 @@ export function makeCloudSection(t: Translate, part: 'account' | 'data' = 'accou
         h('div', { style: muted }, t('relay', { baseURL: status.baseURL })))
     }
 
-    if (part === 'data') return h('section', { style: column }, h('div', { style: muted }, t('dataSignedOut')))
+    if (part === 'data') return h('section', { style: { ...column, maxWidth: 560 } }, h('div', { style: muted }, t('dataSignedOut')), h('h3', { style: heading }, t('dataLocalTitle')), h(DataRows, { t }))
     return h('section', { style: column },
       header,
       error ? h('div', { style: errorStyle }, error) : null,

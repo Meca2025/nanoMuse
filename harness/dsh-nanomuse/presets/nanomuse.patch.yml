@@ -188,3 +188,8 @@
           # without one the tools answer that it is not signed in.
           - id: nanomuse-reach
             name: dsh-nanomuse/reach
+          # The rooms from inside a chat: `goal_update`, `feed_post`,
+          # `library_add` (src/rooms-tools.ts) and the prompt context listing
+          # the person's goals. Needs the `nanomuse-rooms` row of the bundle.
+          - id: nanomuse-rooms-tools
+            name: dsh-nanomuse/rooms-tools

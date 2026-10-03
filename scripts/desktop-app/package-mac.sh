@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The macOS packages of the desktop app, from the .app electron-builder left in desktop/app/dist:
+# The macOS packages of nanoMuse Desktop, from the .app electron-builder left in harness/desktop/dist:
 #
 #   scripts/desktop-app/package-mac.sh <arch>          # arm64 | x64
 #
@@ -11,7 +11,7 @@
 #    With the credentials below (the workflow passes the repository secrets of the same names;
 #    docs/desktop.md says how they are made), the bundle is signed with the Developer ID
 #    Application certificate under the hardened runtime, with the entitlements in
-#    desktop/app/resources/entitlements.mac.plist, notarized with notarytool and stapled — then
+#    harness/desktop/resources/entitlements.mac.plist, notarized with notarytool and stapled — then
 #    it opens like any other app:
 #      MAC_CERT_P12_BASE64, MAC_CERT_PASSWORD     the certificate, exported from Keychain Access as .p12
 #      APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_P8
@@ -23,14 +23,13 @@
 # 3. nanoMuse-Desktop-<version>-mac-<arch>.dmg — an APFS image made with `hdiutil` directly.
 #    electron-builder's HFS+ image copied with Finder error -36 on some Macs (0.1.20, 0.1.21).
 #
-# The same script packages nanoMuse Harness (harness/desktop, the desktop built on DeepSeek
-# Harness) with three variables: APP_DIR=harness/desktop APP_NAME="nanoMuse Harness"
-# ARTIFACT=nanoMuse-Harness. Its inner code is the staged dsh under Resources/dsh (Node
-# addons and libraries) besides the runtime.
+# APP_DIR, APP_NAME and ARTIFACT name another app directory, bundle name and file prefix.
+# The app's inner code is the staged dsh under Resources/dsh (Node addons and libraries)
+# besides the runtime.
 set -euo pipefail
 arch="${1:?arch: arm64 | x64}"
 here="$(cd "$(dirname "$0")/../.." && pwd)"
-app_dir="${APP_DIR:-$here/desktop/app}"
+app_dir="${APP_DIR:-$here/harness/desktop}"
 case "$app_dir" in /*) ;; *) app_dir="$here/$app_dir" ;; esac
 app_name="${APP_NAME:-nanoMuse}"
 artifact="${ARTIFACT:-nanoMuse-Desktop}"
@@ -38,7 +37,7 @@ version="$(node -p "require('$app_dir/package.json').version")"
 app="$(ls -d "$app_dir"/dist/mac*/"$app_name".app 2>/dev/null | head -1 || true)"
 if [ ! -d "$app" ]; then
   # electron-builder names the bundle after `executableName` when the config sets one
-  # (nanoMuse Harness builds as nanomuse-harness.app); what people drag into Applications
+  # (nanoMuse Desktop builds as nanomuse-desktop.app); what people drag into Applications
   # should carry the product's name, so the bundle is renamed before it is signed
   found="$(ls -d "$app_dir"/dist/mac*/*.app 2>/dev/null | head -1 || true)"
   if [ -d "$found" ]; then

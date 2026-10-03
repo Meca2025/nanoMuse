@@ -12,26 +12,34 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { closeTopModal } from '@deepseek-ai/dsh-client-ui-primitives'
-import { createElement as h, useEffect, useRef } from 'react'
+import { createElement as h, useEffect, useRef, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { Avatar, BrandName, type Mood } from './Avatar.tsx'
+import { makeAvatarStudio } from './AvatarStudio.tsx'
 import { bridge } from './bridge.ts'
 import { profileBus, settingsBus } from './bus.ts'
 import { makeCapsule } from './Capsule.tsx'
+import { makeLiveStage } from './LiveStage.tsx'
 import { makeCloudSection } from './CloudSection.tsx'
 import { makeDevicesPanel } from './DevicesPanel.tsx'
+import { makeFeedPanel } from './FeedPanel.tsx'
+import { makeGoalsPanel } from './GoalsPanel.tsx'
+import { makeIdeasPanel } from './IdeasPanel.tsx'
+import { makeLibraryPanel } from './LibraryPanel.tsx'
 import { IconPanelLeft, IconPlus } from './icons.tsx'
 import { makeInviteButton } from './Invite.tsx'
 import { useLive } from './live.ts'
 import { en, zh } from './locales.ts'
 import type { ChatActions } from './MuseChats.tsx'
 import { MuseHeader, type UseSessionStatus } from './MuseHeader.tsx'
+import { CONNECTORS_SECTION, DICTATION_SECTION, FILES_SECTION, makeConnectorsSection, makeDictationSection, makeFilesSection, makePermissionsSection, PERMISSIONS_SECTION } from './Pages.tsx'
 import { COMPUTER_SECTION, createShellStore, DATA_SECTION, HELP_SECTION, LEGAL_SECTION, makeGeneralSection, MuseSettings, type MuseSettingsProps, type OnboardingStep, type SectionRow } from './MuseSettings.tsx'
 import { MuseSidebar, type MuseSidebarProps, type PanelMeta } from './MuseSidebar.tsx'
 import { makeOnboarding, type OnboardingOwnerProps } from './Onboarding.tsx'
-import { DEVICES_PANEL, ISSUES_URL } from './panels.ts'
+import { DEVICES_PANEL, FEED_PANEL, GOALS_PANEL, IDEAS_PANEL, ISSUES_URL, LIBRARY_PANEL } from './panels.ts'
 import { getPrefs, recordApproval, subscribePrefs, usePrefs } from './prefs.ts'
 import { makeProfileDrawer } from './ProfileDrawer.tsx'
+import { nav as roomsNav } from './rooms.ts'
 import { makeComputerSection, makeHelpSection, makeLegalSection } from './Sections.tsx'
 import { ensureStyles, setAccent, setMuseMode } from './styles.ts'
 
@@ -283,7 +291,18 @@ export function apply(ctx: ClientContext): void {
       h('button', { type: 'button', className: 'nm-icon-btn', 'aria-label': t('railNew'), title: t('railNew'), onClick: startSession }, h(IconPlus, { size: 18 })))))
   syncPanels()
 
-  // The Devices page behind the rail's Devices icon.
+  // The rooms behind the rail's icons — Feed, Ideas, Goals, Library — and the
+  // Devices page. The rooms send the person to chats through `nav`.
+  roomsNav.openSession = (id) => { workspaces.openSession(id) }
+  roomsNav.showChats = () => { layout.selectPanel(null) }
+  roomsNav.startSession = () => { workspaces.startSession() }
+  const rooms: [string, () => ReactNode][] = [
+    [FEED_PANEL, makeFeedPanel(t)],
+    [IDEAS_PANEL, makeIdeasPanel(t)],
+    [GOALS_PANEL, makeGoalsPanel(t)],
+    [LIBRARY_PANEL, makeLibraryPanel(t)],
+  ]
+  for (const [key, Panel] of rooms) slots.inject('main', () => slots.register({ name: 'main', key, locale: 'nanomuse' }, Panel))
   const DevicesPanel = makeDevicesPanel(t)
   slots.inject('main', () => slots.register({ name: 'main', key: DEVICES_PANEL, locale: 'nanomuse' }, DevicesPanel))
 
@@ -436,6 +455,18 @@ export function apply(ctx: ClientContext): void {
   const DataSection = makeCloudSection(t, 'data')
   slots.inject('settings.section', () =>
     slots.register({ name: 'settings.section', id: DATA_SECTION, order: 32, label: () => t('navData'), locale: 'nanomuse' }, DataSection))
+  const ConnectorsSection = makeConnectorsSection(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: CONNECTORS_SECTION, order: 21, label: () => t('navConnectors'), locale: 'nanomuse' }, ConnectorsSection))
+  const FilesSection = makeFilesSection(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: FILES_SECTION, order: 23, label: () => t('navFiles'), locale: 'nanomuse' }, FilesSection))
+  const DictationSection = makeDictationSection(t, (id) => layout.selectPanel(id))
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: DICTATION_SECTION, order: 24, label: () => t('navDictation'), locale: 'nanomuse' }, DictationSection))
+  const PermissionsSection = makePermissionsSection(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: PERMISSIONS_SECTION, order: 31, label: () => t('navPermissions'), locale: 'nanomuse' }, PermissionsSection))
   const HelpSection = makeHelpSection(t, process.env.NANOMUSE_VERSION ?? '')
   slots.inject('settings.section', () =>
     slots.register({ name: 'settings.section', id: HELP_SECTION, order: 40, label: () => t('navHelp'), locale: 'nanomuse' }, HelpSection))
@@ -447,4 +478,21 @@ export function apply(ctx: ClientContext): void {
   const Capsule = makeCapsule({ t })
   slots.inject('shell.overlay', () =>
     slots.register({ name: 'shell.overlay', id: 'nanomuse.capsule' }, Capsule))
+  // The quick-chat key (the shell's ⌥ Space): a fresh chat with the composer focused.
+  const quickChatOff = bridge()?.onQuickChat?.(() => {
+    layout.selectPanel(null)
+    workspaces.startSession()
+    window.setTimeout(() => (document.querySelector('[contenteditable="true"]') as HTMLElement | null)?.focus(), 200)
+  })
+  if (quickChatOff) ctx.effect(() => quickChatOff, 'nanomuse: quick chat')
+
+  // The avatar studio: a sheet over the window, from the look editor or the agent's draw_new_look.
+  const AvatarStudio = makeAvatarStudio({ t })
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.studio' }, AvatarStudio))
+
+  // The Live stage: the screen the agent is working on, picture-in-picture over the chat.
+  const LiveStage = makeLiveStage({ t, stop })
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.stage' }, LiveStage))
 }

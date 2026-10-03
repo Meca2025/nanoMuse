@@ -1,63 +1,107 @@
 # nanoMuse Desktop
 
-The computer's Muse: a terminal chat with hands on this machine — shell, files,
-browser, a look at the screen — and, through the [hub](hub.md), on every other
-device of the account. Windows, macOS and Linux; one binary, standard-library
-Python inside, no runtime to install.
+The computer's Muse, in a window: nanoMuse built on
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`), laid out
+like the Muse desktop ([desktop-muse.md](desktop-muse.md)), with the account, the face,
+Hands on this computer's screen and Reach to every other device of the account as
+plugins ([harness.md](harness.md)). Windows 10+, macOS 12+ and Linux x64; one
+installer each, nothing to install first — the harness, the nanoMuse bundle and the
+runtime for the hands are inside.
 
-Install and commands: [`desktop/README.md`](../desktop/README.md). Packages
-come out of `scripts/build-desktop.py` and the `desktop` workflow, named
-`nanomuse-desktop-terminal-<version>-…`: `…-windows-x64-setup.exe`,
-`…-macos-arm64.pkg` / `…-macos-x64.pkg`, `…-linux-x64.deb`, plus archives
-with the bare binary.
+| | |
+| --- | --- |
+| Windows | `nanoMuse-Desktop-<version>-win-x64.exe` (NSIS; no certificate, so SmartScreen asks for *Run anyway*) |
+| macOS | `nanoMuse-Desktop-<version>-mac-arm64.dmg` / `-mac-x64.dmg` (and `.zip`); ad-hoc signed unless a release was signed and notarized, then *Open Anyway* once in System Settings → Privacy & Security |
+| Linux | `nanoMuse-Desktop-<version>-linux-x64.AppImage` / `.deb` |
 
-## What it is, and is not
+Every release carries them (`.github/workflows/desktop-app.yml`; `SHA256SUMS-desktop.txt`
+beside them). The code is under [`harness/`](../harness/): the bundle of plugins in
+`harness/dsh-nanomuse`, the Electron shell in `harness/desktop`; how to build it yourself is
+in [harness/README.md](../harness/README.md). Up to 0.1.29 the same installers wrapped the
+Python runtime and the web app in an Electron shell of their own (`desktop/app`) and the
+harness build shipped beside them as *nanoMuse Harness*; from 0.1.30 there is the one
+desktop, and it installs over the old one (same application id).
 
-It is a Muse in a terminal. It signs in to the same nanoMuse Cloud account as
-the phone, thinks with the relay's models (Qwen 3.7 Plus by default, with
-vision, so screenshots can be looked at), and works with the same tool
-vocabulary the hub speaks: `shell`, `files`, `file.get`, `file.put`, `open`,
-`screen`, `notify`, `task`. Its guard (`guard.py`) is the phone's ShellGuard
-ladder in Python: reads and builds run quietly; deleting, sending, paying and
-system commands ask first, with the risk named.
+## What it is
 
-It is not a windowed app. `nanomuse-desktop run --open` opens the web
-console next to it, which is where the devices sit side by side. The windowed
-desktop — the Python runtime with the hub, the Cloud account and hands on this
-computer's screen, the web app in an Electron shell under
-[`desktop/app/`](../desktop/app/) (a window, a tray, a global Stop and the
-stage that shows where the hands click; installers `nanoMuse-Desktop-<v>-…` on
-every release, built by `.github/workflows/desktop-app.yml`) —
-is described in [every-device.md](every-device.md); this binary stays the
-zero-install fallback. `serve` keeps it connected in the background without a
-terminal chat, so the phone can reach the computer while you are away from it.
-A third shape is a preview: nanoMuse as a bundle of plugins for DeepSeek
-Harness Desktop, `nanoMuse-Harness-<v>.tgz` on every release from 0.1.27 —
-[harness/README.md](../harness/README.md), [harness.md](harness.md).
+A dsh Host started by the shell as a child process, showing the harness's web app in a
+window of ours: the rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, the
+hamburger), the chats column with the main chat and the side chats, the face and name
+pinned over the conversation with a live status line and *Stop*, Muse's permission card
+over the harness's approvals, the live stage (the screen the agent is working on,
+picture-in-picture, with a caption and *Take over*), the profile panel with memory,
+Muse's Settings pages (Connectors, Computer use, File system access, Dictation,
+Permissions, Data controls with export and reset), the full-window first run. The agent
+is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-agents, MCP
+— speaking as nanoMuse through the `nanomuse` preset, with:
 
-## Two directions
-
-From the terminal, to the phone: the agent has `device_shell`, `device_files`,
-`device_get`, `device_put`, `device_open`, `device_screen`, `device_notify` and
-`delegate` (a whole task for the other device's Muse). Say what you want; it
-picks the device by name.
-
-From the phone (or the web console), to this computer: incoming `shell`
-commands go through the guard and, when they ask, the approval question is sent
-back to whoever asked — a card on the phone, a card in the console. Incoming
-`task`s run the agent in a conversation of their own; its approvals travel the
-same way. `set approvals allow` stops the questions for this computer's own
-terminal only.
+- **the account**: a phone number or an e-mail and a code (or a password) against
+  [nanoMuse Cloud](cloud.md); the key in dsh's credential store; the account's models as
+  the *nanoMuse Cloud* provider of the harness's own OpenAI-compatible adapter — nothing
+  of ours sits in the model path;
+- **Hands** on this computer: `nanomuse mcp` from the bundled runtime over stdio, the
+  runtime's `computer_screen` and `computer_act` tools with their approvals, so "what is
+  on my screen?" and "open the settings and turn the volume down" work out of the box;
+- **the rooms**: Feed, Ideas, Goals and Library as Muse has them, kept by the host in
+  `nanomuse/rooms.json` and written by the agent in hidden chats (feed and ideas) or
+  chats of their own (goals, with the harness's schedule plugin for their automations;
+  Library creations under `~/nanoMuse/Library`), plus memory — what it remembers about
+  you, read into every chat ([desktop-muse.md](desktop-muse.md#the-rails-other-rooms--feed-ideas-goals-library));
+- **Reach**: this computer on the account's device list over the [hub](hub.md); the
+  tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`,
+  `device_notify` and `delegate` for the phone and the other computers; the phone's
+  `delegate` landing here as a dsh session "From <device>" with its approvals relayed
+  back; remote control (`shell`, `files`, `open`, `screen`) behind a switch.
 
 ## Config and data
 
-`~/.nanomuse/desktop.json` (`$NANOMUSE_HOME` moves it): cloud server, key,
-device id and name, model, language, downloads folder. Files received land in
-`~/Downloads/nanoMuse`. Screenshots use `mss` + Pillow when bundled, else the
-platform's own tool (`screencapture`, PowerShell, `gnome-screenshot` /
-`grim` / `import`).
+`~/.nanomuse/desktop` (`NANOMUSE_DESKTOP_HOME` moves it) is the app's dsh home: the
+profile under `profiles/nanomuse` (the bundle list, the person's own `cordis.patch.yml`
+where Settings and the sign-in write the `nanoMuse Cloud` provider), dsh's credential
+store with the account key, the sessions, and `desktop.log` with the shell's and the
+Host's lines. A home kept by nanoMuse Harness 0.1.28–0.1.29 under `~/.nanomuse/harness`
+is taken over once. `NANOMUSE_CLOUD_URL` points the account at another relay;
+`NANOMUSE_PY` points the preset at another runtime for the hands. The CLI's own `~/.dsh`
+is not touched.
 
-## Build
+## macOS signing
+
+Without an Apple developer certificate the bundle is ad-hoc signed and macOS asks once.
+With the repository secrets `MAC_CERT_P12_BASE64`, `MAC_CERT_PASSWORD`,
+`APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_KEY_P8` and
+(optionally) `APPLE_TEAM_ID`, `scripts/desktop-app/package-mac.sh` signs with the
+Developer ID Application certificate under the hardened runtime
+(`harness/desktop/resources/entitlements.mac.plist`), notarizes with notarytool and
+staples. The certificate is exported from Keychain Access as a `.p12` and base64-encoded;
+the App Store Connect key is the `.p8`'s text.
+
+## The terminal binary
+
+A second shape for machines where a window is in the way: `nanomuse-desktop-terminal`, a
+terminal chat with hands on this machine — shell, files, browser, a look at the screen —
+and, through the hub, on every other device of the account. One binary per platform,
+standard-library Python inside, no runtime to install. Install and commands:
+[`desktop/README.md`](../desktop/README.md). Packages come out of
+`scripts/build-desktop.py` and the `desktop` workflow, named
+`nanomuse-desktop-terminal-<version>-…`: `…-windows-x64-setup.exe`,
+`…-macos-arm64.pkg` / `…-macos-x64.pkg`, `…-linux-x64.deb`, plus archives with the bare
+binary.
+
+It signs in to the same account as the phone and the desktop, thinks with the relay's
+models, and works with the same tool vocabulary the hub speaks: `shell`, `files`,
+`file.get`, `file.put`, `open`, `screen`, `notify`, `task`. Its guard (`guard.py`) is
+the phone's ShellGuard ladder in Python: reads and builds run quietly; deleting, sending,
+paying and system commands ask first, with the risk named. From the terminal, to the
+phone: `device_shell`, `device_files`, `device_get`, `device_put`, `device_open`,
+`device_screen`, `device_notify` and `delegate`. From the phone to this computer: incoming
+`shell` commands go through the guard and, when they ask, the question is sent back to
+whoever asked; incoming `task`s run the agent in a conversation of their own. `serve`
+keeps it connected in the background without a terminal chat.
+
+`~/.nanomuse/desktop.json` (`$NANOMUSE_HOME` moves it) holds its cloud server, key, device
+id and name, model, language and downloads folder; files received land in
+`~/Downloads/nanoMuse`. Screenshots use `mss` + Pillow when bundled, else the platform's
+own tool (`screencapture`, PowerShell, `gnome-screenshot` / `grim` / `import`).
 
 ```
 pip install pyinstaller pillow mss
@@ -65,8 +109,7 @@ python3 scripts/build-desktop.py          # desktop/dist/
 python -m pytest desktop/tests
 ```
 
-The macOS `.pkg` installs `/usr/local/bin/nanomuse-desktop` and a small
-"nanoMuse Desktop.app" that opens it in Terminal; the Windows setup adds the
-folder to `PATH` and a Start-menu entry; the `.deb` installs `/usr/bin/…` and
-a desktop entry. Nothing is signed — the trial builds are for your own
-machines; macOS asks for right-click → Open once, Windows for "Run anyway".
+The macOS `.pkg` installs `/usr/local/bin/nanomuse-desktop` and a small "nanoMuse
+Desktop.app" that opens it in Terminal; the Windows setup adds the folder to `PATH` and
+a Start-menu entry; the `.deb` installs `/usr/bin/…` and a desktop entry. Nothing is
+signed — macOS asks for right-click → Open once, Windows for "Run anyway".

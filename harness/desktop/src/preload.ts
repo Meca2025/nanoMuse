@@ -33,7 +33,29 @@ const bridge = {
   keepAwake: (on: boolean): Promise<void> => ipcRenderer.invoke("nanomuse:keep-awake", on),
   /** Tell the window which theme the page shows, so its base colour matches on resize. */
   setTheme: (theme: "light" | "dark"): Promise<void> => ipcRenderer.invoke("nanomuse:theme", theme),
+  /** App behaviour (open at login, menu bar icon, quick-chat key): the values, the key's name, what this platform can do. */
+  prefs: (): Promise<DesktopPrefs> => ipcRenderer.invoke("nanomuse:prefs"),
+  /** Change some of it; the shell applies it at once and answers with the whole. */
+  setPrefs: (patch: Partial<Pick<DesktopPrefs, "openAtLogin" | "menuBar" | "quickChat">>): Promise<DesktopPrefs> => ipcRenderer.invoke("nanomuse:prefs:set", patch),
+  /** A screenshot of the window to Downloads and the issue page with the build's facts filled in. */
+  reportBug: (): Promise<{ screenshot: string; url: string }> => ipcRenderer.invoke("nanomuse:report-bug"),
+  /** Show a file in the system's file manager. */
+  reveal: (path: string): Promise<void> => ipcRenderer.invoke("nanomuse:reveal", path),
+  /** The quick-chat key was pressed (or the menu bar's New chat): start a chat and focus the composer. */
+  onQuickChat: (listener: () => void): (() => void) => {
+    const handler = () => listener();
+    ipcRenderer.on("nanomuse:quick-chat", handler);
+    return () => ipcRenderer.off("nanomuse:quick-chat", handler);
+  },
 };
+
+export interface DesktopPrefs {
+  openAtLogin: boolean;
+  menuBar: boolean;
+  quickChat: boolean;
+  quickChatKey: string;
+  supports: { openAtLogin: boolean; menuBar: boolean; quickChat: boolean };
+}
 
 export type NanomuseHarnessBridge = typeof bridge;
 

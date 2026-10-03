@@ -39,7 +39,7 @@ import z from '@deepseek-ai/schemastery'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
 import { HubClient, HubError, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
-import { Relay, RelayError, type Account, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
+import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner } from './task.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -124,14 +124,54 @@ export interface Notice {
   at: number
 }
 
+/** The last thing the hands did, for the stage's caption and cursor marker. */
+export interface StageAction {
+  /** `click`, `type`, `key`, `scroll`, `drag`, `open_app`, `wait`, `look`… */
+  kind: string
+  label: string
+  text: string
+  /** Pixels of the frame the action was aimed at; -1 when it had no point. */
+  x: number
+  y: number
+  at: number
+}
+
+/**
+ * The Live stage: the latest screenshot the agent took while using a screen —
+ * this computer's through the hands, or another device's through Reach — so
+ * the person can watch it work. The bytes are served separately (`/stage/frame`).
+ */
+export interface StageState {
+  /** 0 before any frame; grows with each new one (the frame URL's cache key). */
+  seq: number
+  at: number
+  source: 'computer' | 'device'
+  /** The other device's name; empty for this computer. */
+  device: string
+  width: number
+  height: number
+  /** What is in front on that screen, as the hands reported it. */
+  title: string
+  action: StageAction | null
+  sessionId: string
+}
+
 /** The live state the browser half mirrors over `/events`. */
 export interface LiveState {
   cloud: { signedIn: boolean; hint: string }
   profile: Profile
   hub: HubState
   hands: { calls: HandsCall[]; steps: number }
+  stage: StageState
   notices: Notice[]
 }
+
+/** How long after the last hands call the stage keeps its frame. */
+const STAGE_REST_MS = 10 * 60_000
+/** Four candidates and four poses (the idle still is the candidate itself): what a new face costs. */
+const STUDIO_PICTURES = 8
+
+const NO_STAGE: StageState = { seq: 0, at: 0, source: 'computer', device: '', width: 0, height: 0, title: '', action: null, sessionId: '' }
 
 interface State {
   account?: Account
@@ -161,11 +201,15 @@ export default class NanomuseCloud extends Service {
   private state: State = {}
   private busy: Promise<unknown> = Promise.resolve()
   private readonly streams = new Set<ServerResponse>()
+  private readonly changeListeners = new Set<() => void>()
   private readonly calls = new Map<string, HandsCall>()
   private steps = 0
   private lastCallAt = 0
   private notices: Notice[] = []
   private noticeSeq = 0
+  private stage: StageState = NO_STAGE
+  private frame: { seq: number; bytes: Buffer; mime: string } | undefined
+  private stageTimer: NodeJS.Timeout | undefined
   private signedInCache = false
   /** Tasks from other devices, once the session API is up. */
   private tasks: TaskRunner | undefined
@@ -256,9 +300,14 @@ export default class NanomuseCloud extends Service {
     this.ctx.inject(['tools'], (ctx) => {
       ctx.on('tools/execute', async (exec, next) => {
         if (!isHandsTool(exec.name)) return next()
-        this.began(exec.callId, exec.name, exec.arguments, exec.agent?.session.id ?? '')
+        const sessionId = exec.agent?.session.id ?? ''
+        this.began(exec.callId, exec.name, exec.arguments, sessionId)
+        if (exec.name === 'mcp__nanomuse__computer_act') this.acted(stageAction(exec.arguments), sessionId)
+        else if (exec.name === 'mcp__nanomuse__computer_screen') this.acted({ kind: 'look', label: '', text: '', x: -1, y: -1, at: Date.now() }, sessionId)
         try {
-          return await next()
+          const result = await next()
+          if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId)
+          return result
         } finally {
           this.ended(exec.callId)
         }
@@ -313,6 +362,7 @@ export default class NanomuseCloud extends Service {
       profile: this.profile.current(),
       hub: this.hubState(),
       hands: { calls: [...this.calls.values()], steps: this.steps },
+      stage: this.stage,
       notices: this.notices,
     }
   }
@@ -381,6 +431,66 @@ export default class NanomuseCloud extends Service {
       } else {
         await this.profile.wearLocal({ ...current, ...write, rev: current.rev })
       }
+      this.broadcast()
+      return this.profile.current()
+    })
+  }
+
+  // ---- the avatar studio: the pictures through the relay, the face onto the account ------
+
+  /** The account's image model, as the relay lists it (the recommended one first). */
+  private imageModel(): string {
+    const models = (this.state.models ?? []).filter((m) => m.kind === 'image')
+    const pick = models.find((m) => m.recommended) ?? models[0]
+    return pick ? pick.id : ''
+  }
+
+  private async studioToken(): Promise<string> {
+    const token = await this.token()
+    if (!token || !this.state.account) throw new RelayError(401, 'signed_out', 'Sign in to draw a face')
+    if (!this.imageModel()) throw new RelayError(409, 'no_image_model', 'The account has no image model to draw with')
+    return token
+  }
+
+  /** What four candidates and four poses would cost today. */
+  async studioEstimate(): Promise<Estimate> {
+    const token = await this.studioToken()
+    return this.relay.estimate(token, STUDIO_PICTURES)
+  }
+
+  /** One candidate, drawn from the words; PNG bytes as the model gave them. */
+  async studioDraw(prompt: string): Promise<Buffer> {
+    const token = await this.studioToken()
+    return this.relay.generateImage(token, this.imageModel(), prompt)
+  }
+
+  /** One pose of the chosen candidate. */
+  async studioPose(image: Buffer, prompt: string): Promise<Buffer> {
+    const token = await this.studioToken()
+    return this.relay.editImage(token, this.imageModel(), image, prompt)
+  }
+
+  /**
+   * Wear a face drawn here: the stills go to the account (`PUT /v1/me/profile` with the
+   * `face` map), then the profile is pulled so the pictures land under `faces/<id>/`
+   * and every device of the account hears the hub's `profile` frame.
+   */
+  wearFace(description: string, style: string, face: Record<string, string>): Promise<Profile> {
+    return this.serialize(async () => {
+      const token = await this.token()
+      if (!token || !this.state.account) throw new RelayError(401, 'signed_out', 'Sign in to wear a drawn face')
+      const current = this.profile.current()
+      const write: ProfileWrite = {
+        name: current.name || 'nanoMuse',
+        avatar: 'face',
+        emoji: '',
+        color: current.color,
+        style: style.slice(0, 20),
+        description: description.slice(0, 200),
+        face,
+      }
+      await this.relay.putProfile(token, write, this.deviceName())
+      await this.profile.pull(token, true)
       this.broadcast()
       return this.profile.current()
     })
@@ -594,6 +704,67 @@ export default class NanomuseCloud extends Service {
       this.lastCallAt = Date.now()
       this.broadcast()
     }
+    // the stage empties itself a while after the hands rest
+    if (this.stageTimer) clearTimeout(this.stageTimer)
+    this.stageTimer = setTimeout(() => {
+      this.stageTimer = undefined
+      if (this.calls.size === 0 && Date.now() - this.lastCallAt >= STAGE_REST_MS - 1000) this.clearStage()
+    }, STAGE_REST_MS)
+    this.stageTimer.unref?.()
+  }
+
+  // -- the Live stage -------------------------------------------------------------------
+
+  /** A frame of a screen the agent is working on; `meta.device` names another device, else it is this computer's. */
+  stageFrame(bytes: Buffer, mime: string, meta: { device?: string; width?: number; height?: number; title?: string; sessionId: string }): void {
+    if (bytes.length === 0 || bytes.length > 12 * 1024 * 1024) return
+    const seq = (this.frame?.seq ?? 0) + 1
+    this.frame = { seq, bytes, mime }
+    const sameScreen = this.stage.source === (meta.device ? 'device' : 'computer') && this.stage.device === (meta.device ?? '')
+    this.stage = {
+      seq,
+      at: Date.now(),
+      source: meta.device ? 'device' : 'computer',
+      device: meta.device ?? '',
+      width: meta.width ?? 0,
+      height: meta.height ?? 0,
+      title: (meta.title ?? '').slice(0, 120),
+      // an action aimed at another screen does not belong on this frame
+      action: sameScreen ? this.stage.action : null,
+      sessionId: meta.sessionId,
+    }
+    this.broadcast()
+  }
+
+  /** What the hands are about to do on this computer's screen. */
+  private acted(action: StageAction, sessionId: string): void {
+    this.stage = { ...this.stage, action, sessionId: sessionId || this.stage.sessionId }
+    this.broadcast()
+  }
+
+  /** The screenshot and the words that came back from `computer_screen` / `computer_act` (an MCP result). */
+  private frameFromMcp(value: unknown, sessionId: string): void {
+    const content = (value as { content?: unknown[] } | undefined)?.content
+    if (!Array.isArray(content)) return
+    let image: { data: string; mime: string } | undefined
+    let text = ''
+    for (const block of content) {
+      if (!block || typeof block !== 'object') continue
+      const b = block as { type?: unknown; data?: unknown; mimeType?: unknown; text?: unknown }
+      if (b.type === 'image' && typeof b.data === 'string' && !image) image = { data: b.data, mime: typeof b.mimeType === 'string' ? b.mimeType : 'image/png' }
+      else if (b.type === 'text' && typeof b.text === 'string') text += (text ? '\n' : '') + b.text
+    }
+    if (!image) return
+    const head = screenHead(text)
+    this.stageFrame(Buffer.from(image.data, 'base64'), image.mime, { ...head, sessionId })
+  }
+
+  /** The agent has stopped using that screen for a while: the stage can go. */
+  private clearStage(): void {
+    if (this.stage.seq === 0) return
+    this.stage = NO_STAGE
+    this.frame = undefined
+    this.broadcast()
   }
 
   private notice(kind: Notice['kind'], from: string, title: string, text: string, action?: string): void {
@@ -683,7 +854,22 @@ export default class NanomuseCloud extends Service {
 
   // -- the loopback API -------------------------------------------------------------
 
+  /** Called whenever the live state changes (sign-in, profile, hub, devices); for other services. */
+  onChange(listener: () => void): () => void {
+    this.changeListeners.add(listener)
+    return () => {
+      this.changeListeners.delete(listener)
+    }
+  }
+
   private broadcast(): void {
+    for (const listener of this.changeListeners) {
+      try {
+        listener()
+      } catch {
+        // a listener's problem is not ours
+      }
+    }
     if (this.streams.size === 0) return
     const data = `data: ${JSON.stringify(this.live())}\n\n`
     for (const res of this.streams) {
@@ -722,6 +908,17 @@ export default class NanomuseCloud extends Service {
       if (req.method === 'GET' && route === '/status') return send(res, 200, await this.status())
       if (req.method === 'GET' && route === '/events') return this.stream(req, res)
       if (req.method === 'GET' && route === '/live') return send(res, 200, this.live())
+      if (req.method === 'GET' && route === '/stage/frame') {
+        const frame = this.frame
+        if (!frame) return send(res, 404, { error: { code: 'no_frame', message: 'Nothing on the stage' } })
+        res.writeHead(200, { 'content-type': frame.mime, 'content-length': frame.bytes.length, 'cache-control': 'private, max-age=600' })
+        res.end(frame.bytes)
+        return
+      }
+      if (req.method === 'POST' && route === '/stage/clear') {
+        this.clearStage()
+        return send(res, 204)
+      }
       if (req.method === 'POST' && route === '/code') {
         const body = await json(req)
         await this.requestCode(String(body.identifier ?? ''))
@@ -749,6 +946,25 @@ export default class NanomuseCloud extends Service {
         return send(res, 200, await this.writeProfile(patch))
       }
       if (req.method === 'POST' && route === '/refresh') return send(res, 200, await this.refresh())
+      if (req.method === 'GET' && route === '/studio/estimate') return send(res, 200, await this.studioEstimate())
+      if (req.method === 'POST' && route === '/studio/draw') {
+        const body = await json(req)
+        const png = await this.studioDraw(String(body.prompt ?? '').slice(0, 2000))
+        return send(res, 200, { image: png.toString('base64') })
+      }
+      if (req.method === 'POST' && route === '/studio/pose') {
+        const body = await json(req, 8 * 1024 * 1024)
+        const image = Buffer.from(String(body.image ?? ''), 'base64')
+        if (!image.length) return send(res, 400, { error: { code: 'bad_request', message: 'image is the base64 PNG to pose' } })
+        const png = await this.studioPose(image, String(body.prompt ?? '').slice(0, 2000))
+        return send(res, 200, { image: png.toString('base64') })
+      }
+      if (req.method === 'POST' && route === '/studio/wear') {
+        const body = await json(req, 4 * 1024 * 1024)
+        const face = body.face as Record<string, string> | undefined
+        if (!face || typeof face !== 'object' || typeof face.idle !== 'string') return send(res, 400, { error: { code: 'bad_request', message: 'face is a {mood: base64 WebP} map with idle' } })
+        return send(res, 200, await this.wearFace(String(body.description ?? ''), String(body.style ?? 'muse'), face))
+      }
       if (req.method === 'POST' && route === '/sign-out') return send(res, 200, await this.signOut())
       if (req.method === 'POST' && route === '/data/contribute') {
         const body = await json(req)
@@ -799,6 +1015,40 @@ export function dshHome(): string {
 }
 
 /** The few arguments the capsule shows, as short strings. */
+/** The hands' arguments as the stage shows them: what kind of step, aimed where. */
+export function stageAction(args: unknown): StageAction {
+  const a = (args && typeof args === 'object' ? args : {}) as Record<string, unknown>
+  const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : -1)
+  const kind = typeof a.action === 'string' ? a.action : 'act'
+  const keys = Array.isArray(a.keys) ? a.keys.filter((k): k is string => typeof k === 'string').join('+') : ''
+  const text = kind === 'key' ? keys : kind === 'open_app' ? String(a.app ?? '') : typeof a.text === 'string' ? a.text : ''
+  return {
+    kind,
+    label: typeof a.label === 'string' ? a.label.replace(/\s+/g, ' ').trim().slice(0, 80) : '',
+    text: text.replace(/\s+/g, ' ').trim().slice(0, 80),
+    x: num(a.x),
+    y: num(a.y),
+    at: Date.now(),
+  }
+}
+
+/** The first line of what `computer_screen` says: `<window in front> · <WxH> · …` → title and size. */
+export function screenHead(text: string): { title: string; width: number; height: number } {
+  const line = text.split('\n').find((l) => l.trim()) ?? ''
+  const parts = line.split(' · ').map((p) => p.trim())
+  let width = 0
+  let height = 0
+  const rest: string[] = []
+  for (const part of parts) {
+    const m = /^(\d{2,5})[×x](\d{2,5})$/.exec(part)
+    if (m) {
+      width = Number(m[1])
+      height = Number(m[2])
+    } else if (!/^keyboard (shown|hidden)$/.test(part)) rest.push(part)
+  }
+  return { title: (rest[0] ?? '').slice(0, 120), width, height }
+}
+
 export function pickArgs(args: unknown): Record<string, string> {
   const out: Record<string, string> = {}
   if (!args || typeof args !== 'object') return out
@@ -822,7 +1072,7 @@ function sameModels(a: RelayModel[], b: RelayModel[]): boolean {
 }
 
 /** A browser on another origin cannot sign this device in or out. */
-function sameOrigin(req: IncomingMessage): boolean {
+export function sameOrigin(req: IncomingMessage): boolean {
   const origin = req.headers.origin
   const site = req.headers['sec-fetch-site']
   if (typeof site === 'string' && site !== 'same-origin' && site !== 'none') return false
@@ -831,13 +1081,14 @@ function sameOrigin(req: IncomingMessage): boolean {
   return typeof host === 'string' && (origin === `http://${host}` || origin === `https://${host}`)
 }
 
-async function json(req: IncomingMessage): Promise<Record<string, unknown>> {
+/** The request body as an object; empty when there is none. */
+export async function json(req: IncomingMessage, limit = 64 * 1024): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
     const buffer = chunk as Buffer
     size += buffer.length
-    if (size > 64 * 1024) throw new RelayError(413, 'too_large', 'Request body too large')
+    if (size > limit) throw new RelayError(413, 'too_large', 'Request body too large')
     chunks.push(buffer)
   }
   if (chunks.length === 0) return {}
@@ -849,7 +1100,8 @@ async function json(req: IncomingMessage): Promise<Record<string, unknown>> {
   }
 }
 
-function send(res: ServerResponse, status: number, body?: unknown): void {
+/** A JSON reply, or an empty one for 204. */
+export function send(res: ServerResponse, status: number, body?: unknown): void {
   if (body === undefined) {
     res.writeHead(status, { 'cache-control': 'no-store' }).end()
     return
@@ -857,6 +1109,6 @@ function send(res: ServerResponse, status: number, body?: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(body))
 }
 
-function message(error: unknown): string {
+export function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }

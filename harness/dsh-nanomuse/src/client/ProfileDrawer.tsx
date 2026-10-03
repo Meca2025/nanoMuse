@@ -13,6 +13,8 @@ import { call, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { profileBus, useProfileOpen } from './bus.ts'
 import { IconBrain, IconCheck, IconClock, IconClose, IconList, IconPencil, IconShield } from './icons.tsx'
+import { studioBus } from './AvatarStudio.tsx'
+import { ImportMemorySheet, MemoryList } from './Memory.tsx'
 import { useLive, type LiveProfile } from './live.ts'
 import type { ChatListState, ChatStatus } from './MuseChats.tsx'
 import { usePrefs } from './prefs.ts'
@@ -57,6 +59,7 @@ function Drawer({ t, openSchedules, useSessions, useSessionStatus }: ProfileDraw
   const live = useLive()
   const prefs = usePrefs()
   const [tab, setTab] = useState<Tab>('activity')
+  const [importing, setImporting] = useState(false)
   const [editing, setEditing] = useState<'none' | 'name' | 'look'>('none')
   const [menu, setMenu] = useState(false)
   const panel = useRef<HTMLDivElement>(null)
@@ -109,13 +112,15 @@ function Drawer({ t, openSchedules, useSessions, useSessionStatus }: ProfileDraw
   } else {
     body = h('div', { className: 'nm-pf-stack' },
       h('p', { className: 'nm-pf-empty' }, t('pfMemoryText', { name })),
+      h(MemoryList, { t, onImport: () => setImporting(true) }),
       live.profile.description
         ? h('div', { className: 'nm-pf-row' },
             h('div', { className: 'nm-pf-row-main' },
               h('div', { className: 'nm-pf-row-title' }, t('pfDescription')),
               h('div', { className: 'nm-pf-row-sub nm-wrap' }, live.profile.description)))
         : null,
-      live.profile.avatar === 'face' ? h('p', { className: 'nm-pf-empty' }, t('pfFaceNote')) : null)
+      live.profile.avatar === 'face' ? h('p', { className: 'nm-pf-empty' }, t('pfFaceNote')) : null,
+      importing ? h(ImportMemorySheet, { t, onClose: () => setImporting(false) }) : null)
   }
 
   return h('aside', { ref: panel, tabIndex: -1, className: 'nm-pf', role: 'complementary', 'aria-label': name },
@@ -213,7 +218,8 @@ function LookEditor({ t, profile, onDone }: { t: Translate; profile: LiveProfile
     h('div', { className: 'nm-pf-preview' }, h(Avatar, { size: 72, profile: preview })),
     h('div', { className: 'nm-seg', role: 'radiogroup' },
       h('button', { type: 'button', role: 'radio', 'aria-checked': avatar === 'dragon', className: `nm-seg-btn nm-seg-text${avatar === 'dragon' ? ' nm-active' : ''}`, onClick: () => setAvatar('dragon') }, t('lookDragon')),
-      h('button', { type: 'button', role: 'radio', 'aria-checked': avatar === 'emoji', className: `nm-seg-btn nm-seg-text${avatar === 'emoji' ? ' nm-active' : ''}`, onClick: () => setAvatar('emoji') }, t('lookEmoji'))),
+      h('button', { type: 'button', role: 'radio', 'aria-checked': avatar === 'emoji', className: `nm-seg-btn nm-seg-text${avatar === 'emoji' ? ' nm-active' : ''}`, onClick: () => setAvatar('emoji') }, t('lookEmoji')),
+      h('button', { type: 'button', role: 'radio', 'aria-checked': false, className: 'nm-seg-btn nm-seg-text', onClick: () => { onDone(); profileBus.close(); studioBus.open?.(profile.description || '', profile.style || 'muse') } }, t('lookDraw'))),
     avatar === 'emoji'
       ? h('div', { className: 'nm-pf-stack' },
           h('label', { className: 'nm-pf-label' }, t('pfEmoji')),

@@ -96,7 +96,7 @@ adds the hub, the Cloud account and the hands to it.
 
 ```
    nanomuse serve  ─ FastAPI + WebSocket, 127.0.0.1:8787 ─┬─ web/ (React) in a browser or on the phone
-      │ MuseAgent · Sentinel · tools                        ├─ desktop/app (Electron window, tray, stage overlay)
+      │ MuseAgent · Sentinel · tools                        ├─ nanomuse mcp → nanoMuse Desktop (harness/, on DeepSeek Harness)
       │ nanomuse/hub  ── wss://…/v1/hub ── the other devices └─ nanomuse chat (terminal)
       │ nanomuse/computer ── mss + pyautogui: the screen as a hand
       └ nanomuse/cloud ── the nanoMuse Cloud account (e-mail code → key → models + hub)
@@ -115,25 +115,16 @@ adds the hub, the Cloud account and the hands to it.
   the approval card's tiers and *remember* pills, the Hands card with Stop,
   Settings → Hands, the Cloud sign-in in the first run and under Connections,
   the dragon as the default face. Built into `nanomuse/server/static/`.
-- **Window** (`desktop/app/`): an Electron shell in the layout OpenCode v2's
-  desktop uses (electron-vite, a main process that starts or attaches to the
-  local service and opens the app), plus what a browser tab cannot do: a tray
-  icon, native notifications, the **stage** — a transparent, click-through,
-  always-on-top window that draws the ring and the ripple where the hands are
-  about to click (UI-TARS-desktop's ScreenMarker, the way `HandsStage` redrew
-  it on Android) — and the global shortcuts: Stop (⌘⇧Esc / Ctrl+Shift+Esc),
-  the window (⌘⇧M / Ctrl+Shift+M) and quick chat (⌥ Space on a Mac,
-  Ctrl+Shift+Space elsewhere: the window up, the cursor in the composer).
-  Settings → *Desktop app* has *Start with the computer* and lists the
-  shortcuts; the tray icon shows what the hands are doing and has Stop, and
-  closing the window keeps the agent running. On a wide window the web app lays
-  itself out the way Muse's desktop does — a rail of icons with the agent on
-  top, the chats beside it while the chat is open, the content in the middle
-  with the agent's face and status pinned over it — and the developer side
-  (the Coding screen, the runtime's address) stays behind one switch in
-  Settings → *Developer*. Packaged since 0.1.19:
-  `nanoMuse-Desktop-<version>-…` installers for Windows, macOS and Linux on every
-  release ([desktop.md](desktop.md)).
+- **Window**: from 0.1.30 the window is [nanoMuse Desktop](desktop.md) on
+  DeepSeek Harness (`harness/`): the harness's Host and web app in an Electron
+  shell of ours, nanoMuse's account, face, Hands and Reach as plugins, and this
+  runtime bundled for the hands (`nanomuse mcp` over stdio). The Electron shell
+  around this runtime and the web app (`desktop/app`, 0.1.19–0.1.29) — the
+  tray, the transparent stage window that drew the ring where the hands were
+  about to click, the global Stop and quick-chat shortcuts, *Start with the
+  computer* — is retired; those come back on the harness's seams
+  ([harness.md](harness.md), phase 7). The web app still lays itself out the
+  Muse way on a wide window for anyone who opens `nanomuse serve` in a browser.
 - **The standard-library binary** (`desktop/nanomuse_desktop`) stays as the
   zero-install fallback for a machine without Python; its hub code is the
   origin of `nanomuse/hub`. In time its terminal becomes a client of the
@@ -264,18 +255,16 @@ env -u OPENAI_API_KEY -u DASHSCOPE_API_KEY -u ANTHROPIC_API_KEY -u OPENAI_BASE_U
 
 # 3. sign both in with the same e-mail in the first run (the code is in relay.log:
 #    grep -i code /tmp/nm-dev/cloud/relay.log), pick "Use the Cloud model" on each.
-# 4. the window over Desk A:
-cd desktop/app && npm install && npm run build && \
-  NANOMUSE_PORT=8799 NANOMUSE_HOME=/tmp/nm-dev/a/home npx electron out/main/index.js
+# 4. (0.1.19–0.1.29) the Electron window over Desk A came from desktop/app; now open
+#    http://127.0.0.1:8799/ in a browser, or sign nanoMuse Desktop in as a third device.
 ```
 
 Then on Desk A: *Devices* shows Laptop B online; *Ask* (or the chip under the
 chats) opens a chat *on Laptop B*; a task typed there runs on B, its tool
 chips and approval cards appear in A with the device pill, an approval decided
 in A closes the card on both sides, and B's answer lands in A's chat. Swap the
-ports and the same happens the other way. `npm run stage-demo` in
-`desktop/app/` plays a scripted hands run into the stage without moving the
-real mouse. Stop everything with `ss -ltnp | grep ':879'` and `kill`.
+ports and the same happens the other way. Stop everything with
+`ss -ltnp | grep ':879'` and `kill`.
 
 ## The phone, in 0.1.19
 

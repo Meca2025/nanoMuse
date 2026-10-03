@@ -15,17 +15,17 @@ import { createElement as h, useCallback, useEffect, useId, useRef, useState, us
 import { createPortal } from 'react-dom'
 import { call, type Translate } from './api.ts'
 import { settingsBus } from './bus.ts'
-import { IconArchive, IconClose, IconCpu, IconDatabase, IconDevices, IconHand, IconHelp, IconLogOut, IconPuzzle, IconScale, IconSettings, IconShield, IconSliders, IconSparkle, IconUser } from './icons.tsx'
+import { IconArchive, IconClose, IconCpu, IconDatabase, IconDevices, IconFolder, IconHand, IconHelp, IconLink, IconLogOut, IconMic, IconPuzzle, IconScale, IconSettings, IconShield, IconSliders, IconSparkle, IconUser } from './icons.tsx'
 import { useLive } from './live.ts'
 import type { RenderSlot } from './MuseSidebar.tsx'
-import { DeveloperRows } from './Sections.tsx'
+import { AppBehaviorRows, DeveloperRows } from './Sections.tsx'
 
 /** The pages that make up the everyday group, in Muse's order; the rest are Advanced. */
 export const COMPUTER_SECTION = 'nanomuse-computer'
 export const DATA_SECTION = 'nanomuse-data'
 export const HELP_SECTION = 'nanomuse-help'
 export const LEGAL_SECTION = 'nanomuse-legal'
-const PRIMARY: readonly string[] = ['general', 'nanomuse-cloud', 'models', 'agent-presets', COMPUTER_SECTION, 'nanomuse-devices', DATA_SECTION, HELP_SECTION, LEGAL_SECTION]
+const PRIMARY: readonly string[] = ['general', 'nanomuse-cloud', 'models', 'agent-presets', 'nanomuse-connectors', COMPUTER_SECTION, 'nanomuse-files', 'nanomuse-dictation', 'nanomuse-devices', 'nanomuse-permissions', DATA_SECTION, HELP_SECTION, LEGAL_SECTION]
 
 export interface SectionRow {
   id: string
@@ -76,6 +76,10 @@ function navIcon(id: string): ReactNode {
     case 'agent-presets': return h(IconSparkle, { size: 16 })
     case 'nanomuse-devices': return h(IconDevices, { size: 16 })
     case COMPUTER_SECTION: return h(IconHand, { size: 16 })
+    case 'nanomuse-connectors': return h(IconLink, { size: 16 })
+    case 'nanomuse-files': return h(IconFolder, { size: 16 })
+    case 'nanomuse-dictation': return h(IconMic, { size: 16 })
+    case 'nanomuse-permissions': return h(IconShield, { size: 16 })
     case DATA_SECTION: return h(IconShield, { size: 16 })
     case HELP_SECTION: return h(IconHelp, { size: 16 })
     case LEGAL_SECTION: return h(IconScale, { size: 16 })
@@ -219,6 +223,7 @@ export function makeGeneralSection(t: Translate, version: string) {
         h('div', { className: 'nm-row-main' },
           h('span', { className: 'nm-row-title' }, t('versionTitle')),
           h('span', { className: 'nm-row-sub' }, t('versionLine', { version })))),
+      h(AppBehaviorRows, { t }),
       h(DeveloperRows, { t }))
   }
 }

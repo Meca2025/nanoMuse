@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Build the runtime the desktop app carries: a one-folder PyInstaller build of `nanomuse`
-(serve, chat, the hub, this computer's hands) at desktop/app/runtime/, where electron-builder
-picks it up as an extra resource.
+"""Build the runtime nanoMuse Desktop carries for the hands: a one-folder PyInstaller build of
+`nanomuse` (serve, chat, the hub, this computer's screen and hands — `nanomuse mcp` is what the
+desktop's preset points at) at harness/desktop/runtime/, where electron-builder picks it up as
+an extra resource.
 
     python scripts/desktop-app/build-runtime.py            # from a venv with .[hands] and pyinstaller
     python scripts/desktop-app/build-runtime.py --check    # then start it once and ask /api/health
-    python scripts/desktop-app/build-runtime.py --target harness/desktop/runtime   # for nanoMuse Harness
+    python scripts/desktop-app/build-runtime.py --target build/runtime   # somewhere else
 
 Needs: the repository's Python environment with `pip install -e ".[hands]" pyinstaller`.
 The web app must already be built into nanomuse/server/static (it is committed).
@@ -27,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SPEC = ROOT / "scripts" / "desktop-app" / "nanomuse_runtime.spec"
 WORK = ROOT / "build" / "runtime-pyi"
 DIST = ROOT / "build" / "runtime-dist"
-TARGET = ROOT / "desktop" / "app" / "runtime"
+TARGET = ROOT / "harness" / "desktop" / "runtime"
 
 
 def run(*cmd: str, **kw) -> None:
@@ -136,7 +137,7 @@ def main() -> None:
     ap.add_argument(
         "--target",
         default=str(TARGET),
-        help="where the built runtime goes (default desktop/app/runtime; nanoMuse Harness uses harness/desktop/runtime)",
+        help="where the built runtime goes (default harness/desktop/runtime)",
     )
     args = ap.parse_args()
     target = Path(args.target)

@@ -6,9 +6,9 @@
  * acknowledgements, the policies). Plus the Developer rows the General page
  * ends with: the switch that brings the harness's own controls back.
  */
-import { createElement as h, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { createElement as h, Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
-import { bridge, gatedPermissions, openLink, type PermissionKind, type PermissionState } from './bridge.ts'
+import { bridge, gatedPermissions, keyLabel, openLink, type DesktopPrefs, type PermissionKind, type PermissionState } from './bridge.ts'
 import { IconBug, IconCheck, IconChevronRight, IconFile, IconLink, IconScale, IconShield } from './icons.tsx'
 import { useLive } from './live.ts'
 import { ISSUES_URL } from './panels.ts'
@@ -132,4 +132,32 @@ export function DeveloperRows({ t }: { t: Translate }): ReactNode {
         h('span', { className: 'nm-row-title' }, t('stDeveloper')),
         h('span', { className: 'nm-row-sub nm-wrap' }, t('stShowHarness'))),
       h(Switch, { checked: prefs.showHarness, label: t('stShowHarness'), onChange: (next) => setPrefs({ showHarness: next }) })))
+}
+
+/** Muse's App behavior: open at login, the menu bar icon, the quick-chat key — the shell's switches, when there is a shell. */
+export function AppBehaviorRows({ t }: { t: Translate }): ReactNode {
+  const b = bridge()
+  const [prefs, setDesktopPrefs] = useState<DesktopPrefs | undefined>()
+  useEffect(() => {
+    void b?.prefs?.().then(setDesktopPrefs).catch(() => undefined)
+  }, [b])
+  if (!b?.prefs || !prefs) return null
+  const set = (patch: Partial<Pick<DesktopPrefs, 'openAtLogin' | 'menuBar' | 'quickChat'>>) => {
+    setDesktopPrefs({ ...prefs, ...patch })
+    void b.setPrefs?.(patch).then(setDesktopPrefs).catch(() => undefined)
+  }
+  const row = (key: 'openAtLogin' | 'menuBar' | 'quickChat', title: string, sub: string) =>
+    prefs.supports[key]
+      ? h('div', { key, className: 'nm-row' },
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, title),
+            h('span', { className: 'nm-row-sub nm-wrap' }, sub)),
+          h(Switch, { checked: prefs[key], label: title, onChange: (next) => set({ [key]: next }) }))
+      : null
+  return h('div', { className: 'nm-section nm-section-inline' },
+    h('h2', null, t('abTitle')),
+    h('div', { className: 'nm-card' },
+    row('openAtLogin', t('abOpenAtLogin'), t('abOpenAtLoginSub')),
+    row('menuBar', b.platform === 'darwin' ? t('abMenuBar') : t('abTray'), t('abMenuBarSub')),
+    row('quickChat', t('abQuickChat', { key: keyLabel(prefs.quickChatKey, b.platform) }), t('abQuickChatSub'))))
 }

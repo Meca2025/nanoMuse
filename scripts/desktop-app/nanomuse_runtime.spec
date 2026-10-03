@@ -1,11 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for the runtime the desktop app carries: one folder with a `nanomuse`
+"""PyInstaller spec for the runtime nanoMuse Desktop carries: one folder with a `nanomuse`
 executable that serves the app, talks to the hub and moves this computer's hands.
 
     python -m PyInstaller --noconfirm --clean scripts/desktop-app/nanomuse_runtime.spec
 
 Built by scripts/desktop-app/build-runtime.py, which puts the folder where electron-builder
-picks it up (desktop/app/runtime/). One-folder rather than one-file: a one-file build
+picks it up (harness/desktop/runtime/). One-folder rather than one-file: a one-file build
 unpacks itself on every start, which is slow for a server that starts with the app.
 """
 

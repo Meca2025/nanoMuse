@@ -1,14 +1,16 @@
 # nanoMuse on DeepSeek Harness
 
-> Preview. This directory is the next desktop: nanoMuse as a set of plugins on
-> [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`), instead
-> of our own Electron shell around the Python runtime. Two things ship from here with
-> every release: the bundle, `nanoMuse-Harness-<v>.tgz`, for people who run DeepSeek
-> Harness Desktop and want the Muse in it (below, *In dsh's desktop app*), and from
-> 0.1.28 **nanoMuse Harness**, a desktop app of our own with the harness and the bundle
-> inside — installers for Windows, macOS and Linux (below, *The desktop app*). The
-> desktop app in [`desktop/`](../desktop/) stays the one around the Python runtime until
-> this one is whole. Why and where it goes: [docs/harness.md](../docs/harness.md).
+> This directory is **nanoMuse Desktop**: nanoMuse as a set of plugins on
+> [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`), in an
+> Electron shell of our own. Two things ship from here with every release: the desktop
+> app — `nanoMuse-Desktop-<v>-…` installers for Windows, macOS and Linux with the harness,
+> the bundle and the runtime for the hands inside (below, *The desktop app*) — and the
+> bundle alone, `dsh-nanomuse-<v>.tgz`, for people who already run DeepSeek Harness
+> Desktop and want the Muse in it (below, *In dsh's desktop app*). From 0.1.30 this is the
+> one desktop app; the Electron shell around the Python runtime (`desktop/app`, 0.1.19 to
+> 0.1.29) is retired, and the terminal binary in [`desktop/`](../desktop/) stays the
+> zero-install fallback. Why and where it goes: [docs/harness.md](../docs/harness.md);
+> what it has of Muse's and what it still lacks: [docs/desktop-muse.md](../docs/desktop-muse.md).
 
 `dsh-nanomuse/` is one **bundle** — a package dsh loads into a profile, carrying a patch
 over the stock configuration and the plugins the patch names:
@@ -18,7 +20,8 @@ over the stock configuration and the plugins the patch names:
 | `nanomuse`         | host    | Serves the face's stills under `/nanomuse/assets/` — the dragon's, and the account's drawn face at `face/<id>/<mood>.webp`.                 |
 | `nanomuse-cloud`   | host    | The account: sign-in by phone or e-mail code against the relay, the key in dsh's credential store, the account's chat models written into `dsh-llm-pi-ai` as the `nanoMuse Cloud` provider. The hub client: this computer on the account's device list, answering `info` and `notify` always, `shell`, `files`, `file.get`, `file.put`, `open`, `screen` (the runtime's shapes, in `actions.ts`) and `task` (the phone's `delegate`, run in a dsh session "From <device>" with its approvals relayed back, in `task.ts`) while the remote-control switch is on. The profile pulled from the relay (name, face), the Hands/Reach calls in flight, the calls other devices made here, all streamed to the browser over SSE. Loopback API under `/nanomuse/cloud/`. |
 | `nanomuse-reach`   | host    | **Reach**: the tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`, `device_notify`, `delegate` over the hub, approvals through dsh's card, *Stop* stopping the delegated job on the other device; a system-prompt context with the agent's name, its look and the devices online. |
-| `nanomuse` (client)| browser | The window the way Muse shapes it ([docs/desktop-muse.md](../docs/desktop-muse.md)): the `sidebar` seat as a rail (Chats, Search, Devices, hamburger) plus a chats column of *Main chat* and *Side chats*; the face, name and a live status chip pinned above the conversation with *Stop*, *Invite* at the top right; a profile panel beside the chat (look, name, activity, approvals, schedule, memory); the composer as one pill, the bubbles and Muse's permission card as styles over the harness's DOM; the `sidebar.settings` seat as a grouped dialog (General with the harness's own rows, Account, Models, Agents, Computer use, Devices, Data controls, Help & support, Legal, the other plugins' pages under Advanced, Sign out); the first run full-window (welcome → sign in → code boxes → the permissions carousel → ready); Muse's light and dark tones with the accent from the face's colour; toasts for notices from other devices and for what they did here. |
+| `nanomuse-rooms`   | host    | **The rooms**: Feed, Ideas, Goals and Library in `$DSH_HOME/nanomuse/rooms.json` under `/nanomuse/rooms/*` with SSE — the feed and ideas written by the agent in hidden chats, goals as chats of their own with the schedule plugin's automations, the Library from `present` and `library_add` under `~/nanoMuse/Library`; **memory** (one-line facts, read into every chat; import, forget); the tool catalogue the Connectors page shows; data export (a zip) and reset. `nanomuse-rooms-tools` (in the preset) adds `goals_room_update`, `feed_post`, `library_add`, `remember` and the prompt context. |
+| `nanomuse` (client)| browser | The window the way Muse shapes it ([docs/desktop-muse.md](../docs/desktop-muse.md)): the `sidebar` seat as a rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, hamburger) plus a chats column of *Main chat* and *Side chats*; the four rooms as `main` panels; the live stage (the screen the agent works on, picture-in-picture, caption, take-over) as a `shell.overlay`; the face, name and a live status chip pinned above the conversation with *Stop*, *Invite* at the top right; a profile panel beside the chat (look, name, activity, approvals, schedule, memory); the composer as one pill, the bubbles and Muse's permission card as styles over the harness's DOM; the `sidebar.settings` seat as a grouped dialog (General with the harness's own rows and the shell's App behavior, Account, Models, Agents, Connectors, Computer use, File system access, Dictation, Devices, Permissions, Data controls with import memory / download your data / reset, Help & support, Legal, the other plugins' pages under Advanced, Sign out); the first run full-window (welcome → sign in → code boxes → the permissions carousel → ready); Muse's light and dark tones with the accent from the face's colour; toasts for notices from other devices and for what they did here. |
 | `preset-nanomuse`  | patch   | An agent preset with nanoMuse's voice and the same tools as dsh's *Standard*, plus **Hands**: dsh's MCP client on `nanomuse mcp`, the runtime's `computer_screen`/`computer_act` over stdio, and the Reach plugin. New sessions start from it. |
 | `system-prompt`, `agent-preset-registry`, `ui-brand-official`, `ui-sidebar`, `ui-settings-general` | patch | The persona for preset-free compositions, the default preset, and the stock brand mark, sidebar and settings shell stepping aside for ours. |
 
@@ -39,8 +42,9 @@ export DSH_HOME=/tmp/nm-dev/dsh-home
 cd /path/to/nanoMuse/harness/dsh-nanomuse
 pnpm install && pnpm build && pnpm test
 
-# 3. a profile from dsh's web template, with the bundle linked in
+# 3. a profile from dsh's web template, with the schedule bundle (the goals' automations) and ours linked in
 /tmp/nm-dev/dsh/node_modules/.bin/dsh --profile nanomuse --from-default-profile web --dump-config >/dev/null
+/tmp/nm-dev/dsh/node_modules/.bin/dsh plugin --profile nanomuse add @deepseek-ai/dsh-experimental-schedule-bundle
 /tmp/nm-dev/dsh/node_modules/.bin/dsh plugin --profile nanomuse add "$PWD"
 
 # 4. boot — against the production relay, or a local one (docs/every-device.md, "Debugging it all on one machine");
@@ -82,14 +86,15 @@ read at boot.
 dsh's own desktop app ([`apps/desktop`](https://github.com/deepseek-ai/deepseek-harness/tree/master/apps/desktop))
 is an Electron shell around the same web app, with a profile named `desktop` that takes
 external plugins. The bundle goes in the same way as above. Every release carries it
-packed, `nanoMuse-Harness-<v>.tgz` with its line in `SHA256SUMS-harness.txt` (built by
+packed, `dsh-nanomuse-<v>.tgz` (`nanoMuse-Harness-<v>.tgz` up to 0.1.29) with its line in
+`SHA256SUMS-harness.txt` (built by
 `.github/workflows/harness.yml`, which also installs the tarball into a fresh dsh
 profile to be sure it loads): install DeepSeek Harness Desktop 0.2.0-rc.2 from
 [its releases](https://github.com/deepseek-ai/deepseek-harness/releases), start it once
 so the `desktop` profile exists, quit it fully, then
 
 ```sh
-dsh plugin --profile desktop add ~/Downloads/nanoMuse-Harness-0.1.27.tgz   # or the source tree, /path/to/nanoMuse/harness/dsh-nanomuse
+dsh plugin --profile desktop add ~/Downloads/dsh-nanomuse-0.1.30.tgz   # or the source tree, /path/to/nanoMuse/harness/dsh-nanomuse
 ```
 
 and start it again — the window comes up as nanoMuse ([docs/desktop-muse.md](../docs/desktop-muse.md)):
@@ -101,7 +106,7 @@ runtime on this computer too (`pipx install "git+https://github.com/nano-muse/na
 or `NANOMUSE_PY` pointing at it) — the preset starts `nanomuse mcp` for them. The app's
 name, icon and About are DeepSeek Harness's there; the app below is ours.
 
-## The desktop app: nanoMuse Harness
+## The desktop app: nanoMuse Desktop
 
 `desktop/` is an Electron shell of our own around the same web app — the name, the icon,
 the About, the first run and everything else nanoMuse's — with **dsh and the bundle
@@ -110,9 +115,9 @@ needed on the machine:
 
 | | |
 | --- | --- |
-| Windows | `nanoMuse-Harness-<v>-win-x64.exe` (NSIS; no certificate, so SmartScreen asks for *Run anyway*) |
-| macOS | `nanoMuse-Harness-<v>-mac-arm64.dmg`, `-mac-x64.dmg` (and `.zip`; ad-hoc signed unless the Apple secrets are set, then *Open Anyway* once in System Settings → Privacy & Security) |
-| Linux | `nanoMuse-Harness-<v>-linux-x64.AppImage`, `.deb` |
+| Windows | `nanoMuse-Desktop-<v>-win-x64.exe` (NSIS; no certificate, so SmartScreen asks for *Run anyway*) |
+| macOS | `nanoMuse-Desktop-<v>-mac-arm64.dmg`, `-mac-x64.dmg` (and `.zip`; ad-hoc signed unless the Apple secrets are set, then *Open Anyway* once in System Settings → Privacy & Security) |
+| Linux | `nanoMuse-Desktop-<v>-linux-x64.AppImage`, `.deb` |
 
 How it runs, in one paragraph: the shell starts the harness's Host as a child process —
 its own Electron binary in Node mode (`ELECTRON_RUN_AS_NODE`, `--expose-internals`, the way
@@ -120,15 +125,16 @@ DeepSeek Harness's desktop does; the harness's `require-builtin` addon accepts e
 Electron the harness was built against, so [`package.json`](desktop/package.json) pins
 `44.0.0`) running the `dsh` under `resources/dsh`, where npm installed `@deepseek-ai/dsh`
 and `dsh-nanomuse` side by side at build time. The profile the Host boots lives under
-`~/.nanomuse/harness/profiles/nanomuse` (its own home; the CLI's `~/.dsh` is not touched):
+`~/.nanomuse/desktop/profiles/nanomuse` (its own home; the CLI's `~/.dsh` is not touched; a
+home left by nanoMuse Harness 0.1.28–0.1.29 under `~/.nanomuse/harness` is taken over once):
 a manifest naming the three bundles and a link `node_modules/dsh-nanomuse` to the copy
 under resources, refreshed every start, which is how the Loader finds a bundle that is not
 among the harness's own packages. The shell reads the Host's `dsh web: http://127.0.0.1:…`
 line and loads that URL; external links open in the browser; a Host that does not come up
 gets a dialog with the log's tail on the clipboard. The runtime for the hands is bundled
-too (the same PyInstaller build as `desktop/app` carries, `resources/runtime`), and
+too (a PyInstaller build of the Python package, `resources/runtime`), and
 `NANOMUSE_PY` points the preset's `nanomuse mcp` at it — so "what is on my screen?" works
-out of the box. `~/.nanomuse/harness/desktop.log` has the shell's and the Host's lines.
+out of the box. `~/.nanomuse/desktop/desktop.log` has the shell's and the Host's lines.
 
 Build it yourself (Node 22+, pnpm; Python 3.12 with `pip install -e ".[hands]" pyinstaller`
 for the hands):
@@ -142,10 +148,10 @@ npm start                                                        # or: npm run d
 node scripts/smoke.mjs                                           # boots the staged harness once in Node mode
 ```
 
-`.github/workflows/harness-desktop.yml` does the same per platform on every release tag
-and attaches the installers to the release (`SHA256SUMS-harness-desktop.txt` beside
-them); a push that touches `harness/desktop` builds Linux and boots the packaged harness
-once. `NANOMUSE_HARNESS_HOME` moves the home, `NANOMUSE_CLOUD_URL` points the account at
+`.github/workflows/desktop-app.yml` does the same per platform on every release tag
+and attaches the installers to the release (`SHA256SUMS-desktop.txt` beside them); a
+push that touches `harness/` builds Linux and boots the packaged harness once.
+`NANOMUSE_DESKTOP_HOME` moves the home, `NANOMUSE_CLOUD_URL` points the account at
 another relay, `--screenshot=<png>` writes the window once the web app is up and quits
 (the check the shell has for itself).
 
@@ -172,26 +178,35 @@ dsh-nanomuse/
                         streamed back as the runtime's event frames, approvals relayed to the asker, stop
   src/profile.ts        the account profile on disk: pull when newer, face stills cached per face id
   src/reach.ts          plugin `nanomuse-reach`: the device_* tools, delegate, the system-prompt context
+  src/rooms.ts          host service `nanomuseRooms`: the rooms' store and routes, the hidden generation chats, goal
+                        chats and their timeline, the Library index, memory, the tool catalogue, export (a zip writer) and reset
+  src/rooms-tools.ts    plugin `nanomuse-rooms-tools` (in the preset): goals_room_update, feed_post, library_add, remember, the prompt context
   src/relay.ts          the relay as a client (plain fetch; tested against a fake relay)
   src/client/
     index.ts            slot registrations: the sidebar and settings seats, brand mark/name with moods,
                         hero mark, the header, the Devices panel and section, onboarding steps, toasts
     live.ts             the SSE store (profile, hub, calls, notices) behind useLive()
     styles.ts           Muse's tones over the harness's tokens (light/dark), the accent, every nm-* class
-    MuseSidebar.tsx     the rail (Chats, Search, Devices, hamburger) and the column that holds the chats
+    MuseSidebar.tsx     the rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, hamburger) and the column that holds the chats
+    FeedPanel.tsx, IdeasPanel.tsx, GoalsPanel.tsx, LibraryPanel.tsx
+                        the four rooms, Muse's layouts; rooms.ts is their SSE store and fetch helper
+    LiveStage.tsx       the live stage: the latest frame, the caption, the cursor marker, expand and take over
+    Memory.tsx          the Memory tab's list, Muse's import-memory sheet, the Data controls rows (download, reset)
+    AvatarStudio.tsx    the avatar studio: describe, four candidates in a grid, pick, the poses, worn on the account
+    Pages.tsx           Settings → Connectors, Permissions, File system access, Dictation
     MuseChats.tsx       the chats column: Search, Main chat, Side chats — pin, rename, archive, make main
     MuseHeader.tsx      the face, name and status chip pinned above the conversation, with Stop
     Invite.tsx          the Invite button at the top right and its dialog (code, link, what it earned)
     ProfileDrawer.tsx   the profile panel: avatar with a pen (change look / edit name), the connection, four tabs
     MuseSettings.tsx    the settings dialog: grouped nav, Advanced, Sign out; the General page; the onboarding coordinator
-    Sections.tsx        Settings → Computer use, Help & support, Legal; the Developer rows on General
+    Sections.tsx        Settings → Computer use, Help & support, Legal; App behavior and the Developer rows on General
     DevicesPanel.tsx    Settings → Devices and the rail's Devices page: this computer, the others, the switch
     Avatar.tsx          the face in five moods: dragon stills, emoji on a colour, drawn face from the host
     Onboarding.tsx      the first run, full-window: welcome → sign in → code → the permissions carousel → ready
     SignIn.tsx          the two-step form (identifier → code), shared with Settings → Account
     CloudSection.tsx    Settings → Account (the account, the look, the models, the relay, Open Devices) and Data controls
     Capsule.tsx         the toasts (and the words for a Hands/Reach call, shared with the header)
-    bridge.ts, prefs.ts the desktop shell's bridge (window.nanomuseHarness) and the local preferences (Developer switch, keep awake, approvals)
+    bridge.ts, prefs.ts the desktop shell's bridge (window.nanomuseHarness: permissions, links, keep awake, app behavior, bug report, quick chat) and the local preferences (Developer switch, keep awake, approvals)
     icons.tsx, keys.ts, bus.ts, panels.ts
                         inline icons; synthetic key chords for the harness's commands; the settings and profile buses; panel ids
     api.ts, locales.ts  the fetch helper and the en/zh copy
@@ -211,8 +226,8 @@ browser's does.
 The bundle and the shell are GPL-3.0-or-later like the rest of nanoMuse. DeepSeek
 Harness is MIT and is not vendored in this repository — it is a dependency: installed by
 the person for the bundle, installed by npm at build time and carried unmodified, with
-every package's licence file, inside nanoMuse Harness. "DeepSeek Harness" and "DSH" are
+every package's licence file, inside nanoMuse Desktop. "DeepSeek Harness" and "DSH" are
 DeepSeek's names: we say *built on DeepSeek Harness* (the About says so, the welcome
-dialog says so), and never use them in ours — *harness* in "nanoMuse Harness" is the
-word, not their name. DeepSeek Harness is a developer preview (0.2.0-rc); its plugin API
+dialog says so), and never use them in ours — the app is *nanoMuse*, and *harness* in this
+directory's name is the word, not their name. DeepSeek Harness is a developer preview (0.2.0-rc); its plugin API
 will break, and this bundle pins the version it was written against.

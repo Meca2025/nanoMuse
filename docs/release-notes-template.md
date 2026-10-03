@@ -31,10 +31,10 @@
   |---|---|
   | Browser | [nanomuse.cn/web](https://nanomuse.cn/web/) — a phone number or an e-mail, nothing to install |
   | Android 8.0+, arm64 | `nanoMuse-<version>-arm64.apk` |
-  | Windows 10+ | `nanoMuse-Harness-<version>-win-x64.exe` (on DeepSeek Harness) · `nanoMuse-Desktop-<version>-win-x64.exe` (the app) · `nanomuse-desktop-terminal-<version>-windows-x64-setup.exe` (terminal) |
-  | macOS 12+ | `nanoMuse-Harness-<version>-mac-arm64.dmg` / `-mac-x64.dmg` (on DeepSeek Harness) · `nanoMuse-Desktop-<version>-mac-arm64.zip` / `-mac-x64.zip` (unzip, drag to Applications) or the `.dmg` (the app) · `nanomuse-desktop-terminal-<version>-macos-arm64.pkg` / `-x64.pkg` (terminal) |
-  | Linux x64 | `nanoMuse-Harness-<version>-linux-x64.AppImage` / `.deb` (on DeepSeek Harness) · `nanoMuse-Desktop-<version>-linux-x64.AppImage` / `.deb` (the app) · `nanomuse-desktop-terminal-<version>-linux-x64.deb` / `.tar.gz` (terminal) |
-  | DeepSeek Harness Desktop | `nanoMuse-Harness-<version>.tgz` — `dsh plugin --profile desktop add …` ([how](https://github.com/nano-muse/nanoMuse/blob/main/harness/README.md)) |
+  | Windows 10+ | `nanoMuse-Desktop-<version>-win-x64.exe` (the desktop app, on DeepSeek Harness) · `nanomuse-desktop-terminal-<version>-windows-x64-setup.exe` (terminal) |
+  | macOS 12+ | `nanoMuse-Desktop-<version>-mac-arm64.dmg` / `-mac-x64.dmg` (or the `.zip`: unzip, drag to Applications) · `nanomuse-desktop-terminal-<version>-macos-arm64.pkg` / `-x64.pkg` (terminal) |
+  | Linux x64 | `nanoMuse-Desktop-<version>-linux-x64.AppImage` / `.deb` · `nanomuse-desktop-terminal-<version>-linux-x64.deb` / `.tar.gz` (terminal) |
+  | DeepSeek Harness Desktop you already run | `dsh-nanomuse-<version>.tgz` — `dsh plugin --profile desktop add …` ([how](https://github.com/nano-muse/nanoMuse/blob/main/harness/README.md)) |
 
   GitHub's own downloads are the fastest source from China too in our measurements; if they fail where you are, the same files are on [nanomuse.cn/dl/v<version>/](https://nanomuse.cn/dl/v<version>/) within fifteen minutes.
 
@@ -71,10 +71,10 @@ Based on [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 (GPL-3.0), mod
   |---|---|
   | 浏览器 | [nanomuse.cn/web](https://nanomuse.cn/web/)——手机号或邮箱，不用安装 |
   | Android 8.0+，arm64 | `nanoMuse-<version>-arm64.apk` |
-  | Windows 10+ | `nanoMuse-Harness-<version>-win-x64.exe`（DeepSeek Harness 版）· `nanoMuse-Desktop-<version>-win-x64.exe`（App）· `nanomuse-desktop-terminal-<version>-windows-x64-setup.exe`（终端） |
-  | macOS 12+ | `nanoMuse-Harness-<version>-mac-arm64.dmg` / `-mac-x64.dmg`（DeepSeek Harness 版）· `nanoMuse-Desktop-<version>-mac-arm64.zip` / `-mac-x64.zip`（解压后拖进「应用程序」）或 `.dmg`（App）· `nanomuse-desktop-terminal-<version>-macos-arm64.pkg` / `-x64.pkg`（终端） |
-  | Linux x64 | `nanoMuse-Harness-<version>-linux-x64.AppImage` / `.deb`（DeepSeek Harness 版）· `nanoMuse-Desktop-<version>-linux-x64.AppImage` / `.deb`（App）· `nanomuse-desktop-terminal-<version>-linux-x64.deb` / `.tar.gz`（终端） |
-  | DeepSeek Harness Desktop | `nanoMuse-Harness-<version>.tgz`——`dsh plugin --profile desktop add …`（[怎么装](https://github.com/nano-muse/nanoMuse/blob/main/harness/README.md)） |
+  | Windows 10+ | `nanoMuse-Desktop-<version>-win-x64.exe`（桌面 App，基于 DeepSeek Harness）· `nanomuse-desktop-terminal-<version>-windows-x64-setup.exe`（终端） |
+  | macOS 12+ | `nanoMuse-Desktop-<version>-mac-arm64.dmg` / `-mac-x64.dmg`（或 `.zip`：解压后拖进「应用程序」）· `nanomuse-desktop-terminal-<version>-macos-arm64.pkg` / `-x64.pkg`（终端） |
+  | Linux x64 | `nanoMuse-Desktop-<version>-linux-x64.AppImage` / `.deb` · `nanomuse-desktop-terminal-<version>-linux-x64.deb` / `.tar.gz`（终端） |
+  | 已在用 DeepSeek Harness Desktop | `dsh-nanomuse-<version>.tgz`——`dsh plugin --profile desktop add …`（[怎么装](https://github.com/nano-muse/nanoMuse/blob/main/harness/README.md)） |
 
   实测从国内直接下 GitHub 也是最快的；万一下不动，同样的文件十五分钟内会出现在 [nanomuse.cn/dl/v<version>/](https://nanomuse.cn/dl/v<version>/)。
 

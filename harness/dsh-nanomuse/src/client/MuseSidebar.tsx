@@ -1,9 +1,9 @@
 /**
  * The Muse-shaped left column in the harness's `sidebar` seat: an icon rail —
- * the agent's face (its profile), Chats, Search, the harness's Schedules,
- * Devices, and a menu in the corner for settings, shortcuts, plugins and
- * reporting a problem — beside the chats column (search, the main chat, the
- * side chats). Collapsed, only the rail remains. The seven child seats the
+ * Chats, Search, the rooms (Feed, Ideas, Goals, Library), Devices, and a menu
+ * in the corner for settings, shortcuts, the harness's Schedules and plugins
+ * and reporting a problem — beside the chats column (search, the main chat,
+ * the side chats). Collapsed, only the rail remains. The seven child seats the
  * stock sidebar declares are declared here too, so every occupant of them —
  * the brand mark, the panel glyphs, the browser, the settings shell, footer
  * actions — mounts exactly as before; only the frame around them is ours, and
@@ -13,12 +13,14 @@
 import { createElement as h, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
-import { openLink } from './bridge.ts'
-import { IconCalendar, IconChat, IconDevices, IconMenu, IconPanelLeft, IconPlus, IconPuzzle, IconSearch, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
+import { Toast } from '@deepseek-ai/dsh-client-ui-primitives'
+import { bridge, openLink } from './bridge.ts'
+import { IconBulb, IconCalendar, IconChat, IconDevices, IconFeed, IconMenu, IconPanelLeft, IconPlus, IconPuzzle, IconSearch, IconShapes, IconTarget, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
 import { openShortcutsReference, pressSettingsChord } from './keys.ts'
 import { useLive } from './live.ts'
 import { MuseChats, type ChatActions, type UseSessionList, type UseStatusMap, type UseWorkspaceList } from './MuseChats.tsx'
-import { DEVICES_PANEL } from './panels.ts'
+import { DEVICES_PANEL, FEED_PANEL, GOALS_PANEL, IDEAS_PANEL, LIBRARY_PANEL, ROOM_PANELS } from './panels.ts'
+import { useRooms } from './rooms.ts'
 import { usePrefs } from './prefs.ts'
 
 /** The id the harness's Schedules plugin registers its global panel under. */
@@ -129,6 +131,7 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
   const settingsShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'settings.open'))
   const shortcutsShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'shortcuts.open'))
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  const [notice, setNotice] = useState<{ id: number; text: string } | null>(null)
   const menuButton = useRef<HTMLButtonElement | null>(null)
   const column = useRef<HTMLDivElement>(null)
   const searchField = useRef<HTMLInputElement | null>(null)
@@ -157,7 +160,9 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
 
   const schedules = panels.find((p) => p.id === SCHEDULES_PANEL)
   const plugins = panels.find((p) => p.id === PLUGINS_PANEL)
-  const others = panels.filter((p) => p.id !== SCHEDULES_PANEL && p.id !== PLUGINS_PANEL && p.id !== DEVICES_PANEL)
+  const others = panels.filter((p) => p.id !== SCHEDULES_PANEL && p.id !== PLUGINS_PANEL && !(ROOM_PANELS as readonly string[]).includes(p.id))
+  const rooms = useRooms()
+  const freshFeed = rooms.feed.posts.some((p) => p.at > rooms.feedSeenAt)
   const onlineOthers = live.hub.devices.filter((d) => d.id !== live.hub.deviceId && d.kind !== 'web' && d.online).length
 
   const showChats = () => { selectPanel(null) }
@@ -175,11 +180,20 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
     { id: 'settings', label: t('menuSettings'), icon: h(IconSettings, { size: 16 }), hint: keysHint(settingsShortcut?.keys), onSelect: openSettings },
     { id: 'shortcuts', label: t('menuShortcuts'), icon: h(IconKeyboard, { size: 16 }), hint: keysHint(shortcutsShortcut?.keys), onSelect: openShortcuts },
     'sep',
+    ...(schedules ? [{ id: 'schedules', label: schedules.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: SCHEDULES_PANEL, fallback: h(IconCalendar, { size: 16 }) })), onSelect: () => selectPanel(SCHEDULES_PANEL) }] : []),
     ...(plugins ? [{ id: 'plugins', label: plugins.label, icon: h(IconPuzzle, { size: 16 }), onSelect: () => selectPanel(PLUGINS_PANEL) }] : []),
     ...others.map((p) => ({ id: p.id, label: p.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: p.id })), onSelect: () => selectPanel(p.id) })),
     { id: 'toggle', label: collapsed ? t('menuExpand') : t('menuCollapse'), icon: h(IconPanelLeft, { size: 16 }), onSelect: toggleSidebar },
     'sep',
-    { id: 'issue', label: t('menuReport'), icon: h(IconBug, { size: 16 }), onSelect: () => openLink(issuesUrl) },
+    { id: 'issue', label: t('menuReport'), icon: h(IconBug, { size: 16 }), onSelect: () => {
+      // under the shell a screenshot of the window goes to Downloads and the issue page opens filled in; elsewhere just the issues page
+      const report = bridge()?.reportBug
+      if (!report) return openLink(issuesUrl)
+      void report().then(({ screenshot }) => {
+        const name = screenshot.split(/[\\/]/).pop() ?? ''
+        setNotice({ id: Date.now(), text: name ? t('reportSaved', { name }) : t('reportOpened') })
+      }).catch(() => openLink(issuesUrl))
+    } },
   ]
 
   // Muse's rail starts with Chats (a dot while the agent works); the agent's face is
@@ -191,10 +205,11 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
     h('div', { className: 'nm-hidden' }, renderSlot('sidebar.brand.mark', { size: 36 })),
     h(RailButton, { label: t('railChats'), active: active === null, dot: busy, onClick: showChats }, h(IconChat, { size: 21 })),
     h(RailButton, { label: t('railSearch'), onClick: search }, h(IconSearch, { size: 21 })),
-    schedules
-      ? h(RailButton, { label: schedules.label, active: active === SCHEDULES_PANEL, onClick: () => selectPanel(SCHEDULES_PANEL) },
-          renderSlot('sidebar.panellist', { size: 21, active: active === SCHEDULES_PANEL }, { only: SCHEDULES_PANEL, fallback: h(IconCalendar, { size: 21 }) }))
-      : null,
+    // Muse's rooms, in Muse's order: Feed, Ideas, Goals, Library; then our Devices.
+    h(RailButton, { label: t('railFeed'), active: active === FEED_PANEL, dot: freshFeed && active !== FEED_PANEL, onClick: () => selectPanel(FEED_PANEL) }, h(IconFeed, { size: 21 })),
+    h(RailButton, { label: t('railIdeas'), active: active === IDEAS_PANEL, onClick: () => selectPanel(IDEAS_PANEL) }, h(IconBulb, { size: 21 })),
+    h(RailButton, { label: t('railGoals'), active: active === GOALS_PANEL, onClick: () => selectPanel(GOALS_PANEL) }, h(IconTarget, { size: 21 })),
+    h(RailButton, { label: t('railLibrary'), active: active === LIBRARY_PANEL, onClick: () => selectPanel(LIBRARY_PANEL) }, h(IconShapes, { size: 21 })),
     h(RailButton, { label: t('railDevices'), active: active === DEVICES_PANEL, dot: onlineOthers > 0, onClick: () => selectPanel(DEVICES_PANEL) }, h(IconDevices, { size: 21 })),
     h('div', { className: 'nm-rail-spacer' }),
     collapsed ? h(RailButton, { label: t('railNew'), onClick: startSession }, h(IconPlus, { size: 21 })) : null,
@@ -224,7 +239,9 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
   return h('div', { className: 'nm-sidebar', style: { width: wide ? (collapsed ? lastWideWidth.current : width) : RAIL } },
     rail,
     chats,
-    menuAnchor ? h(CornerMenu, { anchor: menuAnchor, items: menuItems, onClose: () => setMenuAnchor(null) }) : null)
+    menuAnchor ? h(CornerMenu, { anchor: menuAnchor, items: menuItems, onClose: () => setMenuAnchor(null) }) : null,
+    notice ? h('div', { style: { position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 60, pointerEvents: 'none' } },
+      h(Toast, { key: notice.id, text: notice.text, holdMs: 8000, onDone: () => setNotice(null) })) : null)
 }
 
 /** `⌘ ,` style hint from the catalog's key names; empty when unbound. */
