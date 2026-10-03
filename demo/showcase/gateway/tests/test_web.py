@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
+import time
 from dataclasses import replace
 
 import httpx
 import pytest
+from starlette.testclient import TestClient
 
 from showcase_gateway.accounts import AccountManager, AccountStore
 from showcase_gateway.app import create_app
@@ -72,10 +77,17 @@ async def test_the_page_and_a_first_sign_in(web):
         # the relay saw the visitor's address, not the gateway's
         code_calls = [x for x in upstream.calls if x.url.path == "/v1/auth/code"]
         assert code_calls[-1].headers["x-forwarded-for"] == "1.2.3.4"
-        # the container: kept, on the web network, signed in with the account's own key
+        # the container: kept, on the web network, signed in with a key of the account's that
+        # lapses on its own; the standing key the relay issued is signed out again, and the
+        # gateway's store holds no key at all
         kept = runner.kept[f"nmw-{me['slug']}"]
         env = kept["env"]
-        assert env["NANOMUSE_CLOUD_KEY"] == "nm_key1"
+        assert env["NANOMUSE_CLOUD_KEY"] == "nm_sess1"
+        assert upstream.revoked == ["nm_key1"]
+        session_key_call = [x for x in upstream.calls if x.url.path == "/v1/auth/session-key"][-1]
+        assert json.loads(session_key_call.content) == {"device": "Web", "ttl_s": 7 * 86400}
+        assert [r[0] for r in accounts.store.db.execute("SELECT key FROM accounts")] == [""]
+        assert accounts.live[me["slug"]].key == ""
         assert env["NANOMUSE_CLOUD_BASE_URL"] == "http://relay:8787"
         assert env["NANOMUSE_HUB_NAME"] == "Web" and env["NANOMUSE_ONBOARDED"] == "1"
         assert env["NANOMUSE_SERVER_TOKEN"] == token
@@ -110,17 +122,144 @@ async def test_coming_back_wakes_the_same_muse(web):
         assert runner.kept[name]["running"] is False and name in runner.kept
         assert accounts.stats()["running"] == 0
 
-        # a request on its host wakes it — same slug, same token, same volumes
+        # a request on its host without the token does not wake it: a browser with only the
+        # address gets the wake page, an API call a 503 to retry
+        r = await c.get("/", headers={"host": host, "accept": "text/html"})
+        assert r.status_code == 200 and "/__wake" in r.text and "Waking" in r.text
+        assert "http://localhost:8000/web/" in r.text  # where to sign in again
         r = await c.get("/api/state", headers={"host": host})
-        assert r.status_code == 200 and runner.kept[name]["running"] is True
+        assert r.status_code == 503 and body(r)["error"] == "asleep"
+        assert r.headers["retry-after"] == "3"
+        assert runner.kept[name]["running"] is False and runner.kept[name]["starts"] == 1
+        # a wrong token neither
+        r = await c.post("/__wake", headers={"host": host, "authorization": "Bearer nope"})
+        assert r.status_code == 401 and body(r)["error"] == "token"
+        assert runner.kept[name]["running"] is False
+
+        # the account's token wakes it — same slug, same token, same volumes
+        token = me["url"].split("token=")[1]
+        r = await c.post("/__wake", headers={"host": host, "authorization": f"Bearer {token}"})
+        assert r.status_code == 204 and runner.kept[name]["running"] is True
         assert runner.kept[name]["starts"] == 2
+        r = await c.get("/api/state", headers={"host": host})
+        assert r.status_code == 200 and r.text == "container says /api/state"
+
+        # asleep again: a bearer request, a signed link (the runtime's tickets) and the legacy
+        # ?token= each prove the token too
+        clock.now += settings.web_idle_stop_s + 1
+        await accounts.reap_once()
+        r = await c.get("/api/state", headers={"host": host, "authorization": f"Bearer {token}"})
+        assert r.status_code == 200 and runner.kept[name]["starts"] == 3
+        clock.now += settings.web_idle_stop_s + 1
+        await accounts.reap_once()
+        path = "/api/files/out/a.png"
+        exp = int(time.time()) + 3600
+        sig = hmac.new(token.encode(), f"{exp}\n{path}".encode(), hashlib.sha256).hexdigest()[:32]
+        r = await c.get(f"{path}?exp={exp}&sig={sig}", headers={"host": host})
+        assert r.status_code == 200 and runner.kept[name]["starts"] == 4
+        clock.now += settings.web_idle_stop_s + 1
+        await accounts.reap_once()
+        r = await c.get(
+            f"{path}?exp={exp}&sig=badbadbadbadbadbadbadbadbadbadba", headers={"host": host}
+        )
+        assert r.status_code == 503 and runner.kept[name]["starts"] == 4
+        r = await c.get(f"/api/state?token={token}", headers={"host": host})
+        assert r.status_code == 200 and runner.kept[name]["starts"] == 5
 
         # signing in again from another browser: the relay issues a fresh key, so the
         # container is recreated with it; slug and token stay
         again = body(await sign_in(c, "someone@example.com", ip="9.9.9.9"))
         assert again["slug"] == me["slug"] and again["url"] == me["url"]
-        assert runner.kept[name]["env"]["NANOMUSE_CLOUD_KEY"] == "nm_key2"
+        assert runner.kept[name]["env"]["NANOMUSE_CLOUD_KEY"] == "nm_sess2"
         assert runner.kept[name]["starts"] == 1  # a new container
+        assert upstream.revoked == ["nm_key1", "nm_key2"]
+
+
+async def test_a_lapsed_key_means_signing_in_again(web):
+    """The key a container was started with runs out (WEB_KEY_TTL_S): the Muse is not woken
+    on it — the person signs in again and gets a new container with a fresh key, over the
+    same volumes."""
+    settings, runner, upstream, clock, accounts, app = web
+    async with app.router.lifespan_context(app):
+        c = await client_for(app)
+        me = body(await sign_in(c, "someone@example.com"))
+        name = f"nmw-{me['slug']}"
+        host = me["origin"].split("//")[1]
+        token = me["url"].split("token=")[1]
+        stored = accounts.store.by_slug(me["slug"])
+        assert stored is not None and stored.key_expires_at > time.time() + 6 * 86400
+        # asleep, and the key's time has passed
+        clock.now += settings.web_idle_stop_s + 1
+        await accounts.reap_once()
+        accounts.store.db.execute("UPDATE accounts SET key_expires_at = ?", (clock.now - 1,))
+        accounts.store.db.commit()
+        r = await c.post("/__wake", headers={"host": host, "authorization": f"Bearer {token}"})
+        assert r.status_code == 401 and body(r)["error"] == "sign_in_again"
+        assert runner.kept[name]["running"] is False
+        # the container gone altogether (an operator's docker rm) and no key at hand: the same
+        await runner.remove(name)
+        accounts.store.db.execute("UPDATE accounts SET key_expires_at = 0")
+        accounts.store.db.commit()
+        r = await c.post("/__wake", headers={"host": host, "authorization": f"Bearer {token}"})
+        assert r.status_code == 401 and body(r)["error"] == "sign_in_again"
+        # signing in again: a new container, the same slug and token
+        again = body(await sign_in(c, "someone@example.com"))
+        assert again["slug"] == me["slug"] and again["url"] == me["url"]
+        assert runner.kept[name]["env"]["NANOMUSE_CLOUD_KEY"] == "nm_sess2"
+
+
+def test_the_socket_s_first_frame_wakes_a_slept_muse(web, monkeypatch):
+    """The web app opens its socket without the token in the address and sends it in the
+    first frame; a slept Muse is woken on that frame and the frame goes on to the runtime."""
+    import showcase_gateway.app as app_module
+
+    settings, runner, upstream, clock, accounts, app = web
+    relayed: list[dict] = []
+
+    async def fake_proxy_ws(ws, url, on_activity, label="", first=None, accepted=False):
+        relayed.append({"url": url, "first": first, "accepted": accepted})
+        if not accepted:
+            await ws.accept()
+        await ws.close(code=1000)
+
+    monkeypatch.setattr(app_module, "proxy_ws", fake_proxy_ws)
+    with TestClient(app) as tc:
+        r = tc.post("/api/web/code", json={"identifier": "someone@example.com"})
+        assert r.status_code == 204
+        me = tc.post(
+            "/api/web/verify", json={"identifier": "someone@example.com", "code": "246810"}
+        ).json()
+        name = f"nmw-{me['slug']}"
+        host = me["origin"].split("//")[1]
+        token = me["url"].split("token=")[1]
+        clock.now += settings.web_idle_stop_s + 1
+        tc.portal.call(accounts.reap_once)
+        assert runner.kept[name]["running"] is False
+
+        # no token, or a wrong one: 4404, nothing starts
+        with tc.websocket_connect("/ws", headers={"host": host}) as ws:
+            ws.send_text(json.dumps({"kind": "hello"}))
+            closed = ws.receive()
+        assert closed["type"] == "websocket.close" and closed["code"] == 4404
+        with tc.websocket_connect("/ws", headers={"host": host}) as ws:
+            ws.send_text(json.dumps({"kind": "auth", "token": "nope"}))
+            closed = ws.receive()
+        assert closed["code"] == 4404
+        assert runner.kept[name]["running"] is False and relayed == []
+
+        # the account's token in the first frame: woken, and the frame travels on
+        frame = json.dumps({"kind": "auth", "token": token})
+        with tc.websocket_connect("/ws", headers={"host": host}) as ws:
+            ws.send_text(frame)
+            closed = ws.receive()
+        assert closed["type"] == "websocket.close" and closed["code"] == 1000
+        assert runner.kept[name]["running"] is True and runner.kept[name]["starts"] == 2
+        assert relayed == [{"url": "ws://10.0.1.1:8787/ws", "first": frame, "accepted": True}]
+
+        # up already: relayed straight away, the runtime does its own first-frame check
+        with tc.websocket_connect("/ws", headers={"host": host}) as ws:
+            closed = ws.receive()
+        assert relayed[-1] == {"url": "ws://10.0.1.1:8787/ws", "first": None, "accepted": False}
 
 
 async def test_a_restarted_gateway_finds_the_running_muses(web):

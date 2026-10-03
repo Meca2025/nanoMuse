@@ -10,7 +10,12 @@ phone or the computer for things and to be asked.
 
 The gateway never talks to the model for these containers; they reach the relay directly on
 the web network. What the gateway keeps: which account has which container, its access
-token, and the key the container was started with — in SQLite on the gateway's volume.
+token, and when the key the container was started with runs out — in SQLite on the
+gateway's volume. The key itself (since 0.13 a *session key* the relay issues to lapse on
+its own, `WEB_KEY_TTL_S`) goes into the container's environment at creation and is kept
+nowhere else; a slept container is woken only for a request that proves the account's
+token, and once its key has lapsed the person signs in again, which recreates the
+container with a fresh one (the volumes stay).
 """
 
 from __future__ import annotations
@@ -41,7 +46,7 @@ class Account:
     id: str  # the relay's account id (opaque), or a hash of what identifies the account
     slug: str  # the DNS label its Muse lives at: <slug>.<session_domain>
     token: str  # the runtime's access token, what the browser keeps
-    key: str  # the Cloud key the container was started with (never shown again)
+    key: str  # the Cloud key to start the container with — in memory at sign-in, never stored
     hint: str
     channel: str
     created_at: float
@@ -49,6 +54,7 @@ class Account:
     address: str = ""  # where the gateway reaches the container while it runs
     port: int = 8787
     running: bool = False
+    key_expires_at: float = 0.0  # when the container's key lapses (0: a standing key, or unknown)
 
     @property
     def container(self) -> str:
@@ -86,6 +92,13 @@ class AccountStore:
                  key TEXT NOT NULL, hint TEXT NOT NULL DEFAULT '', channel TEXT NOT NULL DEFAULT '',
                  created_at REAL NOT NULL, last_seen REAL NOT NULL)"""
         )
+        columns = {row[1] for row in self.db.execute("PRAGMA table_info(accounts)")}
+        if "key_expires_at" not in columns:
+            self.db.execute(
+                "ALTER TABLE accounts ADD COLUMN key_expires_at REAL NOT NULL DEFAULT 0"
+            )
+        # 0.13: the key is the container's alone — none kept here, from before either
+        self.db.execute("UPDATE accounts SET key = '' WHERE key <> ''")
         self.db.commit()
 
     def get(self, account_id: str) -> Account | None:
@@ -100,12 +113,14 @@ class AccountStore:
         return [self._account(r) for r in self.db.execute("SELECT * FROM accounts")]
 
     def put(self, a: Account) -> None:
+        # the key is not among the columns written: it lives in the container's environment
         self.db.execute(
-            """INSERT INTO accounts (id, slug, token, key, hint, channel, created_at, last_seen)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(id) DO UPDATE SET token=excluded.token, key=excluded.key,
-                 hint=excluded.hint, channel=excluded.channel, last_seen=excluded.last_seen""",
-            (a.id, a.slug, a.token, a.key, a.hint, a.channel, a.created_at, a.last_seen),
+            """INSERT INTO accounts (id, slug, token, key, hint, channel, created_at, last_seen, key_expires_at)
+               VALUES (?, ?, ?, '', ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET token=excluded.token, hint=excluded.hint,
+                 channel=excluded.channel, last_seen=excluded.last_seen,
+                 key_expires_at=excluded.key_expires_at""",
+            (a.id, a.slug, a.token, a.hint, a.channel, a.created_at, a.last_seen, a.key_expires_at),
         )
         self.db.commit()
 
@@ -122,11 +137,12 @@ class AccountStore:
             id=row["id"],
             slug=row["slug"],
             token=row["token"],
-            key=row["key"],
+            key="",
             hint=row["hint"],
             channel=row["channel"],
             created_at=row["created_at"],
             last_seen=row["last_seen"],
+            key_expires_at=float(row["key_expires_at"] or 0),
         )
 
 
@@ -135,6 +151,17 @@ def _slug(account_id: str, salt: str) -> str:
     # be guessed from the id and does not change
     digest = hmac.new(salt.encode(), account_id.encode(), hashlib.sha256).digest()
     return "w" + base64.b32encode(digest[:8]).decode().rstrip("=").lower()[:11]
+
+
+class Asleep(Refused):
+    """The account's container sleeps and the request did not prove the account's token, so
+    it is not woken for it: anyone can type the address, only the person has the token."""
+
+    def __init__(self, account: Account) -> None:
+        super().__init__(
+            503, "asleep", "Your Muse is asleep. Open it from where you signed in, and it wakes."
+        )
+        self.account = account
 
 
 class AccountManager:
@@ -176,7 +203,7 @@ class AccountManager:
         if invite:
             payload["invite"] = invite
         data = await self._relay("POST", "/v1/auth/verify", payload, ip)
-        return await self._admit(data)
+        return await self._admit(data, ip)
 
     async def login(self, identifier: str, password: str, ip: str) -> Account:
         """The password way in — the account set one under Account earlier; no code to wait
@@ -185,14 +212,41 @@ class AccountManager:
             raise Refused(404, "web_off", "The web version is not turned on here.")
         payload = {"identifier": identifier, "password": password, "device": "Web"}
         data = await self._relay("POST", "/v1/auth/login", payload, ip)
-        return await self._admit(data)
+        return await self._admit(data, ip)
 
-    async def _admit(self, data: dict[str, Any]) -> Account:
-        """The relay said yes: the account's key → its Muse, started (or restarted with the
-        fresh key when the account already has one)."""
+    async def _session_key(self, standing: str, ip: str) -> tuple[str, float]:
+        """The key the relay issued at sign-in, traded for one that lapses on its own; the
+        standing one is signed out again, so nothing of lasting worth is around to leak. An
+        older relay has no session keys: the standing key it is, as before 0.13."""
+        try:
+            data = await self._relay(
+                "POST",
+                "/v1/auth/session-key",
+                {"device": "Web", "ttl_s": self.s.web_key_ttl_s},
+                ip,
+                key=standing,
+            )
+        except Refused as exc:
+            if exc.status == 404:
+                log.warning("web: the relay issues no session keys yet; using the standing key")
+                return standing, 0.0
+            raise
         key = str(data.get("api_key") or "")
         if not key:
             raise Refused(502, "relay_error", "nanoMuse Cloud returned no key.")
+        try:
+            await self._relay("POST", "/v1/auth/sign-out", None, ip, key=standing)
+        except Refused as exc:
+            log.warning("web: could not sign the standing key out again: %s", exc.code)
+        return key, float(data.get("expires_at") or 0)
+
+    async def _admit(self, data: dict[str, Any], ip: str) -> Account:
+        """The relay said yes: the account's key → its Muse, started afresh with it (a kept
+        container carries its key in its environment, so the old one goes; the volumes stay)."""
+        key = str(data.get("api_key") or "")
+        if not key:
+            raise Refused(502, "relay_error", "nanoMuse Cloud returned no key.")
+        key, key_expires_at = await self._session_key(key, ip)
         account_info = data.get("account") if isinstance(data.get("account"), dict) else {}
         account_id = str(account_info.get("id") or "")
         if not account_id:
@@ -217,25 +271,27 @@ class AccountManager:
                 channel=str(account_info.get("channel") or ""),
                 created_at=now,
                 last_seen=now,
+                key_expires_at=key_expires_at,
             )
             self.store.put(account)
             log.info("web account %s created (%s)", account.slug, account.channel)
         else:
-            account = existing
-            rekey = account.key != key
+            account = self.live.get(existing.slug, existing)
             account.key = key
+            account.key_expires_at = key_expires_at
             account.hint = str(account_info.get("hint") or account.hint)
             account.channel = str(account_info.get("channel") or account.channel)
             account.last_seen = now
             self.store.put(account)
-            if rekey and account.slug in self.live:
-                # the container carries its key in its environment: start it afresh with this one
-                log.info(
-                    "web account %s signed in again: restarting with the new key", account.slug
-                )
-                await self._stop(account, remove=True)
-        await self.open(account)
-        return account
+            # the container carries its key in its environment: start afresh with this one
+            log.info(
+                "web account %s signed in again: a new container with the new key", account.slug
+            )
+            await self._stop(account, remove=True)
+        try:
+            return await self.open(account)
+        finally:
+            account.key = ""  # the container has it now; the gateway forgets it
 
     # ------------------------------------------------------------------ the containers
     def _lock(self, slug: str) -> asyncio.Lock:
@@ -256,12 +312,15 @@ class AccountManager:
         return env
 
     async def open(self, account: Account) -> Account:
-        """The account's Muse, running: started, or woken, or already up."""
+        """The account's Muse, running: started, or woken, or already up. Creating a container
+        takes the key (sign-in brings it); waking one does not — it carries its own."""
         async with self._lock(account.slug):
             live = self.live.get(account.slug)
             if live is not None and live.running:
                 live.last_seen = self.clock()
                 return live
+            if not account.key and not await self.runner.exists(account.container):
+                raise Refused(401, "sign_in_again", "Sign in again to start your Muse.")
             running = [a for a in self.live.values() if a.running]
             if len(running) >= self.s.web_max_running:
                 # put the quietest one to sleep to make room
@@ -330,9 +389,11 @@ class AccountManager:
             log.warning("stopping %s: %s", a.container, exc)
 
     # ------------------------------------------------------------------ requests
-    async def for_host(self, slug: str) -> Account | None:
-        """The account behind ``<slug>.<domain>``, its Muse up (woken if it slept); None when
-        there is no such account."""
+    async def for_host(self, slug: str, proves=None) -> Account | None:
+        """The account behind ``<slug>.<domain>``, its Muse up; None when there is no such
+        account. A slept Muse is woken only when ``proves(token)`` says the request carries
+        the account's token (``Asleep`` otherwise), and not at all once the key it was
+        started with has lapsed — then it is sign-in again (``sign_in_again``)."""
         live = self.live.get(slug)
         if live is not None and live.running:
             live.last_seen = self.clock()
@@ -341,6 +402,12 @@ class AccountManager:
         account = self.store.by_slug(slug)
         if account is None:
             return None
+        if proves is None or not proves(account.token):
+            raise Asleep(account)
+        if account.key_expires_at and account.key_expires_at <= self.clock():
+            raise Refused(
+                401, "sign_in_again", "Your sign-in has lapsed. Sign in again to start your Muse."
+            )
         return await self.open(account)
 
     def touch(self, a: Account) -> None:

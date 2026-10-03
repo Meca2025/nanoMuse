@@ -56,10 +56,19 @@ def _clean_code(code: int | None) -> int:
     return code
 
 
-async def proxy_ws(ws: WebSocket, url: str, on_activity, label: str = "") -> None:
+async def proxy_ws(
+    ws: WebSocket,
+    url: str,
+    on_activity,
+    label: str = "",
+    first: str | None = None,
+    accepted: bool = False,
+) -> None:
     """One browser socket relayed to the session's runtime, both ways, until either side
     closes; the close code travels across. `label` (the session id) names the socket in
-    the log, with who closed it and with what code — the question a stuck phone raises."""
+    the log, with who closed it and with what code — the question a stuck phone raises.
+    `first` is a frame already taken from the browser (the auth frame that woke a slept
+    Muse), sent on ahead of the rest; `accepted` says the handshake is done."""
     who = label or url
     try:
         upstream = await websockets.connect(url, open_timeout=10, max_size=16 * 2**20)
@@ -72,7 +81,10 @@ async def proxy_ws(ws: WebSocket, url: str, on_activity, label: str = "") -> Non
         await ws.close(code=1011)
         return
 
-    await ws.accept()
+    if not accepted:
+        await ws.accept()
+    if first is not None:
+        await upstream.send(first)
     log.info("ws %s: open", who)
 
     async def to_upstream() -> int:

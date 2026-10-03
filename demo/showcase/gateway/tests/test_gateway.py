@@ -4,8 +4,8 @@ import httpx
 import pytest
 
 from showcase_gateway.config import sighted_default
-from showcase_gateway.llm import extract_usage, prepare_body
-from showcase_gateway.sessions import Refused, check_provider
+from showcase_gateway.llm import extract_usage, pinned, prepare_body
+from showcase_gateway.sessions import Refused, check_provider, resolve_provider
 
 from .conftest import body
 
@@ -182,7 +182,11 @@ async def test_bring_your_own_key(world):
             assert r.status_code == 200
         sent = upstream.calls[-1]
         assert sent.headers["authorization"] == "Bearer sk-visitor-1"
-        assert str(sent.url) == "https://byok.example/v1/chat/completions"
+        # pinned to the address the name resolved to when it was checked: the name only as
+        # Host and SNI, so a later DNS answer pointing inside our network changes nothing
+        assert str(sent.url) == "https://93.184.216.34/v1/chat/completions"
+        assert sent.headers["host"] == "byok.example"
+        assert sent.extensions["sni_hostname"] == "byok.example"
         assert manager.day_requests == 0
 
 
@@ -215,6 +219,19 @@ def test_check_provider_refuses_private_addresses():
     assert (
         check_provider("https://models.example/v1/", ("models.example",), resolve)
         == "https://models.example/v1"
+    )
+    assert resolve_provider("https://models.example:8443/v1/", ("models.example",), resolve) == (
+        "https://models.example:8443/v1",
+        "models.example",
+        ("93.184.216.34",),
+    )
+    assert pinned("https://models.example:8443/v1/chat", "93.184.216.34") == (
+        "https://93.184.216.34:8443/v1/chat",
+        "models.example",
+    )
+    assert pinned("https://models.example/v1", "2606:2800:220:1:248:1893:25c8:1946") == (
+        "https://[2606:2800:220:1:248:1893:25c8:1946]/v1",
+        "models.example",
     )
 
 

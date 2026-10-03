@@ -29,18 +29,19 @@ from pydantic import BaseModel, Field
 from starlette.responses import Response
 from starlette.routing import Host, Route, Router, WebSocketRoute
 from starlette.staticfiles import StaticFiles
-from starlette.websockets import WebSocket
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from . import __version__, llm
-from .accounts import AccountManager, AccountStore
+from .accounts import AccountManager, AccountStore, Asleep
 from .clips import Clips, is_clip_path
 from .config import Settings
 from .images import Pictures, is_image_path
 from .proxy import proxy_http, proxy_ws
 from .runner import DockerRunner
-from .sessions import Provider, Refused, SessionManager, check_provider
+from .sessions import Provider, Refused, SessionManager, resolve_provider
 from .trials import TrialManager, TrialStore
 from .visitors import VisitorBook, VisitorStore
+from .wake import proof_from_http, proof_from_token, token_from_first_frame, wake_page
 from .webpage import PAGE as WEB_PAGE
 
 log = logging.getLogger("showcase")
@@ -177,21 +178,33 @@ def create_app(
     app = FastAPI(title="nanoMuse showcase gateway", version=__version__, lifespan=lifespan)
 
     # ------------------------------------------------------------- the phone → its Muse
-    async def _behind(host_id: str):
+    async def _behind(host_id: str, proves=None):
         """The session or the account behind ``<id>.<domain>``, or None. Waking a slept
-        account's container happens here, so a first request may take a few seconds."""
+        account's container happens here, so a first request may take a few seconds — and
+        only for a request that proves the account's token (``proves``; ``Asleep`` otherwise:
+        anyone can type the address, only the person has the token)."""
         sess = manager.get(host_id)
         if sess is not None:
             manager.touch(sess)
             return sess, lambda: manager.touch(sess)
-        account = await accounts.for_host(host_id)
+        account = await accounts.for_host(host_id, proves)
         if account is None:
             return None, None
         return account, lambda: accounts.touch(account)
 
+    signin_url = f"{settings.site_origin()}/web/"
+
     async def session_http(request: Request) -> Response:
         try:
-            target, touch = await _behind(request.path_params["sid"])
+            target, touch = await _behind(request.path_params["sid"], proof_from_http(request))
+        except Asleep as exc:
+            if "text/html" in request.headers.get("accept", ""):
+                return HTMLResponse(wake_page(signin_url))
+            return JSONResponse(
+                {"error": exc.code, "message": exc.message},
+                status_code=exc.status,
+                headers={"Retry-After": "3"},
+            )
         except Refused as exc:
             return _refused(exc)
         if target is None:
@@ -202,27 +215,62 @@ def create_app(
             )
         return await proxy_http(request, http, target.http_base)
 
-    async def session_ws(ws: WebSocket) -> None:
+    async def session_wake(request: Request) -> Response:
+        """The wake page's request: the token in the header wakes the account's Muse (or
+        it is already up); without the right token nothing starts."""
         try:
-            target, touch = await _behind(ws.path_params["sid"])
+            target, _ = await _behind(request.path_params["sid"], proof_from_http(request))
+        except Asleep:
+            return JSONResponse(
+                {"error": "token", "message": "That link is not yours to open."}, status_code=401
+            )
+        except Refused as exc:
+            return _refused(exc)
+        if target is None:
+            return JSONResponse(
+                {"error": "no_session", "message": "This demo session has ended."}, status_code=404
+            )
+        return Response(status_code=204)
+
+    async def session_ws(ws: WebSocket) -> None:
+        sid = ws.path_params["sid"]
+        accepted = False
+        first: str | None = None
+        try:
+            target, touch = await _behind(sid, proof_from_token(ws.query_params.get("token")))
+        except Asleep:
+            # the token travels in the socket's first frame (the runtime's way since 0.1.31):
+            # take the frame, prove the token with it, wake, and pass the frame on
+            await ws.accept()
+            accepted = True
+            try:
+                first = await asyncio.wait_for(ws.receive_text(), 10)
+            except (TimeoutError, RuntimeError, WebSocketDisconnect):
+                first = None
+            try:
+                target, touch = await _behind(sid, proof_from_token(token_from_first_frame(first)))
+            except Refused:
+                target, touch = None, None
         except Refused:
             target, touch = None, None
         if target is None:
             # accept first: a close before the handshake reaches the browser as a bare failure,
             # the code only travels on an open socket (the phone module and the web app read
             # 4404 as "gone" and stop reconnecting)
-            await ws.accept()
+            if not accepted:
+                await ws.accept()
             await ws.close(code=4404, reason="this session has ended")
-            log.debug("ws %s: gone (4404)", ws.path_params["sid"])
+            log.debug("ws %s: gone (4404)", sid)
             return
         url = f"{target.ws_base}{ws.url.path}"
         if ws.url.query:
             url += f"?{ws.url.query}"
-        await proxy_ws(ws, url, touch, label=ws.path_params["sid"])
+        await proxy_ws(ws, url, touch, label=sid, first=first, accepted=accepted)
 
     session_router = Router(
         routes=[
             WebSocketRoute("/ws", session_ws),
+            Route("/__wake", session_wake, methods=["POST"]),
             Route("/{path:path}", session_http, methods=_METHODS),
         ]
     )
@@ -367,11 +415,15 @@ def create_app(
             # not signed in is sent to the sign-in by the page
             visitor = visitors.check(llm.bearer(request)) if visitors.required else None
             if body.provider is not None:
-                base_url = check_provider(
+                base_url, host, addresses = resolve_provider(
                     body.provider.base_url, settings.byok_hosts, manager.resolve
                 )
                 byok = Provider(
-                    base_url, body.provider.api_key.strip(), body.provider.model.strip()
+                    base_url,
+                    body.provider.api_key.strip(),
+                    body.provider.model.strip(),
+                    host=host,
+                    addresses=addresses,
                 )
             sess = await manager.create(
                 client_ip(request, settings.trust_proxy),
