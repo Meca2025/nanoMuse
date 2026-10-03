@@ -29,7 +29,7 @@ The look follows Meta Muse: near-white and near-black surfaces, one blue accent,
 ## Getting it onto your phone
 
 1. Start with `--host 0.0.0.0` (or set `server.host`). The terminal prints a URL and a QR code.
-2. Scan the code. The URL contains the access token (`?token=…`); the app stores it and drops it from the address bar.
+2. Scan the code. The link carries the access token in its fragment (`#token=…`, which the browser never sends to any server); the app stores it and drops it from the address bar.
 3. In the browser menu choose *Add to Home Screen*. The app has a manifest and icons, so it opens full-screen like a native app.
 
 The token is generated once and stored in `<data_dir>/server_token`; set `server.token` or `NANOMUSE_SERVER_TOKEN` to choose your own. Keep `server.auth = true` on any network you do not fully control. To reach the app from outside your network, put it behind something you trust (Tailscale, a reverse proxy with TLS) rather than opening the port.
@@ -126,7 +126,7 @@ Turn the dial to Off for goals that need your judgement at every step, or leave 
 
 ## API
 
-Everything the app does goes through this API, so another front-end (a Telegram bot, a desktop widget) can drive the same agent. All requests need `Authorization: Bearer <token>` or `?token=` unless `server.auth = false`.
+Everything the app does goes through this API, so another front-end (a Telegram bot, a desktop widget) can drive the same agent. All requests need `Authorization: Bearer <token>` unless `server.auth = false`. (`?token=` is still accepted in this release and goes in the next: a token in a URL lands in every access log on the way.) The bytes the app shows inline — `/api/files/*`, the browser frames — also open with a link the client signed with its token, `?exp=<unix seconds>&sig=<HMAC-SHA256(token, "<exp>\n<path>")[:32]>`: a logged link opens that one path for a few hours and nothing else.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -202,11 +202,11 @@ Everything the app does goes through this API, so another front-end (a Telegram 
 | GET | `/api/push` | `{available, public_key, subscriptions, devices[]}` — the VAPID public key to subscribe with |
 | POST | `/api/push/subscribe` `{subscription}`, `/api/push/unsubscribe` `{endpoint}` | register / drop this device's `PushSubscription` |
 | POST | `/api/push/test` | send a test notification to every subscribed device |
-| WS | `/ws?token=` | live events |
+| WS | `/ws` | live events; the first frame is `{"kind": "auth", "token": …}` |
 
 ### WebSocket
 
-On connect the server sends `{"kind": "hello", "state": …}` (the same payload as `/api/state`). Then:
+The client's first frame is `{"kind": "auth", "token": "…"}` (within ten seconds, or the socket closes with 4401 — as it does for a wrong token). Then the server sends `{"kind": "hello", "state": …}` (the same payload as `/api/state`). Then:
 
 | Server → client | Meaning |
 |---|---|

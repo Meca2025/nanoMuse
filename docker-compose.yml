@@ -3,7 +3,7 @@
 # mounted read-only — run `nanomuse config init` on the host first.
 #
 #   cp .env.example .env && $EDITOR .env             # API key, NANOMUSE_SERVER_TOKEN
-#   docker compose up -d app                         # phone app on http://<host>:8787/?token=...
+#   docker compose up -d app                         # phone app on http://<host>:8787/#token=...
 #   docker compose run --rm muse                     # terminal chat
 #   docker compose run --rm muse run "plan my week"  # one task
 #   docker compose up -d daemon                      # advance goals on a timer, no UI

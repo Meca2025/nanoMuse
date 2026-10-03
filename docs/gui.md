@@ -137,7 +137,7 @@ The HTML page is self-contained — every screenshot inlined, the tap drawn as a
 
 ## The device protocol
 
-For anyone writing another executor. Messages ride on the app's WebSocket (`/ws?token=…`).
+For anyone writing another executor. Messages ride on the app's WebSocket (`/ws`, the token in the first frame).
 
 The device announces itself once:
 

@@ -67,7 +67,7 @@ async def test_the_page_and_a_first_sign_in(web):
         me = body(r)
         token = me["url"].split("token=")[1]
         assert me["slug"].startswith("w") and len(me["slug"]) == 12
-        assert me["url"] == f"http://{me['slug']}.s.localhost:8000/?token={token}"
+        assert me["url"] == f"http://{me['slug']}.s.localhost:8000/#token={token}"
         assert me["running"] is True and me["channel"] == "email"
         # the relay saw the visitor's address, not the gateway's
         code_calls = [x for x in upstream.calls if x.url.path == "/v1/auth/code"]

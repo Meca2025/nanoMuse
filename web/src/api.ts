@@ -41,6 +41,7 @@ import type {
   UpdateView,
   WsMessage,
 } from "./types";
+import { signedParams } from "./ticket";
 
 const TOKEN_KEY = "nanomuse_token";
 
@@ -50,13 +51,32 @@ export class AuthError extends Error {
   }
 }
 
-/** Read the token from `?token=` (first visit via QR code) or localStorage. */
+/** The token in a link the runtime printed: `#token=…` (the fragment never reaches a
+ *  server, so it is in no access log) or, from older links, `?token=…`. Taken off the
+ *  address once read. */
+export function tokenFromLink(url: URL): string | null {
+  const parts = url.hash.replace(/^#/, "").split("&").filter(Boolean);
+  const index = parts.findIndex((p) => p.startsWith("token="));
+  if (index >= 0) {
+    const token = decodeURIComponent(parts[index].slice("token=".length));
+    parts.splice(index, 1);
+    url.hash = parts.length ? `#${parts.join("&")}` : "";
+    return token || null;
+  }
+  const query = url.searchParams.get("token");
+  if (query) {
+    url.searchParams.delete("token");
+    return query;
+  }
+  return null;
+}
+
+/** Read the token from the link (first visit via QR code) or localStorage. */
 export function getToken(): string {
   const url = new URL(window.location.href);
-  const fromUrl = url.searchParams.get("token");
+  const fromUrl = tokenFromLink(url);
   if (fromUrl) {
     localStorage.setItem(TOKEN_KEY, fromUrl);
-    url.searchParams.delete("token");
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
   }
   return localStorage.getItem(TOKEN_KEY) ?? "";
@@ -67,10 +87,12 @@ export function setToken(token: string): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+/** A workspace file for an `<img>`, `<video>`, `<iframe>` or a download link: signed with
+ *  the token rather than carrying it (ticket.ts) — the link opens this path for a few hours
+ *  and nothing else, should it end up in a log. */
 export function fileUrl(path: string, download = false): string {
   const token = getToken();
-  const params = new URLSearchParams();
-  if (token) params.set("token", token);
+  const params = token ? signedParams(token, `/api/files/${path}`) : new URLSearchParams();
   if (download) params.set("download", "1");
   const q = params.toString();
   return `/api/files/${path.split("/").map(encodeURIComponent).join("/")}${q ? `?${q}` : ""}`;
@@ -79,7 +101,7 @@ export function fileUrl(path: string, download = false): string {
 /** A browser frame (JPEG) kept in memory on the server for the current run. */
 export function frameUrl(thread: string, frame: string): string {
   const token = getToken();
-  const q = token ? `?token=${encodeURIComponent(token)}` : "";
+  const q = token ? `?${signedParams(token, `/api/browser/${thread}/frames/${frame}.jpg`)}` : "";
   return `/api/browser/${encodeURIComponent(thread)}/frames/${encodeURIComponent(frame)}.jpg${q}`;
 }
 
@@ -376,10 +398,11 @@ export function connectWs(handlers: {
 
   const open = () => {
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const token = getToken();
-    const url = `${proto}://${window.location.host}/ws${token ? `?token=${encodeURIComponent(token)}` : ""}`;
-    ws = new WebSocket(url);
+    // the token goes in the first frame, never in the address (which proxies log)
+    ws = new WebSocket(`${proto}://${window.location.host}/ws`);
     ws.onopen = () => {
+      const token = getToken();
+      if (token) ws?.send(JSON.stringify({ kind: "auth", token }));
       attempt = 0;
       handlers.onOpen?.();
     };

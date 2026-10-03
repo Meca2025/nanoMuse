@@ -396,6 +396,58 @@ def test_websocket_rejects_bad_token(server):
         ws.receive_json()
 
 
+def test_websocket_takes_the_token_in_the_first_frame(server):
+    """No ``?token=`` in the address (proxies log it): the first frame says who it is."""
+    client, _, _ = server
+    from starlette.websockets import WebSocketDisconnect
+
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "auth", "token": "secret-token"})
+        hello = ws.receive_json()
+        assert hello["kind"] == "hello"
+        ws.send_json({"kind": "ping"})
+        assert ws.receive_json()["kind"] == "pong"
+    # a wrong token, or anything but the auth frame first: closed with 4401, nothing served
+    with pytest.raises(WebSocketDisconnect) as closed, client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "auth", "token": "wrong"})
+        ws.receive_json()
+    assert closed.value.code == 4401
+    with pytest.raises(WebSocketDisconnect) as closed, client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "ping"})
+        ws.receive_json()
+    assert closed.value.code == 4401
+
+
+def test_signed_links_open_one_file_for_a_while(server, settings: Settings):
+    """An ``<img>`` cannot send a header: the client signs the link with its token instead
+    of putting the token in it (nanomuse.server.tickets / web/src/ticket.ts)."""
+    from nanomuse.server import tickets
+
+    client, _, _ = server
+    out = settings.agent.workspace / "out"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "猫.txt").write_text("meow")
+    (out / "other.txt").write_text("no")
+    anon = TestClient(client.app)
+    path = "/api/files/out/猫.txt"
+    exp = tickets.expiry()
+    sig = tickets.sign("secret-token", path, exp)
+    assert anon.get(f"/api/files/out/%E7%8C%AB.txt?exp={exp}&sig={sig}").text == "meow"
+    # the same signature opens nothing else, not after its time, not with a byte changed
+    assert anon.get(f"/api/files/out/other.txt?exp={exp}&sig={sig}").status_code == 401
+    assert anon.get(f"/api/files/out/%E7%8C%AB.txt?exp={exp + 1}&sig={sig}").status_code == 401
+    other = ("0" if sig[0] != "0" else "1") + sig[1:]
+    assert anon.get(f"/api/files/out/%E7%8C%AB.txt?exp={exp}&sig={other}").status_code == 401
+    assert not tickets.check("secret-token", path, str(exp), sig, now=exp + 1)
+    assert not tickets.check("secret-token", path, str(exp + 10 * 86400), sig)
+    assert not tickets.check("secret-token", path, "soon", sig)
+    # the link's text is stable for hours: the same expiry a minute later
+    assert tickets.expiry(1_700_000_000) == tickets.expiry(1_700_000_060)
+    # the API itself never opens with a signature, and a header still wins everywhere
+    assert anon.get(f"/api/state?exp={exp}&sig={sig}").status_code == 401
+    assert client.get("/api/files/out/other.txt").text == "no"
+
+
 # ----------------------------------------------------------------------------- side chats
 def test_side_chats_are_isolated(server):
     client, _, llm = server

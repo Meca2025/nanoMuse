@@ -65,7 +65,8 @@ class Account:
     def public(self, settings: Settings) -> dict[str, Any]:
         return {
             "slug": self.slug,
-            "url": f"{settings.session_origin(self.slug)}/?token={self.token}",
+            # the token in the fragment: the browser keeps it to itself, Caddy never logs it
+            "url": f"{settings.session_origin(self.slug)}/#token={self.token}",
             "origin": settings.session_origin(self.slug),
             "hint": self.hint,
             "channel": self.channel,
