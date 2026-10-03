@@ -26,9 +26,10 @@ decorative, every surface a flat tone one step from its neighbour.
 stylesheet over the harness's stable DOM hooks (`data-composer-card`,
 `data-chat-flow-kind`, `data-approval-key`…):
 
-- The rail, in Muse's order: Chats (a dot while the agent works), Search, Devices, then
-  the harness's Schedules when its plugin is installed; a spacer; the hamburger at the
-  foot. No face on the rail — as in Muse, the face is the pinned header and the profile
+- The rail, in Muse's order: Chats (a dot while the agent works), Search, Feed (a dot
+  for posts you have not seen), Ideas, Goals, Library, Devices; a spacer; the hamburger
+  at the foot (Schedules and the harness's other panels live in its menu). No face on
+  the rail — as in Muse, the face is the pinned header and the profile
   panel. On macOS the window has no title bar: the traffic lights sit over the rail's
   empty top, which is a drag handle, and full screen takes the clearance away.
 - The chats column: a *Search* field with a *···* menu (archived chats), **Main chat**
@@ -53,7 +54,8 @@ stylesheet over the harness's stable DOM hooks (`data-composer-card`,
   while a turn runs). The harness's model picker, permission mode and plan toggle are
   hidden from it — the model lives in Settings → Models and the default permission mode
   in General, as in Muse — and come back with *Show DeepSeek Harness controls* under
-  General. No microphone: dsh's web profile has no dictation.
+  General. The microphone appears when the harness's voice input is switched on in
+  Plugins (Settings → Dictation says how).
 - Theme: the harness's light and dark palettes are overridden to Muse's tones (`#f9f9f9`
   surfaces, `#e3e4e6` agent bubbles in the light; `#171717` with `#242424` bubbles and
   `#2b2b2b` fields in the dark) and the accent follows the face's colour on the account,
@@ -109,9 +111,13 @@ worn on every device) and *Edit name* — the name, *Connected* / *Not signed in
 *Offline*, and a segmented control of four tabs: **Activity** (the sessions and the
 hub's notices, *Today* and *Earlier*), **Approvals** (what you allowed or rejected on
 the approval cards, with when; kept on this computer), **Schedule** (opens the harness's
-schedules panel), **Memory** (what the account carries from device to device and the
-agent's description). Drawing a face from four candidates is the phone's studio; the
-desktop wears what the account has.
+schedules panel), **Memory** — what the agent remembers about you, one line each: a
+field to add one, × to forget one, *Import memory* (Muse's sheet: paste what another
+assistant knew, one line per memory), and the agent's description when the account has
+one. The agent writes memory itself with the `remember` tool when you tell it something
+you will expect it to know next time, and every chat's prompt carries the list back
+(`rooms.json`, this computer only). Drawing a face from four candidates is the phone's
+studio; the desktop wears what the account has.
 
 ## Computer use
 
@@ -131,10 +137,22 @@ headline. dsh decides *once* or *rejected*; the standing answer is its permissio
 (General → the default for new chats). Settings → **Computer use** shows the two macOS
 permissions with *Allow* and *Open System Settings* (through the desktop shell), *Keep
 the screen awake while it works* (the shell holds a power-save blocker while a session
-runs) and the note that anything that sends, pays or deletes is asked first. The live
-stage — the controlled screen inside the window — is not built: on the desktop the
-controlled screen *is* the screen. What the phone app shows while its Hands work
-([gui.md](gui.md)) is the model.
+runs) and the note that anything that sends, pays or deletes is asked first.
+
+**The live stage** is Muse's, picture-in-picture over the chat (bottom right, 400 px):
+the latest screenshot the agent took, dimmed while it works, × top-left to put it away,
+*Expand* top-right (the frame in a sheet), a **Take over** pill while a step runs (it
+cancels the session's turn — the agent lets go, your mouse is yours), a caption bottom-
+left — *looking at the screen · nanoMuse*, *clicked "Save" · Finder*, *typed "hello" ·
+WeChat*, *pressed ⌘ S · Pages* — and the agent's face as the cursor marker, with a
+ripple, where it last clicked. The host keeps one frame in memory and no history: a
+`tools/execute` middleware around the hands' calls takes the picture out of the MCP
+result (`computer_screen` returns it; `computer_act` returns the screen after the
+action) with the window title and size from the first line, and `GET
+/nanomuse/cloud/stage/frame?seq=N` serves it to the browser half; ten minutes after the
+last step the frame is dropped. When the agent looks at a *phone* through Reach
+(`device_screen`), the same stage shows that screen with the device's name — that is
+what the phone app shows while its own Hands work ([gui.md](gui.md)), seen from here.
 
 ## Settings
 
@@ -152,17 +170,44 @@ stock General plugin switched off in the bundle layer:
 - **General** — the harness's own rows (permission presets, language, appearance, font
   size, shortcuts, developer tools…) mount in our page through the `settings.general.item`
   seat, then *About*: nanoMuse, built on DeepSeek Harness, the bundle's version, the
-  licence; and *Developer*: *Show DeepSeek Harness controls* (the model picker, the
-  modes, the workspace browser in place of the chats column).
+  licence; **App behavior** when the desktop shell is there — *Open at login* (a login
+  item; a freedesktop autostart entry on Linux), *Show in the menu bar* / *system tray*
+  (an icon with *Open nanoMuse*, *New chat*, *Quit*), *Quick chat with ⌥ Space*
+  (Ctrl+Alt+Space elsewhere: the window comes up with a fresh chat and the composer
+  focused; pressed while it is in front, it steps aside) — kept in `desktop.json` under
+  the app's home; and *Developer*: *Show DeepSeek Harness controls* (the model picker,
+  the modes, the workspace browser in place of the chats column).
 - **Account** — the nanoMuse account: sign in or the masked identifier, the allowance,
   the look, the models, *Open Devices*.
 - **Models**, **Agents** — the harness's pages, unchanged.
+- **Connectors** — what the agent can reach from a chat: the built-ins (Hands on this
+  computer — on when the runtime answered, with the reason when it did not; Reach, with
+  how many devices; the rooms' tools; Schedule) and the **MCP servers** behind the
+  preset's tools, each with its tool list (`mcp__<server>__<tool>` read through an
+  agent's view of the registry once a chat has run), *Add a connector* (opens the agent
+  preset, where an MCP server is one row of `@deepseek-ai/dsh-mcp-client`) and the
+  harness's MCP docs.
 - **Computer use** — the system permissions (macOS), keep awake, the risk note.
+- **File system access** — the folders the agent uses (home, the Library, Downloads,
+  nanoMuse's own files; each opens in the file manager), the rules (reading anything you
+  name; writing under the chat's permission preset, asking outside its folder; the
+  sandbox), and *Full Disk Access* on macOS.
+- **Dictation** — the harness's own voice input (local SenseVoice; switched on in
+  Plugins, a microphone appears beside Send, audio stays on the computer), the microphone
+  permission on macOS, and how to use the system's dictation into the composer.
 - **Devices** — this computer (its name, the remote-control switch that lets the phone
   run things here) and the other devices on the account, online dots, *Forget*.
+- **Permissions** — one page that says what the agent may touch (computer use, files,
+  microphone, connectors, other devices with the remote-control state), each row opening
+  the page with the switch; how it asks (the permission presets, from the chip above
+  the composer); the recent approvals.
 - **Data controls** — *We take your privacy seriously* with the privacy policy, *Help
   improve nanoMuse's AI models* (the relay's switch, with how many turns it kept and
-  *Delete*), as on every other app.
+  *Delete*), as on every other app; then *On this computer*: **Import memory**,
+  **Download your agent data** (a zip in Downloads — the account snapshot without the
+  sign-in token, the look and faces, the rooms, memory, and the chats as the harness
+  keeps them; shown in the file manager) and **Reset** (memory, the rooms and the local
+  look go, the account signs out; the chats stay).
 - **Help & support** — the docs, the site, discussions, report an issue, the version.
 - **Legal** — the licence, the Meta trademark notice, the acknowledgements (DeepSeek
   Harness, OpenMinis), the privacy policy and the terms.
@@ -170,9 +215,10 @@ stock General plugin switched off in the bundle layer:
   archived sessions…), grouped at the bottom so they are there and out of the way.
 - **Sign out** at the foot while signed in.
 
-Connectors, dictation, wallet, secure storage and message channels are not there: dsh's
-web profile has no equivalent, and the Cloud has no wallet — members have an allowance
-([cloud.md](cloud.md#allowance)).
+Wallet, secure storage and message channels are not there: the Cloud has no wallet —
+members have an allowance ([cloud.md](cloud.md#allowance)) — nanoMuse keeps no
+passwords for the agent, and messages reach you through the phone app's notifications
+rather than a messenger.
 
 ## The rail's other rooms — Feed, Ideas, Goals, Library
 
@@ -183,21 +229,49 @@ now*; *Goals* with categories, running automations (cron-like) and a dated timel
 *Library*, everything generated — documents (a markdown editor), web artefacts, images,
 videos, podcasts, system files.
 
-**nanoMuse on dsh.** Deliberately not copied as rooms. What they do lives in the chat
-and the harness's own parts: the schedule plugin covers the automations (its panel
-appears on the rail when installed), documents are files in the workspace, and the
-phone app's Ideas and Library screens ([every-device.md](every-device.md)) stay on the
-phone. If a room earns its place later it is one `main` panel and one rail button away.
+**nanoMuse on dsh.** The four rooms are on the rail, in Muse's order (Chats, Search,
+Feed, Ideas, Goals, Library, Devices), each one `main` panel of the harness's layout,
+so the chat column stays where it is and a room opens in its place. One host service
+(`nanomuse-rooms`, `src/rooms.ts`) keeps them in `$DSH_HOME/nanomuse/rooms.json`,
+serves `/nanomuse/rooms/*` and streams changes to the browser half:
+
+- **Feed** — posts the agent writes for you in a hidden chat (a batch when the room is
+  empty and then every few hours, from your *feed instructions*, your goals and the
+  profile): title, Markdown body with links inline, a picture when the page it read had
+  one, ♡ and **Discuss** (a side chat opened on the post). The sliders icon opens the
+  instructions sheet; a dot on the rail marks posts newer than your last visit. The
+  agent can also post from any chat with `feed_post`.
+- **Ideas** — suggestions in groups (*For you* first, then by theme), each a card with
+  what it includes, how it works and **Start now**, which opens a chat with the idea as
+  the brief; started ideas get a green check.
+- **Goals** — *● Tracking* list with categories (health, relationships, money, career,
+  interests, productivity), *Create goal* in the category's words; each goal is a chat
+  of its own that the agent names and keeps a one-line status for (`goals_room_update`),
+  **In progress** automations from the harness's schedule plugin (the agent sets them up
+  in that chat; *Check in* runs one now), and a timeline grouped by day from the chat's
+  turns.
+- **Library** — shelves (All, Documents, Web; Media: Images, Videos, Podcasts; System
+  files at the foot), *Select*, *+ Create…* (a brief → a chat that writes the file under
+  `~/nanoMuse/Library` — `构件` in Chinese — with the workspace-write preset), *Recent*
+  and a card grid; a viewer and a Markdown editor for text, pictures and media inline,
+  *Open* / *Show in folder* for the rest. Everything the agent delivers with `present`
+  lands here, and `library_add` lists a file without delivering it.
+
+Rooms need a model that answers; signed out, they say so. The hidden chats the feed and
+ideas write in are archived once parsed, so the chats column stays yours.
 
 ## The hamburger
 
 **Muse.** Settings; report a bug (with a screenshot attached).
 
-**nanoMuse on dsh.** Settings (with its shortcut), Keyboard shortcuts, the harness's
-panels (Plugins and whatever else is installed), collapse / expand the chats column,
-*Report an issue* (opens the GitHub issues page). Everything dsh has that Muse does not
-— the plugin manager, the panel list, archived sessions, developer tools — is reachable
-from here or from Settings → Advanced and nowhere else.
+**nanoMuse on dsh.** Settings (with its shortcut), Keyboard shortcuts, Schedules and
+the harness's other panels (Plugins and whatever else is installed), collapse / expand
+the chats column, *Report a problem* — under the desktop shell a screenshot of the
+window goes to Downloads and the GitHub issue page opens with the build's facts filled
+in (a toast says which file to drag in); in a browser it opens the issues page.
+Everything dsh has that Muse does not — the plugin manager, the panel list, archived
+sessions, developer tools — is reachable from here or from Settings → Advanced and
+nowhere else.
 
 ## Not in Muse, in nanoMuse
 

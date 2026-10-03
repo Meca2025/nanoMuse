@@ -20,7 +20,8 @@ over the stock configuration and the plugins the patch names:
 | `nanomuse`         | host    | Serves the face's stills under `/nanomuse/assets/` — the dragon's, and the account's drawn face at `face/<id>/<mood>.webp`.                 |
 | `nanomuse-cloud`   | host    | The account: sign-in by phone or e-mail code against the relay, the key in dsh's credential store, the account's chat models written into `dsh-llm-pi-ai` as the `nanoMuse Cloud` provider. The hub client: this computer on the account's device list, answering `info` and `notify` always, `shell`, `files`, `file.get`, `file.put`, `open`, `screen` (the runtime's shapes, in `actions.ts`) and `task` (the phone's `delegate`, run in a dsh session "From <device>" with its approvals relayed back, in `task.ts`) while the remote-control switch is on. The profile pulled from the relay (name, face), the Hands/Reach calls in flight, the calls other devices made here, all streamed to the browser over SSE. Loopback API under `/nanomuse/cloud/`. |
 | `nanomuse-reach`   | host    | **Reach**: the tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`, `device_notify`, `delegate` over the hub, approvals through dsh's card, *Stop* stopping the delegated job on the other device; a system-prompt context with the agent's name, its look and the devices online. |
-| `nanomuse` (client)| browser | The window the way Muse shapes it ([docs/desktop-muse.md](../docs/desktop-muse.md)): the `sidebar` seat as a rail (Chats, Search, Devices, hamburger) plus a chats column of *Main chat* and *Side chats*; the face, name and a live status chip pinned above the conversation with *Stop*, *Invite* at the top right; a profile panel beside the chat (look, name, activity, approvals, schedule, memory); the composer as one pill, the bubbles and Muse's permission card as styles over the harness's DOM; the `sidebar.settings` seat as a grouped dialog (General with the harness's own rows, Account, Models, Agents, Computer use, Devices, Data controls, Help & support, Legal, the other plugins' pages under Advanced, Sign out); the first run full-window (welcome → sign in → code boxes → the permissions carousel → ready); Muse's light and dark tones with the accent from the face's colour; toasts for notices from other devices and for what they did here. |
+| `nanomuse-rooms`   | host    | **The rooms**: Feed, Ideas, Goals and Library in `$DSH_HOME/nanomuse/rooms.json` under `/nanomuse/rooms/*` with SSE — the feed and ideas written by the agent in hidden chats, goals as chats of their own with the schedule plugin's automations, the Library from `present` and `library_add` under `~/nanoMuse/Library`; **memory** (one-line facts, read into every chat; import, forget); the tool catalogue the Connectors page shows; data export (a zip) and reset. `nanomuse-rooms-tools` (in the preset) adds `goals_room_update`, `feed_post`, `library_add`, `remember` and the prompt context. |
+| `nanomuse` (client)| browser | The window the way Muse shapes it ([docs/desktop-muse.md](../docs/desktop-muse.md)): the `sidebar` seat as a rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, hamburger) plus a chats column of *Main chat* and *Side chats*; the four rooms as `main` panels; the live stage (the screen the agent works on, picture-in-picture, caption, take-over) as a `shell.overlay`; the face, name and a live status chip pinned above the conversation with *Stop*, *Invite* at the top right; a profile panel beside the chat (look, name, activity, approvals, schedule, memory); the composer as one pill, the bubbles and Muse's permission card as styles over the harness's DOM; the `sidebar.settings` seat as a grouped dialog (General with the harness's own rows and the shell's App behavior, Account, Models, Agents, Connectors, Computer use, File system access, Dictation, Devices, Permissions, Data controls with import memory / download your data / reset, Help & support, Legal, the other plugins' pages under Advanced, Sign out); the first run full-window (welcome → sign in → code boxes → the permissions carousel → ready); Muse's light and dark tones with the accent from the face's colour; toasts for notices from other devices and for what they did here. |
 | `preset-nanomuse`  | patch   | An agent preset with nanoMuse's voice and the same tools as dsh's *Standard*, plus **Hands**: dsh's MCP client on `nanomuse mcp`, the runtime's `computer_screen`/`computer_act` over stdio, and the Reach plugin. New sessions start from it. |
 | `system-prompt`, `agent-preset-registry`, `ui-brand-official`, `ui-sidebar`, `ui-settings-general` | patch | The persona for preset-free compositions, the default preset, and the stock brand mark, sidebar and settings shell stepping aside for ours. |
 
@@ -41,8 +42,9 @@ export DSH_HOME=/tmp/nm-dev/dsh-home
 cd /path/to/nanoMuse/harness/dsh-nanomuse
 pnpm install && pnpm build && pnpm test
 
-# 3. a profile from dsh's web template, with the bundle linked in
+# 3. a profile from dsh's web template, with the schedule bundle (the goals' automations) and ours linked in
 /tmp/nm-dev/dsh/node_modules/.bin/dsh --profile nanomuse --from-default-profile web --dump-config >/dev/null
+/tmp/nm-dev/dsh/node_modules/.bin/dsh plugin --profile nanomuse add @deepseek-ai/dsh-experimental-schedule-bundle
 /tmp/nm-dev/dsh/node_modules/.bin/dsh plugin --profile nanomuse add "$PWD"
 
 # 4. boot — against the production relay, or a local one (docs/every-device.md, "Debugging it all on one machine");
@@ -176,26 +178,34 @@ dsh-nanomuse/
                         streamed back as the runtime's event frames, approvals relayed to the asker, stop
   src/profile.ts        the account profile on disk: pull when newer, face stills cached per face id
   src/reach.ts          plugin `nanomuse-reach`: the device_* tools, delegate, the system-prompt context
+  src/rooms.ts          host service `nanomuseRooms`: the rooms' store and routes, the hidden generation chats, goal
+                        chats and their timeline, the Library index, memory, the tool catalogue, export (a zip writer) and reset
+  src/rooms-tools.ts    plugin `nanomuse-rooms-tools` (in the preset): goals_room_update, feed_post, library_add, remember, the prompt context
   src/relay.ts          the relay as a client (plain fetch; tested against a fake relay)
   src/client/
     index.ts            slot registrations: the sidebar and settings seats, brand mark/name with moods,
                         hero mark, the header, the Devices panel and section, onboarding steps, toasts
     live.ts             the SSE store (profile, hub, calls, notices) behind useLive()
     styles.ts           Muse's tones over the harness's tokens (light/dark), the accent, every nm-* class
-    MuseSidebar.tsx     the rail (Chats, Search, Devices, hamburger) and the column that holds the chats
+    MuseSidebar.tsx     the rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, hamburger) and the column that holds the chats
+    FeedPanel.tsx, IdeasPanel.tsx, GoalsPanel.tsx, LibraryPanel.tsx
+                        the four rooms, Muse's layouts; rooms.ts is their SSE store and fetch helper
+    LiveStage.tsx       the live stage: the latest frame, the caption, the cursor marker, expand and take over
+    Memory.tsx          the Memory tab's list, Muse's import-memory sheet, the Data controls rows (download, reset)
+    Pages.tsx           Settings → Connectors, Permissions, File system access, Dictation
     MuseChats.tsx       the chats column: Search, Main chat, Side chats — pin, rename, archive, make main
     MuseHeader.tsx      the face, name and status chip pinned above the conversation, with Stop
     Invite.tsx          the Invite button at the top right and its dialog (code, link, what it earned)
     ProfileDrawer.tsx   the profile panel: avatar with a pen (change look / edit name), the connection, four tabs
     MuseSettings.tsx    the settings dialog: grouped nav, Advanced, Sign out; the General page; the onboarding coordinator
-    Sections.tsx        Settings → Computer use, Help & support, Legal; the Developer rows on General
+    Sections.tsx        Settings → Computer use, Help & support, Legal; App behavior and the Developer rows on General
     DevicesPanel.tsx    Settings → Devices and the rail's Devices page: this computer, the others, the switch
     Avatar.tsx          the face in five moods: dragon stills, emoji on a colour, drawn face from the host
     Onboarding.tsx      the first run, full-window: welcome → sign in → code → the permissions carousel → ready
     SignIn.tsx          the two-step form (identifier → code), shared with Settings → Account
     CloudSection.tsx    Settings → Account (the account, the look, the models, the relay, Open Devices) and Data controls
     Capsule.tsx         the toasts (and the words for a Hands/Reach call, shared with the header)
-    bridge.ts, prefs.ts the desktop shell's bridge (window.nanomuseHarness) and the local preferences (Developer switch, keep awake, approvals)
+    bridge.ts, prefs.ts the desktop shell's bridge (window.nanomuseHarness: permissions, links, keep awake, app behavior, bug report, quick chat) and the local preferences (Developer switch, keep awake, approvals)
     icons.tsx, keys.ts, bus.ts, panels.ts
                         inline icons; synthetic key chords for the harness's commands; the settings and profile buses; panel ids
     api.ts, locales.ts  the fetch helper and the en/zh copy

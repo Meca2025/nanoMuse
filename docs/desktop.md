@@ -25,12 +25,15 @@ desktop, and it installs over the old one (same application id).
 ## What it is
 
 A dsh Host started by the shell as a child process, showing the harness's web app in a
-window of ours: the rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, Schedules,
-the hamburger), the chats column with the main chat and the side chats, the face and
-name pinned over the conversation with a live status line and *Stop*, Muse's permission
-card over the harness's approvals, the profile panel, grouped Settings, the full-window
-first run. The agent is dsh's — its agent loop, tools, skills, goals, plan mode,
-compaction, sub-agents, MCP — speaking as nanoMuse through the `nanomuse` preset, with:
+window of ours: the rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, the
+hamburger), the chats column with the main chat and the side chats, the face and name
+pinned over the conversation with a live status line and *Stop*, Muse's permission card
+over the harness's approvals, the live stage (the screen the agent is working on,
+picture-in-picture, with a caption and *Take over*), the profile panel with memory,
+Muse's Settings pages (Connectors, Computer use, File system access, Dictation,
+Permissions, Data controls with export and reset), the full-window first run. The agent
+is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-agents, MCP
+— speaking as nanoMuse through the `nanomuse` preset, with:
 
 - **the account**: a phone number or an e-mail and a code (or a password) against
   [nanoMuse Cloud](cloud.md); the key in dsh's credential store; the account's models as
@@ -39,6 +42,11 @@ compaction, sub-agents, MCP — speaking as nanoMuse through the `nanomuse` pres
 - **Hands** on this computer: `nanomuse mcp` from the bundled runtime over stdio, the
   runtime's `computer_screen` and `computer_act` tools with their approvals, so "what is
   on my screen?" and "open the settings and turn the volume down" work out of the box;
+- **the rooms**: Feed, Ideas, Goals and Library as Muse has them, kept by the host in
+  `nanomuse/rooms.json` and written by the agent in hidden chats (feed and ideas) or
+  chats of their own (goals, with the harness's schedule plugin for their automations;
+  Library creations under `~/nanoMuse/Library`), plus memory — what it remembers about
+  you, read into every chat ([desktop-muse.md](desktop-muse.md#the-rails-other-rooms--feed-ideas-goals-library));
 - **Reach**: this computer on the account's device list over the [hub](hub.md); the
   tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`,
   `device_notify` and `delegate` for the phone and the other computers; the phone's
