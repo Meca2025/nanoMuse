@@ -1,7 +1,9 @@
 # nanoMuse on DeepSeek Harness — the bundle (harness/dsh-nanomuse) as a package:
 #
-#   nanoMuse-Harness-<v>.tgz        what `dsh plugin --profile desktop add <file>` installs
-#                                   into DeepSeek Harness Desktop (docs/harness.md, harness/README.md)
+#   dsh-nanomuse-<v>.tgz            what `dsh plugin --profile desktop add <file>` installs
+#                                   into a DeepSeek Harness Desktop someone already has
+#                                   (docs/harness.md, harness/README.md); nanoMuse Desktop
+#                                   itself carries the same bundle (desktop-app.yml)
 #
 # A push or pull request that touches harness/ builds, typechecks and tests the bundle; a
 # release tag `v*` also packs it and attaches the tarball and its checksum to the release of
@@ -62,7 +64,6 @@ jobs:
           fi
           mkdir -p ../../packages
           pnpm pack --pack-destination ../../packages
-          mv "../../packages/dsh-nanomuse-$VERSION.tgz" "../../packages/nanoMuse-Harness-$VERSION.tgz"
           (cd ../../packages && sha256sum * > SHA256SUMS-harness.txt && cat SHA256SUMS-harness.txt)
       - name: Install into a fresh dsh profile
         # the tarball, not the source tree: what a person downloads must load as a plugin
@@ -70,7 +71,7 @@ jobs:
           mkdir -p /tmp/dsh && cd /tmp/dsh && npm init -y >/dev/null && npm install --no-audit --no-fund @deepseek-ai/dsh@0.2.0-rc.2 >/dev/null
           export DSH_HOME=/tmp/dsh-home
           ./node_modules/.bin/dsh --profile check --from-default-profile web --dump-config >/dev/null
-          ./node_modules/.bin/dsh plugin --profile check add "$GITHUB_WORKSPACE"/packages/nanoMuse-Harness-*.tgz
+          ./node_modules/.bin/dsh plugin --profile check add "$GITHUB_WORKSPACE"/packages/dsh-nanomuse-*.tgz
           ./node_modules/.bin/dsh --profile check --dump-config | grep -c "patched by dsh-nanomuse"
       - uses: actions/upload-artifact@v7
         with:

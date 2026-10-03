@@ -53,7 +53,6 @@ check_version() { # file, what grep should find in it
 check_version nanomuse/__init__.py "^__version__ = \"$version\""
 check_version pyproject.toml "^version = \"$version\""
 check_version desktop/nanomuse_desktop/__init__.py "^__version__ = \"$version\""
-check_version desktop/app/package.json "\"version\": \"$version\""
 check_version web/package.json "\"version\": \"$version\""
 check_version CITATION.cff "^version: $version$"
 check_version harness/dsh-nanomuse/package.json "\"version\": \"$version\""

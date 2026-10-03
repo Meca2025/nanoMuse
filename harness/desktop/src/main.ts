@@ -1,19 +1,19 @@
 import { pathToFileURL } from "node:url";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 /**
- * nanoMuse Harness — the nanoMuse desktop built on DeepSeek Harness.
+ * nanoMuse Desktop — the nanoMuse desktop, built on DeepSeek Harness.
  *
  * The window shows the harness's own web app, served by a dsh Host this shell starts as a
  * child process: the Electron binary in Node mode (`ELECTRON_RUN_AS_NODE`, as the harness's
  * own desktop does), running the `dsh` that ships under `resources/dsh` with the nanoMuse
  * bundle (`harness/dsh-nanomuse`) installed next to it. The profile the Host boots lives
- * under `~/.nanomuse/harness` and names the bundle; nothing is installed at first run and
+ * under `~/.nanomuse/desktop` and names the bundle; nothing is installed at first run and
  * no Node or pnpm is needed on the machine. When the runtime for the hands is bundled
  * (`resources/runtime`, the PyInstaller build the other desktop app carries too), the
  * preset's `nanomuse mcp` points at it, so the hands work out of the box.
@@ -22,7 +22,7 @@ import { join } from "node:path";
  * loaded once it is ready, external links in the browser, a menu with About and the
  * places to report a problem, and a clear dialog — with the log's tail on the clipboard —
  * when the Host does not come up. Everything else is the harness's and the bundle's
- * (docs/harness.md).
+ * (docs/desktop.md, docs/harness.md).
  */
 
 const PROFILE = "nanomuse";
@@ -31,7 +31,7 @@ const BUNDLE = "dsh-nanomuse";
 const READY_TIMEOUT_MS = 120_000;
 const RELEASES_PAGE = "https://github.com/nano-muse/nanoMuse/releases/latest";
 const ISSUES_PAGE = "https://github.com/nano-muse/nanoMuse/issues";
-const DOCS_PAGE = "https://github.com/nano-muse/nanoMuse/blob/main/docs/harness.md";
+const DOCS_PAGE = "https://github.com/nano-muse/nanoMuse/blob/main/docs/desktop.md";
 const HARNESS_PAGE = "https://github.com/deepseek-ai/deepseek-harness";
 
 const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
@@ -45,7 +45,7 @@ const T = {
   copied: zh ? "已复制。到 GitHub 发一个 issue 时贴上即可。" : "Copied. Paste it into a GitHub issue.",
   openLogFolder: zh ? "打开日志文件夹" : "Open the log folder",
   reportHint: zh ? "「复制详情」会把这段话和日志末尾复制下来，发 issue 时贴上：" : "Copy details puts this and the end of the log on the clipboard for an issue at",
-  about: zh ? "关于 nanoMuse Harness" : "About nanoMuse Harness",
+  about: zh ? "关于 nanoMuse" : "About nanoMuse",
   website: zh ? "nanoMuse 官网" : "nanoMuse website",
   docs: zh ? "这个桌面版的说明" : "About this desktop",
   issue: zh ? "报告问题" : "Report an issue",
@@ -70,9 +70,27 @@ let hostUrl: string | null = null;
 let quitting = false;
 let restarts = 0;
 
-/** `~/.nanomuse/harness`, the harness home of this app alone — the CLI's `~/.dsh` is left alone. */
+/**
+ * `~/.nanomuse/desktop`, the harness home of this app alone — the CLI's `~/.dsh` is left alone.
+ * `NANOMUSE_DESKTOP_HOME` moves it (`NANOMUSE_HARNESS_HOME`, the 0.1.28–0.1.29 name, still
+ * counts). A home the app kept as nanoMuse Harness under `~/.nanomuse/harness` is taken over
+ * once, so the account and the chats of those two versions carry on.
+ */
+let resolvedHome: string | undefined;
 function harnessHome(): string {
-  return process.env.NANOMUSE_HARNESS_HOME || join(homedir(), ".nanomuse", "harness");
+  if (resolvedHome) return resolvedHome;
+  const fromEnv = process.env.NANOMUSE_DESKTOP_HOME || process.env.NANOMUSE_HARNESS_HOME;
+  if (fromEnv) return (resolvedHome = fromEnv);
+  const home = join(homedir(), ".nanomuse", "desktop");
+  const previous = join(homedir(), ".nanomuse", "harness");
+  if (!existsSync(home) && existsSync(join(previous, "profiles"))) {
+    try {
+      renameSync(previous, home);
+    } catch {
+      return (resolvedHome = previous);
+    }
+  }
+  return (resolvedHome = home);
 }
 
 /** Where dsh/ and runtime/ are: next to app.asar when packaged, the project dir in development. */
@@ -89,7 +107,7 @@ function log(line: string): void {
   const stamped = `${new Date().toISOString().slice(11, 19)} ${line}`;
   logs.push(stamped);
   if (logs.length > 200) logs.shift();
-  console.log(`[nanomuse-harness] ${line}`);
+  console.log(`[nanomuse-desktop] ${line}`);
   try {
     mkdirSync(harnessHome(), { recursive: true });
     appendFileSync(join(harnessHome(), "desktop.log"), `${stamped}\n`);
@@ -116,7 +134,7 @@ function bundledRuntime(): string | undefined {
 }
 
 /**
- * The profile the Host boots: `~/.nanomuse/harness/profiles/nanomuse`. Three small files the
+ * The profile the Host boots: `~/.nanomuse/desktop/profiles/nanomuse`. Three small files the
  * harness reads (the manifest with the bundle list, the empty root, the person's own patch
  * layer, which dsh writes settings into) and one link: `node_modules/dsh-nanomuse` → the copy
  * under resources, which is how the Loader finds a bundle that is not among the harness's own
@@ -157,7 +175,7 @@ function ensureProfile(dshDir: string): string {
   if (!existsSync(join(dir, "cordis.patch.yml"))) {
     writeFileSync(
       join(dir, "cordis.patch.yml"),
-      "# Your patch layer for this dsh profile, applied after every bundle layer:\n# a top-level YAML array of loader patch entries. nanoMuse Harness and dsh\n# write settings here; you may edit it too.\n[]\n",
+      "# Your patch layer for this dsh profile, applied after every bundle layer:\n# a top-level YAML array of loader patch entries. nanoMuse Desktop and dsh\n# write settings here; you may edit it too.\n[]\n",
     );
   }
   const link = join(dir, "node_modules", BUNDLE);
@@ -308,7 +326,7 @@ function details(message: string): string {
   return [
     message,
     "",
-    `nanoMuse Harness ${app.getVersion()} · dsh ${s.dsh ?? "?"} · ${BUNDLE} ${s.bundle ?? "?"}`,
+    `nanoMuse Desktop ${app.getVersion()} · dsh ${s.dsh ?? "?"} · ${BUNDLE} ${s.bundle ?? "?"}`,
     `Electron ${process.versions.electron} · ${process.platform} ${process.arch}`,
     `home: ${harnessHome()}`,
     "",
@@ -335,7 +353,7 @@ async function reportStartupFailure(exc: unknown): Promise<void> {
     });
     if (response === 0) {
       clipboard.writeText(details(message));
-      await dialog.showMessageBox({ type: "info", title: "nanoMuse Harness", message: T.copied, buttons: ["OK"] });
+      await dialog.showMessageBox({ type: "info", title: "nanoMuse", message: T.copied, buttons: ["OK"] });
       continue;
     }
     if (response === 1) {
@@ -527,7 +545,7 @@ async function boot(): Promise<void> {
 function about(): void {
   const s = shipped();
   const lines = [
-    `nanoMuse Harness ${app.getVersion()}`,
+    `nanoMuse Desktop ${app.getVersion()}`,
     zh ? "一个开源的个人智能体，装在你的每一台设备上。" : "An open-source personal agent for every device you own.",
     "",
     `DeepSeek Harness ${s.dsh ?? "?"} (MIT) · ${BUNDLE} ${s.bundle ?? "?"} (GPL-3.0-or-later)`,
@@ -540,7 +558,7 @@ function about(): void {
   void dialog.showMessageBox({
     type: "info",
     title: T.about,
-    message: "nanoMuse Harness",
+    message: "nanoMuse",
     detail: lines.join("\n"),
     buttons: ["OK"],
     icon: nativeImage.createFromPath(iconPath()),
@@ -562,7 +580,7 @@ function buildMenu(): void {
     ...(process.platform === "darwin"
       ? [
           {
-            label: "nanoMuse Harness",
+            label: "nanoMuse",
             submenu: [
               { label: T.about, click: about },
               { type: "separator" },
@@ -616,7 +634,7 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
   app.setAboutPanelOptions({
-    applicationName: "nanoMuse Harness",
+    applicationName: "nanoMuse",
     applicationVersion: app.getVersion(),
     copyright: "GPL-3.0-or-later · the nanoMuse community · built on DeepSeek Harness (MIT)",
     website: "https://nanomuse.cn/",
@@ -624,7 +642,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     registerBridge();
     buildMenu();
-    log(`nanoMuse Harness ${app.getVersion()} starting (${process.platform} ${process.arch}, packaged=${app.isPackaged})`);
+    log(`nanoMuse Desktop ${app.getVersion()} starting (${process.platform} ${process.arch}, packaged=${app.isPackaged})`);
     try {
       await boot();
     } catch (exc) {

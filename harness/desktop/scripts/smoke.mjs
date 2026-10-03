@@ -30,7 +30,7 @@ if (args.includes("--app") && appArg) {
     electron = join(macos, readdirSync(macos)[0]);
     dshDir = join(bundle, "Contents", "Resources", "dsh");
   } else {
-    const exe = readdirSync(unpacked).find((f) => (process.platform === "win32" ? f.endsWith(".exe") && !/uninstall/i.test(f) : f === "nanomuse-harness"));
+    const exe = readdirSync(unpacked).find((f) => (process.platform === "win32" ? f.endsWith(".exe") && !/uninstall/i.test(f) : f === "nanomuse-desktop"));
     if (!exe) throw new Error(`no executable under ${unpacked}`);
     electron = join(unpacked, exe);
     dshDir = join(unpacked, "resources", "dsh");
@@ -46,7 +46,7 @@ const bin = join(dshDir, "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js")
 if (!existsSync(bin)) throw new Error(`no staged dsh at ${bin} — run scripts/prepare-dsh.mjs`);
 
 // the profile, as src/main.ts writes it
-const home = mkdtempSync(join(tmpdir(), "nanomuse-harness-smoke-"));
+const home = mkdtempSync(join(tmpdir(), "nanomuse-desktop-smoke-"));
 const profile = join(home, "profiles", "nanomuse");
 mkdirSync(join(profile, "node_modules"), { recursive: true });
 writeFileSync(

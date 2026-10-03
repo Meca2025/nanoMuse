@@ -1,14 +1,16 @@
 # nanoMuse on DeepSeek Harness
 
-> Preview. This directory is the next desktop: nanoMuse as a set of plugins on
-> [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`), instead
-> of our own Electron shell around the Python runtime. Two things ship from here with
-> every release: the bundle, `nanoMuse-Harness-<v>.tgz`, for people who run DeepSeek
-> Harness Desktop and want the Muse in it (below, *In dsh's desktop app*), and from
-> 0.1.28 **nanoMuse Harness**, a desktop app of our own with the harness and the bundle
-> inside — installers for Windows, macOS and Linux (below, *The desktop app*). The
-> desktop app in [`desktop/`](../desktop/) stays the one around the Python runtime until
-> this one is whole. Why and where it goes: [docs/harness.md](../docs/harness.md).
+> This directory is **nanoMuse Desktop**: nanoMuse as a set of plugins on
+> [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`), in an
+> Electron shell of our own. Two things ship from here with every release: the desktop
+> app — `nanoMuse-Desktop-<v>-…` installers for Windows, macOS and Linux with the harness,
+> the bundle and the runtime for the hands inside (below, *The desktop app*) — and the
+> bundle alone, `dsh-nanomuse-<v>.tgz`, for people who already run DeepSeek Harness
+> Desktop and want the Muse in it (below, *In dsh's desktop app*). From 0.1.30 this is the
+> one desktop app; the Electron shell around the Python runtime (`desktop/app`, 0.1.19 to
+> 0.1.29) is retired, and the terminal binary in [`desktop/`](../desktop/) stays the
+> zero-install fallback. Why and where it goes: [docs/harness.md](../docs/harness.md);
+> what it has of Muse's and what it still lacks: [docs/desktop-muse.md](../docs/desktop-muse.md).
 
 `dsh-nanomuse/` is one **bundle** — a package dsh loads into a profile, carrying a patch
 over the stock configuration and the plugins the patch names:
@@ -82,14 +84,15 @@ read at boot.
 dsh's own desktop app ([`apps/desktop`](https://github.com/deepseek-ai/deepseek-harness/tree/master/apps/desktop))
 is an Electron shell around the same web app, with a profile named `desktop` that takes
 external plugins. The bundle goes in the same way as above. Every release carries it
-packed, `nanoMuse-Harness-<v>.tgz` with its line in `SHA256SUMS-harness.txt` (built by
+packed, `dsh-nanomuse-<v>.tgz` (`nanoMuse-Harness-<v>.tgz` up to 0.1.29) with its line in
+`SHA256SUMS-harness.txt` (built by
 `.github/workflows/harness.yml`, which also installs the tarball into a fresh dsh
 profile to be sure it loads): install DeepSeek Harness Desktop 0.2.0-rc.2 from
 [its releases](https://github.com/deepseek-ai/deepseek-harness/releases), start it once
 so the `desktop` profile exists, quit it fully, then
 
 ```sh
-dsh plugin --profile desktop add ~/Downloads/nanoMuse-Harness-0.1.27.tgz   # or the source tree, /path/to/nanoMuse/harness/dsh-nanomuse
+dsh plugin --profile desktop add ~/Downloads/dsh-nanomuse-0.1.30.tgz   # or the source tree, /path/to/nanoMuse/harness/dsh-nanomuse
 ```
 
 and start it again — the window comes up as nanoMuse ([docs/desktop-muse.md](../docs/desktop-muse.md)):
@@ -101,7 +104,7 @@ runtime on this computer too (`pipx install "git+https://github.com/nano-muse/na
 or `NANOMUSE_PY` pointing at it) — the preset starts `nanomuse mcp` for them. The app's
 name, icon and About are DeepSeek Harness's there; the app below is ours.
 
-## The desktop app: nanoMuse Harness
+## The desktop app: nanoMuse Desktop
 
 `desktop/` is an Electron shell of our own around the same web app — the name, the icon,
 the About, the first run and everything else nanoMuse's — with **dsh and the bundle
@@ -110,9 +113,9 @@ needed on the machine:
 
 | | |
 | --- | --- |
-| Windows | `nanoMuse-Harness-<v>-win-x64.exe` (NSIS; no certificate, so SmartScreen asks for *Run anyway*) |
-| macOS | `nanoMuse-Harness-<v>-mac-arm64.dmg`, `-mac-x64.dmg` (and `.zip`; ad-hoc signed unless the Apple secrets are set, then *Open Anyway* once in System Settings → Privacy & Security) |
-| Linux | `nanoMuse-Harness-<v>-linux-x64.AppImage`, `.deb` |
+| Windows | `nanoMuse-Desktop-<v>-win-x64.exe` (NSIS; no certificate, so SmartScreen asks for *Run anyway*) |
+| macOS | `nanoMuse-Desktop-<v>-mac-arm64.dmg`, `-mac-x64.dmg` (and `.zip`; ad-hoc signed unless the Apple secrets are set, then *Open Anyway* once in System Settings → Privacy & Security) |
+| Linux | `nanoMuse-Desktop-<v>-linux-x64.AppImage`, `.deb` |
 
 How it runs, in one paragraph: the shell starts the harness's Host as a child process —
 its own Electron binary in Node mode (`ELECTRON_RUN_AS_NODE`, `--expose-internals`, the way
@@ -120,15 +123,16 @@ DeepSeek Harness's desktop does; the harness's `require-builtin` addon accepts e
 Electron the harness was built against, so [`package.json`](desktop/package.json) pins
 `44.0.0`) running the `dsh` under `resources/dsh`, where npm installed `@deepseek-ai/dsh`
 and `dsh-nanomuse` side by side at build time. The profile the Host boots lives under
-`~/.nanomuse/harness/profiles/nanomuse` (its own home; the CLI's `~/.dsh` is not touched):
+`~/.nanomuse/desktop/profiles/nanomuse` (its own home; the CLI's `~/.dsh` is not touched; a
+home left by nanoMuse Harness 0.1.28–0.1.29 under `~/.nanomuse/harness` is taken over once):
 a manifest naming the three bundles and a link `node_modules/dsh-nanomuse` to the copy
 under resources, refreshed every start, which is how the Loader finds a bundle that is not
 among the harness's own packages. The shell reads the Host's `dsh web: http://127.0.0.1:…`
 line and loads that URL; external links open in the browser; a Host that does not come up
 gets a dialog with the log's tail on the clipboard. The runtime for the hands is bundled
-too (the same PyInstaller build as `desktop/app` carries, `resources/runtime`), and
+too (a PyInstaller build of the Python package, `resources/runtime`), and
 `NANOMUSE_PY` points the preset's `nanomuse mcp` at it — so "what is on my screen?" works
-out of the box. `~/.nanomuse/harness/desktop.log` has the shell's and the Host's lines.
+out of the box. `~/.nanomuse/desktop/desktop.log` has the shell's and the Host's lines.
 
 Build it yourself (Node 22+, pnpm; Python 3.12 with `pip install -e ".[hands]" pyinstaller`
 for the hands):
@@ -142,10 +146,10 @@ npm start                                                        # or: npm run d
 node scripts/smoke.mjs                                           # boots the staged harness once in Node mode
 ```
 
-`.github/workflows/harness-desktop.yml` does the same per platform on every release tag
-and attaches the installers to the release (`SHA256SUMS-harness-desktop.txt` beside
-them); a push that touches `harness/desktop` builds Linux and boots the packaged harness
-once. `NANOMUSE_HARNESS_HOME` moves the home, `NANOMUSE_CLOUD_URL` points the account at
+`.github/workflows/desktop-app.yml` does the same per platform on every release tag
+and attaches the installers to the release (`SHA256SUMS-desktop.txt` beside them); a
+push that touches `harness/` builds Linux and boots the packaged harness once.
+`NANOMUSE_DESKTOP_HOME` moves the home, `NANOMUSE_CLOUD_URL` points the account at
 another relay, `--screenshot=<png>` writes the window once the web app is up and quits
 (the check the shell has for itself).
 
@@ -211,8 +215,8 @@ browser's does.
 The bundle and the shell are GPL-3.0-or-later like the rest of nanoMuse. DeepSeek
 Harness is MIT and is not vendored in this repository — it is a dependency: installed by
 the person for the bundle, installed by npm at build time and carried unmodified, with
-every package's licence file, inside nanoMuse Harness. "DeepSeek Harness" and "DSH" are
+every package's licence file, inside nanoMuse Desktop. "DeepSeek Harness" and "DSH" are
 DeepSeek's names: we say *built on DeepSeek Harness* (the About says so, the welcome
-dialog says so), and never use them in ours — *harness* in "nanoMuse Harness" is the
-word, not their name. DeepSeek Harness is a developer preview (0.2.0-rc); its plugin API
+dialog says so), and never use them in ours — the app is *nanoMuse*, and *harness* in this
+directory's name is the word, not their name. DeepSeek Harness is a developer preview (0.2.0-rc); its plugin API
 will break, and this bundle pins the version it was written against.

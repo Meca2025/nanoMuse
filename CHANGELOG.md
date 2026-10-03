@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Changed
+
+- **One desktop app, built on DeepSeek Harness.** The desktop built on the harness (`harness/`, shipped as *nanoMuse Harness* beside the older app in 0.1.28 and 0.1.29) is now **nanoMuse Desktop**: the installers are `nanoMuse-Desktop-<version>-win-x64.exe`, `-mac-arm64.dmg` / `-mac-x64.dmg` (and `.zip`), `-linux-x64.AppImage` / `.deb`, built by `.github/workflows/desktop-app.yml`, and the app carries the application id of the one it replaces (`io.github.nanomuse.desktop`) so it installs over it. The Electron shell around the Python runtime and the web app (`desktop/app`, 0.1.19–0.1.29) is retired; the runtime still rides inside the new app for the hands (`nanomuse mcp`), and the terminal binary stays the zero-install fallback. The app's home is `~/.nanomuse/desktop` (`NANOMUSE_DESKTOP_HOME`); a home left by nanoMuse Harness under `~/.nanomuse/harness` is taken over once, account and chats included. The bundle alone, for a DeepSeek Harness Desktop someone already runs, is `dsh-nanomuse-<version>.tgz` (was `nanoMuse-Harness-<version>.tgz`). [docs/desktop.md](docs/desktop.md), [docs/harness.md](docs/harness.md).
+
 ### Fixed
 
 - **The model chosen in Settings reaches the chats already open (Android).** A member who changed the nanoMuse Cloud group from the recommended model to `deepseek-v4.1-flash` kept talking to `qwen3.8-27b`: the open chat — the main chat above all, whose view-model lives as long as the app — had its model resolved once and only re-resolved when the model's provider was switched off, and a chat pinned to a model from the ⋯ picker never followed the group at all. Now a member taken out of the bound group re-resolves every open chat on the spot, and a chat pinned to one of the Cloud's models follows the Cloud group once that model leaves it. Signing in again no longer adds a second *nanoMuse Cloud* group with the recommended model back when the person's own group has another.

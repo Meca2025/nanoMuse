@@ -1,16 +1,18 @@
-# electron-builder: the installers of nanoMuse Harness. `npm run dist` here after
-# scripts/prepare-dsh.mjs has staged dsh/ (and, for the hands, after
-# scripts/desktop-app/build-runtime.py --target harness/desktop/runtime has put the runtime
-# at runtime/); .github/workflows/harness-desktop.yml does all of it per platform.
+# electron-builder: the installers of nanoMuse Desktop — the desktop built on DeepSeek
+# Harness. `npm run dist` here after scripts/prepare-dsh.mjs has staged dsh/ (and, for the
+# hands, after scripts/desktop-app/build-runtime.py --target harness/desktop/runtime has put
+# the runtime at runtime/); .github/workflows/desktop-app.yml does all of it per platform.
 # Nothing is signed by a developer certificate unless the Apple secrets are in the
 # environment: Windows asks for "Run anyway"; on macOS the workflow runs `--dir` and
 # scripts/desktop-app/package-mac.sh, which ad-hoc signs (or signs and notarizes) the
-# bundle and writes the zip and an APFS dmg (docs/harness.md, "The desktop app").
-appId: io.github.nanomuse.harness
-productName: nanoMuse Harness
-executableName: nanomuse-harness
+# # bundle and writes the zip and an APFS dmg (docs/desktop.md).
+# The appId is the one the previous desktop app (desktop/app, retired in 0.1.30) carried, so
+# this one installs over it and keeps its place in the system's permission lists.
+appId: io.github.nanomuse.desktop
+productName: nanoMuse
+executableName: nanomuse-desktop
 copyright: GPL-3.0-or-later · the nanoMuse community · built on DeepSeek Harness (MIT)
-artifactName: nanoMuse-Harness-${version}-${os}-${arch}.${ext}
+artifactName: nanoMuse-Desktop-${version}-${os}-${arch}.${ext}
 directories:
   output: dist
   buildResources: resources
@@ -45,13 +47,13 @@ linux:
       arch: [x64]
     - target: deb
       arch: [x64]
-  artifactName: nanoMuse-Harness-${version}-linux-x64.${ext}
+  artifactName: nanoMuse-Desktop-${version}-linux-x64.${ext}
   category: Utility
   icon: resources/app-icon.png
   synopsis: an open-source personal agent for every device you own — the desktop built on DeepSeek Harness
   desktop:
     entry:
-      StartupWMClass: nanomuse-harness
+      StartupWMClass: nanomuse-desktop
 deb:
   depends: ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils", "libatspi2.0-0", "libuuid1", "libsecret-1-0", "xdotool"]
 win:
@@ -63,7 +65,7 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-  shortcutName: nanoMuse Harness
+  shortcutName: nanoMuse
 mac:
   # the zip and dmg come from scripts/desktop-app/package-mac.sh; `npm run dist` alone leaves
   # the unpacked .app (the workflow passes --dir)

@@ -1,5 +1,5 @@
 /**
- * The Electron shell's bridge, when the page runs inside nanoMuse Harness
+ * The Electron shell's bridge, when the page runs inside nanoMuse Desktop
  * (`harness/desktop/src/preload.ts` puts it on `window`). In a browser, or in
  * dsh's own desktop, it is absent and every caller here falls back to what a
  * web page can do: nothing for the system permissions, `window.open` for links.
