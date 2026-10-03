@@ -62,3 +62,11 @@
         baseURL: !!js process.env.NANOMUSE_CLOUD_URL || 'https://cloud.nanomuse.cn'
         deviceName: ''
         statePath: ''
+
+    # The rooms of the Muse desktop — Feed, Ideas, Goals, Library — over the
+    # harness's own sessions, Schedule and `present`: one store in
+    # $DSH_HOME/nanomuse/rooms.json, served under /nanomuse/rooms/*. The tools
+    # the agent uses to write into them are the preset row
+    # `nanomuse-rooms-tools` (presets/nanomuse.patch.yml).
+    - id: nanomuse-rooms
+      name: dsh-nanomuse/rooms

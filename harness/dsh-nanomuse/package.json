@@ -24,6 +24,14 @@
       "types": "./lib/types/reach.d.ts",
       "default": "./lib/reach.js"
     },
+    "./rooms": {
+      "types": "./lib/types/rooms.d.ts",
+      "default": "./lib/rooms.js"
+    },
+    "./rooms-tools": {
+      "types": "./lib/types/rooms-tools.d.ts",
+      "default": "./lib/rooms-tools.js"
+    },
     "./client": {
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"

@@ -26,7 +26,9 @@ import { join } from "node:path";
  */
 
 const PROFILE = "nanomuse";
-const BUNDLES = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-nanomuse"];
+// The composition: the harness's base and Web app, its Schedule (the goals' automations and
+// the agent's reminders — an optional bundle of the harness, on by default here), then ours.
+const BUNDLES = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@deepseek-ai/dsh-experimental-schedule-bundle", "dsh-nanomuse"];
 const BUNDLE = "dsh-nanomuse";
 const READY_TIMEOUT_MS = 120_000;
 const RELEASES_PAGE = "https://github.com/nano-muse/nanoMuse/releases/latest";

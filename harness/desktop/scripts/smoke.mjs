@@ -51,7 +51,7 @@ const profile = join(home, "profiles", "nanomuse");
 mkdirSync(join(profile, "node_modules"), { recursive: true });
 writeFileSync(
   join(profile, "package.json"),
-  `${JSON.stringify({ name: "dsh-profile-nanomuse", private: true, dependencies: { "dsh-nanomuse": "*" }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-nanomuse"] } } }, null, 2)}\n`,
+  `${JSON.stringify({ name: "dsh-profile-nanomuse", private: true, dependencies: { "dsh-nanomuse": "*" }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@deepseek-ai/dsh-experimental-schedule-bundle", "dsh-nanomuse"] } } }, null, 2)}\n`,
 );
 writeFileSync(join(profile, "cordis.yml"), "[]\n");
 writeFileSync(join(profile, "cordis.patch.yml"), "[]\n");
@@ -117,14 +117,29 @@ const url = await new Promise((resolveUrl, reject) => {
 });
 console.log(`host: ${redact(url)}`);
 const noToken = await fetch(new URL(url).origin + "/", { redirect: "manual" }).then((r) => r.status);
-const withToken = await fetch(url, { redirect: "manual" }).then((r) => r.status);
+const entry = await fetch(url, { redirect: "manual" });
+const withToken = entry.status;
 console.log(`GET / → ${noToken}; with the token → ${withToken}`);
+// 3. our own routes answer behind the session the token opened (cookie), as the browser half calls them
+const cookie = (entry.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+const origin = new URL(url).origin;
+const ours = {};
+for (const route of ["/nanomuse/cloud/status", "/nanomuse/rooms/state"]) {
+  const res = await fetch(origin + route, { headers: { cookie, "x-nanomuse": "1", "sec-fetch-site": "same-origin" } });
+  ours[route] = res.status;
+  if (res.status === 200) {
+    const body = await res.json().catch(() => ({}));
+    if (route.endsWith("/state") && !Array.isArray(body.goals)) ours[route] = `200 but no rooms state`;
+  }
+}
+console.log(`ours: ${Object.entries(ours).map(([k, v]) => `${k} → ${v}`).join(", ")}`);
 const warnings = (out.match(/did not activate/g) ?? []).length;
 if (process.platform === "win32" && child.pid) spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
 else child.kill("SIGTERM");
 await new Promise((r) => setTimeout(r, 1500));
 cleanup();
 if (noToken !== 401 || withToken >= 400) throw new Error("the Host did not answer as dsh's web app does");
+if (Object.values(ours).some((status) => status !== 200)) throw new Error("the nanoMuse routes did not answer: the cloud or rooms row did not come up");
 if (warnings > 0) {
   console.error(redact(out));
   throw new Error("some entries did not activate");

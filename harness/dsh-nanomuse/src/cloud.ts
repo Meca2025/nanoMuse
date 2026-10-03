@@ -822,7 +822,7 @@ function sameModels(a: RelayModel[], b: RelayModel[]): boolean {
 }
 
 /** A browser on another origin cannot sign this device in or out. */
-function sameOrigin(req: IncomingMessage): boolean {
+export function sameOrigin(req: IncomingMessage): boolean {
   const origin = req.headers.origin
   const site = req.headers['sec-fetch-site']
   if (typeof site === 'string' && site !== 'same-origin' && site !== 'none') return false
@@ -831,7 +831,8 @@ function sameOrigin(req: IncomingMessage): boolean {
   return typeof host === 'string' && (origin === `http://${host}` || origin === `https://${host}`)
 }
 
-async function json(req: IncomingMessage): Promise<Record<string, unknown>> {
+/** The request body as an object; empty when there is none. */
+export async function json(req: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
@@ -849,7 +850,8 @@ async function json(req: IncomingMessage): Promise<Record<string, unknown>> {
   }
 }
 
-function send(res: ServerResponse, status: number, body?: unknown): void {
+/** A JSON reply, or an empty one for 204. */
+export function send(res: ServerResponse, status: number, body?: unknown): void {
   if (body === undefined) {
     res.writeHead(status, { 'cache-control': 'no-store' }).end()
     return
@@ -857,6 +859,6 @@ function send(res: ServerResponse, status: number, body?: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(body))
 }
 
-function message(error: unknown): string {
+export function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
