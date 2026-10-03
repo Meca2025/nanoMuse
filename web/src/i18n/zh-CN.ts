@@ -78,6 +78,7 @@ const zhCN: Record<string, string> = {
   "to {recipient}": "收件人：{recipient}",
   "Allow {subject} for longer…": "更长时间允许 {subject}…",
   "For this conversation": "本次对话",
+  "the device {name}": "设备「{name}」",
   "Until restart": "直到重启",
   "For 24 hours": "24 小时内",
   "Always for {subject}": "始终允许 {subject}",
@@ -591,6 +592,7 @@ const zhCN: Record<string, string> = {
   Work: "工作",
   "Private .ics link or file path": "私密 .ics 链接或文件路径",
   "Stored encrypted in the vault as CALENDAR_{name}.": "加密保存在保险库中，名为 CALENDAR_{name}。",
+  "nanoMuse fetches whatever address you put here, from this machine — only paste links you trust.": "nanoMuse 会从这台机器上去取你填的任何地址——只粘贴你信任的链接。",
   "Add a calendar": "添加日历",
   "Added, but it could not be read: {error}": "已添加，但读取失败：{error}",
   // contacts

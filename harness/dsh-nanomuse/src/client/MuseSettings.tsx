@@ -58,6 +58,9 @@ export function createShellStore() {
 }
 export type ShellStore = ReturnType<typeof createShellStore>
 
+/** The id our onboarding step is registered under (the shipped one, so the coordinator shows ours in that turn). */
+const ONBOARDING_STEP = 'deepseek-official'
+
 export interface MuseSettingsProps {
   t: Translate
   store: ShellStore
@@ -182,6 +185,20 @@ export function MuseSettings(props: MuseSettingsProps): ReactNode {
     ? steps.find((s) => s.id === requested)
     : sessionsBlank ? steps.find((s) => !completed.has(s.id)) : undefined
   useEffect(() => { if (!sessionsBlank) setCompleted(new Set()) }, [sessionsBlank])
+  // Signing out puts the window back to the way it first opened — the welcome
+  // screen with Sign in — the way the Muse desktop does; the person can still
+  // leave it for a key of their own from there.
+  const signedIn = useLive().cloud.signedIn
+  const wasSignedIn = useRef(signedIn)
+  useEffect(() => {
+    if (wasSignedIn.current && !signedIn) {
+      store.close()
+      setCompleted(new Set())
+      const ours = steps.find((s) => s.id === ONBOARDING_STEP) ?? steps[0]
+      if (ours) setRequested(ours.id)
+    }
+    wasSignedIn.current = signedIn
+  }, [signedIn, steps, store])
   const stepSeen = useRef(step)
   useEffect(() => {
     const appeared = stepSeen.current === undefined && step !== undefined

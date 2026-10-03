@@ -72,9 +72,11 @@ agent or picking an emoji on that runtime changes the desktop's brand mark withi
 seconds. The other way round, "run `uname -a` on <this computer's name>" in that
 runtime's chat runs here (after its own Sentinel approval) and shows as a toast;
 "ask Desk A's Muse to …" there (`delegate`) runs as a session named *From Laptop B* here,
-with any approval it needs shown on Laptop B; the *Remote control* switch under *this
-computer* in the settings section turns all of that off — other devices then only see
-this computer and can notify it.
+with any approval it needs shown on Laptop B. By default each of those asks the person
+at this computer first — a card at the top of the window: *Allow once*, *Always for
+Laptop B*, *Not now* (the always list is under Devices, with *Ask again* beside each) —
+and the *Remote control without asking* switch under *this computer* lets every device
+of the account through without the card.
 
 After changing `src/`, `pnpm build` and restart dsh (the client half is served from
 `lib/client.js`; append `?v=N` to the page URL if the browser keeps the old one).

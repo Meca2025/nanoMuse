@@ -14,6 +14,12 @@ enum class RiskClass {
     /** Sends something out: a message, a mail, a push, a form. Asks. */
     OUTBOUND,
     /**
+     * Another device of the account running, reading or writing something on this phone over
+     * the hub (0.1.31). Asks the person holding the phone; "always for that device" may be
+     * remembered.
+     */
+    REMOTE,
+    /**
      * Moves money. Asks at the moment of paying, every time — unless the user chose, on the
      * card and confirmed with the phone's screen lock, to remember it for that one app or site.
      */
@@ -23,7 +29,7 @@ enum class RiskClass {
     val tier: RiskTier
         get() = when (this) {
             SAFE, INSTALL -> RiskTier.NOTICE
-            DESTRUCTIVE, OUTBOUND -> RiskTier.CONFIRM
+            DESTRUCTIVE, OUTBOUND, REMOTE -> RiskTier.CONFIRM
             MONEY -> RiskTier.HIGHEST
         }
 }
@@ -45,6 +51,8 @@ enum class GuardKind {
     SCREEN,
     /** A shell command or a file change on a paired computer (0.1.13). [RiskRequest.pageUrl] carries its name. */
     COMPUTER,
+    /** Another device doing something on this phone (0.1.31). [RiskRequest.pageUrl] carries its name. */
+    DEVICE,
 }
 
 /**
@@ -61,7 +69,7 @@ data class RiskAssessment(
 ) {
     val needsApproval: Boolean
         get() = warnings.isNotEmpty() || riskClass == RiskClass.DESTRUCTIVE ||
-            riskClass == RiskClass.OUTBOUND || riskClass == RiskClass.MONEY
+            riskClass == RiskClass.OUTBOUND || riskClass == RiskClass.REMOTE || riskClass == RiskClass.MONEY
 
     companion object {
         val SAFE = RiskAssessment(RiskClass.SAFE, "")

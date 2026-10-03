@@ -381,11 +381,14 @@
              home-screen icons pinned before the rename are not preserved
              and will return "intent not found" on tap; the user has to
              re-add them from inside the app. -->
+        <!-- nanoMuse: not exported — a pinned shortcut is started by the system with this app's
+             own identity, so nothing else needs to reach the activity; other apps could otherwise
+             open any saved web app here by guessing its id. -->
         <activity
             android:name=".webapp.WebAppActivity"
             android:label="@string/webapp_activity_label"
             android:launchMode="singleInstance"
-            android:exported="true"
+            android:exported="false"
             android:taskAffinity=""
             android:excludeFromRecents="false"
             android:theme="@style/Theme.Minis">

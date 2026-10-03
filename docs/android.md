@@ -54,9 +54,16 @@ look (so your devices match) — never message content ([privacy.md](privacy.md)
 pairing tokens are in `EncryptedSharedPreferences`; the backup rules
 (`res/xml/nanomuse_backup_rules.xml`, `nanomuse_data_extraction_rules.xml`) keep every
 secret store out of device backups and transfers. Hands needs the accessibility service
-and the overlay permission, both optional and both revocable from the same screen. The
-app allows plain HTTP on the LAN for a model server or a computer of your own; the relay
-and the hub are TLS only.
+and the overlay permission, both optional and both revocable from the same screen; a
+step that sends something — a tap on *Send*, or Enter in a message field of a messenger —
+is approved one at a time, and *for this chat* answers stay bound to the app or address
+they were given for. Another device of your account that wants to run, read or write
+something on the phone (hub `shell`, `files`, `open`, `screen`…) is approved by the person
+holding the phone first — *once* or *always for that device*, revocable under Permissions.
+The app allows plain `http://` only for addresses on your own network (`10.x`,
+`172.16–31.x`, `192.168.x`, `.local` names) — a model server or a computer of your own —
+and refuses it at the provider URL field for anything else (`io.github.nanomuse.net.LanOnly`);
+the relay and the hub are TLS only. The in-app web view is not exported to other apps.
 
 ## Building it yourself
 

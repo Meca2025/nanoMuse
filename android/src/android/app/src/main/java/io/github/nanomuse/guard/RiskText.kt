@@ -12,9 +12,14 @@ object RiskText {
         else -> plainTarget(target)
     }
 
-    /** The target without its scope prefix (`app:`, `pc:`, `lark:`, `git:`), for prose. */
+    /** The target as the card names it: for another device's request, the device's name. */
+    fun targetLabel(context: Context, request: RiskRequest): String? =
+        if (request.kind == GuardKind.DEVICE) request.pageUrl ?: targetLabel(context, request.assessment.target)
+        else targetLabel(context, request.assessment.target)
+
+    /** The target without its scope prefix (`app:`, `pc:`, `lark:`, `git:`, `device:`), for prose. */
     fun plainTarget(target: String?): String =
-        (target ?: "").removePrefix("lark:").removePrefix("git:").removePrefix("pc:").removePrefix("app:")
+        (target ?: "").removePrefix("lark:").removePrefix("git:").removePrefix("pc:").removePrefix("app:").removePrefix("device:")
 
     fun tierLabel(context: Context, tier: RiskTier): String = when (tier) {
         RiskTier.HIGHEST -> context.getString(R.string.nm_risk_tier_highest)
@@ -25,6 +30,7 @@ object RiskText {
     fun title(context: Context, request: RiskRequest, agentName: String): String {
         val a = request.assessment
         val target = targetLabel(context, a.target)
+        if (request.kind == GuardKind.DEVICE) return context.getString(R.string.nm_risk_title_device, request.pageUrl ?: target ?: "")
         if (a.warnings.isNotEmpty()) return context.getString(R.string.nm_risk_title_warning, agentName)
         return when (a.riskClass) {
             RiskClass.DESTRUCTIVE -> if (target != null) context.getString(R.string.nm_risk_title_destructive, agentName, target)
@@ -49,6 +55,9 @@ object RiskText {
             val app = request.pageUrl ?: a.target ?: context.getString(R.string.nm_hands_this_phone)
             return context.getString(R.string.nm_risk_desc_screen, agentName, request.elementText ?: "", app)
         }
+        if (request.kind == GuardKind.DEVICE) {
+            return context.getString(R.string.nm_risk_desc_device, request.pageUrl ?: "", request.elementText ?: "")
+        }
         val target = targetLabel(context, a.target)
         val shell = when (a.riskClass) {
             RiskClass.DESTRUCTIVE -> if (target != null) context.getString(R.string.nm_risk_desc_shell_destructive, agentName, target)
@@ -68,6 +77,7 @@ object RiskText {
     fun classLabel(context: Context, riskClass: RiskClass): String = when (riskClass) {
         RiskClass.DESTRUCTIVE -> context.getString(R.string.nm_risk_class_destructive)
         RiskClass.OUTBOUND -> context.getString(R.string.nm_risk_class_outbound)
+        RiskClass.REMOTE -> context.getString(R.string.nm_risk_class_remote)
         RiskClass.MONEY -> context.getString(R.string.nm_risk_class_money)
         RiskClass.INSTALL -> context.getString(R.string.nm_risk_class_install)
         RiskClass.SAFE -> ""

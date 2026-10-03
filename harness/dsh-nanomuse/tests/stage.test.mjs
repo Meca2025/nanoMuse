@@ -2,7 +2,7 @@
 // cursor marker need it, and the first line of what `computer_screen` says.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { screenHead, stageAction } from '../lib/cloud.js'
+import { AskDesk, screenHead, stageAction } from '../lib/cloud.js'
 
 test('stageAction keeps the kind, the words and the point', () => {
   const a = stageAction({ action: 'click', x: 120.5, y: '300', label: '  Save\n  file ' })
@@ -43,4 +43,27 @@ test('a hands refusal is recognised and confirmed with the ticket the runtime ch
   assert.notEqual(confirmTicket('other', enter), t)
   // parity with nanomuse/bridge/mcp_server.py: the same bytes, the same digest
   assert.equal(confirmTicket('s3cret', { action: 'type', text: '你好 "world"', submit: true, keys: ['enter'], n: 1.5, nested: { b: 2, a: [1, null] } }), 'a0304fd4d602086fbac512191ed08838')
+})
+
+test('a question from another device waits on this screen for once, always, no — or times out', async () => {
+  let changes = 0
+  const desk = new AskDesk(() => changes++)
+  const phone = { id: 'phone-1', name: 'Pixel', kind: 'phone' }
+  const p1 = desk.ask(phone, 'shell', 'ls -la')
+  assert.equal(desk.list.length, 1)
+  assert.equal(desk.list[0].from, 'Pixel')
+  assert.equal(desk.list[0].action, 'shell')
+  assert.equal(desk.list[0].text, 'ls -la')
+  assert.equal(desk.answer('nope', 'once'), false)
+  assert.equal(desk.answer(desk.list[0].id, 'once'), true)
+  assert.equal(await p1, 'once')
+  assert.equal(desk.list.length, 0)
+  const p2 = desk.ask(phone, 'task', 'tidy the desktop')
+  desk.answer(desk.list[0].id, 'always')
+  assert.equal(await p2, 'always')
+  const p3 = desk.ask({ id: 'x', name: '', kind: 'computer' }, 'screen', '', 30)
+  assert.equal(desk.list[0].from, 'a device')
+  assert.equal(await p3, 'timeout')
+  assert.equal(desk.list.length, 0)
+  assert.equal(changes, 6)
 })

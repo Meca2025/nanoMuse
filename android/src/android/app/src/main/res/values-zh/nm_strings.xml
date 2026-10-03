@@ -542,6 +542,11 @@
     <!-- the approval card -->
     <string name="nm_risk_desc_on_computer">在电脑「%1$s」上，不是在这台手机上。</string>
     <string name="nm_risk_preview_computer">电脑上的命令</string>
+    <string name="nm_risk_title_device">允许「%1$s」操作这台手机吗？</string>
+    <string name="nm_risk_desc_device">「%1$s」是你账号下的另一台设备，想在这台手机上 %2$s。具体内容见下方。选「始终」后，那台设备以后在这里做这类事不再询问；可在「权限」里收回。</string>
+    <string name="nm_risk_preview_device">那台设备的请求</string>
+    <string name="nm_risk_class_remote">远程控制</string>
+    <string name="nm_hub_remote_reason">%1$s 可以操作这台手机</string>
 
     <!-- nanoMuse Cloud：手机号/邮箱验证码登录，赠送体验额度 -->
     <string name="nm_setup_own_key">我有自己的 API key</string>

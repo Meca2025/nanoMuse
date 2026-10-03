@@ -32,7 +32,11 @@ from nanomuse.hub import actions
 from nanomuse.hub.client import HubClient, HubError, IncomingCall
 from nanomuse.hub.profile import ProfileSync
 from nanomuse.logger import logger
-from nanomuse.server.events import now_iso
+from nanomuse.schema import RiskLevel
+from nanomuse.sentinel.grants import grant_key, normalize_scope
+from nanomuse.server.events import MAIN_THREAD, now_iso
+from nanomuse.server.webui import current_thread
+from nanomuse.ui import ApprovalRequest
 
 if TYPE_CHECKING:
     from nanomuse.server.service import MuseService, Thread
@@ -41,6 +45,14 @@ TASK_TIMEOUT_S = 15 * 60
 APPROVAL_TIMEOUT_S = 180
 REMOTE_TASK_TIMEOUT_S = 10 * 60
 _RISK_WORDS = {"safe": "safe", "low": "low", "moderate": "moderate", "sensitive": "sensitive"}
+# Raw actions another device may ask of this computer that the person here agrees to first
+# (once, or always for that device): what runs, reads or writes. ``info``, ``notify`` and the
+# read-only looks at the coding agents' lists do not ask; a ``task`` runs in a side chat
+# under this computer's own Sentinel.
+GATED_ACTIONS = frozenset(
+    {"shell", "files", "file.get", "file.put", "open", "screen", "coding.send", "coding.stop"}
+)
+REMOTE_CONTROL_TOOL = "remote_control"
 
 
 class HubService:
@@ -59,6 +71,9 @@ class HubService:
         self.remote_approvals: dict[str, tuple[str, str]] = {}
         # runs other devices asked for, by call id → the thread they run in
         self._incoming: dict[str, str] = {}
+        # approval cards of those runs sent to the device that asked (approval id → device
+        # id): the only cards a device may answer with ``approve``
+        self._relayed_approvals: dict[str, str] = {}
         self._tasks: set[asyncio.Task[Any]] = set()
         self._pending_code: str = ""
         # the agent's name and look, shared with the account's other devices
@@ -581,14 +596,24 @@ class HubService:
     # ------------------------------------------------------------------ calls in
     async def on_call(self, call: IncomingCall) -> None:
         if call.action == "approve":
-            ok = self.svc.decide(
-                str(call.args.get("approval_id") or ""), bool(call.args.get("allow")), "once"
-            )
+            approval_id = str(call.args.get("approval_id") or "")
+            # a device answers the cards of its own runs here, no others (not the card that
+            # asks the person at this computer whether that device may run something)
+            if self._relayed_approvals.get(approval_id) != call.sender_id:
+                await call.result({"ok": False})
+                return
+            ok = self.svc.decide(approval_id, bool(call.args.get("allow")), "once")
             await call.result({"ok": ok})
             return
         if not self.settings.hub.remote_control and call.action != "info":
             await call.fail(
                 "not_allowed", f"{self.device_name} is set not to be operated from other devices"
+            )
+            return
+        if call.action in GATED_ACTIONS and not await self._permitted(call):
+            await call.fail(
+                "not_allowed",
+                f"the person at {self.device_name} did not allow {call.sender_name} to do that",
             )
             return
         if call.action == "info":
@@ -687,6 +712,47 @@ class HubService:
                 s = str(a[k]).replace("\n", " ")
                 return s if len(s) < 100 else s[:99] + "…"
         return ""
+
+    async def _permitted(self, call: IncomingCall) -> bool:
+        """The person at this computer agrees before another device runs, reads or writes
+        something here — once, or always for that device. The standing answer is a Sentinel
+        grant (``remote_control:<device id>``), listed and revocable under Permissions like
+        any other; the card goes to the device's side chat when there is one."""
+        sentinel = self.svc.app.sentinel
+        key = grant_key(REMOTE_CONTROL_TOOL, call.sender_id)
+        if sentinel.grants.match(key) is not None:
+            return True
+        brief = self._brief(call)
+        shown = {k: v for k, v in call.args.items() if k != "data"}
+        request = ApprovalRequest(
+            tool=REMOTE_CONTROL_TOOL,
+            args={"device": call.sender_name, "action": call.action, **shown},
+            summary=f"{call.sender_name} wants to run {call.action} on this computer"
+            + (f": {brief}" if brief else ""),
+            risk=RiskLevel.SENSITIVE,
+            reasons=[f"asked by another device ({call.sender_name})"],
+            purpose=f"{call.sender_name} asked for it",
+            target=call.sender_id,
+            grant_key=key,
+            grant_options=["once", "always"],
+        )
+        token = current_thread.set(self._thread_for(call.sender_id, "") or MAIN_THREAD)
+        try:
+            decision = await self.svc.ui.ask_approval(request)
+        finally:
+            current_thread.reset(token)
+        scope = normalize_scope(decision.scope) if decision.approved else "once"
+        if decision.approved and scope == "always":
+            sentinel.grants.add(REMOTE_CONTROL_TOOL, call.sender_id, "always")
+        self.svc.app.audit.record(
+            "hub_call",
+            action=call.action,
+            sender=call.sender_name,
+            decision="allow" if decision.approved else "deny",
+            scope=scope,
+            summary=brief,
+        )
+        return decision.approved
 
     def _thread_for(self, sender_id: str, conversation: str) -> str | None:
         key = conversation or sender_id
@@ -801,6 +867,7 @@ class HubService:
                 )
         elif etype == "approval":
             if status == "pending" and fresh:
+                self._relayed_approvals[str(ev.get("id") or "")] = call.sender_id
                 await call.event(
                     {
                         "stage": "approval",
@@ -814,6 +881,7 @@ class HubService:
                 )
             elif status in ("approved", "denied", "expired") and not fresh:
                 # answered here (or timed out): the caller's card closes too
+                self._relayed_approvals.pop(str(ev.get("id") or ""), None)
                 await call.event(
                     {"stage": "approval_result", "approval_id": ev.get("id"), "status": status}
                 )

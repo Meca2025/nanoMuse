@@ -4,11 +4,11 @@
  * conversation (`MuseHeader`); this file keeps the frame-wide overlay entry
  * that shows the notices (`notify`, and each remote `call` that ran here).
  */
-import { Toast } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Toast } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { call } from './api.ts'
-import { useLive, type LiveCall, type LiveNotice } from './live.ts'
+import { useLive, type LiveAsk, type LiveCall, type LiveNotice } from './live.ts'
 import type { Words } from './locales.ts'
 
 /** What a call is, in the person's words. */
@@ -59,13 +59,53 @@ export interface CapsuleProps {
   t: Translate
 }
 
-/** The overlay entry: the newest notice from another device, once each. */
+/** The overlay entry: the newest notice from another device, once each, and the questions other devices are waiting on. */
 export function makeCapsule({ t }: CapsuleProps) {
   return function Capsule(): ReactNode {
     const live = useLive()
     return h('div', { style: { position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none' } },
+      live.hub.asks.map((ask) => h(AskCard, { key: ask.id, t, ask })),
       h(Notices, { t, notices: live.notices }))
   }
+}
+
+/** The words for what another device wants to do here. */
+export function askKey(action: string): Words {
+  switch (action) {
+    case 'shell':
+      return 'askShell'
+    case 'files':
+      return 'askFiles'
+    case 'file.get':
+      return 'askFileGet'
+    case 'file.put':
+      return 'askFilePut'
+    case 'open':
+      return 'askOpen'
+    case 'screen':
+      return 'askScreen'
+    case 'task':
+      return 'askTask'
+    default:
+      return 'askOther'
+  }
+}
+
+/** One question from another device: allow once, always for that device, or not now. */
+function AskCard({ t, ask }: { t: Translate; ask: LiveAsk }): ReactNode {
+  const [busy, setBusy] = useState(false)
+  const answer = (a: 'once' | 'always' | 'deny') => {
+    setBusy(true)
+    void call('devices/answer', { id: ask.id, answer: a }).catch(() => undefined).finally(() => setBusy(false))
+  }
+  return h('div', { className: 'nm-ask', role: 'dialog', 'aria-live': 'assertive', style: { pointerEvents: 'auto' } },
+    h('div', { className: 'nm-ask-title' }, t('askTitle', { from: ask.from })),
+    h('div', { className: 'nm-ask-text' }, t(askKey(ask.action), { from: ask.from, what: ask.text })),
+    h('div', { className: 'nm-ask-actions' },
+      h(Button, { variant: 'primary', size: 'sm', disabled: busy, onClick: () => answer('once') }, t('askAllowOnce')),
+      h(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: () => answer('always') }, t('askAlways', { from: ask.from })),
+      h(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => answer('deny') }, t('askDeny'))),
+    h('div', { className: 'nm-ask-sub' }, t('askHint')))
 }
 
 function Notices({ t, notices }: { t: Translate; notices: LiveNotice[] }): ReactNode {

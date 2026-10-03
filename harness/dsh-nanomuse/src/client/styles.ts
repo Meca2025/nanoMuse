@@ -122,10 +122,16 @@ html[data-nanomuse] body { font-family: var(--nm-font); }
 .nm-rail-top { height: 12px; flex: none; }
 html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-rail-top { height: 78px; }
 .nm-rail-face { display: inline-flex; border-radius: 50%; overflow: hidden; }
-/* macOS, no title bar: the empty tops of the rail, the column and the chat are drag handles. */
-html[data-nm-platform='darwin'] [data-window-drag], html[data-nm-platform='darwin'] .nm-ob, html[data-nm-platform='darwin'] [data-slot="conversation.session.header"] > :first-child { -webkit-app-region: drag; }
-html[data-nm-platform='darwin'] :is([data-window-drag], .nm-ob, [data-slot="conversation.session.header"]) :is(button, a, input, select, textarea, [contenteditable], [role="button"], [role="dialog"], [role="menu"]) { -webkit-app-region: no-drag; }
+/* macOS, no title bar: the empty tops of the rail, the column and the chat are drag handles.
+   Windows draws its caption buttons over the top right corner (titleBarOverlay, 40px): the same
+   drag handles, and the chat's header keeps clear of the buttons. Linux has its system bar. */
+html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) [data-window-drag], html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) .nm-ob, html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) [data-slot="conversation.session.header"] > :first-child { -webkit-app-region: drag; }
+html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) :is([data-window-drag], .nm-ob, [data-slot="conversation.session.header"]) :is(button, a, input, select, textarea, [contenteditable], [role="button"], [role="dialog"], [role="menu"]) { -webkit-app-region: no-drag; }
 html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-main-top { height: 12px; }
+html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-rail-top { height: 24px; }
+html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-main-top { height: 12px; }
+html[data-nm-platform='win32']:not([data-nm-fullscreen]) [data-slot="conversation.session.header"] > :first-child { padding-right: 150px; min-height: 40px; }
+html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-ob-pager { top: 48px; }
 .nm-rail-avatar { width: 44px; height: 44px; margin: 2px 0 10px; border: 0; padding: 0; border-radius: 50%; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .nm-rail-avatar:focus-visible { outline: 2px solid var(--nm-accent); outline-offset: 2px; }
 .nm-rail-btn { position: relative; width: 44px; height: 44px; border: 0; padding: 0; border-radius: 13px; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 120ms, color 120ms; }
@@ -656,6 +662,11 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-lib-col-top { heig
 .nm-menu-item-label { flex: 1; min-width: 0; }
 .nm-menu-sep { height: 1px; margin: 4px 6px; background: var(--nm-divider); }
 .nm-menu-hint { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
+.nm-ask { width: min(420px, calc(100vw - 32px)); padding: 12px 14px; border-radius: 14px; background: var(--dsw-alias-bg-primary, #fff); color: var(--dsw-alias-label-primary, inherit); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18); border: 1px solid var(--nm-divider); display: flex; flex-direction: column; gap: 8px; }
+.nm-ask-title { font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary); }
+.nm-ask-text { font-size: 14px; line-height: 1.4; word-break: break-word; }
+.nm-ask-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.nm-ask-sub { font-size: 11.5px; color: var(--dsw-alias-label-tertiary); }
 `
 
 /** Put the stylesheet in the head once and mark the document as ours. */

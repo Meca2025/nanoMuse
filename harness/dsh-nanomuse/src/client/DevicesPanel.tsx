@@ -66,7 +66,14 @@ export function makeDevicesPanel(t: Translate) {
             h('div', { className: 'nm-row-main' },
               h('span', { className: 'nm-row-title' }, t('remoteControl')),
               h('span', { className: 'nm-row-sub nm-wrap' }, hub.remoteControl ? t('remoteControlOn') : t('remoteControlOff'))),
-            h(Switch, { checked: hub.remoteControl, disabled: busy, label: t('remoteControl'), onChange: (on: boolean) => run(() => call('devices/remote-control', { on })) }))),
+            h(Switch, { checked: hub.remoteControl, disabled: busy, label: t('remoteControl'), onChange: (on: boolean) => run(() => call('devices/remote-control', { on })) })),
+          hub.remoteControl || hub.trusted.length === 0
+            ? null
+            : h('div', { className: 'nm-row', style: { flexDirection: 'column', alignItems: 'stretch', gap: 6 } },
+                h('span', { className: 'nm-row-sub' }, t('trustedDevices')),
+                ...hub.trusted.map((td) => h('div', { key: td.id, style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                  h('span', { className: 'nm-row-title', style: { flex: 1 } }, td.name),
+                  h(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => run(() => call('devices/trust', { device_id: td.id, on: false })) }, t('trustForget')))))),
         h('h2', null, t('otherDevices')),
         h('div', { className: 'nm-card' },
           others.length === 0

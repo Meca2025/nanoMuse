@@ -53,7 +53,13 @@ finds it with Hands, the Mac's puts it in the file, and the person who asked
 sees both halves in the chat they typed in.
 
 A device decides what it lets the others do: **Remote control** off makes it
-answer `info` and nothing else, while it still drives the rest.
+answer `info` and nothing else, while it still drives the rest. With it on, the
+person *at* the device still agrees before another device runs, reads or writes
+something there — a card on that screen, *once* or *always for that device*
+(a standing permission listed under Permissions like any other, revocable there).
+A `task` runs under the device's own Sentinel instead; `notify` never asks. On
+nanoMuse Desktop the switch is off by default and means "each device asks here";
+on lets every device of the account through without the question.
 
 ## How a task travels
 
