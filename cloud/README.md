@@ -15,7 +15,10 @@ its base URL.
   (Aliyun SMS) or an e-mail (SMTP). `POST /v1/auth/verify` exchanges it for an
   `nm_…` API key. One phone/e-mail is one account with one starter grant; a
   second device signing in with the same number gets a second key, not a second
-  grant.
+  grant. `POST /v1/auth/session-key` (0.13) turns a key into one that lapses on
+  its own (`ttl_s`, 90 days at most) — what nanoMuse Web starts a person's
+  container with, so the gateway keeps no standing key of theirs; it shows in
+  `/v1/me/sessions` with `expires_at` and `via: "session"`.
 - **OpenAI-shaped proxy.** `GET /v1/models`, `POST /v1/chat/completions`
   (streaming or not) go to the upstream with the relay's key. `POST
   /v1/images/generations` and `/v1/images/edits` are translated into DashScope's
@@ -53,6 +56,7 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 404 | `model_not_offered` | not on the menu |
 | 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `invite_url`, `invite_bonus_cny`, `own_key_docs` |
 | 429 | `code_too_often` / `rate_limited` / `daily_cap` | (`daily_cap` only with the legacy token cap on) |
+| 429 | `too_many_in_flight` | `MAX_IN_FLIGHT` requests of the account are already under way; `retry_after` in the body |
 | 429 | `provider_busy` | the image provider answered 429 even after the relay queued and retried (`IMAGE_CONCURRENCY`, `IMAGE_RETRIES`); `retry_after` seconds in the body |
 | 400 | `content_rejected` | the provider's content check declined the words (a chat request or an image prompt); the provider's own line rides along under `upstream` |
 | 400 | `upstream_400` | any other refusal of the request itself; the provider's message passed through |
@@ -116,6 +120,7 @@ for the full list. The ones that matter:
 | `SIGNUP_TOKENS` | 0 (no ceiling) | starter token grant per account, the older allowance |
 | `DAILY_CAP_TOKENS` | 0 (off) | tokens per account per day |
 | `PER_MINUTE_REQUESTS` | 30 | per account — what stops a runaway loop |
+| `MAX_IN_FLIGHT` | 4 | requests of one account under way at the same time (0 = off); each holds a reservation against the allowance while it runs — see *Money* |
 | `PASSWORD_MAX_ATTEMPTS`, `LOCKOUT_S` | 5, 900 | wrong passwords before an account is locked for that long (a code still works) |
 | `LOGIN_FAIL_PER_IP_HOUR` | 30 | wrong passwords from one network address per hour across all accounts — a list of numbers tried once each never trips the per-account lock, this does (0.12); 0 = off |
 | `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` (SMS for phones, mail for addresses) |
@@ -129,7 +134,7 @@ for the full list. The ones that matter:
 | `CLOUD_GEOIP` | `1` | name where an address is on the operator's page — country, province, city — from ip2region's offline database, fetched once into the data directory (0.11); `0` = addresses only |
 | `CLOUD_GEOIP_DB`, `CLOUD_GEOIP_URL`, `CLOUD_GEOIP_V6_URL` | next to the database; the project's `ip2region_v4.xdb`; empty | the file, where to fetch it, and the IPv6 file (37 MB) for a relay reached over IPv6 |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
-| `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames) |
+| `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames); one socket may also send at most 60 frames and 8 MB a second sustained (twice that in a burst) — over it frames are dropped with one `rate_limited` error a second, and a socket that keeps flooding is closed with 4008 (0.13) |
 
 The default menu: `qwen3.8-27b` (recommended; text and images in),
 `qwen3.8-flash` (charged at 0.3×), `qwen-image-3.0` for drawing (¥0.18 a
@@ -207,6 +212,19 @@ day (`DAY_OFFSET_H`) in ¥ and $.
 is metered and shown, nothing is refused for lack of tokens (`/v1/me` says
 `"unlimited": true` and the apps show 「不限」). `DAILY_CAP_TOKENS=0` and
 `PER_MINUTE_REQUESTS=0` switch those two checks off in the same way.
+
+**Reserve, then settle (0.13).** Requests started together used to pass the
+allowance check one by one and overshoot it together. Now each request is
+*reserved* while it runs and *settled* when it is over: a picture or a clip at
+its known price, a chat at a typical turn's worth of its model (6 000 prompt
+and 1 500 completion tokens — the ledger gets the real figure when the reply is
+in), and a clip still being made holds its price until the task is seen done.
+The check counts what is held: a chat starts while anything is left beyond it,
+a picture or a clip only when its own price fits on top. At most `MAX_IN_FLIGHT`
+requests of one account run at once; the one over that is told so
+(`429 too_many_in_flight`, `retry_after`) rather than queued. Reservations live
+in memory and lapse on their own after the upstream timeout, so a client that
+vanished before its stream began cannot hold a slot for good.
 
 ### Operator's page
 
@@ -329,6 +347,10 @@ tokens, the newest turns, and the export.
 ## Operating
 
 ```bash
+# is it well? aggregates only (0.13): requests under way, the hub's counters, the last
+# hour's requests / upstream errors / refusals / sign-ins, the database, `problems` —
+# what deploy/nanomuse-hk/selfcheck.sh reads every ten minutes
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/health
 # who signed up (hints only, never the identifiers)
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/accounts
 # top up someone by phone/e-mail or by account id

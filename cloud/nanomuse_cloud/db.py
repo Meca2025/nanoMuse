@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS events (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id    TEXT NOT NULL DEFAULT '',   -- '' for events before an account exists (a failed sign-in)
     ts            INTEGER NOT NULL,
-    kind          TEXT NOT NULL,              -- sign_in.code | sign_in.password | sign_in.failed | sign_out |
+    kind          TEXT NOT NULL,              -- sign_in.code | sign_in.password | sign_in.session | sign_in.failed | sign_out |
                                               -- sign_out.all | password.set | account.created | account.deleted |
                                               -- device.joined | upstream.error | budget.refused | call.ended
     detail        TEXT NOT NULL DEFAULT ''    -- a device name, a model, an error code: never message content
@@ -165,6 +165,7 @@ def now() -> int:
 
 class Database:
     def __init__(self, path: str):
+        self.path = path
         if path != ":memory:":
             Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
@@ -201,6 +202,9 @@ class Database:
             self._conn.execute("ALTER TABLE video_tasks ADD COLUMN cost_uy INTEGER NOT NULL DEFAULT 0")
         if "cost_uy" not in cols("ledger"):
             self._conn.execute("ALTER TABLE ledger ADD COLUMN cost_uy INTEGER NOT NULL DEFAULT 0")
+        if "expires_at" not in cols("api_keys"):
+            # 0.13: a session key (nanoMuse Web's containers) stops working at this time
+            self._conn.execute("ALTER TABLE api_keys ADD COLUMN expires_at INTEGER")
         if "extra" not in cols("ledger"):
             self._conn.execute("ALTER TABLE ledger ADD COLUMN extra TEXT NOT NULL DEFAULT ''")
         for col, ddl in (
@@ -623,12 +627,14 @@ class Database:
 
     # -- keys ----------------------------------------------------------------
 
-    def insert_key(self, key_hash: str, prefix: str, account_id: str, device: str, via: str = "code") -> None:
+    def insert_key(
+        self, key_hash: str, prefix: str, account_id: str, device: str, via: str = "code", expires_at: int | None = None
+    ) -> None:
         who = _client.current()
         with self.tx() as c:
             c.execute(
-                "INSERT INTO api_keys(key_hash, prefix, account_id, device, created_at, via, ip, ua) VALUES (?,?,?,?,?,?,?,?)",
-                (key_hash, prefix, account_id, device[:80], now(), via, who.ip, who.ua),
+                "INSERT INTO api_keys(key_hash, prefix, account_id, device, created_at, via, ip, ua, expires_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                (key_hash, prefix, account_id, device[:80], now(), via, who.ip, who.ua, expires_at),
             )
 
     def key(self, key_hash: str) -> sqlite3.Row | None:
@@ -681,9 +687,11 @@ class Database:
     def keys_for(self, account_id: str, live_only: bool = False) -> list[sqlite3.Row]:
         with self._lock:
             sql = "SELECT * FROM api_keys WHERE account_id=?"
+            args: list = [account_id]
             if live_only:
-                sql += " AND revoked_at IS NULL"
-            return self._conn.execute(sql + " ORDER BY created_at", (account_id,)).fetchall()
+                sql += " AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)"
+                args.append(now())
+            return self._conn.execute(sql + " ORDER BY created_at", args).fetchall()
 
     # -- events (the account's own history; the operator's audit) -------------------
 
@@ -914,6 +922,17 @@ class Database:
             ).fetchone()
         return int(r[0])
 
+    def pending_video_cost(self, account_id: str) -> int:
+        """Money (micro-yuan) the account's clips still being made will cost: tasks the
+        provider has not finished, so not yet in the ledger — held against the allowance."""
+        with self._lock:
+            r = self._conn.execute(
+                "SELECT COALESCE(SUM(cost_uy),0) FROM video_tasks WHERE account_id=? AND charged=0 "
+                "AND probe=0 AND status NOT IN ('FAILED','CANCELED','UNKNOWN') AND created_at >= ?",
+                (account_id, now() - 3600),
+            ).fetchone()
+        return int(r[0])
+
     def spent_since(self, account_id: str, since: int) -> int:
         """Money (micro-yuan) the account cost the operator since `since`."""
         with self._lock:
@@ -922,6 +941,37 @@ class Database:
                 (account_id, since),
             ).fetchone()
         return int(r[0])
+
+    def events_since(self, since: int) -> dict[str, int]:
+        """How many events of each kind since `since`, across every account (the self-check)."""
+        with self._lock:
+            rows = self._conn.execute("SELECT kind, COUNT(*) AS n FROM events WHERE ts>=? GROUP BY kind", (since,)).fetchall()
+        return {str(r["kind"]): int(r["n"]) for r in rows}
+
+    def requests_since_all(self, since: int) -> int:
+        """Model requests since `since`, across every account (the self-check)."""
+        with self._lock:
+            r = self._conn.execute(
+                "SELECT COUNT(*) FROM ledger WHERE ts>=? AND kind IN ('chat','image','video','realtime')", (since,)
+            ).fetchone()
+        return int(r[0])
+
+    def health(self) -> dict:
+        """The file: its size, and whether a write goes through right now."""
+        size = 0
+        try:
+            size = Path(self.path).stat().st_size if self.path != ":memory:" else 0
+        except OSError:
+            pass
+        writable = True
+        try:
+            with self.tx() as c:
+                c.execute("CREATE TABLE IF NOT EXISTS health_probe (ts INTEGER)")
+                c.execute("DELETE FROM health_probe")
+                c.execute("INSERT INTO health_probe(ts) VALUES (?)", (now(),))
+        except sqlite3.Error:
+            writable = False
+        return {"size_bytes": size, "writable": writable}
 
     def requests_since(self, account_id: str, since: int) -> int:
         with self._lock:

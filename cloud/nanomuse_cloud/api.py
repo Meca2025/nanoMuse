@@ -14,6 +14,7 @@
     DELETE /v1/me/samples                                       → delete every turn kept from me
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
     POST /v1/auth/sign-out-all {all?}                           → {signed_out} (every other device; all=true takes this one too)
+    POST /v1/auth/session-key {device?, ttl_s?}                 → {api_key, expires_at} (a key that lapses on its own; nanoMuse Web's containers)
     POST /v1/auth/delete                                        → 204 (the whole account, every key)
     GET  /v1/models                                             → OpenAI list, with modalities; for a member, the usable models under the operator's key after the menu (catalog: true)
     POST /v1/chat/completions                                   → forwarded; stream or not
@@ -68,6 +69,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
@@ -429,6 +431,19 @@ def create_app(
         cloud.sign_out(caller)
         return Response(status_code=204)
 
+    @app.post("/v1/auth/session-key")
+    async def session_key(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+        """A key for this account that expires on its own: {"device", "ttl_s"} → {"api_key",
+        "expires_at"}. nanoMuse Web starts a person's container with one and keeps no
+        standing key of theirs (0.13)."""
+        body = await _json(request)
+        try:
+            ttl_s = int(body.get("ttl_s") or 30 * 86400)
+        except (TypeError, ValueError) as e:
+            raise CloudError(400, "bad_request", "ttl_s must be a number of seconds") from e
+        key, expires_at = cloud.session_key(caller, str(body.get("device") or "session"), ttl_s)
+        return {"api_key": key, "expires_at": expires_at}
+
     @app.post("/v1/auth/sign-out-all")
     async def sign_out_all(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
         """Every other device; {"all": true} takes this one too."""
@@ -500,8 +515,9 @@ def create_app(
     async def chat(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         body = await _json(request)
         spec = cloud.model_for(str(body.get("model", "")), "chat", caller)
-        cloud.check_budget(caller)
         request_id = uuid.uuid4().hex[:16]
+        # held at a typical turn's price while it runs; settled when the reply is in
+        cloud.check_budget(caller, request_id=request_id, hold_uy=cloud.chat_reserve_uy(spec))
         body["model"] = spec.upstream
         apply_chat_defaults(body, settings.chat_defaults)
         stream = bool(body.get("stream"))
@@ -532,22 +548,25 @@ def create_app(
 
         if not stream:
             try:
-                r = await http.post(url, headers=headers, content=dumps(body).encode())
-            except httpx.HTTPError as e:
-                log.warning("upstream error: %s", e)
-                raise CloudError(502, "upstream", "The model provider did not answer") from e
-            if r.status_code >= 400:
-                cloud.note(caller.account_id, "upstream.error", upstream_detail("chat", r.status_code, spec.id, r.content))
-                return _relay_error(r)
-            try:
-                obj = r.json()
-            except ValueError as e:
-                raise CloudError(502, "upstream", "The model provider sent an unreadable reply") from e
-            usage = usage_from_json(obj)
-            text = _reply_text(obj)
-            if usage is None:
-                usage = (fallback_prompt_tokens, estimate_tokens(text))
-            charged = cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
+                try:
+                    r = await http.post(url, headers=headers, content=dumps(body).encode())
+                except httpx.HTTPError as e:
+                    log.warning("upstream error: %s", e)
+                    raise CloudError(502, "upstream", "The model provider did not answer") from e
+                if r.status_code >= 400:
+                    cloud.note(caller.account_id, "upstream.error", upstream_detail("chat", r.status_code, spec.id, r.content))
+                    return _relay_error(r)
+                try:
+                    obj = r.json()
+                except ValueError as e:
+                    raise CloudError(502, "upstream", "The model provider sent an unreadable reply") from e
+                usage = usage_from_json(obj)
+                text = _reply_text(obj)
+                if usage is None:
+                    usage = (fallback_prompt_tokens, estimate_tokens(text))
+                charged = cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
+            finally:
+                cloud.settle(caller, request_id)
             if sample_meta is not None:
                 cloud.keep_sample(caller, spec.id, sample_messages, text, usage[0], usage[1], sample_meta)
             if isinstance(obj, dict):
@@ -611,6 +630,7 @@ def create_app(
                     cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
                     if sample_meta is not None:
                         cloud.keep_sample(caller, spec.id, sample_messages, "".join(reply), usage[0], usage[1], sample_meta)
+                cloud.settle(caller, request_id)
 
         return StreamingResponse(
             gen(),
@@ -689,7 +709,6 @@ def create_app(
         body = await _json(request)
         spec = cloud.model_for(str(body.get("model", "")), "image", caller)
         size = _size_param(body.get("size"))
-        cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(size))
         prompt = str(body.get("prompt", "")).strip()
         if not prompt:
             raise CloudError(400, "bad_request", "prompt is required")
@@ -699,8 +718,13 @@ def create_app(
         params = {"size": size, "watermark": False}
         if spec.upstream.startswith("qwen-image"):
             params["prompt_extend"] = False
-        png = await _dashscope_image(spec.upstream, [{"text": prompt}], params)
-        charged = cloud.charge_image(caller, spec, 1, uuid.uuid4().hex[:16], size=size)
+        request_id = uuid.uuid4().hex[:16]
+        cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(size), request_id=request_id)
+        try:
+            png = await _dashscope_image(spec.upstream, [{"text": prompt}], params)
+            charged = cloud.charge_image(caller, spec, 1, request_id, size=size)
+        finally:
+            cloud.settle(caller, request_id)
         return JSONResponse(
             content={"created": int(time.time()), "data": [{"b64_json": base64.b64encode(png).decode()}], "nanomuse": {"charged": charged}},
             headers={"x-nanomuse-charged": str(charged)},
@@ -716,7 +740,6 @@ def create_app(
         image: UploadFile = File(...),
     ) -> Response:
         spec = cloud.model_for(model, "image", caller)
-        cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(_size_param(size)))
         if n != 1:
             raise CloudError(400, "bad_request", "nanoMuse Cloud draws one picture per request")
         data = await image.read()
@@ -730,8 +753,13 @@ def create_app(
         edit_model = spec.upstream if (three_x or "edit" in spec.upstream) else "qwen-image-edit-max"
         params = {"size": _size_param(size), "prompt_extend": False, "watermark": False} if three_x else {"n": 1, "watermark": False}
         content = [{"image": f"data:{mime};base64," + base64.b64encode(data).decode()}, {"text": prompt}]
-        png = await _dashscope_image(edit_model, content, params)
-        charged = cloud.charge_image(caller, spec, 1, uuid.uuid4().hex[:16], size=_size_param(size))
+        request_id = uuid.uuid4().hex[:16]
+        cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(_size_param(size)), request_id=request_id)
+        try:
+            png = await _dashscope_image(edit_model, content, params)
+            charged = cloud.charge_image(caller, spec, 1, request_id, size=_size_param(size))
+        finally:
+            cloud.settle(caller, request_id)
         return JSONResponse(
             content={"created": int(time.time()), "data": [{"b64_json": base64.b64encode(png).decode()}], "nanomuse": {"charged": charged}},
             headers={"x-nanomuse-charged": str(charged)},
@@ -774,27 +802,33 @@ def create_app(
         # A probe (no input) costs nothing upstream and is not priced here either.
         probe = not body.get("input")
         clip_cost = 0 if probe else spec.video_cost_uy(_clip_seconds(body, spec))
-        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=clip_cost)
+        # reserved while the submission runs; once accepted, the task row holds the clip's
+        # price against the allowance (db.pending_video_cost) until the clip is charged
+        request_id = uuid.uuid4().hex[:16]
+        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=clip_cost, request_id=request_id)
         body["model"] = spec.upstream
         headers = upstream_headers()
         headers["X-DashScope-Async"] = "enable"
         if request.headers.get("x-dashscope-ossresourceresolve"):
             headers["X-DashScope-OssResourceResolve"] = request.headers["x-dashscope-ossresourceresolve"]
         try:
-            r = await http.post(settings.dashscope_base.rstrip("/") + VIDEO_PATH, headers=headers, content=dumps(body).encode())
-        except httpx.HTTPError as e:
-            log.warning("dashscope video error: %s", e)
-            raise CloudError(502, "upstream", "The video provider did not answer") from e
-        if r.status_code < 400:
             try:
-                task_id = str(r.json()["output"]["task_id"])
-            except (ValueError, KeyError, TypeError):
-                task_id = ""
-            if task_id:
-                cloud.db.insert_video_task(task_id, caller.account_id, spec.id, cost_uy=clip_cost, probe=probe)
-                log.info("video task %s for %s: %s%s", task_id[:12], caller.account_id[:8], spec.id, " (probe)" if probe else "")
-        else:
-            log.warning("dashscope video HTTP %s: %s", r.status_code, r.text[:300])
+                r = await http.post(settings.dashscope_base.rstrip("/") + VIDEO_PATH, headers=headers, content=dumps(body).encode())
+            except httpx.HTTPError as e:
+                log.warning("dashscope video error: %s", e)
+                raise CloudError(502, "upstream", "The video provider did not answer") from e
+            if r.status_code < 400:
+                try:
+                    task_id = str(r.json()["output"]["task_id"])
+                except (ValueError, KeyError, TypeError):
+                    task_id = ""
+                if task_id:
+                    cloud.db.insert_video_task(task_id, caller.account_id, spec.id, cost_uy=clip_cost, probe=probe)
+                    log.info("video task %s for %s: %s%s", task_id[:12], caller.account_id[:8], spec.id, " (probe)" if probe else "")
+            else:
+                log.warning("dashscope video HTTP %s: %s", r.status_code, r.text[:300])
+        finally:
+            cloud.settle(caller, request_id)
         return _dashscope_reply(r)
 
     @app.get("/api/v1/tasks/{task_id}")
@@ -895,6 +929,46 @@ def create_app(
     @app.get("/v1/admin/usage", dependencies=[Depends(admin_dep)])
     async def admin_usage(days: int = 14) -> dict:
         return {"days": cloud.admin_usage(max(1, min(days, 90)))}
+
+    @app.get("/v1/admin/health", dependencies=[Depends(admin_dep)])
+    async def admin_health() -> dict:
+        """What the self-check timer reads (deploy/nanomuse-hk/selfcheck.sh): aggregates
+        only — requests under way, the hub's counters, the last hour's refusals and upstream
+        errors, the database — never an account. `ok` is false when something needs a look."""
+        hub = getattr(app.state, "hub", None)
+        t = int(time.time())
+        hour = cloud.db.events_since(t - 3600)
+        in_flight = cloud.in_flight.snapshot()
+        upstream_errors = int(hour.get("upstream.error", 0))
+        db_health = cloud.db.health()
+        out: dict[str, Any] = {
+            "ok": True,
+            "version": __version__,
+            "time": t,
+            "in_flight": {"requests": sum(in_flight.values()), "accounts": len(in_flight), "limit": cloud.in_flight.limit},
+            "hub": hub.stats() if hub is not None else None,
+            "last_hour": {
+                "requests": cloud.db.requests_since_all(t - 3600),
+                "upstream_errors": upstream_errors,
+                "budget_refused": int(hour.get("budget.refused", 0)),
+                "sign_ins": int(hour.get("sign_in.code", 0)) + int(hour.get("sign_in.password", 0)),
+                "sign_in_failures": int(hour.get("sign_in.failed", 0)),
+            },
+            "db": db_health,
+            "upstream_key": bool(settings.upstream_key),
+        }
+        problems: list[str] = []
+        if upstream_errors >= 20:
+            problems.append(f"{upstream_errors} upstream errors in the last hour")
+        if hub is not None and hub.flood_closes > 0:
+            problems.append(f"{hub.flood_closes} hub sockets closed for flooding since start")
+        if not db_health["writable"]:
+            problems.append("the database is not writable")
+        if not settings.upstream_key:
+            problems.append("no upstream key")
+        out["ok"] = not problems
+        out["problems"] = problems
+        return out
 
     @app.get("/v1/admin/overview", dependencies=[Depends(admin_dep)])
     async def admin_overview(days: int = 30) -> dict:

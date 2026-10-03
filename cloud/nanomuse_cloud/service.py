@@ -244,10 +244,65 @@ def _sha256(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
 
 
+class InFlight:
+    """The requests an account has under way: how many (at most `limit`), and what each is
+    expected to cost. The allowance check counts these reservations as spent, so several
+    requests started together cannot each pass it and overshoot it together; a request's
+    reservation goes when it settles (the ledger then has the real figure). In memory:
+    the relay is one process, and a restart loses only the picture of the moment."""
+
+    def __init__(self, limit: int, ttl_s: float = 300.0, clock=time.monotonic):
+        self.limit = max(0, limit)
+        self.ttl_s = ttl_s  # a request nobody settled (a client gone before its stream began) lapses
+        self.clock = clock
+        self._held: dict[str, dict[str, tuple[int, float]]] = {}
+
+    def _live(self, account_id: str) -> dict[str, tuple[int, float]]:
+        held = self._held.get(account_id)
+        if not held:
+            return {}
+        t = self.clock()
+        for rid in [rid for rid, (_, until) in held.items() if until <= t]:
+            del held[rid]
+        if not held:
+            self._held.pop(account_id, None)
+        return held
+
+    def count(self, account_id: str) -> int:
+        return len(self._live(account_id))
+
+    def reserved(self, account_id: str) -> int:
+        return sum(cost for cost, _ in self._live(account_id).values())
+
+    def full(self, account_id: str) -> bool:
+        return self.limit > 0 and self.count(account_id) >= self.limit
+
+    def reserve(self, account_id: str, request_id: str, cost_uy: int) -> None:
+        self._held.setdefault(account_id, {})[request_id] = (max(0, int(cost_uy)), self.clock() + self.ttl_s)
+
+    def settle(self, account_id: str, request_id: str) -> None:
+        held = self._held.get(account_id)
+        if held is not None:
+            held.pop(request_id, None)
+            if not held:
+                del self._held[account_id]
+
+    def snapshot(self) -> dict[str, int]:
+        """For the admin view: accounts with something under way, and how many requests."""
+        return {account_id: len(self._live(account_id)) for account_id in list(self._held) if self._live(account_id)}
+
+
+# What a chat is reserved at while it runs: a typical turn's worth of the model, priced
+# like any other. The ledger gets the real figure once the reply is in.
+CHAT_RESERVE_PROMPT_TOKENS = 6000
+CHAT_RESERVE_COMPLETION_TOKENS = 1500
+
+
 class Cloud:
     def __init__(self, settings: Settings, db: Database | None = None, sender: CodeSender | None = None):
         self.s = settings
         self.db = db or Database(settings.database)
+        self.in_flight = InFlight(settings.max_in_flight, ttl_s=settings.upstream_timeout_s + 120)
         self.sender = sender or make_sender(settings)
         self.crypto = IdentifierCrypto(settings.identifier_key)
         self._login_failures: dict[str, list[int]] = {}
@@ -437,12 +492,25 @@ class Cloud:
         allowance. Kept in the shape 0.4 phones read so they show 「不限」."""
         return {"unlimited": True, "allowed": None, "used": 0, "left": None, "per_face": 4}
 
-    def _issue_key(self, account_id: str, device: str, via: str) -> tuple[str, Caller]:
+    def _issue_key(self, account_id: str, device: str, via: str, expires_at: int | None = None) -> tuple[str, Caller]:
         key = KEY_PREFIX + secrets.token_urlsafe(30)
-        self.db.insert_key(_sha256(key), key[:10], account_id, device, via=via)
+        self.db.insert_key(_sha256(key), key[:10], account_id, device, via=via, expires_at=expires_at)
         caller = self._caller(_sha256(key))
         assert caller is not None
         return key, caller
+
+    SESSION_KEY_MAX_S = 90 * 86400
+
+    def session_key(self, caller: Caller, device: str, ttl_s: int) -> tuple[str, int]:
+        """A key that stops working on its own after `ttl_s` (at most 90 days), for a place
+        that should not hold a standing one — nanoMuse Web's container gets one at start and
+        the gateway keeps nothing. Issued to the account of the key making the request; the
+        requesting key is untouched (the caller revokes it if it has no further use for it)."""
+        ttl = max(60, min(int(ttl_s), self.SESSION_KEY_MAX_S))
+        expires_at = now() + ttl
+        key, _ = self._issue_key(caller.account_id, device or "session", via="session", expires_at=expires_at)
+        self.db.add_event(caller.account_id, "sign_in.session", (device or "session")[:60])
+        return key, expires_at
 
     # -- passwords --------------------------------------------------------------------
 
@@ -550,6 +618,8 @@ class Cloud:
         row = self.db.key(key_hash)
         if row is None or row["revoked_at"] is not None:
             return None
+        if row["expires_at"] is not None and int(row["expires_at"]) <= now():
+            return None  # a session key past its time (session_key)
         return (
             Caller(
                 key_hash=key_hash,
@@ -612,6 +682,7 @@ class Cloud:
                     "via": k["via"] or "code",
                     "created_at": int(k["created_at"]),
                     "last_used_at": int(k["last_used_at"]) if k["last_used_at"] else None,
+                    "expires_at": int(k["expires_at"]) if k["expires_at"] else None,
                     "current": k["key_hash"] == caller.key_hash,
                 }
             )
@@ -831,17 +902,30 @@ class Cloud:
             "nanomuse": {"any_model": self.any_model(caller)},
         }
 
-    def check_budget(self, caller: Caller, minimum: int = 1, cost_uy: int = 0) -> None:
+    def check_budget(
+        self, caller: Caller, minimum: int = 1, cost_uy: int = 0, request_id: str | None = None, hold_uy: int | None = None
+    ) -> None:
         """Each limit is off when its setting is 0; the per-minute one guards the
         operator's bill against a runaway loop even on an unlimited relay.
         `cost_uy` is what the request is known to cost up front (a picture, a
-        clip) so it is refused before the money is spent rather than after."""
+        clip) so it is refused before the money is spent rather than after. With
+        `request_id` the request is also *reserved* until :meth:`settle`: it counts
+        as one of the account's in-flight requests (at most MAX_IN_FLIGHT) and
+        `hold_uy` (its price, or a chat's typical turn) is held against the
+        allowance — so requests started together cannot each pass this check and
+        together overshoot it."""
         try:
             self._check_budget(caller, minimum, cost_uy)
         except CloudError as e:
-            if e.code in ("out_of_tokens", "daily_cap", "allowance_exhausted"):
+            if e.code in ("out_of_tokens", "daily_cap", "allowance_exhausted", "too_many_in_flight"):
                 self.db.add_event(caller.account_id, "budget.refused", e.code)
             raise
+        if request_id is not None:
+            self.in_flight.reserve(caller.account_id, request_id, cost_uy if hold_uy is None else hold_uy)
+
+    def settle(self, caller: Caller, request_id: str) -> None:
+        """The request is over (charged, failed or dropped): its reservation goes."""
+        self.in_flight.settle(caller.account_id, request_id)
 
     def _check_budget(self, caller: Caller, minimum: int, cost_uy: int) -> None:
         if not self.s.unlimited and caller.remaining < minimum:
@@ -851,17 +935,31 @@ class Cloud:
                 "Your nanoMuse Cloud grant is used up. Add your own model key under Settings → Providers to keep going.",
             )
         t = now()
+        if self.in_flight.full(caller.account_id):
+            raise CloudError(
+                429,
+                "too_many_in_flight",
+                f"{self.in_flight.limit} requests of yours are already under way; wait for one to finish",
+                {"retry_after": 2},
+            )
         if self.s.per_minute_requests > 0 and self.db.requests_since(caller.account_id, t - 60) >= self.s.per_minute_requests:
             raise CloudError(429, "rate_limited", "Too many requests; slow down a little")
         if self.s.daily_cap_tokens > 0 and self.db.used_since(caller.account_id, self.s.day_start(t)) >= self.s.daily_cap_tokens:
             raise CloudError(429, "daily_cap", "Today's share of the grant is used up; it resets at midnight")
         if self.limited(caller):
-            # the one pool: a chat starts while anything is left (it is priced after the
-            # fact), a picture or a clip only when its known price fits
+            # the one pool: what the ledger has, plus what the requests under way and the
+            # clips still being made are expected to cost. A chat (priced after the fact)
+            # starts while anything is left beyond that; a picture or a clip only when its
+            # known price fits on top of it.
             a = self.allowance(caller)
             spent, grant = a["spent_uy"], a["grant_uy"]
-            if spent >= grant or (cost_uy > 0 and spent + cost_uy > grant):
+            held = self.in_flight.reserved(caller.account_id) + self.db.pending_video_cost(caller.account_id)
+            if spent + held >= grant or (cost_uy > 0 and spent + held + cost_uy > grant):
                 raise self._exhausted(caller, a)
+
+    def chat_reserve_uy(self, model: ModelSpec) -> int:
+        """What a chat on `model` is held at while it runs."""
+        return model.chat_cost_uy(CHAT_RESERVE_PROMPT_TOKENS, CHAT_RESERVE_COMPLETION_TOKENS)
 
     def charge_chat(self, caller: Caller, model: ModelSpec, prompt_tokens: int, completion_tokens: int, request_id: str) -> int:
         charged = math.ceil(prompt_tokens * model.in_mult + completion_tokens * model.out_mult)
