@@ -18,6 +18,7 @@ import { Avatar, BrandName, type Mood } from './Avatar.tsx'
 import { bridge } from './bridge.ts'
 import { profileBus, settingsBus } from './bus.ts'
 import { makeCapsule } from './Capsule.tsx'
+import { makeLiveStage } from './LiveStage.tsx'
 import { makeCloudSection } from './CloudSection.tsx'
 import { makeDevicesPanel } from './DevicesPanel.tsx'
 import { makeFeedPanel } from './FeedPanel.tsx'
@@ -463,4 +464,8 @@ export function apply(ctx: ClientContext): void {
   const Capsule = makeCapsule({ t })
   slots.inject('shell.overlay', () =>
     slots.register({ name: 'shell.overlay', id: 'nanomuse.capsule' }, Capsule))
+  // The Live stage: the screen the agent is working on, picture-in-picture over the chat.
+  const LiveStage = makeLiveStage({ t, stop })
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.stage' }, LiveStage))
 }

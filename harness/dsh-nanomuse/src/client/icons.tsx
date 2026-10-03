@@ -100,3 +100,4 @@ export const IconTrash = (p: IconProps) => icon([h('path', { key: 1, d: 'M4.5 7h
 export const IconSquare = (p: IconProps) => icon([h('rect', { key: 1, x: 4.5, y: 4.5, width: 15, height: 15, rx: 3 })], p)
 export const IconPlay = (p: IconProps) => icon([h('path', { key: 1, d: 'M8 5.5v13l10-6.5z', fill: 'currentColor' })], p)
 export const IconDoc = (p: IconProps) => icon([h('path', { key: 1, d: 'M6.5 3.5h7l4 4v13h-11z' }), h('path', { key: 2, d: 'M13.5 3.5v4h4M9 12h6M9 15.5h6' })], p)
+export const IconExpand = (p: IconProps) => icon([h('path', { key: 1, d: 'M14 4.5h5.5V10M10 19.5H4.5V14M19.5 4.5 13.5 10.5M4.5 19.5l6-6' })], p)

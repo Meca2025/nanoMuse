@@ -58,11 +58,39 @@ export interface LiveHub {
   devices: LiveDevice[]
 }
 
+/** The last thing the hands did, for the stage's caption and cursor marker. */
+export interface LiveStageAction {
+  kind: string
+  label: string
+  text: string
+  /** Pixels of the frame; -1 when the step had no point. */
+  x: number
+  y: number
+  at: number
+}
+
+/** The Live stage: the latest screenshot of a screen the agent is working on. */
+export interface LiveStage {
+  /** 0 before any frame; grows with each new one (the frame URL's cache key). */
+  seq: number
+  at: number
+  source: 'computer' | 'device'
+  /** The other device's name; empty for this computer. */
+  device: string
+  width: number
+  height: number
+  /** What is in front on that screen. */
+  title: string
+  action: LiveStageAction | null
+  sessionId: string
+}
+
 export interface Live {
   cloud: { signedIn: boolean; hint: string }
   profile: LiveProfile
   hub: LiveHub
   hands: { calls: LiveCall[]; steps: number }
+  stage: LiveStage
   notices: LiveNotice[]
   /** Whether the stream is open; false before the first snapshot and while reconnecting. */
   streaming: boolean
@@ -75,6 +103,7 @@ const INITIAL: Live = {
   profile: DEFAULT_PROFILE,
   hub: { connected: false, deviceId: '', deviceName: '', remoteControl: true, devices: [] },
   hands: { calls: [], steps: 0 },
+  stage: { seq: 0, at: 0, source: 'computer', device: '', width: 0, height: 0, title: '', action: null, sessionId: '' },
   notices: [],
   streaming: false,
 }

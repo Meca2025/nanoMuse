@@ -579,6 +579,35 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-lib-col-top { heig
 .nm-view-frame { flex: 1; border: 0; background: #fff; }
 .nm-view-loading { flex: 1; display: flex; align-items: center; justify-content: center; }
 
+/* ---- the Live stage (picture-in-picture of the agent at work) ---------- */
+.nm-stage-layer { position: fixed; right: 24px; bottom: 96px; z-index: 55; pointer-events: none; }
+.nm-stage { position: relative; width: min(400px, 38vw); pointer-events: auto; border-radius: 16px; overflow: hidden; background: #111; box-shadow: 0 18px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08); animation: nm-stage-in 220ms ease-out; }
+@keyframes nm-stage-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+.nm-stage-picture { position: relative; width: 100%; background: #000; overflow: hidden; }
+.nm-stage-picture img { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; }
+.nm-stage-picture.nm-dim img { filter: brightness(0.82); transition: filter 200ms; }
+.nm-stage:hover .nm-stage-picture.nm-dim img { filter: brightness(0.95); }
+.nm-stage-cursor { position: absolute; width: 0; height: 0; pointer-events: none; }
+.nm-stage-face { position: absolute; left: -13px; top: -13px; box-shadow: 0 0 0 2px #fff, 0 2px 8px rgba(0,0,0,0.45); }
+.nm-stage-ripple { position: absolute; left: -18px; top: -18px; width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.9); animation: nm-ripple 900ms ease-out forwards; }
+@keyframes nm-ripple { from { transform: scale(0.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.nm-stage-btn { position: absolute; top: 10px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 150ms, background 150ms; backdrop-filter: blur(6px); }
+.nm-stage-btn:hover { background: rgba(0,0,0,0.8); }
+.nm-stage-close { left: 10px; }
+.nm-stage-tools { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; gap: 6px; }
+.nm-stage-tools .nm-stage-btn { position: static; }
+.nm-stage:hover .nm-stage-btn, .nm-stage-btn:focus-visible { opacity: 1; }
+.nm-stage-pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 10px; border: 0; border-radius: 999px; background: rgba(255,255,255,0.92); color: #111; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+.nm-stage-pill:hover:not(:disabled) { background: #fff; }
+.nm-stage-pill:disabled { opacity: 0.7; cursor: default; }
+.nm-stage-caption { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px; background: rgba(0,0,0,0.62); color: #fff; font-size: 12.5px; line-height: 1.3; backdrop-filter: blur(6px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm-stage-verb { font-weight: 600; }
+.nm-stage-where { color: rgba(255,255,255,0.72); overflow: hidden; text-overflow: ellipsis; }
+.nm-stage-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff453a; box-shadow: 0 0 0 0 rgba(255,69,58,0.6); animation: nm-stage-pulse 1.4s ease-out infinite; flex: none; }
+@keyframes nm-stage-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,69,58,0.6); } 100% { box-shadow: 0 0 0 7px rgba(255,69,58,0); } }
+.nm-stage-big { width: 100%; }
+.nm-stage-big .nm-stage-picture { border-radius: 12px; }
+
 /* ---- menus we draw ---------------------------------------------------- */
 .nm-menu { position: fixed; z-index: 80; min-width: 200px; padding: 6px; border-radius: 12px; background: var(--dsw-alias-bg-layer-3, var(--nm-base)); color: var(--dsw-alias-label-primary); box-shadow: 0 12px 40px rgba(0,0,0,0.28), 0 0 0 1px var(--nm-divider); display: flex; flex-direction: column; gap: 1px; }
 .nm-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; text-align: left; padding: 8px 10px; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 13.5px; cursor: pointer; }

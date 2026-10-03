@@ -138,6 +138,8 @@ export function apply(ctx: Context): void {
             const data = typeof body.data === 'string' ? body.data : ''
             const value = { device: d.name, width: Number(body.width ?? 0), height: Number(body.height ?? 0), mime, bytes: data ? Buffer.byteLength(data, 'base64') : 0 }
             if (data) {
+              // the Live stage shows the person what the agent is looking at on that device
+              cloud.stageFrame(Buffer.from(data, 'base64'), mime, { device: d.name, width: value.width, height: value.height, sessionId: exec.agent?.session.id ?? '' })
               const image = await admitImage(ctx, exec, data, mime, `${d.name} screen`)
               projections.set(exec, [...(image ? [image] : []), { type: 'text', text: image ? `Screenshot of ${d.name} (${value.width}×${value.height}).` : `Screenshot of ${d.name} taken (${value.width}×${value.height}), but the current model cannot look at images.` }])
             }

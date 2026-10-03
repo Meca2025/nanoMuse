@@ -546,6 +546,18 @@ async function boot(): Promise<void> {
         .catch(() => undefined);
       await new Promise((r) => setTimeout(r, 2500));
     }
+    // `--screenshot-js=<file>`: run a script in the page (dev: drive the composer, open a sheet…);
+    // `--screenshot-delay=<ms>`: wait that long before capturing (the agent's turn, an animation)
+    const script = process.argv.find((a) => a.startsWith("--screenshot-js="))?.slice("--screenshot-js=".length);
+    if (script) {
+      const { readFileSync } = await import("node:fs");
+      await mainWindow.webContents
+        .executeJavaScript(readFileSync(script, "utf8"))
+        .then((value) => log(`screenshot: script → ${String(value).slice(0, 200)}`))
+        .catch((exc) => log(`screenshot: script failed: ${String(exc)}`));
+    }
+    const delay = Number(process.argv.find((a) => a.startsWith("--screenshot-delay="))?.slice("--screenshot-delay=".length) ?? 0);
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     const image = await mainWindow.webContents.capturePage();
     writeFileSync(screenshotFlag, image.toPNG());
     log(`screenshot: ${screenshotFlag}`);
