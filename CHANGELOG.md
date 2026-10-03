@@ -4,6 +4,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.30] - 2026-10-03 · Rooms
+
 ### Added
 
 - **The desktop's rooms — Feed, Ideas, Goals, Library.** The four rooms of the Muse desktop are on nanoMuse Desktop's rail, each one `main` panel of the harness's layout, kept by one host service in `~/.nanomuse/desktop/nanomuse/rooms.json` and streamed to the window. *Feed*: posts the agent writes for you in a hidden chat from your feed instructions, your goals and the profile — a batch when the room is empty and then every few hours — with a picture when the page it read had one, ♡, *Discuss* (a side chat on the post) and the instructions sheet behind the sliders icon; a dot on the rail for posts newer than your last visit; `feed_post` from any chat. *Ideas*: suggestions in groups, each a card with what it includes, how it works and *Start now*. *Goals*: Muse's categories, each goal a chat of its own that the agent names and keeps a one-line status for (`goals_room_update`), *In progress* automations from the harness's schedule plugin (now part of the app's profile), *Check in*, a timeline grouped by day. *Library*: shelves (documents, web, images, videos, podcasts, system files), *+ Create…* (a brief → a chat that writes the file under `~/nanoMuse/Library` — `构件` in Chinese — with the workspace-write preset), a card grid, a viewer and a Markdown editor; everything delivered with `present` lands here, `library_add` lists a file without delivering it. [docs/desktop-muse.md](docs/desktop-muse.md#the-rails-other-rooms--feed-ideas-goals-library).
