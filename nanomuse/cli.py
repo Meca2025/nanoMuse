@@ -1493,11 +1493,12 @@ def version() -> None:
 @app.command()
 def mcp(config: ConfigOpt = None) -> None:
     """Serve this computer's screen and hands over MCP on stdio (for another host, e.g.
-    nanoMuse on DeepSeek Harness; see docs/harness.md). Nothing is printed on stdout but
-    the protocol; the config is read for [hands] and [gui] when it exists."""
+    nanoMuse on DeepSeek Harness; see docs/harness.md), plus the connectors config.toml
+    turns on (mailbox, calendar, contacts). Nothing is printed on stdout but the protocol;
+    the config is read for [hands], [gui] and [connectors] when it exists."""
     import sys
 
-    from nanomuse.bridge.mcp_server import hands_tools, serve
+    from nanomuse.bridge.mcp_server import connector_tools, hands_tools, serve
     from nanomuse.config import Settings
 
     try:
@@ -1511,7 +1512,7 @@ def mcp(config: ConfigOpt = None) -> None:
         settings.agent.workspace.mkdir(parents=True, exist_ok=True)
     except OSError:
         pass
-    _run_async(serve(hands_tools(settings)))
+    _run_async(serve(hands_tools(settings) + connector_tools(settings)))
 
 
 # ============================================================================ doctor

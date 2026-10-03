@@ -19,6 +19,9 @@ import { makeAvatarStudio } from './AvatarStudio.tsx'
 import { bridge } from './bridge.ts'
 import { profileBus, settingsBus } from './bus.ts'
 import { makeCapsule } from './Capsule.tsx'
+import { prefillComposer } from './composer.ts'
+import { makeMicButton, makeQuoteAction } from './ComposerExtras.tsx'
+import { makeDocEditor } from './DocEditor.tsx'
 import { makeLiveStage } from './LiveStage.tsx'
 import { makeCloudSection } from './CloudSection.tsx'
 import { makeDevicesPanel } from './DevicesPanel.tsx'
@@ -32,16 +35,19 @@ import { useLive } from './live.ts'
 import { en, zh } from './locales.ts'
 import type { ChatActions } from './MuseChats.tsx'
 import { MuseHeader, type UseSessionStatus } from './MuseHeader.tsx'
-import { CONNECTORS_SECTION, DICTATION_SECTION, FILES_SECTION, makeConnectorsSection, makeDictationSection, makeFilesSection, makePermissionsSection, PERMISSIONS_SECTION } from './Pages.tsx'
-import { COMPUTER_SECTION, createShellStore, DATA_SECTION, HELP_SECTION, LEGAL_SECTION, makeGeneralSection, MuseSettings, type MuseSettingsProps, type OnboardingStep, type SectionRow } from './MuseSettings.tsx'
+import { CONNECTORS_SECTION, makeConnectorsSection } from './Connectors.tsx'
+import { DICTATION_SECTION, FILES_SECTION, makeDictationSection, makeFilesSection, makePermissionsSection, PERMISSIONS_SECTION } from './Pages.tsx'
+import { CHANNELS_SECTION, COMPUTER_SECTION, createShellStore, DATA_SECTION, HARNESS_SECTION, HELP_SECTION, LEGAL_SECTION, makeGeneralSection, makeHarnessSection, MuseSettings, STORAGE_SECTION, WALLET_SECTION, type MuseSettingsProps, type OnboardingStep, type SectionRow } from './MuseSettings.tsx'
 import { MuseSidebar, type MuseSidebarProps, type PanelMeta } from './MuseSidebar.tsx'
 import { makeOnboarding, type OnboardingOwnerProps } from './Onboarding.tsx'
 import { DEVICES_PANEL, FEED_PANEL, GOALS_PANEL, IDEAS_PANEL, ISSUES_URL, LIBRARY_PANEL } from './panels.ts'
 import { getPrefs, recordApproval, subscribePrefs, usePrefs } from './prefs.ts'
 import { makeProfileDrawer } from './ProfileDrawer.tsx'
-import { nav as roomsNav } from './rooms.ts'
-import { makeComputerSection, makeHelpSection, makeLegalSection } from './Sections.tsx'
+import { nav as roomsNav, roomsCall } from './rooms.ts'
+import { SearchModal } from './SearchModal.tsx'
+import { makeChannelsSection, makeComputerSection, makeHelpSection, makeLegalSection, makeStorageSection, makeWalletSection } from './Sections.tsx'
 import { ensureStyles, setAccent, setMuseMode } from './styles.ts'
+import { useWin, win } from './win.ts'
 
 export const name = 'nanomuse-client'
 /** Required services: slots, the locale table, the frame, the workspace UI's session actions, shortcuts. */
@@ -259,12 +265,20 @@ export function apply(ctx: ClientContext): void {
     renameSession,
     openArchived: () => { shell.openSection('archived-sessions') },
   }
+  // A room opened from the rail fills the main area; the split (a room beside
+  // the chat) ends with it.
+  const selectPanel = (id: string | null): void => {
+    win.split(null)
+    layout.selectPanel(id)
+  }
   const sidebarInjected = () => ({
     startSession: () => { workspaces.startSession() },
     toggleSidebar: () => { layout.toggleSidebar() },
-    selectPanel: (id: string | null) => { layout.selectPanel(id) },
+    selectPanel,
     openSettings,
+    openSection: (id: string) => { shell.openSection(id) },
     openProfile: () => { profileBus.toggle() },
+    openSearch: () => { win.search(true) },
     issuesUrl: ISSUES_URL,
     chatActions,
     hooks: { panels, shortcuts: shortcuts.catalog },
@@ -293,9 +307,22 @@ export function apply(ctx: ClientContext): void {
 
   // The rooms behind the rail's icons — Feed, Ideas, Goals, Library — and the
   // Devices page. The rooms send the person to chats through `nav`.
+  let activePanel: string | null = null
   roomsNav.openSession = (id) => { workspaces.openSession(id) }
-  roomsNav.showChats = () => { layout.selectPanel(null) }
+  roomsNav.showChats = () => { selectPanel(null) }
   roomsNav.startSession = () => { workspaces.startSession() }
+  roomsNav.activePanel = () => activePanel
+  roomsNav.prefill = prefillComposer
+  // The split: the chat takes the main area, the room docks at the right.
+  roomsNav.split = (panel) => {
+    if (panel) {
+      layout.selectPanel(null)
+      win.split(panel)
+    } else {
+      win.split(null)
+    }
+  }
+  roomsNav.toggleSidebar = () => { layout.toggleSidebar() }
   const rooms: [string, () => ReactNode][] = [
     [FEED_PANEL, makeFeedPanel(t)],
     [IDEAS_PANEL, makeIdeasPanel(t)],
@@ -305,6 +332,24 @@ export function apply(ctx: ClientContext): void {
   for (const [key, Panel] of rooms) slots.inject('main', () => slots.register({ name: 'main', key, locale: 'nanomuse' }, Panel))
   const DevicesPanel = makeDevicesPanel(t)
   slots.inject('main', () => slots.register({ name: 'main', key: DEVICES_PANEL, locale: 'nanomuse' }, DevicesPanel))
+  // The split pane itself, over the frame beside the chat; it keeps the active
+  // panel mirrored for the rooms' `nav.activePanel`.
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.split', locale: 'nanomuse' }, ({ usePanelInfo }: { usePanelInfo?: <S>(selector: (info: { activePanelId: string | null }) => S) => S }) => {
+      const active = typeof usePanelInfo === 'function' ? usePanelInfo((info) => info.activePanelId) : null
+      activePanel = active
+      const split = useWin().split
+      const open = split !== null && active === null
+      useEffect(() => {
+        if (open) document.documentElement.dataset['nmSplit'] = ''
+        else delete document.documentElement.dataset['nmSplit']
+        return () => { delete document.documentElement.dataset['nmSplit'] }
+      }, [open])
+      if (!open) return null
+      const Panel = rooms.find(([key]) => key === split)?.[1]
+      if (!Panel) return null
+      return h('aside', { className: 'nm-split', 'aria-label': t('splitPane') }, h(Panel as () => ReactNode, {}) as ReactNode)
+    }))
 
   // The agent pinned over the conversation; Stop cancels the running turn(s).
   const stop = async (sessionId: string): Promise<void> => {
@@ -323,9 +368,38 @@ export function apply(ctx: ClientContext): void {
   const InviteButton = makeInviteButton(t)
   slots.inject('conversation.session.header.utilities', () =>
     slots.register({ name: 'conversation.session.header.utilities', id: 'nanomuse-invite', order: -20, locale: 'nanomuse' }, InviteButton))
-  const ProfileDrawer = makeProfileDrawer(t)
+  const ProfileDrawer = makeProfileDrawer(t, stop)
   slots.inject('shell.overlay', () =>
-    slots.register({ name: 'shell.overlay', id: 'nanomuse.profile', locale: 'nanomuse', inject: () => ({ openSchedules: () => { layout.selectPanel('schedules') } }) }, ProfileDrawer))
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.profile', locale: 'nanomuse', inject: () => ({ openSchedules: () => { selectPanel('schedules') } }) }, ProfileDrawer))
+  // The microphone at the right of the composer; "reply with a quote" beside Copy.
+  const MicButton = makeMicButton(t, () => { shell.openSection(DICTATION_SECTION) })
+  slots.inject('conversation.input.right', () =>
+    slots.register({ name: 'conversation.input.right', id: 'nanomuse.mic', order: 10, locale: 'nanomuse' }, MicButton))
+  const QuoteAction = makeQuoteAction(t)
+  slots.inject('conversation.chat.assistant-actions', () =>
+    slots.register({ name: 'conversation.chat.assistant-actions', id: 'nanomuse.quote', order: -10, locale: 'nanomuse' }, QuoteAction))
+  // The document editor (IDENTITY / SOUL / MEMORY and Library texts) and ⌘K search, over the frame.
+  const DocEditor = makeDocEditor(t, () => { layout.toggleSidebar() })
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.docs', locale: 'nanomuse' }, DocEditor))
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.search', locale: 'nanomuse' }, ({ useSessions }: { useSessions?: Parameters<typeof SearchModal>[0]['useSessions'] }) =>
+      (typeof useSessions === 'function' ? h(SearchModal, { t, useSessions, actions: chatActions }) : null)))
+  // ⌘K is the harness's `session.search`, which only its own browser answers; in
+  // Muse mode the same key opens our search (the shortcuts reference lists it as
+  // "search sessions", which is what it does).
+  ctx.effect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.code !== 'KeyK' || event.altKey || event.shiftKey || getPrefs().showHarness) return
+      const mac = /Mac|iPhone|iPad/.test(navigator.platform)
+      if (!(mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey)) return
+      event.preventDefault()
+      event.stopPropagation()
+      win.search(true)
+    }
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
+  }, 'nanomuse: search key')
 
   // The settings dialog, Muse-shaped, in the seat our sidebar declares; it
   // declares the settings seats in turn, and the General page declares the
@@ -473,6 +547,19 @@ export function apply(ctx: ClientContext): void {
   const LegalSection = makeLegalSection(t)
   slots.inject('settings.section', () =>
     slots.register({ name: 'settings.section', id: LEGAL_SECTION, order: 41, label: () => t('navLegal'), locale: 'nanomuse' }, LegalSection))
+  // Muse's Wallet, Secure storage and Message channels pages, with what is true here
+  const WalletSection = makeWalletSection(t, (id) => shell.openSection(id))
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: WALLET_SECTION, order: 26, label: () => t('navWallet'), locale: 'nanomuse' }, WalletSection))
+  const StorageSection = makeStorageSection(t, () => roomsCall('files'), (which) => { void roomsCall('files/reveal', { which }).catch(() => undefined) })
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: STORAGE_SECTION, order: 27, label: () => t('navStorage'), locale: 'nanomuse' }, StorageSection))
+  const ChannelsSection = makeChannelsSection(t, (id) => shell.openSection(id), DEVICES_PANEL)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: CHANNELS_SECTION, order: 28, label: () => t('navChannels'), locale: 'nanomuse' }, ChannelsSection))
+  const HarnessSection = makeHarnessSection(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: HARNESS_SECTION, order: 60, label: () => t('navHarness'), locale: 'nanomuse' }, HarnessSection))
 
   // Toasts for what other devices did here, over the whole frame.
   const Capsule = makeCapsule({ t })

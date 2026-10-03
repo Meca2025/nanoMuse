@@ -15,13 +15,14 @@ import type { Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { Toast } from '@deepseek-ai/dsh-client-ui-primitives'
 import { bridge, openLink } from './bridge.ts'
-import { IconBulb, IconCalendar, IconChat, IconDevices, IconFeed, IconMenu, IconPanelLeft, IconPlus, IconPuzzle, IconSearch, IconShapes, IconTarget, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
+import { IconBulb, IconCalendar, IconChat, IconClose, IconFeed, IconDoc, IconMenu, IconPanelLeft, IconPin, IconPlus, IconPuzzle, IconSearch, IconShapes, IconTarget, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
 import { openShortcutsReference, pressSettingsChord } from './keys.ts'
 import { useLive } from './live.ts'
 import { MuseChats, type ChatActions, type UseSessionList, type UseStatusMap, type UseWorkspaceList } from './MuseChats.tsx'
-import { DEVICES_PANEL, FEED_PANEL, GOALS_PANEL, IDEAS_PANEL, LIBRARY_PANEL, ROOM_PANELS } from './panels.ts'
+import { FEED_PANEL, GOALS_PANEL, IDEAS_PANEL, LIBRARY_PANEL, ROOM_PANELS } from './panels.ts'
 import { useRooms } from './rooms.ts'
 import { usePrefs } from './prefs.ts'
+import { useWin, win, type RecentDoc } from './win.ts'
 
 /** The id the harness's Schedules plugin registers its global panel under. */
 const SCHEDULES_PANEL = 'schedules'
@@ -51,6 +52,10 @@ export interface MuseSidebarProps {
   openSettings?: (() => boolean) | undefined
   /** Open the agent's profile drawer. */
   openProfile(): void
+  /** Open the search modal (⌘K). */
+  openSearch?: (() => void) | undefined
+  /** Open one settings page by id. */
+  openSection?: ((id: string) => void) | undefined
   issuesUrl: string
   chatActions: ChatActions
   usePanels<S>(selector: (panels: readonly PanelMeta[]) => S): S
@@ -123,14 +128,17 @@ function CornerMenu({ anchor, items, onClose }: { anchor: HTMLElement; items: (M
 }
 
 export function MuseSidebar(props: MuseSidebarProps): ReactNode {
-  const { collapsed, width, t, renderSlot, startSession, toggleSidebar, selectPanel, openSettings: openSettingsHook, openProfile, issuesUrl, chatActions, usePanels, usePanelInfo, useShortcuts, useSessions, useSessionStatus, useWorkspaces } = props
+  const { collapsed, width, t, renderSlot, startSession, toggleSidebar, selectPanel, openSettings: openSettingsHook, openProfile, openSearch, issuesUrl, chatActions, usePanels, usePanelInfo, useShortcuts, useSessions, useSessionStatus, useWorkspaces } = props
   const live = useLive()
   const prefs = usePrefs()
+  const { recent, split } = useWin()
   const panels = usePanels((rows) => rows)
   const active = usePanelInfo((info) => info.activePanelId)
   const settingsShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'settings.open'))
   const shortcutsShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'shortcuts.open'))
+  const searchShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'session.search'))
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  const [docMenu, setDocMenu] = useState<{ anchor: HTMLElement; doc: RecentDoc } | null>(null)
   const [notice, setNotice] = useState<{ id: number; text: string } | null>(null)
   const menuButton = useRef<HTMLButtonElement | null>(null)
   const column = useRef<HTMLDivElement>(null)
@@ -163,10 +171,10 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
   const others = panels.filter((p) => p.id !== SCHEDULES_PANEL && p.id !== PLUGINS_PANEL && !(ROOM_PANELS as readonly string[]).includes(p.id))
   const rooms = useRooms()
   const freshFeed = rooms.feed.posts.some((p) => p.at > rooms.feedSeenAt)
-  const onlineOthers = live.hub.devices.filter((d) => d.id !== live.hub.deviceId && d.kind !== 'web' && d.online).length
 
   const showChats = () => { selectPanel(null) }
   const search = () => {
+    if (openSearch) { openSearch(); return }
     selectPanel(null)
     if (collapsed) toggleSidebar()
     window.setTimeout(() => {
@@ -176,15 +184,10 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
     }, collapsed ? COLLAPSE_SETTLE_MS + 50 : 0)
   }
 
+  // Muse's corner menu: shortcuts, report a problem, settings; then what the
+  // harness adds (Schedules, plugins, other panels, the column toggle).
   const menuItems: (MenuItem | 'sep')[] = [
-    { id: 'settings', label: t('menuSettings'), icon: h(IconSettings, { size: 16 }), hint: keysHint(settingsShortcut?.keys), onSelect: openSettings },
     { id: 'shortcuts', label: t('menuShortcuts'), icon: h(IconKeyboard, { size: 16 }), hint: keysHint(shortcutsShortcut?.keys), onSelect: openShortcuts },
-    'sep',
-    ...(schedules ? [{ id: 'schedules', label: schedules.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: SCHEDULES_PANEL, fallback: h(IconCalendar, { size: 16 }) })), onSelect: () => selectPanel(SCHEDULES_PANEL) }] : []),
-    ...(plugins ? [{ id: 'plugins', label: plugins.label, icon: h(IconPuzzle, { size: 16 }), onSelect: () => selectPanel(PLUGINS_PANEL) }] : []),
-    ...others.map((p) => ({ id: p.id, label: p.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: p.id })), onSelect: () => selectPanel(p.id) })),
-    { id: 'toggle', label: collapsed ? t('menuExpand') : t('menuCollapse'), icon: h(IconPanelLeft, { size: 16 }), onSelect: toggleSidebar },
-    'sep',
     { id: 'issue', label: t('menuReport'), icon: h(IconBug, { size: 16 }), onSelect: () => {
       // under the shell a screenshot of the window goes to Downloads and the issue page opens filled in; elsewhere just the issues page
       const report = bridge()?.reportBug
@@ -194,26 +197,54 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
         setNotice({ id: Date.now(), text: name ? t('reportSaved', { name }) : t('reportOpened') })
       }).catch(() => openLink(issuesUrl))
     } },
+    { id: 'settings', label: t('menuSettings'), icon: h(IconSettings, { size: 16 }), hint: keysHint(settingsShortcut?.keys), onSelect: openSettings },
+    'sep',
+    ...(schedules ? [{ id: 'schedules', label: schedules.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: SCHEDULES_PANEL, fallback: h(IconCalendar, { size: 16 }) })), onSelect: () => selectPanel(SCHEDULES_PANEL) }] : []),
+    ...(plugins ? [{ id: 'plugins', label: plugins.label, icon: h(IconPuzzle, { size: 16 }), onSelect: () => selectPanel(PLUGINS_PANEL) }] : []),
+    ...others.map((p) => ({ id: p.id, label: p.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: p.id })), onSelect: () => selectPanel(p.id) })),
+    { id: 'toggle', label: collapsed ? t('menuExpand') : t('menuCollapse'), icon: h(IconPanelLeft, { size: 16 }), onSelect: toggleSidebar },
   ]
+  const docItems: (MenuItem | 'sep')[] = docMenu
+    ? [
+        { id: 'pin', label: docMenu.doc.pinned ? t('chUnpin') : t('chPin'), icon: h(IconPin, { size: 16 }), onSelect: () => win.pinRecent(docMenu.doc.key, !docMenu.doc.pinned) },
+        { id: 'drop', label: t('recentRemove'), icon: h(IconClose, { size: 16 }), onSelect: () => win.dropRecent(docMenu.doc.key) },
+      ]
+    : []
 
-  // Muse's rail starts with Chats (a dot while the agent works); the agent's face is
-  // the pinned header and the drawer, not a rail button. The brand mark stays mounted
-  // (hidden) for the accent and keep-awake effects it carries.
+  // Muse's rail starts with Chats (a dot while the agent works). The face sits at
+  // the top of the rail whenever the header is not showing it: in a room, or with
+  // the column collapsed. The brand mark stays mounted (hidden) for the accent and
+  // keep-awake effects it carries. Devices moved to Settings → Devices.
   const busy = typeof useSessions === 'function' ? useSessions((state) => state.ids.some((id) => state.byId[id]?.running === true)) : false
+  const faceOnRail = collapsed || active !== null
+  const openRecent = (doc: RecentDoc) => {
+    win.openDoc(doc.key.startsWith('own:') ? { kind: 'own', doc: doc.key.slice(4) as 'identity' | 'soul' | 'memory' } : { kind: 'library', id: doc.key.slice(4) })
+    win.touchRecent(doc.key, doc.name)
+  }
   const rail = h('nav', { className: 'nm-rail', 'aria-label': t('railLabel') },
     h('div', { className: 'nm-rail-top', 'data-window-drag': true }),
     h('div', { className: 'nm-hidden' }, renderSlot('sidebar.brand.mark', { size: 36 })),
+    faceOnRail ? h(RailButton, { label: live.profile.name || t('railProfile'), onClick: openProfile }, h('span', { className: `nm-rail-face${busy ? ' nm-live' : ''}` }, h(Avatar, { size: 28, profile: live.profile, mood: busy ? 'working' : 'idle' }))) : null,
     h(RailButton, { label: t('railChats'), active: active === null, dot: busy, onClick: showChats }, h(IconChat, { size: 21 })),
-    h(RailButton, { label: t('railSearch'), onClick: search }, h(IconSearch, { size: 21 })),
-    // Muse's rooms, in Muse's order: Feed, Ideas, Goals, Library; then our Devices.
+    h(RailButton, { label: withKeys(t('railSearch'), searchShortcut?.keys), onClick: search }, h(IconSearch, { size: 21 })),
+    // Muse's rooms, in Muse's order: Feed, Ideas, Goals, Library.
     h(RailButton, { label: t('railFeed'), active: active === FEED_PANEL, dot: freshFeed && active !== FEED_PANEL, onClick: () => selectPanel(FEED_PANEL) }, h(IconFeed, { size: 21 })),
     h(RailButton, { label: t('railIdeas'), active: active === IDEAS_PANEL, onClick: () => selectPanel(IDEAS_PANEL) }, h(IconBulb, { size: 21 })),
     h(RailButton, { label: t('railGoals'), active: active === GOALS_PANEL, onClick: () => selectPanel(GOALS_PANEL) }, h(IconTarget, { size: 21 })),
     h(RailButton, { label: t('railLibrary'), active: active === LIBRARY_PANEL, onClick: () => selectPanel(LIBRARY_PANEL) }, h(IconShapes, { size: 21 })),
-    h(RailButton, { label: t('railDevices'), active: active === DEVICES_PANEL, dot: onlineOthers > 0, onClick: () => selectPanel(DEVICES_PANEL) }, h(IconDevices, { size: 21 })),
+    // Recent documents (IDENTITY.md, a Library text…): one glyph each, a menu on right-click.
+    recent.length ? h('div', { className: 'nm-rail-recent', role: 'group', 'aria-label': t('recentDocs') },
+      recent.map((doc) => h('button', {
+        key: doc.key,
+        type: 'button',
+        className: `nm-rail-btn nm-rail-doc${doc.pinned ? ' nm-pinned' : ''}`,
+        title: doc.name,
+        'aria-label': doc.name,
+        onClick: () => openRecent(doc),
+        onContextMenu: (event: { preventDefault(): void; currentTarget: HTMLElement }) => { event.preventDefault(); setDocMenu({ anchor: event.currentTarget, doc }) },
+      }, h(IconDoc, { size: 20 }), h('span', { className: 'nm-rail-doc-tag' }, docTag(doc.name))))) : null,
     h('div', { className: 'nm-rail-spacer' }),
     collapsed ? h(RailButton, { label: t('railNew'), onClick: startSession }, h(IconPlus, { size: 21 })) : null,
-    collapsed ? h(RailButton, { label: t('railProfile'), onClick: openProfile }, h('span', { className: 'nm-rail-face' }, h(Avatar, { size: 22, profile: live.profile }))) : null,
     h(RailButton, { label: t('railMore'), expanded: menuAnchor !== null, onClick: () => setMenuAnchor((current) => (current ? null : menuButton.current)), buttonRef: (el) => { menuButton.current = el } }, h(IconMenu, { size: 21 })),
     // The settings shell lives in this seat: its trigger is hidden here (the
     // menu opens it), but its dialog and the onboarding steps mount through it.
@@ -221,7 +252,15 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
     h('div', { className: 'nm-hidden' }, renderSlot('sidebar.toggle.badge', {})))
 
   const browser = prefs.showHarness || typeof useSessions !== 'function'
-  const chats = wide
+  // In a room (Feed, Ideas, Goals, Library…) Muse shows only the rail: the room has the
+  // rest of the window, and its own top-left toggle brings the chat back beside it.
+  const roomMode = (active !== null || split !== null) && !browser
+  useEffect(() => {
+    if (roomMode) document.documentElement.dataset['nmRoom'] = ''
+    else delete document.documentElement.dataset['nmRoom']
+    return () => { delete document.documentElement.dataset['nmRoom'] }
+  }, [roomMode])
+  const chats = wide && !roomMode
     ? h('div', { ref: column, className: `nm-col${collapsed ? ' nm-fading' : ''}`, style: { width: Math.max(0, (collapsed ? lastWideWidth.current : width) - RAIL) } },
         h('div', { className: 'nm-col-top', 'data-window-drag': true }),
         browser
@@ -236,10 +275,11 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
         h('div', { className: 'nm-col-foot' }, renderSlot('sidebar.footer.action', { wide: true })))
     : null
 
-  return h('div', { className: 'nm-sidebar', style: { width: wide ? (collapsed ? lastWideWidth.current : width) : RAIL } },
+  return h('div', { className: 'nm-sidebar', style: { width: wide && !roomMode ? (collapsed ? lastWideWidth.current : width) : RAIL } },
     rail,
     chats,
     menuAnchor ? h(CornerMenu, { anchor: menuAnchor, items: menuItems, onClose: () => setMenuAnchor(null) }) : null,
+    docMenu ? h(CornerMenu, { anchor: docMenu.anchor, items: docItems, onClose: () => setDocMenu(null) }) : null,
     notice ? h('div', { style: { position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 60, pointerEvents: 'none' } },
       h(Toast, { key: notice.id, text: notice.text, holdMs: 8000, onDone: () => setNotice(null) })) : null)
 }
@@ -248,4 +288,15 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
 function keysHint(keys: readonly string[] | undefined): string | undefined {
   if (!keys || keys.length === 0) return undefined
   return keys.join(' ')
+}
+/** "Search ⌘K" for a tooltip. */
+function withKeys(label: string, keys: readonly string[] | undefined): string {
+  const hint = keysHint(keys)
+  return hint ? `${label} ${hint}` : label
+}
+/** The short tag under a recent document's glyph: "ID" for IDENTITY.md, "So" for SOUL.md, the first letters otherwise. */
+function docTag(name: string): string {
+  const stem = name.replace(/\.[a-z0-9]+$/i, '')
+  if (/^[A-Z]+$/.test(stem)) return stem.slice(0, 2)
+  return stem.slice(0, 2)
 }

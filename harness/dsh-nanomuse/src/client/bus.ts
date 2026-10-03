@@ -7,7 +7,7 @@
  */
 import { useSyncExternalStore } from 'react'
 
-export const settingsBus: { open?: (() => boolean) | undefined; openSection?: ((id: string) => boolean) | undefined } = {}
+export const settingsBus: { open?: (() => boolean) | undefined; openSection?: ((id: string) => boolean) | undefined; openOnboarding?: ((id: string) => void) | undefined } = {}
 
 let drawerOpen = false
 const drawerListeners = new Set<() => void>()

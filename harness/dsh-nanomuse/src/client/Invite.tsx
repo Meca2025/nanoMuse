@@ -10,6 +10,8 @@ import { createElement as h, useEffect, useState, type ReactNode } from 'react'
 import { call, type Translate } from './api.ts'
 import { IconCopy, IconGift } from './icons.tsx'
 import { useLive } from './live.ts'
+import { mainChatId } from './MuseChats.tsx'
+import { win } from './win.ts'
 
 interface Invite {
   code: string
@@ -25,10 +27,22 @@ function copyText(text: string): Promise<void> {
 }
 
 export function makeInviteButton(t: Translate) {
-  return function InviteButton(): ReactNode {
+  return function InviteButton({ sessionId }: { sessionId?: string | undefined }): ReactNode {
     const live = useLive()
     const [open, setOpen] = useState(false)
-    if (!live.cloud.signedIn) return null
+    // this seat is per session: it tells the rest of the shell which chat is on
+    // screen, and whether it is a side chat (Muse shows Invite on the main chat only)
+    const side = sessionId !== undefined && mainChatId() !== undefined && mainChatId() !== sessionId
+    useEffect(() => {
+      win.current(sessionId ?? null)
+      if (side) document.documentElement.dataset['nmSide'] = ''
+      else delete document.documentElement.dataset['nmSide']
+      return () => {
+        delete document.documentElement.dataset['nmSide']
+        win.current(null)
+      }
+    }, [sessionId, side])
+    if (!live.cloud.signedIn || side) return null
     return h('span', null,
       h('button', { type: 'button', className: 'nm-invite', onClick: () => setOpen(true) }, h(IconGift, { size: 15 }), t('invite')),
       open ? h(InviteDialog, { t, onClose: () => setOpen(false) }) : null)

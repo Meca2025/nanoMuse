@@ -11,36 +11,45 @@ import { createElement as h, useEffect, useMemo, useState, type FormEvent, type 
 import type { Translate } from './api.ts'
 import { IconCheck, IconChevronLeft, IconDoc, IconExternal, IconFile, IconFilter, IconFolder, IconGlobe, IconImage, IconPencil, IconPlus, IconSearch, IconShapes, IconTrash, IconVideo, IconWave } from './icons.tsx'
 import type { Words } from './locales.ts'
+import { LIBRARY_PANEL } from './panels.ts'
 import { fileUrl, nav, roomsCall, useRooms, type LibraryItem, type LibraryKind } from './rooms.ts'
-import { ago, Empty, Markdown, MoreButton, plain, Sheet } from './ui.tsx'
+import { ago, Empty, Markdown, MoreButton, plain, RoomToggle } from './ui.tsx'
+import { win } from './win.ts'
 
 type Shelf = 'all' | LibraryKind
 
-const SHELVES: { id: Shelf; label: Words; icon: (p: { size: number }) => ReactNode; create?: Words; empty: Words }[] = [
-  { id: 'all', label: 'libAll', icon: IconShapes, empty: 'libEmptyAll' },
-  { id: 'document', label: 'libDocuments', icon: IconDoc, create: 'libCreateDocument', empty: 'libEmptyDocuments' },
-  { id: 'web', label: 'libWeb', icon: IconGlobe, create: 'libCreateWeb', empty: 'libEmptyWeb' },
+/** A shelf: its glyph, the heading over its grid, the Create button's words and what the composer starts with. */
+const SHELVES: { id: Shelf; label: Words; heading: Words; icon: (p: { size: number }) => ReactNode; create?: Words; prefill?: Words; empty: Words }[] = [
+  { id: 'all', label: 'libAll', heading: 'libAllContent', icon: IconShapes, create: 'libCreateArtifact', prefill: 'libPrefillArtifact', empty: 'libEmptyAll' },
+  { id: 'document', label: 'libDocuments', heading: 'libDocuments', icon: IconDoc, create: 'libCreateDocument', prefill: 'libPrefillDocument', empty: 'libEmptyDocuments' },
+  { id: 'web', label: 'libWeb', heading: 'libWeb', icon: IconGlobe, create: 'libCreateWeb', prefill: 'libPrefillWeb', empty: 'libEmptyWeb' },
 ]
 const MEDIA: typeof SHELVES = [
-  { id: 'image', label: 'libImages', icon: IconImage, empty: 'libEmptyImages' },
-  { id: 'video', label: 'libVideos', icon: IconVideo, create: 'libCreateVideo', empty: 'libEmptyVideos' },
-  { id: 'audio', label: 'libPodcasts', icon: IconWave, create: 'libCreatePodcast', empty: 'libEmptyPodcasts' },
+  { id: 'image', label: 'libImages', heading: 'libImages', icon: IconImage, create: 'libCreateImage', prefill: 'libPrefillImage', empty: 'libEmptyImages' },
+  { id: 'video', label: 'libVideos', heading: 'libVideos', icon: IconVideo, create: 'libCreateVideo', prefill: 'libPrefillVideo', empty: 'libEmptyVideos' },
+  { id: 'audio', label: 'libPodcasts', heading: 'libPodcasts', icon: IconWave, create: 'libCreatePodcast', prefill: 'libPrefillPodcast', empty: 'libEmptyPodcasts' },
 ]
+/** Text files open in the markdown editor; the rest in the viewer. */
+const EDITABLE = /\.(md|markdown|txt)$/i
 
 const KIND_WORD: Record<LibraryKind, Words> = { document: 'kindDocument', web: 'kindWeb', image: 'kindImage', video: 'kindVideo', audio: 'kindAudio', file: 'kindFile' }
 const KIND_ICON: Record<LibraryKind, (p: { size: number }) => ReactNode> = { document: IconDoc, web: IconGlobe, image: IconImage, video: IconVideo, audio: IconWave, file: IconFile }
 const TEXT = /\.(md|markdown|txt|csv|json|tex|html?|svg)$/i
 
+/** The shelf stays when the room re-mounts (beside a chat, then back). */
+let lastShelf: Shelf = 'all'
+
 export function makeLibraryPanel(t: Translate) {
   return function LibraryPanel(): ReactNode {
     const rooms = useRooms()
-    const [shelf, setShelf] = useState<Shelf>('all')
+    const [shelf, setShelfState] = useState<Shelf>(lastShelf)
+    const setShelf = (next: Shelf) => { lastShelf = next; setShelfState(next) }
     const [query, setQuery] = useState('')
     const [sort, setSort] = useState<'newest' | 'name'>('newest')
     const [selecting, setSelecting] = useState(false)
     const [selected, setSelected] = useState<Set<string>>(new Set())
     const [openId, setOpenId] = useState<string | undefined>()
-    const [creating, setCreating] = useState<LibraryKind | undefined>()
+    const [creating, setCreating] = useState(false)
     const [error, setError] = useState<string | undefined>()
     const current = [...SHELVES, ...MEDIA].find((s) => s.id === shelf) ?? SHELVES[0]!
     const open = rooms.library.find((i) => i.id === openId)
@@ -60,11 +69,32 @@ export function makeLibraryPanel(t: Translate) {
       void Promise.all(ids.map((id) => roomsCall('library/delete', { id }))).catch(fail)
     }
     const openSystem = (item: LibraryItem, reveal = false) => { roomsCall('library/open', { id: item.id, reveal }).catch(fail) }
+    // a card: text files go to the editor (and the rail's recent list), the rest to the viewer
+    const show = (item: LibraryItem) => {
+      if (item.kind === 'document' && EDITABLE.test(item.name)) {
+        win.openDoc({ kind: 'library', id: item.id })
+        win.touchRecent(`lib:${item.id}`, item.name)
+      } else {
+        setOpenId(item.id)
+      }
+    }
+    // Create, Muse's way: an empty chat beside the Library with the composer begun for the person
+    const create = () => {
+      if (creating || !current.prefill) return
+      setCreating(true)
+      setError(undefined)
+      const words = t(current.prefill)
+      roomsCall<{ sessionId: string }>('library/begin', { kind: current.id === 'all' ? 'document' : current.id })
+        .then(({ sessionId }) => { nav.openSession(sessionId); nav.split(LIBRARY_PANEL); nav.prefill(words) })
+        .catch(fail)
+        .finally(() => setCreating(false))
+    }
 
     if (open) return h(Viewer, { t, item: open, lang: rooms.lang, onBack: () => setOpenId(undefined), onOpen: () => openSystem(open), onReveal: () => openSystem(open, true), onRemove: () => { setOpenId(undefined); roomsCall('library/delete', { id: open.id }).catch(fail) }, onFail: fail })
 
     const column = h('aside', { className: 'nm-lib-col' },
       h('div', { className: 'nm-lib-col-top', 'data-window-drag': true }),
+      h('div', { className: 'nm-lib-col-tools' }, h(RoomToggle, { t, panel: LIBRARY_PANEL })),
       h('label', { className: 'nm-lib-search' }, h(IconSearch, { size: 15 }), h('input', { type: 'search', value: query, placeholder: t('libSearch'), onChange: (e: FormEvent<HTMLInputElement>) => setQuery(e.currentTarget.value) })),
       h('div', { className: 'nm-lib-group' }, t('libArtifacts')),
       SHELVES.map((s) => h(ShelfButton, { key: s.id, t, shelf: s, active: shelf === s.id, onClick: () => { setShelf(s.id); setSelecting(false) } })),
@@ -74,34 +104,37 @@ export function makeLibraryPanel(t: Translate) {
       h('button', { type: 'button', className: 'nm-lib-shelf', onClick: () => { roomsCall('library/folder', {}).catch(fail) } }, h(IconFolder, { size: 17 }), h('span', null, t('libSystemFiles'))))
 
     const head = h('div', { className: 'nm-room-head' },
-      h('h1', { className: 'nm-room-title' }, selecting ? t('libSelected', { n: selected.size }) : t(current.label)),
+      h('h1', { className: 'nm-room-title' }, selecting ? t('libSelected', { n: selected.size }) : t(current.heading)),
       h('div', { className: 'nm-room-actions' },
         selecting
           ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm nm-pill-danger', disabled: selected.size === 0, onClick: removeSelected }, h(IconTrash, { size: 14 }), ' ', t('libRemove'))
           : null,
         h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => { setSelecting((v) => !v); setSelected(new Set()) } }, selecting ? t('cancel') : t('libSelect')),
-        h(MoreButton, { label: t('libSort'), size: 36, items: [
+        h(MoreButton, { label: t('libSort'), size: 36, icon: h(IconFilter, { size: 18 }), items: [
           { id: 'newest', label: t('libSortNewest'), icon: sort === 'newest' ? h(IconCheck, { size: 14 }) : h('span', { style: { width: 14 } }), onSelect: () => setSort('newest') },
           { id: 'name', label: t('libSortName'), icon: sort === 'name' ? h(IconCheck, { size: 14 }) : h('span', { style: { width: 14 } }), onSelect: () => setSort('name') },
         ] }),
         current.create
-          ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', disabled: !rooms.ready, onClick: () => setCreating(current.id as LibraryKind) }, h(IconPlus, { size: 15 }), ' ', t(current.create))
+          ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', disabled: !rooms.ready || creating, onClick: create }, h(IconPlus, { size: 15 }), ' ', t(current.create))
           : null))
 
+    const card = (item: LibraryItem) => h(Card, { key: item.id, t, item, selecting, selected: selected.has(item.id), onClick: () => (selecting ? toggle(item.id) : show(item)), onOpen: () => openSystem(item), onReveal: () => openSystem(item, true), onRemove: () => { roomsCall('library/delete', { id: item.id }).catch(fail) } })
+    // "Recent" (the last few touched) over "All generated content", as Muse lays the shelf out
+    const recent = !query && shelf === 'all' && sort === 'newest' && items.length > 4 ? items.slice(0, 4) : []
     const grid = items.length === 0
       ? h(Empty, { icon: h(current.icon, { size: 28 }), text: t(current.empty) }, query ? null : h('p', { className: 'nm-empty-sub' }, rooms.ready ? t('libEmptyHint') : t('roomNotReady')))
       : h('div', null,
-          h('div', { className: 'nm-lib-recent' }, query ? t('libResults') : t('libRecent')),
-          h('div', { className: 'nm-lib-grid' },
-            items.map((item) => h(Card, { key: item.id, t, item, selecting, selected: selected.has(item.id), onClick: () => (selecting ? toggle(item.id) : setOpenId(item.id)), onOpen: () => openSystem(item), onReveal: () => openSystem(item, true), onRemove: () => { roomsCall('library/delete', { id: item.id }).catch(fail) } }))))
+          recent.length ? h('div', { className: 'nm-lib-recent' }, t('libRecent')) : null,
+          recent.length ? h('div', { className: 'nm-lib-grid' }, recent.map(card)) : null,
+          h('div', { className: 'nm-lib-recent' }, query ? t('libResults') : t(current.heading)),
+          h('div', { className: 'nm-lib-grid' }, items.map(card)))
 
     return h('div', { className: 'nm-room nm-lib' },
       column,
       h('div', { className: 'nm-lib-main' },
         h('div', { className: 'nm-room-top', 'data-window-drag': true }),
         head,
-        h('div', { className: 'nm-room-body' }, h('div', { className: 'nm-room-inner nm-lib-inner' }, error ? h('div', { className: 'nm-room-error' }, error) : null, grid))),
-      creating ? h(CreateSheet, { t, kind: creating, onClose: () => setCreating(undefined), onCreated: (sessionId) => { setCreating(undefined); nav.openSession(sessionId); nav.showChats() } }) : null)
+        h('div', { className: 'nm-room-body' }, h('div', { className: 'nm-room-inner nm-lib-inner' }, error ? h('div', { className: 'nm-room-error' }, error) : null, grid))))
   }
 }
 
@@ -190,33 +223,9 @@ function Viewer({ t, item, lang, onBack, onOpen, onReveal, onRemove, onFail }: {
       h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: onOpen }, h(IconExternal, { size: 14 }), ' ', t('libOpen')),
       h(MoreButton, { label: t('more'), size: 30, items: [
         { id: 'reveal', label: t('libReveal'), icon: h(IconFolder, { size: 15 }), onSelect: onReveal },
-        { id: 'chat', label: t('libOpenChat'), onSelect: () => { if (item.sessionId) { nav.openSession(item.sessionId); nav.showChats() } } },
+        { id: 'chat', label: t('libOpenChat'), onSelect: () => { if (item.sessionId) { nav.openSession(item.sessionId); nav.split(LIBRARY_PANEL) } } },
         'sep',
         { id: 'remove', label: t('libRemove'), icon: h(IconTrash, { size: 15 }), danger: true, onSelect: onRemove },
       ] })),
     h('div', { className: 'nm-view-body' }, body))
-}
-
-function CreateSheet({ t, kind, onClose, onCreated }: { t: Translate; kind: LibraryKind; onClose(): void; onCreated(sessionId: string): void }): ReactNode {
-  const [text, setText] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | undefined>()
-  const labels: Partial<Record<LibraryKind, [Words, Words]>> = { document: ['libCreateDocument', 'libBriefDocument'], web: ['libCreateWeb', 'libBriefWeb'], video: ['libCreateVideo', 'libBriefVideo'], audio: ['libCreatePodcast', 'libBriefPodcast'] }
-  const [title, placeholder] = labels[kind] ?? labels.document!
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    if (!text.trim()) return
-    setBusy(true)
-    setError(undefined)
-    roomsCall<{ sessionId: string }>('library/create', { kind, text: text.trim() }).then((r) => onCreated(r.sessionId)).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
-  }
-  return h(Sheet, { title: t(title), closeLabel: t('close'), onClose,
-    footer: h('div', { className: 'nm-sheet-actions' },
-      h('span', { style: { flex: 1 } }),
-      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: onClose }, t('cancel')),
-      h('button', { type: 'submit', form: 'nm-lib-create', className: 'nm-pill nm-pill-sm', disabled: busy || !text.trim() }, busy ? t('libCreating') : t('libCreate'))) },
-    h('form', { id: 'nm-lib-create', className: 'nm-sheet-form', onSubmit: submit },
-      h('p', { className: 'nm-sheet-lead' }, t('libCreateLead')),
-      h('textarea', { className: 'nm-textarea', rows: 4, value: text, placeholder: t(placeholder), maxLength: 4000, onChange: (e: FormEvent<HTMLTextAreaElement>) => setText(e.currentTarget.value), 'data-modal-autofocus': true }),
-      error ? h('div', { className: 'nm-room-error' }, error) : null))
 }

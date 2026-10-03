@@ -10,7 +10,9 @@ import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { openLink } from './bridge.ts'
-import { IconMore } from './icons.tsx'
+import { IconMore, IconPanelLeft } from './icons.tsx'
+import { nav } from './rooms.ts'
+import { useWin } from './win.ts'
 
 export interface MenuChoice {
   id: string
@@ -59,7 +61,7 @@ export function PopMenu({ anchor, items, onClose }: { anchor: HTMLElement; items
 }
 
 /** The ⋯ button with its menu; `quiet` shows it on the row's hover only. */
-export function MoreButton({ label, items, quiet, size = 30 }: { label: string; items: (MenuChoice | 'sep')[]; quiet?: boolean; size?: number }): ReactNode {
+export function MoreButton({ label, items, quiet, size = 30, icon }: { label: string; items: (MenuChoice | 'sep')[]; quiet?: boolean; size?: number; icon?: ReactNode }): ReactNode {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const button = useRef<HTMLButtonElement | null>(null)
   return h(Fragment, null,
@@ -73,7 +75,7 @@ export function MoreButton({ label, items, quiet, size = 30 }: { label: string; 
       'aria-haspopup': 'menu',
       'aria-expanded': anchor !== null,
       onClick: (event: MouseEvent) => { event.stopPropagation(); setAnchor((current) => (current ? null : button.current)) },
-    }, h(IconMore, { size: 18 })),
+    }, icon ?? h(IconMore, { size: 18 })),
     anchor ? h(PopMenu, { anchor, items, onClose: () => setAnchor(null) }) : null)
 }
 
@@ -87,6 +89,24 @@ export function Sheet({ title, onClose, closeLabel, children, footer, wide, head
         h('button', { type: 'button', className: 'nm-close', 'aria-label': closeLabel, title: closeLabel, onClick: onClose }, '×')),
       h('div', { className: 'nm-sheet-body' }, children),
       footer ? h('div', { className: 'nm-sheet-foot' }, footer) : null))
+}
+
+/**
+ * The small sidebar-toggle at a room's top left, as Muse's rooms have it: it
+ * opens the chat beside the room (the split) and closes it again. Hidden
+ * while the room is already beside the chat.
+ */
+export function RoomToggle({ t, panel }: { t: Translate; panel: string }): ReactNode {
+  const { split } = useWin()
+  const open = split === panel
+  return h('button', {
+    type: 'button',
+    className: `nm-room-toggle${open ? ' nm-active' : ''}`,
+    'aria-label': open ? t('splitClose') : t('splitOpen'),
+    title: open ? t('splitClose') : t('splitOpen'),
+    'aria-pressed': open,
+    onClick: () => nav.split(open ? null : panel),
+  }, h(IconPanelLeft, { size: 18 }))
 }
 
 export function Empty({ icon, text, children }: { icon: ReactNode; text: string; children?: ReactNode }): ReactNode {

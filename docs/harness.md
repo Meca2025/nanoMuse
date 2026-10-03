@@ -60,6 +60,10 @@ linked into a profile created from dsh's own web template:
   word from the sensitive list) is refused with the reason until the call carries
   `confirmed: true`, which the model may set only after the person agreed in the
   conversation; dsh's own approval policy can add a real gate in front of the tool.
+  The connectors the runtime's `config.toml` turns on ride along on the same server —
+  `read_emails` / `send_email`, `calendar`, `contacts` — so a mailbox or a calendar set
+  up for the runtime is a connector of the desktop too (Settings → Connectors lists
+  them as connected once they appear).
   `NANOMUSE_PY` names the runtime's executable when it is not on `PATH`; without a
   runtime the preset simply has no hands.
 

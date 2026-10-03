@@ -42,6 +42,8 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
 - **Hands** on this computer: `nanomuse mcp` from the bundled runtime over stdio, the
   runtime's `computer_screen` and `computer_act` tools with their approvals, so "what is
   on my screen?" and "open the settings and turn the volume down" work out of the box;
+  the connectors the runtime's `config.toml` turns on (mailbox, calendar, address book)
+  arrive over the same server, and Settings → Connectors shows how to set each one up;
 - **the rooms**: Feed, Ideas, Goals and Library as Muse has them, kept by the host in
   `nanomuse/rooms.json` and written by the agent in hidden chats (feed and ideas) or
   chats of their own (goals, with the harness's schedule plugin for their automations;

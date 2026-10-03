@@ -1,48 +1,27 @@
 /**
- * The Settings pages Muse has that are not about one service: Connectors (what the
- * agent can reach — the hands, Reach, the rooms, and MCP servers in the preset),
- * Permissions (one place that says what the agent may do and where each switch
- * is), Files (where it works, what it may touch) and Dictation (voice input: the
- * harness's own bundle, or the system's).
+ * The Settings pages Muse has that are not about one service: Permissions (one
+ * place that says what the agent may do and where each switch is), Files (where
+ * it works, what it may touch) and Dictation (voice input: the harness's own
+ * bundle, or the system's). Connectors has a file of its own (Connectors.tsx).
  */
 import { createElement as h, Fragment, useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
-import { bridge, gatedPermissions, openLink, type PermissionKind, type PermissionState } from './bridge.ts'
+import { bridge, gatedPermissions, type PermissionKind, type PermissionState } from './bridge.ts'
 import { settingsBus } from './bus.ts'
-import { IconCalendar, IconCheck, IconChevronRight, IconDevices, IconFeed, IconFolder, IconHand, IconLink, IconMic, IconPuzzle, IconShield } from './icons.tsx'
+import { IconCheck, IconChevronRight, IconDevices, IconFolder, IconHand, IconLink, IconMic, IconShield } from './icons.tsx'
 import { useLive } from './live.ts'
 import { DEVICES_PANEL } from './panels.ts'
 import { usePrefs } from './prefs.ts'
-import { roomsCall, useRooms } from './rooms.ts'
+import { CONNECTORS_SECTION, useConnectors } from './Connectors.tsx'
+import { roomsCall } from './rooms.ts'
 import { ago } from './ui.tsx'
 
-export const CONNECTORS_SECTION = 'nanomuse-connectors'
 export const PERMISSIONS_SECTION = 'nanomuse-permissions'
 export const FILES_SECTION = 'nanomuse-files'
 export const DICTATION_SECTION = 'nanomuse-dictation'
 /** The Computer-use page's id (MuseSettings owns it; repeated here to avoid a cycle). */
 const COMPUTER_SECTION = 'nanomuse-computer'
-const HARNESS_MCP_DOCS = 'https://github.com/deepseek-ai/deepseek-harness/blob/main/docs/subsystems/mcp.md'
 const PLUGINS_PANEL = 'plugins'
-
-interface Connectors {
-  servers: { name: string; tools: { name: string; description: string }[] }[]
-  builtin: number
-  /** When the catalogue was last read through a chat; 0 before any chat ran. */
-  at: number
-}
-
-function useConnectors(): Connectors | undefined {
-  const [value, setValue] = useState<Connectors | undefined>()
-  useEffect(() => {
-    let alive = true
-    const load = () => roomsCall<Connectors>('connectors').then((v) => { if (alive) setValue(v) }).catch(() => undefined)
-    void load()
-    const timer = window.setInterval(() => void load(), 15_000)
-    return () => { alive = false; window.clearInterval(timer) }
-  }, [])
-  return value
-}
 
 function Row({ icon, title, sub, right, onClick }: { icon?: ReactNode; title: string; sub?: ReactNode; right?: ReactNode; onClick?: () => void }): ReactNode {
   const body = [
@@ -57,44 +36,6 @@ function Row({ icon, title, sub, right, onClick }: { icon?: ReactNode; title: st
     : h('div', { className: 'nm-row' }, ...body)
 }
 
-function State({ on, t }: { on: boolean; t: Translate }): ReactNode {
-  return h('span', { className: on ? 'nm-state nm-state-on' : 'nm-state' }, on ? h(IconCheck, { size: 14 }) : null, ' ', on ? t('cnOn') : t('cnOff'))
-}
-
-// ---- Connectors ---------------------------------------------------------------------
-
-export function makeConnectorsSection(t: Translate) {
-  return function ConnectorsSection(): ReactNode {
-    const connectors = useConnectors()
-    const live = useLive()
-    const rooms = useRooms()
-    const [open, setOpen] = useState<string | null>(null)
-    const seen = (connectors?.at ?? 0) > 0
-    const hands = connectors?.servers.some((s) => s.name === 'nanomuse') ?? false
-    const others = (connectors?.servers ?? []).filter((s) => s.name !== 'nanomuse')
-    const devices = live.hub.devices.filter((d) => d.kind !== 'web').length
-    return h('div', { className: 'nm-section' },
-      h('p', null, t('cnLead')),
-      h('h2', null, t('cnBuiltIn')),
-      h('div', { className: 'nm-card' },
-        h(Row, { icon: h(IconHand, { size: 18 }), title: t('cnHands'), sub: hands ? t('cnHandsOn') : seen ? t('cnHandsOff') : t('cnNotYet'), right: seen ? h(State, { on: hands, t }) : null, onClick: () => { settingsBus.openSection?.(COMPUTER_SECTION) } }),
-        h(Row, { icon: h(IconDevices, { size: 18 }), title: t('cnReach'), sub: devices ? t('cnReachOn', { n: devices }) : t('cnReachOff'), right: h(State, { on: devices > 0, t }), onClick: () => { settingsBus.openSection?.(DEVICES_PANEL) } }),
-        h(Row, { icon: h(IconFeed, { size: 18 }), title: t('cnRooms'), sub: t('cnRoomsSub', { goals: rooms.goals.length, items: rooms.library.length }), right: h(State, { on: true, t }) }),
-        h(Row, { icon: h(IconCalendar, { size: 18 }), title: t('cnSchedule'), sub: t('cnScheduleSub'), right: h(State, { on: true, t }) })),
-      h('h2', null, t('cnMcp')),
-      others.length
-        ? h('div', { className: 'nm-card' }, others.map((server) => h(Fragment, { key: server.name },
-            h(Row, { icon: h(IconLink, { size: 18 }), title: server.name, sub: t('cnTools', { n: server.tools.length }), right: h(State, { on: true, t }), onClick: () => setOpen(open === server.name ? null : server.name) }),
-            open === server.name
-              ? h('div', { className: 'nm-row nm-row-sublist' }, h('ul', { className: 'nm-tool-list' }, server.tools.map((tool) => h('li', { key: tool.name }, h('code', null, tool.name), tool.description ? ` — ${tool.description}` : ''))))
-              : null)))
-        : h('p', null, !connectors ? t('cnLoading') : seen ? t('cnNone') : t('cnNotYet')),
-      h('div', { className: 'nm-card' },
-        h(Row, { icon: h(IconPuzzle, { size: 18 }), title: t('cnAdd'), sub: t('cnAddSub'), onClick: () => { settingsBus.openSection?.('agent-presets') } }),
-        h(Row, { icon: h(IconLink, { size: 18 }), title: t('cnDocs'), onClick: () => openLink(HARNESS_MCP_DOCS) })),
-      seen && connectors ? h('p', { className: 'nm-fine' }, t('cnBuiltinCount', { n: connectors.builtin })) : null)
-  }
-}
 
 // ---- Permissions --------------------------------------------------------------------
 
