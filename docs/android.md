@@ -24,8 +24,9 @@ About*).
 2. Open it. Android asks once to allow installs from your browser or file manager.
 3. **Sign in.** The first screen is the account: a phone number or an e-mail address,
    a code — or a password once you have set one. It is what lets your devices work as one
-   ([hub.md](hub.md)) and brings a model to start with ([cloud.md](cloud.md): ¥10 free per
-   account, ¥5 more for each friend invited — and ¥5 for them; then [your own key](own-key.md)). Then choose which model answers: the account's
+   ([hub.md](hub.md)) and brings a model to start with ([cloud.md](cloud.md): a free pool per
+   account — ¥10 at the time of writing — and more for each friend invited, and for them;
+   the app prints the relay's current figures; then [your own key](own-key.md)). Then choose which model answers: the account's
    own, or a key of your own (any OpenAI-compatible endpoint, or the OAuth sign-ins the
    app ships with). Running everything yourself with no account at all is the runtime's
    `cloud.required = false`; the phone app asks for the account.
@@ -42,6 +43,7 @@ About*).
 | **The hub** (`hub/`) | Every signed-in device of the account meets on the relay's hub: the phone sees your computers, asks them to do things, gets their approvals as cards, and can be asked by them. A foreground service keeps it reachable in the background (Android 13+ asks for the notification permission for that). [hub.md](hub.md). |
 | **Coding agents** (`ui/coding/`) | The Cursor, Codex and Claude Code sessions on your computers, seen and steered from the phone. [coding-agents.md](coding-agents.md). |
 | **Account** (`ui/cloud/`) | Who is signed in, the password, every device holding a key, usage by kind and by model, the ways out. |
+| **The chat, plain** | While the agent works, the line under its avatar names the step under way — *nanoMuse is using Shell*, *Writing the reply*, *On it: book the table* — never a state of mind. The tool pills, the Computer sheet and the floating step bar are **off by default**; *Settings → Appearance → Show the agent's steps* turns them on. With them on, a finished step reads *nanoMuse used Shell · Done*, and its sheet closes on ×, swipe or Back. |
 
 The web console of the same account is at the relay (`/app`), the desktop app in
 [desktop.md](desktop.md); the phone, the desktop and the web share the design language

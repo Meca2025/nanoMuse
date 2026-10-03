@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -73,6 +74,8 @@ fun AllowanceWaysCard(
     val inviteeBonus = info.inviteeBonusCny.takeIf { it > 0 } ?: account?.inviteeBonusCny?.takeIf { it > 0 } ?: inviteBonus
     var copied by remember { mutableStateOf(false) }
     LaunchedEffect(copied) { if (copied) { kotlinx.coroutines.delay(1500); copied = false } }
+    // The star row goes once the person has been to GitHub (from here or from any other ask).
+    var starred by remember { mutableStateOf(io.github.nanomuse.community.StarPrompt.starred(context)) }
     val link = info.inviteUrl.ifBlank { account?.inviteUrl.orEmpty() }.ifBlank {
         "https://nanomuse.cn/web/?invite=" + account?.inviteCode.orEmpty()
     }
@@ -132,6 +135,17 @@ fun AllowanceWaysCard(
                     Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(15.dp), tint = MuseTones.action)
                     Spacer(Modifier.width(5.dp))
                     Text(stringResource(if (copied) R.string.nm_cloud_invite_copied else R.string.nm_ways_invite_copy), fontSize = 13.sp, color = MuseTones.action)
+                }
+            }
+
+            // ③ a star — asked only when the pool is spent, and only until the person went
+            if (exhausted && !starred) {
+                Way(Icons.Outlined.StarOutline, Color(0xFFF5A623), stringResource(R.string.nm_star_exhausted), null) {
+                    TextButton(onClick = { io.github.nanomuse.community.StarPrompt.open(context); starred = true }) {
+                        Icon(Icons.Outlined.StarOutline, contentDescription = null, modifier = Modifier.size(15.dp), tint = MuseTones.action)
+                        Spacer(Modifier.width(5.dp))
+                        Text(stringResource(R.string.nm_star_action), fontSize = 13.sp, color = MuseTones.action)
+                    }
                 }
             }
         }

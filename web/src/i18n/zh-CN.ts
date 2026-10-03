@@ -38,7 +38,15 @@ const zhCN: Record<string, string> = {
   "Reply below to continue.": "在下方回复以继续。",
   "{name} is working — anything you send now is picked up right away.": "{name} 正在工作——你现在发的消息会马上接着处理。",
   "Working…": "处理中…",
-  "Thinking…": "思考中…",
+  "On it": "正在处理",
+  "On it: {request}": "正在处理：{request}",
+  "Star nanoMuse on GitHub": "给 nanoMuse 点个 Star",
+  "The free allowance you just claimed comes out of the developer's pocket, and the project runs on nothing but people liking it. A star is the simplest way to help it be found — and to keep it free.":
+    "你刚领到的免费额度是开发者自掏腰包的，这个项目全靠大家的喜欢撑着。点一个 Star 是最简单的支持方式——让更多人找到它，也让它能一直免费下去。",
+  "That was the first task nanoMuse finished for you. If it was useful, a star on GitHub helps other people find it — and keeps the free allowance going.":
+    "这是 nanoMuse 为你完成的第一个任务。如果觉得有用，到 GitHub 点个 Star 吧——能让更多人发现它，也能让免费额度继续下去。",
+  "A star, if nanoMuse has earned it: the allowance is the developer's own money, and being seen is what brings the project more hands.":
+    "如果 nanoMuse 值得，给它一个 Star：免费额度是开发者自己掏的钱，被更多人看到，才会有更多人来一起做。",
   "Load earlier messages": "加载更早的消息",
   "New side chat": "新建旁聊",
   "New side chat, e.g. “Trip to Kyoto”": "新建旁聊，例如“京都之旅”",
@@ -1031,7 +1039,7 @@ const zhCN: Record<string, string> = {
   "Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my link: {link}": "来和我一起用 nanoMuse——完全开源的个人智能体，免费使用。用我的链接注册：{link}",
   // -- invitations (relay 0.4/0.5) --
   "Invite code (optional)": "邀请码（选填）",
-  "A friend's code counts for a new account: you both get ¥5 more allowance.": "朋友的邀请码只对新账号有效：你和对方的额度各 +¥5。",
+  "A friend's code counts for a new account: you both get ¥{invite} more allowance.": "朋友的邀请码只对新账号有效：你和对方的额度各 +¥{invite}。",
   "Have an invite code?": "有邀请码？",
   "Invite a friend": "邀请朋友",
   "Each new person who signs up with your code adds ¥{bonus} to your allowance — and ¥{bonus} to theirs. It never expires.": "每有一位新用户用你的邀请码注册，你的额度 +¥{bonus}，对方也 +¥{bonus}，不过期。",
@@ -1191,7 +1199,7 @@ const zhCN: Record<string, string> = {
   "Every device of yours, one nanoMuse": "你的每台设备，同一个 nanoMuse",
   "A model with a free allowance, or your own key": "自带免费额度的模型，或用你自己的 key",
   "Keys in your vault; nothing you say is kept on the relay": "key 留在你的保险库里；你说的内容不会留在中继上",
-  "Free. One account for all your devices, with a model and ¥10 of use to start; a code the first time, a password afterwards if you like.": "免费。一个账号连起你所有设备，自带模型和 ¥10 的起始额度；第一次用验证码登录，之后可以设密码。",
+  "Free. One account for all your devices, with a model and ¥{allowance} of use to start; a code the first time, a password afterwards if you like.": "免费。一个账号连起你所有设备，自带模型和 ¥{allowance} 的起始额度；第一次用验证码登录，之后可以设密码。",
   "With a code": "验证码登录",
   "With a password": "密码登录",
   "No password yet? Use a code first; set one under Account.": "还没有密码？先用验证码登录，再到「账号」里设置。",
@@ -1318,8 +1326,8 @@ const zhCN: Record<string, string> = {
   "Details": "详情",
   "Hide details": "收起详情",
   "Today's share of the free allowance is used up; it comes back at midnight, Beijing time. Your own model key under Connections keeps you going now.": "今天的免费额度用完了，北京时间零点恢复。在「连接」里填上你自己的模型 key，现在就能继续。",
-  "The free allowance is used up. Invite a friend (+¥5 for each of you) or add your own model key under Connections — your sign-in and your devices keep working either way.":
-    "免费额度已用完。邀请一位新用户（你和对方各 +¥5），或者在「连接」里填上自己的模型 key——无论选哪个，登录和多设备功能都不受影响。",
+  "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key under Connections — your sign-in and your devices keep working either way.":
+    "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者在「连接」里填上自己的模型 key——无论选哪个，登录和多设备功能都不受影响。",
   "The account's free allowance is used up. Add your own model key under Connections to keep going.": "这个账号的免费额度已经用完。在「连接」里填上你自己的模型 key 就能继续。",
   "Too many requests at once; wait a moment and try again.": "请求太密集了，稍等一下再试。",
   "The model provider is busy; try again in a moment.": "模型服务商正忙，稍后再试。",
@@ -1353,8 +1361,8 @@ const zhCN: Record<string, string> = {
   "This account is disabled.": "这个账号已被停用。",
   "That model is not offered here.": "这里不提供这个模型。",
   "Too many requests; slow down a little.": "请求太频繁了，稍微慢一点。",
-  "The free allowance is used up. Invite a friend (+¥5 for each of you) or add your own model key — your sign-in and your devices keep working either way.":
-    "免费额度已用完。邀请一位新用户（你和对方各 +¥5），或者换成自己的 key——无论选哪个，登录和多设备功能都不受影响。",
+  "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key — your sign-in and your devices keep working either way.":
+    "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者换成自己的 key——无论选哪个，登录和多设备功能都不受影响。",
   "Today's token quota is used up; it comes back tomorrow.": "今天的 token 配额用完了，明天恢复。",
   "The model provider did not answer.": "模型服务商没有响应。",
   "nanoMuse Cloud has no model key configured.": "nanoMuse Cloud 还没有配置模型 key。",

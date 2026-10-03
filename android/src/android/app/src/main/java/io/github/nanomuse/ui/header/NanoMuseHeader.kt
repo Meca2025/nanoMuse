@@ -29,9 +29,19 @@ import io.github.nanomuse.ui.avatar.AgentMood
  * ("Starting browser", "Searching 12306…") or that it is waiting on you. Null when idle, and the
  * caller shows its usual provider · model rows instead — that is the one place nanoMuse differs
  * from Muse, which has a single model and nothing to pick.
+ *
+ * With the steps hidden from the chat (the default) this line is the whole account of the work,
+ * so it never says just "thinking": the step under way while a tool runs, "Writing the reply"
+ * while the words arrive, and between the two the request it is on (`request`, a short brief of
+ * what the person asked), so the gap between steps reads as progress rather than silence.
  */
 @Composable
-fun rememberNanoMuseStatusLine(isStreaming: Boolean, mood: AgentMood): String? {
+fun rememberNanoMuseStatusLine(
+    isStreaming: Boolean,
+    mood: AgentMood,
+    replying: Boolean = false,
+    request: String? = null,
+): String? {
     val toolTitle by SessionActivityTracker.currentToolTitle.collectAsState()
     val toolRunning by SessionActivityTracker.isToolRunning.collectAsState()
     val pendingRisk by io.github.nanomuse.guard.RiskGate.pending.collectAsState()
@@ -52,10 +62,28 @@ fun rememberNanoMuseStatusLine(isStreaming: Boolean, mood: AgentMood): String? {
         mood == AgentMood.WAITING -> stringResource(R.string.nm_status_waiting)
         avatarStatus != null -> avatarStatus
         isStreaming && toolRunning && !toolTitle.isNullOrBlank() -> toolTitle
-        isStreaming -> stringResource(R.string.nm_status_thinking)
+        isStreaming && replying -> stringResource(R.string.nm_status_replying)
+        isStreaming && !request.isNullOrBlank() -> stringResource(R.string.nm_status_on, request)
+        isStreaming -> stringResource(R.string.nm_status_working)
         motionStatus != null -> motionStatus
         else -> null
     }
+}
+
+/** How much of the request the status line quotes. */
+private const val REQUEST_BRIEF_CHARS = 36
+
+/**
+ * The request in a breath, for the status line: its first line, whitespace folded, cut at a
+ * word where it can be, with an ellipsis when something was left out. Null for nothing.
+ */
+fun requestBrief(text: String?): String? {
+    val line = text?.lineSequence()?.map { it.trim() }?.firstOrNull { it.isNotEmpty() }
+        ?.replace(Regex("\\s+"), " ") ?: return null
+    if (line.length <= REQUEST_BRIEF_CHARS) return line
+    val cut = line.take(REQUEST_BRIEF_CHARS)
+    val atWord = cut.lastIndexOf(' ')
+    return (if (atWord >= REQUEST_BRIEF_CHARS / 2) cut.substring(0, atWord) else cut).trimEnd() + "…"
 }
 
 /** Height of the two provider/model rows it replaces, so the app bar never jumps. */

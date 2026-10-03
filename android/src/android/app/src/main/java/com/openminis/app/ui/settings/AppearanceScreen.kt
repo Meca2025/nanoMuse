@@ -152,6 +152,14 @@ const val KEY_NM_HEADER_MODEL = "nm.header_model"  // Boolean, default false
 fun headerModelEnabled(context: Context): Boolean =
     getAppearancePrefs(context).getBoolean(KEY_NM_HEADER_MODEL, false)
 
+// nanoMuse: the agent's steps in the chat — the tool pills, the reasoning
+// blocks, the bar over the composer that opens the Computer sheet — are off
+// by default; the line under the face says what it is doing instead. A
+// Setting shows them for whoever wants to see how the work was done.
+const val KEY_NM_SHOW_STEPS = "nm.show_steps"  // Boolean, default false
+fun showStepsEnabled(context: Context): Boolean =
+    getAppearancePrefs(context).getBoolean(KEY_NM_SHOW_STEPS, false)
+
 /** Font scale levels matching iOS: XS(-2) Small(-1) Default(0) Medium(1) Large(2) XL(3) */
 /**
  * [T-android-app-icon-tile-max-width] Upper bound for one app-icon preview tile.
@@ -276,6 +284,7 @@ fun AppearanceScreen(
     var selectedLanguage by remember { mutableStateOf(prefs.getString(KEY_LANGUAGE, "") ?: "") }
     var selectedAppIcon by remember { mutableStateOf(AppIconRepository.current(context)) }
     var headerModel by remember { mutableStateOf(prefs.getBoolean(KEY_NM_HEADER_MODEL, false)) } // nanoMuse
+    var showSteps by remember { mutableStateOf(prefs.getBoolean(KEY_NM_SHOW_STEPS, false)) } // nanoMuse
     var avatarSize by remember { mutableStateOf(io.github.nanomuse.ui.avatar.AvatarSize.current(context)) } // nanoMuse
 
     val fontsModified = chatInputLevel != 0 || messageLevel != 0 || appBaseLevel != 0
@@ -301,6 +310,25 @@ fun AppearanceScreen(
                 onCheckedChange = {
                     headerModel = it
                     prefs.edit().putBoolean(KEY_NM_HEADER_MODEL, it).apply()
+                },
+                showDivider = false,
+            )
+        }
+
+        // nanoMuse: -- Conversation -- the agent's steps, off by default; the
+        // status line under the face carries the gist instead.
+        SettingsSection(
+            header = stringResource(R.string.nm_appearance_section_chat),
+            footer = stringResource(R.string.nm_appearance_steps_footer),
+        ) {
+            SettingsSwitchRow(
+                icon = Icons.Outlined.Psychology,
+                iconColor = tilePurple,
+                title = stringResource(R.string.nm_appearance_steps_title),
+                checked = showSteps,
+                onCheckedChange = {
+                    showSteps = it
+                    prefs.edit().putBoolean(KEY_NM_SHOW_STEPS, it).apply()
                 },
                 showDivider = false,
             )

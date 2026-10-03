@@ -297,6 +297,13 @@ def create_app(
     async def healthz() -> dict:
         return {"ok": True, "version": __version__, "models": [m.id for m in settings.models]}
 
+    @app.get("/v1/config")
+    async def public_config() -> Response:
+        """The figures a client prints before anyone signs in — the allowance, the invite
+        bonus, whether sign-up is open, the links — live from the operator's settings (0.15),
+        so no app needs a release to show a new number. No secrets, no auth, a minute's cache."""
+        return JSONResponse(cloud.public_config(), headers={"Cache-Control": "public, max-age=60"})
+
     # -- sign-up -----------------------------------------------------------------
 
     @app.post("/v1/auth/code", status_code=204)
@@ -1147,6 +1154,33 @@ def create_app(
         except (TypeError, ValueError) as e:
             raise CloudError(400, "bad_request", "cny is a number") from e
         return cloud.admin_credit(account_id, cny, str(body.get("note", ""))[:200])
+
+    @app.post("/v1/admin/credit-all", dependencies=[Depends(admin_dep)])
+    async def admin_credit_all(request: Request) -> dict:
+        """{cny, note?}: the same credit into every limited account's pool (0.15)."""
+        body = await _json(request)
+        try:
+            cny = float(body.get("cny", 0))
+        except (TypeError, ValueError) as e:
+            raise CloudError(400, "bad_request", "cny is a number") from e
+        return cloud.admin_credit_all(cny, str(body.get("note", ""))[:200])
+
+    @app.get("/v1/admin/settings", dependencies=[Depends(admin_dep)])
+    async def admin_settings_get() -> dict:
+        """The settings the page may change (0.15): the value in force, the environment's,
+        whether the page set it, and how many accounts a raised allowance would reach."""
+        return cloud.runtime_settings()
+
+    @app.post("/v1/admin/settings", dependencies=[Depends(admin_dep)])
+    async def admin_settings_set(request: Request) -> dict:
+        """{allowance_cny?, invite_bonus_cny?, signup_open?}: set (a value) or clear back to
+        the environment (null). In force at once, kept across restarts."""
+        return cloud.admin_update_settings(await _json(request))
+
+    @app.post("/v1/admin/allowance/apply", dependencies=[Depends(admin_dep)])
+    async def admin_allowance_apply() -> dict:
+        """Bring every account given a smaller allowance up to the current one (0.15)."""
+        return cloud.admin_apply_allowance()
 
     @app.post("/v1/admin/disable", dependencies=[Depends(admin_dep)])
     async def admin_disable(request: Request) -> Response:

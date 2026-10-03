@@ -312,6 +312,22 @@ export interface UsageRow {
 }
 
 /** `/api/cloud/me`: the account as the relay sees it. */
+/** GET /v1/config on the relay (0.15): what a client prints before anyone signs in. */
+export interface CloudConfig {
+  version?: string;
+  signup_open?: boolean;
+  allowance_cny?: number;
+  allowance_usd?: number;
+  invite_bonus_cny?: number;
+  invitee_bonus_cny?: number;
+  usd_cny?: number;
+  invite_url?: string;
+  own_key_docs?: string;
+  privacy_url?: string;
+  repo_url?: string;
+  improve_default?: boolean;
+}
+
 export interface CloudMe {
   account: {
     id: string;

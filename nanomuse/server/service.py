@@ -826,7 +826,9 @@ class MuseService:
                 thread.busy = True
                 thread.agent.inbox = thread.inbox
                 self.bus.publish({"kind": "thread", "thread": thread.meta()})
-                self.ui.set_status("working", "Thinking…", thread.id)
+                # No sentence of its own: each client words the pause between steps
+                # itself ("On it: <the request>") in its language.
+                self.ui.set_status("working", "", thread.id)
                 try:
                     purpose = thread.purposes.pop(text, None)
                     self.ui.begin_run(thread.id, background=purpose)

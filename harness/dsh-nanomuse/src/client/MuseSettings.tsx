@@ -21,7 +21,8 @@ import { IconArchive, IconChevronRight, IconClose, IconCpu, IconDatabase, IconDe
 import { openShortcutsReference } from './keys.ts'
 import { useLive } from './live.ts'
 import type { RenderSlot } from './MuseSidebar.tsx'
-import { AppBehaviorRows, DeveloperRows, HotkeyField } from './Sections.tsx'
+import { REPO_URL } from './panels.ts'
+import { AppBehaviorRows, ConversationRows, DeveloperRows, HotkeyField } from './Sections.tsx'
 
 const SITE_URL = 'https://nanomuse.cn/'
 const RELEASES_URL = 'https://github.com/nano-muse/nanoMuse/releases'
@@ -297,7 +298,11 @@ export function makeGeneralSection(t: Translate, version: string) {
                 h('span', { className: 'nm-usage-pct' }, account.tokens.unlimited ? t('gnUnlimited') : t('gnUsed', { n: used }))),
               account.tokens.unlimited ? null : h('div', { className: 'nm-usage-bar', role: 'progressbar', 'aria-valuenow': used, 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('span', { style: { width: `${used}%` } })),
               h('div', { className: 'nm-usage-fine' }, account.tokens.unlimited ? t('gnUnlimitedSub') : t('gnRemaining', { n: account.tokens.remaining.toLocaleString() })),
-              account.member ? null : h('a', { className: 'nm-usage-link', href: SITE_URL, target: '_blank', rel: 'noopener noreferrer', onClick: (e: { preventDefault(): void }) => { e.preventDefault(); openLink(SITE_URL) } }, t('gnUpgrade')))
+              account.member ? null : h('a', { className: 'nm-usage-link', href: SITE_URL, target: '_blank', rel: 'noopener noreferrer', onClick: (e: { preventDefault(): void }) => { e.preventDefault(); openLink(SITE_URL) } }, t('gnUpgrade')),
+              // the pool is spent: the one ask the project makes
+              !account.tokens.unlimited && account.tokens.granted > 0 && account.tokens.remaining <= 0
+                ? h('a', { className: 'nm-usage-link', href: REPO_URL, target: '_blank', rel: 'noopener noreferrer', onClick: (e: { preventDefault(): void }) => { e.preventDefault(); openLink(REPO_URL) } }, t('gnStarOut'))
+                : null)
           : h('div', { className: 'nm-usage-fine' }, live.cloud.signedIn ? t('loading') : t('gnUsageSignedOut'))),
       // language: the harness's own row
       h('div', { className: 'nm-card nm-harness-rows' }, renderSlot('settings.general.item', {}, { only: 'language' })),
@@ -318,6 +323,7 @@ export function makeGeneralSection(t: Translate, version: string) {
               style: { background: c },
               onClick: () => pick(c),
             }))))),
+      h(ConversationRows, { t }),
       h(AppBehaviorRows, { t }),
       // shortcuts
       h('h2', null, t('gnShortcuts')),
@@ -337,7 +343,12 @@ export function makeGeneralSection(t: Translate, version: string) {
           h('div', { className: 'nm-row-main' },
             h('span', { className: 'nm-row-title' }, t('versionLine', { version: version || '—' })),
             h('span', { className: 'nm-row-sub' }, checked === 'latest' ? t('gnUpToDate') : t('gnUpdatesSub'))),
-          h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: checked === 'checking', onClick: checkUpdates }, checked === 'checking' ? t('gnChecking') : t('gnCheckUpdates')))),
+          h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: checked === 'checking', onClick: checkUpdates }, checked === 'checking' ? t('gnChecking') : t('gnCheckUpdates'))),
+        h('button', { type: 'button', className: 'nm-row nm-row-button', onClick: () => openLink(REPO_URL) },
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, t('gnStar')),
+            h('span', { className: 'nm-row-sub' }, t('gnStarSub'))),
+          h('span', { className: 'nm-row-chevron' }, h(IconChevronRight, { size: 16 })))),
       h(DeveloperRows, { t }))
   }
 }

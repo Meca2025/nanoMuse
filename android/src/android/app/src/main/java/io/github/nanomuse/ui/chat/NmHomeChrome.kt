@@ -18,8 +18,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.openminis.app.ui.settings.KEY_NM_HEADER_MODEL
+import com.openminis.app.ui.settings.KEY_NM_SHOW_STEPS
 import com.openminis.app.ui.settings.getAppearancePrefs
 import com.openminis.app.ui.settings.headerModelEnabled
+import com.openminis.app.ui.settings.showStepsEnabled
 import io.github.nanomuse.ui.home.MuseTones
 
 /**
@@ -46,6 +48,25 @@ fun rememberHeaderModelShown(): State<Boolean> {
         val prefs = getAppearancePrefs(context)
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
             if (key == KEY_NM_HEADER_MODEL) state.value = p.getBoolean(KEY_NM_HEADER_MODEL, false)
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    return state
+}
+
+/**
+ * Whether the chat shows the agent's steps — tool pills, reasoning, the bar over the composer
+ * (Settings → Appearance → Conversation; off by default). Observed like the switch above.
+ */
+@Composable
+fun rememberShowSteps(): State<Boolean> {
+    val context = LocalContext.current
+    val state = remember { mutableStateOf(showStepsEnabled(context)) }
+    DisposableEffect(Unit) {
+        val prefs = getAppearancePrefs(context)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+            if (key == KEY_NM_SHOW_STEPS) state.value = p.getBoolean(KEY_NM_SHOW_STEPS, false)
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }

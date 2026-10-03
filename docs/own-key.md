@@ -3,8 +3,9 @@
 [中文](#中文) · [English](#english)
 
 nanoMuse is free and non-profit; the model behind it costs money, and the
-developer pays for a starter pool — ¥10 per account, and ¥5 more for you and
-¥5 for them each time a friend signs up with your code. When that is gone,
+developer pays for a starter pool — ¥10 per account at the time of writing,
+and ¥5 more for you and ¥5 for them each time a friend signs up with your
+code (the app shows the relay's current figures). When that is gone,
 the fastest way on is a key of your own. This page shows the recommended
 provider, **Alibaba Cloud Bailian (阿里云百炼)**, in five steps — about two
 minutes — and then how to fill in any other OpenAI-compatible provider.

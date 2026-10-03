@@ -84,6 +84,8 @@ import io.github.nanomuse.ui.ideas.IdeasTab
 import io.github.nanomuse.ui.library.LibraryTab
 import io.github.nanomuse.ui.onboarding.FirstRunSetup
 import io.github.nanomuse.ui.onboarding.FirstRunSetupScreen
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -204,13 +206,23 @@ fun NanoMuseHome(
     val streaming by (mainVm?.isStreaming ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsState()
     val error by (mainVm?.error ?: remember { kotlinx.coroutines.flow.MutableStateFlow<String?>(null) }).collectAsState()
     val mood = rememberAgentMood(streaming, error)
-    val statusLine = rememberNanoMuseStatusLine(streaming, mood)
+    // The same account of the work the chat header gives: the step, the reply arriving, or the request it is on.
+    val replying by remember(mainVm) {
+        mainVm?.streamingById?.let { flow ->
+            flow.map { stream ->
+                stream.values.any { d -> !d.isAwaitingModelResponse && d.toolBlocks.lastOrNull()?.let { it.kind == "text" && it.content.isNotEmpty() } == true }
+            }.distinctUntilChanged()
+        } ?: kotlinx.coroutines.flow.flowOf(false)
+    }.collectAsState(initial = false)
+    val homeMessages by (mainVm?.uiMessages ?: remember { kotlinx.coroutines.flow.MutableStateFlow(emptyList<com.openminis.app.ui.chat.ChatMessage>()) }).collectAsState()
+    val requestBrief = remember(homeMessages) { io.github.nanomuse.ui.header.requestBrief(homeMessages.lastOrNull { it.role == "user" }?.content) }
+    val statusLine = rememberNanoMuseStatusLine(streaming, mood, replying = replying, request = requestBrief)
     val soul by SoulStore.cachedMetadata.collectAsState()
     val agentName = soul.name.trim().ifEmpty { stringResource(R.string.app_name) }
 
     fun sendToMainChat(text: String) {
         val vm = mainVm ?: run {
-            Toast.makeText(context, R.string.nm_status_thinking, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.nm_home_not_ready, Toast.LENGTH_SHORT).show()
             return
         }
         showMain()

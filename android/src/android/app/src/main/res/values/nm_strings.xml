@@ -12,7 +12,18 @@
     <!-- Chat header -->
     <string name="nm_avatar_content_description">Your agent. Tap to change its name, icon or style.</string>
     <string name="nm_status_waiting">Waiting for you</string>
-    <string name="nm_status_thinking">Thinking…</string>
+    <string name="nm_status_replying">Writing the reply</string>
+    <string name="nm_status_on">On it: %1$s</string>
+    <string name="nm_status_working">On it</string>
+    <string name="nm_home_not_ready">One moment — the chat is still loading.</string>
+
+    <!-- The ask for a star: at the first sign-in, after the first task, when the allowance is used up -->
+    <string name="nm_star_title">Star nanoMuse on GitHub</string>
+    <string name="nm_star_action">Star on GitHub</string>
+    <string name="nm_star_later">Not now</string>
+    <string name="nm_star_signed_in">The free allowance you just claimed comes out of the developer\'s pocket, and the project runs on nothing but people liking it. A star is the simplest way to help it be found — and to keep it free.</string>
+    <string name="nm_star_first_task">First task done. If that was useful, a star on GitHub helps nanoMuse reach the next person — ten seconds, and it means a lot.</string>
+    <string name="nm_star_exhausted">A star, if nanoMuse has earned it: the allowance is the developer\'s own money, and being seen is what brings the project more hands.</string>
     <string name="nm_chat_menu_rename">Rename chat</string>
 
     <!-- Foreground-service notification title while no tool is running -->
@@ -344,6 +355,9 @@
     <string name="nm_appearance_section_home">Home</string>
     <string name="nm_appearance_header_model_title">Show the model under the name</string>
     <string name="nm_appearance_header_model_footer">Muse shows only the name. Turn this on to see the model group and provider · model under it; tap them to switch. Off, the model is under ••• → Model and in Settings.</string>
+    <string name="nm_appearance_section_chat">Conversation</string>
+    <string name="nm_appearance_steps_title">Show the agent\'s steps</string>
+    <string name="nm_appearance_steps_footer">Off, the chat keeps only the replies, and the line under the face says what the agent is doing right now. On, every step shows in the chat — each tool it uses, its reasoning, and a bar over the composer that opens the step\'s details.</string>
     <string name="nm_chat_menu_model">Model</string>
     <string name="nm_model_switched">Switched to %1$s for this chat</string>
     <string name="nm_model_switched_sticky">Switched to %1$s — new chats use it too</string>
@@ -626,8 +640,8 @@
     <string name="nm_cloud_err_bad_key">The relay no longer recognises this phone. Sign in again.</string>
     <string name="nm_cloud_err_out_of_tokens">The allowance is used up.</string>
     <string name="nm_cloud_err_daily_cap">Today\'s token quota is used up; it comes back tomorrow.</string>
-    <string name="nm_cloud_err_allowance">The free allowance is used up. Invite a friend (+¥5 for each of you) or add your own key under Settings → Providers.</string>
-    <string name="nm_cloud_warn_line">The free allowance is nearly used up: ¥%1$s of ¥%2$s left. Invite a friend (+¥5 for each of you) or add your own key — both under Account.</string>
+    <string name="nm_cloud_err_allowance">The free allowance is used up. Invite a friend (+¥%1$s for each of you) or add your own key under Settings → Providers.</string>
+    <string name="nm_cloud_warn_line">The free allowance is nearly used up: ¥%1$s of ¥%2$s left. Invite a friend (+¥%3$s for each of you) or add your own key — both under Account.</string>
     <string name="nm_cloud_err_rate_limited">Too many requests at once. A moment, please.</string>
     <string name="nm_cloud_err_unreachable">Could not reach nanoMuse Cloud. Check the connection.</string>
     <string name="nm_cloud_err_generic">Something went wrong.</string>
@@ -662,7 +676,7 @@
     <string name="nm_face_cost_what_clips">A new face is %1$d pictures and %2$d short clips</string>
     <string name="nm_face_cost_about">%1$s — about ¥%2$s from your allowance.</string>
     <string name="nm_face_cost_left">You have ¥%1$s of the allowance left.</string>
-    <string name="nm_face_cost_short">That is more than what is left. Invite a friend (+¥5 for each of you) or add your own key under Settings → Providers.</string>
+    <string name="nm_face_cost_short">That is more than what is left. Invite a friend (+¥%1$s for each of you) or add your own key under Settings → Providers.</string>
     <string name="nm_face_cost_unknown">%1$s. Today\'s allowance could not be checked right now.</string>
     <string name="nm_face_cost_go">Draw it</string>
     <string name="nm_face_cost_anyway">Try anyway</string>
