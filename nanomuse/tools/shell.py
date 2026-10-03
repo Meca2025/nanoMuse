@@ -345,15 +345,18 @@ class PythonExecute(BaseTool):
         first = code.strip().splitlines()[0][:100] if code.strip() else ""
         reach = code_reach(code, self.workspace)
         boxed = self.sandbox is not None and self.sandbox.active
-        warnings = [f"code {what}" for what in reach.values()]
+        summary = f"python_execute: {first} ({len(code)} chars)"
         if not boxed:
-            warnings.append("runs without a sandbox on this computer")
+            # the level, not a warning: a warning is something in the code itself and is
+            # never waved through; this is the computer's condition, which `auto` mode and
+            # always_allow_tools are entitled to accept
+            summary += " — runs without a sandbox on this computer"
         return CallAssessment(
             risk=RiskLevel.SENSITIVE if reach or not boxed else RiskLevel.MODERATE,
             egress=bool(reach.get("network")) or bool(reach.get("processes")),
             target=None,
-            summary=f"python_execute: {first} ({len(code)} chars)",
-            warnings=warnings,
+            summary=summary,
+            warnings=[f"code {what}" for what in reach.values()],
         )
 
     async def execute(self, code: str = "", timeout: float = 60, **_: Any) -> ToolResult:

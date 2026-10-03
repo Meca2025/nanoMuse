@@ -126,13 +126,13 @@ def test_python_reach_decides_the_risk(tmp_path: Path):
     from nanomuse.config import SandboxSettings
     from nanomuse.sandbox import Sandbox
 
-    # without a sandbox the static check is the only wall: every script is sensitive
+    # without a sandbox the static check is the only wall: every script is sensitive — the
+    # level, said on the card, not a warning (auto mode and always_allow_tools may accept it)
     bare = PythonExecute(workspace=tmp_path)
     plain_code = "import csv\nrows = [1, 2]\nopen('out.csv', 'w').write('a,b')"
     unboxed = bare.assess({"code": plain_code})
-    assert unboxed.risk == RiskLevel.SENSITIVE and unboxed.warnings == [
-        "runs without a sandbox on this computer"
-    ]
+    assert unboxed.risk == RiskLevel.SENSITIVE and not unboxed.warnings
+    assert unboxed.summary.endswith("runs without a sandbox on this computer")
     box = Sandbox(SandboxSettings(mode="off"), workspace=tmp_path)
     box.active = True  # as on a Linux box with bubblewrap
     py = PythonExecute(workspace=tmp_path, sandbox=box)

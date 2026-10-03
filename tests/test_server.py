@@ -29,6 +29,10 @@ def tc(name: str, **args: Any) -> ToolCall:
 @pytest.fixture()
 def server(settings: Settings) -> Iterator[tuple[TestClient, MuseService, MockLLM]]:
     settings.server.token = "secret-token"
+    # the scripts these tests run are plain file writes — moderate inside a sandbox, but
+    # sensitive (asking) on macOS and Windows, where there is none; what is under test here
+    # is the server, so python runs freely on every platform
+    settings.sentinel.always_allow_tools = ["python_execute"]
     llm = MockLLM([])
     service = MuseService(settings, llm=llm)
     app = create_app(settings, service)
