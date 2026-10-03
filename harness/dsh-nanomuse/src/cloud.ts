@@ -39,7 +39,7 @@ import z from '@deepseek-ai/schemastery'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
 import { HubClient, HubError, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
-import { Relay, RelayError, type Account, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
+import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner } from './task.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -168,6 +168,8 @@ export interface LiveState {
 
 /** How long after the last hands call the stage keeps its frame. */
 const STAGE_REST_MS = 10 * 60_000
+/** Four candidates and four poses (the idle still is the candidate itself): what a new face costs. */
+const STUDIO_PICTURES = 8
 
 const NO_STAGE: StageState = { seq: 0, at: 0, source: 'computer', device: '', width: 0, height: 0, title: '', action: null, sessionId: '' }
 
@@ -429,6 +431,66 @@ export default class NanomuseCloud extends Service {
       } else {
         await this.profile.wearLocal({ ...current, ...write, rev: current.rev })
       }
+      this.broadcast()
+      return this.profile.current()
+    })
+  }
+
+  // ---- the avatar studio: the pictures through the relay, the face onto the account ------
+
+  /** The account's image model, as the relay lists it (the recommended one first). */
+  private imageModel(): string {
+    const models = (this.state.models ?? []).filter((m) => m.kind === 'image')
+    const pick = models.find((m) => m.recommended) ?? models[0]
+    return pick ? pick.id : ''
+  }
+
+  private async studioToken(): Promise<string> {
+    const token = await this.token()
+    if (!token || !this.state.account) throw new RelayError(401, 'signed_out', 'Sign in to draw a face')
+    if (!this.imageModel()) throw new RelayError(409, 'no_image_model', 'The account has no image model to draw with')
+    return token
+  }
+
+  /** What four candidates and four poses would cost today. */
+  async studioEstimate(): Promise<Estimate> {
+    const token = await this.studioToken()
+    return this.relay.estimate(token, STUDIO_PICTURES)
+  }
+
+  /** One candidate, drawn from the words; PNG bytes as the model gave them. */
+  async studioDraw(prompt: string): Promise<Buffer> {
+    const token = await this.studioToken()
+    return this.relay.generateImage(token, this.imageModel(), prompt)
+  }
+
+  /** One pose of the chosen candidate. */
+  async studioPose(image: Buffer, prompt: string): Promise<Buffer> {
+    const token = await this.studioToken()
+    return this.relay.editImage(token, this.imageModel(), image, prompt)
+  }
+
+  /**
+   * Wear a face drawn here: the stills go to the account (`PUT /v1/me/profile` with the
+   * `face` map), then the profile is pulled so the pictures land under `faces/<id>/`
+   * and every device of the account hears the hub's `profile` frame.
+   */
+  wearFace(description: string, style: string, face: Record<string, string>): Promise<Profile> {
+    return this.serialize(async () => {
+      const token = await this.token()
+      if (!token || !this.state.account) throw new RelayError(401, 'signed_out', 'Sign in to wear a drawn face')
+      const current = this.profile.current()
+      const write: ProfileWrite = {
+        name: current.name || 'nanoMuse',
+        avatar: 'face',
+        emoji: '',
+        color: current.color,
+        style: style.slice(0, 20),
+        description: description.slice(0, 200),
+        face,
+      }
+      await this.relay.putProfile(token, write, this.deviceName())
+      await this.profile.pull(token, true)
       this.broadcast()
       return this.profile.current()
     })
@@ -884,6 +946,25 @@ export default class NanomuseCloud extends Service {
         return send(res, 200, await this.writeProfile(patch))
       }
       if (req.method === 'POST' && route === '/refresh') return send(res, 200, await this.refresh())
+      if (req.method === 'GET' && route === '/studio/estimate') return send(res, 200, await this.studioEstimate())
+      if (req.method === 'POST' && route === '/studio/draw') {
+        const body = await json(req)
+        const png = await this.studioDraw(String(body.prompt ?? '').slice(0, 2000))
+        return send(res, 200, { image: png.toString('base64') })
+      }
+      if (req.method === 'POST' && route === '/studio/pose') {
+        const body = await json(req, 8 * 1024 * 1024)
+        const image = Buffer.from(String(body.image ?? ''), 'base64')
+        if (!image.length) return send(res, 400, { error: { code: 'bad_request', message: 'image is the base64 PNG to pose' } })
+        const png = await this.studioPose(image, String(body.prompt ?? '').slice(0, 2000))
+        return send(res, 200, { image: png.toString('base64') })
+      }
+      if (req.method === 'POST' && route === '/studio/wear') {
+        const body = await json(req, 4 * 1024 * 1024)
+        const face = body.face as Record<string, string> | undefined
+        if (!face || typeof face !== 'object' || typeof face.idle !== 'string') return send(res, 400, { error: { code: 'bad_request', message: 'face is a {mood: base64 WebP} map with idle' } })
+        return send(res, 200, await this.wearFace(String(body.description ?? ''), String(body.style ?? 'muse'), face))
+      }
       if (req.method === 'POST' && route === '/sign-out') return send(res, 200, await this.signOut())
       if (req.method === 'POST' && route === '/data/contribute') {
         const body = await json(req)
@@ -1001,13 +1082,13 @@ export function sameOrigin(req: IncomingMessage): boolean {
 }
 
 /** The request body as an object; empty when there is none. */
-export async function json(req: IncomingMessage): Promise<Record<string, unknown>> {
+export async function json(req: IncomingMessage, limit = 64 * 1024): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
     const buffer = chunk as Buffer
     size += buffer.length
-    if (size > 64 * 1024) throw new RelayError(413, 'too_large', 'Request body too large')
+    if (size > limit) throw new RelayError(413, 'too_large', 'Request body too large')
     chunks.push(buffer)
   }
   if (chunks.length === 0) return {}

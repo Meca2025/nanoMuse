@@ -93,6 +93,7 @@ export interface Rooms {
   busy: { feed: boolean; ideas: boolean }
   automations: Record<string, GoalAutomation[]>
   ready: boolean
+  studio: { description: string; style: string; at: number }
   /** Whether the stream is open; false before the first snapshot and while reconnecting. */
   streaming: boolean
   /** When the person last had the Feed open (this browser); the rail's dot marks newer posts. */
@@ -111,6 +112,7 @@ const INITIAL: Rooms = {
   busy: { feed: false, ideas: false },
   automations: {},
   ready: false,
+  studio: { description: '', style: 'muse', at: 0 },
   streaming: false,
   feedSeenAt: Number(globalThis.localStorage?.getItem(SEEN_KEY) ?? 0) || 0,
 }

@@ -15,6 +15,7 @@ import { closeTopModal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useEffect, useRef, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { Avatar, BrandName, type Mood } from './Avatar.tsx'
+import { makeAvatarStudio } from './AvatarStudio.tsx'
 import { bridge } from './bridge.ts'
 import { profileBus, settingsBus } from './bus.ts'
 import { makeCapsule } from './Capsule.tsx'
@@ -484,6 +485,11 @@ export function apply(ctx: ClientContext): void {
     window.setTimeout(() => (document.querySelector('[contenteditable="true"]') as HTMLElement | null)?.focus(), 200)
   })
   if (quickChatOff) ctx.effect(() => quickChatOff, 'nanomuse: quick chat')
+
+  // The avatar studio: a sheet over the window, from the look editor or the agent's draw_new_look.
+  const AvatarStudio = makeAvatarStudio({ t })
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.studio' }, AvatarStudio))
 
   // The Live stage: the screen the agent is working on, picture-in-picture over the chat.
   const LiveStage = makeLiveStage({ t, stop })

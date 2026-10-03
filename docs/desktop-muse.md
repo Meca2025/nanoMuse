@@ -116,8 +116,18 @@ field to add one, × to forget one, *Import memory* (Muse's sheet: paste what an
 assistant knew, one line per memory), and the agent's description when the account has
 one. The agent writes memory itself with the `remember` tool when you tell it something
 you will expect it to know next time, and every chat's prompt carries the list back
-(`rooms.json`, this computer only). Drawing a face from four candidates is the phone's
-studio; the desktop wears what the account has.
+(`rooms.json`, this computer only). *Change look* has the dragon, an emoji on a colour,
+and **Draw one** — the avatar studio: describe the character, pick a style (Muse's
+vinyl-toy look by default), see what it costs against today's allowance, *Draw four*,
+and the four candidates come up in a 2×2 grid with *Option 1–4*; *This one* draws the
+other poses from the pick (working, waiting, happy, oops) and the new look is on, for
+every device of the account. The pictures come from the account's image model through
+the relay (`/v1/images/generations`, `/v1/images/edits`), the browser squares each
+still to 512 px WebP, and the host writes the face to the account (`PUT /v1/me/profile`
+with the `face` map) and pulls it back under `faces/<id>/`. The prompts are the
+runtime's, so a face drawn on the phone or here comes out alike. Asked in a chat
+("change your avatar to an orange cat with a scarf"), the agent opens the studio with
+the words (`draw_new_look`) rather than drawing by itself.
 
 ## Computer use
 

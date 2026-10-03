@@ -83,6 +83,17 @@ export interface ProfileWrite {
   color: string
   style: string
   description: string
+  /** A drawn face's stills, `{mood: base64 WebP}` — only when a face was drawn here. */
+  face?: Record<string, string>
+}
+
+/** What a few pictures would cost next to what is left today (`GET /v1/estimate`). */
+export interface Estimate {
+  cny: number
+  leftCny: number
+  unlimited: boolean
+  affordable: boolean
+  imageModel: string
 }
 
 /** The account's profile as the relay keeps it (`docs/hub.md`): the agent's name and look. */
@@ -229,6 +240,57 @@ export class Relay {
     if (!res.ok) await fail(res)
     const out = (await res.json().catch(() => ({}))) as { rev?: number }
     return Number(out.rev ?? 0)
+  }
+
+  /** What `images` pictures would cost today, and the image model the relay would use (nothing charged). */
+  async estimate(apiKey: string, images: number, signal?: AbortSignal): Promise<Estimate> {
+    const res = await this.fetchImpl(`${this.origin}/v1/estimate?images=${Math.max(0, Math.floor(images))}`, { headers: this.auth(apiKey), signal: signal ?? null })
+    if (!res.ok) await fail(res)
+    const body = (await res.json()) as { cny?: number; left_cny?: number; unlimited?: boolean; affordable?: boolean; parts?: { kind?: string; model?: string }[] }
+    return {
+      cny: Number(body.cny ?? 0),
+      leftCny: Number(body.left_cny ?? 0),
+      unlimited: body.unlimited === true,
+      affordable: body.affordable !== false,
+      imageModel: String(body.parts?.find((p) => p.kind === 'image')?.model ?? ''),
+    }
+  }
+
+  /** One picture from words (`POST /v1/images/generations`, OpenAI's shape); the bytes. */
+  async generateImage(apiKey: string, model: string, prompt: string, signal?: AbortSignal): Promise<Buffer> {
+    const res = await this.fetchImpl(`${this.origin}/v1/images/generations`, {
+      method: 'POST',
+      headers: { ...this.auth(apiKey), ...JSON_HEADERS },
+      body: JSON.stringify({ model, prompt, n: 1, size: '1024x1024', response_format: 'b64_json' }),
+      signal: signal ?? null,
+    })
+    if (!res.ok) await fail(res)
+    return this.imageOf(await res.json())
+  }
+
+  /** The same character in another pose (`POST /v1/images/edits`, multipart); the bytes. */
+  async editImage(apiKey: string, model: string, image: Buffer, prompt: string, signal?: AbortSignal): Promise<Buffer> {
+    const form = new FormData()
+    form.set('model', model)
+    form.set('prompt', prompt)
+    form.set('n', '1')
+    form.set('size', '1024x1024')
+    form.set('response_format', 'b64_json')
+    form.set('image', new Blob([new Uint8Array(image)], { type: 'image/png' }), 'idle.png')
+    const res = await this.fetchImpl(`${this.origin}/v1/images/edits`, { method: 'POST', headers: this.auth(apiKey), body: form, signal: signal ?? null })
+    if (!res.ok) await fail(res)
+    return this.imageOf(await res.json())
+  }
+
+  private async imageOf(body: unknown): Promise<Buffer> {
+    const first = ((body as { data?: { b64_json?: string; url?: string }[] }).data ?? [])[0]
+    if (first?.b64_json) return Buffer.from(first.b64_json, 'base64')
+    if (first?.url) {
+      const res = await this.fetchImpl(first.url)
+      if (!res.ok) throw new RelayError(502, 'image', `The picture could not be fetched (${res.status})`)
+      return Buffer.from(await res.arrayBuffer())
+    }
+    throw new RelayError(502, 'image', 'The model returned no picture')
   }
 
   /** Who the key belongs to and what is left of the allowance. */

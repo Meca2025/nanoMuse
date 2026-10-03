@@ -13,6 +13,7 @@ import { call, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { profileBus, useProfileOpen } from './bus.ts'
 import { IconBrain, IconCheck, IconClock, IconClose, IconList, IconPencil, IconShield } from './icons.tsx'
+import { studioBus } from './AvatarStudio.tsx'
 import { ImportMemorySheet, MemoryList } from './Memory.tsx'
 import { useLive, type LiveProfile } from './live.ts'
 import type { ChatListState, ChatStatus } from './MuseChats.tsx'
@@ -217,7 +218,8 @@ function LookEditor({ t, profile, onDone }: { t: Translate; profile: LiveProfile
     h('div', { className: 'nm-pf-preview' }, h(Avatar, { size: 72, profile: preview })),
     h('div', { className: 'nm-seg', role: 'radiogroup' },
       h('button', { type: 'button', role: 'radio', 'aria-checked': avatar === 'dragon', className: `nm-seg-btn nm-seg-text${avatar === 'dragon' ? ' nm-active' : ''}`, onClick: () => setAvatar('dragon') }, t('lookDragon')),
-      h('button', { type: 'button', role: 'radio', 'aria-checked': avatar === 'emoji', className: `nm-seg-btn nm-seg-text${avatar === 'emoji' ? ' nm-active' : ''}`, onClick: () => setAvatar('emoji') }, t('lookEmoji'))),
+      h('button', { type: 'button', role: 'radio', 'aria-checked': avatar === 'emoji', className: `nm-seg-btn nm-seg-text${avatar === 'emoji' ? ' nm-active' : ''}`, onClick: () => setAvatar('emoji') }, t('lookEmoji')),
+      h('button', { type: 'button', role: 'radio', 'aria-checked': false, className: 'nm-seg-btn nm-seg-text', onClick: () => { onDone(); profileBus.close(); studioBus.open?.(profile.description || '', profile.style || 'muse') } }, t('lookDraw'))),
     avatar === 'emoji'
       ? h('div', { className: 'nm-pf-stack' },
           h('label', { className: 'nm-pf-label' }, t('pfEmoji')),

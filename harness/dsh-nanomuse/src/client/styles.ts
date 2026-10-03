@@ -595,6 +595,20 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-lib-col-top { heig
 .nm-path { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; opacity: 0.8; margin-top: 2px; word-break: break-all; }
 .nm-fine { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
 
+/* ---- the avatar studio ---- */
+.nm-st-label { font-size: 12.5px; font-weight: 600; color: var(--dsw-alias-label-secondary); margin: 12px 0 6px; }
+.nm-st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.nm-st-cell { position: relative; aspect-ratio: 1; border-radius: 16px; overflow: hidden; border: 0; padding: 0; background: var(--nm-card); box-shadow: inset 0 0 0 1px var(--nm-field-border); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.nm-st-cell:disabled { cursor: default; }
+.nm-st-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nm-st-cell.nm-active { box-shadow: 0 0 0 3px var(--nm-accent); }
+.nm-st-tag { position: absolute; left: 10px; bottom: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.55); color: #fff; font-size: 11.5px; }
+.nm-st-wait { font-size: 28px; color: var(--dsw-alias-label-tertiary); }
+.nm-st-moods { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 6px 0 14px; }
+.nm-st-mood { position: relative; width: 92px; height: 92px; border-radius: 14px; overflow: hidden; background: var(--nm-card); box-shadow: inset 0 0 0 1px var(--nm-field-border); display: flex; align-items: center; justify-content: center; }
+.nm-st-mood img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nm-st-mood .nm-st-tag { left: 6px; bottom: 6px; font-size: 10.5px; padding: 1px 6px; }
+
 /* ---- memory and the data controls ---- */
 .nm-mem-add { display: flex; gap: 8px; align-items: center; }
 .nm-mem-input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--nm-field-border); background: var(--nm-card); color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; }

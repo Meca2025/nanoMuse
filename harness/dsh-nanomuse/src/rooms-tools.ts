@@ -126,6 +126,30 @@ export function apply(ctx: Context): void {
     'nanomuse rooms: remember',
   )
 
+  ctx.effect(
+    () =>
+      ctx.tools.register(
+        defineTool({
+          name: 'draw_new_look',
+          description: "Open the avatar studio on the person's screen with a description of the new look they asked for (\"change your avatar to an orange cat with a scarf\"). Four candidates are drawn there and they pick one; you do not draw the pictures yourself. Call it only when they ask for a new look.",
+          parameters: {
+            description: { type: 'string', required: true, description: 'The character, in a few words, in the language they used.' },
+            style: { type: 'string', description: 'muse (default), flat, clay, watercolor, pixel, line or sticker — only when they named one.' },
+          },
+          output: {
+            schema: { type: 'object', properties: { opened: { type: 'boolean' } }, additionalProperties: false },
+            render: () => [{ type: 'text', text: 'The avatar studio is open on their screen; they pick one of four candidates there.' }],
+          },
+          async execute(args) {
+            rooms.requestStudio(args.description, args.style ?? 'muse')
+            return { opened: true }
+          },
+          presentCall: (args) => ({ card: 'generic', title: `New look: ${(args.description || '').slice(0, 60)}`, kind: 'other', rawInput: args }),
+        }),
+      ),
+    'nanomuse rooms: draw_new_look',
+  )
+
   ctx.inject(['systemPrompt'], (ctx) => {
     ctx.effect(
       () =>

@@ -192,6 +192,7 @@ dsh-nanomuse/
                         the four rooms, Muse's layouts; rooms.ts is their SSE store and fetch helper
     LiveStage.tsx       the live stage: the latest frame, the caption, the cursor marker, expand and take over
     Memory.tsx          the Memory tab's list, Muse's import-memory sheet, the Data controls rows (download, reset)
+    AvatarStudio.tsx    the avatar studio: describe, four candidates in a grid, pick, the poses, worn on the account
     Pages.tsx           Settings → Connectors, Permissions, File system access, Dictation
     MuseChats.tsx       the chats column: Search, Main chat, Side chats — pin, rename, archive, make main
     MuseHeader.tsx      the face, name and status chip pinned above the conversation, with Stop

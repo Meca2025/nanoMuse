@@ -162,6 +162,8 @@ export interface RoomsView extends Store {
   automations: Record<string, GoalAutomation[]>
   /** Whether a model is reachable, so the empty rooms can say why they are empty. */
   ready: boolean
+  /** The agent asked for the avatar studio (draw_new_look): the words and when; the window opens it once. */
+  studio: { description: string; style: string; at: number }
 }
 
 /** `dsh-permission-presets`' service, as much of it as we use. */
@@ -203,6 +205,7 @@ const EMPTY: Store = {
   library: [],
   memory: [],
 }
+const STUDIO_STYLES: Record<string, true> = { muse: true, flat: true, clay: true, watercolor: true, pixel: true, line: true, sticker: true }
 const MEMORY_MAX = 400
 const MEMORY_LINE = 400
 
@@ -244,6 +247,7 @@ export default class NanomuseRooms extends Service {
   private catalogAt = 0
   private busy = { feed: false, ideas: false }
   private ready = false
+  private studio = { description: '', style: 'muse', at: 0 }
   private writing: Promise<void> = Promise.resolve()
   private timer: NodeJS.Timeout | undefined
 
@@ -276,7 +280,7 @@ export default class NanomuseRooms extends Service {
   // ---- the view --------------------------------------------------------------------
 
   view(): RoomsView {
-    return { ...this.store, busy: { ...this.busy }, automations: this.automations, ready: this.ready }
+    return { ...this.store, busy: { ...this.busy }, automations: this.automations, ready: this.ready, studio: this.studio }
   }
 
   /** The person's language for what the agent writes here (`zh-CN`, `en`, …). */
@@ -287,6 +291,12 @@ export default class NanomuseRooms extends Service {
   /** The goals, for the agent's prompt context. */
   get goals(): readonly Goal[] {
     return this.store.goals
+  }
+
+  /** The agent asks the window to open the avatar studio with these words (the person draws from there). */
+  requestStudio(description: string, style: string): void {
+    this.studio = { description: description.replace(/\s+/g, ' ').trim().slice(0, 200), style: style in STUDIO_STYLES ? style : 'muse', at: Date.now() }
+    this.broadcast()
   }
 
   /** What the agent remembers about the person, newest last; for the prompt context and the Memory tab. */
