@@ -33,7 +33,7 @@ export function TabHeader({
   const waiting = state.pendingApprovals.length;
   const statusLine =
     waiting > 0 ? (waiting > 1 ? t("{n} approvals waiting for you", { n: waiting }) : t("1 approval waiting for you"))
-    : state.status.state === "working" ? state.status.detail || t("Thinking…")
+    : state.status.state === "working" ? state.status.detail || t("On it")
     : state.status.state === "waiting" ? t("Waiting for you")
     : null;
 

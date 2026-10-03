@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map // nanoMuse
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -575,6 +576,40 @@ fun ChatScreen(
     val nmHeaderModelShown by io.github.nanomuse.ui.chat.rememberHeaderModelShown()
     val nmHideModelRows = nmHome != null && nmHome.isMainChat && !nmHeaderModelShown
     val nmAvatarSize by io.github.nanomuse.ui.avatar.rememberAvatarSize() // nanoMuse: Settings → Appearance → Avatar size
+    // nanoMuse: the agent's steps (tool pills, reasoning, the bar over the
+    // composer) are a Setting (Appearance → Conversation), off by default;
+    // the status line under the face carries what it is doing instead.
+    val nmShowSteps by io.github.nanomuse.ui.chat.rememberShowSteps()
+    // nanoMuse: for that status line — true while the reply's own words are
+    // arriving; mapped and de-duplicated here so the per-token stream never
+    // recomposes the screen for it.
+    val nmReplying by remember(viewModel) {
+        viewModel.streamingById.map { stream ->
+            stream.values.any { d -> !d.isAwaitingModelResponse && d.toolBlocks.lastOrNull()?.let { it.kind == "text" && it.content.isNotEmpty() } == true }
+        }.distinctUntilChanged()
+    }.collectAsState(initial = false)
+    // nanoMuse: …and the request it is on, for the moments between steps.
+    val nmRequestBrief = remember(messages) {
+        io.github.nanomuse.ui.header.requestBrief(messages.lastOrNull { it.role == "user" }?.content)
+    }
+    // nanoMuse: after the first task this phone saw through to a reply, one card under it
+    // asking for a star (StarPrompt: once, and never again after the person went).
+    var nmStarNudge by remember { mutableStateOf(false) }
+    var nmSawRun by remember { mutableStateOf(false) }
+    LaunchedEffect(isStreaming) {
+        if (isStreaming) { nmSawRun = true; return@LaunchedEffect }
+        if (!nmSawRun || nmStarNudge) return@LaunchedEffect
+        val moment = io.github.nanomuse.community.StarPrompt.Moment.FIRST_TASK
+        if (!io.github.nanomuse.community.StarPrompt.due(context, moment)) return@LaunchedEffect
+        kotlinx.coroutines.delay(400) // the turn's last words land in the list a beat after the stream ends
+        val last = viewModel.uiMessages.value.lastOrNull() ?: return@LaunchedEffect
+        val replied = last.role == "assistant" && last.error.isNullOrBlank() &&
+            (last.content.isNotBlank() || last.toolBlocks.any { it.kind == "text" && it.content.isNotBlank() })
+        if (replied) {
+            io.github.nanomuse.community.StarPrompt.markShown(context, moment)
+            nmStarNudge = true
+        }
+    }
     // [T-android-compact-progress] null when no compaction is running.
     val compactProgress by viewModel.compactProgress.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -2646,7 +2681,7 @@ fun ChatScreen(
                             // nanoMuse: while the agent works or waits, the
                             // status line says what it is doing (Muse's
                             // "Generating options" / "正在等待批准").
-                            val nmStatusLine = io.github.nanomuse.ui.header.rememberNanoMuseStatusLine(isStreaming, nmMood)
+                            val nmStatusLine = io.github.nanomuse.ui.header.rememberNanoMuseStatusLine(isStreaming, nmMood, replying = nmReplying, request = nmRequestBrief)
                             // nanoMuse: no name pill on side chats — their
                             // title took the slot above.
                             if (nmMainChat) {
@@ -3399,7 +3434,20 @@ fun ChatScreen(
                 // view; we mirror that semantically by checking the same
                 // filter on both sources.
                 val streamingById by viewModel.streamingById.collectAsState()
-                val hasFloatingTools = remember(messages, streamingById) {
+                // nanoMuse (issue #67): the bar is for the run under way. It
+                // used to stay as long as the chat had any step in it — a
+                // finished step hung over the composer for good. Now it is
+                // up while the turn streams and for a moment after, so the
+                // last step is seen through to Done, and only when the steps
+                // are shown at all (Settings → Appearance → Conversation).
+                // The reserve below and the mount further down read this
+                // same predicate, so they flip together.
+                var nmBarLingers by remember { mutableStateOf(false) }
+                LaunchedEffect(isStreaming) {
+                    if (isStreaming) nmBarLingers = true
+                    else if (nmBarLingers) { kotlinx.coroutines.delay(1_500); nmBarLingers = false }
+                }
+                val nmAnyToolStep = remember(messages, streamingById) {
                     val merged = if (streamingById.isEmpty()) messages
                                  else mergeStreamingOverlay(messages, streamingById)
                     merged.any { msg ->
@@ -3408,6 +3456,7 @@ fun ChatScreen(
                         }
                     }
                 }
+                val hasFloatingTools = nmShowSteps && (isStreaming || nmBarLingers) && nmAnyToolStep
                 val visualOverlayHeight = 65.dp  // thumbnailHeight in FloatingToolStatusBar
                 // Halve the breathing room above the input bar in both
                 // states — felt too sparse before. The thumbnail's 65dp
@@ -3510,7 +3559,9 @@ fun ChatScreen(
                 // scope. The flatten still runs per token (cheap-ish; ran
                 // before too), but the rebuild stays off the main UI
                 // composable's invalidation list.
-                LaunchedEffect(messages, sessionId) {
+                // nanoMuse: keyed on the steps switch too — flipping it in
+                // Settings rebuilds the rows with or without the steps.
+                LaunchedEffect(messages, sessionId, nmShowSteps) {
                     // [T-android-stream-pipeline-incremental] Frozen/live split.
                     //
                     // `messages` is CONSTANT within this effect (the effect is
@@ -3598,7 +3649,7 @@ fun ChatScreen(
                                     // threw ConcurrentModificationException from
                                     // a later frame's SubList.equals. Copying
                                     // severs the view so it can't comodify.
-                                    buildFlatChatItems(msgs.take(splitIdx), sessionId)
+                                    buildFlatChatItems(msgs.take(splitIdx), sessionId, showSteps = nmShowSteps) // nanoMuse
                                 }
                                 val buildMs = (System.nanoTime() - tBuildStart) / 1_000_000
                                 frozenRows = rows
@@ -3674,7 +3725,7 @@ fun ChatScreen(
                             } else {
                                 withContext(Dispatchers.Default) {
                                     val merged = mergeStreamingOverlay(msgs, stream)
-                                    buildFlatChatItems(merged, null, fromIndex = splitIdx, seedKeys = frozenKeys)
+                                    buildFlatChatItems(merged, null, fromIndex = splitIdx, seedKeys = frozenKeys, showSteps = nmShowSteps) // nanoMuse
                                 }
                             }
                             flatItems = if (liveRows.isEmpty()) frozenRows else frozenRows + liveRows
@@ -4067,6 +4118,17 @@ fun ChatScreen(
                                     tracedScrollToItem("RESUME-BANNER/settle", 0, 0)
                                 }
                             })
+                        }
+                    }
+                    // nanoMuse: the ask for a star under the first finished task
+                    // (reverseLayout: declared first, drawn at the bottom).
+                    if (nmStarNudge && !isStreaming) {
+                        item(key = "__star_nudge__", contentType = "star_nudge") {
+                            io.github.nanomuse.community.StarNudgeCard(
+                                text = stringResource(R.string.nm_star_first_task),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                onDone = { nmStarNudge = false },
+                            )
                         }
                     }
                     items(
@@ -4613,7 +4675,12 @@ fun ChatScreen(
                     }.collect { lastToolBlocks = it }
                 }
                 val allToolBlocks = lastToolBlocks
-                if (lastToolBlocks.isNotEmpty()) {
+                // nanoMuse (issue #67): mounted on the same predicate as the
+                // bottom reserve (`hasFloatingTools`, above) — while the run
+                // is under way and a moment after, steps shown — never for
+                // a step that finished long ago.
+                val nmToolBarShown = hasFloatingTools && lastToolBlocks.isNotEmpty()
+                if (nmToolBarShown) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -4679,7 +4746,7 @@ fun ChatScreen(
                 val upFabVisible = messages.isNotEmpty() && !isNearBottom.value
                 val downFabVisible =
                     userScrolledAway && contentOverflows.value && messages.isNotEmpty()
-                val fabBaseDp = if (lastToolBlocks.isNotEmpty()) 80.dp else 8.dp
+                val fabBaseDp = if (nmToolBarShown) 80.dp else 8.dp // nanoMuse: follows the bar
                 val fabStackTopDp = when {
                     upFabVisible -> fabBaseDp + 46.dp + 36.dp
                     downFabVisible -> fabBaseDp + 36.dp
@@ -4760,7 +4827,7 @@ fun ChatScreen(
                 // spacing). Tapping walks BACK one user turn at a time rather
                 // than jumping to the oldest message.
                 if (messages.isNotEmpty() && !isNearBottom.value) {
-                    val upBaseBottom = if (lastToolBlocks.isNotEmpty()) 80.dp else 8.dp
+                    val upBaseBottom = if (nmToolBarShown) 80.dp else 8.dp // nanoMuse: follows the bar
                     androidx.compose.material3.FilledIconButton(
                         onClick = {
                             // [T-android-updown-fab-asymmetry] Arm the same flag a
@@ -4802,7 +4869,7 @@ fun ChatScreen(
                 }
 
                 if (userScrolledAway && contentOverflows.value && messages.isNotEmpty()) {
-                    val fabBottomPadding = if (lastToolBlocks.isNotEmpty()) 80.dp else 8.dp
+                    val fabBottomPadding = if (nmToolBarShown) 80.dp else 8.dp // nanoMuse: follows the bar
                     androidx.compose.material3.FilledIconButton(
                         onClick = {
                             // [T-android-scroll-fab-down-stuck] Clear the

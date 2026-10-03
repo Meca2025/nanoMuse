@@ -967,6 +967,16 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     async def cloud_status() -> dict[str, Any]:
         return svc.hub.account_view()
 
+    @app.get("/api/cloud/config", dependencies=dep)
+    async def cloud_config() -> dict[str, Any]:
+        """The relay's public figures — the allowance a new account gets, the invite bonus,
+        whether sign-up is open, the repository to star — so the app prints the relay's
+        numbers, not its own (relay 0.15). An older relay or no relay: ``{}``."""
+        try:
+            return await svc.hub.cloud.config()
+        except CloudError:
+            return {}
+
     @app.post("/api/cloud/code", dependencies=dep)
     async def cloud_code(body: CloudCodeBody) -> dict[str, Any]:
         try:

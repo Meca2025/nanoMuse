@@ -419,7 +419,7 @@ class WebUI:
         elif result.ok and call.name in ("remember", "forget"):
             self.bus.publish({"kind": "memory"})
         if call.name != "terminate":
-            self.set_status("working", "Thinking…", thread)
+            self.set_status("working", "", thread)
 
     def _announce_new_files(self, thread: str, call: ToolCall) -> None:
         """Every file a tool created or changed in the workspace becomes an artifact card:
@@ -494,7 +494,7 @@ class WebUI:
             self.patch(thread, ev["id"], status="expired")
         finally:
             self.pending_approvals.pop(approval_id, None)
-        self.set_status("working", "Thinking…", thread)
+        self.set_status("working", "", thread)
         return decision
 
     def resolve_approval(
@@ -533,7 +533,7 @@ class WebUI:
             self.pending_questions.pop(thread, None)
         if answer:
             self.patch(thread, ev["id"], status="answered", answer=answer)
-        self.set_status("working", "Thinking…", thread)
+        self.set_status("working", "", thread)
         return answer
 
     def answer_question(self, thread: str, text: str) -> bool:

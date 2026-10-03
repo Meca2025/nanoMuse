@@ -11,7 +11,18 @@
     <!-- 聊天頁頭部 -->
     <string name="nm_avatar_content_description">你的助理。點一下可以改名字、圖示和風格。</string>
     <string name="nm_status_waiting">等你確認</string>
-    <string name="nm_status_thinking">思考中…</string>
+    <string name="nm_status_replying">正在回覆</string>
+    <string name="nm_status_on">正在處理：%1$s</string>
+    <string name="nm_status_working">正在處理</string>
+    <string name="nm_home_not_ready">稍等，聊天還在載入。</string>
+
+    <!-- 求個 Star：首次登入、第一個任務完成、額度用完時 -->
+    <string name="nm_star_title">去 GitHub 給 nanoMuse 點個 Star</string>
+    <string name="nm_star_action">去點 Star</string>
+    <string name="nm_star_later">以後再說</string>
+    <string name="nm_star_signed_in">你剛領到的免費額度是開發者自掏腰包，這個專案靠的只是大家的喜歡。一個 Star 是最簡單的支持：讓更多人看到它，也讓它一直免費下去。</string>
+    <string name="nm_star_first_task">第一個任務完成了。如果覺得有用，去 GitHub 點個 Star——十秒鐘的事，能讓下一個人也找到 nanoMuse。</string>
+    <string name="nm_star_exhausted">如果 nanoMuse 配得上，給它一個 Star：額度是開發者自掏腰包，被更多人看到，才會有更多人來幫忙。</string>
     <string name="nm_chat_menu_rename">重新命名對話</string>
 
     <!-- 前景服務通知標題（沒有工具在跑時） -->
@@ -337,6 +348,9 @@
     <string name="nm_appearance_section_home">首頁</string>
     <string name="nm_appearance_header_model_title">在名字下方顯示模型</string>
     <string name="nm_appearance_header_model_footer">Muse 只顯示名字。開啟後名字下方會顯示模型群組和服務商 · 模型，點它可以切換。關閉時模型在 ••• → 模型和設定裡。</string>
+    <string name="nm_appearance_section_chat">對話</string>
+    <string name="nm_appearance_steps_title">顯示執行步驟</string>
+    <string name="nm_appearance_steps_footer">關閉時，聊天裡只保留回覆，頭像下面那一行說明它正在做什麼。開啟後每一步都會出現在聊天裡——用到的每個工具、它的推理，以及輸入框上方一條可以打開步驟詳情的狀態列。</string>
     <string name="nm_chat_menu_model">模型</string>
     <string name="nm_model_switched">這個對話已換成 %1$s</string>
     <string name="nm_model_switched_sticky">已換成 %1$s，新對話也用它</string>
@@ -619,8 +633,8 @@
     <string name="nm_cloud_err_bad_key">伺服器已不認識這台手機，請重新登入。</string>
     <string name="nm_cloud_err_out_of_tokens">額度用完了。</string>
     <string name="nm_cloud_err_daily_cap">今天的 token 配額用完了，明天恢復。</string>
-    <string name="nm_cloud_err_allowance">免費額度已用完。邀請一位新用戶（你和對方各 +¥5），或在 設定 → 服務商 裡新增自己的 key。</string>
-    <string name="nm_cloud_warn_line">免費額度快用完了：還剩 ¥%1$s（共 ¥%2$s）。邀請一位新用戶（你和對方各 +¥5），或換成自己的 key——都在「帳號」裡。</string>
+    <string name="nm_cloud_err_allowance">免費額度已用完。邀請一位新用戶（你和對方各 +¥%1$s），或在 設定 → 服務商 裡新增自己的 key。</string>
+    <string name="nm_cloud_warn_line">免費額度快用完了：還剩 ¥%1$s（共 ¥%2$s）。邀請一位新用戶（你和對方各 +¥%3$s），或換成自己的 key——都在「帳號」裡。</string>
     <string name="nm_cloud_err_rate_limited">請求太快了，稍等一下。</string>
     <string name="nm_cloud_err_unreachable">連不上 nanoMuse 雲，請檢查網路。</string>
     <string name="nm_cloud_err_generic">出了點問題。</string>
@@ -655,7 +669,7 @@
     <string name="nm_face_cost_what_clips">換一個形象要畫 %1$d 張圖和 %2$d 段短影片</string>
     <string name="nm_face_cost_about">%1$s，大約用掉 ¥%2$s 額度。</string>
     <string name="nm_face_cost_left">額度還剩 ¥%1$s。</string>
-    <string name="nm_face_cost_short">剩餘額度不夠這一次了。邀請一位新用戶（你和對方各 +¥5），或在 設定 → 服務商 裡新增自己的 key。</string>
+    <string name="nm_face_cost_short">剩餘額度不夠這一次了。邀請一位新用戶（你和對方各 +¥%1$s），或在 設定 → 服務商 裡新增自己的 key。</string>
     <string name="nm_face_cost_unknown">%1$s。暫時查不到今天的額度。</string>
     <string name="nm_face_cost_go">開始畫</string>
     <string name="nm_face_cost_anyway">仍然試試</string>

@@ -12,6 +12,8 @@ export interface Prefs {
   showHarness: boolean
   /** Keep the display awake while a turn runs (through the Electron bridge). */
   keepAwake: boolean
+  /** Show the agent's steps (tool rows) in the chat; off, the chat keeps to the conversation and the words under the face say what it is on. */
+  showSteps: boolean
   /** Answers given on approval cards, newest first — the drawer's Approvals tab. */
   approvals: ApprovalRecord[]
 }
@@ -24,7 +26,7 @@ export interface ApprovalRecord {
 }
 
 const KEY = 'nanomuse.prefs'
-const DEFAULTS: Prefs = { showHarness: false, keepAwake: true, approvals: [] }
+const DEFAULTS: Prefs = { showHarness: false, keepAwake: true, showSteps: false, approvals: [] }
 const MAX_APPROVALS = 50
 
 let current: Prefs = read()
@@ -38,6 +40,7 @@ function read(): Prefs {
     return {
       showHarness: parsed.showHarness === true,
       keepAwake: parsed.keepAwake !== false,
+      showSteps: parsed.showSteps === true,
       approvals: Array.isArray(parsed.approvals) ? parsed.approvals.slice(0, MAX_APPROVALS) : [],
     }
   } catch {

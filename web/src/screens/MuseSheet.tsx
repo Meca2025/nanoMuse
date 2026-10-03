@@ -75,7 +75,7 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
   const working = state.status.state === "working";
   const statusLine =
     pending > 0 ? (pending > 1 ? t("{n} approvals waiting for you", { n: pending }) : t("1 approval waiting for you"))
-    : working ? state.status.detail || t("Thinking…")
+    : working ? state.status.detail || t("On it")
     : state.status.state === "waiting" ? t("Waiting for you")
     : t("online");
   const stop = async () => {

@@ -115,8 +115,8 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 | | `cloud.nanomuse.cn` |
 |---|---|
 | sign-up | open to anyone with a mainland China mobile number or an e-mail address |
-| free allowance | **¥10 per account**, across chat, pictures and clips; it does not reset |
-| invitations | each *new* person who signs up with your code adds **¥5** to your pool — and ¥5 to theirs |
+| free allowance | **¥10 per account** at the time of writing, across chat, pictures and clips; it does not reset. The figure is the relay's to set (it can go up without an app update — the apps print what the relay says, `/v1/config`), and the account page always shows the current one |
+| invitations | each *new* person who signs up with your code adds **¥5** (again, the relay's figure) to your pool — and the same to theirs |
 | when it is gone | bring your own key — [Alibaba Cloud Bailian in about two minutes](own-key.md), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
 | members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips): the apps' model picker lists them after the menu as *More models on your account* (relay 0.10 reads the provider's list under the Cloud key), and an id can still be typed — *Other model…* |
 | rate | 30 requests per minute |
@@ -135,10 +135,18 @@ shows the estimate and what is left before it draws.
 is left, and how the pool grows. At 80 % the app says so once; when the pool
 is spent the relay refuses with `allowance_exhausted` and the app shows the
 two ways on: your own key (Alibaba Cloud Bailian first — the provider form
-opens pre-filled, [guide](own-key.md)) or an invitation (+¥5 for each of you).
-Other relays may set other rules (`ALLOWANCE_CNY`, `INVITE_BONUS_CNY`,
-`SIGNUP_OPEN`, `ALLOWED_IDENTIFIERS`; see
+opens pre-filled, [guide](own-key.md)) or an invitation (+¥5 for each of you,
+or whatever the relay says that day). Other relays may set other rules
+(`ALLOWANCE_CNY`, `INVITE_BONUS_CNY`, `SIGNUP_OPEN`, `ALLOWED_IDENTIFIERS` —
+all three figures adjustable while the relay runs, relay 0.15; see
 [`cloud/README.md`](../cloud/README.md)).
+
+nanoMuse asks for one thing in return, and only at three moments — when the
+allowance is claimed, after the first task it finishes for you, and when the
+pool is spent: a star on
+[GitHub](https://github.com/nano-muse/nanoMuse), which is what helps the
+project be found. Each ask is a card where it happens, shown once, and none
+comes back after you have been to the page.
 
 ## Running your own
 

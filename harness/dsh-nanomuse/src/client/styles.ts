@@ -29,10 +29,13 @@ export function setAccent(color: string | undefined): void {
 }
 
 /** Whether the harness's own controls show (`false`: the Muse composer and column). */
-export function setMuseMode(on: boolean, placeholder?: string): void {
+export function setMuseMode(on: boolean, placeholder?: string, steps = false): void {
   const root = document.documentElement
   if (on) root.setAttribute('data-nm-muse', '')
   else root.removeAttribute('data-nm-muse')
+  // "Show the agent's steps": the tool rows come back into the Muse chat
+  if (steps) root.setAttribute('data-nm-steps', '')
+  else root.removeAttribute('data-nm-steps')
   if (placeholder !== undefined) root.style.setProperty('--nm-placeholder', JSON.stringify(placeholder))
 }
 
@@ -245,8 +248,10 @@ html[data-nm-muse] [data-turn-process-member]:not([data-chat-flow-kind="assistan
 html[data-nm-muse] [data-chat-flow-kind="assistant-step"][hidden] { display: block !important; content-visibility: visible !important; }
 /* the rooms' trigger rows and the agent's tool rows stay out of the chat (the Activity tab has them); approvals, presented files and open questions stay */
 html[data-nm-muse] [data-chat-flow-kind="turn-trigger"] { display: none !important; }
-html[data-nm-muse] [data-chat-flow-kind="tool-call"]:not(:has([data-approval-key], [data-tool="present"], [data-tool="ask_user_question"]:not([data-state="error"]))) { display: none !important; }
+html[data-nm-muse]:not([data-nm-steps]) [data-chat-flow-kind="tool-call"]:not(:has([data-approval-key], [data-tool="present"], [data-tool="ask_user_question"]:not([data-state="error"]))) { display: none !important; }
 html[data-nm-muse] [data-chat-flow-kind="tool-call"][hidden]:has([data-approval-key], [data-tool="present"], [data-tool="ask_user_question"]:not([data-state="error"])) { display: block !important; content-visibility: visible !important; }
+/* with "Show the agent's steps" on, every tool row is unfolded from the accordion */
+html[data-nm-muse][data-nm-steps] [data-chat-flow-kind="tool-call"][hidden] { display: block !important; content-visibility: visible !important; }
 /* while the agent thinks: three dots in a grey bubble, not the whale */
 html[data-nm-muse] [data-chat-running] { display: flex !important; align-items: center; width: fit-content; min-height: 36px; margin: 6px 0; padding: 0 16px; border-radius: 18px; background: var(--nm-agent-bubble); }
 html[data-nm-muse] [data-chat-running] > [class*="_runningDivider"], html[data-nm-muse] [data-chat-running] > [class*="_runningContent"] { display: none !important; }

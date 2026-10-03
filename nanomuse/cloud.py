@@ -32,7 +32,7 @@ MESSAGES = {
     "account_disabled": "This account is disabled.",
     "model_not_offered": "That model is not offered here.",
     "rate_limited": "Too many requests; slow down a little.",
-    "allowance_exhausted": "The free allowance is used up. Invite a friend (+¥5 for each of you) or add your own model key — your sign-in and your devices keep working either way.",
+    "allowance_exhausted": "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key — your sign-in and your devices keep working either way.",
     "daily_cap": "Today's token quota is used up; it comes back tomorrow.",
     "upstream": "The model provider did not answer.",
     "upstream_unconfigured": "nanoMuse Cloud has no model key configured.",
@@ -167,6 +167,12 @@ class CloudClient:
 
     async def me(self) -> dict[str, Any]:
         return await self._request("GET", "/v1/me")
+
+    async def config(self) -> dict[str, Any]:
+        """The relay's public figures (relay 0.15, ``GET /v1/config``): the allowance a new
+        account gets, the invite bonus, whether sign-up is open, the links. No key needed;
+        an older relay answers 404, which comes back as a :class:`CloudError`."""
+        return await self._request("GET", "/v1/config", token="")
 
     async def profile(self, with_face: bool = True) -> dict[str, Any]:
         """The agent's name and look as the account's devices share it (``rev`` 0 = none yet);

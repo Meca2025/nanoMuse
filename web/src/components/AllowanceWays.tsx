@@ -1,10 +1,11 @@
-import { Copy, ExternalLink, KeyRound, Share2, Sparkles, Users, X } from "lucide-react";
+import { Copy, ExternalLink, KeyRound, Share2, Sparkles, Star, Users, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import { cx } from "../util";
 import { primaryBtn, secondaryBtn } from "./Form";
+import { openStar, starred, useCloudConfig } from "./StarNudge";
 
 /**
  * What the relay says beside a `429 allowance_exhausted` (and what `/v1/me.spend` carries):
@@ -92,6 +93,7 @@ export function AllowanceWays({
     }
     await copy(text);
   };
+  const cfg = useCloudConfig();
   const lead = exhausted
     ? t("The free allowance is used up.")
     : t("Nearly used up: ¥{left} of ¥{grant} left.", { left: (info.left ?? 0).toFixed(2), grant: (info.grant ?? 0).toFixed(0) });
@@ -134,6 +136,13 @@ export function AllowanceWays({
         )}
       </Way>
 
+      {exhausted && !starred() && (
+        <Way icon={<Star size={16} />} tone="bg-amber-400/15 text-amber-600 dark:text-amber-300" title={t("A star, if nanoMuse has earned it: the allowance is the developer's own money, and being seen is what brings the project more hands.")}>
+          <button type="button" onClick={() => openStar(cfg.repo_url)} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
+            <Star size={14} /> {t("Star on GitHub")}
+          </button>
+        </Way>
+      )}
     </div>
   );
 }

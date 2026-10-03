@@ -105,6 +105,27 @@ internal fun toolTitleLabel(toolName: String): String = when (toolName) {
     else -> "nanoMuse is using ${toolDisplayName(toolName)}"
 }
 
+// nanoMuse: the same label once the step is over (issue #67 — the sheet's bottom bar
+// kept saying "is using" for a step that had finished long ago). Present tense while it
+// runs; what happened afterwards.
+internal fun toolTitleLabel(toolName: String, status: ToolBlockStatus?): String = when (status) {
+    null, ToolBlockStatus.RUNNING, ToolBlockStatus.STREAMING, ToolBlockStatus.PENDING -> toolTitleLabel(toolName)
+    ToolBlockStatus.SUCCESS -> when (toolName) {
+        "shell_execute" -> "nanoMuse used Shell"
+        "file_read" -> "nanoMuse read File"
+        "file_write" -> "nanoMuse used Editor"
+        "file_edit" -> "nanoMuse edited File"
+        "browser_use" -> "nanoMuse used Browser"
+        "read_image" -> "nanoMuse read Image"
+        "memory_write", "memory_get" -> "nanoMuse used Memory"
+        "web_search" -> "nanoMuse used Search"
+        else -> "nanoMuse used ${toolDisplayName(toolName)}"
+    }
+    ToolBlockStatus.FAILED -> "${toolDisplayName(toolName).replaceFirstChar { it.uppercase() }} failed"
+    ToolBlockStatus.CANCELLED -> "${toolDisplayName(toolName).replaceFirstChar { it.uppercase() }} stopped"
+    ToolBlockStatus.TIMEOUT -> "${toolDisplayName(toolName).replaceFirstChar { it.uppercase() }} timed out"
+}
+
 // Helper: format duration (iOS: < 1s → "0.1s", < 60s → "45s", >= 60s → "2m 10s")
 internal fun formatToolDuration(ms: Long): String {
     val seconds = ms / 1000.0

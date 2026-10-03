@@ -10,9 +10,9 @@ import { createElement as h, Fragment, useCallback, useEffect, useState, type Re
 import type { Translate } from './api.ts'
 import { acceleratorOf, bridge, gatedPermissions, keyLabel, openLink, type DesktopPrefs, type PermissionKind, type PermissionState } from './bridge.ts'
 import { settingsBus } from './bus.ts'
-import { IconBug, IconCheck, IconChevronRight, IconFile, IconLink, IconPlay, IconScale, IconShield } from './icons.tsx'
+import { IconBug, IconCheck, IconChevronRight, IconFile, IconHeart, IconLink, IconList, IconPlay, IconScale, IconShield } from './icons.tsx'
 import { useLive } from './live.ts'
-import { ISSUES_URL } from './panels.ts'
+import { ISSUES_URL, REPO_URL } from './panels.ts'
 import { setPrefs, usePrefs } from './prefs.ts'
 
 const SITE_URL = 'https://nanomuse.cn/'
@@ -88,6 +88,7 @@ export function makeHelpSection(t: Translate, version: string) {
   return function HelpSection(): ReactNode {
     return h('div', { className: 'nm-section' },
       h('div', { className: 'nm-card' },
+        h(LinkRow, { icon: h(IconHeart, { size: 18 }), title: t('helpStar'), sub: t('helpStarSub'), onClick: () => openLink(REPO_URL) }),
         h(LinkRow, { icon: h(IconFile, { size: 18 }), title: t('helpDocs'), onClick: () => openLink(DOCS_URL) }),
         h(LinkRow, { icon: h(IconLink, { size: 18 }), title: t('helpSite'), sub: 'nanomuse.cn', onClick: () => openLink(SITE_URL) }),
         h(LinkRow, { icon: h(IconLink, { size: 18 }), title: t('helpDiscuss'), onClick: () => openLink(DISCUSS_URL) }),
@@ -123,6 +124,21 @@ export function makeLegalSection(t: Translate) {
         h(LinkRow, { icon: h(IconFile, { size: 18 }), title: t('legalTerms'), onClick: () => openLink(TERMS_URL) }),
         h(LinkRow, { icon: h(IconScale, { size: 18 }), title: 'GPL-3.0-or-later', onClick: () => openLink(LICENSE_URL) })))
   }
+}
+
+/** The Conversation rows in General: the agent's steps in the chat, on request (off, the
+ * chat keeps to the conversation and the line under the avatar says what it is on). */
+export function ConversationRows({ t }: { t: Translate }): ReactNode {
+  const prefs = usePrefs()
+  return h(Fragment, null,
+    h('h2', null, t('gnConversation')),
+    h('div', { className: 'nm-card' },
+      h('div', { className: 'nm-row' },
+        h('span', { className: 'nm-row-icon' }, h(IconList, { size: 18 })),
+        h('div', { className: 'nm-row-main' },
+          h('span', { className: 'nm-row-title' }, t('gnShowSteps')),
+          h('span', { className: 'nm-row-sub nm-wrap' }, t('gnShowStepsSub'))),
+        h(Switch, { checked: prefs.showSteps, label: t('gnShowSteps'), onChange: (next) => setPrefs({ showSteps: next }) }))))
 }
 
 /** The Developer rows at the end of General: the harness's own controls, on request. */

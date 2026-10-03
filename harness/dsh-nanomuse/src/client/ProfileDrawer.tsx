@@ -116,12 +116,13 @@ function Drawer({ t, stop, openSchedules, useSessions, useSessionStatus }: Profi
     detail ? h(TaskDetail, { t, sessionId: detail, useSessions, onClose: () => setDetail(null) }) : null)
 }
 
-/** The words under the face for a running task: the step under way, else "working". */
+/** The words under the face for a running task: the step under way, else the job itself
+ * ("On it: book the table"), never a state of mind. */
 export function statusWords(t: Translate, record: ActivityRecord): string {
   if (record.status === 'waiting') return t('statusWaiting')
   const name = record.current?.name ?? ''
   const base = name.replace(/^mcp__[^_]+(?:_[^_]+)*?__/, '')
-  if (!name) return record.steps.length <= 1 ? t('statusPlanning') : t('statusWorking')
+  if (!name) return onIt(t, record)
   if (/screen|look|see|observe/i.test(base)) return t('statusLooking')
   if (/computer|act|click|type|key|mouse|press|open_app/i.test(base)) return t('statusComputer')
   if (/web_search|search/i.test(base)) return t('statusSearching')
@@ -132,6 +133,21 @@ export function statusWords(t: Translate, record: ActivityRecord): string {
   if (/draw|image|studio/i.test(base)) return t('statusDrawing')
   if (/schedule|remind/i.test(base)) return t('statusScheduling')
   return t('statusWorking')
+}
+
+/** "On it: <the request, briefly>" — its first line, folded, cut at a word; "Hard at work" without one. */
+export function onIt(t: Translate, record: Pick<ActivityRecord, 'request'>): string {
+  const brief = requestBrief(record.request)
+  return brief ? t('statusOn', { request: brief }) : t('statusWorking')
+}
+
+export function requestBrief(text: string, max = 36): string {
+  const line = (text || '').split(/\r?\n/).map((l) => l.trim()).find((l) => l.length > 0) ?? ''
+  const folded = line.replace(/\s+/g, ' ')
+  if (folded.length <= max) return folded
+  const cut = folded.slice(0, max)
+  const at = cut.lastIndexOf(' ')
+  return `${(at > max / 2 ? cut.slice(0, at) : cut).trimEnd()}…`
 }
 
 function Activity({ t, name, stop, useSessions, open }: { t: Translate; name: string; stop(id: string): Promise<void>; useSessions: ProfileDrawerProps['useSessions']; open(id: string): void }): ReactNode {

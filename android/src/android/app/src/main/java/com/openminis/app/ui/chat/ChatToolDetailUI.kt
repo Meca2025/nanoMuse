@@ -291,12 +291,28 @@ internal fun ToolDetailSheet(
         block.toolStatus == ToolBlockStatus.PENDING
     val toolAccent = toolAccentColor(block.toolName)
 
+    // nanoMuse (issue #67): one way out for the ✕, the scrim and the back
+    // gesture — slide the sheet down, then tell the owner, and tell the owner
+    // anyway if the animation is cut short — so the sheet can never stay on
+    // screen with its close control dead.
+    val dismissScope = rememberCoroutineScope()
+    var dismissing by remember { mutableStateOf(false) }
+    val dismiss: () -> Unit = {
+        if (!dismissing) {
+            dismissing = true
+            dismissScope.launch { runCatching { sheetState.hide() } }.invokeOnCompletion { onDismiss() }
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         dragHandle = null,
         contentWindowInsets = { WindowInsets(0) },
     ) {
+        // nanoMuse (issue #67): inside the sheet's own window, so the back
+        // gesture reaches it — the one outside would never be asked.
+        androidx.activity.compose.BackHandler(onBack = dismiss)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -318,7 +334,7 @@ internal fun ToolDetailSheet(
                         .background(ChatColors.secondaryBg, CircleShape)
                         .border(0.5.dp, ChatColors.inputIconBorder, CircleShape)
                         .clip(CircleShape)
-                        .clickable { onDismiss() },
+                        .clickable(onClick = dismiss), // nanoMuse (issue #67)
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -1187,7 +1203,7 @@ internal fun ToolDetailSheet(
                     // Title + subtitle
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = toolTitleLabel(block.toolName),
+                            text = toolTitleLabel(block.toolName, block.toolStatus), // nanoMuse (issue #67): past tense once over
                             fontSize = 14.sp,
                             lineHeight = 16.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -1237,6 +1253,10 @@ internal fun ToolDetailSheet(
                 }
 
                 // Navigation row: |< ... 1/N ... >|
+                // nanoMuse (issue #67): the arrows only when there is
+                // somewhere to go — a single step showed "1 / 1" between
+                // two dead arrows.
+                val pager = toolBlocks.size > 1
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1245,7 +1265,7 @@ internal fun ToolDetailSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Back button (iOS: backward.end.fill)
-                    IconButton(
+                    if (pager) IconButton(
                         onClick = { if (currentIdx > 0) currentIdx-- },
                         enabled = currentIdx > 0,
                         modifier = Modifier.size(32.dp),
@@ -1280,7 +1300,12 @@ internal fun ToolDetailSheet(
                         }
                     } else {
                         Text(
-                            "${currentIdx + 1} / ${toolBlocks.size}",
+                            // nanoMuse (issue #67): one step says so; a count of one is not a position.
+                            if (pager) "${currentIdx + 1} / ${toolBlocks.size}" else when (block.toolStatus) {
+                                ToolBlockStatus.FAILED, ToolBlockStatus.TIMEOUT -> "Failed"
+                                ToolBlockStatus.CANCELLED -> "Stopped"
+                                else -> "Done"
+                            },
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = FontFamily.Monospace,
@@ -1291,7 +1316,7 @@ internal fun ToolDetailSheet(
                     Spacer(modifier = Modifier.weight(1f))
 
                     // Forward button (iOS: forward.end.fill)
-                    IconButton(
+                    if (pager) IconButton(
                         onClick = { if (currentIdx < toolBlocks.lastIndex) currentIdx++ },
                         enabled = currentIdx < toolBlocks.lastIndex,
                         modifier = Modifier.size(32.dp),

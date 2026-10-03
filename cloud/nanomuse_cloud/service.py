@@ -19,8 +19,10 @@ import secrets
 import sqlite3
 import time
 from contextlib import closing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from typing import Any
 
+from . import __version__
 from .client import client_version, platform_of
 from .config import ModelSpec, Settings
 from .crypto import IdentifierCrypto
@@ -298,10 +300,21 @@ CHAT_RESERVE_PROMPT_TOKENS = 6000
 CHAT_RESERVE_COMPLETION_TOKENS = 1500
 
 
+# What the operator may change from the page while the relay runs (0.15): the name, how a
+# value is read, its bounds. Anything else stays with the environment and a restart.
+RUNTIME_SETTINGS: dict[str, tuple[type, float, float]] = {
+    "allowance_cny": (float, 0.0, 1000.0),
+    "invite_bonus_cny": (float, 0.0, 100.0),
+    "signup_open": (bool, 0.0, 1.0),
+}
+
+
 class Cloud:
     def __init__(self, settings: Settings, db: Database | None = None, sender: CodeSender | None = None):
-        self.s = settings
+        self.env = settings  # what the environment said; `s` has the page's overrides on top
         self.db = db or Database(settings.database)
+        self.s = self._with_overrides(settings, self.db.settings_all())
+        settings = self.s
         self.in_flight = InFlight(settings.max_in_flight, ttl_s=settings.upstream_timeout_s + 120)
         self.sender = sender or make_sender(settings)
         self.crypto = IdentifierCrypto(settings.identifier_key)
@@ -332,6 +345,123 @@ class Cloud:
             n = self.db.seed_grants(settings.allowance_uy)
             if n:
                 log.warning("0.5: %d account(s) moved to the lifetime allowance (¥%.2f + what was spent)", n, settings.allowance_cny)
+        # 0.15: accounts from before the column remember the allowance of the day as theirs.
+        n = self.db.seed_allowances(settings.allowance_uy)
+        if n:
+            log.info("0.15: %d account(s) marked as given the ¥%.2f allowance", n, settings.allowance_cny)
+
+    # -- settings the operator changes while the relay runs (0.15) ------------------------------
+
+    @staticmethod
+    def _coerce_setting(key: str, value: Any) -> Any:
+        """One override, checked: the right type, within bounds. ValueError says what is wrong."""
+        kind, lo, hi = RUNTIME_SETTINGS[key]
+        if kind is bool:
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)) and value in (0, 1):
+                return bool(value)
+            if isinstance(value, str) and value.strip().lower() in ("0", "1", "true", "false", "yes", "no", "on", "off"):
+                return value.strip().lower() in ("1", "true", "yes", "on")
+            raise ValueError(f"{key} is true or false")
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"{key} is a number") from e
+        if number != number or not lo <= number <= hi:  # NaN, or out of bounds
+            raise ValueError(f"{key} is between {lo:g} and {hi:g}")
+        return round(number, 4)
+
+    @classmethod
+    def _with_overrides(cls, settings: Settings, overrides: dict[str, Any]) -> Settings:
+        """The environment's settings with the page's values on top — only the known keys,
+        only values that still make sense (a bad row is ignored, not fatal)."""
+        good: dict[str, Any] = {}
+        for key, value in overrides.items():
+            if key not in RUNTIME_SETTINGS:
+                continue
+            try:
+                good[key] = cls._coerce_setting(key, value)
+            except ValueError as e:
+                log.warning("settings: ignoring the stored %s: %s", key, e)
+        return replace(settings, **good) if good else settings
+
+    def runtime_settings(self) -> dict:
+        """For the page: each runtime setting with the value in force, what the environment
+        says, and whether the page set it — plus how many accounts a raise would reach."""
+        stored = self.db.settings_all()
+        out: dict[str, Any] = {"values": {}, "env": {}, "overridden": {}}
+        for key in RUNTIME_SETTINGS:
+            out["values"][key] = getattr(self.s, key)
+            out["env"][key] = getattr(self.env, key)
+            out["overridden"][key] = key in stored
+        out["below_allowance"] = self.db.below_allowance(self.s.allowance_uy, self.member_hashes) if self.s.allowance_cny > 0 else 0
+        return out
+
+    def admin_update_settings(self, body: dict) -> dict:
+        """The page saved: each known key is set (a value), or cleared back to the environment
+        (null). Takes effect at once — the next sign-up gets the new allowance, the next /v1/me
+        shows the new figures — and survives a restart. Nothing is taken from anyone: a lower
+        allowance only changes what new accounts get; a higher one reaches the existing
+        accounts when the operator asks (admin_apply_allowance)."""
+        changes: dict[str, Any] = {}
+        for key in RUNTIME_SETTINGS:
+            if key not in body:
+                continue
+            value = body[key]
+            if value is None or value == "":
+                changes[key] = None
+                continue
+            try:
+                changes[key] = self._coerce_setting(key, value)
+            except ValueError as e:
+                raise CloudError(400, "bad_request", str(e)) from e
+        if not changes:
+            raise CloudError(400, "bad_request", "Nothing to set: " + ", ".join(RUNTIME_SETTINGS))
+        for key, value in changes.items():
+            self.db.settings_put(key, value)
+        self.s = self._with_overrides(self.env, self.db.settings_all())
+        said = ", ".join(f"{k}={'env' if v is None else v}" for k, v in changes.items())
+        log.warning("settings changed from the page: %s", said)
+        self.db.add_event("", "settings.changed", said[:200])
+        return self.runtime_settings()
+
+    def admin_apply_allowance(self) -> dict:
+        """Bring the accounts that were given less than the current allowance up to it."""
+        if self.s.allowance_cny <= 0:
+            raise CloudError(400, "bad_request", "There is no allowance to apply (0 = no limit)")
+        n = self.db.raise_allowance(self.s.allowance_uy, self.member_hashes)
+        log.warning("allowance ¥%.2f applied to %d existing account(s)", self.s.allowance_cny, n)
+        self.db.add_event("", "allowance.applied", f"¥{self.s.allowance_cny:g} to {n}")
+        return {"accounts": n, "allowance_cny": self.s.allowance_cny}
+
+    def admin_credit_all(self, cny: float, note: str = "") -> dict:
+        """The same credit into every limited account's pool at once."""
+        if not 0 < cny <= 100:
+            raise CloudError(400, "bad_request", "A credit for everyone is between ¥0 and ¥100")
+        n = self.db.credit_all(self.s.cny_to_uy(cny), note=note, exclude_hashes=self.member_hashes)
+        log.warning("¥%.2f credited to %d account(s): %s", cny, n, note)
+        self.db.add_event("", "credit.all", f"¥{cny:g} to {n}: {note}"[:200])
+        return {"accounts": n, "cny": cny}
+
+    def public_config(self) -> dict:
+        """What a client may know before anyone signs in — the figures the sign-in pages and
+        the account screens print, so a change on the operator's page shows everywhere at
+        once and no app carries a number of its own. Nothing here is a secret."""
+        return {
+            "version": __version__,
+            "signup_open": self.s.signup_open,
+            "allowance_cny": self.s.allowance_cny,
+            "allowance_usd": self.s.cny_to_usd(self.s.allowance_cny),
+            "invite_bonus_cny": self.s.invite_bonus_cny,
+            "invitee_bonus_cny": self.s.invite_bonus_cny,
+            "usd_cny": self.s.usd_cny,
+            "invite_url": self.s.invite_url,
+            "own_key_docs": self.s.own_key_docs,
+            "privacy_url": self.s.privacy_url,
+            "repo_url": self.s.repo_url,
+            "improve_default": self.s.improve_default,
+        }
 
     # -- sign-up -------------------------------------------------------------------
 
@@ -1759,6 +1889,9 @@ class Cloud:
 
     def admin_settings(self) -> dict:
         return {
+            # 0.15: what the page may change, with the environment's figure beside each
+            "runtime": self.runtime_settings(),
+            "repo_url": self.s.repo_url,
             "unlimited": self.s.unlimited,
             "signup_tokens": self.s.signup_tokens,
             "daily_cap_tokens": self.s.daily_cap_tokens,

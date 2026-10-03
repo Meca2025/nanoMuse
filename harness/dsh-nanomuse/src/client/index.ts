@@ -151,7 +151,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ensureStyles(), 'nanomuse: stylesheet')
   // The Muse composer and column unless the Developer switch asks for the harness's own.
   ctx.effect(() => {
-    const apply = () => setMuseMode(!getPrefs().showHarness, t('cpPlaceholder'))
+    const apply = () => setMuseMode(!getPrefs().showHarness, t('cpPlaceholder'), getPrefs().showSteps)
     apply()
     return subscribePrefs(apply)
   }, 'nanomuse: muse mode')

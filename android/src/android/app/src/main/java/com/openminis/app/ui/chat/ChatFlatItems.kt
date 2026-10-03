@@ -555,6 +555,11 @@ internal fun buildFlatChatItems(
     // prefix so the defensive key-collision suffixing behaves exactly as a
     // single full build would.
     seedKeys: Set<String> = emptySet(),
+    // nanoMuse: false leaves the agent's steps out — no tool pills, no
+    // reasoning rows — so the chat keeps only what it said (Settings →
+    // Appearance → "Show the agent's steps", off by default). The typing
+    // indicator then stays up while a tool runs, since nothing else shows.
+    showSteps: Boolean = true,
 ): List<FlatChatItem> {
     val out = mutableListOf<FlatChatItem>()
     val usedKeys = if (seedKeys.isEmpty()) mutableSetOf() else seedKeys.toMutableSet()
@@ -641,9 +646,15 @@ internal fun buildFlatChatItems(
         // dividers, not as separate speaker turns. iOS achieves this by
         // reusing the existing ChatMessage in runAgentLoop(resumingAt:);
         // we reach the same end-result at the render layer.
+        // nanoMuse: with the steps hidden, a finished turn that was all
+        // steps — no words, no error — would be a face with nothing under
+        // it; leave the whole turn out (its steps are still in the history).
+        // The look-back below skips such turns too, so the reply that
+        // follows one keeps its header.
+        if (!showSteps && message.role != "system" && stepsOnlyTurn(message)) continue
         val prevNonSystem = (idx - 1 downTo 0).asSequence()
             .map { messages[it] }
-            .firstOrNull { it.role != "system" }
+            .firstOrNull { it.role != "system" && (showSteps || !stepsOnlyTurn(it)) }
         val isResumeContinuation = prevNonSystem?.role == "assistant"
         if (!isSystem && !isResumeContinuation) {
             out.add(dedupe(FlatChatItem.AssistantHeader(message.id)))
@@ -749,7 +760,7 @@ internal fun buildFlatChatItems(
                         }
                     }
                 }
-                "thinking" -> out.add(dedupe(FlatChatItem.AssistantThinking(
+                "thinking" -> if (showSteps) out.add(dedupe(FlatChatItem.AssistantThinking( // nanoMuse: a step
                     messageId = message.id,
                     block = block,
                     isLast = block.id == lastThinkingId,
@@ -766,7 +777,7 @@ internal fun buildFlatChatItems(
                 "nm_avatar_share" -> out.add(dedupe(FlatChatItem.NanoMuseAvatarShare(message.id, block.content))) // nanoMuse
                 "nm_avatar_confirm" -> out.add(dedupe(FlatChatItem.NanoMuseAvatarConfirm(message.id, block.content))) // nanoMuse
                 "nm_allowance" -> out.add(dedupe(FlatChatItem.NanoMuseAllowance(message.id))) // nanoMuse
-                else -> out.add(dedupe(FlatChatItem.AssistantToolUse(
+                else -> if (showSteps) out.add(dedupe(FlatChatItem.AssistantToolUse( // nanoMuse: a step
                     messageId = message.id,
                     block = block,
                     allToolBlocks = toolPillBlocks,
@@ -795,9 +806,10 @@ internal fun buildFlatChatItems(
         val hasVisibleContent = message.content.isNotEmpty() || blocks.any {
             when (it.kind) {
                 "info" -> false
-                "thinking" -> message.thinkingLevel?.isEnabled ?: true
+                "thinking" -> showSteps && (message.thinkingLevel?.isEnabled ?: true) // nanoMuse: hidden steps do not count
                 "text" -> it.content.isNotEmpty()
-                else -> true // tool_use pills render immediately
+                "tool_use" -> showSteps // pills render immediately — when the steps are shown (nanoMuse)
+                else -> true // the app's own cards
             }
         }
         if (message.isStreaming && (!hasVisibleContent || message.isAwaitingModelResponse)) {
@@ -821,3 +833,10 @@ internal fun buildFlatChatItems(
     }
     return out
 }
+
+/** nanoMuse: a finished assistant turn made of steps alone — nothing the chat would show with the steps hidden. */
+private fun stepsOnlyTurn(m: ChatMessage): Boolean =
+    m.role == "assistant" && !m.isStreaming && m.error == null && m.content.isEmpty() &&
+        m.toolBlocks.isNotEmpty() && m.toolBlocks.all {
+            it.kind == "tool_use" || it.kind == "thinking" || (it.kind == "text" && it.content.isEmpty())
+        }

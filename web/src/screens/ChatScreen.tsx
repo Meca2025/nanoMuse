@@ -14,6 +14,7 @@ import { useStore } from "../store";
 import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, UserEvent } from "../types";
 import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
+import { StarNudgeOnce } from "../components/StarNudge";
 
 export function ChatScreen() {
   const { state, send, decide, loadEvents, openFile, toast, setDrawer, setTab } = useStore();
@@ -35,6 +36,20 @@ export function ChatScreen() {
   const listRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const [showJump, setShowJump] = useState(false);
+
+  // The first task this browser saw through: busy → idle with a reply at the end of the list.
+  const [firstTaskDone, setFirstTaskDone] = useState(false);
+  const sawBusy = useRef(false);
+  useEffect(() => {
+    if (thread?.busy) {
+      sawBusy.current = true;
+      return;
+    }
+    if (!sawBusy.current) return;
+    sawBusy.current = false;
+    const last = [...events].reverse().find((e) => e.type === "assistant" || e.type === "user" || e.type === "notice");
+    if (last?.type === "assistant" && last.text) setFirstTaskDone(true);
+  }, [thread?.busy, events]);
 
   const onScroll = useCallback(() => {
     const el = listRef.current;
@@ -67,11 +82,14 @@ export function ChatScreen() {
       return waitingHere > 1 ? t("{n} approvals waiting for you", { n: waitingHere }) : t("1 approval waiting for you");
     }
     // Idle shows nothing under the name, as on the phone: the tag is just the name.
-    if (!here) return thread?.busy ? t("Thinking…") : undefined;
+    if (!here) return thread?.busy ? t("On it") : undefined;
     if (status.state === "idle" && !thread?.busy) return undefined;
     if (status.detail) return status.detail;
-    return status.state === "waiting" ? t("Waiting for you") : t("Thinking…");
-  }, [status, thread, activeThread, waitingHere, t]);
+    if (status.state === "waiting") return t("Waiting for you");
+    // Between steps the line names the job, not a state of mind: "On it: book the table".
+    const brief = requestBrief(events);
+    return brief ? t("On it: {request}", { request: brief }) : t("On it");
+  }, [status, thread, activeThread, waitingHere, events, t]);
 
   const pendingApprovals = events.filter((e) => e.type === "approval" && e.status === "pending").length;
   // files made in this chat: a reply that names one ("saved to `plan.md`") opens it on tap
@@ -155,6 +173,14 @@ export function ChatScreen() {
         )}
         {(thread?.busy || status.state !== "idle") && !stream?.text && status.state !== "waiting" && (
           <TypingIndicator label={thread?.queued ? t("{n} queued", { n: thread.queued }) : undefined} />
+        )}
+        {!thread?.busy && status.state === "idle" && (
+          <StarNudgeOnce
+            moment="first_task"
+            due={firstTaskDone}
+            className="mx-1 my-2"
+            text={t("That was the first task nanoMuse finished for you. If it was useful, a star on GitHub helps other people find it — and keeps the free allowance going.")}
+          />
         )}
         {showJump && (
           <button
@@ -889,4 +915,16 @@ export function ThreadList({
       </div>
     </div>
   );
+}
+
+/** The person's request, briefly, for "On it: …": its first line, folded, cut at a word. */
+function requestBrief(events: TimelineEvent[]): string {
+  const last = [...events].reverse().find((e) => e.type === "user");
+  const text = last?.type === "user" ? last.text : "";
+  const line = (text || "").split(/\r?\n/).map((l) => l.trim()).find((l) => l.length > 0) ?? "";
+  const folded = line.replace(/\s+/g, " ");
+  if (folded.length <= 36) return folded;
+  const cut = folded.slice(0, 36);
+  const at = cut.lastIndexOf(" ");
+  return (at > 16 ? cut.slice(0, at) : cut).trimEnd() + "…";
 }

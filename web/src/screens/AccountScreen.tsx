@@ -5,6 +5,7 @@ import { AllowanceWays } from "../components/AllowanceWays";
 import { PageBar } from "../components/BackBar";
 import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { SignIn } from "../components/SignIn";
+import { StarNudgeOnce, useCloudConfig } from "../components/StarNudge";
 import { useT, intlLocale } from "../i18n";
 import { useStore } from "../store";
 import type { CloudAccount, CloudEvent, CloudMe, CloudSession, UsageRow } from "../types";
@@ -26,6 +27,7 @@ export function AccountScreen() {
   const [events, setEvents] = useState<CloudEvent[] | null>(null);
   const [loading, setLoading] = useState(false);
   const signedIn = !!account?.signed_in;
+  const cfg = useCloudConfig();
 
   const load = async () => {
     if (!signedIn) return;
@@ -54,13 +56,21 @@ export function AccountScreen() {
         {!signedIn ? (
           <Section>
             <p className="text-[13.5px] text-muted leading-relaxed">
-              {t("Free. One account for all your devices, with a model and ¥10 of use to start; a code the first time, a password afterwards if you like.")}
+              {t("Free. One account for all your devices, with a model and ¥{allowance} of use to start; a code the first time, a password afterwards if you like.", {
+                allowance: (cfg.allowance_cny ?? 10).toFixed(0),
+              })}
             </p>
             <SignIn onSignedIn={() => toast(t("Signed in to nanoMuse Cloud."))} />
           </Section>
         ) : (
           <>
             <Identity account={account} me={me} />
+            {me && (
+              <StarNudgeOnce
+                moment="signed_in"
+                text={t("The free allowance you just claimed comes out of the developer's pocket, and the project runs on nothing but people liking it. A star is the simplest way to help it be found — and to keep it free.")}
+              />
+            )}
             {me && <Allowance me={me} onChanged={() => void load()} />}
             {me?.invite?.code && <Invite me={me} />}
             {me && <Usage me={me} />}

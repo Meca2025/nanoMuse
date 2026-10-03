@@ -250,6 +250,19 @@ fun CloudAccountScreen(
                     )
                 }
 
+                // -- the ask for a star, the first time this page is seen signed in: the
+                // allowance was just claimed. Once on a phone; gone for good after either button.
+                var starAsk by remember { mutableStateOf(io.github.nanomuse.community.StarPrompt.due(context, io.github.nanomuse.community.StarPrompt.Moment.SIGNED_IN)) }
+                if (starAsk) {
+                    LaunchedEffect(Unit) { io.github.nanomuse.community.StarPrompt.markShown(context, io.github.nanomuse.community.StarPrompt.Moment.SIGNED_IN) }
+                    MuseGap()
+                    io.github.nanomuse.community.StarNudgeCard(
+                        text = stringResource(R.string.nm_star_signed_in),
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        onDone = { starAsk = false },
+                    )
+                }
+
                 // -- allowance ---------------------------------------------------------------
                 MuseGap()
                 MuseCard {

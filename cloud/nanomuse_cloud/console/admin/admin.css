@@ -205,3 +205,8 @@ table.places tr.country td { border-top: 1px solid var(--line, var(--fill)); }
   .admin th.hide-sm, .admin td.hide-sm { display: none; }
   .admin .toolbar .cnt { margin-left: 0; }
 }
+/* runtime settings (relay 0.15): a number box, its note, the sign-up switch */
+.admin .kv .rt { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.admin .kv .rt input[type="number"] { width: 110px; padding: 6px 9px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--fill); font-size: 13px; }
+.admin .kv .rt .sw { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.admin .kv .rt .fine { flex-basis: 100%; }

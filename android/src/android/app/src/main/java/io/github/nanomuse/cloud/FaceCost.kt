@@ -59,7 +59,7 @@ object FaceCost {
         val sb = StringBuilder(context.getString(R.string.nm_face_cost_about, what, money(est.cny)))
         val left = est.leftCny
         if (left != null) sb.append(' ').append(context.getString(R.string.nm_face_cost_left, money(left)))
-        if (!est.affordable) sb.append(' ').append(context.getString(R.string.nm_face_cost_short))
+        if (!est.affordable) sb.append(' ').append(context.getString(R.string.nm_face_cost_short, NanoMuseCloud.inviteBonusText(context)))
         return sb.toString()
     }
 

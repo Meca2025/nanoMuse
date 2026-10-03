@@ -17,6 +17,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 from . import client as _client
 from .catalog import Probe
@@ -156,6 +157,14 @@ CREATE TABLE IF NOT EXISTS model_probes (
     checked_at    INTEGER NOT NULL,
     note          TEXT NOT NULL DEFAULT ''     -- the refusal, or the answer, trimmed
 );
+-- 0.15: what the operator set from the page while the relay ran — the allowance, the
+-- invite bonus, whether sign-up is open. A key here wins over the environment; a key
+-- removed falls back to it. Read at start and on every change; nothing else lives here.
+CREATE TABLE IF NOT EXISTS settings (
+    key           TEXT PRIMARY KEY,
+    value         TEXT NOT NULL,               -- JSON
+    updated_at    INTEGER NOT NULL
+);
 """
 
 
@@ -252,6 +261,97 @@ class Database:
         add("devices", "ip", "TEXT NOT NULL DEFAULT ''")
         self._conn.execute("CREATE INDEX IF NOT EXISTS ledger_ip ON ledger(ip) WHERE ip<>''")
         self._conn.execute("CREATE INDEX IF NOT EXISTS api_keys_ip ON api_keys(ip) WHERE ip<>''")
+        # 0.15: the allowance each account was given (the part of grant_uy that is neither
+        # an invite nor the operator's credit), so a raised allowance can be applied to the
+        # accounts that got less. -1 = from before the column; the service fills it with
+        # the allowance of the day (seed_allowances), the one they got for all we know.
+        add("accounts", "allowance_uy", "INTEGER NOT NULL DEFAULT -1")
+
+    # -- 0.15: settings the operator changes while the relay runs ------------------------------
+
+    def settings_all(self) -> dict[str, Any]:
+        """Every override the page set, decoded; empty when the environment is all there is."""
+        with self._lock:
+            rows = self._conn.execute("SELECT key, value FROM settings").fetchall()
+        out: dict[str, Any] = {}
+        for r in rows:
+            try:
+                out[r["key"]] = json.loads(r["value"])
+            except ValueError:
+                continue
+        return out
+
+    def settings_put(self, key: str, value: Any) -> None:
+        """Set an override, or remove it (value None) so the environment's value is back."""
+        with self.tx() as c:
+            if value is None:
+                c.execute("DELETE FROM settings WHERE key=?", (key,))
+            else:
+                c.execute(
+                    "INSERT INTO settings(key, value, updated_at) VALUES (?,?,?) "
+                    "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+                    (key, json.dumps(value), now()),
+                )
+
+    def seed_allowances(self, allowance_uy: int) -> int:
+        """Accounts from before the allowance_uy column: the allowance of the day is what
+        they got, as far as anyone knows. Idempotent — only the unset rows (-1) are touched."""
+        with self.tx() as c:
+            cur = c.execute("UPDATE accounts SET allowance_uy=? WHERE allowance_uy<0", (max(0, int(allowance_uy)),))
+            return int(cur.rowcount or 0)
+
+    def below_allowance(self, allowance_uy: int, exclude_hashes: frozenset[str] = frozenset()) -> int:
+        """How many accounts got a smaller allowance than the current one — the ones a raise
+        would reach. Members (flagged, or on the operator's list) do not count: no limit."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id_hash FROM accounts WHERE unlimited=0 AND allowance_uy>=0 AND allowance_uy<?", (int(allowance_uy),)
+            ).fetchall()
+        return sum(1 for r in rows if r["id_hash"] not in exclude_hashes)
+
+    def raise_allowance(self, allowance_uy: int, exclude_hashes: frozenset[str] = frozenset()) -> int:
+        """Bring every account that got a smaller allowance up to this one: the difference
+        goes into its pool, with a ledger line saying so, and the account remembers the new
+        figure so a second run adds nothing. Returns how many accounts it reached. Lowering
+        the allowance never takes anything back — it only changes what the next sign-ups get."""
+        allowance_uy = max(0, int(allowance_uy))
+        t = now()
+        n = 0
+        with self.tx() as c:
+            rows = c.execute(
+                "SELECT id, id_hash, allowance_uy FROM accounts WHERE unlimited=0 AND allowance_uy>=0 AND allowance_uy<?",
+                (allowance_uy,),
+            ).fetchall()
+            for r in rows:
+                if r["id_hash"] in exclude_hashes:
+                    continue
+                diff = allowance_uy - int(r["allowance_uy"])
+                c.execute("UPDATE accounts SET grant_uy=grant_uy+?, allowance_uy=? WHERE id=?", (diff, allowance_uy, r["id"]))
+                c.execute(
+                    "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
+                    (r["id"], t, "credit", 0, json.dumps({"credit_uy": diff, "from": "allowance"})),
+                )
+                n += 1
+        return n
+
+    def credit_all(self, credit_uy: int, note: str = "", exclude_hashes: frozenset[str] = frozenset()) -> int:
+        """The same credit into every limited account's pool at once — a holiday, an apology
+        for a bad day. Members are left out (nothing to add to no limit). Returns the count."""
+        credit_uy = max(0, int(credit_uy))
+        t = now()
+        n = 0
+        with self.tx() as c:
+            rows = c.execute("SELECT id, id_hash FROM accounts WHERE unlimited=0 AND disabled=0").fetchall()
+            for r in rows:
+                if r["id_hash"] in exclude_hashes:
+                    continue
+                c.execute("UPDATE accounts SET grant_uy=grant_uy+? WHERE id=?", (credit_uy, r["id"]))
+                c.execute(
+                    "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
+                    (r["id"], t, "credit", 0, json.dumps({"credit_uy": credit_uy, "from": "operator", "note": note[:200], "all": True})),
+                )
+                n += 1
+        return n
 
     def seed_grants(self, allowance_uy: int) -> int:
         """Accounts from before 0.5 start the new model with what they have spent so far plus
@@ -353,9 +453,9 @@ class Database:
         who = _client.current()
         with self.tx() as c:
             c.execute(
-                "INSERT INTO accounts(id, id_hash, channel, hint, created_at, granted, identifier_enc, grant_uy, "
-                "first_ip, last_ip, last_ua, last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (account_id, id_hash, channel, hint, t, grant, identifier_enc, grant_uy, who.ip, who.ip, who.ua, t),
+                "INSERT INTO accounts(id, id_hash, channel, hint, created_at, granted, identifier_enc, grant_uy, allowance_uy, "
+                "first_ip, last_ip, last_ua, last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (account_id, id_hash, channel, hint, t, grant, identifier_enc, grant_uy, grant_uy, who.ip, who.ip, who.ua, t),
             )
             if grant:
                 c.execute(

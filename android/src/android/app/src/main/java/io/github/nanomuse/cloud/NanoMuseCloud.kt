@@ -262,6 +262,16 @@ object NanoMuseCloud {
         return repo(context)?.loadApiKey(inst.id)?.takeIf { it.isNotBlank() }
     }
 
+    /**
+     * The invite bonus as the relay states it, for the lines that mention it ("+¥5 for each
+     * of you") — the relay's figure can change from its operator's page at any time, so no
+     * string carries one of its own. ¥5 only until the first /v1/me.
+     */
+    fun inviteBonusText(context: Context): String {
+        val bonus = account(context)?.inviteBonusCny?.takeIf { it > 0 } ?: 5.0
+        return io.github.nanomuse.ui.cloud.money(bonus)
+    }
+
     fun account(context: Context): Account? {
         val p = prefs(context)
         val hint = p.getString(KEY_HINT, null) ?: return null
@@ -583,7 +593,7 @@ object NanoMuseCloud {
             "bad_key" -> context.getString(R.string.nm_cloud_err_bad_key)
             "out_of_tokens" -> context.getString(R.string.nm_cloud_err_out_of_tokens)
             "daily_cap" -> context.getString(R.string.nm_cloud_err_daily_cap)
-            "allowance_exhausted" -> context.getString(R.string.nm_cloud_err_allowance)
+            "allowance_exhausted" -> context.getString(R.string.nm_cloud_err_allowance, inviteBonusText(context))
             "rate_limited" -> context.getString(R.string.nm_cloud_err_rate_limited)
             "unreachable" -> context.getString(R.string.nm_cloud_err_unreachable)
             "bad_credentials" -> context.getString(R.string.nm_cloud_err_bad_credentials)

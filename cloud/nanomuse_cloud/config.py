@@ -277,6 +277,11 @@ class Settings:
     # members below (ALLOWED_IDENTIFIERS, or flagged by the operator) have no
     # limit. DAY_OFFSET_H only groups the operator's reports by local day
     # (8 = Beijing). USD_CNY is for display: the apps show both currencies.
+    #
+    # Since 0.15 the allowance, the invite bonus and SIGNUP_OPEN can also be set
+    # from the operator's page while the relay runs (POST /v1/admin/settings);
+    # a value set there is kept in the database and wins over the environment
+    # until it is cleared — what is here is the starting point.
     allowance_cny: float = field(default_factory=lambda: float(_env("ALLOWANCE_CNY", "10")))
     invite_bonus_cny: float = field(default_factory=lambda: float(_env("INVITE_BONUS_CNY", "5")))
     day_offset_h: int = field(default_factory=lambda: _int("DAY_OFFSET_H", 8))
@@ -297,6 +302,9 @@ class Settings:
     # PRIVACY_URL is the policy the apps link from Data controls and the sign-in
     # pages — the one that states what this relay keeps and its default above.
     privacy_url: str = field(default_factory=lambda: _env("PRIVACY_URL", "https://nanomuse.cn/privacy/"))
+    # REPO_URL is the project's repository, which the apps point to when they ask for a
+    # star — at the first sign-in, when the allowance is used up, after the first task.
+    repo_url: str = field(default_factory=lambda: _env("REPO_URL", "https://github.com/nano-muse/nanoMuse"))
 
     code_ttl_s: int = field(default_factory=lambda: _int("CODE_TTL_S", 600))
     code_per_identifier_10m: int = field(default_factory=lambda: _int("CODE_PER_IDENTIFIER_10M", 3))

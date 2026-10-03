@@ -104,10 +104,11 @@ for the full list. The ones that matter:
 | `DASHSCOPE_BASE` | Model Studio native | where pictures go (same key) |
 | `IMAGE_CONCURRENCY` / `IMAGE_RETRIES` | 2 / 4 | pictures drawn at once for everyone together (the provider allows an account only a couple), and how often a 429 or 5xx is retried with growing pauses before `429 provider_busy` |
 | `CHAT_DEFAULTS` | `{"enable_thinking": false}` | merged into chat requests for fields the app did not set |
-| `SIGNUP_OPEN` | `1` | anyone may sign in; `0` = members only (a private relay) |
+| `SIGNUP_OPEN` | `1` | anyone may sign in; `0` = members only (a private relay). *Runtime setting* — see below |
 | `ALLOWED_IDENTIFIERS` | empty | comma-separated numbers / addresses of the **members**: no spend limit |
-| `ALLOWANCE_CNY` | 10 | yuan per non-member account **for its lifetime**, at the list prices below; 0 = no limit |
-| `INVITE_BONUS_CNY` | 5 | added to **both** pools — the inviter's and the newcomer's — per new person who signs up with the code |
+| `ALLOWANCE_CNY` | 10 | yuan per non-member account **for its lifetime**, at the list prices below; 0 = no limit. *Runtime setting* |
+| `INVITE_BONUS_CNY` | 5 | added to **both** pools — the inviter's and the newcomer's — per new person who signs up with the code. *Runtime setting* |
+| `REPO_URL` | `https://github.com/nano-muse/nanoMuse` | the repository the apps ask people to star, in `/v1/config` |
 | `IMPROVE_DEFAULT` | `0` | what *Help improve nanoMuse's AI models* (Data controls) starts as for accounts created from now on: `1` = on until the person turns it off, `0` = off until they turn it on; existing accounts keep their setting. State it in your privacy policy |
 | `PRIVACY_URL` | `https://nanomuse.cn/privacy/` | the policy the apps link from Data controls and the sign-in pages — the one that says what this relay keeps and its default |
 | `INVITE_URL` | `https://nanomuse.cn/web/?invite=` | the link the apps offer to share; the code is appended |
@@ -148,13 +149,45 @@ endpoints assume DashScope. Video is relayed under DashScope's own paths
 `/api/v1/uploads`), so the app's video code only needs to point its host at
 the relay; a task can be polled by the account that created it only.
 
+### Runtime settings (0.15)
+
+Three of the values above — `ALLOWANCE_CNY`, `INVITE_BONUS_CNY` and
+`SIGNUP_OPEN` — can be changed **while the relay runs**, from the operator's
+page (*Settings › Runtime*) or `POST /v1/admin/settings` (`{"allowance_cny":
+20}`; `null` or `""` puts a value back on its environment default). The
+change is kept in the database (`settings` table), survives a restart, and
+takes effect on the next request: a new sign-up gets the new allowance, the
+next invitation adds the new bonus, and `/v1/config` — the public endpoint
+the apps read for the figures they print ("¥20 of use to start", "+¥5 for
+each of you") — says so at once, with a minute's cache. **Nobody has to
+update an app or do anything**: the amounts are the relay's, the apps only
+display them.
+
+Raising the allowance does not by itself touch the accounts that exist: each
+account remembers the allowance it was created under (`accounts.allowance_uy`,
+seeded with the value of the day for accounts from before 0.15). The page
+counts how many non-member accounts are below the current figure and
+**Apply to existing accounts** (`POST /v1/admin/allowance/apply`) credits each
+of them the difference as a ledger row (`from: allowance`), so a raise from
+¥10 to ¥20 gives everyone who had ¥10 another ¥10 — and no one twice.
+Lowering the figure only applies to accounts created from then on; a pool is
+never shrunk. **Credit everyone** (`POST /v1/admin/credit-all`, `{"cny": 5,
+"note": "..."}`, ≤ ¥100) is the one-off present: every non-member, enabled
+account gets the amount, once, as `from: operator`.
+
+`GET /v1/admin/settings` returns the values in force, the environment's,
+which are overridden, and the count below the allowance; `GET /v1/config`
+(no key) returns `version`, `signup_open`, `allowance_cny` / `allowance_usd`,
+`invite_bonus_cny`, `invitee_bonus_cny`, `usd_cny`, `invite_url`,
+`own_key_docs`, `privacy_url`, `repo_url` and `improve_default`.
+
 ### Money
 
 Every request is priced in yuan at the provider's Beijing list prices (set per
 model: `price_in` / `price_out` per million tokens, `price_image` and
 `price_image_2k` per picture, `price_second` per second of video) and stored
 in the ledger next to the token count. A non-member account has one pool for
-its lifetime — `ALLOWANCE_CNY` (¥10 by default), grown by invites (both
+its lifetime — `ALLOWANCE_CNY` (¥10 by default, adjustable at runtime), grown by invites (both
 sides) and the operator's credit; a picture or a clip that would go
 over it is refused before it is made, a chat once the pool is spent. Clips are
 not counted apart: a clip is just the dearest line on the same allowance.
@@ -391,6 +424,14 @@ curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' 
 # switch an abusive account off
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"identifier":"13800138000","disabled":true}' https://$CLOUD_DOMAIN/v1/admin/disable
+# raise the starter allowance for everyone from now on (0.15) — no app update needed …
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"allowance_cny":20}' https://$CLOUD_DOMAIN/v1/admin/settings
+# … and give the accounts that exist the difference, once
+curl -X POST -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/allowance/apply
+# a one-off present to every non-member account
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"cny":5,"note":"1,000 stars"}' https://$CLOUD_DOMAIN/v1/admin/credit-all
 ```
 
 Every response carries `X-Nanomuse-Charged` and `X-Nanomuse-Request` so a user

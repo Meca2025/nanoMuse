@@ -60,6 +60,12 @@
     allowed: "白名单（不限额）", allowedNone: "（空）", sender: "验证码渠道", models: "模型", prices: "单价（¥）", rate: "汇率", rateLine: (r) => `1 美元 = ${r} 元（仅用于显示）`,
     perMinute: (n) => (n > 0 ? `每分钟 ${n} 次` : "不限频"), capLine: (c, u, b) => (c > 0 ? `非成员共 ¥${c}（≈ $${u}）· 邀请双方各 +¥${b}` : "不限花费"), signupOpen: "开放注册", signupClosed: "仅白名单可登录",
     realtime: "实时通话", on: "开", off: "关", pwMin: (n) => `密码至少 ${n} 位`,
+    // runtime settings (relay 0.15): changed here, in force at once, kept across restarts
+    rtTitle: "额度（即时生效）", rtNote: "在这里改，所有客户端立刻按新数字走——新注册拿新额度，账号页、登录页、用完时的提示都读服务器的数字，不用发版、用户不用做任何事。留空恢复环境变量的值。调低只影响之后注册的人，不会从任何人的池子里扣。",
+    rtAllowance: "每个新账号的免费额度（¥）", rtBonus: "邀请奖励（¥，双方各得）", rtSignup: "开放注册", rtSignupOff: "关闭后只有白名单和成员能登录；已登录的人不受影响。",
+    rtEnv: (v) => `环境变量：${v}`, rtSet: "页面已设置", rtSave: "保存", rtSaved: "已保存，已生效。", rtApply: (n) => `把当前额度补给 ${n} 个老账号`, rtApplyNone: "所有账号拿到的额度都不低于当前值。",
+    rtApplyConfirm: (n, c) => `给 ${n} 个拿到的额度低于 ¥${c} 的账号补齐差额？每个账号的流水会记一笔「额度调整」。`, rtApplied: (n) => `已补给 ${n} 个账号。`,
+    rtCreditAll: "给所有人加额度", rtCreditAllPrompt: "给每个受额度限制的账号加多少元？（节日、补偿；成员除外）", rtCreditAllConfirm: (c, n) => `给 ${n} 个账号各加 ¥${c}？`, rtCredited: (n) => `已给 ${n} 个账号加额度。`,
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `输入 ${p.per_m_input} / 输出 ${p.per_m_output} 每百万 tokens` : null,
       p.per_image ? `每张 ${p.per_image}${p.per_image_2k ? `（2k ${p.per_image_2k}）` : ""}` : null, p.per_second ? `每秒 ${p.per_second}` : null].filter(Boolean).join("；"),
     foot: "手机号 / 邮箱只在打开某个账号时用管理口令解出来看；数据库里存的是加密后的值。来访地址和客户端信息随每次登录、请求和动态一起记录，删账号时一并删除。对话文字只有在账号开启了「帮助改进 nanoMuse 的 AI 模型」时才保存，并且只存用户写的、模型回答的和它调用的工具（见「数据控制」）。请不要把这个页面截图发出去。金额按模型服务商的北京地区标价估算。",
@@ -135,6 +141,11 @@
     allowed: "Members (no cap)", allowedNone: "(none)", sender: "Code sender", models: "Models", prices: "Prices (¥)", rate: "Rate", rateLine: (r) => `1 USD = ${r} CNY (display only)`,
     perMinute: (n) => (n > 0 ? `${n} a minute` : "no rate limit"), capLine: (c, u, b) => (c > 0 ? `¥${c} (≈ $${u}) in all for non-members · +¥${b} an invite, to both sides` : "no spend limit"), signupOpen: "sign-up open", signupClosed: "members only",
     realtime: "Real-time calls", on: "on", off: "off", pwMin: (n) => `passwords ≥ ${n} chars`,
+    rtTitle: "Allowance (in force at once)", rtNote: "Change it here and every client follows at once — new sign-ups get the new allowance, and the account pages, the sign-in pages and the used-up notice all read the server's figures; no release, nothing for anyone to do. Empty puts the environment's value back. A lower figure only changes what new accounts get; nothing is taken from anyone's pool.",
+    rtAllowance: "Free allowance for each new account (¥)", rtBonus: "Invite bonus (¥, to both sides)", rtSignup: "Sign-up open", rtSignupOff: "Closed, only members and the list may sign in; whoever is signed in is unaffected.",
+    rtEnv: (v) => `environment: ${v}`, rtSet: "set here", rtSave: "Save", rtSaved: "Saved and in force.", rtApply: (n) => `Bring ${n} older account${n === 1 ? "" : "s"} up to the current allowance`, rtApplyNone: "Every account has at least the current allowance.",
+    rtApplyConfirm: (n, c) => `Top up the ${n} account(s) that were given less than ¥${c}? Each gets a ledger line saying so.`, rtApplied: (n) => `${n} account(s) topped up.`,
+    rtCreditAll: "Credit everyone", rtCreditAllPrompt: "How many yuan into every limited account's pool? (a holiday, an apology; members left out)", rtCreditAllConfirm: (c, n) => `¥${c} to each of ${n} accounts?`, rtCredited: (n) => `${n} account(s) credited.`,
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `${p.per_m_input} in / ${p.per_m_output} out per M tokens` : null,
       p.per_image ? `${p.per_image} a picture${p.per_image_2k ? ` (${p.per_image_2k} at 2k)` : ""}` : null, p.per_second ? `${p.per_second} a second` : null].filter(Boolean).join("; "),
     foot: "A phone number or address is decrypted only when you open that account, with the admin token; the database holds ciphertext. Network addresses and the client are recorded with every sign-in, request and event, and go when the account is deleted. The text of a chat is kept only while the account has “Help improve nanoMuse's AI models” on, and only what the person wrote, what the model answered and the tools it called (see Data controls). Do not share screenshots of this page. Money is estimated at the provider's Beijing list prices.",
@@ -1141,9 +1152,62 @@
       h("p", { class: "foot" }, T.hNote),
     ];
   }
+  // ── runtime settings (relay 0.15): the allowance, the invite bonus, sign-up ──
+  // Drafts live here between redraws (every answer redraws the page); a save
+  // posts only the fields that were touched, "" meaning back to the environment.
+  const RT_DRAFT = {};
+  let rtMsg = "", rtBusy = false;
+  async function rtSave() {
+    const body = {};
+    for (const key of ["allowance_cny", "invite_bonus_cny", "signup_open"]) if (key in RT_DRAFT) body[key] = RT_DRAFT[key] === "" ? null : RT_DRAFT[key];
+    if (!Object.keys(body).length) return;
+    rtBusy = true; rtMsg = ""; draw();
+    try { await api("POST", "/v1/admin/settings", body); for (const k of Object.keys(RT_DRAFT)) delete RT_DRAFT[k]; rtMsg = T.rtSaved; } catch (e) { rtMsg = e.message; }
+    rtBusy = false;
+    await load();
+  }
+  async function rtApply(n, cny) {
+    if (!confirm(T.rtApplyConfirm(n, cny))) return;
+    try { const r = await api("POST", "/v1/admin/allowance/apply"); rtMsg = T.rtApplied(r.accounts); } catch (e) { rtMsg = e.message; }
+    await load();
+  }
+  async function rtCreditAll(limitedCount) {
+    const v = prompt(T.rtCreditAllPrompt, "2");
+    if (v === null) return;
+    const cny = parseFloat(v.replace(/[\s,¥]/g, ""));
+    if (!Number.isFinite(cny) || cny <= 0) return;
+    if (!confirm(T.rtCreditAllConfirm(cny, limitedCount))) return;
+    const note = prompt(T.creditNote, "") || "";
+    try { const r = await api("POST", "/v1/admin/credit-all", { cny, note }); rtMsg = T.rtCredited(r.accounts); } catch (e) { rtMsg = e.message; }
+    await load();
+  }
+  function runtimePanel() {
+    const rt = settings().runtime || { values: {}, env: {}, overridden: {}, below_allowance: 0 };
+    const v = rt.values || {}, env = rt.env || {}, set = rt.overridden || {};
+    const c = ov.accounts || {};
+    const limited = Math.max(0, Number(c.total || 0) - Number(c.unlimited || 0) - Number(c.disabled || 0));
+    const note = (key) => h("span", { class: "fine" }, (set[key] ? T.rtSet + " · " : "") + T.rtEnv(typeof env[key] === "boolean" ? (env[key] ? T.on : T.off) : env[key]));
+    const num = (key, label) => [h("b", {}, label), h("span", { class: "rt" },
+      h("input", { type: "number", step: "0.5", min: "0", "data-focus": "rt-" + key, value: key in RT_DRAFT ? RT_DRAFT[key] : (v[key] ?? ""), oninput: (e) => { RT_DRAFT[key] = e.target.value; } }), note(key))];
+    const on = "signup_open" in RT_DRAFT ? RT_DRAFT.signup_open : !!v.signup_open;
+    const dirty = Object.keys(RT_DRAFT).length > 0;
+    return h("div", { class: "panel" }, h("h2", {}, T.rtTitle, h("span", { class: "sp" }), h("button", { class: "btn sm", disabled: dirty && !rtBusy ? null : "", onclick: rtSave }, T.rtSave)),
+      h("div", { class: "fine", style: "padding:12px 16px 0" }, T.rtNote),
+      h("div", { class: "kv" },
+        ...num("allowance_cny", T.rtAllowance),
+        ...num("invite_bonus_cny", T.rtBonus),
+        h("b", {}, T.rtSignup), h("span", { class: "rt" }, h("label", { class: "sw" }, h("input", { type: "checkbox", checked: on ? "" : null, onchange: (e) => { RT_DRAFT.signup_open = e.target.checked; draw(); } }), " ", on ? T.on : T.off), note("signup_open"), h("span", { class: "fine" }, T.rtSignupOff))),
+      h("div", { class: "acts", style: "padding:0 16px 12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center" },
+        Number(v.allowance_cny) > 0 && rt.below_allowance > 0
+          ? h("button", { class: "btn quiet sm", onclick: () => rtApply(rt.below_allowance, v.allowance_cny) }, T.rtApply(rt.below_allowance))
+          : h("span", { class: "fine" }, T.rtApplyNone),
+        h("button", { class: "btn quiet sm", onclick: () => rtCreditAll(limited) }, T.rtCreditAll),
+        rtMsg ? h("span", { class: "fine" }, rtMsg) : null));
+  }
   function settingsView() {
     const s = settings(), rate = Number(s.usd_cny || 0), kinds = s.model_kinds || {};
     return [
+      runtimePanel(),
       h("div", { class: "panel" }, h("h2", {}, T.config),
         h("div", { class: "kv" },
           h("b", {}, T.kAccounts), h("span", {}, `${s.signup_open ? T.signupOpen : T.signupClosed} · ${T.capLine(s.allowance_cny, s.allowance_usd, s.invite_bonus_cny)} · ${T.perMinute(s.per_minute_requests)} · ${T.pwMin(s.password_min_len || 8)}`),

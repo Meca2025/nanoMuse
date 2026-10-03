@@ -88,7 +88,6 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
     mood = 'working'
     tone = 'nm-live'
     if (hands && current && hands.sessionId === current) line = describeCall(t, hands)
-    else if (record && !record.current && Date.now() - record.startedAt < PLANNING_MS) line = t('statusPlanning')
     else if (record) line = statusWords(t, record)
     else line = t('statusWorking')
   } else if (record?.endedAt && Date.now() - record.endedAt < DONE_MS) {
