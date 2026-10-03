@@ -279,7 +279,7 @@ export function Onboarding() {
             </ul>
             <div className="rounded-3xl bg-surface-2/60 p-4 text-[13px] text-muted leading-relaxed space-y-1.5">
               <p>
-                <b className="text-fg">{t("Approvals.")}</b> {t("When it wants to do something that matters — send mail, run a command, reach a new site — a card appears. Allow once, for this task, or always.")}
+                <b className="text-fg">{t("Approvals.")}</b> {t("When it wants to do something that matters — send mail, run a command, reach a new site — a card appears. Allow once, for this conversation, or always.")}
               </p>
               <p>
                 <b className="text-fg">{t("Goals.")}</b> {t("Anything long-running lives in Goals; turn on background work in Settings and it keeps going between your visits, reporting in the Feed.")}

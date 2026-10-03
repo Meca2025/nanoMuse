@@ -261,19 +261,47 @@ async def test_gate_grant_is_bound_to_target(tmp_path: Path):
     assert {g.key for g in again.active_grants()} == {"sender:a.example", "sender:b.example"}
 
 
-async def test_gate_task_grant_ends_with_the_task(tmp_path: Path):
-    ui = ScopedUI(scope="task")
+async def test_gate_conversation_grant_lasts_the_conversation(tmp_path: Path):
+    ui = ScopedUI(scope="conversation")
     gate = Sentinel(SentinelSettings(always_ask_tools=["echo"]), AuditLog(tmp_path / "a.jsonl"), ui)
+    # a run outside any conversation stands in for one: its grants end with it
     token = gate.begin_task("book the tickets")
     await gate.guard(call("echo", text="1"), Echo())
     assert ui.requests[-1].purpose == "book the tickets"
+    assert ui.requests[-1].grant_options[:2] == ["once", "conversation"]
     await gate.guard(call("echo", text="2"), Echo())
     assert asks(ui) == 1
     gate.end_task(token)
     token = gate.begin_task("something else")
     await gate.guard(call("echo", text="3"), Echo())
-    assert asks(ui) == 2, "task grants do not leak into the next task"
+    assert asks(ui) == 2, "grants of a stand-alone run do not leak into the next"
     gate.end_task(token)
+
+    # inside a conversation the grant outlives the run and ends with the conversation
+    token = gate.begin_task("first turn", conversation="thread-1")
+    await gate.guard(call("echo", text="4"), Echo())
+    assert asks(ui) == 3
+    gate.end_task(token)
+    token = gate.begin_task("second turn", conversation="thread-1")
+    await gate.guard(call("echo", text="5"), Echo())
+    assert asks(ui) == 3, "the next turn of the same conversation is covered"
+    gate.end_task(token)
+    token = gate.begin_task("elsewhere", conversation="thread-2")
+    await gate.guard(call("echo", text="6"), Echo())
+    assert asks(ui) == 4, "another conversation is not"
+    gate.end_task(token)
+    gate.end_conversation("thread-1")
+    token = gate.begin_task("third turn", conversation="thread-1")
+    await gate.guard(call("echo", text="7"), Echo())
+    assert asks(ui) == 5, "a deleted conversation takes its grants with it"
+    gate.end_task(token)
+
+    # the old client word for the scope still means the conversation (the server
+    # normalizes it before the decision is built)
+    assert grants_module.normalize_scope("task") == "conversation"
+    assert grants_module.normalize_scope("conversation") == "conversation"
+    assert grants_module.normalize_scope("whatever") == "once"
+    assert grants_module.normalize_scope(None) == "once"
 
 
 class Programs(BaseTool):
@@ -298,28 +326,30 @@ class Programs(BaseTool):
         return ToolResult(output=command)
 
 
-async def test_task_grant_covers_the_whole_tool_when_targets_are_programs(tmp_path: Path):
-    ui = ScopedUI(scope="task")
+async def test_conversation_grant_covers_the_whole_tool_when_targets_are_programs(
+    tmp_path: Path,
+):
+    ui = ScopedUI(scope="conversation")
     gate = Sentinel(SentinelSettings(), AuditLog(tmp_path / "a.jsonl"), ui)
     token = gate.begin_task("count the lines")
     await gate.guard(call("programs", command="git clone x"), Programs())
     assert ui.requests[-1].grant_key == "programs:git"
     await gate.guard(call("programs", command="find . -name '*.py' | wc -l"), Programs())
-    assert asks(ui) == 1, "'for this task' covers later commands with other programs"
+    assert asks(ui) == 1, "'for this conversation' covers later commands with other programs"
     assert [g.key for g in gate.active_grants()] == ["programs"]
     gate.end_task(token)
     token = gate.begin_task("another job")
     await gate.guard(call("programs", command="ls"), Programs())
-    assert asks(ui) == 2, "and ends with the task"
+    assert asks(ui) == 2, "and ends with the stand-alone run"
     gate.end_task(token)
 
-    # a destination-bound tool keeps its target even for this task
-    ui2 = ScopedUI(scope="task")
+    # a destination-bound tool keeps its target even for this conversation
+    ui2 = ScopedUI(scope="conversation")
     gate2 = Sentinel(SentinelSettings(always_ask_tools=["sender"]), AuditLog(tmp_path / "b"), ui2)
     token = gate2.begin_task("mail people")
     await gate2.guard(call("sender", host="a.example"), Sender())
     await gate2.guard(call("sender", host="b.example"), Sender())
-    assert asks(ui2) == 2, "another recipient is another approval, even within the task"
+    assert asks(ui2) == 2, "another recipient is another approval, even within the conversation"
     gate2.end_task(token)
 
 
@@ -345,13 +375,13 @@ def test_grant_options_follow_muse_rules():
     sensitive_known = CallAssessment(risk=RiskLevel.SENSITIVE, egress=True, egress_target="x")
     assert Sentinel.grant_options(sensitive_known, "x") == [
         "once",
-        "task",
+        "conversation",
         "session",
         "24h",
         "always",
     ]
     sensitive_unknown = CallAssessment(risk=RiskLevel.SENSITIVE, egress=True)
-    assert Sentinel.grant_options(sensitive_unknown, None) == ["once", "task"]
+    assert Sentinel.grant_options(sensitive_unknown, None) == ["once", "conversation"]
     safe_toolwide = CallAssessment(risk=RiskLevel.SAFE)
     assert "always" in Sentinel.grant_options(safe_toolwide, None)
     with_warning = CallAssessment(risk=RiskLevel.SAFE, warnings=["w"])
@@ -371,7 +401,12 @@ def test_grant_store_expiry_and_legacy_file(tmp_path: Path, monkeypatch: pytest.
     assert day is not None and day.expires_at is not None
     assert store.match("web_fetch:example.com") is None
     assert store.add("echo", None, "once") is None, "once is never stored"
-    assert store.add("echo", None, "task", task_id=None) is None, "task needs a task"
+    assert store.add("echo", None, "conversation", conversation_id=None) is None, (
+        "the conversation scope needs a conversation"
+    )
+    assert store.add("echo", None, "task", conversation_id="c").scope == "conversation", (  # type: ignore[union-attr]
+        "the old name is understood"
+    )
     reloaded = GrantStore(legacy)
     assert [g.key for g in reloaded.active()] == ["shell"], "expired grants are dropped on load"
 
@@ -417,6 +452,8 @@ async def test_gate_resolves_secrets_and_redacts(tmp_path: Path):
     )
     # the tool received the real secret, but the model sees a redacted output
     assert result.output == "sent to github.com with [REDACTED:API_TOKEN]"
-    # a tool that does not accept secrets receives the literal placeholder
+    # a tool that does not accept secrets is not run with the literal placeholder: the
+    # call is refused with the reason (and never saw the value)
     result2 = await gate.guard(call("echo", text="{{vault:API_TOKEN}}"), Echo())
-    assert result2.output == "echo: {{vault:API_TOKEN}}"
+    assert not result2.ok and result2.error and "does not take {{vault:NAME}}" in result2.error
+    assert "super-secret-token" not in (result2.error or "")

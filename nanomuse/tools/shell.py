@@ -3,9 +3,10 @@
 Both run as subprocesses with a scrubbed environment: anything that looks like a
 credential (``*_KEY``, ``*TOKEN*``, ``*SECRET*``, ``*PASSWORD*``, ``NANOMUSE_*`` …) is
 removed before the child starts, so a script the model wrote cannot read the model's
-own API key, the vault key or the app token out of ``os.environ``. Secrets a command
-really needs go in as ``{{vault:NAME}}`` arguments instead, which Sentinel fills in
-after approval.
+own API key, the vault key or the app token out of ``os.environ``. Neither tool takes
+``{{vault:NAME}}`` placeholders (``accepts_secrets`` is off): a command that carries one is
+refused with the reason instead of running with the literal text, and the vault's values
+reach only the connectors that are configured with them (mail, calendars, the model).
 
 With a working sandbox (``nanomuse.sandbox``, bubblewrap on Linux) each call also gets
 its own namespace: the workspace is the only writable place, the home directory is not
@@ -334,18 +335,25 @@ class PythonExecute(BaseTool):
 
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         """Plain computation and files in the workspace are moderate (auto-allowed in the
-        default mode). Anything that reaches further — the network, other processes, the
-        environment, paths outside the workspace, deletions — is sensitive and stops for
-        approval, with the reason on the card."""
+        default mode) when a sandbox holds the script to that. Anything that reaches further
+        — the network, other processes, the environment, paths outside the workspace,
+        deletions — is sensitive and stops for approval, with the reason on the card; and
+        without a working sandbox (macOS, Windows, a Linux box without bubblewrap) every
+        script is, since the static check is then the only wall between the code and the
+        rest of the computer."""
         code = str(args.get("code", ""))
         first = code.strip().splitlines()[0][:100] if code.strip() else ""
         reach = code_reach(code, self.workspace)
+        boxed = self.sandbox is not None and self.sandbox.active
+        warnings = [f"code {what}" for what in reach.values()]
+        if not boxed:
+            warnings.append("runs without a sandbox on this computer")
         return CallAssessment(
-            risk=RiskLevel.SENSITIVE if reach else RiskLevel.MODERATE,
+            risk=RiskLevel.SENSITIVE if reach or not boxed else RiskLevel.MODERATE,
             egress=bool(reach.get("network")) or bool(reach.get("processes")),
             target=None,
             summary=f"python_execute: {first} ({len(code)} chars)",
-            warnings=[f"code {what}" for what in reach.values()],
+            warnings=warnings,
         )
 
     async def execute(self, code: str = "", timeout: float = 60, **_: Any) -> ToolResult:

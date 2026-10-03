@@ -29,12 +29,14 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { arch, homedir, hostname, release, type, userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
-import { randomBytes } from 'node:crypto'
+import { createHmac, randomBytes } from 'node:crypto'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
-import type {} from '@deepseek-ai/dsh-tools'
+import type { ToolDispatchExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-user-approval'
 import z from '@deepseek-ai/schemastery'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
 import { HubClient, HubError, type HubDevice } from './hub.ts'
@@ -189,6 +191,48 @@ export function isHandsTool(name: string): boolean {
   return name.startsWith('mcp__nanomuse__') || name === 'devices' || name.startsWith('device_') || name === 'delegate'
 }
 
+/** The `confirmed` field of a hands call, when it is one (a ticket or the legacy `true`). */
+export function confirmationOf(args: unknown): string | true | undefined {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return undefined
+  const value = (args as Record<string, unknown>).confirmed
+  return value === true || typeof value === 'string' ? value : undefined
+}
+
+/** The confirmation ticket `nanomuse mcp` checks: HMAC-SHA256 over the compact, key-sorted arguments without `confirmed`. */
+export function confirmTicket(secret: string, args: Record<string, unknown>): string {
+  const clean = Object.fromEntries(Object.entries(args).filter(([k]) => k !== 'confirmed'))
+  return createHmac('sha256', secret).update(canonical(clean)).digest('hex').slice(0, 32)
+}
+
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+/** The runtime's "Not done — …" refusal in an MCP error result, or `undefined` for any other failure. */
+export function refusalOf(result: ToolExecutionResult): string | undefined {
+  const texts: string[] = []
+  for (const block of result.content ?? []) {
+    const b = block as { type?: unknown; text?: unknown }
+    if (b.type === 'text' && typeof b.text === 'string') texts.push(b.text)
+  }
+  const message = (result.error as { message?: unknown } | undefined)?.message
+  if (typeof message === 'string') texts.push(message)
+  const hit = texts.find((t) => t.includes('Not done — '))
+  if (!hit) return undefined
+  const start = hit.indexOf('Not done — ')
+  return hit.slice(start + 'Not done — '.length).trim()
+}
+
+function declined(step: string, why: string): ToolExecutionResult {
+  const text = `Not done — ${step}. The person did not approve this step on their permission card (${why}); do not retry it. Ask them what to do instead, or carry on without it.`
+  return { isError: true, error: { message: text, info: { name: 'HandsDeclined', code: 'REJECTED' } }, content: [{ type: 'text', text }] }
+}
+
 const ARG_KEYS = ['action', 'label', 'text', 'device', 'command', 'task', 'path', 'url'] as const
 
 export default class NanomuseCloud extends Service {
@@ -300,12 +344,18 @@ export default class NanomuseCloud extends Service {
     this.ctx.inject(['tools'], (ctx) => {
       ctx.on('tools/execute', async (exec, next) => {
         if (!isHandsTool(exec.name)) return next()
+        // Our own re-dispatch of a step the person just agreed to: the stage already follows the outer call.
+        if (exec.parent !== undefined && confirmationOf(exec.arguments) !== undefined) return next()
         const sessionId = exec.agent?.session.id ?? ''
         this.began(exec.callId, exec.name, exec.arguments, sessionId)
         if (exec.name === 'mcp__nanomuse__computer_act') this.acted(stageAction(exec.arguments), sessionId)
         else if (exec.name === 'mcp__nanomuse__computer_screen') this.acted({ kind: 'look', label: '', text: '', x: -1, y: -1, at: Date.now() }, sessionId)
         try {
-          const result = await next()
+          let result = await next()
+          if (exec.name === 'mcp__nanomuse__computer_act' && result.isError) {
+            const refused = refusalOf(result)
+            if (refused) result = await this.confirmStep(ctx, exec, refused)
+          }
           if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId)
           return result
         } finally {
@@ -740,6 +790,42 @@ export default class NanomuseCloud extends Service {
   private acted(action: StageAction, sessionId: string): void {
     this.stage = { ...this.stage, action, sessionId: sessionId || this.stage.sessionId }
     this.broadcast()
+  }
+
+  /**
+   * A step the runtime's hands refused without the person's word (Enter, a submit, a click
+   * on "pay", …): ask them on the permission card, and if they agree, run the same call
+   * again carrying the confirmation ticket the `nanomuse mcp` server checks — an HMAC of
+   * the arguments under the secret the desktop shell gave both of us (NANOMUSE_MCP_CONFIRM).
+   * Without the secret (a hand-made dsh profile) the server takes `confirmed: true`, so
+   * that is what the re-dispatch carries; either way the model never confirms on its own.
+   */
+  private async confirmStep(ctx: Context, exec: ToolDispatchExecution, refused: string): Promise<ToolExecutionResult> {
+    const approval = ctx.get('approval')
+    const tools = ctx.get('tools')
+    if (!approval || !tools || !exec.agent) return declined(refused, 'approval is not available here')
+    const step = refused.replace(/\.\s+(The person has to agree|Ask the person)[\s\S]*$/, '').trim()
+    const outcome = await approval.request({
+      agent: exec.agent,
+      toolName: exec.name,
+      callId: exec.callId,
+      reason: step,
+      displayReason: { en: `On this computer's screen: ${step}`, zh: `在这台电脑的屏幕上：${step}` },
+      signal: exec.signal,
+    })
+    if (outcome !== 'allowed-once') return declined(step, outcome)
+    const args = exec.arguments && typeof exec.arguments === 'object' && !Array.isArray(exec.arguments) ? (exec.arguments as Record<string, unknown>) : {}
+    const secret = process.env.NANOMUSE_MCP_CONFIRM?.trim()
+    const confirmed: string | true = secret ? confirmTicket(secret, args) : true
+    return tools.execute({
+      callId: ToolCallId(`${exec.callId}:confirmed`),
+      rootCallId: exec.rootCallId,
+      name: exec.name,
+      arguments: { ...args, confirmed },
+      agent: exec.agent,
+      parent: exec.token,
+      signal: exec.signal,
+    })
   }
 
   /** The screenshot and the words that came back from `computer_screen` / `computer_act` (an MCP result). */

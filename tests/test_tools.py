@@ -123,8 +123,20 @@ async def test_python_and_shell_children_cannot_read_secrets(tmp_path: Path, mon
 
 
 def test_python_reach_decides_the_risk(tmp_path: Path):
-    py = PythonExecute(workspace=tmp_path)
-    plain = py.assess({"code": "import csv\nrows = [1, 2]\nopen('out.csv', 'w').write('a,b')"})
+    from nanomuse.config import SandboxSettings
+    from nanomuse.sandbox import Sandbox
+
+    # without a sandbox the static check is the only wall: every script is sensitive
+    bare = PythonExecute(workspace=tmp_path)
+    plain_code = "import csv\nrows = [1, 2]\nopen('out.csv', 'w').write('a,b')"
+    unboxed = bare.assess({"code": plain_code})
+    assert unboxed.risk == RiskLevel.SENSITIVE and unboxed.warnings == [
+        "runs without a sandbox on this computer"
+    ]
+    box = Sandbox(SandboxSettings(mode="off"), workspace=tmp_path)
+    box.active = True  # as on a Linux box with bubblewrap
+    py = PythonExecute(workspace=tmp_path, sandbox=box)
+    plain = py.assess({"code": plain_code})
     assert plain.risk == RiskLevel.MODERATE and not plain.warnings and not plain.egress
     net = py.assess({"code": "import requests\nrequests.get('https://x')"})
     assert (

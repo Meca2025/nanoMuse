@@ -141,7 +141,7 @@ nanomuse vault list                    # names only, never values
 nanomuse vault delete EMAIL_PASSWORD
 ```
 
-Reference secrets as `{{vault:EMAIL_PASSWORD}}` in the config or in tool arguments. See [sentinel.md](sentinel.md#credential-vault).
+Reference secrets as `{{vault:EMAIL_PASSWORD}}` in the config (connectors only; a command never receives a secret). See [sentinel.md](sentinel.md#credential-vault).
 
 ## Phone
 

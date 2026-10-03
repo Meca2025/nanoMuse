@@ -77,7 +77,7 @@ const zhCN: Record<string, string> = {
   "at {host}": "站点：{host}",
   "to {recipient}": "收件人：{recipient}",
   "Allow {subject} for longer…": "更长时间允许 {subject}…",
-  "For this task": "本次任务",
+  "For this conversation": "本次对话",
   "Until restart": "直到重启",
   "For 24 hours": "24 小时内",
   "Always for {subject}": "始终允许 {subject}",
@@ -89,7 +89,7 @@ const zhCN: Record<string, string> = {
   "Expired without an answer": "已过期，未作答",
   "approved by you": "已由你批准",
   "covered by your {scope} permission": "已由你的{scope}授权覆盖",
-  "for the current task": "本次任务",
+  "for this conversation": "本次对话",
   "until restart": "直到重启",
   "for 24 hours": "24 小时内",
   always: "始终",
@@ -735,8 +735,8 @@ const zhCN: Record<string, string> = {
   "Set up a goal: run a 10k in 12 weeks, and check in on me weekly": "建立一个目标：12 周内跑完 10 公里，每周跟我确认进度",
   "Find this week's top stories about small language models and summarise them": "找找本周关于小语言模型的重要新闻，总结一下",
   "Approvals.": "审批。",
-  "When it wants to do something that matters — send mail, run a command, reach a new site — a card appears. Allow once, for this task, or always.":
-    "当它想做重要的事——发邮件、运行命令、访问新网站——会弹出一张卡片。可以允许一次、本次任务或始终允许。",
+  "When it wants to do something that matters — send mail, run a command, reach a new site — a card appears. Allow once, for this conversation, or always.":
+    "当它想做重要的事——发邮件、运行命令、访问新网站——会弹出一张卡片。可以允许一次、本次对话或始终允许。",
   "Goals.": "目标。",
   "Anything long-running lives in Goals; turn on background work in Settings and it keeps going between your visits, reporting in the Feed.":
     "所有长期事项都在“目标”中；在设置里开启后台工作，它会在你不在时继续推进，并在“动态”中汇报。",

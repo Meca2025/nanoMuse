@@ -176,7 +176,11 @@
               serverName: nanomuse
               command: !!js process.env.NANOMUSE_PY || 'nanomuse'
               args: [mcp]
-              env: !!js 'process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}'
+              # DISPLAY for the hands on Linux; NANOMUSE_MCP_CONFIRM binds the
+              # server's "the person agreed" confirmations to this host (the
+              # desktop shell sets it per launch; see nanomuse/bridge/mcp_server.py).
+              env: !!js |
+                Object.fromEntries(['DISPLAY', 'NANOMUSE_MCP_CONFIRM'].filter((k) => process.env[k]).map((k) => [k, process.env[k]]))
               cwd: !!js process.env.HOME || process.env.USERPROFILE || process.cwd()
               toolCallTimeoutMs: 120000
               failOnStartupError: false

@@ -73,7 +73,7 @@ export interface ApprovalEvent extends BaseEvent {
   remote?: { device: string; name: string; approval_id: string };
 }
 
-export type GrantScope = "once" | "task" | "session" | "24h" | "always";
+export type GrantScope = "once" | "conversation" | "session" | "24h" | "always";
 
 export interface Grant {
   key: string;

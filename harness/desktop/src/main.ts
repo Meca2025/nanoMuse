@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences, Tray } from "electron";
+import { randomBytes } from "node:crypto";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
@@ -252,6 +253,10 @@ function startHost(): Promise<string> {
           ...process.env,
           ELECTRON_RUN_AS_NODE: "1",
           DSH_HOME: home,
+          // One secret per launch, shared by the bundle and the runtime's `nanomuse mcp`
+          // server: a hands step the person must agree to is confirmed with a ticket only
+          // the bundle can make (after the permission card), never by the model's own word.
+          NANOMUSE_MCP_CONFIRM: randomBytes(24).toString("hex"),
         };
         const shellPath = loginShellPath();
         if (shellPath) env.PATH = shellPath;

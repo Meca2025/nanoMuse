@@ -201,8 +201,8 @@ export function scopeLabel(scope: string, tool: string, target?: string | null):
   switch (scope) {
     case "once":
       return t("Once");
-    case "task":
-      return t("For this task");
+    case "conversation":
+      return t("For this conversation");
     case "session":
       return t("Until restart");
     case "24h":
@@ -317,9 +317,9 @@ export function ApprovalCard({
             >
               {t("Allow once")}
             </button>
-            {/* the phone's two grey pills — this task, always — the other scopes behind "more" */}
+            {/* the phone's two grey pills — this conversation, always — the other scopes behind "more" */}
             {standing
-              .filter((scope) => more || scope === "task" || scope === "always")
+              .filter((scope) => more || scope === "conversation" || scope === "always")
               .map((scope) => (
                 <button
                   key={scope}
@@ -340,7 +340,7 @@ export function ApprovalCard({
             {standing.length === 0 ? (
               <div className="text-center text-[12px] text-muted">{t("This kind of action is approved one at a time.")}</div>
             ) : (
-              !more && standing.some((scope) => scope !== "task" && scope !== "always") && (
+              !more && standing.some((scope) => scope !== "conversation" && scope !== "always") && (
                 <button type="button" className="self-center text-[12.5px] text-muted" onClick={() => setMore(true)}>
                   {t("Allow {subject} for longer…", { subject: grantSubject(event.tool, event.target) })}
                 </button>
