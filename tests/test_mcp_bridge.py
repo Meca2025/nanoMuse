@@ -59,6 +59,33 @@ def test_gate_asks_for_what_the_sentinel_would_ask(settings: Settings) -> None:
     assert gate(act, {"action": "key", "keys": ["enter"], CONFIRMED: True}) is None
 
 
+def test_with_a_host_secret_only_the_hosts_ticket_confirms(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nanomuse.bridge.mcp_server import CONFIRM_SECRET_ENV, REFUSED, ticket
+
+    screen, act = tools(settings)
+    monkeypatch.setenv(CONFIRM_SECRET_ENV, "s3cret")
+    enter = {"action": "key", "keys": ["enter"]}
+    # the model's own word is no longer enough
+    refused = gate(act, {**enter, CONFIRMED: True})
+    assert refused is not None and refused.startswith(REFUSED) and "permission card" in refused
+    # the host's ticket over these exact arguments is
+    assert gate(act, {**enter, CONFIRMED: ticket("s3cret", enter)}) is None
+    # ... and confirms nothing else
+    other = {"action": "type", "text": "hi", "submit": True}
+    assert gate(act, {**other, CONFIRMED: ticket("s3cret", enter)}) is not None
+    assert gate(act, {**enter, CONFIRMED: ticket("other", enter)}) is not None
+    # the ticket ignores the confirmed field itself and is stable across key order
+    assert ticket("s3cret", {"keys": ["enter"], "action": "key", CONFIRMED: "x"}) == ticket(
+        "s3cret", enter
+    )
+    schema = exposed_schema(act)
+    assert schema["properties"][CONFIRMED]["type"] == "string"
+    assert "permission card" in tool_listing([act])[0]["description"]
+    assert gate(screen, {}) is None
+
+
 async def test_call_runs_the_tool_without_the_flag_and_returns_pictures(settings: Settings) -> None:
     screen, act = tools(settings)
     result = await call(screen, {})

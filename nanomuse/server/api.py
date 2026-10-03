@@ -38,10 +38,13 @@
     POST /api/avatar/begin {description, style?}  a session: the card with the cost in the chat
     POST /api/avatar/start|choose|cancel {session, index?}   draw (or redraw) the four, pick one, stop
     POST /api/avatar/moods                the poses of the current face drawn again
-    WS   /ws?token=…                     live events
+    WS   /ws                              live events; the first frame is {"kind": "auth", "token": …}
 
-All endpoints require ``Authorization: Bearer <token>`` (or ``?token=``) unless
-``server.auth = false``. The token is printed (with a QR code) by ``nanomuse serve``.
+All endpoints require ``Authorization: Bearer <token>`` unless ``server.auth = false``.
+The token is printed (with a QR code, in the link's ``#fragment``) by ``nanomuse serve``.
+The bytes the app shows inline — ``/api/files/*`` and the browser frames — also open with
+a link the client signed with its token (``?exp=&sig=``, :mod:`nanomuse.server.tickets`),
+so no token travels in a URL. ``?token=`` is still taken this release and goes next.
 """
 
 from __future__ import annotations
@@ -67,6 +70,7 @@ from nanomuse.coding.service import CodingError
 from nanomuse.config import Settings
 from nanomuse.hub.client import HubError
 from nanomuse.logger import logger
+from nanomuse.server import tickets
 from nanomuse.server.events import MAIN_THREAD
 from nanomuse.server.service import MuseService, goal_to_dict
 from nanomuse.server.update import UpdateCheck
@@ -386,9 +390,21 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     def auth(request: Request) -> None:
         header = request.headers.get("authorization", "")
         token = header[7:].strip() if header.lower().startswith("bearer ") else None
+        # ``?token=`` is deprecated (it lands in access logs): accepted this release only
         _check_token(token or request.query_params.get("token"))
 
+    def auth_or_signed(request: Request) -> None:
+        """A header as everywhere — or, for the bytes an ``<img>``/``<video>``/``<iframe>``
+        fetches, a link the client signed with its token (:mod:`nanomuse.server.tickets`)."""
+        query = request.query_params
+        if svc.token and "sig" in query and "authorization" not in request.headers:
+            if tickets.check(svc.token, request.scope["path"], query.get("exp"), query.get("sig")):
+                return
+            raise HTTPException(status_code=401, detail="this link has expired")
+        auth(request)
+
     dep = [Depends(auth)]
+    dep_or_signed = [Depends(auth_or_signed)]
 
     def _thread_or_404(thread_id: str):  # noqa: ANN202
         thread = svc.threads.get(thread_id)
@@ -1371,7 +1387,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         return {"onboarded": body.done}
 
     # ------------------------------------------------------------------ browser view
-    @app.get("/api/browser/{thread_id}/frames/{frame_id}.jpg", dependencies=dep)
+    @app.get("/api/browser/{thread_id}/frames/{frame_id}.jpg", dependencies=dep_or_signed)
     async def browser_frame(thread_id: str, frame_id: str) -> Response:
         jpeg = svc.ui.browser_frame(thread_id, frame_id)
         if jpeg is None:
@@ -1514,7 +1530,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
 
-    @app.get("/api/files/{path:path}", dependencies=dep)
+    @app.get("/api/files/{path:path}", dependencies=dep_or_signed)
     async def get_file(path: str, download: bool = False) -> Response:
         try:
             target = svc.resolve_workspace_path(path)
@@ -1547,12 +1563,20 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     # ------------------------------------------------------------------ websocket
     @app.websocket("/ws")
     async def websocket(ws: WebSocket) -> None:
-        try:
-            _check_token(ws.query_params.get("token"))
-        except HTTPException:
-            await ws.close(code=4401)
-            return
-        await ws.accept()
+        legacy = ws.query_params.get("token")
+        if legacy is not None:
+            # ``?token=`` lands in access logs: taken this release, gone the next
+            try:
+                _check_token(legacy)
+            except HTTPException:
+                await ws.close(code=4401)
+                return
+            await ws.accept()
+        else:
+            await ws.accept()
+            if svc.token and not await _ws_first_frame_auth(ws, svc.token):
+                await ws.close(code=4401)
+                return
         queue = svc.bus.subscribe()
         await ws.send_json({"kind": "hello", "state": svc.state()})
         conn_id = f"ws-{uuid.uuid4().hex[:8]}"
@@ -1624,6 +1648,23 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     return app
 
 
+WS_AUTH_TIMEOUT_S = 10.0
+"""How long a fresh socket has to send ``{"kind": "auth", "token": …}`` before it is closed."""
+
+
+async def _ws_first_frame_auth(ws: WebSocket, token: str) -> bool:
+    """The first frame on a socket opened without ``?token=`` carries the token, so it never
+    appears in a URL. Anything else, a wrong token or silence closes the socket with 4401."""
+    try:
+        data = await asyncio.wait_for(ws.receive_json(), WS_AUTH_TIMEOUT_S)
+    except (TimeoutError, ValueError, WebSocketDisconnect, RuntimeError):
+        return False
+    if not isinstance(data, dict) or data.get("kind") != "auth":
+        return False
+    given = str(data.get("token") or "")
+    return bool(given) and secrets.compare_digest(given.encode(), token.encode())
+
+
 async def _handle_ws_message(
     svc: MuseService,
     ws: WebSocket,
@@ -1667,6 +1708,8 @@ async def _handle_ws_message(
                 await ws.send_json({"kind": "error", "error": "no pending approval with that id"})
         elif kind == "ping":
             await ws.send_json({"kind": "pong", "status": svc.ui.overall_status()})
+        elif kind == "auth":
+            pass  # a client that sends its token first even though the runtime has none
         else:
             await ws.send_json({"kind": "error", "error": f"unknown message kind: {kind}"})
     except (ValueError, PermissionError) as exc:

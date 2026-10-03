@@ -24,7 +24,7 @@ A study of Muse's screens — the announcement, the walkthrough and sizzle video
 |---|---|---|
 | Near-white / near-black, one blue | The same palette: `bg`, `surface-2`, `fg`, `muted`, accent `#0064d4`; dark mode by `prefers-color-scheme` | `web/src/index.css`, `android/…/values/colors.xml` |
 | Optimistic | [Figtree](https://github.com/erikdkennedy/figtree) (OFL), bundled; close in proportions and warmth | `web/public/fonts/` |
-| Grey / light-blue bubbles, chips for tool use, cards for approvals | The same; chips open to the tool call, cards carry the summary the Sentinel wrote and the scope buttons (once, this task, always; on the phone once, this chat, always) | `web/src/screens/ChatScreen.tsx`, `web/src/components/` |
+| Grey / light-blue bubbles, chips for tool use, cards for approvals | The same; chips open to the tool call, cards carry the summary the Sentinel wrote and the scope buttons (once, this conversation, always; on the phone once, this chat, always) | `web/src/screens/ChatScreen.tsx`, `web/src/components/` |
 | The plush doll that changes pose | The **red panda**, an SVG drawn live with a pose per state; six plush dolls (Sunny, Moss, Sky, Fox, Bolt, Plum) and an emoji as alternatives | `web/src/components/RedPanda.tsx`, `web/public/avatars/` |
 | Name and status under the avatar; tap for the sheet | The same header; the sheet has the avatar large, the status, *Stop*, four buttons (approvals, activity, permissions, upcoming) and rows for memory, skills, connections, settings | `web/src/components/MuseSheet.tsx` |
 | Five-icon floating bar | The same five: Chat, Feed, Ideas, Goals, Library | `web/src/App.tsx` |
@@ -85,7 +85,7 @@ Muse opens by asking what to call it, and the name is then everywhere — the he
 
 - **The phone's screen is visible.** Muse never shows you a screenshot; nanoMuse's phone steps are rows in the chat (`phone_act: tap "发送" …`) and the finger overlay shows on the phone itself, because a user should be able to see what a hand on their phone is doing.
 - **A brake you can reach.** While nanoMuse operates the phone, a capsule sits over the app the whole time — the red panda, the step in progress, and one red **Stop**. One tap, no menu; it ends the step in flight and refuses the next ones, and the agent asks instead of carrying on. Muse's phone work happens in a cloud VM you cannot see into; on your own phone the hand must be stoppable by the hand's owner. The screen is also the *last* rung: a skill, a fetch or the browser goes first, and the Activity view shows how often the screen was needed.
-- **Approvals name the scope.** Muse asks yes / no; nanoMuse's card offers *once*, *this task*, *always* (the Android app's middle scope is *this chat*) and lists the grants under *Permissions*, each with a revoke button.
+- **Approvals name the scope.** Muse asks yes / no; nanoMuse's card offers *once*, *this conversation*, *always* — the same middle scope on the phone, the web app and the terminal and lists the grants under *Permissions*, each with a revoke button.
 - **Everything has a plain-text form.** The same agent runs in a terminal (`nanomuse chat`) with the same approvals, and every screen is backed by a documented REST + WebSocket API, so another front-end can drive it.
 - **The mascot is a drawing, not a photograph.** It costs a few kilobytes, poses from state, and can be printed on a sticker.
 

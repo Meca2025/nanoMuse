@@ -75,6 +75,15 @@ Two kinds of request travel over the hub:
 Each device decides what it lets others do. **Remote control** off (phone:
 *Settings → nanoMuse Cloud → Devices*; desktop: `set remote_control off`) makes
 the device answer `info` and nothing else — it still sees and drives the others.
+With it on, a raw action that does something *to* the device (`shell`, `files`,
+`file.get`, `file.put`, `open`, `screen`, `coding.send`, `coding.stop`) is first
+agreed to by the person at that device: the usual approval card, *once* or
+*always for that device* — the standing answer is a grant
+(`remote_control:<device id>`) under Permissions. Nobody there, and the caller
+hears `not_allowed` when the card expires. `info` and `notify` never ask; a
+`task` runs under the device's own Sentinel, whose cards travel back to the
+caller as before. A device may `approve` only cards of its own runs that were
+sent to it — never the card asking whether it may run something.
 
 ## Frames
 
@@ -148,9 +157,10 @@ computer's own hands — is in [every-device.md](every-device.md).
 The relay authenticates every socket with the account key and routes only
 within the account; it stores device names and last-seen times, not what was
 asked. A device answers only devices of its own account, and only while its
-*Remote control* switch is on. Commands are judged where they are typed, before
-they leave; a remote Muse's approvals are answered by the person who asked,
-never by the other Muse. Signing out on a device revokes that device's key at
+*Remote control* switch is on — and, for anything that runs, reads or writes
+there, after the person at that device agreed (once, or always for the asking
+device). Commands are judged where they are typed, before they leave; a remote
+Muse's approvals are answered by the person who asked, never by the other Muse. Signing out on a device revokes that device's key at
 the relay and takes it off the hub; the *Devices* list on the phone and the
 console shows every device that has ever signed in, so a device you no longer
 recognise is visible, and *Forget* removes it once it is offline.

@@ -19,6 +19,7 @@ import com.openminis.app.service.SessionActivityTracker
 import io.github.nanomuse.guard.GateOutcome
 import io.github.nanomuse.guard.GuardKind
 import io.github.nanomuse.guard.RiskAssessment
+import io.github.nanomuse.guard.RiskClass
 import io.github.nanomuse.guard.RiskGate
 import io.github.nanomuse.guard.TapWords
 import io.github.nanomuse.status.KeepAwake
@@ -277,6 +278,14 @@ class HandsOperator(private val context: Context) {
                         Thread.sleep(TAP_SETTLE_MS)
                     }
                     HandsAction.KeyboardEnter -> {
+                        // Enter in a messenger's field *is* the send button: the same card a tap on “Send” gets.
+                        val gate = approveEnter(svc, opts.sessionId)
+                        if (gate.denied != null) {
+                            trace(traceDir, steps, parsed.thought, reply, "refused: ${gate.denied}", lastScreen)
+                            return finish(Outcome.Infeasible("the user did not allow sending with Enter — ${gate.denied}"), steps, runId, lastScreen, traceDir, log, model.label)
+                        }
+                        gate.notice?.let { log += it }
+                        if (stop.get()) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
                         capsule.stage.say(fxLabel(action))
                         lastResult = pressEnter(svc)
                         Thread.sleep(TAP_SETTLE_MS)
@@ -370,6 +379,35 @@ class HandsOperator(private val context: Context) {
         return when (outcome) {
             is GateOutcome.Allowed -> TapGate(notice = outcome.notice, shown = shown)
             is GateOutcome.Denied -> TapGate(denied = outcome.message, shown = shown)
+        }
+    }
+
+    /**
+     * Enter with the cursor in a message field sends the message (0.1.31): in a messenger, or
+     * when the field's hint says so, it takes the outbound card a tap on “Send” would. Enter in
+     * a search box, a form or a terminal is an ordinary key.
+     */
+    private fun approveEnter(svc: MinisAccessibilityService, sessionId: String?): TapGate {
+        val node = focusedField(svc) ?: return TapGate()
+        val hint = listOfNotNull(node.hintText?.toString(), node.contentDescription?.toString()).joinToString(" ")
+        val (pkg, _) = svc.foregroundPackage()
+        if (!TapWords.entersSend(pkg, hint)) return TapGate()
+        val appLabel = HandsApps.labelOf(context, pkg)
+        val where = appLabel ?: context.getString(com.openminis.app.R.string.nm_hands_this_phone)
+        val assessment = RiskAssessment(RiskClass.OUTBOUND, "presses Enter in a message field — that sends it ($where)", appLabel?.let { "app:$it" })
+        capsule.approval(context.getString(com.openminis.app.R.string.nm_hands_approval_detail, context.getString(com.openminis.app.R.string.nm_hands_fx_enter)))
+        val outcome = runBlocking {
+            RiskGate.check(sessionId ?: "hands", GuardKind.SCREEN, assessment, preview = "Enter → send", pageUrl = appLabel, elementText = context.getString(com.openminis.app.R.string.nm_hands_fx_enter))
+        }
+        val (nowPkg, _) = svc.foregroundPackage()
+        if (nowPkg == context.packageName && pkg != null && pkg != context.packageName) {
+            HandsApps.launchable(context).firstOrNull { it.packageName == pkg }?.let { HandsApps.open(context, it) }
+            Thread.sleep(OPEN_APP_SETTLE_MS)
+        }
+        capsule.working(0, context.getString(com.openminis.app.R.string.nm_hands_looking))
+        return when (outcome) {
+            is GateOutcome.Allowed -> TapGate(notice = outcome.notice, shown = "Enter")
+            is GateOutcome.Denied -> TapGate(denied = outcome.message, shown = "Enter")
         }
     }
 

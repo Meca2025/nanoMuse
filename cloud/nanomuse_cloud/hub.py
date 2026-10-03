@@ -54,6 +54,34 @@ HELLO_TIMEOUT_S = 15
 CALL_TTL_S = 15 * 60
 _ID = re.compile(r"^[A-Za-z0-9._:-]{4,80}$")
 
+# What one socket may send: frames and bytes per second, sustained, with twice that as a
+# burst (a screen being streamed at a few frames a second with pictures of a megabyte or
+# two fits easily). Over it, frames are dropped with one `rate_limited` error a second;
+# a socket that keeps flooding after that many dropped frames in a row is closed.
+FRAMES_PER_S = 60.0
+BYTES_PER_S = 8 * 1024 * 1024.0
+FLOOD_CLOSE_AFTER = 600
+
+
+class Bucket:
+    """A token bucket: `rate` tokens a second, holding at most `burst`."""
+
+    def __init__(self, rate: float, burst: float, clock=time.monotonic):
+        self.rate = rate
+        self.burst = burst
+        self.clock = clock
+        self.tokens = burst
+        self.at = clock()
+
+    def take(self, n: float = 1.0) -> bool:
+        t = self.clock()
+        self.tokens = min(self.burst, self.tokens + (t - self.at) * self.rate)
+        self.at = t
+        if self.tokens >= n:
+            self.tokens -= n
+            return True
+        return False
+
 
 def now() -> int:
     return int(time.time())
@@ -74,6 +102,21 @@ class Connection:
     connected_at: int = field(default_factory=now)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     closed: bool = False
+    frames: Bucket = field(default_factory=lambda: Bucket(FRAMES_PER_S, 2 * FRAMES_PER_S))
+    bytes: Bucket = field(default_factory=lambda: Bucket(BYTES_PER_S, 2 * BYTES_PER_S))
+    dropped: int = 0  # frames dropped in a row for flooding
+    warned_at: float = 0.0
+
+    def over_rate(self, size: int) -> bool:
+        """Whether this frame is one too many (or too big a stream) for the moment."""
+        if self.frames.take() and self.bytes.take(size):
+            # the run of drops ends when the sender has eased off, not on the one frame a
+            # trickle of refilled tokens lets through mid-flood
+            if self.frames.tokens >= self.frames.burst / 2:
+                self.dropped = 0
+            return False
+        self.dropped += 1
+        return True
 
     def brief(self) -> dict:
         return {"id": self.device_id, "name": self.name, "kind": self.kind}
@@ -107,12 +150,25 @@ class Hub:
         self.online: dict[str, dict[str, Connection]] = {}
         # keyed (account, call id): ids are the callers' own and only unique within an account
         self.pending: dict[tuple[str, str], Pending] = {}
+        # for the operator's self-check: frames dropped and sockets closed for flooding, ever
+        self.dropped_total = 0
+        self.flood_closes = 0
 
     # -- presence -------------------------------------------------------------------
 
     def online_count(self) -> int:
         """Sockets open right now, across every account (the operator's page)."""
         return sum(len(v) for v in self.online.values())
+
+    def stats(self) -> dict:
+        """Aggregates for the operator's self-check: nothing about any one account."""
+        return {
+            "online": self.online_count(),
+            "accounts_online": sum(1 for v in self.online.values() if v),
+            "pending_calls": len(self.pending),
+            "dropped_frames": self.dropped_total,
+            "flood_closes": self.flood_closes,
+        }
 
     def devices(self, account_id: str) -> list[dict]:
         """Remembered devices with their presence, then the browser tabs, newest first."""
@@ -236,6 +292,24 @@ class Hub:
                     break
                 if len(raw) > self.frame_limit:
                     await conn.send({"type": "error", "code": "too_large", "message": f"Frames are capped at {self.frame_limit} bytes"})
+                    continue
+                if conn.over_rate(len(raw)):
+                    self.dropped_total += 1
+                    if conn.dropped >= FLOOD_CLOSE_AFTER:
+                        self.flood_closes += 1
+                        log.warning("hub: %s flooded the hub; closing", conn.device_id[:12])
+                        await self._close(ws, 4008, "too many frames")
+                        break
+                    t = time.monotonic()
+                    if t - conn.warned_at >= 1.0:
+                        conn.warned_at = t
+                        await conn.send(
+                            {
+                                "type": "error",
+                                "code": "rate_limited",
+                                "message": f"At most {FRAMES_PER_S:.0f} frames and {BYTES_PER_S / 1048576:.0f} MB a second; this frame was dropped",
+                            }
+                        )
                     continue
                 frame = _loads(raw)
                 if not isinstance(frame, dict):

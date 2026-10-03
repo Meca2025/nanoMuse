@@ -8,8 +8,8 @@
 #
 # What it does, idempotently:
 #   1. rsync cloud/ → /opt/nanomuse/relay/src (tests, caches and .env left out)
-#   2. put this directory's compose file, backup script and systemd units in
-#      place; enable the backup timer
+#   2. put this directory's compose file, backup and self-check scripts and systemd
+#      units in place; enable the backup and self-check timers
 #   3. drop cloud.nanomuse.cn.caddy into the showcase's sites.d/ and reload Caddy
 #      (only when the file changed)
 #   4. docker compose up -d --build, then curl /healthz through the public name
@@ -33,11 +33,12 @@ rsync -az --delete \
 	--exclude '.env' --exclude 'data/' --exclude 'tests/' --exclude '__pycache__/' \
 	--exclude '.pytest_cache/' --exclude '.ruff_cache/' --exclude 'deploy/' \
 	"$cloud/" "$host:$remote/src/"
-rsync -az "$here/docker-compose.yml" "$here/backup.sh" "$host:$remote/"
-rsync -az "$here/nanomuse-relay-backup.service" "$here/nanomuse-relay-backup.timer" "$host:/tmp/"
-ssh "$host" "sudo install -m 644 /tmp/nanomuse-relay-backup.service /tmp/nanomuse-relay-backup.timer /etc/systemd/system/ \
-	&& rm -f /tmp/nanomuse-relay-backup.service /tmp/nanomuse-relay-backup.timer \
-	&& sudo systemctl daemon-reload && sudo systemctl enable --now nanomuse-relay-backup.timer >/dev/null"
+rsync -az "$here/docker-compose.yml" "$here/backup.sh" "$here/selfcheck.sh" "$host:$remote/"
+units="nanomuse-relay-backup.service nanomuse-relay-backup.timer nanomuse-relay-selfcheck.service nanomuse-relay-selfcheck.timer"
+(cd "$here" && rsync -az $units "$host:/tmp/")
+ssh "$host" "cd /tmp && sudo install -m 644 $units /etc/systemd/system/ && rm -f $units \
+	&& sudo systemctl daemon-reload \
+	&& sudo systemctl enable --now nanomuse-relay-backup.timer nanomuse-relay-selfcheck.timer >/dev/null"
 
 if ! ssh "$host" "test -s $remote/.env"; then
 	echo "no $remote/.env on $host yet — create it first (see README.md in this directory), then run again" >&2

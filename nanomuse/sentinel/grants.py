@@ -25,10 +25,21 @@ from typing import Literal
 
 from nanomuse.logger import logger
 
-GrantScope = Literal["once", "task", "session", "24h", "always"]
-SCOPES: tuple[str, ...] = ("once", "task", "session", "24h", "always")
+GrantScope = Literal["once", "conversation", "session", "24h", "always"]
+SCOPES: tuple[str, ...] = ("once", "conversation", "session", "24h", "always")
+# The middle scope was "task" (one agent run) up to 0.1.30; clients that still say so mean
+# the conversation, which is the scope the phone has always had.
+LEGACY_SCOPES: dict[str, str] = {"task": "conversation"}
 PERSISTED_SCOPES = ("24h", "always")
 DAY = 24 * 3600.0
+
+
+def normalize_scope(scope: str | None) -> str:
+    """The scope under its current name; unknown or missing scopes are ``once``."""
+    if not scope:
+        return "once"
+    scope = LEGACY_SCOPES.get(scope, scope)
+    return scope if scope in SCOPES else "once"
 
 
 @dataclass
@@ -39,11 +50,11 @@ class Grant:
     scope: str
     granted_at: float
     expires_at: float | None = None
-    task_id: str | None = None
+    conversation_id: str | None = None
 
-    def active(self, now: float, task_id: str | None) -> bool:
-        if self.scope == "task":
-            return self.task_id is not None and self.task_id == task_id
+    def active(self, now: float, conversation_id: str | None) -> bool:
+        if self.scope == "conversation":
+            return self.conversation_id is not None and self.conversation_id == conversation_id
         if self.expires_at is not None and now >= self.expires_at:
             return False
         return True
@@ -122,13 +133,13 @@ class GrantStore:
         self.path.write_text(json.dumps({"version": 2, "grants": keep}, indent=1), "utf-8")
 
     # ------------------------------------------------------------------ queries
-    def _exact(self, key: str, now: float, task_id: str | None) -> Grant | None:
+    def _exact(self, key: str, now: float, conversation_id: str | None) -> Grant | None:
         for g in self._grants:
-            if g.key == key and g.active(now, task_id):
+            if g.key == key and g.active(now, conversation_id):
                 return g
         return None
 
-    def match(self, key: str, task_id: str | None = None) -> Grant | None:
+    def match(self, key: str, conversation_id: str | None = None) -> Grant | None:
         """The grant covering ``key``, if any.
 
         A grant for the whole tool covers every target. A call with several targets
@@ -136,35 +147,38 @@ class GrantStore:
         only when every single target is.
         """
         now = time.time()
-        found = self._exact(key, now, task_id)
+        found = self._exact(key, now, conversation_id)
         if found is not None:
             return found
         tool, _, target = key.partition(":")
         if target:
-            toolwide = self._exact(tool, now, task_id)
+            toolwide = self._exact(tool, now, conversation_id)
             if toolwide is not None:
                 return toolwide
             parts = [p for p in target.split(",") if p]
             if len(parts) > 1:
-                grants = [self._exact(grant_key(tool, p), now, task_id) for p in parts]
+                grants = [self._exact(grant_key(tool, p), now, conversation_id) for p in parts]
                 if all(grants):
                     return grants[0]
         return None
 
-    def active(self, task_id: str | None = None) -> list[Grant]:
+    def active(self, conversation_id: str | None = None) -> list[Grant]:
         now = time.time()
-        return [g for g in self._grants if g.active(now, task_id) or g.scope == "task"]
+        return [
+            g for g in self._grants if g.active(now, conversation_id) or g.scope == "conversation"
+        ]
 
     # ------------------------------------------------------------------ mutations
     def add(
-        self, tool: str, target: str | None, scope: str, task_id: str | None = None
+        self, tool: str, target: str | None, scope: str, conversation_id: str | None = None
     ) -> Grant | None:
         """Store a grant. Several targets (``git,head``) become one grant each, so
         approving a pipeline also covers its programs on their own — and vice versa."""
-        if scope not in SCOPES or scope == "once":
+        scope = normalize_scope(scope)
+        if scope == "once":
             return None
-        if scope == "task" and not task_id:
-            logger.debug("task-scoped grant requested outside a task; treating as once")
+        if scope == "conversation" and not conversation_id:
+            logger.debug("conversation-scoped grant requested outside one; treating as once")
             return None
         now = time.time()
         targets: list[str | None] = [p for p in target.split(",") if p] if target else [None]
@@ -177,7 +191,7 @@ class GrantStore:
                 scope=scope,
                 granted_at=now,
                 expires_at=now + DAY if scope == "24h" else None,
-                task_id=task_id if scope == "task" else None,
+                conversation_id=conversation_id if scope == "conversation" else None,
             )
             # one grant per key: the new decision replaces the old one
             self._grants = [g for g in self._grants if g.key != grant.key]
@@ -195,8 +209,14 @@ class GrantStore:
             return True
         return False
 
-    def end_task(self, task_id: str) -> None:
-        self._grants = [g for g in self._grants if not (g.scope == "task" and g.task_id == task_id)]
+    def end_conversation(self, conversation_id: str) -> None:
+        """The conversation is over (deleted, cleared, or the run that stood in for one
+        ended): its grants go with it."""
+        self._grants = [
+            g
+            for g in self._grants
+            if not (g.scope == "conversation" and g.conversation_id == conversation_id)
+        ]
 
     def clear(self) -> None:
         self._grants.clear()
@@ -207,8 +227,18 @@ class GrantStore:
         self._grants = [
             g
             for g in self._grants
-            if g.scope == "task" or g.expires_at is None or now < g.expires_at
+            if g.scope == "conversation" or g.expires_at is None or now < g.expires_at
         ]
 
 
-__all__ = ["DAY", "PERSISTED_SCOPES", "SCOPES", "Grant", "GrantScope", "GrantStore", "grant_key"]
+__all__ = [
+    "DAY",
+    "LEGACY_SCOPES",
+    "PERSISTED_SCOPES",
+    "SCOPES",
+    "Grant",
+    "GrantScope",
+    "GrantStore",
+    "grant_key",
+    "normalize_scope",
+]

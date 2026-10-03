@@ -55,14 +55,16 @@ const initialState: NanoMuseState = {
   webTheme: 'light',
 };
 
-/** Normalise what people paste: a bare host, an origin, or the full `?token=` link. */
+/** Normalise what people paste: a bare host, an origin, or the full link the runtime
+ *  printed — `#token=…` (the fragment never reaches a server) or the older `?token=…`. */
 export function parseServerInput(raw: string): { serverUrl: string; token: string } {
   let text = raw.trim();
   if (!text) return { serverUrl: '', token: '' };
   if (!/^[a-z]+:\/\//i.test(text)) text = `http://${text}`;
   try {
     const url = new URL(text);
-    const token = url.searchParams.get('token') ?? '';
+    const fragment = /(?:^#|&)token=([^&]+)/.exec(url.hash);
+    const token = fragment ? decodeURIComponent(fragment[1]) : (url.searchParams.get('token') ?? '');
     return { serverUrl: `${url.protocol}//${url.host}`, token };
   } catch {
     return { serverUrl: text.replace(/\/+$/, ''), token: '' };

@@ -29,15 +29,17 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { arch, homedir, hostname, release, type, userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
-import { randomBytes } from 'node:crypto'
+import { createHmac, randomBytes, randomUUID } from 'node:crypto'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
-import type {} from '@deepseek-ai/dsh-tools'
+import type { ToolDispatchExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-user-approval'
 import z from '@deepseek-ai/schemastery'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
-import { HubClient, HubError, type HubDevice } from './hub.ts'
+import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner } from './task.ts'
@@ -96,10 +98,76 @@ export interface HubState {
   connected: boolean
   deviceId: string
   deviceName: string
-  /** Whether other devices may run things here (`shell`, `files`, `open`, `screen`…); `info` and `notify` always work. */
+  /**
+   * On: every device of the account may run things here (`shell`, `files`, `open`, `screen`, a task) without
+   * asking. Off (the default): a device asks the person at this computer first — a card on this screen,
+   * allowed once or always for that device. `info` and `notify` always work.
+   */
   remoteControl: boolean
+  /** Devices the person allowed without asking, while remote control is off. */
+  trusted: TrustedDevice[]
+  /** Questions from other devices waiting for an answer on this screen. */
+  asks: Ask[]
   lastError?: string
   devices: HubDevice[]
+}
+
+export interface TrustedDevice {
+  id: string
+  name: string
+  at: number
+}
+
+/** Another device wants to run something here; the person answers on this screen. */
+export interface Ask {
+  id: string
+  from: string
+  fromId: string
+  action: string
+  text: string
+  at: number
+}
+
+export type AskAnswer = 'once' | 'always' | 'deny'
+
+/** How long a question from another device waits on this screen (the hub call itself waits about as long). */
+export const ASK_TIMEOUT_MS = 110_000
+
+/**
+ * The questions other devices are waiting on, and the person's answers. `ask` settles with the answer, or
+ * `'timeout'` when nobody answered in time; `onChange` fires whenever the list changes (for the live state).
+ */
+export class AskDesk {
+  private readonly pending = new Map<string, { ask: Ask; finish(answer: AskAnswer | 'timeout'): void }>()
+
+  constructor(private readonly onChange: () => void = () => undefined) {}
+
+  get list(): Ask[] {
+    return [...this.pending.values()].map((p) => p.ask)
+  }
+
+  ask(from: Caller, action: string, text: string, timeoutMs = ASK_TIMEOUT_MS): Promise<AskAnswer | 'timeout'> {
+    const ask: Ask = { id: `ask_${randomUUID().slice(0, 8)}`, from: from.name || 'a device', fromId: from.id, action, text, at: Date.now() }
+    return new Promise((resolve) => {
+      const finish = (answer: AskAnswer | 'timeout') => {
+        clearTimeout(timer)
+        this.pending.delete(ask.id)
+        this.onChange()
+        resolve(answer)
+      }
+      const timer = setTimeout(() => finish('timeout'), timeoutMs)
+      this.pending.set(ask.id, { ask, finish })
+      this.onChange()
+    })
+  }
+
+  /** The person's answer; false when the question is no longer waiting. */
+  answer(id: string, answer: AskAnswer): boolean {
+    const p = this.pending.get(id)
+    if (!p) return false
+    p.finish(answer)
+    return true
+  }
 }
 
 /** One Hands or Reach tool call in flight. */
@@ -178,8 +246,10 @@ interface State {
   models?: RelayModel[]
   deviceId?: string
   deviceName?: string
-  /** Absent means on — the runtime's default too. */
+  /** `true` lets every device of the account run things here without asking; absent or `false` means ask. */
   remoteControl?: boolean
+  /** Devices allowed without asking (device id → name and when), while remote control is off. */
+  trusted?: Record<string, { name: string; at: number }>
   /** The session each other device's conversation lives in (`<device id>\n<conversation>` → session id). */
   taskSessions?: Record<string, string>
 }
@@ -187,6 +257,59 @@ interface State {
 /** Tool names whose calls the capsule follows. */
 export function isHandsTool(name: string): boolean {
   return name.startsWith('mcp__nanomuse__') || name === 'devices' || name.startsWith('device_') || name === 'delegate'
+}
+
+/** The trusted-device map as stored, dropping anything malformed. */
+function trustedOf(raw: Record<string, unknown>): Record<string, { name: string; at: number }> {
+  const out: Record<string, { name: string; at: number }> = {}
+  for (const [id, v] of Object.entries(raw)) {
+    if (!id || !v || typeof v !== 'object') continue
+    const { name, at } = v as { name?: unknown; at?: unknown }
+    out[id] = { name: typeof name === 'string' && name ? name : id, at: typeof at === 'number' ? at : 0 }
+  }
+  return out
+}
+
+/** The `confirmed` field of a hands call, when it is one (a ticket or the legacy `true`). */
+export function confirmationOf(args: unknown): string | true | undefined {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return undefined
+  const value = (args as Record<string, unknown>).confirmed
+  return value === true || typeof value === 'string' ? value : undefined
+}
+
+/** The confirmation ticket `nanomuse mcp` checks: HMAC-SHA256 over the compact, key-sorted arguments without `confirmed`. */
+export function confirmTicket(secret: string, args: Record<string, unknown>): string {
+  const clean = Object.fromEntries(Object.entries(args).filter(([k]) => k !== 'confirmed'))
+  return createHmac('sha256', secret).update(canonical(clean)).digest('hex').slice(0, 32)
+}
+
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+/** The runtime's "Not done — …" refusal in an MCP error result, or `undefined` for any other failure. */
+export function refusalOf(result: ToolExecutionResult): string | undefined {
+  const texts: string[] = []
+  for (const block of result.content ?? []) {
+    const b = block as { type?: unknown; text?: unknown }
+    if (b.type === 'text' && typeof b.text === 'string') texts.push(b.text)
+  }
+  const message = (result.error as { message?: unknown } | undefined)?.message
+  if (typeof message === 'string') texts.push(message)
+  const hit = texts.find((t) => t.includes('Not done — '))
+  if (!hit) return undefined
+  const start = hit.indexOf('Not done — ')
+  return hit.slice(start + 'Not done — '.length).trim()
+}
+
+function declined(step: string, why: string): ToolExecutionResult {
+  const text = `Not done — ${step}. The person did not approve this step on their permission card (${why}); do not retry it. Ask them what to do instead, or carry on without it.`
+  return { isError: true, error: { message: text, info: { name: 'HandsDeclined', code: 'REJECTED' } }, content: [{ type: 'text', text }] }
 }
 
 const ARG_KEYS = ['action', 'label', 'text', 'device', 'command', 'task', 'path', 'url'] as const
@@ -206,6 +329,8 @@ export default class NanomuseCloud extends Service {
   private steps = 0
   private lastCallAt = 0
   private notices: Notice[] = []
+  /** Questions from other devices waiting on this screen. */
+  private readonly asks = new AskDesk(() => this.broadcast())
   private noticeSeq = 0
   private stage: StageState = NO_STAGE
   private frame: { seq: number; bytes: Buffer; mime: string } | undefined
@@ -262,7 +387,7 @@ export default class NanomuseCloud extends Service {
       return { ok: true, shown: true }
     })
     for (const action of REMOTE_ACTIONS) {
-      this.hub.handle(action, (args, call) => this.remote(action, args, call.from.name || 'a device'))
+      this.hub.handle(action, (args, call) => this.remote(action, args, call.from))
     }
     // A task from another device runs in a dsh session here; needs the session API, so only once it is up.
     this.ctx.inject(['sessionController', 'approval'], (ctx) => {
@@ -280,8 +405,8 @@ export default class NanomuseCloud extends Service {
       ctx.effect(() => runner.attach(), 'nanomuse cloud: tasks')
       ctx.effect(
         () =>
-          this.hub.handle('task', (args, call) => {
-            if (!this.remoteControl) throw new HubError('not_allowed', `${this.deviceName()} is set not to be operated from other devices`)
+          this.hub.handle('task', async (args, call) => {
+            await this.permit(call.from, 'task', brief('task', args))
             return runner.task(args, call)
           }),
         'nanomuse cloud: task',
@@ -300,12 +425,18 @@ export default class NanomuseCloud extends Service {
     this.ctx.inject(['tools'], (ctx) => {
       ctx.on('tools/execute', async (exec, next) => {
         if (!isHandsTool(exec.name)) return next()
+        // Our own re-dispatch of a step the person just agreed to: the stage already follows the outer call.
+        if (exec.parent !== undefined && confirmationOf(exec.arguments) !== undefined) return next()
         const sessionId = exec.agent?.session.id ?? ''
         this.began(exec.callId, exec.name, exec.arguments, sessionId)
         if (exec.name === 'mcp__nanomuse__computer_act') this.acted(stageAction(exec.arguments), sessionId)
         else if (exec.name === 'mcp__nanomuse__computer_screen') this.acted({ kind: 'look', label: '', text: '', x: -1, y: -1, at: Date.now() }, sessionId)
         try {
-          const result = await next()
+          let result = await next()
+          if (exec.name === 'mcp__nanomuse__computer_act' && result.isError) {
+            const refused = refusalOf(result)
+            if (refused) result = await this.confirmStep(ctx, exec, refused)
+          }
           if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId)
           return result
         } finally {
@@ -583,19 +714,52 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
-  /** Whether other devices may run things here; `info` and `notify` always work. */
+  /** Whether every device of the account may run things here without asking; off (the default) means each one asks. */
   get remoteControl(): boolean {
-    return this.state.remoteControl !== false
+    return this.state.remoteControl === true
   }
 
-  /** Flip remote control; the hub hears the new action list in the next `hello`. */
+  /** Flip remote control. */
   async setRemoteControl(on: boolean): Promise<void> {
     if (this.remoteControl === on) return
     this.state = { ...this.state, remoteControl: on }
     await this.writeState()
-    this.ctx.logger.info('nanomuse: remote control %s', on ? 'on' : 'off')
-    if (this.hub.connected) this.hub.restart()
+    this.ctx.logger.info('nanomuse: remote control %s', on ? 'on (no questions)' : 'off (each device asks)')
     this.broadcast()
+  }
+
+  /** The devices allowed without asking. */
+  get trusted(): TrustedDevice[] {
+    return Object.entries(this.state.trusted ?? {}).map(([id, v]) => ({ id, name: v.name, at: v.at })).sort((a, b) => a.at - b.at)
+  }
+
+  /** Allow, or stop allowing, one device without asking. */
+  async setTrusted(id: string, name: string, on: boolean): Promise<void> {
+    const trusted = { ...this.state.trusted }
+    if (on) trusted[id] = { name: name || trusted[id]?.name || id, at: Date.now() }
+    else if (id in trusted) delete trusted[id]
+    else return
+    this.state = { ...this.state, trusted }
+    await this.writeState()
+    this.ctx.logger.info('nanomuse: %s %s without asking', name || id, on ? 'allowed' : 'no longer allowed')
+    this.broadcast()
+  }
+
+  /**
+   * Whether `from` may do `action` here now. Remote control on, or a device allowed without asking: yes.
+   * Otherwise a card on this screen asks the person; *always* remembers the device. No answer in time, or
+   * a no, and the asker hears `not_allowed`.
+   */
+  private async permit(from: Caller, action: string, text: string): Promise<void> {
+    if (this.remoteControl || this.state.trusted?.[from.id]) return
+    this.ctx.logger.info('nanomuse: %s asks to %s here%s', from.name || 'a device', action, text ? `: ${text}` : '')
+    const answer = await this.asks.ask(from, action, text)
+    if (answer === 'always') await this.setTrusted(from.id, from.name, true)
+    if (answer === 'once' || answer === 'always') return
+    throw new HubError(
+      'not_allowed',
+      answer === 'timeout' ? `nobody at ${this.deviceName()} answered in time` : `the person at ${this.deviceName()} did not allow it`,
+    )
   }
 
   /** The current account key, for a plugin that speaks to the relay itself. */
@@ -660,7 +824,7 @@ export default class NanomuseCloud extends Service {
       this.ctx.logger.debug('nanomuse cloud: provider row not removed: %s', message(error))
     }
     const { deviceId, deviceName, remoteControl } = this.state
-    this.state = { ...(deviceId ? { deviceId } : {}), ...(deviceName ? { deviceName } : {}), ...(remoteControl === false ? { remoteControl } : {}) }
+    this.state = { ...(deviceId ? { deviceId } : {}), ...(deviceName ? { deviceName } : {}), ...(remoteControl === true ? { remoteControl } : {}) }
     this.signedInCache = false
     await this.writeState()
     await this.profile.reset()
@@ -742,6 +906,42 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
+  /**
+   * A step the runtime's hands refused without the person's word (Enter, a submit, a click
+   * on "pay", …): ask them on the permission card, and if they agree, run the same call
+   * again carrying the confirmation ticket the `nanomuse mcp` server checks — an HMAC of
+   * the arguments under the secret the desktop shell gave both of us (NANOMUSE_MCP_CONFIRM).
+   * Without the secret (a hand-made dsh profile) the server takes `confirmed: true`, so
+   * that is what the re-dispatch carries; either way the model never confirms on its own.
+   */
+  private async confirmStep(ctx: Context, exec: ToolDispatchExecution, refused: string): Promise<ToolExecutionResult> {
+    const approval = ctx.get('approval')
+    const tools = ctx.get('tools')
+    if (!approval || !tools || !exec.agent) return declined(refused, 'approval is not available here')
+    const step = refused.replace(/\.\s+(The person has to agree|Ask the person)[\s\S]*$/, '').trim()
+    const outcome = await approval.request({
+      agent: exec.agent,
+      toolName: exec.name,
+      callId: exec.callId,
+      reason: step,
+      displayReason: { en: `On this computer's screen: ${step}`, zh: `在这台电脑的屏幕上：${step}` },
+      signal: exec.signal,
+    })
+    if (outcome !== 'allowed-once') return declined(step, outcome)
+    const args = exec.arguments && typeof exec.arguments === 'object' && !Array.isArray(exec.arguments) ? (exec.arguments as Record<string, unknown>) : {}
+    const secret = process.env.NANOMUSE_MCP_CONFIRM?.trim()
+    const confirmed: string | true = secret ? confirmTicket(secret, args) : true
+    return tools.execute({
+      callId: ToolCallId(`${exec.callId}:confirmed`),
+      rootCallId: exec.rootCallId,
+      name: exec.name,
+      arguments: { ...args, confirmed },
+      agent: exec.agent,
+      parent: exec.token,
+      signal: exec.signal,
+    })
+  }
+
   /** The screenshot and the words that came back from `computer_screen` / `computer_act` (an MCP result). */
   private frameFromMcp(value: unknown, sessionId: string): void {
     const content = (value as { content?: unknown[] } | undefined)?.content
@@ -777,25 +977,22 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
-  /** The actions this computer announces: always `info` and `notify`, the rest with remote control on. */
+  /** The actions this computer announces: `info` and `notify`, the remote ones (the person here agrees to each unless remote control is on), a task once sessions are up. */
   private actions(): string[] {
-    const out = [...ACTIONS]
-    if (this.tasks) out.push('approve')
-    if (this.remoteControl) {
-      out.push(...REMOTE_ACTIONS)
-      if (this.tasks) out.push('task', 'stop')
-    }
+    const out = [...ACTIONS, ...REMOTE_ACTIONS]
+    if (this.tasks) out.push('approve', 'task', 'stop')
     return out
   }
 
-  /** Another device running something here (`docs/hub.md`: the asker judged it; here the switch decides). */
-  private async remote(action: RemoteAction, args: Record<string, unknown>, from: string): Promise<Record<string, unknown>> {
-    if (!this.remoteControl) throw new HubError('not_allowed', `${this.deviceName()} is set not to be operated from other devices`)
+  /** Another device running something here (`docs/hub.md`: the asker judged it; here the person — or the switch — decides). */
+  private async remote(action: RemoteAction, args: Record<string, unknown>, from: Caller): Promise<Record<string, unknown>> {
     const summary = brief(action, args)
-    this.ctx.logger.info('nanomuse: %s asked %s here%s', from, action, summary ? `: ${summary}` : '')
+    await this.permit(from, action, summary)
+    const who = from.name || 'a device'
+    this.ctx.logger.info('nanomuse: %s asked %s here%s', who, action, summary ? `: ${summary}` : '')
     const body = await runAction(action, args)
     // Only what actually happened is worth a toast; a refused path is the asker's error to see.
-    if (TOAST_ACTIONS.has(action)) this.notice('call', from, '', summary, action)
+    if (TOAST_ACTIONS.has(action)) this.notice('call', who, '', summary, action)
     return body
   }
 
@@ -807,6 +1004,8 @@ export default class NanomuseCloud extends Service {
       deviceId: this.state.deviceId ?? '',
       deviceName: this.deviceName(),
       remoteControl: this.remoteControl,
+      trusted: this.trusted,
+      asks: this.asks.list,
       ...(this.hub.lastError ? { lastError: this.hub.lastError } : {}),
       devices: this.hub.devices,
     }
@@ -832,7 +1031,8 @@ export default class NanomuseCloud extends Service {
         ...(raw.models ? { models: raw.models } : {}),
         ...(typeof raw.deviceId === 'string' && raw.deviceId ? { deviceId: raw.deviceId } : {}),
         ...(typeof raw.deviceName === 'string' && raw.deviceName ? { deviceName: raw.deviceName } : {}),
-        ...(raw.remoteControl === false ? { remoteControl: false } : {}),
+        ...(raw.remoteControl === true ? { remoteControl: true } : {}),
+        ...(raw.trusted && typeof raw.trusted === 'object' ? { trusted: trustedOf(raw.trusted) } : {}),
         ...(raw.taskSessions && typeof raw.taskSessions === 'object' ? { taskSessions: raw.taskSessions } : {}),
       }
     } catch {
@@ -988,7 +1188,19 @@ export default class NanomuseCloud extends Service {
       }
       if (req.method === 'POST' && route === '/devices/remote-control') {
         const body = await json(req)
-        await this.setRemoteControl(body.on !== false)
+        await this.setRemoteControl(body.on === true)
+        return send(res, 204)
+      }
+      if (req.method === 'POST' && route === '/devices/trust') {
+        const body = await json(req)
+        await this.setTrusted(String(body.device_id ?? ''), String(body.name ?? ''), body.on === true)
+        return send(res, 204)
+      }
+      if (req.method === 'POST' && route === '/devices/answer') {
+        const body = await json(req)
+        const answer = body.answer
+        if (answer !== 'once' && answer !== 'always' && answer !== 'deny') return send(res, 400, { error: { code: 'bad_answer', message: 'answer must be once, always or deny' } })
+        if (!this.asks.answer(String(body.id ?? ''), answer)) return send(res, 404, { error: { code: 'not_found', message: 'that question is no longer waiting' } })
         return send(res, 204)
       }
       if (req.method === 'POST' && route === '/notices/clear') {

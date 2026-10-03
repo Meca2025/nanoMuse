@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences, Tray } from "electron";
+import { randomBytes } from "node:crypto";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
@@ -252,6 +253,10 @@ function startHost(): Promise<string> {
           ...process.env,
           ELECTRON_RUN_AS_NODE: "1",
           DSH_HOME: home,
+          // One secret per launch, shared by the bundle and the runtime's `nanomuse mcp`
+          // server: a hands step the person must agree to is confirmed with a ticket only
+          // the bundle can make (after the permission card), never by the model's own word.
+          NANOMUSE_MCP_CONFIRM: randomBytes(24).toString("hex"),
         };
         const shellPath = loginShellPath();
         if (shellPath) env.PATH = shellPath;
@@ -415,6 +420,13 @@ function iconPath(): string {
 /** The Muse window colours: near-black in the dark, paper in the light (the bundle's stylesheet agrees). */
 const BASE_DARK = "#171717";
 const BASE_LIGHT = "#f9f9f9";
+/** The height of the Windows caption-button overlay; the page's top clearance matches it. */
+const OVERLAY_HEIGHT = 40;
+
+/** The Windows caption buttons: transparent over the page, symbols in the scheme's ink. */
+function overlayColors(dark = nativeTheme.shouldUseDarkColors): Electron.TitleBarOverlay {
+  return { color: dark ? BASE_DARK : BASE_LIGHT, symbolColor: dark ? "#e5e5e5" : "#262626", height: OVERLAY_HEIGHT };
+}
 
 type PermissionKind = "accessibility" | "screen" | "microphone";
 type PermissionState = "granted" | "denied" | "not-determined" | "not-needed";
@@ -647,6 +659,8 @@ function registerBridge(): void {
   });
   ipcMain.handle("nanomuse:theme", (_e, theme: string) => {
     mainWindow?.setBackgroundColor(theme === "dark" ? BASE_DARK : BASE_LIGHT);
+    // the Windows caption buttons follow the page's colour scheme
+    if (process.platform === "win32") mainWindow?.setTitleBarOverlay?.(overlayColors(theme === "dark"));
   });
   ipcMain.handle("nanomuse:prefs", () => prefsView());
   ipcMain.handle("nanomuse:prefs:set", (_e, patch: Partial<Prefs>) => {
@@ -677,6 +691,10 @@ function createWindow(): BrowserWindow {
     // macOS: no title bar, the traffic lights sit over the rail (Muse's window); the
     // web app marks its drag regions once the preload tells it the platform.
     ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 16, y: 18 } } : {}),
+    // Windows: the same window, with the system's own caption buttons drawn over the top
+    // right corner (the overlay); the page leaves them room. Linux keeps its system bar —
+    // every desktop draws it differently and the overlay is not available there.
+    ...(process.platform === "win32" ? { titleBarStyle: "hidden" as const, titleBarOverlay: overlayColors() } : {}),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false, preload: join(__dirname, "preload.js") },
   });
   win.once("ready-to-show", () => win.show());

@@ -55,6 +55,9 @@ class Lane:
     model: str
     base_url: str
     api_key: str
+    # addresses the host of base_url resolved to when it was checked (a visitor's own
+    # provider): calls go to these, with the name as SNI and Host — no lookup at call time
+    pin: tuple[str, ...] = ()
 
     @property
     def configured(self) -> bool:
@@ -152,6 +155,9 @@ class Settings:
     web_max_accounts: int
     web_max_running: int
     web_idle_stop_s: int
+    web_key_ttl_s: (
+        int  # how long the key a container is started with lives (the relay's session key)
+    )
     web_memory: str
     web_cpus: str
     web_device_name: str
@@ -253,6 +259,7 @@ class Settings:
             web_max_accounts=_int("WEB_MAX_ACCOUNTS", 60),
             web_max_running=_int("WEB_MAX_RUNNING", 12),
             web_idle_stop_s=_int("WEB_IDLE_STOP_S", 6 * 3600),
+            web_key_ttl_s=_int("WEB_KEY_TTL_S", 30 * 86400),
             web_memory=_str("WEB_CONTAINER_MEMORY", "640m"),
             web_cpus=_str("WEB_CONTAINER_CPUS", "1"),
             web_device_name=_str("WEB_DEVICE_NAME", "Web"),

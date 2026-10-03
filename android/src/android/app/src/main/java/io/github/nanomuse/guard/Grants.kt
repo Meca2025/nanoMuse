@@ -28,7 +28,10 @@ data class Grant(
 
 /**
  * Remembered approvals. Session grants live in memory and die with the chat (cleared when
- * the chat is cleared or deleted, and on process exit). "Always" grants are written to
+ * the chat is cleared or deleted, and on process exit); since 0.1.31 one is bound to the
+ * object it was given for when the call had one (the app a tap lands in, the host a command
+ * sends to), so "for this chat" on WeChat says nothing about Alipay — the same rule the
+ * runtime's "for this conversation" follows. "Always" grants are written to
  * `minis-global/nanomuse/grants.json` and listed under Settings → Permissions, where any of
  * them can be revoked.
  */
@@ -58,7 +61,7 @@ object Grants {
     @Synchronized
     fun allows(riskClass: RiskClass, target: String?, sessionId: String?): Boolean {
         if (riskClass != RiskClass.MONEY && sessionId != null &&
-            session.any { it.sessionId == sessionId && it.riskClass == riskClass }
+            session.any { it.sessionId == sessionId && it.riskClass == riskClass && (it.target == null || it.target == target) }
         ) return true
         if (target == null) return false
         return _always.value.any { it.riskClass == riskClass && it.target == target }
@@ -67,12 +70,15 @@ object Grants {
     /** "Always" grants of the highest tier — payments that run without a card. */
     fun highest(): List<Grant> = _always.value.filter { it.riskClass.tier == RiskTier.HIGHEST }
 
-    /** "Allow for this chat": this kind of action, any object, until the chat is cleared. */
+    /**
+     * "Allow for this chat": this kind of action on [target] (any object when the call had
+     * none), until the chat is cleared.
+     */
     @Synchronized
-    fun grantSession(riskClass: RiskClass, sessionId: String, label: String) {
-        if (session.any { it.sessionId == sessionId && it.riskClass == riskClass }) return
-        session.add(Grant(key(riskClass, null), riskClass, null, GrantScope.SESSION, sessionId, label))
-        AppLogger.info(TAG, "session grant ${riskClass.name.lowercase()} for $sessionId")
+    fun grantSession(riskClass: RiskClass, sessionId: String, label: String, target: String? = null) {
+        if (session.any { it.sessionId == sessionId && it.riskClass == riskClass && (it.target == null || it.target == target) }) return
+        session.add(Grant(key(riskClass, target), riskClass, target, GrantScope.SESSION, sessionId, label))
+        AppLogger.info(TAG, "session grant ${key(riskClass, target)} for $sessionId")
     }
 
     /** "Always allow for X": this kind of action on exactly this object, until revoked. */

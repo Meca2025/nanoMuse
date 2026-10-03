@@ -76,7 +76,8 @@ def serve(
         shown_host = lan_ip() or "127.0.0.1"
     url = f"http://[{shown_host}]:{port}/" if ":" in shown_host else f"http://{shown_host}:{port}/"
     if service.token:
-        url += f"?token={service.token}"
+        # in the fragment: the browser keeps it to itself, so it is in no access log
+        url += f"#token={service.token}"
     # the banner once the socket is about to open (a desktop shell reads the log when the
     # app takes long to answer); the services may still be coming up behind it, and
     # /api/health says which one

@@ -33,6 +33,30 @@ import type {
 
 /** Tab bar: chat · feed · ideas · goals · library. Memory, devices, connections and settings live behind the avatar. */
 export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "devices" | "connections" | "skills" | "you" | "account" | "coding" | "avatar";
+/**
+ * The page this app is framed in (the showcase's simulated phone), when it can be named: the
+ * ancestor's origin where the browser exposes it, else the referrer's. A message to the parent
+ * goes to that origin only — never to whatever happens to hold the frame.
+ */
+function parentOrigin(): string | null {
+  if (window.parent === window) return null;
+  const ancestors = window.location.ancestorOrigins;
+  if (ancestors && ancestors.length > 0 && ancestors[0] !== "null") return ancestors[0];
+  if (document.referrer) {
+    try {
+      return new URL(document.referrer).origin;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function tellParent(message: { type: string; [k: string]: unknown }): void {
+  const origin = parentOrigin();
+  if (origin) window.parent.postMessage(message, origin);
+}
+
 const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "devices", "connections", "skills", "you", "account", "coding", "avatar"];
 
 /** A coding run being followed live: the run itself and the steps that arrived so far. */
@@ -645,13 +669,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // is in, so the frame around it can match (`nanomuse:theme` again whenever that changes).
   const theme = useTheme();
   useEffect(() => {
-    if (!state.loaded || window.parent === window) return;
-    window.parent.postMessage({ type: "nanomuse:ready", name: state.profile?.name ?? "", theme }, "*");
+    if (!state.loaded) return;
+    tellParent({ type: "nanomuse:ready", name: state.profile?.name ?? "", theme });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.loaded, state.profile?.name]);
   useEffect(() => {
-    if (!state.loaded || window.parent === window) return;
-    window.parent.postMessage({ type: "nanomuse:theme", theme }, "*");
+    if (!state.loaded) return;
+    tellParent({ type: "nanomuse:theme", theme });
   }, [state.loaded, theme]);
 
   // The number on the app icon: cards waiting for you.

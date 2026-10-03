@@ -156,7 +156,7 @@ private fun RiskApprovalCard(request: RiskRequest) {
                 GreyPill(stringResource(R.string.nm_risk_allow_session)) { RiskGate.decide(request.id, RiskDecision.ALLOW_SESSION) }
             }
             if (request.canAlways) {
-                val target = RiskText.targetLabel(context, request.assessment.target) ?: ""
+                val target = RiskText.targetLabel(context, request) ?: ""
                 val remembered = stringResource(R.string.nm_risk_remembered_toast)
                 val always = {
                     RiskGate.decide(request.id, RiskDecision.ALLOW_ALWAYS)
@@ -256,6 +256,7 @@ private fun Preview(request: RiskRequest) {
                     GuardKind.BROWSER -> R.string.nm_risk_preview_browser
                     GuardKind.SCREEN -> R.string.nm_risk_preview_screen
                     GuardKind.COMPUTER -> R.string.nm_risk_preview_computer
+                    GuardKind.DEVICE -> R.string.nm_risk_preview_device
                 },
             ),
             fontSize = 11.sp,

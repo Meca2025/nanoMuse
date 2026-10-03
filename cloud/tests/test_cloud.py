@@ -17,7 +17,7 @@ from nanomuse_cloud.config import Settings
 from nanomuse_cloud.db import Database
 from nanomuse_cloud.identifiers import BadIdentifier, parse
 from nanomuse_cloud.senders import LogSender
-from nanomuse_cloud.service import Cloud
+from nanomuse_cloud.service import Cloud, CloudError
 
 PNG_1PX = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
 
@@ -454,8 +454,13 @@ async def test_pictures_are_drawn_a_couple_at_a_time(stack):
             for i in range(6)
         )
     )
-    assert [r.status_code for r in rs] == [200] * 6
+    # four of one account's requests may be under way at once (MAX_IN_FLIGHT); the two
+    # over that are told so rather than queued
+    assert sorted(r.status_code for r in rs) == [200] * 4 + [429] * 2
+    assert {r.json()["error"]["code"] for r in rs if r.status_code == 429} == {"too_many_in_flight"}
     assert in_flight["peak"] <= 2
+    # once they are done, the account's slots are free again
+    assert cloud.in_flight.count(cloud.authenticate(data["api_key"]).account_id) == 0
 
 
 async def test_images_go_through_dashscope_native(stack):
@@ -1748,3 +1753,128 @@ async def test_wrong_passwords_from_one_network_are_capped_across_accounts():
         headers={"X-Forwarded-For": "198.51.100.5"},
     )
     assert r.status_code == 200
+
+
+async def test_requests_under_way_are_held_against_the_allowance():
+    """Several requests started together cannot each pass the allowance check and
+    together overshoot it: each is reserved while it runs (a picture at its price, a chat
+    at a typical turn's), and at most MAX_IN_FLIGHT of one account's run at once."""
+    from nanomuse_cloud.service import InFlight
+
+    app, client, sender, up, cloud = make_stack(
+        allowed_identifiers="Me@Example.com", signup_tokens=0, daily_cap_tokens=0, per_minute_requests=0, allowance_cny=0.4, usd_cny=7.0
+    )
+    guest = await sign_up(client, sender, identifier="13800138000", device="pixel")
+    headers = {"Authorization": f"Bearer {guest['api_key']}"}
+    caller = cloud.authenticate(guest["api_key"])
+    picture = cloud.s.model("qwen-image-3.0").image_cost_uy("1024*1024")
+    grant = cloud.s.cny_to_uy(0.4)
+    assert picture > 0 and picture * 3 > grant > picture  # one fits, three do not
+
+    # a chat under way holds a typical turn's price; a picture that no longer fits on top
+    # of what is held is refused, although the ledger alone would have let it through
+    cloud.check_budget(caller, request_id="chat-1", hold_uy=grant - picture // 2)
+    assert cloud.in_flight.reserved(caller.account_id) == grant - picture // 2
+    with pytest.raises(CloudError) as refused:
+        cloud.check_budget(caller, minimum=1, cost_uy=picture, request_id="pic-1")
+    assert refused.value.code == "allowance_exhausted"
+    cloud.settle(caller, "chat-1")
+    cloud.check_budget(caller, minimum=1, cost_uy=picture, request_id="pic-1")  # fits now
+    cloud.settle(caller, "pic-1")
+    assert cloud.in_flight.reserved(caller.account_id) == 0
+
+    # the cap on requests under way, whatever they cost
+    for i in range(cloud.s.max_in_flight):
+        cloud.check_budget(caller, request_id=f"c{i}", hold_uy=0)
+    with pytest.raises(CloudError) as refused:
+        cloud.check_budget(caller, request_id="one-more", hold_uy=0)
+    assert refused.value.code == "too_many_in_flight" and refused.value.status == 429
+    for i in range(cloud.s.max_in_flight):
+        cloud.settle(caller, f"c{i}")
+    cloud.check_budget(caller, request_id="one-more", hold_uy=0)
+    cloud.settle(caller, "one-more")
+
+    # a clip still being made holds its price until it is charged
+    r = await client.post(
+        "/api/v1/services/aigc/video-generation/video-synthesis",
+        headers=headers,
+        json={"model": "wan2.2-i2v-flash", "input": {"prompt": "a dragon"}, "parameters": {"duration": 3}},
+    )
+    assert r.status_code == 200, r.text
+    held = cloud.db.pending_video_cost(caller.account_id)
+    assert held > 0
+    with pytest.raises(CloudError):  # nothing left beside the clip under way
+        cloud.check_budget(caller, minimum=1, cost_uy=grant - held + 1)
+    # polled to SUCCEEDED (the fake says so on the second poll): charged, no longer held
+    task_id = r.json()["output"]["task_id"]
+    for _ in range(2):
+        assert (await client.get(f"/api/v1/tasks/{task_id}", headers=headers)).status_code == 200
+    assert cloud.db.pending_video_cost(caller.account_id) == 0
+
+    # a reservation nobody settled lapses on its own (a client gone before its stream began)
+    clock = [0.0]
+    lapsing = InFlight(2, ttl_s=10, clock=lambda: clock[0])
+    lapsing.reserve("a", "r1", 5)
+    lapsing.reserve("a", "r2", 7)
+    assert lapsing.full("a") and lapsing.reserved("a") == 12 and lapsing.snapshot() == {"a": 2}
+    clock[0] = 11
+    assert not lapsing.full("a") and lapsing.reserved("a") == 0 and lapsing.snapshot() == {}
+    # over the HTTP surface, the response says so
+    for i in range(cloud.s.max_in_flight):
+        cloud.check_budget(caller, request_id=f"h{i}", hold_uy=0)
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert r.status_code == 429 and r.json()["error"]["code"] == "too_many_in_flight"
+
+
+async def test_admin_health_is_aggregates_only(stack):
+    app, client, sender, up, cloud = stack
+    admin = {"X-Admin-Token": "admin"}
+    data = await sign_up(client, sender)
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    r = await client.post(
+        "/v1/chat/completions", headers=headers, json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert r.status_code == 200
+    assert (await client.get("/v1/admin/health")).status_code == 401
+    r = await client.get("/v1/admin/health", headers=admin)
+    assert r.status_code == 200
+    health = r.json()
+    assert health["ok"] is True and health["problems"] == []
+    assert health["in_flight"] == {"requests": 0, "accounts": 0, "limit": 4}
+    assert health["last_hour"]["requests"] == 1 and health["last_hour"]["upstream_errors"] == 0
+    assert health["last_hour"]["sign_ins"] == 1 and health["db"]["writable"] is True
+    assert health["hub"]["online"] == 0 and health["hub"]["dropped_frames"] == 0
+    # nothing in it names an account
+    assert data["account"]["id"] not in r.text and "138" not in r.text
+
+
+async def test_session_keys_expire_on_their_own(stack):
+    """nanoMuse Web starts a person's container with a key that stops working by itself,
+    so the gateway keeps no standing key of theirs (0.13)."""
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender)
+    headers = {"Authorization": f"Bearer {data['api_key']}"}
+    r = await client.post("/v1/auth/session-key", headers=headers, json={"device": "nanoMuse Web", "ttl_s": 120})
+    assert r.status_code == 200, r.text
+    short = r.json()
+    assert short["api_key"].startswith("nm_") and short["api_key"] != data["api_key"]
+    assert 100 <= short["expires_at"] - __import__("time").time() <= 121
+    short_headers = {"Authorization": f"Bearer {short['api_key']}"}
+    me = (await client.get("/v1/me", headers=short_headers)).json()
+    assert me["account"]["id"] == data["account"]["id"]
+    sessions = {s["device"]: s for s in (await client.get("/v1/me/sessions", headers=headers)).json()["sessions"]}
+    assert sessions["nanoMuse Web"]["expires_at"] == short["expires_at"] and sessions["nanoMuse Web"]["via"] == "session"
+    assert sessions["pixel"]["expires_at"] is None
+    # the ceiling, and a bad ttl
+    r = await client.post("/v1/auth/session-key", headers=headers, json={"ttl_s": 10**9})
+    assert r.json()["expires_at"] - __import__("time").time() <= cloud.SESSION_KEY_MAX_S + 1
+    assert (await client.post("/v1/auth/session-key", headers=headers, json={"ttl_s": "soon"})).status_code == 400
+    # past its time it is no key at all — without being revoked by anyone
+    key_hash = __import__("hashlib").sha256(short["api_key"].encode()).hexdigest()
+    cloud.db._conn.execute("UPDATE api_keys SET expires_at=? WHERE key_hash=?", (int(__import__("time").time()) - 1, key_hash))
+    r = await client.get("/v1/me", headers=short_headers)
+    assert r.status_code == 401 and r.json()["error"]["code"] == "bad_key"
+    sessions = (await client.get("/v1/me/sessions", headers=headers)).json()["sessions"]
+    assert "nanoMuse Web" not in {s["device"] for s in sessions}

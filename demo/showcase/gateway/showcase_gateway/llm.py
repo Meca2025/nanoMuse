@@ -14,6 +14,8 @@ import json
 import logging
 import re
 from collections.abc import AsyncIterator, Callable
+from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from starlette.background import BackgroundTask
@@ -99,6 +101,18 @@ def prepare_body(body: bytes, path: str) -> bytes:
     return body
 
 
+def pinned(url: str, address: str) -> tuple[str, str]:
+    """``url`` with its host swapped for ``address`` — the one it resolved to when it was
+    checked — and the host name it had, for ``Host`` and SNI. The certificate is still
+    checked against the name; only the lookup is skipped, so a name that passed the check
+    cannot be re-pointed at an address inside our network afterwards."""
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    literal = f"[{address}]" if ":" in address else address
+    netloc = literal if parts.port is None else f"{literal}:{parts.port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment)), host
+
+
 def bearer(request: Request) -> str | None:
     header = request.headers.get("authorization", "")
     return header[7:].strip() if header.lower().startswith("bearer ") else None
@@ -141,8 +155,15 @@ async def relay(
     url = f"{upstream.base_url.rstrip('/')}/{path.lstrip('/')}"
     if request.url.query:
         url += f"?{request.url.query}"
+    extensions: dict[str, Any] = {}
+    if upstream.pin:
+        url, host = pinned(url, upstream.pin[0])
+        headers["host"] = host
+        extensions["sni_hostname"] = host
     try:
-        req = client.build_request(request.method, url, headers=headers, content=body)
+        req = client.build_request(
+            request.method, url, headers=headers, content=body, extensions=extensions
+        )
         resp = await client.send(req, stream=True)
     except httpx.HTTPError as exc:
         log.warning("upstream %s: %s", url, exc)

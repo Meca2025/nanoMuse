@@ -23,7 +23,7 @@ from nanomuse.config import SentinelSettings
 from nanomuse.logger import logger
 from nanomuse.schema import RiskLevel, ToolCall, ToolResult
 from nanomuse.sentinel.audit import AuditLog, channel_of
-from nanomuse.sentinel.grants import SCOPES, Grant, GrantStore, grant_key
+from nanomuse.sentinel.grants import Grant, GrantStore, grant_key, normalize_scope
 from nanomuse.sentinel.policy import Decision, Policy
 from nanomuse.tools.base import BaseTool, CallAssessment, safe_execute
 from nanomuse.ui import UI, ApprovalRequest
@@ -32,10 +32,17 @@ from nanomuse.vault import PLACEHOLDER_RE, CredentialVault
 
 @dataclass
 class TaskContext:
-    """The agent run a tool call belongs to: gives approvals a purpose and a task scope."""
+    """The agent run a tool call belongs to: gives approvals a purpose, and the
+    conversation the run is part of gives them their middle scope. A run outside any
+    conversation (``nanomuse run``, a scheduled job) stands in for one itself."""
 
     id: str
     purpose: str = ""
+    conversation: str = ""
+
+    @property
+    def conversation_id(self) -> str:
+        return self.conversation or self.id
 
 
 _current_task: ContextVar[TaskContext | None] = ContextVar("nanomuse_task", default=None)
@@ -63,16 +70,29 @@ class Sentinel:
         self.grants = GrantStore(persistent_approvals_file)
 
     # ------------------------------------------------------------------ task scope
-    def begin_task(self, purpose: str = "", task_id: str | None = None) -> Any:
-        """Mark the start of an agent run. Returns a token for :meth:`end_task`."""
-        ctx = TaskContext(id=task_id or uuid.uuid4().hex[:10], purpose=purpose.strip()[:200])
+    def begin_task(
+        self, purpose: str = "", task_id: str | None = None, conversation: str | None = None
+    ) -> Any:
+        """Mark the start of an agent run, within ``conversation`` when it has one.
+        Returns a token for :meth:`end_task`."""
+        ctx = TaskContext(
+            id=task_id or uuid.uuid4().hex[:10],
+            purpose=purpose.strip()[:200],
+            conversation=(conversation or "").strip(),
+        )
         return _current_task.set(ctx)
 
     def end_task(self, token: Any) -> None:
+        """The run is over. Grants for *this conversation* stay while the conversation
+        does (:meth:`end_conversation`); a run that stood in for one takes its own."""
         ctx = _current_task.get()
-        if ctx is not None:
-            self.grants.end_task(ctx.id)
+        if ctx is not None and not ctx.conversation:
+            self.grants.end_conversation(ctx.id)
         _current_task.reset(token)
+
+    def end_conversation(self, conversation_id: str) -> None:
+        """A conversation was deleted or cleared: the approvals given for it go with it."""
+        self.grants.end_conversation(conversation_id)
 
     # ------------------------------------------------------------------ grants
     def forget_approvals(self) -> None:
@@ -83,7 +103,7 @@ class Sentinel:
 
     def active_grants(self) -> list[Grant]:
         ctx = _current_task.get()
-        return self.grants.active(ctx.id if ctx else None)
+        return self.grants.active(ctx.conversation_id if ctx else None)
 
     @staticmethod
     def grant_options(assessment: CallAssessment, target: str | None) -> list[str]:
@@ -91,7 +111,7 @@ class Sentinel:
         dangerous-looking command or a purchase is approved every single time."""
         if assessment.warnings:
             return ["once"]
-        options = ["once", "task"]
+        options = ["once", "conversation"]
         unknown_destination = target is None and assessment.egress
         if unknown_destination and assessment.risk.rank >= RiskLevel.MODERATE.rank:
             return options  # arbitrary code with network access: never a standing grant
@@ -118,7 +138,9 @@ class Sentinel:
 
         if decision == Decision.ASK:
             grant = (
-                None if assessment.warnings else self.grants.match(key, task.id if task else None)
+                None
+                if assessment.warnings
+                else self.grants.match(key, task.conversation_id if task else None)
             )
             if self.settings.mode == "auto":
                 decision = Decision.ALLOW
@@ -143,23 +165,24 @@ class Sentinel:
                     grant_options=options,  # type: ignore[arg-type]
                 )
                 verdict = await self.ui.ask_approval(request)
-                approved, scope = verdict.approved, verdict.scope
+                approved, scope = verdict.approved, normalize_scope(verdict.scope)
                 if verdict.approved:
                     decision = Decision.ALLOW
-                    if scope not in options or scope not in SCOPES:
+                    if scope not in options:
                         logger.warning(
                             "scope '{}' was not offered for {}; treating as once", scope, key
                         )
                         scope = "once"
                     bind = target
-                    if scope == "task" and assessment.egress_target is None:
-                        # "For this task" on a tool whose target is not a destination (shell,
-                        # where it is the list of programs) means the tool for the rest of the
-                        # run: a job that needs `git` now will need `ls` and `wc` next, and
-                        # asking for each new program is noise, not safety. Warnings still stop
-                        # every call; destinations (mail recipients, hosts) stay bound.
+                    if scope == "conversation" and assessment.egress_target is None:
+                        # "For this conversation" on a tool whose target is not a destination
+                        # (shell, where it is the list of programs) means the tool for the rest
+                        # of the conversation: a job that needs `git` now will need `ls` and
+                        # `wc` next, and asking for each new program is noise, not safety.
+                        # Warnings still stop every call; destinations (mail recipients,
+                        # hosts) stay bound.
                         bind = None
-                    self.grants.add(tool.name, bind, scope, task.id if task else None)
+                    self.grants.add(tool.name, bind, scope, task.conversation_id if task else None)
                 else:
                     decision = Decision.DENY
                     reasons.append(
@@ -194,7 +217,9 @@ class Sentinel:
             )
             return result
 
-        # Resolve vault placeholders only for tools that opted in.
+        # Resolve vault placeholders only for tools that opted in. No production tool does
+        # (shell, python_execute and the rest run with the literal text otherwise, which is
+        # never what was meant), so the call is refused with the reason rather than run.
         exec_args: dict[str, Any] = args
         if self.vault is not None and self.vault.has_placeholders(args):
             if tool.accepts_secrets:
@@ -206,6 +231,30 @@ class Sentinel:
                 logger.warning(
                     "tool '{}' received vault placeholders but does not accept secrets", tool.name
                 )
+                result = ToolResult.fail(
+                    f"'{tool.name}' does not take {{{{vault:NAME}}}} placeholders: secrets from the "
+                    "vault reach only the connectors configured with them (mail, calendars, the "
+                    "model), never a command or a script. Do without the secret, or ask the "
+                    "person to use a connector that has it."
+                )
+                self.audit.record(
+                    "tool_call",
+                    tool=tool.name,
+                    channel=channel_of(tool.name),
+                    args=redacted_args,
+                    summary=assessment.summary,
+                    risk=assessment.risk.value,
+                    decision="deny",
+                    approved=approved,
+                    reasons=["vault placeholder in a tool that takes none"],
+                    tainted=self.tainted,
+                    egress_target=assessment.egress_target,
+                    grant_key=key,
+                    purpose=task.purpose if task else "",
+                    ok=False,
+                    error=result.error,
+                )
+                return result
 
         started = time.perf_counter()
         result = await safe_execute(tool, exec_args)

@@ -27,6 +27,41 @@ from typing import Any
 
 from nanomuse.coding.agents import AGENTS, Session, read_session, which
 from nanomuse.logger import logger
+from nanomuse.tools.shell import scrubbed_env
+
+# What each CLI needs from the environment beyond the scrubbed defaults: its own account
+# or key variables, by prefix. Everything else that looks like a credential — our own
+# NANOMUSE_* keys, the cloud SDK variables, tokens of other programs — stays out of the
+# subprocess, as it does for the shell tool. Claude Code on Bedrock or Vertex needs the
+# cloud credentials it is told to use.
+_AGENT_ENV_PREFIXES: dict[str, tuple[str, ...]] = {
+    "cursor": ("CURSOR_",),
+    "codex": ("OPENAI_", "CODEX_"),
+    "claude": ("ANTHROPIC_", "CLAUDE_"),
+}
+_CLAUDE_CLOUD = {
+    "CLAUDE_CODE_USE_BEDROCK": ("AWS_",),
+    "CLAUDE_CODE_USE_VERTEX": ("GOOGLE_", "CLOUD_ML_REGION", "GCLOUD_"),
+}
+
+
+def agent_env(agent: str, source: dict[str, str] | None = None) -> dict[str, str]:
+    """The environment a coding CLI runs with: scrubbed, plus the variables it needs."""
+    parent = dict(os.environ if source is None else source)
+    env = scrubbed_env(parent)
+    env.pop("NANOMUSE_SANDBOX", None)
+    allowed = list(_AGENT_ENV_PREFIXES.get(agent, ()))
+    if agent == "claude":
+        for switch, prefixes in _CLAUDE_CLOUD.items():
+            if parent.get(switch, "").strip().lower() in {"1", "true", "yes"}:
+                allowed.extend(prefixes)
+    for name, value in parent.items():
+        if name.upper().startswith(tuple(allowed)):
+            env[name] = value
+    env["NO_COLOR"] = "1"
+    env["CI"] = "1"
+    return env
+
 
 RUN_TIMEOUT_S = 20 * 60
 OUTPUT_LIMIT = 200_000  # characters of agent text kept per run
@@ -387,7 +422,7 @@ async def start_run(
                 stdin=asyncio.subprocess.DEVNULL,
                 cwd=run.workspace or None,
                 start_new_session=(sys.platform != "win32"),
-                env={**os.environ, "NO_COLOR": "1", "CI": "1"},
+                env=agent_env(agent),
             )
         except FileNotFoundError as exc:
             run.status, run.error, run.ended_at = "failed", str(exc), time.time()

@@ -71,4 +71,16 @@ class TapWordsTest {
         assertEquals("taps “删除” — looks like it deletes something", TapWords.reason(RiskClass.DESTRUCTIVE, "删除", null))
         assertEquals("taps “Send” — looks like it sends or posts on mail.example", TapWords.reason(RiskClass.OUTBOUND, "Send", "mail.example"))
     }
+
+    @Test fun `Enter sends in a messenger or a message field, searches elsewhere`() {
+        assertTrue(TapWords.entersSend("com.tencent.mm", null))
+        assertTrue(TapWords.entersSend("org.telegram.messenger", "Search"))
+        assertTrue(TapWords.entersSend("com.taobao.taobao", "说点什么…"))
+        assertTrue(TapWords.entersSend(null, "Type a message"))
+        assertTrue(TapWords.entersSend("com.xingin.xhs", "写评论"))
+        assertFalse(TapWords.entersSend("com.taobao.taobao", "搜索 车票"))
+        assertFalse(TapWords.entersSend("com.android.chrome", "Search or type URL"))
+        assertFalse(TapWords.entersSend(null, null))
+        assertFalse(TapWords.entersSend("com.termux", ""))
+    }
 }

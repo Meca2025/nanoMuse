@@ -23,6 +23,26 @@ object TapWords {
         RegexOption.IGNORE_CASE,
     )
 
+    /** Apps where Enter in the text field sends the message. */
+    private val chatApps = setOf(
+        "com.tencent.mm", "com.tencent.mobileqq", "com.tencent.tim", "com.tencent.wework", "com.alibaba.android.rimet",
+        "com.ss.android.lark", "com.larksuite.suite", "org.telegram.messenger", "com.whatsapp", "com.whatsapp.w4b",
+        "org.thoughtcrime.securesms", "com.facebook.orca", "com.discord", "com.Slack", "com.microsoft.teams",
+        "com.skype.raider", "jp.naver.line.android", "com.google.android.apps.messaging", "com.android.mms",
+        "com.sina.weibo", "com.instagram.android", "com.twitter.android", "com.zhiliaoapp.musically", "com.ss.android.ugc.aweme",
+    )
+    private val sendField = Regex(
+        "发送|发消息|消息|说点什么|输入消息|评论|回复|留言|\bmessage\b|\bsend\b|\bchat\b|\breply\b|\bcomment\b|say something|write a message|type a message",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /**
+     * Whether Enter in the focused field amounts to sending: the app is a messenger, or the
+     * field's own hint says message / send / reply. A search box's Enter is just a search.
+     */
+    fun entersSend(packageName: String?, fieldHint: String?): Boolean =
+        (packageName != null && packageName in chatApps) || (!fieldHint.isNullOrBlank() && sendField.containsMatchIn(fieldHint))
+
     /** The class a tap on [label] falls in, or null when it is an ordinary tap. */
     fun classify(label: String): RiskClass? = when {
         label.isBlank() -> null

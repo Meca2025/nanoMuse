@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- nanoMuse: the platform config cannot express "any private address", so the rule that
+         plain http:// is for the local network only (10/8, 172.16/12, 192.168/16, 100.64/10,
+         link-local, .local names) is applied in code — io.github.nanomuse.net.LanOnly — where an
+         endpoint is entered. This file stays as OpenMinis left it so those LAN endpoints work. -->
     <!-- T354: allow cleartext HTTP globally so user-configured provider
          endpoints (private/LAN LLM servers like http://192.168.x.x:port or
          http://my-host:8080) work. Minis is a tool where the user supplies

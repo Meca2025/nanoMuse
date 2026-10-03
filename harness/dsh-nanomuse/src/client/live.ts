@@ -53,9 +53,29 @@ export interface LiveHub {
   connected: boolean
   deviceId: string
   deviceName: string
+  /** On: every device may run things here without asking; off: each device asks on this screen. */
   remoteControl: boolean
+  /** Devices allowed without asking. */
+  trusted: LiveTrusted[]
+  /** Questions from other devices waiting for an answer here. */
+  asks: LiveAsk[]
   lastError?: string
   devices: LiveDevice[]
+}
+
+export interface LiveTrusted {
+  id: string
+  name: string
+  at: number
+}
+
+export interface LiveAsk {
+  id: string
+  from: string
+  fromId: string
+  action: string
+  text: string
+  at: number
 }
 
 /** The last thing the hands did, for the stage's caption and cursor marker. */
@@ -101,7 +121,7 @@ export const DEFAULT_PROFILE: LiveProfile = { rev: 0, name: 'nanoMuse', avatar: 
 const INITIAL: Live = {
   cloud: { signedIn: false, hint: '' },
   profile: DEFAULT_PROFILE,
-  hub: { connected: false, deviceId: '', deviceName: '', remoteControl: true, devices: [] },
+  hub: { connected: false, deviceId: '', deviceName: '', remoteControl: false, trusted: [], asks: [], devices: [] },
   hands: { calls: [], steps: 0 },
   stage: { seq: 0, at: 0, source: 'computer', device: '', width: 0, height: 0, title: '', action: null, sessionId: '' },
   notices: [],

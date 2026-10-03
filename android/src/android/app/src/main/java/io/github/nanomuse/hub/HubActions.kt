@@ -19,6 +19,10 @@ import com.openminis.app.logging.AppLogger
 import com.openminis.app.sandbox.PRootKernel
 import com.openminis.app.sandbox.ShellExecutor
 import com.openminis.app.service.AgentForegroundService
+import io.github.nanomuse.guard.GateOutcome
+import io.github.nanomuse.guard.GuardKind
+import io.github.nanomuse.guard.RiskAssessment
+import io.github.nanomuse.guard.RiskClass
 import io.github.nanomuse.guard.RiskDecision
 import io.github.nanomuse.guard.RiskGate
 import kotlinx.coroutines.CoroutineScope
@@ -43,7 +47,11 @@ import java.io.File
  *    whatever needs an approval shows the usual card here, on the phone.
  *
  * The caller has already judged a `shell` command before sending it (the desktop's guard, the
- * phone's ShellGuard); "Remote control" off refuses everything but `info`.
+ * phone's ShellGuard); "Remote control" off refuses everything but `info`. With it on, the
+ * person holding this phone still agrees before another device runs, reads or writes something
+ * here (0.1.31): the usual card, allowed once or always for that device — a grant listed under
+ * Permissions like the others. `notify` and `info` never ask; a `task` runs under this phone's
+ * own guard.
  */
 object HubActions {
     private const val TAG = "HubActions"
@@ -51,11 +59,19 @@ object HubActions {
     private const val TASK_TIMEOUT_MS = 10 * 60 * 1000L
     private const val CHANNEL = "nanomuse_hub"
     private const val PREFS = "nanomuse"
+    /** What another device does *to* this phone: the person here agrees first. */
+    private val GATED = setOf("shell", "files", "file.get", "file.put", "open", "screen")
+    /** Cards of tasks running here that travelled to the device that asked (card id → device id). */
+    private val relayed = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     fun handle(context: Context, call: IncomingCall) {
         if (call.action == "info") { call.result(info(context)); return }
         if (!Hub.remoteControl(context)) { call.fail("not_allowed", "${Hub.name(context)} is set not to be operated from other devices"); return }
         AppLogger.info(TAG, "${call.senderName} → ${call.action}")
+        if (call.action in GATED && !permitted(context, call)) {
+            call.fail("not_allowed", "the person holding ${Hub.name(context)} did not allow ${call.senderName} to do that")
+            return
+        }
         try {
             when (call.action) {
                 "shell" -> shell(context, call)
@@ -76,6 +92,25 @@ object HubActions {
     }
 
     class Refused(val code: String, message: String) : Exception(message)
+
+    /**
+     * The card for another device's request: "Allow “Desk” to operate this phone?", the
+     * command or path in the preview box, *always for Desk* bound to the device's id.
+     */
+    private fun permitted(context: Context, call: IncomingCall): Boolean {
+        val senderId = call.from.optString("id").ifBlank { call.senderName }
+        val what = listOf("command", "path", "url", "text").firstNotNullOfOrNull { k -> call.args.optString(k).trim().ifEmpty { null } }.orEmpty()
+        val assessment = RiskAssessment(
+            riskClass = RiskClass.REMOTE,
+            reason = context.getString(R.string.nm_hub_remote_reason, call.senderName),
+            target = "device:$senderId",
+        )
+        val preview = if (what.isEmpty()) call.action else "${call.action}: ${what.take(300)}"
+        val outcome = runBlocking {
+            RiskGate.check("hub:$senderId", GuardKind.DEVICE, assessment, preview, pageUrl = call.senderName, elementText = call.action)
+        }
+        return outcome is GateOutcome.Allowed
+    }
 
     // ── info ───────────────────────────────────────────────────────────────
 
@@ -275,6 +310,7 @@ object HubActions {
         scope.launch {
             RiskGate.pending.collect { req ->
                 if (req != null && req.sessionId == sessionId && seen.add(req.id)) {
+                    relayed[req.id] = call.from.optString("id")
                     call.event(
                         JSONObject().put("stage", "approval").put("approval_id", req.id).put("preview", req.preview)
                             .put("risk", req.assessment.riskClass.name.lowercase()).put("reason", req.assessment.reason)
@@ -288,6 +324,7 @@ object HubActions {
             RiskGate.recent.collect { recent ->
                 for ((req, decision) in recent) {
                     if (req.id in seen && reported.add(req.id)) {
+                        relayed.remove(req.id)
                         val status = when (decision) {
                             RiskDecision.DENY -> "denied"
                             RiskDecision.TIMEOUT -> "expired"
@@ -301,10 +338,15 @@ object HubActions {
         return scope
     }
 
-    /** `approve {approval_id, allow}` from the device that asked for the task: decides the card here. */
+    /**
+     * `approve {approval_id, allow}` from the device that asked for the task: decides the card
+     * here — only a card of its own run that travelled to it, never the card asking the person
+     * here whether that device may do something.
+     */
     private fun approve(call: IncomingCall) {
         val id = call.args.optString("approval_id")
         if (id.isBlank()) { call.fail("usage", "approval_id is required"); return }
+        if (relayed[id] != call.from.optString("id")) { call.result(JSONObject().put("ok", false).put("approval_id", id)); return }
         val allow = call.args.optBoolean("allow", false)
         RiskGate.decide(id, if (allow) RiskDecision.ALLOW_ONCE else RiskDecision.DENY)
         call.result(JSONObject().put("ok", true).put("approval_id", id).put("status", if (allow) "approved" else "denied"))

@@ -38,7 +38,7 @@ from nanomuse.memory.consolidate import TidyReport, tidy
 from nanomuse.phone import PhoneLink
 from nanomuse.reminders import Reminder
 from nanomuse.schema import Attachment, Message, Role
-from nanomuse.sentinel.grants import SCOPES
+from nanomuse.sentinel.grants import normalize_scope
 from nanomuse.server.connections import Connections
 from nanomuse.server.events import MAIN_THREAD, EventBus, Timeline, new_id, now_iso
 from nanomuse.server.failures import failure_notice
@@ -614,6 +614,7 @@ class MuseService:
             contacts=self.app.contacts,
             skills=self.app.skills,
             session_file=session_file,
+            conversation_id=thread_id,
         )
         if session_file.exists():
             try:
@@ -666,6 +667,7 @@ class MuseService:
         for p in (thread.timeline.path, thread.agent.session_file):
             if p and Path(p).exists():
                 Path(p).unlink()
+        self.app.sentinel.end_conversation(thread_id)
         self._save_index()
         self.bus.publish({"kind": "thread_deleted", "thread": thread_id})
         return True
@@ -712,6 +714,7 @@ class MuseService:
         thread.timeline.clear()
         thread.agent.reset()
         thread.agent._save_session()
+        self.app.sentinel.end_conversation(thread_id)
         self.bus.publish({"kind": "thread_cleared", "thread": thread_id})
         return True
 
@@ -878,9 +881,7 @@ class MuseService:
     def decide(
         self, approval_id: str, approved: bool, scope: str = "once", reason: str = ""
     ) -> bool:
-        if scope not in SCOPES:
-            scope = "once"
-        return self.ui.resolve_approval(approval_id, approved, scope, reason)
+        return self.ui.resolve_approval(approval_id, approved, normalize_scope(scope), reason)
 
     def forget_approvals(self) -> None:
         self.app.sentinel.forget_approvals()

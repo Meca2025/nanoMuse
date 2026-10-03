@@ -1703,14 +1703,18 @@ export function CalendarCard({
           </Field>
           <Field
             label={t("Private .ics link or file path")}
-            hint={t("Stored encrypted in the vault as CALENDAR_{name}.", {
-              name:
-                name
-                  .trim()
-                  .toUpperCase()
-                  .replace(/[^A-Z0-9]+/g, "_")
-                  .replace(/^_+|_+$/g, "") || "NAME",
-            })}
+            hint={
+              t("Stored encrypted in the vault as CALENDAR_{name}.", {
+                name:
+                  name
+                    .trim()
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]+/g, "_")
+                    .replace(/^_+|_+$/g, "") || "NAME",
+              }) +
+              " " +
+              t("nanoMuse fetches whatever address you put here, from this machine — only paste links you trust.")
+            }
           >
             <input
               value={url}
@@ -2061,17 +2065,18 @@ export function ContactsCard({
           </Field>
           <Field
             label={t("Or a link / path to one")}
-            hint={t(
-              "A link is stored encrypted in the vault as CONTACTS_{name}.",
-              {
+            hint={
+              t("A link is stored encrypted in the vault as CONTACTS_{name}.", {
                 name:
                   name
                     .trim()
                     .toUpperCase()
                     .replace(/[^A-Z0-9]+/g, "_")
                     .replace(/^_+|_+$/g, "") || "NAME",
-              },
-            )}
+              }) +
+              " " +
+              t("nanoMuse fetches whatever address you put here, from this machine — only paste links you trust.")
+            }
           >
             <input
               value={url}

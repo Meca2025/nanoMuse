@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import replace
 
 import httpx
@@ -61,6 +62,9 @@ class FakeRunner:
 
     async def remove(self, name) -> None:
         self.kept.pop(name, None)
+
+    async def exists(self, name) -> bool:
+        return name in self.kept
 
     async def address_of(self, name) -> str | None:
         c = self.kept.get(name)
@@ -126,6 +130,7 @@ def make_settings(**over) -> Settings:
         web_max_accounts=2,
         web_max_running=1,
         web_idle_stop_s=3600,
+        web_key_ttl_s=7 * 86400,
         demo_signin_required=False,
         per_account_active=1,
         per_account_daily=2,
@@ -159,6 +164,7 @@ class Upstream:
         self.stream = False
         self.codes: dict[str, str] = {}  # the relay's: identifier → code
         self.keys_issued = 0
+        self.session_keys = 0
         self.revoked: list[str] = []  # keys signed out again (the visitors' sign-in does)
         self.invites: list[str] = []  # the invite field of each verify, "" when none
         self.drawn: list[dict] = []  # Model Studio's picture requests
@@ -190,6 +196,23 @@ class Upstream:
             auth = request.headers.get("authorization", "")
             self.revoked.append(auth[7:] if auth.lower().startswith("bearer ") else "")
             return httpx.Response(204)
+        if request.url.path == "/v1/auth/session-key":
+            # a key that lapses on its own, for the key in the header (0.13 relays)
+            auth = request.headers.get("authorization", "")
+            standing = auth[7:] if auth.lower().startswith("bearer ") else ""
+            if not standing.startswith("nm_key") or standing in self.revoked:
+                return wire(401, json.dumps({"error": {"code": "bad_key", "message": "No."}}))
+            self.session_keys += 1
+            return wire(
+                200,
+                json.dumps(
+                    {
+                        "api_key": f"nm_sess{self.session_keys}",
+                        "expires_at": int(time.time()) + int(data.get("ttl_s") or 0),
+                    }
+                ),
+                **{"content-type": "application/json"},
+            )
         if request.url.path == "/v1/auth/login":
             # the password way: one account has a password, the others say so
             if ident != "someone@example.com" or data.get("password") != "correct horse":

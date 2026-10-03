@@ -69,6 +69,10 @@ class Runner(Protocol):
         """Its address while it runs; None when it is stopped or does not exist."""
         ...
 
+    async def exists(self, name: str) -> bool:
+        """Whether the container is there at all, running or asleep."""
+        ...
+
 
 WEB_LABEL = "io.github.nanomuse.web"
 
@@ -174,6 +178,15 @@ class DockerRunner:
             raise
         return out or None
 
+    async def exists(self, name: str) -> bool:
+        try:
+            await self._docker("inspect", "-f", "{{.Id}}", name)
+        except RunnerError as exc:
+            if "No such" not in str(exc):
+                raise
+            return False
+        return True
+
     async def start_persistent(
         self,
         name: str,
@@ -186,14 +199,7 @@ class DockerRunner:
         pids: int,
         image: str,
     ) -> str:
-        exists = True
-        try:
-            await self._docker("inspect", "-f", "{{.Id}}", name)
-        except RunnerError as exc:
-            if "No such" not in str(exc):
-                raise
-            exists = False
-        if exists:
+        if await self.exists(name):
             await self._docker("start", name, timeout=60)
         else:
             cmd = [

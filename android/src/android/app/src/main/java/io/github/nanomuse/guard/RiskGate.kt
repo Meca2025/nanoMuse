@@ -38,7 +38,7 @@ data class RiskRequest(
      * confirms with the phone's screen lock ([needsCredential]), and the first time is always
      * asked because the grant can only come from the card.
      */
-    val canSession: Boolean get() = assessment.warnings.isEmpty() && assessment.riskClass != RiskClass.MONEY
+    val canSession: Boolean get() = assessment.warnings.isEmpty() && assessment.riskClass != RiskClass.MONEY && kind != GuardKind.DEVICE
     val canAlways: Boolean get() = assessment.warnings.isEmpty() && !assessment.target.isNullOrBlank()
     val canRemember: Boolean get() = canSession || canAlways
     val needsCredential: Boolean get() = assessment.riskClass == RiskClass.MONEY
@@ -191,7 +191,7 @@ object RiskGate {
         return when (ask(request)) {
             RiskDecision.ALLOW_ONCE -> GateOutcome.Allowed()
             RiskDecision.ALLOW_SESSION -> {
-                if (request.canSession) Grants.grantSession(assessment.riskClass, sessionId, assessment.reason)
+                if (request.canSession) Grants.grantSession(assessment.riskClass, sessionId, assessment.reason, assessment.target)
                 GateOutcome.Allowed()
             }
             RiskDecision.ALLOW_ALWAYS -> {

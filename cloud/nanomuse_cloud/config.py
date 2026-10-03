@@ -256,6 +256,11 @@ class Settings:
     daily_cap_tokens: int = field(default_factory=lambda: _int("DAILY_CAP_TOKENS", 0))
     per_minute_requests: int = field(default_factory=lambda: _int("PER_MINUTE_REQUESTS", 30))
     max_request_bytes: int = field(default_factory=lambda: _int("MAX_REQUEST_BYTES", 6 * 1024 * 1024))
+    # Requests under way for one account at the same time (0 = no cap). Each holds a
+    # reservation against the allowance while it runs — a picture's or a clip's known price,
+    # a chat's typical one — so several requests cannot each pass the check and together
+    # overshoot it (service.py InFlight).
+    max_in_flight: int = field(default_factory=lambda: _int("MAX_IN_FLIGHT", 4))
 
     # The hub (multi-device): one WebSocket frame may carry a file or a
     # screenshot, base64-encoded; uvicorn's own cap (--ws-max-size) must be at

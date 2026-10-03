@@ -185,30 +185,34 @@ export function ToolChip({ event }: { event: ToolEvent }) {
 
 // ------------------------------------------------------------------ approval card
 /** What a permission is for, in words: "git commands", "email to alice@…", "example.com". */
-export function grantSubject(tool: string, target?: string | null): string {
+export function grantSubject(tool: string, target?: string | null, args?: Record<string, unknown>): string {
   if (!target) return tool.replace(/_/g, " ");
   switch (tool) {
     case "shell":
       return t("{what} commands", { what: target.split(",").join(", ") });
     case "send_email":
       return t("email to {who}", { who: target.split(",").join(", ") });
+    case "remote_control":
+      // another device operating this computer: the grant is bound to the device's id;
+      // the card knows its name
+      return t("the device {name}", { name: typeof args?.device === "string" && args.device ? args.device : target });
     default:
       return target;
   }
 }
 
-export function scopeLabel(scope: string, tool: string, target?: string | null): string {
+export function scopeLabel(scope: string, tool: string, target?: string | null, args?: Record<string, unknown>): string {
   switch (scope) {
     case "once":
       return t("Once");
-    case "task":
-      return t("For this task");
+    case "conversation":
+      return t("For this conversation");
     case "session":
       return t("Until restart");
     case "24h":
       return t("For 24 hours");
     case "always":
-      return t("Always for {subject}", { subject: grantSubject(tool, target) });
+      return t("Always for {subject}", { subject: grantSubject(tool, target, args) });
     default:
       return scope;
   }
@@ -317,9 +321,9 @@ export function ApprovalCard({
             >
               {t("Allow once")}
             </button>
-            {/* the phone's two grey pills — this task, always — the other scopes behind "more" */}
+            {/* the phone's two grey pills — this conversation, always — the other scopes behind "more" */}
             {standing
-              .filter((scope) => more || scope === "task" || scope === "always")
+              .filter((scope) => more || scope === "conversation" || scope === "always")
               .map((scope) => (
                 <button
                   key={scope}
@@ -327,7 +331,7 @@ export function ApprovalCard({
                   onClick={() => onDecide(true, scope)}
                   className="h-11 w-full truncate rounded-full bg-surface-2 px-4 text-[15px] font-medium transition active:scale-[0.98]"
                 >
-                  {scopeLabel(scope, event.tool, event.target)}
+                  {scopeLabel(scope, event.tool, event.target, event.args)}
                 </button>
               ))}
             <button
@@ -340,9 +344,9 @@ export function ApprovalCard({
             {standing.length === 0 ? (
               <div className="text-center text-[12px] text-muted">{t("This kind of action is approved one at a time.")}</div>
             ) : (
-              !more && standing.some((scope) => scope !== "task" && scope !== "always") && (
+              !more && standing.some((scope) => scope !== "conversation" && scope !== "always") && (
                 <button type="button" className="self-center text-[12.5px] text-muted" onClick={() => setMore(true)}>
-                  {t("Allow {subject} for longer…", { subject: grantSubject(event.tool, event.target) })}
+                  {t("Allow {subject} for longer…", { subject: grantSubject(event.tool, event.target, event.args) })}
                 </button>
               )
             )}

@@ -971,8 +971,8 @@ function PermissionsView({ open }: { open: boolean }) {
 
 function grantUntil(g: Grant, t: (key: string, vars?: Record<string, string | number>) => string): string {
   switch (g.scope) {
-    case "task":
-      return t("for the current task");
+    case "conversation":
+      return t("for this conversation");
     case "session":
       return t("until restart");
     case "24h":

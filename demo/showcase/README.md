@@ -169,11 +169,19 @@ start and takes its place on the hub as one of the account's devices — so the 
 it for things and it can ask the phone.
 
 What the gateway keeps is small (`WEB_DB`, SQLite on the `gateway-data` volume): account id →
-slug, access token, the key the container was started with. The slug is an HMAC of the
-relay's opaque account id, so signing in from another browser lands in the same Muse (with a
-fresh key: the container is recreated around the same volumes). A container that has been
-quiet for `WEB_IDLE_STOP_S` (six hours) is stopped, not removed; the next request on its host
-starts it again, which takes a few seconds. `WEB_MAX_RUNNING` containers run at once — when
+slug, access token, and when the key the container was started with runs out. The key itself
+is a *session key* the relay issues to lapse on its own (`POST /v1/auth/session-key`,
+`WEB_KEY_TTL_S`, 30 days); it goes into the container's environment at creation and is kept
+nowhere else — the standing key the sign-in produced is signed out again at once. The slug is
+an HMAC of the relay's opaque account id, so signing in from another browser lands in the same
+Muse (with a fresh key: the container is recreated around the same volumes); once the key has
+lapsed, the Muse is not woken — the person signs in again, which does the same. A container
+that has been quiet for `WEB_IDLE_STOP_S` (six hours) is stopped, not removed; the next
+request on its host that carries the account's token (the bearer header, the socket's first
+frame, a signed link) starts it again, which takes a few seconds — a browser arriving with
+only the address gets a small page that takes the token from the app's storage and asks for
+the wake, so a bookmark still works and a stranger typing the address starts nothing.
+`WEB_MAX_RUNNING` containers run at once — when
 every place is taken the quietest sleeps to make room, unless it was used in the last five
 minutes (`503 web_busy`) — and `WEB_MAX_ACCOUNTS` may exist at all (`503 web_full`). Model
 use is the account's own allowance on the relay; the gateway meters nothing here.
@@ -301,8 +309,16 @@ counters live in memory and start from zero when it restarts.
 
 - One gateway, one host. The session counters are in memory (the trials are in SQLite); that is
   fine for a showcase and would need a shared store to scale out.
-- The gateway holds the Docker socket, i.e. root on the host. It is the trusted part; keep it
-  off the public network (compose does: only Caddy is published).
+- The gateway starts and stops containers, which is a lot of power over the host. It reaches
+  Docker through `docker-proxy` (compose: `tecnativa/docker-socket-proxy`), which passes the
+  container and network calls and refuses the rest — no exec, images, volumes or build — and
+  holds the socket itself read-only on a network of its own; the gateway container has no
+  socket. It is still the trusted part; keep it off the public network (compose does: only
+  Caddy is published).
+- A visitor's own provider (BYOK) is resolved and checked once, when the session starts, and
+  the session's calls are pinned to the addresses found then — the name travels only as SNI
+  and `Host`, the certificate is checked against it as usual — so a name that answered with a
+  public address cannot be re-pointed at one inside our network later (DNS rebinding).
 - No egress from sessions means the search, fetch and browser tools fail inside a demo. That is
   the point of the demo — the phone — but say so if visitors ask.
 - The MobileGym data set is CC BY-NC 4.0; the showcase is non-commercial.

@@ -117,12 +117,12 @@ class ConsoleUI:
         what = request.grant_key
         labels = {
             "once": "[y]es, once",
-            "task": "this [t]ask",
+            "conversation": "this conversa[t]ion",
             "session": "this [s]ession",
             "24h": "24 hours ([d])",
             "always": f"[a]lways for {what}",
         }
-        keys = {"once": "y", "task": "t", "session": "s", "24h": "d", "always": "a"}
+        keys = {"once": "y", "conversation": "t", "session": "s", "24h": "d", "always": "a"}
         offered = [s for s in request.grant_options if s in labels]
         prompt = "[bold]Allow?[/bold] " + " / ".join(labels[s] for s in offered) + " / [n]o"
         answer = await asyncio.to_thread(

@@ -598,3 +598,40 @@ def test_offline_device_is_refused(server: tuple[TestClient, MuseService]) -> No
     r = client.get("/api/coding/sessions?device=laptop")
     assert r.status_code in (404, 409, 502)
     assert os.environ.get("NANOMUSE_CODING_HOME")
+
+
+def test_coding_clis_get_a_scrubbed_environment_plus_their_own_keys() -> None:
+    from nanomuse.coding.runner import agent_env
+
+    parent = {
+        "PATH": "/usr/bin",
+        "HOME": "/home/me",
+        "NANOMUSE_CLOUD_TOKEN": "ours",
+        "DEEPSEEK_API_KEY": "model-key",
+        "OPENAI_API_KEY": "codex-key",
+        "ANTHROPIC_API_KEY": "claude-key",
+        "CURSOR_API_KEY": "cursor-key",
+        "AWS_SECRET_ACCESS_KEY": "aws",
+        "SSH_AUTH_SOCK": "/tmp/agent.sock",
+    }
+    codex = agent_env("codex", parent)
+    assert codex["OPENAI_API_KEY"] == "codex-key" and codex["PATH"] == "/usr/bin"
+    for name in (
+        "NANOMUSE_CLOUD_TOKEN",
+        "DEEPSEEK_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "CURSOR_API_KEY",
+        "AWS_SECRET_ACCESS_KEY",
+        "SSH_AUTH_SOCK",
+    ):
+        assert name not in codex, name
+    assert "NANOMUSE_SANDBOX" not in codex and codex["CI"] == "1" and codex["NO_COLOR"] == "1"
+
+    claude = agent_env("claude", parent)
+    assert claude["ANTHROPIC_API_KEY"] == "claude-key" and "OPENAI_API_KEY" not in claude
+    assert "AWS_SECRET_ACCESS_KEY" not in claude
+    bedrock = agent_env("claude", {**parent, "CLAUDE_CODE_USE_BEDROCK": "1"})
+    assert bedrock["AWS_SECRET_ACCESS_KEY"] == "aws"
+
+    cursor = agent_env("cursor", parent)
+    assert cursor["CURSOR_API_KEY"] == "cursor-key" and "ANTHROPIC_API_KEY" not in cursor

@@ -1,4 +1,5 @@
 import { NotificationService } from '@/os/NotificationService';
+import { realNow } from '@/os/TimeService';
 import { SCREEN, act, installedApps, readScreen, type ActParams } from './gui';
 import { manifest } from './manifest';
 import { fmt, t } from './res/strings';
@@ -112,16 +113,27 @@ function backgroundTitle(about: string): string {
 /** The marker the server reads as "stopped by the person on the device" (nanomuse.phone.link). */
 const STOP_MARKER = 'nanomuse:stop';
 
-/** The face the capsule shows: the dragon, or the studio's face on the server. */
-function faceUrl(serverUrl: string, token: string, avatar: string | undefined): string {
+/** The face the capsule shows: the dragon, or the studio's face on the server — a link signed
+ *  with the token rather than carrying it (the runtime's nanomuse/server/tickets.py: a logged
+ *  link opens that one file for a few hours, nothing else). */
+async function faceUrl(serverUrl: string, token: string, avatar: string | undefined): Promise<string> {
   if (!serverUrl) return '';
   if (!avatar || avatar === 'dragon') return `${serverUrl}/avatars/dragon-working.webp`;
-  return `${serverUrl}/api/files/avatar/${encodeURIComponent(avatar)}/working.webp?token=${encodeURIComponent(token)}`;
+  const path = `/api/files/avatar/${avatar}/working.webp`;
+  const exp = (Math.floor(realNow() / 1000 / 21600) + 2) * 21600;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(token), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(`${exp}\n${path}`)));
+  const sig = Array.from(mac, (b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+  return `${serverUrl}/api/files/avatar/${encodeURIComponent(avatar)}/working.webp?exp=${exp}&sig=${sig}`;
 }
 
 function setIdentity(serverUrl: string, token: string, profile: { name?: string; avatar?: string } | undefined): void {
   if (profile?.name) agentName = profile.name;
-  const url = faceUrl(serverUrl, token, profile?.avatar);
+  void faceUrl(serverUrl, token, profile?.avatar).then((url) => showFace(serverUrl, url));
+}
+
+function showFace(serverUrl: string, url: string): void {
   if (!url) return;
   const fallback = `${serverUrl}/avatars/dragon-working.webp`;
   if (url === fallback) {
@@ -269,7 +281,7 @@ class MuseBridge {
     }
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     url.pathname = '/ws';
-    url.search = `?token=${encodeURIComponent(token)}`;
+    url.search = '';
 
     this.hooks.setLink('connecting');
     const ws = new WebSocket(url.toString());
@@ -277,6 +289,8 @@ class MuseBridge {
     const settingsKey = this.key;
 
     ws.onopen = () => {
+      // the token goes in the first frame, never in the address (which the gateway's proxy logs)
+      ws.send(JSON.stringify({ kind: 'auth', token }));
       this.backoff = RECONNECT_MIN_MS;
     };
     ws.onmessage = (ev) => {

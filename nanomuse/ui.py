@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from nanomuse.schema import RiskLevel, ToolCall, ToolResult
 
-ApprovalScope = Literal["once", "task", "session", "24h", "always"]
+ApprovalScope = Literal["once", "conversation", "session", "24h", "always"]
 
 
 def _once() -> list[ApprovalScope]:

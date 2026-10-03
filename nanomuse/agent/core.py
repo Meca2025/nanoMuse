@@ -49,6 +49,7 @@ class MuseAgent:
         contacts: ContactBook | None = None,
         skills: SkillLibrary | None = None,
         session_file: Path | None = None,
+        conversation_id: str | None = None,
     ):
         self.settings = settings
         self.llm = llm
@@ -62,6 +63,9 @@ class MuseAgent:
         self.contacts = contacts
         self.skills = skills
         self.session_file = session_file
+        # The conversation (thread) this agent is; approvals "for this conversation" are
+        # bound to it and last as long as it does. Without one, each run stands alone.
+        self.conversation_id = conversation_id
         self.messages: list[Message] = []
         self.state = AgentState.IDLE
         self.turns = 0
@@ -366,7 +370,9 @@ class MuseAgent:
         final: str | None = None
         step = 0
         empty_replies = 0
-        task_token = self.sentinel.begin_task(purpose or user_input)
+        task_token = self.sentinel.begin_task(
+            purpose or user_input, conversation=self.conversation_id
+        )
         try:
             while step < self.settings.agent.max_steps:
                 step += 1

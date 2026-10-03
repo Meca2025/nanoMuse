@@ -37,11 +37,15 @@ class Refused(Exception):
 
 @dataclass(frozen=True)
 class Provider:
-    """A visitor's own model: their key, their bill, no budget of ours."""
+    """A visitor's own model: their key, their bill, no budget of ours. ``host`` and
+    ``addresses`` are what ``resolve_provider`` found at the start: the gateway's calls to
+    the provider go to those addresses (``Lane.pin``), the name never looked up again."""
 
     base_url: str
     api_key: str
     model: str
+    host: str = ""
+    addresses: tuple[str, ...] = ()
 
 
 @dataclass
@@ -110,6 +114,16 @@ def _resolve(host: str, port: int) -> list[str]:
 def check_provider(base_url: str, allowed_hosts: tuple[str, ...], resolve=_resolve) -> str:
     """A visitor's provider URL, normalised, or ``Refused``. HTTPS only, to a known provider
     host, and never to an address inside our own network."""
+    return resolve_provider(base_url, allowed_hosts, resolve)[0]
+
+
+def resolve_provider(
+    base_url: str, allowed_hosts: tuple[str, ...], resolve=_resolve
+) -> tuple[str, str, tuple[str, ...]]:
+    """``check_provider`` with what it found: (url, host, the host's public addresses). The
+    session's model calls are pinned to those addresses, so the check holds for its whole
+    life — a name that resolved to a public address here cannot be re-pointed at one of
+    ours later (DNS rebinding) to make the gateway call inside its own network."""
     url = urlparse(base_url.strip())
     if url.scheme != "https" or not url.hostname:
         raise Refused(400, "bad_provider", "The model API address must start with https://")
@@ -122,10 +136,13 @@ def check_provider(base_url: str, allowed_hosts: tuple[str, ...], resolve=_resol
         raise Refused(400, "bad_provider", f"{host} does not resolve") from exc
     if not addresses:
         raise Refused(400, "bad_provider", f"{host} does not resolve")
+    pinned: list[str] = []
     for raw in addresses:
         if not ipaddress.ip_address(raw).is_global:
             raise Refused(400, "bad_provider", f"{host} points inside a private network")
-    return f"{url.scheme}://{url.netloc}{url.path.rstrip('/')}"
+        if raw not in pinned:
+            pinned.append(raw)
+    return f"{url.scheme}://{url.netloc}{url.path.rstrip('/')}", host, tuple(pinned)
 
 
 class SessionManager:
@@ -386,7 +403,13 @@ class SessionManager:
         """Which upstream a container's model call goes to — after the budget check."""
         self.authenticate_key(sess, key)
         if sess.byok:
-            return Lane("openai", sess.byok.model, sess.byok.base_url, sess.byok.api_key)
+            return Lane(
+                "openai",
+                sess.byok.model,
+                sess.byok.base_url,
+                sess.byok.api_key,
+                pin=sess.byok.addresses,
+            )
         upstream = self.s.lane(lane)
         if upstream is None or not upstream.configured:
             raise Refused(404, "no_lane", f"no model lane '{lane}'")

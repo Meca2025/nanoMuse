@@ -185,13 +185,17 @@ class DeviceFiles(_DeviceTool):
         "properties": {**_DEVICE_PARAM, "path": {"type": "string"}},
         "required": ["device"],
     }
-    risk: RiskLevel = RiskLevel.SAFE
+    # Reading another device's folders is the person's private data leaving that device:
+    # it stops for approval — once, for this conversation, or always for that device, as
+    # they choose — rather than running quietly.
+    risk: RiskLevel = RiskLevel.SENSITIVE
     reads_private_data: bool = True
 
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         return CallAssessment(
-            risk=RiskLevel.SAFE,
+            risk=RiskLevel.SENSITIVE,
             reads_private_data=True,
+            target=self._device_name(args),
             summary=f"list {args.get('path') or 'home'} on {self._device_name(args)}",
         )
 
@@ -224,14 +228,15 @@ class DeviceGet(_DeviceTool):
         "properties": {**_DEVICE_PARAM, "path": {"type": "string", "description": "path there"}},
         "required": ["device", "path"],
     }
-    risk: RiskLevel = RiskLevel.SAFE
+    risk: RiskLevel = RiskLevel.SENSITIVE  # as device_files: a file of theirs leaves that device
     reads_private_data: bool = True
     workspace: Path
 
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         return CallAssessment(
-            risk=RiskLevel.SAFE,
+            risk=RiskLevel.SENSITIVE,
             reads_private_data=True,
+            target=self._device_name(args),
             summary=f"fetch {args.get('path')} from {self._device_name(args)}",
         )
 
