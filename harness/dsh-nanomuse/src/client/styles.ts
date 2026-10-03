@@ -425,9 +425,10 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-room-top { height:
 .nm-pill-danger { background: var(--dsw-alias-state-error-primary, #d2453d); }
 .nm-pill-danger:hover:not(:disabled) { background: #b8352f; }
 /* sheets */
-.nm-sheet-modal > div { background: transparent !important; box-shadow: none !important; padding: 0 !important; border: 0 !important; }
-.nm-sheet { width: min(520px, calc(100vw - 48px)); max-height: calc(100vh - 80px); display: flex; flex-direction: column; border-radius: 18px; background: var(--nm-base); color: var(--dsw-alias-label-primary); box-shadow: 0 24px 80px rgba(0,0,0,0.35), 0 0 0 1px var(--nm-divider); overflow: hidden; }
-.nm-sheet-modal.nm-wide .nm-sheet { width: min(600px, calc(100vw - 48px)); }
+/* our className lands on the primitives' dialog card itself: resize and recolour it, the sheet fills it */
+.nm-sheet-modal[role="dialog"] { width: min(520px, 100%); max-height: 100%; padding: 0; gap: 0; border-radius: 18px; background: var(--nm-base); color: var(--dsw-alias-label-primary); box-shadow: 0 24px 80px rgba(0,0,0,0.35), 0 0 0 1px var(--nm-divider); }
+.nm-sheet-modal.nm-wide[role="dialog"] { width: min(600px, 100%); }
+.nm-sheet { width: 100%; max-height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .nm-sheet-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 16px 16px 8px 20px; }
 .nm-sheet-title { flex: 1; min-width: 0; font-size: 17px; font-weight: 600; margin: 0; line-height: 1.3; }
 .nm-sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 20px 16px; }

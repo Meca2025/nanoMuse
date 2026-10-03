@@ -1,6 +1,6 @@
 /**
  * The rooms, from inside a chat: the tools that let the agent write into the
- * person's Goals, Feed and Library (`goal_update`, `feed_post`, `library_add`),
+ * person's Goals, Feed and Library (`goals_room_update`, `feed_post`, `library_add`),
  * and the prompt context that tells it what the goals are, so "how is my
  * flight-price goal doing?" needs no room open. A preset row, like Reach; it
  * needs the rooms service (`dsh-nanomuse/rooms`) and does nothing without it.
@@ -21,8 +21,8 @@ export function apply(ctx: Context): void {
     () =>
       ctx.tools.register(
         defineTool({
-          name: 'goal_update',
-          description: "Update one of the person's goals (their Goals room): the one-line status, a timeline entry, the title, or mark it done/paused/tracking. Call it whenever something happens on a goal worth noting — a check done, a price seen, a step finished. The goals and their ids are in your context.",
+          name: 'goals_room_update',
+          description: "Update one of the person's goals in their Goals room (nanoMuse's room, not this session's own goal — that is update_goal): the one-line status, a timeline entry, the title, or mark it done/paused/tracking. Call it whenever something happens on a goal worth noting — a check done, a price seen, a step finished. The goals and their ids are in your context.",
           parameters: {
             goal_id: { type: 'string', required: true, description: 'The goal id from your context, or its exact title.' },
             summary: { type: 'string', description: "The goal's status in one line, as it should read under the title (e.g. 'Lowest fare today USD 879.90, still above the ¥4,000 line')." },
@@ -47,7 +47,7 @@ export function apply(ctx: Context): void {
           presentCall: (args) => ({ card: 'generic', title: `Update goal ${args.goal_id || ''}`, kind: 'other', rawInput: args }),
         }),
       ),
-    'nanomuse rooms: goal_update',
+    'nanomuse rooms: goals_room_update',
   )
 
   ctx.effect(
@@ -112,10 +112,10 @@ export function apply(ctx: Context): void {
             const goals = rooms.goals
             const lines: string[] = []
             if (goals.length) {
-              lines.push("The person's goals (their Goals room; update them with goal_update):")
+              lines.push("The person's goals (their Goals room; update them with goals_room_update):")
               for (const goal of goals.slice(0, 12)) lines.push(`- ${goal.id} · ${goal.title} (${goal.category}, ${goal.status})${goal.summary ? `: ${goal.summary}` : ''}`)
             } else {
-              lines.push('The person has no goals in their Goals room yet; when they state a long-term aim, offer to track it there (they create it from the room; you then keep it updated with goal_update).')
+              lines.push('The person has no goals in their Goals room yet; when they state a long-term aim, offer to track it there (they create it from the room; you then keep it updated with goals_room_update).')
             }
             if (rooms.feedInstructions) lines.push(`What the person wants in their Feed: ${rooms.feedInstructions.slice(0, 300)}`)
             return lines.join('\n')

@@ -80,7 +80,7 @@ export function makeGoalsPanel(t: Translate) {
 function GoalRow({ t, goal, onOpen, onToggle, onCheckIn, onChat, onDelete }: { t: Translate; goal: Goal; onOpen(): void; onToggle(): void; onCheckIn(): void; onChat(): void; onDelete(): void }): ReactNode {
   const done = goal.status === 'done'
   const sub = goal.summary || goal.description.split('\n')[0] || ''
-  return h('div', { className: `nm-goal${done ? ' nm-done' : ''}`, role: 'button', tabIndex: 0, onClick: onOpen, onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } } },
+  return h('div', { className: `nm-goal${done ? ' nm-done' : ''}`, role: 'button', tabIndex: 0, 'aria-label': goal.title, onClick: onOpen, onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } } },
     h('button', { type: 'button', role: 'checkbox', 'aria-checked': done, className: `nm-check${done ? ' nm-on' : ''}`, 'aria-label': done ? t('goalReopen') : t('goalMarkDone'), onClick: (e: MouseEvent) => { e.stopPropagation(); onToggle() } }, done ? h(IconCheck, { size: 13, stroke: 2.5 }) : null),
     h('div', { className: 'nm-goal-main' },
       h('div', { className: 'nm-goal-title' }, goal.title),

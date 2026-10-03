@@ -66,7 +66,7 @@ export function makeIdeasPanel(t: Translate) {
 }
 
 function IdeaRow({ t, idea, onOpen, onDismiss, onStart }: { t: Translate; idea: Idea; onOpen(): void; onDismiss(): void; onStart(): void }): ReactNode {
-  return h('div', { className: 'nm-idea', role: 'button', tabIndex: 0, onClick: onOpen, onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } } },
+  return h('div', { className: 'nm-idea', role: 'button', tabIndex: 0, 'aria-label': idea.title, onClick: onOpen, onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } } },
     h('div', { className: 'nm-idea-mark', 'aria-hidden': true }, idea.emoji || '💡'),
     h('div', { className: 'nm-idea-main' },
       h('div', { className: 'nm-idea-title' }, idea.title),

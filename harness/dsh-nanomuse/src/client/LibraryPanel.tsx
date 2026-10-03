@@ -111,7 +111,7 @@ function ShelfButton({ t, shelf, active, onClick }: { t: Translate; shelf: (type
 
 function Card({ t, item, selecting, selected, onClick, onOpen, onReveal, onRemove }: { t: Translate; item: LibraryItem; selecting: boolean; selected: boolean; onClick(): void; onOpen(): void; onReveal(): void; onRemove(): void }): ReactNode {
   const Icon = KIND_ICON[item.kind]
-  return h('div', { className: `nm-lib-card${selected ? ' nm-selected' : ''}`, role: 'button', tabIndex: 0, onClick, onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } },
+  return h('div', { className: `nm-lib-card${selected ? ' nm-selected' : ''}`, role: 'button', tabIndex: 0, 'aria-label': item.name, onClick, onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } },
     h('div', { className: 'nm-lib-preview' },
       item.kind === 'image' ? h('img', { src: fileUrl(item.id), alt: item.name, loading: 'lazy' })
         : item.kind === 'video' ? h('video', { src: fileUrl(item.id), muted: true, preload: 'metadata' })

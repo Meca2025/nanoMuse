@@ -14,7 +14,7 @@
  * - **Goals** (目标): a goal lives in its own dsh session — the agent shapes it
  *   there, sets up recurring checks with the harness's Schedule (`schedule_create`;
  *   those are the goal's "automations"), and every turn in that session becomes
- *   an entry on the goal's activity timeline. `goal_update` lets the agent write
+ *   an entry on the goal's activity timeline. `goals_room_update` lets the agent write
  *   the status line from any chat.
  * - **Library** (构件): the files the agent delivered — every `present` call in
  *   any session lands here, plus what `library_add` names — by kind: documents,
@@ -122,7 +122,7 @@ export interface Goal {
   sessionId: string
   createdAt: number
   updatedAt: number
-  /** The agent's one-line status, as `goal_update` last wrote it. */
+  /** The agent's one-line status, as `goals_room_update` last wrote it. */
   summary: string
   activity: GoalActivity[]
 }
@@ -151,6 +151,12 @@ export interface RoomsView extends Store {
   automations: Record<string, GoalAutomation[]>
   /** Whether a model is reachable, so the empty rooms can say why they are empty. */
   ready: boolean
+}
+
+/** `dsh-permission-presets`' service, as much of it as we use. */
+interface PresetsLike {
+  readonly names: readonly string[]
+  set(session: Session, name: string): void
 }
 
 /** The harness's Schedule service, the part of it the goals use (optional at runtime). */
@@ -216,6 +222,8 @@ export default class NanomuseRooms extends Service {
   /** Goal sessions → goal, and the last words the agent said in each (the next activity entry). */
   private readonly goalBySession = new Map<string, string>()
   private readonly lastWords = new Map<string, string>()
+  /** When the current turn's first words arrived, per goal session. */
+  private readonly turnMarks = new Map<string, number>()
   private automations: Record<string, GoalAutomation[]> = {}
   private busy = { feed: false, ideas: false }
   private ready = false
@@ -244,7 +252,8 @@ export default class NanomuseRooms extends Service {
       this.streams.clear()
       for (const run of this.runs.values()) run.reject(new Error('nanomuse rooms: shutting down'))
     }, 'nanomuse rooms: stop')
-    void this.refreshAutomations()
+    // the schedule service may come up after us: read the automations once it is there, and again on demand
+    this.ctx.inject(['schedule' as never], () => void this.refreshAutomations().catch(() => undefined))
   }
 
   // ---- the view --------------------------------------------------------------------
@@ -432,12 +441,12 @@ export default class NanomuseRooms extends Service {
     const text = input.text.trim()
     if (!text) throw new RelayError(400, 'usage', 'Say what the goal is')
     const category = (CATEGORIES as readonly string[]).includes(input.category ?? '') ? (input.category as Category) : 'other'
-    const title = (input.title ?? '').trim().slice(0, 80) || firstLine(text).slice(0, 60)
+    const title = (input.title ?? '').trim().slice(0, 80) || goalTitle(text)
     const id = newId('goal')
     const zh = this.lang.startsWith('zh')
     const framing = zh
-      ? `[这是对方在「目标」里新建的一个目标（分类：${categoryLabel(category, true)}，id ${id}）。这个对话就是这个目标的家：先用几句话说清楚你打算怎么帮、需要对方给什么；如果定期检查有用（比如每天查一次价、每周回顾一次），就用 schedule_create 在这里建一个定时任务；之后每当有值得记下的进展，调用 goal_update（goal_id "${id}"，一句话 summary，加一条 activity）。回复要短。]`
-      : `[A goal the person set in their Goals room (category: ${categoryLabel(category, false)}, id ${id}). This chat is the goal's home: say in a few sentences how you will help and what you need from them; when a recurring check helps (a daily price check, a weekly review), set it up here with schedule_create; and whenever something worth noting happens, call goal_update (goal_id "${id}", a one-line summary, an activity entry). Keep replies short.]`
+      ? `[这是对方在「目标」里新建的一个目标（分类：${categoryLabel(category, true)}，id ${id}）。这个对话就是这个目标的家：先用几句话说清楚你打算怎么帮、需要对方给什么；如果定期检查有用（比如每天查一次价、每周回顾一次），就用 schedule_create 在这里建一个定时任务；第一轮就调用 goals_room_update（goal_id "${id}"）给目标起一个 12 字以内的短标题（title）和一句话 summary；之后每当有值得记下的进展，再调用 goals_room_update 加一条 activity。回复要短。]`
+      : `[A goal the person set in their Goals room (category: ${categoryLabel(category, false)}, id ${id}). This chat is the goal's home: say in a few sentences how you will help and what you need from them; when a recurring check helps (a daily price check, a weekly review), set it up here with schedule_create; in this first turn call goals_room_update (goal_id "${id}") with a short title (eight words at most) and a one-line summary; and whenever something worth noting happens later, call goals_room_update again with an activity entry. Keep replies short.]`
     const sessionId = await this.open(title, `${framing}\n\n${text}`)
     const now = Date.now()
     const goal: Goal = { id, title, description: text.slice(0, 2000), category, status: 'tracking', sessionId, createdAt: now, updatedAt: now, summary: '', activity: [] }
@@ -447,7 +456,7 @@ export default class NanomuseRooms extends Service {
     return goal
   }
 
-  /** From the room (status, title) or from the agent (`goal_update`: summary, activity). */
+  /** From the room (status, title) or from the agent (`goals_room_update`: summary, activity). */
   async updateGoal(ref: string, patch: { title?: string; description?: string; status?: string; summary?: string; activity?: { title: string; text?: string } }): Promise<Goal> {
     const goal = this.findGoal(ref)
     if (!goal) throw new RelayError(404, 'not_found', `No goal "${ref}"`)
@@ -485,8 +494,8 @@ export default class NanomuseRooms extends Service {
     if (!goal) throw new RelayError(404, 'not_found', 'No such goal')
     const zh = this.lang.startsWith('zh')
     const prompt = zh
-      ? `[来自「目标」的进度确认] 「${goal.title}」进展如何？简短说明上次之后有什么变化、下一步是什么，并用 goal_update 更新一句话 summary。`
-      : `[A check-in from the Goals room] How is "${goal.title}" going? Briefly: what changed since last time and what is next; update the one-line summary with goal_update.`
+      ? `[来自「目标」的进度确认] 「${goal.title}」进展如何？简短说明上次之后有什么变化、下一步是什么，并用 goals_room_update 更新一句话 summary。`
+      : `[A check-in from the Goals room] How is "${goal.title}" going? Briefly: what changed since last time and what is next; update the one-line summary with goals_room_update.`
     if (!(await this.alive(goal.sessionId))) {
       goal.sessionId = await this.open(goal.title, prompt)
       this.goalBySession.set(goal.sessionId, goal.id)
@@ -567,7 +576,8 @@ export default class NanomuseRooms extends Service {
     const framing = zh
       ? `[对方在「构件」里点了「创建」：请做${pair[1]}，保存到 ${folder}/（没有就创建），做完用 present 声明这个文件，让它出现在对方的构件库里。先做再说，简短汇报。]`
       : `[The person pressed "Create" in their Library: make ${pair[0]}, save it under ${folder}/ (create the folder if needed), and declare the file with present when done so it appears in their Library. Make it first, then report briefly.]`
-    return this.open(firstLine(text).slice(0, 60), `${framing}\n\n${text}`)
+    await mkdir(folder, { recursive: true })
+    return this.open(firstLine(text).slice(0, 60), `${framing}\n\n${text}`, { cwd: folder, preset: 'workspace-write' })
   }
 
   /** Where the room's own creations go: `~/nanoMuse/Library` (`~/nanoMuse/构件` in Chinese). */
@@ -578,21 +588,37 @@ export default class NanomuseRooms extends Service {
   // ---- the agent's sessions -------------------------------------------------------------
 
   /** A new chat the person will see, with its first message sent. */
-  private async open(title: string, prompt: string): Promise<string> {
+  /**
+   * A chat the person will see. It starts in their home folder; a `preset` of
+   * `workspace-write` (used for the Library's creations, whose cwd is the
+   * Library folder) lets the agent write there without asking — everything
+   * outside still asks, as the deployment's presets say.
+   */
+  private async open(title: string, prompt: string, options: { cwd?: string; preset?: string } = {}): Promise<string> {
     const sc = this.ctx.get('sessionController')
     if (!sc) throw new RelayError(503, 'no_sessions', 'Chats are not available yet')
-    const created = await sc.create({ agentPreset: 'nanomuse' })
+    const created = await sc.create({ agentPreset: 'nanomuse', cwd: options.cwd ?? homeDir() })
     await sc.rename({ sessionId: created.sessionId, title: title.slice(0, 80) }).catch(() => undefined)
-    await this.say(created.sessionId, prompt)
+    await this.say(created.sessionId, prompt, options.preset)
     return created.sessionId
   }
 
-  private async say(sessionId: SessionId, prompt: string): Promise<Agent> {
+  private async say(sessionId: SessionId, prompt: string, preset?: string): Promise<Agent> {
     const sc = this.ctx.get('sessionController')
     if (!sc) throw new RelayError(503, 'no_sessions', 'Chats are not available yet')
     const resolved = await sc.resolveAgent(sessionId)
     if ('error' in resolved) throw new RelayError(409, 'session', `The chat could not be opened: ${String(resolved.error)}`)
     if (resolved.agent.status !== 'idle') throw new RelayError(409, 'busy', 'That chat is busy right now')
+    if (preset) {
+      const presets = this.ctx.get('permissionPresets') as PresetsLike | undefined
+      if (presets?.names.includes(preset)) {
+        try {
+          presets.set(resolved.agent.session, preset)
+        } catch (error) {
+          this.warn('permission preset', error)
+        }
+      }
+    }
     resolved.agent.followup(createUserMessage({ content: [{ type: 'text', text: prompt }], source: { kind: 'user' } }))
     return resolved.agent
   }
@@ -609,7 +635,7 @@ export default class NanomuseRooms extends Service {
     const sc = this.ctx.get('sessionController')
     if (!sc) throw new Error('chats are not available yet')
     if (!(await this.ctx.nanomuseCloud.status()).ready) throw new Error('no model is set up')
-    const created = await sc.create({ agentPreset: 'nanomuse' })
+    const created = await sc.create({ agentPreset: 'nanomuse', cwd: homeDir() })
     await sc.rename({ sessionId: created.sessionId, title }).catch(() => undefined)
     const resolved = await sc.resolveAgent(created.sessionId)
     if ('error' in resolved) throw new Error(`the chat could not be opened: ${String(resolved.error)}`)
@@ -651,12 +677,19 @@ export default class NanomuseRooms extends Service {
       return
     }
     if (!run && !goalId) return
+    if (goalId && (type === 'turn/start' || type === 'user/message')) {
+      this.turnMarks.set(session.id, Date.now())
+      return
+    }
     switch (event.type) {
       case 'assistant/message': {
         const text = textOf(event.data.message.content)
         if (!text) return
         if (run) run.final = text
-        if (goalId) this.lastWords.set(session.id, text)
+        if (goalId) {
+          if (!this.turnMarks.has(session.id)) this.turnMarks.set(session.id, Date.now())
+          this.lastWords.set(session.id, text)
+        }
         return
       }
       case 'turn/end': {
@@ -665,10 +698,12 @@ export default class NanomuseRooms extends Service {
           if (reason.kind === 'error') run.reject(new Error(String(reason.error.message ?? 'the model failed')))
           else run.resolve(run.final)
         }
-        if (goalId && reason.kind !== 'error') {
+        if (goalId) {
           const words = this.lastWords.get(session.id) ?? ''
+          const since = this.turnMarks.get(session.id) ?? Date.now()
           this.lastWords.delete(session.id)
-          if (words) void this.logGoalTurn(goalId, words).catch((error: unknown) => this.warn('goal activity', error))
+          this.turnMarks.delete(session.id)
+          if (words && reason.kind !== 'error') void this.logGoalTurn(goalId, words, since).catch((error: unknown) => this.warn('goal activity', error))
         }
         return
       }
@@ -677,10 +712,11 @@ export default class NanomuseRooms extends Service {
     }
   }
 
-  /** Every turn in a goal's chat is a line on its timeline. */
-  private async logGoalTurn(goalId: string, words: string): Promise<void> {
+  /** Every turn in a goal's chat is a line on its timeline — unless the agent wrote one itself with `goals_room_update`. */
+  private async logGoalTurn(goalId: string, words: string, since: number): Promise<void> {
     const goal = this.store.goals.find((g) => g.id === goalId)
     if (!goal) return
+    if (goal.activity.some((entry) => entry.at >= since - 1000)) return
     const plain = words.replace(/[*_`#>]/g, '').replace(/\r/g, '').trim()
     const title = firstLine(plain).slice(0, 120)
     const rest = plain.slice(plain.indexOf('\n') + 1).replace(/\s+/g, ' ').trim()
@@ -823,11 +859,11 @@ export default class NanomuseRooms extends Service {
     if (!sameOrigin(req)) return send(res, 403, { error: { code: 'forbidden', message: 'Same-origin requests only' } })
     try {
       if (req.method === 'GET' && route === '/state') {
-        await this.syncReady()
+        await Promise.all([this.syncReady(), this.refreshAutomations()])
         return send(res, 200, this.view())
       }
       if (req.method === 'GET' && route === '/events') {
-        await this.syncReady()
+        await Promise.all([this.syncReady(), this.refreshAutomations()])
         return this.stream(req, res)
       }
       if (req.method === 'GET' && route === '/library/file') return this.serveFile(res, url.searchParams.get('id') ?? '', url.searchParams.get('raw') === '1')
@@ -1043,6 +1079,14 @@ function ruleOf(r: ScheduleRecordLike): string {
 
 function homeDir(): string {
   return process.env.HOME ?? process.env.USERPROFILE ?? process.cwd()
+}
+
+/** A first title for a goal typed in one breath: the first clause, before the agent names it. */
+export function goalTitle(text: string): string {
+  const line = firstLine(text).trim()
+  const cut = line.search(/[；;。！？!?\n]|，|, |: |：/)
+  const clause = (cut > 3 ? line.slice(0, cut) : line).trim()
+  return (clause || line).slice(0, 40)
 }
 
 /** Titles compared loosely, so a post the agent sent twice lands once. */
