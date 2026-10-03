@@ -7,9 +7,10 @@ the TestFlight pipeline needs, and what is still to be ported from the Android a
 **Status.** The tree, the branding, the nanoMuse Cloud sign-in, the hub client and the pipeline
 were written on a Linux machine. The app **compiles** — the *iOS · build check* workflow below
 builds it unsigned for a device on a Mac runner, and is green as of the trial branch — but it has
-not run on an iPhone or gone through TestFlight yet, so the sign-in flow, the Devices section and
-notifications from other devices are untested at runtime. Expect signing questions in App Store
-Connect on the first TestFlight run, not compile errors.
+not run on an iPhone yet, so the sign-in flow, the Devices section and notifications from other
+devices are untested at runtime. The TestFlight pipeline is set up end to end (*Where it stands*
+below); the first archive taught it that automatic signing wants a registered device, which is
+why it signs manually now.
 
 ## Where it lives
 
@@ -96,6 +97,28 @@ An external group (public link, up to 10,000 testers) needs Apple's beta review 
 — that is the step we are not waiting for; it can be switched on later in App Store Connect without
 touching the pipeline.
 
+### Where it stands
+
+Set up on 2026-10-03, all of it under the account holder's developer account (team
+`TN43QYW8K4`), nothing of which is in the repository:
+
+- the app record *nanoMuse*, iOS, bundle id `io.github.nanomuse.app`, SKU `nanomuse-ios`,
+  Apple ID `6818802049`; the three extension bundle ids `…app.ShareExtension`,
+  `…app.FileProvider`, `…app.AgentWidget`; the app group `group.io.github.nanomuse.app` and the
+  iCloud container `iCloud.io.github.nanomuse.app`; the capabilities the four `.entitlements`
+  ask for (App Groups, HealthKit with clinical records, HomeKit, iCloud/CloudKit, NFC tag
+  reading, WeatherKit) turned on on the identifiers;
+- the API key *nanoMuse CI* (role App Manager), the Apple Distribution certificate
+  *Apple Distribution: Guangyi Liu* (valid to 2027-10-03) and the four App Store profiles
+  *nanoMuse App Store*, *nanoMuse ShareExtension App Store*, *nanoMuse FileProvider App Store*,
+  *nanoMuse AgentWidget App Store*;
+- the six repository secrets of the table below;
+- the internal TestFlight group *nanoMuse Core* with automatic distribution, so every processed
+  build reaches its testers by itself; the device list is empty on purpose (nothing here needs
+  one);
+- not done: an external group and the test information for it, Apple's beta review, and anything
+  towards the App Store (the app is not going there).
+
 ### Once, in App Store Connect
 
 1. **The app record.** *Apps → + → New App*: platform iOS, name nanoMuse, bundle id
@@ -121,10 +144,43 @@ touching the pipeline.
 | `APP_STORE_CONNECT_ISSUER_ID` | The issuer ID, a UUID |
 | `APP_STORE_CONNECT_KEY_P8` | The full text of `AuthKey_<ID>.p8`, `-----BEGIN PRIVATE KEY-----` to the end |
 | `APPLE_TEAM_ID` | The 10-character team id (*Membership details* in the developer account) |
+| `IOS_DIST_P12_BASE64` | The team's *Apple Distribution* certificate with its private key, a `.p12`, base64 in one line |
+| `IOS_DIST_P12_PASSWORD` | That `.p12`'s password |
 
-No certificate and no provisioning profile is stored anywhere: `xcodebuild -allowProvisioningUpdates`
-with the API key ("cloud signing") creates a managed distribution certificate and the profiles for
-the app and its three extensions on the runner, in a throwaway keychain.
+### The certificate, and why signing is manual
+
+Xcode's automatic signing (`-allowProvisioningUpdates` with the key) was the first plan and does
+not work for a team like this one: an archive is signed with an *iOS App Development* profile
+before the export re-signs it for the store, and a development profile has to list at least one
+device — a team that only ships through TestFlight has registered none, so the archive stops at
+*Your team has no devices from which to generate a provisioning profile*. The lane therefore
+signs manually with the store's own material, which needs no devices: the Apple Distribution
+certificate from the two secrets above, and the four *App Store* provisioning profiles (the app
+and its three extensions) that `get_provisioning_profile` downloads from the account with the key
+at the start of every run — and repairs there if the certificate they name is not the one in the
+keychain.
+
+The certificate was made without a Mac, and can be made again the same way when it expires or
+the key is lost (a team may hold two or three distribution certificates; revoke the old one in
+*Certificates, Identifiers & Profiles → Certificates* first if the limit is reached):
+
+```sh
+umask 077 && cd ~/.private/apple/dist                                # anywhere outside the repository
+openssl genrsa -out dist.key 2048
+openssl req -new -key dist.key -out dist.csr -subj "/emailAddress=<account e-mail>/CN=nanoMuse CI distribution/C=CN"
+# POST /v1/certificates { certificateType: DISTRIBUTION, csrContent: <dist.csr> } with a JWT signed
+# by the API key (the key's role must be App Manager or Admin); save certificateContent, base64, as dist.cer
+openssl x509 -inform DER -in dist.cer -out dist.pem
+openssl rand -base64 24 | tr -d '\n' > dist.p12.pass
+openssl pkcs12 -export -inkey dist.key -in dist.pem -out dist.p12 -passout file:dist.p12.pass   # with OpenSSL 3 add -legacy
+base64 -w0 dist.p12 | gh secret set IOS_DIST_P12_BASE64 -R nano-muse/nanoMuse
+gh secret set IOS_DIST_P12_PASSWORD -R nano-muse/nanoMuse < dist.p12.pass
+```
+
+The private key stays in that folder on the maintainer's machine (and in the secret); nothing
+of it goes into the repository, a log or a chat. The profiles were created once in the account
+with the same API (`POST /v1/profiles`, type `IOS_APP_STORE`, one per bundle id, each naming the
+certificate); the lane makes them again if they are missing.
 
 ### Does it compile?
 

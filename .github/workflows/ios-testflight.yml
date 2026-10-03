@@ -1,10 +1,11 @@
 name: iOS · TestFlight
 
 # Archive the iOS app and hand it to TestFlight (internal testers — no App Review involved).
-# Manual, or on an `ios-*` tag. Needs four repository secrets, see docs/ios.md:
+# Manual, or on an `ios-*` tag. Needs six repository secrets, see docs/ios.md:
 #   APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_P8, APPLE_TEAM_ID
-# Signing is Xcode's automatic (cloud) signing driven by that key: no certificate or profile is
-# stored anywhere in the repository.
+#   IOS_DIST_P12_BASE64, IOS_DIST_P12_PASSWORD
+# Signing is manual: the team's Apple Distribution certificate from the secrets, the App Store
+# profiles fetched from the account with the key. Nothing that signs is in the repository.
 
 on:
   workflow_dispatch:
@@ -81,6 +82,8 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DIST_P12_BASE64: ${{ secrets.IOS_DIST_P12_BASE64 }}
+          IOS_DIST_P12_PASSWORD: ${{ secrets.IOS_DIST_P12_PASSWORD }}
           BUILD_NUMBER: ${{ github.run_number }}
           FASTLANE_SKIP_UPDATE_CHECK: "1"
           FASTLANE_HIDE_CHANGELOG: "1"
