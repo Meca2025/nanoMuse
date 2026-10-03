@@ -1,36 +1,57 @@
 # nanoMuse iOS · fastlane
 #
-# One lane: `beta` archives the app with Xcode's automatic (cloud) signing, driven entirely by an
-# App Store Connect API key, and uploads the build to TestFlight for internal testers. No
-# certificates or profiles live in the repository; Xcode creates and manages them through the
-# key (-allowProvisioningUpdates). Run by .github/workflows/ios-testflight.yml, or by hand on a
-# Mac from android/src/ios with the same environment variables:
+# One lane: `beta` archives the app for the App Store with manual signing — the team's Apple
+# Distribution certificate from the repository's secrets, the App Store provisioning profiles from
+# the account over the App Store Connect API — and uploads the build to TestFlight for the
+# internal testers. Nothing that signs lives in the repository. Run by
+# .github/workflows/ios-testflight.yml, or by hand on a Mac from android/src/ios with the same
+# environment variables:
 #
 #   APP_STORE_CONNECT_KEY_ID      the key's ID (10 characters)
 #   APP_STORE_CONNECT_ISSUER_ID   the issuer ID (a UUID)
 #   APP_STORE_CONNECT_KEY_P8      the contents of AuthKey_<ID>.p8 (PEM text)
 #   APPLE_TEAM_ID                 the team the bundle ids are registered under
+#   IOS_DIST_P12_BASE64           the Apple Distribution certificate with its private key, a .p12, base64
+#   IOS_DIST_P12_PASSWORD         the .p12's password
 #   BUILD_NUMBER                  optional; CFBundleVersion for this upload (CI: the run number)
 #
-# See docs/ios.md.
+# Why not Xcode's automatic signing with -allowProvisioningUpdates: an archive signs with a
+# *development* profile first, and a development profile needs at least one registered device —
+# a team that only ships through TestFlight has none. The App Store profiles need no devices.
+# See docs/ios.md for how the certificate was made (a CSR on the maintainer's machine, the
+# certificate from the API) and how to make it again.
 
+require "base64"
+require "fileutils"
+require "securerandom"
+require "shellwords"
 require "tmpdir"
 
 default_platform(:ios)
 
 PROJECT = "Minis.xcodeproj".freeze
 SCHEME = "Minis".freeze
+# Every target the archive signs, with its bundle id; each has an App Store profile of its own.
+TARGETS = {
+  "Minis" => "io.github.nanomuse.app",
+  "MinisShare" => "io.github.nanomuse.app.ShareExtension",
+  "MinisFileProvider" => "io.github.nanomuse.app.FileProvider",
+  "AgentWidgetExtension" => "io.github.nanomuse.app.AgentWidget"
+}.freeze
+KEYCHAIN = "nanomuse-ci".freeze
+# The intermediates Apple issues its signing certificates under; the runner may lack them.
+WWDR = %w[AppleWWDRCAG3 AppleWWDRCAG4 AppleWWDRCAG5 AppleWWDRCAG6].freeze
 
 platform :ios do
-  desc "Archive nanoMuse with automatic signing and upload it to TestFlight (internal testers)"
+  desc "Archive nanoMuse for the App Store and upload it to TestFlight (internal testers)"
   lane :beta do
     key_id = ENV.fetch("APP_STORE_CONNECT_KEY_ID")
     issuer_id = ENV.fetch("APP_STORE_CONNECT_ISSUER_ID")
     team_id = ENV.fetch("APPLE_TEAM_ID")
     build_number = ENV.fetch("BUILD_NUMBER", Time.now.utc.strftime("%Y%m%d%H%M"))
+    scratch = Dir.mktmpdir("nanomuse-asc")
 
-    # xcodebuild wants the key as a file; fastlane's own actions take the content.
-    key_path = File.expand_path("AuthKey_#{key_id}.p8", Dir.mktmpdir("nanomuse-asc"))
+    key_path = File.join(scratch, "AuthKey_#{key_id}.p8")
     File.write(key_path, ENV.fetch("APP_STORE_CONNECT_KEY_P8"))
     File.chmod(0o600, key_path)
     api_key = app_store_connect_api_key(
@@ -41,25 +62,58 @@ platform :ios do
       in_house: false
     )
 
-    setup_ci if ENV["CI"] # a throwaway keychain for the managed certificates
-
-    # The project ships with an empty DEVELOPMENT_TEAM (upstream's choice, so that anyone can
-    # build it under their own team). Every target — the app, the share, widget and file
-    # provider extensions — has to carry ours for the archive to sign.
-    update_code_signing_settings(
-      path: PROJECT,
-      use_automatic_signing: true,
-      team_id: team_id
+    # A keychain of this run's own for the certificate, thrown away at the end.
+    keychain_password = SecureRandom.hex(16)
+    keychain_path = File.expand_path("~/Library/Keychains/#{KEYCHAIN}-db")
+    create_keychain(
+      name: KEYCHAIN,
+      password: keychain_password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false,
+      add_to_search_list: true
     )
+    WWDR.each do |name|
+      cer = File.join(scratch, "#{name}.cer")
+      sh("curl -fsSL https://www.apple.com/certificateauthority/#{name}.cer -o #{cer.shellescape} && " \
+         "security import #{cer.shellescape} -k #{keychain_path.shellescape} -T /usr/bin/codesign >/dev/null 2>&1 || true")
+    end
+    p12_path = File.join(scratch, "distribution.p12")
+    File.binwrite(p12_path, Base64.decode64(ENV.fetch("IOS_DIST_P12_BASE64")))
+    import_certificate(
+      certificate_path: p12_path,
+      certificate_password: ENV.fetch("IOS_DIST_P12_PASSWORD"),
+      keychain_name: KEYCHAIN,
+      keychain_password: keychain_password,
+      log_output: false
+    )
+    sh("security find-identity -v -p codesigning #{keychain_path.shellescape} | grep -c 'Apple Distribution' >/dev/null")
 
-    # -allowProvisioningUpdates plus the key: Xcode registers the bundle ids, creates the
-    # distribution certificate and the profiles on the fly ("cloud signing").
-    signing_args = [
-      "-allowProvisioningUpdates",
-      "-authenticationKeyPath #{key_path}",
-      "-authenticationKeyID #{key_id}",
-      "-authenticationKeyIssuerID #{issuer_id}"
-    ].join(" ")
+    # The project ships with an empty DEVELOPMENT_TEAM and automatic signing (upstream's choice,
+    # so that anyone can build it under their own team). Every target gets ours, manual, with
+    # its App Store profile — downloaded from the account (and repaired there if the certificate
+    # it names is not the one in the keychain).
+    profiles = {}
+    TARGETS.each do |target, bundle_id|
+      get_provisioning_profile(
+        api_key: api_key,
+        app_identifier: bundle_id,
+        team_id: team_id,
+        platform: "ios",
+        output_path: scratch,
+        filename: "#{bundle_id}.mobileprovision"
+      )
+      profiles[bundle_id] = lane_context[SharedValues::SIGH_NAME]
+      update_code_signing_settings(
+        path: PROJECT,
+        targets: [target],
+        use_automatic_signing: false,
+        team_id: team_id,
+        code_sign_identity: "Apple Distribution",
+        profile_name: lane_context[SharedValues::SIGH_NAME]
+      )
+    end
 
     build_app(
       project: PROJECT,
@@ -68,9 +122,14 @@ platform :ios do
       destination: "generic/platform=iOS",
       export_method: "app-store",
       export_team_id: team_id,
-      export_options: { signingStyle: "automatic", teamID: team_id, uploadSymbols: true },
-      xcargs: "#{signing_args} CURRENT_PROJECT_VERSION=#{build_number}",
-      export_xcargs: signing_args,
+      export_options: {
+        signingStyle: "manual",
+        signingCertificate: "Apple Distribution",
+        teamID: team_id,
+        uploadSymbols: true,
+        provisioningProfiles: profiles
+      },
+      xcargs: "CURRENT_PROJECT_VERSION=#{build_number}",
       output_directory: "build",
       output_name: "nanoMuse.ipa",
       clean: false,
@@ -78,8 +137,8 @@ platform :ios do
       include_bitcode: false
     )
 
-    # Internal testers only (the App Store Connect users you add to the internal group) — that
-    # path needs no beta review. External groups do; see docs/ios.md.
+    # Internal testers only (the App Store Connect users in the internal group) — that path needs
+    # no beta review. External groups do; see docs/ios.md.
     upload_to_testflight(
       api_key: api_key,
       ipa: "build/nanoMuse.ipa",
@@ -88,6 +147,7 @@ platform :ios do
       notify_external_testers: false
     )
   ensure
-    File.delete(key_path) if key_path && File.exist?(key_path)
+    delete_keychain(name: KEYCHAIN) if File.exist?(File.expand_path("~/Library/Keychains/#{KEYCHAIN}-db"))
+    FileUtils.rm_rf(scratch) if scratch
   end
 end
