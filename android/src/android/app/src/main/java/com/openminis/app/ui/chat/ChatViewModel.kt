@@ -3733,15 +3733,25 @@ class ChatViewModel(
                 // untouched (it has no in-group alternative to fall back to).
                 val groupBound = _selectedGroupId.value
                 val activeEntry = _activeEntryId.value
+                // nanoMuse: a member taken out of the bound group reaches the chats already
+                // open, too. Upstream re-resolved only when the member's provider was
+                // disabled; a group edited in Settings (the Cloud card's "Change": the
+                // recommended model swapped for another) left every open chat — the main
+                // chat above all, whose view-model lives as long as the app — on the old
+                // model until a restart. A member who moved the Cloud group to
+                // deepseek-v4.1-flash kept talking to qwen3.8-27b and could not tell why.
+                val leftGroup = groupBound != null && activeEntry != null &&
+                    config.modelGroups.firstOrNull { it.id == groupBound }?.memberEntryIds?.contains(activeEntry) == false
                 if (currentProvider != null && groupBound != null && activeEntry != null &&
                     config.modelEntries.isNotEmpty() &&
-                    !providerRepository.isEntryProviderEnabled(activeEntry)
+                    (leftGroup || !providerRepository.isEntryProviderEnabled(activeEntry))
                 ) {
                     val before = activeEntry
+                    val why = if (leftGroup) "left the group" else "provider disabled"
                     if (resolveProviderFromGroup(groupBound)) {
                         AppLogger.info(
                             TAG,
-                            "🔀RESOLVE group=$groupBound active entry=$before provider disabled — re-resolved to entry=${_activeEntryId.value} model=${currentModel?.id}",
+                            "🔀RESOLVE group=$groupBound active entry=$before $why — re-resolved to entry=${_activeEntryId.value} model=${currentModel?.id}",
                         )
                         // Persist the re-resolved member so a reload doesn't snap
                         // back to the disabled one. resolveProviderFromGroup set
@@ -3756,9 +3766,34 @@ class ChatViewModel(
                         // so the guard below re-runs the standard resolution.
                         AppLogger.warning(
                             TAG,
-                            "🔀RESOLVE group=$groupBound active entry=$before provider disabled and group has no enabled member — falling back",
+                            "🔀RESOLVE group=$groupBound active entry=$before $why and group has no enabled member — falling back",
                         )
                         currentProvider = null
+                    }
+                }
+                // nanoMuse: a chat pinned to one of the Cloud's models (the picker in the
+                // chat's menu) follows the Cloud group once that model leaves it. The group
+                // is where Settings chooses the model, and a pick in the picker already
+                // moves the group (NanoMuseCloud.followPick), so the two never disagree
+                // for long; a pin on a group of the person's own is left alone, as upstream.
+                val pinned = if (currentProvider != null && groupBound == null && activeEntry != null) {
+                    config.modelEntries.firstOrNull { it.id == activeEntry }
+                } else {
+                    null
+                }
+                if (pinned != null && io.github.nanomuse.cloud.NanoMuseCloud.owns(context, pinned)) {
+                    val cloudGroup = providerRepository.defaultPrimaryGroupId
+                        ?.let { id -> config.modelGroups.firstOrNull { it.id == id } }
+                        ?.takeIf { it.name == io.github.nanomuse.cloud.NanoMuseCloud.LABEL && pinned.id !in it.memberEntryIds }
+                    if (cloudGroup != null && resolveProviderFromGroup(cloudGroup.id)) {
+                        _selectedGroupId.value = cloudGroup.id
+                        AppLogger.info(
+                            TAG,
+                            "🔀RESOLVE pinned entry=${pinned.id} left the Cloud group — now group=${cloudGroup.id} entry=${_activeEntryId.value} model=${currentModel?.id}",
+                        )
+                        _activeEntryId.value?.let {
+                            persistBinding("""{"type":"group","groupId":"${cloudGroup.id}","lastEntryId":"$it"}""")
+                        }
                     }
                 }
                 if (currentProvider == null && config.modelEntries.isNotEmpty()) {
