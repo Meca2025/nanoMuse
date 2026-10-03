@@ -76,12 +76,20 @@ export interface LibraryItem {
   at: number
 }
 
+export interface MemoryItem {
+  id: string
+  at: number
+  text: string
+  source: 'agent' | 'person' | 'import'
+}
+
 export interface Rooms {
   lang: string
   feed: { instructions: string; generatedAt: number; lastTry: number; posts: FeedPost[] }
   ideas: { generatedAt: number; lastTry: number; items: Idea[] }
   goals: Goal[]
   library: LibraryItem[]
+  memory: MemoryItem[]
   busy: { feed: boolean; ideas: boolean }
   automations: Record<string, GoalAutomation[]>
   ready: boolean
@@ -99,6 +107,7 @@ const INITIAL: Rooms = {
   ideas: { generatedAt: 0, lastTry: 0, items: [] },
   goals: [],
   library: [],
+  memory: [],
   busy: { feed: false, ideas: false },
   automations: {},
   ready: false,

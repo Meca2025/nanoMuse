@@ -102,6 +102,30 @@ export function apply(ctx: Context): void {
     'nanomuse rooms: library_add',
   )
 
+  ctx.effect(
+    () =>
+      ctx.tools.register(
+        defineTool({
+          name: 'remember',
+          description: "Keep one fact about the person for every later chat (their Memory): a preference, a name, a routine, a decision they made. One line, in their words' language. Use it when they tell you something they will expect you to know next time; not for the task at hand.",
+          parameters: {
+            text: { type: 'string', required: true, description: 'The fact, one line, at most 400 characters.' },
+          },
+          output: {
+            schema: { type: 'object', properties: { id: { type: 'string' }, text: { type: 'string' } }, additionalProperties: false },
+            render: (_args, value) => [{ type: 'text', text: `Remembered: ${value.text}` }],
+          },
+          async execute(args) {
+            const item = await rooms.remember(args.text, 'agent')
+            if (!item) throw new Error('Nothing to remember.')
+            return { id: item.id, text: item.text }
+          },
+          presentCall: (args) => ({ card: 'generic', title: `Remember: ${(args.text || '').slice(0, 60)}`, kind: 'other', rawInput: args }),
+        }),
+      ),
+    'nanomuse rooms: remember',
+  )
+
   ctx.inject(['systemPrompt'], (ctx) => {
     ctx.effect(
       () =>
@@ -118,6 +142,13 @@ export function apply(ctx: Context): void {
               lines.push('The person has no goals in their Goals room yet; when they state a long-term aim, offer to track it there (they create it from the room; you then keep it updated with goals_room_update).')
             }
             if (rooms.feedInstructions) lines.push(`What the person wants in their Feed: ${rooms.feedInstructions.slice(0, 300)}`)
+            const memory = rooms.memory
+            if (memory.length) {
+              lines.push('', 'What you remember about the person (their Memory; add to it with remember):')
+              for (const item of memory.slice(-60)) lines.push(`- ${item.text}`)
+            } else {
+              lines.push('', 'You remember nothing about the person yet; when they tell you something they will expect you to know next time, keep it with remember.')
+            }
             return lines.join('\n')
           },
         }),

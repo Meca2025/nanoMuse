@@ -31,6 +31,7 @@ import { useLive } from './live.ts'
 import { en, zh } from './locales.ts'
 import type { ChatActions } from './MuseChats.tsx'
 import { MuseHeader, type UseSessionStatus } from './MuseHeader.tsx'
+import { CONNECTORS_SECTION, DICTATION_SECTION, FILES_SECTION, makeConnectorsSection, makeDictationSection, makeFilesSection, makePermissionsSection, PERMISSIONS_SECTION } from './Pages.tsx'
 import { COMPUTER_SECTION, createShellStore, DATA_SECTION, HELP_SECTION, LEGAL_SECTION, makeGeneralSection, MuseSettings, type MuseSettingsProps, type OnboardingStep, type SectionRow } from './MuseSettings.tsx'
 import { MuseSidebar, type MuseSidebarProps, type PanelMeta } from './MuseSidebar.tsx'
 import { makeOnboarding, type OnboardingOwnerProps } from './Onboarding.tsx'
@@ -453,6 +454,18 @@ export function apply(ctx: ClientContext): void {
   const DataSection = makeCloudSection(t, 'data')
   slots.inject('settings.section', () =>
     slots.register({ name: 'settings.section', id: DATA_SECTION, order: 32, label: () => t('navData'), locale: 'nanomuse' }, DataSection))
+  const ConnectorsSection = makeConnectorsSection(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: CONNECTORS_SECTION, order: 21, label: () => t('navConnectors'), locale: 'nanomuse' }, ConnectorsSection))
+  const FilesSection = makeFilesSection(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: FILES_SECTION, order: 23, label: () => t('navFiles'), locale: 'nanomuse' }, FilesSection))
+  const DictationSection = makeDictationSection(t, (id) => layout.selectPanel(id))
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: DICTATION_SECTION, order: 24, label: () => t('navDictation'), locale: 'nanomuse' }, DictationSection))
+  const PermissionsSection = makePermissionsSection(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: PERMISSIONS_SECTION, order: 31, label: () => t('navPermissions'), locale: 'nanomuse' }, PermissionsSection))
   const HelpSection = makeHelpSection(t, process.env.NANOMUSE_VERSION ?? '')
   slots.inject('settings.section', () =>
     slots.register({ name: 'settings.section', id: HELP_SECTION, order: 40, label: () => t('navHelp'), locale: 'nanomuse' }, HelpSection))
@@ -464,6 +477,14 @@ export function apply(ctx: ClientContext): void {
   const Capsule = makeCapsule({ t })
   slots.inject('shell.overlay', () =>
     slots.register({ name: 'shell.overlay', id: 'nanomuse.capsule' }, Capsule))
+  // The quick-chat key (the shell's ⌥ Space): a fresh chat with the composer focused.
+  const quickChatOff = bridge()?.onQuickChat?.(() => {
+    layout.selectPanel(null)
+    workspaces.startSession()
+    window.setTimeout(() => (document.querySelector('[contenteditable="true"]') as HTMLElement | null)?.focus(), 200)
+  })
+  if (quickChatOff) ctx.effect(() => quickChatOff, 'nanomuse: quick chat')
+
   // The Live stage: the screen the agent is working on, picture-in-picture over the chat.
   const LiveStage = makeLiveStage({ t, stop })
   slots.inject('shell.overlay', () =>

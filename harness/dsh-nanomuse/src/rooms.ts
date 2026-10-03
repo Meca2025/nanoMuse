@@ -27,7 +27,8 @@
  */
 import { randomBytes } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { deflateRawSync } from 'node:zlib'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import { Service, type Context } from '@deepseek-ai/cordis'
@@ -137,12 +138,22 @@ export interface LibraryItem {
   at: number
 }
 
+/** One thing the agent remembers about the person — a line, as on the phone's Memory screen. */
+export interface MemoryItem {
+  id: string
+  at: number
+  text: string
+  /** Who wrote it: the agent in a chat, the person by hand, or an import. */
+  source: 'agent' | 'person' | 'import'
+}
+
 interface Store {
   lang: string
   feed: { instructions: string; generatedAt: number; lastTry: number; posts: FeedPost[] }
   ideas: { generatedAt: number; lastTry: number; items: Idea[] }
   goals: Goal[]
   library: LibraryItem[]
+  memory: MemoryItem[]
 }
 
 /** What the browser mirrors. */
@@ -190,7 +201,10 @@ const EMPTY: Store = {
   ideas: { generatedAt: 0, lastTry: 0, items: [] },
   goals: [],
   library: [],
+  memory: [],
 }
+const MEMORY_MAX = 400
+const MEMORY_LINE = 400
 
 const KINDS: Record<string, LibraryKind> = {
   '.md': 'document', '.markdown': 'document', '.txt': 'document', '.rtf': 'document', '.doc': 'document', '.docx': 'document', '.pdf': 'document', '.pptx': 'document', '.xlsx': 'document', '.csv': 'document', '.json': 'document', '.tex': 'document',
@@ -225,6 +239,9 @@ export default class NanomuseRooms extends Service {
   /** When the current turn's first words arrived, per goal session. */
   private readonly turnMarks = new Map<string, number>()
   private automations: Record<string, GoalAutomation[]> = {}
+  /** The tools as the last agent saw them (the registry's views are per agent); the Connectors page reads it. */
+  private toolCatalog: { name: string; description: string }[] = []
+  private catalogAt = 0
   private busy = { feed: false, ideas: false }
   private ready = false
   private writing: Promise<void> = Promise.resolve()
@@ -270,6 +287,129 @@ export default class NanomuseRooms extends Service {
   /** The goals, for the agent's prompt context. */
   get goals(): readonly Goal[] {
     return this.store.goals
+  }
+
+  /** What the agent remembers about the person, newest last; for the prompt context and the Memory tab. */
+  get memory(): readonly MemoryItem[] {
+    return this.store.memory
+  }
+
+  /** Keep one line; a line already there (loosely compared) is refreshed, not doubled. */
+  async remember(text: string, source: MemoryItem['source'] = 'agent'): Promise<MemoryItem | null> {
+    const line = text.replace(/\s+/g, ' ').trim().slice(0, MEMORY_LINE)
+    if (!line) return null
+    const key = titleKey(line)
+    const existing = this.store.memory.find((m) => titleKey(m.text) === key)
+    if (existing) {
+      existing.at = Date.now()
+      await this.save()
+      return existing
+    }
+    const item: MemoryItem = { id: newId('mem'), at: Date.now(), text: line, source }
+    this.store.memory.push(item)
+    if (this.store.memory.length > MEMORY_MAX) this.store.memory.splice(0, this.store.memory.length - MEMORY_MAX)
+    await this.save()
+    return item
+  }
+
+  async forget(id: string): Promise<void> {
+    const before = this.store.memory.length
+    this.store.memory = this.store.memory.filter((m) => m.id !== id)
+    if (this.store.memory.length !== before) await this.save()
+  }
+
+  /** Muse's "import memory": a text pasted from another assistant — one line or paragraph per memory. */
+  async importMemory(text: string): Promise<number> {
+    const lines = text.split(/\n+/).map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim()).filter((l) => l.length > 1)
+    let added = 0
+    for (const line of lines.slice(0, 200)) {
+      const before = this.store.memory.length
+      await this.remember(line, 'import')
+      if (this.store.memory.length > before) added++
+    }
+    return added
+  }
+
+  /** Snapshot the catalogue through an agent's view; the registry shows nothing from the root. */
+  private snapshotTools(agent: Agent): void {
+    const tools = this.ctx.get('tools') as { schemas(scope?: object): { name: string; description: string }[] } | undefined
+    if (!tools) return
+    try {
+      this.toolCatalog = tools.schemas(agent).map((tool) => ({ name: tool.name, description: tool.description }))
+      this.catalogAt = Date.now()
+    } catch (error: unknown) {
+      this.warn('tool catalogue', error)
+    }
+  }
+
+  /** The MCP servers behind the preset's tools (`mcp__<server>__<tool>`), and how many tools are the harness's own. */
+  connectors(): { servers: { name: string; tools: { name: string; description: string }[] }[]; builtin: number; at: number } {
+    const tools = this.toolCatalog
+    const servers = new Map<string, { name: string; description: string }[]>()
+    let builtin = 0
+    for (const tool of tools) {
+      const match = /^mcp__([^_]+(?:_[^_]+)*?)__(.+)$/.exec(tool.name)
+      if (!match) {
+        builtin++
+        continue
+      }
+      const list = servers.get(match[1]!) ?? []
+      list.push({ name: match[2]!, description: tool.description.split('\n')[0]!.slice(0, 160) })
+      servers.set(match[1]!, list)
+    }
+    return { servers: [...servers].map(([name, list]) => ({ name, tools: list })), builtin, at: this.catalogAt }
+  }
+
+  // ---- data controls: the person's agent data, in a zip or gone ---------------------
+
+  /**
+   * Muse's "download your agent data": a zip in ~/Downloads with the account snapshot
+   * (no token), the profile and faces, the rooms (feed, ideas, goals, library index,
+   * memory) and the chats as dsh keeps them; the file manager shows it.
+   */
+  async exportData(): Promise<string> {
+    const home = dshHome()
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    const folder = await downloadsDir()
+    const out = join(folder, `nanoMuse-data-${stamp}.zip`)
+    await mkdir(folder, { recursive: true })
+    const entries: ZipEntry[] = []
+    const add = async (folder: string, under: string, skip: (name: string) => boolean = () => false) => {
+      let names: string[]
+      try {
+        names = await readdir(folder)
+      } catch {
+        return
+      }
+      for (const name of names) {
+        if (skip(name)) continue
+        const full = join(folder, name)
+        const info = await stat(full).catch(() => null)
+        if (!info) continue
+        if (info.isDirectory()) await add(full, `${under}${name}/`, skip)
+        else if (info.size <= 64 * 1024 * 1024) entries.push({ name: `${under}${name}`, data: await readFile(full), at: info.mtime })
+      }
+    }
+    await add(join(home, 'nanomuse'), 'nanomuse/', (name) => name.endsWith('.tmp'))
+    await add(join(home, 'sessions'), 'sessions/')
+    const prefs = join(home, 'desktop.json')
+    if (await stat(prefs).catch(() => null)) entries.push({ name: 'desktop.json', data: await readFile(prefs), at: new Date() })
+    entries.push({ name: 'README.txt', at: new Date(), data: Buffer.from(['Your nanoMuse data, exported ' + new Date().toISOString(), '', 'nanomuse/cloud.json    the account snapshot (no sign-in token)', 'nanomuse/profile.json  the agent’s name and look; faces/ its pictures', 'nanomuse/rooms.json    feed, ideas, goals, the library index and memory', 'sessions/              the chats, as DeepSeek Harness keeps them (zstd-compressed JSON lines)', ''].join('\n'))})
+    await writeFile(out, zip(entries), { mode: 0o600 })
+    const sc = this.ctx.get('sessionController')
+    if (sc) await sc.openWorkspacePath({ path: out, action: 'reveal' }, new AbortController().signal).catch(() => undefined)
+    return out
+  }
+
+  /** Muse's "reset": memory, rooms and the local profile go, the account signs out; the chats stay (dsh's). */
+  async resetData(): Promise<void> {
+    for (const goal of this.store.goals) this.goalBySession.delete(goal.sessionId)
+    this.store = { ...structuredClone(EMPTY), lang: this.store.lang }
+    this.automations = {}
+    await this.save()
+    await this.ctx.nanomuseCloud.signOut().catch(() => undefined)
+    await rm(join(dshHome(), 'nanomuse', 'profile.json'), { force: true }).catch(() => undefined)
+    await rm(join(dshHome(), 'nanomuse', 'faces'), { recursive: true, force: true }).catch(() => undefined)
   }
 
   get feedInstructions(): string {
@@ -609,6 +749,7 @@ export default class NanomuseRooms extends Service {
     const resolved = await sc.resolveAgent(sessionId)
     if ('error' in resolved) throw new RelayError(409, 'session', `The chat could not be opened: ${String(resolved.error)}`)
     if (resolved.agent.status !== 'idle') throw new RelayError(409, 'busy', 'That chat is busy right now')
+    this.snapshotTools(resolved.agent)
     if (preset) {
       const presets = this.ctx.get('permissionPresets') as PresetsLike | undefined
       if (presets?.names.includes(preset)) {
@@ -675,6 +816,11 @@ export default class NanomuseRooms extends Service {
       const files = ((event as unknown as { data: { files?: { path: string; description?: string }[] } }).data.files ?? [])
       for (const file of files) void this.addToLibrary(file.path, file.description ?? '', session.id, session.header.cwd).catch((error: unknown) => this.warn('library', error))
       return
+    }
+    // any chat's first turn refreshes the tool catalogue the Connectors page shows (the view is per agent)
+    if (type === 'turn/start' && Date.now() - this.catalogAt > 30_000) {
+      const sc = this.ctx.get('sessionController')
+      if (sc) void sc.resolveAgent(session.id).then((resolved) => { if (!('error' in resolved)) this.snapshotTools(resolved.agent) }).catch(() => undefined)
     }
     if (!run && !goalId) return
     if (goalId && (type === 'turn/start' || type === 'user/message')) {
@@ -827,6 +973,7 @@ export default class NanomuseRooms extends Service {
         ideas: { ...EMPTY.ideas, ...(raw.ideas ?? {}), items: Array.isArray(raw.ideas?.items) ? raw.ideas!.items : [] },
         goals: Array.isArray(raw.goals) ? raw.goals : [],
         library: Array.isArray(raw.library) ? raw.library : [],
+        memory: Array.isArray(raw.memory) ? raw.memory : [],
       }
     } catch {
       return structuredClone(EMPTY)
@@ -866,6 +1013,8 @@ export default class NanomuseRooms extends Service {
         await Promise.all([this.syncReady(), this.refreshAutomations()])
         return this.stream(req, res)
       }
+      if (req.method === 'GET' && route === '/connectors') return send(res, 200, this.connectors())
+      if (req.method === 'GET' && route === '/files') return send(res, 200, { home: homeDir(), library: this.libraryFolder(), downloads: await downloadsDir(), state: join(dshHome(), 'nanomuse') })
       if (req.method === 'GET' && route === '/library/file') return this.serveFile(res, url.searchParams.get('id') ?? '', url.searchParams.get('raw') === '1')
       if (req.method !== 'POST') return send(res, 404, { error: { code: 'not_found', message: `No ${req.method ?? ''} ${route}` } })
       const body = await json(req)
@@ -925,6 +1074,15 @@ export default class NanomuseRooms extends Service {
           await this.save()
           return send(res, 204)
         }
+        case '/files/reveal': {
+          const sc = this.ctx.get('sessionController')
+          if (!sc) return send(res, 503, { error: { code: 'no_sessions', message: 'Not available yet' } })
+          const which = String(body.which ?? '')
+          const folder = which === 'home' ? homeDir() : which === 'downloads' ? await downloadsDir() : which === 'state' ? join(dshHome(), 'nanomuse') : this.libraryFolder()
+          await mkdir(folder, { recursive: true })
+          await sc.openWorkspacePath({ path: folder, action: 'reveal' }, new AbortController().signal)
+          return send(res, 204)
+        }
         case '/library/folder': {
           const sc = this.ctx.get('sessionController')
           if (!sc) return send(res, 503, { error: { code: 'no_sessions', message: 'Not available yet' } })
@@ -933,6 +1091,18 @@ export default class NanomuseRooms extends Service {
           await sc.openWorkspacePath({ path: folder, action: 'reveal' }, new AbortController().signal)
           return send(res, 204)
         }
+        case '/memory/add':
+          return send(res, 200, { item: await this.remember(String(body.text ?? ''), 'person') })
+        case '/memory/delete':
+          await this.forget(String(body.id ?? ''))
+          return send(res, 204)
+        case '/memory/import':
+          return send(res, 200, { added: await this.importMemory(String(body.text ?? '')) })
+        case '/data/export':
+          return send(res, 200, { path: await this.exportData() })
+        case '/data/reset':
+          await this.resetData()
+          return send(res, 204)
         case '/library/open': {
           const item = this.store.library.find((i) => i.id === String(body.id ?? ''))
           const sc = this.ctx.get('sessionController')
@@ -1081,6 +1251,21 @@ function homeDir(): string {
   return process.env.HOME ?? process.env.USERPROFILE ?? process.cwd()
 }
 
+/** `~/Downloads`, or what the desktop calls it (`~/下载` on a Chinese Linux: user-dirs.dirs). */
+async function downloadsDir(): Promise<string> {
+  const home = homeDir()
+  if (process.platform === 'linux') {
+    try {
+      const dirs = await readFile(join(process.env.XDG_CONFIG_HOME || join(home, '.config'), 'user-dirs.dirs'), 'utf8')
+      const match = /^XDG_DOWNLOAD_DIR="?([^"\n]+)"?/m.exec(dirs)
+      if (match?.[1]) return match[1].replace('$HOME', home)
+    } catch {
+      /* the default below */
+    }
+  }
+  return join(home, 'Downloads')
+}
+
 /** A first title for a goal typed in one breath: the first clause, before the agent names it. */
 export function goalTitle(text: string): string {
   const line = firstLine(text).trim()
@@ -1111,4 +1296,92 @@ export function parseArray(text: string): Record<string, unknown>[] {
     }
   }
   return []
+}
+
+// ---- a small zip writer (deflate, one pass; enough for an export) ------------------
+
+interface ZipEntry {
+  name: string
+  data: Buffer
+  at: Date
+}
+
+const CRC_TABLE = new Uint32Array(256).map((_, n) => {
+  let c = n
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+  return c >>> 0
+})
+
+export function crc32(data: Uint8Array): number {
+  let crc = 0xffffffff
+  for (const byte of data) crc = CRC_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8)
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+function dosTime(at: Date): { time: number; date: number } {
+  const year = Math.max(1980, at.getFullYear())
+  return {
+    time: (at.getHours() << 11) | (at.getMinutes() << 5) | (at.getSeconds() >> 1),
+    date: ((year - 1980) << 9) | ((at.getMonth() + 1) << 5) | at.getDate(),
+  }
+}
+
+/** The entries as one zip file (names UTF-8, deflated, no zip64 — exports are small). */
+export function zip(entries: ZipEntry[]): Buffer {
+  const parts: Buffer[] = []
+  const central: Buffer[] = []
+  let offset = 0
+  for (const entry of entries) {
+    const name = Buffer.from(entry.name, 'utf8')
+    const packed = deflateRawSync(entry.data)
+    const stored = packed.length < entry.data.length
+    const body = stored ? packed : entry.data
+    const method = stored ? 8 : 0
+    const crc = crc32(entry.data)
+    const { time, date } = dosTime(entry.at)
+    const local = Buffer.alloc(30)
+    local.writeUInt32LE(0x04034b50, 0)
+    local.writeUInt16LE(20, 4)
+    local.writeUInt16LE(0x0800, 6) // UTF-8 names
+    local.writeUInt16LE(method, 8)
+    local.writeUInt16LE(time, 10)
+    local.writeUInt16LE(date, 12)
+    local.writeUInt32LE(crc, 14)
+    local.writeUInt32LE(body.length, 18)
+    local.writeUInt32LE(entry.data.length, 22)
+    local.writeUInt16LE(name.length, 26)
+    local.writeUInt16LE(0, 28)
+    parts.push(local, name, body)
+    const dir = Buffer.alloc(46)
+    dir.writeUInt32LE(0x02014b50, 0)
+    dir.writeUInt16LE(20, 4)
+    dir.writeUInt16LE(20, 6)
+    dir.writeUInt16LE(0x0800, 8)
+    dir.writeUInt16LE(method, 10)
+    dir.writeUInt16LE(time, 12)
+    dir.writeUInt16LE(date, 14)
+    dir.writeUInt32LE(crc, 16)
+    dir.writeUInt32LE(body.length, 20)
+    dir.writeUInt32LE(entry.data.length, 24)
+    dir.writeUInt16LE(name.length, 28)
+    dir.writeUInt16LE(0, 30)
+    dir.writeUInt16LE(0, 32)
+    dir.writeUInt16LE(0, 34)
+    dir.writeUInt16LE(0, 36)
+    dir.writeUInt32LE(0, 38)
+    dir.writeUInt32LE(offset, 42)
+    central.push(dir, name)
+    offset += local.length + name.length + body.length
+  }
+  const dirBytes = central.reduce((n, b) => n + b.length, 0)
+  const end = Buffer.alloc(22)
+  end.writeUInt32LE(0x06054b50, 0)
+  end.writeUInt16LE(0, 4)
+  end.writeUInt16LE(0, 6)
+  end.writeUInt16LE(entries.length, 8)
+  end.writeUInt16LE(entries.length, 10)
+  end.writeUInt32LE(dirBytes, 12)
+  end.writeUInt32LE(offset, 16)
+  end.writeUInt16LE(0, 20)
+  return Buffer.concat([...parts, ...central, end])
 }

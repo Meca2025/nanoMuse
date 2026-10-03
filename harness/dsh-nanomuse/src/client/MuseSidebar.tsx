@@ -13,7 +13,8 @@
 import { createElement as h, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
-import { openLink } from './bridge.ts'
+import { Toast } from '@deepseek-ai/dsh-client-ui-primitives'
+import { bridge, openLink } from './bridge.ts'
 import { IconBulb, IconCalendar, IconChat, IconDevices, IconFeed, IconMenu, IconPanelLeft, IconPlus, IconPuzzle, IconSearch, IconShapes, IconTarget, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
 import { openShortcutsReference, pressSettingsChord } from './keys.ts'
 import { useLive } from './live.ts'
@@ -130,6 +131,7 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
   const settingsShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'settings.open'))
   const shortcutsShortcut = useShortcuts((rows) => rows.find((row) => row.id === 'shortcuts.open'))
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  const [notice, setNotice] = useState<{ id: number; text: string } | null>(null)
   const menuButton = useRef<HTMLButtonElement | null>(null)
   const column = useRef<HTMLDivElement>(null)
   const searchField = useRef<HTMLInputElement | null>(null)
@@ -183,7 +185,15 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
     ...others.map((p) => ({ id: p.id, label: p.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: p.id })), onSelect: () => selectPanel(p.id) })),
     { id: 'toggle', label: collapsed ? t('menuExpand') : t('menuCollapse'), icon: h(IconPanelLeft, { size: 16 }), onSelect: toggleSidebar },
     'sep',
-    { id: 'issue', label: t('menuReport'), icon: h(IconBug, { size: 16 }), onSelect: () => openLink(issuesUrl) },
+    { id: 'issue', label: t('menuReport'), icon: h(IconBug, { size: 16 }), onSelect: () => {
+      // under the shell a screenshot of the window goes to Downloads and the issue page opens filled in; elsewhere just the issues page
+      const report = bridge()?.reportBug
+      if (!report) return openLink(issuesUrl)
+      void report().then(({ screenshot }) => {
+        const name = screenshot.split(/[\\/]/).pop() ?? ''
+        setNotice({ id: Date.now(), text: name ? t('reportSaved', { name }) : t('reportOpened') })
+      }).catch(() => openLink(issuesUrl))
+    } },
   ]
 
   // Muse's rail starts with Chats (a dot while the agent works); the agent's face is
@@ -229,7 +239,9 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
   return h('div', { className: 'nm-sidebar', style: { width: wide ? (collapsed ? lastWideWidth.current : width) : RAIL } },
     rail,
     chats,
-    menuAnchor ? h(CornerMenu, { anchor: menuAnchor, items: menuItems, onClose: () => setMenuAnchor(null) }) : null)
+    menuAnchor ? h(CornerMenu, { anchor: menuAnchor, items: menuItems, onClose: () => setMenuAnchor(null) }) : null,
+    notice ? h('div', { style: { position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 60, pointerEvents: 'none' } },
+      h(Toast, { key: notice.id, text: notice.text, holdMs: 8000, onDone: () => setNotice(null) })) : null)
 }
 
 /** `⌘ ,` style hint from the catalog's key names; empty when unbound. */

@@ -579,6 +579,32 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-lib-col-top { heig
 .nm-view-frame { flex: 1; border: 0; background: #fff; }
 .nm-view-loading { flex: 1; display: flex; align-items: center; justify-content: center; }
 
+/* a Muse section inside one of the harness's own pages (General's App behavior) */
+.nm-section-inline { margin-top: 18px; padding: 0; }
+.nm-section-inline h2 { font-size: 13px; font-weight: 600; color: var(--dsw-alias-label-secondary); margin: 0 0 8px; }
+
+/* ---- the Connectors / Permissions / Files / Dictation pages ---- */
+.nm-row-button { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--nm-divider); color: inherit; font: inherit; cursor: pointer; }
+.nm-row-button:hover .nm-row-title { color: var(--nm-accent); }
+.nm-row-button:focus-visible { outline: 2px solid var(--nm-accent); outline-offset: -2px; border-radius: 8px; }
+.nm-state { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--dsw-alias-label-tertiary); flex: none; }
+.nm-state-on { color: #2e9e5b; }
+.nm-row-sublist { padding: 4px 0 10px 42px; }
+.nm-tool-list { margin: 0; padding-left: 16px; font-size: 12.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.nm-tool-list code { font-size: 12px; }
+.nm-path { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; opacity: 0.8; margin-top: 2px; word-break: break-all; }
+.nm-fine { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
+
+/* ---- memory and the data controls ---- */
+.nm-mem-add { display: flex; gap: 8px; align-items: center; }
+.nm-mem-input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--nm-field-border); background: var(--nm-card); color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; }
+.nm-mem-input:focus { outline: none; border-color: var(--nm-accent); }
+.nm-mem-forget { opacity: 0; }
+.nm-pf-row:hover .nm-mem-forget, .nm-mem-forget:focus-visible { opacity: 1; }
+.nm-danger { color: #d93025; }
+.nm-pill-danger { background: #d93025; color: #fff; }
+.nm-sheet-steps { margin: 0 0 12px; padding-left: 20px; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.6; }
+
 /* ---- the Live stage (picture-in-picture of the agent at work) ---------- */
 .nm-stage-layer { position: fixed; right: 24px; bottom: 96px; z-index: 55; pointer-events: none; }
 .nm-stage { position: relative; width: min(400px, 38vw); pointer-events: auto; border-radius: 16px; overflow: hidden; background: #111; box-shadow: 0 18px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08); animation: nm-stage-in 220ms ease-out; }

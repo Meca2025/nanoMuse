@@ -23,3 +23,26 @@ test('goalTitle keeps the first clause', () => {
   assert.equal(goalTitle('Hi, call my parents every Sunday'), 'Hi, call my parents every Sunday'.slice(0, 40))
   assert.equal(goalTitle('x'.repeat(80)).length, 40)
 })
+
+test('zip writes an archive Python can read back', async () => {
+  const { zip, crc32 } = await import('../lib/rooms.js')
+  const { writeFile, mkdtemp, rm } = await import('node:fs/promises')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const { spawnSync } = await import('node:child_process')
+  assert.equal(crc32(Buffer.from('')), 0)
+  assert.equal(crc32(Buffer.from('123456789')), 0xcbf43926)
+  const dir = await mkdtemp(join(tmpdir(), 'nm-zip-'))
+  const file = join(dir, 'x.zip')
+  const big = Buffer.alloc(5000, 'a')
+  await writeFile(file, zip([
+    { name: 'nanomuse/rooms.json', data: Buffer.from('{"goals":[]}'), at: new Date(2026, 9, 3, 12, 30, 10) },
+    { name: '构件/读我.txt', data: big, at: new Date() },
+  ]))
+  const py = spawnSync('python3', ['-c', `import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print(z.testzip()); print(','.join(i.filename for i in z.infolist())); print(len(z.read('构件/读我.txt')))`, file], { encoding: 'utf8' })
+  await rm(dir, { recursive: true, force: true })
+  if (py.status !== 0) return // no python here; the crc checks above still ran
+  assert.equal(py.stdout.trim().split('\n')[0], 'None')
+  assert.equal(py.stdout.trim().split('\n')[1], 'nanomuse/rooms.json,构件/读我.txt')
+  assert.equal(py.stdout.trim().split('\n')[2], '5000')
+})

@@ -1,5 +1,5 @@
 import { pathToFileURL } from "node:url";
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences, Tray } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
@@ -59,6 +59,9 @@ const T = {
   window: zh ? "窗口" : "Window",
   help: zh ? "帮助" : "Help",
   edit: zh ? "编辑" : "Edit",
+  open: zh ? "打开 nanoMuse" : "Open nanoMuse",
+  newChat: zh ? "新聊天" : "New chat",
+  quickChat: zh ? "快速唤起" : "Quick chat",
 };
 
 /** dev flag: `--screenshot=/tmp/x.png` writes the window once the web app is up, then quits (a headless check) */
@@ -426,10 +429,12 @@ function permissionState(kind: PermissionKind): PermissionState {
   return "denied";
 }
 
-const PERMISSION_PANES: Record<PermissionKind, string> = {
+const PERMISSION_PANES: Record<PermissionKind | "files", string> = {
   accessibility: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
   screen: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
   microphone: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+  // Full Disk Access: the Files page points here when the agent cannot read a protected folder
+  files: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
 };
 
 /** The only links that leave the app: http(s) with a host. */
@@ -441,6 +446,171 @@ function releaseAwake(): void {
     powerSaveBlocker.stop(awakeBlocker);
     awakeBlocker = null;
   }
+}
+
+// ---- app behaviour: the General page's switches ------------------------------------------
+
+/** What Muse's General page calls App behavior: start with the system, live in the menu bar, the quick-chat key. */
+interface Prefs {
+  openAtLogin: boolean;
+  menuBar: boolean;
+  quickChat: boolean;
+}
+const PREFS_DEFAULT: Prefs = { openAtLogin: false, menuBar: true, quickChat: true };
+/** ⌥ Space on macOS as in Muse; Ctrl+Alt+Space where Alt+Space is the window menu. */
+const QUICK_CHAT_KEY = process.platform === "darwin" ? "Alt+Space" : "Ctrl+Alt+Space";
+let prefs: Prefs = PREFS_DEFAULT;
+let tray: Tray | null = null;
+
+function prefsPath(): string {
+  return join(harnessHome(), "desktop.json");
+}
+
+function readPrefs(): Prefs {
+  try {
+    const raw = JSON.parse(readFileSync(prefsPath(), "utf8")) as Partial<Prefs>;
+    return { ...PREFS_DEFAULT, ...(typeof raw === "object" && raw ? raw : {}) };
+  } catch {
+    return PREFS_DEFAULT;
+  }
+}
+
+function writePrefs(): void {
+  try {
+    mkdirSync(harnessHome(), { recursive: true });
+    writeFileSync(prefsPath(), `${JSON.stringify(prefs, null, 2)}\n`);
+  } catch (exc) {
+    log(`prefs: could not save: ${String(exc)}`);
+  }
+}
+
+/** Bring the window up (make one if it was closed) and focus it. */
+function showWindow(): BrowserWindow | null {
+  if (!mainWindow && hostUrl) {
+    mainWindow = createWindow();
+    void mainWindow.loadURL(hostUrl);
+  }
+  if (!mainWindow) return null;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  return mainWindow;
+}
+
+/** The quick-chat key: the window comes up with a fresh chat and the composer focused; pressed while it is in front, it steps aside. */
+function quickChat(): void {
+  if (mainWindow && mainWindow.isFocused() && mainWindow.isVisible()) {
+    if (process.platform === "darwin") app.hide();
+    else mainWindow.minimize();
+    return;
+  }
+  const win = showWindow();
+  win?.webContents.send("nanomuse:quick-chat");
+}
+
+function applyQuickChat(): void {
+  globalShortcut.unregisterAll();
+  if (!prefs.quickChat) return;
+  const ok = globalShortcut.register(QUICK_CHAT_KEY, quickChat);
+  if (!ok) log(`quick chat: ${QUICK_CHAT_KEY} is taken by another app`);
+}
+
+function applyMenuBar(): void {
+  if (!prefs.menuBar) {
+    tray?.destroy();
+    tray = null;
+    return;
+  }
+  if (tray) return;
+  let icon = nativeImage.createFromPath(iconPath());
+  if (!icon.isEmpty()) icon = icon.resize({ width: process.platform === "darwin" ? 18 : 22, height: process.platform === "darwin" ? 18 : 22 });
+  try {
+    tray = new Tray(icon);
+  } catch (exc) {
+    log(`menu bar: ${String(exc)}`);
+    return;
+  }
+  tray.setToolTip("nanoMuse");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: T.open, click: () => void showWindow() },
+      { label: T.newChat, accelerator: prefs.quickChat ? QUICK_CHAT_KEY : undefined, click: () => showWindow()?.webContents.send("nanomuse:quick-chat") },
+      { type: "separator" },
+      { label: T.quit, click: () => app.quit() },
+    ]),
+  );
+  if (process.platform !== "darwin") tray.on("click", () => void showWindow());
+}
+
+function applyOpenAtLogin(): void {
+  if (process.platform === "linux") {
+    // freedesktop autostart: a .desktop entry pointing at this executable (the AppImage or the installed binary)
+    const dir = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "autostart");
+    const file = join(dir, "nanomuse-desktop.desktop");
+    try {
+      if (prefs.openAtLogin) {
+        mkdirSync(dir, { recursive: true });
+        const exe = process.env.APPIMAGE || process.execPath;
+        writeFileSync(file, `[Desktop Entry]\nType=Application\nName=nanoMuse\nExec="${exe}"\nIcon=nanomuse-desktop\nX-GNOME-Autostart-enabled=true\nTerminal=false\n`);
+      } else rmSync(file, { force: true });
+    } catch (exc) {
+      log(`open at login: ${String(exc)}`);
+    }
+    return;
+  }
+  if (!app.isPackaged) return; // a dev checkout should not register itself
+  app.setLoginItemSettings({ openAtLogin: prefs.openAtLogin, ...(process.platform === "darwin" ? { openAsHidden: true } : {}) });
+}
+
+function applyPrefs(): void {
+  applyMenuBar();
+  applyQuickChat();
+  applyOpenAtLogin();
+}
+
+/** What the General page shows: the values, the key's name, and which of the three this platform can do. */
+function prefsView(): Prefs & { quickChatKey: string; supports: Record<keyof Prefs, boolean> } {
+  return { ...prefs, quickChatKey: QUICK_CHAT_KEY, supports: { openAtLogin: process.platform !== "linux" || Boolean(process.env.APPIMAGE) || app.isPackaged, menuBar: true, quickChat: true } };
+}
+
+/**
+ * Report a bug the way Muse does: a screenshot of the window goes to Downloads, the
+ * issue page opens with the build's facts filled in; the person drags the picture in.
+ */
+async function reportBug(): Promise<{ screenshot: string; url: string }> {
+  const s = shipped();
+  const facts = [
+    `nanoMuse Desktop ${app.getVersion()} · ${process.platform} ${process.arch}`,
+    `DeepSeek Harness ${s.dsh ?? "?"} · dsh-nanomuse ${s.bundle ?? "?"} · Electron ${process.versions.electron}`,
+  ];
+  let screenshot = "";
+  if (mainWindow) {
+    try {
+      const image = await mainWindow.webContents.capturePage();
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      screenshot = join(app.getPath("downloads"), `nanoMuse-${stamp}.png`);
+      writeFileSync(screenshot, image.toPNG());
+    } catch (exc) {
+      log(`report: no screenshot: ${String(exc)}`);
+      screenshot = "";
+    }
+  }
+  const body = [
+    "## What happened",
+    "",
+    "",
+    "## What I expected",
+    "",
+    "",
+    "## Where",
+    "",
+    ...facts,
+    "",
+    screenshot ? `(Drag the screenshot nanoMuse saved to Downloads — ${screenshot.split(/[\\/]/).pop()} — in here.)` : "",
+  ].join("\n");
+  const url = `${ISSUES_PAGE}/new?labels=desktop&body=${encodeURIComponent(body)}`;
+  void shell.openExternal(url);
+  return { screenshot, url };
 }
 
 /** The requests the preload bridge forwards from the web client (see preload.ts). */
@@ -465,7 +635,7 @@ function registerBridge(): void {
     }
     return permissionState(kind);
   });
-  ipcMain.handle("nanomuse:permissions:settings", (_e, kind: PermissionKind) => {
+  ipcMain.handle("nanomuse:permissions:settings", (_e, kind: PermissionKind | "files") => {
     if (process.platform === "darwin" && typeof kind === "string" && kind in PERMISSION_PANES) void shell.openExternal(PERMISSION_PANES[kind]);
   });
   ipcMain.handle("nanomuse:open-external", (_e, url: string) => {
@@ -477,6 +647,19 @@ function registerBridge(): void {
   });
   ipcMain.handle("nanomuse:theme", (_e, theme: string) => {
     mainWindow?.setBackgroundColor(theme === "dark" ? BASE_DARK : BASE_LIGHT);
+  });
+  ipcMain.handle("nanomuse:prefs", () => prefsView());
+  ipcMain.handle("nanomuse:prefs:set", (_e, patch: Partial<Prefs>) => {
+    if (patch && typeof patch === "object") {
+      for (const key of ["openAtLogin", "menuBar", "quickChat"] as const) if (typeof patch[key] === "boolean") prefs = { ...prefs, [key]: patch[key] };
+      writePrefs();
+      applyPrefs();
+    }
+    return prefsView();
+  });
+  ipcMain.handle("nanomuse:report-bug", () => reportBug());
+  ipcMain.handle("nanomuse:reveal", (_e, path: string) => {
+    if (typeof path === "string" && path && existsSync(path)) shell.showItemInFolder(path);
   });
 }
 
@@ -665,6 +848,8 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     registerBridge();
     buildMenu();
+    prefs = readPrefs();
+    applyPrefs();
     log(`nanoMuse Desktop ${app.getVersion()} starting (${process.platform} ${process.arch}, packaged=${app.isPackaged})`);
     try {
       await boot();
@@ -685,6 +870,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.on("before-quit", (e) => {
     releaseAwake();
+    globalShortcut.unregisterAll();
     if (quitting) return;
     quitting = true;
     if (child) {
