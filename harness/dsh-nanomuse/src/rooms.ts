@@ -231,6 +231,7 @@ export default class NanomuseRooms extends Service {
     for (const goal of this.store.goals) this.goalBySession.set(goal.sessionId, goal.id)
     this.ctx.effect(() => this.ctx.on('session/event', (session: Session, event: SessionEvent) => this.onEvent(session, event)), 'nanomuse rooms: session events')
     this.ctx.effect(() => this.ctx.on('schedule/changed' as never, (() => void this.refreshAutomations()) as never), 'nanomuse rooms: schedule changes')
+    this.ctx.effect(() => this.ctx.nanomuseCloud.onChange(() => void this.syncReady().catch(() => undefined)), 'nanomuse rooms: cloud changes')
     this.ctx.inject(['webServer'], (ctx) => {
       ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: API_PREFIX, handler: this.handle }), 'nanomuse rooms: api')
     })
@@ -321,17 +322,21 @@ export default class NanomuseRooms extends Service {
     this.store.feed.lastTry = Date.now()
     this.broadcast()
     try {
+      const before = this.store.feed.posts.length
       const text = await this.run(this.lang.startsWith('zh') ? '动态 · ' + today(this.lang) : 'Feed · ' + today(this.lang), this.feedPrompt())
       const rows = parseArray(text)
       const now = Date.now()
       const posts: FeedPost[] = []
+      // the agent may also have posted with `feed_post` as it went; the JSON then repeats those
+      const seen = new Set(this.store.feed.posts.map((p) => titleKey(p.title)))
       for (const row of rows.slice(0, 8)) {
         const title = str(row.title).slice(0, 120)
         const body = str(row.body).slice(0, 4000)
-        if (!title || !body) continue
+        if (!title || !body || seen.has(titleKey(title))) continue
+        seen.add(titleKey(title))
         posts.push({ id: newId('post'), at: now, title, body, area: area(str(row.area)), emoji: oneEmoji(str(row.emoji)), image: httpsUrl(str(row.image)), prompt: str(row.prompt).slice(0, 500), liked: false })
       }
-      if (posts.length === 0) throw new Error('the batch came back empty')
+      if (posts.length === 0 && this.store.feed.posts.length === before) throw new Error('the batch came back empty')
       this.store.feed.posts = [...posts, ...this.store.feed.posts].slice(0, FEED_KEEP)
       this.store.feed.generatedAt = now
       await this.save()
@@ -551,7 +556,7 @@ export default class NanomuseRooms extends Service {
     const text = brief.trim()
     if (!text) throw new RelayError(400, 'usage', 'Say what to make')
     const zh = this.lang.startsWith('zh')
-    const folder = join(homeDir(), 'nanoMuse', zh ? '构件' : 'Library')
+    const folder = this.libraryFolder()
     const what: Record<string, [string, string]> = {
       document: ['a document (Markdown, `.md`, unless the person asks for another format)', '一份文档（默认 Markdown `.md`，除非对方要别的格式）'],
       web: ['a self-contained web page (`.html`, inline CSS/JS)', '一个独立的网页（`.html`，样式脚本内联）'],
@@ -563,6 +568,11 @@ export default class NanomuseRooms extends Service {
       ? `[对方在「构件」里点了「创建」：请做${pair[1]}，保存到 ${folder}/（没有就创建），做完用 present 声明这个文件，让它出现在对方的构件库里。先做再说，简短汇报。]`
       : `[The person pressed "Create" in their Library: make ${pair[0]}, save it under ${folder}/ (create the folder if needed), and declare the file with present when done so it appears in their Library. Make it first, then report briefly.]`
     return this.open(firstLine(text).slice(0, 60), `${framing}\n\n${text}`)
+  }
+
+  /** Where the room's own creations go: `~/nanoMuse/Library` (`~/nanoMuse/构件` in Chinese). */
+  libraryFolder(): string {
+    return join(homeDir(), 'nanoMuse', this.lang.startsWith('zh') ? '构件' : 'Library')
   }
 
   // ---- the agent's sessions -------------------------------------------------------------
@@ -684,12 +694,18 @@ export default class NanomuseRooms extends Service {
 
   // ---- the batches' timing ------------------------------------------------------------
 
-  private async tick(): Promise<void> {
-    const ready = (await this.ctx.nanomuseCloud.status()).ready
+  /** Whether a model can answer right now (signed in, or another provider set up). */
+  private async syncReady(): Promise<boolean> {
+    const ready = (await this.ctx.nanomuseCloud.status().catch(() => ({ ready: false }))).ready
     if (ready !== this.ready) {
       this.ready = ready
       this.broadcast()
     }
+    return ready
+  }
+
+  private async tick(): Promise<void> {
+    const ready = await this.syncReady()
     if (!ready || !this.known()) return
     const now = Date.now()
     const feed = this.store.feed
@@ -735,7 +751,7 @@ export default class NanomuseRooms extends Service {
     const instructions = this.store.feed.instructions || '(none yet — write what a good personal agent would: what they follow, their goals, the day ahead)'
     return [
       `[Background job from nanoMuse: write the person's feed. Nobody reads this chat; the app parses your final answer.]`,
-      `You are the person's own agent, writing their personal feed: ${n} short posts made just for them, in ${languageName(this.lang)}. Think of a thoughtful friend who knows what they care about: news worth their attention on the topics they follow (use web_search for anything time-sensitive, and link the source inline in Markdown), a nudge on a goal, a small plan for the day, a question worth thinking about. Specific to this person; never generic filler. No greetings, no "as your agent".`,
+      `You are the person's own agent, writing their personal feed: ${n} short posts made just for them, in ${languageName(this.lang)}. Think of a thoughtful friend who knows what they care about: news worth their attention on the topics they follow (use web_search for anything time-sensitive, and link the source inline in Markdown), a nudge on a goal, a small plan for the day, a question worth thinking about. Specific to this person; never generic filler. No greetings, no "as your agent". Do not call feed_post here — the JSON below is how this batch is delivered.`,
       ``,
       `What the person asked to read here:`,
       instructions,
@@ -806,8 +822,14 @@ export default class NanomuseRooms extends Service {
     const route = url.pathname.slice(API_PREFIX.length) || '/'
     if (!sameOrigin(req)) return send(res, 403, { error: { code: 'forbidden', message: 'Same-origin requests only' } })
     try {
-      if (req.method === 'GET' && route === '/state') return send(res, 200, this.view())
-      if (req.method === 'GET' && route === '/events') return this.stream(req, res)
+      if (req.method === 'GET' && route === '/state') {
+        await this.syncReady()
+        return send(res, 200, this.view())
+      }
+      if (req.method === 'GET' && route === '/events') {
+        await this.syncReady()
+        return this.stream(req, res)
+      }
       if (req.method === 'GET' && route === '/library/file') return this.serveFile(res, url.searchParams.get('id') ?? '', url.searchParams.get('raw') === '1')
       if (req.method !== 'POST') return send(res, 404, { error: { code: 'not_found', message: `No ${req.method ?? ''} ${route}` } })
       const body = await json(req)
@@ -865,6 +887,14 @@ export default class NanomuseRooms extends Service {
           await writeFile(item.path, String(body.text ?? ''), 'utf8')
           item.at = Date.now()
           await this.save()
+          return send(res, 204)
+        }
+        case '/library/folder': {
+          const sc = this.ctx.get('sessionController')
+          if (!sc) return send(res, 503, { error: { code: 'no_sessions', message: 'Not available yet' } })
+          const folder = this.libraryFolder()
+          await mkdir(folder, { recursive: true })
+          await sc.openWorkspacePath({ path: folder, action: 'reveal' }, new AbortController().signal)
           return send(res, 204)
         }
         case '/library/open': {
@@ -1013,6 +1043,11 @@ function ruleOf(r: ScheduleRecordLike): string {
 
 function homeDir(): string {
   return process.env.HOME ?? process.env.USERPROFILE ?? process.cwd()
+}
+
+/** Titles compared loosely, so a post the agent sent twice lands once. */
+function titleKey(title: string): string {
+  return title.toLowerCase().replace(/[\s\p{P}]+/gu, '')
 }
 
 /** The JSON array in the agent's final answer: the last fenced block, else the outermost brackets. */

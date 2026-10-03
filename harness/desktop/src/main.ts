@@ -537,6 +537,15 @@ async function boot(): Promise<void> {
   if (screenshotFlag && mainWindow) {
     // the web app loads its plugins after the document; give it a moment
     await new Promise((r) => setTimeout(r, 8000));
+    // `--screenshot-click=<aria-label>[,<aria-label>…]`: press buttons first (a rail room, a row…)
+    const clicks = process.argv.find((a) => a.startsWith("--screenshot-click="))?.slice("--screenshot-click=".length);
+    for (const label of clicks ? clicks.split(",") : []) {
+      await mainWindow.webContents
+        .executeJavaScript(`(() => { const b = document.querySelector('[aria-label=' + ${JSON.stringify(JSON.stringify(label))} + ']'); if (b) b.click(); return !!b })()`)
+        .then((hit) => log(`screenshot: click ${label} → ${hit ? "ok" : "not found"}`))
+        .catch(() => undefined);
+      await new Promise((r) => setTimeout(r, 2500));
+    }
     const image = await mainWindow.webContents.capturePage();
     writeFileSync(screenshotFlag, image.toPNG());
     log(`screenshot: ${screenshotFlag}`);

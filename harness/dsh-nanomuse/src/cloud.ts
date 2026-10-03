@@ -161,6 +161,7 @@ export default class NanomuseCloud extends Service {
   private state: State = {}
   private busy: Promise<unknown> = Promise.resolve()
   private readonly streams = new Set<ServerResponse>()
+  private readonly changeListeners = new Set<() => void>()
   private readonly calls = new Map<string, HandsCall>()
   private steps = 0
   private lastCallAt = 0
@@ -683,7 +684,22 @@ export default class NanomuseCloud extends Service {
 
   // -- the loopback API -------------------------------------------------------------
 
+  /** Called whenever the live state changes (sign-in, profile, hub, devices); for other services. */
+  onChange(listener: () => void): () => void {
+    this.changeListeners.add(listener)
+    return () => {
+      this.changeListeners.delete(listener)
+    }
+  }
+
   private broadcast(): void {
+    for (const listener of this.changeListeners) {
+      try {
+        listener()
+      } catch {
+        // a listener's problem is not ours
+      }
+    }
     if (this.streams.size === 0) return
     const data = `data: ${JSON.stringify(this.live())}\n\n`
     for (const res of this.streams) {
