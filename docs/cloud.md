@@ -109,9 +109,8 @@ of ip2region's database on the relay's own disk; no third party is asked, and
 nothing more is stored (the place is computed when the page is drawn).
 
 nanoMuse is a community project and charges nothing. The public relay at
-`cloud.nanomuse.cn` is paid for by the developer (what that costs, and how
-many people a budget carries: [docs/ops/capacity.md](ops/capacity.md)), so
-each account has a pool to draw on — for its lifetime, not by the day (relay 0.5):
+`cloud.nanomuse.cn` is paid for by the developer, so each account has a pool
+to draw on — for its lifetime, not by the day (relay 0.5):
 
 | | `cloud.nanomuse.cn` |
 |---|---|
