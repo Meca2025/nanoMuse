@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Cloud
+
+- **Cloud 0.14.0 — the operator's page in pages.** One long page became eleven views behind a side navigation — *Overview*, *People*, *Places*, *Money*, *Activity*, *Demo*, *Data controls*, *Site*, *Models*, *Health*, *Settings* — each fetching its own numbers when first opened, the view and its filters kept in the hash so a view is a link. *People* filters the accounts by region (country → province → city, from the latest address), channel, status (member, disabled, locked, password or not, *Help improve* on, pool used up, a device online, new this period), last activity, lifetime spend and last client, with a search; the charts above the table — sign-ups by day, where they are (a country opens its provinces, a province its cities), spend buckets, activity, channel, client — are the same filters drawn, one click applies one and a second removes it; the table sorts by any column and exports the current selection as CSV (hints masked). *Places* ranks countries and provinces by accounts, new accounts, sign-ins, requests or demo visitors and a row opens *People* with that region chosen; *Money* has kind chips and a share bar; *Activity* searches the timeline; *Demo* filters sessions (running, signed in, anonymous, own key) and charts demos a day, why they ended and where visitors came from; *Models* searches the catalog; *Health* is `/v1/admin/health` on the page, refreshed every 30 s. [cloud/README.md](cloud/README.md#operators-page).
+
 ## [0.1.31] - 2026-10-03 · Locks
 
 The twenty-seven open points of the audit that followed 0.1.30, decided and done. Nothing new to learn; a number of things that were loose are now tight.

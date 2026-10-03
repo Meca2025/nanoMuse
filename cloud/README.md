@@ -290,6 +290,35 @@ failed (the panel then says so and the page works without places).
 `CLOUD_GEOIP=0` switches it off. It is where the network exit is — a phone on
 mobile data or a proxy shows up elsewhere — so the page says "guessed".
 
+From 0.14 the page is pages. A side navigation holds *Overview*, *People*,
+*Places*, *Money*, *Activity*, *Demo*, *Data controls*, *Site*, *Models*,
+*Health* and *Settings*; the view and its filters live in the hash
+(`#people?country=中国&province=广东省&status=member&sort=spent`), so a view
+is a bookmark and a link the operator can paste to themselves, and each
+view fetches its own numbers the first time it is opened (the period
+selector applies to all of them). *Overview* keeps the headline tiles, a
+health strip, spend by day, the top regions and spenders and the latest
+events, each panel linking to its page. *People* is the accounts filtered:
+by region (country → province → city, from the account's latest address),
+sign-up channel, status (member, disabled, locked, with or without a
+password, *Help improve* on, pool used up, a device online, new this
+period), last activity (24 h, 7 d, 30 d, older, never), lifetime spend
+bucket and last client, plus a search over the hint / id / address — and the
+charts above the table are the same filters drawn: sign-ups by day, where
+they are (click a country to see its provinces, a province its cities),
+spend buckets, activity, channel and client, each bar a filter that one
+click applies and a second removes. The table sorts by any column and
+exports the current selection as CSV (hints masked, nothing decrypted).
+*Places* ranks countries and provinces by accounts, new accounts,
+sign-ins, requests or demo visitors, and a row opens *People* with that
+region chosen. *Money* has the kind chips (chat, pictures, video, calls) and
+a share bar over the model table; *Activity* searches the timeline;
+*Demo* filters the sessions (running, signed in, anonymous, own key) and
+charts demos a day, why they ended and where visitors came from; *Models*
+searches the catalog; *Health* is `/v1/admin/health` on the page (in-flight
+requests, hub connections, the last hour, the database, the upstream key),
+refreshed every 30 s.
+
 ### Web console
 
 `/app/` is the person's own page in the same design as the phone app: sign in
