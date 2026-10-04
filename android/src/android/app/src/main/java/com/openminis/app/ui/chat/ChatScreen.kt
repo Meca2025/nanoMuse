@@ -594,21 +594,23 @@ fun ChatScreen(
     }
     // nanoMuse: after the first task this phone saw through to a reply, one card under it
     // asking for a star (StarPrompt: once, and never again after the person went).
-    var nmStarNudge by remember { mutableStateOf(false) }
+    var nmStarNudge by remember { mutableStateOf<io.github.nanomuse.community.StarPrompt.Moment?>(null) }
     var nmSawRun by remember { mutableStateOf(false) }
     LaunchedEffect(isStreaming) {
         if (isStreaming) { nmSawRun = true; return@LaunchedEffect }
-        if (!nmSawRun || nmStarNudge) return@LaunchedEffect
-        val moment = io.github.nanomuse.community.StarPrompt.Moment.FIRST_TASK
-        if (!io.github.nanomuse.community.StarPrompt.due(context, moment)) return@LaunchedEffect
+        if (!nmSawRun || nmStarNudge != null) return@LaunchedEffect
+        nmSawRun = false
         kotlinx.coroutines.delay(400) // the turn's last words land in the list a beat after the stream ends
         val last = viewModel.uiMessages.value.lastOrNull() ?: return@LaunchedEffect
         val replied = last.role == "assistant" && last.error.isNullOrBlank() &&
             (last.content.isNotBlank() || last.toolBlocks.any { it.kind == "text" && it.content.isNotBlank() })
-        if (replied) {
-            io.github.nanomuse.community.StarPrompt.markShown(context, moment)
-            nmStarNudge = true
-        }
+        if (!replied) return@LaunchedEffect
+        // every finished task counts; the first and the tenth are the moments (StarPrompt)
+        val moment = io.github.nanomuse.community.StarPrompt.momentForTask(io.github.nanomuse.community.StarPrompt.countTask(context))
+            ?: return@LaunchedEffect
+        if (!io.github.nanomuse.community.StarPrompt.due(context, moment)) return@LaunchedEffect
+        io.github.nanomuse.community.StarPrompt.markShown(context, moment)
+        nmStarNudge = moment
     }
     // [T-android-compact-progress] null when no compaction is running.
     val compactProgress by viewModel.compactProgress.collectAsState()
@@ -4120,14 +4122,18 @@ fun ChatScreen(
                             })
                         }
                     }
-                    // nanoMuse: the ask for a star under the first finished task
+                    // nanoMuse: the ask for a star under the first (and the tenth) finished task
                     // (reverseLayout: declared first, drawn at the bottom).
-                    if (nmStarNudge && !isStreaming) {
+                    val nmStarMoment = nmStarNudge
+                    if (nmStarMoment != null && !isStreaming) {
                         item(key = "__star_nudge__", contentType = "star_nudge") {
                             io.github.nanomuse.community.StarNudgeCard(
-                                text = stringResource(R.string.nm_star_first_task),
+                                text = stringResource(
+                                    if (nmStarMoment == io.github.nanomuse.community.StarPrompt.Moment.TENTH_TASK) R.string.nm_star_tenth_task
+                                    else R.string.nm_star_first_task,
+                                ),
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                onDone = { nmStarNudge = false },
+                                onDone = { nmStarNudge = null },
                             )
                         }
                     }
@@ -4938,6 +4944,8 @@ fun ChatScreen(
             )
             // nanoMuse: a long task that hit the step ceiling asks "continue?" here.
             io.github.nanomuse.ui.chat.ContinueAskHost(viewModel)
+            // nanoMuse: the browser handed to the person (a login, a code) — "Your turn", Open, Done.
+            io.github.nanomuse.ui.chat.BrowserHandOverHost(viewModel)
 
             // T-chat-title-pill-edit: reuse SessionEditSheet from the session
             // list (same composable, exposed `internal`) so title + category

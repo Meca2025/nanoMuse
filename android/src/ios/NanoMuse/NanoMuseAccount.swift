@@ -235,15 +235,44 @@ extension NanoMuseCloud {
     }
 }
 
-/// The ask for a star, once at the moments it is fair to: the first sign-in, the allowance used
-/// up. Remembered on the phone (UserDefaults); "Star on GitHub" ends every ask for good.
+/// The ask for a star, once at the moments it is fair to: the first sign-in, the first and the
+/// tenth task that ran to its end, a face just drawn, the allowance used up. Remembered on the
+/// phone (UserDefaults); "Star on GitHub" ends every ask for good. The tone is a thank-you, never
+/// a bill: your support is what keeps us going.
 enum NanoMuseStar {
     static let repoURL = URL(string: "https://github.com/nano-muse/nanoMuse")!
     private static let starredKey = "nanomuse.star.starred"
+    private static let tasksKey = "nanomuse.star.tasks"
 
-    enum Moment: String { case signedIn = "signed_in", exhausted }
+    enum Moment: String { case signedIn = "signed_in", firstTask = "first_task", tenthTask = "tenth_task", newLook = "new_look", exhausted }
 
     static var starred: Bool { UserDefaults.standard.bool(forKey: starredKey) }
+
+    /// One more task that ran to its end on this phone; the count so far.
+    static func countTask() -> Int {
+        let n = UserDefaults.standard.integer(forKey: tasksKey) + 1
+        UserDefaults.standard.set(n, forKey: tasksKey)
+        return n
+    }
+
+    /// The moment a finished-task count makes due, if any: the first and the tenth.
+    static func moment(forTask n: Int) -> Moment? { n == 1 ? .firstTask : n == 10 ? .tenthTask : nil }
+
+    /// The words for a moment (the same words as every other client).
+    static func text(_ moment: Moment) -> String {
+        switch moment {
+        case .signedIn:
+            return AppLocalized("Welcome aboard. nanoMuse is free, open source and non-profit — a personal agent that belongs to everyone who runs it. If you believe in that, a star on GitHub is the biggest support you can give: it is how the next person finds their way here.")
+        case .firstTask:
+            return AppLocalized("First task done. If nanoMuse helped, a star on GitHub would mean a lot to the people building it — your support is what keeps us going.")
+        case .tenthTask:
+            return AppLocalized("Ten tasks together already. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try — and tells us to keep going.")
+        case .newLook:
+            return AppLocalized("A new face, drawn just for you. If you like what nanoMuse is becoming, a star on GitHub helps more people meet it — your support is what keeps us going.")
+        case .exhausted:
+            return AppLocalized("The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub is what keeps the project going for everyone.")
+        }
+    }
 
     /// Still worth asking: not asked at this moment before, and the person has not gone to star it.
     static func due(_ moment: Moment) -> Bool {

@@ -23,7 +23,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from nanomuse.logger import logger
-from nanomuse.schema import RiskLevel, ToolResult
+from nanomuse.schema import STEP_KEY, RiskLevel, ToolResult
 
 
 class CallAssessment(BaseModel):
@@ -47,9 +47,28 @@ class CallAssessment(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+def with_step(parameters: dict[str, Any]) -> dict[str, Any]:
+    """The tool's schema with the shared ``step`` words added (a copy; the tool's own stays)."""
+    props = parameters.get("properties")
+    if not isinstance(props, dict) or STEP_KEY in props:
+        return parameters
+    return {**parameters, "properties": {**props, STEP_KEY: STEP_PARAM}}
+
+
 def short_json(args: dict[str, Any], limit: int = 200) -> str:
     text = json.dumps(args, ensure_ascii=False, default=str)
     return text if len(text) <= limit else text[: limit - 3] + "..."
+
+
+# The one argument every tool shares, for the person rather than the tool: see ``STEP_KEY``.
+STEP_PARAM: dict[str, Any] = {
+    "type": "string",
+    "description": (
+        "What this step does, for the person watching: a few words in their language, "
+        "e.g. '打开携程网站' or 'Check the login page'. Shown under your avatar while the "
+        "tool runs. Always fill it in."
+    ),
+}
 
 
 class BaseTool(ABC, BaseModel):
@@ -77,7 +96,7 @@ class BaseTool(ABC, BaseModel):
             "function": {
                 "name": self.name,
                 "description": self.description,
-                "parameters": self.parameters,
+                "parameters": with_step(self.parameters),
             },
         }
 
@@ -172,4 +191,12 @@ class ToolCollection:
         return name in self.tool_map
 
 
-__all__ = ["BaseTool", "CallAssessment", "ToolCollection", "safe_execute", "short_json"]
+__all__ = [
+    "STEP_PARAM",
+    "BaseTool",
+    "CallAssessment",
+    "ToolCollection",
+    "safe_execute",
+    "short_json",
+    "with_step",
+]

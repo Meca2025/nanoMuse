@@ -20,7 +20,8 @@ import { createPortal } from 'react-dom'
 import { call, type CloudStatus, type Translate } from './api.ts'
 import { useCloudConfig } from './AccountPage.tsx'
 import { Avatar } from './Avatar.tsx'
-import { bridge, gatedPermissions, openLink, type PermissionKind, type PermissionState } from './bridge.ts'
+import { gatedPermissions, openLink, type PermissionKind } from './bridge.ts'
+import { usePermissions, type Permissions } from './permissions.ts'
 import { IconCheck, IconChevronLeft, IconChevronRight, IconDownload, IconFolder, IconHand, IconHome, IconMic, IconMonitor } from './icons.tsx'
 import { useLive } from './live.ts'
 import { setMainChatId } from './MuseChats.tsx'
@@ -352,8 +353,8 @@ function SlideFrame({ t, art, title, text, children, fine, onNext, dots, done, a
     dots)
 }
 
-function PermissionRow({ t, kind, icon, title, sub, state, onAllow }: { t: Translate; kind: PermissionKind; icon: ReactNode; title: string; sub: string; state: PermissionState | undefined; onAllow(kind: PermissionKind): void }): ReactNode {
-  const granted = state === 'granted' || state === 'not-needed'
+function PermissionRow({ t, kind, icon, title, sub, perms }: { t: Translate; kind: PermissionKind; icon: ReactNode; title: string; sub: string; perms: Permissions }): ReactNode {
+  const granted = perms.granted(kind)
   return h('div', { className: 'nm-ob-row' },
     h('span', { className: 'nm-ob-row-icon' }, icon),
     h('div', { className: 'nm-ob-row-main' },
@@ -361,56 +362,35 @@ function PermissionRow({ t, kind, icon, title, sub, state, onAllow }: { t: Trans
       h('div', { className: 'nm-ob-row-sub' }, sub)),
     granted
       ? h('span', { className: 'nm-ob-granted', 'aria-label': t('obAllowed') }, h(IconCheck, { size: 16 }))
-      : h(Pill, { small: true, onClick: () => onAllow(kind) }, t('obAllow')))
+      : perms.asked(kind) && gatedPermissions()
+        // a second press cannot bring the system's dialog back: the pane is where the switch is
+        ? h(Pill, { small: true, onClick: () => perms.settings(kind) }, t('obOpenSettings'))
+        : h(Pill, { small: true, onClick: () => perms.allow(kind) }, t('obAllow')))
 }
 
-/** The system's word on a set of permissions, polled while the page shows (the person flips a switch in System Settings and comes back). */
-function usePermissions(kinds: PermissionKind[]): [Partial<Record<PermissionKind, PermissionState>>, (kind: PermissionKind) => void] {
-  const gated = gatedPermissions()
-  // Without the desktop's gate nothing is asked for the hands; the microphone in a plain
-  // browser is still the page's own prompt, so it starts unknown there.
-  const [states, setStates] = useState<Partial<Record<PermissionKind, PermissionState>>>(() =>
-    gated ? {} : Object.fromEntries(kinds.filter((k) => k !== 'microphone' || bridge() !== undefined).map((k) => [k, 'not-needed' as PermissionState])))
-  const refresh = useCallback(() => {
-    if (!gated) return
-    void bridge()?.permissions().then((next) => setStates(next)).catch(() => undefined)
-  }, [gated])
-  useEffect(() => {
-    refresh()
-    const timer = window.setInterval(refresh, 1500)
-    const onFocus = () => refresh()
-    window.addEventListener('focus', onFocus)
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', onFocus) }
-  }, [refresh])
-  const allow = useCallback((kind: PermissionKind) => {
-    const b = bridge()
-    if (b) {
-      void b.requestPermission(kind).then((state) => setStates((s) => ({ ...s, [kind]: state }))).catch(() => undefined)
-    } else if (kind === 'microphone' && navigator.mediaDevices?.getUserMedia) {
-      // the browser: the page's own prompt
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then((stream) => { stream.getTracks().forEach((track) => track.stop()); setStates((s) => ({ ...s, microphone: 'granted' })) })
-        .catch(() => setStates((s) => ({ ...s, microphone: 'denied' })))
-    }
-  }, [])
-  return [states, allow]
+/** macOS applies Screen Recording only to processes started after the grant: the notice and the restart. */
+export function RelaunchNotice({ t, perms }: { t: Translate; perms: Permissions }): ReactNode {
+  if (!perms.needsRelaunch) return null
+  return h('div', { className: 'nm-ob-relaunch', role: 'status' },
+    h('span', null, t('obRelaunch')),
+    h(Pill, { small: true, onClick: () => perms.relaunch() }, t('obRelaunchNow')))
 }
 
 /** macOS: Accessibility for clicking and typing, Screen Recording for the screenshots the hands look at. Elsewhere nothing is asked and both rows are already checks. */
 function ComputerSlide(props: SlideProps): ReactNode {
   const { t, name } = props
-  const [states, allow] = usePermissions(['accessibility', 'screen'])
-  const ok = (k: PermissionKind) => states[k] === 'granted' || states[k] === 'not-needed'
+  const perms = usePermissions(['accessibility', 'screen'])
   return h(SlideFrame, {
     ...props,
     art: ART_COMPUTER,
     title: t('obPermTitle', { name }),
     text: t('obPermSub', { name }),
-    done: ok('accessibility') && ok('screen'),
+    done: perms.granted('accessibility') && perms.granted('screen'),
     fine: h(Fragment, null, gatedPermissions() ? t('obPermFine') : t('obPermFineOpen', { name }), ' ', h('a', { href: HANDS_URL, onClick: (e: Event) => { e.preventDefault(); openLink(HANDS_URL) } }, t('obLearnMore'))),
   },
-    h(PermissionRow, { t, kind: 'accessibility', icon: h(IconHand, { size: 18 }), title: t('obAccessibility'), sub: t('obAccessibilitySub', { name }), state: states.accessibility, onAllow: allow }),
-    h(PermissionRow, { t, kind: 'screen', icon: h(IconMonitor, { size: 18 }), title: t('obScreen'), sub: t('obScreenSub', { name }), state: states.screen, onAllow: allow }))
+    h(PermissionRow, { t, kind: 'accessibility', icon: h(IconHand, { size: 18 }), title: t('obAccessibility'), sub: t('obAccessibilitySub', { name }), perms }),
+    h(PermissionRow, { t, kind: 'screen', icon: h(IconMonitor, { size: 18 }), title: t('obScreen'), sub: t('obScreenSub', { name }), perms }),
+    h(RelaunchNotice, { t, perms }))
 }
 
 /** The working folder, and the places the agent may read and write under the default permission preset. */
@@ -461,14 +441,14 @@ function FilesSlide(props: SlideProps & { actions: OnboardingActions; useWorkspa
 /** Voice input: the microphone, asked for here so the composer's mic works at once. */
 function VoiceSlide(props: SlideProps): ReactNode {
   const { t, name } = props
-  const [states, allow] = usePermissions(['microphone'])
+  const perms = usePermissions(['microphone'])
   return h(SlideFrame, {
     ...props,
     art: ART_VOICE,
     title: t('obVoiceTitle'),
     text: t('obVoiceSub'),
-    done: states.microphone === 'granted' || states.microphone === 'not-needed',
+    done: perms.granted('microphone'),
     fine: t('obVoiceFine'),
   },
-    h(PermissionRow, { t, kind: 'microphone', icon: h(IconMic, { size: 18 }), title: t('obMic'), sub: t('obMicSub', { name }), state: states.microphone, onAllow: allow }))
+    h(PermissionRow, { t, kind: 'microphone', icon: h(IconMic, { size: 18 }), title: t('obMic'), sub: t('obMicSub', { name }), perms }))
 }

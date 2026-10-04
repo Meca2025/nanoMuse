@@ -353,6 +353,49 @@ class Database:
                 n += 1
         return n
 
+    def set_pool(
+        self,
+        account_id: str,
+        *,
+        grant_uy: int | None = None,
+        left_uy: int | None = None,
+        delta_uy: int | None = None,
+        note: str = "",
+    ) -> int | None:
+        """The operator sets an account's pool (0.16) — to a lifetime total (`grant_uy`), to
+        what should be left right now (`left_uy`: what is spent plus that), or by a difference
+        (`delta_uy`, negative takes away). The pool never goes below zero; what is spent stays
+        spent, so a total under it leaves nothing. One ledger line says what moved and the new
+        total. Returns the new pool, or None when there is no such account."""
+        t = now()
+        with self.tx() as c:
+            row = c.execute("SELECT grant_uy FROM accounts WHERE id=?", (account_id,)).fetchone()
+            if row is None:
+                return None
+            old = int(row["grant_uy"] or 0)
+            if left_uy is not None:
+                spent = c.execute("SELECT COALESCE(SUM(cost_uy),0) FROM ledger WHERE account_id=? AND cost_uy>0", (account_id,)).fetchone()[
+                    0
+                ]
+                new = int(spent) + max(0, int(left_uy))
+            elif grant_uy is not None:
+                new = max(0, int(grant_uy))
+            else:
+                new = max(0, old + int(delta_uy or 0))
+            if new != old:
+                c.execute("UPDATE accounts SET grant_uy=? WHERE id=?", (new, account_id))
+                c.execute(
+                    "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
+                    (account_id, t, "credit", 0, json.dumps({"credit_uy": new - old, "from": "operator", "note": note[:200], "set": new})),
+                )
+            return new
+
+    def limited_account_ids(self, exclude_hashes: frozenset[str] = frozenset()) -> list[str]:
+        """Every account under a limit — not a member, not disabled — for a change made to all."""
+        with self._lock:
+            rows = self._conn.execute("SELECT id, id_hash FROM accounts WHERE unlimited=0 AND disabled=0").fetchall()
+        return [str(r["id"]) for r in rows if r["id_hash"] not in exclude_hashes]
+
     def seed_grants(self, allowance_uy: int) -> int:
         """Accounts from before 0.5 start the new model with what they have spent so far plus
         the allowance, and keep any 0.4 credit they had not used — nobody wakes up in debt or

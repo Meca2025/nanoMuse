@@ -14,7 +14,7 @@ import { useStore } from "../store";
 import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, UserEvent } from "../types";
 import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
-import { StarNudgeOnce } from "../components/StarNudge";
+import { countTask, momentForTask, StarNudgeOnce, type StarMoment } from "../components/StarNudge";
 import { useShowSteps } from "../steps";
 
 export function ChatScreen() {
@@ -38,8 +38,9 @@ export function ChatScreen() {
   const stickToBottom = useRef(true);
   const [showJump, setShowJump] = useState(false);
 
-  // The first task this browser saw through: busy → idle with a reply at the end of the list.
-  const [firstTaskDone, setFirstTaskDone] = useState(false);
+  // A task this browser saw through: busy → idle with a reply at the end of the list. Every one
+  // is counted; the first and the tenth are the moments for a word about a star.
+  const [taskMoment, setTaskMoment] = useState<StarMoment | null>(null);
   const sawBusy = useRef(false);
   useEffect(() => {
     if (thread?.busy) {
@@ -49,7 +50,10 @@ export function ChatScreen() {
     if (!sawBusy.current) return;
     sawBusy.current = false;
     const last = [...events].reverse().find((e) => e.type === "assistant" || e.type === "user" || e.type === "notice");
-    if (last?.type === "assistant" && last.text) setFirstTaskDone(true);
+    if (last?.type === "assistant" && last.text) {
+      const m = momentForTask(countTask());
+      if (m) setTaskMoment(m);
+    }
   }, [thread?.busy, events]);
 
   const onScroll = useCallback(() => {
@@ -178,14 +182,7 @@ export function ChatScreen() {
         {(thread?.busy || status.state !== "idle") && !stream?.text && status.state !== "waiting" && (
           <TypingIndicator label={thread?.queued ? t("{n} queued", { n: thread.queued }) : undefined} />
         )}
-        {!thread?.busy && status.state === "idle" && (
-          <StarNudgeOnce
-            moment="first_task"
-            due={firstTaskDone}
-            className="mx-1 my-2"
-            text={t("That was the first task nanoMuse finished for you. If it was useful, a star on GitHub helps other people find it — and keeps the free allowance going.")}
-          />
-        )}
+        {!thread?.busy && status.state === "idle" && taskMoment && <StarNudgeOnce moment={taskMoment} className="mx-1 my-2" />}
         {showJump && (
           <button
             type="button"

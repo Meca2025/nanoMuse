@@ -15,10 +15,10 @@ name: harness bundle
 on:
   push:
     branches: ["**"]
-    paths: ["harness/**", ".github/workflows/harness.yml"]
+    paths: ["harness/**", "scripts/connectors-json.mjs", "android/src/android/app/src/main/assets/nanomuse/connectors.json", "android/src/ios/NanoMuse/Resources/connectors.json", ".github/workflows/harness.yml"]
     tags: ["v*"]
   pull_request:
-    paths: ["harness/**", ".github/workflows/harness.yml"]
+    paths: ["harness/**", "scripts/connectors-json.mjs", "android/src/android/app/src/main/assets/nanomuse/connectors.json", "android/src/ios/NanoMuse/Resources/connectors.json", ".github/workflows/harness.yml"]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -52,6 +52,8 @@ jobs:
           pnpm build
           pnpm typecheck
           pnpm test
+      - name: The phones' copies of the connectors catalogue are current
+        run: node scripts/connectors-json.mjs --check
       - name: Pack
         working-directory: harness/dsh-nanomuse
         env:

@@ -44,6 +44,8 @@ export interface ToolEvent extends BaseEvent {
   type: "tool";
   tool: string;
   summary: string;
+  /** the model's own words for the step ("打开携程网站"), when it gave them (0.1.33) */
+  title?: string;
   args: Record<string, unknown>;
   status: "running" | "ok" | "error" | "blocked";
   output?: string;

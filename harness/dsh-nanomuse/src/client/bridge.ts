@@ -37,6 +37,8 @@ export interface HarnessBridge {
   reportBug?(): Promise<{ screenshot: string; url: string }>
   reveal?(path: string): Promise<void>
   onQuickChat?(listener: () => void): () => void
+  // since 0.1.33
+  relaunch?(): Promise<void>
 }
 
 export function bridge(): HarnessBridge | undefined {

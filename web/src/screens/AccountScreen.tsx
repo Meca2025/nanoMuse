@@ -66,10 +66,7 @@ export function AccountScreen() {
           <>
             <Identity account={account} me={me} />
             {me && (
-              <StarNudgeOnce
-                moment="signed_in"
-                text={t("The free allowance you just claimed comes out of the developer's pocket, and the project runs on nothing but people liking it. A star is the simplest way to help it be found — and to keep it free.")}
-              />
+              <StarNudgeOnce moment="signed_in" />
             )}
             {me && <Allowance me={me} onChanged={() => void load()} />}
             {me?.invite?.code && <Invite me={me} />}
@@ -512,6 +509,7 @@ const EVENT_LABELS: Record<string, string> = {
   "call.ended": "Call ended",
   "upstream.error": "The model provider returned an error",
   "credit.granted": "Allowance added",
+  "pool.set": "Allowance adjusted",
   "invite.accepted": "Signed up with a friend's code",
   "invite.used": "A friend signed up with your code",
   "invite.unknown": "An invite code was not recognised",

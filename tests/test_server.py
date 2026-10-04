@@ -75,7 +75,9 @@ def test_auth_required(server):
     assert client.get("/api/health").json()["auth"] is True
     anon = TestClient(client.app)
     assert anon.get("/api/state").status_code == 401
-    assert anon.get("/api/state?token=secret-token").status_code == 200
+    # ``?token=`` was taken until 0.1.32; now it is refused, and the reply says where it goes
+    legacy = anon.get("/api/state?token=secret-token")
+    assert legacy.status_code == 401 and "Authorization" in legacy.json()["detail"]
     state = client.get("/api/state").json()
     assert state["profile"]["name"] == "nanoMuse"
     assert [t["id"] for t in state["threads"]] == ["main"]
@@ -343,7 +345,8 @@ def test_messages_sent_while_busy_are_folded_into_the_run(server):
 def test_websocket_hello_and_live_events(server):
     client, _, llm = server
     llm.script.append(LLMResponse(content="ws reply"))
-    with client.websocket_connect("/ws?token=secret-token") as ws:
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "auth", "token": "secret-token"})
         hello = ws.receive_json()
         assert hello["kind"] == "hello" and hello["state"]["profile"]["name"] == "nanoMuse"
         ws.send_json({"kind": "send", "thread": "main", "text": "hello over ws"})
@@ -396,8 +399,26 @@ def test_websocket_rejects_bad_token(server):
     client, _, _ = server
     from starlette.websockets import WebSocketDisconnect
 
-    with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws?token=wrong") as ws:
+    with pytest.raises(WebSocketDisconnect) as closed, client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "auth", "token": "wrong"})
         ws.receive_json()
+    assert closed.value.code == 4401
+
+
+def test_websocket_refuses_the_token_in_the_url(server):
+    """``?token=`` (taken until 0.1.32) is refused: one frame says why, then 4401 — even with
+    the right token, so nothing is ever served to a socket that put it in the address."""
+    client, _, _ = server
+    from starlette.websockets import WebSocketDisconnect
+
+    with (
+        pytest.raises(WebSocketDisconnect) as closed,
+        client.websocket_connect("/ws?token=secret-token") as ws,
+    ):
+        first = ws.receive_json()
+        assert first["kind"] == "error" and first["code"] == "legacy_token"
+        ws.receive_json()
+    assert closed.value.code == 4401
 
 
 def test_websocket_takes_the_token_in_the_first_frame(server):

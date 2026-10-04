@@ -43,9 +43,14 @@ export async function call<T>(path: string, body?: unknown): Promise<T> {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
   if (res.status === 204) return undefined as T
-  const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-  if (!res.ok) throw new Error(json.error?.message ?? `${res.status}`)
+  const json = (await res.json().catch(() => ({}))) as { error?: { code?: string; message?: string } }
+  if (!res.ok) throw Object.assign(new Error(json.error?.message ?? `${res.status}`), { code: json.error?.code ?? `${res.status}` })
   return json as T
+}
+
+/** The relay-style `code` a failed `call` carries (`signed_out`, `not_found`, …), or the HTTP status. */
+export function errorCode(err: unknown): string {
+  return typeof err === 'object' && err !== null && 'code' in err && typeof (err as { code: unknown }).code === 'string' ? (err as { code: string }).code : ''
 }
 
 export const column: Record<string, string | number> = { display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 440 }

@@ -17,12 +17,14 @@
     <string name="nm_home_not_ready">稍等，聊天还在加载。</string>
 
     <!-- 求个 Star：首次登录、第一个任务完成、额度用完时 -->
-    <string name="nm_star_title">去 GitHub 给 nanoMuse 点个 Star</string>
-    <string name="nm_star_action">去点 Star</string>
+    <string name="nm_star_title">您的支持，是我们做下去的最大动力</string>
+    <string name="nm_star_action">去 GitHub 点亮 Star</string>
     <string name="nm_star_later">以后再说</string>
-    <string name="nm_star_signed_in">你刚领到的免费额度是开发者自掏腰包，这个项目靠的只是大家的喜欢。一个 Star 是最简单的支持：让更多人看到它，也让它一直免费下去。</string>
-    <string name="nm_star_first_task">第一个任务完成了。如果觉得有用，去 GitHub 点个 Star——十秒钟的事，能让下一个人也找到 nanoMuse。</string>
-    <string name="nm_star_exhausted">如果 nanoMuse 配得上，给它一个 Star：额度是开发者自掏腰包，被更多人看到，才会有更多人来帮忙。</string>
+    <string name="nm_star_signed_in">欢迎加入。nanoMuse 免费、开源、非营利，想做的是一个属于每个人的个人智能体。如果您认同这件事，GitHub 上的一颗 Star 就是对我们最大的支持——它让下一个人也能找到这里。</string>
+    <string name="nm_star_first_task">第一个任务完成了。如果 nanoMuse 帮上了忙，欢迎到 GitHub 点亮一颗 Star——您的支持，是我们做下去的最大动力。</string>
+    <string name="nm_star_tenth_task">已经一起完成十个任务了。如果 nanoMuse 已经成了您日常的一部分，一颗 Star 会让更多人愿意试一试——也会让我们更有劲儿做下去。</string>
+    <string name="nm_star_new_look">一张为您专门画的新面孔。如果您喜欢 nanoMuse 正在成为的样子，欢迎到 GitHub 点亮一颗 Star，让更多人遇见它——您的支持，是我们做下去的最大动力。</string>
+    <string name="nm_star_exhausted">免费额度用完了，感谢您一路用到这里。如果 nanoMuse 值得，欢迎到 GitHub 点亮一颗 Star——您的支持，是这个项目为所有人做下去的最大动力。</string>
     <string name="nm_chat_menu_rename">重命名对话</string>
 
     <!-- 前台服务通知标题（没有工具在跑时） -->
@@ -510,7 +512,10 @@
     <string name="nm_hands_protected_screen">这个页面受保护，读不到内容。请你自己完成这一步，然后点「继续」。</string>
     <string name="nm_hands_secret_field">这是密码或验证码输入框，请你自己填好，然后点「继续」。</string>
     <string name="nm_hands_approval_title">等你确认</string>
-    <string name="nm_hands_approval_detail">要点「%1$s」——请在 nanoMuse 里或通知中回答。</string>
+    <string name="nm_hands_approval_detail">要点「%1$s」——请回 nanoMuse 确认（会要求验证锁屏）。</string>
+    <string name="nm_hands_approval_here">要点「%1$s」，可以吗？</string>
+    <string name="nm_hands_allow_once">允许</string>
+    <string name="nm_hands_deny">拒绝</string>
     <!-- 光圈旁的动作名（0.1.15） -->
     <string name="nm_hands_fx_tap">点击</string>
     <string name="nm_hands_fx_tap_target">点击「%1$s」</string>
@@ -727,6 +732,7 @@
     <string name="nm_cloud_ev_invite_accepted">邀请了一位新用户</string>
     <string name="nm_cloud_ev_invite_used">通过邀请码注册</string>
     <string name="nm_cloud_ev_credit_granted">获得了额度奖励</string>
+    <string name="nm_cloud_ev_pool_set">额度调整</string>
     <string name="nm_cloud_via_code">验证码登录</string>
     <string name="nm_cloud_via_password">密码登录</string>
     <string name="nm_cloud_last_used">上次使用 %1$s</string>
@@ -861,6 +867,23 @@
     <string name="nm_connectors_how_none">对所有人开放，不需要登录。</string>
     <string name="nm_connectors_how_auto">先探测服务器需要什么：不需要、登录，还是密钥。</string>
     <string name="nm_connectors_key_placeholder">粘贴密钥</string>
+    <string name="nm_handover_title">轮到你了</string>
+    <string name="nm_handover_body">这个页面需要你来：%1$s。就在这里的浏览器里完成——同一个页面、同一个会话——然后点「完成」，它会从你停下的地方接着做。</string>
+    <string name="nm_handover_body_generic">这个页面需要你来——登录或填验证码。就在这里的浏览器里完成，然后点「完成」，它会从你停下的地方接着做。</string>
+    <string name="nm_handover_open">打开页面</string>
+    <string name="nm_handover_done">完成，继续</string>
+    <string name="nm_handover_banner">轮到你了：%1$s。弄好后点「完成」。</string>
+    <string name="nm_handover_banner_generic">这个页面轮到你了。弄好后点「完成」。</string>
+    <string name="nm_connectors_own_title">你自己的服务器</string>
+    <string name="nm_connectors_own_row">MCP 服务器</string>
+    <string name="nm_connectors_own_sub">按地址或命令添加服务器，或导入 JSON 配置。</string>
+    <string name="nm_connectors_own_n">已有 %1$d 个 · 按地址、命令或 JSON 添加</string>
+    <string name="nm_connectors_how_client">%1$s 不支持自动注册应用，所以需要一次性的小设置：在它的开发者设置里创建一个你自己的 OAuth 应用，回调地址填下面这个，然后把应用的客户端 ID 粘贴到这里（如果有客户端密钥也一并填上）。两者都只保存在这台手机上。</string>
+    <string name="nm_connectors_client_developer">打开 %1$s 的开发者设置</string>
+    <string name="nm_connectors_client_redirect">应用的回调（redirect）地址——点一下复制：</string>
+    <string name="nm_connectors_client_copy">复制</string>
+    <string name="nm_connectors_client_id">OAuth 客户端 ID</string>
+    <string name="nm_connectors_client_secret">OAuth 客户端密钥（如有）</string>
     <string name="nm_connectors_connected_sub">已作为 MCP 服务器“%1$s”连接。它的工具在每个对话里都可用。</string>
     <string name="nm_connectors_cat_work">工作</string>
     <string name="nm_connectors_cat_talk">沟通</string>

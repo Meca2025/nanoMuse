@@ -1,5 +1,8 @@
 package io.github.nanomuse.ui.connectors
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -24,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openminis.app.R
+import com.openminis.app.mcp.oauth.MCPOAuthController
 import com.openminis.app.ui.theme.ChatColors
 import io.github.nanomuse.connectors.Connector
 import io.github.nanomuse.connectors.ConnectorAuth
@@ -148,6 +154,26 @@ fun ConnectorsScreen(onBack: () -> Unit, onOpenMcp: () -> Unit) {
                     }
                 }
             }
+            // Servers of the person's own — by URL, command or imported JSON: the full MCP editor,
+            // reached from here only (Settings has one entry for all of this).
+            MuseSectionLabel(stringResource(R.string.nm_connectors_own_title))
+            MuseCard {
+                val own = servers.count { s -> connectors.none { it.serverId == s.id } }
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onOpenMcp).heightIn(min = 54.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.nm_connectors_own_row), fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            text = if (own > 0) stringResource(R.string.nm_connectors_own_n, own) else stringResource(R.string.nm_connectors_own_sub),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f), modifier = Modifier.size(20.dp))
+                }
+            }
             MuseGap(24.dp)
         }
     }
@@ -209,6 +235,13 @@ private fun ConnectorSheet(connector: Connector, state: Connectors.State, onDism
     var key by remember { mutableStateOf("") }
     var keyHint by remember { mutableStateOf<String?>((connector.auth as? ConnectorAuth.Key)?.where) }
     var wantsKey by remember { mutableStateOf(connector.auth is ConnectorAuth.Key) }
+    // services without dynamic client registration: an OAuth app of the person's own
+    val oauthAuth = connector.auth as? ConnectorAuth.OAuth
+    var wantsClient by remember { mutableStateOf(oauthAuth?.clientIdRequired == true) }
+    var developer by remember { mutableStateOf(oauthAuth?.developer) }
+    var redirectUri by remember { mutableStateOf(MCPOAuthController.DEFAULT_REDIRECT_URI) }
+    var clientId by remember { mutableStateOf("") }
+    var clientSecret by remember { mutableStateOf("") }
     var done by remember { mutableStateOf(false) }
 
     fun connect() {
@@ -216,10 +249,16 @@ private fun ConnectorSheet(connector: Connector, state: Connectors.State, onDism
         busy = true
         error = null
         scope.launch {
-            when (val outcome = Connectors.connect(context, connector, key.takeIf { wantsKey })) {
+            val outcome = Connectors.connect(
+                context, connector, key.takeIf { wantsKey },
+                clientId = clientId.takeIf { wantsClient && it.isNotBlank() },
+                clientSecret = clientSecret.takeIf { wantsClient && it.isNotBlank() },
+            )
+            when (outcome) {
                 is Connectors.Outcome.Connected -> { done = true; key = "" }
                 is Connectors.Outcome.Cancelled -> Unit
                 is Connectors.Outcome.NeedsKey -> { wantsKey = true; keyHint = outcome.hint.ifBlank { keyHint } }
+                is Connectors.Outcome.NeedsClient -> { wantsClient = true; developer = outcome.developer ?: developer; redirectUri = outcome.redirectUri }
                 is Connectors.Outcome.Failed -> error = outcome.message
             }
             busy = false
@@ -242,6 +281,7 @@ private fun ConnectorSheet(connector: Connector, state: Connectors.State, onDism
             Text(
                 text = when {
                     wantsKey -> stringResource(R.string.nm_connectors_how_key, keyHint.orEmpty())
+                    wantsClient -> stringResource(R.string.nm_connectors_how_client, connector.name)
                     connector.auth is ConnectorAuth.None -> stringResource(R.string.nm_connectors_how_none)
                     connector.auth is ConnectorAuth.Auto -> stringResource(R.string.nm_connectors_how_auto)
                     else -> stringResource(R.string.nm_connectors_how_oauth, connector.name)
@@ -259,6 +299,55 @@ private fun ConnectorSheet(connector: Connector, state: Connectors.State, onDism
                     Spacer(Modifier.width(4.dp))
                     Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = MuseTones.action, modifier = Modifier.size(14.dp))
                 }
+            }
+            if (wantsClient && !wantsKey && state != Connectors.State.Connected && !done) {
+                Spacer(Modifier.height(8.dp))
+                val dev = developer
+                if (dev != null) {
+                    Row(
+                        Modifier.clickable { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(dev))) } }.padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(stringResource(R.string.nm_connectors_client_developer, connector.name), fontSize = 13.sp, color = MuseTones.action)
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = MuseTones.action, modifier = Modifier.size(14.dp))
+                    }
+                }
+                Text(stringResource(R.string.nm_connectors_client_redirect), fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    Modifier
+                        .clickable {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                            clipboard?.setPrimaryClip(ClipData.newPlainText("redirect", redirectUri))
+                        }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(redirectUri, fontSize = 13.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.nm_connectors_client_copy), tint = MuseTones.action, modifier = Modifier.size(16.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = clientId,
+                    onValueChange = { clientId = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.nm_connectors_client_id)) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MuseTones.action, unfocusedBorderColor = MuseTones.hairline),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = clientSecret,
+                    onValueChange = { clientSecret = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.nm_connectors_client_secret)) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MuseTones.action, unfocusedBorderColor = MuseTones.hairline),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                )
             }
             if (wantsKey && state != Connectors.State.Connected && !done) {
                 Spacer(Modifier.height(8.dp))
@@ -300,7 +389,7 @@ private fun ConnectorSheet(connector: Connector, state: Connectors.State, onDism
             } else {
                 Button(
                     onClick = { connect() },
-                    enabled = !busy && (!wantsKey || key.isNotBlank()),
+                    enabled = !busy && (!wantsKey || key.isNotBlank()) && (!wantsClient || wantsKey || clientId.isNotBlank()),
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(containerColor = MuseTones.action),
                     modifier = Modifier.fillMaxWidth().height(48.dp),

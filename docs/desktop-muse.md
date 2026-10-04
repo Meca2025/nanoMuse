@@ -94,8 +94,14 @@ asked for a DeepSeek key):
    page is allowed: **Allow nanoMuse to use your computer?** — *Accessibility* and
    *Screen Recording* rows, each with *Allow* that asks the system through the desktop
    shell and turns into a green check as the system grants it (polled, and again when
-   the window gets focus; the shell can open the System Settings pane); on Linux and
-   Windows nothing is gated and both rows are checks from the start. **Allow nanoMuse
+   the window gets focus or the page becomes visible — one hook, `permissions.ts`,
+   behind every place that shows a permission); once *Allow* has been pressed the
+   button reads *Open System Settings*, since a second press cannot bring the system's
+   dialog back. For *Screen Recording* the shell makes one capture attempt before it
+   opens the pane, so nanoMuse is on the pane's list, and when the permission is
+   granted while the app runs a notice says macOS applies it only to freshly started
+   apps, with *Restart now* (`relaunch` over the bridge). On Linux and Windows nothing
+   is gated and both rows are checks from the start. **Allow nanoMuse
    to access your files?** — the working folder as a pill (*Change* opens the native
    folder picker and creates the workspace) and the places the agent may touch under
    the default permission preset (the working folder read and write; the home folder
@@ -175,8 +181,10 @@ permissions with *Allow* and *Open System Settings* (through the desktop shell),
 the screen awake while it works* (the shell holds a power-save blocker while a session
 runs) and the note that anything that sends, pays or deletes is asked first.
 
-**The live stage** is Muse's, picture-in-picture over the chat (bottom right, 400 px):
-the latest screenshot the agent took, dimmed while it works, × top-left to put it away,
+**The live stage** is Muse's, picture-in-picture over the chat (bottom right and 400 px
+to begin with; drag it anywhere, resize it from the bottom-right corner, and the place
+is remembered in `prefs.stage` and kept inside the window): the latest screenshot the
+agent took, dimmed while it works, × top-left to put it away,
 *Expand* top-right (the frame in a sheet), a **Take over** pill while a step runs (it
 cancels the session's turn — the agent lets go, your mouse is yours), a caption bottom-
 left — *looking at the screen · nanoMuse*, *clicked "Save" · Finder*, *typed "hello" ·
@@ -243,9 +251,10 @@ stock General plugin switched off in the bundle layer:
     credentials live — followed by the steps (`nanomuse vault set …`, the `config.toml`
     lines, restart) with copy buttons; there is no sign-in button on purpose, the
     credentials stay in your own vault.
-  - **Services** — the catalogue (`src/connectors-catalogue.ts`, about seventy remote
-    MCP servers: Notion, Linear, Atlassian, Asana, GitHub, Sentry, Vercel, Cloudflare,
-    Supabase, Stripe, PayPal, Figma, Canva, Dropbox, Box, Hugging Face, DeepWiki…), each
+  - **Services** — the catalogue (`src/connectors-catalogue.ts`, seventy-five remote
+    MCP servers: Notion, Linear, Atlassian, Asana, GitHub, GitLab, Sentry, Vercel,
+    Cloudflare, Supabase, Stripe, PayPal, QuickBooks, Figma, Miro, Canva, Dropbox, Box,
+    Hugging Face, DeepWiki…), each
     with its address and how it lets a client in. *Connect* asks the server itself
     (`initialize`): an **open** server is connected at once; a server that speaks **MCP
     authorization** opens the sign-in page in the system browser — protected-resource
@@ -253,7 +262,13 @@ stock General plugin switched off in the bundle layer:
     `resource` (RFC 8707), the loopback callback at `127.0.0.1:38417/oauth/callback`,
     refresh before expiry — and the sheet waits with *Open again*, *Try again* and
     *Start over* (a fresh registration, for a server that forgot ours); a server that
-    wants a **key** asks for it in a sheet that says where the vendor hands it out. The
+    wants a **key** asks for it in a sheet that says where the vendor hands it out. A
+    service whose authorization server registers no clients (GitHub, Slack, Discord,
+    HubSpot, Render, Bitrise, PagerDuty, Box — `clientIdRequired` in the catalogue, and
+    any address that turns out that way) gets a sheet of its own: make an OAuth app at
+    the vendor's developer page (linked), give it our callback address (shown, copy
+    button), paste the client id and, if there is one, the secret; the id is kept like a
+    registration, so the next sign-in there does not ask. The
     rows under the search field also search the public **MCP Registry**
     (`registry.modelcontextprotocol.io`) once two characters are typed, and **Connect by
     address** takes any Streamable HTTP URL, with a key or a pre-registered OAuth client

@@ -43,13 +43,17 @@ const zhCN: Record<string, string> = {
   "Every tool it uses becomes a chip in the chat. Off, the chat keeps to the conversation and the line under the name says what it is on. This device only.":
     "每用一个工具就在对话里多一个小标签。关闭时对话只保留对话本身，名字下方的一行字说明它正在做什么。仅本设备。",
   "On it: {request}": "正在处理：{request}",
-  "Star nanoMuse on GitHub": "给 nanoMuse 点个 Star",
-  "The free allowance you just claimed comes out of the developer's pocket, and the project runs on nothing but people liking it. A star is the simplest way to help it be found — and to keep it free.":
-    "你刚领到的免费额度是开发者自掏腰包的，这个项目全靠大家的喜欢撑着。点一个 Star 是最简单的支持方式——让更多人找到它，也让它能一直免费下去。",
-  "That was the first task nanoMuse finished for you. If it was useful, a star on GitHub helps other people find it — and keeps the free allowance going.":
-    "这是 nanoMuse 为你完成的第一个任务。如果觉得有用，到 GitHub 点个 Star 吧——能让更多人发现它，也能让免费额度继续下去。",
-  "A star, if nanoMuse has earned it: the allowance is the developer's own money, and being seen is what brings the project more hands.":
-    "如果 nanoMuse 值得，给它一个 Star：免费额度是开发者自己掏的钱，被更多人看到，才会有更多人来一起做。",
+  "Your support is what keeps us going": "您的支持，是我们做下去的最大动力",
+  "Welcome aboard. nanoMuse is free, open source and non-profit — a personal agent that belongs to everyone who runs it. If you believe in that, a star on GitHub is the biggest support you can give: it is how the next person finds their way here.":
+    "欢迎加入。nanoMuse 免费、开源、非营利，想做的是一个属于每个人的个人智能体。如果您认同这件事，GitHub 上的一颗 Star 就是对我们最大的支持——它让下一个人也能找到这里。",
+  "First task done. If nanoMuse helped, a star on GitHub would mean a lot to the people building it — your support is what keeps us going.":
+    "第一个任务完成了。如果 nanoMuse 帮上了忙，欢迎到 GitHub 点亮一颗 Star——您的支持，是我们做下去的最大动力。",
+  "Ten tasks together already. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try — and tells us to keep going.":
+    "已经一起完成十个任务了。如果 nanoMuse 已经成了您日常的一部分，一颗 Star 会让更多人愿意试一试——也会让我们更有劲儿做下去。",
+  "A new face, drawn just for you. If you like what nanoMuse is becoming, a star on GitHub helps more people meet it — your support is what keeps us going.":
+    "一张为您专门画的新面孔。如果您喜欢 nanoMuse 正在成为的样子，欢迎到 GitHub 点亮一颗 Star，让更多人遇见它——您的支持，是我们做下去的最大动力。",
+  "The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub is what keeps the project going for everyone.":
+    "免费额度用完了，感谢您一路用到这里。如果 nanoMuse 值得，欢迎到 GitHub 点亮一颗 Star——您的支持，是这个项目为所有人做下去的最大动力。",
   "Load earlier messages": "加载更早的消息",
   "New side chat": "新建旁聊",
   "New side chat, e.g. “Trip to Kyoto”": "新建旁聊，例如“京都之旅”",
@@ -993,7 +997,7 @@ const zhCN: Record<string, string> = {
   "nanoMuse is a non-profit open-source community project — free, forever. Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours. Delete the account whenever you like.":
     "nanoMuse 是非盈利的开源社区项目，永久免费。用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key（推荐阿里云百炼）。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。账号随时可以删除。",
   "Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach.": "欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。",
-  "Star on GitHub": "去 GitHub 点个 Star",
+  "Star on GitHub": "去 GitHub 点亮 Star",
   "Report a bug or ask for a feature": "反馈问题 / 提需求",
   // -- data controls (relay 0.9): the one switch over what the relay keeps --
   "Data controls": "数据控制",
@@ -1018,7 +1022,7 @@ const zhCN: Record<string, string> = {
     "账号已登录。设了密码，手机和其他电脑就能直接登录，不用再等验证码。可选——以后也可以在「账号」里设置。",
   "At least 8 characters": "至少 8 个字符",
   "Set the password": "设置密码",
-  "Not now": "暂不",
+  "Not now": "以后再说",
   // -- the allowance and the two ways on (relay 0.5 / 0.9) --
   "Free allowance": "免费额度",
   "left of ¥{grant}": "剩余 / 共 ¥{grant}",
@@ -1258,6 +1262,7 @@ const zhCN: Record<string, string> = {
   "Call ended": "通话结束",
   "The model provider returned an error": "模型服务返回了错误",
   "Allowance added": "额度已增加",
+  "Allowance adjusted": "额度已调整",
   "Signed up with a friend's code": "用朋友的邀请码注册",
   "A friend signed up with your code": "一位朋友用你的邀请码注册",
   "An invite code was not recognised": "邀请码无法识别",

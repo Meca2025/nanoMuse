@@ -37,8 +37,9 @@ import io.github.nanomuse.ui.home.MuseTones
 
 /**
  * The ask for a star, at the moments it is fair to make it: when the free allowance was just
- * claimed (the first sign-in), after the first task the agent finished, and when the
- * allowance is used up (a row among the ways on). Each moment is asked once on a phone;
+ * claimed (the first sign-in), after the first and the tenth task the agent finished, after a
+ * face is drawn, and when the allowance is used up (a row among the ways on). Each moment is
+ * asked once on a phone;
  * tapping through to GitHub ends them all. Never a dialog — a card where the moment is.
  */
 object StarPrompt {
@@ -53,6 +54,27 @@ object StarPrompt {
         SIGNED_IN("signed_in"),
         /** The first turn that ended with a reply, on this phone. */
         FIRST_TASK("first_task"),
+        /** The tenth: nanoMuse has become part of the day. */
+        TENTH_TASK("tenth_task"),
+        /** A face was just drawn in the studio — a moment of delight. */
+        NEW_LOOK("new_look"),
+    }
+
+    private const val KEY_TASKS = "tasks"
+
+    /** One more turn that ended with a reply; returns the count so far on this phone. */
+    fun countTask(context: Context): Int {
+        val p = prefs(context)
+        val n = p.getInt(KEY_TASKS, 0) + 1
+        p.edit().putInt(KEY_TASKS, n).apply()
+        return n
+    }
+
+    /** The moment a finished task count makes due, if any: the first and the tenth. */
+    fun momentForTask(n: Int): Moment? = when (n) {
+        1 -> Moment.FIRST_TASK
+        10 -> Moment.TENTH_TASK
+        else -> null
     }
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

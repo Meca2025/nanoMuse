@@ -9,15 +9,46 @@ import { primaryBtn, secondaryBtn } from "./Form";
 
 /**
  * The ask for a star, at the moments it is fair to make it: when the free allowance was just
- * claimed (the account page after signing in), after the first task the agent finished, and
- * when the allowance is used up (a row among the ways on). Each moment is asked once in this
- * browser; going to GitHub from any of them ends them all. A card where the moment is, never
- * a dialog.
+ * claimed (the account page after signing in), after the first and the tenth task the agent
+ * finished, after a face is drawn in the studio, and when the allowance is used up (a row
+ * among the ways on). Each moment is asked once in this browser; going to GitHub from any of
+ * them ends them all. A card where the moment is, never a dialog — and the tone is a thank
+ * you, not a bill: your support is what keeps us going.
  */
-export type StarMoment = "signed_in" | "first_task";
+export type StarMoment = "signed_in" | "first_task" | "tenth_task" | "new_look";
 
 const STARRED_KEY = "nm.star.starred";
+const TASKS_KEY = "nm.star.tasks";
 const momentKey = (m: StarMoment) => `nm.star.${m}`;
+
+/** One more task finished in this browser; the count so far. */
+export function countTask(): number {
+  try {
+    const n = (Number(localStorage.getItem(TASKS_KEY)) || 0) + 1;
+    localStorage.setItem(TASKS_KEY, String(n));
+    return n;
+  } catch {
+    return 1;
+  }
+}
+/** The moment a finished-task count makes due, if any: the first and the tenth. */
+export const momentForTask = (n: number): StarMoment | null => (n === 1 ? "first_task" : n === 10 ? "tenth_task" : null);
+
+/** The words for each moment (one source, so every client says the same thing). */
+export function starText(t: (s: string) => string, m: StarMoment): string {
+  switch (m) {
+    case "signed_in":
+      return t(
+        "Welcome aboard. nanoMuse is free, open source and non-profit — a personal agent that belongs to everyone who runs it. If you believe in that, a star on GitHub is the biggest support you can give: it is how the next person finds their way here.",
+      );
+    case "first_task":
+      return t("First task done. If nanoMuse helped, a star on GitHub would mean a lot to the people building it — your support is what keeps us going.");
+    case "tenth_task":
+      return t("Ten tasks together already. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try — and tells us to keep going.");
+    case "new_look":
+      return t("A new face, drawn just for you. If you like what nanoMuse is becoming, a star on GitHub helps more people meet it — your support is what keeps us going.");
+  }
+}
 
 const read = (k: string) => {
   try {
@@ -81,7 +112,7 @@ export function StarNudge({ text, onDone, className }: { text: string; onDone: (
       <div className="flex items-start gap-2.5">
         <Star size={18} className="mt-0.5 shrink-0 text-amber-500" />
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-semibold leading-snug">{t("Star nanoMuse on GitHub")}</div>
+          <div className="text-[14px] font-semibold leading-snug">{t("Your support is what keeps us going")}</div>
           <p className="mt-1 text-[13px] leading-relaxed text-fg/85">{text}</p>
         </div>
       </div>
@@ -108,7 +139,8 @@ export function StarNudge({ text, onDone, className }: { text: string; onDone: (
  * The card for a moment, shown once: `due` says the moment has come (the account was just
  * seen signed in; a task just finished). Marks the moment spent as soon as it is drawn.
  */
-export function StarNudgeOnce({ moment, text, className, due = true }: { moment: StarMoment; text: string; className?: string; due?: boolean }) {
+export function StarNudgeOnce({ moment, text, className, due = true }: { moment: StarMoment; text?: string; className?: string; due?: boolean }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!due || open || !starDue(moment)) return;
@@ -116,5 +148,5 @@ export function StarNudgeOnce({ moment, text, className, due = true }: { moment:
     setOpen(true);
   }, [due, moment, open]);
   if (!open) return null;
-  return <StarNudge text={text} onDone={() => setOpen(false)} className={className} />;
+  return <StarNudge text={text ?? starText(t, moment)} onDone={() => setOpen(false)} className={className} />;
 }

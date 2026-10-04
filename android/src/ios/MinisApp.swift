@@ -186,7 +186,7 @@ struct MinisApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ContentView()
+                NanoMuseRoot() // nanoMuse: the Muse shell on iPhone; upstream ContentView on iPad and from the drawer
                     .overlay(alignment: .top) {
                         BackgroundInterruptionBanner()
                     }

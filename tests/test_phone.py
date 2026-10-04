@@ -942,7 +942,8 @@ def test_gui_switch_and_device_handshake(settings: Settings):
         )
         assert client.get("/api/connections").json()["gui"]["phone"]["connected"] is False
 
-        with client.websocket_connect("/ws?token=secret-token") as ws:
+        with client.websocket_connect("/ws") as ws:
+            ws.send_json({"kind": "auth", "token": "secret-token"})
             assert ws.receive_json()["kind"] == "hello"
             ws.send_json(
                 {

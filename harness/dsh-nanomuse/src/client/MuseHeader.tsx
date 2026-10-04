@@ -8,7 +8,7 @@
  * enlarges it; clicking opens the profile. Occupies `conversation.header.leading`.
  */
 import { createElement as h, Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { openStar, starDue, starShown } from './AccountPage.tsx'
+import { countTask, momentForTask, openStar, starDue, starShown, starText, type StarMoment } from './AccountPage.tsx'
 import type { Translate } from './api.ts'
 import { Avatar, type Mood } from './Avatar.tsx'
 import { describeCall } from './Capsule.tsx'
@@ -54,19 +54,24 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
   const [, tick] = useState(0)
   const [toast, setToast] = useState<{ n: number; at: number } | null>(null)
   const approvals = useRef(prefs.approvals.length)
-  // the first task that runs to its end asks for a star, once per computer, signed in only
-  const [starAsk, setStarAsk] = useState(false)
+  // every task that runs to its end is counted; the first and the tenth ask for a star, once per
+  // computer, signed in only. A run the host started on its own — the first meeting, a goal's
+  // check-in — has no request of the person's and is not a task of theirs.
+  const [starAsk, setStarAsk] = useState<StarMoment | undefined>(undefined)
   const wasRunning = useRef(false)
+  const asked = Boolean(record?.request)
   useEffect(() => {
     if (running) { wasRunning.current = true; return undefined }
     if (!wasRunning.current) return undefined
     wasRunning.current = false
-    if (!live.cloud.signedIn || !starDue('first_task')) return undefined
-    starShown('first_task')
-    setStarAsk(true)
-    const timer = window.setTimeout(() => setStarAsk(false), 20000)
+    if (!live.cloud.signedIn || !asked) return undefined
+    const moment = momentForTask(countTask())
+    if (!moment || !starDue(moment)) return undefined
+    starShown(moment)
+    setStarAsk(moment)
+    const timer = window.setTimeout(() => setStarAsk(undefined), 25000)
     return () => window.clearTimeout(timer)
-  }, [running, live.cloud.signedIn])
+  }, [running, live.cloud.signedIn, asked])
 
   // "done" lingers, "gathering thoughts" ages into "working": re-render on a clock while it matters
   useEffect(() => {
@@ -113,6 +118,20 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
     line = t('statusHubOffline')
   }
 
+  // Esc leaves any other conversation view (the trajectory a tool row's "Inspect" opens) for
+  // the chat — the first tab of the harness's view ring, which Muse mode otherwise hides
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      const tabs = document.querySelector('[data-conversation-tabs]')
+      const picked = tabs?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+      const first = tabs?.querySelector<HTMLElement>('[role="tab"]')
+      if (picked && first && picked !== first) { event.preventDefault(); first.click() }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
   // a side chat carries a way back to the main chat at its top left; beside a room
   // (the split) the chat column is headed "≡ 聊天" instead, which brings the chats back
   const main = mainChatId()
@@ -128,9 +147,9 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
       toast
         ? h('div', { className: 'nm-header-status nm-header-toast' }, h(IconCheck, { size: 13 }), t('statusApproved', { n: toast.n }))
         : starAsk
-          ? h('div', { className: 'nm-header-status nm-header-star' }, h(IconHeart, { size: 13 }), h('span', { className: 'nm-header-line' }, t('starFirstTask')),
-              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => { openStar(); setStarAsk(false) } }, t('starAction')),
-              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => setStarAsk(false) }, t('starLater')))
+          ? h('div', { className: 'nm-header-status nm-header-star' }, h(IconHeart, { size: 13 }), h('span', { className: 'nm-header-line' }, starText(t, starAsk)),
+              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => { openStar(); setStarAsk(undefined) } }, t('starAction')),
+              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => setStarAsk(undefined) }, t('starLater')))
         : line
           ? h('div', { className: `nm-header-status ${tone}`.trim() }, running || waiting ? h(IconSpinner, { size: 13 }) : null, h('span', { className: 'nm-header-line' }, line))
           : null))

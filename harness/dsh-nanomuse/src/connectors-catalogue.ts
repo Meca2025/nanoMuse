@@ -1,6 +1,6 @@
 /**
  * The services Settings → Connectors offers: each one's remote MCP server and how
- * it lets a client in. Checked against the live endpoints on 2026-10-03 (a bare
+ * it lets a client in. Checked against the live endpoints on 2026-10-04 (a bare
  * `initialize` to each: a 401 with `resource_metadata` is the MCP authorization
  * flow, a 200 is an open server, a 401 without metadata wants a key). The
  * text is ours; the names and addresses are the vendors'. Shared by the host
@@ -10,8 +10,13 @@
 export type Category = 'work' | 'dev' | 'design' | 'money' | 'data' | 'infra' | 'search' | 'talk' | 'files' | 'misc'
 
 export type CatalogueAuth =
-  /** The MCP authorization flow: discovery, dynamic client registration, PKCE. */
-  | { kind: 'oauth' }
+  /**
+   * The MCP authorization flow: discovery, dynamic client registration, PKCE. Some
+   * services do not register clients by themselves (`clientIdRequired`): the person
+   * creates an OAuth app in the vendor's developer settings (`developer`) with our
+   * loopback redirect URI and pastes its client id (and secret, if it has one).
+   */
+  | { kind: 'oauth'; clientIdRequired?: true; developer?: string }
   /** A key the person pastes; sent as a header or a query parameter. */
   | { kind: 'key'; header?: string; prefix?: string; query?: string; where: string }
   /** No credential at all. */
@@ -54,8 +59,10 @@ export const CATALOGUE: CatalogueEntry[] = [
     about: { en: 'Your to-dos and projects.', zh: '你的待办与项目。' } },
   { id: 'airtable', name: 'Airtable', category: 'work', url: 'https://mcp.airtable.com/mcp', auth: { kind: 'oauth' }, docs: 'https://airtable.com/developers/web', icon: 'airtable', color: '#18BFFF',
     about: { en: 'Bases, tables and records.', zh: '数据库、表格与记录。' } },
-  { id: 'hubspot', name: 'HubSpot', category: 'work', url: 'https://mcp.hubspot.com/', auth: { kind: 'oauth' }, docs: 'https://developers.hubspot.com/mcp', icon: 'hubspot', color: '#FF7A59',
+  { id: 'hubspot', name: 'HubSpot', category: 'work', url: 'https://mcp.hubspot.com/', auth: { kind: 'oauth', clientIdRequired: true, developer: 'https://developers.hubspot.com/' }, docs: 'https://developers.hubspot.com/mcp', icon: 'hubspot', color: '#FF7A59',
     about: { en: 'Contacts, companies, deals and tickets in your CRM.', zh: 'CRM 里的联系人、公司、交易与工单。' } },
+  { id: 'attio', name: 'Attio', category: 'work', url: 'https://mcp.attio.com/mcp', auth: { kind: 'oauth' }, docs: 'https://docs.attio.com/', color: '#1C1C1C',
+    about: { en: 'People, companies, deals and notes in your Attio CRM.', zh: 'Attio CRM 里的人、公司、交易与笔记。' } },
   { id: 'close', name: 'Close', category: 'work', url: 'https://mcp.close.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developer.close.com/mcp/', color: '#1463FF',
     about: { en: 'Leads, opportunities and activities in Close CRM.', zh: 'Close CRM 里的线索、商机与活动。' } },
   { id: 'intercom', name: 'Intercom', category: 'work', url: 'https://mcp.intercom.com/mcp', auth: { kind: 'auto' }, docs: 'https://developers.intercom.com/docs/guides/mcp', icon: 'intercom', color: '#6AFDEF',
@@ -66,14 +73,16 @@ export const CATALOGUE: CatalogueEntry[] = [
     about: { en: 'Bookings, availability and event types.', zh: '预约、空闲时段与活动类型。' } },
 
   // ---- talk
-  { id: 'slack', name: 'Slack', category: 'talk', url: 'https://mcp.slack.com/mcp', auth: { kind: 'oauth' }, docs: 'https://docs.slack.dev/ai/mcp-server/', color: '#4A154B',
+  { id: 'slack', name: 'Slack', category: 'talk', url: 'https://mcp.slack.com/mcp', auth: { kind: 'oauth', clientIdRequired: true, developer: 'https://api.slack.com/apps' }, docs: 'https://docs.slack.dev/ai/mcp-server/', color: '#4A154B',
     about: { en: 'Search and read channels and messages in your workspace.', zh: '搜索和阅读你工作区里的频道与消息。' } },
-  { id: 'discord', name: 'Discord', category: 'talk', url: 'https://mcp.discord.com/mcp', auth: { kind: 'oauth' }, docs: 'https://discord.com/developers/docs/intro', icon: 'discord', color: '#5865F2',
+  { id: 'discord', name: 'Discord', category: 'talk', url: 'https://mcp.discord.com/mcp', auth: { kind: 'oauth', clientIdRequired: true, developer: 'https://discord.com/developers/applications' }, docs: 'https://discord.com/developers/docs/intro', icon: 'discord', color: '#5865F2',
     about: { en: 'Your servers and channels.', zh: '你的服务器与频道。' } },
 
   // ---- dev
-  { id: 'github', name: 'GitHub', category: 'dev', url: 'https://api.githubcopilot.com/mcp/', auth: { kind: 'oauth' }, docs: 'https://github.com/github/github-mcp-server', icon: 'github', color: '#181717',
+  { id: 'github', name: 'GitHub', category: 'dev', url: 'https://api.githubcopilot.com/mcp/', auth: { kind: 'oauth', clientIdRequired: true, developer: 'https://github.com/settings/developers' }, docs: 'https://github.com/github/github-mcp-server', icon: 'github', color: '#181717',
     about: { en: 'Repositories, issues, pull requests and code search.', zh: '仓库、issue、PR 与代码搜索。' } },
+  { id: 'gitlab', name: 'GitLab', category: 'dev', url: 'https://gitlab.com/api/v4/mcp', auth: { kind: 'oauth' }, docs: 'https://docs.gitlab.com/user/gitlab_duo/model_context_protocol/mcp_server/', color: '#FC6D26',
+    about: { en: 'Projects, issues, merge requests and pipelines on gitlab.com.', zh: 'gitlab.com 上的项目、议题、合并请求与流水线。' } },
   { id: 'sentry', name: 'Sentry', category: 'dev', url: 'https://mcp.sentry.dev/mcp', auth: { kind: 'oauth' }, docs: 'https://docs.sentry.io/product/sentry-mcp/', icon: 'sentry', color: '#362D59',
     about: { en: 'Errors, issues and performance data from your projects.', zh: '你项目里的错误、问题与性能数据。' } },
   { id: 'vercel', name: 'Vercel', category: 'dev', url: 'https://mcp.vercel.com', auth: { kind: 'oauth' }, docs: 'https://vercel.com/docs/mcp/vercel-mcp', icon: 'vercel', color: '#000000',
@@ -82,7 +91,7 @@ export const CATALOGUE: CatalogueEntry[] = [
     about: { en: 'Sites, deploys and environment variables.', zh: '站点、部署与环境变量。' } },
   { id: 'railway', name: 'Railway', category: 'dev', url: 'https://mcp.railway.com/', auth: { kind: 'oauth' }, docs: 'https://docs.railway.com/reference/mcp-server', icon: 'railway', color: '#0B0D0E',
     about: { en: 'Projects, services and deployments.', zh: '项目、服务与部署。' } },
-  { id: 'render', name: 'Render', category: 'dev', url: 'https://mcp.render.com/mcp', auth: { kind: 'oauth' }, docs: 'https://render.com/docs/mcp-server', icon: 'render', color: '#46E3B7',
+  { id: 'render', name: 'Render', category: 'dev', url: 'https://mcp.render.com/mcp', auth: { kind: 'oauth', clientIdRequired: true, developer: 'https://dashboard.render.com/' }, docs: 'https://render.com/docs/mcp-server', icon: 'render', color: '#46E3B7',
     about: { en: 'Services, deploys, logs and databases on Render.', zh: 'Render 上的服务、部署、日志与数据库。' } },
   { id: 'heroku', name: 'Heroku', category: 'dev', url: 'https://mcp.heroku.com/mcp', auth: { kind: 'key', header: 'Authorization', prefix: 'Bearer ', where: 'Account settings → API Key' }, docs: 'https://devcenter.heroku.com/articles/heroku-mcp-server', color: '#430098',
     about: { en: 'Apps, dynos, add-ons and logs.', zh: '应用、dyno、插件与日志。' } },
@@ -90,7 +99,7 @@ export const CATALOGUE: CatalogueEntry[] = [
     about: { en: 'Droplets, apps and databases.', zh: 'Droplet、应用与数据库。' } },
   { id: 'buildkite', name: 'Buildkite', category: 'dev', url: 'https://mcp.buildkite.com/mcp', auth: { kind: 'oauth' }, docs: 'https://buildkite.com/docs/apis/mcp-server', icon: 'buildkite', color: '#14CC80',
     about: { en: 'Pipelines, builds and test results.', zh: '流水线、构建与测试结果。' } },
-  { id: 'bitrise', name: 'Bitrise', category: 'dev', url: 'https://mcp.bitrise.io/mcp', auth: { kind: 'oauth' }, docs: 'https://docs.bitrise.io/', icon: 'bitrise', color: '#683D87',
+  { id: 'bitrise', name: 'Bitrise', category: 'dev', url: 'https://mcp.bitrise.io/mcp', auth: { kind: 'oauth', clientIdRequired: true, developer: 'https://app.bitrise.io/' }, docs: 'https://docs.bitrise.io/', icon: 'bitrise', color: '#683D87',
     about: { en: 'Apps, builds and artifacts.', zh: '应用、构建与产物。' } },
   { id: 'semgrep', name: 'Semgrep', category: 'dev', url: 'https://mcp.semgrep.ai/mcp', auth: { kind: 'oauth' }, docs: 'https://semgrep.dev/docs/mcp', color: '#2ACFA6',
     about: { en: 'Scan code for security findings.', zh: '扫描代码里的安全问题。' } },
@@ -102,7 +111,7 @@ export const CATALOGUE: CatalogueEntry[] = [
     about: { en: 'Your Stytch projects and their settings.', zh: '你的 Stytch 项目与设置。' } },
   { id: 'honeycomb', name: 'Honeycomb', category: 'dev', url: 'https://mcp.honeycomb.io/mcp', auth: { kind: 'oauth' }, docs: 'https://docs.honeycomb.io/integrations/mcp/', color: '#F6A914',
     about: { en: 'Query your traces, metrics and triggers.', zh: '查询你的链路、指标与触发器。' } },
-  { id: 'pagerduty', name: 'PagerDuty', category: 'dev', url: 'https://mcp.pagerduty.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developer.pagerduty.com/docs/mcp-server', icon: 'pagerduty', color: '#06AC38',
+  { id: 'pagerduty', name: 'PagerDuty', category: 'dev', url: 'https://mcp.pagerduty.com/mcp', auth: { kind: 'oauth', clientIdRequired: true, developer: 'https://developer.pagerduty.com/' }, docs: 'https://developer.pagerduty.com/docs/mcp-server', icon: 'pagerduty', color: '#06AC38',
     about: { en: 'Incidents, services and who is on call.', zh: '事故、服务与当前值班。' } },
   { id: 'cf-bindings', name: 'Cloudflare Workers', category: 'dev', url: 'https://bindings.mcp.cloudflare.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/', icon: 'cloudflare', color: '#F38020',
     about: { en: 'Workers, KV, R2 and D1 in your account.', zh: '你账户里的 Workers、KV、R2 与 D1。' } },
@@ -138,6 +147,8 @@ export const CATALOGUE: CatalogueEntry[] = [
   // ---- design
   { id: 'figma', name: 'Figma', category: 'design', url: 'https://mcp.figma.com/mcp', auth: { kind: 'oauth' }, docs: 'https://help.figma.com/hc/en-us/articles/32132100833559', icon: 'figma', color: '#F24E1E',
     about: { en: 'Design files, frames and their code context.', zh: '设计文件、画板与它们的代码上下文。' } },
+  { id: 'miro', name: 'Miro', category: 'design', url: 'https://mcp.miro.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developers.miro.com/docs/miro-mcp', color: '#FFD02F',
+    about: { en: 'Your boards: read, add and arrange what is on them.', zh: '你的白板：读取、添加和整理上面的内容。' } },
   { id: 'canva', name: 'Canva', category: 'design', url: 'https://mcp.canva.com/mcp', auth: { kind: 'oauth' }, docs: 'https://www.canva.dev/docs/connect/canva-mcp-server-setup/', color: '#00C4CC',
     about: { en: 'Create, search and export designs.', zh: '创建、搜索和导出设计。' } },
   { id: 'webflow', name: 'Webflow', category: 'design', url: 'https://mcp.webflow.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developers.webflow.com/data/docs/ai-tools', icon: 'webflow', color: '#146EF5',
@@ -148,6 +159,10 @@ export const CATALOGUE: CatalogueEntry[] = [
   // ---- money
   { id: 'stripe', name: 'Stripe', category: 'money', url: 'https://mcp.stripe.com', auth: { kind: 'oauth' }, docs: 'https://docs.stripe.com/mcp', icon: 'stripe', color: '#635BFF',
     about: { en: 'Customers, payments, invoices and subscriptions.', zh: '客户、付款、账单与订阅。' } },
+  { id: 'quickbooks', name: 'QuickBooks', category: 'money', url: 'https://mcp.quickbooks.intuit.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developer.intuit.com/', color: '#2CA01C',
+    about: { en: 'Invoices, customers, expenses and reports in your books.', zh: '账本里的发票、客户、支出与报表。' } },
+  { id: 'ynab', name: 'YNAB', category: 'money', url: 'https://api.ynab.com/mcp', auth: { kind: 'oauth' }, docs: 'https://api.ynab.com/', color: '#3B5BDB',
+    about: { en: 'Your budgets, accounts and transactions.', zh: '你的预算、账户与交易记录。' } },
   { id: 'paypal', name: 'PayPal', category: 'money', url: 'https://mcp.paypal.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developer.paypal.com/tools/mcp-server/', icon: 'paypal', color: '#003087',
     about: { en: 'Invoices, orders, subscriptions and disputes.', zh: '账单、订单、订阅与争议。' } },
   { id: 'square', name: 'Square', category: 'money', url: 'https://mcp.squareup.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developer.squareup.com/docs/mcp', icon: 'square', color: '#3E4348',
@@ -157,7 +172,7 @@ export const CATALOGUE: CatalogueEntry[] = [
   // ---- files
   { id: 'dropbox', name: 'Dropbox', category: 'files', url: 'https://mcp.dropbox.com/mcp', auth: { kind: 'oauth' }, docs: 'https://www.dropbox.com/developers', icon: 'dropbox', color: '#0061FF',
     about: { en: 'Search and read the files in your Dropbox.', zh: '搜索和阅读 Dropbox 里的文件。' } },
-  { id: 'box', name: 'Box', category: 'files', url: 'https://mcp.box.com', auth: { kind: 'oauth' }, docs: 'https://developer.box.com/guides/box-mcp/remote/', icon: 'box', color: '#0061D5',
+  { id: 'box', name: 'Box', category: 'files', url: 'https://mcp.box.com', auth: { kind: 'oauth', clientIdRequired: true, developer: 'https://app.box.com/developers/console' }, docs: 'https://developer.box.com/guides/box-mcp/remote/', icon: 'box', color: '#0061D5',
     about: { en: 'Files, folders and their contents in Box.', zh: 'Box 里的文件、文件夹与内容。' } },
   { id: 'egnyte', name: 'Egnyte', category: 'files', url: 'https://mcp-server.egnyte.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developers.egnyte.com/docs/mcp', color: '#00A0DF',
     about: { en: 'Search, read and upload in your Egnyte.', zh: '在 Egnyte 里搜索、阅读和上传。' } },
@@ -187,6 +202,8 @@ export const CATALOGUE: CatalogueEntry[] = [
     about: { en: 'Numbers, messaging and calls on Telnyx.', zh: 'Telnyx 上的号码、短信与通话。' } },
   { id: 'turkish-airlines', name: 'Turkish Airlines', category: 'misc', url: 'https://mcp.turkishtechlab.com/mcp', auth: { kind: 'oauth' }, docs: 'https://mcp.turkishtechlab.com/', icon: 'turkishairlines', color: '#C70A0C',
     about: { en: 'Flights, bookings and Miles&Smiles.', zh: '航班、订票与 Miles&Smiles。' } },
+  { id: 'oura', name: 'Oura', category: 'misc', url: 'https://api.ouraring.com/v2/mcp', auth: { kind: 'oauth' }, docs: 'https://cloud.ouraring.com/docs/', color: '#2D2D2D',
+    about: { en: 'Your sleep, readiness and activity from the ring.', zh: '来自戒指的睡眠、恢复与活动数据。' } },
   { id: 'mercadopago', name: 'Mercado Pago', category: 'money', url: 'https://mcp.mercadopago.com/mcp', auth: { kind: 'key', header: 'Authorization', prefix: 'Bearer ', where: 'Your Developers panel → Credentials → Access token' }, docs: 'https://www.mercadopago.com/developers/en/docs/mcp-server', icon: 'mercadopago', color: '#009EE3',
     about: { en: 'Payments and the developer documentation.', zh: '收款与开发者文档。' } },
   { id: 'mercadolibre', name: 'Mercado Libre', category: 'money', url: 'https://mcp.mercadolibre.com/mcp', auth: { kind: 'key', header: 'Authorization', prefix: 'Bearer ', where: 'Developers panel → Access token' }, docs: 'https://developers.mercadolibre.com/en_us/mcp-server', color: '#FFE600',

@@ -1,0 +1,163 @@
+//
+//  NanoMuseHeader.swift
+//  nanoMuse
+//
+//  The Muse header in the chat's navigation bar: the agent's face, its
+//  name and one status line that says what it is doing right now. The
+//  Android twin is ui/header/NanoMuseHeader.kt + ui/home/MuseHeader.kt.
+//
+
+import SwiftUI
+import Combine
+
+/// Posted when the face is tapped; the shell (or the root on iPad)
+/// presents the avatar studio.
+extension Notification.Name {
+    static let nanoMuseOpenAvatarStudio = Notification.Name("nanoMuse.openAvatarStudio")
+}
+
+// MARK: - Status line
+
+enum NanoMuseStatus {
+    /// What the header says, in order of importance:
+    /// waiting for an approval > the running step's own title > writing the
+    /// reply > "On it: <request>" > nothing (idle, the model line shows).
+    static func line(
+        waiting: Bool,
+        processing: Bool,
+        toolName: String,
+        toolTitle: String,
+        request: String?,
+        studio: String?
+    ) -> String? {
+        if waiting { return AppLocalized("Waiting for you") }
+        if let studio, !studio.isEmpty { return studio }
+        guard processing else { return nil }
+        if toolName == "text" { return AppLocalized("Writing the reply") }
+        if !toolName.isEmpty, !toolTitle.isEmpty { return toolTitle }
+        if let brief = requestBrief(request) { return String(format: AppLocalized("On it: %@"), brief) }
+        return AppLocalized("On it")
+    }
+
+    /// The first ~36 characters of the request, cut at a word boundary
+    /// when one is found past 18.
+    static func requestBrief(_ request: String?) -> String? {
+        guard let raw = request?.replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+        if raw.count <= 36 { return raw }
+        let head = String(raw.prefix(36))
+        if let space = head.lastIndex(of: " "), head.distance(from: head.startIndex, to: space) >= 18 {
+            return String(head[..<space]) + "…"
+        }
+        return head + "…"
+    }
+}
+
+// MARK: - Mood
+
+/// Derives the face's mood from what the chat is doing. Happy and error
+/// linger a few seconds after a turn ends, as on Android.
+@MainActor
+final class NanoMuseMoodModel: ObservableObject {
+    @Published private(set) var afterglow: NanoMuseMood?
+    private var afterglowTask: Task<Void, Never>?
+
+    func turnEnded(withError: Bool) {
+        afterglowTask?.cancel()
+        afterglow = withError ? .error : .happy
+        let seconds: Double = withError ? 4 : 3
+        afterglowTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.afterglow = nil
+        }
+    }
+
+    func mood(waiting: Bool, working: Bool) -> NanoMuseMood {
+        if waiting { return .waiting }
+        if working { return .working }
+        if let afterglow { return afterglow }
+        return .idle
+    }
+}
+
+// MARK: - Header title (navigation bar principal item)
+
+/// Face · name · status line, sized for the 44 pt navigation band. Observes
+/// the activity tracker and the gates itself so the chat's equatable
+/// toolbar host does not have to rebuild for every tick.
+struct NanoMuseHeaderTitle: View {
+    @ObservedObject var vm: AIChatViewModel
+    var soulName: String
+    var modelName: String
+    var onTapText: () -> Void
+
+    @ObservedObject private var tracker = SessionActivityTracker.shared
+    @ObservedObject private var permissions = OffloadPermissionManager.shared
+    @ObservedObject private var gate = ConfigConfirmationGate.shared
+    @ObservedObject private var studio = NanoMuseAvatarStudioModel.shared
+    @StateObject private var moods = NanoMuseMoodModel()
+
+    private var waiting: Bool {
+        permissions.pendingRequest != nil || gate.pending != nil
+    }
+
+    private var info: SessionActivityTracker.SessionToolInfo? {
+        guard let sid = vm.sessionId else { return nil }
+        return tracker.sessionToolInfo[sid]
+    }
+
+    private var lastRequest: String? {
+        vm.messages.last(where: { $0.role == .user })?.content
+    }
+
+    private var statusLine: String? {
+        NanoMuseStatus.line(
+            waiting: waiting,
+            processing: vm.isProcessing,
+            toolName: info?.toolName ?? "",
+            toolTitle: info?.toolStatus ?? "",
+            request: lastRequest,
+            studio: studio.headerStatus
+        )
+    }
+
+    private var mood: NanoMuseMood {
+        moods.mood(waiting: waiting, working: vm.isProcessing || studio.isBusy)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button {
+                NotificationCenter.default.post(name: .nanoMuseOpenAvatarStudio, object: nil)
+            } label: {
+                NanoMuseFaceView(mood: mood, size: 32)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(AppLocalized("Change the look")))
+
+            Button(action: onTapText) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(soulName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ChatColors.primaryText)
+                        .lineLimit(1)
+                    Text(statusLine ?? modelName)
+                        .font(.system(size: 11))
+                        .foregroundStyle(statusLine == nil ? ChatColors.tertiaryText : NanoMuseTones.action)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .animation(.easeInOut(duration: 0.2), value: statusLine)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: vm.isProcessing) { processing in
+            guard !processing else { return }
+            let failed = vm.errorMessage != nil || vm.messages.last?.error != nil
+            moods.turnEnded(withError: failed)
+        }
+    }
+}

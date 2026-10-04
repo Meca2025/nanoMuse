@@ -256,6 +256,9 @@ final class NanoMuseHub: ObservableObject {
             }
         case "event":
             if let id = frame["id"] as? String, let body = frame["body"] as? [String: Any] { eventHandlers[id]?(body) }
+        case "profile":
+            // Another device of the account wrote the agent's look.
+            NanoMuseProfileSync.shared.onHubFrame(frame)
         case "error":
             if let id = frame["id"] as? String, let done = pending.removeValue(forKey: id) {
                 eventHandlers.removeValue(forKey: id)

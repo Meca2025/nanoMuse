@@ -38,6 +38,7 @@ import type { ToolDispatchExecution, ToolExecutionResult } from '@deepseek-ai/ds
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import z from '@deepseek-ai/schemastery'
+import { mountGuarded } from './admit.ts'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
 import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
@@ -419,9 +420,7 @@ export default class NanomuseCloud extends Service {
       if (this.hub.connected) this.hub.restart()
     })
 
-    this.ctx.inject(['webServer'], (ctx) => {
-      ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: API_PREFIX, handler: this.handle }), 'nanomuse cloud: api')
-    })
+    mountGuarded(this.ctx, API_PREFIX, this.handle, 'nanomuse cloud: api')
     this.ctx.inject(['tools'], (ctx) => {
       ctx.on('tools/execute', async (exec, next) => {
         if (!isHandsTool(exec.name)) return next()

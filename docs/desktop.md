@@ -64,8 +64,11 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
 `~/.nanomuse/desktop` (`NANOMUSE_DESKTOP_HOME` moves it) is the app's dsh home: the
 profile under `profiles/nanomuse` (the bundle list, the person's own `cordis.patch.yml`
 where Settings and the sign-in write the `nanoMuse Cloud` provider), dsh's credential
-store with the account key, the sessions, and `desktop.log` with the shell's and the
-Host's lines. A home kept by nanoMuse Harness 0.1.28–0.1.29 under `~/.nanomuse/harness`
+store with the account key, the sessions, `desktop.log` with the shell's and the Host's
+lines, and `port` — the loopback port the Host had last time, tried first on the next
+launch (then 38421, then any free one) so the window's origin, and with it everything
+the browser side keeps in that origin's storage, stays the same from launch to launch. A
+home kept by nanoMuse Harness 0.1.28–0.1.29 under `~/.nanomuse/harness`
 is taken over once. `NANOMUSE_CLOUD_URL` points the account at another relay;
 `NANOMUSE_PY` points the preset at another runtime for the hands. The CLI's own `~/.dsh`
 is not touched.

@@ -8,7 +8,9 @@
  */
 import { createElement as h, Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
-import { acceleratorOf, bridge, gatedPermissions, keyLabel, openLink, type DesktopPrefs, type PermissionKind, type PermissionState } from './bridge.ts'
+import { acceleratorOf, bridge, gatedPermissions, keyLabel, openLink, type DesktopPrefs, type PermissionKind } from './bridge.ts'
+import { RelaunchNotice } from './Onboarding.tsx'
+import { usePermissions } from './permissions.ts'
 import { settingsBus } from './bus.ts'
 import { IconBug, IconCheck, IconChevronRight, IconFile, IconHeart, IconLink, IconList, IconPlay, IconScale, IconShield } from './icons.tsx'
 import { useLive } from './live.ts'
@@ -41,25 +43,17 @@ export function makeComputerSection(t: Translate) {
     const prefs = usePrefs()
     const name = live.profile.name || t('brand')
     const gated = gatedPermissions()
-    const [states, setStates] = useState<Partial<Record<PermissionKind, PermissionState>>>({})
-    const refresh = useCallback(() => {
-      void bridge()?.permissions().then(setStates).catch(() => undefined)
-    }, [])
-    useEffect(() => {
-      if (!gated) return undefined
-      refresh()
-      const timer = window.setInterval(refresh, 2000)
-      return () => window.clearInterval(timer)
-    }, [gated, refresh])
+    const perms = usePermissions(['accessibility', 'screen'])
     const row = (kind: PermissionKind, title: string, sub: string) => {
-      const granted = states[kind] === 'granted'
       return h('div', { key: kind, className: 'nm-row' },
         h('div', { className: 'nm-row-main' },
           h('span', { className: 'nm-row-title' }, title),
           h('span', { className: 'nm-row-sub' }, sub)),
-        granted
+        perms.granted(kind)
           ? h('span', { className: 'nm-ob-granted', 'aria-label': t('obAllowed') }, h(IconCheck, { size: 16 }))
-          : h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => { void bridge()?.requestPermission(kind).then(() => refresh()) } }, t('obAllow')))
+          : perms.asked(kind)
+            ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => perms.settings(kind) }, t('obOpenSettings'))
+            : h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => perms.allow(kind) }, t('obAllow')))
     }
     return h('div', { className: 'nm-section' },
       h('p', null, t('cuLead', { name })),
@@ -68,6 +62,7 @@ export function makeComputerSection(t: Translate) {
         ? h('div', { className: 'nm-card' },
             row('accessibility', t('obAccessibility'), t('obAccessibilitySub')),
             row('screen', t('obScreen'), t('obScreenSub')),
+            h(RelaunchNotice, { t, perms }),
             h('div', { className: 'nm-row', style: { gap: 12, flexWrap: 'wrap' } },
               h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('accessibility') } }, t('cuOpenSettingsAccessibility')),
               h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('screen') } }, t('cuOpenSettingsScreen'))))

@@ -163,7 +163,7 @@ export function ToolChip({ event }: { event: ToolEvent }) {
       >
         <span className="flex items-center gap-2">
           <span className="text-muted">{toolIcon(event.tool)}</span>
-          <span className="truncate flex-1">{event.summary || event.tool}</span>
+          <span className="truncate flex-1">{event.title || event.summary || event.tool}</span>
           {event.device && <DevicePill device={event.device} />}
           {icon}
           {event.output ? open ? <ChevronDown size={13} /> : <ChevronRight size={13} /> : null}

@@ -20,6 +20,7 @@ import io.github.nanomuse.guard.GateOutcome
 import io.github.nanomuse.guard.GuardKind
 import io.github.nanomuse.guard.RiskAssessment
 import io.github.nanomuse.guard.RiskClass
+import io.github.nanomuse.guard.RiskDecision
 import io.github.nanomuse.guard.RiskGate
 import io.github.nanomuse.guard.TapWords
 import io.github.nanomuse.status.KeepAwake
@@ -106,6 +107,9 @@ class HandsOperator(private val context: Context) {
         capsule.onStop = { requestStop() }
         capsule.onContinue = { userSignal.get()?.countDown() }
         capsule.onOpenApp = { capsule.bringAppToFront(opts.sessionId) }
+        // the approval answered where the person is: the same request the chat card shows
+        capsule.onAllow = { RiskGate.pending.value?.let { RiskGate.decide(it.id, RiskDecision.ALLOW_ONCE) } }
+        capsule.onDeny = { RiskGate.pending.value?.let { RiskGate.decide(it.id, RiskDecision.DENY) } }
         val started = System.currentTimeMillis()
         try {
             val svc = MinisAccessibilityService.getInstance()
@@ -355,8 +359,10 @@ class HandsOperator(private val context: Context) {
     private data class TapGate(val denied: String? = null, val notice: String? = null, val shown: String = "")
 
     /**
-     * The approval card for a tap whose label says pay, send, post or delete. The app is in the
-     * background, so the request also arrives as a notification; the capsule offers Open.
+     * The approval for a tap whose label says pay, send, post or delete. The person is in the
+     * operated app, so the capsule takes the answer itself (Allow once / Deny); the card in the
+     * chat and the notification show the same request. Money needs the screen lock, which only
+     * the card can ask for: the capsule then offers Open.
      */
     private fun approveTap(svc: MinisAccessibilityService, sessionId: String?, target: String, onScreen: String?): TapGate {
         val shown = TapWords.shown(target, onScreen)
@@ -365,7 +371,8 @@ class HandsOperator(private val context: Context) {
         val appLabel = HandsApps.labelOf(context, pkg)
         val short = shown.take(40)
         val assessment = RiskAssessment(cls, TapWords.reason(cls, short, appLabel), appLabel?.let { "app:$it" })
-        capsule.approval(context.getString(com.openminis.app.R.string.nm_hands_approval_detail, short))
+        val decidable = cls != RiskClass.MONEY
+        capsule.approval(context.getString(if (decidable) com.openminis.app.R.string.nm_hands_approval_here else com.openminis.app.R.string.nm_hands_approval_detail, short), decidable)
         val outcome = runBlocking {
             RiskGate.check(sessionId ?: "hands", GuardKind.SCREEN, assessment, preview = "Tap “$short”", pageUrl = appLabel, elementText = short)
         }
@@ -395,7 +402,7 @@ class HandsOperator(private val context: Context) {
         val appLabel = HandsApps.labelOf(context, pkg)
         val where = appLabel ?: context.getString(com.openminis.app.R.string.nm_hands_this_phone)
         val assessment = RiskAssessment(RiskClass.OUTBOUND, "presses Enter in a message field — that sends it ($where)", appLabel?.let { "app:$it" })
-        capsule.approval(context.getString(com.openminis.app.R.string.nm_hands_approval_detail, context.getString(com.openminis.app.R.string.nm_hands_fx_enter)))
+        capsule.approval(context.getString(com.openminis.app.R.string.nm_hands_approval_here, context.getString(com.openminis.app.R.string.nm_hands_fx_enter)), decidable = true)
         val outcome = runBlocking {
             RiskGate.check(sessionId ?: "hands", GuardKind.SCREEN, assessment, preview = "Enter → send", pageUrl = appLabel, elementText = context.getString(com.openminis.app.R.string.nm_hands_fx_enter))
         }

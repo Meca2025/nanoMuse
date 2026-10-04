@@ -679,6 +679,9 @@ class BrowserUseManager(
             BrowserAction.WAIT_FOR_DOM_STABLE -> return waitForDomStable(input.timeoutMs)
             BrowserAction.NEW_TAB, BrowserAction.CLOSE_TAB, BrowserAction.LIST_TABS ->
                 return BrowserActionResult.error("Tab management actions must be routed through BrowserTabPool")
+            // nanoMuse: handled by the chat before the pool sees it
+            BrowserAction.HAND_OVER ->
+                return BrowserActionResult.error("hand_over is handled by the chat, not by a tab")
         }
 
         // Auto-capture screenshot after visual-change actions

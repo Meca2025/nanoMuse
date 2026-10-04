@@ -10,7 +10,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from './cloud.ts'
 import type {} from './rooms.ts'
-import { AREAS } from './rooms.ts'
+import { AREAS, languageName } from './rooms.ts'
 
 export const name = 'nanomuse-rooms-tools'
 export const inject = ['tools', 'nanomuseRooms', 'nanomuseCloud']
@@ -201,6 +201,8 @@ export function apply(ctx: Context): void {
             } else {
               lines.push('', 'You remember nothing about the person yet; when they tell you something they will expect you to know next time, keep it with remember.')
             }
+            // the words under the face: the person watches the step's own description there
+            lines.push('', `Where a tool takes a \`description\` or \`step\` argument (bash, pwsh, run_code, the computer_* tools), write there what the step does for the person, in ${languageName(rooms.lang)}, in a few words ("打开携程网站", "Check the login page") — it is shown under your face while the tool runs. Fill it in on every such call.`)
             return lines.join('\n')
           },
         }),

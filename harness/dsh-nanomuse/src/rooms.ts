@@ -45,6 +45,7 @@ declare module '@deepseek-ai/dsh-llm' {
 }
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import { mountGuarded } from './admit.ts'
 import type {} from './cloud.ts'
 import { dshHome, json, message, sameOrigin, send } from './cloud.ts'
 import { RelayError } from './relay.ts'
@@ -184,7 +185,7 @@ export interface ActivityRecord {
   /** The agent's last words, cut. */
   words: string
   /** The tool step under way, for the status line under the face. */
-  current: { name: string; title: string; at: number } | null
+  current: { name: string; title: string; at: number; own?: boolean } | null
   steps: ActivityStep[]
   /** How many turns the record covers. */
   turns: number
@@ -335,9 +336,7 @@ export default class NanomuseRooms extends Service {
     this.ctx.effect(() => this.ctx.on('session/event', (session: Session, event: SessionEvent) => this.onEvent(session, event)), 'nanomuse rooms: session events')
     this.ctx.effect(() => this.ctx.on('schedule/changed' as never, (() => void this.refreshAutomations()) as never), 'nanomuse rooms: schedule changes')
     this.ctx.effect(() => this.ctx.nanomuseCloud.onChange(() => void this.syncReady().catch(() => undefined)), 'nanomuse rooms: cloud changes')
-    this.ctx.inject(['webServer'], (ctx) => {
-      ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: API_PREFIX, handler: this.handle }), 'nanomuse rooms: api')
-    })
+    mountGuarded(this.ctx, API_PREFIX, this.handle, 'nanomuse rooms: api')
     this.timer = setInterval(() => void this.tick().catch((error: unknown) => this.warn('tick', error)), CHECK_EVERY_MS)
     const first = setTimeout(() => void this.tick().catch((error: unknown) => this.warn('tick', error)), FIRST_CHECK_MS)
     this.ctx.effect(() => () => {
@@ -493,7 +492,7 @@ export default class NanomuseRooms extends Service {
         const { name, arguments: raw, callId } = event.data
         const title = describeCall(name, raw)
         this.pushStep(record, { at: Date.now(), kind: 'tool', name, title, detail: prettyArgs(raw), result: '', callId: String(callId) })
-        record.current = { name, title, at: Date.now() }
+        record.current = { name, title, at: Date.now(), own: ownWords(raw) !== '' }
         record.status = 'running'
         this.activityChanged(record)
         return
@@ -1612,7 +1611,7 @@ function today(lang: string): string {
   }
 }
 
-function languageName(lang: string): string {
+export function languageName(lang: string): string {
   const base = lang.toLowerCase()
   if (base.startsWith('zh')) return base.includes('tw') || base.includes('hk') || base.includes('hant') ? 'Traditional Chinese' : 'Simplified Chinese'
   if (base.startsWith('ja')) return 'Japanese'
@@ -1811,15 +1810,28 @@ function parseArgs(raw: string): Record<string, unknown> {
 }
 
 /** The step's title as the Activity view shows it: the tool's verb and its object, from the arguments. */
+/** The model's own words for a step, where the tool takes them: dsh's bash, pwsh and run_code
+ * (`description`), the runtime's tools over MCP (`step`). Empty when it gave none. */
+export function ownWords(raw: string): string {
+  const args = parseArgs(raw)
+  for (const key of ['step', 'description']) {
+    const v = args[key]
+    if (typeof v === 'string' && v.trim()) return v.replace(/\s+/g, ' ').trim()
+  }
+  return ''
+}
+
 export function describeCall(name: string, raw: string): string {
   const args = parseArgs(raw)
   const s = (key: string) => (typeof args[key] === 'string' ? (args[key] as string).replace(/\s+/g, ' ').trim() : '')
   const short = (v: string, n = 80) => (v.length > n ? `${v.slice(0, n - 1)}…` : v)
   const base = name.replace(/^mcp__[^_]+(?:_[^_]+)*?__/, '')
+  const own = ownWords(raw)
+  if (own) return short(own)
   switch (base) {
     case 'bash':
     case 'pwsh':
-      return short(s('command') || s('cmd') || s('description'))
+      return short(s('command') || s('cmd'))
     case 'read_file':
     case 'write_file':
     case 'edit_file':

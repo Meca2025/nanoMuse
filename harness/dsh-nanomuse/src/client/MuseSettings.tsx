@@ -253,12 +253,10 @@ export function MuseSettings(props: MuseSettingsProps): ReactNode {
       : null)
 }
 
-/** Muse's theme colours, in its order: blue first, then the pastels, grey and black. */
-export const ACCENTS: readonly string[] = ['#0064d4', '#7fb4ff', '#9b8cf4', '#f28bb8', '#f6a46b', '#f0cc4a', '#5cb85c', '#55c9b5', '#8a8a8e', '#1c1c1e']
-
 /**
  * The General page, laid out as Muse's: the account card, usage bars, language,
- * appearance (mode + theme colour), app behaviour, shortcuts, about. The harness's
+ * appearance (the mode; no theme-colour swatches, as on the phone), app behaviour,
+ * shortcuts, about. The harness's
  * other General rows live on the Advanced › Harness page.
  */
 export function makeGeneralSection(t: Translate, version: string) {
@@ -280,8 +278,6 @@ export function makeGeneralSection(t: Translate, version: string) {
       ? Math.min(100, Math.round((pool.total / (pool.grant ?? 1)) * 100))
       : account && !account.tokens.unlimited && account.tokens.granted > 0 ? Math.min(100, Math.round((account.tokens.used / account.tokens.granted) * 100)) : 0
     const spent = pool ? poolLeft <= 0 : Boolean(account && !account.tokens.unlimited && account.tokens.granted > 0 && account.tokens.remaining <= 0)
-    const color = live.profile.color
-    const pick = (next: string) => { void call('profile', { color: next }).catch(() => undefined) }
     const checkUpdates = () => {
       setChecked('checking')
       window.setTimeout(() => setChecked('latest'), 900)
@@ -320,23 +316,8 @@ export function makeGeneralSection(t: Translate, version: string) {
           : h('div', { className: 'nm-usage-fine' }, live.cloud.signedIn ? t('loading') : t('gnUsageSignedOut'))),
       // language: the harness's own row
       h('div', { className: 'nm-card nm-harness-rows' }, renderSlot('settings.general.item', {}, { only: 'language' })),
-      // appearance: mode (the harness's switch, which carries its own title) and the theme colour
-      h('div', { className: 'nm-card nm-harness-rows' },
-        renderSlot('settings.general.item', {}, { only: 'appearance' }),
-        h('div', { className: 'nm-row' },
-          h('div', { className: 'nm-row-main' }, h('span', { className: 'nm-row-title' }, t('gnThemeColor'))),
-          h('div', { className: 'nm-swatches', role: 'radiogroup', 'aria-label': t('gnThemeColor') },
-            ACCENTS.map((c) => h('button', {
-              key: c,
-              type: 'button',
-              role: 'radio',
-              className: `nm-swatch${(color || ACCENTS[0]) === c ? ' nm-on' : ''}`,
-              'aria-checked': (color || ACCENTS[0]) === c,
-              'aria-label': c,
-              title: c,
-              style: { background: c },
-              onClick: () => pick(c),
-            }))))),
+      // appearance: the mode (the harness's switch, which carries its own title)
+      h('div', { className: 'nm-card nm-harness-rows' }, renderSlot('settings.general.item', {}, { only: 'appearance' })),
       h(ConversationRows, { t }),
       h(AppBehaviorRows, { t }),
       // shortcuts

@@ -83,9 +83,36 @@ def screen_size() -> tuple[int, int]:
     return 0, 0
 
 
+class BlackScreen(RuntimeError):
+    """The capture came back all black: on macOS the sign that Screen Recording is not
+    granted to this process (or was granted after it started), on Linux of a compositor
+    that hands out nothing. Raised instead of returning a black picture as if it were
+    the screen."""
+
+
+BLACK_SCREEN_HINT = (
+    "the screenshot came back all black. On macOS, allow Screen Recording for nanoMuse "
+    "(System Settings → Privacy & Security → Screen Recording), then quit and reopen the "
+    "app — macOS applies that permission only to freshly started processes. On Linux, the "
+    "hands need an X11 session (or XWayland)."
+)
+
+
+def _is_black(img: Any) -> bool:
+    """True when nothing but black came back (every channel's maximum below 8)."""
+    try:
+        extrema = img.getextrema()
+    except Exception:  # noqa: BLE001 — not a Pillow image we can read
+        return False
+    if isinstance(extrema[0], tuple):
+        return all(hi < 8 for _lo, hi in extrema)
+    return bool(extrema[1] < 8)
+
+
 def take_screenshot(max_width: int = DEFAULT_MAX_WIDTH) -> Shot | None:
     """The main screen as JPEG (mss + Pillow) or PNG (a platform tool); None without a
-    display or a way to take one."""
+    display or a way to take one. A capture that is all black raises :class:`BlackScreen`
+    rather than passing for the screen."""
     try:
         import mss  # type: ignore[import-not-found]
         from PIL import Image
@@ -94,17 +121,30 @@ def take_screenshot(max_width: int = DEFAULT_MAX_WIDTH) -> Shot | None:
             mon = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
             grab = sct.grab(mon)
             img = Image.frombytes("RGB", grab.size, grab.bgra, "raw", "BGRX")
+        if _is_black(img):
+            raise BlackScreen(BLACK_SCREEN_HINT)
         width, height = img.size
         if max_width and img.width > max_width:
             img = img.resize((max_width, int(img.height * max_width / img.width)))
         buf = io.BytesIO()
         img.save(buf, "JPEG", quality=80)
         return Shot(buf.getvalue(), "image/jpeg", width, height, img.width, img.height)
+    except BlackScreen:
+        raise
     except Exception as exc:  # noqa: BLE001 — fall through to the platform tools
         logger.debug("mss screenshot not available: {}", exc)
     data = _platform_screenshot()
     if data is None:
         return None
+    try:
+        from PIL import Image
+
+        if _is_black(Image.open(io.BytesIO(data))):
+            raise BlackScreen(BLACK_SCREEN_HINT)
+    except BlackScreen:
+        raise
+    except Exception:  # noqa: BLE001 — without Pillow the picture goes out as it is
+        pass
     width, height = _png_size(data)
     return Shot(data, "image/png", width, height, width, height)
 
@@ -237,7 +277,9 @@ def capture(max_width: int = DEFAULT_MAX_WIDTH) -> dict[str, Any] | None:
 
 
 __all__ = [
+    "BLACK_SCREEN_HINT",
     "DEFAULT_MAX_WIDTH",
+    "BlackScreen",
     "Shot",
     "active_window",
     "capture",

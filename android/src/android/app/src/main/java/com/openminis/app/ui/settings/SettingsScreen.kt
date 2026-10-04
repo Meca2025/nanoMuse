@@ -29,7 +29,6 @@ import androidx.compose.material.icons.outlined.Storage // nanoMuse: Data contro
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.BugReport
-import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Link // nanoMuse: the Connectors row
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Face
@@ -243,9 +242,8 @@ fun SettingsScreen(
                 io.github.nanomuse.ui.muse.MuseRowDivider()
                 io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.settings_skills), icon = Icons.Outlined.Extension, onClick = onSkillsClick)
                 io.github.nanomuse.ui.muse.MuseRowDivider()
-                io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.settings_mcp), icon = Icons.Outlined.Dashboard, onClick = onMcpClick)
-                io.github.nanomuse.ui.muse.MuseRowDivider()
-                // nanoMuse: the services the agent can be let into — the desktop's connectors catalogue.
+                // nanoMuse: one entry for every service the agent can be let into — the connectors
+                // catalogue, with the person's own MCP servers behind it (the MCP page is reached from there).
                 io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.nm_connectors_title), icon = Icons.Outlined.Link, onClick = onConnectorsClick)
                 io.github.nanomuse.ui.muse.MuseRowDivider()
                 // nanoMuse: the phone's screen as a hand — off by default.

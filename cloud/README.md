@@ -170,10 +170,23 @@ counts how many non-member accounts are below the current figure and
 **Apply to existing accounts** (`POST /v1/admin/allowance/apply`) credits each
 of them the difference as a ledger row (`from: allowance`), so a raise from
 ¥10 to ¥20 gives everyone who had ¥10 another ¥10 — and no one twice.
-Lowering the figure only applies to accounts created from then on; a pool is
-never shrunk. **Credit everyone** (`POST /v1/admin/credit-all`, `{"cny": 5,
-"note": "..."}`, ≤ ¥100) is the one-off present: every non-member, enabled
+Lowering the figure only applies to accounts created from then on; the
+allowance machinery never shrinks a pool. **Credit everyone** (`POST
+/v1/admin/credit-all`, `{"cny": 5, "note": "..."}`, −¥100…¥100) is the one-off
+present — or, negative, the one-off claw-back: every non-member, enabled
 account gets the amount, once, as `from: operator`.
+
+**Set a pool to any figure** (0.16). `POST /v1/admin/pool` with `{"account_id"
+| "identifier", ...}` and exactly one of `left_cny` (what should be left right
+now — the pool becomes what is spent plus that), `grant_cny` (the lifetime
+total) or `delta_cny` (a difference, negative takes away), plus an optional
+`note`; the pool never goes below zero, what is spent stays spent. `POST
+/v1/admin/pool/batch` does the same for `account_ids: [...]` (the filtered list
+on the People view — *Set the pool for these N*) or for `all: true` (every
+limited account — *Set everyone's pool* under Settings › Runtime; members and
+disabled accounts are left out). Each account gets a ledger row (`credit_uy`
+signed, `set` the new total) and a `pool.set` line on its timeline, so the
+person sees the adjustment on their account page.
 
 `GET /v1/admin/settings` returns the values in force, the environment's,
 which are overridden, and the count below the allowance; `GET /v1/config`
@@ -432,6 +445,12 @@ curl -X POST -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/adm
 # a one-off present to every non-member account
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"cny":5,"note":"1,000 stars"}' https://$CLOUD_DOMAIN/v1/admin/credit-all
+# set what one account has left (0.16); grant_cny sets the total, delta_cny adds or takes
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"identifier":"13800138000","left_cny":5,"note":"reset"}' https://$CLOUD_DOMAIN/v1/admin/pool
+# the same for everyone limited (or account_ids:[...] for a chosen set)
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"all":true,"left_cny":5}' https://$CLOUD_DOMAIN/v1/admin/pool/batch
 ```
 
 Every response carries `X-Nanomuse-Charged` and `X-Nanomuse-Request` so a user

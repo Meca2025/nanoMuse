@@ -5,14 +5,17 @@
  * where it last clicked, a caption saying what it just did and which window
  * that was. × puts it away for this run; the expand button opens the frame
  * large; "Take over" cancels the running turn so the person has the mouse back.
+ * The frame can be dragged anywhere over the window and resized from its
+ * bottom-right corner; where it was put is remembered (`prefs.stage`).
  * The frames come from the host's `stage` (`live.ts`), the bytes from
  * `nanomuse/cloud/stage/frame?seq=N`.
  */
-import { createElement as h, useEffect, useState, type ReactNode } from 'react'
+import { createElement as h, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { IconClose, IconExpand, IconHand } from './icons.tsx'
 import { useLive, type Live, type LiveStage as Stage, type LiveStageAction } from './live.ts'
+import { setPrefs, usePrefs, type StagePlace } from './prefs.ts'
 import { Sheet } from './ui.tsx'
 
 /** How long after the last hands call the stage stays up without a new frame. */
@@ -66,6 +69,25 @@ export function describeStep(t: Translate, action: LiveStageAction | null, busy:
 
 const POINTED = new Set(['click', 'double_click', 'right_click', 'middle_click', 'move', 'drag', 'scroll'])
 
+/** The frame's width when nothing was chosen: 400px or 38% of the window, whichever is less. */
+export function defaultStageWidth(viewport: number): number {
+  return Math.min(400, Math.round(viewport * 0.38))
+}
+
+const STAGE_MIN_WIDTH = 220
+const STAGE_MARGIN = 8
+
+/** A place that keeps the whole frame inside the window; `frame` is the frame as currently drawn, for its height at the new width. */
+export function clampStage(place: StagePlace, viewport: { width: number; height: number }, frame: { width: number; height: number }): StagePlace {
+  const width = Math.max(STAGE_MIN_WIDTH, Math.min(place.width, viewport.width - 2 * STAGE_MARGIN))
+  const height = frame.width > 0 ? frame.height * (width / frame.width) : frame.height
+  return {
+    width,
+    right: Math.max(STAGE_MARGIN, Math.min(place.right, viewport.width - width - STAGE_MARGIN)),
+    bottom: Math.max(STAGE_MARGIN, Math.min(place.bottom, viewport.height - height - STAGE_MARGIN)),
+  }
+}
+
 export interface LiveStageProps {
   t: Translate
   stop(sessionId: string): Promise<void>
@@ -100,11 +122,73 @@ export function makeLiveStage({ t, stop }: LiveStageProps) {
       setStopping(true)
       void stop(stage.sessionId).catch(() => setStopping(false))
     }
-    return h('div', { className: 'nm-stage-layer' },
+    return h(StageLayer, null,
       h(Frame, { t, live, stage, busy, stopping, onClose: () => setDismissed({ sessionId: stage.sessionId, steps: live.hands.steps }), onExpand: () => setBig(true), onTakeOver: takeOver }),
       big ? h(Sheet, { title: stage.device || t('stageThisComputer'), onClose: () => setBig(false), closeLabel: t('close'), wide: true },
         h('div', { className: 'nm-stage-big' }, h(Picture, { live, stage, busy, dim: false }))) : null)
   }
+}
+
+/**
+ * The floating layer: where the frame sits and how wide it is. Dragging the frame moves it
+ * (the buttons and the picture's own controls excepted), the handle at the bottom-right
+ * corner resizes it; both are kept in prefs and kept inside the window.
+ */
+function StageLayer({ children }: { children?: ReactNode }): ReactNode {
+  const prefs = usePrefs()
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [, bump] = useState(0)
+  const viewport = () => ({ width: window.innerWidth, height: window.innerHeight })
+  const drawn = () => ({ width: ref.current?.offsetWidth ?? 0, height: ref.current?.offsetHeight ?? 0 })
+  const place: StagePlace = prefs.stage ?? { right: 24, bottom: 96, width: defaultStageWidth(window.innerWidth) }
+  const shown = clampStage(place, viewport(), drawn())
+  useEffect(() => {
+    const onResize = () => bump((n) => n + 1)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const track = (event: PointerEvent, move: (dx: number, dy: number) => StagePlace): void => {
+    const target = event.currentTarget as HTMLElement
+    const startX = event.clientX
+    const startY = event.clientY
+    let last = shown
+    const onMove = (e: PointerEvent) => {
+      last = clampStage(move(e.clientX - startX, e.clientY - startY), viewport(), drawn())
+      setPrefs({ stage: last })
+    }
+    const onUp = () => {
+      target.releasePointerCapture?.(event.pointerId)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+    target.setPointerCapture?.(event.pointerId)
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    event.preventDefault()
+  }
+  const onDrag = (event: PointerEvent): void => {
+    if (event.button !== 0) return
+    if ((event.target as HTMLElement).closest('button, a, .nm-stage-resize')) return
+    const from = shown
+    track(event, (dx, dy) => ({ ...from, right: from.right - dx, bottom: from.bottom - dy }))
+  }
+  const onResizeStart = (event: PointerEvent): void => {
+    if (event.button !== 0) return
+    event.stopPropagation()
+    const from = shown
+    const start = drawn()
+    // the corner follows the pointer: the frame grows to the right and down, its top-left staying put
+    track(event, (dx) => {
+      const width = Math.max(STAGE_MIN_WIDTH, from.width + dx)
+      const height = start.width > 0 ? start.height * (width / start.width) : start.height
+      return { width, right: from.right - (width - from.width), bottom: from.bottom - (height - start.height) }
+    })
+  }
+  return h('div', { ref, className: 'nm-stage-layer', style: { right: shown.right, bottom: shown.bottom, width: shown.width }, onPointerDown: onDrag },
+    children,
+    h('div', { className: 'nm-stage-resize', role: 'separator', 'aria-orientation': 'horizontal', 'aria-label': 'resize', onPointerDown: onResizeStart }))
 }
 
 interface FrameProps {

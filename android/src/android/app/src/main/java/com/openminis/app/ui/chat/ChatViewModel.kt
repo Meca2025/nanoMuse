@@ -13,6 +13,7 @@ import com.openminis.app.agent.Level
 import com.openminis.app.agent.ToolLoopDetector
 import com.openminis.app.browser.BrowserActionInput
 import com.openminis.app.browser.BrowserTabPool
+import io.github.nanomuse.browser.nmBrowserHandOver // nanoMuse
 import com.openminis.app.data.db.MessageEntity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Compress
@@ -8570,6 +8571,16 @@ class ChatViewModel(
                                 toolTitle = liveTitle,
                                 content = "",
                             )
+                            // nanoMuse: the words under the face follow the pill — as soon as the
+                            // model's tool_title is in, the status line says it (not only at dispatch).
+                            if (!partialTitle.isNullOrEmpty() && partialTitle != SessionActivityTracker.currentToolTitle.value) {
+                                SessionActivityTracker.updateToolStatus(
+                                    status = "Running: ${prev.toolName}",
+                                    toolName = prev.toolName,
+                                    isRunning = true,
+                                    toolTitle = partialTitle,
+                                )
+                            }
                             // T256 tier 2: gate UI push by tool kind. file_write/file_edit
                             // pump multi-KB JSON through the SSE — pushing every delta
                             // pegs the UI thread for no readable benefit (the user can't
@@ -9962,6 +9973,10 @@ class ChatViewModel(
     private suspend fun executeBrowserUseTool(argsJson: String): ToolExecutionResult {
         val input = BrowserActionInput.parse(argsJson)
             ?: return ToolExecutionResult("Error: Invalid browser_use input", false)
+        // nanoMuse: hand_over — the page needs the person; the browser goes to them and the call waits for Done.
+        if (input.action == com.openminis.app.browser.BrowserAction.HAND_OVER) {
+            return nmBrowserHandOver(input, argsJson)
+        }
 
         return try {
             val result = browserTabPool.execute(input)

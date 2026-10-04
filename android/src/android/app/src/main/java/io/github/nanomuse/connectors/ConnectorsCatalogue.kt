@@ -34,8 +34,12 @@ data class Connector(
 }
 
 sealed class ConnectorAuth {
-    /** Discovery → dynamic client registration → PKCE: nothing to type. */
-    object OAuth : ConnectorAuth()
+    /**
+     * Discovery → dynamic client registration → PKCE: nothing to type. Some services do not
+     * register clients by themselves ([clientIdRequired]): the person creates an OAuth app in the
+     * vendor's developer settings ([developer]) with our redirect URI and pastes its client id.
+     */
+    data class OAuth(val clientIdRequired: Boolean = false, val developer: String? = null) : ConnectorAuth()
 
     /** A key the person pastes; sent as a header (with an optional prefix) or a query parameter. */
     data class Key(val header: String?, val prefix: String, val query: String?, val where: String) : ConnectorAuth()
@@ -87,7 +91,10 @@ object ConnectorsCatalogue {
                     )
                     "none" -> ConnectorAuth.None
                     "auto" -> ConnectorAuth.Auto
-                    else -> ConnectorAuth.OAuth
+                    else -> ConnectorAuth.OAuth(
+                        clientIdRequired = auth?.optBoolean("clientIdRequired", false) == true,
+                        developer = auth?.optString("developer", "")?.ifBlank { null },
+                    )
                 },
                 docs = o.optString("docs", ""),
                 aboutEn = about?.optString("en", "") ?: "",
