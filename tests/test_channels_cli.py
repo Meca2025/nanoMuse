@@ -28,8 +28,9 @@ def free_port() -> int:
 def config(tmp_path: Path) -> Path:
     data = tmp_path / "data"
     path = tmp_path / "config.toml"
+    # Forward slashes: a Windows path's backslashes are escapes inside a basic TOML string.
     path.write_text(
-        f'data_dir = "{data}"\n[agent]\nworkspace = "{tmp_path / "ws"}"\n'
+        f'data_dir = "{data.as_posix()}"\n[agent]\nworkspace = "{(tmp_path / "ws").as_posix()}"\n'
         f'[llm]\napi_key = "k"\n[server]\nport = {free_port()}\n',
         "utf-8",
     )
