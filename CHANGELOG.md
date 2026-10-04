@@ -4,6 +4,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.32] - 2026-10-04 · Union
+
 The four clients, evened out to the union of what each could do — the account, the connectors, the star asks, the agent's steps. What is platform-specific or still open is in [docs/parity.md](docs/parity.md).
 
 ### Android
