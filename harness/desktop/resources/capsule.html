@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>nanoMuse</title>
+<style>
+  /* The small always-on-top card that follows the person out of the app while the hands work:
+     the question the agent asked before a step (Allow once / Deny), or the hold ("Your turn —
+     reason — Done"). Fed by the shell over IPC from the main window, which has the live state;
+     answers go back the same way. Content-protected: never in a screenshot. */
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body { font: 13px/1.4 -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; color: #fff; }
+  .card { margin: 8px; padding: 12px 14px; border-radius: 14px; background: rgba(20,20,24,0.94); box-shadow: 0 10px 30px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px; -webkit-app-region: drag; }
+  .kind { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 6px; }
+  .kind::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c1ff; }
+  .hold .kind::before { background: #f5b027; }
+  .text { font-size: 14px; word-break: break-word; max-height: 5.6em; overflow: hidden; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; -webkit-app-region: no-drag; }
+  button { border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12.5px/1 inherit; font-family: inherit; cursor: pointer; background: rgba(255,255,255,0.14); color: #fff; }
+  button.on { background: #1d6fe0; }
+  button.no { background: rgba(217,48,37,0.85); }
+  button:hover { filter: brightness(1.1); }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const root = document.getElementById('root')
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+    // {cards: [{id, kind: 'approval'|'hold', text, actions: [{id, label, tone}]}]}
+    window.nanomuseCapsule?.onState((s) => {
+      const cards = Array.isArray(s.cards) ? s.cards : []
+      root.innerHTML = cards.map((c) => `<div class="card ${c.kind}"><div class="kind">${esc(c.title)}</div><div class="text">${esc(c.text)}</div><div class="actions">${(c.actions || []).map((a) => `<button data-card="${esc(c.id)}" data-action="${esc(a.id)}" class="${esc(a.tone || '')}">${esc(a.label)}</button>`).join('')}</div></div>`).join('')
+      requestAnimationFrame(() => window.nanomuseCapsule?.resize(document.body.scrollHeight))
+    })
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-card]')
+      if (b) window.nanomuseCapsule?.act(b.dataset.card, b.dataset.action)
+    })
+  </script>
+</body>
+</html>

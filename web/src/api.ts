@@ -17,6 +17,7 @@ import type {
   FileInfo,
   Goal,
   HandsStatus,
+  HoldEvent,
   HubView,
   IdeasData,
   MemoryChange,
@@ -107,7 +108,7 @@ export function frameUrl(thread: string, frame: string): string {
 }
 
 export interface BrowserControl {
-  action: "click" | "type" | "key" | "scroll" | "navigate" | "look" | "handed_back";
+  action: "click" | "type" | "key" | "scroll" | "navigate" | "look" | "take_over" | "back" | "handed_back";
   x?: number;
   y?: number;
   text?: string;
@@ -202,9 +203,14 @@ export const api = {
   askDevice: (device: string, text = "") => request<{ thread: ThreadMeta; event: TimelineEvent | null }>("/api/hub/ask", json({ device, text })),
   // ---- this computer's screen and hands
   hands: () => request<HandsStatus>("/api/hands"),
-  setHands: (body: { enabled?: boolean; backend?: string }) =>
+  setHands: (body: { enabled?: boolean; backend?: string; mode?: string }) =>
     request<HandsStatus>("/api/connections/hands", { method: "PUT", body: JSON.stringify(body) }),
   stopHands: () => request<{ stopped: boolean }>("/api/hands/stop", json({})),
+  // holds (contract C1): take the browser, the screen or the phone over; Done gives it back
+  holds: () => request<HoldEvent[]>("/api/holds"),
+  openHold: (thread: string, tool: "browser" | "computer" | "phone", reason = "") =>
+    request<HoldEvent>("/api/holds", json({ thread, tool, reason })),
+  doneHold: (id: string) => request<HoldEvent>(`/api/holds/${encodeURIComponent(id)}/done`, json({})),
   health: () => request<{ ok: boolean; version: string; auth: boolean }>("/api/health"),
   threads: () => request<ThreadMeta[]>("/api/threads"),
   createThread: (title: string) => request<ThreadMeta>("/api/threads", json({ title })),
@@ -302,6 +308,10 @@ export const api = {
       image_catalog?: string[];
       video_catalog?: string[];
       vision?: string[];
+      /** contract C4: the relay's hands models, recommended first; the two recommendations */
+      gui?: string[];
+      gui_recommended?: string;
+      chat_recommended?: string;
       source: "live" | "catalogue";
       error?: string;
     }>(
@@ -363,7 +373,7 @@ export const api = {
   onboarded: (done = true) => request<{ onboarded: boolean }>("/api/onboarded", json({ done })),
   // browser view
   browserControl: (thread: string, body: BrowserControl) =>
-    request<{ url: string; title: string }>(`/api/browser/${encodeURIComponent(thread)}/control`, json(body)),
+    request<{ url: string; title: string; hold?: HoldEvent | null }>(`/api/browser/${encodeURIComponent(thread)}/control`, json(body)),
   // push
   push: () => request<PushInfo>("/api/push"),
   pushSubscribe: (subscription: Record<string, unknown>) => request<PushInfo>("/api/push/subscribe", json({ subscription })),

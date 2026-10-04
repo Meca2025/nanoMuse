@@ -10,6 +10,7 @@
 //
 
 import SwiftUI
+import Combine
 import UIKit
 
 // MARK: - Catalogue
@@ -414,10 +415,183 @@ enum NanoMuseConnectors {
     }
 }
 
+// MARK: - Which device connected what (contract C3)
+
+/// The one part of a connection that travels: the account's profile
+/// (`/v1/me/profile`) carries a `connectors` list — for every entry its id,
+/// a label, the server's address without any query string, how it signs in
+/// (`oauth` / `key` / `open`), whether it is on, when, and which device
+/// holds it. Never a token, a header or a key: those stay on the device
+/// that signed in. The relay keeps every device's entries side by side and
+/// replaces only the writer's own, so this phone puts what it holds and
+/// reads back what the others hold. Android: connectors/SharedConnectors.kt.
+@MainActor
+final class NanoMuseSharedConnectors: ObservableObject {
+    static let shared = NanoMuseSharedConnectors()
+
+    struct Entry: Equatable, Identifiable {
+        var id: String
+        var label: String
+        var url: String
+        /// `oauth`, `key` or `open`.
+        var auth: String
+        var device: String
+        var deviceId: String
+        var enabled: Bool
+        /// ISO-8601, as the relay keeps it.
+        var at: String
+    }
+
+    private enum Keys {
+        static let others = "nanomuse.shared_connectors.others"
+    }
+
+    /// The relay caps the list at 64 for the whole account; this phone keeps its share modest.
+    nonisolated static let maxMine = 32
+
+    /// The other devices' connections, as last read from the account; kept across restarts.
+    @Published private(set) var others: [Entry]
+
+    private var watching: AnyCancellable?
+    private var fuse: Task<Void, Never>?
+
+    private init() {
+        let raw = UserDefaults.standard.string(forKey: Keys.others) ?? "[]"
+        if let data = raw.data(using: .utf8), let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            others = Self.parse(arr)
+        } else {
+            others = []
+        }
+    }
+
+    /// The other devices' entries for one connector, newest first.
+    func elsewhere(_ connectorId: String) -> [Entry] {
+        others.filter { $0.id == connectorId && $0.enabled }.sorted { $0.at > $1.at }
+    }
+
+    /// This phone's entries for the profile body — the catalogue connectors and the
+    /// person's own remote servers. Only names, addresses and kinds; nothing that opens anything.
+    func mine() -> [[String: Any]] {
+        Self.mine(servers: MCPStore.shared.servers,
+                  catalogue: NanoMuseConnectorsCatalogue.shared.connectors,
+                  device: NanoMuseHub.shared.name, deviceId: NanoMuseHub.shared.deviceId)
+    }
+
+    nonisolated static func mine(servers: [MCPServerConfig], catalogue: [NanoMuseConnector], device: String, deviceId: String) -> [[String: Any]] {
+        let iso = ISO8601DateFormatter()
+        var out: [[String: Any]] = []
+        let sorted = servers.sorted { ($0.createdAt ?? 0) > ($1.createdAt ?? 0) }
+        for server in sorted.prefix(maxMine) {
+            guard let url = server.url?.trimmingCharacters(in: .whitespaces), !url.isEmpty else { continue }
+            let connector = catalogue.first { $0.serverId == server.id }
+            let auth: String
+            if let o = server.oauth, !o.clientId.isEmpty {
+                auth = "oauth"
+            } else if case .oauth = connector?.auth {
+                auth = "oauth"
+            } else if !(server.headers ?? [:]).isEmpty || url.contains("?") {
+                auth = "key"
+            } else if case .key = connector?.auth {
+                auth = "key"
+            } else {
+                auth = "open"
+            }
+            let label = connector?.name ?? ((server.note ?? "").isEmpty ? server.id : server.note!)
+            let bare = url.split(separator: "?", maxSplits: 1).first.map(String.init) ?? url
+            out.append([
+                "id": String(server.id.prefix(64)),
+                "label": String(label.prefix(80)),
+                "url": String(bare.prefix(256)),
+                "auth": auth,
+                "device": String(device.prefix(80)),
+                "device_id": String(deviceId.prefix(80)),
+                "enabled": server.enabled,
+                "at": iso.string(from: Date(timeIntervalSince1970: server.createdAt ?? 0)),
+            ])
+        }
+        return out
+    }
+
+    /// A stable string for "did anything change since the last push".
+    func stamp() -> String {
+        Self.stamp(mine())
+    }
+
+    nonisolated static func stamp(_ entries: [[String: Any]]) -> String {
+        entries.map { e in
+            ["id", "label", "url", "auth", "enabled"].map { k in "\(e[k] ?? "")" }.joined(separator: "|")
+        }.sorted().joined(separator: "\n")
+    }
+
+    /// A profile read from the relay: keep what the other devices hold, drop our own echo.
+    func absorb(_ profile: [String: Any]) {
+        guard let arr = profile["connectors"] as? [[String: Any]] else { return }
+        let ours = NanoMuseHub.shared.deviceId
+        let theirs = Self.parse(arr).filter { !$0.deviceId.isEmpty && $0.deviceId != ours }
+        if theirs != others { others = theirs }
+        if let data = try? JSONSerialization.data(withJSONObject: Self.serialize(theirs)), let text = String(data: data, encoding: .utf8) {
+            UserDefaults.standard.set(text, forKey: Keys.others)
+        }
+    }
+
+    /// Signed out: another account's devices are not ours to list.
+    func forget() {
+        others = []
+        UserDefaults.standard.removeObject(forKey: Keys.others)
+    }
+
+    /// Follow the MCP entries: when what this phone connected changes, the account hears
+    /// about it a moment later — the same debounce the name and the face use.
+    func watch() {
+        guard watching == nil else { return }
+        var last = stamp()
+        watching = MCPStore.shared.$servers
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                let now = self.stamp()
+                guard now != last else { return }
+                last = now
+                self.fuse?.cancel()
+                self.fuse = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    guard !Task.isCancelled else { return }
+                    NanoMuseProfileSync.shared.connectorsChanged()
+                }
+            }
+    }
+
+    nonisolated static func parse(_ arr: [[String: Any]]) -> [Entry] {
+        arr.compactMap { o in
+            let id = (o["id"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+            guard !id.isEmpty else { return nil }
+            let label = (o["label"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+            return Entry(
+                id: id,
+                label: label.isEmpty ? id : label,
+                url: o["url"] as? String ?? "",
+                auth: o["auth"] as? String ?? "open",
+                device: o["device"] as? String ?? "",
+                deviceId: o["device_id"] as? String ?? "",
+                enabled: (o["enabled"] as? Bool) ?? true,
+                at: o["at"] as? String ?? ""
+            )
+        }
+    }
+
+    nonisolated static func serialize(_ list: [Entry]) -> [[String: Any]] {
+        list.map { e in
+            ["id": e.id, "label": e.label, "url": e.url, "auth": e.auth,
+             "device": e.device, "device_id": e.deviceId, "enabled": e.enabled, "at": e.at]
+        }
+    }
+}
+
 // MARK: - UI
 
 struct NanoMuseConnectorsView: View {
     @ObservedObject private var mcp = MCPStore.shared
+    @ObservedObject private var shared = NanoMuseSharedConnectors.shared
     @State private var selected: NanoMuseConnector?
     @State private var query = ""
 
@@ -464,6 +638,36 @@ struct NanoMuseConnectorsView: View {
                 }
             } header: {
                 Text(AppLocalized("Your own servers"))
+            }
+            // Contract C3: what the account's other devices connected. The sign-in itself stays per device.
+            let elsewhere = shared.others.filter { entry in
+                guard entry.enabled else { return false }
+                if let connector = catalogue.connectors.first(where: { $0.serverId == entry.id }) {
+                    return NanoMuseConnectors.state(connector, servers: mcp.servers) != .connected
+                }
+                return !mcp.servers.contains { $0.id == entry.id }
+            }
+            if !elsewhere.isEmpty {
+                Section {
+                    ForEach(elsewhere) { entry in
+                        let connector = catalogue.connectors.first { $0.serverId == entry.id }
+                        let device = entry.device.isEmpty ? AppLocalized("another device") : entry.device
+                        Button {
+                            if let connector { selected = connector }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(connector?.name ?? entry.label).foregroundStyle(.primary)
+                                Text(connector != nil
+                                     ? String(format: AppLocalized("Connected on %@ — sign in here to use it on this phone."), device)
+                                     : String(format: AppLocalized("Connected on %@. Not in this phone's catalogue; add it under Your own servers if you need it here."), device))
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            }
+                        }
+                        .disabled(connector == nil)
+                    }
+                } header: {
+                    Text(AppLocalized("On your other devices"))
+                }
             }
             ForEach(catalogue.categories, id: \.self) { category in
                 let items = catalogue.connectors.filter { $0.category == category && matches($0) }
@@ -556,6 +760,11 @@ private struct NanoMuseConnectorSheet: View {
                     }
                     .padding(.vertical, 4)
                     Text(how).font(.footnote).foregroundStyle(.secondary)
+                    if state != .connected, let other = NanoMuseSharedConnectors.shared.elsewhere(connector.serverId).first {
+                        // Contract C3: another device of the account has this one; the sign-in is per device.
+                        Label(String(format: AppLocalized("Connected on %@ — sign in here to use it on this phone."), other.device.isEmpty ? AppLocalized("another device") : other.device), systemImage: "laptopcomputer.and.iphone")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                     if let docs = connector.docs, let url = URL(string: docs) {
                         Button {
                             openURL(url)

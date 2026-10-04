@@ -11,6 +11,13 @@ the words under the cursor say pay, transfer, send, delete, confirm — then it 
 and asked every time. Every pointed action carries a ``label`` (the words on the button or
 field, as the screenshot shows them); the window in front is the *target* of a standing
 approval, so "always allow in Terminal" never covers the bank's site in a browser.
+
+Applications are asked for one by one: the first action in an application in a conversation
+asks "Let <Muse> use <App>?" (once, this conversation, always — a ``computer_app:<id>``
+grant the Permissions page lists). On macOS the hands can work in one application's window
+(``[hands] mode``, :mod:`nanomuse.computer.mac_window`): ``computer_target`` names it, or
+``app`` on any ``computer_act`` call; the screenshot the model sees is then that window and
+the person keeps the cursor.
 """
 
 from __future__ import annotations
@@ -19,12 +26,16 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import ConfigDict
 
+from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, took_over_note
 from nanomuse.computer.link import ACTIONS, POINTED, ComputerLink
 from nanomuse.config import GUISettings
 from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped
 from nanomuse.phone.screen import Screen
 from nanomuse.schema import RiskLevel, ToolResult
 from nanomuse.tools.base import BaseTool, CallAssessment
+
+# the actions of the tool that are not actions of the hands
+_TOOL_ONLY = ("hand_over", "computer_target")
 
 if TYPE_CHECKING:
     from nanomuse.phone.operator import PhoneOperator
@@ -49,6 +60,35 @@ def _screen_result(screen: Screen, prefix: str = "") -> ToolResult:
     return ToolResult(output=text, images=[screen.image_path] if screen.image_path else None)
 
 
+async def _wait_hold(holds: Any) -> str:
+    """Wait while the user has this computer (a hold is on); the note for the model when
+    there was one, so it looks again before acting on what it last saw."""
+    if holds is None:
+        return ""
+    return took_over_note("computer") if await holds.wait(holds.thread(), "computer") else ""
+
+
+async def _hand_over(holds: Any, link: ComputerLink, reason: str, timeout: float) -> ToolResult:
+    """The operator gives the screen to the user (contract C1): a hold goes on with the
+    reason, the user does their part — a password, a code, a confirmation — and presses
+    Done; the tool returns the screen as they left it."""
+    reason = " ".join(str(reason or "").split())
+    if not reason:
+        return ToolResult.fail("`reason` is required: say what the user should do on the screen")
+    if holds is None:
+        return ToolResult.fail(
+            "hand_over is not available here; ask the user with `ask_user` to do it and tell "
+            "you when it is done"
+        )
+    finished = await holds.hand_over(holds.thread(), "computer", reason, timeout=timeout)
+    note = took_over_note("computer", finished)
+    try:
+        screen = await link.screen()
+    except DeviceError as exc:
+        return ToolResult(output=f"{note}\n\n(the screen could not be read afterwards: {exc})")
+    return _screen_result(screen, note)
+
+
 class ComputerScreen(BaseTool):
     """Read this computer's screen."""
 
@@ -61,19 +101,32 @@ class ComputerScreen(BaseTool):
         "top-left. Call it again after the screen changed. For a whole job on the screen, "
         "prefer `computer_task`."
     )
-    parameters: dict[str, Any] = {"type": "object", "properties": {}}
+    parameters: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "app": {
+                "type": "string",
+                "description": "macOS: look at this application's window only (window mode)",
+            }
+        },
+    }
     risk: RiskLevel = RiskLevel.SAFE
     reads_private_data: bool = True
     link: ComputerLink
+    holds: Any = None
 
     async def execute(self, **kwargs: Any) -> ToolResult:
+        note = await _wait_hold(self.holds)
+        app = str(kwargs.get("app") or "").strip()
+        if app:
+            self.link.set_target(app)
         try:
             screen = await self.link.screen()
         except DeviceStopped as exc:
             return ToolResult.fail(f"{exc} ({STOP_MARKER})")
         except DeviceError as exc:
             return ToolResult.fail(str(exc))
-        return _screen_result(screen)
+        return _screen_result(screen, note)
 
 
 class ComputerAct(BaseTool):
@@ -89,12 +142,22 @@ class ComputerAct(BaseTool):
         "`x`/`y` to `x2`/`y2`; `scroll` at `x`/`y` by `dy` pixels (negative = up); `type` `text` "
         "into the focused field (`clear` first, `submit` to press Enter after); `key` presses "
         '`keys` together (e.g. ["ctrl", "s"]); `open_app` starts an application by name; '
-        "`wait` `seconds`. Use `computer_task` for anything longer than a few steps."
+        "`wait` `seconds`; `hand_over` with a `reason` gives the screen to the user for a "
+        "password, a code or a confirmation only they can give — they press Done and you get "
+        "the screen as they left it. On macOS, `computer_target` with `app` makes the hands "
+        "work in that application's window only (the screenshot is then that window, and "
+        "coordinates are pixels of it; the user keeps the mouse); `app` on any other action "
+        "does the same first. The first action in an application asks the user once. Use "
+        "`computer_task` for anything longer than a few steps."
     )
     parameters: dict[str, Any] = {
         "type": "object",
         "properties": {
-            "action": {"type": "string", "enum": list(ACTIONS)},
+            "action": {"type": "string", "enum": [*ACTIONS, *_TOOL_ONLY]},
+            "reason": {
+                "type": "string",
+                "description": "for hand_over: what the user should do, in their language",
+            },
             "x": {"type": "number"},
             "y": {"type": "number"},
             "x2": {"type": "number"},
@@ -108,7 +171,14 @@ class ComputerAct(BaseTool):
             "clear": {"type": "boolean", "description": "select all before typing"},
             "submit": {"type": "boolean", "description": "press Enter after typing"},
             "keys": {"type": "array", "items": {"type": "string"}},
-            "app": {"type": "string", "description": "for open_app: the application's name"},
+            "app": {
+                "type": "string",
+                "description": (
+                    "for open_app: the application to start; for computer_target (or with any "
+                    "action, macOS): the application whose window the hands work in; empty "
+                    "with computer_target = the whole screen again"
+                ),
+            },
             "seconds": {"type": "number"},
         },
         "required": ["action"],
@@ -116,10 +186,29 @@ class ComputerAct(BaseTool):
     risk: RiskLevel = RiskLevel.MODERATE
     link: ComputerLink
     gui: GUISettings
+    holds: Any = None
+    hand_over_timeout: float = HAND_OVER_TIMEOUT_S
+    # the per-app gate: async (app_id, label) -> bool; None = no per-app asks (tests)
+    app_gate: Any = None
 
     # ------------------------------------------------------------------ risk
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         action = str(args.get("action") or "")
+        if action == "hand_over":
+            return CallAssessment(
+                risk=RiskLevel.SAFE,
+                summary=f"computer_act: hand over — {str(args.get('reason') or '')[:80]}",
+            )
+        if action == "computer_target":
+            wanted = str(args.get("app") or "").strip()
+            return CallAssessment(
+                risk=RiskLevel.SAFE,
+                reads_private_data=True,
+                target=wanted or None,
+                summary=f"computer_act: work in {wanted}"
+                if wanted
+                else "computer_act: whole screen",
+            )
         screen = self.link.last_screen
         app = (screen.app_name or screen.app if screen else "") or None
         where = f" in {screen.title}" if screen and screen.title != "phone" else ""
@@ -184,8 +273,29 @@ class ComputerAct(BaseTool):
     # ------------------------------------------------------------------ doing
     async def execute(self, **kwargs: Any) -> ToolResult:
         action = str(kwargs.get("action") or "")
+        if action == "hand_over":
+            return await _hand_over(
+                self.holds, self.link, str(kwargs.get("reason") or ""), self.hand_over_timeout
+            )
+        if action == "computer_target":
+            return await self._target(str(kwargs.get("app") or ""))
         if action not in ACTIONS:
-            return ToolResult.fail(f"unknown action '{action}'. One of: {', '.join(ACTIONS)}")
+            return ToolResult.fail(
+                f"unknown action '{action}'. One of: {', '.join((*ACTIONS, *_TOOL_ONLY))}"
+            )
+        note = await _wait_hold(self.holds)
+        wanted = str(kwargs.get("app") or "").strip()
+        if wanted and action != "open_app" and wanted != self.link.target_app:
+            # `app` with an action: the window to work in, looked at before acting
+            self.link.set_target(wanted)
+            try:
+                await self.link.screen()
+            except DeviceError as exc:
+                return ToolResult.fail(str(exc))
+        if action != "wait":
+            refused = await self._app_allowed(wanted if action == "open_app" else "")
+            if refused is not None:
+                return refused
         params: dict[str, Any] = {"action": action}
         label = str(kwargs.get("label") or "").strip()
         if label:
@@ -247,12 +357,74 @@ class ComputerAct(BaseTool):
             return ToolResult.fail(f"{exc} ({STOP_MARKER})")
         except DeviceError as exc:
             return ToolResult.fail(str(exc))
-        note = str(raw.get("note") or "")
-        done = "Done" + (f": {note}" if note else "")
+        said = str(raw.get("note") or "")
+        done = (note + "\n\n" if note else "") + "Done" + (f": {said}" if said else "")
         after = self.link.last_screen
         if after is None or not raw.get("looked", True):
             return ToolResult(output=f"{done}. The screen could not be read afterwards.")
         return _screen_result(after, done + ". Screen now:")
+
+    async def _target(self, app: str) -> ToolResult:
+        """``computer_target``: the application the hands work in from now on, and a look
+        at it. Without window mode (not macOS, no pyobjc) the hands stay on the screen and
+        say so."""
+        self.link.set_target(app)
+        if not app.strip():
+            try:
+                screen = await self.link.screen()
+            except DeviceError as exc:
+                return ToolResult.fail(str(exc))
+            return _screen_result(screen, "Working on the whole screen again.")
+        ok, why = self.link.window_available()
+        if not ok or self.link.settings.mode == "screen":
+            why = why or "[hands] mode is 'screen'"
+            try:
+                screen = await self.link.screen()
+            except DeviceError as exc:
+                return ToolResult.fail(str(exc))
+            return _screen_result(
+                screen,
+                f"Window mode is not available here ({why}); the hands work on the whole screen, "
+                f"with {app.strip()} as the application they are about. Screen now:",
+            )
+        try:
+            screen = await self.link.screen()
+        except DeviceStopped as exc:
+            return ToolResult.fail(f"{exc} ({STOP_MARKER})")
+        except DeviceError as exc:
+            return ToolResult.fail(str(exc))
+        frame = self.link.window_frame
+        if frame is None:
+            return _screen_result(
+                screen,
+                f"{app.strip()} could not be worked in as a window ({self.link.status()['window']['reason']}); "
+                "showing the whole screen instead.",
+            )
+        w = frame.window
+        where = f"Working in the window of {w.owner}" + (f" — {w.title}" if w.title else "")
+        return _screen_result(
+            screen,
+            f"{where}. Coordinates are pixels of this {frame.image_width}×{frame.image_height} "
+            "window picture; the user keeps the mouse. Window now:",
+        )
+
+    async def _app_allowed(self, opening: str = "") -> ToolResult | None:
+        """The per-app permission: the first action in an application asks the user
+        ("Let <Muse> use <App>?"). None when allowed, the refusal otherwise."""
+        if self.app_gate is None:
+            return None
+        if opening:
+            app_id, label = opening, opening
+        else:
+            app_id, label = self.link.app_in_front()
+        if not app_id:
+            return None
+        if await self.app_gate(app_id, label):
+            return None
+        return ToolResult.fail(
+            f"the user did not allow the hands in {label}. Do not retry; ask them, or do the "
+            "job another way."
+        )
 
 
 class ComputerTask(BaseTool):
@@ -269,8 +441,9 @@ class ComputerTask(BaseTool):
         "for what `shell`, `files`, `browser`, `web_fetch` or a skill does exactly and "
         "instantly. Give one concrete `goal` with the facts it needs and any `context` you "
         "already have; one goal per call, in order. It stops and asks before paying, sending or "
-        "deleting; it never enters passwords or codes — when it asks, put the question to the "
-        "user and call again with their answer in `context`."
+        "deleting; it never enters passwords or codes — it hands the screen to the user for "
+        "those and carries on when they press Done. When it asks a question instead, put it to "
+        "the user and call again with their answer in `context`."
     )
     parameters: dict[str, Any] = {
         "type": "object",
@@ -288,6 +461,7 @@ class ComputerTask(BaseTool):
     reads_private_data: bool = True
     link: ComputerLink
     operator: Any  # PhoneOperator with the computer dialect
+    holds: Any = None
 
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         goal = str(args.get("goal") or "")
@@ -309,6 +483,7 @@ class ComputerTask(BaseTool):
                 + (self.link.status().get("reason") or "no backend")
             )
         operator: PhoneOperator = self.operator
+        await _wait_hold(self.holds)
         outcome = await operator.run(
             goal, context=str(kwargs.get("context") or ""), app=str(kwargs.get("app") or "")
         )

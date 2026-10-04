@@ -68,6 +68,12 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
               {event.stage === "failed" && t("That did not work")}
             </div>
             <div className="mt-0.5 text-[14px] leading-snug">{event.description}</div>
+            {event.reference && (
+              <div className="mt-1.5 flex items-center gap-2 text-[12px] text-muted">
+                <img src={fileUrl(event.reference)} alt="" draggable={false} className="h-9 w-9 rounded-lg object-cover" />
+                {t("drawn from the picture you attached")}
+              </div>
+            )}
           </div>
         </div>
 

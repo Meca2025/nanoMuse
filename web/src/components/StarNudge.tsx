@@ -13,7 +13,7 @@ import { primaryBtn, secondaryBtn } from "./Form";
  * finished, after a face is drawn in the studio, and when the allowance is used up (a row
  * among the ways on). Each moment is asked once in this browser; going to GitHub from any of
  * them ends them all. A card where the moment is, never a dialog — and the tone is a thank
- * you, not a bill: your support is what keeps us going.
+ * you, not a bill: a star tells the people building it that it helped.
  */
 export type StarMoment = "signed_in" | "first_task" | "tenth_task" | "new_look";
 
@@ -39,14 +39,14 @@ export function starText(t: (s: string) => string, m: StarMoment): string {
   switch (m) {
     case "signed_in":
       return t(
-        "Welcome aboard. nanoMuse is free, open source and non-profit — a personal agent that belongs to everyone who runs it. If you believe in that, a star on GitHub is the biggest support you can give: it is how the next person finds their way here.",
+        "Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.",
       );
     case "first_task":
-      return t("First task done. If nanoMuse helped, a star on GitHub would mean a lot to the people building it — your support is what keeps us going.");
+      return t("First task done. If nanoMuse helped, a star on GitHub tells the people building it that it did.");
     case "tenth_task":
-      return t("Ten tasks together already. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try — and tells us to keep going.");
+      return t("Ten tasks together. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try.");
     case "new_look":
-      return t("A new face, drawn just for you. If you like what nanoMuse is becoming, a star on GitHub helps more people meet it — your support is what keeps us going.");
+      return t("A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.");
   }
 }
 
@@ -112,7 +112,7 @@ export function StarNudge({ text, onDone, className }: { text: string; onDone: (
       <div className="flex items-start gap-2.5">
         <Star size={18} className="mt-0.5 shrink-0 text-amber-500" />
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-semibold leading-snug">{t("Your support is what keeps us going")}</div>
+          <div className="text-[14px] font-semibold leading-snug">{t("A star on GitHub helps")}</div>
           <p className="mt-1 text-[13px] leading-relaxed text-fg/85">{text}</p>
         </div>
       </div>

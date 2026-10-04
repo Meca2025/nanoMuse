@@ -148,9 +148,9 @@ i.en,i.zh{font-style:normal}
     <i class="en">For every day, install the phone app — the fullest, the whole agent runs on the phone — and the desktop app on your computer. The same account is the same nanoMuse everywhere. <a href="https://nanomuse.cn/#download">Get the phone and desktop apps</a></i>
   </div>
   <div class="notice">
-    <b><a href="https://nanomuse.cn/#open-source" rel="noopener"><i class="zh">免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体</i><i class="en">Free · Open source · Non-profit — open source, built together: a personal agent for all</i></a></b>
-    <i class="zh">每个账号都有一份由开发者承担的免费模型额度，用完可以换自己的 key。默认不保存你的消息，数据不会出售。</i>
-    <i class="en">Every account starts with an allowance of model use paid by the developer; after that, your own key. Messages are not stored by default and nothing is sold.</i>
+    <b><a href="https://nanomuse.cn/#open-source" rel="noopener"><i class="zh">免费、开源、非盈利</i><i class="en">Free, open source, non-profit</i></a></b>
+    <i class="zh">每个账号都有一份由开发者承担的免费模型额度，用完换自己的 key：中国大陆用阿里云百炼，海外用 OpenRouter。默认不保存你的消息，数据不会出售。</i>
+    <i class="en">Every account starts with an allowance of model use paid by the developer; after that, your own key — Alibaba Cloud Bailian in mainland China, OpenRouter elsewhere. Messages are not stored by default and nothing is sold.</i>
     <br><a href="https://github.com/nano-muse/nanoMuse" rel="noopener"><i class="zh">GitHub</i><i class="en">GitHub</i></a><a href="https://nanomuse.cn/own-key" rel="noopener"><i class="zh">换自己的 key</i><i class="en">Bring your own key</i></a>
   </div>
   <div class="foot">

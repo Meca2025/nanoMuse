@@ -60,12 +60,12 @@ Provider recipes:
 |---|---|---|---|
 | DeepSeek | `deepseek-flash` | `https://api.deepseek.com` | default |
 | Kimi (Moonshot) | `kimi-k2.6` | `https://api.moonshot.cn/v1` | |
-| Qwen (阿里云百炼) | `qwen3.7-plus` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | |
+| 阿里云百炼 (Alibaba Cloud Bailian) | `deepseek-v4.1-flash` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | mainland China; the hands model `qwen3.8-27b` is on the same endpoint |
 | GLM (智谱) | `glm-5.2` | `https://open.bigmodel.cn/api/paas/v4` | |
 | 豆包 (火山方舟) | your endpoint id | `https://ark.cn-beijing.volces.com/api/v3` | models are versioned deployments; the app lists yours |
 | MiniMax | `MiniMax-M3` | `https://api.minimaxi.com/v1` | |
 | OpenAI | `gpt-5.6-sol` | `https://api.openai.com/v1` | `provider = "openai_responses"` also works |
-| OpenRouter | `deepseek/deepseek-flash` | `https://openrouter.ai/api/v1` | |
+| OpenRouter | `deepseek/deepseek-v4.1-flash` | `https://openrouter.ai/api/v1` | outside mainland China; the hands model `qwen/qwen3.8-27b` is on the same endpoint |
 | Ollama | `qwen3:8b` | `http://localhost:11434/v1` | `api_key = "ollama"`; see [Local models](#local-models) |
 | vLLM / LM Studio | your served name | `http://localhost:8000/v1` | set `tool_mode = "prompt"` if the server ignores `tools` |
 | Company gateway | as required | as required | use `extra_headers` / `extra_body`; pick the provider by the API shape the gateway speaks |
@@ -82,7 +82,7 @@ The same presets are offered in the app (*Connections → Model*, and on first r
 
 ### Pictures
 
-Pictures the user attaches in chat are sent to the model as image content (Chat Completions `image_url` parts, Responses `input_image`), scaled to 1568 px on the long side first. `vision = "auto"` (the default) sends them and, when the endpoint refuses a request with images — DeepSeek, Ollama for a model without vision ("model does not support multimodal requests") — sends the same request with the text only, drops pictures for the rest of the run, and the app tells the user once; the message the model gets then says which pictures it cannot see, so it does not describe what it never saw. `on` sends them always and a refusal is an error. `off` never sends them — the model gets the file names, and text files, PDFs and spreadsheets it reads with `files` either way. Vision models that work here: GPT-4o and later, Claude through an OpenAI-compatible gateway, Gemini, Qwen-VL, `gemma3` and `llava` on Ollama.
+Pictures the user attaches in chat are sent to the model as image content (Chat Completions `image_url` parts, Responses `input_image`), scaled to 1568 px on the long side first. `vision = "auto"` (the default) sends them and, when the endpoint refuses a request with images — DeepSeek, Ollama for a model without vision ("model does not support multimodal requests") — sends the same request with the text only, drops pictures for the rest of the run, and the app tells the user once; the message the model gets then says which pictures it cannot see, so it does not describe what it never saw. `on` sends them always and a refusal is an error. `off` never sends them — the model gets the file names, and text files, PDFs and spreadsheets it reads with `files` either way. Vision models that work here: GPT-4o and later, Claude through an OpenAI-compatible gateway, Gemini, Qwen-VL, `qwen3.8-*`, `gemma3` and `llava` on Ollama. Some ids are known in advance, so no request is wasted: DeepSeek models are text-only unless the id contains `v4.1`, `vision` or `ocr`; `qwen*-vl` and `qwen3.8-*` see.
 
 ### Local models
 
@@ -273,6 +273,19 @@ timeout_ms = 30000
 
 Logins made in Chromium live in `<workspace>/browser-profile/` and survive a restart; on the phone they live in the app's WebView. The two backends, the take-over, the logged-in `fetch` and what cannot log in inside a WebView: [browser.md](browser.md).
 
+### Hands on this computer (`[hands]`)
+
+```toml
+[hands]
+enabled         = false    # the switch is Devices → Hands on this computer in the app
+backend         = "auto"   # auto | pyautogui | xdotool (X11)
+mode            = "auto"   # auto | screen | window — window: one app's window on macOS, events to its process, your mouse untouched; auto = window on macOS once an app is named
+max_image_width = 1600
+settle_s        = 0.6
+```
+
+The model, the step cap and the sensitive words are `[gui]`'s. Window mode, the per-app ask (*Let <Muse> use <App>?*, a `computer_app:<id>` grant) and the macOS permissions: [every-device.md](every-device.md#hands-on-this-computer).
+
 ### The phone (`[gui]`)
 
 With this on, the agent can look at a connected phone's screen and tap, type and swipe in its apps — the way to reach 12306, 微信 or 支付宝, which have no API. Off by default; the *Phone* card on the Connections screen is the same switch. How it works and what Sentinel does with it: [gui.md](gui.md).
@@ -289,7 +302,7 @@ device_timeout_s = 20.0              # how long to wait for the phone to answer
 sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first
 ```
 
-`model`, `base_url` and `api_key` fall back to `[llm]` when empty; a key is only needed when the operator's `base_url` is a different service. Traces of every phone task go to `<data_dir>/phone-traces/` (the last 200 are kept; `nanomuse phone traces`).
+`model`, `base_url` and `api_key` fall back to `[llm]` when empty — with one exception: signed in to nanoMuse Cloud with the relay as the model, an empty `model` means the relay's hands model (`qwen3.8-27b` unless `/v1/models` names another), not the chat model: the chat default (`deepseek-v4.1-flash`) reads pictures, but the hands want the model trained to point at things on a screen. A key is only needed when the operator's `base_url` is a different service. Traces of every phone task go to `<data_dir>/phone-traces/` (the last 200 are kept; `nanomuse phone traces`).
 
 ### MCP servers
 

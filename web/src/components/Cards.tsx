@@ -32,11 +32,13 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, fileUrl, frameUrl } from "../api";
 import { AllowanceWays } from "./AllowanceWays";
 import { t, useT } from "../i18n";
+import { useStore } from "../store";
 import type {
   ApprovalEvent,
   ArtifactEvent,
   BrowserEvent,
   HandsEvent,
+  HoldEvent,
   NoticeEvent,
   QuestionEvent,
   RiskLevel,
@@ -92,6 +94,7 @@ export function toolIcon(tool: string, size = 15): ReactNode {
     case "computer_act":
       return <MousePointerClick size={size} />;
     case "computer_task":
+    case "computer_app":
       return <Hand size={size} />;
     case "phone_screen":
     case "phone_act":
@@ -196,6 +199,10 @@ export function grantSubject(tool: string, target?: string | null, args?: Record
       // another device operating this computer: the grant is bound to the device's id;
       // the card knows its name
       return t("the device {name}", { name: typeof args?.device === "string" && args.device ? args.device : target });
+    case "computer_app":
+      // the hands in one application ("Let <Muse> use <App>?"): bound to the bundle id or
+      // name; the card knows the name as the menu bar shows it
+      return t("the hands in {app}", { app: typeof args?.name === "string" && args.name ? args.name : target });
     default:
       return target;
   }
@@ -506,10 +513,14 @@ export function BrowserCard({ event, onOpen }: { event: BrowserEvent; onOpen: (i
  */
 export function HandsCard({ event, name = "nanoMuse" }: { event: HandsEvent; name?: string }) {
   const t = useT();
+  const { state, toast } = useStore();
   const [stopping, setStopping] = useState(false);
+  const [holding, setHolding] = useState(false);
   const live = event.status === "live";
   const last = event.last;
   const where = [event.app, event.title].filter(Boolean).join(" · ");
+  // the hold on this computer for this chat, if one is on: the person has the screen
+  const hold = state.holds.find((h) => h.thread === event.thread && h.tool === "computer");
   const stop = async () => {
     setStopping(true);
     try {
@@ -518,6 +529,16 @@ export function HandsCard({ event, name = "nanoMuse" }: { event: HandsEvent; nam
       /* the card closes when the runtime says so */
     } finally {
       setStopping(false);
+    }
+  };
+  const takeOver = async () => {
+    setHolding(true);
+    try {
+      await api.openHold(event.thread, "computer");
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setHolding(false);
     }
   };
   return (
@@ -545,11 +566,22 @@ export function HandsCard({ event, name = "nanoMuse" }: { event: HandsEvent; nam
             )}
             {where && <div className="mt-1 truncate text-[12px] text-muted">{where}</div>}
             {event.notice && <div className="mt-1.5 rounded-2xl bg-amber-500/12 px-3 py-1.5 text-[12.5px] text-amber-700 dark:text-amber-300">{event.notice}</div>}
+            {live && hold && <HoldStrip hold={hold} />}
           </div>
         </div>
         <div className="flex items-center gap-2 border-t border-border/70 px-4 py-2 text-[12px] text-muted">
           <span>{t("{n} steps", { n: event.steps })}</span>
           <span className="ml-auto">{timeShort(event.updated_ts ?? event.ts)}</span>
+          {live && !hold && (
+            <button
+              type="button"
+              onClick={() => void takeOver()}
+              disabled={holding}
+              className="ml-1 inline-flex items-center gap-1.5 rounded-full bg-accent/12 px-3 py-1 text-[12.5px] font-semibold text-accent transition active:scale-95 disabled:opacity-60"
+            >
+              <Hand size={11} /> {t("Take over")}
+            </button>
+          )}
           {live && (
             <button
               type="button"
@@ -567,6 +599,121 @@ export function HandsCard({ event, name = "nanoMuse" }: { event: HandsEvent; nam
 }
 
 /** One computer action in words: "Clicked “Save”", "Typed 3 words", "Pressed ctrl+s". */
+/**
+ * "Your turn" inside a live card (the hands card, the browser viewer): the hold's reason and
+ * the Done button — the same state the chat's hold card shows, where the person is looking.
+ */
+export function HoldStrip({ hold, compact }: { hold: HoldEvent; compact?: boolean }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const done = async () => {
+    setBusy(true);
+    try {
+      await api.doneHold(hold.id);
+    } catch {
+      /* the strip goes when the hold goes off */
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={cx("flex items-center gap-2 rounded-2xl bg-amber-500/12 px-3 text-amber-800 dark:text-amber-200", compact ? "py-1.5 text-[12.5px]" : "mt-1.5 py-2 text-[13px]")}>
+      <Hand size={14} className="shrink-0" />
+      <span className="min-w-0 flex-1 leading-snug">{holdLine(hold, t)}</span>
+      <button
+        type="button"
+        onClick={() => void done()}
+        disabled={busy}
+        className="shrink-0 rounded-full bg-fg px-3 py-1 text-[12.5px] font-semibold text-bg transition active:scale-95 disabled:opacity-60"
+      >
+        {busy ? <Loader2 size={13} className="animate-spin" /> : t("Done")}
+      </button>
+    </div>
+  );
+}
+
+function holdThing(tool: string, t: (s: string) => string): string {
+  return tool === "browser" ? t("the browser") : tool === "phone" ? t("the phone") : t("this computer");
+}
+
+/** The one line of a hold: "Your turn — sign in to Gmail" or "You took over the browser". */
+export function holdLine(hold: HoldEvent, t: (s: string, v?: Record<string, string | number>) => string): string {
+  if (hold.by === "agent") return hold.reason ? t("Your turn — {reason}", { reason: hold.reason }) : t("Your turn");
+  return t("You took over {thing}", { thing: holdThing(hold.tool, t) });
+}
+
+/**
+ * A hold in the chat (contract C1). On: the person has the browser, the screen or the
+ * phone — "Your turn — <reason>" when the agent asked, "You took over …" when they did —
+ * with Done. Off: greyed, with how it ended.
+ */
+export function HoldCard({ event, name = "nanoMuse" }: { event: HoldEvent; name?: string }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const on = event.status === "on";
+  const thing = holdThing(event.tool, t);
+  const done = async () => {
+    setBusy(true);
+    try {
+      await api.doneHold(event.id);
+    } catch {
+      /* the card updates when the runtime says so */
+    } finally {
+      setBusy(false);
+    }
+  };
+  const ended = event.timed_out
+    ? t("{name} waited ten minutes and went on without you.", { name })
+    : event.stale
+      ? t("Ended when the runtime restarted.")
+      : event.by === "agent"
+        ? t("You did it; {name} carried on.", { name })
+        : t("Handed back; {name} carried on.", { name });
+  return (
+    <div className="rise flex justify-start pr-8">
+      <div
+        className={cx(
+          "w-full max-w-[360px] overflow-hidden rounded-3xl rounded-tl-lg border bg-surface shadow-sm",
+          on ? "border-amber-500/50" : "border-border/70 opacity-70",
+        )}
+      >
+        <div className="flex items-start gap-3 px-4 pt-3.5 pb-3">
+          <div className={cx("mt-0.5 rounded-full p-2", on ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-surface-2 text-fg/70")}>
+            <Hand size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[12.5px] font-medium text-muted">
+              {event.tool === "browser" ? t("The browser") : event.tool === "phone" ? t("The phone") : t("This computer")}
+            </div>
+            <div className="mt-0.5 break-words text-[15px] font-semibold leading-snug">{event.by === "agent" ? t("Your turn") : t("You took over {thing}", { thing })}</div>
+            {event.by === "agent" && event.reason && <div className="mt-1 break-words text-[13.5px] leading-snug text-fg/90">{event.reason}</div>}
+            <div className="mt-1.5 text-[12.5px] leading-snug text-muted">
+              {on
+                ? event.by === "agent"
+                  ? t("Do this part yourself, then press Done — {name} looks again and carries on from there.", { name })
+                  : t("{name} waits. Press Done when you are finished and it looks again.", { name })
+                : ended}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 border-t border-border/70 px-4 py-2 text-[12px] text-muted">
+          <span>{timeShort(event.ts)}</span>
+          {on && (
+            <button
+              type="button"
+              onClick={() => void done()}
+              disabled={busy}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-fg px-3.5 py-1 text-[12.5px] font-semibold text-bg transition active:scale-95 disabled:opacity-60"
+            >
+              {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={12} />} {t("Done")}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function describeHandsStep(last: NonNullable<HandsEvent["last"]>, t: (s: string, v?: Record<string, string | number>) => string): string {
   const label = last.label ? `“${last.label}”` : "";
   switch (last.action) {

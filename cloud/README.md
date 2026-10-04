@@ -42,6 +42,17 @@ its base URL.
   each at most) — last writer wins, with a `rev` that grows on every write.
   Devices on the hub hear `{"type": "profile", "rev", "device"}` and fetch it;
   `?face=false` leaves the pictures out. Never a key or a message.
+- **Which device connected what (0.17).** The same profile carries
+  `connectors`: one entry per service a device connected — `id`, `label`,
+  `url`, `auth` (`oauth` / `key` / `open`), `device`, `device_id`, `enabled`,
+  `at` — so another device can say "connected on your Mac; sign in here to use
+  it here". A device's `PUT` replaces only its own entries (those whose
+  `device_id` is the writer's `device`) and leaves the other devices' as they
+  were; `[]` clears its own; a write that carries only `connectors` leaves the
+  name and look alone. At most 64 on an account (`400 too_many_connectors`).
+  The credential never comes along: an entry with a key named like one
+  (`token`, `secret`, `key`, `authorization`, `password`, at any depth) is
+  refused with `400 no_secrets_in_profile` and nothing is stored.
 
 Errors carry a stable `code` the app can turn into a sentence:
 
@@ -54,7 +65,9 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 402 | `out_of_tokens` | grant used up — top up with the admin endpoint |
 | 403 | `account_disabled` | |
 | 404 | `model_not_offered` | not on the menu |
-| 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `invite_url`, `invite_bonus_cny`, `own_key_docs` |
+| 400 | `no_secrets_in_profile` | a profile `connectors` entry carried a key named like a credential; nothing was stored |
+| 400 | `too_many_connectors` | the write would leave more than 64 connectors on the account |
+| 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `region`, `ways` (the ways on in order for that person), `invite_url`, `invite_bonus_cny`, `own_key_docs`, `openrouter_url` |
 | 429 | `code_too_often` / `rate_limited` / `daily_cap` | (`daily_cap` only with the legacy token cap on) |
 | 429 | `too_many_in_flight` | `MAX_IN_FLIGHT` requests of the account are already under way; `retry_after` in the body |
 | 429 | `provider_busy` | the image provider answered 429 even after the relay queued and retried (`IMAGE_CONCURRENCY`, `IMAGE_RETRIES`); `retry_after` seconds in the body |
@@ -112,7 +125,8 @@ for the full list. The ones that matter:
 | `IMPROVE_DEFAULT` | `0` | what *Help improve nanoMuse's AI models* (Data controls) starts as for accounts created from now on: `1` = on until the person turns it off, `0` = off until they turn it on; existing accounts keep their setting. State it in your privacy policy |
 | `PRIVACY_URL` | `https://nanomuse.cn/privacy/` | the policy the apps link from Data controls and the sign-in pages — the one that says what this relay keeps and its default |
 | `INVITE_URL` | `https://nanomuse.cn/web/?invite=` | the link the apps offer to share; the code is appended |
-| `OWN_KEY_DOCS` | `https://nanomuse.cn/own-key` | the guide the apps open for bringing one's own key |
+| `OWN_KEY_DOCS` | `https://nanomuse.cn/own-key` | the guide the apps open for bringing one's own key (Alibaba Cloud Bailian, which signs up mainland China accounts only) |
+| `OPENROUTER_URL` | `https://openrouter.ai/keys` | the page for a key from OpenRouter, the way on for people outside mainland China (0.17) — the apps order the two by the person's `region` |
 | `DAY_OFFSET_H` | 8 | the operator's reports group by local day, midnight UTC+8 (Beijing) |
 | `TRAFFIC_DB` | empty | the site's daily traffic counts (`demo/showcase/mirror/traffic.py`), mounted read-only, for the operator's page; empty = that panel says it is not connected |
 | `WEB_INFO_URL` | empty | nanoMuse Web's gateway (`http://gateway:8000/api/web/info` on the same docker network) for its account and session counts on the operator's page |
@@ -126,7 +140,7 @@ for the full list. The ones that matter:
 | `LOGIN_FAIL_PER_IP_HOUR` | 30 | wrong passwords from one network address per hour across all accounts — a list of numbers tried once each never trips the per-account lock, this does (0.12); 0 = off |
 | `CODE_SENDER` | `log` | `log`, `smtp`, `aliyun` or `both` (SMS for phones, mail for addresses) |
 | `ALIYUN_SMS_API` | `dypns` | `dypns` (号码认证服务 `SendSmsVerifyCode`) or `dysms` (短信服务 `SendSms`) |
-| `CLOUD_MODELS` | Qwen chat + image, Wan video | JSON list to replace the menu, prices included |
+| `CLOUD_MODELS` | DeepSeek + Qwen chat, Qwen image, Wan video | JSON list to replace the menu, prices and lanes (`for`, `recommended_for`) included — see below |
 | `CLOUD_ANY_MODEL_MEMBERS` | `1` | members may name any model of the provider's for its kind (chat, image, video) — see below; `0` = the menu only |
 | `CLOUD_CATALOG` | `1` | list the usable models under the operator's key after the menu in a member's `/v1/models`, read from the provider's own `/models` (0.10) — see below; `0` = the menu only, a member types an id |
 | `CLOUD_CATALOG_TTL_S` | `3600` | how long that list is kept before the provider is asked again |
@@ -137,13 +151,36 @@ for the full list. The ones that matter:
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames); one socket may also send at most 60 frames and 8 MB a second sustained (twice that in a burst) — over it frames are dropped with one `rate_limited` error a second, and a socket that keeps flooding is closed with 4008 (0.13) |
 
-The default menu: `qwen3.8-27b` (recommended; text and images in),
-`qwen3.8-flash` (charged at 0.3×), `qwen-image-3.0` for drawing (¥0.18 a
-picture, 30 000 tokens) and `wan2.2-i2v-flash` for short clips (¥0.10 a second
-at 480P, five seconds, 200 000 tokens per clip; `wan2.2-t2v-plus` when a clip
-starts from words). Until 0.4 the menu had `qwen-image-3.0-pro` (¥0.25 / ¥0.5)
-and `MiniMax/MiniMax-H3` (¥0.5 a second): a new face with its four clips cost
-about ¥9; it is about ¥3 now. Any OpenAI-compatible upstream works for chat; the image and video
+The default menu (0.17): `deepseek-v4.1-flash` (the chat model — text and
+images in, ¥2 / ¥8 per million tokens, charged at 0.7×; it thinks before it
+answers and returns `reasoning_content`), `qwen3.8-27b` (the hands model: the
+GUI model that reads screenshots and drives a phone or a computer, usable for
+chat too; ¥3 / ¥12), `qwen3.8-flash` (charged at 0.3×), `qwen-image-3.0` for
+drawing (¥0.18 a picture, 30 000 tokens) and `wan2.2-i2v-flash` for short
+clips (¥0.10 a second at 480P, five seconds, 200 000 tokens per clip;
+`wan2.2-t2v-plus` when a clip starts from words). Until 0.4 the menu had
+`qwen-image-3.0-pro` (¥0.25 / ¥0.5) and `MiniMax/MiniMax-H3` (¥0.5 a second):
+a new face with its four clips cost about ¥9; it is about ¥3 now.
+
+**Lanes (0.17).** Every chat model says what it is `for` — `chat`, `gui` or
+both — and `recommended_for` names the lane(s) it is the default pick in; both
+ride in each entry's `nanomuse` block of `/v1/models`, and the apps' two
+pickers (the chat model, the hands model) filter on them and take the
+recommended one of each lane as the default. Picture and clip models are for
+neither (`"for": []`; their `kind` says what they do). On the shipped menu
+`deepseek-v4.1-flash` is `for: ["chat"]`, recommended for chat;
+`qwen3.8-27b` is `for: ["gui", "chat"]`, recommended for gui. In
+`CLOUD_MODELS` the fields are `"for"` and `"recommended_for"` (lists of lane
+names; `for` left out means `["chat"]`; a `recommended_for` needs
+`"recommended": true`); the relay logs a line at start when a lane has no
+recommended model or more than one. A thinking model's `enable_thinking` and
+the `reasoning_content` an app sends back in the history go upstream as they
+are, the reasoning in the reply (whole or as stream deltas) comes back
+untouched, and reasoning tokens are counted as completion tokens whichever
+way the provider reports them (`completion_tokens_details.reasoning_tokens`
+inside the figure, or DashScope's `output_tokens_details` apart from it).
+
+Any OpenAI-compatible upstream works for chat; the image and video
 endpoints assume DashScope. Video is relayed under DashScope's own paths
 (`/api/v1/services/aigc/video-generation/video-synthesis`, `/api/v1/tasks/{id}`,
 `/api/v1/uploads`), so the app's video code only needs to point its host at
@@ -245,14 +282,30 @@ sends `reasoning_effort` (or `thinking`, `thinking_budget`) asked for
 thinking, and the shipped `enable_thinking: false` would make Model Studio
 refuse the pair, so the default follows the request. `/v1/me` carries a `spend`
 block (`total`, `grant`, `left`, `unlimited`, `warn` at 80 %, `usd_cny`,
-`total_usd`, `grant_usd`, `left_usd`, `today`, the bonus amounts and
-`own_key_docs`; the 0.4 names `daily_cap` / `left_today` / `resets_at` = 0
-for one more version) and each model in `/v1/models` carries its
-`nanomuse.price_cny`, so the apps show what was spent in both currencies. The
-refusal, `429 allowance_exhausted`, says what is left and where the two ways
-on lead (invite a friend, one's own key) — sign-in and the hub are never
-gated, only the model routes. The admin page shows spend per account and per
-day (`DAY_OFFSET_H`) in ¥ and $.
+`total_usd`, `grant_usd`, `left_usd`, `today`, the bonus amounts,
+`own_key_docs`, `openrouter_url` and `ways`; the 0.4 names `daily_cap` /
+`left_today` / `resets_at` = 0 for one more version) and each model in
+`/v1/models` carries its `nanomuse.price_cny`, so the apps show what was spent
+in both currencies. The refusal, `429 allowance_exhausted`, says what is left
+and where the two ways on lead (invite a friend, one's own key) — sign-in and
+the hub are never gated, only the model routes. The admin page shows spend per
+account and per day (`DAY_OFFSET_H`) in ¥ and $.
+
+**Where the person is (0.17).** `/v1/me` (and the sign-in answers) carry
+`region`: `cn` for an account opened with a mainland China phone number or a
+request whose address the offline geo database places in mainland China,
+`intl` for an address placed anywhere else (Hong Kong, Macao and Taiwan
+included — Bailian does not sign them up), `unknown` when neither is known
+(no geo file, a private address). `spend.ways` lists the ways on in the order
+for that person — `[{"id": "bailian", "url", "mainland_only": true},
+{"id": "openrouter", "url", "mainland_only": false}, {"id": "invite", "url",
+"bonus_cny"}]`, Bailian first for `cn`, OpenRouter first otherwise, the
+invitation last — and the 80 % heads-up and the refusal's `ways` and
+`message` follow the same order: a mainland account is pointed to Bailian's
+free tier, everyone else told that Bailian only signs up mainland accounts and
+that OpenRouter is the easy way outside (one account, one key, pay as you go).
+Nothing is sent anywhere for this: the region is read from the number's
+country code and the local ip2region file.
 
 `SIGNUP_TOKENS=0` (the default) runs the relay without a token ceiling: usage
 is metered and shown, nothing is refused for lack of tokens (`/v1/me` says

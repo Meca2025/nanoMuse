@@ -125,7 +125,7 @@ bridge.attach({
 // before the bridge had its hooks; this call is a no-op when it did connect
 bridge.sync();
 useNanoMuseStore.subscribe((s, prev) => {
-  if (s.serverUrl !== prev.serverUrl || s.token !== prev.token || s.notify !== prev.notify) bridge.sync();
+  if (s.serverUrl !== prev.serverUrl || s.token !== prev.token || s.notify !== prev.notify || s.gui !== prev.gui) bridge.sync();
 });
 // the page around the phone (the showcase site) reaches this app through window.__NANOMUSE__
 installHost();

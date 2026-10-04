@@ -790,6 +790,42 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-room-top { height:
 .nm-idea-card p { font-size: 14px; line-height: 1.6; margin: 0; color: var(--dsw-alias-label-secondary); }
 .nm-idea-card ul { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 .nm-idea-prompt { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--dsw-alias-bg-layer-2); font-size: 13.5px; line-height: 1.55; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; }
+.nm-idea-hero { display: flex; justify-content: center; margin: 2px 0 10px; }
+.nm-idea-hero-mark { font-size: 40px; line-height: 1; }
+.nm-idea-kind { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 13px; color: var(--dsw-alias-label-secondary); }
+.nm-idea-actions { display: flex; gap: 8px; }
+.nm-room-toast { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--dsw-alias-bg-layer-2); font-size: 13px; color: var(--dsw-alias-label-secondary); }
+/* goals: the agent's progress and the flag */
+.nm-goal-bar { position: relative; height: 5px; border-radius: 999px; background: var(--dsw-alias-bg-layer-2); overflow: hidden; margin-top: 6px; }
+.nm-goal-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--nm-accent, #1d6fe0); }
+.nm-goal-bar.nm-attention > span { background: #d9480f; }
+.nm-goal-flag { margin-left: 8px; font-size: 11px; font-weight: 600; color: #d9480f; }
+.nm-goal-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; }
+.nm-goal-progress .nm-goal-bar { flex: 1; margin: 0; }
+.nm-goal-pct { font-size: 12px; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.nm-goal-steps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.nm-goal-steps li { display: flex; align-items: flex-start; gap: 8px; }
+.nm-goal-steps li svg { flex: none; margin-top: 3px; color: var(--dsw-alias-label-secondary); }
+/* the agent's app fences as cards in the chat (goal created, goal update, feed post, new look) */
+.nm-fence { margin: 6px 0; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--dsw-alias-divider, rgba(127,127,127,0.25)); background: var(--dsw-alias-bg-layer-1, transparent); font-size: 14px; }
+.nm-fence-kind { font-size: 12px; font-weight: 500; color: var(--dsw-alias-label-secondary); }
+.nm-fence-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.nm-fence-status { font-size: 12px; font-weight: 600; color: var(--nm-accent, #1d6fe0); }
+.nm-fence-status.nm-attention { color: #d9480f; }
+.nm-fence-title { margin-top: 4px; font-size: 16px; font-weight: 600; }
+.nm-fence-sub { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.nm-fence-steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.nm-fence-steps li::before { content: '☐'; margin-right: 8px; color: var(--dsw-alias-label-secondary); }
+.nm-fence-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.nm-fence-fine { font-size: 12px; color: var(--dsw-alias-label-secondary); }
+.nm-fence-btn { border: 0; background: transparent; color: var(--nm-accent, #1d6fe0); font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; cursor: pointer; }
+.nm-fence-btn:hover { background: var(--dsw-alias-bg-layer-2); }
+.nm-fence-row { display: flex; align-items: center; gap: 10px; }
+.nm-fence-main { flex: 1; min-width: 0; }
+.nm-fence-tile { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: var(--dsw-alias-bg-layer-2); font-size: 18px; flex: none; }
+.nm-fence-face { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; }
+.nm-fence .nm-goal-bar { margin-top: 10px; height: 6px; }
+.nm-clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* goals */
 .nm-goals { padding-top: 8px; }
 .nm-goals-label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--dsw-alias-state-success-primary, #2f9e5f); padding: 6px 0 10px; }
@@ -973,6 +1009,40 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-lib-col-top { heig
 .nm-ask-text { font-size: 14px; line-height: 1.4; word-break: break-word; }
 .nm-ask-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .nm-ask-sub { font-size: 11.5px; color: var(--dsw-alias-label-tertiary); }
+
+.nm-select { width: auto; max-width: 240px; }
+.nm-menu-dot { display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--nm-accent); vertical-align: middle; }
+
+/* ---- the stage's desk: holds and approvals (C1, C2) ------------------- */
+.nm-stage.nm-held { box-shadow: 0 18px 48px rgba(0,0,0,0.35), 0 0 0 2px #f5b027; }
+.nm-stage-pill-on { background: var(--nm-accent); color: #fff; }
+.nm-stage-pill-no { background: rgba(217,48,37,0.85); color: #fff; }
+.nm-stage-note { position: absolute; left: 10px; right: 10px; bottom: 44px; font-size: 11.5px; line-height: 1.35; color: rgba(255,255,255,0.85); text-shadow: 0 1px 2px rgba(0,0,0,0.6); pointer-events: none; }
+.nm-stage-ask { position: absolute; left: 10px; right: 10px; top: 44px; padding: 10px 12px; border-radius: 12px; background: rgba(20,20,24,0.92); color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 8px; }
+.nm-stage-ask-text { font-size: 13px; line-height: 1.4; word-break: break-word; max-height: 5.6em; overflow: hidden; }
+.nm-stage-ask-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---- the look changed from the chat (AvatarChat.tsx) ------------------ */
+.nm-pf-top-space { flex: 1; }
+.nm-ac { position: fixed; left: 50%; bottom: 108px; transform: translateX(-50%); z-index: 58; width: min(440px, calc(100vw - 32px)); padding: 12px 14px 14px; border-radius: 16px; background: var(--dsw-alias-bg-primary, #fff); color: var(--dsw-alias-label-primary); box-shadow: 0 18px 48px rgba(0,0,0,0.22), 0 0 0 1px var(--nm-divider); animation: nm-stage-in 220ms ease-out; display: flex; flex-direction: column; gap: 10px; }
+html[data-nm-profile] .nm-ac { left: calc(50% - 155px); }
+.nm-ac-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.nm-ac-title { font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary); letter-spacing: 0.02em; }
+.nm-ac-desc { margin: 0; font-size: 14px; line-height: 1.45; }
+.nm-ac-hint, .nm-ac-err { margin: 0; font-size: 12.5px; color: var(--dsw-alias-label-secondary); }
+.nm-ac-err { color: var(--dsw-alias-state-error-primary, #b42318); }
+.nm-ac-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--dsw-alias-label-secondary); }
+.nm-ac-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.nm-ac-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nm-ac-tile { position: relative; aspect-ratio: 1; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--nm-hover); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary); font-size: 13px; }
+.nm-ac-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nm-ac-tile:hover:not(:disabled), .nm-ac-tile:focus-visible { outline: 2px solid var(--nm-accent); outline-offset: 2px; }
+.nm-ac-tile:disabled { cursor: default; }
+.nm-ac-n { position: absolute; left: 8px; top: 8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: rgba(0,0,0,0.55); color: #fff; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+.nm-ac-final { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.nm-ac-final-img { width: 160px; height: 160px; border-radius: 16px; object-fit: cover; }
+.nm-ac-done p { margin: 0 0 4px; font-size: 14px; line-height: 1.45; }
+.nm-ac-share-canvas { width: 100%; max-width: 360px; aspect-ratio: 1; border-radius: 14px; display: block; margin: 10px auto 0; box-shadow: 0 6px 24px rgba(0,0,0,0.18); }
 `
 
 /** Put the stylesheet in the head once and mark the document as ours. */

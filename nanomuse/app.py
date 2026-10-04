@@ -10,7 +10,9 @@ from pathlib import Path
 
 from nanomuse import prompts
 from nanomuse.agent import MuseAgent
+from nanomuse.agent.holds import Holds
 from nanomuse.calendar import CalendarFeeds
+from nanomuse.cloud import CLOUD_KEY, DEFAULT_GUI_MODEL, model_url
 from nanomuse.computer.link import ComputerLink
 from nanomuse.config import LLMSettings, Settings
 from nanomuse.contacts import ContactBook
@@ -102,6 +104,11 @@ class NanoMuseApp:
             persistent_approvals_file=settings.data_dir / "approvals.json",
         )
         self.llm = llm or self.make_llm()
+        # Holds: the person takes the browser, the screen or the phone over for a while and
+        # the tools wait (docs/browser.md). The server routes the cards; the CLI has none.
+        self.holds = Holds(emit=getattr(ui, "on_hold", None))
+        # the relay's hands model for the account (set by the hub from /v1/models' `for`)
+        self.cloud_gui_model: str = ""
         # On the phone, the app's own capabilities (clipboard, calendar, alarms …) are an MCP
         # server on 127.0.0.1; it joins the configured ones as `device`.
         self.device = device()
@@ -182,9 +189,30 @@ class NanoMuseApp:
             llm_settings = llm_settings.model_copy(update={"api_key": key})
         return create_llm(llm_settings)
 
+    def llm_is_cloud(self) -> bool:
+        """Whether the chat model is the account: the relay as the endpoint, or the Cloud
+        key from the vault."""
+        llm = self.settings.llm
+        if CLOUD_KEY in str(llm.api_key or ""):
+            return True
+        base = str(llm.base_url or "").rstrip("/")
+        return bool(base) and base == model_url(self.settings.cloud.base_url).rstrip("/")
+
+    def gui_model(self, default_only: bool = False) -> str:
+        """The model the hands use (contract C4): ``[gui] model`` when set; else, with the
+        account, the relay's hands model (``qwen3.8-27b`` unless the relay names another);
+        else the chat model. ``default_only`` answers what it would be without ``[gui]``."""
+        gui, llm = self.settings.gui, self.settings.llm
+        if gui.model and not default_only:
+            return gui.model
+        if self.llm_is_cloud():
+            return self.cloud_gui_model or DEFAULT_GUI_MODEL
+        return llm.model
+
     def make_gui_llm(self) -> BaseLLM:
         """The model for the GUI operator: ``[gui]`` where set, the main model's settings
-        for the rest — so one provider and one key can serve both."""
+        for the rest — so one provider and one key can serve both. With the account and no
+        ``[gui]`` model, the relay's hands model is used, not the chat model."""
         gui, llm = self.settings.gui, self.settings.llm
         key = gui.api_key or (
             llm.api_key if not gui.base_url or gui.base_url == llm.base_url else ""
@@ -196,7 +224,7 @@ class NanoMuseApp:
                 key = ""
         merged = LLMSettings(
             provider=gui.provider if gui.model else llm.provider,
-            model=gui.model or llm.model,
+            model=self.gui_model(),
             base_url=gui.base_url or llm.base_url,
             api_key=key,
             tool_mode="native",
@@ -269,6 +297,7 @@ class NanoMuseApp:
             backend_mode=s.browser.backend,
             default_profile=s.browser.profile,
             link=self.phone,
+            holds=self.holds,
         )
         if not playwright_available() and s.browser.backend != "device" and self.device is None:
             logger.warning(
@@ -281,7 +310,7 @@ class NanoMuseApp:
         """The three phone tools, sharing one link and one operator."""
         assert self.phone is not None
         gui = self.settings.gui
-        act = PhoneAct(link=self.phone, gui=gui)
+        act = PhoneAct(link=self.phone, gui=gui, holds=self.holds)
 
         def language() -> str:
             lang = self.settings.agent.language
@@ -296,16 +325,27 @@ class NanoMuseApp:
             make_llm=self.make_gui_llm,
             language=language,
             traces_dir=self.settings.data_dir / "phone-traces",
+            holds=self.holds,
         )
         self.phone_operator = operator
-        return [PhoneScreen(link=self.phone), act, PhoneTask(link=self.phone, operator=operator)]
+        return [
+            PhoneScreen(link=self.phone, holds=self.holds),
+            act,
+            PhoneTask(link=self.phone, operator=operator, holds=self.holds),
+        ]
 
     def computer_tools(self) -> list[ComputerScreen | ComputerAct | ComputerTask]:
         """The three tools for this computer's screen, sharing one link and one operator
         (the phone's operator loop, speaking the `computer_use` dialect)."""
         assert self.computer is not None
         gui = self.settings.gui
-        act = ComputerAct(link=self.computer, gui=gui)
+
+        async def app_gate(app_id: str, label: str) -> bool:
+            # "Let <Muse> use <App>?" — the agent's name as the person set it
+            muse = str(self.settings.agent.name or "nanoMuse")
+            return await self.sentinel.allow_app(app_id, label, muse)
+
+        act = ComputerAct(link=self.computer, gui=gui, holds=self.holds, app_gate=app_gate)
 
         def language() -> str:
             lang = self.settings.agent.language
@@ -321,12 +361,13 @@ class NanoMuseApp:
             language=language,
             traces_dir=self.settings.data_dir / "computer-traces",
             dialect=COMPUTER,
+            holds=self.holds,
         )
         self.computer_operator = operator
         return [
-            ComputerScreen(link=self.computer),
+            ComputerScreen(link=self.computer, holds=self.holds),
             act,
-            ComputerTask(link=self.computer, operator=operator),
+            ComputerTask(link=self.computer, operator=operator, holds=self.holds),
         ]
 
     def set_hands_enabled(self, enabled: bool) -> None:

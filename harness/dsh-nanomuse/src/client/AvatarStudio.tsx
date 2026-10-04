@@ -31,8 +31,8 @@ const VARIATIONS = [
   'variation 3: a different breed or colour pattern, darker or warmer tones, a small accessory such as a scarf or glasses',
   'variation 4: a playful take — unusual colouring or a tiny outfit, slight head tilt',
 ]
-const KEEP = 'Keep this exact character — same face, colours, outfit, art style, proportions, framing, camera angle and pure white background. Change only the pose and props described. '
-const MOOD_INSTRUCTIONS: Record<string, string> = {
+export const KEEP = 'Keep this exact character — same face, colours, outfit, art style, proportions, framing, camera angle and pure white background. Change only the pose and props described. '
+export const MOOD_INSTRUCTIONS: Record<string, string> = {
   working: 'It now wears over-ear headphones and sits typing on a small open laptop in front of it, focused and content, a faint glow from the screen on its face.',
   waiting: 'It now holds a small glowing crystal ball in both hands at chest height and gazes into it with wide curious eyes, waiting for an answer.',
   happy: 'It is now celebrating, hugging a big glowing yellow five-pointed star, eyes closed with a wide smile. Same white background; no confetti, no night sky, no extra decoration.',
@@ -51,7 +51,7 @@ export function buildPrompt(description: string, index: number, style: string): 
 /** The studio's open/close, shared with the look editor and the agent's request. */
 export const studioBus: { open?: ((description?: string, style?: string) => void) | undefined } = {}
 
-interface Estimate {
+export interface Estimate {
   cny: number
   leftCny: number
   unlimited: boolean
@@ -92,7 +92,7 @@ async function base64Of(blob: Blob): Promise<string> {
 }
 
 /** A still as the account keeps it: square, 512 px, WebP under the relay's size cap. */
-async function still(b64: string): Promise<string> {
+export async function still(b64: string): Promise<string> {
   const canvas = square(await decode(b64), STILL_PX)
   let quality = 0.88
   let blob = await blobOf(canvas, 'image/webp', quality)
@@ -104,7 +104,7 @@ async function still(b64: string): Promise<string> {
 }
 
 /** The chosen candidate as a PNG for the edits (whatever the model handed back). */
-async function png(b64: string): Promise<string> {
+export async function png(b64: string): Promise<string> {
   const img = await decode(b64)
   const canvas = square(img, Math.min(1024, Math.min(img.naturalWidth, img.naturalHeight)))
   return base64Of(await blobOf(canvas, 'image/png'))

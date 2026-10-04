@@ -146,7 +146,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     updated_at    INTEGER NOT NULL,
     device        TEXT NOT NULL DEFAULT '',    -- the device that wrote it (it skips its own echo)
     body          TEXT NOT NULL DEFAULT '{}',  -- name, avatar, emoji, color, style, description
-    face          TEXT NOT NULL DEFAULT ''     -- JSON {mood: base64 WebP} when avatar = "face"
+    face          TEXT NOT NULL DEFAULT '',    -- JSON {mood: base64 WebP} when avatar = "face"
+    connectors    TEXT NOT NULL DEFAULT '[]'   -- 0.17: which device connected which service (never a credential)
 );
 -- 0.11: what each chat model under the operator's key answered when asked (catalog.py):
 -- whether it answers at all, whether it saw the magenta square. Operator data, no person's.
@@ -266,6 +267,9 @@ class Database:
         # accounts that got less. -1 = from before the column; the service fills it with
         # the allowance of the day (seed_allowances), the one they got for all we know.
         add("accounts", "allowance_uy", "INTEGER NOT NULL DEFAULT -1")
+        # 0.17: the connectors each device of the account holds — a label and a sign-in kind
+        # per service, never a credential — merged by the device that wrote them
+        add("profiles", "connectors", "TEXT NOT NULL DEFAULT '[]'")
 
     # -- 0.15: settings the operator changes while the relay runs ------------------------------
 
@@ -1230,22 +1234,26 @@ class Database:
     def profile(self, account_id: str) -> sqlite3.Row | None:
         with self._lock:
             return self._conn.execute(
-                "SELECT rev, updated_at, device, body, face FROM profiles WHERE account_id=?", (account_id,)
+                "SELECT rev, updated_at, device, body, face, connectors FROM profiles WHERE account_id=?", (account_id,)
             ).fetchone()
 
-    def put_profile(self, account_id: str, device: str, body: str, face: str | None) -> int:
+    def put_profile(self, account_id: str, device: str, body: str | None, face: str | None, connectors: str | None = None) -> int:
         """Store the profile and return its new rev. ``face`` None keeps the stored face
-        (a rename should not cost the pictures a round trip); "" clears it."""
+        (a rename should not cost the pictures a round trip); "" clears it. ``body`` None
+        keeps the stored look (a device writing only its connectors); ``connectors`` None
+        keeps the stored list — the service merges by device before it gets here (0.17)."""
         with self.tx() as c:
-            row = c.execute("SELECT rev, face FROM profiles WHERE account_id=?", (account_id,)).fetchone()
+            row = c.execute("SELECT rev, body, face, connectors FROM profiles WHERE account_id=?", (account_id,)).fetchone()
             rev = (int(row["rev"]) if row else 0) + 1
-            kept = face if face is not None else (str(row["face"]) if row else "")
+            kept_face = face if face is not None else (str(row["face"]) if row else "")
+            kept_body = body if body is not None else (str(row["body"]) if row else "{}")
+            kept_conn = connectors if connectors is not None else (str(row["connectors"]) if row else "[]")
             c.execute(
-                """INSERT INTO profiles(account_id, rev, updated_at, device, body, face) VALUES(?,?,?,?,?,?)
+                """INSERT INTO profiles(account_id, rev, updated_at, device, body, face, connectors) VALUES(?,?,?,?,?,?,?)
                    ON CONFLICT(account_id) DO UPDATE SET
                      rev=excluded.rev, updated_at=excluded.updated_at, device=excluded.device,
-                     body=excluded.body, face=excluded.face""",
-                (account_id, rev, now(), device, body, kept),
+                     body=excluded.body, face=excluded.face, connectors=excluded.connectors""",
+                (account_id, rev, now(), device, kept_body, kept_face, kept_conn),
             )
             return rev
 

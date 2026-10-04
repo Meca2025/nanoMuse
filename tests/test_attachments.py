@@ -135,8 +135,16 @@ def fake_chat(monkeypatch: pytest.MonkeyPatch) -> FakeChat:
 
 
 def llm_for(vision: str = "auto") -> OpenAIChatLLM:
+    # a model id that says nothing about pictures (a DeepSeek chat id would be known blind
+    # before the first request; see model_takes_images), so the endpoint's answer decides
     return OpenAIChatLLM(
-        LLMSettings(api_key="k", base_url="http://chat.test/v1", stream=False, vision=vision)
+        LLMSettings(
+            api_key="k",
+            base_url="http://chat.test/v1",
+            model="test-model",
+            stream=False,
+            vision=vision,
+        )
     )  # type: ignore[arg-type]
 
 

@@ -130,6 +130,9 @@ struct MinisApp: App {
         CrashSignalHandler.install()
         // nanoMuse: join the devices hub once the account is signed in (a no-op otherwise).
         Task { @MainActor in NanoMuseHub.shared.autoStart() }
+        // nanoMuse: routines and goal check-ins — the BGAppRefreshTask must be registered before launch finishes.
+        NanoMuseScheduler.registerBackgroundTask()
+        Task { @MainActor in NanoMuseModelMenu.startFollowingPicks() }
         // [T-auto-grouping-default-on] Auto-grouping ships ON. `bool(forKey:)`
         // returns false for an unregistered key, so the default has to be
         // registered here rather than expressed at the (multiple) read sites —
@@ -186,7 +189,7 @@ struct MinisApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                NanoMuseRoot() // nanoMuse: the Muse shell on iPhone; upstream ContentView on iPad and from the drawer
+                NanoMuseRoot() // nanoMuse: the first run, then the Muse shell on iPhone and iPad; upstream ContentView when the shell is off and from the drawer
                     .overlay(alignment: .top) {
                         BackgroundInterruptionBanner()
                     }
@@ -445,6 +448,7 @@ struct MinisApp: App {
     private func handleScenePhaseChange(_ phase: ScenePhase) {
         switch phase {
         case .active:
+            NanoMuseScheduler.shared.appBecameActive() // nanoMuse: run what came due while the phone slept
             let remaining = UIApplication.shared.backgroundTimeRemaining
             if let entry = backgroundEntryDate {
                 let elapsed = Date().timeIntervalSince(entry)
@@ -603,6 +607,7 @@ struct MinisApp: App {
             }
 
         case .background:
+            NanoMuseScheduler.shared.appWentBackground() // nanoMuse: ask for a background refresh, post the due-time notifications
             backgroundEntryDate = Date()
             let remaining = UIApplication.shared.backgroundTimeRemaining
             lifecycleLog.info("[Lifecycle] → Background (remaining: \(Self.formatTimeRemaining(remaining)))")

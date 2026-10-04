@@ -112,7 +112,7 @@
         {
           "id": "subscriptions",
           "emoji": "🔁",
-          "title": "Let's list every subscription that charges you each month and see which to stop.",
+          "title": "Send me your bills — I'll list every subscription that charges you each month, and you decide which to stop.",
           "body": "Give me bill screenshots or statements. I list every recurring charge, its next date and the yearly total; you decide what to cancel and I walk you through each cancellation.",
           "kind": "CHAT",
           "prompt": "Audit my subscriptions: ask me for bill screenshots or statements, then list every recurring charge, its next billing date and the yearly total, and flag the ones I may not need."

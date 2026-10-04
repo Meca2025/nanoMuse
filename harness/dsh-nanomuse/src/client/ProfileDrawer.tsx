@@ -1,20 +1,23 @@
 /**
- * The agent's profile, the panel the Muse desktop slides in from the right
- * when its face is clicked: the big face with a pencil badge (change the look,
- * edit the name), the name, a line for how it is connected, and four tabs —
+ * The agent's page, the panel the face opens (android …/ui/profile/AgentProfileScreen.kt
+ * on a desktop): the big face with a pen badge whose menu is the phone's — Change
+ * avatar (words land in the chat, the flow in AvatarChat.tsx takes them), Edit name,
+ * Avatar studio… — a share button, the name, "online" under it, and four panes:
  * Activity (what each chat did, day by day; an entry opens the task's steps),
- * Approvals (the answers given on approval cards), Reminders (the goals'
- * automations) and Identity (the name with an Edit pill, and the agent's own
- * documents — SOUL.md and MEMORY.md — which open in the editor). The name and
- * the simple looks are written to the account through the host, so the phone
- * wears them too.
+ * Approvals (the standing "always allow" grants with Manage permissions, then the
+ * answers given on cards), Daily (the goals' routines, Manage routines) and Soul &
+ * memory (the name with Edit, SOUL and Memory cards that open in the editor). The
+ * name and the simple looks are written to the account through the host, so the
+ * phone wears them too. Escape closes it.
  */
-import { createElement as h, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { createElement as h, Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { call, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
-import { profileBus, useProfileOpen } from './bus.ts'
-import { IconAlarm, IconBell, IconCheck, IconChevronDown, IconClock, IconClose, IconList, IconPencil, IconShield, IconSparkle, IconSpinner, IconSquare } from './icons.tsx'
+import { profileBus, settingsBus, useProfileOpen } from './bus.ts'
+import { IconAlarm, IconBell, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconClose, IconList, IconPencil, IconShare, IconShield, IconSparkle, IconSpinner, IconSquare } from './icons.tsx'
+import { AvatarShareSheet } from './AvatarShare.tsx'
 import { studioBus } from './AvatarStudio.tsx'
+import { prefillComposer } from './composer.ts'
 import { useLive, type LiveProfile } from './live.ts'
 import type { ChatListState, ChatStatus } from './MuseChats.tsx'
 import { usePrefs } from './prefs.ts'
@@ -22,6 +25,8 @@ import { useRooms, type ActivityRecord, type GoalAutomation } from './rooms.ts'
 import { TaskDetail } from './TaskDetail.tsx'
 import { ago, clockLabel, dayLabel } from './ui.tsx'
 import { win } from './win.ts'
+
+const COMPUTER_SECTION = 'nanomuse-computer'
 
 type Tab = 'activity' | 'approvals' | 'reminders' | 'identity'
 
@@ -51,6 +56,7 @@ function Drawer({ t, stop, openSchedules, useSessions, useSessionStatus }: Profi
   const [tab, setTab] = useState<Tab>('activity')
   const [editing, setEditing] = useState<'none' | 'name' | 'look'>('none')
   const [menu, setMenu] = useState(false)
+  const [share, setShare] = useState(false)
   const [detail, setDetail] = useState<string | null>(null)
   const panel = useRef<HTMLDivElement>(null)
 
@@ -73,30 +79,38 @@ function Drawer({ t, stop, openSchedules, useSessions, useSessionStatus }: Profi
   const name = live.profile.name || t('brand')
   // the status line under the name follows what the agent is doing right now
   const running = rooms.activity.find((r) => r.status === 'running' || r.status === 'waiting')
+  // "online" as on the phone: the agent answers here; the account's state is a matter for Settings
   let status: ReactNode
   if (running) status = h('span', { className: 'nm-pf-status nm-live' }, h(IconSpinner, { size: 13 }), statusWords(t, running))
-  else if (!live.cloud.signedIn) status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot' }), t('pfSignedOut'))
-  else if (live.hub.connected) status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot nm-on' }), t('pfConnected'))
-  else status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot nm-wait' }), t('pfOffline'))
+  else if (live.cloud.signedIn && !live.hub.connected) status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot nm-wait' }), t('pfOffline'))
+  else status = h('span', { className: 'nm-pf-status' }, h('span', { className: 'nm-status-dot nm-on' }), t('pfOnline'))
+  // the phone's "Change avatar": the words land in the chat and the avatar flow takes them from there
+  const changeAvatar = () => {
+    setMenu(false)
+    profileBus.close()
+    prefillComposer(t('pfChangeAvatarPrefill'))
+  }
 
   const tabs: { id: Tab; label: string; icon: ReactNode }[] = [
     { id: 'activity', label: t('pfActivity'), icon: h(IconList, { size: 17 }) },
     { id: 'approvals', label: t('pfApprovals'), icon: h(IconShield, { size: 17 }) },
-    { id: 'reminders', label: t('pfReminders'), icon: h(IconClock, { size: 17 }) },
-    { id: 'identity', label: t('pfIdentity'), icon: h(IconSparkle, { size: 17 }) },
+    { id: 'reminders', label: t('pfDaily'), icon: h(IconClock, { size: 17 }) },
+    { id: 'identity', label: t('pfSoul'), icon: h(IconSparkle, { size: 17 }) },
   ]
 
   let body: ReactNode
   if (editing === 'name') body = h(NameEditor, { t, profile: live.profile, onDone: () => setEditing('none') })
   else if (editing === 'look') body = h(LookEditor, { t, profile: live.profile, onDone: () => setEditing('none') })
   else if (tab === 'activity') body = h(Activity, { t, name, stop, useSessions, open: (id) => setDetail(id) })
-  else if (tab === 'approvals') body = h(Approvals, { t, name, approvals: prefs.approvals })
+  else if (tab === 'approvals') body = h(Approvals, { t, name, approvals: prefs.approvals, grants: live.grants })
   else if (tab === 'reminders') body = h(Reminders, { t, name, openSchedules: () => { profileBus.close(); openSchedules() } })
   else body = h(Identity, { t, name, onEditName: () => setEditing('name') })
 
   return h('aside', { ref: panel, tabIndex: -1, className: 'nm-pf', role: 'complementary', 'aria-label': name },
     h('div', { className: 'nm-pf-top', 'data-window-drag': true },
-      h('button', { type: 'button', className: 'nm-icon-btn', 'aria-label': t('close'), onClick: () => profileBus.close() }, h(IconClose, { size: 16 }))),
+      h('button', { type: 'button', className: 'nm-icon-btn', 'aria-label': t('close'), onClick: () => profileBus.close() }, h(IconClose, { size: 16 })),
+      h('span', { className: 'nm-pf-top-space' }),
+      h('button', { type: 'button', className: 'nm-icon-btn', 'aria-label': t('acShareTitle'), title: t('acShareTitle'), onClick: () => setShare(true) }, h(IconShare, { size: 16 }))),
     h('div', { className: 'nm-pf-head' },
       h('div', { className: 'nm-pf-face' },
         // the face itself opens the same menu as the pen (as on the phone): the look, the name, the studio
@@ -105,9 +119,10 @@ function Drawer({ t, stop, openSchedules, useSessions, useSessionStatus }: Profi
         h('button', { type: 'button', className: 'nm-pf-pen', 'aria-label': t('pfEditName'), 'aria-haspopup': 'menu', 'aria-expanded': menu, onClick: () => setMenu((m) => !m) }, h(IconPencil, { size: 13 })),
         menu
           ? h('div', { className: 'nm-menu nm-pf-menu', role: 'menu' },
-              h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); setEditing('look') } }, h('span', { className: 'nm-menu-item-label' }, t('pfChangeLook'))),
+              h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: changeAvatar }, h('span', { className: 'nm-menu-item-label' }, t('pfChangeAvatar'))),
               h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); setEditing('name') } }, h('span', { className: 'nm-menu-item-label' }, t('pfEditName'))),
-              h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); profileBus.close(); studioBus.open?.(live.profile.description || '', live.profile.style || 'muse') } }, h('span', { className: 'nm-menu-item-label' }, t('pfAvatarStudio'))))
+              h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); profileBus.close(); studioBus.open?.(live.profile.description || '', live.profile.style || 'muse') } }, h('span', { className: 'nm-menu-item-label' }, t('pfAvatarStudio'))),
+              h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); setEditing('look') } }, h('span', { className: 'nm-menu-item-label' }, t('pfChangeLook'))))
           : null),
       h('div', { className: 'nm-pf-name' }, name),
       status),
@@ -116,6 +131,7 @@ function Drawer({ t, stop, openSchedules, useSessions, useSessionStatus }: Profi
           h('button', { key: item.id, type: 'button', role: 'tab', className: `nm-seg-btn${tab === item.id ? ' nm-active' : ''}`, 'aria-selected': tab === item.id, 'aria-label': item.label, title: item.label, onClick: () => setTab(item.id) }, item.icon)))
       : null,
     h('div', { className: 'nm-pf-body' }, body),
+    share ? h(AvatarShareSheet, { t, name, onClose: () => setShare(false) }) : null,
     detail ? h(TaskDetail, { t, sessionId: detail, useSessions, onClose: () => setDetail(null) }) : null)
 }
 
@@ -207,10 +223,27 @@ function Activity({ t, name, stop, useSessions, open }: { t: Translate; name: st
         : h('span', { className: 'nm-pf-row-time' }, clockLabel(r.at, rooms.lang)))))))
 }
 
-function Approvals({ t, name, approvals }: { t: Translate; name: string; approvals: { at: number; toolName: string; reason: string; outcome: 'allowed' | 'rejected' }[] }): ReactNode {
+function Approvals({ t, name, approvals, grants }: { t: Translate; name: string; approvals: { at: number; toolName: string; reason: string; outcome: 'allowed' | 'rejected' }[]; grants: { id: string; target: string; at: number }[] }): ReactNode {
   const [openRow, setOpenRow] = useState<number | null>(null)
-  if (approvals.length === 0) return h('p', { className: 'nm-pf-empty' }, t('pfApprovalsEmpty', { name }))
+  const manage = h('div', { className: 'nm-pf-row nm-clickable', role: 'button', tabIndex: 0, onClick: () => { profileBus.close(); settingsBus.openSection?.(COMPUTER_SECTION) } },
+    h('span', { className: 'nm-pf-row-icon' }, h(IconShield, { size: 18 })),
+    h('div', { className: 'nm-pf-row-main' }, h('div', { className: 'nm-pf-row-title' }, t('pfManagePermissions'))),
+    h('span', { className: 'nm-pf-row-chev' }, h(IconChevronRight, { size: 16 })))
+  // the standing grants first (the phone's list), then what was answered on cards
+  const standing = grants.length
+    ? h(Fragment, null,
+        h('div', { className: 'nm-pf-day' }, t('pfApprovalsAlways')),
+        grants.map((g) => h('div', { key: g.id, className: 'nm-pf-row' },
+          h('span', { className: 'nm-pf-row-icon' }, h(IconCheck, { size: 18 })),
+          h('div', { className: 'nm-pf-row-main' },
+            h('div', { className: 'nm-pf-row-title' }, t('pfAlwaysAllowed', { target: g.target.replace(/^computer_app:/, '') })),
+            h('div', { className: 'nm-pf-row-sub' }, ago(t, g.at))),
+          h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => void call('grants/revoke', { id: g.id }).catch(() => undefined) }, t('pmRevoke')))))
+    : h('p', { className: 'nm-pf-empty' }, t('pfApprovalsEmpty', { name }))
+  if (approvals.length === 0) return h('div', { className: 'nm-pf-rows' }, standing, manage)
   return h('div', { className: 'nm-pf-rows' },
+    standing,
+    manage,
     h('div', { className: 'nm-pf-day' }, t('pfApprovalLog')),
     approvals.map((a, i) => h('div', { key: `${a.at}-${i}`, className: 'nm-pf-row nm-pf-approval', onClick: () => setOpenRow(openRow === i ? null : i) },
       h('span', { className: 'nm-pf-row-icon' }, h(IconShield, { size: 18 })),
@@ -244,14 +277,14 @@ function Reminders({ t, name, openSchedules }: { t: Translate; name: string; ope
   if (all.length === 0) {
     return h('div', { className: 'nm-pf-stack' },
       h('p', { className: 'nm-pf-empty' }, t('pfRemindersEmpty', { name })),
-      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: openSchedules }, t('pfOpenSchedules')))
+      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: openSchedules }, t('pfManageRoutines')))
   }
   return h('div', { className: 'nm-pf-rows' },
     once.length ? h('div', { className: 'nm-pf-day' }, t('pfRemindersOnce')) : null,
     once.map((entry) => row(entry, h(IconBell, { size: 18 }))),
     recurring.length ? h('div', { className: 'nm-pf-day' }, t('pfRemindersDaily')) : null,
     recurring.map((entry) => row(entry, h(IconAlarm, { size: 18 }))),
-    h('div', { className: 'nm-pf-foot' }, h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: openSchedules }, t('pfOpenSchedules'))))
+    h('div', { className: 'nm-pf-foot' }, h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: openSchedules }, t('pfManageRoutines'))))
 }
 
 function Identity({ t, name, onEditName }: { t: Translate; name: string; onEditName(): void }): ReactNode {
@@ -275,6 +308,7 @@ function Identity({ t, name, onEditName }: { t: Translate; name: string; onEditN
       h('div', { className: 'nm-pf-doc-title' }, t('pfMemory')),
       h('div', { className: 'nm-pf-doc-sub' }, rooms.memory.length ? t('pfMemoryCount', { n: rooms.memory.length }) : t('pfDocOpen')),
       h('div', { className: 'nm-pf-doc-foot' }, h('span', null, stamp(memoryAt)), h('span', { 'aria-hidden': true }, '♥'))),
+    h('p', { className: 'nm-pf-empty' }, t('pfHandleWithCare', { name })),
     live.profile.avatar === 'face' ? h('p', { className: 'nm-pf-empty' }, t('pfFaceNote')) : null)
 }
 

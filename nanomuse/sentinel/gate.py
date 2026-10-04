@@ -120,6 +120,60 @@ class Sentinel:
             options.append("always")
         return options
 
+    # ------------------------------------------------------------------ per-app permission
+    APP_TOOL = "computer_app"
+
+    async def allow_app(self, app_id: str, label: str = "", muse: str = "nanoMuse") -> bool:
+        """The hands' first action in an application asks: "Let <Muse> use <App>?" — once,
+        for this conversation, or always. The answer is a grant under
+        ``computer_app:<bundle id or name>``, so the Permissions page lists and revokes it
+        like any other, and ``[sentinel] mode = "auto"`` skips it like any other."""
+        app_id = app_id.strip()[:120]
+        if not app_id:
+            return True
+        label = label.strip()[:80] or app_id
+        key = grant_key(self.APP_TOOL, app_id)
+        task = _current_task.get()
+        conversation = task.conversation_id if task else None
+        if self.settings.mode == "auto":
+            return True
+        grant = self.grants.match(key, conversation)
+        if grant is not None:
+            return True
+        request = ApprovalRequest(
+            tool=self.APP_TOOL,
+            args={"app": app_id, "name": label},
+            summary=f"Let {muse} use {label}?",
+            risk=RiskLevel.MODERATE,
+            reasons=["the first action in this application"],
+            purpose=task.purpose if task else "",
+            target=app_id,
+            grant_key=key,
+            grant_options=["once", "conversation", "always"],
+        )
+        verdict = await self.ui.ask_approval(request)
+        scope = normalize_scope(verdict.scope)
+        if verdict.approved and scope in ("conversation", "always"):
+            self.grants.add(self.APP_TOOL, app_id, scope, conversation)
+        self.audit.record(
+            "app_permission",
+            tool=self.APP_TOOL,
+            target=app_id,
+            summary=request.summary,
+            decision="allow" if verdict.approved else "deny",
+            approved=verdict.approved,
+            approval_scope=scope if verdict.approved else None,
+            reasons=[] if verdict.approved else [verdict.reason or "user declined"],
+            grant_key=key,
+            purpose=task.purpose if task else "",
+        )
+        self.ui.on_sentinel(
+            "allow" if verdict.approved else "deny",
+            request.summary,
+            [] if verdict.approved else [verdict.reason or "user declined"],
+        )
+        return bool(verdict.approved)
+
     # ------------------------------------------------------------------ main entry
     async def guard(self, call: ToolCall, tool: BaseTool) -> ToolResult:
         args = call.arguments

@@ -136,7 +136,7 @@ struct NanoMuseCloudView: View {
                 .foregroundStyle(.secondary)
             if let allowance = config.allowanceCny, allowance > 0 {
                 let amount = "¥" + allowance.formatted(.number.precision(.fractionLength(allowance.rounded() == allowance ? 0 : 2)))
-                Label(AppLocalized("Free to start: \(amount) of credit comes with the account. No card."), systemImage: "gift")
+                Label(String(format: AppLocalized("Free to start: %@ of credit comes with the account. No card."), amount), systemImage: "gift")
                     .font(.subheadline)
             }
         }
@@ -173,7 +173,7 @@ struct NanoMuseCloudView: View {
                 Text(message).foregroundStyle(failed ? Color.red : Color.secondary)
             } else if inviteOpen && codeSent && !usePassword {
                 let bonus = "¥" + (config.inviteeBonusCny ?? 5).formatted(.number.precision(.fractionLength(0)))
-                Text(AppLocalized("A friend’s code adds \(bonus) for both of you on a first sign-in."))
+                Text(String(format: AppLocalized("A friend’s code adds %@ for both of you on a first sign-in."), bonus))
             }
         }
 
@@ -353,7 +353,7 @@ struct NanoMuseCloudRow: View {
                 if let account {
                     let hint = account.hint
                     let left = account.fraction.formatted(.percent.precision(.fractionLength(0)))
-                    Text(AppLocalized("\(hint) · \(left) of the allowance left"))
+                    Text(String(format: AppLocalized("%@ · %@ of the allowance left"), hint, left))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if NanoMuseCloud.isSignedIn {

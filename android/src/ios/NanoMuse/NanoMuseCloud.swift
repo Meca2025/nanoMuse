@@ -78,7 +78,12 @@ enum NanoMuseCloud {
         static let base = "nanomuse.cloud.base"
         static let instance = "nanomuse.cloud.instance_id"
         static let account = "nanomuse.cloud.account"
+        static let fresh = "nanomuse.cloud.fresh_account"
     }
+
+    /// True after a sign-in that created the account, until the first run's password page was answered.
+    static var freshAccount: Bool { UserDefaults.standard.bool(forKey: Keys.fresh) }
+    static func clearFreshAccount() { UserDefaults.standard.removeObject(forKey: Keys.fresh) }
 
     typealias Account = NanoMuseCloudAccount
     typealias CloudError = NanoMuseCloudError
@@ -216,6 +221,9 @@ enum NanoMuseCloud {
             inst = fresh
         }
         UserDefaults.standard.set(inst.id, forKey: Keys.instance)
+        // A sign-in that created the account owes the first run a password page (NanoMuseFirstRun).
+        if (reply["created"] as? Bool) == true { UserDefaults.standard.set(true, forKey: Keys.fresh) }
+        if let region = reply["region"] as? String, !region.isEmpty { UserDefaults.standard.set(region, forKey: "nanomuse.relay.region") }
 
         // The models the relay serves — the same `/v1/models` call every provider gets; the
         // relay includes modalities so a picture model is recognised as one.
@@ -313,23 +321,31 @@ enum NanoMuseCloud {
     /// replaced — someone who already has a key and a group keeps them and gets the relay as
     /// one more provider.
     private static func provisionDefaults(store: ProviderConfigStore, instance: ProviderInstance, models: [[String: Any]]) {
-        let recommended = models.first(where: { model in
-            let meta = model["nanomuse"] as? [String: Any]
-            return (meta?["recommended"] as? Bool) == true && !drawsOnly(model)
-        }) ?? models.first(where: { !drawsOnly($0) })
-        let recommendedChat = recommended?["id"] as? String
+        // Contract C4: the chat opens on the model the relay recommends *for chat*
+        // (`for: ["chat"]`, deepseek-v4.1-flash), never on a hands-only one.
+        let recommendedChat = NanoMuseModelMenu.recommendedChat(models)?["id"] as? String
         let pictureIds = Set(models.filter { drawsOnly($0) }.compactMap { $0["id"] as? String })
 
         let entries = store.entries(for: instance.id).filter { !$0.isHidden }
         let chatEntry = entries.first(where: { $0.model.id == recommendedChat })
             ?? entries.first(where: { !pictureIds.contains($0.model.id) })
         guard let chatEntry else { return }
-        let already = store.modelGroups.contains { $0.memberEntryIds.contains(chatEntry.id) }
-        guard !already else { return }
-        let group = ModelGroup(name: label, memberEntryIds: [chatEntry.id])
-        store.addGroup(group)
-        if store.defaultPrimaryGroupId == nil {
-            store.defaultPrimaryGroupId = group.id
+        // Ours already, with the recommended model or with the person's own choice (a member
+        // who swapped the recommended model for another must not get a second group with the
+        // old one back on signing in again).
+        let already = store.modelGroups.contains { $0.memberEntryIds.contains(chatEntry.id) || ($0.name == label && !$0.memberEntryIds.isEmpty) }
+        if !already {
+            let group = ModelGroup(name: label, memberEntryIds: [chatEntry.id])
+            store.addGroup(group)
+            if store.defaultPrimaryGroupId == nil {
+                store.defaultPrimaryGroupId = group.id
+            }
+        }
+        // The default group must be one that can answer.
+        let def = store.modelGroups.first { $0.id == store.defaultPrimaryGroupId }
+        if def == nil || def?.memberEntryIds.isEmpty == true {
+            store.defaultPrimaryGroupId = (store.modelGroups.first { $0.memberEntryIds.contains(chatEntry.id) }
+                ?? store.modelGroups.first { $0.name == label && !$0.memberEntryIds.isEmpty })?.id
         }
     }
 
@@ -362,6 +378,9 @@ enum NanoMuseCloud {
     static func clear() {
         UserDefaults.standard.removeObject(forKey: Keys.instance)
         UserDefaults.standard.removeObject(forKey: Keys.account)
+        UserDefaults.standard.removeObject(forKey: Keys.fresh)
+        // another account's devices and their connections are not ours to list
+        NanoMuseProfileSync.shared.forget()
     }
 
     private static func trimmed(_ s: String) -> String {

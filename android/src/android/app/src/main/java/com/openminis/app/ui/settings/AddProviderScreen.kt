@@ -94,12 +94,21 @@ fun AddProviderScreen(
     onSaved: () -> Unit,
     preset: String? = null, // nanoMuse: open straight on the form, pre-filled for a known vendor
 ) {
-    // nanoMuse: a preset (from "use your own key" — Alibaba Cloud Bailian) skips the type
-    // and credential steps; the form opens with the vendor's name and public endpoint.
+    // nanoMuse: a preset (from "use your own key" — Alibaba Cloud Bailian, OpenRouter) skips the
+    // type and credential steps; the form opens with the vendor's name and public endpoint —
+    // for OpenRouter on its sign-in (OpenRouterOAuthManager), a key with no paste.
     val presetTemplate = remember(preset) { io.github.nanomuse.cloud.OwnKeyPresets.template(preset) }
     var step by remember { mutableStateOf(if (presetTemplate != null) AddProviderStep.CONFIGURE else AddProviderStep.CHOOSE_TYPE) }
     var selectedType by remember { mutableStateOf<ProviderType?>(presetTemplate?.providerType) }
-    var selectedCredential by remember { mutableStateOf<ProviderCredential?>(if (presetTemplate != null) ProviderCredential.apiKey else null) }
+    var selectedCredential by remember {
+        mutableStateOf<ProviderCredential?>(
+            when (presetTemplate?.id) {
+                null -> null
+                io.github.nanomuse.cloud.OwnKeyPresets.OPENROUTER -> ProviderCredential.oauth
+                else -> ProviderCredential.apiKey
+            },
+        )
+    }
     // [T-android-provider-voice] Non-null when the flow was entered from a
     // Voice Chat Provider template row — preseeds type/base URL/label/appendV1
     // on the configure step (mirrors iOS applyVoiceTemplate).

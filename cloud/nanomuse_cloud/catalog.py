@@ -13,8 +13,9 @@ kin a clip model, speech / transcription / embedding / reranking / live-translat
 left out (they do not answer chat completions), everything else is a chat model, with a
 vision hint for the families known to read pictures.
 
-Names lie, though — DeepSeek V4 on Model Studio reads pictures, half the ``qwen-*`` ids are
-retired and answer 4xx — so since 0.11 the relay *asks each chat model* once (``probe``): a
+Names lie, though — DeepSeek V4.1 on Model Studio reads pictures and V4 does not, half the
+``qwen-*`` ids are retired and answer 4xx — so since 0.11 the relay *asks each chat model*
+once (``probe``): a
 one-word text request, and if that is answered, a one-word question about a small red
 picture. A model that refuses the text request is left off the list; one that names the
 colour is marked as reading pictures (``input_modalities`` carries ``image``), one that does
@@ -54,11 +55,13 @@ _NOT_FOR_US = re.compile(
 _VIDEO = re.compile(r"(^|[-/_.])(t2v|i2v|kf2v|s2v|r2v|v2v|video|animate|seedance|veo|sora)([-/_.]|$)")
 _IMAGE = re.compile(r"(^|[-/_.])(image|t2i|i2i|seedream|flux|stable-diffusion|sdxl|dall-e|imagen|z-image)([-/_.]|$)|image")
 # chat models known to read pictures: the VL and QVQ lines, OCR, the GUI model, the Qwen
-# generations that are multimodal from the start (3.5 on), Kimi K2.5 on, DeepSeek V4 on
-# (checked on Model Studio), GPT-4o/5, Gemini, Claude — the guess before the probe answers
+# generations that are multimodal from the start (3.5 on), Kimi K2.5 on, DeepSeek from
+# V4.1 on (checked on Model Studio: v4.1-flash answers about a picture, v4-flash and
+# v4-pro do not — they guess or return nothing), GPT-4o/5, Gemini, Claude — the guess
+# before the probe answers
 _VISION = re.compile(
     r"(^|[-/_.])(vl|qvq|vision|ocr|gui|gpt-4o|gpt-5|gemini|claude|kimi-k2\.[5-9]|kimi-k[3-9])([-/_.]|$)"
-    r"|qwen3\.[5-9]|qwen[4-9]|deepseek-v[4-9]"
+    r"|qwen3\.[5-9]|qwen[4-9]|deepseek-v4\.[1-9]|deepseek-v[5-9]"
 )
 
 # the probe: one word back, and the colour of a 32×32 magenta square (a PNG of 97 bytes).

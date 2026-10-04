@@ -319,3 +319,136 @@ def test_a_flooding_socket_is_slowed_then_closed(client):
                 pa.receive_json()
         assert closed.value.code == 4008
     assert hub.flood_closes == 1
+
+
+def test_connectors_are_merged_by_device_and_never_hold_a_secret(client):
+    """0.17 (contract C3): each device publishes which services it connected — a label and
+    the sign-in kind, never the credential. The relay keeps one list per account, replaces
+    only the writing device's entries, caps it at 64, refuses anything named like a secret,
+    and tells the other devices on the hub as it does for the look."""
+    key = sign_up(client, "13800138000")
+    auth = {"Authorization": f"Bearer {key}"}
+    assert client.get("/v1/me/profile", headers=auth).json()["connectors"] == []
+
+    # the desk connects two services before the account has a look at all
+    desk = [
+        {"id": "github", "label": "GitHub", "url": "https://api.github.com", "auth": "oauth", "at": "2026-10-01T08:00:00Z"},
+        {"id": "weather", "label": "Weather", "auth": "open", "enabled": False},
+    ]
+    with connect(client, key) as phone:
+        phone.send_json(hello("phone", "phone-1", "Pixel"))
+        phone.receive_json(), phone.receive_json()
+        r = client.put("/v1/me/profile", headers=auth, json={"device": "desk-1", "connectors": desk})
+        assert r.status_code == 200 and r.json() == {"rev": 1, "device": "desk-1"}
+        assert phone.receive_json() == {"type": "profile", "rev": 1, "device": "desk-1"}
+    got = client.get("/v1/me/profile", headers=auth).json()
+    assert got["rev"] == 1 and got["name"] == "" and got["avatar"] == ""  # the look is still unset
+    assert got["connectors"] == [
+        {
+            "id": "github",
+            "label": "GitHub",
+            "url": "https://api.github.com",
+            "device": "desk-1",
+            "device_id": "desk-1",
+            "at": "2026-10-01T08:00:00Z",
+            "auth": "oauth",
+            "enabled": True,
+        },
+        {
+            "id": "weather",
+            "label": "Weather",
+            "url": "",
+            "device": "desk-1",
+            "device_id": "desk-1",
+            "at": got["connectors"][1]["at"],
+            "auth": "open",
+            "enabled": False,
+        },
+    ]
+    assert got["connectors"][1]["at"].endswith("Z")  # stamped by the relay when the device did not say
+    # ``?face=false`` carries them too — a device that reads the light profile sees the connectors
+    light = client.get("/v1/me/profile", params={"face": "false"}, headers=auth).json()
+    assert [c["id"] for c in light["connectors"]] == ["github", "weather"] and "face" not in light
+
+    # the phone adds its own; the desk's stay. Then the desk drops one: only its own list changes.
+    phone_conn = [{"id": "github", "label": "GitHub (phone)", "auth": "oauth", "device": "My Pixel"}]
+    r = client.put("/v1/me/profile", headers=auth, json={"device": "phone-1", "connectors": phone_conn})
+    assert r.status_code == 200 and r.json()["rev"] == 2
+    ids = [(c["device_id"], c["id"]) for c in client.get("/v1/me/profile", headers=auth).json()["connectors"]]
+    assert ids == [("desk-1", "github"), ("desk-1", "weather"), ("phone-1", "github")]
+    r = client.put("/v1/me/profile", headers=auth, json={"device": "desk-1", "connectors": [desk[0]]})
+    assert r.status_code == 200 and r.json()["rev"] == 3
+    after = client.get("/v1/me/profile", headers=auth).json()["connectors"]
+    assert [(c["device_id"], c["id"], c["device"]) for c in after] == [("phone-1", "github", "My Pixel"), ("desk-1", "github", "desk-1")]
+    # an empty list from the phone clears the phone's; the desk's stand
+    r = client.put("/v1/me/profile", headers=auth, json={"device": "phone-1", "connectors": []})
+    assert r.status_code == 200
+    assert [c["device_id"] for c in client.get("/v1/me/profile", headers=auth).json()["connectors"]] == ["desk-1"]
+
+    # the look and the connectors in one write; a look-only write leaves the connectors alone
+    r = client.put(
+        "/v1/me/profile",
+        headers=auth,
+        json={"device": "desk-1", "name": "小火", "avatar": "dragon", "connectors": [desk[1]]},
+    )
+    assert r.status_code == 200
+    got = client.get("/v1/me/profile", headers=auth).json()
+    assert got["name"] == "小火" and [c["id"] for c in got["connectors"]] == ["weather"]
+    r = client.put("/v1/me/profile", headers=auth, json={"device": "phone-1", "name": "小火龙", "avatar": "dragon"})
+    assert r.status_code == 200
+    got = client.get("/v1/me/profile", headers=auth).json()
+    assert got["name"] == "小火龙" and [c["id"] for c in got["connectors"]] == ["weather"]
+
+    # never a credential: a key named like one, at any depth, is a 400 and nothing is stored
+    for leak in (
+        [{"id": "x", "auth": "key", "api_key": "sk-abc"}],
+        [{"id": "x", "auth": "oauth", "token": "t"}],
+        [{"id": "x", "auth": "oauth", "Authorization": "Bearer t"}],
+        [{"id": "x", "auth": "open", "extra": {"password": "p"}}],
+        [{"id": "x", "auth": "open", "extra": [{"client_secret": "s"}]}],
+    ):
+        r = client.put("/v1/me/profile", headers=auth, json={"device": "desk-1", "connectors": leak})
+        assert r.status_code == 400 and r.json()["error"]["code"] == "no_secrets_in_profile", leak
+        assert "sk-abc" not in r.text and "Bearer t" not in r.text
+    assert [c["id"] for c in client.get("/v1/me/profile", headers=auth).json()["connectors"]] == ["weather"]
+
+    # the shape is checked too
+    for bad in (
+        [{"label": "no id", "auth": "open"}],
+        [{"id": "x", "auth": "magic"}],
+        [{"id": "x" * 65, "auth": "open"}],
+        [{"id": "x", "auth": "open", "url": "not a url"}],
+        [{"id": "x", "auth": "open", "at": "yesterday"}],
+        [{"id": "x", "auth": "open", "enabled": "yes"}],
+        [{"id": "x", "auth": "open", "device_id": "someone-else"}],
+        ["github"],
+        "github",
+    ):
+        r = client.put("/v1/me/profile", headers=auth, json={"device": "desk-1", "connectors": bad})
+        assert r.status_code == 400 and r.json()["error"]["code"] == "bad_request", bad
+    r = client.put("/v1/me/profile", headers=auth, json={"connectors": [desk[0]]})  # no device: whose would these be?
+    assert r.status_code == 400
+
+    # at most 64 on the account, after the merge
+    many = [{"id": f"svc-{i}", "auth": "open"} for i in range(63)]
+    assert client.put("/v1/me/profile", headers=auth, json={"device": "phone-1", "connectors": many}).status_code == 200
+    r = client.put("/v1/me/profile", headers=auth, json={"device": "desk-1", "connectors": [desk[0], desk[1]]})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "too_many_connectors"
+    assert client.put("/v1/me/profile", headers=auth, json={"device": "desk-1", "connectors": [desk[0]]}).status_code == 200
+    assert len(client.get("/v1/me/profile", headers=auth).json()["connectors"]) == 64
+
+    # DELETE clears the connectors with the look
+    assert client.delete("/v1/me/profile", headers=auth).status_code == 204
+    assert client.get("/v1/me/profile", headers=auth).json() == {
+        "rev": 0,
+        "updated_at": None,
+        "device": "",
+        "name": "",
+        "avatar": "",
+        "emoji": "",
+        "color": "",
+        "style": "",
+        "description": "",
+        "face": None,
+        "connectors": [],
+    }

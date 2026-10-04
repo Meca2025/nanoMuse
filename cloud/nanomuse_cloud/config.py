@@ -15,6 +15,29 @@ import os
 import re
 from dataclasses import dataclass, field, replace
 
+# What a chat model is for (0.17): the conversation ("chat") or the hands — the GUI model
+# that reads screenshots and drives a phone or a computer ("gui"). A model may do both.
+# The apps keep two settings, a chat model and a hands model, and read `for` to fill
+# each picker; `recommended_for` says which lane a recommended model is recommended in.
+LANES = ("chat", "gui")
+
+
+def _lanes(value: object, what: str) -> tuple[str, ...]:
+    """A lane list from JSON or code, checked: known names, no repeats, in menu order."""
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"{what} is a list of lanes ({', '.join(LANES)})")
+    out: list[str] = []
+    for lane in value:
+        if lane not in LANES:
+            raise ValueError(f"{what}: unknown lane {lane!r} (one of {', '.join(LANES)})")
+        if lane not in out:
+            out.append(str(lane))
+    return tuple(out)
+
 
 @dataclass(frozen=True)
 class ModelSpec:
@@ -27,6 +50,13 @@ class ModelSpec:
     kind: str = "chat"  # chat | image | video
     input_modalities: tuple[str, ...] = ("text",)
     output_modalities: tuple[str, ...] = ("text",)
+    # The lanes a chat model serves, serialised as `for`: ("chat",), ("gui",) or both;
+    # empty means "chat" for a chat model and nothing for a picture or a clip model
+    # (their `kind` says what they do). `recommended_for` names the lane(s) a model
+    # marked `recommended` is recommended in — one chat model and one gui model on the
+    # shipped menu — so a client keeps its two defaults apart.
+    for_: tuple[str, ...] = ()
+    recommended_for: tuple[str, ...] = ()
     # Charged tokens = prompt × in_mult + completion × out_mult. Multipliers let
     # a cheap model stretch the grant further than an expensive one without the
     # account holder seeing money.
@@ -57,6 +87,32 @@ class ModelSpec:
     listed: bool = True
     priced_as: str = ""
 
+    def __post_init__(self) -> None:
+        # a lane list from CLOUD_MODELS may arrive as a list; keep tuples, and only known lanes
+        object.__setattr__(self, "for_", _lanes(self.for_, f"{self.id}: for"))
+        object.__setattr__(self, "recommended_for", _lanes(self.recommended_for, f"{self.id}: recommended_for"))
+        if self.kind != "chat" and (self.for_ or self.recommended_for):
+            raise ValueError(f"{self.id}: lanes are for chat models; a {self.kind} model has none")
+        if self.recommended_for and not self.recommended:
+            raise ValueError(f"{self.id}: recommended_for needs recommended: true")
+        if any(lane not in self.lanes for lane in self.recommended_for):
+            raise ValueError(f"{self.id}: recommended_for names a lane the model is not for")
+
+    @property
+    def lanes(self) -> tuple[str, ...]:
+        """What the model is for: `for_` as given, else chat for a chat model, nothing else."""
+        if self.for_:
+            return self.for_
+        return ("chat",) if self.kind == "chat" else ()
+
+    @property
+    def recommended_lanes(self) -> tuple[str, ...]:
+        """The lane(s) the model is recommended in: `recommended_for` as given, else every
+        lane of a recommended chat model, nothing for the rest."""
+        if self.recommended_for:
+            return self.recommended_for
+        return self.lanes if self.recommended else ()
+
     def to_public(self) -> dict:
         return {
             "id": self.id,
@@ -69,9 +125,11 @@ class ModelSpec:
             },
             "nanomuse": {
                 "kind": self.kind,
+                "for": list(self.lanes),
                 "listed": self.listed,
                 "priced_as": self.priced_as,
                 "recommended": self.recommended,
+                "recommended_for": list(self.recommended_lanes),
                 "in_mult": self.in_mult,
                 "out_mult": self.out_mult,
                 "per_image": self.per_image,
@@ -112,22 +170,40 @@ def _max_side(size: str) -> int:
 
 
 # The menu a fresh account gets. Checked against the provider's own /models
-# list: qwen3.8-27b takes pictures as input (so no separate vision model),
-# qwen-image-3.0 draws, Wan 2.2 makes clips through the video API (which the
-# provider does not list; the app probes it). Prices are the provider's
-# Beijing list prices (help.aliyun.com/zh/model-studio/model-pricing, 2026-09):
-# 27B ¥3 / ¥12 per million tokens, Flash ¥0.8 / ¥2.7, qwen-image-3.0 ¥0.18 a
-# picture at 1k and 2k alike (the Pro tier is ¥0.25 / ¥0.5), wan2.2-i2v-flash
-# ¥0.10 a second at 480P for a fixed five seconds (MiniMax-H3, the 0.3 default,
-# was ¥0.5 a second: a new face cost ¥8 in clips, now ¥2). wan2.2-t2v-plus is
+# list: deepseek-v4.1-flash (0.17) is the chat model — it reads pictures (checked: it
+# answers about one; v4-flash and v4-pro do not) and returns `reasoning_content` —
+# qwen3.8-27b is the hands model (the GUI model that reads screenshots and drives a
+# phone or a computer; usable for chat too), qwen-image-3.0 draws, Wan 2.2 makes clips
+# through the video API (which the provider does not list; the app probes it). Prices
+# are the provider's Beijing list prices (help.aliyun.com/zh/model-studio/model-pricing,
+# 2026-09/10): DeepSeek V4.1 Flash ¥2 / ¥8 per million tokens in busy hours (¥1 / ¥4
+# idle; the busy figure is what the ledger counts), 27B ¥3 / ¥12, Flash ¥0.8 / ¥2.7,
+# qwen-image-3.0 ¥0.18 a picture at 1k and 2k alike (the Pro tier is ¥0.25 / ¥0.5),
+# wan2.2-i2v-flash ¥0.10 a second at 480P for a fixed five seconds (MiniMax-H3, the 0.3
+# default, was ¥0.5 a second: a new face cost ¥8 in clips, now ¥2). wan2.2-t2v-plus is
 # the sibling the app asks for when a clip starts from words: ¥0.14 a second.
 DEFAULT_MODELS: tuple[ModelSpec, ...] = (
+    ModelSpec(
+        id="deepseek-v4.1-flash",
+        name="DeepSeek V4.1 Flash",
+        upstream="deepseek-v4.1-flash",
+        input_modalities=("text", "image"),
+        for_=("chat",),
+        recommended=True,
+        recommended_for=("chat",),
+        in_mult=0.7,
+        out_mult=0.7,
+        price_in=2.0,
+        price_out=8.0,
+    ),
     ModelSpec(
         id="qwen3.8-27b",
         name="Qwen 3.8 27B",
         upstream="qwen3.8-27b",
         input_modalities=("text", "image"),
+        for_=("gui", "chat"),
         recommended=True,
+        recommended_for=("gui",),
         price_in=3.0,
         price_out=12.0,
     ),
@@ -212,11 +288,24 @@ def _models_from_env() -> tuple[ModelSpec, ...]:
     out = []
     for item in json.loads(raw):
         item = dict(item)
-        for k in ("input_modalities", "output_modalities"):
+        if "for" in item:  # the JSON name; `for` is a keyword in Python
+            item["for_"] = item.pop("for")
+        for k in ("input_modalities", "output_modalities", "for_", "recommended_for"):
             if k in item:
                 item[k] = tuple(item[k])
         out.append(ModelSpec(**item))
     return tuple(out)
+
+
+def menu_warnings(models: tuple[ModelSpec, ...]) -> list[str]:
+    """What is odd about a menu — for the log at start, not an error: the clients pick the
+    recommended model of each lane as a default, so there should be exactly one."""
+    out = []
+    for lane in LANES:
+        picks = [m.id for m in models if m.kind == "chat" and lane in m.recommended_lanes]
+        if len(picks) != 1:
+            out.append(f"{len(picks)} chat models recommended for {lane} ({', '.join(picks) or 'none'}); the apps expect one")
+    return out
 
 
 @dataclass(frozen=True)
@@ -299,6 +388,10 @@ class Settings:
     # the person wants to bring their own model key.
     invite_url: str = field(default_factory=lambda: _env("INVITE_URL", "https://nanomuse.cn/web/?invite="))
     own_key_docs: str = field(default_factory=lambda: _env("OWN_KEY_DOCS", "https://nanomuse.cn/own-key"))
+    # OPENROUTER_URL is where someone outside mainland China gets a key (0.17): Alibaba
+    # Cloud Bailian only signs up accounts from the mainland, so the "ways on" the relay
+    # sends put OpenRouter first for everyone else (service.region).
+    openrouter_url: str = field(default_factory=lambda: _env("OPENROUTER_URL", "https://openrouter.ai/keys"))
     # PRIVACY_URL is the policy the apps link from Data controls and the sign-in
     # pages — the one that states what this relay keeps and its default above.
     privacy_url: str = field(default_factory=lambda: _env("PRIVACY_URL", "https://nanomuse.cn/privacy/"))

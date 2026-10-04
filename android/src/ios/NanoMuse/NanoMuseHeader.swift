@@ -10,8 +10,8 @@
 import SwiftUI
 import Combine
 
-/// Posted when the face is tapped; the shell (or the root on iPad)
-/// presents the avatar studio.
+/// Posted by "Avatar studio…" on the agent page (and the face's menu); the
+/// shell (or the root in the OpenMinis layout) presents the avatar studio.
 extension Notification.Name {
     static let nanoMuseOpenAvatarStudio = Notification.Name("nanoMuse.openAvatarStudio")
 }
@@ -96,6 +96,7 @@ struct NanoMuseHeaderTitle: View {
     @ObservedObject private var permissions = OffloadPermissionManager.shared
     @ObservedObject private var gate = ConfigConfirmationGate.shared
     @ObservedObject private var studio = NanoMuseAvatarStudioModel.shared
+    @ObservedObject private var avatarFlow = NanoMuseAvatarFlow.shared
     @StateObject private var moods = NanoMuseMoodModel()
 
     private var waiting: Bool {
@@ -118,7 +119,7 @@ struct NanoMuseHeaderTitle: View {
             toolName: info?.toolName ?? "",
             toolTitle: info?.toolStatus ?? "",
             request: lastRequest,
-            studio: studio.headerStatus
+            studio: avatarFlow.statusLine ?? studio.headerStatus
         )
     }
 
@@ -128,13 +129,14 @@ struct NanoMuseHeaderTitle: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            // The face opens the agent's page (Android: AgentProfileScreen); the studio is one of its doors.
             Button {
-                NotificationCenter.default.post(name: .nanoMuseOpenAvatarStudio, object: nil)
+                NotificationCenter.default.post(name: .nanoMuseOpenAgentPage, object: vm.nmSessionKey)
             } label: {
                 NanoMuseFaceView(mood: mood, size: 32)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppLocalized("Change the look")))
+            .accessibilityLabel(Text(AppLocalized("About the agent")))
 
             Button(action: onTapText) {
                 VStack(alignment: .leading, spacing: 0) {

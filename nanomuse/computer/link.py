@@ -6,13 +6,24 @@ tools and the GUI's cards are shared.
 (:mod:`nanomuse.computer.hands`), followed by a short settle and a fresh look. ``stop()`` is
 the Stop button: the next action raises :class:`~nanomuse.phone.link.DeviceStopped`, which
 ends the task the way the phone's Stop pill does. Every action and task boundary is also
-handed to ``on_event`` — the GUI shows a *Hands* card with the current step and the Electron
-stage draws a ring where the click lands.
+handed to ``on_event`` — the GUI shows a *Hands* card with the current step and the desktop
+stage draws a cursor where the click lands (``x``/``y`` in screen pixels, ``fx``/``fy`` as
+fractions).
+
+Two modes (``[hands] mode``). *Screen*: the whole screen through ``mss`` and the system
+mouse. *Window* (macOS, :mod:`nanomuse.computer.mac_window`): one application's window —
+the picture the model sees is that window, events go to that process, the person keeps the
+cursor. ``auto`` is window mode on macOS as soon as a target application is set
+(``set_target``, the ``computer_target`` action or ``app`` on ``computer_act``), screen
+everywhere else. A window that cannot be found or captured drops back to the screen with a
+note in the observation, never an error that ends the task.
 """
 
 from __future__ import annotations
 
 import asyncio
+import base64
+import io
 import platform
 import socket
 import time
@@ -21,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from nanomuse.computer import hands as hands_mod
+from nanomuse.computer import mac_window
 from nanomuse.computer.screen import DEFAULT_MAX_WIDTH, active_window, capture, screen_size
 from nanomuse.config import HandsSettings
 from nanomuse.logger import logger
@@ -52,12 +64,22 @@ class ComputerLink:
         shots_dir: Path | None = None,
         on_event: Listener | None = None,
         backend: hands_mod.HandsBackend | None = None,
+        window_adapter: mac_window.MacAdapter | None = None,
     ):
         self.settings = settings
         self.shots_dir = shots_dir
         self.on_event = on_event
         self._backend: hands_mod.HandsBackend | None = backend
         self._backend_error = ""
+        # window mode: the application the hands work in, and the hands that drive it
+        self.target_app = ""
+        self.target_title = ""
+        self._window: mac_window.MacWindowHands | None = (
+            mac_window.MacWindowHands(window_adapter) if window_adapter is not None else None
+        )
+        self._window_error = ""
+        # the frame the last window picture was taken in (None in screen mode)
+        self.window_frame: mac_window.WindowFrame | None = None
         self.last_screen: Screen | None = None
         self._stopped = False
         self.task_active = False
@@ -103,16 +125,69 @@ class ComputerLink:
 
     def status(self) -> dict[str, Any]:
         available = self.backend_available()
+        window_ok, window_why = self.window_available()
         return {
             "enabled": self.settings.enabled,
             "available": available,
             "backend": self._backend.name if self._backend else None,
             "reason": self._backend_error,
+            "mode": self.settings.mode,
+            # window mode (macOS): whether it can run here, and what it is working in
+            "window": {
+                "available": window_ok,
+                "reason": window_why or self._window_error,
+                "active": self.in_window_mode(),
+                "app": self.target_app,
+                "title": self.target_title,
+                "frame": self.window_frame.window.to_dict() if self.window_frame else None,
+            },
             "device": self._device.to_dict(),
             "task_active": self.task_active,
             "task_text": self.task_text,
             "last_screen": self.last_screen.to_dict() if self.last_screen else None,
         }
+
+    # ------------------------------------------------------------------ window mode
+    def window_available(self) -> tuple[bool, str]:
+        """Whether window mode can run here (macOS with pyobjc, or a fake adapter)."""
+        if self._window is not None:
+            return True, ""
+        return mac_window.available()
+
+    def _window_hands(self) -> mac_window.MacWindowHands:
+        if self._window is None:
+            self._window = mac_window.MacWindowHands(mac_window.QuartzAdapter())
+        return self._window
+
+    def set_target(self, app: str, title: str = "") -> None:
+        """The application the hands work in from now on ("" = the whole screen again)."""
+        app, title = app.strip()[:80], title.strip()[:160]
+        if (app, title) != (self.target_app, self.target_title):
+            self.window_frame = None
+            self._window_error = ""
+        self.target_app, self.target_title = app, title
+
+    def in_window_mode(self) -> bool:
+        """Whether the next look and action go to the target window rather than the screen."""
+        mode = self.settings.mode
+        if mode == "screen" or not self.target_app:
+            return False
+        if mode == "window":
+            return True
+        return mac_window.available()[0] or self._window is not None
+
+    def app_in_front(self) -> tuple[str, str]:
+        """``(id, name)`` of the application an action lands in: the target window's bundle
+        id and name in window mode, else the application in front as last observed. What a
+        per-app permission (``computer_app:<id>``) is bound to."""
+        if self.in_window_mode():
+            if self.window_frame is not None:
+                return self.window_frame.window.app_id, self.window_frame.window.owner
+            return self.target_app, self.target_app
+        screen = self.last_screen
+        if screen is None:
+            return "", ""
+        return screen.app, screen.app_name or screen.app
 
     # ------------------------------------------------------------------ stop
     def stop(self) -> bool:
@@ -131,12 +206,22 @@ class ComputerLink:
     # ------------------------------------------------------------------ looking
     async def screen(self) -> Screen:
         self._check_stopped()
+        note = ""
+        if self.in_window_mode():
+            raw = await asyncio.to_thread(self._capture_window)
+            if raw is not None:
+                screen = Screen.from_device(raw, device=self._device, shots_dir=self.shots_dir)
+                self.last_screen = screen
+                return screen
+            note = self._window_error
         try:
             raw = await asyncio.to_thread(
                 capture, self.settings.max_image_width or DEFAULT_MAX_WIDTH
             )
         except Exception as exc:  # noqa: BLE001 — platform tools fail in many ways
             raise DeviceError(f"could not take a screenshot of this computer: {exc}") from exc
+        if raw is not None and note:
+            raw["note"] = (note + " — showing the whole screen instead")[:300]
         if raw is None:
             raise DeviceError(
                 "no screenshot could be taken on this computer: install mss and Pillow "
@@ -157,10 +242,7 @@ class ComputerLink:
         action = str(params.get("action") or "")
         if action not in ACTIONS:
             raise DeviceError(f"unknown action {action!r}")
-        try:
-            hands = self._hands()
-        except hands_mod.HandsUnavailable as exc:
-            raise DeviceError(str(exc)) from exc
+        hands = self._hands_for(action)
         self.last_action = dict(params)
         self._emit({"event": "act", **self._where(params)})
         started = time.monotonic()
@@ -172,6 +254,11 @@ class ComputerLink:
             raise DeviceError(f"the hands did not finish '{action}' in time") from None
         except DeviceError:
             raise
+        except mac_window.WindowUnavailable as exc:
+            # the window went away under the hands: back to the screen for the next look
+            self._window_error = str(exc)
+            self.window_frame = None
+            raise DeviceError(f"{action} failed: {exc}") from exc
         except Exception as exc:  # noqa: BLE001 — pyautogui's FailSafeException and friends
             name = type(exc).__name__
             if "FailSafe" in name:
@@ -187,6 +274,66 @@ class ComputerLink:
             logger.debug("no screenshot after {}: {}", action, exc)
             return {"note": note, "looked": False}
         return {"note": note, "looked": True}
+
+    def _capture_window(self) -> dict[str, Any] | None:
+        """The target window as the observation, or None (with ``_window_error`` saying why)
+        so the caller shows the whole screen instead."""
+        try:
+            hands = self._window_hands()
+            png, frame = hands.look(self.target_app, self.target_title)
+        except mac_window.WindowUnavailable as exc:
+            self._window_error = str(exc)
+            self.window_frame = None
+            logger.info("window mode: {}", exc)
+            return None
+        except Exception as exc:  # noqa: BLE001 — pyobjc fails in many ways
+            self._window_error = f"window mode failed: {exc}"
+            self.window_frame = None
+            logger.warning("window mode: {}", exc)
+            return None
+        self._window_error = ""
+        data, mime = png, "image/png"
+        max_width = self.settings.max_image_width or DEFAULT_MAX_WIDTH
+        if max_width and frame.image_width > max_width:
+            # a Retina window is twice its points; the model gets a lighter picture and
+            # the frame maps its pixels back to the screen
+            try:
+                from PIL import Image
+
+                img = Image.open(io.BytesIO(png)).convert("RGB")
+                img = img.resize((max_width, int(img.height * max_width / img.width)))
+                buf = io.BytesIO()
+                img.save(buf, "JPEG", quality=80)
+                data, mime = buf.getvalue(), "image/jpeg"
+                frame = mac_window.WindowFrame(frame.window, img.width, img.height)
+                hands.frame = frame
+            except Exception as exc:  # noqa: BLE001 — without Pillow the picture goes as it is
+                logger.debug("window picture not scaled: {}", exc)
+        self.window_frame = frame
+        w = frame.window
+        where = f"window of {w.owner}" + (f": {w.title}" if w.title else "")
+        return {
+            "app": w.app_id,
+            "app_name": w.owner,
+            "route": w.title[:160],
+            "width": frame.image_width,
+            "height": frame.image_height,
+            "keyboard": False,
+            "screenshot": base64.b64encode(data).decode(),
+            "mime": mime,
+            "mode": "window",
+            "note": f"{where} — coordinates are pixels of this window picture",
+        }
+
+    def _hands_for(self, action: str) -> hands_mod.HandsBackend:
+        """The hands an action goes to: the window's process in window mode (when the
+        window was looked at), the system mouse otherwise."""
+        if self.in_window_mode() and self.window_frame is not None and action != "open_app":
+            return self._window_hands()
+        try:
+            return self._hands()
+        except hands_mod.HandsUnavailable as exc:
+            raise DeviceError(str(exc)) from exc
 
     def _do(self, hands: hands_mod.HandsBackend, action: str, p: dict[str, Any]) -> str:
         x, y = float(p.get("x") or 0), float(p.get("y") or 0)
@@ -224,24 +371,45 @@ class ComputerLink:
             except Exception as exc:  # noqa: BLE001 — CalledProcessError and friends
                 raise DeviceError(f"could not open {p.get('app')!r}: {exc}") from exc
             time.sleep(1.5)
+            if self.settings.mode != "screen" and self.window_available()[0]:
+                # macOS: the application just opened is the window the hands work in
+                self.set_target(str(p.get("app") or ""))
             return f"started {started}"
         elif action == "wait":
             time.sleep(max(0.2, min(10.0, float(p.get("seconds") or 1.0))))
         return ""
 
     def _where(self, params: dict[str, Any]) -> dict[str, Any]:
-        """The action for the GUI: what and where, with the point as fractions of the screen."""
+        """The action for the GUI: what and where — the point in screen pixels (``x``/``y``,
+        for a cursor sprite on the desktop stage) and as fractions of the screen
+        (``fx``/``fy``, for the overlay's ring). In window mode the model's coordinates are
+        pixels of the window picture; they are mapped to the screen here."""
         w, h = self._device.width or 1, self._device.height or 1
+        frame = self.window_frame if self.in_window_mode() else None
         out: dict[str, Any] = {
             "action": params.get("action"),
             "label": str(params.get("label") or "")[:120],
+            "mode": "window" if frame is not None else "screen",
         }
-        if params.get("x") is not None and params.get("y") is not None:
-            out["fx"] = round(float(params["x"]) / w, 4)
-            out["fy"] = round(float(params["y"]) / h, 4)
-        if params.get("x2") is not None and params.get("y2") is not None:
-            out["fx2"] = round(float(params["x2"]) / w, 4)
-            out["fy2"] = round(float(params["y2"]) / h, 4)
+        if frame is not None:
+            out["window"] = frame.window.to_dict()
+
+        def point(kx: str, ky: str) -> tuple[float, float] | None:
+            if params.get(kx) is None or params.get(ky) is None:
+                return None
+            px, py = float(params[kx]), float(params[ky])
+            return frame.to_screen(px, py) if frame is not None else (px, py)
+
+        start = point("x", "y")
+        if start is not None:
+            out["x"], out["y"] = round(start[0], 1), round(start[1], 1)
+            out["fx"] = round(start[0] / w, 4)
+            out["fy"] = round(start[1] / h, 4)
+        end = point("x2", "y2")
+        if end is not None:
+            out["x2"], out["y2"] = round(end[0], 1), round(end[1], 1)
+            out["fx2"] = round(end[0] / w, 4)
+            out["fy2"] = round(end[1] / h, 4)
         if params.get("action") == "type":
             out["text"] = str(params.get("text") or "")[:80]
         if params.get("action") == "key":
@@ -262,10 +430,16 @@ class ComputerLink:
     def _emit(self, body: dict[str, Any]) -> None:
         if self.on_event is None:
             return
-        try:
-            app, title = active_window() if body.get("event") == "act" else ("", "")
-        except Exception:  # noqa: BLE001
-            app, title = "", ""
+        app, title = "", ""
+        if body.get("event") == "act":
+            frame = self.window_frame if self.in_window_mode() else None
+            if frame is not None:
+                app, title = frame.window.owner, frame.window.title
+            else:
+                try:
+                    app, title = active_window()
+                except Exception:  # noqa: BLE001
+                    app, title = "", ""
         try:
             self.on_event({**body, "app": app, "title": title, "ts": time.time()})
         except Exception:  # noqa: BLE001

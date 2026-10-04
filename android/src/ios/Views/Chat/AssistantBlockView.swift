@@ -37,7 +37,11 @@ struct AssistantBlockView: View {
     private var kindView: some View {
         switch block.kind {
         case .text:
-            if !block.content.isEmpty {
+            if NanoMuseFences.contains(block.content) {
+                // nanoMuse: a `nanomuse-*` fence (goal, check-in, feed post, avatar takes) renders as its card.
+                NanoMuseFenceBlockView(content: block.content)
+                    .padding(.vertical, 2)
+            } else if !block.content.isEmpty {
                 textBlockView
                     .padding(.vertical, 2)
                     .background(

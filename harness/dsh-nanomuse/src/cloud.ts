@@ -25,8 +25,9 @@
  * (`/events`) carrying the live state — registered when the web server is
  * present; the headless and SDK profiles get the service without routes.
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { ApprovalDesk, appOf, checkForUpdate, HoldDesk, modelFor, pickChatModel, pickHandsModel, sharedConnectors, takesImages, type Grant, type Hold, type HoldTool, type PendingApproval, type UpdateInfo } from './desk.ts'
 import { arch, homedir, hostname, release, type, userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
 import { createHmac, randomBytes, randomUUID } from 'node:crypto'
@@ -89,6 +90,10 @@ export interface CloudStatus {
   baseURL: string
   account?: Account
   models: RelayModel[]
+  /** The account chat model new chats use; empty when another provider is the default. */
+  chatModel: string
+  /** The model the hands see the screen with; empty when the account has none. */
+  handsModel: string
   profile: Profile
   hub: HubState
   /** The last relay failure, for the card to show. */
@@ -221,6 +226,8 @@ export interface StageState {
   height: number
   /** What is in front on that screen, as the hands reported it. */
   title: string
+  /** `window`: the hands drive one app's window and the pointer stays with the person (runtime 0.1.34); `screen` otherwise. */
+  mode: 'screen' | 'window'
   action: StageAction | null
   sessionId: string
 }
@@ -233,6 +240,16 @@ export interface LiveState {
   hands: { calls: HandsCall[]; steps: number }
   stage: StageState
   notices: Notice[]
+  /** Questions the agent asked before a step, open right now (C2); the stage answers them too. */
+  approvals: PendingApproval[]
+  /** Pauses of the hands that are on (C1). */
+  holds: Hold[]
+  /** Standing "always allow" grants for the hands, per app. */
+  grants: Grant[]
+  /** The model the hands see the screen with (`[gui]` of the bundled runtime); empty when the account has none. */
+  handsModel: string
+  /** The last update check, when one ran. */
+  update: UpdateInfo | null
 }
 
 /** How long after the last hands call the stage keeps its frame. */
@@ -240,7 +257,7 @@ const STAGE_REST_MS = 10 * 60_000
 /** Four candidates and four poses (the idle still is the candidate itself): what a new face costs. */
 const STUDIO_PICTURES = 8
 
-const NO_STAGE: StageState = { seq: 0, at: 0, source: 'computer', device: '', width: 0, height: 0, title: '', action: null, sessionId: '' }
+const NO_STAGE: StageState = { seq: 0, at: 0, source: 'computer', device: '', width: 0, height: 0, title: '', mode: 'screen', action: null, sessionId: '' }
 
 interface State {
   account?: Account
@@ -253,7 +270,16 @@ interface State {
   trusted?: Record<string, { name: string; at: number }>
   /** The session each other device's conversation lives in (`<device id>\n<conversation>` → session id). */
   taskSessions?: Record<string, string>
+  /** The hands model the person chose; absent means the account's default. */
+  handsModel?: string
+  /** "Always allow" given on the stage, per app. */
+  grants?: Grant[]
+  /** The last update check and when it ran, so the badge survives a restart and the check runs once a day. */
+  update?: UpdateInfo
 }
+
+/** One check a day, at most, by itself; the About row may ask any time. */
+const UPDATE_EVERY_MS = 24 * 60 * 60_000
 
 /** Tool names whose calls the capsule follows. */
 export function isHandsTool(name: string): boolean {
@@ -339,6 +365,11 @@ export default class NanomuseCloud extends Service {
   private signedInCache = false
   /** Tasks from other devices, once the session API is up. */
   private tasks: TaskRunner | undefined
+  /** Approvals the stage may answer (C2) and holds of the hands (C1). */
+  private readonly approvalDesk = new ApprovalDesk(() => this.broadcast(), (req) => this.granted(req.toolName))
+  private readonly holdDesk = new HoldDesk(() => this.broadcast())
+  private updateCheck: Promise<UpdateInfo> | undefined
+  private lastSharedConnectors = ''
 
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'nanomuseCloud')
@@ -392,6 +423,9 @@ export default class NanomuseCloud extends Service {
     }
     // A task from another device runs in a dsh session here; needs the session API, so only once it is up.
     this.ctx.inject(['sessionController', 'approval'], (ctx) => {
+      // The stage answers approvals too; registered before the task runner so a task from another
+      // device (answered on that device) never reaches this desk.
+      ctx.effect(() => ctx.on('approval/request', (req, next) => this.approvalDesk.handle(req, next), true), 'nanomuse cloud: approvals on the stage')
       const runner = new TaskRunner(ctx, {
         deviceName: () => this.deviceName(),
         log: (level, text) => this.ctx.logger[level](text),
@@ -421,12 +455,34 @@ export default class NanomuseCloud extends Service {
     })
 
     mountGuarded(this.ctx, API_PREFIX, this.handle, 'nanomuse cloud: api')
+    // The account's other devices see what is connected here (C3): on every change and at start.
+    this.ctx.inject(['nanomuseConnectors'], (ctx) => {
+      ctx.effect(() => ctx.nanomuseConnectors.onChange(() => void this.publishConnectors().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: connectors not shared: %s', message(error)))), 'nanomuse cloud: share connectors')
+      void this.publishConnectors().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: connectors not shared: %s', message(error)))
+    })
     this.ctx.inject(['tools'], (ctx) => {
       ctx.on('tools/execute', async (exec, next) => {
         if (!isHandsTool(exec.name)) return next()
         // Our own re-dispatch of a step the person just agreed to: the stage already follows the outer call.
         if (exec.parent !== undefined && confirmationOf(exec.arguments) !== undefined) return next()
         const sessionId = exec.agent?.session.id ?? ''
+        // The agent hands the screen to the person (C1): a hold until they say Done, then a fresh look.
+        if (exec.name === 'mcp__nanomuse__computer_act' && handOverOf(exec.arguments)) {
+          const reason = handOverOf(exec.arguments) ?? ''
+          this.began(exec.callId, exec.name, exec.arguments, sessionId)
+          this.acted({ kind: 'hold', label: reason, text: reason, x: -1, y: -1, at: Date.now() }, sessionId)
+          try {
+            const hold = this.holdDesk.begin(sessionId, 'computer', 'agent', reason)
+            const how = await this.holdDesk.wait(sessionId)
+            if (how !== 'done') this.holdDesk.done(hold.id)
+            const text = how === 'done' ? 'The person finished and handed the screen back.' : how === 'timeout' ? 'Nobody came back within ten minutes; the screen is yours again.' : 'The hand-over was cancelled.'
+            return { isError: false, value: text, content: [{ type: 'text', text }] } as Awaited<ReturnType<typeof next>>
+          } finally {
+            this.ended(exec.callId)
+          }
+        }
+        // While the person has the screen, the hands wait rather than fail.
+        if (this.holdDesk.on(sessionId)) await this.holdDesk.wait(sessionId)
         this.began(exec.callId, exec.name, exec.arguments, sessionId)
         if (exec.name === 'mcp__nanomuse__computer_act') this.acted(stageAction(exec.arguments), sessionId)
         else if (exec.name === 'mcp__nanomuse__computer_screen') this.acted({ kind: 'look', label: '', text: '', x: -1, y: -1, at: Date.now() }, sessionId)
@@ -457,6 +513,151 @@ export default class NanomuseCloud extends Service {
         this.ctx.logger.warn('nanomuse cloud: could not refresh the account: %s', message(error))
       })
     }
+    // Once a day, quietly: a newer release puts a badge on Settings and a row in the ••• menu.
+    if (!this.state.update || Date.now() - this.state.update.checkedAt > UPDATE_EVERY_MS) {
+      setTimeout(() => void this.update(false).catch(() => undefined), 15_000).unref?.()
+    }
+  }
+
+  // ---- the update check (B5) -------------------------------------------------------
+
+  /** The newest release against what runs here; cached a day unless `force`. */
+  update(force: boolean): Promise<UpdateInfo> {
+    const cached = this.state.update
+    if (!force && cached && Date.now() - cached.checkedAt < UPDATE_EVERY_MS) return Promise.resolve(cached)
+    if (this.updateCheck) return this.updateCheck
+    this.updateCheck = checkForUpdate(VERSION)
+      .then(async (info) => {
+        this.state = { ...this.state, update: info }
+        await this.writeState().catch(() => undefined)
+        this.broadcast()
+        return info
+      })
+      .finally(() => {
+        this.updateCheck = undefined
+      })
+    return this.updateCheck
+  }
+
+  // ---- approvals and holds on the stage (C1, C2) -----------------------------------
+
+  /** The stage's answer to a question the agent asked; false when it was answered already. */
+  decideApproval(id: string, approved: boolean, scope: 'once' | 'conversation' | 'always'): boolean {
+    const row = this.approvalDesk.list().find((a) => a.id === id)
+    const ok = this.approvalDesk.decide(id, approved, scope)
+    // "Always" on a hands step: the app in front is allowed from now on, until revoked on the Permissions page.
+    if (ok && approved && scope === 'always' && row && isHandsTool(row.toolName)) {
+      const app = appOf(this.stage.title)
+      if (app) void this.grant(`computer_app:${app}`).catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: grant not kept: %s', message(error)))
+    }
+    return ok
+  }
+
+  /** Whether a standing grant covers a request right now: a hands step while the granted app is in front. */
+  private granted(toolName: string): boolean {
+    if (!isHandsTool(toolName) || !toolName.startsWith('mcp__nanomuse__')) return false
+    const app = appOf(this.stage.title)
+    return Boolean(app) && (this.state.grants ?? []).some((g) => g.target === `computer_app:${app}`)
+  }
+
+  private async grant(target: string): Promise<void> {
+    const grants = (this.state.grants ?? []).filter((g) => g.target !== target)
+    grants.push({ id: `g-${randomBytes(4).toString('hex')}`, target, at: Date.now() })
+    this.state = { ...this.state, grants: grants.slice(-64) }
+    await this.writeState()
+    this.broadcast()
+  }
+
+  async revokeGrant(id: string): Promise<boolean> {
+    const before = this.state.grants?.length ?? 0
+    const grants = (this.state.grants ?? []).filter((g) => g.id !== id)
+    if (grants.length === before) return false
+    this.state = { ...this.state, grants }
+    await this.writeState()
+    this.broadcast()
+    return true
+  }
+
+  /** The person takes the screen (`by: user`); the hands wait until `holdDone`. */
+  takeHold(thread: string, tool: HoldTool, reason: string): Hold {
+    return this.holdDesk.begin(thread, tool, 'user', reason)
+  }
+
+  holdDone(id: string): boolean {
+    return this.holdDesk.done(id)
+  }
+
+  // ---- the hands model (C4) ----------------------------------------------------------
+
+  /** The model the hands see the screen with: the person's choice, else the account's `gui` default. */
+  handsModel(): string {
+    const models = this.state.models ?? []
+    const chosen = this.state.handsModel
+    if (chosen && models.some((m) => m.id === chosen && modelFor(m).includes('gui'))) return chosen
+    return pickHandsModel(models)?.id ?? ''
+  }
+
+  /** Choose the hands model; the bundled runtime reads it at its next start. */
+  async setHandsModel(id: string): Promise<void> {
+    const models = this.state.models ?? []
+    if (id && !models.some((m) => m.id === id && modelFor(m).includes('gui'))) throw new RelayError(400, 'bad_model', 'Not a hands model of this account')
+    this.state = { ...this.state, ...(id ? { handsModel: id } : {}) }
+    if (!id) delete this.state.handsModel
+    await this.writeState()
+    await this.writeHands()
+    this.broadcast()
+  }
+
+  /**
+   * What the bundled runtime's `[gui]` gets: `$DSH_HOME/nanomuse/hands.json` with the relay's
+   * OpenAI-style base, the hands model and the account key (0600, next to `cloud.json`, which
+   * holds the same key). The preset reads it when it starts `nanomuse mcp`.
+   */
+  private async writeHands(): Promise<void> {
+    const path = join(this.dir(), 'hands.json')
+    const token = await this.token()
+    const model = this.handsModel()
+    if (!token || !this.state.account || !model) {
+      await rm(path, { force: true }).catch(() => undefined)
+      return
+    }
+    await mkdir(this.dir(), { recursive: true })
+    await writeFile(path, JSON.stringify({ provider: 'openai', model, base_url: this.relay.openaiBase, api_key: token }, null, 2) + '\n', { mode: 0o600 })
+  }
+
+  // ---- connectors shared across devices (C3) ---------------------------------------
+
+  /**
+   * The `device` of a profile write: this device's stable id, as the hub's hello says it
+   * (contract C3) — the relay replaces only the connectors whose `device_id` is the writer's
+   * and refuses entries naming another device, so the two must be the same string.
+   */
+  private writerId(): string {
+    return this.state.deviceId || this.deviceName()
+  }
+
+  /** Write this device's connections to the account's profile (ids, labels, where; never a credential). */
+  private async publishConnectors(): Promise<void> {
+    const connectors = (this.ctx as unknown as { get(name: string): unknown }).get('nanomuseConnectors') as { view(): { connections: Parameters<typeof sharedConnectors>[0] } } | undefined
+    const token = await this.token()
+    if (!connectors || !token || !this.state.account) return
+    const rows = sharedConnectors(connectors.view().connections, this.deviceName(), this.state.deviceId ?? '')
+    const key = JSON.stringify(rows.map(({ at: _at, ...rest }) => rest))
+    if (key === this.lastSharedConnectors) return
+    const current = this.profile.current()
+    const write: ProfileWrite = {
+      name: current.name,
+      avatar: current.avatar,
+      emoji: current.emoji,
+      color: current.color,
+      style: current.style,
+      description: current.description,
+      connectors: rows,
+      device_id: this.state.deviceId ?? '',
+    }
+    await this.relay.putProfile(token, write, this.writerId())
+    this.lastSharedConnectors = key
+    await this.profile.pull(token, true).catch(() => undefined)
   }
 
   /** The relay this service talks to. */
@@ -479,9 +680,35 @@ export default class NanomuseCloud extends Service {
       baseURL: this.relay.origin,
       ...(this.state.account ? { account: this.state.account } : {}),
       models: this.state.models ?? [],
+      chatModel: this.chatModel(),
+      handsModel: this.handsModel(),
       profile: this.profile.current(),
       hub: this.hubState(),
     }
+  }
+
+  private defaultModelService(): { currentSelection(): { provider: string; model: string }; saveSelection(next: { provider: string; model: string }): Promise<void> } | undefined {
+    return (this.ctx as unknown as { get(name: string): unknown }).get('agentDefaultModel') as ReturnType<NanomuseCloud['defaultModelService']>
+  }
+
+  /** The account model new chats answer through, when the default is ours; empty when another provider is chosen. */
+  chatModel(): string {
+    try {
+      const current = this.defaultModelService()?.currentSelection()
+      return current?.provider === PROVIDER_ID ? current.model : ''
+    } catch {
+      return ''
+    }
+  }
+
+  /** Make an account chat model the default for new chats (Settings → Account → Chat model). */
+  async setChatModel(id: string): Promise<void> {
+    const models = this.state.models ?? []
+    if (!models.some((m) => m.id === id && modelFor(m).includes('chat'))) throw new RelayError(400, 'bad_model', 'Not a chat model of this account')
+    const svc = this.defaultModelService()
+    if (!svc) throw new RelayError(503, 'no_models', 'Not available yet')
+    await svc.saveSelection({ provider: PROVIDER_ID, model: id })
+    this.broadcast()
   }
 
   /** The live state, as `/events` streams it. */
@@ -494,6 +721,11 @@ export default class NanomuseCloud extends Service {
       hands: { calls: [...this.calls.values()], steps: this.steps },
       stage: this.stage,
       notices: this.notices,
+      approvals: this.approvalDesk.list(),
+      holds: this.holdDesk.list(),
+      grants: this.state.grants ?? [],
+      handsModel: this.handsModel(),
+      update: this.state.update ?? null,
     }
   }
 
@@ -540,6 +772,9 @@ export default class NanomuseCloud extends Service {
     await this.adoptDefaultModel(models)
     this.state = { ...this.state, account: signIn.account, models }
     await this.writeState()
+    await this.writeHands().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: hands model not written: %s', message(error)))
+    this.lastSharedConnectors = ''
+    void this.publishConnectors().catch(() => undefined)
     this.signedInCache = true
     this.ctx.logger.info('nanomuse cloud: signed in as %s (%s)', signIn.account.hint, signIn.account.channel)
     await this.profile.pull(signIn.apiKey, true).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
@@ -576,7 +811,7 @@ export default class NanomuseCloud extends Service {
         description: current.description,
       }
       if (token && this.state.account) {
-        const rev = await this.relay.putProfile(token, write, this.deviceName())
+        const rev = await this.relay.putProfile(token, write, this.writerId())
         await this.profile.pull(token, true).catch(() => this.profile.wearLocal({ ...current, ...write, rev }))
       } else {
         await this.profile.wearLocal({ ...current, ...write, rev: current.rev })
@@ -639,7 +874,7 @@ export default class NanomuseCloud extends Service {
         description: description.slice(0, 200),
         face,
       }
-      await this.relay.putProfile(token, write, this.deviceName())
+      await this.relay.putProfile(token, write, this.writerId())
       await this.profile.pull(token, true)
       this.broadcast()
       return this.profile.current()
@@ -659,6 +894,7 @@ export default class NanomuseCloud extends Service {
         await this.adoptDefaultModel(models)
         this.state = { ...this.state, account, models }
         await this.writeState()
+        await this.writeHands().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: hands model not written: %s', message(error)))
         await this.profile.pull(token).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
         if (!this.hub.connected) this.hub.start()
       } catch (error: unknown) {
@@ -790,7 +1026,7 @@ export default class NanomuseCloud extends Service {
 
   /** The `nanomuse` provider as the Models page would have written it. */
   providerRow(models: RelayModel[]): Record<string, unknown> {
-    const chat = models.filter((m) => m.kind === 'chat')
+    const chat = models.filter((m) => modelFor(m).includes('chat'))
     return {
       displayName: 'nanoMuse Cloud',
       api: 'openai-completions',
@@ -799,7 +1035,7 @@ export default class NanomuseCloud extends Service {
       models: chat.map((m) => ({
         id: m.id,
         displayName: m.name,
-        input: m.inputModalities.includes('image') ? ['text', 'image'] : ['text'],
+        input: takesImages(m) ? ['text', 'image'] : ['text'],
       })),
     }
   }
@@ -814,8 +1050,7 @@ export default class NanomuseCloud extends Service {
    * choice the person made (any other provider, or a DeepSeek key) is left alone.
    */
   private async adoptDefaultModel(models: RelayModel[]): Promise<void> {
-    const chat = models.filter((m) => m.kind === 'chat')
-    const pick = chat.find((m) => m.recommended) ?? chat[0]
+    const pick = pickChatModel(models)
     if (!pick) return
     const svc = (this.ctx as unknown as { get(name: string): unknown }).get('agentDefaultModel') as
       | { currentSelection(): { provider: string; model: string }; saveSelection(next: { provider: string; model: string }): Promise<void> }
@@ -845,7 +1080,9 @@ export default class NanomuseCloud extends Service {
     const { deviceId, deviceName, remoteControl } = this.state
     this.state = { ...(deviceId ? { deviceId } : {}), ...(deviceName ? { deviceName } : {}), ...(remoteControl === true ? { remoteControl } : {}) }
     this.signedInCache = false
+    this.lastSharedConnectors = ''
     await this.writeState()
+    await rm(join(this.dir(), 'hands.json'), { force: true }).catch(() => undefined)
     await this.profile.reset()
     this.broadcast()
   }
@@ -899,7 +1136,7 @@ export default class NanomuseCloud extends Service {
   // -- the Live stage -------------------------------------------------------------------
 
   /** A frame of a screen the agent is working on; `meta.device` names another device, else it is this computer's. */
-  stageFrame(bytes: Buffer, mime: string, meta: { device?: string; width?: number; height?: number; title?: string; sessionId: string }): void {
+  stageFrame(bytes: Buffer, mime: string, meta: { device?: string; width?: number; height?: number; title?: string; mode?: 'screen' | 'window'; sessionId: string }): void {
     if (bytes.length === 0 || bytes.length > 12 * 1024 * 1024) return
     const seq = (this.frame?.seq ?? 0) + 1
     this.frame = { seq, bytes, mime }
@@ -912,6 +1149,7 @@ export default class NanomuseCloud extends Service {
       width: meta.width ?? 0,
       height: meta.height ?? 0,
       title: (meta.title ?? '').slice(0, 120),
+      mode: meta.mode ?? 'screen',
       // an action aimed at another screen does not belong on this frame
       action: sameScreen ? this.stage.action : null,
       sessionId: meta.sessionId,
@@ -1050,6 +1288,9 @@ export default class NanomuseCloud extends Service {
         ...(raw.models ? { models: raw.models } : {}),
         ...(typeof raw.deviceId === 'string' && raw.deviceId ? { deviceId: raw.deviceId } : {}),
         ...(typeof raw.deviceName === 'string' && raw.deviceName ? { deviceName: raw.deviceName } : {}),
+        ...(typeof raw.handsModel === 'string' && raw.handsModel ? { handsModel: raw.handsModel } : {}),
+        ...(Array.isArray(raw.grants) ? { grants: (raw.grants as Grant[]).filter((g) => g && typeof g.id === 'string' && typeof g.target === 'string').map((g) => ({ id: g.id, target: g.target, at: Number(g.at) || 0 })) } : {}),
+        ...(raw.update && typeof raw.update === 'object' && typeof (raw.update as UpdateInfo).checkedAt === 'number' ? { update: raw.update as UpdateInfo } : {}),
         ...(raw.remoteControl === true ? { remoteControl: true } : {}),
         ...(raw.trusted && typeof raw.trusted === 'object' ? { trusted: trustedOf(raw.trusted) } : {}),
         ...(raw.taskSessions && typeof raw.taskSessions === 'object' ? { taskSessions: raw.taskSessions } : {}),
@@ -1242,6 +1483,40 @@ export default class NanomuseCloud extends Service {
         if (!this.asks.answer(String(body.id ?? ''), answer)) return send(res, 404, { error: { code: 'not_found', message: 'that question is no longer waiting' } })
         return send(res, 204)
       }
+      if (req.method === 'GET' && route === '/update') return send(res, 200, await this.update(url.searchParams.get('force') === '1'))
+      if (req.method === 'GET' && route === '/approvals') return send(res, 200, { approvals: this.approvalDesk.list() })
+      if (req.method === 'POST' && route.startsWith('/approvals/')) {
+        const body = await json(req)
+        const scope = body.scope === 'conversation' || body.scope === 'always' ? body.scope : 'once'
+        const ok = this.decideApproval(decodeURIComponent(route.slice('/approvals/'.length)), body.approved === true, scope)
+        return ok ? send(res, 204) : send(res, 404, { error: { code: 'not_found', message: 'That question was answered already' } })
+      }
+      if (req.method === 'GET' && route === '/holds') return send(res, 200, { holds: this.holdDesk.list() })
+      if (req.method === 'POST' && route === '/holds') {
+        const body = await json(req)
+        const thread = String(body.thread ?? '').trim()
+        if (!thread) return send(res, 400, { error: { code: 'bad_request', message: 'thread is required' } })
+        const tool: HoldTool = body.tool === 'browser' || body.tool === 'phone' ? body.tool : 'computer'
+        return send(res, 200, this.takeHold(thread, tool, String(body.reason ?? '').slice(0, 200)))
+      }
+      if (req.method === 'POST' && /^\/holds\/[^/]+\/done$/.test(route)) {
+        const id = decodeURIComponent(route.split('/')[2] ?? '')
+        return this.holdDone(id) ? send(res, 204) : send(res, 404, { error: { code: 'not_found', message: 'No such hold' } })
+      }
+      if (req.method === 'POST' && route === '/grants/revoke') {
+        const body = await json(req)
+        return (await this.revokeGrant(String(body.id ?? ''))) ? send(res, 204) : send(res, 404, { error: { code: 'not_found', message: 'No such grant' } })
+      }
+      if (req.method === 'POST' && route === '/chat-model') {
+        const body = await json(req)
+        await this.setChatModel(String(body.model ?? ''))
+        return send(res, 200, { model: this.chatModel() })
+      }
+      if (req.method === 'POST' && route === '/hands-model') {
+        const body = await json(req)
+        await this.setHandsModel(String(body.model ?? ''))
+        return send(res, 200, { model: this.handsModel() })
+      }
       if (req.method === 'POST' && route === '/notices/clear') {
         this.notices = []
         this.broadcast()
@@ -1267,6 +1542,14 @@ export function dshHome(): string {
 
 /** The few arguments the capsule shows, as short strings. */
 /** The hands' arguments as the stage shows them: what kind of step, aimed where. */
+/** The reason of a `hand_over` action (the agent gives the screen to the person), or nothing. */
+export function handOverOf(args: unknown): string | undefined {
+  if (!args || typeof args !== 'object') return undefined
+  const a = args as Record<string, unknown>
+  if (a.action !== 'hand_over') return undefined
+  return String(a.reason ?? a.label ?? a.text ?? '').trim().slice(0, 200) || 'Your turn'
+}
+
 export function stageAction(args: unknown): StageAction {
   const a = (args && typeof args === 'object' ? args : {}) as Record<string, unknown>
   const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : -1)
@@ -1284,20 +1567,22 @@ export function stageAction(args: unknown): StageAction {
 }
 
 /** The first line of what `computer_screen` says: `<window in front> · <WxH> · …` → title and size. */
-export function screenHead(text: string): { title: string; width: number; height: number } {
+export function screenHead(text: string): { title: string; width: number; height: number; mode: 'screen' | 'window' } {
   const line = text.split('\n').find((l) => l.trim()) ?? ''
   const parts = line.split(' · ').map((p) => p.trim())
   let width = 0
   let height = 0
+  let mode: 'screen' | 'window' = 'screen'
   const rest: string[] = []
   for (const part of parts) {
     const m = /^(\d{2,5})[×x](\d{2,5})$/.exec(part)
     if (m) {
       width = Number(m[1])
       height = Number(m[2])
-    } else if (!/^keyboard (shown|hidden)$/.test(part)) rest.push(part)
+    } else if (/^window(?: mode)?$/i.test(part)) mode = 'window'
+    else if (!/^keyboard (shown|hidden)$/.test(part)) rest.push(part)
   }
-  return { title: (rest[0] ?? '').slice(0, 120), width, height }
+  return { title: (rest[0] ?? '').slice(0, 120), width, height, mode }
 }
 
 export function pickArgs(args: unknown): Record<string, string> {

@@ -318,6 +318,7 @@ struct AIChatView: View {
     }
 
     @State private var floatingBarHeight: CGFloat = 0
+    @State private var nmCardsHeight: CGFloat = 0 // nanoMuse: the cards above the composer (avatar takes, name chooser)
     @State private var showFileBrowser = false
     // [T-browser-download-ux-v2] Downloads panel + "Show in Files" locate target.
     @State private var showDownloadsPanel = false
@@ -587,6 +588,14 @@ struct AIChatView: View {
                                 }
                         }
                         VStack(spacing: 0) {
+                            // nanoMuse: virtual cards for this chat (avatar price/takes/share, the name chooser).
+                            NanoMuseChatCardsHost(vm: vm)
+                                .frame(maxWidth: maxContentWidth)
+                                .onGeometryChange(for: CGFloat.self) { proxy in
+                                    proxy.size.height
+                                } action: { newH in
+                                    nmCardsHeight = newH
+                                }
                             floatingToolPreview
                                 .shadow(color: Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0, alpha: 0.25) : UIColor(white: 0, alpha: 0) }), radius: 6, x: 0, y: 4)
                             #if DEBUG
@@ -2669,7 +2678,7 @@ struct AIChatView: View {
                     screenshotPreview = ChatScreenshotPreview(image: image)
                 },
                 maxContentWidth: maxContentWidth ?? 0,
-                floatingBarHeight: floatingBarHeight,
+                floatingBarHeight: floatingBarHeight + nmCardsHeight, // nanoMuse: the cards above the composer count too
                 inputBarHeight: inputBarHeight
             )
             // Empty/loading overlay for tap-to-dismiss-keyboard.

@@ -11,9 +11,9 @@
  * `nanomuse/cloud/stage/frame?seq=N`.
  */
 import { createElement as h, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { Translate } from './api.ts'
+import { call, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
-import { IconClose, IconExpand, IconHand } from './icons.tsx'
+import { IconCheck, IconClose, IconExpand, IconHand, IconSquare } from './icons.tsx'
 import { useLive, type Live, type LiveStage as Stage, type LiveStageAction } from './live.ts'
 import { setPrefs, usePrefs, type StagePlace } from './prefs.ts'
 import { Sheet } from './ui.tsx'
@@ -117,13 +117,18 @@ export function makeLiveStage({ t, stop }: LiveStageProps) {
     const stale = !busy && Date.now() - stage.at > LINGER_MS
     if (stale) return null
     if (dismissed && dismissed.sessionId === stage.sessionId && live.hands.steps >= dismissed.steps) return null
-    const takeOver = (): void => {
+    const stopRun = (): void => {
       if (stopping || !stage.sessionId) return
       setStopping(true)
       void stop(stage.sessionId).catch(() => setStopping(false))
     }
+    // "I'll take it": a hold (C1) — the hands wait for Done rather than stop
+    const takeOver = (): void => {
+      if (!stage.sessionId) return
+      void call('holds', { thread: stage.sessionId, tool: 'computer', reason: '' }).catch(() => undefined)
+    }
     return h(StageLayer, null,
-      h(Frame, { t, live, stage, busy, stopping, onClose: () => setDismissed({ sessionId: stage.sessionId, steps: live.hands.steps }), onExpand: () => setBig(true), onTakeOver: takeOver }),
+      h(Frame, { t, live, stage, busy, stopping, onClose: () => setDismissed({ sessionId: stage.sessionId, steps: live.hands.steps }), onExpand: () => setBig(true), onTakeOver: takeOver, onStop: stopRun }),
       big ? h(Sheet, { title: stage.device || t('stageThisComputer'), onClose: () => setBig(false), closeLabel: t('close'), wide: true },
         h('div', { className: 'nm-stage-big' }, h(Picture, { live, stage, busy, dim: false }))) : null)
   }
@@ -200,23 +205,47 @@ interface FrameProps {
   onClose(): void
   onExpand(): void
   onTakeOver(): void
+  onStop(): void
 }
 
-function Frame({ t, live, stage, busy, stopping, onClose, onExpand, onTakeOver }: FrameProps): ReactNode {
+function Frame({ t, live, stage, busy, stopping, onClose, onExpand, onTakeOver, onStop }: FrameProps): ReactNode {
   const where = stage.source === 'device' ? stage.device : stage.title
-  const caption = describeStep(t, stage.action, busy)
-  return h('div', { className: `nm-stage${busy ? ' nm-busy' : ''}`, role: 'region', 'aria-label': t('stageLive') },
+  const hold = live.holds.find((x) => x.thread === stage.sessionId) ?? (stage.sessionId ? undefined : live.holds[0])
+  const caption = hold ? t('stageYourTurn') : describeStep(t, stage.action, busy)
+  const approvals = live.approvals.filter((a) => !stage.sessionId || a.sessionId === stage.sessionId)
+  return h('div', { className: `nm-stage${busy ? ' nm-busy' : ''}${hold ? ' nm-held' : ''}`, role: 'region', 'aria-label': t('stageLive') },
     h(Picture, { live, stage, busy, dim: true }),
     h('button', { type: 'button', className: 'nm-stage-btn nm-stage-close', 'aria-label': t('stageClose'), title: t('stageClose'), onClick: onClose }, h(IconClose, { size: 14 })),
     h('div', { className: 'nm-stage-tools' },
       h('button', { type: 'button', className: 'nm-stage-btn', 'aria-label': t('stageExpand'), title: t('stageExpand'), onClick: onExpand }, h(IconExpand, { size: 14 })),
-      busy || stopping
-        ? h('button', { type: 'button', className: 'nm-stage-pill', disabled: stopping, onClick: onTakeOver }, h(IconHand, { size: 14 }), stopping ? t('stageStopping') : t('stageTakeOver'))
-        : null),
+      (busy || stopping) && stage.sessionId
+        ? h('button', { type: 'button', className: 'nm-stage-btn', 'aria-label': t('capsuleStop'), title: t('capsuleStop'), disabled: stopping, onClick: onStop }, h(IconSquare, { size: 13 }))
+        : null,
+      hold
+        ? h('button', { type: 'button', className: 'nm-stage-pill nm-stage-pill-on', onClick: () => void call(`holds/${encodeURIComponent(hold.id)}/done`, {}).catch(() => undefined) }, h(IconCheck, { size: 14 }), t('stageDoneBtn'))
+        : busy && stage.sessionId && stage.source === 'computer'
+          ? h('button', { type: 'button', className: 'nm-stage-pill', onClick: onTakeOver }, h(IconHand, { size: 14 }), t('stageTakeIt'))
+          : null),
     h('div', { className: 'nm-stage-caption' },
-      busy ? h('span', { className: 'nm-stage-dot', 'aria-hidden': true }) : null,
+      busy && !hold ? h('span', { className: 'nm-stage-dot', 'aria-hidden': true }) : null,
       h('span', { className: 'nm-stage-verb' }, caption),
-      where ? h('span', { className: 'nm-stage-where' }, ` · ${where}`) : null))
+      hold?.reason ? h('span', { className: 'nm-stage-where' }, ` — ${hold.reason}`) : where ? h('span', { className: 'nm-stage-where' }, ` · ${where}`) : null),
+    stage.mode === 'window' && !hold ? h('div', { className: 'nm-stage-note' }, t('stageWindowMode', { app: stage.title.split(/\s+[—–·|-]\s+/)[0] || t('stageThisComputer') })) : null,
+    approvals.length ? h(StageApproval, { t, approval: approvals[0]!, app: stage.title.split(/\s+[—–·|-]\s+/)[0] ?? '' }) : null)
+}
+
+/** The question the agent asked before a step, answered here without going back to the chat (C2). */
+function StageApproval({ t, approval, app }: { t: Translate; approval: Live['approvals'][number]; app: string }): ReactNode {
+  const zh = t('langTag') === 'zh'
+  const text = (zh && approval.summaryZh) || approval.summary || approval.purpose || approval.toolName
+  const decide = (approved: boolean, scope: 'once' | 'always' = 'once') => void call(`approvals/${encodeURIComponent(approval.id)}`, { approved, scope, reason: '' }).catch(() => undefined)
+  const hands = approval.toolName.startsWith('mcp__nanomuse__')
+  return h('div', { className: 'nm-stage-ask', role: 'group', 'aria-label': t('statusNeedsApproval') },
+    h('div', { className: 'nm-stage-ask-text' }, text),
+    h('div', { className: 'nm-stage-ask-actions' },
+      h('button', { type: 'button', className: 'nm-stage-pill nm-stage-pill-on', onClick: () => decide(true) }, t('stageAllowOnce')),
+      hands && app ? h('button', { type: 'button', className: 'nm-stage-pill', onClick: () => decide(true, 'always') }, t('stageAlwaysApp', { app })) : null,
+      h('button', { type: 'button', className: 'nm-stage-pill nm-stage-pill-no', onClick: () => decide(false) }, t('stageDeny'))))
 }
 
 /** The frame with the agent's face where it last pointed. */

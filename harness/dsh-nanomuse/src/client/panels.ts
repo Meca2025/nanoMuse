@@ -14,3 +14,4 @@ export const ROOM_PANELS = [FEED_PANEL, IDEAS_PANEL, GOALS_PANEL, LIBRARY_PANEL,
 /** Where a problem with nanoMuse is reported. */
 export const REPO_URL = 'https://github.com/nano-muse/nanoMuse'
 export const ISSUES_URL = 'https://github.com/nano-muse/nanoMuse/issues'
+export const DOCS_URL = 'https://nanomuse.cn/docs/desktop'

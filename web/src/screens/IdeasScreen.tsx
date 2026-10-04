@@ -1,4 +1,4 @@
-import { Loader2, MessageCircle, RefreshCw } from "lucide-react";
+import { Clock, Flag, Loader2, MessageCircle, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { Sheet } from "../components/Sheet";
@@ -7,6 +7,7 @@ import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { Idea, IdeasData } from "../types";
 import { relativeTime } from "../util";
+import { CATEGORIES } from "./GoalsScreen";
 
 /** The areas an idea can belong to, in the order they are listed; the emoji Muse puts in front of a row, and the label. */
 const AREAS: Array<{ id: string; label: string; emoji: string }> = [
@@ -56,6 +57,28 @@ export function IdeasScreen() {
     void send("main", t(idea.prompt));
     openThread("main");
   };
+  // A routine idea becomes a daily reminder that runs the prompt (the phone's "Create routine").
+  const createRoutine = async (idea: Idea) => {
+    setSelected(null);
+    const time = idea.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(idea.time) ? idea.time : "09:00";
+    try {
+      await api.createReminder({ text: t(idea.prompt), kind: "task", repeat: `daily ${time}` });
+      toast(t("Routine set — every day at {time}. It is listed under Goals.", { time }));
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
+  // A goal idea opens the goal conversation in the chat, the way the Goals tab's categories do.
+  const startGoal = (idea: Idea) => {
+    setSelected(null);
+    const category = CATEGORIES.find((c) => c.id === idea.category) ?? CATEGORIES[CATEGORIES.length - 1];
+    const opener = t("I'd like to create a {category} goal. Ask me a few short questions, one at a time — what exactly I want, why and by when, how often to check in — then create it with concrete steps using the goals tool.", {
+      category: t(category.label),
+    });
+    void send("main", `${opener} ${t(idea.prompt)}`);
+    openThread("main");
+  };
+  const kindOf = (idea: Idea) => (idea.kind === "routine" || idea.kind === "goal" ? idea.kind : "chat");
 
   // Muse's Ideas page: a big title, then rows of "emoji · bold pitch · grey detail" grouped under
   // section headers (the first group has none). Tapping a row opens a small sheet that says what
@@ -114,11 +137,38 @@ export function IdeasScreen() {
             </div>
             {selected.idea.detail && <p className="mt-3 text-[15px] leading-[22px]">{t(selected.idea.detail)}</p>}
             <div className="mt-3.5 flex items-center gap-1.5 text-[13px] text-muted">
-              <MessageCircle size={16} /> {t("Starts a conversation")}
+              {kindOf(selected.idea) === "routine" && (
+                <>
+                  <Clock size={16} /> {t("Creates a routine")}
+                  {selected.idea.time ? ` · ${selected.idea.time}` : ""}
+                </>
+              )}
+              {kindOf(selected.idea) === "goal" && (
+                <>
+                  <Flag size={16} /> {t("Creates a goal")}
+                </>
+              )}
+              {kindOf(selected.idea) === "chat" && (
+                <>
+                  <MessageCircle size={16} /> {t("Starts a conversation")}
+                </>
+              )}
             </div>
-            <button type="button" onClick={() => sendIdea(selected.idea)} className="mt-[22px] flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-accent-fg">
-              <MessageCircle size={18} /> {t("Send to chat")}
-            </button>
+            {kindOf(selected.idea) === "routine" && (
+              <button type="button" onClick={() => void createRoutine(selected.idea)} className="mt-[22px] flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-accent-fg">
+                <Clock size={18} /> {t("Create routine")}
+              </button>
+            )}
+            {kindOf(selected.idea) === "goal" && (
+              <button type="button" onClick={() => startGoal(selected.idea)} className="mt-[22px] flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-accent-fg">
+                <Flag size={18} /> {t("Start goal")}
+              </button>
+            )}
+            {kindOf(selected.idea) === "chat" && (
+              <button type="button" onClick={() => sendIdea(selected.idea)} className="mt-[22px] flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-accent-fg">
+                <MessageCircle size={18} /> {t("Send to chat")}
+              </button>
+            )}
           </div>
         )}
       </Sheet>

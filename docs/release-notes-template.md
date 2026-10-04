@@ -4,7 +4,11 @@
      English first; the Chinese version of the same notes goes in the <details> block at the end.
      Codenames so far: Foundation, Identity, Home, Guardrails, Memory, Avatar, Welcome, Polish,
      Portrait, Motion, Hatch, Hands, Reach, Home, Stage, Palette, Open, Ensemble, Presence,
-     Footing, Commons, Welcome, Signal, Mirror, Window, Ledger, Harness (CHANGELOG.md has the list). One word, capitalised.
+     Footing, Commons, Welcome, Signal, Mirror, Window, Ledger, Harness, Likeness, Rooms, Locks,
+     Union, Steps (CHANGELOG.md has the list). One word, capitalised.
+
+     Voice: plain and specific, the maintainer talking to one person. Facts over promises; no
+     slogans, no "every one brings…", no exclamation marks.
 
      The shape follows the releases people know (nanobot's): a short story, then Highlights,
      Upgrade Notes, Community; What's Changed, New Contributors, Contributors and the Full
@@ -40,9 +44,9 @@
 
 ## Community
 
-**Free, open source, non-profit — open source, built together: a personal agent for all.** Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer — the account page says how much is left and how it grows; when it is gone, bring your own key, with a step-by-step guide. Nothing is sold; what the relay keeps is in the privacy policy (nanomuse.cn/privacy), and *Settings → Data controls* is yours; delete the account whenever you like.
+nanoMuse is open source and free. Sign in with a phone number or an e-mail and you get a starting allowance; the developer pays for it. The account page shows what is left and how to add more. When it is gone, use your own key — Alibaba Cloud Bailian in mainland China, OpenRouter elsewhere ([how](https://github.com/nano-muse/nanoMuse/blob/main/docs/own-key.md)). Messages are not stored by default and nothing is sold ([privacy policy](https://nanomuse.cn/privacy/)); delete the account whenever you want.
 
-This is a preview, and the people building it use it every day; what breaks for you, and what you wish it did, is the most useful thing you can send. The apps are for anyone; the developer side is in the settings and the docs when you turn it on; the product and the skill and plugin interfaces will keep moving quickly for a while and settle as they go. What we are after is bigger than one app — a personal agent that belongs to the person who runs it, built in the open on infrastructure anyone can reuse, and a shared answer to how far such an agent can go — and we look forward to finding it out with users and developers everywhere. Thank you to everyone who tried a build, reported what broke and asked for what was missing — every issue, idea and pull request brings a personal agent within everyone's reach. [Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [send a pull request](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [star the repo](https://github.com/nano-muse/nanoMuse).
+This is a preview. We use it every day and know where it is rough; tell us where it broke for you and what you want it to do. Thanks to everyone who tried a build and reported what broke. [Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [send a pull request](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [star the repo](https://github.com/nano-muse/nanoMuse) — if it is useful to you, a star helps others find it.
 
 Based on [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 (GPL-3.0), modified since 2026-09-24. The complete corresponding source of this build is tag `v<version>` plus the `android/deps/proot` submodule ([nano-muse/proot](https://github.com/nano-muse/proot)). The whole repository is GPL-3.0-or-later. nanoMuse Harness carries DeepSeek Harness unmodified, with its licence files inside; *harness* in the name is the word, not DeepSeek's. nanoMuse is not affiliated with Meta; Muse is a trademark of Meta Platforms, Inc. The desktop follows what Muse's app looks like and does, written down from using it; none of Meta's assets, code or content is in it.
 
@@ -80,9 +84,9 @@ Based on [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 (GPL-3.0), mod
 
 ### 社区
 
-**免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体。** 用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担——还剩多少、怎么增加，账号页里写得清楚；用完可以换自己的 key，有一步步的教程。数据不会出售；服务器保存什么写在隐私政策里（nanomuse.cn/privacy），「设置 → 数据控制」由你决定；随时可以删除账号。
+nanoMuse 开源、免费。手机号或邮箱登录后有一份起始额度，钱是开发者出的；剩多少、怎么加，账号页里有数。用完可以填自己的 key：国内用阿里云百炼，海外用 OpenRouter（[教程](https://github.com/nano-muse/nanoMuse/blob/main/docs/own-key.md)）。消息默认不存服务器，数据不卖（[隐私政策](https://nanomuse.cn/privacy/)）；账号想删就删。
 
-谢谢每一位装过试过、报过问题、提过需求的人——每一个 issue、想法和 PR，都在让个人智能体离所有人更近一步。[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [发 PR](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [点个 Star](https://github.com/nano-muse/nanoMuse)。
+现在是预览版。我们自己每天在用，知道哪些地方还糙；哪里坏了、想要什么，直接提 issue。谢谢每一位装过、试过、报过问题的人。[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [发 PR](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [点个 Star](https://github.com/nano-muse/nanoMuse)——觉得有用，点个 Star，让更多人看到。
 
 基于 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13（GPL-3.0），自 2026-09-24 起修改；本版本的完整对应源码是 tag `v<version>` 加子模块 `android/deps/proot`（[nano-muse/proot](https://github.com/nano-muse/proot)）。整个仓库以 GPL-3.0-or-later 发布。nanoMuse Harness 原样携带 DeepSeek Harness 及其许可证文件；名字里的 *harness* 是普通词，不是 DeepSeek 的名字。nanoMuse 与 Meta 无关，Muse 是 Meta Platforms, Inc. 的商标。桌面端照着 Muse 应用用起来的样子做，是用过之后写下来的；里面没有 Meta 的任何素材、代码或内容。
 

@@ -27,7 +27,7 @@ from nanomuse.llm.base import (
     says_no_tools,
     split_think,
 )
-from nanomuse.llm.vision import content_parts, has_images, without_images
+from nanomuse.llm.vision import content_parts, has_images, model_takes_images, without_images
 from nanomuse.logger import logger
 from nanomuse.schema import Function, LLMResponse, Message, ToolCall, new_id
 
@@ -52,6 +52,10 @@ class OpenAIChatLLM(BaseLLM):
             max_retries=0,  # we retry ourselves so streaming failures are covered too
             default_headers=settings.extra_headers or None,
         )
+        # what the id says about pictures, so a text-only model is never sent one (and never
+        # has to refuse a request first); "on" and "off" are the user's word and stand
+        if settings.vision == "auto":
+            self.vision_available = model_takes_images(settings.model)
 
     # ------------------------------------------------------------------ public
     async def ask(

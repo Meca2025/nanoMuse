@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from .config import Lane, Settings, text_only
+from .config import DEFAULT_GUI_MODEL, OPENROUTER_GUI_MODEL, Lane, Settings, text_only
 from .runner import Runner, RunnerError
 
 log = logging.getLogger("showcase.sessions")
@@ -46,6 +46,28 @@ class Provider:
     model: str
     host: str = ""
     addresses: tuple[str, ...] = ()
+
+    @property
+    def gui_model(self) -> str:
+        """The model that operates the phone on the visitor's own key.
+
+        The chat model and the GUI model are two settings (contract C4): on OpenRouter the
+        hands get ``qwen/qwen3.8-27b``, on 阿里云百炼 ``qwen3.8-27b`` — the same key, the
+        visitor's bill, never the showcase's. On any other provider the visitor's one model
+        does both lanes; when it is a text-only family (DeepSeek's own API, say) the hands
+        have nothing to look with, and the README says so.
+        """
+        host = (self.host or urlparse(self.base_url).hostname or "").lower()
+        if host == "openrouter.ai" or host.endswith(".openrouter.ai"):
+            return OPENROUTER_GUI_MODEL
+        if host.endswith("aliyuncs.com"):
+            return DEFAULT_GUI_MODEL
+        return self.model
+
+    def lane(self, name: str) -> Lane:
+        """The visitor's provider as the ``main`` or the ``gui`` lane."""
+        model = self.gui_model if name == "gui" else self.model
+        return Lane("openai", model, self.base_url, self.api_key, pin=self.addresses)
 
 
 @dataclass
@@ -259,7 +281,7 @@ class SessionManager:
         s = self.s
         base = f"{self.internal_url.rstrip('/')}/llm/{sess.id}"
         if sess.byok:
-            main = gui = Lane("openai", sess.byok.model, sess.byok.base_url, sess.byok.api_key)
+            main, gui = sess.byok.lane("main"), sess.byok.lane("gui")
         else:
             main, gui = s.main, s.gui
         env = {
@@ -279,10 +301,12 @@ class SessionManager:
             "NANOMUSE_CLOUD_REQUIRED": "0",
         }
         if text_only(main.model):
-            # The chat model takes no images, and on Model Studio's compatible mode it does
-            # not say so: a message with a screenshot in it (the operator's report carries
-            # the last screen) comes back as an empty reply, twice, and the Muse falls silent.
-            # So the pictures stay out of its context; the operator lane is the one that looks.
+            # The chat model takes no images (DeepSeek before v4.1), and on Model Studio's
+            # compatible mode it does not say so: a message with a screenshot in it (the
+            # operator's report carries the last screen) comes back as an empty reply, twice,
+            # and the Muse falls silent. So the pictures stay out of its context; the operator
+            # lane is the one that looks. A sighted main (deepseek-v4.1-flash, qwen) is left
+            # to the runtime's own detection.
             env["NANOMUSE_LLM_VISION"] = "off"
         # a new look for the Muse: pictures drawn through the gateway (images.py) — on the
         # showcase's key only; a visitor's own provider is not asked to draw
@@ -409,13 +433,8 @@ class SessionManager:
         """Which upstream a container's model call goes to — after the budget check."""
         self.authenticate_key(sess, key)
         if sess.byok:
-            return Lane(
-                "openai",
-                sess.byok.model,
-                sess.byok.base_url,
-                sess.byok.api_key,
-                pin=sess.byok.addresses,
-            )
+            # the visitor's provider for both lanes, each with its own model (Provider.lane)
+            return sess.byok.lane(lane if lane in ("main", "gui") else "main")
         upstream = self.s.lane(lane)
         if upstream is None or not upstream.configured:
             raise Refused(404, "no_lane", f"no model lane '{lane}'")

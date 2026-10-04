@@ -2,6 +2,7 @@ import { KeyRound, Loader2, MessageSquareText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
+import { isMainland } from "../region";
 import { cx } from "../util";
 import { markFirstSignIn } from "./FirstSignInSteps";
 import { inputCls, primaryBtn, secondaryBtn } from "./Form";
@@ -157,7 +158,7 @@ export function SignIn({
         <ModeButton active={mode === "password"} onClick={() => setMode("password")} icon={<KeyRound size={14} />} label={t("With a password")} />
       </div>
       <div>
-        <label className="text-[12px] text-muted">{t("Mainland China phone number or e-mail")}</label>
+        <label className="text-[12px] text-muted">{isMainland() ? t("Mainland China phone number or e-mail") : t("E-mail (or a mainland China phone number)")}</label>
         <input
           value={identifier}
           onChange={(e) => {

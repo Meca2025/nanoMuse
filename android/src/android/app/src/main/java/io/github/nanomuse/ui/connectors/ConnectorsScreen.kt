@@ -71,6 +71,7 @@ import io.github.nanomuse.connectors.Connector
 import io.github.nanomuse.connectors.ConnectorAuth
 import io.github.nanomuse.connectors.Connectors
 import io.github.nanomuse.connectors.ConnectorsCatalogue
+import io.github.nanomuse.connectors.SharedConnectors
 import io.github.nanomuse.ui.home.MuseTones
 import io.github.nanomuse.ui.muse.MuseCaption
 import io.github.nanomuse.ui.muse.MuseCard
@@ -96,6 +97,8 @@ fun ConnectorsScreen(onBack: () -> Unit, onOpenMcp: () -> Unit) {
     val repo = remember { Connectors.repo(context) }
     val serversFlow = remember(repo) { repo?.servers ?: kotlinx.coroutines.flow.MutableStateFlow(emptyList()) }
     val servers by serversFlow.collectAsState()
+    // what the account's other devices connected (contract C3): names and kinds, no credentials
+    val others by SharedConnectors.others(context).collectAsState()
     var open by remember { mutableStateOf<Connector?>(null) }
 
     // tokens near their end get refreshed on the way in; the entries written by the agent show too
@@ -154,6 +157,46 @@ fun ConnectorsScreen(onBack: () -> Unit, onOpenMcp: () -> Unit) {
                     }
                 }
             }
+            // Connected on another device of the account, not here: the catalogue's own sign-in
+            // is the action — the credential never travels, the person signs in again on this
+            // phone. One row per service, the newest device named.
+            val elsewhere = others
+                .filter { e -> e.enabled && connectors.firstOrNull { it.serverId == e.id }?.let { Connectors.state(context, it, servers) == Connectors.State.Connected } != true }
+                .sortedByDescending { it.at }
+                .distinctBy { it.id }
+            if (elsewhere.isNotEmpty()) {
+                MuseSectionLabel(stringResource(R.string.nm_connectors_elsewhere_title))
+                MuseCard {
+                    elsewhere.forEachIndexed { index, entry ->
+                        if (index > 0) MuseRowDivider(inset = 16.dp)
+                        val connector = connectors.firstOrNull { it.serverId == entry.id }
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .then(if (connector != null) Modifier.clickable { open = connector } else Modifier)
+                                .heightIn(min = 60.dp)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(connector?.name ?: entry.label, fontSize = 16.sp, lineHeight = 21.sp, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    text = if (connector != null) stringResource(R.string.nm_connectors_elsewhere_sign_in, entry.device.ifBlank { stringResource(R.string.nm_connectors_elsewhere_device) })
+                                    else stringResource(R.string.nm_connectors_elsewhere_only, entry.device.ifBlank { stringResource(R.string.nm_connectors_elsewhere_device) }),
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 17.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            if (connector != null) {
+                                Text(stringResource(R.string.nm_connectors_sign_in), fontSize = 13.sp, color = MuseTones.action)
+                            }
+                        }
+                    }
+                }
+            }
             // Servers of the person's own — by URL, command or imported JSON: the full MCP editor,
             // reached from here only (Settings has one entry for all of this).
             MuseSectionLabel(stringResource(R.string.nm_connectors_own_title))
@@ -182,6 +225,7 @@ fun ConnectorsScreen(onBack: () -> Unit, onOpenMcp: () -> Unit) {
         ConnectorSheet(
             connector = connector,
             state = Connectors.state(context, connector, servers),
+            elsewhere = others.filter { it.id == connector.serverId && it.enabled }.maxByOrNull { it.at }?.device,
             onDismiss = { open = null },
             onOpenMcp = { open = null; onOpenMcp() },
         )
@@ -226,7 +270,7 @@ private fun LetterMark(connector: Connector, size: androidx.compose.ui.unit.Dp) 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ConnectorSheet(connector: Connector, state: Connectors.State, onDismiss: () -> Unit, onOpenMcp: () -> Unit) {
+private fun ConnectorSheet(connector: Connector, state: Connectors.State, elsewhere: String?, onDismiss: () -> Unit, onOpenMcp: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -290,6 +334,15 @@ private fun ConnectorSheet(connector: Connector, state: Connectors.State, onDism
                 lineHeight = 18.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (elsewhere != null && state != Connectors.State.Connected && !done) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.nm_connectors_elsewhere_sign_in, elsewhere.ifBlank { stringResource(R.string.nm_connectors_elsewhere_device) }),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (connector.docs.isNotBlank()) {
                 Row(
                     Modifier.clickable { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(connector.docs))) } }.padding(vertical = 8.dp),

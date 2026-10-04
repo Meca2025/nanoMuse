@@ -35,7 +35,8 @@ import { CloudCard } from "../components/CloudCard";
 import { Card, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { useT } from "../i18n";
 import { useStore } from "../store";
-import type { Contact, ConnectionsData, TestResult } from "../types";
+import { modelSees, orderPresets } from "../region";
+import type { Contact, ConnectionsData, SharedConnector, TestResult } from "../types";
 import { cx, relativeTime } from "../util";
 
 /**
@@ -145,6 +146,9 @@ export function ModelCard({
   const [saving, setSaving] = useState(false);
   const [test, setTest] = useState<TestResult | null>(null);
   const [testing, setTesting] = useState(false);
+  // the hands model (contract C4): "" = the default — the relay's hands model with the
+  // account, the chat model otherwise; set here, it goes to [gui] model
+  const [guiModel, setGuiModel] = useState(data.gui?.model ?? "");
   // the endpoint's own list of models, fetched when the provider, URL or key changes
   const [models, setModels] = useState<{
     list: string[];
@@ -156,6 +160,8 @@ export function ModelCard({
     imageCatalog: string[];
     videoCatalog: string[];
     vision: string[];
+    /** the relay's hands models, recommended first (contract C4) */
+    gui: string[];
     source: "live" | "catalogue" | "loading";
   }>({
     list: presets[currentPreset]?.models ?? [],
@@ -166,6 +172,7 @@ export function ModelCard({
     imageCatalog: [],
     videoCatalog: [],
     vision: [],
+    gui: presets[currentPreset]?.gui_models ?? [],
     source: "catalogue",
   });
   // true once the user edits the model field by hand in this session: that value is never replaced
@@ -179,9 +186,10 @@ export function ModelCard({
     setToolMode(data.llm.tool_mode || "auto");
     setImageModel(data.llm.image_model ?? "");
     setVideoModel(data.llm.video_model ?? "");
+    setGuiModel(data.gui?.model ?? "");
     setPreset(currentPreset);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.llm]);
+  }, [data.llm, data.gui?.model]);
 
   const p = presets[preset];
   const effectiveUrl =
@@ -211,6 +219,7 @@ export function ModelCard({
               imageCatalog: r.image_catalog ?? [],
               videoCatalog: r.video_catalog ?? [],
               vision: r.vision ?? [],
+              gui: r.gui ?? presets[preset]?.gui_models ?? [],
               source: r.source,
             });
             // a model left over from another provider yields to what this endpoint actually serves
@@ -229,6 +238,7 @@ export function ModelCard({
                 imageCatalog: [],
                 videoCatalog: [],
                 vision: [],
+                gui: p?.gui_models ?? [],
                 source: "catalogue",
               }),
           );
@@ -266,8 +276,11 @@ export function ModelCard({
       imageCatalog: [],
       videoCatalog: [],
       vision: [],
+      gui: next.gui_models ?? [],
       source: "catalogue",
     });
+    // the preset's own hands model comes along, unless the person set one by hand
+    if (!data.gui?.model || Object.values(presets).some((q) => q.gui_model === data.gui?.model)) setGuiModel(next.cloud ? "" : (next.gui_model ?? ""));
     setTypingModel(false);
     setImageModel("");
     setVideoModel("");
@@ -331,6 +344,8 @@ export function ModelCard({
           ...studio,
         });
       }
+      // the hands model rides on the chat model's endpoint and key (contract C4)
+      if (guiModel.trim() !== (data.gui?.model ?? "")) await api.setGui({ model: guiModel.trim() });
       setKey("");
       toast(t("Model saved"));
       onChange();
@@ -363,13 +378,24 @@ export function ModelCard({
     (groups.find((g) => g.id === (q.group ?? "openai")) ?? groups[0]).ids.push(
       id,
     );
+  // the region's own-key provider first (contract C5): Bailian on the mainland, OpenRouter elsewhere
+  for (const g of groups) g.ids = orderPresets(g.ids, presets, state.hub?.account);
   const needsUrl = preset === "custom" || !p?.base_url;
+  // the hands: what they would use with nothing set here
+  const handsDefault = p?.cloud ? (models.gui[0] ?? p.gui_model ?? "") : model.trim();
+  const handsOptions = Array.from(
+    new Set([
+      ...(p?.cloud ? models.gui : []),
+      ...(p?.gui_model ? [p.gui_model] : []),
+      ...models.list.filter((m) => models.vision.includes(m) || modelSees(m) === true),
+    ]),
+  ).filter((m) => m && m !== handsDefault);
   const willAppendV1 = needsUrl && /^https?:\/\/[^/]+\/?$/.test(baseUrl.trim());
 
   return (
     <Card
       icon={<Bot size={19} />}
-      title={t("Model")}
+      title={t("Chat model")}
       summary={
         data.llm.cloud
           ? `nanoMuse Cloud · ${data.llm.model || "—"}`
@@ -446,7 +472,7 @@ export function ModelCard({
         </Field>
       )}
       <Field
-        label={t("Model")}
+        label={t("Chat model")}
         hint={
           p?.cloud && anyModel && models.catalog.length
             ? t(
@@ -550,6 +576,29 @@ export function ModelCard({
                 {m}
               </button>
             ))}
+          </div>
+        )}
+      </Field>
+      <Field
+        label={t("Hands model")}
+        hint={
+          p?.cloud
+            ? t("The model that looks at screens when the hands run — the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.", { model: handsDefault || "—" })
+            : t("The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: the chat model above.")
+        }
+      >
+        <select value={guiModel} onChange={(e) => setGuiModel(e.target.value)} className={cx(inputCls, "text-fg")}>
+          <option value="">{handsDefault ? t("Default — {model}", { model: handsDefault }) : t("Default — the chat model")}</option>
+          {handsOptions.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+          {guiModel && !handsOptions.includes(guiModel) && guiModel !== handsDefault && <option value={guiModel}>{guiModel}</option>}
+        </select>
+        {!p?.cloud && model.trim() && !guiModel && modelSees(model.trim()) === false && (
+          <div className="mt-1.5 text-[12px] text-amber-700 dark:text-amber-300">
+            {t("{model} does not take pictures, so the hands would be blind with it. Pick a model that sees for them.", { model: model.trim() })}
           </div>
         )}
       </Field>
@@ -2458,14 +2507,15 @@ function PhoneCard({
       )}
       <div className="text-[12px] text-muted leading-snug">
         {t(
-          "The operator's model looks at screens step by step: a small, fast model that takes images. Empty = the main model. 阿里云百炼: base URL https://dashscope.aliyuncs.com/compatible-mode/v1, model qwen3.8-27b.",
+          "The operator's model looks at screens step by step: a small, fast model that takes pictures. The Hands model row under Chat model picks one on the same endpoint and key; the fields here are for a different endpoint. Empty = {model}.",
+          { model: g.default_model || t("the chat model") },
         )}
       </div>
       <Field label={t("Model")}>
         <input
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          placeholder={t("same as the main model")}
+          placeholder={g.default_model || t("same as the chat model")}
           className={inputCls}
         />
       </Field>
@@ -2473,7 +2523,7 @@ function PhoneCard({
         <input
           value={baseUrl}
           onChange={(e) => setBaseUrl(e.target.value)}
-          placeholder={t("same as the main model")}
+          placeholder={t("same as the chat model")}
           className={inputCls}
         />
       </Field>
@@ -2571,6 +2621,16 @@ function MCPCard({
   };
 
   const connected = data.mcp.filter((m) => m.connected).length;
+  // what the account's other devices connected and this one has not (contract C3): shown
+  // with the server's own sign-in as the action — the key never travels
+  const elsewhere = (data.shared ?? []).filter((c) => c.enabled && !c.here);
+  const prefill = (c: SharedConnector) => {
+    setName(c.id);
+    setUrl(c.url);
+    setCommand("");
+    setAdding(true);
+    setOpen(true);
+  };
   return (
     <Card
       icon={<Plug size={19} />}
@@ -2631,6 +2691,30 @@ function MCPCard({
                   ) : (
                     <Trash2 size={15} />
                   )}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {elsewhere.length > 0 && (
+        <ul className="space-y-1.5">
+          {elsewhere.map((c) => (
+            <li
+              key={`${c.device_id}:${c.id}`}
+              className="flex items-center gap-2.5 rounded-2xl border border-dashed border-border/70 px-3 py-2"
+            >
+              <span className="h-2 w-2 rounded-full bg-border" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[13.5px] font-medium truncate">{c.label || c.id}</div>
+                <div className="text-[11.5px] text-muted truncate">
+                  {t("Connected on {device} — sign in here to use it on this device", { device: c.device || c.device_id })}
+                  {c.url ? ` · ${c.url}` : ""}
+                </div>
+              </div>
+              {c.url && (
+                <button type="button" onClick={() => prefill(c)} className={cx(secondaryBtn, "py-1.5 text-[12.5px]")}>
+                  {t("Sign in here")}
                 </button>
               )}
             </li>

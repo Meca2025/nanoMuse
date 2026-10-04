@@ -18,6 +18,10 @@ import { Avatar, BrandName, type Mood } from './Avatar.tsx'
 import { makeAvatarStudio } from './AvatarStudio.tsx'
 import { bridge } from './bridge.ts'
 import { profileBus, settingsBus } from './bus.ts'
+import { makeAboutSheet } from './About.tsx'
+import { syncOverlay } from './overlay.ts'
+import { renderFenceCards } from './FenceCards.ts'
+import { interceptComposer, makeAvatarChat } from './AvatarChat.tsx'
 import { makeCapsule } from './Capsule.tsx'
 import { prefillComposer } from './composer.ts'
 import { makeMicButton, makeQuoteAction } from './ComposerExtras.tsx'
@@ -371,6 +375,14 @@ export function apply(ctx: ClientContext): void {
   const ProfileDrawer = makeProfileDrawer(t, stop)
   slots.inject('shell.overlay', () =>
     slots.register({ name: 'shell.overlay', id: 'nanomuse.profile', locale: 'nanomuse', inject: () => ({ openSchedules: () => { selectPanel('schedules') } }) }, ProfileDrawer))
+  // The look changed from the chat: "change your avatar to a fox" is taken on its way out of the composer.
+  const AboutSheet = makeAboutSheet(t, process.env.NANOMUSE_VERSION ?? '')
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.about', locale: 'nanomuse' }, AboutSheet))
+  const AvatarChat = makeAvatarChat(t)
+  slots.inject('shell.overlay', () =>
+    slots.register({ name: 'shell.overlay', id: 'nanomuse.avatar-chat', locale: 'nanomuse' }, AvatarChat))
+  ctx.effect(() => interceptComposer(), 'nanomuse: avatar words')
   // The microphone at the right of the composer; "reply with a quote" beside Copy.
   const MicButton = makeMicButton(t, () => { shell.openSection(DICTATION_SECTION) })
   slots.inject('conversation.input.right', () =>
@@ -572,6 +584,10 @@ export function apply(ctx: ClientContext): void {
     window.setTimeout(() => (document.querySelector('[contenteditable="true"]') as HTMLElement | null)?.focus(), 200)
   })
   if (quickChatOff) ctx.effect(() => quickChatOff, 'nanomuse: quick chat')
+  // The shell's overlays while the hands work: the glow and the capsule outside this window.
+  ctx.effect(() => syncOverlay(t), 'nanomuse: overlays')
+  // The agent's app fences (goal created, goal update, feed post, new look) as cards in the chat.
+  ctx.effect(() => renderFenceCards(t), 'nanomuse: fence cards')
 
   // The avatar studio: a sheet over the window, from the look editor or the agent's draw_new_look.
   const AvatarStudio = makeAvatarStudio({ t })

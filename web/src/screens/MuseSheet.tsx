@@ -13,6 +13,7 @@ import {
   Pencil,
   Play,
   Repeat,
+  Share2,
   ShieldCheck,
   ShieldOff,
   Square,
@@ -22,6 +23,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { Avatar } from "../components/Avatar";
+import { AvatarShareSheet } from "../components/AvatarShareSheet";
 import { ApprovalCard, RiskBadge, grantSubject, scopeLabel, toolIcon } from "../components/Cards";
 import { Sheet } from "../components/Sheet";
 import { intlLocale, useT } from "../i18n";
@@ -54,6 +56,7 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
   const { state, setTab, draft, toast } = useStore();
   const [pane, setPane] = useState<Pane>(0);
   const [pen, setPen] = useState(false);
+  const [share, setShare] = useState(false);
   const [stopping, setStopping] = useState(false);
   const name = state.profile?.name ?? "nanoMuse";
   const pending = state.pendingApprovals.length;
@@ -63,6 +66,7 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
     if (open) {
       setPane(pending > 0 ? 1 : 0);
       setPen(false);
+      setShare(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -99,7 +103,17 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
 
   return (
     <Sheet open={open} onClose={onClose}>
-      <div className="flex flex-col items-center px-1 pb-3 text-center">
+      <div className="relative flex flex-col items-center px-1 pb-3 text-center">
+        {/* the phone's top-right button: the face on a card, to share */}
+        <button
+          type="button"
+          aria-label={t("Share avatar")}
+          title={t("Share avatar")}
+          onClick={() => setShare(true)}
+          className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-full bg-surface-2/70 text-fg hover:bg-surface-2"
+        >
+          <Share2 size={16} />
+        </button>
         <div className="relative">
           <Avatar profile={state.profile} status={state.status} size={72} />
           {/* the pen badge, bottom-right of the face: the look, the name, the studio */}
@@ -182,6 +196,7 @@ export function MuseSheet({ open, onClose }: { open: boolean; onClose: () => voi
       )}
       {pane === 2 && <UpcomingView onSettings={() => go("you", "proactivity")} />}
       {pane === 3 && <SoulPane name={name} onEdit={() => go("you", "who")} onMemory={() => go("memory")} />}
+      <AvatarShareSheet open={share} onClose={() => setShare(false)} />
     </Sheet>
   );
 }
@@ -886,7 +901,9 @@ function useActivity(open: boolean): [ActivityData | null, () => Promise<void>] 
 
 function ActivityView({ open }: { open: boolean }) {
   const [data] = useActivity(open);
+  const { state } = useStore();
   const t = useT();
+  const name = state.profile?.name ?? "nanoMuse";
   const entries = (data?.audit ?? []).filter((e) => e.event === "tool_call").reverse();
   const gui = entries.filter((e) => e.channel === "gui").length;
   return (
@@ -903,7 +920,9 @@ function ActivityView({ open }: { open: boolean }) {
           })}
         </p>
       )}
-      {data && entries.length === 0 && <div className="py-8 text-center text-muted text-[14px]">{t("Nothing yet.")}</div>}
+      {data && entries.length === 0 && (
+        <div className="py-8 text-center text-muted text-[14px]">{t("Nothing yet today. What you ask for and what {name} does about it shows up here.", { name })}</div>
+      )}
       <ul className="space-y-1.5">
         {entries.map((e, i) => (
           <AuditRow key={`${e.ts}-${i}`} entry={e} />
@@ -991,7 +1010,7 @@ function GrantList({ grants, onRevoke }: { grants: Grant[]; onRevoke: (g: Grant)
     <div>
       <div className="text-[12px] uppercase tracking-wide text-muted font-semibold mb-1.5">{t("Permissions you granted")}</div>
       {grants.length === 0 ? (
-        <div className="text-[13px] text-muted">{t("None. Approvals you give “once” are not kept.")}</div>
+        <div className="text-[13px] text-muted">{t("No standing approvals. When you answer “always allow” to a risky step, it is listed here and can be revoked; approvals you give once are not kept.")}</div>
       ) : (
         <ul className="space-y-1.5">
           {grants.map((g) => (

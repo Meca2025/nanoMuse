@@ -224,6 +224,37 @@ def test_draw_pick_pose_sets_the_profile(studio_server, settings: Settings) -> N
     assert view["face"]["style"] == "muse" and view["face"]["created"] > 0
 
 
+def test_a_picture_with_the_request_is_the_reference(studio_server) -> None:
+    """The phone's "make it look like my cat": one picture attached to the request, and the
+    four candidates are edits of it rather than drawings from the words alone."""
+    client, service, fake = studio_server
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (1400, 900), (200, 120, 40)).save(buf, "PNG")
+    up = client.post("/api/files/upload?name=cat.png", content=buf.getvalue())
+    assert up.status_code == 200, up.text
+    path = up.json()["path"]
+    client.post("/api/threads/main/send", json={"text": "换个形象：像这只猫", "files": [path]})
+    ev = _wait(lambda: _avatar_event(client))
+    assert ev["stage"] == "estimate" and ev["reference"] == path
+    client.post("/api/avatar/start", json={"session": ev["session"]})
+    ev = _wait(lambda: (e := _avatar_event(client))["stage"] == "choose" and e)
+    assert fake.generations == [] and len(fake.edits) == 4 and all(ev["candidates"])
+    assert not service.threads["main"].busy
+    # two pictures (or a file that is not one) is the agent's message, not the studio's
+    kinds_before = len(client.get("/api/threads/main/events").json()["events"])
+    client.post(
+        "/api/threads/main/send", json={"text": "换个形象：像这只猫", "files": [path, path]}
+    )
+    _wait(lambda: not service.threads["main"].busy and service.threads["main"].inbox.empty())
+    events = client.get("/api/threads/main/events").json()["events"][kinds_before:]
+    assert [e["type"] for e in events][:1] == ["user"] and not any(
+        e["type"] == "avatar" for e in events
+    )
+
+
 def test_the_studio_screen_runs_a_session_without_a_card(studio_server) -> None:
     """From the studio screen (thread ""): no card in the chat, the session is reported over
     the socket as "studio" messages, and the poses can be drawn again from the menu."""

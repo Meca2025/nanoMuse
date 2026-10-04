@@ -75,27 +75,74 @@ Ours, in `NanoMuse/`:
 - **The agent's steps, the status line.** *Settings → Chat → Steps* keeps the tool capsules out of
   finished messages unless asked for; the typing line reads *〈name〉 is on it*, not *is thinking*.
   Both are one-line edits in upstream's `AssistantBlockView` / `ContentView`, marked `// nanoMuse:`.
-- **The Muse shell (0.1.33), iPhone only.** `NanoMuseRoot` replaces upstream's `ContentView` at
-  the root on the iPhone (the iPad keeps the split layout; `nanomuse.shell.enabled` /
-  `nanomuse.header.enabled` in UserDefaults switch the shell and the header off, no UI toggle
-  yet). The chat's navigation title becomes **face · name · status line** (`NanoMuseHeader.swift`):
-  the status reads *waiting for you* while a question or an approval is up, then the running
-  tool's `tool_title` — the model's own words for the step, *打开携程网站* — then *writing the
-  reply*, then *On it: 〈brief〉*, and the model's name when idle; the face (`NanoMuseFaces.swift`,
-  the drawn face from Application Support or the dragon from the bundle, five moods with the
-  breath, bob, tilt, pop and shake of the other clients) is tapped into the avatar studio. The
-  bottom bar carries the rooms (`NanoMuseRooms.swift`): **Ideas** (bundled `ideas.{en,zh}.json`,
-  *Send to chat*) and **Library** (the sessions' workspace files, QuickLook, share, *Open
-  conversation*) are real; **Feed** and **Goals** are empty states, since the iPhone has no
-  scheduler to run them (*Create a goal* starts a chat). The drawer holds the sessions, search, a
-  new side chat, *Pin as the main chat*, and *All chats* / *Settings*, which open upstream's layout
-  in a sheet.
-- **The avatar studio** (`NanoMuseAvatarStudio.swift`, `NanoMuseProfile.swift`): the styles and
-  prompts of the Android studio, four candidates drawn in parallel through the relay
-  (`/v1/images/generations`, `/v1/images/edits` for the posed moods), a cost sheet first (eight
-  pictures, the estimate against what is left), the pick adopted and pushed to the account's
-  profile (`PUT /v1/me/profile`, pulled on start and on the hub's `profile` frame by `rev`) so
-  every device changes with it. Through the relay only — no own-key image path on iOS.
+- **The Muse shell (0.1.33; iPad too since 0.1.34).** `NanoMuseRoot` replaces upstream's
+  `ContentView` at the root; *Settings → nanoMuse* has the two switches (*Muse home*, *Face and
+  name in the chat header*), and the OpenMinis layout stays one tap away in the drawer. The chat's
+  navigation title becomes **face · name · status line** (`NanoMuseHeader.swift`): the status
+  reads *waiting for you* while a question or an approval is up, then the running tool's
+  `tool_title` — the model's own words for the step, *打开携程网站* — then *writing the reply*,
+  then *On it: 〈brief〉*, and the model's name when idle; while a new face is being drawn it
+  reads the avatar flow's line. The face (`NanoMuseFaces.swift`, the drawn face from Application
+  Support or the dragon from the bundle, five moods with the breath, bob, tilt, pop and shake of
+  the other clients) is tapped into **the agent's page**. The drawer holds the sessions, search,
+  a new side chat, *Pin as the main chat*, *All chats* and the nanoMuse settings.
+- **The agent's page (0.1.34)** (`NanoMuseAgentPage.swift`, Android `ui/profile`): the big face
+  with the pen badge (*Change avatar* puts "Change your avatar to " in the main chat's composer,
+  *Edit name*, *Avatar studio*), the name, *online*, and four panes — **Activity** (what you asked
+  and what the agent did, from the last two days of sessions), **Approvals** (the standing
+  "always allow" answers, revocable), **Daily** (the routines and the goal check-ins with their
+  next run, *Manage routines*), **Soul & memory** (SOUL.md and GLOBAL.md, editable) — and the
+  share sheet (`NanoMuseAvatarShareSheet`, Android `ui/avatar/AvatarShareSheet.kt`).
+- **The avatar, from the chat (0.1.34)** (`NanoMuseAvatarFlow.swift`, Android `avatar/AvatarFlow.kt`):
+  "换成一只橘猫" / "change your avatar to a red panda" is read before the model sees it (the same
+  regexes, tested in `MinisTests/NanoMuseLogicTests.swift`); four candidates come up as a card in
+  the chat, picked by tap or by words (*the second one*, *第三个*, *regenerate*); then *Finalizing
+  poses…*, the new face on, the profile pushed, a line in the memory, the share card. Through the
+  relay with a cost card first (`/v1/estimate`), or through the person's own Bailian key
+  (`NanoMuseImageGen.swift`, DashScope's native image endpoint) when the phone has one; the studio
+  (`NanoMuseAvatarStudio.swift`) uses the same path and lets the image model be picked.
+- **The scheduler (0.1.34)** (`NanoMuseScheduler.swift`): routines — a label, a prompt, a time,
+  daily / weekdays / once or every N hours — run as a headless turn in a conversation of their own
+  (`NanoMuseHeadless`). Honestly: the iPhone runs them when the app is open (every due one on
+  becoming active), asks iOS for a `BGAppRefreshTask` (`io.github.nanomuse.app.scheduler`) when
+  it goes to the background and runs what is due if iOS grants it, and posts a local notification
+  at each due time (*Check-in: 〈goal〉 — open to run it*) whose tap opens the conversation. Every
+  piece of copy about routines says so. *Settings → nanoMuse → Scheduled tasks* lists them all,
+  the goal check-ins and the feed's included.
+- **Goals (0.1.34)** (`NanoMuseGoals.swift`, Android `goals/`): *Create a goal › category* sends
+  the opener to the main chat with a system addendum for a few turns; the model's
+  ` ```nanomuse-goal ` block becomes the goal and its check-in routine, ` ```nanomuse-goal-update `
+  blocks move the progress; cards in the chat (*Goal created*, *Goal update*), the Goals room
+  with progress, steps, pause / check now / done / delete, and the routines beneath.
+- **Feed (0.1.34)** (`NanoMuseFeed.swift`, Android `feed/`): a daily routine writes a few short
+  posts from the memory, the diary and the goals into `feed/<day>/<n>.md` with front matter; the
+  ` ```nanomuse-feed ` fence is how the model hands them over. The Feed room shows them by day,
+  *Discuss* opens a side chat on the post, the sliders hold what the feed is about, the time, the
+  switch and *Write it now*. **Ideas** gained *Create routine* (scheduled at the idea's time, the
+  editor opens) and *Start goal* beside *Send to chat*.
+- **First run and settings (0.1.34)** (`NanoMuseFirstRun.swift`, `NanoMuseSettings.swift`,
+  `NanoMuseCoding.swift`, `NanoMuseSystemFiles.swift`): the four pages of the Android first run
+  (welcome → sign in — free → a password once for a fresh account → which model answers → meet
+  〈name〉), with *I have my own API key* opening the own-key sheet (Bailian / OpenRouter, ordered by
+  region; OpenRouter's sign-in without a paste), and the first conversation afterwards (the
+  opening lines, "what should I call you?", the name chooser from the model's ` ```nanomuse-naming `
+  block, GLOBAL.md and SOUL.md written). *Settings → nanoMuse*: the account, **Coding agents**
+  (Cursor / Codex / Claude Code sessions on the computers of the account over the hub's
+  `coding.*` actions, a message to any of them), **Scheduled tasks**, **System files** (SOUL,
+  GLOBAL, the diary, the feed's instruction, the routines' schedule, *Import memory* from another
+  assistant), Connectors, Data controls, the two shell switches, *Show the welcome again*.
+- **Models (0.1.34)** (`NanoMuseModels.swift`): the relay's menu opens on `deepseek-v4.1-flash`
+  (the one marked recommended *for chat*; `qwen3.8-27b` is the hands' model and never the chat
+  default); a pick made in the chat's picker moves to the front of the Cloud group so new chats
+  follow it, as Android's `followPick`. DeepSeek ids are text-only unless they name `v4.1` or
+  later, `vision` or `ocr` — a `// nanoMuse:` step at the top of `LLMModel.withInferredModality()`.
+- **Connections across devices (0.1.34)** (`NanoMuseSharedConnectors` in
+  `NanoMuseConnectors.swift`): the profile's `connectors` list says which device connected what
+  (id, label, address without the query string, how it signs in, enabled, when, the device) and
+  never a token; this phone puts its own entries, reads the others' back, and the Connectors page
+  lists them under *On your other devices* — *Connected on 〈device〉 — sign in here to use it on
+  this phone*. The ways-on card in the account follows the region: Bailian first in mainland
+  China, *Sign in with OpenRouter* first elsewhere.
 - **Connectors** (`NanoMuseConnectors.swift`): the desktop's catalogue from the bundled
   `connectors.json` (`node scripts/connectors-json.mjs` keeps it current, `--check` in CI), the
   MCP authorization flow (initialize → 401 → protected-resource metadata → authorization-server
@@ -257,21 +304,30 @@ The runner is `macos-26`; if the label is not available on your GitHub plan, `ma
 
 ## What follows
 
-The Android app is where nanoMuse's shape lives; the iOS app is OpenMinis with our name, plus
-the Cloud sign-in. In the order it makes sense to port, and where the Android code is:
+The Android app is where nanoMuse's shape lives; since 0.1.34 the iPhone carries the same shape
+over OpenMinis — the agent's page, the chat-driven avatar, goals, feed, routines, the first run —
+with iOS's limits on background work spelled out in the copy. Where the Android code is, and
+what became of it here:
 
 | Android (`io.github.nanomuse.*`) | On iOS |
 |---|---|
 | `cloud` — relay client, sign-in, account | Done: `NanoMuse/NanoMuseCloud*.swift`, `NanoMuseAccount*.swift` (0.1.32: password, invite code, the allowance in yuan, usage, sessions, timeline, delete) |
-| `ui.onboarding` — the four-page first run with *Sign in — free* | 0.1.32: a *Sign in to nanoMuse Cloud — free* entry on the start screen (`NanoMuseWelcome.swift`); the four pages come with the shell |
-| `community.StarPrompt` — the star asks | 0.1.32: at sign-in and when the allowance is spent (`NanoMuseStar`); after the first task with the shell |
+| `ui.onboarding` — the four-page first run with *Sign in — free* | Done (0.1.34): `NanoMuseFirstRun.swift`, the first conversation included; no Hands page on iOS |
+| `community.StarPrompt` — the star asks | Done: at sign-in, when the allowance is spent, after the first and tenth task, after a new look (`NanoMuseStar`) |
 | `nm.show_steps` — the agent's steps off by default | 0.1.32: `NanoMuseSteps.swift`; finished messages keep to the conversation, a running one shows its steps |
-| `connectors` — the catalogue | Next, after the Android flow is confirmed on a device ([parity.md](parity.md)) |
-| `ui.home`, `ui.chat`, `ui.settings` — the Muse-style shell, header, tones | SwiftUI views under `NanoMuse/`; the OpenMinis screens stay behind them |
-| `avatar` — the drawn face and its states | Needs the relay's picture model; same request shape as Android (`docs/cloud.md`) |
-| `reach` — the phone drives the computer | The pairing protocol is platform-neutral; the client moves as is |
+| `connectors` — the catalogue, `SharedConnectors` | Done: `NanoMuseConnectors.swift` (0.1.33 the catalogue, 0.1.34 the other devices' entries) |
+| `ui.home`, `ui.chat`, `ui.settings`, `ui.profile` — the shell, header, agent page | Done: `NanoMuseShell.swift`, `NanoMuseHeader.swift`, `NanoMuseAgentPage.swift`, `NanoMuseSettings.swift` |
+| `avatar` — the drawn face, the chat-driven change, the studio | Done (0.1.34): `NanoMuseAvatarFlow.swift`, `NanoMuseAvatarStudio.swift`, `NanoMuseImageGen.swift` |
+| `goals`, `feed`, the scheduler | Done (0.1.34) as far as iOS allows: foreground catch-up, `BGAppRefreshTask`, local notifications. No alarm-exact runs while the app is asleep — the copy says so |
+| `coding` — the computers' coding agents over the hub | Done (0.1.34): `NanoMuseCoding.swift`; the computer must run nanoMuse signed in with the same account |
+| `reach` — the phone drives the computer | Done: `NanoMuseReach.swift` over the hub |
 | `hands` — the phone's own screen | No equivalent: iOS does not let an app drive another. App Intents / Shortcuts are the door there |
-| Widgets, notifications, background tasks | Upstream's `AgentWidget` and BGTasks already cover most of it |
+| Widgets | Upstream's `AgentWidget` as it is |
+
+Still to check on a device, in order: the first run end to end with a fresh account; a chat-driven
+avatar change through the relay and through a Bailian key; a routine coming due with the app in
+the background (does iOS grant the refresh on the tester's phone, and how often); a coding session
+against a computer of the account; the connectors list after a second device signs in.
 
 Not in the plan: App Review. TestFlight internal is the distribution until the shell is ported and
 the store listing can be honest about what the iPhone app is.

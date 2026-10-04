@@ -16,7 +16,9 @@ import { REPO_URL } from './panels.ts'
 
 /** `GET /v1/me`, the parts this page reads (every field optional: an older relay sends fewer). */
 export interface AccountSheet {
-  account?: { id?: string; channel?: string; hint?: string; member?: boolean; has_password?: boolean; sessions?: number; signed_in_via?: string; created_at?: number }
+  account?: { id?: string; channel?: string; hint?: string; member?: boolean; has_password?: boolean; sessions?: number; signed_in_via?: string; created_at?: number; region?: string }
+  /** Where the account is, as the relay sees it (0.1.34): `cn` or `intl`. */
+  region?: string
   spend?: { total?: number; grant?: number; left?: number | null; unlimited?: boolean; warn?: boolean; usd_cny?: number; invite_bonus_cny?: number; invitee_bonus_cny?: number; own_key_docs?: string }
   usage?: { today?: { by_kind?: UsageRow[] }; total?: { by_kind?: UsageRow[]; by_model?: UsageRow[] } }
   invite?: { code?: string; url?: string; invites?: number; bonus_cny?: number; invitee_bonus_cny?: number; earned_cny?: number }
@@ -186,18 +188,48 @@ function Allowance({ t, sheet, member }: { t: Translate; sheet: AccountSheet; me
 }
 
 /** When the pool is low or spent: your own key, an invitation, and — once — a star. */
+/** Mainland China when the UI is Chinese, the account signed in with a phone, or the relay says `cn` (C5). */
+export function mainland(t: Translate, sheet: AccountSheet): boolean {
+  const region = sheet.region ?? sheet.account?.region
+  if (region === 'cn') return true
+  if (region && region !== 'cn') return false
+  return t('langTag') === 'zh' || sheet.account?.channel === 'phone'
+}
+
+const BAILIAN_URL = 'https://bailian.console.aliyun.com/'
+const OPENROUTER_URL = 'https://openrouter.ai/keys'
+
 function WaysOn({ t, exhausted, sheet }: { t: Translate; exhausted: boolean; sheet: AccountSheet }): ReactNode {
   const bonus = sheet.spend?.invite_bonus_cny ?? sheet.invite?.bonus_cny ?? 5
   const [star, setStar] = useState(!starred())
+  const cn = mainland(t, sheet)
+  // the provider that suits where the person is comes first; the other stays one line below
+  const bailian = h('div', { className: 'nm-way', key: 'bailian' },
+    h('span', { className: 'nm-way-icon' }, h(IconKey, { size: 15 })),
+    h('div', { className: 'nm-way-main' },
+      h('div', { className: 'nm-way-title' }, t('acWayBailian')),
+      h('div', { className: 'nm-way-sub' }, cn ? t('acWayBailianSub') : t('acWayBailianAbroad')),
+      h('div', { style: row },
+        h('button', { type: 'button', className: `nm-pill nm-pill-sm${cn ? '' : ' nm-pill-ghost'}`, onClick: () => { settingsBus.openSection?.('models') } }, t('acWayKeyGo')),
+        h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => openLink(BAILIAN_URL) }, t('acWayGetKey')))))
+  const openrouter = h('div', { className: 'nm-way', key: 'openrouter' },
+    h('span', { className: 'nm-way-icon' }, h(IconKey, { size: 15 })),
+    h('div', { className: 'nm-way-main' },
+      h('div', { className: 'nm-way-title' }, t('acWayOpenRouter')),
+      h('div', { className: 'nm-way-sub' }, cn ? t('acWayOpenRouterCn') : t('acWayOpenRouterSub')),
+      h('div', { style: row },
+        h('button', { type: 'button', className: `nm-pill nm-pill-sm${cn ? ' nm-pill-ghost' : ''}`, onClick: () => { settingsBus.openSection?.('models') } }, t('acWayKeyGo')),
+        h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => openLink(OPENROUTER_URL) }, t('acWayGetKey')))))
   return h('div', { className: 'nm-ways' },
     h('div', { className: 'nm-ways-lead' }, exhausted ? t('acExhausted') : t('acNearlyOut')),
+    cn ? bailian : openrouter,
+    cn ? openrouter : bailian,
     h('div', { className: 'nm-way' },
       h('span', { className: 'nm-way-icon' }, h(IconKey, { size: 15 })),
       h('div', { className: 'nm-way-main' },
         h('div', { className: 'nm-way-title' }, t('acWayKey')),
         h('div', { className: 'nm-way-sub' }, t('acWayKeySub')),
         h('div', { style: row },
-          h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => { settingsBus.openSection?.('models') } }, t('acWayKeyGo')),
           h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => openLink(sheet.spend?.own_key_docs || OWN_KEY_DOCS) }, t('acWayKeyGuide'))))),
     h('div', { className: 'nm-way' },
       h('span', { className: 'nm-way-icon' }, h(IconGift, { size: 15 })),

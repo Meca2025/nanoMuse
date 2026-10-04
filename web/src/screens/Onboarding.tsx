@@ -8,6 +8,7 @@ import { SignIn } from "../components/SignIn";
 import { IdentityForm, identityBody, identityOf, type Identity } from "../components/IdentityForm";
 import { useT } from "../i18n";
 import { useStore } from "../store";
+import { ownKeyLine } from "../region";
 import type { ConnectionsData, Profile } from "../types";
 import { cx } from "../util";
 import { CalendarCard, ContactsCard, EmailCard, ModelCard, inputCls, primaryBtn, secondaryBtn } from "./ConnectionsScreen";
@@ -211,7 +212,11 @@ export function Onboarding() {
                     <SignIn onSignedIn={() => void loadConn()} useAsModel />
                   </div>
                 )}
-                {!modelReady && <p className="px-1 text-[12.5px] font-medium text-muted">{t("Or bring your own key")}</p>}
+                {!modelReady && (
+                  <p className="px-1 text-[12.5px] text-muted">
+                    <span className="font-medium">{t("Or bring your own key")}</span> · {ownKeyLine(t, state.hub?.account)}
+                  </p>
+                )}
                 <ModelCard data={conn} onChange={() => void loadConn()} compact />
               </>
             ) : connError ? (

@@ -219,6 +219,7 @@ private fun openAccessibilitySettings(context: Context) {
 /** The sentence for how the screen model was arrived at ([Hands.screenModel]). */
 private fun whyText(why: Hands.Why): Int = when (why) {
     Hands.Why.CHOSEN -> R.string.nm_hands_why_chosen
+    Hands.Why.DEFAULT -> R.string.nm_hands_why_default
     Hands.Why.CHAT -> R.string.nm_hands_why_chat
     Hands.Why.GROUP -> R.string.nm_hands_why_group
     Hands.Why.MENU -> R.string.nm_hands_why_menu

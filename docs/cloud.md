@@ -19,14 +19,16 @@ runtime). After the code the app has:
 
 - a provider called **nanoMuse Cloud** under *Settings → Providers*, an
   ordinary OpenAI-compatible provider whose key is the token the relay issued;
-- a model group with the recommended chat model, set as the default if you had
-  none;
+- a model group with the relay's menu: the recommended chat model set as the
+  default if you had none, and (0.1.34) the recommended hands model — the one
+  that reads screenshots and drives a phone or a computer — for the GUI picker;
+  each model on the menu says which of the two it is for;
 - the relay's picture model as the avatar's image model, if none was set.
 
 *Settings → nanoMuse Cloud* (the *Account* screen) shows who is signed in (a
 masked hint, never the number) and since when; sets, changes or removes the
 **password** (eight characters or more; scrypt on the relay; locked for a while
-after repeated wrong attempts, and a fresh code sign-in unlocks it); today's
+after repeated wrong attempts, and a fresh code sign-in opens it again); today's
 spend against the allowance in ¥ and $ with a meter; **usage by kind** —
 chat, pictures, video — today and in all, and **by model**; the
 **sign-ins** — every device holding a key, how it signed in (code or password),
@@ -63,7 +65,11 @@ The relay is the code in [`cloud/`](../cloud/README.md). It stores:
 - the agent's name and look (`/v1/me/profile`): which face it wears — the dragon,
   an emoji on a colour, or one drawn in the avatar studio, with that face's five
   stills as small WebP pictures — so every device of the account shows the same
-  one. Never a key or a setting.
+  one. Since 0.1.34 the same profile lists the account's **connectors**: which
+  device connected which service (a label, how it signed in — OAuth, a key, or
+  open — and when), so another device can say "connected on your Mac". The
+  credential itself stays on the device that holds it; the relay refuses an
+  entry that carries anything named like one. Never a key or a setting.
 
 Images and tool results are never stored, and message content only as the
 *Data controls* section below says — with the switch off, nothing: the request
@@ -117,26 +123,32 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 | sign-up | open to anyone with a mainland China mobile number or an e-mail address |
 | free allowance | **¥10 per account** at the time of writing, across chat, pictures and clips; it does not reset. The figure is the relay's to set (it can go up without an app update — the apps print what the relay says, `/v1/config`), and the account page always shows the current one |
 | invitations | each *new* person who signs up with your code adds **¥5** (again, the relay's figure) to your pool — and the same to theirs |
-| when it is gone | bring your own key — [Alibaba Cloud Bailian in about two minutes](own-key.md), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
+| when it is gone | bring your own key — in mainland China, [Alibaba Cloud Bailian in about two minutes](own-key.md); elsewhere, [OpenRouter](https://openrouter.ai/keys) (Bailian only signs up accounts from mainland China; OpenRouter is one account, one key, pay as you go), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
 | members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips): the apps' model picker lists them after the menu as *More models on your account* (relay 0.10 reads the provider's list under the Cloud key), and an id can still be typed — *Other model…* |
 | rate | 30 requests per minute |
 | tokens | no ceiling; usage is metered and shown |
 
 Spend is counted at the model provider's list prices (Alibaba Cloud Model
-Studio, Beijing region, September 2026): `qwen3.8-27b` ¥3 in / ¥12 out per
-million tokens, `qwen3.8-flash` ¥0.8 / ¥2.7, `qwen-image-3.0` ¥0.18 a
-picture, `wan2.2-i2v-flash` ¥0.10 a second of video at 480P (a 5-second clip
-is ¥0.50). A typical day of chatting costs a few fen; ¥10 is roughly
-seven hundred thousand tokens of the 27B model or fifty pictures. A new face —
+Studio, Beijing region, October 2026): `deepseek-v4.1-flash` — the chat model
+since 0.1.34, it reads pictures and thinks before it answers — ¥2 in / ¥8 out
+per million tokens, `qwen3.8-27b` — the hands model, usable for chat too — ¥3
+/ ¥12, `qwen3.8-flash` ¥0.8 / ¥2.7, `qwen-image-3.0` ¥0.18 a picture,
+`wan2.2-i2v-flash` ¥0.10 a second of video at 480P (a 5-second clip is
+¥0.50). A typical day of chatting costs a few fen; ¥10 is roughly two million
+tokens of the chat model or fifty pictures. A new face —
 four candidates, four poses and four clips — comes to about ¥3.5, and the app
 shows the estimate and what is left before it draws.
 
 *Settings → nanoMuse Cloud* shows what was used of the pool in ¥ and $, what
 is left, and how the pool grows. At 80 % the app says so once; when the pool
 is spent the relay refuses with `allowance_exhausted` and the app shows the
-two ways on: your own key (Alibaba Cloud Bailian first — the provider form
-opens pre-filled, [guide](own-key.md)) or an invitation (+¥5 for each of you,
-or whatever the relay says that day). Other relays may set other rules
+two ways on: your own key, or an invitation (+¥5 for each of you, or whatever
+the relay says that day). Which key page comes first follows where you are
+(0.1.34: the relay's `region`, read from the number's country code or from
+an offline copy of ip2region on its own disk — nothing is sent anywhere): a
+mainland China account is pointed to Alibaba Cloud Bailian — the provider form
+opens pre-filled, [guide](own-key.md) — and everyone else to OpenRouter, since
+Bailian only signs up accounts from the mainland. Other relays may set other rules
 (`ALLOWANCE_CNY`, `INVITE_BONUS_CNY`, `SIGNUP_OPEN`, `ALLOWED_IDENTIFIERS` —
 all three figures adjustable while the relay runs, relay 0.15; see
 [`cloud/README.md`](../cloud/README.md)).
@@ -189,7 +201,10 @@ POST /v1/auth/code          {identifier}                      → 204
 POST /v1/auth/verify        {identifier, code, device}        → {api_key, base_url, account, tokens, models}
 POST /v1/auth/login         {identifier, password, device}    → the same; 401 bad_credentials, 429 locked, 400 no_password
 POST /v1/auth/password      Bearer  {password, current?}      → 204; "" with current removes it
-GET  /v1/me                 Bearer                            → {account{…, has_password, sessions, signed_in_via}, usage{today, total by kind / model}, tokens, spend, models, recent}
+GET  /v1/me                 Bearer                            → {region: cn | intl | unknown, account{…, has_password, sessions, signed_in_via}, usage{today, total by kind / model}, tokens, spend{…, ways}, models, recent}
+GET  /v1/me/profile         Bearer  ?face=false               → {rev, device, name, avatar, …, face?, connectors: [{id, label, url, auth, device, device_id, enabled, at}]}
+PUT  /v1/me/profile         Bearer  {device, name?, avatar?, …, connectors?}  → {rev, device}; a device's connectors replace only its own; 400 no_secrets_in_profile, too_many_connectors
+DELETE /v1/me/profile       Bearer                            → 204
 GET  /v1/me/sessions        Bearer                            → {sessions: [{prefix, device, via, created_at, last_used_at, current}]}
 DELETE /v1/me/sessions/{prefix}  Bearer                       → 204
 GET  /v1/me/events          Bearer  ?limit=50                 → {events: [{ts, kind, detail}]}
@@ -199,7 +214,9 @@ POST /v1/auth/delete        Bearer                            → 204
 ```
 
 Everything else is the OpenAI API: `GET /v1/models` (with `architecture`
-modalities so the picture model is recognisable), `POST /v1/chat/completions`
+modalities so the picture model is recognisable, and a `nanomuse` block per
+model with its `kind`, prices, `for` — the lane(s) a chat model is for, `chat`
+and / or `gui` — and `recommended_for`), `POST /v1/chat/completions`
 with streaming, `POST /v1/images/generations` and `/v1/images/edits`. Errors
 are `{"error": {"message", "type": "nanomuse_cloud", "code"}}` with a stable
 `code` the app turns into a sentence.

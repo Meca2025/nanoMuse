@@ -272,6 +272,11 @@ def create_app(
             return fwd.split(",")[0].strip()
         return request.client.host if request.client else ""
 
+    def client_place(request: Request):
+        """Where the request came from (geo.py), for the region in /v1/me and the "ways on"
+        of a refusal; None when the database is not there or the address is unplaced."""
+        return geo.place(client_ip(request)) if geo.ready else None
+
     @app.middleware("http")
     async def _remember_client(request: Request, call_next):
         # the address and the client software behind this request, for the rows the
@@ -331,7 +336,7 @@ def create_app(
         device = str(body.get("device", ""))[:80]
         invite = str(body.get("invite", ""))[:32]
         key, caller, created = await asyncio.to_thread(cloud.verify_code, ident, code, device, invite)
-        me = cloud.me(caller)
+        me = cloud.me(caller, client_place(request))
         return {"api_key": key, "created": created, **me}
 
     @app.post("/v1/auth/login")
@@ -347,7 +352,7 @@ def create_app(
             raise CloudError(400, "password_required", "Enter the password")
         device = str(body.get("device", ""))[:80]
         key, caller = await asyncio.to_thread(cloud.login_password, ident, password, device, client_ip(request))
-        me = cloud.me(caller)
+        me = cloud.me(caller, client_place(request))
         return {"api_key": key, "created": False, **me}
 
     @app.post("/v1/auth/password", status_code=204)
@@ -368,8 +373,8 @@ def create_app(
         return Response(status_code=204)
 
     @app.get("/v1/me")
-    async def me(caller: Caller = Depends(caller_dep)) -> dict:
-        return cloud.me(caller)
+    async def me(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+        return cloud.me(caller, client_place(request))
 
     @app.get("/v1/me/invite")
     async def me_invite(caller: Caller = Depends(caller_dep)) -> dict:
@@ -403,8 +408,10 @@ def create_app(
 
     @app.put("/v1/me/profile")
     async def me_put_profile(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
-        """A device wrote the name or the look: stored (last writer wins) and every other
-        device of the account hears ``{"type": "profile", "rev"}`` on the hub."""
+        """A device wrote the name or the look (last writer wins), or its ``connectors``
+        (0.17: merged by device — the writer's entries replaced, the others' kept; never a
+        credential, 400 `no_secrets_in_profile`); every other device of the account hears
+        ``{"type": "profile", "rev"}`` on the hub."""
         body = await _json(request)
         device = str(body.pop("device", "") or "")
         out = cloud.put_profile(caller, device, body)
@@ -526,7 +533,7 @@ def create_app(
         spec = cloud.model_for(str(body.get("model", "")), "chat", caller)
         request_id = uuid.uuid4().hex[:16]
         # held at a typical turn's price while it runs; settled when the reply is in
-        cloud.check_budget(caller, request_id=request_id, hold_uy=cloud.chat_reserve_uy(spec))
+        cloud.check_budget(caller, request_id=request_id, hold_uy=cloud.chat_reserve_uy(spec), place=client_place(request))
         body["model"] = spec.upstream
         apply_chat_defaults(body, settings.chat_defaults)
         stream = bool(body.get("stream"))
@@ -728,7 +735,9 @@ def create_app(
         if spec.upstream.startswith("qwen-image"):
             params["prompt_extend"] = False
         request_id = uuid.uuid4().hex[:16]
-        cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(size), request_id=request_id)
+        cloud.check_budget(
+            caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(size), request_id=request_id, place=client_place(request)
+        )
         try:
             png = await _dashscope_image(spec.upstream, [{"text": prompt}], params)
             charged = cloud.charge_image(caller, spec, 1, request_id, size=size)
@@ -741,6 +750,7 @@ def create_app(
 
     @app.post("/v1/images/edits")
     async def images_edits(
+        request: Request,
         caller: Caller = Depends(caller_dep),
         model: str = Form(...),
         prompt: str = Form(...),
@@ -763,7 +773,13 @@ def create_app(
         params = {"size": _size_param(size), "prompt_extend": False, "watermark": False} if three_x else {"n": 1, "watermark": False}
         content = [{"image": f"data:{mime};base64," + base64.b64encode(data).decode()}, {"text": prompt}]
         request_id = uuid.uuid4().hex[:16]
-        cloud.check_budget(caller, minimum=spec.per_image, cost_uy=spec.image_cost_uy(_size_param(size)), request_id=request_id)
+        cloud.check_budget(
+            caller,
+            minimum=spec.per_image,
+            cost_uy=spec.image_cost_uy(_size_param(size)),
+            request_id=request_id,
+            place=client_place(request),
+        )
         try:
             png = await _dashscope_image(edit_model, content, params)
             charged = cloud.charge_image(caller, spec, 1, request_id, size=_size_param(size))
@@ -814,7 +830,7 @@ def create_app(
         # reserved while the submission runs; once accepted, the task row holds the clip's
         # price against the allowance (db.pending_video_cost) until the clip is charged
         request_id = uuid.uuid4().hex[:16]
-        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=clip_cost, request_id=request_id)
+        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=clip_cost, request_id=request_id, place=client_place(request))
         body["model"] = spec.upstream
         headers = upstream_headers()
         headers["X-DashScope-Async"] = "enable"
@@ -871,7 +887,7 @@ def create_app(
         if request.query_params.get("action") != "getPolicy":
             raise CloudError(400, "bad_request", "action=getPolicy is the only upload call the relay makes")
         spec = cloud.model_for(request.query_params.get("model", ""), "video", caller)
-        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=spec.video_cost_uy(spec.clip_seconds))
+        cloud.check_budget(caller, minimum=spec.per_clip, cost_uy=spec.video_cost_uy(spec.clip_seconds), place=client_place(request))
         try:
             r = await http.get(
                 settings.dashscope_base.rstrip("/") + "/uploads",

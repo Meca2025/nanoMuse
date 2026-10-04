@@ -65,6 +65,8 @@ class HubService:
         # the account's chat models (ids), for the provider form; refreshed on sign-in and
         # whenever the form asks
         self.chat_models: list[str] = []
+        # the account's hands models (ids), recommended first (contract C4)
+        self.gui_models: list[str] = []
         # the relay's whole list as it came (chat, image and video models, with modalities)
         self.models: list[dict[str, Any]] = []
         # approval cards raised by *other* devices' runs, shown here: card id → (device id, approval id)
@@ -325,6 +327,9 @@ class HubService:
             "account_id": str(account.get("id") or ""),
             "member": bool(account.get("member")),
             "any_model": bool(account.get("any_model")),
+            # where the relay places the account ("cn" = mainland China; relay 0.17 says it
+            # at the top of the sign-in answer, older relays not at all)
+            "region": str(data.get("region") or account.get("region") or ""),
         }
         self._save()
         self._pending_code = ""
@@ -363,21 +368,23 @@ class HubService:
         return bool(base) and base == model_url(self.cloud.base_url).rstrip("/")
 
     async def refresh_chat_models(self) -> list[str]:
-        """The relay's chat models (text in, text out), recommended one first."""
+        """The relay's chat models, recommended one first; the hands models alongside
+        (``gui_models``), and the app told which model its hands take by default."""
         self.cloud.api_key = self._key()
         models = await self.cloud.models()
         self.models = models
-        chat = [
-            m
-            for m in models
-            if (m.get("architecture") or {}).get("output_modalities", ["text"]) == ["text"]
-        ]
-        recommended = self.cloud.recommended_model(models)
-        ids = [str(m["id"]) for m in chat if m.get("id")]
+        self.chat_models = self._ranked(models, "chat")
+        self.gui_models = self._ranked(models, "gui")
+        self.svc.app.cloud_gui_model = self.gui_models[0] if self.gui_models else ""
+        return self.chat_models
+
+    def _ranked(self, models: list[dict[str, Any]], purpose: str) -> list[str]:
+        fitting = self.cloud.models_for(models, purpose)
+        recommended = self.cloud.recommended_model(models, purpose)
+        ids = [str(m["id"]) for m in fitting if m.get("id")]
         if recommended in ids:
             ids.remove(recommended)
             ids.insert(0, recommended)
-        self.chat_models = ids
         return ids
 
     async def set_password(self, password: str, current: str | None = None) -> dict[str, Any]:
@@ -455,7 +462,7 @@ class HubService:
         self.svc.app.vault.delete(CLOUD_KEY)
         self.cloud.api_key = ""
         cloud = dict(self.data.get("cloud") or {})
-        for key in ("hint", "channel", "signed_in_at", "has_password", "account_id"):
+        for key in ("hint", "channel", "signed_in_at", "has_password", "account_id", "region"):
             cloud.pop(key, None)
         self.data["cloud"] = cloud
         self.profile.forget()
@@ -475,12 +482,14 @@ class HubService:
         account = data.get("account") if isinstance(data.get("account"), dict) else {}
         if account:
             cloud = dict(self.data.get("cloud") or {})
+            region = str(data.get("region") or account.get("region") or cloud.get("region") or "")
             fresh = {
                 "has_password": bool(account.get("has_password")),
                 # a member, and (the relay's any_model) free to name any model of the
                 # provider's — the operator may grant or take back either between reads
                 "member": bool(account.get("member")),
                 "any_model": bool(account.get("any_model")),
+                "region": region,
             }
             changed = any(cloud.get(k) != v for k, v in fresh.items())
             cloud.update(fresh)
@@ -489,6 +498,9 @@ class HubService:
             if changed:
                 self._save()
                 self.publish()
+            # the Web app reads the region with the account (the relay says it at the top)
+            if region and not account.get("region"):
+                account["region"] = region
         return data
 
     def account_view(self) -> dict[str, Any]:
@@ -505,6 +517,7 @@ class HubService:
             "account_id": str(cloud.get("account_id") or ""),
             "member": bool(cloud.get("member")),
             "any_model": bool(cloud.get("any_model")),
+            "region": str(cloud.get("region") or ""),
             "is_model": bool(
                 llm.base_url and llm.base_url.rstrip("/") == model_url(self.cloud.base_url)
             ),

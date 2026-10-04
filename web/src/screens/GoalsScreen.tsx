@@ -183,7 +183,7 @@ export function GoalsScreen() {
     }
   };
 
-  /** The category sheet's "Let's go": the goal is shaped in the chat, the way Muse does it. */
+  /** The category sheet's "Start": the goal is shaped in the chat, the way Muse does it. */
   const startGoal = (c: (typeof CATEGORIES)[number]) => {
     setSheetCategory(null);
     void send(
@@ -270,7 +270,7 @@ export function GoalsScreen() {
             <p className="mt-3.5 text-[15px] leading-[22px]">{t("First, we'll shape the goal together in the chat. I'll ask a few questions so I understand exactly what you're after.")}</p>
             <p className="mt-3.5 text-[15px] leading-[22px]">{t("Once it's set, I'll track your progress here.")}</p>
             <button type="button" onClick={() => startGoal(sheetCategory)} className="mt-6 flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-accent-fg">
-              <MessageCircle size={18} /> {t("Let's go")}
+              <MessageCircle size={18} /> {t("Start")}
             </button>
           </div>
         )}
@@ -660,7 +660,7 @@ function GoalDetail({
             <button
               type="button"
               onClick={() => {
-                void send("main", t("Let's talk about my goal “{title}” ({id}). What's the status and what should we do next?", { title: goal.title, id: goal.id }));
+                void send("main", t("About my goal “{title}” ({id}): what's the status, and what should we do next?", { title: goal.title, id: goal.id }));
                 openThread("main");
                 onClose();
               }}

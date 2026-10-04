@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -107,3 +108,18 @@ async def test_vault_placeholders_are_resolved_before_connecting():
         assert sorted(t.name for t in tools) == ["echo__add", "echo__echo", "echo__today"]
     finally:
         await manager.close()
+
+
+async def test_an_unreachable_url_server_is_skipped_not_cancelled():
+    """The HTTP transports connect in a task group of their own; a host that does not
+    resolve used to surface as a *cancellation* of the caller (a 500 from the
+    Connections page, and "Attempted to exit cancel scope in a different task" in the
+    log). It is a skipped server like any other, and the caller's task goes on."""
+    manager = MCPManager([MCPServerSettings(name="nowhere", url="http://mcp.invalid./mcp?key=abc")])
+    tools = await asyncio.wait_for(manager.connect(), timeout=30)
+    assert tools == []
+    task = asyncio.current_task()
+    assert task is not None and task.cancelling() == 0
+    await manager.close()
+    # the task is still usable
+    await asyncio.sleep(0)

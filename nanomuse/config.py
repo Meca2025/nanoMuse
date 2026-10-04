@@ -379,6 +379,11 @@ class HandsSettings(BaseModel):
     enabled: bool = False
     # "auto": pyautogui when installed, else xdotool on X11; or "pyautogui" / "xdotool"
     backend: str = "auto"
+    # Where the hands work: "screen" — the whole screen and the system mouse; "window" —
+    # one application's window on macOS, events delivered to that process, the person's
+    # cursor untouched (nanomuse.computer.mac_window); "auto" — window on macOS as soon as
+    # a target application is known, screen everywhere else.
+    mode: Literal["auto", "screen", "window"] = "auto"
     # Widest picture handed to the model (the screen itself is operated at full size).
     max_image_width: int = 1600
     # A pause after each action before the next screenshot, so the screen has settled.

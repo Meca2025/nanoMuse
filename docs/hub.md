@@ -102,7 +102,7 @@ the key in `hello` instead).
 ← error    {code, message, id?}   device_offline · not_controllable · self_call · unknown_call · too_large · bad_frame
 
 → devices  {}        → rename {name}        → forget {device_id}        → ping  ← pong
-← profile  {rev, device}       the account's name and look changed (PUT /v1/me/profile); fetch it
+← profile  {rev, device}       the account's name, look or connectors changed (PUT /v1/me/profile); fetch it
 ```
 
 Close codes: `4000` hello expected, `4001` bad key, `4002` bad device,
@@ -120,7 +120,18 @@ face drawn in the avatar studio with its five small stills), last writer wins,
 and a `profile` frame tells the other devices to fetch the new `rev`. The
 runtime does this in `nanomuse/hub/profile.py`, the phone in
 `io.github.nanomuse.cloud.ProfileSync`; the device that wrote it skips its own
-echo. Nothing else is synchronised — keys, providers and settings stay where
+echo.
+
+The same profile carries **which device connected what** (0.1.34): a
+`connectors` list with, per entry, the connector's id and label, its address
+when it has one, how it signs in (`oauth`, `key` or `open`), the device's name
+and id, whether it is enabled, and when. A device writes only the entries it
+holds; the relay keeps the other devices' entries, caps the list at 64 and
+refuses any entry that carries a token, secret, key, authorization or password
+field — credentials never leave the device that signed in. The other devices
+list those entries under the connectors catalogue as *Connected on \<device\>
+— sign in here to use it on this device*, and the usual local sign-in is the
+action. Nothing else is synchronised — keys, providers and settings stay where
 they were entered.
 
 ## The code

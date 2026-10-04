@@ -6,8 +6,9 @@
  * acknowledgements, the policies). Plus the Developer rows the General page
  * ends with: the switch that brings the harness's own controls back.
  */
+import { useAppInfo, versionLine } from './About.tsx'
 import { createElement as h, Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
-import type { Translate } from './api.ts'
+import { call, type Translate } from './api.ts'
 import { acceleratorOf, bridge, gatedPermissions, keyLabel, openLink, type DesktopPrefs, type PermissionKind } from './bridge.ts'
 import { RelaunchNotice } from './Onboarding.tsx'
 import { usePermissions } from './permissions.ts'
@@ -75,7 +76,17 @@ export function makeComputerSection(t: Translate) {
           h('span', { className: 'nm-row-icon' }, h(IconShield, { size: 18 })),
           h('div', { className: 'nm-row-main' },
             h('span', { className: 'nm-row-title' }, t('cuRisk')),
-            h('span', { className: 'nm-row-sub nm-wrap' }, t('cuRiskNote'))))))
+            h('span', { className: 'nm-row-sub nm-wrap' }, t('cuRiskNote'))))),
+      // "always allow" given on the stage, per app (C2): listed here, revocable here
+      h('h2', null, t('pfApprovalsAlways')),
+      live.grants.length
+        ? h('div', { className: 'nm-card' }, live.grants.map((g) => h('div', { key: g.id, className: 'nm-row' },
+            h('span', { className: 'nm-row-icon' }, h(IconShield, { size: 18 })),
+            h('div', { className: 'nm-row-main' },
+              h('span', { className: 'nm-row-title' }, t('pfAlwaysAllowed', { target: g.target.replace(/^computer_app:/, '') })),
+              h('span', { className: 'nm-row-sub' }, t('cuGrantSub', { name }))),
+            h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => void call('grants/revoke', { id: g.id }).catch(() => undefined) }, t('pmRevoke')))))
+        : h('p', null, t('cuGrantsNone')))
   }
 }
 
@@ -93,7 +104,7 @@ export function makeHelpSection(t: Translate, version: string) {
         h('div', { className: 'nm-row' },
           h('div', { className: 'nm-row-main' },
             h('span', { className: 'nm-row-title' }, t('helpVersion')),
-            h('span', { className: 'nm-row-sub' }, t('versionLine', { version }))))))
+            h('span', { className: 'nm-row-sub' }, versionLine(t, version, useAppInfo()))))))
   }
 }
 

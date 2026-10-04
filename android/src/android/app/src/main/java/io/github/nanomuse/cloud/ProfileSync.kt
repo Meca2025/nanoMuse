@@ -8,6 +8,7 @@ import android.util.Base64
 import com.openminis.app.agent.SoulStore
 import com.openminis.app.logging.AppLogger
 import io.github.nanomuse.avatar.AvatarStore
+import io.github.nanomuse.connectors.SharedConnectors
 import io.github.nanomuse.ui.avatar.AgentMood
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
@@ -32,6 +33,11 @@ import org.json.JSONObject
  * the name here and nothing else.
  *
  * An emoji look chosen on the web has no picture here, so the phone wears the dragon for it.
+ *
+ * The same profile carries which device connected which service (`connectors`, contract C3,
+ * [SharedConnectors]): this phone's entries ride along with every push — names, addresses,
+ * kinds, never a token — and the other devices' entries are read on every pull, whatever the
+ * `rev`, since the relay merges them per device rather than versioning them with the look.
  */
 object ProfileSync {
     private const val TAG = "ProfileSync"
@@ -41,6 +47,8 @@ object ProfileSync {
     private const val KEY_PUSHED_NAME = "pushed_name"
     /** The hash of the idle still as the relay holds it (what it reports as `face_id`). */
     private const val KEY_FACE_HASH = "face_hash"
+    /** This phone's connector entries as last sent, so a push with nothing new is skipped. */
+    private const val KEY_PUSHED_CONNECTORS = "pushed_connectors"
     private const val PUSH_DELAY_MS = 2_500L
     private const val DRAGON = "dragon"
 
@@ -64,11 +72,14 @@ object ProfileSync {
     fun init(context: Context) {
         app = context.applicationContext
         pullSoon(context)
+        // what this phone connected changes → the account's other devices hear about it
+        SharedConnectors.watch(context.applicationContext) { changed() }
     }
 
     /** Signed out: the next account starts from its own profile. */
     fun forget(context: Context) {
         prefs(context).edit().clear().apply()
+        SharedConnectors.forget(context)
     }
 
     // -- the frame, the pull --------------------------------------------------------------
@@ -100,14 +111,21 @@ object ProfileSync {
         val light = NanoMuseCloud.profile(context, withFace = false)
         val rev = light.optInt("rev", 0)
         val known = prefs(context).getInt(KEY_REV, 0)
+        // the other devices' connections come with every read, whatever the rev
+        SharedConnectors.absorb(context, light)
         if (rev == 0) {
             // the relay has nothing for this account yet: this phone's look seeds it, unless
-            // it is the plain default (nothing worth telling the other devices)
+            // it is the plain default (nothing worth telling the other devices) — and so do
+            // its connections, if it has any
             val name = SoulStore.load(context)?.metadata?.name.orEmpty()
-            if (AvatarStore.current.value != null || (name.isNotBlank() && name != "nanoMuse")) push(context)
+            if (AvatarStore.current.value != null || (name.isNotBlank() && name != "nanoMuse") || SharedConnectors.mine(context).length() > 0) push(context)
             return
         }
-        if (rev <= known) return
+        if (rev <= known) {
+            // the look is current; this phone's connections may still be unsaid
+            if (connectorsStamp(context) != prefs(context).getString(KEY_PUSHED_CONNECTORS, null)) push(context)
+            return
+        }
         val name = light.optString("name").trim()
         val avatar = light.optString("avatar")
         applying = true
@@ -192,15 +210,23 @@ object ProfileSync {
         return "${cur.createdAt}:${cur.moods.keys.sortedBy { it.ordinal }.joinToString(",") { it.name }}"
     }
 
+    /** This phone's connector entries, as a string, to tell a push with nothing new. */
+    private fun connectorsStamp(context: Context): String = SharedConnectors.mine(context).toString()
+
     private fun push(context: Context) {
         val name = SoulStore.load(context)?.metadata?.name?.takeIf { it.isNotBlank() } ?: "nanoMuse"
         val p = prefs(context)
         val stamp = faceStamp()
         val sameFace = stamp == p.getString(KEY_PUSHED_FACE, null)
-        if (sameFace && name == p.getString(KEY_PUSHED_NAME, null)) return
+        val connectors = SharedConnectors.mine(context)
+        val sameConnectors = connectors.toString() == p.getString(KEY_PUSHED_CONNECTORS, null)
+        if (sameFace && sameConnectors && name == p.getString(KEY_PUSHED_NAME, null)) return
         val body = JSONObject()
             .put("device", io.github.nanomuse.hub.Hub.deviceId(context))
             .put("name", name.take(60))
+            // which services this phone connected (contract C3): the relay keeps the other
+            // devices' entries and replaces only ours; never a token
+            .put("connectors", connectors)
         val cur = AvatarStore.current.value
         var sentHash: String? = null
         if (cur == null) {
@@ -233,10 +259,13 @@ object ProfileSync {
             }
         }
         val out = NanoMuseCloud.putProfile(context, body)
+        // the reply is the merged profile: the other devices' connections, fresh
+        SharedConnectors.absorb(context, out)
         val editor = p.edit()
             .putInt(KEY_REV, out.optInt("rev", p.getInt(KEY_REV, 0)))
             .putString(KEY_PUSHED_FACE, if (body.optString("avatar") == "face") stamp else "")
             .putString(KEY_PUSHED_NAME, name)
+            .putString(KEY_PUSHED_CONNECTORS, connectors.toString())
         if (body.optString("avatar") != "face") editor.putString(KEY_FACE_HASH, "")
         else if (sentHash != null) editor.putString(KEY_FACE_HASH, sentHash)
         editor.apply()

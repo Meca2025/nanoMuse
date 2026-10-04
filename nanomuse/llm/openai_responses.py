@@ -29,7 +29,7 @@ from nanomuse.llm.base import (
     says_no_tools,
     split_think,
 )
-from nanomuse.llm.vision import content_parts, has_images, without_images
+from nanomuse.llm.vision import content_parts, has_images, model_takes_images, without_images
 from nanomuse.logger import logger
 from nanomuse.schema import Function, LLMResponse, Message, Role, ToolCall, new_id
 
@@ -108,6 +108,8 @@ class OpenAIResponsesLLM(BaseLLM):
             max_retries=0,
             default_headers=settings.extra_headers or None,
         )
+        if settings.vision == "auto":
+            self.vision_available = model_takes_images(settings.model)
 
     async def ask(
         self,

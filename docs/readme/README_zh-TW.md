@@ -25,7 +25,7 @@
 </p>
 
 > [!IMPORTANT]
-> **免費 · 開源 · 非營利 —— 做屬於所有人的個人智慧代理。** nanoMuse 是社群專案，永久免費：用手機號碼或電子郵件登入，模型自帶一份免費額度，費用由開發者承擔；用完可以換成自己的 key。資料不會出售；伺服器保存什麼寫在[隱私權政策](https://nanomuse.cn/privacy/)裡，「設定 → 資料控制」由你決定；帳號隨時可以刪除。**[在瀏覽器裡試試](https://nanomuse.cn/web/)**，或[下載 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
+> **免費、開源、非營利。** 用手機號碼或電子郵件登入後有一份起始額度，費用由開發者出；剩多少、怎麼加，帳號頁裡有數。用完可以填自己的 key：中國大陸用阿里雲百煉，其他地區用 OpenRouter（[教學](../own-key.md)）。訊息預設不存伺服器，資料不賣（[隱私權政策](https://nanomuse.cn/privacy/)）；帳號想刪就刪。**[在瀏覽器裡試試](https://nanomuse.cn/web/)**，或[下載 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
 
 > 這一頁是 [英文 README](../../README.md) 的譯文；英文版是基準，最新消息與完整版本表都在那裡。
 
@@ -61,7 +61,7 @@ nanoMuse 是一個開源的個人智慧代理，為你的每一台裝置而生�
 
 1. 從[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下載 `nanoMuse-<version>-arm64.apk`——Android 8.0 或更新、64 位元手機。願意的話用 `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` 校驗。
 2. 開啟它。Android 會問一次是否允許安裝；每個版本都用同一把金鑰簽名，所以更新會覆蓋安裝並保留你的資料。
-3. 接上模型。*登入——免費*：手機號碼（驗證碼走簡訊）或電子郵件，代理就有了 [nanoMuse Cloud](../cloud.md) 的免費額度——不用 key，不用付錢；帳號頁會說還剩多少、怎麼增加。用完了換自己的：[阿里雲百煉](../own-key.md)大約兩分鐘，任何 OpenAI 相容端點加你的 key，或 App 內建的 OAuth 登入之一。然後，如果你願意，開啟讓代理使用手機 App 的兩項權限（可跳過），再進行第一次對話：它會問怎麼稱呼你，並為自己挑一個名字。
+3. 接上模型。*登入——免費*：手機號碼（驗證碼走簡訊）或電子郵件，代理就有了 [nanoMuse Cloud](../cloud.md) 的免費額度——不用 key，不用付錢；帳號頁會說還剩多少、怎麼增加。對話模型是 `deepseek-v4.1-flash`，雙手用 `qwen3.8-27b`，兩者是分開的設定。用完了換自己的 key：中國大陸用[阿里雲百煉](../own-key.md)，大約兩分鐘；其他地區用 [OpenRouter](../own-key.md)（百煉不接受海外帳號註冊）；任何 OpenAI 相容端點，或 App 內建的 OAuth 登入之一。然後，如果你願意，開啟讓代理使用手機 App 的兩項權限（可跳過），再進行第一次對話：它會問怎麼稱呼你，並為自己挑一個名字。
 4. 可選——*設定 → 圖片與影片模型*：一個圖片模型（阿里雲百煉的 qwen-image-3.0、gpt-image-1，或任何有 OpenAI images 端點的供應商）讓代理能換模樣、畫圖；一個影片模型（百煉的 wan2.2-i2v-flash）讓模樣動起來。Muse 內建這些；nanoMuse 用你自己的，少了哪個代理會告訴你。
 
 App 會檢查這個倉庫的 release 來更新。每個版本的發佈說明在 [docs/releases/](../releases) 與 [CHANGELOG](../../CHANGELOG.md)。
@@ -77,6 +77,7 @@ App 會檢查這個倉庫的 release 來更新。每個版本的發佈說明在 
 | **記得你** | 它是誰（`SOUL.md`）、它了解你什麼（`USER.md`）、它記得什麼（`GLOBAL.md` 和一本日記）、它什麼時候醒來（`HEARTBEAT.md`）都是你在 App 裡可以讀、可以改的檔案。用「匯入記憶」把另一個助理知道的帶過來。 |
 | **自己的模樣** | 一句話描述；你的圖片模型畫出來；你挑一張。App 把它擺成每種狀態的姿勢——工作中、等待、開心、抱歉——並隨代理正在做的事呼吸、晃動、歪頭、彈跳、搖頭；有影片模型時，每種狀態是一段循環短片。預設是一隻淡黃色的小龍，靜圖和短片都附上。 |
 | **靈感與媒體庫** | 接下來可以問的事，來自你的目標和記憶；以及它做出來的一切，附預覽。 |
+| **交給你、問你、在你常用的地方** | 頁面需要你本人——登入、驗證碼——代理會停下來交給你，按「完成」繼續；手機、桌面、網頁都一樣。桌面版的「允許一次 / 拒絕」就在舞台上，手機上在膠囊上，不用切回 App。在飛書、釘釘、企業微信或 Telegram 裡可以直接和你的 Muse 說話（[docs/channels.md](../channels.md)）。在一台裝置上連好的服務，其他裝置會顯示「已在你的 Mac 上連接——在這台登入即可使用」，憑證留在原來那台。macOS 上雙手可以只操作某一個 App 的視窗，你的游標還是你的，每個 App 第一次會問你。桌面版的版本號在「設定 → 關於」，旁邊有「檢查更新」。 |
 
 全部都在手機上執行；OpenMinis 的其餘部分——終端機、App 內瀏覽器、MCP 與技能管理、模型群組、token 用量、無障礙執行器、共用資料夾——都保留著，從同一組選單就能進入。
 
@@ -86,13 +87,11 @@ App 會檢查這個倉庫的 release 來更新。每個版本的發佈說明在 
 
 ## 現在走到哪裡了
 
-nanoMuse 0.1 還是預覽版。智慧體、手機端、桌面端、網頁版和中繼每天都被做它的人用著，也都有我們知道的毛邊，和更多我們還不知道的——所以在你這裡哪裡壞了、你希望它能做什麼，是你能給我們最有用的東西。應用是給所有人用的；開發者的那一面——自己的模型和服務商、shell、MCP、技能、harness、執行時期的 API——都在設定和文件裡，打開就有。產品形態、執行時期的各個面、技能與外掛介面一段時間內還會快速變化，並逐步穩定下來；[CHANGELOG](../../CHANGELOG.md) 記錄改了什麼，[路線圖](../roadmap.md) 說接下來做什麼。
-
-我們想做的事比一個應用大：一個屬於使用者本人的個人智慧體，在任何人都能重複使用、重組的開放基礎設施上公開地做出來——執行時期、中繼、手機上的 Hands、裝置之間的 hub——也一起回答這樣的智慧體到底能走多遠。我們期待和世界各地的使用者與開發者一起找到答案：把你的想法在這裡變成現實，一個技能、一個連接器、一個模型、一台裝置或一份翻譯，讓 nanoMuse 周圍的生態長起來。
+現在是 0.1 預覽版。我們自己每天在用，知道哪些地方還粗糙；哪裡壞了、想要什麼，直接開 issue。想折騰的——自己的模型、shell、MCP、技能、harness、執行時期的 API——都在設定和文件裡。執行時期的各個面、技能與外掛介面一段時間內還會變；[CHANGELOG](../../CHANGELOG.md) 記錄改了什麼，[路線圖](../roadmap.md) 說接下來做什麼。覺得有用，給一顆星，讓更多人看到。
 
 ## 參與
 
-回報一個 bug、提一個需求、送一個 pull request——每一個都讓個人智慧代理離所有人更近一步：**[開 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [在 Discussions 提問或分享](https://github.com/nano-muse/nanoMuse/discussions) · [給倉庫一顆星](https://github.com/nano-muse/nanoMuse)**。免費額度、自己的 key 和你的資料怎麼運作：[docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md)。建置方式、慣例（`com.openminis.app` 保留、新程式碼放在 `io.github.nanomuse.*`、上游改動標 `// nanoMuse:`、commit 帶 `Signed-off-by`）與發版流程見 [CONTRIBUTING.md](../../CONTRIBUTING.md)。
+**[開 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [在 Discussions 提問或分享](https://github.com/nano-muse/nanoMuse/discussions) · [給倉庫一顆星](https://github.com/nano-muse/nanoMuse)**。免費額度、自己的 key 和你的資料怎麼運作：[docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md)。建置方式、慣例（`com.openminis.app` 保留、新程式碼放在 `io.github.nanomuse.*`、上游改動標 `// nanoMuse:`、commit 帶 `Signed-off-by`）與發版流程見 [CONTRIBUTING.md](../../CONTRIBUTING.md)。
 
 ## 致謝
 
