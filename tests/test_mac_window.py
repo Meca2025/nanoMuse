@@ -102,8 +102,9 @@ class FakeMac:
 
 # ------------------------------------------------------------------ pure logic
 def test_the_module_imports_without_pyobjc_and_says_so() -> None:
+    # On Linux and Windows the reason is the platform; on a Mac without pyobjc it is the package.
     ok, why = mw.available()
-    assert ok is False and "macOS" in why
+    assert ok is False and ("macOS" in why or "pyobjc" in why)
     with pytest.raises(mw.WindowUnavailable):
         mw.QuartzAdapter()
 
@@ -329,7 +330,8 @@ async def test_open_app_sets_the_target_and_computer_target_reports(
     r = await ComputerAct(link=plain, gui=GUISettings()).execute(
         action="computer_target", app="Notes"
     )
-    assert r.ok and "Window mode is not available here" in r.output and "macOS" in r.output
+    assert r.ok and "Window mode is not available here" in r.output
+    assert "macOS" in r.output or "pyobjc" in r.output
     assert not plain.in_window_mode()
 
 
