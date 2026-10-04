@@ -529,6 +529,21 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-pf-top { padding-t
 .nm-usage-bar > span { display: block; height: 100%; border-radius: 3px; background: var(--nm-accent); transition: width 240ms; }
 .nm-usage-fine { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
 .nm-usage-link { font-size: 13px; color: var(--nm-blue); text-decoration: none; align-self: flex-start; }
+.nm-ways { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--nm-divider); }
+.nm-ways-lead { font-size: 13px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.nm-way { display: flex; gap: 10px; align-items: flex-start; }
+.nm-way-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex: none; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); }
+.nm-way-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.nm-way-title { font-size: 13.5px; font-weight: 500; }
+.nm-way-sub { font-size: 12.5px; line-height: 1.45; color: var(--dsw-alias-label-tertiary); }
+.nm-star-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--nm-radius); background: var(--nm-card); border: 1px solid var(--nm-divider); }
+.nm-star-head { display: flex; gap: 10px; align-items: flex-start; }
+.nm-star-icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; background: color-mix(in srgb, var(--nm-accent) 18%, transparent); color: var(--nm-accent); }
+.nm-star-title { font-size: 13.5px; font-weight: 600; }
+.nm-star-text { font-size: 12.5px; line-height: 1.45; color: var(--dsw-alias-label-secondary); }
+.nm-star-actions { display: flex; gap: 8px; }
+.nm-header-star { color: var(--nm-accent); }
+.nm-header-star .nm-ob-link { color: var(--nm-blue); }
 .nm-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
 .nm-swatch { width: 22px; height: 22px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
 .nm-swatch.nm-on { box-shadow: 0 0 0 2px var(--nm-base), 0 0 0 4px var(--dsw-alias-label-primary); }

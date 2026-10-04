@@ -848,4 +848,31 @@
     <string name="nm_devices_refused">Refused by the relay — sign in again</string>
     <string name="nm_devices_notifications_hint">Allow notifications so the phone can stay reachable in the background.</string>
     <string name="nm_library_share_failed">Could not share the file.</string>
+    <!-- 0.1.32: Settings → Connectors — the services the agent can be let into (the desktop's catalogue) -->
+    <string name="nm_connectors_title">Connectors</string>
+    <string name="nm_connectors_intro">Let the agent into the services you use. Each is the vendor\'s own remote MCP server; most sign in with the account you already have, a few want a key. A connected service is an MCP server entry the agent can use in any chat.</string>
+    <string name="nm_connectors_connected_n">%1$d connected</string>
+    <string name="nm_connectors_manage">Manage in MCP</string>
+    <string name="nm_connectors_connected">Connected</string>
+    <string name="nm_connectors_needs_sign_in">Sign in needed</string>
+    <string name="nm_connectors_connect">Connect</string>
+    <string name="nm_connectors_sign_in">Sign in</string>
+    <string name="nm_connectors_disconnect">Disconnect</string>
+    <string name="nm_connectors_docs">The vendor\'s page about this server</string>
+    <string name="nm_connectors_how_oauth">Signs in with your %1$s account in the browser; nanoMuse registers itself with the service, so there is nothing to type. The token stays on this phone.</string>
+    <string name="nm_connectors_how_key">Needs a key from the service: %1$s. It is kept in the MCP entry on this phone only.</string>
+    <string name="nm_connectors_how_none">Open to everyone — no sign-in needed.</string>
+    <string name="nm_connectors_how_auto">Checks what the server needs first: nothing, a sign-in, or a key.</string>
+    <string name="nm_connectors_key_placeholder">Paste the key</string>
+    <string name="nm_connectors_connected_sub">Connected as MCP server “%1$s”. Its tools are available in every chat.</string>
+    <string name="nm_connectors_cat_work">Work</string>
+    <string name="nm_connectors_cat_talk">Messaging</string>
+    <string name="nm_connectors_cat_files">Files</string>
+    <string name="nm_connectors_cat_dev">Development</string>
+    <string name="nm_connectors_cat_data">Data</string>
+    <string name="nm_connectors_cat_design">Design</string>
+    <string name="nm_connectors_cat_money">Money</string>
+    <string name="nm_connectors_cat_search">Search &amp; web</string>
+    <string name="nm_connectors_cat_infra">Infrastructure</string>
+    <string name="nm_connectors_cat_misc">More</string>
 </resources>

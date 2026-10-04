@@ -503,9 +503,29 @@ export default class NanomuseCloud extends Service {
     await this.serialize(() => this.relay.requestCode(identifier.trim()))
   }
 
-  /** Step two: the code for the key; wires the provider and remembers the account. */
-  verify(identifier: string, code: string): Promise<CloudStatus> {
-    return this.serialize(async () => this.adopt(await this.relay.verify(identifier.trim(), code, this.deviceName())))
+  /** Step two: the code for the key; wires the provider and remembers the account. A friend's invite code counts for a new account. */
+  verify(identifier: string, code: string, invite = ''): Promise<CloudStatus> {
+    return this.serialize(async () => this.adopt(await this.relay.verify(identifier.trim(), code, this.deviceName(), undefined, invite)))
+  }
+
+  /** The account page's calls that only pass through: nothing of them is kept here. */
+  private async withToken<T>(work: (token: string) => Promise<T>): Promise<T> {
+    const token = await this.token()
+    if (!token || !this.state.account) throw new RelayError(401, 'signed_out', 'Sign in first')
+    return work(token)
+  }
+
+  /** Every key of the account retired (this one too), or the account deleted: the local side forgets as on a sign-out. */
+  private endAll(how: 'sign-out-all' | 'delete'): Promise<CloudStatus> {
+    return this.serialize(async () => {
+      const token = await this.token()
+      if (token) {
+        if (how === 'delete') await this.relay.deleteAccount(token)
+        else await this.relay.signOutAll(token)
+      }
+      await this.forget()
+      return this.status()
+    })
   }
 
   /** The other way in: the account's password instead of a code. */
@@ -1126,8 +1146,28 @@ export default class NanomuseCloud extends Service {
       }
       if (req.method === 'POST' && route === '/verify') {
         const body = await json(req)
-        return send(res, 200, await this.verify(String(body.identifier ?? ''), String(body.code ?? '')))
+        return send(res, 200, await this.verify(String(body.identifier ?? ''), String(body.code ?? ''), String(body.invite ?? '')))
       }
+      // the account page, passed through: the sheet, the devices holding keys, the timeline, the password
+      if (req.method === 'GET' && route === '/config') return send(res, 200, await this.relay.config())
+      if (req.method === 'GET' && route === '/me') return send(res, 200, await this.withToken((token) => this.relay.meSheet(token)))
+      if (req.method === 'GET' && route === '/sessions') return send(res, 200, await this.withToken((token) => this.relay.sessions(token)))
+      if (req.method === 'POST' && route === '/sessions/revoke') {
+        const body = await json(req)
+        await this.withToken((token) => this.relay.revokeSession(token, String(body.prefix ?? '')))
+        return send(res, 204)
+      }
+      if (req.method === 'GET' && route === '/account-events') {
+        const limit = Number(url.searchParams.get('limit') ?? '40')
+        return send(res, 200, await this.withToken((token) => this.relay.events(token, Number.isFinite(limit) ? limit : 40)))
+      }
+      if (req.method === 'POST' && route === '/password') {
+        const body = await json(req)
+        await this.withToken((token) => this.relay.setPassword(token, String(body.password ?? ''), typeof body.current === 'string' ? body.current : undefined))
+        return send(res, 204)
+      }
+      if (req.method === 'POST' && route === '/sign-out-all') return send(res, 200, await this.endAll('sign-out-all'))
+      if (req.method === 'POST' && route === '/delete-account') return send(res, 200, await this.endAll('delete'))
       if (req.method === 'POST' && route === '/login') {
         const body = await json(req)
         return send(res, 200, await this.login(String(body.identifier ?? ''), String(body.password ?? '')))

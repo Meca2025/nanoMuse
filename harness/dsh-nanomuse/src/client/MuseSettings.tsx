@@ -13,6 +13,7 @@
 import { useModalLayer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { openStar } from './AccountPage.tsx'
 import { call, type CloudStatus, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { openLink } from './bridge.ts'
@@ -271,7 +272,14 @@ export function makeGeneralSection(t: Translate, version: string) {
       return () => { alive = false }
     }, [live.cloud.signedIn])
     const account = status?.account
-    const used = account && !account.tokens.unlimited && account.tokens.granted > 0 ? Math.min(100, Math.round((account.tokens.used / account.tokens.granted) * 100)) : 0
+    // the pool in yuan when the relay sends it (0.14+), the token figures otherwise
+    const pool = account?.spend && !account.spend.unlimited && account.spend.grant !== undefined && account.spend.grant > 0 ? account.spend : undefined
+    const poolLeft = pool ? (pool.left ?? Math.max(0, (pool.grant ?? 0) - pool.total)) : 0
+    const fmtYuan = (n: number) => `¥${n.toFixed(n % 1 === 0 ? 0 : 2)}`
+    const used = pool
+      ? Math.min(100, Math.round((pool.total / (pool.grant ?? 1)) * 100))
+      : account && !account.tokens.unlimited && account.tokens.granted > 0 ? Math.min(100, Math.round((account.tokens.used / account.tokens.granted) * 100)) : 0
+    const spent = pool ? poolLeft <= 0 : Boolean(account && !account.tokens.unlimited && account.tokens.granted > 0 && account.tokens.remaining <= 0)
     const color = live.profile.color
     const pick = (next: string) => { void call('profile', { color: next }).catch(() => undefined) }
     const checkUpdates = () => {
@@ -297,11 +305,17 @@ export function makeGeneralSection(t: Translate, version: string) {
                 h('span', { className: 'nm-usage-plan' }, account.member ? t('gnPlanMember') : t('gnPlanFree')),
                 h('span', { className: 'nm-usage-pct' }, account.tokens.unlimited ? t('gnUnlimited') : t('gnUsed', { n: used }))),
               account.tokens.unlimited ? null : h('div', { className: 'nm-usage-bar', role: 'progressbar', 'aria-valuenow': used, 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('span', { style: { width: `${used}%` } })),
-              h('div', { className: 'nm-usage-fine' }, account.tokens.unlimited ? t('gnUnlimitedSub') : t('gnRemaining', { n: account.tokens.remaining.toLocaleString() })),
+              h('div', { className: 'nm-usage-fine' }, account.tokens.unlimited ? t('gnUnlimitedSub') : pool ? t('gnLeftYuan', { left: fmtYuan(poolLeft), grant: fmtYuan(pool.grant ?? 0) }) : t('gnRemaining', { n: account.tokens.remaining.toLocaleString() })),
+              // near the end of the pool (the relay's 80% heads-up): the ways on are in the account page
+              pool && !spent && (pool.warn || used >= 80)
+                ? h('button', { type: 'button', className: 'nm-usage-link', style: { background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit' }, onClick: () => { settingsBus.openSection?.('nanomuse-cloud') } }, t('gnNearlyOut'))
+                : null,
               account.member ? null : h('a', { className: 'nm-usage-link', href: SITE_URL, target: '_blank', rel: 'noopener noreferrer', onClick: (e: { preventDefault(): void }) => { e.preventDefault(); openLink(SITE_URL) } }, t('gnUpgrade')),
               // the pool is spent: the one ask the project makes
-              !account.tokens.unlimited && account.tokens.granted > 0 && account.tokens.remaining <= 0
-                ? h('a', { className: 'nm-usage-link', href: REPO_URL, target: '_blank', rel: 'noopener noreferrer', onClick: (e: { preventDefault(): void }) => { e.preventDefault(); openLink(REPO_URL) } }, t('gnStarOut'))
+              spent
+                ? h(Fragment, null,
+                    h('button', { type: 'button', className: 'nm-usage-link', style: { background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit' }, onClick: () => { settingsBus.openSection?.('nanomuse-cloud') } }, t('gnWaysOn')),
+                    h('a', { className: 'nm-usage-link', href: REPO_URL, target: '_blank', rel: 'noopener noreferrer', onClick: (e: { preventDefault(): void }) => { e.preventDefault(); openStar() } }, t('gnStarOut')))
                 : null)
           : h('div', { className: 'nm-usage-fine' }, live.cloud.signedIn ? t('loading') : t('gnUsageSignedOut'))),
       // language: the harness's own row

@@ -840,4 +840,31 @@
     <string name="nm_devices_refused">中繼拒絕了連線——重新登入一下</string>
     <string name="nm_devices_notifications_hint">允許通知，手機才能在背景保持可聯。</string>
     <string name="nm_library_share_failed">檔案沒能分享出去。</string>
+    <!-- 0.1.32：設定 → 連接器——可以讓智慧體接入的服務（桌面端同一份目錄） -->
+    <string name="nm_connectors_title">連接器</string>
+    <string name="nm_connectors_intro">讓智慧體接入你在用的服務。每一項都是服務商自己的遠端 MCP 伺服器；大多數用你既有的帳號登入，少數需要一個金鑰。連接好的服務就是一條 MCP 伺服器記錄，任何對話裡都能用。</string>
+    <string name="nm_connectors_connected_n">已連接 %1$d 個</string>
+    <string name="nm_connectors_manage">在 MCP 中管理</string>
+    <string name="nm_connectors_connected">已連接</string>
+    <string name="nm_connectors_needs_sign_in">需要登入</string>
+    <string name="nm_connectors_connect">連接</string>
+    <string name="nm_connectors_sign_in">登入</string>
+    <string name="nm_connectors_disconnect">中斷連接</string>
+    <string name="nm_connectors_docs">服務商關於此伺服器的說明</string>
+    <string name="nm_connectors_how_oauth">在瀏覽器裡用你的 %1$s 帳號登入；nanoMuse 會自動向該服務註冊，不用填任何東西。權杖只保存在這支手機上。</string>
+    <string name="nm_connectors_how_key">需要該服務的金鑰：%1$s。它只保存在這支手機的 MCP 記錄裡。</string>
+    <string name="nm_connectors_how_none">對所有人開放，不需要登入。</string>
+    <string name="nm_connectors_how_auto">先探測伺服器需要什麼：不需要、登入，還是金鑰。</string>
+    <string name="nm_connectors_key_placeholder">貼上金鑰</string>
+    <string name="nm_connectors_connected_sub">已作為 MCP 伺服器「%1$s」連接。它的工具在每個對話裡都可用。</string>
+    <string name="nm_connectors_cat_work">工作</string>
+    <string name="nm_connectors_cat_talk">溝通</string>
+    <string name="nm_connectors_cat_files">檔案</string>
+    <string name="nm_connectors_cat_dev">開發</string>
+    <string name="nm_connectors_cat_data">資料</string>
+    <string name="nm_connectors_cat_design">設計</string>
+    <string name="nm_connectors_cat_money">金融</string>
+    <string name="nm_connectors_cat_search">搜尋與網頁</string>
+    <string name="nm_connectors_cat_infra">基礎設施</string>
+    <string name="nm_connectors_cat_misc">更多</string>
 </resources>

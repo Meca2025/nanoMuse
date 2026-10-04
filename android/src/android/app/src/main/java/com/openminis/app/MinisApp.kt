@@ -432,6 +432,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // breaks the Application and produces the GH#147 crash loop.
         skillRepository = SkillRepository(this)
         mcpRepository = MCPRepository(this)
+        io.github.nanomuse.connectors.Connectors.refreshStaleAsync(this) // nanoMuse: connectors' OAuth tokens near their end → refreshed, headers rewritten
         memoryRepository = MemoryRepository(java.io.File(filesDir, "minis-global/memory"))
         webAppShortcutRepository = WebAppShortcutRepository(database.webAppShortcutDao())
 

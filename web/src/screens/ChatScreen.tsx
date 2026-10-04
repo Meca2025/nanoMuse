@@ -15,6 +15,7 @@ import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, U
 import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
 import { StarNudgeOnce } from "../components/StarNudge";
+import { useShowSteps } from "../steps";
 
 export function ChatScreen() {
   const { state, send, decide, loadEvents, openFile, toast, setDrawer, setTab } = useStore();
@@ -92,6 +93,9 @@ export function ChatScreen() {
   }, [status, thread, activeThread, waitingHere, events, t]);
 
   const pendingApprovals = events.filter((e) => e.type === "approval" && e.status === "pending").length;
+  // the steps (tool chips) stay out of the chat unless asked for; everything else always shows
+  const steps = useShowSteps();
+  const shown = useMemo(() => (steps ? events : events.filter((e) => e.type !== "tool")), [events, steps]);
   // files made in this chat: a reply that names one ("saved to `plan.md`") opens it on tap
   const files = useMemo(
     () => Array.from(new Set(events.flatMap((e) => (e.type === "artifact" ? [e.path] : [])))),
@@ -154,11 +158,11 @@ export function ChatScreen() {
             onSend={(text) => send(activeThread, text).catch((e: Error) => toast(e.message || t("Could not send")))}
           />
         )}
-        {events.map((ev, i) => (
+        {shown.map((ev, i) => (
           <EventView
             key={ev.id}
             event={ev}
-            prev={events[i - 1]}
+            prev={shown[i - 1]}
             name={name}
             onDecide={(approved, scope) =>
               decide(ev.id, approved, scope).catch((e: Error) => toast(e.message || t("Could not send decision")))

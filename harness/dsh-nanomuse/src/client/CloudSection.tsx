@@ -7,11 +7,13 @@
 import { Button, Input, StateDot, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { call, column, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
+import { AccountPage } from './AccountPage.tsx'
 import { Avatar } from './Avatar.tsx'
 import { settingsBus } from './bus.ts'
 import { useLive, type LiveHub } from './live.ts'
 import { DEVICES_PANEL } from './panels.ts'
 import { DataRows } from './Memory.tsx'
+import { useRooms } from './rooms.ts'
 import { SignIn } from './SignIn.tsx'
 
 type Phase = 'loading' | 'signedOut' | 'signedIn'
@@ -27,6 +29,7 @@ const PRIVACY_URL = 'https://nanomuse.cn/privacy/'
 export function makeCloudSection(t: Translate, part: 'account' | 'data' = 'account') {
   return function CloudSection(): ReactNode {
     const live = useLive()
+    const rooms = useRooms()
     const [phase, setPhase] = useState<Phase>('loading')
     const [status, setStatus] = useState<CloudStatus | undefined>()
     const [busy, setBusy] = useState(false)
@@ -115,9 +118,11 @@ export function makeCloudSection(t: Translate, part: 'account' | 'data' = 'accou
       return h('section', { style: { ...column, maxWidth: 560 } },
         header,
         h('div', null, t('signedInAs', { hint: a.hint, channel: t(a.channel === 'phone' ? 'phone' : 'email') }), a.member ? ` · ${t('member')}` : ''),
-        h('div', { style: muted }, a.tokens.unlimited ? t('tokensUnlimited') : t('tokensLeft', { remaining: a.tokens.remaining, granted: a.tokens.granted })),
         h('div', { style: muted }, chat.length ? t('models', { models: chat.map((m) => m.name).join(', ') }) : t('modelsNone')),
         chat.length ? h('div', { style: muted }, t('pickerNote')) : null,
+        // The account as the phone shows it — the pool in yuan, the ways on, invite, usage,
+        // password, devices holding a key, the timeline, deletion — read live from the relay.
+        h(AccountPage, { t, status, locale: rooms.lang, onEnded: apply }),
         h('h3', { style: heading }, t('lookTitle')),
         h('div', { style: muted }, look.rev > 0 ? t('lookFrom', { name: look.name, look: lookWord }) : t('lookDefault')),
         h('h3', { style: heading }, t('devicesTitle')),

@@ -845,4 +845,31 @@
     <string name="nm_devices_refused">中继拒绝了连接——重新登录一下</string>
     <string name="nm_devices_notifications_hint">允许通知，手机才能在后台保持可联。</string>
     <string name="nm_library_share_failed">文件没能分享出去。</string>
+    <!-- 0.1.32：设置 → 连接器——可以让智能体接入的服务（桌面端同一份目录） -->
+    <string name="nm_connectors_title">连接器</string>
+    <string name="nm_connectors_intro">让智能体接入你在用的服务。每一项都是服务商自己的远程 MCP 服务器；大多数用你已有的账号登录，少数需要一个密钥。连接好的服务就是一条 MCP 服务器记录，任何对话里都能用。</string>
+    <string name="nm_connectors_connected_n">已连接 %1$d 个</string>
+    <string name="nm_connectors_manage">在 MCP 中管理</string>
+    <string name="nm_connectors_connected">已连接</string>
+    <string name="nm_connectors_needs_sign_in">需要登录</string>
+    <string name="nm_connectors_connect">连接</string>
+    <string name="nm_connectors_sign_in">登录</string>
+    <string name="nm_connectors_disconnect">断开</string>
+    <string name="nm_connectors_docs">服务商关于此服务器的说明</string>
+    <string name="nm_connectors_how_oauth">在浏览器里用你的 %1$s 账号登录；nanoMuse 会自动向该服务注册，不用填任何东西。令牌只保存在这台手机上。</string>
+    <string name="nm_connectors_how_key">需要该服务的密钥：%1$s。它只保存在这台手机的 MCP 记录里。</string>
+    <string name="nm_connectors_how_none">对所有人开放，不需要登录。</string>
+    <string name="nm_connectors_how_auto">先探测服务器需要什么：不需要、登录，还是密钥。</string>
+    <string name="nm_connectors_key_placeholder">粘贴密钥</string>
+    <string name="nm_connectors_connected_sub">已作为 MCP 服务器“%1$s”连接。它的工具在每个对话里都可用。</string>
+    <string name="nm_connectors_cat_work">工作</string>
+    <string name="nm_connectors_cat_talk">沟通</string>
+    <string name="nm_connectors_cat_files">文件</string>
+    <string name="nm_connectors_cat_dev">开发</string>
+    <string name="nm_connectors_cat_data">数据</string>
+    <string name="nm_connectors_cat_design">设计</string>
+    <string name="nm_connectors_cat_money">金融</string>
+    <string name="nm_connectors_cat_search">搜索与网页</string>
+    <string name="nm_connectors_cat_infra">基础设施</string>
+    <string name="nm_connectors_cat_misc">更多</string>
 </resources>

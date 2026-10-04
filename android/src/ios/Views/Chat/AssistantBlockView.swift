@@ -21,7 +21,20 @@ struct AssistantBlockView: View {
     @Binding var detailBlock: AssistantBlock?
     private var isHighlighted: Bool { highlightedBlockId == block.id }
 
+    // nanoMuse: "Show the agent's steps" (Settings → Chat) is off by default — a finished
+    // message keeps to the conversation; the steps of the message still running stay visible.
+    @AppStorage(NanoMuseSteps.key) private var showSteps: Bool = NanoMuseSteps.defaultValue
+
     var body: some View {
+        if NanoMuseSteps.hidden(block.kind, active: isActiveMessage, showSteps: showSteps) {
+            EmptyView()
+        } else {
+            kindView
+        }
+    }
+
+    @ViewBuilder
+    private var kindView: some View {
         switch block.kind {
         case .text:
             if !block.content.isEmpty {
@@ -1018,7 +1031,7 @@ struct TypingIndicator: View {
         // duplicate here was redundant. ThinkingLevelSheetView is unchanged;
         // it's still presented from the nav-bar badge.
         HStack(spacing: 0) {
-            Text("\(soulName) is thinking")
+            Text("\(soulName) is on it") // nanoMuse: what it is doing, not that it is "thinking" (the phone/web/desktop say the same)
             ForEach(0..<3, id: \.self) { i in
                 Text(".")
                     .offset(y: dotOffsets[i] ? -3 : 1)

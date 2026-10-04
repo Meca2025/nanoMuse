@@ -18,6 +18,7 @@ import { useModalLayer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { call, type CloudStatus, type Translate } from './api.ts'
+import { useCloudConfig } from './AccountPage.tsx'
 import { Avatar } from './Avatar.tsx'
 import { bridge, gatedPermissions, openLink, type PermissionKind, type PermissionState } from './bridge.ts'
 import { IconCheck, IconChevronLeft, IconChevronRight, IconDownload, IconFolder, IconHand, IconHome, IconMic, IconMonitor } from './icons.tsx'
@@ -124,6 +125,11 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
     const [identifier, setIdentifier] = useState('')
     const [code, setCode] = useState('')
     const [password, setPassword] = useState('')
+    // A friend's invite code (optional, with the six digits): both get credit on a first sign-in.
+    const [invite, setInvite] = useState('')
+    const [inviteOpen, setInviteOpen] = useState(false)
+    // What the relay gives on sign-up, read before anyone signs in (relay 0.15; silent on older ones).
+    const config = useCloudConfig()
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | undefined>()
     const [resent, setResent] = useState(false)
@@ -212,7 +218,7 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
       if (busy || value.length !== 6) return
       void run(async () => {
         try {
-          const next = await call<CloudStatus>('verify', { identifier: identifier.trim(), code: value })
+          const next = await call<CloudStatus>('verify', { identifier: identifier.trim(), code: value, invite: invite.trim().toUpperCase() })
           setCode('')
           signedIn(next)
         } catch (err: unknown) {
@@ -242,6 +248,7 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
       body = h('div', { className: 'nm-ob-center' },
         h(Avatar, { size: 112, profile, mood: 'idle' }),
         h('h1', { className: 'nm-ob-title' }, t('obWelcomeTitle')),
+        h('p', { className: 'nm-ob-fine' }, config.allowance_cny ? t('obFreeAmount', { allowance: config.allowance_cny }) : t('obFree')),
         h(Pill, { onClick: () => setView('identifier'), className: 'nm-ob-cta' }, t('obSignIn')),
         h('div', { className: 'nm-ob-links' },
           h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { openSection('models'); finish() } }, t('obOwnKey')),
@@ -265,6 +272,10 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
           t('obCodeSent', { identifier: identifier.trim() }), ' ',
           h('button', { type: 'button', className: 'nm-ob-link nm-inline', disabled: busy, onClick: resend }, resent ? t('obResent') : t('obResend'))),
         h(CodeBoxes, { value: code, disabled: busy, label: t('code'), onChange: (next) => { setCode(next); if (next.length === 6) verify(next) } }),
+        inviteOpen
+          ? h('input', { className: 'nm-field', value: invite, placeholder: t('obInviteCode'), autoComplete: 'off', autoCapitalize: 'characters', 'aria-label': t('obInviteCode'), onChange: (e: FormEvent<HTMLInputElement>) => setInvite(e.currentTarget.value.replace(/[^0-9a-zA-Z-]/g, '').slice(0, 16)) })
+          : h('button', { type: 'button', className: 'nm-ob-link nm-inline', disabled: busy, onClick: () => setInviteOpen(true) }, t('obHaveInvite')),
+        inviteOpen ? h('p', { className: 'nm-ob-fine' }, t('obInviteHint', { bonus: config.invitee_bonus_cny ?? 5 })) : null,
         error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
         h(Pill, { disabled: busy || code.length !== 6, onClick: () => verify(code), className: 'nm-ob-wide' }, busy ? t('signingIn') : t('obNext')),
         h('div', { className: 'nm-ob-links' },
