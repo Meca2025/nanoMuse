@@ -10,7 +10,7 @@
 //  schedule while it sleeps: when a routine comes due and the app is not
 //  up, the phone shows "Check-in: <goal> — open to run it", and the run
 //  happens when the person opens the app. Android has WorkManager for this
-//  (com.openminis.app.scheduled.*); the words here say what the phone can
+//  (io.github.nanomuse.app.scheduled.*); the words here say what the phone can
 //  and cannot do.
 //
 

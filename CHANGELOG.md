@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.34] - 2026-10-05 · Turns
+
+The hands are handed over and wait, on every client, and approvals are answered where you are; chat apps (飞书, 钉钉, 企业微信, Telegram); two model settings and a region-aware way on; connections shared across the account's devices; the iPhone and the desktop catch up with the phone. [Release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.34).
+
 ### Runtime
 
 - **Holds: the hands are handed over, and wait.** A *hold* belongs to one chat and one kind of hands — the browser, this computer, the phone. The person opens one with *Take over* (`POST /api/holds`), the agent opens one itself with the new `hand_over` action of `browser`, `computer_act` and `phone_act` (a `reason` is required: *sign in*, *the code from your SMS*, *confirm the payment*), and the person's **Done** closes it (`POST /api/holds/{id}/done`). While a hold is on, every action of that tool for that chat waits instead of failing; the agent's own hand-over waits up to ten minutes, then goes on without them. Each change is a `hold` event in the timeline and the open ones ride in the hello state as `holds`, so the chat, the phone's capsule, the desktop's stage and the web's browser viewer show one card with one Done. The browser's `take_over` / `handed_back` map onto it. The system prompt says when to hand over and that the person's work must be looked at, never redone. (`nanomuse/agent/holds.py`.)
