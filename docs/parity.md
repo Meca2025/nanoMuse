@@ -27,7 +27,9 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Account timeline (sign-ins, settings, refusals) | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
 | Delete account | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
 | Data controls (what the relay keeps of the chats) | ✓ | ✓ 0.1.33 | ✓ | ✓ |
-| Own-key presets (DeepSeek, Bailian, …) | ✓ | n/a — upstream's provider list | ◐ Models page | ✓ |
+| Own-key presets (Bailian · OpenRouter, by region) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
+| Chat model and Hands model as two settings (`deepseek-v4.1-flash` / `qwen3.8-27b`, the relay's `for`) | ✓ 0.1.34 | ✓ 0.1.34 *(chat; no hands)* | ✓ 0.1.34 | ✓ 0.1.34 |
+| "Ways on" ordered by region (Bailian first on the mainland, OpenRouter first elsewhere) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
 
 ## The agent in the chat
 
@@ -42,8 +44,10 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Star asked after the tenth task and after a new look (gracious copy) | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 |
 | First run: "Sign in — free" before anything else | ✓ | ✓ 0.1.32 *(4)* | ✓ | ✓ |
 | Approval cards, three tiers, remembered grants | ✓ | upstream's | ✓ | ✓ |
-| Approvals answered outside the app while the hands work | ✓ 0.1.33 capsule *Allow / Deny* | n/a *(10)* | — *(17)* | n/a |
-| Browser hand-over: a login / code / payment / CAPTCHA goes back to the person, the agent resumes | ✓ 0.1.33 `hand_over` | — *(16)* | ◐ the person takes the mouse *(16)* | — *(16)* |
+| Approvals answered outside the app while the hands work | ✓ 0.1.33 capsule *Allow / Deny* | n/a *(10)* | ✓ 0.1.34 stage *Allow once / Always in app / Deny*, capsule when the window is behind *(17)* | n/a |
+| Hand-over: a login / code / payment / CAPTCHA goes back to the person, the agent waits and resumes (holds) | ✓ 0.1.33 `hand_over` | — *(16)* | ✓ 0.1.34 *Your turn — Done*, *I'll take it* *(16)* | ✓ 0.1.34 drivable browser viewer, hold cards *(16)* |
+| Face tap opens the agent page (Change avatar · Edit name · studio; Activity · Approvals · Daily · Soul & memory; share card) | ✓ | ✓ 0.1.34 | ✓ 0.1.34 | ✓ Muse page |
+| Change the look from the chat (the same words, four candidates, pick by words, regenerate) | ✓ | ✓ 0.1.34 | ✓ 0.1.34 | ✓ studio intercept, reference picture 0.1.34 |
 
 ## Connectors, agents, devices
 
@@ -52,11 +56,13 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Connectors catalogue (75 remote MCP servers, sign in) | ✓ 0.1.32 *(5)* | ✓ 0.1.33 *(6)* | ✓ | — *(7)* |
 | Services without dynamic registration (GitHub, Slack, Discord, …) ask for an OAuth client id | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 | — *(7)* |
 | MCP servers by hand (URL / command) | ✓ *Your own servers* under Connectors 0.1.33 | ✓ *Your own servers* under Connectors 0.1.33 | ✓ (harness) | ✓ |
-| Connections shared across the account's devices | — *(18)* | — *(18)* | — *(18)* | — *(18)* |
+| Connections shared across the account's devices (the profile's `connectors`; never a credential) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 *(18)* |
+| Chat apps: Feishu · DingTalk · WeCom · Telegram answer as the agent (pairing codes, allowlists, deliver here) | — *(22)* | — *(22)* | ✓ 0.1.34 the web screen | ✓ 0.1.34 *Settings → Chat apps* |
 | Skills | ✓ upstream | ✓ upstream | — *(8)* | ✓ |
-| Coding agents (Cursor, Codex, Claude Code on the computers) | ✓ | — *(9)* | — *(8)* | ✓ |
+| Coding agents (Cursor, Codex, Claude Code on the computers) | ✓ | ✓ 0.1.34 over the hub *(9)* | — *(8)* | ✓ |
 | Devices of the account, remote control, rename, forget | ✓ | ◐ list, Reach sheet 0.1.33 | ✓ | ✓ |
-| Hands — the device's own screen as a hand | ✓ | n/a *(10)* | ✓ (the computer's screen) *(19)* | n/a |
+| Hands — the device's own screen as a hand | ✓ | n/a *(10)* | ✓ the screen; on macOS one window while the person keeps the mouse, per-app grants, glow and capsule out of the shots *(19)* | n/a |
+| Version line and a real check for updates | ✓ Play / APK | ✓ TestFlight | ✓ 0.1.34 GitHub releases → nanomuse.cn mirror | n/a — the runtime's |
 | A black capture is an error with the fix (Screen Recording, Wayland), never a picture | n/a | n/a | ✓ 0.1.33 | n/a |
 | macOS permissions read back live; *Open System Settings* after an ask; Screen Recording relaunch notice | n/a | n/a | ✓ 0.1.33 | n/a |
 | Mini-Linux sandbox on the device | ✓ | ✓ upstream (iSH) | n/a — the runtime's own sandbox | n/a |
@@ -69,15 +75,17 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Emoji faces | ◐ falls back to the dragon *(12)* | ◐ falls back to the dragon *(12)* | ✓ | ✓ |
 | Theme colour swatches | — | — | — removed 0.1.33 *(13)* | — |
 | Accent follows the avatar | ✓ | ✓ | ✓ | ✓ |
-| Rooms: Feed · Ideas · Goals · Library | ✓ | ◐ Ideas · Library real, Feed · Goals empty *(11)* | ✓ | ✓ |
+| Rooms: Feed · Ideas · Goals · Library | ✓ | ✓ 0.1.34 with a scheduler *(11)* | ✓ 0.1.34 on the phone's fence protocol | ✓ |
+| Ideas by kind: chat · routine (at a time) · goal (a category) | ✓ | ✓ 0.1.34 | ✓ 0.1.34 the phone's list | ✓ 0.1.34 |
+| First run: the four pages, then the shell | ✓ | ✓ 0.1.34 *(4)* | ✓ onboarding slides | ✓ onboarding |
 | Memory as a room | — settings page *(14)* | — | ✓ | ✓ |
-| Live stage / browser viewer while the hands work | ✓ stage | n/a *(10)* | ✓ live stage — movable, resizable, remembered 0.1.33 | ✓ browser viewer |
+| Live stage / browser viewer while the hands work | ✓ stage | n/a *(10)* | ✓ live stage — movable, resizable, remembered 0.1.33; Allow/Deny, holds, glow 0.1.34 | ✓ browser viewer you can drive 0.1.34 |
 | Quick chat (global shortcut) | n/a | n/a | ✓ | n/a |
 | Widgets | ✓ upstream | ✓ upstream | n/a | n/a |
 
 ## Open for a decision (the "next-next" list)
 
-These are the gaps left open on purpose in 0.1.32 and 0.1.33 — either the platform makes them a
+These are the gaps left open on purpose since 0.1.32 — either the platform makes them a
 different design, or they are large enough that the call is the maintainer's. Numbers match the
 notes above; a settled item keeps its number and says how it went.
 
@@ -88,8 +96,9 @@ notes above; a settled item keeps its number and says how it went.
 3. **iOS · Star after the first task** — done in 0.1.33, as a card pinned under the header (the
    message list is a UICollectionView; nothing can be placed under the last message). A cancelled
    turn counts as finished, the stream has no cancel signal.
-4. **iOS · First run.** Still a "Sign in to nanoMuse Cloud — free" entry on upstream's start
-   screen, not the phone's four-page first run; the shell (11) did not bring them. Small.
+4. **iOS · First run** — done in 0.1.34 (`NanoMuseFirstRun.swift`, the Android `needed / stage`
+   logic). Shown to anyone without a Cloud account, so a person upgrading who only ever used their
+   own key sees it once; *All settings* skips it.
 5. **Android · OAuth connectors need a device test.** Discovery, dynamic client registration, PKCE
    and the token written into the entry's `Authorization` header compile and follow the desktop's
    flow line by line, but no connector was signed into on a device before 0.1.32 (no emulator on
@@ -106,18 +115,17 @@ notes above; a settled item keeps its number and says how it went.
 8. **Desktop · Skills and coding agents pages.** The harness has its own skills; the coding agents
    live on the computer the desktop runs on, so a page would show the local CLIs. *Recommendation:
    coding agents page yes (the web app has one), skills no (duplicate).*
-9. **iOS · Coding agents.** Over the hub, like Android — the client is platform-neutral. Medium.
+9. **iOS · Coding agents** — done in 0.1.34 (`NanoMuseCoding.swift`, the hub's `coding.*`).
 10. **iOS · Hands.** iOS does not let an app drive another; App Intents / Shortcuts are the door.
     Not planned as "hands".
-11. **iOS · The Muse shell** — done in 0.1.33 on the iPhone: face, header with the status line,
-    drawer, bottom bar with the rooms, avatar studio, Reach. Left open inside it: **Feed and
-    Goals are empty states** (the iPhone has no scheduler or routine runner; Goals offers *Create
-    a goal*, Ideas marks routine ideas *not scheduled on iPhone yet*) — a BGTaskScheduler-based
-    runner would be approximate at best, the honest route is the hub: have a computer of the
-    account run them and the phone show them. The **iPad keeps upstream's split layout**. The
-    shell and the header can be switched off through UserDefaults only (`nanomuse.shell.enabled`,
-    `nanomuse.header.enabled`); a Settings toggle is a small follow-up. The studio draws through
-    the relay only (no own-key image path on iOS).
+11. **iOS · The Muse shell** — done in 0.1.33 on the iPhone; in 0.1.34 Feed and Goals are real
+    (`NanoMuseScheduler.swift`: foreground catch-up, `BGAppRefreshTask`, a local notification at
+    the set time), the iPad runs the shell too, the shell and header switches are in the nanoMuse
+    settings page, and the studio draws through the relay or your own Bailian key. Left: a
+    routine runs in the background only when iOS gives the refresh task a slot — the copy says
+    so (*at the set time the phone reminds you to open it*); the hub route (a computer of the
+    account runs them) is still the sure one. The iPad's layout is the iPhone's, larger — a
+    split layout of its own is a design call.
 12. **Android and iOS · Emoji faces.** A face set to an emoji on the web or the desktop shows the
     dragon on the phones. Small.
 13. **Theme colour swatches** — settled in 0.1.33: removed from the desktop; one rule everywhere,
@@ -126,42 +134,54 @@ notes above; a settled item keeps its number and says how it went.
     call.
 15. **Browser viewer on the desktop.** The live stage shows the hands; a page viewer like the web
     app's is not there. Design call.
-16. **Browser hand-over on the desktop and the web.** On the phone the agent's tab is the
-    person's tab (`hand_over`, 0.1.33). The desktop's hands drive the computer's own browser, so
-    the person simply takes the mouse (the live stage's *Take over*), but the agent is not told
-    to wait and resume — a `hand_over` step for the computer tools (pause, notice, *Done*) would
-    close that. The web app's browser is the runtime's, headless, so a hand-over there means
-    either a page viewer the person can drive or the sign-in done on another device of the
-    account. *Decision: both, or the desktop first?*
-17. **Desktop · approvals outside the window.** The phone answers *Allow / Deny* on the capsule
-    over the other app. On the desktop an approval is a card in the chat; while the hands work
-    the window may be behind the app being driven. Options: a system notification with actions
-    (macOS only in Electron), a small always-on-top approval window, or the live stage carrying
-    the two buttons. *Recommendation: the live stage, as it is already over everything.*
-18. **Connections shared across devices.** A service signed into on the Mac does not show on the
-    phone. The relay's profile body could carry the list — ids, labels, which device holds the
-    credential, never the credential — so another device shows *connected on your Mac* and offers
-    to sign in there; secrets stay where they were minted. Needs a profile field and three
-    clients. *Decision: do it, or keep connections per device?*
-19. **Desktop · hands that do not fight the person.** The hands and the person share one screen,
-    mouse and keyboard; *Take over* gives them back, but a long task still means a borrowed
-    computer. Silent background work needs a second display the person is not on: a virtual
-    display / separate Space on macOS, an Xvfb or second session on Linux, a separate desktop on
-    Windows — each a port of its own (a second `DISPLAY` for the runtime, a window mover). The
-    0.1.33 fix is honesty instead: a black capture (no Screen Recording, Wayland) is an error with
-    the remedy, the stage moves and resizes out of the way. *Decision: invest in a virtual display
-    (Linux first — cheapest), or keep the shared screen?*
-20. **Services without a public remote MCP server.** Asked for and checked on 2026-10-04: Zoom
-    (no dynamic registration and its metadata 404s), LinkedIn, Zoho Invoice, WHOOP, 钉钉, 腾讯文档,
-    滴答清单, 网易邮箱, QQ 邮箱, 微信读书 and 企业微信 have none; 飞书 has only the local
-    `lark-cli` skill set; Trello comes through Atlassian's server. Options: leave them out; write
-    our own bridges (small MCP servers in the runtime over each vendor's REST API — one developer
-    account per vendor, and the Chinese ones need ICP-registered callbacks); wait. *Decision:
-    which, if any, are worth a bridge?*
+16. **Hand-over on the desktop and the web** — settled in 0.1.34, both: *holds* in the runtime
+    (`nanomuse/agent/holds.py`; `hand_over` on `browser`, `computer_act`, `phone_act`; `POST
+    /api/holds`, `/done`; `hold` events; the agent waits up to ten minutes and looks again). The
+    desktop's stage shows *Your turn — Done* and *I'll take it*; the web's browser viewer can be
+    driven (*Take over*, click, type, scroll, URL, *Done*). Left: iOS has no hands, so nothing
+    to hand over there (10).
+17. **Desktop · approvals outside the window** — settled in 0.1.34: the live stage carries
+    *Allow once / Always in <app> / Deny*, and a small always-on-top capsule shows the same card
+    when the main window is not in front. Left to check on a Mac: the capsule's `showInactive`
+    must not steal focus from the app being driven.
+18. **Connections shared across devices** — settled in 0.1.34: the profile's `connectors`
+    (relay 0.17; merged per device, 64 at most, a key-like field name is a 400), four clients
+    read and write it, the other devices' entries show as *Connected on <device> — sign in
+    here*. The credential never leaves the device that minted it.
+19. **Desktop · hands that do not fight the person** — settled for macOS in 0.1.34 the way the
+    Codex app does it: *window mode* (`nanomuse/computer/mac_window.py`; `[hands] mode = auto`)
+    captures one application's window and posts the events to its process, so the person keeps
+    the mouse; each application asks once (*Let <Muse> use <App>?*). Elsewhere the screen is
+    shared, with the UI-TARS-style glow and the overlays kept out of the shots. Left: Linux and
+    Windows have no window mode (a virtual display or a second session would be the port — Linux
+    first, cheapest); the macOS path is written against the Quartz APIs and must be tried on a
+    Mac (Screen Recording fallback, AX-less clicks, Retina mapping, scroll direction).
+20. **Services without a public remote MCP server** — the chat apps are settled in 0.1.34 the
+    way nanobot does it: 飞书, 钉钉, 企业微信 and Telegram are *channels* the agent answers in
+    (`nanomuse/channels/`, the vendors' long-connection SDKs, no public address, pairing codes),
+    which is what most people wanted from them. Still open as *connectors* (the agent reading or
+    acting in the service): Zoom, LinkedIn, Zoho Invoice, WHOOP, 腾讯文档, 滴答清单, 网易邮箱, QQ
+    邮箱, 微信读书 — each a bridge of its own over the vendor's REST API, one developer account
+    per vendor. *Decision: which, if any, are worth a bridge?*
 21. **Hands on Linux under Wayland.** The capture and the pointer need X11 or XWayland today; a
     Wayland session gives a black frame (now an error with the hint). The portal route
     (`xdg-desktop-portal` ScreenCast + `libei`) would make it work natively, at the cost of a
     permission dialog per session. *Decision: worth it before the Linux desktop is promoted?*
+22. **Chat apps on the phones.** The channels live in the runtime; the web app (and so the
+    desktop) has the settings screen. Android and iOS would need an `/api/channels` client and
+    the same card list (switch, fields, pairing codes, paired chats, Feishu QR) — the API and the
+    strings are ready. *Decision: next version?* Also open: no vendor was connected end to end
+    from the build machine (the SDK calls were checked offline against the real packages) — one
+    test bot per vendor before announcing; Feishu sender names need `contact:user.base:readonly`;
+    approvals from a chat are always *once*.
+23. **Own-key presets and the chat default.** After a Bailian or OpenRouter key is saved, the
+    provider's `/models` list decides what is offered; `deepseek-v4.1-flash` is not moved to the
+    front automatically (only the Cloud group has `followPick`). *Recommendation: promote it when
+    the list has it.*
+24. **Relay billing of reasoning tokens.** Counted as completion tokens; when a provider reports
+    them separately and the count exceeds the completion count they are added, otherwise taken
+    as included. A provider that reports them separately *and* smaller would be under-counted.
+    *Decision: keep the heuristic, or switch per provider?*
 
 ## Keeping this true
 
