@@ -39,6 +39,9 @@ const zhCN: Record<string, string> = {
   "{name} is working — anything you send now is picked up right away.": "{name} 正在工作——你现在发的消息会马上接着处理。",
   "Working…": "处理中…",
   "On it": "正在处理",
+  "Show the agent's steps": "显示执行步骤",
+  "Every tool it uses becomes a chip in the chat. Off, the chat keeps to the conversation and the line under the name says what it is on. This device only.":
+    "每用一个工具就在对话里多一个小标签。关闭时对话只保留对话本身，名字下方的一行字说明它正在做什么。仅本设备。",
   "On it: {request}": "正在处理：{request}",
   "Star nanoMuse on GitHub": "给 nanoMuse 点个 Star",
   "The free allowance you just claimed comes out of the developer's pocket, and the project runs on nothing but people liking it. A star is the simplest way to help it be found — and to keep it free.":

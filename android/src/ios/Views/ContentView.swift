@@ -3942,6 +3942,9 @@ struct ContentView: View {
                     .multilineTextAlignment(.center)
             }
 
+            // nanoMuse: the way in that needs no key — sign in to nanoMuse Cloud, free.
+            NanoMuseCloudCTA()
+
             // Setup steps
             VStack(spacing: 16) {
                 // Step 1 – Add Provider
@@ -7200,6 +7203,9 @@ private struct AppearanceSettingsView: View {
             // block opens expanded (historical behavior, default) or stays
             // collapsed. Only affects the streaming auto-expand; manual taps
             // always work either way.
+            // nanoMuse: the agent's steps (tool capsules) in finished messages, off by default.
+            NanoMuseStepsSection()
+
             Section {
                 Toggle(AppLocalized("Expand Thinking While Streaming"), isOn: $autoExpandThinking)
             } header: {

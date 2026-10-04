@@ -9,6 +9,14 @@ struct NanoMuseCloudView: View {
     @State private var identifier = ""
     @State private var code = ""
     @State private var codeSent = false
+    /// The other way in: the account's password instead of a code.
+    @State private var usePassword = false
+    @State private var password = ""
+    /// A friend's invite code, optional, with the six digits.
+    @State private var invite = ""
+    @State private var inviteOpen = false
+    /// What the relay gives on sign-up (relay 0.15), for the line above the form.
+    @State private var config = NanoMuseConfig()
     @State private var busy = false
     @State private var message: String?
     @State private var failed = false
@@ -37,7 +45,7 @@ struct NanoMuseCloudView: View {
         .task {
             account = NanoMuseCloud.account
             relayBase = NanoMuseCloud.baseURL == NanoMuseCloud.defaultBase ? "" : NanoMuseCloud.baseURL
-            if signedIn { await refresh(quiet: true) }
+            if signedIn { await refresh(quiet: true) } else { config = await NanoMuseCloud.config() }
         }
     }
 
@@ -48,39 +56,8 @@ struct NanoMuseCloudView: View {
         Section {
             if let account {
                 LabeledContent(AppLocalized("Signed in as"), value: account.hint)
-                VStack(alignment: .leading, spacing: 6) {
-                    if account.unlimited {
-                        // No ceiling on this relay: what was used, nothing to run out of.
-                        let used = account.used.formatted()
-                        let usedToday = account.usedToday.formatted()
-                        Text(AppLocalized("No limit on this account"))
-                            .font(.subheadline)
-                        Text(AppLocalized("\(used) tokens used so far, \(usedToday) today"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ProgressView(value: account.fraction)
-                        let remaining = account.remaining.formatted()
-                        let granted = account.granted.formatted()
-                        Text(AppLocalized("\(remaining) of \(granted) tokens left"))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        if account.dailyCap > 0 {
-                            let usedToday = account.usedToday.formatted()
-                            let dailyCap = account.dailyCap.formatted()
-                            Text(AppLocalized("Today: \(usedToday) of \(dailyCap)"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    let checked = account.checkedAt.formatted(.relative(presentation: .named))
-                    Text(AppLocalized("Checked \(checked)"))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.vertical, 4)
             } else {
-                Text(AppLocalized("Signed in. Pull the balance with Refresh."))
+                Text(AppLocalized("Signed in."))
                     .foregroundStyle(.secondary)
             }
             Button {
@@ -93,6 +70,14 @@ struct NanoMuseCloudView: View {
             if let message {
                 Text(message).foregroundStyle(failed ? Color.red : Color.secondary)
             }
+        }
+
+        // The rest of the account — the pool in yuan with the ways on, the invite, usage,
+        // password, the devices holding a key, the timeline, deletion — read live from the relay.
+        NanoMuseAccountSections(account: $account) {
+            account = nil
+            message = nil
+            failed = false
         }
 
         if let inst = NanoMuseCloud.instance {
@@ -138,6 +123,11 @@ struct NanoMuseCloudView: View {
             Text(AppLocalized("Sign in with a phone number or an e-mail address and start right away with a starter allowance — no key of your own needed. A provider of your own can be added at any time."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            if let allowance = config.allowanceCny, allowance > 0 {
+                let amount = "¥" + allowance.formatted(.number.precision(.fractionLength(allowance.rounded() == allowance ? 0 : 2)))
+                Label(AppLocalized("Free to start: \(amount) of credit comes with the account. No card."), systemImage: "gift")
+                    .font(.subheadline)
+            }
         }
 
         Section {
@@ -147,20 +137,53 @@ struct NanoMuseCloudView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .disabled(busy || codeSent)
-            if codeSent {
+            if usePassword {
+                SecureField(AppLocalized("Password"), text: $password)
+                    .textContentType(.password)
+                    .disabled(busy)
+            } else if codeSent {
                 TextField(AppLocalized("Verification code"), text: $code)
                     .keyboardType(.numberPad)
                     .textContentType(.oneTimeCode)
                     .disabled(busy)
+                if inviteOpen {
+                    TextField(AppLocalized("Invite code (optional)"), text: $invite)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .disabled(busy)
+                } else {
+                    Button(AppLocalized("Have an invite code?")) { inviteOpen = true }
+                        .font(.subheadline)
+                        .disabled(busy)
+                }
             }
         } footer: {
             if let message {
                 Text(message).foregroundStyle(failed ? Color.red : Color.secondary)
+            } else if inviteOpen && codeSent && !usePassword {
+                let bonus = "¥" + (config.inviteeBonusCny ?? 5).formatted(.number.precision(.fractionLength(0)))
+                Text(AppLocalized("A friend’s code adds \(bonus) for both of you on a first sign-in."))
             }
         }
 
         Section {
-            if codeSent {
+            if usePassword {
+                Button {
+                    Task { await signInWithPassword() }
+                } label: {
+                    HStack {
+                        Text(AppLocalized("Sign in"))
+                        if busy { Spacer(); ProgressView() }
+                    }
+                }
+                .disabled(busy || password.isEmpty || identifier.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button(AppLocalized("Use a code instead")) {
+                    usePassword = false
+                    password = ""
+                    message = nil
+                }
+                .disabled(busy)
+            } else if codeSent {
                 Button {
                     Task { await signIn() }
                 } label: {
@@ -170,6 +193,11 @@ struct NanoMuseCloudView: View {
                     }
                 }
                 .disabled(busy || code.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button(AppLocalized("Use a password instead")) {
+                    usePassword = true
+                    message = nil
+                }
+                .disabled(busy)
                 Button(AppLocalized("Use another number or address")) {
                     codeSent = false
                     code = ""
@@ -184,6 +212,11 @@ struct NanoMuseCloudView: View {
                         Text(AppLocalized("Send code"))
                         if busy { Spacer(); ProgressView() }
                     }
+                }
+                .disabled(busy || identifier.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button(AppLocalized("Sign in with a password")) {
+                    usePassword = true
+                    message = nil
                 }
                 .disabled(busy || identifier.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -237,9 +270,27 @@ struct NanoMuseCloudView: View {
         failed = false
         defer { busy = false }
         do {
-            account = try await NanoMuseCloud.verify(identifier: identifier, code: code)
+            account = try await NanoMuseCloud.verify(identifier: identifier, code: code, invite: invite)
             message = nil
             code = ""
+            invite = ""
+            inviteOpen = false
+            codeSent = false
+        } catch {
+            failed = true
+            message = NanoMuseCloud.describe(error)
+        }
+    }
+
+    private func signInWithPassword() async {
+        busy = true
+        failed = false
+        defer { busy = false }
+        do {
+            account = try await NanoMuseCloud.login(identifier: identifier, password: password)
+            message = nil
+            password = ""
+            usePassword = false
             codeSent = false
         } catch {
             failed = true

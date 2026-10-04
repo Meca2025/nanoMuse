@@ -43,6 +43,7 @@ About*).
 | **The hub** (`hub/`) | Every signed-in device of the account meets on the relay's hub: the phone sees your computers, asks them to do things, gets their approvals as cards, and can be asked by them. A foreground service keeps it reachable in the background (Android 13+ asks for the notification permission for that). [hub.md](hub.md). |
 | **Coding agents** (`ui/coding/`) | The Cursor, Codex and Claude Code sessions on your computers, seen and steered from the phone. [coding-agents.md](coding-agents.md). |
 | **Account** (`ui/cloud/`) | Who is signed in, the password, every device holding a key, usage by kind and by model, the ways out. |
+| **Connectors** (`connectors/`, `ui/connectors/`) | The services the agent can be let into — the desktop's catalogue of 69 remote MCP servers (Notion, Linear, GitHub, Google Drive, Slack, Stripe, …), shipped as `assets/nanomuse/connectors.json`. Open servers add with a tap; a key service takes the key; an OAuth service runs the MCP authorization flow (discovery, dynamic client registration, PKCE in a Custom Tab) and the token goes into the entry's `Authorization` header for the in-guest MCP client, refreshed at app start. A connected service is an MCP server entry under the same id — *Settings → MCP* manages it too. |
 | **The chat, plain** | While the agent works, the line under its avatar names the step under way — *nanoMuse is using Shell*, *Writing the reply*, *On it: book the table* — never a state of mind. The tool pills, the Computer sheet and the floating step bar are **off by default**; *Settings → Appearance → Show the agent's steps* turns them on. With them on, a finished step reads *nanoMuse used Shell · Done*, and its sheet closes on ×, swipe or Back. |
 
 The web console of the same account is at the relay (`/app`), the desktop app in
@@ -113,5 +114,6 @@ like the Python package's version does.
 | `reach/` | `Computers` (paired computers, tokens in the encrypted store), the offload handler that sends work to a computer |
 | `hands/` | The accessibility service as the hand, the stage and the capsule, the screen reader |
 | `ui/coding/` | The coding agents of your computers |
+| `connectors/`, `ui/connectors/` | The connectors catalogue (`ConnectorsCatalogue` reads the asset), MCP authorization discovery + registration (`McpAuthDiscovery`), connecting and token refresh (`Connectors`), the Settings → Connectors page |
 | `ui/cloud/` | Sign-in, the Account screen, the Devices section |
 | `res/values*/nm_strings.xml` | Every nanoMuse string, in English, 简体中文 and 繁體中文 (the three files carry the same keys) |

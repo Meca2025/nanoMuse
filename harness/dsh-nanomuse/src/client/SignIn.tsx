@@ -6,6 +6,7 @@
  */
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useState, type FormEvent, type ReactNode } from 'react'
+import { useCloudConfig } from './AccountPage.tsx'
 import { call, column, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
 
 export interface SignInProps {
@@ -22,6 +23,11 @@ export function SignIn({ t, onSignedIn, footer, wide = false }: SignInProps): Re
   const [identifier, setIdentifier] = useState('')
   const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
+  // A friend's invite code, as on the phone: optional, typed with the six-digit code; the relay
+  // credits both when it is the first sign-in. Shown folded; a tap opens the field.
+  const [invite, setInvite] = useState('')
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const config = useCloudConfig()
   const [busy, setBusy] = useState(false)
   const [resent, setResent] = useState(false)
   const [error, setError] = useState<string | undefined>()
@@ -58,7 +64,7 @@ export function SignIn({ t, onSignedIn, footer, wide = false }: SignInProps): Re
     event.preventDefault()
     void run(async () => {
       try {
-        const status = await call<CloudStatus>('verify', { identifier: identifier.trim(), code: code.trim() })
+        const status = await call<CloudStatus>('verify', { identifier: identifier.trim(), code: code.trim(), invite: invite.trim().toUpperCase() })
         setCode('')
         onSignedIn(status)
       } catch (err: unknown) {
@@ -86,6 +92,11 @@ export function SignIn({ t, onSignedIn, footer, wide = false }: SignInProps): Re
         t('codeSentTo', { identifier: identifier.trim() }), ' ',
         h('button', { type: 'button', className: 'nm-ob-link nm-inline', disabled: busy, onClick: resend }, resent ? t('obResent') : t('obResend'))),
       h(Input, { value: code, onChange: (e: FormEvent<HTMLInputElement>) => setCode(e.currentTarget.value.replace(/\D/g, '').slice(0, 6)), placeholder: t('code'), inputMode: 'numeric', autoComplete: 'one-time-code', maxLength: 6, autoFocus: true, 'aria-label': t('code') }),
+      inviteOpen
+        ? h('div', { style: column },
+            h(Input, { value: invite, onChange: (e: FormEvent<HTMLInputElement>) => setInvite(e.currentTarget.value.replace(/[^0-9a-zA-Z-]/g, '').slice(0, 16)), placeholder: t('obInviteCode'), autoComplete: 'off', autoCapitalize: 'characters', 'aria-label': t('obInviteCode') }),
+            h('div', { style: muted }, t('obInviteHint', { bonus: config.invitee_bonus_cny ?? 5 })))
+        : h('div', null, h('button', { type: 'button', className: 'nm-ob-link nm-inline', disabled: busy, onClick: () => setInviteOpen(true) }, t('obHaveInvite'))),
       error ? h('div', { style: errorStyle, role: 'alert' }, error) : null,
       h('div', { style: row },
         h(Button, { ...primary, disabled: busy || code.trim().length !== 6 }, busy ? t('signingIn') : t('signIn')),

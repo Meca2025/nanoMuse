@@ -690,6 +690,13 @@ fun AppNavigation(
                 onOpenAccount = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) },
             )
         }
+        // nanoMuse: the services the agent can be let into — the connectors catalogue, each a remote MCP server.
+        composable(io.github.nanomuse.ui.connectors.ROUTE_CONNECTORS) {
+            io.github.nanomuse.ui.connectors.ConnectorsScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenMcp = { navController.safeNavigate(Routes.MCP) },
+            )
+        }
         // nanoMuse: the coding agents (Cursor, Codex, Claude Code) on the account's computers.
         composable(io.github.nanomuse.ui.coding.ROUTE_CODING) {
             io.github.nanomuse.ui.coding.CodingScreen(
@@ -782,6 +789,7 @@ fun AppNavigation(
                 onDataControlsClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_DATA_CONTROLS) }, // nanoMuse
                 onComputersClick = { navController.safeNavigate(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) }, // nanoMuse
                 onCodingClick = { navController.safeNavigate(io.github.nanomuse.ui.coding.ROUTE_CODING) }, // nanoMuse
+                onConnectorsClick = { navController.safeNavigate(io.github.nanomuse.ui.connectors.ROUTE_CONNECTORS) }, // nanoMuse
                 onPermissionsClick = { navController.safeNavigate(Routes.PERMISSIONS) },
                 onUsageClick = { navController.safeNavigate(Routes.USAGE_STATS) },
                 onAppearanceClick = { navController.safeNavigate(Routes.APPEARANCE) },

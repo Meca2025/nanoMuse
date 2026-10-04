@@ -8,10 +8,11 @@
  * enlarges it; clicking opens the profile. Occupies `conversation.header.leading`.
  */
 import { createElement as h, Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import { openStar, starDue, starShown } from './AccountPage.tsx'
 import type { Translate } from './api.ts'
 import { Avatar, type Mood } from './Avatar.tsx'
 import { describeCall } from './Capsule.tsx'
-import { IconCheck, IconChevronLeft, IconMenu, IconSpinner } from './icons.tsx'
+import { IconCheck, IconChevronLeft, IconHeart, IconMenu, IconSpinner } from './icons.tsx'
 import { useLive } from './live.ts'
 import { mainChatId } from './MuseChats.tsx'
 import { usePrefs } from './prefs.ts'
@@ -53,6 +54,19 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
   const [, tick] = useState(0)
   const [toast, setToast] = useState<{ n: number; at: number } | null>(null)
   const approvals = useRef(prefs.approvals.length)
+  // the first task that runs to its end asks for a star, once per computer, signed in only
+  const [starAsk, setStarAsk] = useState(false)
+  const wasRunning = useRef(false)
+  useEffect(() => {
+    if (running) { wasRunning.current = true; return undefined }
+    if (!wasRunning.current) return undefined
+    wasRunning.current = false
+    if (!live.cloud.signedIn || !starDue('first_task')) return undefined
+    starShown('first_task')
+    setStarAsk(true)
+    const timer = window.setTimeout(() => setStarAsk(false), 20000)
+    return () => window.clearTimeout(timer)
+  }, [running, live.cloud.signedIn])
 
   // "done" lingers, "gathering thoughts" ages into "working": re-render on a clock while it matters
   useEffect(() => {
@@ -113,6 +127,10 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
       h('div', { className: 'nm-header-name' }, live.profile.name || t('brand')),
       toast
         ? h('div', { className: 'nm-header-status nm-header-toast' }, h(IconCheck, { size: 13 }), t('statusApproved', { n: toast.n }))
+        : starAsk
+          ? h('div', { className: 'nm-header-status nm-header-star' }, h(IconHeart, { size: 13 }), h('span', { className: 'nm-header-line' }, t('starFirstTask')),
+              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => { openStar(); setStarAsk(false) } }, t('starAction')),
+              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => setStarAsk(false) }, t('starLater')))
         : line
           ? h('div', { className: `nm-header-status ${tone}`.trim() }, running || waiting ? h(IconSpinner, { size: 13 }) : null, h('span', { className: 'nm-header-line' }, line))
           : null))

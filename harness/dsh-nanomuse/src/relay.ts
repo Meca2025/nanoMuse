@@ -38,6 +38,25 @@ export interface Account {
   }
   /** Data controls — "Help improve nanoMuse's AI models" (relay 0.9); absent on an older relay. */
   contribute?: DataControls
+  /** The pool in yuan (relay 0.5+): what was granted, spent and is left, and the ways on. */
+  spend?: Spend
+}
+
+/** `GET /v1/me` → `spend`, trimmed: the lifetime pool in yuan, as the apps show it. */
+export interface Spend {
+  /** The pool for the account's lifetime, in yuan; absent for a member (no limit). */
+  grant?: number
+  /** Spent so far, in yuan. */
+  total: number
+  /** Left, in yuan; null = no limit. */
+  left: number | null
+  unlimited: boolean
+  /** From 80 % on. */
+  warn: boolean
+  usdCny?: number
+  inviteBonusCny?: number
+  inviteeBonusCny?: number
+  ownKeyDocs?: string
 }
 
 /** The switch over what the relay keeps of the account's chats, and what it holds so far. */
@@ -142,10 +161,33 @@ function toDataControls(ct: unknown): DataControls | undefined {
   }
 }
 
+function toSpend(raw: unknown): Spend | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const s = raw as Record<string, unknown>
+  const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
+  const spend: Spend = {
+    total: num(s.total) ?? 0,
+    left: num(s.left) ?? null,
+    unlimited: Boolean(s.unlimited),
+    warn: Boolean(s.warn),
+  }
+  const grant = num(s.grant)
+  if (grant !== undefined) spend.grant = grant
+  const usdCny = num(s.usd_cny)
+  if (usdCny !== undefined) spend.usdCny = usdCny
+  const inviteBonusCny = num(s.invite_bonus_cny)
+  if (inviteBonusCny !== undefined) spend.inviteBonusCny = inviteBonusCny
+  const inviteeBonusCny = num(s.invitee_bonus_cny)
+  if (inviteeBonusCny !== undefined) spend.inviteeBonusCny = inviteeBonusCny
+  if (typeof s.own_key_docs === 'string' && s.own_key_docs) spend.ownKeyDocs = s.own_key_docs
+  return spend
+}
+
 function toAccount(me: Record<string, unknown>): Account {
   const account = (me.account ?? {}) as Record<string, unknown>
   const tokens = (me.tokens ?? {}) as Record<string, unknown>
   const contribute = toDataControls(me.contribute)
+  const spend = toSpend(me.spend)
   return {
     id: String(account.id ?? ''),
     channel: String(account.channel ?? ''),
@@ -158,6 +200,7 @@ function toAccount(me: Record<string, unknown>): Account {
       remaining: Number(tokens.remaining ?? 0),
     },
     ...(contribute ? { contribute } : {}),
+    ...(spend ? { spend } : {}),
   }
 }
 
@@ -186,11 +229,11 @@ export class Relay {
   }
 
   /** Trade the code for this device's key. */
-  async verify(identifier: string, code: string, device: string, signal?: AbortSignal): Promise<SignIn> {
+  async verify(identifier: string, code: string, device: string, signal?: AbortSignal, invite = ''): Promise<SignIn> {
     const res = await this.fetchImpl(`${this.origin}/v1/auth/verify`, {
       method: 'POST',
       headers: JSON_HEADERS,
-      body: JSON.stringify({ identifier, code: code.trim(), device: device.slice(0, 80) }),
+      body: JSON.stringify({ identifier, code: code.trim(), device: device.slice(0, 80), ...(invite.trim() ? { invite: invite.trim() } : {}) }),
       signal: signal ?? null,
     })
     if (!res.ok) await fail(res)
@@ -291,6 +334,68 @@ export class Relay {
       return Buffer.from(await res.arrayBuffer())
     }
     throw new RelayError(502, 'image', 'The model returned no picture')
+  }
+
+  /**
+   * The relay's public figures (`GET /v1/config`, relay 0.15): the allowance a new account
+   * gets, the invite bonus, whether sign-up is open, the repository to star. `{}` from an
+   * older relay, which has no such route.
+   */
+  async config(signal?: AbortSignal): Promise<Record<string, unknown>> {
+    const res = await this.fetchImpl(`${this.origin}/v1/config`, { signal: signal ?? null })
+    if (!res.ok) return {}
+    const body = (await res.json().catch(() => ({}))) as unknown
+    return body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+  }
+
+  /** The whole account sheet (`GET /v1/me`), as the relay sends it: usage by kind and model, the pool, the invite, the password. */
+  async meSheet(apiKey: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me`, { headers: this.auth(apiKey), signal: signal ?? null })
+    if (!res.ok) await fail(res)
+    return (await res.json()) as Record<string, unknown>
+  }
+
+  /** Every device holding a key for the account (`GET /v1/me/sessions`). */
+  async sessions(apiKey: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/sessions`, { headers: this.auth(apiKey), signal: signal ?? null })
+    if (!res.ok) await fail(res)
+    return (await res.json()) as Record<string, unknown>
+  }
+
+  /** Retire one device's key by its prefix (`DELETE /v1/me/sessions/{prefix}`). */
+  async revokeSession(apiKey: string, prefix: string, signal?: AbortSignal): Promise<void> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/sessions/${encodeURIComponent(prefix)}`, { method: 'DELETE', headers: this.auth(apiKey), signal: signal ?? null })
+    if (!res.ok) await fail(res)
+  }
+
+  /** The account's recent events (`GET /v1/me/events?limit=`): sign-ins, refusals, grants. */
+  async events(apiKey: string, limit = 40, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/events?limit=${Math.max(1, Math.min(200, Math.floor(limit)))}`, { headers: this.auth(apiKey), signal: signal ?? null })
+    if (!res.ok) await fail(res)
+    return (await res.json()) as Record<string, unknown>
+  }
+
+  /** Set or change the password (`POST /v1/auth/password`); `current` when one exists; an empty password with `current` removes it. */
+  async setPassword(apiKey: string, password: string, current?: string, signal?: AbortSignal): Promise<void> {
+    const res = await this.fetchImpl(`${this.origin}/v1/auth/password`, {
+      method: 'POST',
+      headers: { ...JSON_HEADERS, ...this.auth(apiKey) },
+      body: JSON.stringify({ password, ...(current === undefined ? {} : { current }) }),
+      signal: signal ?? null,
+    })
+    if (!res.ok) await fail(res)
+  }
+
+  /** Retire every key of the account, this device's too (`POST /v1/auth/sign-out-all`). */
+  async signOutAll(apiKey: string, signal?: AbortSignal): Promise<void> {
+    const res = await this.fetchImpl(`${this.origin}/v1/auth/sign-out-all`, { method: 'POST', headers: { ...this.auth(apiKey), 'content-type': 'application/json' }, body: JSON.stringify({ all: true }), signal: signal ?? null })
+    if (!res.ok) await fail(res)
+  }
+
+  /** Delete the account, its keys, ledger and devices (`POST /v1/auth/delete`). */
+  async deleteAccount(apiKey: string, signal?: AbortSignal): Promise<void> {
+    const res = await this.fetchImpl(`${this.origin}/v1/auth/delete`, { method: 'POST', headers: this.auth(apiKey), signal: signal ?? null })
+    if (!res.ok) await fail(res)
   }
 
   /** Who the key belongs to and what is left of the allowance. */

@@ -68,7 +68,13 @@ Ours, in `NanoMuse/`:
   provider in the app, with a model group of its own that becomes the default when there is none.
   Same wire format and the same rules as the Android client (`io.github.nanomuse.cloud`): one
   instance per relay, nothing of the user's own replaced, a 401 on refresh removes the provider.
-  Debug builds can point at another relay.
+  Debug builds can point at another relay. Since 0.1.32 the page is the whole account — the
+  password as the other way in, a friend's invite code, the pool in yuan with the ways on when it
+  runs low (your own key, an invitation, a star once), usage by kind and by model, the devices
+  holding a key, the timeline, deletion — the same sections as the phone's `CloudAccountScreen`.
+- **The agent's steps, the status line.** *Settings → Chat → Steps* keeps the tool capsules out of
+  finished messages unless asked for; the typing line reads *〈name〉 is on it*, not *is thinking*.
+  Both are one-line edits in upstream's `AssistantBlockView` / `ContentView`, marked `// nanoMuse:`.
 
 ## Building on a Mac
 
@@ -220,8 +226,11 @@ the Cloud sign-in. In the order it makes sense to port, and where the Android co
 
 | Android (`io.github.nanomuse.*`) | On iOS |
 |---|---|
-| `cloud` — relay client, sign-in, account | Done: `NanoMuse/NanoMuseCloud*.swift` |
-| `ui.onboarding` — the four-page first run with *Sign in — free* | Next: a first-run sheet before the provider list |
+| `cloud` — relay client, sign-in, account | Done: `NanoMuse/NanoMuseCloud*.swift`, `NanoMuseAccount*.swift` (0.1.32: password, invite code, the allowance in yuan, usage, sessions, timeline, delete) |
+| `ui.onboarding` — the four-page first run with *Sign in — free* | 0.1.32: a *Sign in to nanoMuse Cloud — free* entry on the start screen (`NanoMuseWelcome.swift`); the four pages come with the shell |
+| `community.StarPrompt` — the star asks | 0.1.32: at sign-in and when the allowance is spent (`NanoMuseStar`); after the first task with the shell |
+| `nm.show_steps` — the agent's steps off by default | 0.1.32: `NanoMuseSteps.swift`; finished messages keep to the conversation, a running one shows its steps |
+| `connectors` — the catalogue | Next, after the Android flow is confirmed on a device ([parity.md](parity.md)) |
 | `ui.home`, `ui.chat`, `ui.settings` — the Muse-style shell, header, tones | SwiftUI views under `NanoMuse/`; the OpenMinis screens stay behind them |
 | `avatar` — the drawn face and its states | Needs the relay's picture model; same request shape as Android (`docs/cloud.md`) |
 | `reach` — the phone drives the computer | The pairing protocol is platform-neutral; the client moves as is |

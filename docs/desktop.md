@@ -35,10 +35,14 @@ Permissions, Data controls with export and reset), the full-window first run. Th
 is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-agents, MCP
 — speaking as nanoMuse through the `nanomuse` preset, with:
 
-- **the account**: a phone number or an e-mail and a code (or a password) against
-  [nanoMuse Cloud](cloud.md); the key in dsh's credential store; the account's models as
-  the *nanoMuse Cloud* provider of the harness's own OpenAI-compatible adapter — nothing
-  of ours sits in the model path;
+- **the account**: a phone number or an e-mail and a code (or a password, with a friend's
+  invite code) against [nanoMuse Cloud](cloud.md); the key in dsh's credential store; the
+  account's models as the *nanoMuse Cloud* provider of the harness's own OpenAI-compatible
+  adapter — nothing of ours sits in the model path; Settings → Account is the whole account
+  as the phone has it — the pool in yuan with the ways on when it runs low, the invite code,
+  usage by kind and by model, the password, the devices holding a key, the timeline, deletion
+  — read through the host's pass-through routes (`/nanomuse/cloud/me`, `/sessions`,
+  `/account-events`, `/password`, `/sign-out-all`, `/delete-account`, `/config`);
 - **Hands** on this computer: `nanomuse mcp` from the bundled runtime over stdio, the
   runtime's `computer_screen` and `computer_act` tools with their approvals, so "what is
   on my screen?" and "open the settings and turn the volume down" work out of the box;
