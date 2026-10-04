@@ -68,6 +68,14 @@ TEXT_ONLY_FAMILIES = ("deepseek",)
 SIGHTED_FALLBACK = "qwen3.8-27b"
 
 
+def text_only(model: str) -> bool:
+    """A model family that takes no images (DeepSeek). On Model Studio's compatible mode a
+    message with a picture in it does not fail for these — it comes back as an empty reply —
+    so the family is known by name rather than found out at the first screenshot."""
+    family = model.strip().lower()
+    return any(family.startswith(prefix) for prefix in TEXT_ONLY_FAMILIES)
+
+
 def sighted_default(main_model: str) -> str:
     """The operator lane's model when ``GUI_MODEL`` is not set.
 
@@ -75,8 +83,7 @@ def sighted_default(main_model: str) -> str:
     main lane's model serves when it does; a text-only family (DeepSeek) falls back to Model
     Studio's sighted ``qwen3.8-27b`` on the same host and key.
     """
-    family = main_model.lower()
-    if any(family.startswith(prefix) for prefix in TEXT_ONLY_FAMILIES):
+    if text_only(main_model):
         return SIGHTED_FALLBACK
     return main_model
 
@@ -181,11 +188,14 @@ class Settings:
             base_url=_str("MAIN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
             api_key=_str("MAIN_API_KEY"),
         )
+        # .env.example ships the four GUI_ lines empty, so an empty value is "not set" here —
+        # not an operator lane without a model, which the gateway would answer 404 for and
+        # every phone task would fail on
         gui = Lane(
-            provider=_str("GUI_PROVIDER", main.provider),
-            model=_str("GUI_MODEL", sighted_default(main.model)),
-            base_url=_str("GUI_BASE_URL", main.base_url),
-            api_key=_str("GUI_API_KEY", main.api_key),
+            provider=_str("GUI_PROVIDER") or main.provider,
+            model=_str("GUI_MODEL") or sighted_default(main.model),
+            base_url=_str("GUI_BASE_URL") or main.base_url,
+            api_key=_str("GUI_API_KEY") or main.api_key,
         )
         extra: dict[str, str] = {}
         for item in _str("SESSION_EXTRA_ENV").split(","):

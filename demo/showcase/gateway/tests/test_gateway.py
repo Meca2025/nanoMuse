@@ -3,11 +3,17 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from showcase_gateway.config import sighted_default
+from showcase_gateway.config import Lane, Settings, sighted_default
 from showcase_gateway.llm import extract_usage, pinned, prepare_body
-from showcase_gateway.sessions import Refused, check_provider, resolve_provider
+from showcase_gateway.sessions import (
+    Refused,
+    Session,
+    SessionManager,
+    check_provider,
+    resolve_provider,
+)
 
-from .conftest import body
+from .conftest import FakeRunner, body, make_settings
 
 
 async def client_for(app):
@@ -254,3 +260,43 @@ def test_the_operator_lane_gets_a_sighted_model_by_default():
     # a sighted main model serves both lanes by itself
     assert sighted_default("qwen3.8-27b") == "qwen3.8-27b"
     assert sighted_default("qwen3.5-plus") == "qwen3.5-plus"
+
+
+def test_empty_gui_lines_in_the_env_file_mean_the_default(monkeypatch):
+    # .env.example ships GUI_PROVIDER= … GUI_API_KEY= empty; copied as they are, they used to
+    # leave the operator lane without a model — the gateway answered 404 "no_lane" and every
+    # phone task on the showcase failed at its first step
+    monkeypatch.setenv("MAIN_MODEL", "deepseek-v4-pro")
+    monkeypatch.setenv("MAIN_BASE_URL", "https://llm.example/compatible-mode/v1")
+    monkeypatch.setenv("MAIN_API_KEY", "sk-demo")
+    for name in ("GUI_PROVIDER", "GUI_MODEL", "GUI_BASE_URL", "GUI_API_KEY"):
+        monkeypatch.setenv(name, "")
+    gui = Settings.from_env().gui
+    assert gui.configured
+    assert gui.model == "qwen3.8-27b" and gui.provider == "openai"
+    assert gui.base_url == "https://llm.example/compatible-mode/v1" and gui.api_key == "sk-demo"
+    # a value set is taken as it is
+    monkeypatch.setenv("GUI_MODEL", "qwen3-vl-plus")
+    assert Settings.from_env().gui.model == "qwen3-vl-plus"
+
+
+def test_a_text_only_chat_model_is_kept_away_from_the_screenshots():
+    # DeepSeek on Model Studio answers a message with a picture in it with an empty reply
+    # rather than an error, so the runtime cannot find out by itself: the gateway says so
+    runner = FakeRunner()
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    blind = make_settings(main=Lane("openai", "deepseek-v4-pro", "https://m.example", "sk"))
+    sess = Session(
+        id="abc",
+        token="t",
+        llm_key="k",
+        ip="1.2.3.4",
+        created_at=0.0,
+        expires_at=1.0,
+        container="nm-abc",
+    )
+    env = SessionManager(blind, runner, http=client)._env_for(sess)
+    assert env["NANOMUSE_LLM_VISION"] == "off"
+    assert env["NANOMUSE_GUI_MODEL"] == "gui-model"  # the operator lane still looks
+    sighted = make_settings(main=Lane("openai", "qwen3.5-plus", "https://m.example", "sk"))
+    assert "NANOMUSE_LLM_VISION" not in SessionManager(sighted, runner, http=client)._env_for(sess)

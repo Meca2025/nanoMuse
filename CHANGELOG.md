@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Showcase
+
+- **The phone's operator had no model on the showcase.** `.env.example` ships the four `GUI_` lines empty, and the gateway read an empty line as a value — an operator lane without a model, which it answered `404 no_lane` for, so every phone task on demo.nanomuse.dev failed at its first step and the chat model (DeepSeek, which takes no images) was left to drive the phone blind. An empty line now means what the comment says: the main model when it is sighted, Model Studio's `qwen3.8-27b` on the same key when it is not. And a text-only chat model is told so (`NANOMUSE_LLM_VISION=off`): on Model Studio's compatible mode a message with a screenshot in it came back as an empty reply rather than an error, twice, and the Muse fell silent after the operator's report.
+
 ## [0.1.33] - 2026-10-04 · Steps
 
 The words under the face are the step's own, on every client; the iPhone gets the Muse shell; the browser is handed over on Android; the connectors that need an app of your own say so; and three fixes from a day's use of the desktop. [Release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.33).

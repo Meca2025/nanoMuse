@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from .config import Lane, Settings
+from .config import Lane, Settings, text_only
 from .runner import Runner, RunnerError
 
 log = logging.getLogger("showcase.sessions")
@@ -278,6 +278,12 @@ class SessionManager:
             # web app opens on the Cloud sign-in (cloud.required is the runtime's default)
             "NANOMUSE_CLOUD_REQUIRED": "0",
         }
+        if text_only(main.model):
+            # The chat model takes no images, and on Model Studio's compatible mode it does
+            # not say so: a message with a screenshot in it (the operator's report carries
+            # the last screen) comes back as an empty reply, twice, and the Muse falls silent.
+            # So the pictures stay out of its context; the operator lane is the one that looks.
+            env["NANOMUSE_LLM_VISION"] = "off"
         # a new look for the Muse: pictures drawn through the gateway (images.py) — on the
         # showcase's key only; a visitor's own provider is not asked to draw
         if s.image_model and s.image_api_key and not sess.byok:
