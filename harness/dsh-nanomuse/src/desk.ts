@@ -198,8 +198,9 @@ export class HoldDesk {
       set.add(wake)
       this.waiters.set(thread, set)
       signal?.addEventListener('abort', onAbort, { once: true })
+      // Kept referenced on purpose: a waiting tool call must outlive an otherwise idle loop
+      // (an unref'd timer let Node 22 end the loop with the promise still pending).
       timer = setTimeout(() => finish('timeout'), maxMs)
-      timer.unref?.()
     })
   }
 }
