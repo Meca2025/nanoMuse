@@ -137,7 +137,7 @@ export function AllowanceWays({
       </Way>
 
       {exhausted && !starred() && (
-        <Way icon={<Star size={16} />} tone="bg-amber-400/15 text-amber-600 dark:text-amber-300" title={t("A star, if nanoMuse has earned it: the allowance is the developer's own money, and being seen is what brings the project more hands.")}>
+        <Way icon={<Star size={16} />} tone="bg-amber-400/15 text-amber-600 dark:text-amber-300" title={t("The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub is what keeps the project going for everyone.")}>
           <button type="button" onClick={() => openStar(cfg.repo_url)} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
             <Star size={14} /> {t("Star on GitHub")}
           </button>

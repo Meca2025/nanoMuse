@@ -37,6 +37,8 @@ object Connectors {
         object Cancelled : Outcome()
         /** The server wants a key after all (an `auto` or `oauth` entry that answered 401 without an authorization server). */
         data class NeedsKey(val hint: String) : Outcome()
+        /** The service registers no clients by itself: an OAuth app made at [developer] with [redirectUri], its client id pasted here. */
+        data class NeedsClient(val developer: String?, val redirectUri: String) : Outcome()
         data class Failed(val message: String) : Outcome()
     }
 
@@ -60,14 +62,18 @@ object Connectors {
      * Connect [connector]. [key] is what the person pasted for a key-auth service (or for an
      * `auto`/`oauth` one that turned out to want a key). Suspends through the browser round-trip.
      */
-    suspend fun connect(context: Context, connector: Connector, key: String? = null): Outcome {
+    suspend fun connect(context: Context, connector: Connector, key: String? = null, clientId: String? = null, clientSecret: String? = null): Outcome {
         val repo = repo(context) ?: return Outcome.Failed("MCP is not ready")
         val auth = connector.auth
         if (!key.isNullOrBlank()) return withKey(repo, connector, auth as? ConnectorAuth.Key, key.trim())
         return when (auth) {
             is ConnectorAuth.None -> { add(repo, connector, server(connector)); Outcome.Connected }
             is ConnectorAuth.Key -> Outcome.NeedsKey(auth.where)
-            is ConnectorAuth.OAuth, is ConnectorAuth.Auto -> oauth(context, repo, connector)
+            is ConnectorAuth.OAuth -> {
+                if (auth.clientIdRequired && clientId.isNullOrBlank()) Outcome.NeedsClient(auth.developer, MCPOAuthController.DEFAULT_REDIRECT_URI)
+                else oauth(context, repo, connector, clientId, clientSecret)
+            }
+            is ConnectorAuth.Auto -> oauth(context, repo, connector, clientId, clientSecret)
         }
     }
 
@@ -96,10 +102,10 @@ object Connectors {
         return Outcome.Connected
     }
 
-    private suspend fun oauth(context: Context, repo: MCPRepository, connector: Connector): Outcome {
+    private suspend fun oauth(context: Context, repo: MCPRepository, connector: Connector, clientId: String? = null, clientSecret: String? = null): Outcome {
         val redirect = MCPOAuthController.DEFAULT_REDIRECT_URI
         val probe = try {
-            withContext(Dispatchers.IO) { McpAuthDiscovery.probe(connector.url, redirect) }
+            withContext(Dispatchers.IO) { McpAuthDiscovery.probe(connector.url, redirect, clientId, clientSecret) }
         } catch (e: Exception) {
             AppLogger.warning(TAG, "probe '${connector.id}' failed: ${e.message}")
             return Outcome.Failed(e.message ?: "The server did not answer")
@@ -107,6 +113,7 @@ object Connectors {
         return when (probe) {
             is McpAuthDiscovery.Probe.Open -> { add(repo, connector, server(connector)); Outcome.Connected }
             is McpAuthDiscovery.Probe.Key -> Outcome.NeedsKey(probe.hint)
+            is McpAuthDiscovery.Probe.NeedsClient -> Outcome.NeedsClient((connector.auth as? ConnectorAuth.OAuth)?.developer, redirect)
             is McpAuthDiscovery.Probe.OAuth -> {
                 val id = connector.serverId
                 MCPOAuthStore.setClientSecret(context, id, probe.clientSecret)

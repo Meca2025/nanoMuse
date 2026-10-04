@@ -33,6 +33,7 @@ struct NanoMuseCloudView: View {
             if signedIn {
                 accountSections
                 NanoMuseDevicesSection()
+                NanoMuseReachSection()
             } else {
                 signInSections
             }
@@ -82,6 +83,16 @@ struct NanoMuseCloudView: View {
 
         if let inst = NanoMuseCloud.instance {
             Section {
+                NavigationLink {
+                    NanoMuseDataControlsView()
+                } label: {
+                    Label(AppLocalized("Data controls"), systemImage: "hand.raised")
+                }
+                NavigationLink {
+                    NanoMuseAvatarStudioView(embedded: true)
+                } label: {
+                    Label(AppLocalized("Avatar"), systemImage: "face.smiling")
+                }
                 NavigationLink {
                     ProviderInstanceDetailView(instanceId: inst.id)
                 } label: {

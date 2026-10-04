@@ -20,6 +20,7 @@ import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import { mountGuarded } from './admit.ts'
 import type {} from './cloud.ts'
 
 export const name = 'nanomuse'
@@ -42,10 +43,8 @@ const CONNECT_ATTEMPT_MS = 1500
 
 export function apply(ctx: Context): void {
   if (getDefaultAutoSelectFamilyAttemptTimeout() < CONNECT_ATTEMPT_MS) setDefaultAutoSelectFamilyAttemptTimeout(CONNECT_ATTEMPT_MS)
-  ctx.inject(['webServer'], (ctx) => {
-    const handler = (req: IncomingMessage, res: ServerResponse) => serveAsset(req, res, (id, mood, ext) => ctx.get('nanomuseCloud')?.profile.stillPath(id, mood, ext))
-    ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: ASSETS_PREFIX, handler }), 'nanomuse: assets')
-  })
+  const handler = (req: IncomingMessage, res: ServerResponse) => serveAsset(req, res, (id, mood, ext) => ctx.get('nanomuseCloud')?.profile.stillPath(id, mood, ext))
+  mountGuarded(ctx, ASSETS_PREFIX, handler, 'nanomuse: assets')
 }
 
 /** One file from `assets/` by its base name, or a still of the account's face; anything else is 404. */

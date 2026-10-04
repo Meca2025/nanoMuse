@@ -10,7 +10,8 @@
  * asks for a new look in a chat.
  */
 import { createElement as h, Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { call, type Translate } from './api.ts'
+import { StarNudgeOnce } from './AccountPage.tsx'
+import { call, errorCode, type Translate } from './api.ts'
 import type { Words } from './locales.ts'
 import { useRooms } from './rooms.ts'
 import { Sheet } from './ui.tsx'
@@ -124,7 +125,7 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
   const round = useRef(0)
   useEffect(() => () => { alive.current = false }, [])
   useEffect(() => {
-    call<Estimate>('studio/estimate').then((e) => { if (alive.current) setEstimate(e) }).catch((err: unknown) => { if (alive.current) setEstimateError((err as Error).message) })
+    call<Estimate>('studio/estimate').then((e) => { if (alive.current) setEstimate(e) }).catch((err: unknown) => { if (alive.current) setEstimateError(errorCode(err) === 'signed_out' ? t('stSignedOut') : (err as Error).message) })
   }, [])
 
   const draw = () => {
@@ -240,7 +241,9 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
     body = h('div', { className: 'nm-sheet-form' },
       h('div', { className: 'nm-st-moods' }, ['idle', ...MOODS].map((mood) =>
         h('div', { key: mood, className: 'nm-st-mood' }, moods[mood] ? h('img', { src: `data:image/webp;base64,${moods[mood]}`, alt: mood }) : null))),
-      h('p', { className: 'nm-sheet-lead' }, t('stDone')))
+      h('p', { className: 'nm-sheet-lead' }, t('stDone')),
+      // the face is done: a moment of delight, and the one fair ask for a star here (once)
+      h(StarNudgeOnce, { t, moment: 'new_look' }))
     footer = h('div', { className: 'nm-sheet-actions' }, h('span', { style: { flex: 1 } }), h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: onClose }, t('stFinish')))
   }
   return h(Sheet, { title: t('stTitle'), closeLabel: t('close'), onClose: stage === 'posing' ? () => undefined : onClose, footer, wide: stage !== 'describe' }, body)

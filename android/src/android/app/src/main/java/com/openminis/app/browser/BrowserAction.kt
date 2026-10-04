@@ -25,7 +25,9 @@ enum class BrowserAction(val value: String) {
     GET_COOKIES("get_cookies"),
     SET_COOKIES("set_cookies"),
     SCROLL_AND_COLLECT("scroll_and_collect"),
-    WAIT_FOR_DOM_STABLE("wait_for_dom_stable");
+    WAIT_FOR_DOM_STABLE("wait_for_dom_stable"),
+    // nanoMuse: the page needs the person (login, code, payment, CAPTCHA) — the browser goes to them (io.github.nanomuse.browser.BrowserHandOver).
+    HAND_OVER("hand_over");
 
     /**
      * [T-browser-readaction-follow-tab-and-yolo-android] True when this action

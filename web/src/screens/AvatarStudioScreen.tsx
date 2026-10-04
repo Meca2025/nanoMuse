@@ -6,6 +6,7 @@ import { AVATAR_STYLES } from "../components/AvatarPicker";
 import { PageBar } from "../components/BackBar";
 import { MuseRoundButton } from "../components/MuseHeader";
 import { primaryBtn, secondaryBtn } from "../components/Form";
+import { StarNudgeOnce } from "../components/StarNudge";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { StudioSession, StudioView } from "../types";
@@ -197,6 +198,9 @@ export function AvatarStudioScreen() {
             </div>
           )}
         </div>
+
+        {/* the face is done: a moment of delight, and the one fair ask for a star here (once) */}
+        {stage === "done" && poseErrors === 0 && <StarNudgeOnce moment="new_look" />}
 
         {/* describe a new one */}
         <section className="rounded-3xl border border-border/70 bg-surface p-4 shadow-sm space-y-3">

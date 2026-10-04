@@ -51,7 +51,11 @@ async function connectorsCall<T = undefined>(path: string, body?: unknown): Prom
   return json as T
 }
 
-type ConnectResult = { kind: 'authorize'; url: string; flow: string } | { kind: 'key'; service: string; where: string } | { kind: 'connected'; id: string }
+type ConnectResult =
+  | { kind: 'authorize'; url: string; flow: string }
+  | { kind: 'key'; service: string; where: string }
+  | { kind: 'client'; service: string; redirectUri: string; developer: string }
+  | { kind: 'connected'; id: string }
 
 const NO_CONNECTIONS: ConnectorsView = { connections: [], flows: [], proxy: 0 }
 
@@ -119,6 +123,8 @@ interface Step { text: string; command?: string }
 type Pending =
   | { kind: 'authorize'; entry: Entry; url: string; flow: string; status: FlowView['status']; error: string }
   | { kind: 'key'; entry: Entry; where: string; error: string; busy: boolean }
+  /** The service registers no clients by itself: an OAuth app of the person's own, its id pasted here. */
+  | { kind: 'client'; entry: Entry; redirectUri: string; developer: string; error: string; busy: boolean }
   | { kind: 'custom'; url: string; label: string; error: string; busy: boolean }
   | { kind: 'steps'; entry: Entry }
 
@@ -238,6 +244,8 @@ export function makeConnectorsSection(t: Translate) {
         setPending({ kind: 'authorize', entry, url: result.url, flow: result.flow, status: 'pending', error: '' })
       } else if (result.kind === 'key') {
         setPending({ kind: 'key', entry, where: result.where, error: '', busy: false })
+      } else if (result.kind === 'client') {
+        setPending({ kind: 'client', entry, redirectUri: result.redirectUri, developer: result.developer, error: '', busy: false })
       } else {
         await refresh()
         setPending(null)
@@ -279,6 +287,13 @@ export function makeConnectorsSection(t: Translate) {
       const entry = pending.entry
       setPending({ ...pending, busy: true, error: '' })
       const body = entry.service ? { service: entry.service.id, key, ...(entry.connection ? { reconnect: entry.connection.id } : {}) } : { url: entry.connection?.url, label: entry.title, key, ...(entry.connection ? { reconnect: entry.connection.id } : {}) }
+      connectorsCall<ConnectResult>('connect', body).then((r) => handle(entry, r)).catch((e: unknown) => fail(null, e))
+    }
+    const submitClient = (clientId: string, clientSecret: string) => {
+      if (!pending || pending.kind !== 'client') return
+      const entry = pending.entry
+      setPending({ ...pending, busy: true, error: '' })
+      const body = { ...(entry.service ? { service: entry.service.id } : { url: entry.connection?.url, label: entry.title }), clientId, ...(clientSecret ? { clientSecret } : {}), ...(entry.connection ? { reconnect: entry.connection.id } : {}) }
       connectorsCall<ConnectResult>('connect', body).then((r) => handle(entry, r)).catch((e: unknown) => fail(null, e))
     }
     const submitCustom = (url: string, label: string, key: string, clientId: string, clientSecret: string) => {
@@ -331,7 +346,7 @@ export function makeConnectorsSection(t: Translate) {
     if (current) {
       return h(Fragment, null,
         h(Detail, { t, entry: current, onBack: () => setOpen(null), onConnect: () => beginConnect(current), onReconnect: () => reconnect(current), onDisconnect: () => disconnect(current), onRetry: () => retry(current), onTool: (name: string, enabled: boolean) => setTool(current, name, enabled) }),
-        pending ? h(PendingSheet, { t, pending, onClose: () => setPending(null), onKey: submitKey, onCustom: submitCustom, onRetry: again }) : null)
+        pending ? h(PendingSheet, { t, pending, onClose: () => setPending(null), onKey: submitKey, onClient: submitClient, onCustom: submitCustom, onRetry: again }) : null)
     }
 
     const chips: (Group | 'all')[] = ['all', 'builtin', ...(others.length ? ['preset' as const] : []), ...CATEGORY_ORDER, ...(entries.some((e) => e.group === 'infra') ? ['infra' as const] : [])]
@@ -372,7 +387,7 @@ export function makeConnectorsSection(t: Translate) {
         seen && catalogue ? `${t('cnBuiltinCount', { n: catalogue.builtin })} ` : '',
         t('cnServicesFine', { n: CATALOGUE.length }), ' ',
         h('a', { href: HARNESS_MCP_DOCS, onClick: (e: Event) => { e.preventDefault(); openLink(HARNESS_MCP_DOCS) } }, t('cnDocs'))),
-      pending ? h(PendingSheet, { t, pending, onClose: () => setPending(null), onKey: submitKey, onCustom: submitCustom, onRetry: again }) : null)
+      pending ? h(PendingSheet, { t, pending, onClose: () => setPending(null), onKey: submitKey, onClient: submitClient, onCustom: submitCustom, onRetry: again }) : null)
   }
 }
 
@@ -411,7 +426,7 @@ function Detail({ t, entry, onBack, onConnect, onReconnect, onDisconnect, onRetr
     armTimer.current = window.setTimeout(() => setArmed(false), 6000)
   }
   const docs = service?.docs
-  const authNote = service ? (service.auth.kind === 'oauth' ? t('cnAuthOauth') : service.auth.kind === 'key' ? t('cnAuthKey') : service.auth.kind === 'none' ? t('cnAuthNone') : t('cnAuthAuto')) : c ? (c.auth === 'oauth' ? t('cnAuthOauth') : c.auth === 'none' ? t('cnAuthNone') : t('cnAuthKey')) : ''
+  const authNote = service ? (service.auth.kind === 'oauth' ? (service.auth.clientIdRequired ? t('cnAuthOauthApp') : t('cnAuthOauth')) : service.auth.kind === 'key' ? t('cnAuthKey') : service.auth.kind === 'none' ? t('cnAuthNone') : t('cnAuthAuto')) : c ? (c.auth === 'oauth' ? t('cnAuthOauth') : c.auth === 'none' ? t('cnAuthNone') : t('cnAuthKey')) : ''
 
   return h('div', { className: 'nm-section nm-cn-detail' },
     h('button', { type: 'button', className: 'nm-cn-back', onClick: onBack }, h(IconChevronLeft, { size: 16 }), t('navConnectors')),
@@ -465,11 +480,12 @@ function Detail({ t, entry, onBack, onConnect, onReconnect, onDisconnect, onRetr
     h('p', { className: 'nm-fine' }, t('cnDetailFine')))
 }
 
-function PendingSheet({ t, pending, onClose, onKey, onCustom, onRetry }: { t: Translate; pending: Pending; onClose(): void; onKey(key: string): void; onCustom(url: string, label: string, key: string, clientId: string, clientSecret: string): void; onRetry(fresh: boolean): void }): ReactNode {
+function PendingSheet({ t, pending, onClose, onKey, onClient, onCustom, onRetry }: { t: Translate; pending: Pending; onClose(): void; onKey(key: string): void; onClient(clientId: string, clientSecret: string): void; onCustom(url: string, label: string, key: string, clientId: string, clientSecret: string): void; onRetry(fresh: boolean): void }): ReactNode {
   switch (pending.kind) {
     case 'steps': return h(StepsSheet, { t, entry: pending.entry, onClose })
     case 'authorize': return h(AuthorizeSheet, { t, pending, onClose, onRetry })
     case 'key': return h(KeySheet, { t, pending, onClose, onKey })
+    case 'client': return h(ClientSheet, { t, pending, onClose, onClient })
     case 'custom': return h(CustomSheet, { t, pending, onClose, onCustom })
   }
 }
@@ -508,6 +524,33 @@ function KeySheet({ t, pending, onClose, onKey }: { t: Translate; pending: Extra
     h('input', { className: 'nm-field nm-cn-key', type: 'password', autoComplete: 'off', spellCheck: false, value: key, placeholder: t('cnKeyPlaceholder'), 'aria-label': t('cnKeyPlaceholder'), onChange: (e: { currentTarget: HTMLInputElement }) => setKey(e.currentTarget.value), onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter') submit() } }),
     error ? h('p', { className: 'nm-cn-warn' }, error) : null,
     h('p', { className: 'nm-fine' }, t('cnKeyFine')))
+}
+
+/** The service has no dynamic client registration: the person makes an OAuth app at the vendor's developer page with our redirect URI and pastes its client id. */
+function ClientSheet({ t, pending, onClose, onClient }: { t: Translate; pending: Extract<Pending, { kind: 'client' }>; onClose(): void; onClient(clientId: string, clientSecret: string): void }): ReactNode {
+  const { entry, redirectUri, developer, error, busy } = pending
+  const [clientId, setClientId] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [copied, setCopied] = useState(false)
+  const submit = () => { if (clientId.trim() && !busy) onClient(clientId.trim(), clientSecret.trim()) }
+  const copy = () => { void navigator.clipboard?.writeText(redirectUri).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1500) }).catch(() => undefined) }
+  const field = (value: string, set: (v: string) => void, placeholder: string, type = 'text') =>
+    h('input', { className: 'nm-field nm-cn-field', type, autoComplete: 'off', spellCheck: false, value, placeholder, 'aria-label': placeholder, onChange: (e: { currentTarget: HTMLInputElement }) => set(e.currentTarget.value), onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter') submit() } })
+  return h(Sheet, { title: t('cnConnectTitle', { name: entry.title }), onClose, closeLabel: t('close'), footer: h(Fragment, null,
+    h('button', { type: 'button', className: 'nm-pill nm-pill-ghost', onClick: onClose }, t('cancel')),
+    h('button', { type: 'button', className: 'nm-pill', disabled: !clientId.trim() || busy, onClick: submit }, busy ? h('span', { className: 'nm-spinner nm-spinner-sm nm-cn-pill-spin' }) : null, t('cnConnect'))) },
+    h('div', { className: 'nm-cn-consent' },
+      h('span', { className: 'nm-cn-hero-mark' }, entry.mark),
+      h('p', { className: 'nm-cn-consent-lead' }, entry.about)),
+    h('p', { className: 'nm-cn-key-where' }, t('cnClientLead', { name: entry.title })),
+    h('ol', { className: 'nm-sheet-steps' },
+      h('li', null, t('cnClientStep1'), ' ', developer ? h('a', { href: developer, onClick: (e: Event) => { e.preventDefault(); openLink(developer) } }, t('cnClientDeveloper', { name: entry.title })) : null),
+      h('li', null, h('span', { className: 'nm-cn-redirect-line' }, t('cnClientStep2'), h('code', { className: 'nm-cn-redirect' }, redirectUri), h('button', { type: 'button', className: 'nm-cn-redirect-copy', onClick: copy }, copied ? t('cnCopied') : t('cnCopy')))),
+      h('li', null, t('cnClientStep3', { name: entry.title }))),
+    field(clientId, setClientId, t('cnClientId')),
+    field(clientSecret, setClientSecret, t('cnClientSecret'), 'password'),
+    error ? h('p', { className: 'nm-cn-warn' }, error) : null,
+    h('p', { className: 'nm-fine' }, t('cnClientKept', { name: entry.title })))
 }
 
 function CustomSheet({ t, pending, onClose, onCustom }: { t: Translate; pending: Extract<Pending, { kind: 'custom' }>; onClose(): void; onCustom(url: string, label: string, key: string, clientId: string, clientSecret: string): void }): ReactNode {

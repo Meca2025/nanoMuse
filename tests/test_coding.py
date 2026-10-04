@@ -474,7 +474,8 @@ def test_api_lists_sessions_sends_and_follows(
     assert client.get("/api/coding/sessions/cursor/zzz").status_code == 404
     assert client.get("/api/coding/sessions/vim/c1").status_code == 404
 
-    with client.websocket_connect("/ws?token=secret-token") as ws:
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "auth", "token": "secret-token"})
         assert ws.receive_json()["kind"] == "hello"
         r = client.post(
             "/api/coding/send", json={"agent": "cursor", "text": "carry on", "session_id": "c1"}

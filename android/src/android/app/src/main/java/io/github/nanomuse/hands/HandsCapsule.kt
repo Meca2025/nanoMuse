@@ -63,6 +63,8 @@ class HandsCapsule(private val context: Context) {
     private var detailView: TextView? = null
     private var continueBtn: TextView? = null
     private var openBtn: TextView? = null
+    private var allowBtn: TextView? = null
+    private var denyBtn: TextView? = null
     private var ring: RingView? = null
     private var bars: BarsView? = null
 
@@ -72,6 +74,9 @@ class HandsCapsule(private val context: Context) {
     var onStop: (() -> Unit)? = null
     var onContinue: (() -> Unit)? = null
     var onOpenApp: (() -> Unit)? = null
+    /** The approval answered on the capsule itself, where the person already is (0.1.33). */
+    var onAllow: (() -> Unit)? = null
+    var onDeny: (() -> Unit)? = null
 
     private fun dp(v: Int): Int = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), context.resources.displayMetrics).toInt()
 
@@ -85,6 +90,8 @@ class HandsCapsule(private val context: Context) {
         detailView?.text = detail
         continueBtn?.visibility = View.GONE
         openBtn?.visibility = View.GONE
+        allowBtn?.visibility = View.GONE
+        denyBtn?.visibility = View.GONE
     }
 
     /** The hands wait for the user to do something on the phone. */
@@ -98,10 +105,16 @@ class HandsCapsule(private val context: Context) {
         detailView?.text = reason.ifBlank { context.getString(R.string.nm_hands_your_turn_detail) }
         continueBtn?.visibility = View.VISIBLE
         openBtn?.visibility = View.GONE
+        allowBtn?.visibility = View.GONE
+        denyBtn?.visibility = View.GONE
     }
 
-    /** A tap waits for the approval card in the chat. */
-    fun approval(what: String) = onMain {
+    /**
+     * A tap waits for approval. [decidable]: Allow once / Deny right here on the capsule — the
+     * person is in the operated app, not in nanoMuse. Money is confirmed with the screen lock,
+     * which only the card in the chat can do: then the capsule offers Open instead.
+     */
+    fun approval(what: String, decidable: Boolean = false) = onMain {
         ensure()
         stage.mood(HandsStage.Mood.WAITING)
         ring?.turning(false)
@@ -109,12 +122,14 @@ class HandsCapsule(private val context: Context) {
         titleView?.text = context.getString(R.string.nm_hands_approval_title)
         detailView?.text = what
         continueBtn?.visibility = View.GONE
-        openBtn?.visibility = View.VISIBLE
+        openBtn?.visibility = if (decidable) View.GONE else View.VISIBLE
+        allowBtn?.visibility = if (decidable) View.VISIBLE else View.GONE
+        denyBtn?.visibility = if (decidable) View.VISIBLE else View.GONE
     }
 
     fun hide() = onMain {
         val v = root
-        root = null; params = null; titleView = null; detailView = null; continueBtn = null; openBtn = null
+        root = null; params = null; titleView = null; detailView = null; continueBtn = null; openBtn = null; allowBtn = null; denyBtn = null
         ring?.turning(false); ring = null
         bars?.stop(); bars = null
         if (v != null) {
@@ -287,8 +302,10 @@ class HandsCapsule(private val context: Context) {
         texts.addView(title); texts.addView(detail)
         val cont = button(context.getString(R.string.nm_hands_continue), ACCENT) { onContinue?.invoke() }.apply { visibility = View.GONE }
         val open = button(context.getString(R.string.nm_hands_open), ACCENT) { onOpenApp?.invoke() }.apply { visibility = View.GONE }
+        val allow = button(context.getString(R.string.nm_hands_allow_once), ACCENT) { onAllow?.invoke() }.apply { visibility = View.GONE }
+        val deny = button(context.getString(R.string.nm_hands_deny), STOP_RED) { onDeny?.invoke() }.apply { visibility = View.GONE }
         val stop = button(context.getString(R.string.nm_hands_stop), STOP_RED) { onStop?.invoke() }
-        pill.addView(faceBox); pill.addView(barsView); pill.addView(texts); pill.addView(cont); pill.addView(open); pill.addView(stop)
+        pill.addView(faceBox); pill.addView(barsView); pill.addView(texts); pill.addView(cont); pill.addView(open); pill.addView(allow); pill.addView(deny); pill.addView(stop)
 
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
@@ -313,7 +330,7 @@ class HandsCapsule(private val context: Context) {
         pill.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(320L).setInterpolator(DecelerateInterpolator(1.6f)).start()
         ringView.turning(true)
         barsView.start()
-        root = pill; this.params = params; titleView = title; detailView = detail; continueBtn = cont; openBtn = open
+        root = pill; this.params = params; titleView = title; detailView = detail; continueBtn = cont; openBtn = open; allowBtn = allow; denyBtn = deny
         ring = ringView; bars = barsView
     }
 

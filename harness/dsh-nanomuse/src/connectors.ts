@@ -32,6 +32,7 @@ import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import { mountGuarded } from './admit.ts'
 import { dshHome, json, message, sameOrigin, send } from './cloud.ts'
 import { CATALOGUE, catalogueEntry, type CatalogueAuth } from './connectors-catalogue.ts'
 import { RelayError } from './relay.ts'
@@ -214,9 +215,7 @@ export default class NanomuseConnectors extends Service {
   async [Service.init](): Promise<void> {
     this.store = await this.read()
     await this.listen()
-    this.ctx.inject(['webServer'], (ctx) => {
-      ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: API_PREFIX, handler: this.handle }), 'nanomuse connectors: api')
-    })
+    mountGuarded(this.ctx, API_PREFIX, this.handle, 'nanomuse connectors: api')
     this.ctx.effect(() => () => {
       this.server?.close()
       this.server = undefined
@@ -264,7 +263,11 @@ export default class NanomuseConnectors extends Service {
    * connection that is already there.
    */
   async connect(input: { service?: string; url?: string; label?: string; serverName?: string; key?: string; clientId?: string; clientSecret?: string; reconnect?: string; fresh?: boolean }): Promise<
-    { kind: 'authorize'; url: string; flow: string } | { kind: 'key'; service: string; where: string } | { kind: 'connected'; id: string }
+    | { kind: 'authorize'; url: string; flow: string }
+    | { kind: 'key'; service: string; where: string }
+    /** The service does not register clients by itself: an OAuth app made at `developer` with `redirectUri`, its client id pasted here. */
+    | { kind: 'client'; service: string; redirectUri: string; developer: string }
+    | { kind: 'connected'; id: string }
   > {
     const existing = input.reconnect ? this.store.connections.find((c) => c.id === input.reconnect) : undefined
     const entry = catalogueEntry(existing?.service ?? input.service ?? '')
@@ -298,8 +301,16 @@ export default class NanomuseConnectors extends Service {
     const stored = this.store.registrations[regKey]
     if (stored && (input.fresh || (stored.expiresAt && stored.expiresAt < Date.now()))) delete this.store.registrations[regKey]
     let client = input.clientId ? { clientId: input.clientId, authMethod: input.clientSecret ? ('client_secret_post' as const) : ('none' as const), redirectUri, at: Date.now(), ...(input.clientSecret ? { clientSecret: input.clientSecret } : {}) } : this.store.registrations[regKey]
+    if (input.clientId && client) {
+      // a pasted client id is kept like a registration: the next sign-in at this service does not ask again
+      this.store.registrations[regKey] = client
+      await this.save()
+    }
     if (!client) {
-      if (!as.registration_endpoint) throw new RelayError(409, 'no_registration', 'This service does not register new clients by itself; it needs an OAuth client id from its developer settings')
+      if (!as.registration_endpoint) {
+        const developer = wants.kind === 'oauth' && wants.developer ? wants.developer : (as.issuer ?? '')
+        return { kind: 'client', service: base.service, redirectUri, developer }
+      }
       client = await register(as, redirectUri, probe.scope)
       this.store.registrations[regKey] = client
       await this.save()

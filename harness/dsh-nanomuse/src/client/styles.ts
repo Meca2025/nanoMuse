@@ -253,9 +253,9 @@ html[data-nm-muse] [data-chat-flow-kind="tool-call"][hidden]:has([data-approval-
 /* with "Show the agent's steps" on, every tool row is unfolded from the accordion */
 html[data-nm-muse][data-nm-steps] [data-chat-flow-kind="tool-call"][hidden] { display: block !important; content-visibility: visible !important; }
 /* while the agent thinks: three dots in a grey bubble, not the whale */
-html[data-nm-muse] [data-chat-running] { display: flex !important; align-items: center; width: fit-content; min-height: 36px; margin: 6px 0; padding: 0 16px; border-radius: 18px; background: var(--nm-agent-bubble); }
+html[data-nm-muse] [data-chat-running] { display: flex !important; flex-direction: row; align-items: center; justify-content: center; width: fit-content; min-height: 36px; margin: 6px 0; padding: 0 16px; border-radius: 18px; background: var(--nm-agent-bubble); line-height: 0; }
 html[data-nm-muse] [data-chat-running] > [class*="_runningDivider"], html[data-nm-muse] [data-chat-running] > [class*="_runningContent"] { display: none !important; }
-html[data-nm-muse] [data-chat-running]::after { content: ''; display: block; width: 7px; height: 7px; margin: 0 20px 0 6px; border-radius: 50%; background: var(--dsw-alias-label-tertiary); box-shadow: 11px 0 0 var(--dsw-alias-label-tertiary), 22px 0 0 var(--dsw-alias-label-tertiary); animation: nm-dots 1.1s ease-in-out infinite; }
+html[data-nm-muse] [data-chat-running]::after { content: ''; display: block; flex: none; width: 7px; height: 7px; margin: 0 22px 0 0; border-radius: 50%; background: var(--dsw-alias-label-tertiary); box-shadow: 11px 0 0 var(--dsw-alias-label-tertiary), 22px 0 0 var(--dsw-alias-label-tertiary); animation: nm-dots 1.1s ease-in-out infinite; }
 @keyframes nm-dots { 0%, 100% { box-shadow: 11px 0 0 var(--dsw-alias-label-tertiary), 22px 0 0 var(--dsw-alias-label-tertiary); opacity: 0.55; } 50% { box-shadow: 11px -3px 0 var(--dsw-alias-label-secondary), 22px 0 0 var(--dsw-alias-label-tertiary); opacity: 1; } }
 html[data-nm-muse] [data-chat-flow-kind="turn-tail"] [class*="_endInfo"] > :not([class*="_timeEnd"]) { display: none !important; }
 html[data-nm-muse] [data-chat-flow-kind="turn-tail"] [data-clock="end"] > button[class*="_action"]:nth-of-type(2) { display: none !important; }
@@ -290,6 +290,12 @@ html[data-nm-muse] [data-slot="conversation.session.header"] [class*="_headerAct
 html[data-nm-muse] [data-slot="conversation.session.header"] [class*="_titleRow"] { justify-content: flex-end; }
 html[data-nm-muse][data-nm-side] [data-slot="conversation.session.header"] [class*="_titleRow"] { justify-content: space-between; }
 html[data-nm-muse] [data-slot="conversation.session.header"] [data-conversation-tabs] { display: none; }
+/* …except while another view (the trajectory a tool row's "Inspect" opens) is up: then the
+   tabs come back as the way out — a small segmented control, "Chat" first, at the top right
+   (the centre is the face and its status line). Esc does the same. */
+html[data-nm-muse] [data-slot="conversation.session.header"] [data-conversation-tabs]:has([role="tab"][aria-selected="true"]:not(:first-child)) { display: inline-flex; align-self: flex-start; margin: 10px 16px 0 auto; padding: 3px; gap: 2px; border-radius: 999px; background: var(--dsw-alias-bg-layer-2); }
+html[data-nm-muse] [data-slot="conversation.session.header"] [data-conversation-tabs]:has([role="tab"][aria-selected="true"]:not(:first-child)) [role="tab"] { border: 0; border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-weight: 500; color: var(--dsw-alias-label-secondary); background: transparent; cursor: pointer; }
+html[data-nm-muse] [data-slot="conversation.session.header"] [data-conversation-tabs]:has([role="tab"][aria-selected="true"]:not(:first-child)) [role="tab"][aria-selected="true"] { background: var(--nm-base); color: var(--dsw-alias-label-primary); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 html[data-nm-muse] [data-slot="conversation.session.header.utilities"] > *:not(:has(.nm-invite)) { display: none; }
 html[data-nm-muse] [data-turn-process-inline] { display: none !important; }
 html[data-nm-muse] [data-slot="conversation.session.header.corner"] [data-sidebar-right-expand] { display: none; }
@@ -447,9 +453,11 @@ html[data-nm-profile] [class*="_centerCol"] { padding-right: 310px; box-sizing: 
 html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-pf-top { padding-top: 12px; }
 .nm-pf-head { flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 20px 16px; }
 .nm-pf-face { position: relative; }
+.nm-pf-face-btn { display: block; border: 0; padding: 0; background: transparent; border-radius: 50%; cursor: pointer; }
+.nm-pf-face-btn:focus-visible { outline: 2px solid var(--nm-accent); outline-offset: 3px; }
 .nm-pf-pen { position: absolute; right: -2px; bottom: 0; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--nm-base); background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .nm-pf-pen:hover { background: var(--nm-blue); color: #fff; }
-.nm-pf-menu { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); min-width: 160px; }
+.nm-menu.nm-pf-menu { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); min-width: 160px; }
 .nm-pf-name { font-size: 18px; font-weight: 600; margin-top: 4px; }
 .nm-pf-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dsw-alias-label-secondary); }
 .nm-pf .nm-seg { align-self: center; margin: 0 20px 10px; }
@@ -520,7 +528,7 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-pf-top { padding-t
 .nm-settings-body .nm-page { padding: 0; height: auto; overflow: visible; }
 .nm-settings-body .nm-page h1 { display: none; }
 .nm-general { display: flex; flex-direction: column; }
-/* General, Muse's way: the account card, the usage bars, the colour swatches, the key cap */
+/* General, Muse's way: the account card, the usage bars, the key cap */
 .nm-usage { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .nm-usage-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
 .nm-usage-plan { font-weight: 600; }
@@ -544,9 +552,6 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-pf-top { padding-t
 .nm-star-actions { display: flex; gap: 8px; }
 .nm-header-star { color: var(--nm-accent); }
 .nm-header-star .nm-ob-link { color: var(--nm-blue); }
-.nm-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
-.nm-swatch { width: 22px; height: 22px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
-.nm-swatch.nm-on { box-shadow: 0 0 0 2px var(--nm-base), 0 0 0 4px var(--dsw-alias-label-primary); }
 .nm-kbd { font-size: 12px; padding: 3px 8px; border-radius: 6px; background: var(--nm-hover); color: var(--dsw-alias-label-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; flex: none; }
 .nm-hotkey { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; max-width: 60%; }
 .nm-hotkey-row { display: flex; align-items: center; gap: 6px; }
@@ -580,6 +585,10 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-pf-top { padding-t
 .nm-cn-command pre { margin: 0; padding: 10px 40px 10px 12px; border-radius: 10px; background: var(--nm-card); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
 .nm-cn-copy { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--dsw-alias-label-secondary); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .nm-cn-copy:hover { background: var(--nm-hover); color: var(--dsw-alias-label-primary); }
+.nm-cn-redirect { font-size: 12px; padding: 2px 6px; border-radius: 6px; background: var(--dsw-alias-bg-layer-2); user-select: all; white-space: nowrap; }
+.nm-cn-redirect-line { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+.nm-cn-redirect-copy { border: 0; padding: 0 4px; background: transparent; color: var(--nm-accent, var(--dsw-alias-label-primary)); font: inherit; font-size: 12.5px; cursor: pointer; }
+.nm-cn-redirect-copy:hover { text-decoration: underline; }
 .nm-cn-chips { margin: 2px 0 6px; }
 .nm-chip-on, .nm-chip-on:hover { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-bg-layer-1, #fff); }
 .nm-cn-mark { flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
@@ -670,6 +679,9 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-ob-pager { top: 14
 .nm-ob-row-title { font-size: 14px; font-weight: 500; }
 .nm-ob-row-sub { font-size: 12.5px; color: var(--dsw-alias-label-tertiary); }
 .nm-ob-path { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.nm-ob-relaunch { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, #2f9e5f 12%, transparent); font-size: 12.5px; line-height: 1.4; color: var(--dsw-alias-label-secondary); }
+.nm-ob-relaunch > span { flex: 1; }
+.nm-row > .nm-ob-relaunch, .nm-card > .nm-ob-relaunch { margin: 6px 12px 10px; }
 .nm-ob-granted { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, #2f9e5f 22%, transparent); color: #2f9e5f; flex: none; }
 .nm-ob-granted.nm-ob-pending { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-dimmed); }
 .nm-art { display: block; margin: 0 auto 4px; }
@@ -905,8 +917,8 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-lib-col-top { heig
 .nm-sheet-steps { margin: 0 0 12px; padding-left: 20px; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.6; }
 
 /* ---- the Live stage (picture-in-picture of the agent at work) ---------- */
-.nm-stage-layer { position: fixed; right: 24px; bottom: 96px; z-index: 55; pointer-events: none; }
-.nm-stage { position: relative; width: min(400px, 38vw); pointer-events: auto; border-radius: 16px; overflow: hidden; background: #111; box-shadow: 0 18px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08); animation: nm-stage-in 220ms ease-out; }
+.nm-stage-layer { position: fixed; right: 24px; bottom: 96px; z-index: 55; pointer-events: none; touch-action: none; }
+.nm-stage { position: relative; width: 100%; pointer-events: auto; cursor: grab; border-radius: 16px; overflow: hidden; background: #111; box-shadow: 0 18px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08); animation: nm-stage-in 220ms ease-out; }
 @keyframes nm-stage-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
 .nm-stage-picture { position: relative; width: 100%; background: #000; overflow: hidden; }
 .nm-stage-picture img { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; }
@@ -941,6 +953,10 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-lib-col-top { heig
 .nm-stage-where { color: rgba(255,255,255,0.72); overflow: hidden; text-overflow: ellipsis; }
 .nm-stage-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff453a; box-shadow: 0 0 0 0 rgba(255,69,58,0.6); animation: nm-stage-pulse 1.4s ease-out infinite; flex: none; }
 @keyframes nm-stage-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,69,58,0.6); } 100% { box-shadow: 0 0 0 7px rgba(255,69,58,0); } }
+.nm-stage:active { cursor: grabbing; }
+.nm-stage-resize { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; pointer-events: auto; cursor: nwse-resize; border-radius: 0 0 16px 0; opacity: 0; transition: opacity 150ms; }
+.nm-stage-resize::before { content: ''; position: absolute; right: 6px; bottom: 6px; width: 9px; height: 9px; border-right: 2px solid rgba(255,255,255,0.85); border-bottom: 2px solid rgba(255,255,255,0.85); border-radius: 0 0 2px 0; }
+.nm-stage-layer:hover .nm-stage-resize, .nm-stage-resize:focus-visible { opacity: 1; }
 .nm-stage-big { width: 100%; }
 .nm-stage-big .nm-stage-picture { border-radius: 12px; }
 

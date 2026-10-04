@@ -35,6 +35,9 @@ object McpAuthDiscovery {
 
         /** The MCP authorization flow, with everything the PKCE step needs. */
         data class OAuth(val config: MCPOAuthConfig, val clientSecret: String?, val resource: String) : Probe()
+
+        /** OAuth, but the authorization server registers no clients: a client id of the person's own is needed. */
+        object NeedsClient : Probe()
     }
 
     private val http: OkHttpClient by lazy {
@@ -58,7 +61,7 @@ object McpAuthDiscovery {
      * [redirectUri] is the loopback the PKCE step listens on. Blocking; call off the main thread.
      * Throws with a readable message when the server misbehaves.
      */
-    fun probe(url: String, redirectUri: String): Probe {
+    fun probe(url: String, redirectUri: String, clientId: String? = null, clientSecret: String? = null): Probe {
         val req = Request.Builder().url(url)
             .post(initialize.toRequestBody("application/json".toMediaType()))
             .header("accept", "application/json, text/event-stream")
@@ -89,9 +92,14 @@ object McpAuthDiscovery {
             ?: return Probe.Key(challenge["error_description"] ?: "")
         val scope = challenge["scope"]
             ?: prm?.optJSONArray("scopes_supported")?.let { arr -> (0 until arr.length()).joinToString(" ") { arr.getString(it) } }?.takeIf { it.isNotBlank() }
-        val registration = meta.optString("registration_endpoint", "").takeIf { it.isNotBlank() }
-            ?: throw IllegalStateException("This service does not register new clients by itself; it needs an OAuth client id from its developer settings")
-        val reg = register(registration, redirectUri, scope)
+        val reg = if (!clientId.isNullOrBlank()) {
+            // an OAuth app of the person's own (services without dynamic client registration)
+            clientId.trim() to clientSecret?.trim()?.ifBlank { null }
+        } else {
+            val registration = meta.optString("registration_endpoint", "").takeIf { it.isNotBlank() }
+                ?: return Probe.NeedsClient
+            register(registration, redirectUri, scope)
+        }
         val config = MCPOAuthConfig(
             mode = "static",
             clientId = reg.first,

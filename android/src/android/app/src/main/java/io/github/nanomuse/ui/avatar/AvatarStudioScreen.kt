@@ -212,6 +212,18 @@ fun AvatarStudioScreen(onBack: () -> Unit, onOpenSoul: () -> Unit, onOpenMediaMo
                             }
                         }
                     }
+                    // The face is done: a moment of delight, and the one ask for a star it is fair to make here (once).
+                    var starAsk by remember { mutableStateOf(false) }
+                    LaunchedEffect(p?.running) {
+                        if (p != null && !p.running && p.failed.isEmpty() && io.github.nanomuse.community.StarPrompt.due(context, io.github.nanomuse.community.StarPrompt.Moment.NEW_LOOK)) {
+                            io.github.nanomuse.community.StarPrompt.markShown(context, io.github.nanomuse.community.StarPrompt.Moment.NEW_LOOK)
+                            starAsk = true
+                        }
+                    }
+                    if (starAsk) {
+                        Spacer(Modifier.height(12.dp))
+                        io.github.nanomuse.community.StarNudgeCard(text = stringResource(R.string.nm_star_new_look), onDone = { starAsk = false })
+                    }
                 }
             }
             item(key = "describe") {

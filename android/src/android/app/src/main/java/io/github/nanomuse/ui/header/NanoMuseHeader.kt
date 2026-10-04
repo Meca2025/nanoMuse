@@ -44,6 +44,9 @@ fun rememberNanoMuseStatusLine(
 ): String? {
     val toolTitle by SessionActivityTracker.currentToolTitle.collectAsState()
     val toolRunning by SessionActivityTracker.isToolRunning.collectAsState()
+    // between two steps the last step's words stay up (the model is choosing the next one),
+    // so the line reads as progress — the same names as the pills — rather than a generic verb
+    val lastToolTitle by SessionActivityTracker.lastToolTitle.collectAsState()
     val pendingRisk by io.github.nanomuse.guard.RiskGate.pending.collectAsState()
     // The avatar flow's own statuses ("Generating options", "Finalizing avatar"), as on Muse.
     val avatarStage by io.github.nanomuse.avatar.AvatarFlow.stage.collectAsState()
@@ -63,6 +66,7 @@ fun rememberNanoMuseStatusLine(
         avatarStatus != null -> avatarStatus
         isStreaming && toolRunning && !toolTitle.isNullOrBlank() -> toolTitle
         isStreaming && replying -> stringResource(R.string.nm_status_replying)
+        isStreaming && !lastToolTitle.isNullOrBlank() -> lastToolTitle
         isStreaming && !request.isNullOrBlank() -> stringResource(R.string.nm_status_on, request)
         isStreaming -> stringResource(R.string.nm_status_working)
         motionStatus != null -> motionStatus

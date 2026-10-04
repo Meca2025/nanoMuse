@@ -2019,7 +2019,13 @@ struct AIChatView: View {
         // a fix of it: the top-crop of the snapshot itself is UIKit-level and
         // out of SwiftUI's reach.
         let cap = max(120, UIScreen.main.bounds.width - 140)
-        if #available(iOS 19, *) {
+        if NanoMuseShellPrefs.museHeader { // nanoMuse: face · name · status line instead of the title stack
+            NanoMuseHeaderTitle( // nanoMuse:
+                vm: vm, soulName: soulName, // nanoMuse:
+                modelName: SessionModelDisplay(store: configStore, draftGroupId: vm.initialGroupId).displayName(for: vm.sessionId) // nanoMuse:
+            ) { showModelPicker = true } // nanoMuse: the text column keeps the model picker reachable
+            .frame(maxWidth: cap) // nanoMuse:
+        } else if #available(iOS 19, *) { // nanoMuse: upstream title unchanged below
             titleView
                 .frame(maxWidth: cap)
         } else {

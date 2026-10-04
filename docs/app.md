@@ -126,7 +126,7 @@ Turn the dial to Off for goals that need your judgement at every step, or leave 
 
 ## API
 
-Everything the app does goes through this API, so another front-end (a Telegram bot, a desktop widget) can drive the same agent. All requests need `Authorization: Bearer <token>` unless `server.auth = false`. (`?token=` is still accepted in this release and goes in the next: a token in a URL lands in every access log on the way.) The bytes the app shows inline — `/api/files/*`, the browser frames — also open with a link the client signed with its token, `?exp=<unix seconds>&sig=<HMAC-SHA256(token, "<exp>\n<path>")[:32]>`: a logged link opens that one path for a few hours and nothing else.
+Everything the app does goes through this API, so another front-end (a Telegram bot, a desktop widget) can drive the same agent. All requests need `Authorization: Bearer <token>` unless `server.auth = false`. (`?token=` is refused since 0.1.33 — a token in a URL lands in every access log on the way; a request that still sends one gets a 401 that says so, a socket an `error` frame with `code: "legacy_token"` and a 4401 close.) The bytes the app shows inline — `/api/files/*`, the browser frames — also open with a link the client signed with its token, `?exp=<unix seconds>&sig=<HMAC-SHA256(token, "<exp>\n<path>")[:32]>`: a logged link opens that one path for a few hours and nothing else.
 
 | Method | Path | Purpose |
 |---|---|---|

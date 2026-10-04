@@ -18,12 +18,14 @@
     <string name="nm_home_not_ready">One moment — the chat is still loading.</string>
 
     <!-- The ask for a star: at the first sign-in, after the first task, when the allowance is used up -->
-    <string name="nm_star_title">Star nanoMuse on GitHub</string>
+    <string name="nm_star_title">Your support is what keeps us going</string>
     <string name="nm_star_action">Star on GitHub</string>
     <string name="nm_star_later">Not now</string>
-    <string name="nm_star_signed_in">The free allowance you just claimed comes out of the developer\'s pocket, and the project runs on nothing but people liking it. A star is the simplest way to help it be found — and to keep it free.</string>
-    <string name="nm_star_first_task">First task done. If that was useful, a star on GitHub helps nanoMuse reach the next person — ten seconds, and it means a lot.</string>
-    <string name="nm_star_exhausted">A star, if nanoMuse has earned it: the allowance is the developer\'s own money, and being seen is what brings the project more hands.</string>
+    <string name="nm_star_signed_in">Welcome aboard. nanoMuse is free, open source and non-profit — a personal agent that belongs to everyone who runs it. If you believe in that, a star on GitHub is the biggest support you can give: it is how the next person finds their way here.</string>
+    <string name="nm_star_first_task">First task done. If nanoMuse helped, a star on GitHub would mean a lot to the people building it — your support is what keeps us going.</string>
+    <string name="nm_star_tenth_task">Ten tasks together already. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try — and tells us to keep going.</string>
+    <string name="nm_star_new_look">A new face, drawn just for you. If you like what nanoMuse is becoming, a star on GitHub helps more people meet it — your support is what keeps us going.</string>
+    <string name="nm_star_exhausted">The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub is what keeps the project going for everyone.</string>
     <string name="nm_chat_menu_rename">Rename chat</string>
 
     <!-- Foreground-service notification title while no tool is running -->
@@ -512,7 +514,10 @@
     <string name="nm_hands_protected_screen">This screen is protected and cannot be read. Finish this part yourself, then tap Continue.</string>
     <string name="nm_hands_secret_field">A password or code field — please fill it in yourself, then tap Continue.</string>
     <string name="nm_hands_approval_title">Waiting for your approval</string>
-    <string name="nm_hands_approval_detail">Tap “%1$s” — answer in nanoMuse or in the notification.</string>
+    <string name="nm_hands_approval_detail">Tap “%1$s” — confirm in nanoMuse (it asks for your screen lock).</string>
+    <string name="nm_hands_approval_here">Tap “%1$s”?</string>
+    <string name="nm_hands_allow_once">Allow</string>
+    <string name="nm_hands_deny">Deny</string>
     <!-- the ring's label (0.1.15) -->
     <string name="nm_hands_fx_tap">Tap</string>
     <string name="nm_hands_fx_tap_target">Tap “%1$s”</string>
@@ -729,6 +734,7 @@
     <string name="nm_cloud_ev_invite_accepted">A friend signed up with your code</string>
     <string name="nm_cloud_ev_invite_used">Signed up with an invite code</string>
     <string name="nm_cloud_ev_credit_granted">Credit granted</string>
+    <string name="nm_cloud_ev_pool_set">Allowance adjusted</string>
     <string name="nm_cloud_via_code">signed in with a code</string>
     <string name="nm_cloud_via_password">signed in with the password</string>
     <string name="nm_cloud_last_used">last used %1$s</string>
@@ -864,6 +870,23 @@
     <string name="nm_connectors_how_none">Open to everyone — no sign-in needed.</string>
     <string name="nm_connectors_how_auto">Checks what the server needs first: nothing, a sign-in, or a key.</string>
     <string name="nm_connectors_key_placeholder">Paste the key</string>
+    <string name="nm_handover_title">Your turn</string>
+    <string name="nm_handover_body">The page needs you: %1$s. Do it in the browser here — same page, same session — then tap Done and the agent carries on from where you leave it.</string>
+    <string name="nm_handover_body_generic">The page needs you — a sign-in or a code. Do it in the browser here, then tap Done and the agent carries on from where you leave it.</string>
+    <string name="nm_handover_open">Open the page</string>
+    <string name="nm_handover_done">Done, continue</string>
+    <string name="nm_handover_banner">Your turn: %1$s. Tap Done when the page is ready.</string>
+    <string name="nm_handover_banner_generic">Your turn on this page. Tap Done when it is ready.</string>
+    <string name="nm_connectors_own_title">Your own servers</string>
+    <string name="nm_connectors_own_row">MCP servers</string>
+    <string name="nm_connectors_own_sub">Add a server by its address or command, or import a JSON config.</string>
+    <string name="nm_connectors_own_n">%1$d of your own · add by address, command or JSON</string>
+    <string name="nm_connectors_how_client">%1$s does not register apps by itself, so this takes a minute of setup once: create an OAuth app of your own in its developer settings, give it the callback address below, and paste the app\'s client ID here (and its secret, if there is one). Both stay on this phone.</string>
+    <string name="nm_connectors_client_developer">Open %1$s\'s developer settings</string>
+    <string name="nm_connectors_client_redirect">Callback (redirect) address for the app — tap to copy:</string>
+    <string name="nm_connectors_client_copy">Copy</string>
+    <string name="nm_connectors_client_id">OAuth client ID</string>
+    <string name="nm_connectors_client_secret">OAuth client secret (if any)</string>
     <string name="nm_connectors_connected_sub">Connected as MCP server “%1$s”. Its tools are available in every chat.</string>
     <string name="nm_connectors_cat_work">Work</string>
     <string name="nm_connectors_cat_talk">Messaging</string>

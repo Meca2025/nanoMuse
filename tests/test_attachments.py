@@ -449,7 +449,8 @@ def test_upload_and_send_with_attachments(settings: Settings):
 
         # over the socket too
         llm.script.append(LLMResponse(content="seen"))
-        with client.websocket_connect("/ws?token=secret-token") as ws:
+        with client.websocket_connect("/ws") as ws:
+            ws.send_json({"kind": "auth", "token": "secret-token"})
             ws.receive_json()  # snapshot
             ws.send_json(
                 {"kind": "send", "thread": "main", "text": "and this", "files": [pic["path"]]}

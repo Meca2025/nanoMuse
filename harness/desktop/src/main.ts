@@ -1,5 +1,5 @@
 import { pathToFileURL } from "node:url";
-import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences, Tray } from "electron";
+import { app, BrowserWindow, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, shell, systemPreferences, Tray } from "electron";
 import { randomBytes } from "node:crypto";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -201,17 +201,52 @@ function ensureProfile(dshDir: string): string {
   return dir;
 }
 
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
+/** Try to bind one loopback port (0 = any); the port bound, or 0 when it is taken. */
+function tryPort(port: number): Promise<number> {
+  return new Promise((resolve) => {
     const srv = createServer();
     srv.unref();
-    srv.on("error", reject);
-    srv.listen(0, "127.0.0.1", () => {
+    srv.on("error", () => resolve(0));
+    srv.listen(port, "127.0.0.1", () => {
       const address = srv.address();
-      const port = typeof address === "object" && address ? address.port : 0;
-      srv.close(() => resolve(port));
+      const bound = typeof address === "object" && address ? address.port : 0;
+      srv.close(() => resolve(bound));
     });
   });
+}
+
+/** The port tried first on a fresh install (the connectors' loopback is 38417). */
+const HOST_PORT_DEFAULT = 38421;
+
+/**
+ * The host's port, kept across launches. The window's origin is `127.0.0.1:<port>`, and
+ * the origin is the browser's storage key — the preferences, the star asks' memory, the
+ * live stage's place, the harness's own settings all live in that origin's localStorage —
+ * so a port that changed on every launch meant an app that forgot everything on every
+ * launch. The port used last time is tried first (it is written to `<home>/port`), then
+ * the default, then any free one.
+ */
+async function hostPort(home: string): Promise<number> {
+  const file = join(home, "port");
+  let last = 0;
+  try {
+    last = Number.parseInt(readFileSync(file, "utf8").trim(), 10) || 0;
+  } catch {
+    last = 0;
+  }
+  const candidates = last > 0 ? [last, HOST_PORT_DEFAULT, 0] : [HOST_PORT_DEFAULT, 0];
+  for (const candidate of candidates) {
+    const port = await tryPort(candidate);
+    if (port > 0) {
+      try {
+        writeFileSync(file, `${port}\n`);
+      } catch (exc) {
+        log(`port: could not remember ${port}: ${String(exc)}`);
+      }
+      return port;
+    }
+  }
+  throw new Error("no free loopback port for the host");
 }
 
 /**
@@ -247,7 +282,7 @@ function startHost(): Promise<string> {
   mkdirSync(home, { recursive: true });
   ensureProfile(dshDir);
   return new Promise<string>((resolve, reject) => {
-    freePort()
+    hostPort(home)
       .then((port) => {
         const env: NodeJS.ProcessEnv = {
           ...process.env,
@@ -666,10 +701,23 @@ function registerBridge(): void {
     } else if (kind === "microphone") {
       await systemPreferences.askForMediaAccess("microphone").catch(() => false);
     } else {
-      // Screen Recording has no prompt API: the pane is where the switch is
+      // Screen Recording has no prompt API. A first capture attempt is what puts the app on
+      // the pane's list (and shows the system's own notice); without it the user finds
+      // nothing to switch on. Then the pane, where the switch is.
+      try {
+        await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 1, height: 1 } });
+      } catch {
+        /* no sources without the permission — that attempt was the point */
+      }
       void shell.openExternal(PERMISSION_PANES.screen);
     }
     return permissionState(kind);
+  });
+  // macOS applies Screen Recording only to freshly started processes: after granting it, the
+  // runtime that takes the screenshots has to start again.
+  ipcMain.handle("nanomuse:relaunch", () => {
+    app.relaunch();
+    app.exit(0);
   });
   ipcMain.handle("nanomuse:permissions:settings", (_e, kind: PermissionKind | "files") => {
     if (process.platform === "darwin" && typeof kind === "string" && kind in PERMISSION_PANES) void shell.openExternal(PERMISSION_PANES[kind]);

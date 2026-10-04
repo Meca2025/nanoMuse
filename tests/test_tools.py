@@ -230,6 +230,29 @@ def test_host_and_markdown():
     assert md.startswith("# T") and "x()" not in md and "para" in md
 
 
+def test_every_tool_takes_the_step_words_and_keeps_them_for_the_person(tmp_path: Path):
+    """`step` is in every schema, comes off the arguments before the tool sees them, and is
+    read back as the words for the status line — the same words the trace shows."""
+    from nanomuse.schema import Function, ToolCall
+    from nanomuse.tools.base import with_step
+
+    shell = Shell(workspace=tmp_path)
+    schema = shell.to_param()["function"]["parameters"]
+    assert "step" in schema["properties"] and "step" not in schema.get("required", [])
+    assert "step" not in shell.parameters["properties"], "the tool's own schema is left alone"
+    assert with_step({"type": "object"}) == {"type": "object"}  # nothing to add to
+    call = ToolCall(
+        function=Function(name="shell", arguments='{"command": "ls", "step": " 打开  携程网站 "}')
+    )
+    assert call.arguments == {"command": "ls"} and call.step == "打开 携程网站"
+    assert ToolCall(function=Function(name="shell", arguments='{"command": "ls"}')).step == ""
+    assert (
+        ToolCall(function=Function(name="shell", arguments='{"command": "ls", "step": 3}')).step
+        == ""
+    )
+    assert ToolCall(function=Function(name="shell", arguments='{"command": "l')).step == ""
+
+
 async def test_cut_off_arguments_tell_the_model_what_happened(tmp_path: Path):
     from nanomuse.tools.base import safe_execute
 

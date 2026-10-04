@@ -340,6 +340,9 @@ fun BrowserSheet(
                 }
             }
 
+            // nanoMuse: while the browser is handed to the person, the one line and Done sit above the downloads.
+            io.github.nanomuse.ui.chat.BrowserHandOverBanner(accent)
+
             // ── Download progress banner ──
             val activeDownload by tabPool.activeDownload.collectAsState()
             activeDownload?.let { dl ->

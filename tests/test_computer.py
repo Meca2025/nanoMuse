@@ -213,6 +213,56 @@ async def test_stop_ends_at_the_next_step(settings: Settings, fake_screen) -> No
     assert link.stop() is True  # a last action exists, so Stop has something to end
 
 
+def test_a_black_capture_is_an_error_not_a_picture(monkeypatch: pytest.MonkeyPatch) -> None:
+    """macOS without Screen Recording (or granted after the process started) hands out an
+    all-black frame as if it were the screen; the hands say what is wrong instead."""
+    import io
+    import sys
+    import types
+
+    from PIL import Image
+
+    from nanomuse.computer import screen as screen_mod
+
+    class Grab:
+        def __init__(self, w: int, h: int, px: bytes) -> None:
+            self.size = (w, h)
+            self.bgra = px * (w * h)
+
+    class Sct:
+        def __init__(self, px: bytes) -> None:
+            self.monitors = [{"width": 4, "height": 3}, {"width": 4, "height": 3}]
+            self.px = px
+
+        def __enter__(self) -> Sct:
+            return self
+
+        def __exit__(self, *a: object) -> None:
+            return None
+
+        def grab(self, mon: dict[str, int]) -> Grab:
+            return Grab(4, 3, self.px)
+
+    def install(px: bytes) -> None:
+        fake = types.ModuleType("mss")
+        fake.mss = lambda: Sct(px)  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "mss", fake)
+
+    install(b"\x00\x00\x00\xff")  # black
+    with pytest.raises(screen_mod.BlackScreen, match="Screen Recording"):
+        screen_mod.take_screenshot()
+    install(b"\x30\x60\x90\xff")  # a colour
+    shot = screen_mod.take_screenshot()
+    assert shot is not None and shot.mime == "image/jpeg" and shot.width == 4
+    # the platform fallback is checked the same way
+    black_png = io.BytesIO()
+    Image.new("RGB", (4, 3)).save(black_png, "PNG")
+    monkeypatch.setitem(sys.modules, "mss", None)
+    monkeypatch.setattr(screen_mod, "_platform_screenshot", lambda: black_png.getvalue())
+    with pytest.raises(screen_mod.BlackScreen):
+        screen_mod.take_screenshot()
+
+
 def test_hands_backend_choice(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
     monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", None)  # import fails

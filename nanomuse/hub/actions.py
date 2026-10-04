@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from nanomuse import __version__
-from nanomuse.computer.screen import take_screenshot
+from nanomuse.computer.screen import BlackScreen, take_screenshot
 from nanomuse.tools.shell import scrubbed_env
 
 OUTPUT_LIMIT = 200_000
@@ -224,7 +224,10 @@ def open_target(url: str) -> dict[str, Any]:
 
 
 def screen() -> dict[str, Any]:
-    shot = take_screenshot()
+    try:
+        shot = take_screenshot()
+    except BlackScreen as exc:
+        raise ActionError("black_screen", str(exc)) from exc
     if shot is None:
         raise ActionError(
             "no_screen", "this computer cannot take a screenshot (no display, or no tool for it)"

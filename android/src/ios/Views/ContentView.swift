@@ -7513,10 +7513,10 @@ private struct SettingsSheet: View {
                         }
                     }
                     NavigationLink {
-                        MCPIntegrationsView()
+                        NanoMuseConnectorsView() // nanoMuse: the connectors catalogue; "Your own servers" inside leads to MCPIntegrationsView
                     } label: {
                         Label {
-                            Text("MCP Integrations")
+                            Text(AppLocalized("Connectors")) // nanoMuse: replaces the "MCP Integrations" entry
                         } icon: {
                             Image(systemName: "square.stack.3d.up")
                                 .font(.system(size: 9))

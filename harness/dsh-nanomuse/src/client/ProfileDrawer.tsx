@@ -99,12 +99,15 @@ function Drawer({ t, stop, openSchedules, useSessions, useSessionStatus }: Profi
       h('button', { type: 'button', className: 'nm-icon-btn', 'aria-label': t('close'), onClick: () => profileBus.close() }, h(IconClose, { size: 16 }))),
     h('div', { className: 'nm-pf-head' },
       h('div', { className: 'nm-pf-face' },
-        h(Avatar, { size: 86, profile: live.profile, mood: running ? 'working' : 'idle' }),
+        // the face itself opens the same menu as the pen (as on the phone): the look, the name, the studio
+        h('button', { type: 'button', className: 'nm-pf-face-btn', 'aria-label': t('pfChangeLook'), 'aria-haspopup': 'menu', 'aria-expanded': menu, onClick: () => setMenu((m) => !m) },
+          h(Avatar, { size: 86, profile: live.profile, mood: running ? 'working' : 'idle' })),
         h('button', { type: 'button', className: 'nm-pf-pen', 'aria-label': t('pfEditName'), 'aria-haspopup': 'menu', 'aria-expanded': menu, onClick: () => setMenu((m) => !m) }, h(IconPencil, { size: 13 })),
         menu
           ? h('div', { className: 'nm-menu nm-pf-menu', role: 'menu' },
               h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); setEditing('look') } }, h('span', { className: 'nm-menu-item-label' }, t('pfChangeLook'))),
-              h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); setEditing('name') } }, h('span', { className: 'nm-menu-item-label' }, t('pfEditName'))))
+              h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); setEditing('name') } }, h('span', { className: 'nm-menu-item-label' }, t('pfEditName'))),
+              h('button', { type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { setMenu(false); profileBus.close(); studioBus.open?.(live.profile.description || '', live.profile.style || 'muse') } }, h('span', { className: 'nm-menu-item-label' }, t('pfAvatarStudio'))))
           : null),
       h('div', { className: 'nm-pf-name' }, name),
       status),
@@ -123,6 +126,17 @@ export function statusWords(t: Translate, record: ActivityRecord): string {
   const name = record.current?.name ?? ''
   const base = name.replace(/^mcp__[^_]+(?:_[^_]+)*?__/, '')
   if (!name) return onIt(t, record)
+  // the step's own words, as the trace shows them ("打开携程网站"): the model's description
+  // where the tool takes one, else the kind of step and what it is on ("Reading · ctrip.com")
+  const title = (record.current?.title ?? '').trim()
+  if (title && record.current?.own) return title
+  const kind = stepKind(t, base)
+  if (title) return `${kind} · ${title.length > 40 ? `${title.slice(0, 39)}…` : title}`
+  return kind
+}
+
+/** The kind of step a tool name stands for, in the agent's words. */
+function stepKind(t: Translate, base: string): string {
   if (/screen|look|see|observe/i.test(base)) return t('statusLooking')
   if (/computer|act|click|type|key|mouse|press|open_app/i.test(base)) return t('statusComputer')
   if (/web_search|search/i.test(base)) return t('statusSearching')

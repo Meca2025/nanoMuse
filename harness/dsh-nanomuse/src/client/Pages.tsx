@@ -6,7 +6,8 @@
  */
 import { createElement as h, Fragment, useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
-import { bridge, gatedPermissions, type PermissionKind, type PermissionState } from './bridge.ts'
+import { bridge, gatedPermissions, type PermissionKind } from './bridge.ts'
+import { usePermissions } from './permissions.ts'
 import { settingsBus } from './bus.ts'
 import { IconCheck, IconChevronRight, IconDevices, IconFolder, IconHand, IconLink, IconMic, IconShield } from './icons.tsx'
 import { useLive } from './live.ts'
@@ -44,12 +45,8 @@ export function makePermissionsSection(t: Translate) {
     const prefs = usePrefs()
     const connectors = useConnectors()
     const live = useLive()
-    const [states, setStates] = useState<Partial<Record<PermissionKind, PermissionState>>>({})
     const gated = gatedPermissions()
-    useEffect(() => {
-      if (!gated) return
-      void bridge()?.permissions().then(setStates).catch(() => undefined)
-    }, [gated])
+    const { states } = usePermissions(['accessibility', 'screen', 'microphone'])
     const word = (kind: PermissionKind) => {
       if (!gated) return t('pmNotGated')
       const state = states[kind]
@@ -122,10 +119,9 @@ export function makeFilesSection(t: Translate) {
 export function makeDictationSection(t: Translate, selectPanel: (id: string) => void) {
   return function DictationSection(): ReactNode {
     const b = bridge()
-    const [mic, setMic] = useState<PermissionState | undefined>()
     const gated = gatedPermissions()
-    const refresh = () => { void b?.permissions().then((p) => setMic(p.microphone)).catch(() => undefined) }
-    useEffect(() => { if (gated) refresh() }, [gated]) // eslint-disable-line react-hooks/exhaustive-deps
+    const perms = usePermissions(['microphone'])
+    const mic = perms.states.microphone
     const os = b?.platform === 'darwin' ? t('dcOsMac') : b?.platform === 'win32' ? t('dcOsWin') : t('dcOsOther')
     return h('div', { className: 'nm-section' },
       h('p', null, t('dcLead')),
@@ -136,7 +132,9 @@ export function makeDictationSection(t: Translate, selectPanel: (id: string) => 
           ? h(Row, { icon: h(IconShield, { size: 18 }), title: t('dcMic'), sub: mic === 'granted' ? t('pmGranted') : mic === 'denied' ? t('pmDenied') : t('pmNotAsked'),
               right: mic === 'granted'
                 ? h('span', { className: 'nm-ob-granted', 'aria-label': t('obAllowed') }, h(IconCheck, { size: 16 }))
-                : h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => { void b?.requestPermission('microphone').then(() => refresh()) } }, t('obAllow')) })
+                : perms.asked('microphone')
+                  ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => perms.settings('microphone') }, t('obOpenSettings'))
+                  : h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => perms.allow('microphone') }, t('obAllow')) })
           : null),
       h('h2', null, t('dcSystem')),
       h('div', { className: 'nm-card' },

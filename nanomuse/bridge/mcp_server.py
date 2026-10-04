@@ -35,8 +35,8 @@ from typing import Any
 
 from nanomuse.computer.link import ComputerLink
 from nanomuse.config import Settings
-from nanomuse.schema import RiskLevel, ToolResult
-from nanomuse.tools.base import BaseTool
+from nanomuse.schema import STEP_KEY, RiskLevel, ToolResult
+from nanomuse.tools.base import BaseTool, with_step
 from nanomuse.tools.computer import ComputerAct, ComputerScreen
 
 SERVER_NAME = "nanomuse"
@@ -94,7 +94,7 @@ def ticket(secret: str, args: dict[str, Any]) -> str:
     The plugin and this server compute it the same way (sorted keys, compact JSON, the
     ``confirmed`` field left out), so a ticket confirms these arguments and no others.
     """
-    clean = {k: v for k, v in args.items() if k != CONFIRMED}
+    clean = {k: v for k, v in args.items() if k not in (CONFIRMED, STEP_KEY)}
     body = json.dumps(clean, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hmac.new(secret.encode(), body.encode(), hashlib.sha256).hexdigest()[:32]
 
@@ -110,7 +110,7 @@ def _confirmed(args: dict[str, Any]) -> bool:
 
 def exposed_schema(tool: BaseTool) -> dict[str, Any]:
     """The tool's schema with the bridge's ``confirmed`` field on the ones that need it."""
-    schema: dict[str, Any] = json.loads(json.dumps(tool.parameters))
+    schema: dict[str, Any] = json.loads(json.dumps(with_step(tool.parameters)))
     if tool.risk != RiskLevel.SAFE:
         props = schema.setdefault("properties", {})
         if confirm_secret():
@@ -175,7 +175,7 @@ async def call(tool: BaseTool, args: dict[str, Any]) -> ToolResult:
     refused = gate(tool, args)
     if refused is not None:
         return ToolResult.fail(refused)
-    clean = {k: v for k, v in args.items() if k != CONFIRMED}
+    clean = {k: v for k, v in args.items() if k not in (CONFIRMED, STEP_KEY)}
     try:
         return await tool.execute(**clean)
     except Exception as exc:  # noqa: BLE001 - the host gets a message, not a dead server

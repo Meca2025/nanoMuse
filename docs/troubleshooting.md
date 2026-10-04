@@ -2,7 +2,7 @@
 
 Start with `nanomuse doctor`: it prints the config file in use, the data directory, the model and endpoint (and whether a key is set), the tools and connectors, and makes one call to the model. Most of the problems below show up there first.
 
-**The phone cannot open the URL.** Start with `--host 0.0.0.0` (the default binds to localhost only), make sure both devices are on the same network, and allow the port through the machine's firewall. The URL shown uses the LAN address the server could detect; if it is wrong, use the machine's address from `ip addr` / `ipconfig` with the same `?token=`.
+**The phone cannot open the URL.** Start with `--host 0.0.0.0` (the default binds to localhost only), make sure both devices are on the same network, and allow the port through the machine's firewall. The URL shown uses the LAN address the server could detect; if it is wrong, use the machine's address from `ip addr` / `ipconfig` with the same `#token=` part (the token rides in the link's fragment, never in a query string — a `?token=` link from before 0.1.31 is refused with a message saying so).
 
 **"web app not built" on start.** You are running from a checkout without the built front-end. `cd web && npm install && npm run build`, or install the package instead.
 

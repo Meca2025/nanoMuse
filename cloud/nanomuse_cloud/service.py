@@ -436,13 +436,95 @@ class Cloud:
         return {"accounts": n, "allowance_cny": self.s.allowance_cny}
 
     def admin_credit_all(self, cny: float, note: str = "") -> dict:
-        """The same credit into every limited account's pool at once."""
-        if not 0 < cny <= 100:
-            raise CloudError(400, "bad_request", "A credit for everyone is between ¥0 and ¥100")
+        """The same credit into every limited account's pool at once; negative takes the same
+        away from each (0.16), never below zero."""
+        if cny == 0 or not -100 <= cny <= 100:
+            raise CloudError(400, "bad_request", "A credit for everyone is between -¥100 and ¥100, not 0")
+        if cny < 0:
+            return self.admin_set_pool_many({"all": True, "delta_cny": cny, "note": note})
         n = self.db.credit_all(self.s.cny_to_uy(cny), note=note, exclude_hashes=self.member_hashes)
         log.warning("¥%.2f credited to %d account(s): %s", cny, n, note)
         self.db.add_event("", "credit.all", f"¥{cny:g} to {n}: {note}"[:200])
         return {"accounts": n, "cny": cny}
+
+    # The pool set by the operator (0.16): exactly one of these says how.
+    POOL_MODES = ("left_cny", "grant_cny", "delta_cny")
+
+    def _pool_change(self, body: dict) -> tuple[str, float]:
+        """Which of left_cny / grant_cny / delta_cny the request carries, and the figure in
+        yuan — one of them, a number, within reason (a pool is at most ¥10 000)."""
+        given = [k for k in self.POOL_MODES if body.get(k) is not None and body.get(k) != ""]
+        if len(given) != 1:
+            raise CloudError(400, "bad_request", "Say one of left_cny, grant_cny or delta_cny")
+        mode = given[0]
+        try:
+            value = float(body[mode])
+        except (TypeError, ValueError) as e:
+            raise CloudError(400, "bad_request", f"{mode} is a number") from e
+        if value != value or value in (float("inf"), float("-inf")):
+            raise CloudError(400, "bad_request", f"{mode} is a number")
+        if mode == "delta_cny":
+            if value == 0 or not -10_000 <= value <= 10_000:
+                raise CloudError(400, "bad_request", "delta_cny is between -¥10000 and ¥10000, not 0")
+        elif not 0 <= value <= 10_000:
+            raise CloudError(400, "bad_request", f"{mode} is between ¥0 and ¥10000")
+        return mode, value
+
+    def _pool_words(self, mode: str, value: float) -> str:
+        if mode == "left_cny":
+            return f"¥{value:g} left"
+        if mode == "grant_cny":
+            return f"pool ¥{value:g}"
+        return f"{'+' if value > 0 else '−'}¥{abs(value):g}"
+
+    def admin_set_pool(self, account_id: str, body: dict) -> dict:
+        """One account's pool set by the operator — to what is left, to a total, or by a
+        difference up or down. The account's timeline says so; the reply is the account with
+        its pool fields, as /v1/admin/credit answers."""
+        if self.db.account(account_id) is None:
+            raise CloudError(404, "no_account", "No such account")
+        mode, value = self._pool_change(body)
+        note = str(body.get("note", ""))[:200]
+        uy = self.s.cny_to_uy(abs(value)) * (-1 if value < 0 else 1)
+        new = self.db.set_pool(account_id, **{mode.replace("_cny", "_uy"): uy}, note=note)
+        words = self._pool_words(mode, value)
+        log.warning("pool of %s set from the page: %s → ¥%.2f (%s)", account_id[:8], words, self.s.uy_to_cny(new or 0), note)
+        self.db.add_event(account_id, "pool.set", f"{words}{' · ' + note if note else ''}"[:200])
+        a = dict(self.db.account(account_id))  # type: ignore[arg-type]
+        a["identifier"] = self.crypto.decrypt(account_id, a.pop("identifier_enc", "")) or ""
+        a["member"] = bool(a.get("unlimited")) or a.pop("id_hash", None) in self.member_hashes
+        a.pop("id_hash", None)
+        a.pop("password_hash", None)
+        a["spent_cny"] = self.s.uy_to_cny(self.db.spent_since(account_id, 0))
+        self._pool_fields(a, spent_cny=a["spent_cny"])
+        return a
+
+    def admin_set_pool_many(self, body: dict) -> dict:
+        """The same change to a set of accounts — the ids given (a filtered list on the
+        page), or every limited account when `all` is set; members and disabled accounts are
+        left out of `all`. Returns how many pools moved."""
+        mode, value = self._pool_change(body)
+        note = str(body.get("note", ""))[:200]
+        if body.get("all"):
+            ids = self.db.limited_account_ids(exclude_hashes=self.member_hashes)
+        else:
+            raw = body.get("account_ids")
+            if not isinstance(raw, list) or not raw:
+                raise CloudError(400, "bad_request", "Give account_ids, or all: true")
+            if len(raw) > 5000:
+                raise CloudError(400, "bad_request", "At most 5000 accounts at a time")
+            ids = [str(x) for x in raw if isinstance(x, str) and x]
+        uy = self.s.cny_to_uy(abs(value)) * (-1 if value < 0 else 1)
+        words = self._pool_words(mode, value)
+        n = 0
+        for account_id in ids:
+            if self.db.set_pool(account_id, **{mode.replace("_cny", "_uy"): uy}, note=note) is None:
+                continue
+            self.db.add_event(account_id, "pool.set", f"{words}{' · ' + note if note else ''}"[:200])
+            n += 1
+        log.warning("pool of %d account(s) set from the page: %s (%s)", n, words, note)
+        self.db.add_event("", "pool.set.many", f"{words} to {n}{' · ' + note if note else ''}"[:200])
+        return {"accounts": n, mode: value}
 
     def public_config(self) -> dict:
         """What a client may know before anyone signs in — the figures the sign-in pages and
@@ -1482,8 +1564,10 @@ class Cloud:
         promised refund. It goes into the account's pool and never expires."""
         if self.db.account(account_id) is None:
             raise CloudError(404, "no_account", "No such account")
-        if cny < 0 or cny > 1000:
-            raise CloudError(400, "bad_request", "Credit is between ¥0 and ¥1000")
+        if cny == 0 or not -1000 <= cny <= 1000:
+            raise CloudError(400, "bad_request", "Credit is between -¥1000 and ¥1000, not 0")
+        if cny < 0:  # 0.16: the operator may take back as well as give
+            return self.admin_set_pool(account_id, {"delta_cny": cny, "note": note})
         self.db.add_credit(account_id, self.s.cny_to_uy(cny), note=note)
         self.db.add_event(account_id, "credit.granted", f"¥{cny:g}")
         a = dict(self.db.account(account_id))  # type: ignore[arg-type]

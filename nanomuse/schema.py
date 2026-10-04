@@ -47,18 +47,37 @@ def new_id(prefix: str = "call") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:16]}"
 
 
+# Every tool call may carry the words for the person watching — what this step does, in
+# their language ("打开携程网站") — under this key. It is shown under the avatar while the
+# tool runs and never reaches the tool itself.
+STEP_KEY = "step"
+
+
 class Function(BaseModel):
     name: str
     arguments: str = "{}"
 
     def parsed_arguments(self) -> dict[str, Any]:
+        """The arguments for the tool: the model's JSON, without the ``step`` words."""
         if not self.arguments or not self.arguments.strip():
             return {}
         try:
             data = json.loads(self.arguments)
         except json.JSONDecodeError:
             return {"__raw__": self.arguments}
-        return data if isinstance(data, dict) else {"value": data}
+        if not isinstance(data, dict):
+            return {"value": data}
+        data.pop(STEP_KEY, None)
+        return data
+
+    def step(self) -> str:
+        """The words for the person — the ``step`` the model wrote, or nothing."""
+        try:
+            data = json.loads(self.arguments) if self.arguments.strip() else {}
+        except json.JSONDecodeError:
+            return ""
+        words = data.get(STEP_KEY) if isinstance(data, dict) else None
+        return " ".join(str(words).split())[:80] if isinstance(words, str) else ""
 
     def wire_arguments(self) -> str:
         """The arguments as a provider will accept them: a JSON object string.
@@ -85,6 +104,11 @@ class ToolCall(BaseModel):
     @property
     def arguments(self) -> dict[str, Any]:
         return self.function.parsed_arguments()
+
+    @property
+    def step(self) -> str:
+        """What this step does, in the model's words for the person ("" when it said nothing)."""
+        return self.function.step()
 
 
 class Message(BaseModel):

@@ -915,6 +915,7 @@ private fun eventLabel(kind: String): String = when (kind) {
     "invite.accepted" -> stringResource(R.string.nm_cloud_ev_invite_accepted)
     "invite.used" -> stringResource(R.string.nm_cloud_ev_invite_used)
     "credit.granted" -> stringResource(R.string.nm_cloud_ev_credit_granted)
+    "pool.set" -> stringResource(R.string.nm_cloud_ev_pool_set)
     "sign_in.code" -> stringResource(R.string.nm_cloud_ev_sign_in_code)
     "sign_in.password" -> stringResource(R.string.nm_cloud_ev_sign_in_password)
     "sign_in.failed" -> stringResource(R.string.nm_cloud_ev_sign_in_failed)

@@ -104,7 +104,7 @@ export interface ActivityRecord {
   status: 'running' | 'done' | 'error' | 'stopped' | 'waiting'
   request: string
   words: string
-  current: { name: string; title: string; at: number } | null
+  current: { name: string; title: string; at: number; own?: boolean } | null
   steps: ActivityStep[]
   turns: number
 }

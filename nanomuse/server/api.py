@@ -44,7 +44,8 @@ All endpoints require ``Authorization: Bearer <token>`` unless ``server.auth = f
 The token is printed (with a QR code, in the link's ``#fragment``) by ``nanomuse serve``.
 The bytes the app shows inline — ``/api/files/*`` and the browser frames — also open with
 a link the client signed with its token (``?exp=&sig=``, :mod:`nanomuse.server.tickets`),
-so no token travels in a URL. ``?token=`` is still taken this release and goes next.
+so no token travels in a URL. ``?token=`` is no longer accepted (0.1.33): a request that
+still carries one gets a 401 with a message saying where the token goes now.
 """
 
 from __future__ import annotations
@@ -76,6 +77,11 @@ from nanomuse.server.service import MuseService, goal_to_dict
 from nanomuse.server.update import UpdateCheck
 
 STATIC_DIR = Path(__file__).parent / "static"
+# Said to a client that still puts the token in the URL (taken until 0.1.32).
+LEGACY_TOKEN_MESSAGE = (
+    "the token no longer travels in the URL: send it as 'Authorization: Bearer …' "
+    "(or as the socket's first frame) — update the app, or pair again with a #token= link"
+)
 
 
 # ----------------------------------------------------------------------------- request models
@@ -390,8 +396,10 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     def auth(request: Request) -> None:
         header = request.headers.get("authorization", "")
         token = header[7:].strip() if header.lower().startswith("bearer ") else None
-        # ``?token=`` is deprecated (it lands in access logs): accepted this release only
-        _check_token(token or request.query_params.get("token"))
+        if token is None and "token" in request.query_params:
+            # ``?token=`` lands in access logs; it was taken until 0.1.32 and is refused now.
+            raise HTTPException(status_code=401, detail=LEGACY_TOKEN_MESSAGE)
+        _check_token(token)
 
     def auth_or_signed(request: Request) -> None:
         """A header as everywhere — or, for the bytes an ``<img>``/``<video>``/``<iframe>``
@@ -1573,20 +1581,19 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     # ------------------------------------------------------------------ websocket
     @app.websocket("/ws")
     async def websocket(ws: WebSocket) -> None:
-        legacy = ws.query_params.get("token")
-        if legacy is not None:
-            # ``?token=`` lands in access logs: taken this release, gone the next
-            try:
-                _check_token(legacy)
-            except HTTPException:
-                await ws.close(code=4401)
-                return
+        if "token" in ws.query_params:
+            # ``?token=`` lands in access logs: taken until 0.1.32, refused now. The socket is
+            # accepted for a moment so the client reads why (an older app sees 4401 either way).
             await ws.accept()
-        else:
-            await ws.accept()
-            if svc.token and not await _ws_first_frame_auth(ws, svc.token):
-                await ws.close(code=4401)
-                return
+            await ws.send_json(
+                {"kind": "error", "code": "legacy_token", "message": LEGACY_TOKEN_MESSAGE}
+            )
+            await ws.close(code=4401, reason="legacy_token")
+            return
+        await ws.accept()
+        if svc.token and not await _ws_first_frame_auth(ws, svc.token):
+            await ws.close(code=4401)
+            return
         queue = svc.bus.subscribe()
         await ws.send_json({"kind": "hello", "state": svc.state()})
         conn_id = f"ws-{uuid.uuid4().hex[:8]}"

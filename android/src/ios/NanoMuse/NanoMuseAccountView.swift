@@ -22,7 +22,7 @@ struct NanoMuseAccountSections: View {
         Group {
             if starAsk {
                 Section {
-                    NanoMuseStarCard(text: AppLocalized("You are in. nanoMuse is free, open source and non-profit — a star on GitHub is how it gets found.")) {
+                    NanoMuseStarCard(text: NanoMuseStar.text(.signedIn)) {
                         starAsk = false
                     }
                 }
@@ -113,7 +113,7 @@ struct NanoMuseAccountSections: View {
             if spend.exhausted && !NanoMuseStar.starred {
                 Label {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(AppLocalized("Star nanoMuse on GitHub — free, open source, non-profit: being found is what keeps it going."))
+                        Text(NanoMuseStar.text(.exhausted))
                             .font(.caption).foregroundStyle(.secondary)
                         Button(AppLocalized("Star on GitHub")) { NanoMuseStar.open() }
                             .font(.caption.weight(.medium))
@@ -425,7 +425,7 @@ struct NanoMuseStarCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Label {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(AppLocalized("Like it? Star it.")).font(.subheadline.weight(.semibold))
+                    Text(AppLocalized("Your support is what keeps us going")).font(.subheadline.weight(.semibold))
                     Text(text).font(.caption).foregroundStyle(.secondary)
                 }
             } icon: {

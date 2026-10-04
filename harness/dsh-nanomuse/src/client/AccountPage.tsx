@@ -50,14 +50,34 @@ const when = (ts: number | null | undefined, locale: string): string => (ts ? ne
 
 // ---- the star, asked for once at the moments it is fair to --------------------------------
 
+/**
+ * The moments: the account just signed in, the first and the tenth task that ran to its end,
+ * a face just drawn in the studio. Each is asked once per computer; going to GitHub from any of
+ * them ends them all. The tone is a thank-you, never a bill: your support is what keeps us going.
+ */
+export type StarMoment = 'signed_in' | 'first_task' | 'tenth_task' | 'new_look'
 const STARRED_KEY = 'nm.star.starred'
+const TASKS_KEY = 'nm.star.tasks'
 const momentKey = (m: string) => `nm.star.${m}`
 const read = (k: string) => { try { return window.localStorage.getItem(k) === '1' } catch { return false } }
 const write = (k: string) => { try { window.localStorage.setItem(k, '1') } catch { /* private mode: the ask may come back */ } }
 /** Still worth asking at this moment: not asked before, and the person has not gone to star it. */
-export const starDue = (moment: 'signed_in' | 'first_task'): boolean => !read(STARRED_KEY) && !read(momentKey(moment))
-export const starShown = (moment: 'signed_in' | 'first_task'): void => write(momentKey(moment))
+export const starDue = (moment: StarMoment): boolean => !read(STARRED_KEY) && !read(momentKey(moment))
+export const starShown = (moment: StarMoment): void => write(momentKey(moment))
 export const starred = (): boolean => read(STARRED_KEY)
+/** One more task ran to its end on this computer; the count so far. */
+export function countTask(): number {
+  try {
+    const n = (Number(window.localStorage.getItem(TASKS_KEY)) || 0) + 1
+    window.localStorage.setItem(TASKS_KEY, String(n))
+    return n
+  } catch { return 1 }
+}
+/** The moment a finished-task count makes due, if any: the first and the tenth. */
+export const momentForTask = (n: number): StarMoment | undefined => (n === 1 ? 'first_task' : n === 10 ? 'tenth_task' : undefined)
+/** The words for a moment. */
+export const starText = (t: Translate, moment: StarMoment): string =>
+  t(moment === 'signed_in' ? 'starSignedIn' : moment === 'first_task' ? 'starFirstTask' : moment === 'tenth_task' ? 'starTenthTask' : 'starNewLook')
 /** Off to GitHub, and no more asking anywhere. */
 export function openStar(): void {
   write(STARRED_KEY)
@@ -78,7 +98,7 @@ export function StarNudge({ t, text, onDone }: { t: Translate; text: string; onD
 }
 
 /** The card for a moment, shown once; marks the moment spent as soon as it is drawn. */
-export function StarNudgeOnce({ t, moment, text, due = true }: { t: Translate; moment: 'signed_in' | 'first_task'; text: string; due?: boolean }): ReactNode {
+export function StarNudgeOnce({ t, moment, text, due = true }: { t: Translate; moment: StarMoment; text?: string; due?: boolean }): ReactNode {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     if (!due || open || !starDue(moment)) return
@@ -86,7 +106,7 @@ export function StarNudgeOnce({ t, moment, text, due = true }: { t: Translate; m
     setOpen(true)
   }, [due, moment, open])
   if (!open) return null
-  return h(StarNudge, { t, text, onDone: () => setOpen(false) })
+  return h(StarNudge, { t, text: text ?? starText(t, moment), onDone: () => setOpen(false) })
 }
 
 // ---- the page ------------------------------------------------------------------------------
@@ -127,7 +147,7 @@ export function AccountPage({ t, status, locale, onEnded }: AccountPageProps): R
   const member = Boolean(a?.member ?? status.account?.member)
   return h(Fragment, null,
     error ? h('div', { style: errorStyle, role: 'alert' }, error) : null,
-    sheet ? h(StarNudgeOnce, { t, moment: 'signed_in', text: t('starSignedIn') }) : null,
+    sheet ? h(StarNudgeOnce, { t, moment: 'signed_in' }) : null,
     h('h3', { style: heading }, t('acAllowance')),
     sheet ? h(Allowance, { t, sheet, member }) : h('div', { style: muted }, t('loading')),
     sheet?.invite?.code ? h(Fragment, null, h('h3', { style: heading }, t('acInvite')), h(InviteBlock, { t, invite: sheet.invite })) : null,

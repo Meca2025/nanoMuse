@@ -385,11 +385,15 @@ class WebUI:
             return
         self._step_text.pop(thread, None)
         args = call.arguments if isinstance(call.arguments, dict) else {}
+        # the model's own words for the step ("打开携程网站") head the pill and the status
+        # line; the technical summary stays underneath for the trace
+        step = call.step
         ev = self.emit(
             {
                 "type": "tool",
                 "tool": call.name,
                 "summary": summary,
+                "title": step,
                 "args": _preview_args(args),
                 "status": "running",
             }
@@ -398,7 +402,7 @@ class WebUI:
         if call.name not in _READ_ONLY_TOOLS:
             self._ws_before[thread] = self._scan_workspace()
         label = _TOOL_LABELS.get(call.name, f"Using {call.name}")
-        self.set_status("working", f"{label}: {summary}" if summary else label, thread)
+        self.set_status("working", step or (f"{label}: {summary}" if summary else label), thread)
 
     def on_tool_result(self, call: ToolCall, result: ToolResult) -> None:
         thread = self.thread()

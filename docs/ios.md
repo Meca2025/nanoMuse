@@ -75,6 +75,42 @@ Ours, in `NanoMuse/`:
 - **The agent's steps, the status line.** *Settings → Chat → Steps* keeps the tool capsules out of
   finished messages unless asked for; the typing line reads *〈name〉 is on it*, not *is thinking*.
   Both are one-line edits in upstream's `AssistantBlockView` / `ContentView`, marked `// nanoMuse:`.
+- **The Muse shell (0.1.33), iPhone only.** `NanoMuseRoot` replaces upstream's `ContentView` at
+  the root on the iPhone (the iPad keeps the split layout; `nanomuse.shell.enabled` /
+  `nanomuse.header.enabled` in UserDefaults switch the shell and the header off, no UI toggle
+  yet). The chat's navigation title becomes **face · name · status line** (`NanoMuseHeader.swift`):
+  the status reads *waiting for you* while a question or an approval is up, then the running
+  tool's `tool_title` — the model's own words for the step, *打开携程网站* — then *writing the
+  reply*, then *On it: 〈brief〉*, and the model's name when idle; the face (`NanoMuseFaces.swift`,
+  the drawn face from Application Support or the dragon from the bundle, five moods with the
+  breath, bob, tilt, pop and shake of the other clients) is tapped into the avatar studio. The
+  bottom bar carries the rooms (`NanoMuseRooms.swift`): **Ideas** (bundled `ideas.{en,zh}.json`,
+  *Send to chat*) and **Library** (the sessions' workspace files, QuickLook, share, *Open
+  conversation*) are real; **Feed** and **Goals** are empty states, since the iPhone has no
+  scheduler to run them (*Create a goal* starts a chat). The drawer holds the sessions, search, a
+  new side chat, *Pin as the main chat*, and *All chats* / *Settings*, which open upstream's layout
+  in a sheet.
+- **The avatar studio** (`NanoMuseAvatarStudio.swift`, `NanoMuseProfile.swift`): the styles and
+  prompts of the Android studio, four candidates drawn in parallel through the relay
+  (`/v1/images/generations`, `/v1/images/edits` for the posed moods), a cost sheet first (eight
+  pictures, the estimate against what is left), the pick adopted and pushed to the account's
+  profile (`PUT /v1/me/profile`, pulled on start and on the hub's `profile` frame by `rev`) so
+  every device changes with it. Through the relay only — no own-key image path on iOS.
+- **Connectors** (`NanoMuseConnectors.swift`): the desktop's catalogue from the bundled
+  `connectors.json` (`node scripts/connectors-json.mjs` keeps it current, `--check` in CI), the
+  MCP authorization flow (initialize → 401 → protected-resource metadata → authorization-server
+  metadata → RFC 7591 registration → upstream's `MCPOAuthController`), key / open / auto services,
+  and the client-id ask with the callback address to copy for the eight services that register no
+  clients. The Settings row that was *MCP Integrations* is **Connectors**; *Your own servers* at
+  its end is upstream's MCP page.
+- **Data controls** (`NanoMuseDataControls.swift`): the relay's switch, the kept-turns count, the
+  privacy page, deletion with a confirmation. **Reach** (`NanoMuseReach.swift`): a sheet per device
+  of the account — open a link, send a note, a shell line, a screenshot — over the hub.
+- **Star asks** at the first and the tenth finished task (`NanoMuseStarWatch`: a session leaving
+  `activeSessions` without an error; a cancelled turn counts too, the stream has no cancel signal)
+  and after a new look, as a card pinned under the header (the message list is a UICollectionView,
+  so nothing can be placed under the last message); the sign-in and spent-allowance moments were
+  already there.
 
 ## Building on a Mac
 

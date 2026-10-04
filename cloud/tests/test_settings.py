@@ -108,6 +108,69 @@ async def test_credit_everyone_leaves_members_out():
     assert (await client.post("/v1/admin/credit-all", headers=ADMIN, json={"cny": 0})).status_code == 400
 
 
+async def test_the_operator_sets_a_pool_to_any_figure_up_or_down():
+    """0.16: a pool is set — to what is left, to a total, or by a difference either way — for
+    one account, for a chosen set, or for everyone limited; never below zero; the account's
+    timeline says so."""
+    app, client, sender, up, cloud, settings = make(allowance_cny=10)
+    a = await sign_up(client, sender, "13800138000", "pixel")
+    b = await sign_up(client, sender, "13900139000", "pixel")
+    c = await sign_up(client, sender, "13700137000", "pixel")
+    member = (
+        await client.post("/v1/admin/unlimited", headers=ADMIN, json={"account_id": c["account"]["id"], "unlimited": True})
+    ).status_code
+    assert member == 204
+    ida, idb = a["account"]["id"], b["account"]["id"]
+
+    # What is left: the total becomes spent + 3 (nothing spent yet, so 3), and down is allowed.
+    r = await client.post("/v1/admin/pool", headers=ADMIN, json={"account_id": ida, "left_cny": 3, "note": "trial"})
+    assert r.status_code == 200, r.text
+    assert r.json()["grant_cny"] == 3 and r.json()["left_cny"] == 3 and "grant_uy" not in r.json()
+    me = (await client.get("/v1/me", headers=auth(a["api_key"]))).json()
+    assert me["spend"]["grant"] == 3 and me["spend"]["left"] == 3
+    events = (await client.get("/v1/me/events", headers=auth(a["api_key"]))).json()["events"]
+    assert any(e["kind"] == "pool.set" and "¥3 left" in e["detail"] and "trial" in e["detail"] for e in events)
+
+    # A total, and a difference down past zero stops at zero.
+    r = await client.post("/v1/admin/pool", headers=ADMIN, json={"identifier": "13800138000", "grant_cny": 20})
+    assert r.status_code == 200 and r.json()["grant_cny"] == 20
+    r = await client.post("/v1/admin/pool", headers=ADMIN, json={"account_id": ida, "delta_cny": -25})
+    assert r.status_code == 200 and r.json()["grant_cny"] == 0 and r.json()["left_cny"] == 0
+    # The old credit route takes away too.
+    r = await client.post("/v1/admin/credit", headers=ADMIN, json={"account_id": idb, "cny": -4, "note": "oops"})
+    assert r.status_code == 200 and r.json()["grant_cny"] == 6
+    ledger = (await client.get(f"/v1/admin/accounts/{idb}/ledger", headers=ADMIN)).json()
+    down = [row for row in ledger["rows"] if row["kind"] == "credit" and (row.get("detail") or {}).get("credit_uy", 0) < 0]
+    assert len(down) == 1 and down[0]["detail"]["credit_uy"] == -4_000_000 and down[0]["detail"]["set"] == 6_000_000
+
+    # A set of accounts, then everyone limited (the member is left out, so two move).
+    r = await client.post("/v1/admin/pool/batch", headers=ADMIN, json={"account_ids": [ida, idb, "nobody"], "left_cny": 1})
+    assert r.status_code == 200 and r.json() == {"accounts": 2, "left_cny": 1.0}
+    r = await client.post("/v1/admin/pool/batch", headers=ADMIN, json={"all": True, "delta_cny": 2.5, "note": "holiday"})
+    assert r.status_code == 200 and r.json()["accounts"] == 2
+    me_a = (await client.get("/v1/me", headers=auth(a["api_key"]))).json()
+    me_b = (await client.get("/v1/me", headers=auth(b["api_key"]))).json()
+    me_c = (await client.get("/v1/me", headers=auth(c["api_key"]))).json()
+    assert me_a["spend"]["grant"] == 3.5 and me_b["spend"]["grant"] == 3.5 and me_c["spend"]["unlimited"] is True
+    r = await client.post("/v1/admin/credit-all", headers=ADMIN, json={"cny": -1})
+    assert r.status_code == 200 and r.json()["accounts"] == 2
+    assert (await client.get("/v1/me", headers=auth(a["api_key"]))).json()["spend"]["grant"] == 2.5
+
+    # One mode at a time, numbers only, within reason, somebody named.
+    for bad in (
+        {"account_id": ida},
+        {"account_id": ida, "left_cny": 1, "grant_cny": 2},
+        {"account_id": ida, "left_cny": "lots"},
+        {"account_id": ida, "grant_cny": -1},
+        {"account_id": ida, "delta_cny": 0},
+        {"account_id": ida, "left_cny": 99_999},
+    ):
+        assert (await client.post("/v1/admin/pool", headers=ADMIN, json=bad)).status_code == 400, bad
+    assert (await client.post("/v1/admin/pool", headers=ADMIN, json={"account_id": "nobody", "left_cny": 1})).status_code == 404
+    assert (await client.post("/v1/admin/pool/batch", headers=ADMIN, json={"left_cny": 1})).status_code == 400
+    assert (await client.post("/v1/admin/pool/batch", json={"all": True, "left_cny": 1})).status_code == 401
+
+
 async def test_settings_survive_a_restart_and_a_bad_row_is_ignored():
     db = Database(":memory:")
     app, client, sender, up, cloud, settings = make(allowance_cny=25)

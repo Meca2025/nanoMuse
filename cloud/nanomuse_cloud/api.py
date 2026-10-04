@@ -30,7 +30,9 @@
     GET  /app/                                                  → the web console (static)
     GET  /app/admin/                                            → the operator's page (static; asks for the admin token)
     POST /v1/admin/grant      X-Admin-Token  {account_id | identifier, tokens}
-    POST /v1/admin/credit     X-Admin-Token  {account_id | identifier, cny, note?} → more into the account's pool
+    POST /v1/admin/credit     X-Admin-Token  {account_id | identifier, cny, note?} → more into the account's pool (negative takes away, 0.16)
+    POST /v1/admin/pool       X-Admin-Token  {account_id | identifier, left_cny | grant_cny | delta_cny, note?} → the pool set to any figure (0.16)
+    POST /v1/admin/pool/batch X-Admin-Token  {account_ids | all, left_cny | grant_cny | delta_cny, note?} → the same for a set, or everyone limited (0.16)
     POST /v1/admin/disable    X-Admin-Token  {account_id | identifier, disabled}
     POST /v1/admin/unlimited  X-Admin-Token  {account_id | identifier, unlimited}  → a member: no limit
     POST /v1/admin/delete     X-Admin-Token  {account_id | identifier}
@@ -1164,6 +1166,21 @@ def create_app(
         except (TypeError, ValueError) as e:
             raise CloudError(400, "bad_request", "cny is a number") from e
         return cloud.admin_credit_all(cny, str(body.get("note", ""))[:200])
+
+    @app.post("/v1/admin/pool", dependencies=[Depends(admin_dep)])
+    async def admin_pool(request: Request) -> dict:
+        """{account_id | identifier, left_cny | grant_cny | delta_cny, note?}: set one account's
+        pool (0.16) — to what should be left now, to a lifetime total, or by a difference up or
+        down. Never below zero."""
+        body = await _json(request)
+        account_id = cloud.admin_resolve(str(body.get("account_id", "")), str(body.get("identifier", "")))
+        return cloud.admin_set_pool(account_id, body)
+
+    @app.post("/v1/admin/pool/batch", dependencies=[Depends(admin_dep)])
+    async def admin_pool_batch(request: Request) -> dict:
+        """{account_ids: [...] | all: true, left_cny | grant_cny | delta_cny, note?}: the same
+        change to a set of accounts, or to every limited one (0.16)."""
+        return cloud.admin_set_pool_many(await _json(request))
 
     @app.get("/v1/admin/settings", dependencies=[Depends(admin_dep)])
     async def admin_settings_get() -> dict:
