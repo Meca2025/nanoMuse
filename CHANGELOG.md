@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.33] - 2026-10-04 · Steps
+
+The words under the face are the step's own, on every client; the iPhone gets the Muse shell; the browser is handed over on Android; the connectors that need an app of your own say so; and three fixes from a day's use of the desktop. [Release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.33).
+
 ### Runtime
 
 - **Every tool takes `step`.** One more argument on every tool, in the model's own words for the person watching — *打开携程网站*, *Check the login page* — stripped before the tool sees its arguments and shown under the face while the step runs and as the pill's title in the chat. The prompt asks for it on every call; `nanomuse mcp` exposes and strips it the same way, so the desktop's hands get it too. (Issue [#67](https://github.com/nano-muse/nanoMuse/issues/67)'s other half: the status line used to read *Running: `<command>`*.)
