@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
 import { useStore } from "../store";
+import { ownKeyLine, ownKeyWay } from "../region";
 import { cx } from "../util";
 import { primaryBtn, secondaryBtn } from "./Form";
 import { openStar, starred, useCloudConfig } from "./StarNudge";
@@ -26,8 +27,11 @@ export const OWN_KEY_DOCS = "https://nanomuse.cn/own-key";
 /** The preset the Connections page opens with when someone comes here for their own key. */
 const PRESET_HINT = "nm.connections.preset";
 
-/** Send the person to Connections with 阿里云百炼 (the recommended own-key provider) preselected. */
-export function openOwnKeySetup(setTab: (tab: "connections") => void, preset = "qwen"): void {
+/**
+ * Send the person to Connections with the region's own-key provider preselected (contract
+ * C5): Alibaba Cloud Bailian on the mainland, OpenRouter elsewhere.
+ */
+export function openOwnKeySetup(setTab: (tab: "connections") => void, preset = ownKeyWay().preset): void {
   try {
     sessionStorage.setItem(PRESET_HINT, preset);
   } catch {
@@ -48,9 +52,10 @@ export function takePresetHint(): string | null {
 }
 
 /**
- * The two ways on when the free allowance is (nearly) spent: one's own model key
- * (阿里云百炼 first — free quota for new accounts, one key for chat, pictures and video)
- * and inviting a friend (the bonus goes to both). Sign-in and the devices keep working
+ * The two ways on when the free allowance is (nearly) spent: one's own model key (Alibaba
+ * Cloud Bailian on the mainland — free quota for new accounts, one key for chat, pictures
+ * and video; OpenRouter elsewhere, since Bailian only signs up mainland accounts) and
+ * inviting a friend (the bonus goes to both). Sign-in and the devices keep working
  * whichever is chosen: the allowance only gates the model.
  */
 export function AllowanceWays({
@@ -67,7 +72,8 @@ export function AllowanceWays({
   onChanged?: () => void;
 }) {
   const t = useT();
-  const { toast, setTab } = useStore();
+  const { toast, setTab, state } = useStore();
+  const way = ownKeyWay(state.hub?.account);
   const inviteBonus = info.invite_bonus_cny ?? 5;
   const docs = info.own_key_docs || OWN_KEY_DOCS;
   const link = info.invite_url || "";
@@ -106,13 +112,14 @@ export function AllowanceWays({
       </div>
 
       <Way icon={<KeyRound size={16} />} tone="bg-accent/12 text-accent" title={t("Use your own model key")}>
-        <p className="text-[12.5px] text-muted">
-          {t("Alibaba Cloud Bailian (阿里云百炼) is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.")}
-        </p>
+        <p className="text-[12.5px] text-muted">{ownKeyLine(t, state.hub?.account)}</p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => openOwnKeySetup(setTab)} className={cx(primaryBtn, "inline-flex items-center gap-1.5 py-2")}>
+          <button type="button" onClick={() => openOwnKeySetup(setTab, way.preset)} className={cx(primaryBtn, "inline-flex items-center gap-1.5 py-2")}>
             <KeyRound size={14} /> {t("Set it up")}
           </button>
+          <a href={way.keyUrl} target="_blank" rel="noopener noreferrer" className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
+            <ExternalLink size={14} /> {t("Get a key from {vendor}", { vendor: way.label })}
+          </a>
           <a href={docs} target="_blank" rel="noopener noreferrer" className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
             <ExternalLink size={14} /> {t("Step-by-step guide")}
           </a>
@@ -137,7 +144,7 @@ export function AllowanceWays({
       </Way>
 
       {exhausted && !starred() && (
-        <Way icon={<Star size={16} />} tone="bg-amber-400/15 text-amber-600 dark:text-amber-300" title={t("The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub is what keeps the project going for everyone.")}>
+        <Way icon={<Star size={16} />} tone="bg-amber-400/15 text-amber-600 dark:text-amber-300" title={t("The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.")}>
           <button type="button" onClick={() => openStar(cfg.repo_url)} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
             <Star size={14} /> {t("Star on GitHub")}
           </button>

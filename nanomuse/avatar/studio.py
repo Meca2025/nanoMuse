@@ -5,7 +5,9 @@ for the web app and the desktop, run by the runtime so both share it:
 
 1. A chat message asks for a new look ("换个形象：一只橘猫", "new avatar: a robot owl") —
    :func:`parse_request` reads it the way the phone does — or the picker in Settings sends
-   the description. The agent is not run for it.
+   the description. The agent is not run for it. A picture attached to the request is the
+   *reference*: the candidates are drawn from it (the edit endpoint), so "make it look like
+   my cat" keeps the cat — the phone does the same.
 2. A card in the chat says what it will cost (``GET /v1/estimate`` on the relay when the
    account's model is the provider; "at your provider's prices" for a key of one's own) and
    waits for a tap.
@@ -60,6 +62,11 @@ PICTURES_PER_FACE = CANDIDATES + len(MOODS) - 1
 SIZE = "1024x1024"
 # the stored stills: the face is never shown larger than about 200 CSS pixels
 STILL_PX = 512
+# before the prompt when the candidates are drawn from an attached picture (the phone's words)
+REFERENCE_PREFIX = (
+    "Redraw the subject of this picture as the character described, keeping its recognisable "
+    "features (species, colours, markings, hairstyle, accessories). "
+)
 DASHSCOPE_IMAGE_MODEL = "qwen-image-3.0"
 DASHSCOPE_VIDEO_MODEL = "wan2.2-i2v-flash"
 # the moods that move; "error" stays a still, as on the phone
@@ -321,6 +328,8 @@ class Session:
     event_id: str
     description: str
     style: str = DEFAULT_STYLE
+    #: workspace path of a picture the candidates are drawn from ("" = from the words alone)
+    reference: str = ""
     created: float = field(default_factory=time.time)
     stage: str = "estimate"  # estimate · drawing · choose · posing · done · cancelled · failed
     cost: dict[str, Any] = field(default_factory=dict)
@@ -339,6 +348,7 @@ class Session:
             "stage": self.stage,
             "description": self.description,
             "style": self.style,
+            "reference": self.reference,
             "cost": self.cost,
             "candidates": list(self.candidates),
             "errors": list(self.errors),
@@ -462,14 +472,17 @@ class AvatarStudio:
         }
 
     # ------------------------------------------------------------------ the chat
-    def intercept(self, thread: str, text: str) -> bool:
+    def intercept(self, thread: str, text: str, images: list[str] | None = None) -> bool:
         """A user message that is about the face: handled here, not by the agent.
 
         A request for a new look starts a session (the card with the cost); while candidates
-        wait, a pick / "regenerate" / "cancel" is applied. Returns True when the message was
-        taken."""
+        wait, a pick / "regenerate" / "cancel" is applied. ``images`` are the pictures
+        attached to the message (workspace paths): exactly one with a request is the
+        reference the candidates are drawn from; anything else attached means the message
+        is the agent's. Returns True when the message was taken."""
+        images = list(images or [])
         cur = self.current
-        if cur is not None and cur.thread == thread and cur.stage == "choose":
+        if not images and cur is not None and cur.thread == thread and cur.stage == "choose":
             choice = parse_choice(text)
             if choice == "regenerate":
                 asyncio.ensure_future(self.regenerate(cur.id))
@@ -480,18 +493,23 @@ class AvatarStudio:
             if isinstance(choice, int):
                 asyncio.ensure_future(self.choose(cur.id, choice))
                 return True
+        if len(images) > 1:
+            return False
         description = parse_request(text)
         if description is None:
             return False
-        asyncio.ensure_future(self.begin(thread, description))
+        asyncio.ensure_future(
+            self.begin(thread, description, reference=images[0] if images else "")
+        )
         return True
 
     async def begin(
-        self, thread: str, description: str, style: str = DEFAULT_STYLE
+        self, thread: str, description: str, style: str = DEFAULT_STYLE, reference: str = ""
     ) -> dict[str, Any]:
         """Open a session: the card with what it will cost, waiting for a tap.
 
-        ``style`` is one of :data:`STYLES` (the phone's list); anything else is Muse's."""
+        ``style`` is one of :data:`STYLES` (the phone's list); anything else is Muse's.
+        ``reference`` is the workspace path of a picture to draw the candidates from."""
         if style not in STYLES:
             style = DEFAULT_STYLE
         ui = self.svc.ui
@@ -505,6 +523,7 @@ class AvatarStudio:
                         "text": NO_IMAGE_MODEL,
                         "code": "no_image_model",
                         "thread": thread,
+                        "source": "studio",
                     }
                 )
             return {"available": False, "message": NO_IMAGE_MODEL}
@@ -523,11 +542,17 @@ class AvatarStudio:
                     "stage": "estimate",
                     "description": description,
                     "style": style,
+                    "reference": reference,
                 }
             )
             event_id = event["id"]
         session = Session(
-            id=sid, thread=thread, event_id=event_id, description=description, style=style
+            id=sid,
+            thread=thread,
+            event_id=event_id,
+            description=description,
+            style=style,
+            reference=reference,
         )
         self.current = session
         session.cost = await self.estimate(ep)
@@ -609,7 +634,14 @@ class AvatarStudio:
 
     async def _draw_candidate(self, session: Session, ep: Endpoint, index: int) -> None:
         try:
-            png = await self._generate(ep, build_prompt(session.description, index, session.style))
+            prompt = build_prompt(session.description, index, session.style)
+            if session.reference:
+                # drawn *from* the picture the user attached, so the character keeps what
+                # they showed (the phone's REFERENCE_PREFIX)
+                source = await asyncio.to_thread(self._read_reference, session.reference)
+                png = await self._edit(ep, source, REFERENCE_PREFIX + prompt)
+            else:
+                png = await self._generate(ep, prompt)
             rel = f"avatar/sessions/{session.id}/c{index}.webp"
             await asyncio.to_thread(self._save_still, rel, png)
             session.candidates[index] = rel
@@ -745,6 +777,7 @@ class AvatarStudio:
                         "text": "New look: {description}. Say what to change any time, or pick another under Settings.",
                         "vars": {"description": session.description},
                         "thread": session.thread,
+                        "source": "studio",
                     }
                 )
             self._prune_sessions()
@@ -1018,6 +1051,20 @@ class AvatarStudio:
         return f"{type(exc).__name__}: {exc}"[:200]
 
     # ------------------------------------------------------------------ files
+    def _read_reference(self, rel: str) -> bytes:
+        """The attached picture as PNG, at most 1024 px on the long side (what the edit
+        endpoints take comfortably)."""
+        from PIL import Image
+
+        path = self.svc.resolve_workspace_path(rel)
+        with Image.open(path) as opened:
+            im = opened.convert("RGB")
+            if max(im.size) > 1024:
+                im.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            im.save(buf, "PNG")
+        return buf.getvalue()
+
     def _save_still(self, rel: str, data: bytes) -> None:
         """A picture into the workspace as a square webp, at most STILL_PX wide."""
         from PIL import Image

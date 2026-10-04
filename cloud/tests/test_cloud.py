@@ -30,7 +30,7 @@ def fake_upstream() -> FastAPI:
     # embedded ones the catalog leaves out (ids only, as Model Studio's compatible mode gives them)
     up.state.catalog_ids = [
         "qwen3.8-27b",
-        "deepseek-v4.1-flash",
+        "deepseek-v4-pro",
         "qwen3-vl-plus",
         "vanchin/deepseek-v3",
         "qwen-image-edit-max",
@@ -50,7 +50,7 @@ def fake_upstream() -> FastAPI:
 
     # what the probes find (catalog.py): the retired model answers 4xx, these read the picture
     up.state.retired = {"qwen-1.8b-chat"}
-    up.state.sighted = {"qwen3-vl-plus", "deepseek-v4.1-flash", "qwen3.8-27b"}
+    up.state.sighted = {"qwen3-vl-plus", "deepseek-v4-pro", "qwen3.8-27b"}
 
     @up.post("/compat/v1/chat/completions")
     async def chat(request: Request):
@@ -90,9 +90,19 @@ def fake_upstream() -> FastAPI:
                 ],
                 "usage": {"prompt_tokens": 30, "completion_tokens": 3, "total_tokens": 33},
             }
+        thinking = body.get("enable_thinking") is True  # a thinking model's turn: reasoning first, then the words
         if body.get("stream"):
 
             async def gen():
+                if thinking:
+                    for piece in ("先想", "一下"):
+                        chunk = {
+                            "id": "c1",
+                            "object": "chat.completion.chunk",
+                            "model": body["model"],
+                            "choices": [{"index": 0, "delta": {"reasoning_content": piece, "content": None}, "finish_reason": None}],
+                        }
+                        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
                 for piece in ("你好", "，", "世界"):
                     chunk = {
                         "id": "c1",
@@ -101,16 +111,27 @@ def fake_upstream() -> FastAPI:
                         "choices": [{"index": 0, "delta": {"content": piece}, "finish_reason": None}],
                     }
                     yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
-                yield 'data: {"id":"c1","object":"chat.completion.chunk","choices":[],"usage":{"prompt_tokens":40,"completion_tokens":6}}\n\n'
+                if thinking:
+                    # DashScope's native shape counts the reasoning apart from the words
+                    usage = {"prompt_tokens": 40, "completion_tokens": 6, "output_tokens_details": {"reasoning_tokens": 20}}
+                else:
+                    usage = {"prompt_tokens": 40, "completion_tokens": 6}
+                yield f"data: {json.dumps({'id': 'c1', 'object': 'chat.completion.chunk', 'choices': [], 'usage': usage})}\n\n"
                 yield "data: [DONE]\n\n"
 
             return StreamingResponse(gen(), media_type="text/event-stream")
+        message = {"role": "assistant", "content": "hi"}
+        usage = {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}
+        if thinking:
+            message = {"role": "assistant", "reasoning_content": "先想一下", "content": "hi"}
+            # OpenAI's shape: the reasoning is inside completion_tokens, broken down below it
+            usage = {**usage, "completion_tokens_details": {"reasoning_tokens": 30}}
         return {
             "id": "c1",
             "object": "chat.completion",
             "model": body["model"],
-            "choices": [{"index": 0, "message": {"role": "assistant", "content": "hi"}, "finish_reason": "stop"}],
-            "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
+            "choices": [{"index": 0, "message": message, "finish_reason": "stop"}],
+            "usage": usage,
         }
 
     up.state.image_429s = 0  # how many times the next pictures are refused with a 429 first
@@ -582,6 +603,13 @@ async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
         "contribute_bonus_cny": 0,
         "contribute_bonus_available": False,
         "own_key_docs": "https://nanomuse.cn/own-key",
+        "openrouter_url": "https://openrouter.ai/keys",
+        # 0.17: a mainland phone account is pointed to Bailian first, then OpenRouter, then an invite
+        "ways": [
+            {"id": "bailian", "url": "https://nanomuse.cn/own-key", "mainland_only": True},
+            {"id": "openrouter", "url": "https://openrouter.ai/keys", "mainland_only": False},
+            {"id": "invite", "url": guest["invite"]["url"], "bonus_cny": 5},
+        ],
         # what a 0.4 app still reads: the pool as the "cap", no midnight
         "daily_cap": 0.002,
         "daily_cap_usd": 0.0003,
@@ -590,6 +618,7 @@ async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
         "credit_left": 0,
         "left_today": 0.002,
     }
+    assert guest["region"] == "cn"
     assert guest["clips"]["unlimited"] is True
     # the allowance is the first line of the statement
     assert guest["recent"][0]["kind"] == "credit" and guest["recent"][0]["detail"] == {"credit_uy": 2000, "from": "signup"}
@@ -831,7 +860,7 @@ async def test_admin_sees_identifiers_and_people_can_leave(stack):
     row = cloud.db.account(a["id"])
     assert "someone" not in row["identifier_enc"] and cloud.crypto.decrypt(a["id"], row["identifier_enc"]) == "someone@example.com"
     assert cloud.crypto.decrypt("other-account", row["identifier_enc"]) is None
-    assert listing["settings"]["models"][0] == "qwen3.8-27b"
+    assert listing["settings"]["models"][0] == "deepseek-v4.1-flash"
     usage = (await client.get("/v1/admin/usage", headers=admin)).json()
     assert usage["days"] == []
 
@@ -1026,11 +1055,11 @@ async def test_members_see_the_models_under_the_key_and_pick():
     ids = [m["id"] for m in listing["data"]]
     assert ids[: len(menu_ids)] == menu_ids  # the menu first, in its order
     extra = {m["id"]: m for m in listing["data"] if m["nanomuse"].get("catalog")}
-    assert set(extra) == {"deepseek-v4.1-flash", "qwen3-vl-plus", "vanchin/deepseek-v3", "qwen-image-edit-max", "wan2.7-image"}
-    assert extra["deepseek-v4.1-flash"]["nanomuse"]["kind"] == "chat" and extra["deepseek-v4.1-flash"]["nanomuse"]["listed"] is False
-    assert extra["deepseek-v4.1-flash"]["nanomuse"]["priced_as"] == "qwen3.8-27b"
+    assert set(extra) == {"deepseek-v4-pro", "qwen3-vl-plus", "vanchin/deepseek-v3", "qwen-image-edit-max", "wan2.7-image"}
+    assert extra["deepseek-v4-pro"]["nanomuse"]["kind"] == "chat" and extra["deepseek-v4-pro"]["nanomuse"]["listed"] is False
+    assert extra["deepseek-v4-pro"]["nanomuse"]["priced_as"] == "qwen3.8-27b"
     assert extra["vanchin/deepseek-v3"]["architecture"]["input_modalities"] == ["text"]  # not known to read pictures
-    assert extra["deepseek-v4.1-flash"]["nanomuse"]["vision"] is True  # DeepSeek V4 on Model Studio reads them
+    assert extra["deepseek-v4-pro"]["nanomuse"]["vision"] is False  # by name: only V4.1 and later read pictures
     assert extra["qwen3-vl-plus"]["nanomuse"]["vision"] is True and extra["qwen3-vl-plus"]["architecture"]["input_modalities"] == [
         "text",
         "image",
@@ -1066,7 +1095,9 @@ def test_the_catalog_sorts_ids_by_their_shape():
     from nanomuse_cloud.catalog import classify
 
     assert classify("qwen3.8-27b") == ("chat", True)  # the 3.5+ generations read pictures
-    assert classify("deepseek-v4.1-flash") == ("chat", True)  # V4 reads them on Model Studio (checked)
+    assert classify("deepseek-v4.1-flash") == ("chat", True)  # V4.1 reads them on Model Studio (checked)
+    assert classify("deepseek-v4.2-pro") == ("chat", True) and classify("deepseek-v5") == ("chat", True)
+    assert classify("deepseek-v4-flash") == ("chat", False)  # V4 does not — it guesses or returns nothing
     assert classify("vanchin/deepseek-v3") == ("chat", False)
     assert classify("qwen3-vl-plus") == ("chat", True)
     assert classify("qvq-max") == ("chat", True)
@@ -1095,7 +1126,8 @@ def test_the_catalog_sorts_ids_by_their_shape():
         "",
     ):
         assert classify(other) == ("other", False), other
-    assert classify("deepseek-v4-pro") == ("chat", True) and classify("deepseek-v3.2") == ("chat", False)
+    assert classify("deepseek-v4-pro") == ("chat", False) and classify("deepseek-v3.2") == ("chat", False)
+    assert classify("deepseek-vision-x") == ("chat", True) and classify("deepseek-ocr") == ("chat", True)
 
 
 async def test_the_catalog_asks_each_model_whether_it_answers_and_sees():
@@ -1120,7 +1152,7 @@ async def test_the_catalog_asks_each_model_whether_it_answers_and_sees():
     by_model: dict[str, int] = {}
     for q in probes:
         by_model[q[2]["model"]] = by_model.get(q[2]["model"], 0) + 1
-    assert by_model["qwen-1.8b-chat"] == 1 and by_model["qwen-plus"] == 2 and by_model["deepseek-v4.1-flash"] == 2
+    assert by_model["qwen-1.8b-chat"] == 1 and by_model["qwen-plus"] == 2 and by_model["deepseek-v4-pro"] == 2
     assert "qwen-image-edit-max" not in by_model  # picture models are not asked
 
     listing = (await client.get("/v1/models", headers=mh)).json()
@@ -1129,8 +1161,9 @@ async def test_the_catalog_asks_each_model_whether_it_answers_and_sees():
     assert extra["qwen-plus"]["nanomuse"]["vision"] is False and extra["qwen-plus"]["nanomuse"]["verified"] is True
     assert extra["qwen-plus"]["architecture"]["input_modalities"] == ["text"]
     assert extra["vanchin/deepseek-v3"]["nanomuse"]["vision"] is False  # the name guessed right; now verified
-    assert extra["deepseek-v4.1-flash"]["nanomuse"]["vision"] is True and extra["deepseek-v4.1-flash"]["nanomuse"]["verified"] is True
-    assert extra["deepseek-v4.1-flash"]["architecture"]["input_modalities"] == ["text", "image"]
+    # the name said text-only (V4, not 4.1); the probe's word wins
+    assert extra["deepseek-v4-pro"]["nanomuse"]["vision"] is True and extra["deepseek-v4-pro"]["nanomuse"]["verified"] is True
+    assert extra["deepseek-v4-pro"]["architecture"]["input_modalities"] == ["text", "image"]
     assert listing["nanomuse"]["catalog"]["models"] == 6 and listing["nanomuse"]["catalog"]["probing"] is False
 
     # kept: a second catalog over the same database asks nothing more
@@ -1150,7 +1183,7 @@ async def test_the_catalog_asks_each_model_whether_it_answers_and_sees():
     summary = r.json()
     assert summary["enabled"] and summary["probe"] and summary["pending"] == 0
     assert [u["id"] for u in summary["unusable"]] == ["qwen-1.8b-chat"] and "Model not exist" in summary["unusable"][0]["note"]
-    assert {m["id"]: m["vision"] for m in summary["models"] if m["kind"] == "chat"}["deepseek-v4.1-flash"] is True
+    assert {m["id"]: m["vision"] for m in summary["models"] if m["kind"] == "chat"}["deepseek-v4-pro"] is True
 
 
 async def test_the_thinking_default_follows_what_the_request_already_says():
@@ -1693,25 +1726,25 @@ async def test_members_may_name_any_model_of_the_right_kind():
     assert (await client.get("/v1/models", headers=gh)).json()["nanomuse"] == {"any_model": False}
 
     # a typed id is checked with the kind it is for
-    r = await client.get("/v1/models/deepseek-v4.1-flash", params={"kind": "chat"}, headers=mh)
+    r = await client.get("/v1/models/deepseek-v4-pro", params={"kind": "chat"}, headers=mh)
     assert r.status_code == 200
     nm = r.json()["nanomuse"]
     assert nm["listed"] is False and nm["kind"] == "chat" and nm["priced_as"] == "qwen3.8-27b"
-    r = await client.get("/v1/models/deepseek-v4.1-flash", headers=mh)
+    r = await client.get("/v1/models/deepseek-v4-pro", headers=mh)
     assert r.status_code == 404 and "kind=" in r.json()["error"]["message"]
-    r = await client.get("/v1/models/deepseek-v4.1-flash", params={"kind": "chat"}, headers=gh)
+    r = await client.get("/v1/models/deepseek-v4-pro", params={"kind": "chat"}, headers=gh)
     assert r.status_code == 404 and r.json()["error"]["code"] == "model_not_offered"
     r = await client.get("/v1/models/not a model", params={"kind": "chat"}, headers=mh)
     assert r.status_code == 404
 
     # the chat goes upstream under the typed id, and is priced as the dearest chat model
-    body = {"model": "deepseek-v4.1-flash", "messages": [{"role": "user", "content": "hi"}]}
+    body = {"model": "deepseek-v4-pro", "messages": [{"role": "user", "content": "hi"}]}
     r = await client.post("/v1/chat/completions", json=body, headers=mh)
     assert r.status_code == 200, r.text
-    assert up.state.requests[-1][2]["model"] == "deepseek-v4.1-flash"
-    assert r.json()["model"] == "deepseek-v4.1-flash"
+    assert up.state.requests[-1][2]["model"] == "deepseek-v4-pro"
+    assert r.json()["model"] == "deepseek-v4-pro"
     me = (await client.get("/v1/me", headers=mh)).json()
-    assert me["recent"][0]["model"] == "deepseek-v4.1-flash"
+    assert me["recent"][0]["model"] == "deepseek-v4-pro"
     assert me["recent"][0]["cost_cny"] == round((100 * 3.0 + 50 * 12.0) / 1_000_000, 4)
 
     # not for a guest, and never across kinds — a menu model or a typed one
@@ -1719,7 +1752,7 @@ async def test_members_may_name_any_model_of_the_right_kind():
     assert r.status_code == 404 and r.json()["error"]["code"] == "model_not_offered"
     r = await client.post("/v1/chat/completions", json={**body, "model": "qwen-image-3.0"}, headers=mh)
     assert r.status_code == 404 and "image model, not a chat" in r.json()["error"]["message"]
-    r = await client.post("/v1/images/generations", json={"model": "deepseek-v4.1-flash", "prompt": "a cat"}, headers=gh)
+    r = await client.post("/v1/images/generations", json={"model": "deepseek-v4-pro", "prompt": "a cat"}, headers=gh)
     assert r.status_code == 404
 
     # the permission is the operator's to switch off
@@ -1878,3 +1911,264 @@ async def test_session_keys_expire_on_their_own(stack):
     assert r.status_code == 401 and r.json()["error"]["code"] == "bad_key"
     sessions = (await client.get("/v1/me/sessions", headers=headers)).json()["sessions"]
     assert "nanoMuse Web" not in {s["device"] for s in sessions}
+
+
+# -- 0.17: lanes, reasoning, region ----------------------------------------------------------
+
+
+async def test_the_menu_says_which_lane_each_model_is_for(stack, monkeypatch):
+    """Contract C4: every chat model on the menu says what it is `for` — `chat`, `gui` or
+    both — and which lane it is the recommended pick in; the apps' pickers filter on it and
+    take the recommended one of each lane as the default. Picture and clip models are for
+    neither (their `kind` says what they do)."""
+    from nanomuse_cloud.config import DEFAULT_MODELS, ModelSpec, _models_from_env, menu_warnings
+
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender)
+    by_id = {m["id"]: m["nanomuse"] for m in data["models"]}
+    assert by_id["deepseek-v4.1-flash"]["for"] == ["chat"] and by_id["deepseek-v4.1-flash"]["recommended_for"] == ["chat"]
+    assert by_id["qwen3.8-27b"]["for"] == ["gui", "chat"] and by_id["qwen3.8-27b"]["recommended_for"] == ["gui"]
+    assert by_id["qwen3.8-flash"]["for"] == ["chat"] and by_id["qwen3.8-flash"]["recommended_for"] == []
+    assert by_id["qwen-image-3.0"]["for"] == [] and by_id["wan2.2-i2v-flash"]["for"] == []
+    assert by_id["deepseek-v4.1-flash"]["recommended"] is True and by_id["qwen3.8-27b"]["recommended"] is True
+    # the same from GET /v1/models, with the prices the brief fixed
+    listing = (await client.get("/v1/models", headers={"Authorization": f"Bearer {data['api_key']}"})).json()
+    ds = next(m for m in listing["data"] if m["id"] == "deepseek-v4.1-flash")
+    assert ds["name"] == "DeepSeek V4.1 Flash" and ds["architecture"]["input_modalities"] == ["text", "image"]
+    assert ds["nanomuse"]["price_cny"]["per_m_input"] == 2.0 and ds["nanomuse"]["price_cny"]["per_m_output"] == 8.0
+    assert ds["nanomuse"]["in_mult"] == 0.7 and ds["nanomuse"]["out_mult"] == 0.7
+    assert [m.id for m in DEFAULT_MODELS][:2] == ["deepseek-v4.1-flash", "qwen3.8-27b"]
+    assert menu_warnings(DEFAULT_MODELS) == []  # exactly one recommended per lane
+
+    # the lanes come from CLOUD_MODELS under the JSON name `for`
+    monkeypatch.setenv(
+        "CLOUD_MODELS",
+        json.dumps(
+            [
+                {"id": "a", "name": "A", "upstream": "a", "for": ["gui"], "recommended": True, "recommended_for": ["gui"]},
+                {"id": "b", "name": "B", "upstream": "b", "recommended": True},
+                {"id": "p", "name": "P", "upstream": "p", "kind": "image", "output_modalities": ["image"]},
+            ]
+        ),
+    )
+    menu = _models_from_env()
+    assert [m.lanes for m in menu] == [("gui",), ("chat",), ()]
+    assert [m.recommended_lanes for m in menu] == [("gui",), ("chat",), ()]
+    assert menu[0].to_public()["nanomuse"]["for"] == ["gui"] and menu[2].to_public()["nanomuse"]["for"] == []
+    assert menu_warnings(menu) == []
+    assert menu_warnings(menu[:1]) == ["0 chat models recommended for chat (none); the apps expect one"]
+    assert menu_warnings((menu[1], menu[1])) == ["2 chat models recommended for chat (b, b); the apps expect one"] + [
+        "0 chat models recommended for gui (none); the apps expect one"
+    ]
+    # a model recommended for both lanes without `recommended_for` counts in both
+    both = ModelSpec(id="c", name="C", upstream="c", for_=("chat", "gui"), recommended=True)
+    assert both.recommended_lanes == ("chat", "gui")
+    # what is refused: an unknown lane, a lane on a picture model, a recommendation without the flag or outside the lanes
+    for bad in (
+        dict(for_=("voice",)),
+        dict(kind="image", output_modalities=("image",), for_=("chat",)),
+        dict(recommended_for=("chat",)),
+        dict(for_=("gui",), recommended=True, recommended_for=("chat",)),
+    ):
+        with pytest.raises(ValueError):
+            ModelSpec(id="x", name="X", upstream="x", **bad)
+    # the admin page lists the lanes next to the prices
+    admin = (await client.get("/v1/admin/accounts", headers={"X-Admin-Token": "admin"})).json()["settings"]
+    assert admin["model_lanes"]["qwen3.8-27b"] == ["gui", "chat"] and admin["recommended_for"] == {
+        "deepseek-v4.1-flash": ["chat"],
+        "qwen3.8-27b": ["gui"],
+    }
+
+
+async def test_reasoning_passes_through_and_is_paid_for(stack):
+    """A thinking model's turn: `enable_thinking` and the `reasoning_content` the app sends
+    back in the history go upstream as they are, the reasoning in the reply (whole or as
+    stream deltas) comes back untouched, and the reasoning tokens are counted as completion
+    tokens whichever way the provider reports them."""
+    from nanomuse_cloud.service import usage_from_json
+
+    # the counting rule on its own: OpenAI's shape has them inside, DashScope's apart
+    assert usage_from_json(
+        {"usage": {"prompt_tokens": 10, "completion_tokens": 50, "completion_tokens_details": {"reasoning_tokens": 30}}}
+    ) == (
+        10,
+        50,
+    )
+    assert usage_from_json({"usage": {"prompt_tokens": 10, "completion_tokens": 6, "output_tokens_details": {"reasoning_tokens": 20}}}) == (
+        10,
+        26,
+    )
+    assert usage_from_json({"usage": {"prompt_tokens": 10, "completion_tokens": 6, "completion_tokens_details": {}}}) == (10, 6)
+    assert usage_from_json(
+        {"usage": {"prompt_tokens": 10, "completion_tokens": 0, "completion_tokens_details": {"reasoning_tokens": 7}}}
+    ) == (
+        10,
+        7,
+    )
+
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender)
+    auth = {"Authorization": f"Bearer {data['api_key']}"}
+    history = [
+        {"role": "user", "content": "1+1?"},
+        {"role": "assistant", "reasoning_content": "two ones", "content": "2"},
+        {"role": "user", "content": "and again"},
+    ]
+    body = {"model": "deepseek-v4.1-flash", "messages": history, "enable_thinking": True}
+    r = await client.post("/v1/chat/completions", json=body, headers=auth)
+    assert r.status_code == 200, r.text
+    sent = up.state.requests[-1][2]
+    assert sent["enable_thinking"] is True and sent["messages"] == history  # untouched, reasoning_content and all
+    reply = r.json()["choices"][0]["message"]
+    assert reply["reasoning_content"] == "先想一下" and reply["content"] == "hi"
+    me = (await client.get("/v1/me", headers=auth)).json()
+    assert me["recent"][0]["completion_tokens"] == 50  # OpenAI's shape: the 30 reasoning are inside the 50
+    assert me["recent"][0]["cost_cny"] == round((100 * 2.0 + 50 * 8.0) / 1_000_000, 4)
+
+    # streamed: the reasoning deltas pass as they are; the usage counts them (DashScope counts apart)
+    r = await client.post("/v1/chat/completions", json={**body, "stream": True}, headers=auth)
+    assert r.status_code == 200
+    frames = [json.loads(line[5:]) for line in r.text.splitlines() if line.startswith("data:") and "[DONE]" not in line]
+    deltas = [c["delta"] for f in frames for c in f.get("choices") or []]
+    assert [d.get("reasoning_content") for d in deltas[:2]] == ["先想", "一下"] and deltas[2:] == [
+        {"content": "你好"},
+        {"content": "，"},
+        {"content": "世界"},
+    ]
+    assert all(f["model"] == "deepseek-v4.1-flash" for f in frames)
+    me = (await client.get("/v1/me", headers=auth)).json()
+    assert me["recent"][0]["prompt_tokens"] == 40 and me["recent"][0]["completion_tokens"] == 26
+    # the default stands when the app says nothing: no reasoning asked, none returned
+    r = await client.post("/v1/chat/completions", json={"model": "deepseek-v4.1-flash", "messages": history}, headers=auth)
+    assert r.status_code == 200 and up.state.requests[-1][2]["enable_thinking"] is False
+    assert "reasoning_content" not in r.json()["choices"][0]["message"]
+
+
+async def test_a_chat_starts_while_anything_of_the_allowance_is_left():
+    """The reservation held while a chat runs (a typical turn's price) keeps requests
+    started together from overshooting the allowance; it must not refuse a single, normal
+    turn on an account with less than that left. The second turn started on top of the
+    first is what it refuses."""
+    from nanomuse_cloud.service import CHAT_RESERVE_COMPLETION_TOKENS, CHAT_RESERVE_PROMPT_TOKENS
+
+    app, client, sender, up, cloud = make_stack(allowance_cny=0.02)
+    data = await sign_up(client, sender)
+    auth = {"Authorization": f"Bearer {data['api_key']}"}
+    spec = cloud.model_for("qwen3.8-27b", "chat", None)
+    reserve = cloud.chat_reserve_uy(spec)
+    assert reserve == spec.chat_cost_uy(CHAT_RESERVE_PROMPT_TOKENS, CHAT_RESERVE_COMPLETION_TOKENS)
+    assert reserve > cloud.s.allowance_uy  # the hold is more than the whole allowance here
+    body = {"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+    r = await client.post("/v1/chat/completions", json=body, headers=auth)
+    assert r.status_code == 200, r.text  # the turn runs
+    # two at once: the first holds its reserve, the second finds nothing left beyond it
+    caller = cloud.authenticate(data["api_key"])
+    cloud.check_budget(caller, request_id="first", hold_uy=reserve)
+    with pytest.raises(CloudError) as refused:
+        cloud.check_budget(caller, request_id="second", hold_uy=reserve)
+    assert refused.value.code == "allowance_exhausted"
+    cloud.settle(caller, "first")
+    cloud.check_budget(caller, request_id="third", hold_uy=reserve)  # and again once the first is settled
+    cloud.settle(caller, "third")
+
+
+async def test_me_says_where_the_person_is_and_orders_the_ways_on_by_it(tmp_path):
+    """Contract C5: `/v1/me` carries `region` — `cn` for a mainland phone number or an
+    address placed in mainland China, `intl` for an address placed elsewhere (Hong Kong,
+    Macao and Taiwan count as elsewhere: Bailian does not sign them up), `unknown` when
+    neither is known — and the "ways on" when the allowance is out lead the mainland to
+    Bailian first, everyone else to OpenRouter first. The refusal says the same."""
+    from nanomuse_cloud.geo import Place
+    from nanomuse_cloud.service import REGIONS, region_of_place
+
+    assert REGIONS == ("cn", "intl", "unknown")
+    assert region_of_place(None) == "unknown" and region_of_place(Place()) == "unknown"
+    assert region_of_place(Place(country="本地网络", local=True)) == "unknown"
+    assert region_of_place(Place(country="中国", code="CN", province="浙江省", city="杭州市")) == "cn"
+    assert region_of_place(Place(country="中国", code="CN", province="香港")) == "intl"  # the older layout: no HK code
+    assert region_of_place(Place(country="中国", code="TW", province="台湾省")) == "intl"
+    assert region_of_place(Place(country="United States", code="US", province="California")) == "intl"
+
+    db = tmp_path / "ip2region_v4.xdb"
+    db.write_bytes(
+        tiny_xdb(
+            [
+                ("1.2.3.0", "1.2.3.255", "中国|浙江省|杭州市|阿里|CN"),
+                ("8.8.8.0", "8.8.8.255", "United States|California|0|Google LLC|US"),
+                ("1.2.9.0", "1.2.9.255", "中国|香港|0|HKT|HK"),
+            ]
+        )
+    )
+    app, client, sender, up, cloud = make_stack(
+        geoip_db=str(db), catalog_probe=False, allowance_cny=0.002, invite_url="https://nanomuse.cn/web/?invite="
+    )
+    assert app.state.geo.ready
+
+    def auth(data, ip):
+        return {"Authorization": f"Bearer {data['api_key']}", "X-Forwarded-For": ip}
+
+    # a mainland number is `cn` wherever it signs in from; an address decides for the rest
+    phone = await sign_up(client, sender, identifier="13800138000", device="pixel", headers={"X-Forwarded-For": "8.8.8.8"})
+    assert phone["region"] == "cn"  # the sign-in answer carries it too
+    assert (await client.get("/v1/me", headers=auth(phone, "8.8.8.8"))).json()["region"] == "cn"
+    us = await sign_up(client, sender, identifier="me@example.com", device="desk", headers={"X-Forwarded-For": "8.8.8.8"})
+    assert us["region"] == "intl"
+    hk = await sign_up(client, sender, identifier="hk@example.com", device="desk", headers={"X-Forwarded-For": "1.2.9.9"})
+    assert hk["region"] == "intl"
+    hz = await sign_up(client, sender, identifier="hz@example.com", device="desk", headers={"X-Forwarded-For": "1.2.3.4"})
+    assert hz["region"] == "cn"
+    nowhere = await sign_up(client, sender, identifier="who@example.com", device="desk", headers={"X-Forwarded-For": "9.9.9.9"})
+    assert nowhere["region"] == "unknown"
+    # a foreign number: not the mainland; the address says the rest
+    abroad = await sign_up(client, sender, identifier="+14155552671", device="desk", headers={"X-Forwarded-For": "8.8.8.8"})
+    assert abroad["region"] == "intl"
+    # the region follows the address the request comes from, for an account without a mainland number
+    assert (await client.get("/v1/me", headers=auth(us, "1.2.3.4"))).json()["region"] == "cn"
+    assert (await client.get("/v1/me", headers=auth(us, "10.0.0.1"))).json()["region"] == "unknown"
+
+    # the ways on, in order: the mainland to Bailian, the rest to OpenRouter, the invitation last
+    cn_ways = (await client.get("/v1/me", headers=auth(phone, "8.8.8.8"))).json()["spend"]["ways"]
+    assert [w["id"] for w in cn_ways] == ["bailian", "openrouter", "invite"]
+    assert cn_ways[0] == {"id": "bailian", "url": "https://nanomuse.cn/own-key", "mainland_only": True}
+    assert cn_ways[1] == {"id": "openrouter", "url": "https://openrouter.ai/keys", "mainland_only": False}
+    assert (
+        cn_ways[2]["id"] == "invite" and cn_ways[2]["url"].startswith("https://nanomuse.cn/web/?invite=") and cn_ways[2]["bonus_cny"] == 5
+    )
+    for who, ip in ((us, "8.8.8.8"), (nowhere, "9.9.9.9")):
+        ways = (await client.get("/v1/me", headers=auth(who, ip))).json()["spend"]["ways"]
+        assert [w["id"] for w in ways] == ["openrouter", "bailian", "invite"], who["region"]
+
+    # the refusal when the allowance is out says the way that fits the person
+    async def exhaust(data, ip):
+        hdr = auth(data, ip)
+        body = {"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}
+        for _ in range(3):
+            assert (await client.post("/v1/chat/completions", headers=hdr, json=body)).status_code == 200
+        r = await client.post("/v1/chat/completions", headers=hdr, json=body)
+        assert r.status_code == 429 and r.json()["error"]["code"] == "allowance_exhausted"
+        return r.json()["error"]
+
+    err = await exhaust(phone, "8.8.8.8")
+    assert err["region"] == "cn" and [w["id"] for w in err["ways"]] == ["bailian", "openrouter", "invite"]
+    assert "阿里云百炼" in err["message"] and "free tier for mainland China" in err["message"] and "OpenRouter" not in err["message"]
+    err = await exhaust(us, "8.8.8.8")
+    assert err["region"] == "intl" and [w["id"] for w in err["ways"]] == ["openrouter", "bailian", "invite"]
+    assert "OpenRouter is the easy way outside mainland China: one account, one key, pay as you go" in err["message"]
+    assert "Alibaba Cloud Bailian only signs up accounts from the mainland" in err["message"]
+    assert err["openrouter_url"] == "https://openrouter.ai/keys" and err["own_key_docs"] == "https://nanomuse.cn/own-key"
+    err = await exhaust(nowhere, "9.9.9.9")
+    assert err["region"] == "unknown" and "OpenRouter outside mainland China, Alibaba Cloud Bailian inside" in err["message"]
+    assert "invite a friend (+¥5 for each of you)" in err["message"] and "keep working" in err["message"]
+    # a picture refused up front says the same
+    r = await client.post("/v1/images/generations", headers=auth(us, "8.8.8.8"), json={"model": "qwen-image-3.0", "prompt": "a cat"})
+    assert r.status_code == 429 and r.json()["error"]["region"] == "intl"
+
+    # without a geo file: the mainland number is still `cn`, everyone else `unknown`
+    app2, client2, sender2, *_ = make_stack(catalog_probe=False)
+    assert not app2.state.geo.enabled
+    p2 = await sign_up(client2, sender2, identifier="13800138000", device="pixel", headers={"X-Forwarded-For": "8.8.8.8"})
+    e2 = await sign_up(client2, sender2, identifier="me@example.com", device="desk", headers={"X-Forwarded-For": "8.8.8.8"})
+    assert p2["region"] == "cn" and e2["region"] == "unknown"
+    # the public config names the OpenRouter page next to the Bailian one
+    cfg = (await client2.get("/v1/config")).json()
+    assert cfg["openrouter_url"] == "https://openrouter.ai/keys"

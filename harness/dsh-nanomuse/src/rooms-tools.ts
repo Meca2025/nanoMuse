@@ -188,10 +188,10 @@ export function apply(ctx: Context): void {
             const persona = rooms.persona
             if (persona) lines.push('Who you are, as the person wrote it in your IDENTITY.md and SOUL.md (follow it):', persona, '')
             if (goals.length) {
-              lines.push("The person's goals (their Goals room; update them with goals_room_update):")
-              for (const goal of goals.slice(0, 12)) lines.push(`- ${goal.id} · ${goal.title} (${goal.category}, ${goal.status})${goal.summary ? `: ${goal.summary}` : ''}`)
+              lines.push("The person's goals (their Goals room; update them with goals_room_update, or end a check with one fenced block tagged `nanomuse-goal-update` holding {\"goal_id\", \"progress\": 0-100, \"status\": \"on_track|attention|done\", \"note\"} — the app turns it into a card):")
+              for (const goal of goals.slice(0, 12)) lines.push(`- ${goal.id} · ${goal.title} (${goal.category}, ${goal.status}${goal.progress >= 0 ? `, ${goal.progress}%` : ''})${goal.summary ? `: ${goal.summary}` : ''}`)
             } else {
-              lines.push('The person has no goals in their Goals room yet; when they state a long-term aim, offer to track it there (they create it from the room; you then keep it updated with goals_room_update).')
+              lines.push('The person has no goals in their Goals room yet; when they state a long-term aim, offer to track it there. They create one from the room ("Create goal › category"), or you can, when they agree: ask what, why and by when, how often to check, then write EXACTLY ONE fenced block tagged `nanomuse-goal` with {"title", "why", "category", "check_every_hours" (0 = daily), "check_time": "HH:MM", "steps": [...], "first_check"} — the app makes the goal, its chat and its checks from it, and shows it as a card. Do not describe the block.')
             }
             if (rooms.feedInstructions) lines.push(`What the person wants in their Feed: ${rooms.feedInstructions.slice(0, 300)}`)
             const memory = rooms.memory

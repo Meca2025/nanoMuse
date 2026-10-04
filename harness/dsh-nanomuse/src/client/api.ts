@@ -20,6 +20,10 @@ export interface Model {
   id: string
   name: string
   kind: string
+  /** `chat`, `gui`, or both (relay 0.1.34+); absent means chat. */
+  for?: string[]
+  recommended?: boolean
+  inputModalities?: string[]
 }
 
 export interface CloudStatus {
@@ -28,6 +32,10 @@ export interface CloudStatus {
   baseURL: string
   account?: Account
   models: Model[]
+  /** The account chat model new chats use; empty when another provider is the default (relay 0.1.34 host). */
+  chatModel?: string
+  /** The model the hands see the screen with. */
+  handsModel?: string
   profile: LiveProfile
   hub: LiveHub
   error?: { code: string; message: string }

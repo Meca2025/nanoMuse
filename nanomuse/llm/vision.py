@@ -42,6 +42,26 @@ def says_no_images(message: str) -> bool:
     return bool(_NO_IMAGES_RE.search(message or ""))
 
 
+def model_takes_images(model: str) -> bool | None:
+    """What the model's id says about pictures, before the first request (contract C4).
+
+    DeepSeek's models are text-only unless the id says ``v4.1``, ``vision`` or ``ocr``
+    (``deepseek-v4.1-flash`` is sighted; ``deepseek-chat`` is not). Qwen's ``*-vl`` models
+    and the ``qwen3.8`` family take pictures. Anything else is ``None``: unknown, so
+    ``llm.vision = "auto"`` finds out from the endpoint's answer, as before.
+    """
+    name = (model or "").lower().rsplit("/", 1)[-1].strip()
+    if not name:
+        return None
+    if name.startswith("deepseek") or "/deepseek" in (model or "").lower():
+        return any(mark in name for mark in ("v4.1", "vision", "ocr"))
+    if name.startswith("qwen"):
+        if "-vl" in name or name.startswith("qwen3.8"):
+            return True
+        return None
+    return None
+
+
 @lru_cache(maxsize=64)
 def _encoded(path: str, mtime_ns: int, size: int) -> tuple[str, str] | None:
     """(media type, base64) for the image at ``path``, scaled down — cached by file state."""
@@ -161,6 +181,7 @@ def without_images(messages: list[Message]) -> list[Message]:
 
 
 __all__ = [
+    "model_takes_images",
     "IMAGE_SUFFIXES",
     "content_parts",
     "has_images",

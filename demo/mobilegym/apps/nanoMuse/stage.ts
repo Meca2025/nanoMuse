@@ -9,9 +9,13 @@ import { t } from './res/strings';
  * - The **capsule**: a dark pill at the top with the agent's face in a slowly turning three-hue
  *   ring, four activity bars, what is being done ("Step 3 · tap the search box"), and **Stop**.
  *   When the hands need the user it grows into a card — *Your turn* with **Continue** for a
- *   password field, *Waiting for your approval* with **Open** for a tap that needs the card in
- *   the chat, the agent's question with **Open** when the task ends asking — and the ring
- *   stands still. *Done* in green and *Stopped* in red for a moment, then it slides away.
+ *   password field, *Waiting for your approval* with **Allow once / Deny** for a tap that
+ *   needs a yes (decided right here, `POST /api/approvals/{id}` through the bridge; the
+ *   person is never sent back into the nanoMuse app for it), *Your turn — <reason>* or *You
+ *   have the phone* with **Done** while a hold is on (the agent handed the phone over, or the
+ *   person took it; `POST /api/holds/{id}/done`), the agent's question with **Open** when the
+ *   task ends asking — and the ring stands still. *Done* in green and *Stopped* in red for a
+ *   moment, then it slides away.
  * - The **stage**: a glow breathing along the screen's edges for as long as the run is on —
  *   blue while the hands work, amber while they wait — with one light running round the rim;
  *   a sweep across the screen for the moment of a screenshot; and, at the point the model
@@ -138,6 +142,9 @@ const CSS = `
 .muse-pill button.stop:hover, .muse-pill button.stop:active { background:rgba(255,90,80,.9); }
 .muse-pill button.go { background:var(--accent); }
 .muse-pill button.go:hover, .muse-pill button.go:active { background:#0b5ac9; }
+.muse-pill button.deny { background:rgba(155,59,59,.95); }
+.muse-pill button.deny:hover, .muse-pill button.deny:active { background:rgba(185,60,60,1); }
+.muse-pill button:disabled { opacity:.55; cursor:default; }
 .muse-pill.done button, .muse-pill.stopped button { display:none; }
 @keyframes muse-bar { 0%,100%{height:35%} 50%{height:100%} }
 @keyframes muse-swap { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
@@ -171,6 +178,8 @@ export class Stage {
   private stopBtn!: HTMLButtonElement;
   private continueBtn!: HTMLButtonElement;
   private openBtn!: HTMLButtonElement;
+  private allowBtn!: HTMLButtonElement;
+  private denyBtn!: HTMLButtonElement;
   private keys!: HTMLDivElement;
 
   private marks: Mark[] = [];
@@ -181,6 +190,12 @@ export class Stage {
   private lowTimer: ReturnType<typeof setTimeout> | null = null;
   private staleTimer: ReturnType<typeof setTimeout> | null = null;
   private continueWaiters: Array<() => void> = [];
+  /** The approval the card is for (`approval` event id); '' when none is on the capsule. */
+  private approvalId = '';
+  /** The hold the card is for (`hold` event id, contract C1); '' when none is on. */
+  private holdId = '';
+  private holdBy = '';
+  private holdReason = '';
 
   /** Whether a task is on (between `begin` and `end`/`stopped`). */
   active = false;
@@ -195,6 +210,11 @@ export class Stage {
   onOpen: (() => void) | null = null;
   /** The capsule came down by itself (nothing from the server for STALE_MS); `steps` says how far it got. */
   onGone: (() => void) | null = null;
+  /** Allow once / Deny on the approval card: the bridge answers the server. */
+  onAllow: ((approvalId: string) => void) | null = null;
+  onDeny: ((approvalId: string) => void) | null = null;
+  /** Done on a hold card: the bridge tells the server the person is finished. */
+  onDone: ((holdId: string) => void) | null = null;
 
   // ------------------------------------------------------------------ building
   private ensure(): HTMLDivElement {
@@ -224,7 +244,7 @@ export class Stage {
       '<span class="bars"><i></i><i></i><i></i><i></i></span>' +
       '<svg class="mark" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>' +
       '<span class="texts"><span class="title"></span><span class="detail"></span></span>' +
-      '<span class="actions"><button type="button" class="go continue"></button><button type="button" class="go open"></button><button type="button" class="stop"></button></span>' +
+      '<span class="actions"><button type="button" class="go continue"></button><button type="button" class="go allow"></button><button type="button" class="deny"></button><button type="button" class="go open"></button><button type="button" class="stop"></button></span>' +
       '</div>' +
       '<div class="muse-keys"></div>';
     root.appendChild(layer);
@@ -242,10 +262,12 @@ export class Stage {
     this.stopBtn = this.pill.querySelector('button.stop') as HTMLButtonElement;
     this.continueBtn = this.pill.querySelector('button.continue') as HTMLButtonElement;
     this.openBtn = this.pill.querySelector('button.open') as HTMLButtonElement;
+    this.allowBtn = this.pill.querySelector('button.allow') as HTMLButtonElement;
+    this.denyBtn = this.pill.querySelector('button.deny') as HTMLButtonElement;
     this.keys = layer.querySelector('.muse-keys') as HTMLDivElement;
     // the simulator's gesture layer listens on pointer events; the buttons are plain clicks
     const quiet = (e: Event) => e.stopPropagation();
-    for (const b of [this.stopBtn, this.continueBtn, this.openBtn]) {
+    for (const b of [this.stopBtn, this.continueBtn, this.openBtn, this.allowBtn, this.denyBtn]) {
       b.addEventListener('pointerdown', quiet);
       b.addEventListener('touchstart', quiet, { passive: true });
     }
@@ -255,9 +277,15 @@ export class Stage {
     });
     this.continueBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const waiters = this.continueWaiters;
-      this.continueWaiters = [];
-      for (const w of waiters) w();
+      this.personDone();
+    });
+    this.allowBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.decide(true);
+    });
+    this.denyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.decide(false);
     });
     this.openBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -307,14 +335,29 @@ export class Stage {
     this.setDetail(detail);
     const s = t();
     this.stopBtn.textContent = s.hands_stop;
-    this.continueBtn.textContent = s.hands_continue;
+    // the one button of the "your turn" card: Continue for the password field the person
+    // fills in here (the hands wait in this tab), Done for a hold the server is waiting on
+    this.continueBtn.textContent = this.continueWaiters.length ? s.hands_continue : s.hands_hold_done;
+    this.allowBtn.textContent = s.hands_allow_once;
+    this.denyBtn.textContent = s.hands_deny;
     this.openBtn.textContent = s.hands_open;
     this.stopBtn.style.display = state === 'working' || state === 'turn' || state === 'approval' ? '' : 'none';
     this.continueBtn.style.display = state === 'turn' ? '' : 'none';
-    this.openBtn.style.display = state === 'approval' || state === 'notice' ? '' : 'none';
+    this.allowBtn.style.display = state === 'approval' ? '' : 'none';
+    this.denyBtn.style.display = state === 'approval' ? '' : 'none';
+    this.allowBtn.disabled = false;
+    this.denyBtn.disabled = false;
+    // Open only for the question a finished task left: approvals are decided right here
+    this.openBtn.style.display = state === 'notice' ? '' : 'none';
     this.pill.classList.add('on');
     this.frame.classList.add('on');
     this.watch();
+  }
+
+  /** Back to "working" when a task is on, down when none is: after a card is answered. */
+  private settle(): void {
+    if (this.active) this.show('working', t().hands_step(this.steps), t().hands_looking);
+    else this.hide();
   }
 
   /** "Working" with nothing from the server for STALE_MS: the task is gone, and so is the capsule. */
@@ -342,6 +385,8 @@ export class Stage {
     this.pill.classList.remove('low');
     const s = t();
     this.show('working', s.hands_working(this.name), goal ? goal : s.hands_looking);
+    // the person has the phone (a hold from before the task): the card stays, the hands wait
+    if (this.holdId) this.hold(this.holdId, this.holdBy, this.holdReason);
   }
 
   /** The screen is being read: a sweep, and the words. */
@@ -396,10 +441,13 @@ export class Stage {
     }
   }
 
-  /** The hands need the user on the phone (a password field): resolves when Continue is tapped. */
+  /**
+   * The hands need the user on the phone (a password field): resolves when Continue is
+   * tapped — or when the server's hold for the same moment is closed from the chat (the
+   * operator mirrors this pause as a `hold` event; the card here is one card for both).
+   */
   takeOver(reason: string, timeoutMs = 120_000): Promise<boolean> {
     const s = t();
-    this.show('turn', s.hands_your_turn, reason || s.hands_your_turn_detail);
     return new Promise<boolean>((resolve) => {
       let done = false;
       const timer = setTimeout(() => finish(false), timeoutMs);
@@ -408,24 +456,93 @@ export class Stage {
         done = true;
         clearTimeout(timer);
         this.continueWaiters = this.continueWaiters.filter((w) => w !== onContinue);
-        if (this.active) this.show('working', s.hands_step(this.steps), s.hands_looking);
+        if (!this.holdId) this.settle();
         resolve(ok);
       };
       const onContinue = () => finish(true);
       this.continueWaiters.push(onContinue);
+      this.show('turn', s.hands_your_turn, reason || s.hands_your_turn_detail);
     });
   }
 
-  /** A tap waits for the approval card in the chat. */
-  approval(what: string): void {
-    const s = t();
-    this.show('approval', s.hands_approval_title, what ? s.hands_approval_detail(what) : s.hands_approval_detail_plain);
+  /** The person tapped Continue / Done: the local wait ends, and the server's hold with it. */
+  private personDone(): void {
+    const waiters = this.continueWaiters;
+    this.continueWaiters = [];
+    const hold = this.holdId;
+    this.holdId = '';
+    for (const w of waiters) w();
+    if (hold) {
+      this.onDone?.(hold);
+      // the server's `hold off` confirms it; until then the hands are taken as back at work
+      this.settle();
+    }
   }
 
-  /** The approval was answered: on with the work. */
-  resume(): void {
-    if (!this.active || this.state !== 'approval') return;
-    this.show('working', t().hands_step(this.steps), t().hands_looking);
+  /**
+   * A hold is on (contract C1): the agent handed the phone to the person (`by: "agent"` —
+   * *Your turn — <reason>*) or the person took it (`by: "user"` — *You have the phone*);
+   * **Done** ends it. A hold that arrives while the password card is already up is the same
+   * pause seen from the server: no second card, Continue answers both.
+   */
+  hold(id: string, by: string, reason: string): void {
+    this.holdId = id;
+    this.holdBy = by;
+    this.holdReason = reason;
+    if (this.continueWaiters.length && this.state === 'turn') return;
+    const s = t();
+    if (by === 'user') this.show('turn', s.hands_you_have_phone, reason || s.hands_you_have_phone_detail);
+    else this.show('turn', s.hands_your_turn, reason || s.hands_your_turn_done_detail);
+  }
+
+  /** The hold ended (Done here, in the chat, or the agent gave up waiting): on with the work. */
+  holdOff(id: string): void {
+    if (this.holdId !== id) return;
+    this.holdId = '';
+    // the chat's Done ends the password wait here too — the hands are not left waiting for
+    // a Continue nobody will tap
+    const waiters = this.continueWaiters;
+    this.continueWaiters = [];
+    for (const w of waiters) w();
+    if (this.state === 'turn') this.settle();
+  }
+
+  /**
+   * A tap waits for the person's yes: the card carries the request and **Allow once / Deny**,
+   * decided here (the bridge answers `POST /api/approvals/{id}`). Nothing sends the person
+   * back into the nanoMuse app.
+   */
+  approval(id: string, what: string, purpose = ''): void {
+    const s = t();
+    this.approvalId = id;
+    const detail = [what.trim(), purpose.trim() && s.hands_approval_for(purpose.trim())].filter(Boolean).join(' — ');
+    this.show('approval', s.hands_approval_title, detail || s.hands_approval_detail_plain);
+  }
+
+  /** Allow once / Deny tapped: the buttons go quiet until the server's word comes back. */
+  private decide(approved: boolean): void {
+    const id = this.approvalId;
+    if (!id) return;
+    this.allowBtn.disabled = true;
+    this.denyBtn.disabled = true;
+    this.setDetail(approved ? t().hands_approval_allowing : t().hands_approval_denying);
+    if (approved) this.onAllow?.(id);
+    else this.onDeny?.(id);
+  }
+
+  /** The decision did not reach the server: the card is back for another go. */
+  approvalFailed(id: string, what: string, purpose = ''): void {
+    if (this.approvalId !== id || this.state !== 'approval') return;
+    this.approval(id, what, purpose);
+    this.setDetail(t().hands_approval_retry);
+  }
+
+  /** The approval was answered (here or elsewhere): on with the work. */
+  resume(id = ''): void {
+    if (this.state !== 'approval') return;
+    if (id && this.approvalId && this.approvalId !== id) return;
+    this.approvalId = '';
+    this.settle();
   }
 
   /** The task ended asking something: the question stays, with Open. */
@@ -438,6 +555,8 @@ export class Stage {
   end(): void {
     if (!this.active) return;
     this.active = false;
+    this.approvalId = '';
+    this.holdId = '';
     if (!this.layer?.isConnected || !this.pill.classList.contains('on')) return;
     this.show('done', this.name, t().hands_done);
     this.hideAfter(1100);
@@ -447,6 +566,8 @@ export class Stage {
   stopped(): void {
     this.active = false;
     this.continueWaiters = [];
+    this.approvalId = '';
+    this.holdId = '';
     this.show('stopped', this.name, t().hands_stopped);
     this.hideAfter(1100);
   }
@@ -458,6 +579,8 @@ export class Stage {
   reset(): void {
     this.active = false;
     this.continueWaiters = [];
+    this.approvalId = '';
+    this.holdId = '';
     if (this.pillTimer) {
       clearTimeout(this.pillTimer);
       this.pillTimer = null;

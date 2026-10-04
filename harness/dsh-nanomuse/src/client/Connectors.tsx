@@ -115,6 +115,8 @@ interface Entry {
   connection?: ConnectionView
   /** The catalogue entry, for a service connected or not. */
   service?: CatalogueEntry
+  /** A custom server another device of the account connected: its URL, for Connect here. */
+  sharedUrl?: string
 }
 
 interface Step { text: string; command?: string }
@@ -223,16 +225,38 @@ export function makeConnectorsSection(t: Translate) {
       return { id: `conn:${c.id}`, mark, title: c.label, sub: connectionSub(c), about: service ? about(service) : t('cnCustomAbout', { host: hostOf(c.url) }), on: true, group: service?.category ?? 'misc', tools: c.tools, connection: c, ...(service ? { service } : {}) }
     })
     const connectedServices = new Set(view.connections.map((c) => c.service))
-    const services: Entry[] = CATALOGUE.filter((s) => !connectedServices.has(s.id)).map((s): Entry => ({
+    // what the account's other devices connected (C3): one row per service, the devices named; Connect signs in here
+    const elsewhere = new Map<string, { label: string; url: string; devices: string[]; service: CatalogueEntry | undefined }>()
+    for (const c of live.profile.connectors) {
+      if (!c.enabled || (c.device_id && c.device_id === live.hub.deviceId) || connectedServices.has(c.id)) continue
+      const row = elsewhere.get(c.id) ?? { label: c.label, url: c.url ?? '', devices: [], service: catalogueEntry(c.id) }
+      if (c.device && !row.devices.includes(c.device)) row.devices.push(c.device)
+      elsewhere.set(c.id, row)
+    }
+    const shared: Entry[] = [...elsewhere].map(([id, r]): Entry => ({
+      id: `shared:${id}`,
+      mark: r.service ? h(Mark, { icon: r.service.icon, color: r.service.color, name: r.service.name }) : h(Mark, { color: '#64748b', name: r.label }),
+      title: r.service?.name ?? r.label,
+      sub: t('cnElsewhereSub', { device: r.devices.join(', ') || t('cnAnotherDevice') }),
+      about: r.service ? about(r.service) : t('cnCustomAbout', { host: hostOf(r.url) }),
+      on: false,
+      group: r.service?.category ?? 'misc',
+      tools: [],
+      ...(r.service ? { connect: { service: r.service }, service: r.service } : {}),
+      ...(r.url ? { sharedUrl: r.url } : {}),
+    }))
+    const sharedIds = new Set(elsewhere.keys())
+    const services: Entry[] = CATALOGUE.filter((s) => !connectedServices.has(s.id) && !sharedIds.has(s.id)).map((s): Entry => ({
       id: `svc:${s.id}`, mark: h(Mark, { icon: s.icon, color: s.color, name: s.name }), title: s.name, sub: about(s), about: about(s), on: false, group: s.category, tools: [], connect: { service: s }, service: s,
     }))
-    const entries = [...builtin, ...connections, ...services]
+    const entries = [...builtin, ...connections, ...shared, ...services]
 
     const q = query.trim().toLowerCase()
     const matches = (e: Entry) => (!q || `${e.title} ${e.sub} ${e.service?.id ?? ''} ${e.service?.url ?? ''}`.toLowerCase().includes(q)) && (group === 'all' || e.group === group)
     const shown = entries.filter(matches)
     const connected = shown.filter((e) => e.on)
-    const available = shown.filter((e) => !e.on)
+    const onOtherDevices = shown.filter((e) => e.id.startsWith('shared:'))
+    const available = shown.filter((e) => !e.on && !e.id.startsWith('shared:'))
     const groups = GROUP_ORDER.filter((g) => available.some((e) => e.group === g))
     const current = open ? entries.find((e) => e.id === open) : undefined
 
@@ -263,6 +287,8 @@ export function makeConnectorsSection(t: Translate) {
     }
     // `fresh`: start over with a new client registration at the service (its sign-in page said it no longer knows ours)
     const beginConnect = (entry: Entry, fresh = false) => {
+      // a custom server another device connected: the same URL, a credential entered here
+      if (!entry.connect && entry.sharedUrl) { setPending({ kind: 'custom', url: entry.sharedUrl, label: entry.title, error: '', busy: false }); return }
       if (!entry.connect) return
       if ('section' in entry.connect) { settingsBus.openSection?.(entry.connect.section); return }
       if ('steps' in entry.connect) { setPending({ kind: 'steps', entry }); return }
@@ -360,6 +386,9 @@ export function makeConnectorsSection(t: Translate) {
       connected.length ? h(Fragment, null,
         h('h2', null, t('cnConnected')),
         h('div', { className: 'nm-card' }, connected.map((entry) => h(ConnectorRow, { key: entry.id, t, entry, onOpen: () => setOpen(entry.id) })))) : null,
+      onOtherDevices.length ? h(Fragment, null,
+        h('h2', null, t('cnElsewhere')),
+        h('div', { className: 'nm-card' }, onOtherDevices.map((entry) => h(ConnectorRow, { key: entry.id, t, entry, onOpen: () => setOpen(entry.id), onConnect: () => beginConnect(entry) })))) : null,
       groups.map((g) => h(Fragment, { key: g },
         h('h2', null, groups.length === 1 && group !== 'all' ? t('cnAvailable') : groupLabel(t, g)),
         h('div', { className: 'nm-card' }, available.filter((e) => e.group === g).map((entry) => h(ConnectorRow, { key: entry.id, t, entry, onOpen: () => setOpen(entry.id), onConnect: () => beginConnect(entry) }))))),
@@ -405,7 +434,7 @@ function ConnectorRow({ t, entry, onOpen, onConnect }: { t: Translate; entry: En
         h('span', { className: `nm-row-sub nm-wrap${state && state !== 'ok' ? ' nm-cn-sub-warn' : ''}` }, entry.sub))),
     entry.on
       ? h('span', { className: 'nm-row-chevron', 'aria-hidden': true }, h(IconChevronRight, { size: 16 }))
-      : entry.connect
+      : entry.connect || entry.sharedUrl
         ? h('button', { type: 'button', className: 'nm-cn-connect', onClick: onConnect }, t('cnConnect'))
         : null)
 }

@@ -20,13 +20,15 @@ import sqlite3
 import time
 from contextlib import closing
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from typing import Any
 
 from . import __version__
 from .client import client_version, platform_of
-from .config import ModelSpec, Settings
+from .config import ModelSpec, Settings, menu_warnings
 from .crypto import IdentifierCrypto
 from .db import Database, now
+from .geo import Place
 from .identifiers import BadIdentifier, Identifier, parse
 from .senders import CodeSender, SendError, make_sender
 
@@ -37,6 +39,29 @@ KEY_PREFIX = "nm_"
 # What one request kind is called in the apps' usage breakdown; the ledger
 # keeps the short names.
 USAGE_KINDS = ("chat", "image", "video", "realtime")
+
+# Where the person is, as far as the relay can tell (0.17), for the "ways on" when the
+# allowance is out: Alibaba Cloud Bailian only signs up accounts from mainland China, so
+# the mainland is pointed there first and everyone else to OpenRouter first. `cn`: the
+# account's identifier is a mainland phone number, or the request's address is placed in
+# mainland China by ip2region; `intl`: the address is placed anywhere else (Hong Kong,
+# Macau and Taiwan count as elsewhere — Bailian does not take them either); `unknown`:
+# neither (an e-mail account on a local or unplaced address). The apps add their own
+# rule on top — a zh-Hans interface counts as the mainland.
+REGIONS = ("cn", "intl", "unknown")
+_NOT_MAINLAND = ("香港", "澳门", "台湾", "Hong Kong", "Macao", "Macau", "Taiwan")
+
+
+def region_of_place(place: Place | None) -> str:
+    """`cn`, `intl` or `unknown` for where an address was placed (geo.py)."""
+    if place is None or place.local or not place.country:
+        return "unknown"
+    if place.code in ("HK", "MO", "TW"):
+        return "intl"
+    if place.code == "CN" or place.country in ("中国", "China"):
+        where = f"{place.province} {place.city}"
+        return "intl" if any(w in where for w in _NOT_MAINLAND) else "cn"
+    return "intl"
 
 
 def hash_password(password: str) -> str:
@@ -323,6 +348,8 @@ class Cloud:
             log.warning("CLOUD_SECRET is not set: development mode, identifiers hashed with a fixed key")
         if settings.unlimited:
             log.warning("SIGNUP_TOKENS=0: no token ceiling, usage is metered only")
+        for line in menu_warnings(settings.models):
+            log.warning("CLOUD_MODELS: %s", line)
         # The members' identifiers, hashed once so a request can be matched
         # against the list without ever seeing the plaintext.
         self.member_hashes: frozenset[str] = frozenset(i.hash(settings.hmac_key) for i in self._listed_identifiers())
@@ -540,6 +567,7 @@ class Cloud:
             "usd_cny": self.s.usd_cny,
             "invite_url": self.s.invite_url,
             "own_key_docs": self.s.own_key_docs,
+            "openrouter_url": self.s.openrouter_url,
             "privacy_url": self.s.privacy_url,
             "repo_url": self.s.repo_url,
             "improve_default": self.s.improve_default,
@@ -956,11 +984,55 @@ class Cloud:
             "warn": bool(limited and grant > 0 and spent_uy * 5 >= grant * 4),
         }
 
-    def _exhausted(self, caller: Caller, a: dict) -> CloudError:
+    # -- where the person is, and the ways on when the allowance is out (0.17) ----------------
+
+    def mainland_phone(self, caller: Caller) -> bool:
+        """Whether the account was opened with a mainland China phone number."""
+        if caller.channel != "phone":
+            return False
+        row = self.db.account(caller.account_id)
+        value = self.crypto.decrypt(caller.account_id, (row["identifier_enc"] if row else "") or "")
+        if value:
+            return value.startswith("+86")
+        # an account from before the number was kept: the hint of a mainland number has no "+"
+        return not caller.hint.startswith("+")
+
+    def region(self, caller: Caller, place: Place | None = None) -> str:
+        """`cn` for a mainland phone account or a mainland address, `intl` for an address
+        placed elsewhere, `unknown` otherwise (REGIONS)."""
+        if self.mainland_phone(caller):
+            return "cn"
+        return region_of_place(place)
+
+    def ways_on(self, caller: Caller, region: str) -> list[dict]:
+        """Where to go when the allowance is out, in the order the apps should show them:
+        the mainland to Bailian first, everyone else to OpenRouter first (Bailian only signs
+        up mainland accounts), the invitation last. Each has an `id` the apps have copy for,
+        a `url`, and the figures that belong to it."""
+        bailian = {"id": "bailian", "url": self.s.own_key_docs, "mainland_only": True}
+        openrouter = {"id": "openrouter", "url": self.s.openrouter_url, "mainland_only": False}
+        invite = {
+            "id": "invite",
+            "url": (self.s.invite_url + self.invite_code_for(caller)) if self.s.invite_url else "",
+            "bonus_cny": self.s.invite_bonus_cny,
+        }
+        keys = [bailian, openrouter] if region == "cn" else [openrouter, bailian]
+        return [*keys, invite]
+
+    def _exhausted(self, caller: Caller, a: dict, region: str = "unknown") -> CloudError:
+        grant = f"¥{self.s.uy_to_cny(a['grant_uy']):g}"
+        bonus = f"+¥{self.s.invite_bonus_cny:g} for each of you"
+        if region == "cn":
+            key = "add your own model key (Alibaba Cloud Bailian, 阿里云百炼, has a free tier for mainland China accounts)"
+        elif region == "intl":
+            key = (
+                "add your own model key — OpenRouter is the easy way outside mainland China: one account, one key, pay as you go "
+                "(Alibaba Cloud Bailian only signs up accounts from the mainland)"
+            )
+        else:
+            key = "add your own model key (OpenRouter outside mainland China, Alibaba Cloud Bailian inside)"
         message = (
-            f"Your free allowance (¥{self.s.uy_to_cny(a['grant_uy']):g}) is used up. "
-            f"Two ways on: invite a friend (+¥{self.s.invite_bonus_cny:g} for each of you); "
-            "add your own model key (Alibaba Cloud Bailian has a free tier). "
+            f"Your free allowance ({grant}) is used up. Two ways on: {key}, or invite a friend ({bonus}). "
             "Your sign-in and your devices keep working either way."
         )
         return CloudError(
@@ -970,6 +1042,8 @@ class Cloud:
             extra={
                 "left": self.s.uy_to_cny(a["left_uy"] or 0),
                 "grant": self.s.uy_to_cny(a["grant_uy"]),
+                "region": region,
+                "ways": self.ways_on(caller, region),
                 "invite_url": (self.s.invite_url + self.invite_code_for(caller)) if self.s.invite_url else "",
                 "invite_bonus_cny": self.s.invite_bonus_cny,
                 "invitee_bonus_cny": self.s.invite_bonus_cny,
@@ -977,10 +1051,11 @@ class Cloud:
                 "contribute_bonus_available": False,
                 "contribute_bonus_cny": 0,
                 "own_key_docs": self.s.own_key_docs,
+                "openrouter_url": self.s.openrouter_url,
             },
         )
 
-    def me(self, caller: Caller) -> dict:
+    def me(self, caller: Caller, place: Place | None = None) -> dict:
         t = now()
         day_start = self.s.day_start(t)
         spent_today_uy = self.db.spent_since(caller.account_id, day_start)
@@ -988,7 +1063,11 @@ class Cloud:
         a = self.allowance(caller, spent_uy)
         grant_cny = self.s.uy_to_cny(a["grant_uy"])
         left_cny = None if a["left_uy"] is None else self.s.uy_to_cny(a["left_uy"])
+        region = self.region(caller, place)
         return {
+            # 0.17: where the person seems to be — the apps order the "ways on" by it
+            # (REGIONS: cn | intl | unknown) when the allowance runs low or out
+            "region": region,
             "account": {
                 # an opaque id (not the identifier): what nanoMuse Web keys a person's kept
                 # Muse to, so a sign-in from another browser lands in the same one
@@ -1039,6 +1118,10 @@ class Cloud:
                 "contribute_bonus_cny": 0,
                 "contribute_bonus_available": False,
                 "own_key_docs": self.s.own_key_docs,
+                "openrouter_url": self.s.openrouter_url,
+                # 0.17: the ways on, in the order for this person (region above) — what the
+                # 80 % heads-up and the "used up" card list
+                "ways": self.ways_on(caller, region),
                 # 0.4 names, one more version: apps from before 0.5 draw a "today / cap" bar;
                 # with the pool in `daily_cap` and the total in `today` that bar is the right
                 # one, and with no `resets_at` they print no midnight.
@@ -1115,7 +1198,13 @@ class Cloud:
         }
 
     def check_budget(
-        self, caller: Caller, minimum: int = 1, cost_uy: int = 0, request_id: str | None = None, hold_uy: int | None = None
+        self,
+        caller: Caller,
+        minimum: int = 1,
+        cost_uy: int = 0,
+        request_id: str | None = None,
+        hold_uy: int | None = None,
+        place: Place | None = None,
     ) -> None:
         """Each limit is off when its setting is 0; the per-minute one guards the
         operator's bill against a runaway loop even on an unlimited relay.
@@ -1125,9 +1214,10 @@ class Cloud:
         as one of the account's in-flight requests (at most MAX_IN_FLIGHT) and
         `hold_uy` (its price, or a chat's typical turn) is held against the
         allowance — so requests started together cannot each pass this check and
-        together overshoot it."""
+        together overshoot it. `place` is where the request came from (geo.py), for
+        the refusal's "ways on" when the allowance is out."""
         try:
-            self._check_budget(caller, minimum, cost_uy)
+            self._check_budget(caller, minimum, cost_uy, place)
         except CloudError as e:
             if e.code in ("out_of_tokens", "daily_cap", "allowance_exhausted", "too_many_in_flight"):
                 self.db.add_event(caller.account_id, "budget.refused", e.code)
@@ -1139,7 +1229,7 @@ class Cloud:
         """The request is over (charged, failed or dropped): its reservation goes."""
         self.in_flight.settle(caller.account_id, request_id)
 
-    def _check_budget(self, caller: Caller, minimum: int, cost_uy: int) -> None:
+    def _check_budget(self, caller: Caller, minimum: int, cost_uy: int, place: Place | None = None) -> None:
         if not self.s.unlimited and caller.remaining < minimum:
             raise CloudError(
                 402,
@@ -1167,7 +1257,7 @@ class Cloud:
             spent, grant = a["spent_uy"], a["grant_uy"]
             held = self.in_flight.reserved(caller.account_id) + self.db.pending_video_cost(caller.account_id)
             if spent + held >= grant or (cost_uy > 0 and spent + held + cost_uy > grant):
-                raise self._exhausted(caller, a)
+                raise self._exhausted(caller, a, self.region(caller, place))
 
     def chat_reserve_uy(self, model: ModelSpec) -> int:
         """What a chat on `model` is held at while it runs."""
@@ -1215,6 +1305,13 @@ class Cloud:
     # one still, and the five together, as stored bytes (512 px WebP stills run 20–60 KB)
     PROFILE_STILL_BYTES = 200 * 1024
     PROFILE_FACE_BYTES = 800 * 1024
+    # 0.17: the connectors each device holds — which service it connected and how, so another
+    # device can say "connected on your Mac — sign in here to use it here". The credential
+    # never leaves the device: an entry carrying a key named like one is refused outright.
+    CONNECTOR_AUTHS = ("oauth", "key", "open")
+    CONNECTORS_MAX = 64
+    _CONNECTOR_SECRET_KEY = re.compile(r"token|secret|key|authorization|password", re.IGNORECASE)
+    _CONNECTOR_LIMITS = {"id": 64, "label": 80, "url": 256, "device": 80, "device_id": 80, "at": 40}
 
     def profile(self, caller: Caller, with_face: bool = True) -> dict:
         """What the account's devices wear: ``rev`` 0 and empty fields until one of them writes."""
@@ -1231,6 +1328,7 @@ class Cloud:
                 "style": "",
                 "description": "",
                 "face": None,
+                "connectors": [],
             }
         body = json.loads(row["body"] or "{}")
         out = {
@@ -1247,10 +1345,99 @@ class Cloud:
             # the hash of the idle still: a device that already wears these pictures keeps
             # its own copy (and the clips it made) instead of downloading them again
             "face_id": self._face_id(row["face"]),
+            # every device's connectors together (0.17); the credentials stay on each device
+            "connectors": self._load_connectors(row["connectors"]),
         }
         if with_face:
             out["face"] = json.loads(row["face"]) if row["face"] else None
         return out
+
+    @staticmethod
+    def _load_connectors(text: str | None) -> list[dict]:
+        try:
+            value = json.loads(text) if text else []
+        except ValueError:
+            return []
+        return [c for c in value if isinstance(c, dict)] if isinstance(value, list) else []
+
+    def _check_connector(self, raw: object, writer: str, at: str) -> dict:
+        """One entry as a device sends it, checked and trimmed to the shape every client
+        reads (contract C3). 400 `no_secrets_in_profile` the moment a key is named like a
+        credential — the relay will not hold one even by accident."""
+        if not isinstance(raw, dict):
+            raise CloudError(400, "bad_request", "connectors is a list of objects")
+        self._refuse_secrets(raw)
+        out: dict = {}
+        for field_name, cap in self._CONNECTOR_LIMITS.items():
+            value = raw.get(field_name)
+            if value is None:
+                value = ""
+            if not isinstance(value, str):
+                raise CloudError(400, "bad_request", f"connectors[].{field_name} is a string")
+            value = value.strip()
+            if len(value) > cap:
+                raise CloudError(400, "bad_request", f"connectors[].{field_name} is at most {cap} characters")
+            out[field_name] = value
+        if not out["id"]:
+            raise CloudError(400, "bad_request", "connectors[].id is required")
+        if not out["label"]:
+            out["label"] = out["id"]
+        if out["url"] and not re.match(r"^[a-z][a-z0-9+.-]*:", out["url"], re.IGNORECASE):
+            raise CloudError(400, "bad_request", "connectors[].url is a URL (scheme:...)")
+        auth = str(raw.get("auth") or "").strip().lower()
+        if auth not in self.CONNECTOR_AUTHS:
+            raise CloudError(400, "bad_request", "connectors[].auth is oauth, key or open")
+        out["auth"] = auth
+        enabled = raw.get("enabled", True)
+        if not isinstance(enabled, bool):
+            raise CloudError(400, "bad_request", "connectors[].enabled is true or false")
+        out["enabled"] = enabled
+        # the writer's device: an entry without one is the writer's; one naming another
+        # device is refused — a device publishes what *it* holds, never what another does
+        if not out["device_id"]:
+            out["device_id"] = writer
+        elif out["device_id"] != writer:
+            raise CloudError(400, "bad_request", "connectors[].device_id names another device; a device writes only its own")
+        if not out["device"]:
+            out["device"] = writer
+        out["at"] = self._check_iso(out["at"]) or at
+        return out
+
+    def _refuse_secrets(self, obj: object) -> None:
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if self._CONNECTOR_SECRET_KEY.search(str(k)):
+                    raise CloudError(400, "no_secrets_in_profile", f"connectors carry no credentials; drop {str(k)[:40]!r}")
+                self._refuse_secrets(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                self._refuse_secrets(v)
+
+    @staticmethod
+    def _check_iso(value: str) -> str:
+        """An ISO-8601 moment as the device wrote it, or "" when it is not one."""
+        if not value:
+            return ""
+        try:
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            raise CloudError(400, "bad_request", "connectors[].at is an ISO-8601 time") from None
+        return value
+
+    def merge_connectors(self, stored: list[dict], writer: str, mine: list[dict]) -> list[dict]:
+        """The other devices' entries stay as they were; the writer's are replaced by what it
+        sent (so an entry it no longer holds goes). Within the writer's list the last entry
+        with an id wins. At most CONNECTORS_MAX in all."""
+        others = [c for c in stored if str(c.get("device_id") or "") != writer]
+        by_id: dict[str, dict] = {}
+        for c in mine:
+            by_id[c["id"]] = c
+        merged = others + list(by_id.values())
+        if len(merged) > self.CONNECTORS_MAX:
+            raise CloudError(
+                400, "too_many_connectors", f"At most {self.CONNECTORS_MAX} connectors on an account; this write would make {len(merged)}"
+            )
+        return merged
 
     @staticmethod
     def _face_id(face_json: str | None) -> str:
@@ -1263,9 +1450,33 @@ class Cloud:
             return ""
 
     def put_profile(self, caller: Caller, device: str, data: dict) -> dict:
-        """Last writer wins. Only the look is kept — never a key, a message or a setting that
-        could reach the network. ``face`` absent keeps the stored pictures, null clears them,
-        a {mood: base64 WebP} map replaces them (``avatar`` "face" needs one or the other)."""
+        """Last writer wins for the look. Only the look is kept — never a key, a message or a
+        setting that could reach the network. ``face`` absent keeps the stored pictures, null
+        clears them, a {mood: base64 WebP} map replaces them (``avatar`` "face" needs one or
+        the other). ``connectors`` (0.17) is merged by device: the writer's entries are
+        replaced by what it sent, the other devices' stay. A write that carries only
+        ``connectors`` leaves the look as it is."""
+        device = device[:80]
+        row = self.db.profile(caller.account_id)
+        connectors: str | None = None
+        if "connectors" in data:
+            raw = data["connectors"]
+            if raw is None:
+                raw = []
+            if not isinstance(raw, list):
+                raise CloudError(400, "bad_request", "connectors is a list")
+            if not device:
+                raise CloudError(400, "bad_request", "connectors need the writing device's id in `device`")
+            stamp = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+            mine = [self._check_connector(c, device, stamp) for c in raw]
+            stored = self._load_connectors(row["connectors"]) if row is not None else []
+            connectors = json.dumps(self.merge_connectors(stored, device, mine), ensure_ascii=False)
+        look_keys = ("name", "avatar", "emoji", "color", "style", "description", "face")
+        if connectors is not None and not any(k in data for k in look_keys):
+            # connectors alone: the look stays whatever it was (possibly still empty)
+            rev = self.db.put_profile(caller.account_id, device, None, None, connectors)
+            self.note(caller.account_id, "profile.connectors", str(len(json.loads(connectors))))
+            return {"rev": rev, "device": device}
         name = str(data.get("name") or "").strip()
         avatar = str(data.get("avatar") or "").strip()
         emoji = str(data.get("emoji") or "").strip()
@@ -1287,16 +1498,15 @@ class Cloud:
             face = ""
         else:
             face = self._check_face(data["face"])
-        row = self.db.profile(caller.account_id)
         if avatar == "face" and not (face or (face is None and row is not None and row["face"])):
             raise CloudError(400, "bad_request", "a drawn face needs its pictures")
         body = json.dumps(
             {"name": name, "avatar": avatar, "emoji": emoji, "color": color, "style": style, "description": description},
             ensure_ascii=False,
         )
-        rev = self.db.put_profile(caller.account_id, device[:80], body, face)
+        rev = self.db.put_profile(caller.account_id, device, body, face, connectors)
         self.note(caller.account_id, "profile.put", avatar)
-        return {"rev": rev, "device": device[:80]}
+        return {"rev": rev, "device": device}
 
     def _check_face(self, face: object) -> str:
         if not isinstance(face, dict) or not face:
@@ -1991,6 +2201,7 @@ class Cloud:
             "day_offset_h": self.s.day_offset_h,
             "invite_url": self.s.invite_url,
             "own_key_docs": self.s.own_key_docs,
+            "openrouter_url": self.s.openrouter_url,
             "privacy_url": self.s.privacy_url,
             "contributors": self.db.contributors(),
             "allowed_identifiers": [s.strip() for s in self.s.allowed_identifiers.split(",") if s.strip()],
@@ -1998,6 +2209,9 @@ class Cloud:
             "password_min_len": self.s.password_min_len,
             "models": [m.id for m in self.s.models],
             "model_kinds": {m.id: m.kind for m in self.s.models},
+            # 0.17: what each chat model is for (chat, gui) and where it is the recommended one
+            "model_lanes": {m.id: list(m.lanes) for m in self.s.models},
+            "recommended_for": {m.id: list(m.recommended_lanes) for m in self.s.models if m.recommended_lanes},
             "prices": {m.id: m.to_public()["nanomuse"]["price_cny"] for m in self.s.models},
         }
 
@@ -2045,13 +2259,27 @@ def prompt_chars(messages: list) -> int:
 
 
 def usage_from_json(obj: dict) -> tuple[int, int] | None:
+    """The prompt and completion tokens a reply says it used — reasoning counted as
+    completion. OpenAI's shape has the reasoning inside `completion_tokens` with the
+    breakdown under `completion_tokens_details.reasoning_tokens` (DashScope's native name is
+    `output_tokens_details`); a provider that counts the reasoning *apart* reports more
+    reasoning than completion, and then the two are added, so a thinking model's turn is
+    never billed for its answer alone."""
     u = obj.get("usage") if isinstance(obj, dict) else None
     if not isinstance(u, dict):
         return None
     try:
-        return int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0)
+        prompt, completion = int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0)
+        reasoning = 0
+        for key in ("completion_tokens_details", "output_tokens_details"):
+            details = u.get(key)
+            if isinstance(details, dict) and details.get("reasoning_tokens") is not None:
+                reasoning = max(reasoning, int(details.get("reasoning_tokens") or 0))
     except (TypeError, ValueError):
         return None
+    if reasoning > completion:
+        completion += reasoning
+    return prompt, completion
 
 
 def dumps(obj) -> str:

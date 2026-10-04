@@ -43,17 +43,17 @@ const zhCN: Record<string, string> = {
   "Every tool it uses becomes a chip in the chat. Off, the chat keeps to the conversation and the line under the name says what it is on. This device only.":
     "每用一个工具就在对话里多一个小标签。关闭时对话只保留对话本身，名字下方的一行字说明它正在做什么。仅本设备。",
   "On it: {request}": "正在处理：{request}",
-  "Your support is what keeps us going": "您的支持，是我们做下去的最大动力",
-  "Welcome aboard. nanoMuse is free, open source and non-profit — a personal agent that belongs to everyone who runs it. If you believe in that, a star on GitHub is the biggest support you can give: it is how the next person finds their way here.":
-    "欢迎加入。nanoMuse 免费、开源、非营利，想做的是一个属于每个人的个人智能体。如果您认同这件事，GitHub 上的一颗 Star 就是对我们最大的支持——它让下一个人也能找到这里。",
-  "First task done. If nanoMuse helped, a star on GitHub would mean a lot to the people building it — your support is what keeps us going.":
-    "第一个任务完成了。如果 nanoMuse 帮上了忙，欢迎到 GitHub 点亮一颗 Star——您的支持，是我们做下去的最大动力。",
-  "Ten tasks together already. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try — and tells us to keep going.":
-    "已经一起完成十个任务了。如果 nanoMuse 已经成了您日常的一部分，一颗 Star 会让更多人愿意试一试——也会让我们更有劲儿做下去。",
-  "A new face, drawn just for you. If you like what nanoMuse is becoming, a star on GitHub helps more people meet it — your support is what keeps us going.":
-    "一张为您专门画的新面孔。如果您喜欢 nanoMuse 正在成为的样子，欢迎到 GitHub 点亮一颗 Star，让更多人遇见它——您的支持，是我们做下去的最大动力。",
-  "The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub is what keeps the project going for everyone.":
-    "免费额度用完了，感谢您一路用到这里。如果 nanoMuse 值得，欢迎到 GitHub 点亮一颗 Star——您的支持，是这个项目为所有人做下去的最大动力。",
+  "A star on GitHub helps": "GitHub 上的一颗 Star 帮得上忙",
+  "Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.":
+    "欢迎。nanoMuse 免费、开源、非营利，做的是一个属于每个人的个人智能体。如果你认同，GitHub 上的一颗 Star 能让下一个人也找到这里。",
+  "First task done. If nanoMuse helped, a star on GitHub tells the people building it that it did.":
+    "第一个任务完成了。如果 nanoMuse 帮上了忙，到 GitHub 点一颗 Star，做它的人就知道了。",
+  "Ten tasks together. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try.":
+    "已经一起完成十个任务了。如果 nanoMuse 成了你日常的一部分，一颗 Star 会让更多人愿意试一试。",
+  "A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.":
+    "一张为你画的新面孔。如果你喜欢 nanoMuse 现在的样子，到 GitHub 点一颗 Star，更多人就能遇见它。",
+  "The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.":
+    "免费额度用完了，谢谢你一路用到这里。如果 nanoMuse 值得，到 GitHub 点一颗 Star，下一个人也能找到它。",
   "Load earlier messages": "加载更早的消息",
   "New side chat": "新建旁聊",
   "New side chat, e.g. “Trip to Kyoto”": "新建旁聊，例如“京都之旅”",
@@ -141,9 +141,28 @@ const zhCN: Record<string, string> = {
   "Look again": "重新查看",
   "1 frame": "1 帧",
   "{n} frames": "{n} 帧",
-  "You are driving. Sign in or fix what needs a person, then": "现在由你操作。登录或处理需要人工的部分，然后",
-  "— the agent continues from the page as you left it. Passwords you type here go to the website, never to the model.":
-    "——助手会从你离开时的页面继续。你在这里输入的密码只发给网站，绝不会给模型。",
+  "Scroll up": "向上滚动",
+  "Scroll down": "向下滚动",
+  "You have the page. Press Done when you are finished.": "页面现在由你操作。完成后按「完成」。",
+  "{name} waits meanwhile, then looks at the page as you left it and carries on. Passwords you type here go to the website, never to the model.":
+    "{name} 会先等着，然后从你离开时的页面接着做。你在这里输入的密码只发给网站，不会给模型。",
+  "{name} is waiting for you": "{name} 在等你",
+  "{name} is working": "{name} 正在工作",
+
+  // ── Holds (your turn) ─────────────────────────────────────────────────────────────
+  "Your turn": "该你了",
+  "Your turn — {reason}": "该你了——{reason}",
+  "You took over {thing}": "你接管了{thing}",
+  "the browser": "浏览器",
+  "the phone": "手机",
+  "The browser": "浏览器",
+  "The phone": "手机",
+  "Do this part yourself, then press Done — {name} looks again and carries on from there.": "这一步请你自己来，做完按「完成」——{name} 会重新看一眼屏幕，从那里接着做。",
+  "{name} waits. Press Done when you are finished and it looks again.": "{name} 在等。你弄完后按「完成」，它会重新看一眼。",
+  "{name} waited ten minutes and went on without you.": "{name} 等了十分钟，没等到你，先继续了。",
+  "Ended when the runtime restarted.": "运行时重启，这次接管结束。",
+  "You did it; {name} carried on.": "你做完了，{name} 接着做了。",
+  "Handed back; {name} carried on.": "已交还，{name} 接着做了。",
 
   // ── File viewer ───────────────────────────────────────────────────────────────────
   Close: "关闭",
@@ -283,7 +302,7 @@ const zhCN: Record<string, string> = {
   "Check in with me now": "现在跟我确认进度",
   "{name} will check in with you in the main chat": "{name} 会在主要聊天中跟你确认进度",
   "Discuss this goal in chat →": "在对话中讨论这个目标 →",
-  "Let's talk about my goal “{title}” ({id}). What's the status and what should we do next?":
+  "About my goal “{title}” ({id}): what's the status, and what should we do next?":
     "我们来聊聊我的目标“{title}”（{id}）。现在进展如何，下一步该做什么？",
   Pause: "暂停",
   Resume: "继续",
@@ -415,7 +434,28 @@ const zhCN: Record<string, string> = {
     "每次 shell 或 Python 调用都在工作区中以清洗过的环境运行。在 Linux 上安装 bubblewrap 后，每次调用会有独立的命名空间。",
   "After reading private data, new network destinations need approval.": "读取私密数据之后，访问新的网络目标需要批准。",
   "Permissions you granted": "你授予的权限",
-  "None. Approvals you give “once” are not kept.": "无。你“允许一次”的批准不会保留。",
+  "No standing approvals. When you answer “always allow” to a risky step, it is listed here and can be revoked; approvals you give once are not kept.": "还没有长期批准。对有风险的操作选择“始终允许”后，会列在这里，随时可以撤回；“允许一次”的批准不会保留。",
+  "Nothing yet today. What you ask for and what {name} does about it shows up here.": "今天还没有动态。你提的要求和 {name} 做的事会显示在这里。",
+  "Share avatar": "分享形象",
+  "Creates a routine": "会创建一条例程",
+  "Creates a goal": "会创建一个目标",
+  "Create routine": "创建例程",
+  "Start goal": "开始这个目标",
+  "Routine set — every day at {time}. It is listed under Goals.": "例程已设好——每天 {time}。在「目标」页可以看到。",
+  "A morning brief": "早间简报",
+  "Before you leave each morning: the weather, the first thing on your plate and anything new worth knowing.": "每天出门前：天气、今天的第一件事，以及值得知道的新消息。",
+  "Morning brief: check today's weather, read my calendar and reminders for today, and tell me in five lines what matters.": "早间简报：查今天的天气，读我今天的日程和提醒，用五行告诉我要紧的事。",
+  "drawn from the picture you attached": "按你附的图片来画",
+  "Share my avatar": "分享我的虚拟形象",
+  "Pick a card. It goes out through the system share sheet, or saves as a picture where there is none.": "选一张卡片，用系统分享发出去；没有系统分享的浏览器会保存为图片。",
+  "Hi, I'm {name}, a personal AI agent. Meet nanoMuse — open source, runs on your phone.": "你好，我是你的个人 AI 智能体 {name}。nanoMuse——开源、在手机上本地运行。",
+  "Your personal AI agent, open source · {repo}": "你的个人 AI 智能体，开源 · {repo}",
+  "Later": "以后再说",
+  "Share": "分享",
+  "Save picture": "保存图片",
+  "Saved the card as a picture.": "卡片已保存为图片。",
+  "The card could not be drawn.": "卡片没能画出来。",
+  "the hands in {app}": "在 {app} 里动手",
   "granted {time}": "授予于 {time}",
   "until {time}": "直到 {time}",
   "Revoke {what}": "撤销 {what}",
@@ -706,6 +746,8 @@ const zhCN: Record<string, string> = {
   "A remote server over Streamable HTTP.": "通过 Streamable HTTP 连接的远程服务器。",
   "Risk of its tools": "其工具的风险级别",
   "Add a server": "添加服务器",
+  "Connected on {device} — sign in here to use it on this device": "已在 {device} 上连接——在这台设备上登录后即可使用",
+  "Sign in here": "在这里登录",
   "Stored in the vault": "已存入保险库",
   Vault: "保险库",
   "{n} secrets · encrypted on your machine": "{n} 个密钥 · 在你的机器上加密",
@@ -873,8 +915,19 @@ const zhCN: Record<string, string> = {
   "Android may switch the service off after an update or a battery clean-up; if the phone stops answering, come back here.": "系统更新或电池清理后安卓可能会把服务关掉；手机不再响应时回到这里看看。",
   "On the phone's screen: {gui} of {total} steps ({pct}%). The screen is the last resort — a skill, a fetch or the browser comes first.": "在手机屏幕上操作：{total} 步里有 {gui} 步（{pct}%）。屏幕是最后一招——技能、抓取、浏览器优先。",
   "last seen in {app}": "上次看到在 {app}",
-  "The operator's model looks at screens step by step: a small, fast model that takes images. Empty = the main model. 阿里云百炼: base URL https://dashscope.aliyuncs.com/compatible-mode/v1, model qwen3.8-27b.": "操作手机的模型一步步看屏幕：选一个小而快、能看图的模型。留空 = 用主模型。阿里云百炼：Base URL https://dashscope.aliyuncs.com/compatible-mode/v1，模型 qwen3.8-27b。",
-  "same as the main model": "与主模型相同",
+  "The operator's model looks at screens step by step: a small, fast model that takes pictures. The Hands model row under Chat model picks one on the same endpoint and key; the fields here are for a different endpoint. Empty = {model}.":
+    "操作屏幕的模型一步步看截图：选一个小而快、能看图的模型。「对话模型」卡片里的「动手模型」一行在同一个接口和 key 上选；这里的字段用于另一个接口。留空 = {model}。",
+  "same as the chat model": "与对话模型相同",
+  "the chat model": "对话模型",
+  "Chat model": "对话模型",
+  "Hands model": "动手模型",
+  "Default — {model}": "默认——{model}",
+  "Default — the chat model": "默认——对话模型",
+  "The model that looks at screens when the hands run — the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.":
+    "动手时看屏幕的模型——手机、这台电脑、浏览器读不了的页面。你账号的动手模型是 {model}；上面的对话模型是另一项选择。",
+  "The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: the chat model above.":
+    "动手时看屏幕的模型：小而快、能看图，用同一个接口和 key。默认：上面的对话模型。",
+  "{model} does not take pictures, so the hands would be blind with it. Pick a model that sees for them.": "{model} 不能看图，动手时会是盲的。给它选一个能看图的模型。",
   "A key is in the vault; leave empty to keep it.": "保险库里已有密钥；留空则保留。",
   "Set in config.toml.": "在 config.toml 里设置。",
   "Leave empty to use the main model's key.": "留空则使用主模型的密钥。",
@@ -993,11 +1046,12 @@ const zhCN: Record<string, string> = {
   "It uses your phone and computers for you": "替你操作手机和电脑",
   "The relay keeps an account id, a masked identifier, usage counts and your agent's name and look; what else, and what is yours to switch off, is in the": "中继保存账号 id、打码后的手机号或邮箱、用量计数和你的智能体的名字与形象；其余保存什么、哪些由你决定，见",
   "privacy policy": "隐私政策",
-  "Free, open source, non-profit — open source, built together: a personal agent for all": "免费 · 开源 · 非盈利 —— 开源共建，做属于所有人的个人智能体",
-  "nanoMuse is a non-profit open-source community project — free, forever. Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, use your own key (Alibaba Cloud Bailian is a good start). Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours. Delete the account whenever you like.":
-    "nanoMuse 是非盈利的开源社区项目，永久免费。用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key（推荐阿里云百炼）。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。账号随时可以删除。",
-  "Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone's reach.": "欢迎反馈问题、提需求、贡献代码——每一次参与，都在让个人智能体离所有人更近一步。",
-  "Star on GitHub": "去 GitHub 点亮 Star",
+  "Free, open source, non-profit": "免费、开源、非盈利",
+  "Chat apps": "聊天入口",
+  "nanoMuse is a non-profit open-source community project — free, forever. Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, use your own key (Alibaba Cloud Bailian in mainland China, OpenRouter elsewhere). Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours. Delete the account whenever you like.":
+    "nanoMuse 是非盈利的开源社区项目，永久免费。用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key（中国大陆用阿里云百炼，海外用 OpenRouter）。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。账号随时可以删除。",
+  "This is a preview; the people building it use it every day. Report a bug, ask for a feature, send a pull request — that is what moves the project. A star on GitHub helps others find it.": "现在还是预览版，做它的人每天都在用。欢迎反馈问题、提需求、贡献代码——项目就是这样往前走的。在 GitHub 点个 Star，能让更多人找到它。",
+  "Star on GitHub": "去 GitHub 点个 Star",
   "Report a bug or ask for a feature": "反馈问题 / 提需求",
   // -- data controls (relay 0.9): the one switch over what the relay keeps --
   "Data controls": "数据控制",
@@ -1038,8 +1092,11 @@ const zhCN: Record<string, string> = {
   Dismiss: "关闭",
   "Two ways on — your sign-in and your devices keep working either way.": "两个办法继续用——无论选哪个，登录和多设备功能都不受影响。",
   "Use your own model key": "换成自己的 key",
-  "Alibaba Cloud Bailian (阿里云百炼) is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.":
+  "Alibaba Cloud Bailian is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.":
     "推荐阿里云百炼：新用户有免费额度，开通约 2 分钟，一个 key 就能对话、画图、生成视频。",
+  "Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go.":
+    "海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费。",
+  "E-mail (or a mainland China phone number)": "邮箱（或中国大陆手机号）",
   "Step-by-step guide": "图文教程",
   "Invite a friend: +¥{bonus} for you and +¥{bonus} for them, for each new person who signs up with your link.": "邀请朋友：每有一位新用户通过你的链接注册，你 +¥{bonus}，对方也 +¥{bonus}。",
   "Your invite link is under Account": "邀请链接在「账号」页",
@@ -1097,7 +1154,14 @@ const zhCN: Record<string, string> = {
   "Its own screen, mouse and keyboard, when the shell and the browser are not enough.": "用它自己的屏幕、鼠标和键盘——命令行和浏览器不够用的时候。",
   "Nothing can drive this screen yet.": "目前没有能驱动这块屏幕的组件。",
   "Let it use this computer's screen": "允许它操作这台电脑的屏幕",
-  "On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black.": "Mac 上，macOS 弹窗询问时请在「系统设置 → 隐私与安全性」的「辅助功能」和「屏幕录制」里允许 nanoMuse；不允许的话点击没有反应，截图也是黑的。",
+  "On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black. The first action in each app asks you once — \"Let {name} use Safari?\" — and the answer is kept under Permissions.":
+    "Mac 上，macOS 弹窗询问时请在「系统设置 → 隐私与安全性」的「辅助功能」和「屏幕录制」里允许 nanoMuse；不允许的话点击没有反应，截图也是黑的。每个应用的第一步会先问你一次——「让 {name} 使用 Safari 吗？」——答复记在「权限」里。",
+  "Where": "范围",
+  "One window": "单个窗口",
+  "Whole screen": "整个屏幕",
+  "Working in {app}'s window; the mouse stays yours.": "正在 {app} 的窗口里操作；鼠标仍归你用。",
+  "One window: the hands work inside the app they were given, send clicks and keys to it alone and leave your mouse alone. Whole screen: the system mouse, like other platforms. Auto picks one window as soon as an app is named.":
+    "单个窗口：只在指定的应用里操作，点击和按键只发给它，不动你的鼠标。整个屏幕：用系统鼠标，和其他平台一样。自动：一旦指定了应用就用单个窗口。",
   "It looks at a screenshot and clicks by position; paying, sending and deleting ask you first.": "它看截图、按位置点击；支付、发送、删除前都会先问你。",
   "Driver": "驱动",
   "Working": "工作中",
@@ -1132,9 +1196,10 @@ const zhCN: Record<string, string> = {
   "OpenAI, Bailian, DeepSeek…": "OpenAI、百炼、DeepSeek…",
   "Which model answers?": "让哪个模型来回答？",
   "Your account already brings one. You can add your own API key as well and switch at any time.": "你的账号已经自带了一个。也可以加上自己的 API key，随时切换。",
-  "Qwen through Alibaba Cloud Bailian, with a free allowance per account paid by the developer. Nothing to configure.": "Qwen 模型，走阿里云百炼；每个账号都有一份由开发者承担的免费额度，不用配置。",
+  "DeepSeek for the chat and Qwen for the hands, with a free allowance per account paid by the developer. Nothing to configure.": "对话用 DeepSeek，动手用 Qwen；每个账号都有一份由开发者承担的免费额度，不用配置。",
   "I have my own API key": "我有自己的 API key",
-  "OpenAI, Anthropic, DeepSeek, Bailian and other OpenAI-compatible endpoints. The key stays on this device.": "OpenAI、Anthropic、DeepSeek、百炼等兼容 OpenAI 接口的服务。key 只留在这台设备上。",
+  "Alibaba Cloud Bailian, DeepSeek, OpenAI, OpenRouter and other OpenAI-compatible endpoints. The key stays on this device.": "阿里云百炼、DeepSeek、OpenAI、OpenRouter 等兼容 OpenAI 接口的服务。key 只留在这台设备上。",
+  "OpenRouter (one account, one key, pay as you go), OpenAI, DeepSeek and other OpenAI-compatible endpoints. The key stays on this device.": "OpenRouter（一个账号一把 key，按量付费）、OpenAI、DeepSeek 等兼容 OpenAI 接口的服务。key 只留在这台设备上。",
   "3D toy (Muse)": "3D 玩偶（Muse）",
   "Flat": "扁平",
   "3D clay": "3D 黏土",
@@ -1491,7 +1556,7 @@ const zhCN: Record<string, string> = {
   Note: "随记",
   Files: "文件",
   Fun: "休闲",
-  "Let's talk about this post from my feed:": "聊聊我动态里的这一条：",
+  "About this post from my feed:": "聊聊我动态里的这一条：",
   "Post type": "类型",
   morning: "上午",
   afternoon: "下午",
@@ -1509,7 +1574,6 @@ const zhCN: Record<string, string> = {
   "Create a {category} goal": "创建{category}目标",
   "First, we'll shape the goal together in the chat. I'll ask a few questions so I understand exactly what you're after.": "首先，我们将在聊天中一起完善目标。我会问几个问题，准确了解你的目标。",
   "Once it's set, I'll track your progress here.": "目标设置后，我会在这里追踪你的进度。",
-  "Let's go": "开始吧",
   "I'd like to create a {category} goal. Ask me a few short questions, one at a time — what exactly I want, why and by when, how often to check in — then create it with concrete steps using the goals tool.":
     "我想创建一个{category}目标。请一次问我一个简短的问题——我具体想达成什么、为什么以及什么时候、多久检查一次——然后用 goals 工具把它建成带具体步骤的目标。",
   "Mark as done": "标记为已完成",

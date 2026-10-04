@@ -205,7 +205,21 @@ class WebUI:
             fields: dict[str, Any] = {
                 "last": {
                     k: body.get(k)
-                    for k in ("action", "label", "fx", "fy", "fx2", "fy2", "text", "keys")
+                    for k in (
+                        "action",
+                        "label",
+                        "x",
+                        "y",
+                        "x2",
+                        "y2",
+                        "fx",
+                        "fy",
+                        "fx2",
+                        "fy2",
+                        "mode",
+                        "text",
+                        "keys",
+                    )
                     if body.get(k) is not None
                 },
                 "app": body.get("app") or "",
@@ -241,6 +255,18 @@ class WebUI:
     def browser_frame(self, thread: str, fid: str) -> bytes | None:
         frames = self.browser_frames.get(thread)
         return frames.get(fid) if frames is not None else None
+
+    # ------------------------------------------------------------------ holds (C1)
+    def on_hold(self, event: dict[str, Any]) -> None:
+        """A hold went on or off (:mod:`nanomuse.agent.holds`): one *hold* card per hold in
+        the chat, updated in place when it goes off, and the live frame for every client."""
+        thread = str(event.get("thread") or self.thread())
+        timeline = self.get_timeline(thread)
+        if timeline.get(str(event.get("id"))) is None:
+            self.emit({**event, "thread": thread})
+            return
+        fields = {k: v for k, v in event.items() if k not in ("id", "type", "thread")}
+        self.patch(thread, str(event["id"]), **fields)
 
     # ------------------------------------------------------------------ helpers
     @staticmethod
@@ -294,7 +320,13 @@ class WebUI:
     def emit(self, event: dict[str, Any], persist: bool = True) -> dict[str, Any]:
         thread = event.get("thread") or self.thread()
         event["thread"] = thread
-        if thread in self.background and "source" not in event:
+        if (
+            thread in self.background
+            and "source" not in event
+            # what the user typed while a background pass runs in the thread, and the look
+            # card that answers it, are theirs — not the pass's, and not Feed items
+            and event.get("type") not in ("user", "avatar")
+        ):
             event["source"] = "background"
             event["about"] = self.background[thread]
         if persist:

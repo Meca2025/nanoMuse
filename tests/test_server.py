@@ -1309,6 +1309,27 @@ def test_reminders_fire_in_their_chat_and_are_pushed_once(server, monkeypatch):
     assert client.get("/api/reminders").json() == []
 
 
+def test_what_the_user_types_during_a_background_pass_is_theirs(server):
+    """A goal check-in running in the main thread tagged *everything* emitted meanwhile as
+    the pass's — including the user's own bubble, which then landed in the Feed under
+    "Check-in: …" and left the chat. The user's message is never background work."""
+    client, service, _ = server
+    service.ui.begin_run("main", background="Check-in: Run a 10k")
+    try:
+        r = client.post("/api/threads/main/send", json={"text": "换个形象：一只橘猫"})
+        assert r.status_code == 200
+        ev = r.json()["event"]
+        assert ev["type"] == "user" and "source" not in ev and "about" not in ev
+        events = client.get("/api/threads/main/events").json()["events"]
+        mine = [e for e in events if e["type"] == "user"][-1]
+        assert "source" not in mine
+        # the pass's own lines are still marked as its
+        note = service.ui.emit({"type": "notice", "text": "looked at the plan", "thread": "main"})
+        assert note["source"] == "background" and note["about"] == "Check-in: Run a 10k"
+    finally:
+        service.ui.end_run("main")
+
+
 def test_ideas_fallback_and_parsing(server):
     client, _, llm = server
     data = client.get("/api/ideas").json()
@@ -1325,6 +1346,22 @@ def test_ideas_fallback_and_parsing(server):
     assert data["source"] == "model" and data["ideas"][0]["title"] == "Book the dentist"
     assert _parse_ideas("no json here") == []
     assert _parse_ideas('<think>x</think>[{"title":"a","prompt":"b"}]')[0]["title"] == "a"
+    # what tapping an idea does, the phone's three kinds; unknown or missing → chat
+    kinds = _parse_ideas(
+        '[{"title":"a","prompt":"b","kind":"routine","time":"7:30"},'
+        '{"title":"c","prompt":"d","kind":"routine","time":"18:45"},'
+        '{"title":"e","prompt":"f","kind":"goal","category":"Finance"},'
+        '{"title":"g","prompt":"h","kind":"goal","category":"pets"},'
+        '{"title":"i","prompt":"j","kind":"weird"}]'
+    )
+    assert [(k["kind"], k.get("time"), k.get("category")) for k in kinds] == [
+        ("routine", "09:00", None),
+        ("routine", "18:45", None),
+        ("goal", None, "finance"),
+        ("goal", None, "other"),
+        ("chat", None, None),
+    ]
+    assert {i["kind"] for i in data["ideas"]} <= {"chat", "routine", "goal"}
     # what models actually send: a code fence, a real newline inside a string, a trailing
     # comma, and a reply cut off at max_tokens — the items that parse are kept
     fenced = '```json\n[{"title":"a","detail":"line\none","prompt":"b"},]\n```'

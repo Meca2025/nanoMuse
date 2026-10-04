@@ -71,7 +71,11 @@ the browser side keeps in that origin's storage, stays the same from launch to l
 home kept by nanoMuse Harness 0.1.28–0.1.29 under `~/.nanomuse/harness`
 is taken over once. `NANOMUSE_CLOUD_URL` points the account at another relay;
 `NANOMUSE_PY` points the preset at another runtime for the hands. The CLI's own `~/.dsh`
-is not touched.
+is not touched. `nanomuse/hands.json` under the home (mode 0600) is the hands model the
+person picked in Settings → nanoMuse Cloud — provider, model, base URL and the account's token
+— read by the preset into the runtime's `NANOMUSE_GUI_*` environment at the next start,
+and removed on sign-out; `nanomuse/rooms.json` keeps the rooms (feed, goals with their
+steps and progress, which ideas were tried, the library index, memory).
 
 ## macOS signing
 

@@ -2,10 +2,12 @@
 //  NanoMuseShell.swift
 //  nanoMuse
 //
-//  The Muse shell on iPhone: one main chat pinned to the Chat tab, a bottom
-//  bar for Chat / Feed / Ideas / Goals / Library, and a side drawer with
-//  the other chats. iPad keeps the upstream split layout (ContentView),
-//  which also stays reachable from the drawer. Android: ui/home/*.
+//  The Muse shell on iPhone and iPad: one main chat pinned to the Chat tab,
+//  a bottom bar for Chat / Feed / Ideas / Goals / Library, and a side
+//  drawer with the other chats. The upstream split layout (ContentView)
+//  stays reachable from the drawer and from the Settings switch. The first
+//  run (NanoMuseFirstRun) shows in front of it all until the account and a
+//  model are in. Android: ui/home/*.
 //
 
 import SwiftUI
@@ -74,25 +76,96 @@ enum NanoMuseTab: String, CaseIterable, Identifiable {
 /// not around to do it.
 struct NanoMuseRoot: View {
     @AppStorage("nanomuse.shell.enabled") private var shellEnabled = true
-    @State private var showStudio = false
+    @ObservedObject private var store = ProviderConfigStore.shared
+    @State private var hasSessions: Bool?
+    @State private var setupDone = NanoMuseFirstRun.isDone
+    @State private var showClassicSettings = false
 
-    private var usesShell: Bool {
-        shellEnabled && UIDevice.current.userInterfaceIdiom == .phone
+    /// The Muse shell on iPhone and iPad alike; off → the upstream layout.
+    private var usesShell: Bool { shellEnabled }
+
+    /// The setup in front of everything until the account and a model are in (see NanoMuseFirstRun.needed).
+    private var needsSetup: Bool {
+        guard let hasSessions else { return false }
+        let providers = store.instances.contains { $0.isEnabled }
+        return NanoMuseFirstRun.needed(signedIn: NanoMuseCloud.isSignedIn, hasProviders: providers, hasSessions: hasSessions, done: setupDone)
     }
 
     var body: some View {
         Group {
-            if usesShell {
+            if needsSetup {
+                NanoMuseFirstRunView(
+                    onStart: { setupDone = true },
+                    onSettings: { showClassicSettings = true }
+                )
+                .sheet(isPresented: $showClassicSettings) {
+                    NanoMuseClassicCover(wantsSettings: true)
+                }
+            } else if usesShell {
                 NanoMuseHomeView()
             } else {
                 ContentView()
                     .nanoMuseStudioPresenter(enabled: true)
+                    .nanoMuseAgentPagePresenter(enabled: true, onOpenSession: { id in
+                        NotificationCenter.default.post(name: .openSessionFromIntent, object: nil, userInfo: ["sessionId": id])
+                    }, onPrefillChat: { text in
+                        NotificationCenter.default.post(name: .nanoMuseComposerPrefill, object: nil, userInfo: ["text": text])
+                    }, onOpenRoutines: nil)
             }
         }
         .onAppear {
             NanoMuseProfileSync.shared.start()
             NanoMuseStarWatch.shared.start()
         }
+        .task {
+            hasSessions = !(await ChatStore.shared.listSessions()).isEmpty
+            // The feed's daily routine exists from the start, as on Android (a no-op without a model).
+            if !needsSetup { await NanoMuseFeedFlow.ensureRoutine() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .sessionDidCreate)) { _ in
+            hasSessions = true
+        }
+    }
+}
+
+/// Presents the agent's page when the header's face is tapped.
+struct NanoMuseAgentPagePresenter: ViewModifier {
+    var enabled: Bool
+    var onOpenSession: (String) -> Void
+    var onPrefillChat: (String) -> Void
+    /// nil → the page's "Manage routines" opens the routines list in place.
+    var onOpenRoutines: (() -> Void)?
+    @State private var shown = false
+    @State private var showRoutines = false
+
+    func body(content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: .nanoMuseOpenAgentPage)) { _ in
+                guard enabled else { return }
+                shown = true
+            }
+            .sheet(isPresented: $shown) {
+                NanoMuseAgentPage(
+                    onOpenSession: { id in shown = false; onOpenSession(id) },
+                    onPrefillChat: { text in shown = false; onPrefillChat(text) },
+                    onOpenRoutines: {
+                        shown = false
+                        if let onOpenRoutines { onOpenRoutines() } else { showRoutines = true }
+                    }
+                )
+            }
+            .sheet(isPresented: $showRoutines) {
+                NavigationStack {
+                    NanoMuseRoutinesView()
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Done")) { showRoutines = false } } }
+                }
+            }
+    }
+}
+
+extension View {
+    func nanoMuseAgentPagePresenter(enabled: Bool, onOpenSession: @escaping (String) -> Void, onPrefillChat: @escaping (String) -> Void, onOpenRoutines: (() -> Void)?) -> some View {
+        modifier(NanoMuseAgentPagePresenter(enabled: enabled, onOpenSession: onOpenSession, onPrefillChat: onPrefillChat, onOpenRoutines: onOpenRoutines))
     }
 }
 
@@ -217,6 +290,8 @@ struct NanoMuseHomeView: View {
     @State private var chatPath: [String] = []
     @State private var showClassic = false
     @State private var classicWantsSettings = false
+    @State private var showNanoMuseSettings = false
+    @State private var showCoding = false
 
     var body: some View {
         ZStack {
@@ -253,23 +328,80 @@ struct NanoMuseHomeView: View {
                     tab = .chat
                 },
                 onAllChats: { showClassic = true },
-                onSettings: {
-                    classicWantsSettings = true
-                    showClassic = true
-                }
+                onSettings: { showNanoMuseSettings = true }
             )
         }
         .nanoMuseStudioPresenter(enabled: !showClassic)
+        .nanoMuseAgentPagePresenter(
+            enabled: !showClassic,
+            onOpenSession: { id in openSideChat(id) },
+            onPrefillChat: { text in prefillMainChat(text) },
+            onOpenRoutines: { tab = .goals }
+        )
         .sheet(isPresented: $showClassic) {
             NanoMuseClassicCover(wantsSettings: classicWantsSettings)
                 .onDisappear { classicWantsSettings = false }
         }
+        .sheet(isPresented: $showCoding) {
+            NavigationStack {
+                NanoMuseCodingView()
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Done")) { showCoding = false } } }
+            }
+        }
+        .sheet(isPresented: $showNanoMuseSettings) {
+            NavigationStack {
+                NanoMuseSettingsView(onAllSettings: {
+                    showNanoMuseSettings = false
+                    classicWantsSettings = true
+                    showClassic = true
+                })
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Done")) { showNanoMuseSettings = false } } }
+            }
+        }
         .onAppear {
             if main.chatId == nil { main.resolve() }
+            // A notification tap that launched the app cold: the conversation it named.
+            if let id = NotificationNavigationStore.shared.takePending() { openSideChat(id) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .nanoMuseOpenChat)) { note in
             guard let id = note.object as? String else { return }
             openSideChat(id)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nanoMuseOpenRoom)) { note in
+            // A fence card's "See in Goals" / "Open the feed".
+            switch note.object as? String {
+            case "goals": tab = .goals
+            case "feed": tab = .feed
+            case "ideas": tab = .ideas
+            case "library": tab = .library
+            default: break
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nanoMuseOpenRoutines)) { _ in
+            tab = .goals
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openSessionFromIntent)) { note in
+            // A notification tap ("Check-in: … — open to run it") or a Shortcut: show that conversation.
+            guard let id = note.userInfo?["sessionId"] as? String, !id.isEmpty else { return }
+            openSideChat(id)
+        }
+    }
+
+    /// Words in the main chat's composer ("Change your avatar to "), with the chat on screen.
+    private func prefillMainChat(_ text: String) {
+        chatPath.removeAll()
+        tab = .chat
+        NotificationCenter.default.post(name: .nanoMuseComposerPrefill, object: main.chatId, userInfo: ["text": text])
+    }
+
+    /// A message sent in the main chat on the person's behalf (a goal's opener, as Android's sendToMainChat).
+    private func sendToMainChat(_ text: String) {
+        chatPath.removeAll()
+        tab = .chat
+        if let id = main.chatId, !main.isDraft, let vm = ViewModelCache.shared.get(for: id) {
+            vm.nmSendNow(text)
+        } else {
+            NotificationCenter.default.post(name: .nanoMuseComposerPrefill, object: main.chatId, userInfo: ["text": text, "send": true])
         }
     }
 
@@ -305,6 +437,18 @@ struct NanoMuseHomeView: View {
                     }
                     .accessibilityLabel(Text(AppLocalized("Chats and settings")))
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    // Android: the Chat room's ••• menu — the coding agents, then the shared rows.
+                    Menu {
+                        Button { showCoding = true } label: { Label(AppLocalized("Coding agents"), systemImage: "chevron.left.forwardslash.chevron.right") }
+                        Button { tab = .goals } label: { Label(AppLocalized("Scheduled tasks"), systemImage: "clock") }
+                        Divider()
+                        Button { showNanoMuseSettings = true } label: { Label(AppLocalized("Settings"), systemImage: "gearshape") }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel(Text(AppLocalized("More")))
+                }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 if let moment = star.card {
@@ -337,17 +481,61 @@ struct NanoMuseHomeView: View {
         case .chat:
             EmptyView()
         case .feed:
-            NanoMuseFeedRoom(onMenu: { drawerOpen = true })
+            NanoMuseFeedRoom(
+                onMenu: { drawerOpen = true },
+                onDiscuss: { post in discussPost(post) },
+                onOpenSession: { id in openSideChat(id) }
+            )
         case .ideas:
-            NanoMuseIdeasRoom(onMenu: { drawerOpen = true }) { prompt in
-                startChat(with: prompt)
-            }
+            NanoMuseIdeasRoom(
+                onMenu: { drawerOpen = true },
+                onSend: { prompt in startChat(with: prompt) },
+                onCreateRoutine: { idea in createRoutine(from: idea) },
+                onStartGoal: { category, seed in startGoal(category, seed: seed) },
+                onMore: { showNanoMuseSettings = true }
+            )
         case .goals:
-            NanoMuseGoalsRoom(onMenu: { drawerOpen = true }) { prompt in
-                startChat(with: prompt)
-            }
+            NanoMuseGoalsRoom(
+                onMenu: { drawerOpen = true },
+                onStartGoal: { category in startGoal(category) },
+                onOpenSession: { id in openSideChat(id) },
+                onMore: { showNanoMuseSettings = true }
+            )
         case .library:
-            NanoMuseLibraryRoom(onMenu: { drawerOpen = true }, sessionId: main.isDraft ? nil : main.chatId)
+            NanoMuseLibraryRoom(onMenu: { drawerOpen = true }, sessionId: main.isDraft ? nil : main.chatId, onMore: { showNanoMuseSettings = true })
+        }
+    }
+
+    /// "Create a goal › Health": the opener goes to the main chat; the model takes it from there (GoalFlow).
+    private func startGoal(_ category: NanoMuseGoalCategory, seed: String? = nil) {
+        guard let id = main.chatId else { return }
+        let opener = NanoMuseGoalFlow.startCreation(session: id, category: category)
+        let trimmed = (seed ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        sendToMainChat(trimmed.isEmpty ? opener : opener + " " + trimmed)
+    }
+
+    /// A routine from an idea: created at the idea's time (9:00 when it has none), then the editor.
+    private func createRoutine(from idea: NanoMuseIdea) {
+        let at = NanoMuseDay.parseClock(idea.time) ?? (hour: 9, minute: 0)
+        let routine = NanoMuseScheduler.shared.create(NanoMuseRoutine(
+            label: String(idea.title.prefix(40)),
+            prompt: idea.promptText,
+            hour: at.hour,
+            minute: at.minute,
+            repeatMode: .daily
+        ))
+        NotificationCenter.default.post(name: .nanoMuseEditRoutine, object: routine.id)
+    }
+
+    /// "Discuss" on a feed card: a side chat that opens on the post.
+    private func discussPost(_ post: NanoMusePost) {
+        Task { @MainActor in
+            let vm = ViewModelCache.shared.createDraft()
+            let id = await vm.ensureSessionReturningId()
+            await ChatStore.shared.updateSessionTitle(id, title: String(post.title.prefix(40)))
+            ViewModelCache.shared.cacheDraft(vm, sessionId: id)
+            openSideChat(id)
+            vm.nmSendNow(NanoMuseFeedFlow.discussOpener(post))
         }
     }
 
@@ -362,6 +550,8 @@ struct NanoMuseHomeView: View {
 extension Notification.Name {
     /// `object` is a session id (or a `__new__…` draft id): the shell shows it.
     static let nanoMuseOpenChat = Notification.Name("nanoMuse.openChat")
+    /// `object` is a routine id: the Goals room opens its editor.
+    static let nanoMuseEditRoutine = Notification.Name("nanoMuse.editRoutine")
 }
 
 /// The upstream layout, presented from the drawer as a sheet (swipe down

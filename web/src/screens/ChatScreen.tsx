@@ -5,7 +5,7 @@ import { AllowanceHeadsUp } from "../components/AllowanceWays";
 import { AvatarOptionsCard } from "../components/AvatarOptionsCard";
 import { BrowserViewer } from "../components/BrowserViewer";
 import { MicButton, useDictation } from "../components/Dictation";
-import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
+import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, HoldCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
 import { Markdown, splitBlocks } from "../components/Markdown";
 import { MuseHeader, MuseRoundButton } from "../components/MuseHeader";
 import { MoreMenu } from "../components/TabHeader";
@@ -263,6 +263,8 @@ function EventView({
         return <BrowserCard event={event} onOpen={onOpenBrowser} />;
       case "hands":
         return <HandsCard event={event} name={name} />;
+      case "hold":
+        return <HoldCard event={event} name={name} />;
       case "avatar":
         return <AvatarOptionsCard event={event} name={name} />;
       default:

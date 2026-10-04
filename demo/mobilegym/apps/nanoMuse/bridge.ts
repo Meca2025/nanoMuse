@@ -22,12 +22,19 @@ import { stage } from './stage';
  * it until the next task, with the `nanomuse:stop` marker the server reads as "the person
  * stopped it on the phone" — the Android app's contract (docs/gui.md).
  *
+ * While the hands work, the person stays in the operated app: an `approval` the run raises
+ * is shown on the capsule with **Allow once / Deny** and answered from here
+ * (`POST /api/approvals/{id}`, the token in the Authorization header), never by sending the
+ * phone back into nanoMuse; a `hold` (the agent handed the phone over, or the person took it
+ * from the chat) is a card with **Done** (`POST /api/holds/{id}/done`). Only a question a
+ * finished task left offers *Open*.
+ *
  * When a task is over — its `end`, or Stop — the phone comes back to nanoMuse, where the
  * agent's report is, the way the Android app brings itself to the front after its hands are
  * done. The capsule does not depend on the `end` arriving: the server's `hello` carries the
- * task under way (`state.phone.task`), so a socket that reconnects sets the capsule from
- * that — a task still on gets its capsule back, a task that ended meanwhile takes it down —
- * and a socket that closes for good takes it down at once.
+ * task under way (`state.phone.task`) and the open holds (`state.holds`), so a socket that
+ * reconnects sets the capsule from that — a task still on gets its capsule back, a task that
+ * ended meanwhile takes it down — and a socket that closes for good takes it down at once.
  */
 
 type LinkState = 'off' | 'connecting' | 'online' | 'unauthorized' | 'unreachable';
@@ -59,6 +66,9 @@ interface TimelineEvent {
   quiet?: boolean;
   final?: boolean;
   tool?: string;
+  /** `hold` events: who paused the hands, and why. */
+  by?: string;
+  reason?: string;
 }
 
 /** The server's word on the phone in its `hello`: `task` is the one under way, `null` when none
@@ -68,7 +78,7 @@ interface PhoneState {
 }
 
 type WsMessage =
-  | { kind: 'hello'; state: { pending_approvals?: TimelineEvent[]; phone?: PhoneState } }
+  | { kind: 'hello'; state: { pending_approvals?: TimelineEvent[]; holds?: TimelineEvent[]; phone?: PhoneState } }
   | { kind: 'event' | 'update'; event: TimelineEvent }
   | { kind: 'device_request'; id: string; op: string; params?: Record<string, unknown> }
   | { kind: string };
@@ -168,11 +178,107 @@ class MuseBridge {
   private lastThread = 'main';
   private lostTimer: ReturnType<typeof setTimeout> | null = null;
   private backTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The approval on the capsule, so a failed answer can put the card back as it was. */
+  private approvalShown: { id: string; summary: string; purpose: string } | null = null;
+  /** The phone's open holds, by id (contract C1), to tell a hold that ended from the rest. */
+  private holds = new Map<string, TimelineEvent>();
 
   constructor() {
     stage.onStop = () => this.stop();
     stage.onOpen = () => this.openApp(this.lastThread);
     stage.onGone = () => this.comeBack();
+    stage.onAllow = (id) => void this.decide(id, true);
+    stage.onDeny = (id) => void this.decide(id, false);
+    stage.onDone = (id) => void this.holdDone(id);
+  }
+
+  /** One call to the server's API with the token the socket signed in with. */
+  private async api(path: string, body: Record<string, unknown>): Promise<boolean> {
+    const settings = this.hooks?.get();
+    if (!settings?.serverUrl || !settings.token) return false;
+    try {
+      const r = await fetch(`${settings.serverUrl}${path}`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${settings.token}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) console.warn(`[nanoMuse] ${path} → ${r.status}`);
+      return r.ok;
+    } catch (err) {
+      console.warn(`[nanoMuse] ${path} failed`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Allow once / Deny on the capsule: the same answer the card in the chat gives, for this
+   * one time (`scope: "once"`; a standing grant is only given from the card, where the object
+   * is spelled out). The server's `update` of the event takes the card down; a call that did
+   * not get through puts it back with a word.
+   */
+  private async decide(id: string, approved: boolean): Promise<void> {
+    const shown = this.approvalShown;
+    const ok = await this.api(`/api/approvals/${encodeURIComponent(id)}`, {
+      approved,
+      scope: 'once',
+      reason: approved ? 'allowed on the phone' : 'denied on the phone',
+    });
+    if (ok) {
+      this.retract(id);
+      // a 404 already answered elsewhere comes as an update too; this is for the normal case
+      stage.resume(id);
+      if (this.approvalShown?.id === id) this.approvalShown = null;
+    } else if (shown && shown.id === id) {
+      stage.approvalFailed(id, shown.summary, shown.purpose);
+    }
+  }
+
+  /** Done on a hold card: the person is finished; the hands take a fresh look and go on. */
+  private async holdDone(id: string): Promise<void> {
+    const ev = this.holds.get(id);
+    const ok = await this.api(`/api/holds/${encodeURIComponent(id)}/done`, {});
+    if (!ok && ev && this.holds.has(id)) {
+      // the server did not hear: the card comes back, Done can be tapped again
+      stage.hold(id, ev.by ?? 'agent', ev.reason ?? '');
+    }
+  }
+
+  /** A `hold` event for this phone: on → the card; off → back to work. Other tools' holds are not ours. */
+  private hold(ev: TimelineEvent): void {
+    if (ev.tool && ev.tool !== 'phone') return;
+    if (ev.thread) this.lastThread = ev.thread;
+    if (ev.status === 'on') {
+      this.holds.set(ev.id, ev);
+      if (this.hooks?.get().gui) stage.hold(ev.id, ev.by ?? 'agent', ev.reason ?? '');
+    } else {
+      this.holds.delete(ev.id);
+      stage.holdOff(ev.id);
+    }
+  }
+
+  /** The server's `hello` lists the holds still open: the capsule shows ours, forgets the rest. */
+  private syncHolds(open: TimelineEvent[] | undefined): void {
+    if (!open) return; // an older server: nothing is known, nothing is assumed
+    const ours = open.filter((h) => h.type === 'hold' && (!h.tool || h.tool === 'phone') && h.status !== 'off');
+    const ids = new Set(ours.map((h) => h.id));
+    for (const id of Array.from(this.holds.keys())) {
+      if (!ids.has(id)) {
+        this.holds.delete(id);
+        stage.holdOff(id);
+      }
+    }
+    for (const h of ours) this.hold({ ...h, status: 'on' });
+  }
+
+  /** An `approval` event while the hands work: the card on the capsule, decided here. */
+  private approval(ev: TimelineEvent): void {
+    if (ev.status === 'pending') {
+      this.approvalShown = { id: ev.id, summary: ev.summary ?? '', purpose: ev.purpose ?? '' };
+      stage.approval(ev.id, ev.summary ?? '', ev.purpose ?? '');
+    } else {
+      if (this.approvalShown?.id === ev.id) this.approvalShown = null;
+      stage.resume(ev.id);
+    }
   }
 
   /** The task is over without a word from the server: the capsule comes down, and if the
@@ -445,9 +551,13 @@ class MuseBridge {
       const { serverUrl, token } = this.hooks.get();
       setIdentity(serverUrl, token, (msg as { state: { profile?: { name?: string; avatar?: string } } }).state.profile);
       this.syncTask((msg as { state: { phone?: PhoneState } }).state.phone);
-      if (!this.hooks.get().notify) return;
+      this.syncHolds((msg as { state: { holds?: TimelineEvent[] } }).state.holds);
       const pending = (msg as { state: { pending_approvals?: TimelineEvent[] } }).state.pending_approvals ?? [];
-      for (const ev of pending) this.notifyFor(ev);
+      // a yes still waited for while the hands are on this phone: the capsule asks, not the shade
+      const onCapsule = stage.active ? pending.find((ev) => ev.type === 'approval' && ev.status === 'pending') : undefined;
+      if (onCapsule) this.approval(onCapsule);
+      if (!this.hooks.get().notify) return;
+      for (const ev of pending) if (ev !== onCapsule) this.notifyFor(ev);
       return;
     }
     if (msg.kind === 'device_request') {
@@ -461,12 +571,19 @@ class MuseBridge {
     }
     if (msg.kind === 'event' || msg.kind === 'update') {
       const ev = (msg as { event: TimelineEvent }).event;
+      if (ev.type === 'hold') {
+        this.hold(ev);
+        return;
+      }
       if (ev.type === 'approval' || ev.type === 'question') {
         if (ev.thread) this.lastThread = ev.thread;
-        // while the hands work, the capsule says a tap waits for the card in the chat
-        if (ev.type === 'approval' && stage.active) {
-          if (ev.status === 'pending') stage.approval(ev.summary ?? '');
-          else stage.resume();
+        // while the hands work, the capsule carries the approval — Allow once / Deny, decided
+        // here — so the person is not sent back into nanoMuse for it
+        if (ev.type === 'approval' && (stage.active || this.approvalShown?.id === ev.id)) {
+          this.approval(ev);
+          if (ev.status === 'pending') return; // the capsule asks; no notification on top of it
+          this.retract(ev.id);
+          return;
         }
       } else if (ev.type === 'assistant' && ev.final && ev.source !== 'background' && stage.active) {
         // The chat run that was using the hands has said its last word, so the task is over

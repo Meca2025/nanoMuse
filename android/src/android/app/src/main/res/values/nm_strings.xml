@@ -18,14 +18,14 @@
     <string name="nm_home_not_ready">One moment — the chat is still loading.</string>
 
     <!-- The ask for a star: at the first sign-in, after the first task, when the allowance is used up -->
-    <string name="nm_star_title">Your support is what keeps us going</string>
+    <string name="nm_star_title">A star on GitHub helps</string>
     <string name="nm_star_action">Star on GitHub</string>
     <string name="nm_star_later">Not now</string>
-    <string name="nm_star_signed_in">Welcome aboard. nanoMuse is free, open source and non-profit — a personal agent that belongs to everyone who runs it. If you believe in that, a star on GitHub is the biggest support you can give: it is how the next person finds their way here.</string>
-    <string name="nm_star_first_task">First task done. If nanoMuse helped, a star on GitHub would mean a lot to the people building it — your support is what keeps us going.</string>
-    <string name="nm_star_tenth_task">Ten tasks together already. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try — and tells us to keep going.</string>
-    <string name="nm_star_new_look">A new face, drawn just for you. If you like what nanoMuse is becoming, a star on GitHub helps more people meet it — your support is what keeps us going.</string>
-    <string name="nm_star_exhausted">The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub is what keeps the project going for everyone.</string>
+    <string name="nm_star_signed_in">Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.</string>
+    <string name="nm_star_first_task">First task done. If nanoMuse helped, a star on GitHub tells the people building it that it did.</string>
+    <string name="nm_star_tenth_task">Ten tasks together. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try.</string>
+    <string name="nm_star_new_look">A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.</string>
+    <string name="nm_star_exhausted">The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.</string>
     <string name="nm_chat_menu_rename">Rename chat</string>
 
     <!-- Foreground-service notification title while no tool is running -->
@@ -411,14 +411,14 @@
     <string name="nm_avatar_options_keep">Keep current</string>
     <string name="nm_avatar_option_n">Option %1$d</string>
     <string name="nm_avatar_option_retry">Retry</string>
-    <string name="nm_avatar_options_ready">Here are a few takes on "%1$s" — pick the one you like best!</string>
+    <string name="nm_avatar_options_ready">Here are a few takes on "%1$s" — pick the one you like best.</string>
     <string name="nm_avatar_drawing_now">I\'m drawing a few takes on "%1$s" now. Pictures take a little while — I\'ll tell you when they\'re ready.</string>
     <string name="nm_avatar_drawing_again">One more round — give me a moment.</string>
-    <string name="nm_avatar_adopted">Done — my new look is on. I\'m %1$s now!</string>
+    <string name="nm_avatar_adopted">Done — my new look is on. I\'m %1$s now.</string>
     <string name="nm_avatar_pick_line">Option %1$d</string>
     <string name="nm_avatar_cannot_start">I can\'t draw a new look yet: %1$s</string>
     <string name="nm_avatar_memory_line">- %1$s: the user changed my avatar to "%2$s".</string>
-    <string name="nm_avatar_share_text">My new look is here — %1$s. Show it to your friends!</string>
+    <string name="nm_avatar_share_text">My new look — %1$s. Have a look.</string>
     <string name="nm_avatar_share_button">Share avatar</string>
     <string name="nm_avatar_share_later">Later</string>
     <string name="nm_avatar_share_title">Share my avatar</string>
@@ -433,7 +433,7 @@
     <string name="nm_media_chat_footer">The default model group. Every conversation, the feed and the daily routines run on it.</string>
     <string name="nm_media_section_image">Image model</string>
     <string name="nm_media_image_footer">Avatar changes, the four candidates and the poses, and any picture you ask for in the chat. The list is what your provider reports for this key, filtered to models that draw. Alibaba Cloud Model Studio: qwen-image-3.0 (draws and poses; ¥0.18 a picture) or the Pro tier. OpenAI: gpt-image-1. Any provider with the OpenAI images endpoint works.</string>
-    <string name="nm_media_image_none">None of your providers can draw. Add an OpenAI-compatible provider (Alibaba Cloud Model Studio, OpenAI, xAI, OpenRouter or a custom base URL) with an API key; the avatar is drawn with your own key.</string>
+    <string name="nm_media_image_none">None of your providers can draw. Add an OpenAI-compatible provider (Alibaba Cloud Bailian, OpenAI, xAI, OpenRouter or a custom base URL) with an API key; the avatar is drawn with your own key.</string>
     <string name="nm_media_image_off">Until one is set, the avatar cannot be changed and no pictures can be drawn. The agent will say so if you ask.</string>
     <string name="nm_media_need_model">Type a model name below</string>
     <string name="nm_media_section_video">Video model</string>
@@ -488,10 +488,11 @@
     <string name="nm_hands_need_granted">Allowed</string>
     <string name="nm_hands_need_ok">Ready</string>
     <string name="nm_hands_need_set_up">Set up</string>
-    <string name="nm_hands_section_model">The screen model</string>
-    <string name="nm_hands_model_auto">Automatic — the chat model you picked when it can see, else nanoMuse Cloud\'s screen model, else the Vision Group</string>
-    <string name="nm_hands_model_footer">Every step sends one screenshot to this model. Smaller vision models are fine here and cost less. A model from the Cloud\'s wider catalog is used only when you pick it.</string>
+    <string name="nm_hands_section_model">Hands model</string>
+    <string name="nm_hands_model_auto">Automatic — qwen3.8-27b (nanoMuse Cloud\'s, or under your own key), else the chat model you picked when it can see, else the Vision Group</string>
+    <string name="nm_hands_model_footer">Every step sends one screenshot to this model; it is a setting apart from the chat model. Smaller vision models are fine here and cost less. A model from the Cloud\'s wider catalog is used only when you pick it.</string>
     <string name="nm_hands_why_chosen">chosen here</string>
+    <string name="nm_hands_why_default">the hands\' default under your own key</string>
     <string name="nm_hands_why_chat">the chat model you picked</string>
     <string name="nm_hands_why_group">first in your default group that can see</string>
     <string name="nm_hands_why_menu">nanoMuse Cloud\'s screen model</string>
@@ -578,7 +579,7 @@
     <string name="nm_setup_source_title">Which model answers?</string>
     <string name="nm_setup_source_sub">Your account already brings one. You can add your own API key as well and switch at any time.</string>
     <string name="nm_setup_source_cloud">Use the nanoMuse Cloud model</string>
-    <string name="nm_setup_source_cloud_sub">Qwen through Alibaba Cloud Bailian, with a free allowance per account paid by the developer. Nothing to configure.</string>
+    <string name="nm_setup_source_cloud_sub">DeepSeek for chat and Qwen for the hands, with a free allowance per account paid by the developer. Nothing to configure.</string>
     <string name="nm_setup_source_own_sub">OpenAI, Anthropic, DeepSeek, Bailian and other OpenAI-compatible endpoints. The key stays on this phone.</string>
     <string name="nm_setup_source_fine_print">The two do not compete: the Cloud model stays available, and each model group picks its own.</string>
     <string name="nm_setup_password_title">Set a password</string>
@@ -645,7 +646,8 @@
     <string name="nm_cloud_err_bad_key">The relay no longer recognises this phone. Sign in again.</string>
     <string name="nm_cloud_err_out_of_tokens">The allowance is used up.</string>
     <string name="nm_cloud_err_daily_cap">Today\'s token quota is used up; it comes back tomorrow.</string>
-    <string name="nm_cloud_err_allowance">The free allowance is used up. Invite a friend (+¥%1$s for each of you) or add your own key under Settings → Providers.</string>
+    <string name="nm_cloud_err_allowance">The free allowance is used up. Invite a friend (+¥%1$s for each of you) or add your own key under Settings → Providers — Alibaba Cloud Bailian is the quick one.</string>
+    <string name="nm_cloud_err_allowance_abroad">The free allowance is used up. Invite a friend (+¥%1$s for each of you) or add your own key under Settings → Providers — OpenRouter is the quick one: one account, one key, pay as you go.</string>
     <string name="nm_cloud_warn_line">The free allowance is nearly used up: ¥%1$s of ¥%2$s left. Invite a friend (+¥%3$s for each of you) or add your own key — both under Account.</string>
     <string name="nm_cloud_err_rate_limited">Too many requests at once. A moment, please.</string>
     <string name="nm_cloud_err_unreachable">Could not reach nanoMuse Cloud. Check the connection.</string>
@@ -705,7 +707,11 @@
     <string name="nm_ways_sub">Two ways on — your sign-in and your devices keep working either way.</string>
     <string name="nm_ways_key_title">Use your own model key</string>
     <string name="nm_ways_key_body">Alibaba Cloud Bailian (阿里云百炼) is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.</string>
+    <string name="nm_ways_key_body_abroad">Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go.</string>
     <string name="nm_ways_key_action">Set it up</string>
+    <string name="nm_ways_key_action_openrouter">Sign in with OpenRouter</string>
+    <string name="nm_ways_key_other_openrouter">OpenRouter instead</string>
+    <string name="nm_ways_key_other_bailian">Bailian instead</string>
     <string name="nm_ways_key_guide">Step-by-step guide</string>
     <string name="nm_ways_invite_title">Invite a friend: +¥%1$s for you and +¥%2$s for them, for each new person who signs up with your link.</string>
     <string name="nm_ways_invite_share">Share the link</string>
@@ -801,8 +807,8 @@
     <string name="nm_cloud_allowance_left">¥%1$s · $%2$s left</string>
     <string name="nm_cloud_allowance_why">¥%1$s to start, +¥%2$s for each friend you invite — and +¥%2$s for them; after that, your own key keeps the model going.</string>
     <string name="nm_cloud_tokens_line">%1$s tokens in all · %2$s today</string>
-    <string name="nm_cloud_notice_title">Free, open source, non-profit — open source, built together: a personal agent for all</string>
-    <string name="nm_cloud_notice_closing">Report a bug, ask for a feature, send a pull request — every one brings a personal agent within everyone\'s reach.</string>
+    <string name="nm_cloud_notice_title">Free, open source, non-profit</string>
+    <string name="nm_cloud_notice_closing">Found a bug, want a feature, have a patch? The GitHub repository is the place.</string>
     <string name="nm_cloud_notice">nanoMuse is a non-profit open-source community project — free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours. Delete the account whenever you like.</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">Messages from your devices</string>
@@ -880,6 +886,11 @@
     <string name="nm_connectors_own_title">Your own servers</string>
     <string name="nm_connectors_own_row">MCP servers</string>
     <string name="nm_connectors_own_sub">Add a server by its address or command, or import a JSON config.</string>
+    <!-- Connections the account's other devices hold (the relay profile carries which device connected what; credentials stay where they were made) -->
+    <string name="nm_connectors_elsewhere_title">On your other devices</string>
+    <string name="nm_connectors_elsewhere_sign_in">Connected on %1$s — sign in here to use it on this phone.</string>
+    <string name="nm_connectors_elsewhere_only">Connected on %1$s. Not in this phone\'s catalogue; add it under Your own servers if you need it here.</string>
+    <string name="nm_connectors_elsewhere_device">another device</string>
     <string name="nm_connectors_own_n">%1$d of your own · add by address, command or JSON</string>
     <string name="nm_connectors_how_client">%1$s does not register apps by itself, so this takes a minute of setup once: create an OAuth app of your own in its developer settings, give it the callback address below, and paste the app\'s client ID here (and its secret, if there is one). Both stay on this phone.</string>
     <string name="nm_connectors_client_developer">Open %1$s\'s developer settings</string>

@@ -97,8 +97,67 @@ def test_cloud_urls() -> None:
     assert hub_url("https://cloud.nanomuse.cn/") == "wss://cloud.nanomuse.cn/v1/hub"
     assert hub_url("http://127.0.0.1:8080") == "ws://127.0.0.1:8080/v1/hub"
     assert model_url("https://cloud.nanomuse.cn") == "https://cloud.nanomuse.cn/v1"
-    assert CloudClient.recommended_model([{"id": "x"}, {"id": "qwen3.8-27b"}]) == "qwen3.8-27b"
+    # contract C4: the chat default when offered, else the first chat model; the hands
+    # default is a separate pick (the relay's `for` field, else what the id says it sees)
+    assert (
+        CloudClient.recommended_model([{"id": "x"}, {"id": "deepseek-v4.1-flash"}])
+        == "deepseek-v4.1-flash"
+    )
     assert CloudClient.recommended_model([{"id": "only"}]) == "only"
+    assert (
+        CloudClient.recommended_model([{"id": "x"}, {"id": "qwen3.8-27b"}], "gui") == "qwen3.8-27b"
+    )
+    assert CloudClient.recommended_model([{"id": "x"}], "gui") == "qwen3.8-27b"
+    labelled = [
+        {"id": "deepseek-v4.1-flash", "for": ["chat"]},
+        {"id": "qwen3.8-27b", "for": ["gui"]},
+        {"id": "qwen3.8-plus", "for": ["chat", "gui"]},
+    ]
+    assert [m["id"] for m in CloudClient.models_for(labelled, "chat")] == [
+        "deepseek-v4.1-flash",
+        "qwen3.8-plus",
+    ]
+    assert [m["id"] for m in CloudClient.models_for(labelled, "gui")] == [
+        "qwen3.8-27b",
+        "qwen3.8-plus",
+    ]
+    assert CloudClient.recommended_model(labelled, "gui") == "qwen3.8-27b"
+    assert (
+        CloudClient.recommended_model(
+            [
+                {
+                    "id": "a",
+                    "for": ["gui"],
+                    "nanomuse": {"recommended": True, "recommended_for": ["gui"]},
+                },
+                {"id": "qwen3.8-27b", "for": ["gui"]},
+            ],
+            "gui",
+        )
+        == "a"
+    )
+    # the relay 0.17 shape: the lanes live under `nanomuse`, next to its other flags
+    menu = [
+        {
+            "id": "deepseek-v4.1-flash",
+            "nanomuse": {"for": ["chat"], "recommended": True, "recommended_for": ["chat"]},
+        },
+        {
+            "id": "qwen3.8-27b",
+            "nanomuse": {"for": ["gui", "chat"], "recommended": True, "recommended_for": ["gui"]},
+        },
+        {"id": "qwen3.8-flash", "nanomuse": {"for": ["chat"], "recommended": False}},
+        {"id": "qwen-image-3.0", "nanomuse": {"for": [], "kind": "image"}},
+    ]
+    assert [m["id"] for m in CloudClient.models_for(menu, "chat")] == [
+        "deepseek-v4.1-flash",
+        "qwen3.8-27b",
+        "qwen3.8-flash",
+    ]
+    assert [m["id"] for m in CloudClient.models_for(menu, "gui")] == ["qwen3.8-27b"]
+    assert CloudClient.recommended_model(menu, "chat") == "deepseek-v4.1-flash"
+    assert CloudClient.recommended_model(menu, "gui") == "qwen3.8-27b"
+    assert CloudClient.recommended_model(list(reversed(menu)), "chat") == "deepseek-v4.1-flash"
 
 
 # ----------------------------------------------------------------------------- a fake relay
@@ -1039,6 +1098,12 @@ def _fake_profile_relay(
             store["face"] = body["face"]
         store["has_face"] = bool(store.get("face"))
         store.pop("face_id", None)
+        if "connectors" in body:
+            # merged by device, as the relay does it: the writer's replaced, the others' kept
+            kept = [
+                c for c in store.get("connectors") or [] if c.get("device_id") != store["device"]
+            ]
+            store["connectors"] = kept + list(body["connectors"])
         return {"rev": store["rev"], "device": store["device"]}
 
     monkeypatch.setattr(CloudClient, "profile", fake_profile)
@@ -1170,5 +1235,75 @@ def test_the_first_device_seeds_the_accounts_look(
         "avatar": "emoji",
         "emoji": "🪐",
         "color": "#7c3aed",
+        "connectors": [],
     }
     wait_for(lambda: service.hub.profile.rev == 1)
+
+
+def test_connections_travel_by_name_only(hub_server, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Contract C3: the remote MCP servers this device connected go to the account as a
+    name, an address and a kind — never the key — and the other devices' come back and show
+    under Connections as held elsewhere."""
+    from nanomuse.config import MCPServerSettings
+
+    client, service, _llm, relay = hub_server
+    phone_entry = {
+        "id": "github",
+        "label": "GitHub",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "auth": "oauth",
+        "device": "Li's phone",
+        "device_id": "phone-1",
+        "enabled": True,
+        "at": "2026-10-01T08:00:00Z",
+    }
+    store: dict[str, Any] = {
+        "rev": 2,
+        "device": "phone-1",
+        "name": "Nova",
+        "avatar": "dragon",
+        "has_face": False,
+        "face": None,
+        "connectors": [phone_entry],
+    }
+    puts = _fake_profile_relay(monkeypatch, store)
+    service.settings.mcp.servers = [
+        MCPServerSettings(name="notes", url="https://mcp.example.net/sse?key=SECRET-123"),
+        MCPServerSettings(name="local-files", command="python", args=["-m", "files"]),
+    ]
+    assert client.get("/api/connections").json()["shared"] == []  # not signed in
+    sign_in(client)
+    wait_for(lambda: service.hub.profile.rev == 2)
+    shared = client.get("/api/connections").json()["shared"]
+    assert shared == [{**phone_entry, "here": False}]
+    # what this device holds goes up when the look changes: the URL without its query, the
+    # kind of sign-in, never the key; the stdio server stays private
+    client.put("/api/settings", json={"profile": {"name": "Nova II"}})
+    wait_for(lambda: puts)
+    mine = puts[0]["connectors"]
+    assert [c["id"] for c in mine] == ["notes"]
+    assert mine[0]["url"] == "https://mcp.example.net/sse" and mine[0]["auth"] == "key"
+    assert mine[0]["device_id"] == service.hub.device_id and mine[0]["device"]
+    assert "SECRET" not in json.dumps(puts[0])
+    # the relay's word that another device connected something: pulled, and the one this
+    # device also has is marked as here
+    store["connectors"] = store["connectors"] + [
+        {**phone_entry, "id": "notes", "label": "Notes", "url": "https://mcp.example.net/sse"},
+        {**phone_entry, "id": "stale", "device_id": service.hub.device_id},  # our own echo
+    ]
+    store["rev"] = 4
+    relay.send({"type": "profile", "rev": 4, "device": "phone-1"})
+    wait_for(lambda: len(service.hub.profile.shared_connectors) == 2)
+    shared = client.get("/api/connections").json()["shared"]
+    assert {(c["id"], c["here"]) for c in shared} == {("github", False), ("notes", True)}
+    assert service.profile.name == "Nova II"  # a connectors-only rev does not undo the rename
+    # dropping a remote server tells the account; signing out forgets the others' list
+    service.connections.data["mcp"] = {
+        "servers": [{"name": "notes", "url": "https://mcp.example.net/sse?key=SECRET-123"}]
+    }
+    assert client.delete("/api/connections/mcp/notes").status_code == 200
+    wait_for(lambda: len(puts) == 2)
+    assert puts[1]["connectors"] == []
+    client.post("/api/cloud/sign-out")
+    assert service.hub.profile.shared_connectors == []
+    assert client.get("/api/connections").json()["shared"] == []

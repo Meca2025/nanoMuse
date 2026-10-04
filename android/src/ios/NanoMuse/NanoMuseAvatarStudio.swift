@@ -4,8 +4,9 @@
 //
 //  Describe a face → four candidates → pick one → the moods are posed
 //  from it → saved on this phone and in the account's profile. Pictures
-//  are drawn through nanoMuse Cloud (the only image provider on iOS), so a
-//  cost estimate is shown before anything is charged.
+//  are drawn with a Bailian key on this phone when there is one, otherwise
+//  through nanoMuse Cloud with a cost estimate first (NanoMuseImageGen).
+//  The chat-driven flow (NanoMuseAvatarFlow) drives this same model.
 //  Android: avatar/AvatarStudio.kt, ui/avatar/AvatarStudioScreen.kt.
 //
 
@@ -91,6 +92,8 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
         var image: UIImage?
         var error: String?
         var drawing = true
+        /// Where the picture is kept, so a persisted options card can show it again.
+        var file: URL?
     }
 
     enum Phase: Equatable {
@@ -110,8 +113,8 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
     @Published private(set) var estimateError: String?
     @Published private(set) var estimating = false
     @Published private(set) var lastError: String?
-
-    private var model: String?
+    /// Which round of candidates is up; files are named after it.
+    private var round = 0
 
     private init() {
         description = AppLocalized("A chubby pale-yellow baby dragon with tiny orange horns and small folded wings")
@@ -135,10 +138,49 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
 
     var picturesPerFace: Int { NanoMuseAvatarPrompts.candidates + NanoMuseAvatarPrompts.posedMoods.count }
 
+    /// A Bailian key on this phone draws the face; nanoMuse Cloud otherwise.
+    var usesOwnKey: Bool { NanoMuseImageGen.usesOwnKey }
+
+    /// Whether a picture can be drawn at all right now; the reason when not.
+    var cannotDrawReason: String? {
+        if usesOwnKey || NanoMuseCloud.isSignedIn { return nil }
+        return AppLocalized("Sign in to nanoMuse Cloud, or add an Alibaba Cloud Bailian key under Providers — the pictures are drawn with one of the two.")
+    }
+
+    /// Files of the candidates on screen, in order ("" where one failed).
+    var candidateFiles: [String] { candidates.map { $0.file?.path ?? "" } }
+
+    static var optionsDirectory: URL {
+        let dir = NanoMuseDirs.root.appendingPathComponent("avatar-options", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// Candidates older than the last two rounds go, so options do not pile up.
+    private func pruneOptionFiles(keepingRound current: Int) {
+        let dir = Self.optionsDirectory
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+        for name in names {
+            guard let dash = name.firstIndex(of: "-"), let r = Int(name[..<dash]), r < current - 1 else { continue }
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
+        }
+    }
+
+    private func store(_ image: UIImage, round: Int, index: Int) -> URL? {
+        let url = Self.optionsDirectory.appendingPathComponent("\(round)-\(index).png")
+        guard let data = NanoMuseFaceStore.square(image, side: 768).pngData() else { return nil }
+        do {
+            try data.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: Cost
 
     func refreshEstimate() {
-        guard NanoMuseCloud.isSignedIn else { return }
+        guard NanoMuseCloud.isSignedIn, !usesOwnKey else { return }
         estimating = true
         estimateError = nil
         Task { @MainActor [self] in
@@ -161,56 +203,79 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
         selected = nil
         candidates = Array(repeating: Candidate(), count: NanoMuseAvatarPrompts.candidates)
         phase = .drawing
+        round += 1
+        let thisRound = round
+        pruneOptionFiles(keepingRound: thisRound)
         Task { @MainActor [self] in
-            do {
-                let model = try await self.imageModel()
-                await withTaskGroup(of: (Int, Result<UIImage, Error>).self) { group in
-                    for i in 0..<NanoMuseAvatarPrompts.candidates {
-                        let prompt = NanoMuseAvatarPrompts.candidate(description: desc, style: self.style, index: i)
-                        group.addTask { @MainActor in
-                            do {
-                                let image = try await NanoMuseRelayMedia.generate(prompt: prompt, model: model)
-                                return (i, .success(image))
-                            } catch {
-                                return (i, .failure(error))
-                            }
-                        }
-                    }
-                    for await (i, result) in group {
-                        guard i < self.candidates.count else { continue }
-                        switch result {
-                        case .success(let image):
-                            self.candidates[i] = Candidate(image: image, error: nil, drawing: false)
-                        case .failure(let error):
-                            self.candidates[i] = Candidate(image: nil, error: NanoMuseCloud.describe(error), drawing: false)
+            await withTaskGroup(of: (Int, Result<UIImage, Error>).self) { group in
+                for i in 0..<NanoMuseAvatarPrompts.candidates {
+                    let prompt = NanoMuseAvatarPrompts.candidate(description: desc, style: self.style, index: i)
+                    group.addTask { @MainActor in
+                        do {
+                            let image = try await NanoMuseImageGen.generate(prompt: prompt)
+                            return (i, .success(image))
+                        } catch {
+                            return (i, .failure(error))
                         }
                     }
                 }
-                if self.candidates.allSatisfy({ $0.image == nil }) {
-                    self.lastError = self.candidates.first?.error ?? AppLocalized("The pictures did not come through. Try again in a minute.")
-                    self.phase = .describe
-                } else {
-                    self.phase = .pick
+                for await (i, result) in group {
+                    guard i < self.candidates.count, thisRound == self.round else { continue }
+                    switch result {
+                    case .success(let image):
+                        self.candidates[i] = Candidate(image: image, error: nil, drawing: false, file: self.store(image, round: thisRound, index: i))
+                    case .failure(let error):
+                        self.candidates[i] = Candidate(image: nil, error: NanoMuseCloud.describe(error), drawing: false)
+                    }
                 }
-            } catch {
-                self.lastError = NanoMuseCloud.describe(error)
+            }
+            guard thisRound == self.round else { return }
+            if self.candidates.allSatisfy({ $0.image == nil }) {
+                self.lastError = self.candidates.first?.error ?? AppLocalized("The pictures did not come through. Try again in a minute.")
                 self.phase = .describe
+            } else {
+                self.phase = .pick
             }
         }
     }
 
+    /// The chat flow: description and house style in, four candidates drawn. False with the reason when nothing can be drawn.
+    func start(description desc: String, style: NanoMuseAvatarStyle = .muse) -> Bool {
+        if let reason = cannotDrawReason {
+            lastError = reason
+            return false
+        }
+        guard !isBusy else { return false }
+        description = desc
+        self.style = style
+        draw()
+        return phase == .drawing
+    }
+
     func retry(_ index: Int) {
-        guard phase == .pick, index < candidates.count, let model else { return }
+        guard phase == .pick, index < candidates.count else { return }
         let desc = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        let thisRound = round
         candidates[index] = Candidate()
         Task { @MainActor [self] in
             do {
-                let image = try await NanoMuseRelayMedia.generate(prompt: NanoMuseAvatarPrompts.candidate(description: desc, style: style, index: index), model: model)
-                if index < candidates.count { candidates[index] = Candidate(image: image, error: nil, drawing: false) }
+                let image = try await NanoMuseImageGen.generate(prompt: NanoMuseAvatarPrompts.candidate(description: desc, style: style, index: index))
+                if index < candidates.count, thisRound == round {
+                    candidates[index] = Candidate(image: image, error: nil, drawing: false, file: store(image, round: thisRound, index: index))
+                }
             } catch {
                 if index < candidates.count { candidates[index] = Candidate(image: nil, error: NanoMuseCloud.describe(error), drawing: false) }
             }
         }
+    }
+
+    /// The chat flow picked one by tap or by words.
+    @discardableResult
+    func adopt(index: Int) -> Bool {
+        guard phase == .pick, index < candidates.count, candidates[index].image != nil else { return false }
+        selected = index
+        adopt()
+        return true
     }
 
     /// Wear the chosen picture now and pose the other moods from it.
@@ -248,16 +313,13 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
         Task { @MainActor [self] in
             var done = 0
             var drawn = 0
-            let model = try? await self.imageModel()
             for mood in moods {
-                if let model {
-                    do {
-                        let image = try await NanoMuseRelayMedia.edit(base, prompt: NanoMuseAvatarPrompts.mood(mood), model: model)
-                        NanoMuseFaceStore.shared.put(mood, image: image)
-                        drawn += 1
-                    } catch {
-                        self.lastError = NanoMuseCloud.describe(error)
-                    }
+                do {
+                    let image = try await NanoMuseImageGen.edit(base, prompt: NanoMuseAvatarPrompts.mood(mood))
+                    NanoMuseFaceStore.shared.put(mood, image: image)
+                    drawn += 1
+                } catch {
+                    self.lastError = NanoMuseCloud.describe(error)
                 }
                 done += 1
                 self.phase = .posing(done: done, total: moods.count)
@@ -266,13 +328,6 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
             self.phase = .finished(drawn: drawn, total: moods.count)
             NanoMuseStarWatch.shared.show(.newLook)
         }
-    }
-
-    private func imageModel() async throws -> String {
-        if let model { return model }
-        let found = try await NanoMuseRelayMedia.imageModel()
-        model = found
-        return found
     }
 }
 
@@ -338,9 +393,17 @@ struct NanoMuseAvatarStudioView: View {
                     }
                 }
                 Section {
-                    Text(AppLocalized("Pictures are drawn through nanoMuse Cloud and kept on this phone; the face is shared with your other devices through your account. Each new face is eight pictures: four to choose from and four moods."))
+                    Text(studio.usesOwnKey
+                         ? AppLocalized("Pictures are drawn with your Bailian key and kept on this phone; the face is shared with your other devices through your account. Each new face is eight pictures: four to choose from and four moods.")
+                         : AppLocalized("Pictures are drawn through nanoMuse Cloud and kept on this phone; the face is shared with your other devices through your account. Each new face is eight pictures: four to choose from and four moods."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    Text(NanoMuseImageGen.providerLine())
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if studio.usesOwnKey {
+                        NavigationLink(AppLocalized("Image model")) { NanoMuseImageModelPicker() }
+                    }
                 }
             }
             .navigationTitle(AppLocalized("Avatar"))
@@ -383,7 +446,7 @@ struct NanoMuseAvatarStudioView: View {
                     }
                 }
                 Button(AppLocalized("Redraw the moods")) { studio.redrawMoods() }
-                    .disabled(!NanoMuseCloud.isSignedIn)
+                    .disabled(studio.cannotDrawReason != nil)
                 Button(AppLocalized("Back to the built-in face"), role: .destructive) { confirmReset = true }
             }
         }
@@ -411,18 +474,22 @@ struct NanoMuseAvatarStudioView: View {
                 }
                 .padding(.vertical, 2)
             }
-            if NanoMuseCloud.isSignedIn {
+            if let reason = studio.cannotDrawReason {
+                Text(reason)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
                 Button {
-                    studio.refreshEstimate()
-                    askCost = true
+                    if studio.usesOwnKey {
+                        studio.draw()
+                    } else {
+                        studio.refreshEstimate()
+                        askCost = true
+                    }
                 } label: {
                     Label(AppLocalized("Draw four"), systemImage: "paintbrush")
                 }
                 .disabled(studio.description.trimmingCharacters(in: .whitespaces).isEmpty)
-            } else {
-                Text(AppLocalized("Sign in to nanoMuse Cloud to draw a new face — the pictures come through the relay."))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         } header: {
             Text(AppLocalized("Describe a new face"))
@@ -483,8 +550,12 @@ struct NanoMuseAvatarStudioView: View {
                 }
                 .disabled(studio.selected == nil)
                 Button(AppLocalized("Draw four more")) {
-                    studio.refreshEstimate()
-                    askCost = true
+                    if studio.usesOwnKey {
+                        studio.draw()
+                    } else {
+                        studio.refreshEstimate()
+                        askCost = true
+                    }
                 }
                 Button(AppLocalized("Keep current"), role: .cancel) { studio.backToDescribe() }
             }
@@ -498,7 +569,7 @@ struct NanoMuseAvatarStudioView: View {
 
 // MARK: - Cost sheet
 
-private struct NanoMuseFaceCostSheet: View {
+struct NanoMuseFaceCostSheet: View {
     @ObservedObject var studio: NanoMuseAvatarStudioModel
     var onDraw: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -554,5 +625,50 @@ private struct NanoMuseFaceCostSheet: View {
     static func money(_ v: Double) -> String {
         if v == v.rounded() { return String(format: "%.0f", v) }
         return String(format: "%.2f", v)
+    }
+}
+
+// MARK: - Image model (own key)
+
+/// Which Bailian instance and model draw the face, when a key is on this phone.
+struct NanoMuseImageModelPicker: View {
+    @State private var instances: [ProviderInstance] = []
+    @State private var instanceId: String = ""
+    @State private var model: String = ""
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(AppLocalized("Provider"), selection: $instanceId) {
+                    ForEach(instances) { inst in Text(inst.label).tag(inst.id) }
+                }
+                .onChange(of: instanceId) { _ in
+                    if let inst = instances.first(where: { $0.id == instanceId }) { model = NanoMuseImageGen.suggestedModel(for: inst) }
+                }
+                if let inst = instances.first(where: { $0.id == instanceId }) {
+                    Picker(AppLocalized("Image model"), selection: $model) {
+                        ForEach(NanoMuseImageGen.availableModels(for: inst), id: \.self) { Text($0).tag($0) }
+                    }
+                }
+            } footer: {
+                Text(AppLocalized("Drawn through Model Studio's native image endpoint with the same key. qwen-image-3.0 is about ¥0.18 a picture."))
+            }
+        }
+        .navigationTitle(AppLocalized("Image model"))
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            instances = NanoMuseImageGen.bailianInstances()
+            if case .ownKey(let k) = NanoMuseImageGen.route() {
+                instanceId = k.instanceId
+                model = k.model
+            } else if let first = instances.first {
+                instanceId = first.id
+                model = NanoMuseImageGen.suggestedModel(for: first)
+            }
+        }
+        .onDisappear {
+            guard !instanceId.isEmpty, !model.isEmpty else { return }
+            NanoMuseImageGen.save(instanceId: instanceId, model: model)
+        }
     }
 }

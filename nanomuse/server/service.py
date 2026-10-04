@@ -55,7 +55,23 @@ IDEAS_PROMPT = """You are {name}, the user's personal agent. Based on what you k
 What you know:
 {context}
 
-Answer with a JSON array only, no prose. Each item: {{"title": "<short title, max 8 words>", "detail": "<one sentence on what you would do and why it helps>", "prompt": "<the exact request the user could send you to start>", "area": "<one of: planning, research, goals, money, health, home, learning, people, files, fun>"}}. Write in the user's language ({language})."""
+Answer with a JSON array only, no prose. Each item: {{"title": "<short title, max 8 words>", "detail": "<one sentence on what you would do and why it helps>", "prompt": "<the exact request the user could send you to start>", "area": "<one of: planning, research, goals, money, health, home, learning, people, files, fun>", "kind": "<chat for a one-off conversation; routine for something to do every day at a time; goal for something long-term to track>", "time": "<HH:MM, routines only>", "category": "<goals only — one of: health, finance, career, learning, relationships, family, home, travel, creative, other>"}}. Mostly chat; at most one routine and one goal. Write in the user's language ({language})."""
+
+# what tapping an idea does on every client: a message in the main chat, a daily routine
+# (a repeating reminder with the prompt), or a goal conversation (the phone's IdeaKind)
+IDEA_KINDS = ("chat", "routine", "goal")
+IDEA_GOAL_CATEGORIES = (
+    "health",
+    "finance",
+    "career",
+    "learning",
+    "relationships",
+    "family",
+    "home",
+    "travel",
+    "creative",
+    "other",
+)
 
 IDEA_AREAS = (
     "planning",
@@ -89,30 +105,44 @@ STARTER_IDEAS = [
         "detail": "Tell me what's on your plate and I'll turn it into a realistic plan with the important things first.",
         "prompt": "Help me plan my week. Ask me what I need to get done, then propose a schedule.",
         "area": "planning",
+        "kind": "chat",
+    },
+    {
+        "title": "A morning brief",
+        "detail": "Before you leave each morning: the weather, the first thing on your plate and anything new worth knowing.",
+        "prompt": "Morning brief: check today's weather, read my calendar and reminders for today, and tell me in five lines what matters.",
+        "area": "planning",
+        "kind": "routine",
+        "time": "07:30",
     },
     {
         "title": "Research & compare options",
         "detail": "Laptops, flights, insurance, a new phone plan — I'll gather the facts and compare them for you.",
         "prompt": "I need to make a purchase decision. Ask me what I'm choosing between, then research and compare the options.",
         "area": "research",
+        "kind": "chat",
     },
     {
         "title": "Set up a long-term goal",
         "detail": "Share a goal (learn a language, run a 10k, save for a trip) and I'll break it into steps and keep track.",
         "prompt": "I want to set up a long-term goal. Ask me about it, then create a plan with concrete steps and track it.",
         "area": "goals",
+        "kind": "goal",
+        "category": "other",
     },
     {
         "title": "Tell me about yourself",
         "detail": "The more I know about your preferences, routines and constraints, the more useful I get. I'll remember what matters.",
         "prompt": "Ask me a few questions about myself so you can help me better, and remember the answers.",
         "area": "people",
+        "kind": "chat",
     },
     {
         "title": "Build a quick tracker",
         "detail": "Spending, habits, workouts, reading — I can write a small script or document to track it for you.",
         "prompt": "Build me a simple tracker. Ask me what I want to track and how, then create it in the workspace.",
         "area": "files",
+        "kind": "chat",
     },
 ]
 
@@ -332,6 +362,8 @@ class MuseService:
         )
         self.phone.on_change = self.publish_phone
         self.app = NanoMuseApp(settings, ui=self.ui, llm=llm, session_id="app", phone=self.phone)
+        # a hold belongs to the chat whose run is acting (docs/browser.md, contract C1)
+        self.app.holds.thread_of = current_thread.get
         # The CLI bridge: `nanomuse-device` and friends, from inside a shell command. It
         # learns where the server listens in `serve()`; until then no token is minted.
         self.bridge = Bridge(self.app.tools, self.app.sentinel, self.ui)
@@ -600,6 +632,9 @@ class MuseService:
         for ev in timeline.events:
             if ev.get("type") in ("browser", "hands") and ev.get("status") == "live":
                 timeline.update(ev["id"], status="done")
+            # a hold lives in memory: after a restart nothing waits on it any more
+            if ev.get("type") == "hold" and ev.get("status") == "on":
+                timeline.update(ev["id"], status="off", stale=True)
         session_file = self.threads_dir / f"{thread_id}.session.json"
         agent = MuseAgent(
             settings=self.settings,
@@ -667,6 +702,7 @@ class MuseService:
         for p in (thread.timeline.path, thread.agent.session_file):
             if p and Path(p).exists():
                 Path(p).unlink()
+        self.app.holds.clear_thread(thread_id)
         self.app.sentinel.end_conversation(thread_id)
         self._save_index()
         self.bus.publish({"kind": "thread_deleted", "thread": thread_id})
@@ -714,6 +750,7 @@ class MuseService:
         thread.timeline.clear()
         thread.agent.reset()
         thread.agent._save_session()
+        self.app.holds.clear_thread(thread_id)
         self.app.sentinel.end_conversation(thread_id)
         self.bus.publish({"kind": "thread_cleared", "thread": thread_id})
         return True
@@ -757,8 +794,13 @@ class MuseService:
             if not attachments and self.ui.answer_question(thread_id, text):
                 return event
             # nanoMuse: a request for a new look (or the pick among four candidates) is the
-            # studio's, not the agent's — the card in the chat takes it from here
-            if source == "user" and not attachments and self.avatar.intercept(thread_id, text):
+            # studio's, not the agent's — the card in the chat takes it from here; a picture
+            # attached to the request is the reference the candidates are drawn from
+            if (
+                source == "user"
+                and all(a.kind == "image" for a in attachments)
+                and self.avatar.intercept(thread_id, text, [a.path for a in attachments])
+            ):
                 return event
         else:
             event = self.ui.emit(
@@ -914,16 +956,38 @@ class MuseService:
         return tool.backend_kind if tool is not None else ""
 
     async def browser_control(self, thread: str, body: dict[str, Any]) -> dict[str, Any]:
-        """The user takes over the agent's browser from the app (tap, type, open a URL)."""
+        """The user takes over the agent's browser from the app (tap, type, open a URL).
+
+        ``take_over`` puts a hold on (contract C1): the agent's next browser action waits
+        until ``handed_back`` — the Done button — takes it off. Both work whether or not
+        a page is open; the other actions need one."""
+        action = str(body.get("action") or "")
+        if action not in (
+            "click",
+            "type",
+            "key",
+            "scroll",
+            "back",
+            "navigate",
+            "look",
+            "take_over",
+            "handed_back",
+        ):
+            raise ValueError(f"unknown browser action '{action}'")
         tool = self.browser
+        hold: dict[str, Any] | None = None
+        if action == "take_over":
+            hold = self.app.holds.open(thread, "browser", by="user", reason="").to_event()
+        elif action == "handed_back":
+            released = self.app.holds.release(thread, "browser")
+            hold = released.to_event() if released is not None else None
+        if action in ("take_over", "handed_back") and (tool is None or not tool.open):
+            return {"url": "", "title": "", "hold": hold}
         if tool is None:
             raise LookupError("the browser tool is not enabled")
-        action = str(body.get("action") or "")
-        if action not in ("click", "type", "key", "scroll", "navigate", "look", "handed_back"):
-            raise ValueError(f"unknown browser action '{action}'")
         if action not in ("look", "navigate") and not tool.open:
             raise LookupError("the browser is not open right now — open a URL first")
-        return await tool.user_action(
+        result = await tool.user_action(
             action,
             thread,
             x=body.get("x"),
@@ -933,6 +997,39 @@ class MuseService:
             dy=body.get("dy"),
             url=body.get("url"),
         )
+        if hold is not None:
+            result["hold"] = hold
+        return result
+
+    # ------------------------------------------------------------------ holds (C1)
+    def holds_view(self) -> list[dict[str, Any]]:
+        return self.app.holds.view()
+
+    def open_hold(self, thread: str, tool: str, reason: str = "") -> dict[str, Any]:
+        """``POST /api/holds``: the user takes the browser, the computer or the phone over
+        for this chat; the agent's actions of that kind wait until :meth:`done_hold`."""
+        if thread not in self.threads:
+            raise LookupError(f"no thread {thread!r}")
+        return self.app.holds.open(thread, tool, by="user", reason=reason).to_event()
+
+    def done_hold(self, hold_id: str) -> dict[str, Any]:
+        """``POST /api/holds/{id}/done``: the hold goes off; whatever waited on it looks
+        again and goes on. A hold that is already off comes back as it is."""
+        hold = self.app.holds.done(hold_id)
+        if hold is None:
+            raise LookupError(f"no hold {hold_id!r}")
+        if hold.tool == "browser":
+            # the model hears that the page was used, the way the phone's sheet reports it
+            tool = self.browser
+            if tool is not None and tool.open:
+                asyncio.get_running_loop().create_task(self._browser_handed_back(tool, hold.thread))
+        return hold.to_event()
+
+    async def _browser_handed_back(self, tool: Browser, thread: str) -> None:
+        try:
+            await tool.user_action("handed_back", thread)
+        except Exception as exc:  # noqa: BLE001 — the hold is off either way
+            logger.debug("browser handed back: {}", exc)
 
     # ------------------------------------------------------------------ push
     def pending_count(self) -> int:
@@ -2040,6 +2137,7 @@ class MuseService:
             "hub": self.hub.view(),
             # this computer's own screen and hands
             "hands": self.hands_view(),
+            "holds": self.holds_view(),
         }
 
 
@@ -2162,14 +2260,21 @@ def _parse_ideas(text: str) -> list[dict[str, str]]:
         prompt = str(item.get("prompt", "")).strip()
         if title and prompt:
             area = str(item.get("area", "")).strip().lower()
-            ideas.append(
-                {
-                    "title": title[:80],
-                    "detail": str(item.get("detail", "")).strip()[:300],
-                    "prompt": prompt[:1000],
-                    "area": area if area in IDEA_AREAS else "fun",
-                }
-            )
+            kind = str(item.get("kind", "")).strip().lower()
+            idea = {
+                "title": title[:80],
+                "detail": str(item.get("detail", "")).strip()[:300],
+                "prompt": prompt[:1000],
+                "area": area if area in IDEA_AREAS else "fun",
+                "kind": kind if kind in IDEA_KINDS else "chat",
+            }
+            if idea["kind"] == "routine":
+                when = str(item.get("time", "")).strip()
+                idea["time"] = when if re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", when) else "09:00"
+            elif idea["kind"] == "goal":
+                category = str(item.get("category", "")).strip().lower()
+                idea["category"] = category if category in IDEA_GOAL_CATEGORIES else "other"
+            ideas.append(idea)
     return ideas[:8]
 
 

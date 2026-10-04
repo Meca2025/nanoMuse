@@ -17,7 +17,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
-from nanomuse.cloud import DEFAULT_MODEL as DEFAULT_CLOUD_MODEL
+from nanomuse.cloud import DEFAULT_CHAT_MODEL as DEFAULT_CLOUD_MODEL
+from nanomuse.cloud import DEFAULT_GUI_MODEL as DEFAULT_CLOUD_GUI_MODEL
 from nanomuse.cloud import model_url
 from nanomuse.config import (
     CalendarFeedSettings,
@@ -56,7 +57,8 @@ EMAIL_PASSWORD = "EMAIL_PASSWORD"
 # The provider presets the app offers. `models` is the fallback catalogue for when the
 # endpoint's own /models cannot be reached (see `llm_models`); names move fast, the live list
 # is the truth. `key_url` is where a key comes from; `key_hint` what one looks like there.
-# `group` sorts the form: what protocol the endpoint speaks.
+# `group` sorts the form: what protocol the endpoint speaks. `gui_model` is the hands model
+# the preset suggests next to its chat model (contract C4): one that sees pictures.
 PROVIDERS: dict[str, dict[str, Any]] = {
     "deepseek": {
         "label": "DeepSeek",
@@ -79,14 +81,17 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "key_hint": "sk-…",
     },
     "qwen": {
-        "label": "Qwen",
-        "subtitle": "阿里云百炼 · DashScope",
+        "label": "Alibaba Cloud Bailian",
+        "subtitle": "阿里云百炼 · DashScope · DeepSeek and Qwen, one key",
         "group": "openai",
         "provider": "openai",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "models": ["qwen3.7-plus", "qwen3.7-max", "qwen3.6-flash"],
+        "models": ["deepseek-v4.1-flash", "qwen3.8-27b", "qwen3.7-plus", "qwen3.7-max"],
+        "gui_model": "qwen3.8-27b",
         "key_url": "https://bailian.console.aliyun.com/?apiKey=1",
         "key_hint": "sk-…",
+        # the console only signs up accounts from mainland China (contract C5)
+        "region": "cn",
     },
     "glm": {
         "label": "GLM",
@@ -141,11 +146,17 @@ PROVIDERS: dict[str, dict[str, Any]] = {
     },
     "openrouter": {
         "label": "OpenRouter",
-        "subtitle": "many models, one key",
+        "subtitle": "one account, one key, pay as you go",
         "group": "openai",
         "provider": "openai",
         "base_url": "https://openrouter.ai/api/v1",
-        "models": ["deepseek/deepseek-chat", "anthropic/claude-sonnet-4", "openai/gpt-5-mini"],
+        "models": [
+            "deepseek/deepseek-v4.1-flash",
+            "qwen/qwen3.8-27b",
+            "anthropic/claude-sonnet-4",
+            "openai/gpt-5-mini",
+        ],
+        "gui_model": "qwen/qwen3.8-27b",
         "key_url": "https://openrouter.ai/keys",
         "key_hint": "sk-or-v1-…",
     },
@@ -298,6 +309,8 @@ class Connections:
                 "provider": "openai",
                 "base_url": model_url(hub.cloud.base_url),
                 "models": hub.chat_models or [DEFAULT_CLOUD_MODEL],
+                "gui_model": hub.gui_models[0] if hub.gui_models else DEFAULT_CLOUD_GUI_MODEL,
+                "gui_models": hub.gui_models or [DEFAULT_CLOUD_GUI_MODEL],
                 "no_key": True,
                 "cloud": True,
             },
@@ -387,9 +400,29 @@ class Connections:
                 for m in s.mcp.servers
             ]
             + self._device_mcp_view(live_tools),
+            # connections the account's other devices hold (contract C3): a name and a
+            # kind, never a key; ``here`` when a server of that name is connected on this one
+            "shared": self._shared_view(),
             "vault": self.vault.names(),
             "onboarded": bool(self.data.get("onboarded")),
         }
+
+    def _shared_view(self) -> list[dict[str, Any]]:
+        hub = getattr(self.svc, "hub", None)
+        if hub is None or not hub.signed_in:
+            return []
+        local_names = {m.name for m in self.settings.mcp.servers}
+        local_urls = {(m.url or "").split("?", 1)[0] for m in self.settings.mcp.servers if m.url}
+        return [
+            {**e, "here": e["id"] in local_names or (bool(e["url"]) and e["url"] in local_urls)}
+            for e in hub.profile.shared_connectors
+        ]
+
+    def _share_connectors(self) -> None:
+        """What this device connected changed: the account hears a moment later."""
+        hub = getattr(self.svc, "hub", None)
+        if hub is not None:
+            hub.profile.changed()
 
     def _calendar_view(self) -> dict[str, Any]:
         cal = self.settings.connectors.calendar
@@ -691,6 +724,10 @@ class Connections:
                 "image_catalog": [i for i in image if i not in listed],
                 "video_catalog": [i for i in video if i not in listed],
                 "vision": vision,
+                # contract C4: the relay says which models are for the hands; recommended first
+                "gui": hub.gui_models,
+                "gui_recommended": hub.gui_models[0] if hub.gui_models else "",
+                "chat_recommended": chat[0] if chat else "",
             }
         preset = PROVIDERS.get(preset_id) or {}
         base_url = normalize_base_url(str(body.get("base_url") or preset.get("base_url") or ""))
@@ -1100,6 +1137,11 @@ class Connections:
             "enabled": gui.enabled,
             "provider": gui.provider,
             "model": gui.model,
+            # the model the hands use when none is set here: the relay's hands model with
+            # the account, the chat model otherwise (contract C4)
+            "effective_model": self.svc.app.gui_model(),
+            "default_model": self.svc.app.gui_model(default_only=True),
+            "cloud": self.svc.app.llm_is_cloud(),
             "base_url": gui.base_url or "",
             "key_source": key_source,
             "max_steps": gui.max_steps,
@@ -1149,6 +1191,11 @@ class Connections:
             if backend not in ("auto", "pyautogui", "xdotool"):
                 raise ValueError("backend must be 'auto', 'pyautogui' or 'xdotool'")
             hands["backend"] = backend
+        if body.get("mode") is not None:
+            mode = str(body["mode"]).strip().lower() or "auto"
+            if mode not in ("auto", "screen", "window"):
+                raise ValueError("mode must be 'auto', 'screen' or 'window'")
+            hands["mode"] = mode
         self.data["hands"] = hands
         self._save()
         apply_app_settings(self.settings, {"hands": hands})
@@ -1188,7 +1235,7 @@ class Connections:
         return {
             "ok": True,
             "reply": (response.content or "").strip()[:200],
-            "model": self.settings.gui.model or self.settings.llm.model,
+            "model": self.svc.app.gui_model(),
             "ms": int((loop.time() - started) * 1000),
         }
 
@@ -1239,6 +1286,8 @@ class Connections:
         self._mcp[cfg.name] = manager
         self.svc.app.tools.add(*tools)
         self._publish()
+        if cfg.url:
+            self._share_connectors()
         return self.view()
 
     async def remove_mcp(self, name: str, save: bool = True) -> bool:
@@ -1256,6 +1305,7 @@ class Connections:
             self.data["mcp"] = {"servers": [m for m in servers if m.get("name") != name]}
             self._save()
             self._publish()
+            self._share_connectors()
         return True
 
     async def close(self) -> None:

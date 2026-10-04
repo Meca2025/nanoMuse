@@ -102,12 +102,27 @@ the Cloudflare DNS module.
 - **Bring your own key:** the visitor can enter a provider URL, model and key on the setup page.
   The gateway keeps them in memory for the session and forwards with them (no budget of ours);
   the container never sees the key. Only `https://` to hosts in `BYOK_ALLOWED_HOSTS` (the usual
-  providers), never to an address inside the server's network.
+  providers), never to an address inside the server's network. The model they name is the chat
+  model; the hands get their own on the same key — `qwen/qwen3.8-27b` on OpenRouter,
+  `qwen3.8-27b` on 阿里云百炼 — and on any other provider the one model does both lanes (a
+  text-only model there, DeepSeek's own API say, leaves the hands with nothing to look with).
 
-Two lanes: `main` (the model that talks to the visitor) and `gui` (the one that reads screens
-and taps; many small calls with a screenshot each). The defaults are 阿里云百炼's `deepseek-v4-pro`
-for the talk and, because DeepSeek takes no images, `qwen3.8-27b` for the screens — one key,
-one host. A sighted `MAIN_MODEL` serves both lanes by itself; set `GUI_*` to split them.
+Two lanes, two models — the same two every nanoMuse client defaults to: `main` (the model that
+talks to the visitor) is 阿里云百炼's `deepseek-v4.1-flash`, which reads pictures as well;
+`gui` (the one that reads screens and taps; many small calls with a screenshot each) is
+`qwen3.8-27b` — one key, one host. `GUI_MODEL` is a fixed default, not derived from the chat
+model; set `GUI_*` to change it or to split the lanes across keys or providers. A chat model
+that takes no images (DeepSeek before V4.1: `deepseek-v4-pro`, `deepseek-v4-flash`) is kept
+away from screenshots (`NANOMUSE_LLM_VISION=off`); the operator lane still looks.
+`GET /api/demo/info` names both (`demo_model`, `gui_model`).
+
+**The capsule decides.** While the hands work on the simulated phone, an approval the run
+raises (a tap on *Pay*, *Send*, *Delete*…) is shown on the capsule over the operated app with
+**Allow once / Deny**, answered from there (`POST /api/approvals/{id}`, `scope: once`); the
+visitor is not sent back into the nanoMuse app for it, and the shade gets no notification on
+top of the card. A hold — the agent handing the phone over (*Your turn — <reason>*) or the
+visitor taking it from the chat (*You have the phone*) — is a card with **Done**
+(`POST /api/holds/{id}/done`). Only a question a finished task left offers *Open*.
 
 **Pictures for a new look** (`gateway/showcase_gateway/images.py`): "换个形象：一只橘猫" in the
 chat is the avatar studio's ([docs/avatar.md](../../docs/avatar.md)) — eight pictures: four

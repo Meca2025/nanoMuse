@@ -556,8 +556,21 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
         // First: enrich from models.dev (fills modality, contextWindow, maxOutputTokens if available)
         var enriched = ModelsDevAPI.enrichModel(self)
 
+        // nanoMuse: DeepSeek's rule (contract C4) wins over models.dev — text only unless the id
+        // names v4.1 or later, `vision` or `ocr`; the relay's and Bailian's `deepseek-v4.1-flash` sees.
+        if let sees = NanoMuseVision.deepSeekSees((id + " " + displayName).lowercased()) {
+            enriched.modalityOverride = sees ? .vision : .textOnly
+            return enriched
+        }
+
         // If models.dev already set the modality, we're done
         if enriched.modalityOverride != nil { return enriched }
+
+        // nanoMuse: families we know see (Qwen 3, GLM-4V, Kimi VL, …) before the broad pattern pass.
+        if let guess = NanoMuseVision.guess(id: id, displayName: displayName) {
+            enriched.modalityOverride = guess
+            return enriched
+        }
 
         // [T-mimo-shadow-voice] Dedicated ASR/TTS models get their EXACT
         // voice-model modality (audio-only-input / audio-only-output), which the

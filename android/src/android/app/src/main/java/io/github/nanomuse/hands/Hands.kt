@@ -64,7 +64,14 @@ object Hands {
     // ── the screen model ───────────────────────────────────────────────────
 
     /** How the screen model was arrived at, for the settings page to say. */
-    enum class Why { CHOSEN, CHAT, GROUP, MENU, VISION_GROUP, ANY }
+    enum class Why { CHOSEN, MENU, DEFAULT, CHAT, GROUP, VISION_GROUP, ANY }
+
+    /**
+     * The hands' default model wherever it is served (contract C4): `qwen3.8-27b` on nanoMuse
+     * Cloud and 阿里云百炼, `qwen/qwen3.8-27b` on OpenRouter. The chat model is a separate
+     * setting; a chat model that happens to see is not thereby the one that operates the phone.
+     */
+    val DEFAULT_MODEL_IDS = listOf("qwen3.8-27b", "qwen/qwen3.8-27b")
 
     /** A model that sees pictures, with the key to call it. */
     data class ScreenModel(val instance: ProviderInstance, val entry: ModelEntry, val apiKey: String, val why: Why = Why.ANY) {
@@ -82,10 +89,13 @@ object Hands {
     }
 
     /**
-     * The model that looks at the screen, in this order: the one chosen in Settings; the chat
-     * model the person last picked, when it sees; the first sighted member of the default
-     * group; the Cloud menu's own model for the screen (the recommended one when it sees);
-     * the Vision Group; last, any enabled vision model, preferring names that say so (`vl`,
+     * The model that looks at the screen — the *hands model*, a setting of its own beside the
+     * chat model (contract C4) — in this order: the one chosen in Settings → Hands; nanoMuse
+     * Cloud's model for the screen (`qwen3.8-27b`, what the relay marks `for: gui`), when
+     * signed in; the same default under the person's own key (`qwen3.8-27b` on 百炼,
+     * `qwen/qwen3.8-27b` on OpenRouter); then, for a set-up with none of those, the chat model
+     * the person last picked when it sees, the first sighted member of the default group, the
+     * Vision Group, and last any enabled vision model, preferring names that say so (`vl`,
      * `vision`) — but never one of the Cloud's catalog models the person did not pick, so a
      * member is not quietly billed for `qwen-vl-max` because its name has `vl` in it. Null when
      * none of the user's models sees.
@@ -101,17 +111,23 @@ object Hands {
         fun byEntry(entry: ModelEntry?, why: Why): ScreenModel? =
             entry?.let { e -> usable(cfg.instances.firstOrNull { it.id == e.providerInstanceId }, e, why) }
         modelEntryId(context)?.let { id -> byEntry(cfg.modelEntries.firstOrNull { it.id == id }, Why.CHOSEN) }?.let { return it }
-        byEntry(repo.lastUsedVisibleEntry(), Why.CHAT)?.let { return it }
-        val defaultGroup = cfg.modelGroups.firstOrNull { it.id == cfg.defaultPrimaryGroupId } ?: cfg.modelGroups.firstOrNull()
-        defaultGroup?.memberEntryIds?.firstNotNullOfOrNull { id ->
-            byEntry(cfg.modelEntries.firstOrNull { it.id == id }, Why.GROUP)
-        }?.let { return it }
         val cloud = NanoMuseCloud.instance(context)
         if (cloud != null) {
             NanoMuseCloud.sightedModelId(context)?.let { sighted ->
                 byEntry(cfg.modelEntries.firstOrNull { it.providerInstanceId == cloud.id && it.model.id == sighted && !it.isHidden }, Why.MENU)
             }?.let { return it }
         }
+        // the hands' default under a key of the person's own (Bailian, OpenRouter, a relay of
+        // their own): the entry has to be there already — nothing is added behind their back
+        DEFAULT_MODEL_IDS.firstNotNullOfOrNull { wanted ->
+            cfg.modelEntries.filter { !it.isHidden && it.model.id.equals(wanted, ignoreCase = true) }
+                .firstNotNullOfOrNull { byEntry(it, Why.DEFAULT) }
+        }?.let { return it }
+        byEntry(repo.lastUsedVisibleEntry(), Why.CHAT)?.let { return it }
+        val defaultGroup = cfg.modelGroups.firstOrNull { it.id == cfg.defaultPrimaryGroupId } ?: cfg.modelGroups.firstOrNull()
+        defaultGroup?.memberEntryIds?.firstNotNullOfOrNull { id ->
+            byEntry(cfg.modelEntries.firstOrNull { it.id == id }, Why.GROUP)
+        }?.let { return it }
         repo.resolveVisionCandidates().firstNotNullOfOrNull { (inst, e) -> usable(inst, e, Why.VISION_GROUP) }?.let { return it }
         val all = visionEntries(context)
             .filter { (inst, e) -> inst.id != cloud?.id || !NanoMuseCloud.isCatalogModel(context, e.model.id) }

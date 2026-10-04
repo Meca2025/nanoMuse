@@ -14,12 +14,13 @@ import { createElement as h, useEffect, useRef, useState, type ReactNode } from 
 import type { Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { Toast } from '@deepseek-ai/dsh-client-ui-primitives'
+import { aboutBus } from './About.tsx'
 import { bridge, openLink } from './bridge.ts'
-import { IconBulb, IconCalendar, IconChat, IconClose, IconFeed, IconDoc, IconMenu, IconPanelLeft, IconPin, IconPlus, IconPuzzle, IconSearch, IconShapes, IconTarget, IconBug, IconKeyboard, IconSettings } from './icons.tsx'
+import { IconBulb, IconCalendar, IconChat, IconClose, IconFeed, IconDoc, IconMenu, IconPanelLeft, IconPin, IconPlus, IconPuzzle, IconSearch, IconShapes, IconTarget, IconBug, IconDownload, IconInfo, IconKeyboard, IconSettings } from './icons.tsx'
 import { openShortcutsReference, pressSettingsChord } from './keys.ts'
 import { useLive } from './live.ts'
 import { MuseChats, type ChatActions, type UseSessionList, type UseStatusMap, type UseWorkspaceList } from './MuseChats.tsx'
-import { FEED_PANEL, GOALS_PANEL, IDEAS_PANEL, LIBRARY_PANEL, ROOM_PANELS } from './panels.ts'
+import { FEED_PANEL, GOALS_PANEL, IDEAS_PANEL, LIBRARY_PANEL, REPO_URL, ROOM_PANELS } from './panels.ts'
 import { useRooms } from './rooms.ts'
 import { usePrefs } from './prefs.ts'
 import { useWin, win, type RecentDoc } from './win.ts'
@@ -94,6 +95,8 @@ interface MenuItem {
   label: string
   icon: ReactNode
   hint?: string | undefined
+  /** A dot after the label: something new behind it (an update). */
+  dot?: boolean | undefined
   onSelect(): void
 }
 
@@ -123,7 +126,7 @@ function CornerMenu({ anchor, items, onClose }: { anchor: HTMLElement; items: (M
       ? h('div', { key: `sep-${index}`, className: 'nm-menu-sep', role: 'separator' })
       : h('button', { key: item.id, type: 'button', role: 'menuitem', className: 'nm-menu-item', onClick: () => { onClose(); item.onSelect() } },
           item.icon,
-          h('span', { className: 'nm-menu-item-label' }, item.label),
+          h('span', { className: 'nm-menu-item-label' }, item.label, item.dot ? h('span', { className: 'nm-menu-dot', 'aria-hidden': true }) : null),
           item.hint ? h('span', { className: 'nm-menu-hint' }, item.hint) : null)))
 }
 
@@ -197,7 +200,9 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
         setNotice({ id: Date.now(), text: name ? t('reportSaved', { name }) : t('reportOpened') })
       }).catch(() => openLink(issuesUrl))
     } },
-    { id: 'settings', label: t('menuSettings'), icon: h(IconSettings, { size: 16 }), hint: keysHint(settingsShortcut?.keys), onSelect: openSettings },
+    { id: 'settings', label: t('menuSettings'), icon: h(IconSettings, { size: 16 }), hint: keysHint(settingsShortcut?.keys), dot: Boolean(live.update?.newer), onSelect: openSettings },
+    ...(live.update?.newer ? [{ id: 'update', label: t('menuUpdate', { version: live.update.latest }), icon: h(IconDownload, { size: 16 }), onSelect: () => openLink(live.update?.page ?? REPO_URL) }] : []),
+    { id: 'about', label: t('menuAbout'), icon: h(IconInfo, { size: 16 }), onSelect: () => aboutBus.open?.() },
     'sep',
     ...(schedules ? [{ id: 'schedules', label: schedules.label, icon: h('span', { style: { display: 'inline-flex', width: 16, height: 16 } }, renderSlot('sidebar.panellist', { size: 16, active: false }, { only: SCHEDULES_PANEL, fallback: h(IconCalendar, { size: 16 }) })), onSelect: () => selectPanel(SCHEDULES_PANEL) }] : []),
     ...(plugins ? [{ id: 'plugins', label: plugins.label, icon: h(IconPuzzle, { size: 16 }), onSelect: () => selectPanel(PLUGINS_PANEL) }] : []),
@@ -245,7 +250,7 @@ export function MuseSidebar(props: MuseSidebarProps): ReactNode {
       }, h(IconDoc, { size: 20 }), h('span', { className: 'nm-rail-doc-tag' }, docTag(doc.name))))) : null,
     h('div', { className: 'nm-rail-spacer' }),
     collapsed ? h(RailButton, { label: t('railNew'), onClick: startSession }, h(IconPlus, { size: 21 })) : null,
-    h(RailButton, { label: t('railMore'), expanded: menuAnchor !== null, onClick: () => setMenuAnchor((current) => (current ? null : menuButton.current)), buttonRef: (el) => { menuButton.current = el } }, h(IconMenu, { size: 21 })),
+    h(RailButton, { label: t('railMore'), expanded: menuAnchor !== null, dot: Boolean(live.update?.newer), onClick: () => setMenuAnchor((current) => (current ? null : menuButton.current)), buttonRef: (el) => { menuButton.current = el } }, h(IconMenu, { size: 21 })),
     // The settings shell lives in this seat: its trigger is hidden here (the
     // menu opens it), but its dialog and the onboarding steps mount through it.
     h('div', { ref: settingsSeat, className: 'nm-hidden' }, renderSlot('sidebar.settings', { wide: false })),

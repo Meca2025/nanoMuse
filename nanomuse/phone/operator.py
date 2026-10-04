@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, Holds, took_over_note
 from nanomuse.config import GUISettings
 from nanomuse.llm.base import BaseLLM
 from nanomuse.logger import logger
@@ -82,7 +83,11 @@ MOBILE_USE_TOOL: dict[str, Any] = {
                         "* `wait`: Wait specified seconds for the change to happen.\n"
                         "* `terminate`: Terminate the current task and report its completion "
                         "status.\n"
-                        "* `ask_user`: Ask user for clarification."
+                        "* `ask_user`: Ask user for clarification (an answer in words).\n"
+                        "* `hand_over`: Hand the phone to the user for a step only they can do "
+                        "(a password, a PIN, a one-time code, a CAPTCHA, a payment confirmation, "
+                        "a protected screen); say what to do in `text`. They do it and tap Done; "
+                        "you then get the screen as they left it and carry on."
                     ),
                     "enum": [
                         "click",
@@ -94,6 +99,7 @@ MOBILE_USE_TOOL: dict[str, Any] = {
                         "system_button",
                         "wait",
                         "ask_user",
+                        "hand_over",
                         "terminate",
                     ],
                     "type": "string",
@@ -115,8 +121,8 @@ MOBILE_USE_TOOL: dict[str, Any] = {
                 },
                 "text": {
                     "description": (
-                        "Required only by `action=type`, `action=open`, `action=ask_user` and "
-                        "`action=answer`."
+                        "Required only by `action=type`, `action=open`, `action=ask_user`, "
+                        "`action=hand_over` and `action=answer`."
                     ),
                     "type": "string",
                 },
@@ -184,7 +190,11 @@ COMPUTER_USE_TOOL: dict[str, Any] = {
                         "* `open`: Open an application by its name (in `text`).\n"
                         "* `wait`: Wait specified seconds for the change to happen.\n"
                         "* `answer`: Output the answer.\n"
-                        "* `ask_user`: Ask user for clarification.\n"
+                        "* `ask_user`: Ask user for clarification (an answer in words).\n"
+                        "* `hand_over`: Hand the computer to the user for a step only they can "
+                        "do (a password, a code, a CAPTCHA, a payment confirmation); say what to "
+                        "do in `text`. They do it and press Done; you then get the screen as "
+                        "they left it and carry on.\n"
                         "* `terminate`: Terminate the current task and report its completion "
                         "status."
                     ),
@@ -202,6 +212,7 @@ COMPUTER_USE_TOOL: dict[str, Any] = {
                         "wait",
                         "answer",
                         "ask_user",
+                        "hand_over",
                         "terminate",
                     ],
                     "type": "string",
@@ -212,8 +223,8 @@ COMPUTER_USE_TOOL: dict[str, Any] = {
                 },
                 "text": {
                     "description": (
-                        "Required only by `action=type`, `action=open`, `action=ask_user` and "
-                        "`action=answer`."
+                        "Required only by `action=type`, `action=open`, `action=ask_user`, "
+                        "`action=hand_over` and `action=answer`."
                     ),
                     "type": "string",
                 },
@@ -278,10 +289,11 @@ Rules:
 - Be brief: one sentence for Thought, one for Action.
 - Do not output anything else outside those three parts.
 - If finishing, use {tool_name} with action=terminate in the tool call.
-- Never type passwords, PINs, card numbers or one-time codes, and never confirm a payment, a transfer or an order on your own: use action=ask_user before that step and describe what the screen is about to do.
+- Never type passwords, PINs, card numbers or one-time codes, never solve a CAPTCHA, and never confirm a payment, a transfer or an order on your own: use action=hand_over before that step, with `text` saying what the user should do on the screen; they do it, tap Done, and you continue from the screen as they left it.
+- Use action=ask_user only for an answer in words (a choice, a missing fact); use action=hand_over for a step done on the screen.
 - Do only what the query asks: do not send, buy, delete or post anything it did not name.
 - When the query asks for information, put everything you read that answers it (names, times, prices, seat numbers, order state) in action=answer, exactly as shown on the screen, before terminating.
-- Write `text` for answer and ask_user in {language}.
+- Write `text` for answer, ask_user and hand_over in {language}.
 """
 
 USER_TEMPLATE = """
@@ -477,7 +489,7 @@ _POINTED_KINDS = (
 
 def to_device_action(step: Step, screen: Screen) -> dict[str, Any] | None:
     """The ``phone_act`` arguments for a ``mobile_use`` step; None for the ones that end the
-    loop (answer, terminate, ask_user)."""
+    loop (answer, terminate, ask_user) or pause it (hand_over)."""
     a = step.arguments
     kind = step.kind
     w, h = screen.width or 1, screen.height or 1
@@ -515,14 +527,14 @@ def to_device_action(step: Step, screen: Screen) -> dict[str, Any] | None:
         if not app:
             raise ValueError("`open` needs the app's name in `text`")
         return {"action": "open_app", "app": app, "label": label}
-    if kind in ("answer", "terminate", "ask_user"):
+    if kind in ("answer", "terminate", "ask_user", "hand_over"):
         return None
     raise ValueError(f"unknown action {kind!r}")
 
 
 def to_computer_action(step: Step, screen: Screen) -> dict[str, Any] | None:
     """The ``computer_act`` arguments for a ``computer_use`` step; None for the ones that
-    end the loop (answer, terminate, ask_user)."""
+    end the loop (answer, terminate, ask_user) or pause it (hand_over)."""
     a = step.arguments
     kind = step.kind
     w, h = screen.width or 1, screen.height or 1
@@ -572,9 +584,26 @@ def to_computer_action(step: Step, screen: Screen) -> dict[str, Any] | None:
         if not app:
             raise ValueError("`open` needs the application's name in `text`")
         return {"action": "open_app", "app": app, "label": label}
-    if kind in ("answer", "terminate", "ask_user"):
+    if kind in ("answer", "terminate", "ask_user", "hand_over"):
         return None
     raise ValueError(f"unknown action {kind!r}")
+
+
+_SECRET_FIELD_REASON = (
+    "A password or code field has the focus — please fill it in yourself, then press Done."
+)
+
+
+def _secret_field_focused(screen: Screen) -> bool:
+    """A device with an element tree says which field is a password field; when that one
+    has the focus (or is the only field and the keyboard is up), typing is the user's."""
+    secrets = [n for n in screen.nodes if n.get("password")]
+    if not secrets:
+        return False
+    if any(n.get("focused") for n in secrets):
+        return True
+    fields = [n for n in screen.nodes if n.get("editable") or n.get("password")]
+    return screen.keyboard and len(fields) == len(secrets)
 
 
 def _seconds(value: Any, default: float, cap: float) -> float:
@@ -627,6 +656,7 @@ class PhoneOperator:
         language: Callable[[], str] | None = None,
         traces_dir: Path | None = None,
         dialect: Dialect = MOBILE,
+        holds: Holds | None = None,
     ):
         self.link = link
         self.settings = settings
@@ -640,6 +670,10 @@ class PhoneOperator:
         self.traces_dir = traces_dir
         # how many times a reply that is not a step is asked again before giving up
         self.parse_retries = 3
+        # the holds registry (docs/browser.md): the loop pauses while the user has the device
+        # and the model's `hand_over` opens a hold of its own
+        self.holds = holds
+        self.hand_over_timeout = HAND_OVER_TIMEOUT_S
 
     @property
     def llm(self) -> BaseLLM:
@@ -737,6 +771,23 @@ class PhoneOperator:
                 outcome.message = f"the {self.dialect.noun} sent no screenshot; the operator cannot see the screen"
                 break
 
+            # the user took the device over from the app: wait for their Done, then look
+            # again — the screen is whatever they left
+            if self.holds is not None and await self.holds.wait(
+                self.holds.thread(), self.dialect.noun
+            ):
+                steps.append(f"Note: {took_over_note(self.dialect.noun)}")
+                try:
+                    screen = await self._screen_patient()
+                except DeviceStopped as exc:
+                    outcome.status, outcome.message = "stopped", str(exc)
+                    break
+                except DeviceError as exc:
+                    outcome.message = str(exc)
+                    break
+                outcome.last_screen = screen.render()
+                outcome.last_image = screen.image_path
+
             step, raw, latency_ms = await self._decide(instruction, steps, screen)
             if step is None:
                 outcome.status = "failed"
@@ -754,6 +805,37 @@ class PhoneOperator:
                 continue
 
             kind = step.kind
+            # a password or code field has the focus: the model never types there — the
+            # user does, the way the Android app hands the phone over for a secret field
+            if kind == "type" and _secret_field_focused(screen):
+                kind = "hand_over"
+                step.arguments = {
+                    **step.arguments,
+                    "action": "hand_over",
+                    "text": _SECRET_FIELD_REASON,
+                }
+            if kind == "hand_over":
+                reason = str(step.arguments.get("text") or "").strip() or step.thought
+                trace.step(step_no, screen, step=step, raw=raw, latency_ms=latency_ms)
+                outcome.actions.append(f"hand over — {reason[:80]}")
+                if self.holds is None:
+                    # no app to show the card: the main agent puts it to the user
+                    outcome.status, outcome.message = "ask", reason
+                    break
+                finished = await self.holds.hand_over(
+                    self.holds.thread(), self.dialect.noun, reason, timeout=self.hand_over_timeout
+                )
+                steps.append(f"{entry}; Result: {took_over_note(self.dialect.noun, finished)}")
+                recent.clear()
+                try:
+                    screen = await self._screen_patient()
+                except DeviceStopped as exc:
+                    outcome.status, outcome.message = "stopped", str(exc)
+                    break
+                except DeviceError as exc:
+                    outcome.message = str(exc)
+                    break
+                continue
             if kind in ("answer", "terminate", "ask_user"):
                 text = str(step.arguments.get("text") or "").strip()
                 if kind == "ask_user":

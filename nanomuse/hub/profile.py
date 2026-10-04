@@ -19,9 +19,18 @@ relays are checked against the downloaded still), only the name is taken, so the
 studio made and ``face.json`` stay. The face's description and style travel too, so the
 other devices show what it is and can redraw its poses with their own image model.
 
+The same profile carries ``connectors`` (contract C3): which device of the account connected
+which remote MCP server — its name, address (without a query string, where a key might
+ride), how it signs in (``oauth`` / ``key`` / ``open``), whether it is on, when, and which
+device holds it. The relay keeps every device's entries side by side and replaces only the
+writer's own, so this runtime PUTs what *it* holds and reads back what the others hold;
+Connections lists theirs as "Connected on <device> — sign in here to use it on this device".
+A stdio command is not a service another device could sign in to, so it stays private.
+
 Never a key, never a message, never a setting that could reach the network: the fields are
-``name``, ``avatar``, ``emoji``, ``color``, ``style``, ``description`` and the pictures. The
-phone does the same from ``io.github.nanomuse.cloud.ProfileSync``.
+``name``, ``avatar``, ``emoji``, ``color``, ``style``, ``description``, the pictures and the
+connector entries above. The phone does the same from
+``io.github.nanomuse.cloud.ProfileSync`` and ``connectors.SharedConnectors``.
 """
 
 from __future__ import annotations
@@ -33,6 +42,7 @@ import hashlib
 import json
 import shutil
 import time
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from nanomuse.cloud import CloudError
@@ -49,6 +59,10 @@ RETIRED = {"panda", "sunny", "moss", "sky", "fox", "bolt", "plum"}
 PUSH_DELAY_S = 1.5
 # what a brand-new runtime wears: nothing to seed the relay with
 DEFAULT_LOOK = ("nanoMuse", DRAGON)
+# the relay caps the account's connector list at 64; this device keeps its share modest
+MAX_CONNECTORS = 32
+# the keys of one shared connector entry, as every client reads them
+CONNECTOR_FIELDS = ("id", "label", "url", "auth", "device", "device_id", "enabled", "at")
 
 
 class ProfileSync:
@@ -87,6 +101,8 @@ class ProfileSync:
         cloud = self._cloud
         cloud.pop("profile_rev", None)
         cloud.pop("profile_face", None)
+        cloud.pop("shared_connectors", None)
+        cloud.pop("connector_at", None)
         self.hub.data["cloud"] = cloud
 
     def _look(self) -> tuple[str, str]:
@@ -128,16 +144,22 @@ class ProfileSync:
         self.hub.cloud.api_key = self.hub._key()
         light = await self.hub.cloud.profile(with_face=False)
         rev = int(light.get("rev") or 0)
+        # the other devices' connections come with every read, whatever the rev did
+        self._absorb_connectors(light)
         if rev == 0:
             # the relay has nothing for this account yet: what this device wears seeds it,
             # unless it is the plain default (nothing worth telling the other devices)
-            if self._look() != DEFAULT_LOOK:
+            if self._look() != DEFAULT_LOOK or self.my_connectors():
                 await self.push()
             return False
         if rev <= self.rev:
             return False
-        patch: dict[str, Any] = {"name": str(light.get("name") or "").strip() or "nanoMuse"}
         avatar = str(light.get("avatar") or "")
+        if not avatar and not str(light.get("name") or "").strip():
+            # a device wrote only its connectors and nobody has set a look yet: nothing to wear
+            self._remember(rev)
+            return False
+        patch: dict[str, Any] = {"name": str(light.get("name") or "").strip() or "nanoMuse"}
         face_id: str | None = None
         if avatar == DRAGON:
             patch["avatar"] = DRAGON
@@ -239,6 +261,89 @@ class ProfileSync:
                     shutil.rmtree(other, ignore_errors=True)
         return face_id
 
+    # ------------------------------------------------------------------ the connectors
+    def my_connectors(self) -> list[dict[str, Any]]:
+        """This device's entries for the profile body: the remote MCP servers it connected —
+        a name, an address without its query string, how it signs in. Nothing that opens
+        anything; a stdio command stays here."""
+        out: list[dict[str, Any]] = []
+        device = self.hub.device_name[:80]
+        device_id = self.hub.device_id[:80]
+        stamps = dict(self._cloud.get("connector_at") or {})
+        touched = False
+        for server in self.hub.svc.settings.mcp.servers[:MAX_CONNECTORS]:
+            url = (server.url or "").strip()
+            if not url:
+                continue
+            at = stamps.get(server.name)
+            if not isinstance(at, str) or not at:
+                at = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+                stamps[server.name] = at
+                touched = True
+            auth = "key" if "?" in url or server.env else "open"
+            out.append(
+                {
+                    "id": server.name[:64],
+                    "label": server.name[:80],
+                    "url": url.split("?", 1)[0][:256],
+                    "auth": auth,
+                    "device": device,
+                    "device_id": device_id,
+                    "enabled": True,
+                    "at": at,
+                }
+            )
+        if touched:
+            cloud = self._cloud
+            cloud["connector_at"] = {
+                k: v for k, v in stamps.items() if any(e["id"] == k[:64] for e in out)
+            }
+            self.hub.data["cloud"] = cloud
+            self.hub._save()
+        return out
+
+    @property
+    def shared_connectors(self) -> list[dict[str, Any]]:
+        """The other devices' connections as last read from the account (kept across
+        restarts); never this device's own echo."""
+        raw = self._cloud.get("shared_connectors") or []
+        return [dict(e) for e in raw if isinstance(e, dict)]
+
+    def _absorb_connectors(self, profile: dict[str, Any]) -> None:
+        arr = profile.get("connectors")
+        if not isinstance(arr, list):
+            return
+        theirs: list[dict[str, Any]] = []
+        for raw in arr:
+            if not isinstance(raw, dict):
+                continue
+            entry = {k: raw.get(k) for k in CONNECTOR_FIELDS}
+            entry_id = str(entry.get("id") or "").strip()
+            device_id = str(entry.get("device_id") or "")
+            if not entry_id or not device_id or device_id == self.hub.device_id:
+                continue
+            entry["id"] = entry_id
+            entry["label"] = str(entry.get("label") or "") or entry_id
+            entry["url"] = str(entry.get("url") or "")
+            entry["auth"] = str(entry.get("auth") or "open")
+            entry["device"] = str(entry.get("device") or "") or device_id
+            entry["enabled"] = entry.get("enabled") is not False
+            entry["at"] = str(entry.get("at") or "")
+            theirs.append(entry)
+        theirs.sort(key=lambda e: e["at"], reverse=True)
+        if theirs == self.shared_connectors:
+            return
+        cloud = self._cloud
+        cloud["shared_connectors"] = theirs
+        self.hub.data["cloud"] = cloud
+        self.hub._save()
+        logger.info("profile: {} connection(s) held by the account's other devices", len(theirs))
+        # the Connections page refreshes its "held elsewhere" list without a reload
+        connections = getattr(self.hub.svc, "connections", None)
+        if connections is not None:
+            with contextlib.suppress(Exception):
+                connections._publish()
+
     # ------------------------------------------------------------------ the push
     def changed(self) -> None:
         """The look changed on this device (Settings, the studio, a rename): push in a moment."""
@@ -263,7 +368,13 @@ class ProfileSync:
 
     def _body(self) -> dict[str, Any]:
         p = self.hub.svc.profile
-        body: dict[str, Any] = {"device": self.hub.device_id, "name": p.name}
+        body: dict[str, Any] = {
+            "device": self.hub.device_id,
+            "name": p.name,
+            # which remote servers this device connected (contract C3); the relay keeps the
+            # other devices' entries and replaces only ours; never a key
+            "connectors": self.my_connectors(),
+        }
         if p.avatar == DRAGON or p.avatar in RETIRED:
             body["avatar"] = DRAGON
         elif not p.avatar:

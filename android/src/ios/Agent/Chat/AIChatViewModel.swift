@@ -594,6 +594,7 @@ final class AIChatViewModel: ObservableObject, SpeechControlling {
                 // runs on release (60s timer / leave session / background).
                 beginPostStopSyncHold()
                 StreamingHangLogger.shared.release(reason: "isProcessing=false session=\(sessionId ?? "nil")")
+                nmAfterTurn() // nanoMuse: goals, the feed and the naming flow read the reply just finished
                 // [T-ios-ui-frozen-on-tool-while-loop-runs] Force one snapshot
                 // re-apply from the CURRENT in-memory messages at loop end.
                 //
@@ -2234,6 +2235,8 @@ final class AIChatViewModel: ObservableObject, SpeechControlling {
             logger.warning("🔑DRAFT [vm=\(self.vmInstanceId)] send() GUARD FAILED — text.isEmpty=\(text.isEmpty) attachments.isEmpty=\(pendingAttachments.isEmpty) isProcessing=\(self.isProcessing)")
             return
         }
+        // nanoMuse: "change your avatar to …" (and a pick while the options are up) is handled in the app, not by the model.
+        if pendingAttachments.isEmpty, nmInterceptSend(text) { return }
 
         // Don't stop TTS here — let the previous reply finish playing. The stream
         // handler will clear the queue on the FIRST textDelta of the new reply, so
@@ -4825,6 +4828,7 @@ final class AIChatViewModel: ObservableObject, SpeechControlling {
         // Authoritative memory-status footer (overrides any earlier
         // baseSystemPrompt mentions when memory is disabled).
         userSystemPrompt += memoryStatusFragment
+        userSystemPrompt += nmSystemPromptAddenda() // nanoMuse: USER.md, goal/feed steering, per-session addenda
 
         let promptBuildMs = (CFAbsoluteTimeGetCurrent() - loopSetupStart) * 1000
         logger.info("⏱️ [runAgentLoop] prompt build elapsed=\(String(format: "%.1f", promptBuildMs))ms history=\(self.agentHistory.count)")
@@ -5292,6 +5296,7 @@ final class AIChatViewModel: ObservableObject, SpeechControlling {
                     }
                 }
                 userSystemPrompt += memoryStatusFragment
+                userSystemPrompt += nmSystemPromptAddenda() // nanoMuse: same addenda on the fallback rebuild
                 fallbackTrigger += 1
                 if !fallbackReasons.isEmpty {
                     // Resync the assistant message index by its stable id before

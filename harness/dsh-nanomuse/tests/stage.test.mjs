@@ -22,9 +22,10 @@ test('stageAction keeps the kind, the words and the point', () => {
 })
 
 test('screenHead reads the window in front and the size', () => {
-  assert.deepEqual(screenHead('Safari — Apple · 2560×1600 · keyboard hidden\nmore words'), { title: 'Safari — Apple', width: 2560, height: 1600 })
-  assert.deepEqual(screenHead('\n  phone · home · 1080x2400 · keyboard shown'), { title: 'phone', width: 1080, height: 2400 })
-  assert.deepEqual(screenHead(''), { title: '', width: 0, height: 0 })
+  assert.deepEqual(screenHead('Safari — Apple · 2560×1600 · keyboard hidden\nmore words'), { title: 'Safari — Apple', width: 2560, height: 1600, mode: 'screen' })
+  assert.deepEqual(screenHead('\n  phone · home · 1080x2400 · keyboard shown'), { title: 'phone', width: 1080, height: 2400, mode: 'screen' })
+  assert.deepEqual(screenHead('Numbers — Budget · 1440×900 · window'), { title: 'Numbers — Budget', width: 1440, height: 900, mode: 'window' })
+  assert.deepEqual(screenHead(''), { title: '', width: 0, height: 0, mode: 'screen' })
 })
 
 test('a hands refusal is recognised and confirmed with the ticket the runtime checks', async () => {

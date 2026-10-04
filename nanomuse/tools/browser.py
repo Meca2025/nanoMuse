@@ -26,6 +26,7 @@ from urllib.parse import urljoin
 
 from pydantic import PrivateAttr
 
+from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, took_over_note
 from nanomuse.logger import logger
 from nanomuse.schema import RiskLevel, ToolResult
 from nanomuse.tools.base import BaseTool, CallAssessment
@@ -119,10 +120,14 @@ class Browser(BaseTool):
         "cookies and return the raw body — a signed-in request without driving the page; method/body "
         "for POST), `profile` (profile: mobile|desktop, or user_agent/width/height: how the browser "
         "presents itself), `close`. After navigate/click/type the tool returns the new page state. "
-        "The user watches the browser live in the app and can take over it: never enter passwords, "
-        "one-time codes or payment details yourself — when a page needs a sign-in or a human "
-        "decision, stop and `ask_user` to do it in the browser view, then continue. Leave the browser "
-        "open when you finish (no `close` unless asked) so the user can look at or take over the page."
+        "The user watches the browser live in the app and can take over it. Never enter passwords, "
+        "one-time codes, CAPTCHAs or payment details yourself: when a page needs a sign-in, a code "
+        'or a confirmation only the user can give, call `hand_over` with a short `reason` ("sign in '
+        'to Gmail", "enter the code sent by SMS") — the user does it in the browser view, presses '
+        "Done, and the tool returns the page as they left it; continue from there. `hand_over` is "
+        "for things done on the page; `ask_user` is for an answer in words. If the user takes the "
+        "page over themselves, your next action waits until they are done. Leave the browser open "
+        "when you finish (no `close` unless asked) so the user can look at or take over the page."
     )
     parameters: dict[str, Any] = {
         "type": "object",
@@ -141,8 +146,13 @@ class Browser(BaseTool):
                     "screenshot",
                     "fetch",
                     "profile",
+                    "hand_over",
                     "close",
                 ],
+            },
+            "reason": {
+                "type": "string",
+                "description": "For hand_over: what the user should do on the page, in their language.",
             },
             "url": {"type": "string"},
             "index": {"type": "integer", "description": "Element number from the last page state."},
@@ -175,6 +185,9 @@ class Browser(BaseTool):
     # receives a BrowserFrame after every action; set by the app
     on_frame: Callable[[BrowserFrame], None] | None = None
     frame_quality: int = 55
+    # the holds registry (nanomuse.agent.holds): the tool waits while the user has the page
+    holds: Any = None
+    hand_over_timeout: float = HAND_OVER_TIMEOUT_S
 
     _backend: Any = PrivateAttr(default=None)
     _lock: Any = PrivateAttr(default=None)
@@ -313,6 +326,12 @@ class Browser(BaseTool):
             or args.get("profile")
             or ""
         )
+        if action == "hand_over":
+            return CallAssessment(
+                risk=RiskLevel.SAFE,
+                egress=False,
+                summary=f"browser.hand_over {str(args.get('reason') or '')[:120]}".strip(),
+            )
         return CallAssessment(
             risk=RiskLevel.MODERATE,
             egress=action not in ("extract", "screenshot", "close", "scroll", "profile"),
@@ -340,11 +359,17 @@ class Browser(BaseTool):
         user_agent: str | None = None,
         width: int | None = None,
         height: int | None = None,
+        reason: str | None = None,
         **_: Any,
     ) -> ToolResult:
         if action == "close":
             await self.cleanup()
             return ToolResult(output="Browser closed.")
+        if action == "hand_over":
+            return await self._hand_over(reason)
+        # the user has the page: wait for their Done, then look again before acting
+        if self.holds is not None and await self.holds.wait(self.holds.thread(), "browser"):
+            self._user_actions.append("used the page themselves")
         async with self.lock:
             try:
                 backend = self._pick_backend()
@@ -494,6 +519,38 @@ class Browser(BaseTool):
         )
 
     # ------------------------------------------------------------------ the user takes over
+    async def _hand_over(self, reason: str | None) -> ToolResult:
+        """The agent gives the page to the user (contract C1): a hold goes on with the reason,
+        the user does their part and presses Done, and the page comes back as they left it."""
+        reason = " ".join(str(reason or "").split())
+        if not reason:
+            return ToolResult.fail("`reason` is required: say what the user should do on the page")
+        if self.holds is None:
+            return ToolResult.fail(
+                "hand_over is not available here; ask the user with `ask_user` to do it and tell "
+                "you when it is done"
+            )
+        thread = self.holds.thread()
+        try:
+            backend = self._pick_backend()
+            await backend.ensure()
+            await self._frame(backend, f"Your turn: {reason[:60]}", thread=thread)
+        except Exception as exc:  # noqa: BLE001 — the page may not be open yet; the hold still works
+            logger.debug("hand_over frame: {}", exc)
+        finished = await self.holds.hand_over(
+            thread, "browser", reason, timeout=self.hand_over_timeout
+        )
+        note = took_over_note("browser", finished)
+        async with self.lock:
+            try:
+                backend = self._pick_backend()
+                await backend.ensure()
+                await self._frame(backend, "You handed the page back" if finished else "Live view")
+                state = await self._state(backend, brief=True)
+            except Exception as exc:  # noqa: BLE001
+                return ToolResult(output=note) if finished else ToolResult.fail(f"{note} ({exc})")
+        return ToolResult(output=f"{note}\n\n{state.output}", error=state.error)
+
     async def user_action(
         self,
         action: str,
@@ -535,6 +592,10 @@ class Browser(BaseTool):
             elif action == "scroll":
                 await backend.scroll(float(dy if dy is not None else 600))
                 caption, note = "You scrolled", "scrolled"
+            elif action == "back":
+                await backend.back()
+                await backend.settle(self.timeout_ms)
+                caption, note = "You went back", "went back a page"
             elif action == "navigate":
                 if not url:
                     raise ValueError("navigate needs a url")
@@ -544,8 +605,11 @@ class Browser(BaseTool):
                 caption, note = f"You opened {host_of(url) or url}", f"opened {url}"
             elif action == "look":
                 caption, note = "Live view", ""
+            elif action == "take_over":
+                # the user has the page from here on (a hold goes on in the service)
+                caption, note = "You have the page", ""
             elif action == "handed_back":
-                # the phone's take-over sheet closed: the user drove the real WebView
+                # the take-over sheet closed: the user drove the page themselves
                 caption, note = "You handed the page back", "used the page in the app"
             else:
                 raise ValueError(f"unknown action '{action}'")

@@ -25,8 +25,11 @@
  * under `/nanomuse/rooms/*`. The tools and the prompt context the agent sees
  * are the preset row `dsh-nanomuse/rooms-tools`.
  */
+import { avatarFence, avatarMemoryLine } from './avatar-flow.ts'
+import { FENCE_FEED, FENCE_GOAL, FENCE_GOAL_UPDATE, findFences, goalCategory, goalCheckPrompt, goalCreationNote, goalHomeNote, goalOpener, parseFeedDraft, parseGoalBlock, parseGoalUpdate, parseIdeas, type GoalBlock, type GoalUpdateBlock, type IdeaKind, type StaticIdea } from './fences.ts'
+import { fileURLToPath } from 'node:url'
 import { randomBytes } from 'node:crypto'
-import { createReadStream } from 'node:fs'
+import { createReadStream, readFileSync } from 'node:fs'
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { deflateRawSync } from 'node:zlib'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -56,9 +59,9 @@ export const API_PREFIX = '/nanomuse/rooms'
 /** A background batch may run this long (web searches included). */
 const RUN_TIMEOUT_MS = 8 * 60_000
 /** A new feed batch is due this long after the last one. */
+const ASSETS_DIR = fileURLToPath(new URL('../assets/', import.meta.url))
 const FEED_EVERY_MS = 20 * 3600_000
 /** Ideas go stale after a week. */
-const IDEAS_EVERY_MS = 7 * 24 * 3600_000
 /** A failed batch is not retried before this. */
 const RETRY_AFTER_MS = 2 * 3600_000
 const FEED_KEEP = 120
@@ -91,9 +94,14 @@ export interface FeedPost {
   sessionId?: string
 }
 
+/**
+ * One row of the Ideas room: the phone's curated list (`assets/ideas.<lang>.json`, the
+ * same items), with what the person did with it here.
+ */
 export interface Idea {
   id: string
   at: number
+  /** The section's title (Travel, Work, …). */
   group: string
   emoji: string
   title: string
@@ -102,6 +110,12 @@ export interface Idea {
   how: string
   prompt: string
   area: string
+  /** What trying it does: a message in the chat, a daily routine, or a goal conversation. */
+  kind: IdeaKind
+  /** Routine default, `HH:MM`. */
+  time?: string
+  /** Goal default category. */
+  category?: string
   /** The chat it was started in, once started. */
   started?: string
   dismissed?: boolean
@@ -132,9 +146,15 @@ export interface Goal {
   sessionId: string
   createdAt: number
   updatedAt: number
-  /** The agent's one-line status, as `goals_room_update` last wrote it. */
+  /** The agent's one-line status, as `goals_room_update` or a `nanomuse-goal-update` block last wrote it. */
   summary: string
   activity: GoalActivity[]
+  /** The steps the agent set out when the goal was shaped in the chat (`nanomuse-goal`). */
+  steps: string[]
+  /** 0–100 as the agent last reported, -1 when it never said. */
+  progress: number
+  /** The agent's last update said the goal needs the person's attention. */
+  attention: boolean
 }
 
 export interface LibraryItem {
@@ -197,7 +217,8 @@ export type DocName = 'identity' | 'soul' | 'memory'
 interface Store {
   lang: string
   feed: { instructions: string; generatedAt: number; lastTry: number; posts: FeedPost[] }
-  ideas: { generatedAt: number; lastTry: number; items: Idea[] }
+  /** `marks` is what the person did with each idea of the static list; `items` is the list as the browser sees it. */
+  ideas: { generatedAt: number; lastTry: number; items: Idea[]; marks: Record<string, { started?: string; dismissed?: boolean }> }
   goals: Goal[]
   library: LibraryItem[]
   memory: MemoryItem[]
@@ -228,6 +249,7 @@ interface PresetsLike {
 
 /** The harness's Schedule service, the part of it the goals use (optional at runtime). */
 interface ScheduleLike {
+  create(sessionId: SessionId, request: { prompt: string; title: string; every_seconds?: number; daily?: { time: string; time_zone: string } }): Promise<{ id: string }>
   list(request: { sessionId: SessionId }): Promise<ScheduleRecordLike[]>
   delete(request: { sessionId: SessionId; id: string }): Promise<unknown>
 }
@@ -256,7 +278,7 @@ interface Run {
 const EMPTY: Store = {
   lang: '',
   feed: { instructions: '', generatedAt: 0, lastTry: 0, posts: [] },
-  ideas: { generatedAt: 0, lastTry: 0, items: [] },
+  ideas: { generatedAt: 0, lastTry: 0, items: [], marks: {} },
   goals: [],
   library: [],
   memory: [],
@@ -303,6 +325,10 @@ export default class NanomuseRooms extends Service {
   /** Goal sessions → goal, and the last words the agent said in each (the next activity entry). */
   private readonly goalBySession = new Map<string, string>()
   private readonly lastWords = new Map<string, string>()
+  /** The agent's last message in every chat, read for app fences when the turn ends. */
+  private readonly fenceWords = new Map<string, string>()
+  /** The phone's curated Ideas list, by language file. */
+  private ideasCache: { file: string; items: StaticIdea[] } | undefined
   /** When the current turn's first words arrived, per goal session. */
   private readonly turnMarks = new Map<string, number>()
   private automations: Record<string, GoalAutomation[]> = {}
@@ -357,7 +383,7 @@ export default class NanomuseRooms extends Service {
   view(): RoomsView {
     // the records travel without their steps' texts; `/activity?session=` has one in full
     const activity = this.store.activity.map((r) => ({ ...r, steps: r.steps.map((s) => ({ ...s, detail: '', result: '' })) }))
-    return { ...this.store, activity, busy: { ...this.busy }, automations: this.automations, ready: this.ready, studio: this.studio }
+    return { ...this.store, ideas: { ...this.store.ideas, items: this.ideaItems() }, activity, busy: { ...this.busy }, automations: this.automations, ready: this.ready, studio: this.studio }
   }
 
   /** One task in full, for the detail view. */
@@ -775,65 +801,95 @@ export default class NanomuseRooms extends Service {
 
   // ---- ideas -----------------------------------------------------------------------
 
-  async refreshIdeas(): Promise<void> {
-    if (this.busy.ideas) return
-    this.busy.ideas = true
-    this.store.ideas.lastTry = Date.now()
-    this.broadcast()
+  /** The curated list for the person's language (the phone's `Ideas.load`); zh-* reads the zh file. */
+  private staticIdeas(): StaticIdea[] {
+    const file = this.lang.toLowerCase().startsWith('zh') ? 'ideas.zh.json' : 'ideas.en.json'
+    if (this.ideasCache?.file === file) return this.ideasCache.items
+    let items: StaticIdea[] = []
     try {
-      const text = await this.run(this.lang.startsWith('zh') ? '点子' : 'Ideas', this.ideasPrompt())
-      const rows = parseArray(text)
-      const now = Date.now()
-      const items: Idea[] = []
-      for (const row of rows.slice(0, 24)) {
-        const title = str(row.title).slice(0, 120)
-        const detail = str(row.detail).slice(0, 600)
-        const prompt = str(row.prompt).slice(0, 1000)
-        if (!title || !prompt) continue
-        items.push({
-          id: newId('idea'),
-          at: now,
-          group: str(row.group).slice(0, 40),
-          emoji: oneEmoji(str(row.emoji)) || '💡',
-          title,
-          detail,
-          includes: strList(row.includes, 6, 160),
-          how: str(row.how).slice(0, 800),
-          prompt,
-          area: area(str(row.area)),
-        })
-      }
-      if (items.length === 0) throw new Error('the batch came back empty')
-      // Started ideas stay (their green check is the person's history); the rest is replaced.
-      const kept = this.store.ideas.items.filter((i) => i.started && !i.dismissed)
-      this.store.ideas.items = [...items, ...kept]
-      this.store.ideas.generatedAt = now
-      await this.save()
-      this.ctx.logger.info('nanomuse rooms: %d ideas written', items.length)
-    } finally {
-      this.busy.ideas = false
-      this.broadcast()
+      items = parseIdeas(readFileSync(join(ASSETS_DIR, file), 'utf8'))
+    } catch (error: unknown) {
+      this.warn('ideas list', error)
     }
+    this.ideasCache = { file, items }
+    return items
   }
 
-  async startIdea(id: string): Promise<string> {
-    const idea = this.store.ideas.items.find((i) => i.id === id)
-    if (!idea) throw new RelayError(404, 'not_found', 'No such idea')
-    if (idea.started && (await this.alive(idea.started))) return idea.started
-    const zh = this.lang.startsWith('zh')
-    const framing = zh
-      ? `[对方从「点子」里选了这一条：「${idea.title}」—— ${idea.detail}。直接开始做；需要对方补充的信息，一次问清。]`
-      : `[The person picked this from their Ideas room: "${idea.title}" — ${idea.detail}. Start on it; ask for what you need from them in one go.]`
-    const sessionId = await this.open(idea.title, `${framing}\n\n${idea.prompt}`, { notice: zh ? `从「点子」开始 · ${idea.title}` : `From Ideas · ${idea.title}` })
-    idea.started = sessionId
+  /** The list with the person's marks on it, as the room shows it. */
+  private ideaItems(): Idea[] {
+    const marks = this.store.ideas.marks
+    return this.staticIdeas().map((idea) => {
+      const mark = marks[idea.id]
+      return {
+        id: idea.id,
+        at: 0,
+        group: idea.sectionTitle,
+        emoji: idea.emoji,
+        title: idea.title,
+        detail: idea.body,
+        includes: [],
+        how: '',
+        prompt: idea.prompt,
+        area: idea.section,
+        kind: idea.kind,
+        ...(idea.time ? { time: idea.time } : {}),
+        ...(idea.category ? { category: idea.category } : {}),
+        ...(mark?.started ? { started: mark.started } : {}),
+        ...(mark?.dismissed ? { dismissed: true } : {}),
+      }
+    })
+  }
+
+  /** A chat opened from an idea (the person pressed Send to chat and the message went out there). */
+  async markIdea(id: string, sessionId: string): Promise<void> {
+    if (!this.staticIdeas().some((i) => i.id === id)) throw new RelayError(404, 'not_found', 'No such idea')
+    this.store.ideas.marks[id] = { ...this.store.ideas.marks[id], started: sessionId }
     await this.save()
-    return sessionId
+  }
+
+  /**
+   * Try an idea the way the phone does: a routine idea becomes a daily schedule (its
+   * own chat, the idea's time, the idea's words); a goal idea opens the goal conversation
+   * with the idea's words as the seed. Chat ideas are the browser's: it puts the words in
+   * the composer. Answers with the chat to open.
+   */
+  async startIdea(id: string): Promise<{ sessionId: string; scheduleId?: string }> {
+    const idea = this.staticIdeas().find((i) => i.id === id)
+    if (!idea) throw new RelayError(404, 'not_found', 'No such idea')
+    const mark = this.store.ideas.marks[id]
+    if (mark?.started && (await this.alive(mark.started))) return { sessionId: mark.started }
+    const zh = this.lang.startsWith('zh')
+    let result: { sessionId: string; scheduleId?: string }
+    if (idea.kind === 'goal') {
+      result = await this.beginGoal(goalCategory(idea.category), idea.prompt)
+    } else if (idea.kind === 'routine') {
+      const schedule = this.ctx.get('schedule') as ScheduleLike | undefined
+      if (!schedule) throw new RelayError(503, 'no_schedule', zh ? '例程还不可用' : 'Routines are not available yet')
+      const time = idea.time ?? '09:00'
+      const framing = zh
+        ? `[对方从「点子」里选了这一条例程：「${idea.title}」。每天 ${time} 会在这个对话里收到下面这句话；收到时直接去做，不用问。现在先用一两句话说明你每天会做什么，不要开始做。]`
+        : `[The person picked this routine from their Ideas room: "${idea.title}". Every day at ${time} this chat receives the line below; when it arrives, do it without asking. For now, say in a sentence or two what you will do each day; do not start yet.]`
+      const sessionId = await this.open(idea.title.slice(0, 80), `${framing}\n\n${idea.prompt}`, { notice: zh ? `新例程 · ${idea.title.slice(0, 40)}` : `New routine · ${idea.title.slice(0, 40)}` })
+      const created = await schedule.create(sessionId as SessionId, {
+        prompt: idea.prompt,
+        title: idea.title.slice(0, 120),
+        daily: { time: `${time}:00`, time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' },
+      })
+      result = { sessionId, scheduleId: created.id }
+    } else {
+      const framing = zh
+        ? `[对方从「点子」里选了这一条：「${idea.title}」。直接开始做；需要对方补充的信息，一次问清。]`
+        : `[The person picked this from their Ideas room: "${idea.title}". Start on it; ask for what you need from them in one go.]`
+      result = { sessionId: await this.open(idea.title.slice(0, 80), `${framing}\n\n${idea.prompt}`, { notice: zh ? `从「点子」开始 · ${idea.title.slice(0, 40)}` : `From Ideas · ${idea.title.slice(0, 40)}` }) }
+    }
+    this.store.ideas.marks[id] = { ...mark, started: result.sessionId }
+    await this.save()
+    return result
   }
 
   async dismissIdea(id: string): Promise<void> {
-    const idea = this.store.ideas.items.find((i) => i.id === id)
-    if (!idea) return
-    idea.dismissed = true
+    if (!this.staticIdeas().some((i) => i.id === id)) return
+    this.store.ideas.marks[id] = { ...this.store.ideas.marks[id], dismissed: true }
     await this.save()
   }
 
@@ -851,7 +907,7 @@ export default class NanomuseRooms extends Service {
       : `[A goal the person set in their Goals room (category: ${categoryLabel(category, false)}, id ${id}). This chat is the goal's home: say in a few sentences how you will help and what you need from them; when a recurring check helps (a daily price check, a weekly review), set it up here with schedule_create; in this first turn call goals_room_update (goal_id "${id}") with a short title (eight words at most) and a one-line summary; and whenever something worth noting happens later, call goals_room_update again with an activity entry. Keep replies short.]`
     const sessionId = await this.open(title, `${framing}\n\n${text}`, { notice: zh ? `新目标 · ${title}` : `New goal · ${title}` })
     const now = Date.now()
-    const goal: Goal = { id, title, description: text.slice(0, 2000), category, status: 'tracking', sessionId, createdAt: now, updatedAt: now, summary: '', activity: [] }
+    const goal: Goal = { id, title, description: text.slice(0, 2000), category, status: 'tracking', sessionId, createdAt: now, updatedAt: now, summary: '', activity: [], steps: [], progress: -1, attention: false }
     this.store.goals = [goal, ...this.store.goals]
     this.goalBySession.set(sessionId, id)
     await this.save()
@@ -1102,23 +1158,105 @@ export default class NanomuseRooms extends Service {
     return resolved.agent
   }
 
-  /** A goal begun from a category row (Muse's 创建目标): the agent asks what it is, then names it. */
-  async beginGoal(categoryName: string): Promise<Goal> {
-    const category = (CATEGORIES as readonly string[]).includes(categoryName) ? (categoryName as Category) : 'other'
-    const id = newId('goal')
+  /**
+   * "Create goal › category" (the phone's `startGoal`): the opener goes into the chat the
+   * person is in when that chat is free, otherwise into a fresh one; the agent asks at most
+   * three questions and writes a `nanomuse-goal` block, which `applyFences` turns into the
+   * goal, its chat and its checks. Answers with the chat to open.
+   */
+  async beginGoal(category: Category, seed?: string, sessionId?: string): Promise<{ sessionId: string }> {
     const zh = this.lang.startsWith('zh')
     const label = categoryLabel(category, zh)
-    const title = zh ? `${label}目标` : `${label} goal`
-    const framing = zh
-      ? `[对方在「目标」里点了「创建目标 › ${label}」，还没说目标是什么（id ${id}）。这个对话就是这个目标的家。先用一句话问清楚：在${label}方面想达成什么、什么时候、从哪里开始——可以用 ask_user_question 给 2-4 个常见选项，让对方点选或自己写。知道目标后：调用 goals_room_update（goal_id "${id}"）给它一个 12 字以内的标题（title）和一句话 summary，说清你打算怎么帮、需要对方给什么；如果定期检查有用（每天查一次、每周回顾一次），用 schedule_create 在这里建一个定时任务，并先用 ask_user_question 确认对方要不要。回复要短。]`
-      : `[The person pressed "Create goal › ${label}" in their Goals room and has not said what the goal is yet (id ${id}). This chat is the goal's home. Ask in one sentence what they want to achieve in ${label}, by when, and where they start — ask_user_question with 2-4 common options they can pick or write over is fine. Once you know: call goals_room_update (goal_id "${id}") with a short title (eight words at most) and a one-line summary, say how you will help and what you need from them; when a recurring check helps (a daily check, a weekly review), confirm with ask_user_question first and set it up here with schedule_create. Keep replies short.]`
-    const sessionId = await this.open(title, framing, { notice: zh ? `新目标 · ${label}` : `New goal · ${label}` })
+    const opener = goalOpener(label, zh) + (seed?.trim() ? ` ${seed.trim()}` : '')
+    const prompt = `${goalCreationNote(category, zh)}\n\n${opener}`
+    const notice = zh ? `新目标 · ${label}` : `New goal · ${label}`
+    if (sessionId && (await this.alive(sessionId))) {
+      try {
+        await this.say(sessionId as SessionId, prompt, undefined, notice)
+        return { sessionId }
+      } catch (error: unknown) {
+        if (!(error instanceof RelayError && error.code === 'busy')) throw error
+      }
+    }
+    return { sessionId: await this.open(zh ? `${label}目标` : `${label} goal`, prompt, { notice }) }
+  }
+
+  /**
+   * The agent's message closed with app fences (the phone's `GoalFlow.afterTurn` and
+   * `FeedFlow.afterTurn`): a `nanomuse-goal` block becomes a goal with its chat and its
+   * checks, `nanomuse-goal-update` moves a goal along, `nanomuse-feed` posts to the Feed.
+   */
+  private async applyFences(sessionId: string, words: string): Promise<void> {
+    for (const json of findFences(words, FENCE_GOAL)) {
+      const block = parseGoalBlock(json)
+      if (!block) continue
+      // the model may repeat a block it wrote earlier; one goal per title
+      if (this.store.goals.some((g) => g.title.toLowerCase() === block.title.toLowerCase())) continue
+      await this.createGoalFromBlock(block, sessionId)
+    }
+    for (const json of findFences(words, FENCE_GOAL_UPDATE)) {
+      const update = parseGoalUpdate(json)
+      if (update) await this.applyGoalUpdate(update, sessionId)
+    }
+    const drafts = findFences(words, FENCE_FEED).map(parseFeedDraft)
+    if (drafts.some(Boolean)) {
+      const day = new Date().toDateString()
+      const today = new Set(this.store.feed.posts.filter((p) => new Date(p.at).toDateString() === day).map((p) => titleKey(p.title)))
+      for (const draft of drafts) {
+        if (!draft || today.has(titleKey(draft.title))) continue
+        today.add(titleKey(draft.title))
+        await this.addPost({ title: draft.title, body: draft.body, area: draft.type, emoji: draft.emoji })
+      }
+    }
+  }
+
+  /** The goal a `nanomuse-goal` block describes: its home is the chat it was shaped in, unless that chat already has a goal. */
+  private async createGoalFromBlock(block: GoalBlock, sessionId: string): Promise<Goal> {
+    const zh = this.lang.startsWith('zh')
+    const id = newId('goal')
+    const home = this.goalBySession.has(sessionId) || !(await this.alive(sessionId))
+      ? await this.open(block.title, goalHomeNote({ ...block, id }, zh), { notice: zh ? `新目标 · ${block.title}` : `New goal · ${block.title}` })
+      : sessionId
     const now = Date.now()
-    const goal: Goal = { id, title, description: '', category, status: 'tracking', sessionId, createdAt: now, updatedAt: now, summary: '', activity: [] }
+    const description = [block.why, ...block.steps.map((step) => `- ${step}`)].filter(Boolean).join('\n')
+    const goal: Goal = { id, title: block.title, description: description.slice(0, 2000), category: block.category, status: 'tracking', sessionId: home, createdAt: now, updatedAt: now, summary: block.why.slice(0, 240), activity: [], steps: block.steps, progress: -1, attention: false }
     this.store.goals = [goal, ...this.store.goals]
-    this.goalBySession.set(sessionId, id)
+    this.goalBySession.set(home, id)
     await this.save()
+    const schedule = this.ctx.get('schedule') as ScheduleLike | undefined
+    if (schedule) {
+      // the check carries the goal's own note, so the chat knows the protocol whenever it wakes
+      const prompt = `${goalCheckPrompt(block.title, zh, block.firstCheck || undefined)}\n\n${goalHomeNote({ ...block, id }, zh)}`
+      const title = (zh ? `目标检查：${block.title}` : `Goal check: ${block.title}`).slice(0, 120)
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      await schedule
+        .create(home as SessionId, { prompt, title, ...(block.checkEveryHours > 0 ? { every_seconds: block.checkEveryHours * 3600 } : { daily: { time: `${block.checkTime}:00`, time_zone: tz } }) })
+        .then(() => this.refreshAutomations())
+        .catch((error: unknown) => this.warn('goal check', error))
+    }
+    this.ctx.logger.info('nanomuse rooms: goal "%s" from a %s block in %s', block.title, FENCE_GOAL, home)
     return goal
+  }
+
+  /** A `nanomuse-goal-update` block: progress, status and the note, as a line on the timeline. */
+  private async applyGoalUpdate(update: GoalUpdateBlock, sessionId: string): Promise<void> {
+    const goal = (update.goalId ? this.findGoal(update.goalId) : undefined) ?? this.store.goals.find((g) => g.id === this.goalBySession.get(sessionId))
+    if (!goal) return
+    if (update.progress >= 0) goal.progress = update.progress
+    goal.attention = update.status === 'attention'
+    if (update.status === 'done') {
+      goal.status = 'done'
+      goal.progress = 100
+    } else if (goal.status === 'done') goal.status = 'tracking'
+    if (update.note) {
+      goal.summary = update.note.slice(0, 240)
+      const last = goal.activity[0]
+      if (!(last && last.title === update.note && Date.now() - last.at < 60_000)) {
+        goal.activity = [{ at: Date.now(), title: update.note.slice(0, 120), text: '' }, ...goal.activity].slice(0, ACTIVITY_KEEP)
+      }
+    }
+    goal.updatedAt = Date.now()
+    await this.save()
   }
 
   /**
@@ -1204,6 +1342,19 @@ export default class NanomuseRooms extends Service {
       const sc = this.ctx.get('sessionController')
       if (sc) void sc.resolveAgent(session.id).then((resolved) => { if (!('error' in resolved)) this.snapshotTools(resolved.agent) }).catch(() => undefined)
     }
+    // the agent's last words in any of the person's chats are read for app fences when the turn ends
+    if (!run) {
+      if (event.type === 'assistant/message') {
+        const text = textOf(event.data.message.content)
+        if (text) this.fenceWords.set(session.id, text)
+      } else if (event.type === 'turn/end') {
+        const words = this.fenceWords.get(session.id)
+        this.fenceWords.delete(session.id)
+        if (words && event.data.reason.kind === 'completed' && words.includes('```nanomuse-')) {
+          void this.applyFences(session.id, words).catch((error: unknown) => this.warn('fences', error))
+        }
+      }
+    }
     if (!run && !goalId) return
     if (goalId && (type === 'turn/start' || type === 'user/message')) {
       this.turnMarks.set(session.id, Date.now())
@@ -1276,16 +1427,12 @@ export default class NanomuseRooms extends Service {
     if (!this.busy.feed && now - feed.generatedAt > FEED_EVERY_MS && now - feed.lastTry > RETRY_AFTER_MS) {
       await this.refreshFeed().catch((error: unknown) => this.warn('feed', error))
     }
-    const ideas = this.store.ideas
-    if (!this.busy.ideas && now - ideas.generatedAt > IDEAS_EVERY_MS && now - ideas.lastTry > RETRY_AFTER_MS) {
-      await this.refreshIdeas().catch((error: unknown) => this.warn('ideas', error))
-    }
   }
 
   /** Something to write from: instructions, a goal, or a profile the person shaped. */
   private known(): boolean {
     const profile = this.ctx.nanomuseCloud.profile.current()
-    return Boolean(this.store.feed.instructions || this.store.goals.length || profile.description || this.store.ideas.items.some((i) => i.started))
+    return Boolean(this.store.feed.instructions || this.store.goals.length || profile.description || Object.values(this.store.ideas.marks).some((m) => m.started))
   }
 
   // ---- prompts ---------------------------------------------------------------------------
@@ -1298,9 +1445,10 @@ export default class NanomuseRooms extends Service {
     for (const goal of this.store.goals.slice(0, 10)) {
       lines.push(`- goal (${goal.status}, ${goal.category}): ${goal.title}${goal.summary ? ` — ${goal.summary}` : ''}`)
     }
-    const started = this.store.ideas.items.filter((i) => i.started).slice(0, 8)
+    const ideas = this.ideaItems()
+    const started = ideas.filter((i) => i.started).slice(0, 8)
     if (started.length) lines.push(`- ideas the person started before: ${started.map((i) => i.title).join('; ')}`)
-    const dismissed = this.store.ideas.items.filter((i) => i.dismissed).slice(0, 8)
+    const dismissed = ideas.filter((i) => i.dismissed).slice(0, 8)
     if (dismissed.length) lines.push(`- ideas the person dismissed (do not repeat): ${dismissed.map((i) => i.title).join('; ')}`)
     const liked = this.store.feed.posts.filter((p) => p.liked).slice(0, 8)
     if (liked.length) lines.push(`- feed posts the person liked: ${liked.map((p) => p.title).join('; ')}`)
@@ -1327,19 +1475,6 @@ export default class NanomuseRooms extends Service {
     ].join('\n')
   }
 
-  private ideasPrompt(): string {
-    const zh = this.lang.startsWith('zh')
-    return [
-      `[Background job from nanoMuse: propose ideas for the person. Nobody reads this chat; the app parses your final answer.]`,
-      `You are the person's own agent. Propose 12 to 16 concrete, genuinely useful things you could do for them, in ${languageName(this.lang)}, in 4 to 5 groups. The first group is "${zh ? '为你推荐' : 'For you'}" (3-4 ideas tied to what you know about them below); the others are themes such as ${zh ? '健康与健身、购物、人际关系、效率提升、旅行、学习、金融' : 'Health & fitness, Shopping, Relationships, Productivity, Travel, Learning, Finance'} — pick the four that fit this person. Prefer things you can actually do with your tools: research and comparisons, planning, drafting, tracking prices or news, reminders and recurring checks, organising files, advancing their goals. Each title is one sentence in the first person about what you would do ("${zh ? '我会帮你…' : 'I will …'}").`,
-      ``,
-      `What you know:`,
-      this.context(),
-      ``,
-      'Finish with ONE fenced ```json block and nothing after it: a JSON array of objects, each {"group": "<group name>", "emoji": "<one emoji>", "title": "<one sentence, first person>", "detail": "<1-2 sentences: what you would do and why it helps>", "includes": ["<3-4 short bullets of what is included>"], "how": "<2-3 sentences: how it works, what you need from the person>", "prompt": "<the exact request the person could send to start>", "area": "<one of ' + AREAS.join(', ') + '>"}.',
-    ].join('\n')
-  }
-
   // ---- storage ---------------------------------------------------------------------------
 
   private get path(): string {
@@ -1352,8 +1487,8 @@ export default class NanomuseRooms extends Service {
       return {
         lang: typeof raw.lang === 'string' ? raw.lang : '',
         feed: { ...EMPTY.feed, ...(raw.feed ?? {}), posts: Array.isArray(raw.feed?.posts) ? raw.feed!.posts : [] },
-        ideas: { ...EMPTY.ideas, ...(raw.ideas ?? {}), items: Array.isArray(raw.ideas?.items) ? raw.ideas!.items : [] },
-        goals: Array.isArray(raw.goals) ? raw.goals : [],
+        ideas: { ...EMPTY.ideas, items: [], marks: raw.ideas?.marks && typeof raw.ideas.marks === 'object' ? raw.ideas.marks : {} },
+        goals: Array.isArray(raw.goals) ? (raw.goals as Partial<Goal>[]).map((g) => ({ steps: [], progress: -1, attention: false, ...g }) as Goal) : [],
         library: Array.isArray(raw.library) ? raw.library : [],
         memory: Array.isArray(raw.memory) ? raw.memory : [],
         docs: { ...EMPTY.docs, ...(raw.docs && typeof raw.docs === 'object' ? raw.docs : {}) },
@@ -1432,17 +1567,20 @@ export default class NanomuseRooms extends Service {
         case '/feed/discuss':
           return send(res, 200, { sessionId: await this.discuss(String(body.id ?? '')) })
         case '/ideas/refresh':
-          void this.refreshIdeas().catch((error: unknown) => this.warn('ideas', error))
-          return send(res, 202, { started: true })
+          // the list is the phone's curated one now; older windows may still ask
+          return send(res, 204)
         case '/ideas/start':
-          return send(res, 200, { sessionId: await this.startIdea(String(body.id ?? '')) })
+          return send(res, 200, await this.startIdea(String(body.id ?? '')))
+        case '/ideas/mark':
+          await this.markIdea(String(body.id ?? ''), String(body.sessionId ?? ''))
+          return send(res, 204)
         case '/ideas/dismiss':
           await this.dismissIdea(String(body.id ?? ''))
           return send(res, 204)
         case '/goals/create':
           return send(res, 200, await this.createGoal({ title: typeof body.title === 'string' ? body.title : undefined, category: typeof body.category === 'string' ? body.category : undefined, text: String(body.text ?? '') }))
         case '/goals/begin':
-          return send(res, 200, await this.beginGoal(String(body.category ?? 'other')))
+          return send(res, 200, await this.beginGoal(goalCategory(body.category), typeof body.seed === 'string' ? body.seed : undefined, typeof body.sessionId === 'string' ? body.sessionId : undefined))
         case '/goals/update':
           return send(res, 200, await this.updateGoal(String(body.id ?? ''), body as Parameters<NanomuseRooms['updateGoal']>[1]))
         case '/docs/write': {
@@ -1497,6 +1635,22 @@ export default class NanomuseRooms extends Service {
         }
         case '/memory/add':
           return send(res, 200, { item: await this.remember(String(body.text ?? ''), 'person') })
+        case '/avatar/adopted': {
+          // A look changed from the chat (the phone's AvatarFlow, here src/client/AvatarChat.tsx): the same
+          // memory line the phone leaves, and — when the chat is idle — the agent says so in its own words.
+          const desc = String(body.desc ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
+          if (!desc) return send(res, 400, { error: { code: 'bad_request', message: 'desc is required' } })
+          await this.remember(avatarMemoryLine(desc))
+          const sessionId = String(body.sessionId ?? '')
+          const fence = avatarFence({ desc, chosen: Math.min(4, Math.max(1, Number(body.chosen ?? 1) || 1)), files: Array.isArray(body.files) ? body.files.map(String).slice(0, 5) : [] })
+          if (sessionId) {
+            const line = this.lang.startsWith('zh')
+              ? `我的新形象刚刚换好了：${desc}。用一句话、以你自己的口吻告诉用户换好了（不要解释过程），然后另起一行原样写出这个代码块，不要改动它：\n${fence}`
+              : `My new look was just adopted: ${desc}. Tell the person in one sentence, in your own voice, that the new look is on (no explanation of how), then write this code block on its own line exactly as it is:\n${fence}`
+            await this.say(sessionId as SessionId, line, undefined, this.lang.startsWith('zh') ? '形象已更换' : 'Look changed').catch((error: unknown) => this.warn('avatar notice', error))
+          }
+          return send(res, 204)
+        }
         case '/memory/delete':
           await this.forget(String(body.id ?? ''))
           return send(res, 204)

@@ -10,6 +10,8 @@
  */
 
 /** A relay error, with the relay's own code when it sent one. */
+import { readSharedConnectors, type SharedConnector } from './desk.ts'
+
 export class RelayError extends Error {
   constructor(
     readonly status: number,
@@ -76,6 +78,8 @@ export interface RelayModel {
   kind: string
   recommended: boolean
   inputModalities: string[]
+  /** What the relay says it is for (relay 0.1.34+): `chat`, `gui`, or both; absent on an older relay. */
+  for?: string[]
 }
 
 export interface SignIn {
@@ -104,6 +108,10 @@ export interface ProfileWrite {
   description: string
   /** A drawn face's stills, `{mood: base64 WebP}` — only when a face was drawn here. */
   face?: Record<string, string>
+  /** This device's connections, for the other devices to see (never a credential); the relay keeps the other devices' rows. */
+  connectors?: SharedConnector[]
+  /** Which device's rows `connectors` replaces. */
+  device_id?: string
 }
 
 /** What a few pictures would cost next to what is left today (`GET /v1/estimate`). */
@@ -133,6 +141,8 @@ export interface RelayProfile {
   faceId: string
   /** `mood -> base64 WebP`, when asked for. */
   face?: Record<string, string>
+  /** The account's connections across devices, as the relay lists them (relay 0.1.34+). */
+  connectors: SharedConnector[]
 }
 
 const JSON_HEADERS = { 'content-type': 'application/json' }
@@ -419,6 +429,7 @@ export class Relay {
         kind: String(extra.kind ?? 'chat'),
         recommended: Boolean(extra.recommended),
         inputModalities: Array.isArray(arch.input_modalities) ? arch.input_modalities.map(String) : ['text'],
+        ...(Array.isArray(extra.for) ? { for: extra.for.map(String) } : {}),
       }
     })
   }
@@ -451,6 +462,7 @@ export class Relay {
       description: String(body.description ?? ''),
       hasFace: Boolean(body.has_face),
       faceId: String(body.face_id ?? ''),
+      connectors: readSharedConnectors(body.connectors),
       ...(face ? { face: Object.fromEntries(Object.entries(face).filter(([, v]) => typeof v === 'string')) as Record<string, string> } : {}),
     }
   }

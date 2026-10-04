@@ -19,6 +19,8 @@ export interface FeedPost {
   sessionId?: string
 }
 
+export type IdeaKind = 'chat' | 'routine' | 'goal'
+
 export interface Idea {
   id: string
   at: number
@@ -30,6 +32,10 @@ export interface Idea {
   how: string
   prompt: string
   area: string
+  /** What trying it does: words in the chat, a daily routine, or a goal conversation. */
+  kind?: IdeaKind
+  time?: string
+  category?: string
   started?: string
   dismissed?: boolean
 }
@@ -62,6 +68,10 @@ export interface Goal {
   updatedAt: number
   summary: string
   activity: GoalActivity[]
+  steps?: string[]
+  /** 0–100 as the agent last reported, -1 or absent when it never said. */
+  progress?: number
+  attention?: boolean
 }
 
 export type LibraryKind = 'document' | 'web' | 'image' | 'video' | 'audio' | 'file'

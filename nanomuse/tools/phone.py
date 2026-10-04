@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import ConfigDict
 
+from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, took_over_note
 from nanomuse.config import GUISettings
 from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped, PhoneLink
 from nanomuse.phone.screen import Screen
@@ -54,6 +55,35 @@ def _screen_result(screen: Screen, prefix: str = "") -> ToolResult:
     return ToolResult(output=text, images=[screen.image_path] if screen.image_path else None)
 
 
+async def _wait_hold(holds: Any) -> str:
+    """Wait while the user has the phone (a hold is on); the note for the model when there
+    was one, so it looks again before acting on what it last saw."""
+    if holds is None:
+        return ""
+    return took_over_note("phone") if await holds.wait(holds.thread(), "phone") else ""
+
+
+async def _hand_over(holds: Any, link: PhoneLink, reason: str, timeout: float) -> ToolResult:
+    """The agent gives the phone to the user (contract C1): a hold goes on with the reason,
+    the user does their part — a password, a code, a payment confirmation — and presses
+    Done; the tool returns the screen as they left it."""
+    reason = " ".join(str(reason or "").split())
+    if not reason:
+        return ToolResult.fail("`reason` is required: say what the user should do on the phone")
+    if holds is None:
+        return ToolResult.fail(
+            "hand_over is not available here; ask the user with `ask_user` to do it and tell "
+            "you when it is done"
+        )
+    finished = await holds.hand_over(holds.thread(), "phone", reason, timeout=timeout)
+    note = took_over_note("phone", finished)
+    try:
+        screen = await link.screen()
+    except DeviceError as exc:
+        return ToolResult(output=f"{note}\n\n(the screen could not be read afterwards: {exc})")
+    return _screen_result(screen, note)
+
+
 class PhoneScreen(BaseTool):
     """Read the phone's screen."""
 
@@ -70,15 +100,17 @@ class PhoneScreen(BaseTool):
     risk: RiskLevel = RiskLevel.SAFE
     reads_private_data: bool = True
     link: PhoneLink
+    holds: Any = None
 
     async def execute(self, **kwargs: Any) -> ToolResult:
+        note = await _wait_hold(self.holds)
         try:
             screen = await self.link.screen()
         except DeviceStopped as exc:
             return ToolResult.fail(f"{exc} ({STOP_MARKER})")
         except DeviceError as exc:
             return ToolResult.fail(str(exc))
-        return _screen_result(screen)
+        return _screen_result(screen, note)
 
 
 class PhoneAct(BaseTool):
@@ -94,13 +126,20 @@ class PhoneAct(BaseTool):
         "`direction` up|down|left|right (`up` moves the finger up, so the content scrolls down); "
         "`type` (`text` into the focused field — tap the field first; `clear` empties it first; "
         "`submit` presses enter); `enter`, `back`, `home`, `recents`; `open_app` (`app` name or "
-        "id); `wait` (`seconds`). One action per call — look at the result before the next. "
-        "Never type passwords, card numbers or one-time codes: ask the user to do that step."
+        "id); `wait` (`seconds`); `hand_over` with a `reason` gives the phone to the user for a "
+        "step only they can do — a password, a card number, a one-time code, a payment "
+        "confirmation — and returns the screen once they press Done. One action per call — "
+        "look at the result before the next. Never type passwords, card numbers or one-time "
+        "codes yourself: `hand_over`."
     )
     parameters: dict[str, Any] = {
         "type": "object",
         "properties": {
-            "action": {"type": "string", "enum": list(ACTIONS)},
+            "action": {"type": "string", "enum": [*ACTIONS, "hand_over"]},
+            "reason": {
+                "type": "string",
+                "description": "hand_over: what the user should do on the phone, in their language",
+            },
             "x": {"type": "number", "description": "pixels from the left of the screenshot"},
             "y": {"type": "number", "description": "pixels from the top of the screenshot"},
             "x2": {"type": "number", "description": "swipe: where the finger ends"},
@@ -126,10 +165,17 @@ class PhoneAct(BaseTool):
     reads_private_data: bool = True
     link: PhoneLink
     gui: GUISettings
+    holds: Any = None
+    hand_over_timeout: float = HAND_OVER_TIMEOUT_S
 
     # ------------------------------------------------------------------ risk
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         action = str(args.get("action") or "")
+        if action == "hand_over":
+            return CallAssessment(
+                risk=RiskLevel.SAFE,
+                summary=f"phone_act: hand over — {str(args.get('reason') or '')[:80]}",
+            )
         screen = self.link.last_screen
         app = (screen.app if screen else "") or None
         where = f" in {screen.title}" if screen else ""
@@ -204,8 +250,13 @@ class PhoneAct(BaseTool):
     # ------------------------------------------------------------------ run
     async def execute(self, **kwargs: Any) -> ToolResult:
         action = str(kwargs.get("action") or "")
+        if action == "hand_over":
+            return await _hand_over(
+                self.holds, self.link, str(kwargs.get("reason") or ""), self.hand_over_timeout
+            )
         if action not in ACTIONS:
             return ToolResult.fail(f"unknown action '{action}'. One of: {', '.join(ACTIONS)}")
+        held = await _wait_hold(self.holds)
         params: dict[str, Any] = {"action": action}
         label = str(kwargs.get("label") or "").strip()
         if label:
@@ -275,7 +326,7 @@ class PhoneAct(BaseTool):
         except DeviceError as exc:
             return ToolResult.fail(str(exc))
         note = str(raw.get("note") or "")
-        done = "Done" + (f": {note}" if note else "")
+        done = (held + "\n\n" if held else "") + "Done" + (f": {note}" if note else "")
         try:
             if isinstance(raw.get("screen"), dict):
                 after = Screen.from_device(
@@ -344,7 +395,8 @@ class PhoneTask(BaseTool):
         "the phone is for the rest. Give one concrete `goal` with the facts it needs (names, dates, "
         "amounts, which account) and any `context` you already have; one goal per call, in order. "
         "It stops and asks before paying, transferring, sending or deleting; it never enters "
-        "passwords or codes — when it asks, put the question to the user and call again with "
+        "passwords or codes — it hands the phone to the user for those and carries on when they "
+        "press Done. When it asks a question instead, put it to the user and call again with "
         "their answer in `context`. Its report holds everything it read, so ask for what you need."
     )
     parameters: dict[str, Any] = {
@@ -363,6 +415,7 @@ class PhoneTask(BaseTool):
     reads_private_data: bool = True
     link: PhoneLink
     operator: Any  # PhoneOperator — typed loosely to keep the import graph one-way
+    holds: Any = None
 
     def assess(self, args: dict[str, Any]) -> CallAssessment:
         goal = str(args.get("goal") or "")
@@ -384,6 +437,7 @@ class PhoneTask(BaseTool):
                 "turned on) or the MobileGym module, then try again."
             )
         operator: PhoneOperator = self.operator
+        await _wait_hold(self.holds)
         outcome = await operator.run(
             goal, context=str(kwargs.get("context") or ""), app=str(kwargs.get("app") or "")
         )

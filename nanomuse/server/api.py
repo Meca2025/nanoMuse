@@ -72,6 +72,7 @@ from nanomuse.config import Settings
 from nanomuse.hub.client import HubError
 from nanomuse.logger import logger
 from nanomuse.server import tickets
+from nanomuse.server.channels_api import install_channels
 from nanomuse.server.events import MAIN_THREAD
 from nanomuse.server.service import MuseService, goal_to_dict
 from nanomuse.server.update import UpdateCheck
@@ -265,6 +266,14 @@ class BrowserControlBody(BaseModel):
     key: str | None = Field(default=None, max_length=40)
     dy: float | None = Field(default=None, ge=-5000, le=5000)
     url: str | None = Field(default=None, max_length=2000)
+
+
+class HoldBody(BaseModel):
+    """The user takes the browser, the computer or the phone over for a chat (contract C1)."""
+
+    thread: str = Field(default=MAIN_THREAD, max_length=64)
+    tool: str = Field(pattern="^(browser|computer|phone)$")
+    reason: str | None = Field(default=None, max_length=300)
 
 
 class PushSubscribeBody(BaseModel):
@@ -898,6 +907,30 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.post("/api/hands/stop", dependencies=dep)
     async def stop_hands() -> dict[str, Any]:
         return {"stopped": svc.stop_hands()}
+
+    # ------------------------------------------------------------------ holds (C1)
+    @app.get("/api/holds", dependencies=dep)
+    async def holds_list() -> list[dict[str, Any]]:
+        """The holds that are on: the person has the browser, the screen or the phone."""
+        return svc.holds_view()
+
+    @app.post("/api/holds", dependencies=dep)
+    async def hold_open(body: HoldBody) -> dict[str, Any]:
+        """Take over: the agent's actions of that kind in that chat wait for Done."""
+        try:
+            return svc.open_hold(body.thread, body.tool, body.reason or "")
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post("/api/holds/{hold_id}/done", dependencies=dep)
+    async def hold_done(hold_id: str) -> dict[str, Any]:
+        """Done: the hold goes off; the waiting tool looks again and continues."""
+        try:
+            return svc.done_hold(hold_id)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
 
     # ------------------------------------------------------------------ the avatar studio
     def _studio_http(exc: StudioError) -> HTTPException:
@@ -1636,6 +1669,10 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
 
         @app.get("/{full_path:path}", include_in_schema=False)
         async def spa(full_path: str) -> Response:
+            if full_path.startswith("api/"):
+                # a wrong API path is an error, not the app's HTML with a 200 — clients
+                # (and people with curl) see what happened
+                raise HTTPException(404, f"no such endpoint: /{full_path}")
             candidate = (STATIC_DIR / full_path).resolve() if full_path else None
             if candidate and STATIC_DIR.resolve() in candidate.parents and candidate.is_file():
                 if candidate.name == "sw.js":
@@ -1662,6 +1699,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
                 }
             )
 
+    install_channels(app, svc, dep)  # /api/channels — Feishu, DingTalk, WeCom, Telegram
     return app
 
 

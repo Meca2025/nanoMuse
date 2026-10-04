@@ -41,7 +41,7 @@ struct NanoMuseCloudCTA: View {
     private var freeLine: String {
         if let allowance = config.allowanceCny, allowance > 0 {
             let amount = "¥" + allowance.formatted(.number.precision(.fractionLength(allowance.rounded() == allowance ? 0 : 2)))
-            return AppLocalized("A phone number or an e-mail, a code, and \(amount) of credit comes with the account. No card. Or add a key of your own below.")
+            return String(format: AppLocalized("A phone number or an e-mail, a code, and %@ of credit comes with the account. No card. Or add a key of your own below."), amount)
         }
         return AppLocalized("A phone number or an e-mail, a code, and the model is yours to use. No card. Or add a key of your own below.")
     }

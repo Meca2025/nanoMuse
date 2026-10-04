@@ -95,9 +95,13 @@ The showcase's Caddy is built with [caddy-dns/cloudflare](https://github.com/cad
 
 The web app's typeface, [Figtree](https://github.com/erikdkennedy/figtree) by Erik Kennedy, ships in `web/public/fonts/` under the OFL (`web/public/fonts/OFL.txt`).
 
+### nanobot — MIT
+
+The Feishu channel's WebSocket runner (`nanomuse/channels/feishu.py`, class `_Runner`) follows the shape of `FeishuWsRunner` in [nanobot](https://github.com/HKUDS/nanobot) (Copyright (c) 2025 HKUDS): the SDK's client on a thread with its own event loop, swapping the module-level loop and calling its private `_connect` / `_disconnect` / `_ping_loop`. Rewritten for nanoMuse's channel base; the arrangement is theirs.
+
 ### Python and JavaScript dependencies
 
-Installed from PyPI and npm, not vendored; each carries its own license: openai, pydantic, httpx, typer, rich, loguru, cryptography, tenacity, ddgs, beautifulsoup4, html2text, mcp, fastapi, uvicorn, qrcode, pywebpush, python-dateutil, pillow, pypdf (Python); react, react-dom, react-markdown, remark-gfm, lucide-react, tailwindcss, vite (web). `pip show <name>` / `npm view <name> license` for any of them.
+Installed from PyPI and npm, not vendored; each carries its own license: openai, pydantic, httpx, typer, rich, loguru, cryptography, tenacity, ddgs, beautifulsoup4, html2text, mcp, fastapi, uvicorn, qrcode, pywebpush, python-dateutil, pillow, pypdf (Python); lark-oapi, dingtalk-stream, wecom-aibot-sdk-python when the `channels` extras are installed; react, react-dom, react-markdown, remark-gfm, lucide-react, tailwindcss, vite (web). `pip show <name>` / `npm view <name> license` for any of them.
 
 ### Tools called, not bundled
 

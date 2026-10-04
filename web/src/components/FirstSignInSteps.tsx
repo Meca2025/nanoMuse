@@ -5,6 +5,7 @@ import { useT } from "../i18n";
 import { useFocusTrap } from "./useFocusTrap";
 import { useStore } from "../store";
 import { cx } from "../util";
+import { ownKeyWay } from "../region";
 import { openOwnKeySetup } from "./AllowanceWays";
 import { inputCls, primaryBtn, secondaryBtn } from "./Form";
 
@@ -59,7 +60,8 @@ export function useFirstSignIn(): boolean {
 
 export function FirstSignInSteps() {
   const t = useT();
-  const { toast, refreshHub, setTab } = useStore();
+  const { toast, refreshHub, setTab, state } = useStore();
+  const way = ownKeyWay(state.hub?.account);
   const [step, setStep] = useState<"password" | "source">("password");
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
@@ -90,7 +92,7 @@ export function FirstSignInSteps() {
 
   const ownKey = async () => {
     await done();
-    openOwnKeySetup(setTab);
+    openOwnKeySetup(setTab, way.preset);
   };
 
   const panel = useRef<HTMLDivElement>(null);
@@ -160,14 +162,18 @@ export function FirstSignInSteps() {
                 <CloudCog size={16} className="mt-0.5 shrink-0 text-accent" />
                 <span>
                   <span className="font-medium">{t("Use the nanoMuse Cloud model")}</span>
-                  <span className="block text-muted">{t("Qwen through Alibaba Cloud Bailian, with a free allowance per account paid by the developer. Nothing to configure.")}</span>
+                  <span className="block text-muted">{t("DeepSeek for the chat and Qwen for the hands, with a free allowance per account paid by the developer. Nothing to configure.")}</span>
                 </span>
               </li>
               <li className="flex items-start gap-2.5 rounded-2xl bg-surface-2 px-3 py-2.5">
                 <KeyRound size={16} className="mt-0.5 shrink-0 text-accent" />
                 <span>
                   <span className="font-medium">{t("I have my own API key")}</span>
-                  <span className="block text-muted">{t("OpenAI, Anthropic, DeepSeek, Bailian and other OpenAI-compatible endpoints. The key stays on this device.")}</span>
+                  <span className="block text-muted">
+                    {way.preset === "qwen"
+                      ? t("Alibaba Cloud Bailian, DeepSeek, OpenAI, OpenRouter and other OpenAI-compatible endpoints. The key stays on this device.")
+                      : t("OpenRouter (one account, one key, pay as you go), OpenAI, DeepSeek and other OpenAI-compatible endpoints. The key stays on this device.")}
+                  </span>
                 </span>
               </li>
             </ul>

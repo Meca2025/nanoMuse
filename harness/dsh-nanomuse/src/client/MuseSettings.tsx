@@ -13,6 +13,7 @@
 import { useModalLayer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { UpdateRow } from './About.tsx'
 import { openStar } from './AccountPage.tsx'
 import { call, type CloudStatus, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
@@ -26,7 +27,6 @@ import { REPO_URL } from './panels.ts'
 import { AppBehaviorRows, ConversationRows, DeveloperRows, HotkeyField } from './Sections.tsx'
 
 const SITE_URL = 'https://nanomuse.cn/'
-const RELEASES_URL = 'https://github.com/nano-muse/nanoMuse/releases'
 
 /** The pages that make up the everyday group, in Muse's order; the rest are Advanced. */
 export const COMPUTER_SECTION = 'nanomuse-computer'
@@ -263,7 +263,6 @@ export function makeGeneralSection(t: Translate, version: string) {
   return function GeneralSection({ renderSlot }: { renderSlot: RenderSlot }): ReactNode {
     const live = useLive()
     const [status, setStatus] = useState<CloudStatus | undefined>()
-    const [checked, setChecked] = useState<'idle' | 'checking' | 'latest'>('idle')
     useEffect(() => {
       let alive = true
       call<CloudStatus>('status').then((s) => { if (alive) setStatus(s) }).catch(() => undefined)
@@ -278,11 +277,6 @@ export function makeGeneralSection(t: Translate, version: string) {
       ? Math.min(100, Math.round((pool.total / (pool.grant ?? 1)) * 100))
       : account && !account.tokens.unlimited && account.tokens.granted > 0 ? Math.min(100, Math.round((account.tokens.used / account.tokens.granted) * 100)) : 0
     const spent = pool ? poolLeft <= 0 : Boolean(account && !account.tokens.unlimited && account.tokens.granted > 0 && account.tokens.remaining <= 0)
-    const checkUpdates = () => {
-      setChecked('checking')
-      window.setTimeout(() => setChecked('latest'), 900)
-      openLink(RELEASES_URL)
-    }
     return h('div', { className: 'nm-general nm-section' },
       // the account card
       h('div', { className: 'nm-card' },
@@ -334,11 +328,7 @@ export function makeGeneralSection(t: Translate, version: string) {
       // about
       h('h2', null, t('gnAbout')),
       h('div', { className: 'nm-card' },
-        h('div', { className: 'nm-row' },
-          h('div', { className: 'nm-row-main' },
-            h('span', { className: 'nm-row-title' }, t('versionLine', { version: version || '—' })),
-            h('span', { className: 'nm-row-sub' }, checked === 'latest' ? t('gnUpToDate') : t('gnUpdatesSub'))),
-          h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: checked === 'checking', onClick: checkUpdates }, checked === 'checking' ? t('gnChecking') : t('gnCheckUpdates'))),
+        h(UpdateRow, { t, bundle: version }),
         h('button', { type: 'button', className: 'nm-row nm-row-button', onClick: () => openLink(REPO_URL) },
           h('div', { className: 'nm-row-main' },
             h('span', { className: 'nm-row-title' }, t('gnStar')),

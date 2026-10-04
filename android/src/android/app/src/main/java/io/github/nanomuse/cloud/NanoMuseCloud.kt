@@ -51,6 +51,8 @@ object NanoMuseCloud {
     private const val KEY_BASE = "cloud.base"
     private const val KEY_INSTANCE = "cloud.instance_id"
     private const val KEY_CHANNEL = "cloud.channel"
+    /** The relay's word on where the account is from (`"cn"`, contract C5); empty when it did not say. */
+    private const val KEY_REGION = "cloud.region"
     private const val KEY_HINT = "cloud.hint"
     private const val KEY_GRANTED = "cloud.granted"
     private const val KEY_USED = "cloud.used"
@@ -96,6 +98,9 @@ object NanoMuseCloud {
     private const val KEY_RECOMMENDED = "cloud.recommended"
     private const val KEY_SIGHTED = "cloud.sighted"
     private const val KEY_MODELS_AT = "cloud.models_at"
+    /** The two lanes' defaults (contract C4), for a relay that does not mark `for` itself. */
+    const val DEFAULT_CHAT_MODEL = "deepseek-v4.1-flash"
+    const val DEFAULT_GUI_MODEL = "qwen3.8-27b"
     private const val MODELS_FRESH_MS = 60 * 60 * 1000L
 
     /** Where the privacy policy is when the relay did not name one. */
@@ -178,6 +183,8 @@ object NanoMuseCloud {
         val sessions: Int = 0,
         /** How this phone signed in: "code" or "password". */
         val via: String = "",
+        /** Where the relay places the account — `"cn"` for mainland China (contract C5); empty when it did not say. */
+        val region: String = "",
         /** The breakdown by kind and by model, when the relay reports one. */
         val usage: Usage? = null,
         /** This account's invite code and the link to share; empty on a relay from before 0.4. */
@@ -298,6 +305,7 @@ object NanoMuseCloud {
             hasPassword = p.getBoolean(KEY_HAS_PASSWORD, false),
             sessions = p.getInt(KEY_SESSIONS, 0),
             via = p.getString(KEY_VIA, "") ?: "",
+            region = p.getString(KEY_REGION, "") ?: "",
             usage = p.getString(KEY_USAGE, null)?.let { parseUsage(runCatching { JSONObject(it) }.getOrNull()) },
             inviteCode = p.getString(KEY_INVITE_CODE, "") ?: "",
             inviteUrl = p.getString(KEY_INVITE_URL, "") ?: "",
@@ -579,6 +587,16 @@ object NanoMuseCloud {
         clear(context)
     }
 
+    /**
+     * The one line for a turn refused for a spent allowance: the invitation, and the way on
+     * that fits where the person is (contract C5) — 阿里云百炼 on the mainland, OpenRouter's
+     * sign-in elsewhere.
+     */
+    fun allowanceSentence(context: Context): String = context.getString(
+        if (Region.mainland(context)) R.string.nm_cloud_err_allowance else R.string.nm_cloud_err_allowance_abroad,
+        inviteBonusText(context),
+    )
+
     /** A sentence for the person, from the relay's stable error codes. */
     fun describe(context: Context, e: Throwable): String = when (e) {
         is CloudException -> when (e.code) {
@@ -593,7 +611,7 @@ object NanoMuseCloud {
             "bad_key" -> context.getString(R.string.nm_cloud_err_bad_key)
             "out_of_tokens" -> context.getString(R.string.nm_cloud_err_out_of_tokens)
             "daily_cap" -> context.getString(R.string.nm_cloud_err_daily_cap)
-            "allowance_exhausted" -> context.getString(R.string.nm_cloud_err_allowance, inviteBonusText(context))
+            "allowance_exhausted" -> allowanceSentence(context)
             "rate_limited" -> context.getString(R.string.nm_cloud_err_rate_limited)
             "unreachable" -> context.getString(R.string.nm_cloud_err_unreachable)
             "bad_credentials" -> context.getString(R.string.nm_cloud_err_bad_credentials)
@@ -621,9 +639,9 @@ object NanoMuseCloud {
      */
     private fun provisionDefaults(context: Context, repo: ProviderRepository, inst: ProviderInstance, models: JSONArray?) {
         val offered = (0 until (models?.length() ?: 0)).mapNotNull { models?.optJSONObject(it) }
-        val recommendedChat = offered.firstOrNull {
-            it.optJSONObject("nanomuse")?.optBoolean("recommended") == true && !drawsOnly(it)
-        }?.optString("id") ?: offered.firstOrNull { !drawsOnly(it) }?.optString("id")
+        // the group opens on the chat default (deepseek-v4.1-flash, contract C4); the hands
+        // model (qwen3.8-27b) is a setting of its own, read by Hands.screenModel
+        val recommendedChat = recommendedChat(offered.filter { !drawsOnly(it) })?.optString("id")
         val imageModel = offered.firstOrNull { drawsOnly(it) }?.optString("id")
 
         var config = repo.config.value
@@ -676,6 +694,30 @@ object NanoMuseCloud {
         return "image" in mods && "text" !in mods
     }
 
+    /**
+     * The relay's `for` on a menu entry — `["chat"]`, `["gui"]` or both (relay 0.17, under
+     * `nanomuse` with its other flags; a top-level `for` is read too); null when it did not say.
+     */
+    private fun lanes(model: JSONObject): List<String>? {
+        val arr = model.optJSONObject("nanomuse")?.optJSONArray("for") ?: model.optJSONArray("for") ?: return null
+        return (0 until arr.length()).map { arr.optString(it) }
+    }
+
+    /**
+     * The chat model the menu opens on (contract C4): the one the relay recommends *for chat*
+     * — `deepseek-v4.1-flash` — and, on a relay from before `for`, the recommended one, then
+     * the known default by name, then the first of the menu. [chats] are the menu's chat
+     * models in the menu's order.
+     */
+    private fun recommendedChat(chats: List<JSONObject>): JSONObject? {
+        fun recommended(m: JSONObject) = m.optJSONObject("nanomuse")?.optBoolean("recommended") == true
+        fun forChat(m: JSONObject) = lanes(m)?.contains("chat") != false
+        return chats.firstOrNull { recommended(it) && forChat(it) && lanes(it)?.contains("gui") != true }
+            ?: chats.firstOrNull { recommended(it) && forChat(it) }
+            ?: chats.firstOrNull { it.optString("id") == DEFAULT_CHAT_MODEL }
+            ?: chats.firstOrNull { forChat(it) }
+    }
+
     // -- the menu and the catalog ------------------------------------------------------------
 
     /**
@@ -704,9 +746,13 @@ object NanoMuseCloud {
             return (0 until (mods?.length() ?: 0)).any { mods!!.optString(it) == "image" }
         }
         val chats = items.filter { !drawsOnly(it) && it.optJSONObject("nanomuse")?.optBoolean("catalog") != true }
-        val recommended = chats.firstOrNull { it.optJSONObject("nanomuse")?.optBoolean("recommended") == true } ?: chats.firstOrNull()
-        // the menu's model for the screen: the recommended one when it sees, else the first that does
-        val sighted = (if (recommended != null && sees(recommended)) recommended else chats.firstOrNull { sees(it) })?.optString("id")
+        val recommended = recommendedChat(chats)
+        // the menu's model for the screen — the hands model, a setting apart from the chat
+        // model (contract C4): what the relay marks `for: ["gui"]`, qwen3.8-27b on an older
+        // relay that does not say, else the first of the menu that sees
+        val sighted = (chats.firstOrNull { lanes(it)?.contains("gui") == true }
+            ?: chats.firstOrNull { it.optString("id") == DEFAULT_GUI_MODEL }
+            ?: chats.firstOrNull { sees(it) })?.optString("id")
         prefs(context).edit().apply {
             putString(KEY_MENU_IDS, menu.joinToString(","))
             // the list sent with the key is the menu alone: it must not erase a catalog we know
@@ -816,6 +862,7 @@ object NanoMuseCloud {
             .putBoolean(KEY_HAS_PASSWORD, account.optBoolean("has_password", false))
             .putInt(KEY_SESSIONS, account.optInt("sessions", 0))
             .putString(KEY_VIA, account.optString("signed_in_via"))
+            .putString(KEY_REGION, account.optString("region", reply.optString("region", "")))
             .putString(KEY_USAGE, reply.optJSONObject("usage")?.toString())
             .putString(KEY_INVITE_CODE, reply.optJSONObject("invite")?.optString("code").orEmpty())
             .putString(KEY_INVITE_URL, reply.optJSONObject("invite")?.optString("url").orEmpty())
@@ -893,7 +940,7 @@ object NanoMuseCloud {
             .remove(KEY_MEMBER).remove(KEY_SPENT_TODAY).remove(KEY_SPENT_TOTAL).remove(KEY_USD_CNY)
             .remove(KEY_GRANT).remove(KEY_LEFT).remove(KEY_WARN).remove(KEY_ALLOWANCE).remove(KEY_INVITEE_BONUS)
             .remove(KEY_OWN_KEY_DOCS)
-            .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_USAGE)
+            .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_REGION).remove(KEY_USAGE)
             .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
             .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_CONTRIBUTE_DEFAULT).remove(KEY_PRIVACY_URL).remove(KEY_FRESH).remove(KEY_WARNED_GRANT)
             .remove(KEY_MENU_IDS).remove(KEY_CATALOG_IDS).remove(KEY_RECOMMENDED).remove(KEY_SIGHTED).remove(KEY_MODELS_AT)

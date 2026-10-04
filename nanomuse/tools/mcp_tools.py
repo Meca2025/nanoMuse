@@ -19,6 +19,7 @@ Compatible with mcp 1.x and 2.x.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections.abc import Callable
@@ -112,64 +113,89 @@ class MCPManager:
         )
 
     async def connect(self) -> list[MCPTool]:
-        from mcp import ClientSession
+        """Connect every server; one that is down is logged and skipped.
 
+        Each attempt lives on its own exit stack, closed in this task when it fails. The
+        HTTP transports connect in a background task of their own task group, so a wrong
+        URL or a refused key surfaces as a *cancellation* of ``initialize()`` here rather
+        than an exception; swallowing that only when this task itself was not cancelled
+        is what keeps a bad server from taking the whole request down with it."""
         for cfg in self.servers:
-            try:
-                read, write = await self._open_transport(self._resolved(cfg))
-                session = await self._stack.enter_async_context(ClientSession(read, write))
-                await session.initialize()
-                listed = await session.list_tools()
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("MCP server '{}' unavailable: {}", cfg.name, exc)
-                continue
-            for t in listed.tools:
-                schema = _attr(t, "input_schema", "inputSchema") or {
-                    "type": "object",
-                    "properties": {},
-                }
-                policy = cfg.tools.get(t.name)
-                tool = MCPTool(
-                    name=_safe_name(cfg.name, t.name),
-                    description=(t.description or f"{t.name} (from MCP server {cfg.name})")[:1000],
-                    parameters=schema,
-                    risk=policy.risk if policy and policy.risk is not None else cfg.risk,
-                    egress=policy.egress if policy and policy.egress is not None else cfg.egress,
-                    reads_private_data=(
-                        policy.reads_private_data
-                        if policy and policy.reads_private_data is not None
-                        else cfg.reads_private_data
-                    ),
-                    session=session,
-                    server=cfg.name,
-                    original_name=t.name,
-                )
-                self.tools.append(tool)
-            logger.info("MCP server '{}' connected with {} tools", cfg.name, len(listed.tools))
+            resolved = self._resolved(cfg)
+            attempts = ["streamable", "sse"] if resolved.url else ["stdio"]
+            for transport in attempts:
+                stack = AsyncExitStack()
+                try:
+                    session, listed = await self._open(resolved, transport, stack)
+                except BaseException as exc:  # noqa: BLE001 — see the docstring
+                    unwound = await _close_quietly(stack)
+                    if _this_task_is_cancelled():
+                        raise
+                    # a cancellation says nothing by itself; the transport's own error
+                    # comes out when its task group is closed
+                    reason = _reason(unwound if isinstance(exc, asyncio.CancelledError) else exc)
+                    logger.warning(
+                        "MCP server '{}' unavailable over {}: {}", cfg.name, transport, reason
+                    )
+                    continue
+                await self._stack.enter_async_context(stack)
+                self._add_tools(cfg, session, listed)
+                logger.info("MCP server '{}' connected with {} tools", cfg.name, len(listed.tools))
+                break
         return self.tools
 
-    async def _open_transport(self, cfg: MCPServerSettings) -> tuple[Any, Any]:
-        if cfg.url:
+    def _add_tools(self, cfg: MCPServerSettings, session: Any, listed: Any) -> None:
+        for t in listed.tools:
+            schema = _attr(t, "input_schema", "inputSchema") or {
+                "type": "object",
+                "properties": {},
+            }
+            policy = cfg.tools.get(t.name)
+            tool = MCPTool(
+                name=_safe_name(cfg.name, t.name),
+                description=(t.description or f"{t.name} (from MCP server {cfg.name})")[:1000],
+                parameters=schema,
+                risk=policy.risk if policy and policy.risk is not None else cfg.risk,
+                egress=policy.egress if policy and policy.egress is not None else cfg.egress,
+                reads_private_data=(
+                    policy.reads_private_data
+                    if policy and policy.reads_private_data is not None
+                    else cfg.reads_private_data
+                ),
+                session=session,
+                server=cfg.name,
+                original_name=t.name,
+            )
+            self.tools.append(tool)
+
+    async def _open(
+        self, cfg: MCPServerSettings, transport: str, stack: AsyncExitStack
+    ) -> tuple[Any, Any]:
+        """Transport, session, handshake and the tool list for one server, all on ``stack``."""
+        from mcp import ClientSession
+
+        read, write = await self._open_transport(cfg, transport, stack)
+        session = await stack.enter_async_context(ClientSession(read, write))
+        await session.initialize()
+        return session, await session.list_tools()
+
+    async def _open_transport(
+        self, cfg: MCPServerSettings, transport: str, stack: AsyncExitStack
+    ) -> tuple[Any, Any]:
+        if transport == "streamable":
             try:  # mcp >= 2
                 from mcp.client.streamable_http import streamable_http_client as http_client
             except ImportError:  # mcp 1.x
                 from mcp.client.streamable_http import (  # type: ignore[attr-defined,no-redef]
                     streamablehttp_client as http_client,
                 )
-            try:
-                streams = await self._stack.enter_async_context(http_client(cfg.url))
-            except Exception as exc:  # noqa: BLE001
-                # an older server speaks SSE only; but a wrong URL or a refused key looks the
-                # same from here, so the first answer is kept in the log
-                logger.warning(
-                    "MCP '{}': streamable HTTP failed ({}: {}); trying SSE",
-                    cfg.name,
-                    type(exc).__name__,
-                    exc,
-                )
-                from mcp.client.sse import sse_client
+            streams = await stack.enter_async_context(http_client(cfg.url or ""))
+            return streams[0], streams[1]
+        if transport == "sse":
+            # an older server speaks SSE only
+            from mcp.client.sse import sse_client
 
-                streams = await self._stack.enter_async_context(sse_client(cfg.url))
+            streams = await stack.enter_async_context(sse_client(cfg.url or ""))
             return streams[0], streams[1]
         if not cfg.command:
             raise ValueError(f"MCP server '{cfg.name}' needs either `command` or `url`")
@@ -183,7 +209,7 @@ class MCPManager:
             args=cfg.args,
             env={**get_default_environment(), **cfg.env} if cfg.env else None,
         )
-        streams = await self._stack.enter_async_context(stdio_client(params))
+        streams = await stack.enter_async_context(stdio_client(params))
         return streams[0], streams[1]
 
     async def close(self) -> None:
@@ -191,6 +217,36 @@ class MCPManager:
             await self._stack.aclose()
         except Exception as exc:  # noqa: BLE001
             logger.debug("MCP shutdown: {}", exc)
+
+
+def _this_task_is_cancelled() -> bool:
+    """Whether the running task still has a cancellation pending once a failed transport's
+    scope has been exited: anyio takes back the cancellation its own scope delivered, so
+    what is left is the caller's (a request being torn down, the runtime stopping)."""
+    task = asyncio.current_task()
+    return task is not None and task.cancelling() > 0
+
+
+async def _close_quietly(stack: AsyncExitStack) -> BaseException | None:
+    """Close a failed attempt's stack; what it raised while unwinding (the transport's
+    real error, usually) is returned rather than thrown."""
+    try:
+        await stack.aclose()
+    except BaseException as exc:  # noqa: BLE001 — a failed transport may unwind noisily
+        logger.debug("MCP transport shutdown: {}: {}", type(exc).__name__, exc)
+        return exc
+    return None
+
+
+def _reason(exc: BaseException | None) -> str:
+    """One line naming what went wrong, down through exception groups."""
+    if exc is None:
+        return "connection failed"
+    while isinstance(exc, BaseExceptionGroup) and exc.exceptions:
+        # the most telling leaf: anything but a bare cancellation
+        leaves = [e for e in exc.exceptions if not isinstance(e, asyncio.CancelledError)]
+        exc = (leaves or list(exc.exceptions))[0]
+    return f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
 
 
 __all__ = ["MCPManager", "MCPTool"]

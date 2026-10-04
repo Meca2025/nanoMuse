@@ -17,6 +17,7 @@ struct NanoMuseAccountSections: View {
     @State private var error: String?
     @State private var usageScope = 0
     @State private var starAsk = false
+    @State private var ownKey = false
 
     var body: some View {
         Group {
@@ -36,6 +37,7 @@ struct NanoMuseAccountSections: View {
             dangerSection
         }
         .task { await load() }
+        .sheet(isPresented: $ownKey) { NanoMuseOwnKeySheet { _ in } }
     }
 
     // MARK: - Allowance
@@ -51,13 +53,13 @@ struct NanoMuseAccountSections: View {
                     let left = spend.remaining ?? 0
                     VStack(alignment: .leading, spacing: 6) {
                         ProgressView(value: min(spend.total / grant, 1))
-                        Text(AppLocalized("\(yuan(left)) of \(yuan(grant)) left"))
+                        Text(String(format: AppLocalized("%@ of %@ left"), yuan(left), yuan(grant)))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         if let usd = spend.usdCny, usd > 0 {
                             let spent = yuan(spend.total)
                             let dollars = (spend.total / usd).formatted(.number.precision(.fractionLength(2)))
-                            Text(AppLocalized("\(spent) spent (about $\(dollars))"))
+                            Text(String(format: AppLocalized("%@ spent (about $%@)"), spent, dollars))
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
@@ -65,14 +67,14 @@ struct NanoMuseAccountSections: View {
                     .padding(.vertical, 4)
                     if spend.low { waysOn(spend) }
                 } else if let spend = sheet.spend {
-                    Text(AppLocalized("Spent so far: \(yuan(spend.total)). No allowance figure from this relay."))
+                    Text(String(format: AppLocalized("Spent so far: %@. No allowance figure from this relay."), yuan(spend.total)))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else if let account {
                     // an older relay: tokens, as before
                     let remaining = account.remaining.formatted()
                     let granted = account.granted.formatted()
-                    Text(account.unlimited ? AppLocalized("No limit on this account") : AppLocalized("\(remaining) of \(granted) tokens left"))
+                    Text(account.unlimited ? AppLocalized("No limit on this account") : String(format: AppLocalized("%@ of %@ tokens left"), remaining, granted))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -94,19 +96,27 @@ struct NanoMuseAccountSections: View {
                 ? AppLocalized("The allowance is used up. Two ways to keep going — and a third if you like the project.")
                 : AppLocalized("Most of the allowance is spent. Good time to set up a way on."))
                 .font(.subheadline)
+            // Contract C5: mainland China hears about Alibaba Cloud Bailian first; everyone else about OpenRouter.
+            let mainland = NanoMuseRegion.isMainland
             Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(AppLocalized("Use your own API key")).font(.subheadline.weight(.medium))
-                    Text(AppLocalized("A key from DeepSeek, OpenAI or another provider goes under Providers; the Cloud account then only carries your name, face and memory."))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(AppLocalized("Use your own model key")).font(.subheadline.weight(.medium))
+                    Text(mainland
+                         ? AppLocalized("Alibaba Cloud Bailian (阿里云百炼) is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.")
+                         : NanoMuseOwnKeyPreset.regionNote)
                         .font(.caption).foregroundStyle(.secondary)
-                    Link(AppLocalized("How-to"), destination: URL(string: spend.ownKeyDocs ?? "https://nanomuse.cn/own-key")!)
-                        .font(.caption)
+                    HStack(spacing: 14) {
+                        Button(mainland ? AppLocalized("Set it up") : AppLocalized("Sign in with OpenRouter")) { ownKey = true }
+                            .font(.caption.weight(.medium))
+                        Link(AppLocalized("Step-by-step guide"), destination: URL(string: spend.ownKeyDocs ?? "https://nanomuse.cn/own-key")!)
+                            .font(.caption)
+                    }
                 }
             } icon: { Image(systemName: "key") }
             Label {
                 VStack(alignment: .leading, spacing: 2) {
                     let bonus = yuan(spend.inviteBonusCny ?? sheet?.invite?.bonusCny ?? 5)
-                    Text(AppLocalized("Invite a friend: \(bonus) each")).font(.subheadline.weight(.medium))
+                    Text(String(format: AppLocalized("Invite a friend: %@ each"), bonus)).font(.subheadline.weight(.medium))
                     Text(AppLocalized("Your code and link are just below.")).font(.caption).foregroundStyle(.secondary)
                 }
             } icon: { Image(systemName: "gift") }
@@ -148,7 +158,7 @@ struct NanoMuseAccountSections: View {
             let bonus = yuan(invite.bonusCny)
             let earned = yuan(invite.earnedCny)
             let invited = invite.invites.formatted()
-            Text(AppLocalized("A friend who signs up with your code gets \(bonus) of credit — and so do you. \(invited) invited · \(earned) earned."))
+            Text(String(format: AppLocalized("A friend who signs up with your code gets %@ of credit — and so do you. %@ invited · %@ earned."), bonus, invited, earned))
         }
     }
 
@@ -184,7 +194,7 @@ struct NanoMuseAccountSections: View {
                 Text(label)
                 let tokens = (row.promptTokens + row.completionTokens).formatted()
                 let requests = row.requests.formatted()
-                Text(AppLocalized("\(requests) requests · \(tokens) tokens"))
+                Text(String(format: AppLocalized("%@ requests · %@ tokens"), requests, tokens))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
@@ -285,7 +295,7 @@ struct NanoMuseAccountSections: View {
                         Text(s.device.isEmpty ? AppLocalized("A device") : s.device) + Text(s.current ? " · \(AppLocalized("this phone"))" : "")
                         let via = s.via == "password" ? AppLocalized("a password") : AppLocalized("a code")
                         let when = (s.lastUsedAt ?? s.createdAt).formatted(.relative(presentation: .named))
-                        Text(AppLocalized("Signed in with \(via) · last used \(when)"))
+                        Text(String(format: AppLocalized("Signed in with %@ · last used %@"), via, when))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()

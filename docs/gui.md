@@ -12,7 +12,7 @@ Muse's abilities in the West come from services with APIs. Most of what a person
 Three things decide how this part is built:
 
 - **Local.** The brain runs where you run it — your machine, or the phone itself in the Android build — and the screen goes to the model you configured, nobody else.
-- **China first.** The default model is on 阿里云百炼, the sample tasks are 12306 and 微信, the sensitive-word list is Chinese first.
+- **China first.** The default model is on 阿里云百炼 in mainland China and OpenRouter (`qwen/qwen3.8-27b`) elsewhere, the sample tasks are 12306 and 微信, the sensitive-word list is Chinese first.
 - **Any app.** The operator sees the screen as a picture and taps by position. It does not need an accessibility tree, labelled buttons or a per-app integration, so a new app costs nothing — the same loop that books a train reads a chat. When the device *has* a tree (the Android app), it is sent along as a second input — small text becomes readable and a password field is known to be one — but nothing depends on it.
 - **Last resort.** The screen is the fourth rung of a ladder (below): a skill, a command-line tool or an MCP server that does the thing exactly comes first, then a page fetched with the user's login, then the in-app browser. Every screen step is a model call and a picture; the agent climbs only when the rung below cannot do it, and says so before it starts.
 
@@ -61,7 +61,12 @@ base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 api_key  = "{{vault:GUI_API_KEY}}"
 ```
 
-Leave `model` empty and the main model does both. The key goes into the vault like any other (`nanomuse vault set GUI_API_KEY`, or type it into the Phone card). The operator's model **must accept images**: a screenshot is the whole observation. The operator calls it at temperature 0 — grounding wants the model's first choice, not a sample.
+The chat model and the hands model are two settings (Connections → *Chat model* / *Hands model*). Leave `[gui] model` empty and:
+
+- with a nanoMuse Cloud account, the relay's hands model is used — `qwen3.8-27b` unless the relay names another (`/v1/models` says which models are `for` `chat`, `gui` or both); the chat default there is `deepseek-v4.1-flash`, which reads pictures too, but the hands want the model trained to point at things on a screen, so the two are kept apart;
+- with your own key, the chat model does both — which only works when it sees. The presets name a hands model on the same endpoint (Alibaba Cloud Bailian `qwen3.8-27b`, OpenRouter `qwen/qwen3.8-27b`) and the Hands model row fills it in; a model that is known to be blind (DeepSeek ids without `v4.1`, `vision` or `ocr`) is flagged there.
+
+The key goes into the vault like any other (`nanomuse vault set GUI_API_KEY`, or type it into the Phone card). The operator's model **must accept images**: a screenshot is the whole observation. The operator calls it at temperature 0 — grounding wants the model's first choice, not a sample.
 
 Environment overrides: `NANOMUSE_GUI_ENABLED`, `NANOMUSE_GUI_PROVIDER`, `NANOMUSE_GUI_MODEL`, `NANOMUSE_GUI_BASE_URL`, `NANOMUSE_GUI_API_KEY`.
 
@@ -120,6 +125,12 @@ A `phone_act` is MODERATE — allowed on its own in the default mode — except 
 A pointed action **must** carry a `label` — the words under the finger, as the screen shows them; the operator supplies its Action sentence. A tap without one still runs but carries a warning ("nothing says what is under the finger"), and a point outside the screen is refused before it reaches the phone.
 
 The default word list is Chinese and English; edit `[gui] sensitive_words` for other apps or languages. Approvals granted here are *once* only: sending one message never turns into sending the next without asking.
+
+On the computer there is one more ask, per application: the first `computer_act` in an app in a conversation asks *Let <Muse> use <App>?* with once / this conversation / always, kept as a `computer_app:<id>` grant (Settings → Permissions). The per-action rules above still apply inside the app. On macOS the hands can work in that app's window alone — [every-device.md](every-device.md#window-mode-macos).
+
+### Handing the screen over
+
+Passwords, one-time codes, CAPTCHAs and payment confirmations are the person's to type. The operator's `hand_over` action (and `computer_act` / `phone_act` / `browser` → `hand_over`, with a `reason`) puts a *Your turn — <reason> — Done* card in the chat, the live stage and the capsule, and waits up to ten minutes. While the hold is on, every action of that tool on that thread waits; the person does their part and presses **Done**; the operator takes a fresh screenshot and is told *the user took over for a while; look again*. A password field in focus turns a `type` into a hand-over on its own. The person can also take over first: *Take over* on the Hands or browser card, or `POST /api/holds {"thread","tool","reason"}`; `POST /api/holds/{id}/done` ends it, and `GET /api/state` lists the open holds.
 
 Since the observation is a picture, Sentinel judges by the *label* — the model's own words for what it is about to press — not by text it found in a tree. That is honest about what the operator knows, and it is why the label is required, why payment steps are also covered by the operator's own rule to stop and ask, and why grants are once-only.
 

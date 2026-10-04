@@ -21,6 +21,7 @@ import { cx } from "./util";
 // coding console.
 const AccountScreen = lazy(() => import("./screens/AccountScreen").then((m) => ({ default: m.AccountScreen })));
 const AvatarStudioScreen = lazy(() => import("./screens/AvatarStudioScreen").then((m) => ({ default: m.AvatarStudioScreen })));
+const ChannelsScreen = lazy(() => import("./screens/ChannelsScreen").then((m) => ({ default: m.ChannelsScreen })));
 const CodingScreen = lazy(() => import("./screens/CodingScreen").then((m) => ({ default: m.CodingScreen })));
 const ConnectionsScreen = lazy(() => import("./screens/ConnectionsScreen").then((m) => ({ default: m.ConnectionsScreen })));
 const DevicesScreen = lazy(() => import("./screens/DevicesScreen").then((m) => ({ default: m.DevicesScreen })));
@@ -77,7 +78,7 @@ export default function App() {
     const jump = () => {
       const tab = window.location.hash.slice(1) as Tab;
       if (tab && TABS.some((x) => x.id === tab)) setTab(tab);
-      else if (tab === "devices" || tab === "you" || tab === "memory" || tab === "connections" || tab === "skills" || tab === "account" || tab === "coding" || tab === "avatar") setTab(tab);
+      else if (tab === "devices" || tab === "you" || tab === "memory" || tab === "connections" || tab === "channels" || tab === "skills" || tab === "account" || tab === "coding" || tab === "avatar") setTab(tab);
     };
     jump();
     window.addEventListener("hashchange", jump);
@@ -148,6 +149,7 @@ export default function App() {
             {state.tab === "memory" && <MemoryScreen />}
             {state.tab === "skills" && <SkillsScreen />}
             {state.tab === "connections" && <ConnectionsScreen />}
+            {state.tab === "channels" && <ChannelsScreen />}
             {state.tab === "devices" && <DevicesScreen />}
             {state.tab === "you" && <SettingsScreen />}
             {state.tab === "account" && <AccountScreen />}

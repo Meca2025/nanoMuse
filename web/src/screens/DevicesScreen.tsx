@@ -188,11 +188,12 @@ function ThisDeviceCard({ hub, onChange }: { hub: HubView; onChange: () => void 
 }
 
 function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => void }) {
-  const { dispatch, toast } = useStore();
+  const { dispatch, toast, state } = useStore();
   const t = useT();
   const [busy, setBusy] = useState(false);
+  const museName = state.profile?.name ?? "nanoMuse";
 
-  const set = async (body: { enabled?: boolean; backend?: string }) => {
+  const set = async (body: { enabled?: boolean; backend?: string; mode?: string }) => {
     setBusy(true);
     try {
       const h = await api.setHands(body);
@@ -233,6 +234,30 @@ function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => vo
             </button>
           ))}
         </div>
+        {(hands.device?.platform === "darwin" || hands.window?.available) && (
+          <>
+            <MuseDivider inset={16} />
+            <div className="flex flex-wrap items-center gap-2 px-4 py-3 text-[13px] text-muted">
+              <span>{t("Where")}:</span>
+              {(["auto", "window", "screen"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void set({ mode: m })}
+                  className={cx("rounded-full px-2.5 py-1", (hands.mode ?? "auto") === m ? "bg-fg text-bg" : "bg-surface-2 text-fg")}
+                >
+                  {m === "auto" ? t("Auto") : m === "window" ? t("One window") : t("Whole screen")}
+                </button>
+              ))}
+            </div>
+            <MuseCaption className="pb-3 pt-0">
+              {hands.window?.active && hands.window.app
+                ? t("Working in {app}'s window; the mouse stays yours.", { app: hands.window.app })
+                : t("One window: the hands work inside the app they were given, send clicks and keys to it alone and leave your mouse alone. Whole screen: the system mouse, like other platforms. Auto picks one window as soon as an app is named.")}
+            </MuseCaption>
+          </>
+        )}
         {hands.task_active && (
           <>
             <MuseDivider inset={16} />
@@ -241,7 +266,7 @@ function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => vo
         )}
       </MuseCard>
       {hands.enabled && hands.device?.platform === "darwin" && (
-        <MuseCaption>{t("On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black.")}</MuseCaption>
+        <MuseCaption>{t("On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black. The first action in each app asks you once — \"Let {name} use Safari?\" — and the answer is kept under Permissions.", { name: museName })}</MuseCaption>
       )}
     </>
   );

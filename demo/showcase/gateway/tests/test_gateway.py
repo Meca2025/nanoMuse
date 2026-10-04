@@ -3,9 +3,10 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from showcase_gateway.config import Lane, Settings, sighted_default
+from showcase_gateway.config import Lane, Settings, text_only
 from showcase_gateway.llm import extract_usage, pinned, prepare_body
 from showcase_gateway.sessions import (
+    Provider,
     Refused,
     Session,
     SessionManager,
@@ -253,13 +254,33 @@ def test_usage_parsing():
     assert prepare_body(b'{"stream": true}', "responses") == b'{"stream": true}'
 
 
-def test_the_operator_lane_gets_a_sighted_model_by_default():
-    # DeepSeek takes no images: the screens go to Model Studio's qwen3.8-27b on the same key
-    assert sighted_default("deepseek-v4-pro") == "qwen3.8-27b"
-    assert sighted_default("DeepSeek-V4-Flash") == "qwen3.8-27b"
-    # a sighted main model serves both lanes by itself
-    assert sighted_default("qwen3.8-27b") == "qwen3.8-27b"
-    assert sighted_default("qwen3.5-plus") == "qwen3.5-plus"
+def test_which_deepseek_models_see():
+    # the rule shared by every client (contract C4): DeepSeek is text-only before v4.1, and
+    # anything whose id says vision or ocr sees
+    assert text_only("deepseek-v4-pro")
+    assert text_only("DeepSeek-V4-Flash")
+    assert text_only("deepseek-v4")
+    assert text_only("deepseek-chat") and text_only("deepseek-reasoner")
+    assert not text_only("deepseek-v4.1-flash")
+    assert not text_only("deepseek-v4.2-pro") and not text_only("deepseek-v5")
+    assert not text_only("deepseek-vl-vision") and not text_only("deepseek-ocr")
+    # every other family is taken as sighted (the runtime finds out for itself)
+    assert not text_only("qwen3.8-27b") and not text_only("qwen3.5-plus")
+    assert not text_only("")
+
+
+def test_the_lanes_have_their_own_defaults(monkeypatch):
+    # chat: deepseek-v4.1-flash; hands: qwen3.8-27b — the GUI model is a fixed default, not
+    # the chat model, whatever the chat model is
+    for name in ("MAIN_MODEL", "GUI_PROVIDER", "GUI_MODEL", "GUI_BASE_URL", "GUI_API_KEY"):
+        monkeypatch.setenv(name, "")
+    monkeypatch.setenv("MAIN_BASE_URL", "https://llm.example/compatible-mode/v1")
+    monkeypatch.setenv("MAIN_API_KEY", "sk-demo")
+    s = Settings.from_env()
+    assert s.main.model == "deepseek-v4.1-flash"
+    assert s.gui.model == "qwen3.8-27b"
+    monkeypatch.setenv("MAIN_MODEL", "qwen3.5-plus")
+    assert Settings.from_env().gui.model == "qwen3.8-27b"
 
 
 def test_empty_gui_lines_in_the_env_file_mean_the_default(monkeypatch):
@@ -278,6 +299,40 @@ def test_empty_gui_lines_in_the_env_file_mean_the_default(monkeypatch):
     # a value set is taken as it is
     monkeypatch.setenv("GUI_MODEL", "qwen3-vl-plus")
     assert Settings.from_env().gui.model == "qwen3-vl-plus"
+
+
+def test_a_visitors_own_provider_gets_its_own_gui_lane():
+    # OpenRouter: the hands use qwen/qwen3.8-27b on the visitor's key, whatever they chat with
+    p = Provider("https://openrouter.ai/api/v1", "sk-or", "deepseek/deepseek-v4.1-flash")
+    assert p.gui_model == "qwen/qwen3.8-27b"
+    assert p.lane("main").model == "deepseek/deepseek-v4.1-flash"
+    assert p.lane("gui").model == "qwen/qwen3.8-27b" and p.lane("gui").api_key == "sk-or"
+    # 阿里云百炼: qwen3.8-27b on the same key
+    p = Provider("https://dashscope.aliyuncs.com/compatible-mode/v1", "sk-bl", "deepseek-v4-pro")
+    assert p.gui_model == "qwen3.8-27b"
+    # anywhere else, the one model does both
+    p = Provider("https://api.deepseek.com/v1", "sk-ds", "deepseek-chat", host="api.deepseek.com")
+    assert p.gui_model == "deepseek-chat"
+    # …and that is what the container is started with
+    runner = FakeRunner()
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    manager = SessionManager(make_settings(), runner, http=client)
+    sess = Session(
+        id="abc",
+        token="t",
+        llm_key="k",
+        ip="1.2.3.4",
+        created_at=0.0,
+        expires_at=1.0,
+        container="nm-abc",
+        byok=Provider("https://openrouter.ai/api/v1", "sk-or", "deepseek/deepseek-v4.1-flash"),
+    )
+    env = manager._env_for(sess)
+    assert env["NANOMUSE_LLM_MODEL"] == "deepseek/deepseek-v4.1-flash"
+    assert env["NANOMUSE_GUI_MODEL"] == "qwen/qwen3.8-27b"
+    assert "NANOMUSE_LLM_VISION" not in env  # v4.1 sees
+    assert manager.llm_lane(sess, "k", "gui").model == "qwen/qwen3.8-27b"
+    assert manager.llm_lane(sess, "k", "main").model == "deepseek/deepseek-v4.1-flash"
 
 
 def test_a_text_only_chat_model_is_kept_away_from_the_screenshots():
@@ -300,3 +355,6 @@ def test_a_text_only_chat_model_is_kept_away_from_the_screenshots():
     assert env["NANOMUSE_GUI_MODEL"] == "gui-model"  # the operator lane still looks
     sighted = make_settings(main=Lane("openai", "qwen3.5-plus", "https://m.example", "sk"))
     assert "NANOMUSE_LLM_VISION" not in SessionManager(sighted, runner, http=client)._env_for(sess)
+    # DeepSeek V4.1 Flash reads pictures: the default chat model keeps its eyes
+    flash = make_settings(main=Lane("openai", "deepseek-v4.1-flash", "https://m.example", "sk"))
+    assert "NANOMUSE_LLM_VISION" not in SessionManager(flash, runner, http=client)._env_for(sess)

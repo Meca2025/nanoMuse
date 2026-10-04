@@ -39,6 +39,11 @@ export interface HarnessBridge {
   onQuickChat?(listener: () => void): () => void
   // since 0.1.33
   relaunch?(): Promise<void>
+  // since 0.1.34
+  guidePermissions?(): Promise<Record<PermissionKind, PermissionState>>
+  setContentProtection?(on: boolean): Promise<void>
+  setOverlay?(state: { hands: { active: boolean; held: boolean; x: number; y: number; kind: string; text: string; face: string } | null; cards: { id: string; kind: 'approval' | 'hold'; title: string; text: string; actions: { id: string; label: string; tone?: 'on' | 'no' }[] }[] }): void
+  onOverlayAction?(listener: (card: string, action: string) => void): () => void
 }
 
 export function bridge(): HarnessBridge | undefined {

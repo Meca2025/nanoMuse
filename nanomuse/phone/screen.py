@@ -51,6 +51,9 @@ class Screen:
     image_size: tuple[int, int] | None = None  # the picture's own pixels, if known
     taken_at: float = field(default_factory=time.time)
     note: str = ""  # anything the device wants to add ("permission dialog open", ...)
+    # how the picture was taken when it is not the whole screen: "window" (the computer's
+    # window mode, docs/gui.md); the desktop stage reads it from the first line
+    mode: str = ""
     # the accessibility tree, flattened by the device (optional): id, text/desc/hint, class,
     # cx/cy (the centre, in the picture's pixels), flags such as clickable/editable/password
     nodes: list[dict[str, Any]] = field(default_factory=list)
@@ -68,6 +71,7 @@ class Screen:
             height=int(raw.get("height") or (device.height if device else 0) or 0),
             keyboard=bool(raw.get("keyboard")),
             note=str(raw.get("note") or "")[:300],
+            mode=str(raw.get("mode") or "")[:20],
         )
         shot = raw.get("screenshot") or raw.get("image")
         if shot and shots_dir is not None:
@@ -98,6 +102,8 @@ class Screen:
         head = [self.title]
         if self.route:
             head.append(self.route)
+        if self.mode:
+            head.append(self.mode)
         if self.width and self.height:
             head.append(f"{self.width}×{self.height}")
         head.append("keyboard shown" if self.keyboard else "keyboard hidden")
@@ -167,6 +173,7 @@ class Screen:
             "image": self.image_path,
             "taken_at": self.taken_at,
             "note": self.note,
+            "mode": self.mode,
             "nodes": len(self.nodes),
         }
 

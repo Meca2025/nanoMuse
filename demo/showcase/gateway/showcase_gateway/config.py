@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -64,28 +65,37 @@ class Lane:
         return bool(self.model and self.base_url and self.api_key)
 
 
-TEXT_ONLY_FAMILIES = ("deepseek",)
-SIGHTED_FALLBACK = "qwen3.8-27b"
+# The two lanes' defaults (contract C4, the same on every client): DeepSeek V4.1 Flash talks to
+# the visitor and reads pictures; Qwen 3.8 27B operates the phone. The GUI model is a fixed
+# default, not derived from the chat model — the two are separate settings.
+DEFAULT_MAIN_MODEL = "deepseek-v4.1-flash"
+DEFAULT_GUI_MODEL = "qwen3.8-27b"
+# …and their names on OpenRouter, for a visitor who brings an OpenRouter key
+OPENROUTER_GUI_MODEL = "qwen/qwen3.8-27b"
+
+_DEEPSEEK_VERSION = re.compile(r"v(\d+)(?:\.(\d+))?")
 
 
 def text_only(model: str) -> bool:
-    """A model family that takes no images (DeepSeek). On Model Studio's compatible mode a
-    message with a picture in it does not fail for these — it comes back as an empty reply —
-    so the family is known by name rather than found out at the first screenshot."""
-    family = model.strip().lower()
-    return any(family.startswith(prefix) for prefix in TEXT_ONLY_FAMILIES)
+    """Whether a model takes no images.
 
-
-def sighted_default(main_model: str) -> str:
-    """The operator lane's model when ``GUI_MODEL`` is not set.
-
-    Hands reads a screenshot at every step, so the lane needs a model that takes images. The
-    main lane's model serves when it does; a text-only family (DeepSeek) falls back to Model
-    Studio's sighted ``qwen3.8-27b`` on the same host and key.
+    Only the DeepSeek family is text-only, and not all of it: ``deepseek-v4.1-flash`` and
+    later read pictures, as does anything whose id says ``vision`` or ``ocr``; ``deepseek-v4``,
+    ``v4-pro``, ``v4-flash``, ``deepseek-chat`` and ``deepseek-reasoner`` do not. On Model
+    Studio's compatible mode a message with a picture in it does not fail for those — it
+    comes back as an empty reply — so the rule is by name rather than found out at the first
+    screenshot.
     """
-    if text_only(main_model):
-        return SIGHTED_FALLBACK
-    return main_model
+    family = model.strip().lower()
+    if not family.startswith("deepseek"):
+        return False
+    if "vision" in family or "ocr" in family:
+        return False
+    m = _DEEPSEEK_VERSION.search(family)
+    if m is None:
+        return True
+    version = (int(m.group(1)), int(m.group(2) or 0))
+    return version < (4, 1)
 
 
 @dataclass(frozen=True)
@@ -184,16 +194,18 @@ class Settings:
     def from_env(cls) -> Settings:
         main = Lane(
             provider=_str("MAIN_PROVIDER", "openai"),
-            model=_str("MAIN_MODEL", "deepseek-v4-pro"),
+            model=_str("MAIN_MODEL") or DEFAULT_MAIN_MODEL,
             base_url=_str("MAIN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
             api_key=_str("MAIN_API_KEY"),
         )
         # .env.example ships the four GUI_ lines empty, so an empty value is "not set" here —
         # not an operator lane without a model, which the gateway would answer 404 for and
-        # every phone task would fail on
+        # every phone task would fail on. The model is the fixed GUI default (never the chat
+        # model: a chat model that happens to see is not thereby the one that operates a
+        # phone); host, key and provider follow the main lane unless set.
         gui = Lane(
             provider=_str("GUI_PROVIDER") or main.provider,
-            model=_str("GUI_MODEL") or sighted_default(main.model),
+            model=_str("GUI_MODEL") or DEFAULT_GUI_MODEL,
             base_url=_str("GUI_BASE_URL") or main.base_url,
             api_key=_str("GUI_API_KEY") or main.api_key,
         )

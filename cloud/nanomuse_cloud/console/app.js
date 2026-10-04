@@ -28,7 +28,7 @@
     // account
     account: "账号", member: "成员", regular: "普通账号", since: "加入于", noPassword: "未设置密码", hasPassword: "已设置密码", setPassword: "设置密码", changePassword: "修改密码",
     allowance: "免费额度", unlimited: "不限额度", spentTotal: (a, c) => `已用 ¥${a} / 共 ¥${c}`, spentOnly: (a) => `累计已用 ¥${a}`, tokensToday: (n) => `今天 ${n} tokens`,
-    allowanceWhy: (a, b) => `每个账号有 ¥${a} 免费额度，不按天重置；邀请一位新用户，你和对方各 +¥${b}。用完可以换自己的 key（推荐阿里云百炼），登录和多设备功能不受影响。`, allowanceWarn: "额度快用完了。", allowanceOut: "额度已用完。", ownKey: "自己的 key 怎么配",
+    allowanceWhy: (a, b, region) => `每个账号有 ¥${a} 免费额度，不按天重置；邀请一位新用户，你和对方各 +¥${b}。用完可以换自己的 key${region === "cn" ? "（推荐阿里云百炼，大陆账号有免费额度）" : "。海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费"}，登录和多设备功能不受影响。`, allowanceWarn: "额度快用完了。", allowanceOut: "额度已用完。", ownKey: "百炼 key 怎么配", openRouterKey: "OpenRouter 取 key",
     usage: "用量", today: "今天", allTime: "累计", byModel: "按模型", noUsage: "还没有用量。", requests: (n) => `${n} 次`, tokens: (n) => `${n} tokens`, seconds: (n) => `${n} 秒`, images: (n) => `${n} 张`,
     kinds: { chat: "对话", image: "图片", video: "视频", realtime: "实时通话" },
     signIns: "登录的设备", thisOne: "当前", revoke: "退出", viaCode: "验证码", viaPassword: "密码", viaWeb: "网页", lastUsed: "最近使用",
@@ -41,7 +41,7 @@
     save: "保存", cancel: "取消", ok: "好", refresh: "刷新", community: "nanoMuse Cloud 由社区志愿维护，不以营利为目的。这里记的是次数、tokens 和估算的费用；对话文字是否用于改进模型，由下面「数据控制」里的开关决定。",
     contribute: "数据控制", improve: "帮助改进 nanoMuse 的 AI 模型", contributeWhy: "开启后，你与 nanoMuse Cloud 模型对话的文字——你写的、它回答的，以及它选择调用的工具——会保存在服务器上，用来训练社区自己的开源模型。不保存系统提示（记忆、SOUL、指令）、工具返回的内容和图片，也不和你的身份放在一起。随时可以关闭，并删除已保存的内容。", contributeDefault: (on) => on ? "新账号默认开启。" : "新账号默认关闭。", contributeOn: "已开启", contributeOff: "已关闭", contributeCount: (n) => `已保存 ${n} 轮对话`, deleteSamples: "删除已保存的对话", deleteSamplesConfirm: "已保存的对话会从服务器上删除，不可恢复。", deleted: (n) => `已删除 ${n} 轮`, privacy: "隐私政策",
     invite: "邀请朋友", inviteWhy: (b) => `每有一位新用户用你的邀请码注册，你的额度 +¥${b}，不过期。`, inviteCode: "邀请码", inviteLink: "邀请链接", copy: "复制", copied: "已复制", invited: (n) => `已邀请 ${n} 人`, earned: (c) => `邀请带来 ¥${c}`,
-    errors: { bad_identifier: "请输入中国大陆手机号或邮箱。", phone_region: "短信验证码目前只支持中国大陆手机号，海外用户请用邮箱登录。", code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁，稍等几分钟。", not_invited: "这是一台私人中转，这个邮箱不在名单上。", allowance_exhausted: "免费额度已用完。邀请一位新用户（你和对方各 +¥5），或者换成自己的 key（推荐阿里云百炼）；登录和多设备功能不受影响。", daily_cap: "今天的 token 配额用完了，明天恢复。", send_failed: "验证码发送失败，请稍后再试。", bad_key: "登录已失效，请重新登录。", offline: "连不上服务器。",
+    errors: { bad_identifier: "请输入中国大陆手机号或邮箱。", phone_region: "短信验证码目前只支持中国大陆手机号，海外用户请用邮箱登录。", code_wrong: "验证码不对。", code_expired: "验证码已过期，请重新发送。", code_too_often: "发送太频繁，稍等几分钟。", not_invited: "这是一台私人中转，这个邮箱不在名单上。", allowance_exhausted: (e) => `免费额度已用完。邀请一位新用户（你和对方各 +¥${e.invite_bonus_cny ?? 5}），或者换成自己的 key${e.region === "cn" ? "（推荐阿里云百炼）" : "（海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费）"}；登录和多设备功能不受影响。`, daily_cap: "今天的 token 配额用完了，明天恢复。", send_failed: "验证码发送失败，请稍后再试。", bad_key: "登录已失效，请重新登录。", offline: "连不上服务器。",
       bad_credentials: "邮箱或密码不对。", no_password: "这个账号还没设置密码，请用验证码登录。", locked: "密码试错太多次，请稍后再试或用验证码登录。", password_short: "密码至少 8 位。", password_long: "密码太长了。", password_weak: "密码太简单了。", password_wrong: "当前密码不对。", password_required: "请输入当前密码。", disabled: "这个账号已被停用。" },
   } : {
     tagline: "Every device you own, a Muse of yours.",
@@ -61,7 +61,7 @@
     risks: { destructive: "removes or rewrites", outbound: "sends something out", system: "system-level", install: "installs software", money: "a payment" },
     account: "Account", member: "member", regular: "account", since: "since", noPassword: "No password yet", hasPassword: "Password set", setPassword: "Set a password", changePassword: "Change password",
     allowance: "Free allowance", unlimited: "No ceiling", spentTotal: (a, c) => `¥${a} of ¥${c} used`, spentOnly: (a) => `¥${a} used in all`, tokensToday: (n) => `${n} tokens today`,
-    allowanceWhy: (a, b) => `Every account has ¥${a} to spend, for good — it does not reset by the day. A friend who signs up with your code adds ¥${b} for each of you. When it is gone, bring your own key (Alibaba Cloud Bailian is a good start); sign-in and your devices keep working.`, allowanceWarn: "Nearly used up.", allowanceOut: "Used up.", ownKey: "How to bring your own key",
+    allowanceWhy: (a, b, region) => `Every account has ¥${a} to spend, for good — it does not reset by the day. A friend who signs up with your code adds ¥${b} for each of you. When it is gone, bring your own key${region === "cn" ? " (Alibaba Cloud Bailian has a free tier for mainland China accounts)" : ". Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go"}; sign-in and your devices keep working.`, allowanceWarn: "Nearly used up.", allowanceOut: "Used up.", ownKey: "How to set up a Bailian key", openRouterKey: "Get an OpenRouter key",
     usage: "Usage", today: "Today", allTime: "All time", byModel: "By model", noUsage: "Nothing used yet.", requests: (n) => `${n} req`, tokens: (n) => `${n} tokens`, seconds: (n) => `${n} s`, images: (n) => `${n} pictures`,
     kinds: { chat: "Chat", image: "Pictures", video: "Video", realtime: "Calls" },
     signIns: "Signed in on", thisOne: "this one", revoke: "Sign out", viaCode: "code", viaPassword: "password", viaWeb: "web", lastUsed: "last used",
@@ -74,7 +74,7 @@
     save: "Save", cancel: "Cancel", ok: "OK", refresh: "Refresh", community: "nanoMuse Cloud is run by volunteers of the community, not for profit. What is kept here is counts, tokens and an estimated cost; whether the text of your chats helps improve the model is the switch under Data controls below.",
     contribute: "Data controls", improve: "Help improve nanoMuse's AI models", contributeWhy: "When this is on, the text of your chats with the nanoMuse Cloud models — what you wrote, what it answered and the tools it chose to call — is kept on the server to train the community's own open model. Not the system prompt (memory, SOUL, instructions), not what tools returned, not pictures, and never next to who you are. Turn it off at any time and delete what was kept.", contributeDefault: (on) => on ? "On by default for new accounts." : "Off by default for new accounts.", contributeOn: "On", contributeOff: "Off", contributeCount: (n) => `${n} turns kept`, deleteSamples: "Delete the kept conversations", deleteSamplesConfirm: "The kept conversations are removed from the server. This cannot be undone.", deleted: (n) => `${n} turns deleted`, privacy: "Privacy policy",
     invite: "Invite a friend", inviteWhy: (b) => `Each new person who signs up with your code adds ¥${b} to your allowance. It never expires.`, inviteCode: "Invite code", inviteLink: "Invite link", copy: "Copy", copied: "Copied", invited: (n) => `${n} invited`, earned: (c) => `¥${c} from invites`,
-    errors: { bad_identifier: "Enter a mainland phone number or an e-mail address.", phone_region: "Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address.", code_wrong: "That code is not right.", code_expired: "That code has expired; send a new one.", code_too_often: "Too many codes; wait a few minutes.", not_invited: "This relay is private; that address is not on its list.", allowance_exhausted: "Your free allowance is used up. Invite a friend (+¥5), join the co-creation programme (+¥10), or bring your own key (Alibaba Cloud Bailian is a good start); sign-in and your devices keep working.", daily_cap: "Today's token quota is used up; it comes back tomorrow.", send_failed: "The code could not be sent; try again shortly.", bad_key: "Your sign-in has expired; sign in again.", offline: "Cannot reach the server.",
+    errors: { bad_identifier: "Enter a mainland phone number or an e-mail address.", phone_region: "Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address.", code_wrong: "That code is not right.", code_expired: "That code has expired; send a new one.", code_too_often: "Too many codes; wait a few minutes.", not_invited: "This relay is private; that address is not on its list.", allowance_exhausted: (e) => `Your free allowance is used up. Invite a friend (+¥${e.invite_bonus_cny ?? 5} for each of you) or bring your own key${e.region === "cn" ? " (Alibaba Cloud Bailian has a free tier for mainland China accounts)" : " — Alibaba Cloud Bailian only signs up accounts from mainland China; outside, OpenRouter is the easy way: one account, one key, pay as you go"}; sign-in and your devices keep working.`, daily_cap: "Today's token quota is used up; it comes back tomorrow.", send_failed: "The code could not be sent; try again shortly.", bad_key: "Your sign-in has expired; sign in again.", offline: "Cannot reach the server.",
       bad_credentials: "That address or password is not right.", no_password: "This account has no password yet; sign in with a code.", locked: "Too many wrong passwords; try later or use a code.", password_short: "At least 8 characters.", password_long: "That password is too long.", password_weak: "That password is too easy.", password_wrong: "The current password is not right.", password_required: "Enter the current password.", disabled: "This account has been disabled." },
   };
 
@@ -148,10 +148,10 @@
     }).catch(() => { throw { code: "offline" }; });
     if (r.status === 204) return {};
     const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw { code: (data.error && data.error.code) || `http_${r.status}`, message: (data.error && data.error.message) || "" };
+    if (!r.ok) throw { ...(data.error || {}), code: (data.error && data.error.code) || `http_${r.status}`, message: (data.error && data.error.message) || "" };
     return data;
   }
-  const errText = (e) => T.errors[e.code] || e.message || e.code || String(e);
+  const errText = (e) => { const t = T.errors[e.code]; return (typeof t === "function" ? t(e) : t) || e.message || e.code || String(e); };
   const deviceName = () => `${zh ? "网页" : "Web console"} · ${navigator.platform || "browser"}`;
 
   // ── sign in view ─────────────────────────────────────────────────
@@ -502,7 +502,13 @@
         h("span", { class: "chev" })),
       h("div", { class: "row" }, h("span", { class: "tile grey", html: ICON.devices }), h("div", { class: "txt" }, h("div", { class: "t" }, T.signIns)), h("span", { class: "v" }, h("b", {}, fmtN(a.sessions || 0)))),
       h("div", { class: "row" }, h("span", { class: "tile grey", html: ICON.shield }), h("div", { class: "txt" }, h("div", { class: "t" }, "ID"), h("div", { class: "s" }, h("code", {}, (a.id || "").slice(0, 12) + "…"))))));
-    // allowance
+    // allowance — the two key pages in the order for where the person is (0.17: `region`,
+    // `spend.ways`): the mainland to Bailian first, everyone else to OpenRouter first
+    const keyLinks = (sp, region) => {
+      const bailian = h("a", { href: sp.own_key_docs || "https://nanomuse.cn/own-key", target: "_blank", rel: "noopener" }, T.ownKey);
+      const openrouter = h("a", { href: sp.openrouter_url || "https://openrouter.ai/keys", target: "_blank", rel: "noopener" }, T.openRouterKey);
+      return region === "cn" ? [bailian, " · ", openrouter] : [openrouter, " · ", bailian];
+    };
     const sp = me.spend || {}, tk = me.tokens || {};
     const cap = Number(sp.grant || 0), spent = Number(sp.total || 0), free = !!sp.unlimited;
     const left = Math.max(0, cap - spent), frac = cap > 0 ? Math.min(1, spent / cap) : 0;
@@ -512,8 +518,7 @@
       !free ? h("div", { class: "meter" }, h("i", { class: frac >= 1 ? "bad" : frac >= 0.8 ? "warn" : "", style: `width:${Math.round(frac * 100)}%` })) : null,
       h("div", { class: "s" }, !free ? T.spentTotal(money(spent), money(cap)) + usd(spent) : T.spentOnly(money(spent)) + usd(spent), tk.used_today !== undefined ? ` · ${T.tokensToday(fmtN(tk.used_today))}` : ""),
       !free && frac >= 0.8 ? h("div", { class: "s", style: "color:var(--bad, #c0392b);margin-top:4px" }, frac >= 1 ? T.allowanceOut : T.allowanceWarn) : null),
-      !free ? h("p", { class: "fine", style: "padding:0 16px 12px" }, T.allowanceWhy(sp.allowance_cny ?? 10, sp.invite_bonus_cny ?? 5), " ",
-        h("a", { href: sp.own_key_docs || "https://nanomuse.cn/own-key", target: "_blank", rel: "noopener" }, T.ownKey)) : null));
+      !free ? h("p", { class: "fine", style: "padding:0 16px 12px" }, T.allowanceWhy(sp.allowance_cny ?? 10, sp.invite_bonus_cny ?? 5, me.region), " ", ...keyLinks(sp, me.region)) : null));
     // invite a friend: the code, the link, what came of it
     const inv = me.invite;
     if (inv && inv.code) {

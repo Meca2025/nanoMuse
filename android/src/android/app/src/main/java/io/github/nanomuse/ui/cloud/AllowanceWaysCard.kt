@@ -2,7 +2,10 @@ package io.github.nanomuse.ui.cloud
 
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,20 +49,27 @@ import androidx.compose.ui.unit.sp
 import com.openminis.app.R
 import io.github.nanomuse.cloud.AllowanceSignal
 import io.github.nanomuse.cloud.NanoMuseCloud
+import io.github.nanomuse.cloud.OwnKeyPresets
+import io.github.nanomuse.cloud.Region
 import io.github.nanomuse.ui.home.MuseTones
 
 /** The public guide for bringing one's own key, when the relay did not name one. */
 const val OWN_KEY_DOCS = "https://nanomuse.cn/own-key"
 
 /** The in-app link that opens "add a provider" pre-filled for Alibaba Cloud Bailian. */
-const val OWN_KEY_DEEP_LINK = "minis://settings/providers/add?preset=bailian"
+const val OWN_KEY_DEEP_LINK = "minis://settings/providers/add?preset=" + OwnKeyPresets.BAILIAN
+
+/** The same, for OpenRouter — the form opens on "Sign in with OpenRouter" (OpenRouterOAuthManager). */
+const val OWN_KEY_OPENROUTER_DEEP_LINK = "minis://settings/providers/add?preset=" + OwnKeyPresets.OPENROUTER
 
 /**
- * The two ways on when the free allowance is spent (or nearly): one's own key — Alibaba
- * Cloud Bailian first, one tap to the pre-filled provider form and a link to the guide —
- * and an invitation (+¥5 for each side, share or copy the link). Shown on the account page
- * whenever the pool is spent or past 80 %, and in the chat when a turn was refused for it.
- * [exhausted] false = the heads-up wording.
+ * The two ways on when the free allowance is spent (or nearly): one's own key — one tap to
+ * the pre-filled provider form and a link to the guide — and an invitation (+¥5 for each
+ * side, share or copy the link). Which vendor comes first is the region's call (contract C5,
+ * [Region]): Alibaba Cloud Bailian for mainland China, where it signs up accounts; OpenRouter
+ * everywhere else, with its sign-in as the one button and the other vendor a text link away.
+ * Shown on the account page whenever the pool is spent or past 80 %, and in the chat when a
+ * turn was refused for it. [exhausted] false = the heads-up wording.
  */
 @Composable
 fun AllowanceWaysCard(
@@ -103,15 +113,38 @@ fun AllowanceWaysCard(
             )
             Spacer(Modifier.height(10.dp))
 
-            // ① one's own key
-            Way(Icons.Outlined.Key, MuseTones.action, stringResource(R.string.nm_ways_key_title), stringResource(R.string.nm_ways_key_body)) {
+            // ① one's own key — Bailian first on the mainland, OpenRouter first elsewhere
+            val mainland = remember { Region.mainland(context) }
+            Way(
+                Icons.Outlined.Key,
+                MuseTones.action,
+                stringResource(R.string.nm_ways_key_title),
+                stringResource(if (mainland) R.string.nm_ways_key_body else R.string.nm_ways_key_body_abroad),
+            ) {
                 Button(
-                    onClick = { com.openminis.app.ui.chat.ChatLinkResolver.dispatchDeepLink(context, OWN_KEY_DEEP_LINK) },
+                    onClick = {
+                        com.openminis.app.ui.chat.ChatLinkResolver.dispatchDeepLink(context, if (mainland) OWN_KEY_DEEP_LINK else OWN_KEY_OPENROUTER_DEEP_LINK)
+                    },
                     shape = CircleShape,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MuseTones.action, contentColor = Color.White),
-                ) { Text(stringResource(R.string.nm_ways_key_action), fontSize = 13.sp, fontWeight = FontWeight.Medium) }
+                ) {
+                    Text(
+                        stringResource(if (mainland) R.string.nm_ways_key_action else R.string.nm_ways_key_action_openrouter),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
                 Spacer(Modifier.width(6.dp))
+                TextButton(onClick = {
+                    com.openminis.app.ui.chat.ChatLinkResolver.dispatchDeepLink(context, if (mainland) OWN_KEY_OPENROUTER_DEEP_LINK else OWN_KEY_DEEP_LINK)
+                }) {
+                    Text(
+                        stringResource(if (mainland) R.string.nm_ways_key_other_openrouter else R.string.nm_ways_key_other_bailian),
+                        fontSize = 13.sp,
+                        color = MuseTones.action,
+                    )
+                }
                 TextButton(onClick = {
                     val url = info.ownKeyDocs.ifBlank { account?.ownKeyDocs.orEmpty() }.ifBlank { OWN_KEY_DOCS }
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -152,6 +185,7 @@ fun AllowanceWaysCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Way(icon: ImageVector, tint: Color, title: String, body: String?, actions: @Composable () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
@@ -162,7 +196,8 @@ private fun Way(icon: ImageVector, tint: Color, title: String, body: String?, ac
             if (body != null) {
                 Text(body, fontSize = 12.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
             }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) { actions() }
+            // three actions do not always fit one line (a button, the other vendor, the guide)
+            FlowRow(verticalArrangement = Arrangement.Center, modifier = Modifier.padding(top = 4.dp)) { actions() }
         }
     }
 }

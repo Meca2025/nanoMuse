@@ -30,13 +30,14 @@
     kSignalsSub: (s) => `${s.sign_ins} 次登录 · ${s.sign_in_failures} 次失败 · ${s.budget_refusals} 次超额 · ${s.upstream_errors} 次上游错误 · ${s.calls} 通电话`,
     byKind: "按类型", byModel: "按模型", byDay: (d) => `每日花费 · 最近 ${d} 天`, top: (d) => `花费最多 · 最近 ${d} 天`, events: "最近动态", accounts: "全部账号", config: "当前配置",
     kinds: { chat: "对话", image: "图片", video: "视频", realtime: "实时通话", grant: "加 tokens", credit: "加额度" },
+    lanes: { chat: "聊天", gui: "动手" }, laneDefault: (l) => `${l}默认`, laneTitle: (l) => `这个模型供「${l}」选择器选用`, laneDefaultTitle: (l) => `「${l}」选择器的默认模型`,
     thWho: "账号", thJoined: "注册", thSpent: "花费 累计 / 今天", thTokens: "tokens 累计 / 今天", thReqs: "请求", thActive: "最近活跃", thDevices: "设备",
     never: "从未", phone: "手机", email: "邮箱", disabled: "已停用", locked: "已锁定", member: "成员", listed: "白名单", password: "密码", noAccounts: "还没有人登录过。", search: "搜索提示 / ID / 地址…",
     reqs: (n) => `${fmt(n)} 次`, tokens: (n) => `${fmt(n)} tokens`, seconds: (n) => `${fmt(n)} 秒`, pictures: (n) => `${fmt(n)} 张`, inOut: (i, o) => `输入 ${fmt(i)} · 输出 ${fmt(o)}`,
     all: "全部", signIns: "登录", refusals: "超额", errors: "错误", calls: "通话", passwords: "密码",
     eventName: {
       "account.created": "注册", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.session": "换会话密钥", "sign_in.failed": "登录失败", "password.set": "设置密码", "password.changed": "修改密码",
-      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "pool.set": "额度调整", "pool.set.many": "批量额度调整", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "开启「帮助改进」", "contribute.default": "新账号默认开启「帮助改进」", "contribute.bonus": "早期共创奖励 +¥10", "contribute.off": "关闭「帮助改进」", "contribute.deleted": "删除保存的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励", "profile.put": "更新资料", "profile.clear": "清空资料",
+      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "pool.set": "额度调整", "pool.set.many": "批量额度调整", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "开启「帮助改进」", "contribute.default": "新账号默认开启「帮助改进」", "contribute.bonus": "早期共创奖励 +¥10", "contribute.off": "关闭「帮助改进」", "contribute.deleted": "删除保存的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励", "profile.put": "更新资料", "profile.clear": "清空资料", "profile.connectors": "更新连接列表",
     },
     // drawer
     spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "总额度", noCap: "无上限", left: "剩余", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
@@ -113,13 +114,14 @@
     kSignalsSub: (s) => `${s.sign_ins} sign-ins · ${s.sign_in_failures} failed · ${s.budget_refusals} over budget · ${s.upstream_errors} upstream errors · ${s.calls} calls`,
     byKind: "By kind", byModel: "By model", byDay: (d) => `Spend by day · last ${d} days`, top: (d) => `Top spenders · last ${d} days`, events: "Activity", accounts: "All accounts", config: "Configuration",
     kinds: { chat: "Chat", image: "Pictures", video: "Video", realtime: "Calls", grant: "Tokens granted", credit: "Credit" },
+    lanes: { chat: "chat", gui: "hands" }, laneDefault: (l) => `${l} default`, laneTitle: (l) => `offered in the ${l} picker`, laneDefaultTitle: (l) => `the ${l} picker's default`,
     thWho: "Account", thJoined: "Joined", thSpent: "Spent all / today", thTokens: "Tokens all / today", thReqs: "Requests", thActive: "Last active", thDevices: "Devices",
     never: "never", phone: "phone", email: "e-mail", disabled: "disabled", locked: "locked", member: "member", listed: "listed", password: "password", noAccounts: "Nobody has signed in yet.", search: "Search hint / id / address…",
     reqs: (n) => `${fmt(n)} req`, tokens: (n) => `${fmt(n)} tokens`, seconds: (n) => `${fmt(n)} s`, pictures: (n) => `${fmt(n)} pictures`, inOut: (i, o) => `${fmt(i)} in · ${fmt(o)} out`,
     all: "All", signIns: "Sign-ins", refusals: "Refusals", errors: "Errors", calls: "Calls", passwords: "Passwords",
     eventName: {
       "account.created": "Joined", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.session": "Took a session key", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
-      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "pool.set": "Pool set", "pool.set.many": "Pools set", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "“Help improve” on", "contribute.default": "New account: “help improve” on by default", "contribute.bonus": "Early co-creation bonus +¥10", "contribute.off": "“Help improve” off", "contribute.deleted": "Kept turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted", "profile.put": "Profile updated", "profile.clear": "Profile cleared",
+      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "pool.set": "Pool set", "pool.set.many": "Pools set", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "“Help improve” on", "contribute.default": "New account: “help improve” on by default", "contribute.bonus": "Early co-creation bonus +¥10", "contribute.off": "“Help improve” off", "contribute.deleted": "Kept turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted", "profile.put": "Profile updated", "profile.clear": "Profile cleared", "profile.connectors": "Connectors updated",
     },
     spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Pool", noCap: "no cap", left: "left", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
     sessions: "Sign-ins (incl. revoked)", revoked: "revoked", via: { code: "code", password: "password", session: "session key" }, lastUsed: "last used", devices: "Devices", firstSeen: "first", lastSeen: "last",
@@ -754,6 +756,18 @@
     box.append(...[rows.length ? body : h("div", { class: "empty" }, T.none), total ? foot : null].filter(Boolean));
     return box;
   }
+  // the pills next to a menu model's id: its kind, then (0.17) the lane(s) a chat model is
+  // for — "chat", "hands" — with the one it is the default pick in marked as such
+  function modelPills(id, s) {
+    const kinds = s.model_kinds || {}, lanes = (s.model_lanes || {})[id] || [], picks = (s.recommended_for || {})[id] || [];
+    const tone = { chat: "blue", image: "violet", video: "cyan", realtime: "ok" }[kinds[id]] || "";
+    const out = [h("span", { class: "pill " + tone, style: "margin-right:6px" }, T.kinds[kinds[id]] || kinds[id] || "")];
+    for (const lane of lanes) {
+      const name = T.lanes[lane] || lane, picked = picks.includes(lane);
+      out.push(h("span", { class: picked ? "pill ok" : "pill", style: "margin-right:6px", title: picked ? T.laneDefaultTitle(name) : T.laneTitle(name) }, picked ? T.laneDefault(name) : name));
+    }
+    return out;
+  }
   function drawDrawer() {
     const box = drawerEl.firstChild;
     if (address) { drawAddress(box); return; }
@@ -1105,7 +1119,7 @@
           modelRows(models, rate, kinds)),
         h("div", { class: "panel" }, h("h2", {}, T.mTop, h("span", { class: "fine" }, ` · ${T.period(days)}`)), h("div", { class: "pad" }, hranks(top, { format: money }))),
         h("div", { class: "panel" }, h("h2", {}, T.mPrices, h("span", { class: "fine" }, ` · ${T.rateLine(rate)}`)), h("div", { class: "kv" },
-          ...Object.entries(s.prices || {}).flatMap(([id, p]) => [h("b", {}, h("span", { class: "pill " + ({ chat: "blue", image: "violet", video: "cyan", realtime: "ok" }[kinds[id]] || "") }, T.kinds[kinds[id]] || kinds[id] || "")), h("span", {}, h("code", {}, id), " ", T.priceLine(p))])))),
+          ...Object.entries(s.prices || {}).flatMap(([id, p]) => [h("b", {}, ...modelPills(id, s)), h("span", {}, h("code", {}, id), " ", T.priceLine(p))])))),
     ];
   }
   function activityView() {
@@ -1249,7 +1263,7 @@
         rtMsg ? h("span", { class: "fine" }, rtMsg) : null));
   }
   function settingsView() {
-    const s = settings(), rate = Number(s.usd_cny || 0), kinds = s.model_kinds || {};
+    const s = settings(), rate = Number(s.usd_cny || 0);
     return [
       runtimePanel(),
       h("div", { class: "panel" }, h("h2", {}, T.config),
@@ -1258,7 +1272,7 @@
           h("b", {}, T.realtime), h("span", {}, s.realtime_enabled ? T.on : T.off),
           h("b", {}, T.allowed), h("code", {}, (s.allowed_identifiers || []).join(", ") || T.allowedNone),
           h("b", {}, T.rate), h("span", {}, T.rateLine(rate)),
-          h("b", {}, T.prices), h("span", {}, ...Object.entries(s.prices || {}).map(([id, p]) => h("div", {}, h("span", { class: "pill " + ({ chat: "blue", image: "violet", video: "cyan", realtime: "ok" }[kinds[id]] || ""), style: "margin-right:6px" }, T.kinds[kinds[id]] || kinds[id] || ""), h("code", {}, id), " ", T.priceLine(p)))),
+          h("b", {}, T.prices), h("span", {}, ...Object.entries(s.prices || {}).map(([id, p]) => h("div", {}, ...modelPills(id, s), h("code", {}, id), " ", T.priceLine(p)))),
           h("b", {}, T.sender), h("span", {}, s.sender || "log"),
           h("b", {}, T.version), h("span", {}, ov.version || ""))),
       h("div", { class: "panel" }, h("h2", {}, T.recorded), h("div", { class: "fine", style: "padding:12px 16px" }, T.recordedNote)),

@@ -6516,7 +6516,7 @@ class ChatViewModel(
         )
         // the cached account shows the pool as spent until the next /v1/me
         viewModelScope.launch { runCatching { io.github.nanomuse.cloud.NanoMuseCloud.refresh(context) } }
-        return context.getString(R.string.nm_cloud_err_allowance, io.github.nanomuse.cloud.NanoMuseCloud.inviteBonusText(context))
+        return io.github.nanomuse.cloud.NanoMuseCloud.allowanceSentence(context)
     }
 
     private var nmAllowanceCheckedAt = 0L

@@ -13,6 +13,7 @@ import {
   Hand,
   Info,
   LogOut,
+  MessageSquare,
   MessageSquareWarning,
   Monitor,
   Moon,
@@ -545,6 +546,8 @@ function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen:
           )}
           <MuseDivider />
           <MuseRow icon={<Plug size={22} />} label={t("Connections")} value={s?.connectors.mcp.length ? `${s.connectors.mcp.length} MCP` : undefined} onClick={() => setTab("connections")} />
+          <MuseDivider />
+          <MuseRow icon={<MessageSquare size={22} />} label={t("Chat apps")} onClick={() => setTab("channels")} />
           <MuseDivider />
           <MuseRow icon={<Monitor size={22} />} label={t("Devices")} value={computers.length ? String(computers.length) : none} onClick={() => setTab("devices")} />
           <MuseDivider />

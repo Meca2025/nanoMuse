@@ -169,6 +169,8 @@ enum NanoMuseRelayMedia {
         var faceId: String
         var hasFace: Bool
         var face: [String: String]?
+        /// Contract C3: which device of the account connected what (raw entries).
+        var connectors: [[String: Any]]
     }
 
     @MainActor
@@ -183,7 +185,8 @@ enum NanoMuseRelayMedia {
             description: reply["description"] as? String ?? "",
             faceId: reply["face_id"] as? String ?? "",
             hasFace: (reply["has_face"] as? Bool) ?? (reply["face"] != nil && !(reply["face"] is NSNull)),
-            face: reply["face"] as? [String: String]
+            face: reply["face"] as? [String: String],
+            connectors: reply["connectors"] as? [[String: Any]] ?? []
         )
     }
 
@@ -196,9 +199,13 @@ enum NanoMuseRelayMedia {
         var request = try authorized("PUT", "/v1/me/profile")
         request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
         var payload = body
-        payload["device"] = NanoMuseHub.shared.name
+        // the writing device's id, as the hub's hello says it (contract C3): the relay replaces
+        // only the connectors whose `device_id` is this one, and refuses entries naming another
+        payload["device"] = NanoMuseHub.shared.deviceId
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         let reply = try await perform(request)
+        // the reply is the merged profile: the other devices' connections, fresh
+        NanoMuseSharedConnectors.shared.absorb(reply)
         return (reply["rev"] as? Int) ?? Int((reply["rev"] as? Double) ?? 0)
     }
 
@@ -255,6 +262,7 @@ final class NanoMuseProfileSync: ObservableObject {
 
     private enum Keys {
         static let rev = "nanomuse.profile.rev"
+        static let pushedConnectors = "nanomuse.profile.pushed_connectors"
     }
 
     @Published private(set) var syncing = false
@@ -266,6 +274,7 @@ final class NanoMuseProfileSync: ObservableObject {
 
     /// Called once from the app root.
     func start() {
+        NanoMuseSharedConnectors.shared.watch()
         pull()
     }
 
@@ -285,7 +294,19 @@ final class NanoMuseProfileSync: ObservableObject {
             do {
                 let head = try await NanoMuseRelayMedia.profile(withFace: false)
                 let known = UserDefaults.standard.integer(forKey: Keys.rev)
-                guard head.rev > known || head.rev == 0 && known == 0 else { return }
+                // the other devices' connections come with every read, whatever the rev
+                NanoMuseSharedConnectors.shared.absorb(["connectors": head.connectors])
+                if head.rev <= known, head.rev > 0 || known > 0 {
+                    // the look is current; this phone's connections may still be unsaid
+                    if NanoMuseSharedConnectors.shared.stamp() != UserDefaults.standard.string(forKey: Keys.pushedConnectors) {
+                        connectorsChanged()
+                    }
+                    return
+                }
+                if head.rev == 0, known == 0, !NanoMuseSharedConnectors.shared.mine().isEmpty {
+                    // the relay has nothing for this account yet: this phone's connections seed it
+                    connectorsChanged()
+                }
                 let store = NanoMuseFaceStore.shared
                 if head.hasFace {
                     if head.faceId == store.meta.faceId && store.hasCustomFace {
@@ -340,12 +361,53 @@ final class NanoMuseProfileSync: ObservableObject {
                 }
                 let name = SoulStore.cachedMetadata.name
                 if !name.isEmpty { body["name"] = name }
+                let mine = NanoMuseSharedConnectors.shared.mine()
+                body["connectors"] = mine
                 let rev = try await NanoMuseRelayMedia.putProfile(body)
                 UserDefaults.standard.set(rev, forKey: Keys.rev)
+                UserDefaults.standard.set(NanoMuseSharedConnectors.stamp(mine), forKey: Keys.pushedConnectors)
                 lastError = nil
             } catch {
                 lastError = NanoMuseCloud.describe(error)
             }
         }
+    }
+
+    /// What this phone connected changed (contract C3): tell the account. The face
+    /// is sent as "keep what you have" — `avatar: "face"` without pictures.
+    func connectorsChanged() {
+        guard NanoMuseCloud.isSignedIn else { return }
+        let mine = NanoMuseSharedConnectors.shared.mine()
+        let stamp = NanoMuseSharedConnectors.stamp(mine)
+        guard stamp != UserDefaults.standard.string(forKey: Keys.pushedConnectors) || UserDefaults.standard.string(forKey: Keys.pushedConnectors) == nil else { return }
+        Task { @MainActor [self] in
+            do {
+                let store = NanoMuseFaceStore.shared
+                var body: [String: Any] = ["connectors": mine]
+                if store.hasCustomFace {
+                    body["avatar"] = "face"
+                    body["description"] = store.meta.description
+                    body["style"] = store.meta.style
+                } else {
+                    body["avatar"] = "dragon"
+                    body["face"] = NSNull()
+                }
+                let name = SoulStore.cachedMetadata.name
+                if !name.isEmpty { body["name"] = name }
+                let rev = try await NanoMuseRelayMedia.putProfile(body)
+                UserDefaults.standard.set(rev, forKey: Keys.rev)
+                UserDefaults.standard.set(stamp, forKey: Keys.pushedConnectors)
+                lastError = nil
+            } catch {
+                lastError = NanoMuseCloud.describe(error)
+            }
+        }
+    }
+
+    /// Signed out: another account's devices are not ours to list.
+    func forget() {
+        NanoMuseSharedConnectors.shared.forget()
+        UserDefaults.standard.removeObject(forKey: Keys.rev)
+        UserDefaults.standard.removeObject(forKey: Keys.pushedConnectors)
     }
 }

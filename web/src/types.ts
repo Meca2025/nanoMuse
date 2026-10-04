@@ -178,6 +178,25 @@ export interface HandsEvent extends BaseEvent {
   notice?: string;
 }
 
+/**
+ * A hold (contract C1): the person has the browser, this computer's screen or the phone for
+ * a while — they took it over, or the agent asked them to (a sign-in, a code). The agent's
+ * actions of that kind wait until Done takes the hold off. `ts` arrives as seconds since the
+ * epoch and is made ISO by the store like every other event's.
+ */
+export interface HoldEvent extends BaseEvent {
+  type: "hold";
+  tool: "browser" | "computer" | "phone" | string;
+  status: "on" | "off";
+  by: "user" | "agent" | string;
+  reason: string;
+  done_ts?: number;
+  /** the agent waited ten minutes and went on without the person */
+  timed_out?: boolean;
+  /** found "on" after a restart: nothing waits on it any more */
+  stale?: boolean;
+}
+
 /** The avatar studio's card: a new face from a description, drawn in the chat (nanomuse/avatar). */
 export interface AvatarEvent extends BaseEvent {
   type: "avatar";
@@ -185,6 +204,8 @@ export interface AvatarEvent extends BaseEvent {
   /** estimate (waiting for the tap) · drawing · choose (four wait) · posing · animating (the face is on, clips coming) · done · cancelled · failed */
   stage: "estimate" | "drawing" | "choose" | "posing" | "animating" | "done" | "cancelled" | "failed" | string;
   description: string;
+  /** workspace path of a picture attached to the request: the candidates are drawn from it */
+  reference?: string;
   /** what it costs: the relay's figure when the account draws; the counts alone with one's own key */
   cost?: { pictures?: number; clips?: number; model?: string; clip_model?: string; cloud?: boolean; cny?: number | null; left_cny?: number | null; unlimited?: boolean; affordable?: boolean; error?: string };
   /** workspace paths of the four candidates (null while one is still being drawn) */
@@ -232,6 +253,7 @@ export type TimelineEvent =
   | ArtifactEvent
   | BrowserEvent
   | HandsEvent
+  | HoldEvent
   | AvatarEvent;
 
 export interface ThreadMeta {
@@ -283,6 +305,8 @@ export interface CloudAccount {
   created?: boolean;
   /** the opaque account id, never the identifier */
   account_id?: string;
+  /** where the relay places the account ("cn" = mainland China); older relays do not say */
+  region?: string;
 }
 
 /** One sign-in of the account (a key), as the relay lists them. */
@@ -342,6 +366,8 @@ export interface CloudMe {
     password_set_at: number | null;
     sessions: number;
     signed_in_via: string;
+    /** "cn" for a mainland account; older relays do not say */
+    region?: string;
   };
   usage: {
     today: { by_kind: UsageRow[] };
@@ -466,6 +492,17 @@ export interface HandsStatus {
   available: boolean;
   backend?: string | null;
   reason?: string;
+  /** where the hands work: the whole screen, one app's window (macOS), or auto */
+  mode?: "auto" | "screen" | "window" | string;
+  /** window mode: whether it can run here and what it is working in */
+  window?: {
+    available: boolean;
+    reason?: string;
+    active: boolean;
+    app?: string;
+    title?: string;
+    frame?: { id: number; pid: number; app: string; bundle_id: string; title: string; bounds: number[] } | null;
+  };
   device?: { id: string; name: string; platform: string; width: number; height: number };
   task_active?: boolean;
   task_text?: string;
@@ -483,6 +520,13 @@ export interface HandsLive {
   fy?: number;
   fx2?: number;
   fy2?: number;
+  /** the point in screen pixels (for a cursor sprite); window mode maps the model's window pixels here */
+  x?: number;
+  y?: number;
+  x2?: number;
+  y2?: number;
+  mode?: "screen" | "window" | string;
+  window?: { id: number; pid: number; app: string; bundle_id: string; title: string; bounds: number[] };
   app?: string;
   title?: string;
   ts: number;
@@ -608,6 +652,13 @@ export interface Idea {
   prompt: string;
   /** planning | goals | research | money | health | home | learning | people | files | fun */
   area?: string;
+  /** what tapping it does: chat (a message in the main chat, the default) · routine (a daily
+   *  repeating reminder with the prompt) · goal (a goal conversation in the chat) */
+  kind?: "chat" | "routine" | "goal" | string;
+  /** routines: the time of day, "HH:MM" */
+  time?: string;
+  /** goals: the category key (health, finance, … other) */
+  category?: string;
 }
 
 export interface FeedPost {
@@ -731,6 +782,12 @@ export interface ProviderPreset {
   key_url?: string;
   /** what a key looks like there, as the field's placeholder */
   key_hint?: string;
+  /** the hands model the preset suggests beside its chat model (contract C4): one that sees */
+  gui_model?: string;
+  /** the account's hands models, recommended first (the nanoMuse Cloud preset) */
+  gui_models?: string[];
+  /** "cn": the vendor only signs up accounts from mainland China (contract C5) */
+  region?: string;
 }
 
 export interface ConnectionsData {
@@ -799,6 +856,12 @@ export interface ConnectionsData {
     enabled: boolean;
     provider: string;
     model: string;
+    /** the model the hands use right now: `model`, else the default below */
+    effective_model?: string;
+    /** what the hands use when `model` is empty: the relay's hands model with the account, the chat model otherwise */
+    default_model?: string;
+    /** the chat model is the account (the relay) */
+    cloud?: boolean;
     base_url: string;
     key_source: "none" | "vault" | "config" | "missing";
     max_steps: number;
@@ -834,8 +897,29 @@ export interface ConnectionsData {
     /** the phone's own capabilities (local build): always there, cannot be removed */
     builtin?: boolean;
   }>;
+  /**
+   * Connections the account's other devices hold (contract C3): a name, an address and how
+   * it signs in — never a key. ``here`` when a server of that name is connected on this one.
+   * Older runtimes leave it out.
+   */
+  shared?: SharedConnector[];
   vault: string[];
   onboarded: boolean;
+}
+
+/** One connection another device of the account reports. */
+export interface SharedConnector {
+  id: string;
+  label: string;
+  url: string;
+  auth: "oauth" | "key" | "open" | string;
+  /** the device's human label and the hub id behind it */
+  device: string;
+  device_id: string;
+  enabled: boolean;
+  /** ISO-8601 */
+  at: string;
+  here: boolean;
 }
 
 /** One connected calendar: a private .ics link (kept in the vault) or a file. */
@@ -930,6 +1014,8 @@ export interface StateSnapshot {
   settings: SettingsView;
   hub?: HubView;
   hands?: HandsStatus;
+  /** the holds that are on (contract C1), as `hold` events */
+  holds?: HoldEvent[];
 }
 
 export interface AuditEntry {

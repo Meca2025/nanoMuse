@@ -20,6 +20,7 @@ import type {
   Goal,
   HandsLive,
   HandsStatus,
+  HoldEvent,
   HubView,
   Profile,
   SettingsView,
@@ -32,7 +33,7 @@ import type {
 } from "./types";
 
 /** Tab bar: chat · feed · ideas · goals · library. Memory, devices, connections and settings live behind the avatar. */
-export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "devices" | "connections" | "skills" | "you" | "account" | "coding" | "avatar";
+export type Tab = "chat" | "feed" | "ideas" | "goals" | "library" | "memory" | "devices" | "connections" | "channels" | "skills" | "you" | "account" | "coding" | "avatar";
 /**
  * The page this app is framed in (the showcase's simulated phone), when it can be named: the
  * ancestor's origin where the browser exposes it, else the referrer's. A message to the parent
@@ -57,7 +58,7 @@ function tellParent(message: { type: string; [k: string]: unknown }): void {
   if (origin) window.parent.postMessage(message, origin);
 }
 
-const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "devices", "connections", "skills", "you", "account", "coding", "avatar"];
+const TAB_NAMES: Tab[] = ["chat", "feed", "ideas", "goals", "library", "memory", "devices", "connections", "channels", "skills", "you", "account", "coding", "avatar"];
 
 /** A coding run being followed live: the run itself and the steps that arrived so far. */
 export interface CodingLive {
@@ -132,6 +133,8 @@ export interface AppState {
   /** Open the call screen (set by the chat header; cleared when the call screen closes). */
   /** This computer's own screen and hands. */
   hands: HandsStatus | null;
+  /** The holds that are on (contract C1): the person has the browser, the screen or the phone. */
+  holds: HoldEvent[];
   /** The latest live step of the hands, for the stage; cleared when the task ends. */
   handsLive: HandsLive | null;
   /** The avatar studio's session as the runtime last reported it (null until one runs). */
@@ -225,6 +228,7 @@ const initial: AppState = {
   lite: liteFromUrl(),
   call: null,
   hands: null,
+  holds: [],
   handsLive: null,
   studio: null,
 };
@@ -241,6 +245,17 @@ function isFeedWorthy(ev: TimelineEvent): boolean {
   return ev.source === "background" || ev.source === "goal";
 }
 
+/**
+ * Events as the chat keeps them. A `hold` event's `ts` is seconds since the epoch (contract
+ * C1, shared with the native apps); everything else in the timeline is ISO, so it is made
+ * ISO here and the dividers, the thread list and the cards read one kind of time.
+ */
+export function normalizeEvent<T extends TimelineEvent>(ev: T): T {
+  const ts = ev.ts as unknown;
+  if (typeof ts !== "number") return ev;
+  return { ...ev, ts: new Date(ts * 1000).toISOString() };
+}
+
 function upsertEvent(list: TimelineEvent[] | undefined, ev: TimelineEvent): TimelineEvent[] {
   const events = list ?? [];
   const idx = events.findIndex((e) => e.id === ev.id);
@@ -250,6 +265,12 @@ function upsertEvent(list: TimelineEvent[] | undefined, ev: TimelineEvent): Time
     return next;
   }
   return [...events, ev];
+}
+
+/** The open holds: a hold that went off leaves the list, one that went on joins it. */
+function upsertHold(list: HoldEvent[], ev: HoldEvent): HoldEvent[] {
+  const rest = list.filter((h) => h.id !== ev.id);
+  return ev.status === "on" ? [...rest, ev] : rest;
 }
 
 function upsertThread(list: ThreadMeta[], meta: ThreadMeta): ThreadMeta[] {
@@ -284,6 +305,7 @@ function reducer(state: AppState, action: Action): AppState {
         activeThread: s.threads.some((t) => t.id === state.activeThread) ? state.activeThread : "main",
         hub: s.hub ?? state.hub,
         hands: s.hands ?? state.hands,
+        holds: (s.holds ?? []).map(normalizeEvent),
       };
     }
     case "connection":
@@ -296,9 +318,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, error: action.error };
     case "events": {
       const existing = state.events[action.thread] ?? [];
-      const merged = action.prepend
-        ? [...action.events, ...existing.filter((e) => !action.events.some((n) => n.id === e.id))]
-        : action.events;
+      const incoming = action.events.map(normalizeEvent);
+      const merged = action.prepend ? [...incoming, ...existing.filter((e) => !incoming.some((n) => n.id === e.id))] : incoming;
       return {
         ...state,
         events: { ...state.events, [action.thread]: merged },
@@ -348,7 +369,7 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       return reducer(state, { type: "hello", state: msg.state });
     case "event":
     case "update": {
-      const ev = msg.event;
+      const ev = normalizeEvent(msg.event);
       const streams = { ...state.streams };
       const stream = streams[ev.thread];
       if (ev.type === "assistant" && stream && stream.id === ev.id) streams[ev.thread] = undefined;
@@ -364,6 +385,7 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
         streams,
         threads,
         events: loaded ? { ...state.events, [ev.thread]: upsertEvent(state.events[ev.thread], ev) } : state.events,
+        holds: ev.type === "hold" ? upsertHold(state.holds, ev) : state.holds,
         pendingApprovals: upsertApproval(state.pendingApprovals, ev),
         feedVersion: isFeedWorthy(ev) ? state.feedVersion + 1 : state.feedVersion,
         mishapAt: mishap ? Date.now() : state.mishapAt,
@@ -407,6 +429,7 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       return {
         ...state,
         events,
+        holds: state.holds.filter((h) => h.thread !== msg.thread),
         threads: state.threads.filter((t) => t.id !== msg.thread),
         pendingApprovals: state.pendingApprovals.filter((a) => a.thread !== msg.thread),
         activeThread: state.activeThread === msg.thread ? "main" : state.activeThread,
@@ -416,6 +439,7 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       return {
         ...state,
         events: { ...state.events, [msg.thread]: [] },
+        holds: state.holds.filter((h) => h.thread !== msg.thread),
         pendingApprovals: state.pendingApprovals.filter((a) => a.thread !== msg.thread),
       };
     case "goals":

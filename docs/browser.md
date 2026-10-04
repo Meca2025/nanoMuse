@@ -52,12 +52,14 @@ From a script inside the sandbox on the phone the same tool is `nanomuse-browser
 
 ## Logging in
 
-A page that wants a login is the user's job, not the model's. The agent stops at the form and asks; the user signs in; the agent continues with the page as it is. The `browser` card in the chat is where that happens:
+A page that wants a login is the user's job, not the model's. The agent stops at the form and hands the page over (`browser` → `hand_over`, with the reason: *sign in to 12306*, *type the code from the SMS*, *solve the CAPTCHA*, *confirm the payment*); the user does it and presses **Done**; the agent continues with the page as it is. The browser card in the chat is where that happens, and the same card appears when the user takes over first:
 
-- **On the server's Chromium**: *Take over* on the card, then tap the picture to click, type into the focused field, press Enter, or open a URL; *Hand back* returns the page. The frame is the page; the taps are mapped onto it.
-- **On the phone**: *Take over* slides the real WebView up as a sheet in the app — not a picture of it. Sign in with the phone's keyboard, its autofill and its password manager, and tap **Done**. The view goes back offscreen and the agent is told the page was handed back; its next look shows what you left. The agent's actions wait while the sheet is up.
+- **On the server's Chromium**: *Take over* on the card (or the agent's hand-over), then tap the picture to click, scroll, go back, type into the focused field, press Enter, or open a URL; **Done** returns the page. The frame is the page; the taps are mapped onto it; the picture refreshes every second while you have it.
+- **On the phone**: *Take over* slides the real WebView up as a sheet in the app — not a picture of it. Sign in with the phone's keyboard, its autofill and its password manager, and tap **Done**. The view goes back offscreen and the agent is told the page was handed back; its next look shows what you left.
 
-Passwords go to the website, never through the model: what the model sees is the frame after you are done.
+While the page is yours — a *hold* — every browser action of that conversation waits; the agent waits up to ten minutes for Done, then carries on with what it sees and says you did not come back. The chat, the live stage, the capsule and the browser viewer all show the same *Your turn — <reason> — Done* card. Over the API: `POST /api/browser/{thread}/control` with `take_over` / `handed_back`, or `POST /api/holds` and `POST /api/holds/{id}/done`; `GET /api/state` lists the open holds.
+
+Passwords go to the website, never through the model: what the model sees is the frame after you are done. The agent asks in words (`ask_user`) only for things it needs to know — which account, which date — never for a password or a code.
 
 Cookies persist. On the server the Playwright profile is a real Chromium profile directory; on the phone the WebView's cookie store is flushed to disk after every navigation and `fetch`. Session cookies — the kind without an expiry, which a browser drops when it closes — do not survive a server restart on either side, so a site that uses only those asks again after `nanomuse serve` restarts; most sites set a longer "remember me" cookie once you tick the box.
 

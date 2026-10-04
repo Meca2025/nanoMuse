@@ -8,6 +8,7 @@ import { SignIn } from "../components/SignIn";
 import { StarNudgeOnce, useCloudConfig } from "../components/StarNudge";
 import { useT, intlLocale } from "../i18n";
 import { useStore } from "../store";
+import { ownKeyLine } from "../region";
 import type { CloudAccount, CloudEvent, CloudMe, CloudSession, UsageRow } from "../types";
 import { cx } from "../util";
 
@@ -184,7 +185,8 @@ function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
           {t("¥{allowance} to start, +¥{invite} for each friend you invite — and +¥{invite} for them; after that, your own key keeps the model going.", {
             allowance: (spend.allowance_cny ?? 10).toFixed(0),
             invite: (info.invite_bonus_cny ?? 5).toFixed(0),
-          })}
+          })}{" "}
+          {!exhausted && !warn && ownKeyLine(t, { signed_in: true, channel: me.account.channel, region: me.account.region })}
         </p>
       )}
       {(exhausted || warn) && <AllowanceWays info={info} exhausted={exhausted} onChanged={onChanged} />}

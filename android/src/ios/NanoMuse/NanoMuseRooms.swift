@@ -2,11 +2,11 @@
 //  NanoMuseRooms.swift
 //  nanoMuse
 //
-//  The four rooms next to the chat: Feed and Goals (empty states — they
-//  need a scheduler iOS does not have yet), Ideas (the bundled catalogue,
-//  one tap sends a prompt to a new chat) and Library (the files the agent
-//  made, from every session's workspace and the shared folder).
-//  Android: ui/feed, ui/ideas, ui/goals, ui/library.
+//  Two of the rooms next to the chat: Ideas (the bundled catalogue — one
+//  tap sends a prompt to a new chat, schedules a routine or starts a goal)
+//  and Library (the files the agent made, from every session's workspace
+//  and the shared folder). Feed and Goals live in NanoMuseFeed.swift and
+//  NanoMuseGoals.swift. Android: ui/ideas, ui/library.
 //
 
 import SwiftUI
@@ -47,78 +47,6 @@ struct NanoMuseEmptyState: View {
         }
         .padding(.horizontal, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - Feed
-
-struct NanoMuseFeedRoom: View {
-    var onMenu: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            NanoMuseTabHeader(title: AppLocalized("Feed"), onMenu: onMenu)
-            NanoMuseEmptyState(
-                symbol: "newspaper",
-                title: AppLocalized("Your feed isn't ready yet"),
-                message: AppLocalized("As we get to know each other, short posts about what I remember of you — your memory, the week's diary, your goals — will show up here. On iPhone this needs a scheduler that is not here yet."),
-                hint: (AppLocalized("Steer it with one sentence"),
-                       AppLocalized("Tell me in the chat what you want more of; the feed will follow once it can be written on a schedule."))
-            )
-        }
-        .background(NanoMuseTones.canvas.ignoresSafeArea())
-    }
-}
-
-// MARK: - Goals
-
-struct NanoMuseGoalsRoom: View {
-    var onMenu: () -> Void
-    var onStart: (String) -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            NanoMuseTabHeader(title: AppLocalized("Goals"), onMenu: onMenu)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    section(AppLocalized("Tracking"), empty: AppLocalized("Nothing tracked yet"))
-                    section(AppLocalized("Routines"), empty: AppLocalized("Nothing scheduled yet. A routine is something I do for you at a set time, every day or on the days you pick."))
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(AppLocalized("Create a goal")).font(.headline)
-                        Text(AppLocalized("Pick a category and tell me the goal you have in mind. I'll shape a plan with you and keep improving it as you go."))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Button {
-                            onStart(AppLocalized("I want to set a goal. Ask me what it is and what success looks like, then shape a plan with me."))
-                        } label: {
-                            Label(AppLocalized("Create a goal"), systemImage: "flag")
-                                .font(.body.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(NanoMuseTones.action)
-                        .padding(.top, 4)
-                    }
-                    .padding(16)
-                    .background(NanoMuseTones.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .padding(16)
-            }
-        }
-        .background(NanoMuseTones.canvas.ignoresSafeArea())
-    }
-
-    private func section(_ title: String, empty: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline)
-            Text(empty)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(NanoMuseTones.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
     }
 }
 
@@ -175,13 +103,27 @@ enum NanoMuseIdeas {
 struct NanoMuseIdeasRoom: View {
     var onMenu: () -> Void
     var onSend: (String) -> Void
+    /// A ROUTINE idea: schedule it (NanoMuseScheduler) and open the editor.
+    var onCreateRoutine: (NanoMuseIdea) -> Void
+    /// A GOAL idea: "Create goal › category" in the main chat, with the idea's prompt as the seed.
+    var onStartGoal: (NanoMuseGoalCategory, String?) -> Void
+    var onMore: () -> Void
 
     @State private var sections: [NanoMuseIdeaSection] = []
     @State private var selected: NanoMuseIdea?
 
     var body: some View {
         VStack(spacing: 0) {
-            NanoMuseTabHeader(title: AppLocalized("Ideas"), onMenu: onMenu)
+            NanoMuseTabHeader(title: AppLocalized("Ideas"), onMenu: onMenu) {
+                Button(action: onMore) {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(AppLocalized("More")))
+            }
             if sections.isEmpty {
                 NanoMuseEmptyState(symbol: "lightbulb", title: AppLocalized("Ideas"),
                                    message: AppLocalized("The ideas could not be loaded."))
@@ -207,9 +149,13 @@ struct NanoMuseIdeasRoom: View {
         .background(NanoMuseTones.canvas.ignoresSafeArea())
         .onAppear { if sections.isEmpty { sections = NanoMuseIdeas.load() } }
         .sheet(item: $selected) { idea in
-            NanoMuseIdeaSheet(idea: idea) { prompt in
+            NanoMuseIdeaSheet(idea: idea) { action in
                 selected = nil
-                onSend(prompt)
+                switch action {
+                case .chat: onSend(idea.promptText)
+                case .routine: onCreateRoutine(idea)
+                case .goal: onStartGoal(NanoMuseGoalCategory.from(idea.category), idea.prompt)
+                }
             }
             .presentationDetents([.medium, .large])
         }
@@ -241,7 +187,7 @@ struct NanoMuseIdeasRoom: View {
 
 private struct NanoMuseIdeaSheet: View {
     var idea: NanoMuseIdea
-    var onSend: (String) -> Void
+    var onAct: (NanoMuseIdea.Kind) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -257,9 +203,9 @@ private struct NanoMuseIdeaSheet: View {
             .foregroundStyle(.secondary)
             Spacer(minLength: 8)
             Button {
-                onSend(idea.promptText)
+                onAct(idea.kind)
             } label: {
-                Label(AppLocalized("Send to chat"), systemImage: "bubble.left")
+                Label(actionText, systemImage: kindSymbol)
                     .font(.body.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -267,12 +213,30 @@ private struct NanoMuseIdeaSheet: View {
             .buttonStyle(.borderedProminent)
             .tint(NanoMuseTones.action)
             if idea.kind != .chat {
-                Text(AppLocalized("Routines and goals are not scheduled on iPhone yet; the chat can still do it once."))
+                Button {
+                    onAct(.chat)
+                } label: {
+                    Text(AppLocalized("Send to chat"))
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+            if idea.kind == .routine {
+                Text(AppLocalized("Runs when the app is open; at the set time the phone reminds you to open it."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .padding(22)
+    }
+
+    private var actionText: String {
+        switch idea.kind {
+        case .chat: return AppLocalized("Send to chat")
+        case .routine: return AppLocalized("Create routine")
+        case .goal: return AppLocalized("Start goal")
+        }
     }
 
     private var kindSymbol: String {
@@ -388,12 +352,17 @@ enum NanoMuseLibraryIndex {
 struct NanoMuseLibraryRoom: View {
     var onMenu: () -> Void
     var sessionId: String?
+    /// The ••• menu's "Settings" (the nanoMuse settings page).
+    var onMore: () -> Void = {}
 
     @State private var entries: [NanoMuseLibraryEntry] = []
     @State private var segment = 0
     @State private var loading = false
     @State private var preview: NanoMuseLibraryEntry?
     @State private var shareItem: NanoMuseShareTarget?
+    @State private var showSharedFolders = false
+    @State private var showChatFiles = false
+    @State private var showSystemFiles = false
 
     private var shown: [NanoMuseLibraryEntry] {
         entries.filter { segment == 0 ? $0.kind == .artifact : $0.kind == .media }
@@ -409,6 +378,20 @@ struct NanoMuseLibraryRoom: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(AppLocalized("Refresh")))
+                // Android: the Library's ••• menu — shared folders, the chat's files, the system files, settings.
+                Menu {
+                    Button { showSharedFolders = true } label: { Label(AppLocalized("Shared folders"), systemImage: "folder.badge.person.crop") }
+                    Button { showChatFiles = true } label: { Label(AppLocalized("Browse chat files"), systemImage: "folder") }
+                    Button { showSystemFiles = true } label: { Label(AppLocalized("System files"), systemImage: "doc.text") }
+                    Divider()
+                    Button(action: onMore) { Label(AppLocalized("Settings"), systemImage: "gearshape") }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(Text(AppLocalized("More")))
             }
             Picker("", selection: $segment) {
                 Text(AppLocalized("Artifacts")).tag(0)
@@ -461,6 +444,21 @@ struct NanoMuseLibraryRoom: View {
         }
         .sheet(item: $shareItem) { target in
             NanoMuseShareSheet(items: [target.url])
+        }
+        .sheet(isPresented: $showSharedFolders) {
+            NavigationStack { SharedFoldersSettingsView() }
+        }
+        .sheet(isPresented: $showChatFiles) {
+            NavigationStack {
+                let base = RootfsManager.shared.dataPath
+                FileBrowserView(rootPath: base, initialPath: base.appendingPathComponent("var/minis"), rootLabel: "/")
+            }
+        }
+        .sheet(isPresented: $showSystemFiles) {
+            NavigationStack {
+                NanoMuseSystemFilesView()
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Done")) { showSystemFiles = false } } }
+            }
         }
     }
 

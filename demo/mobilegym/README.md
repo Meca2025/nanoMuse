@@ -43,8 +43,14 @@ shell around the real nanoMuse web app:
   pill at the top with the Muse's face, the step in progress (*第 3 步 · 点击「查询车票」*) and
   **Stop**; before a tap lands, a ring with the action's words marks the target, a trail each
   swipe, a chip what is being typed; a password or code field is not typed into — the capsule
-  says *Your turn*, the person fills it in and taps *Continue*; an approval the agent waits
-  for and a question it has become a card with *Open*. When the task is over — a tick, or
+  says *Your turn*, the person fills it in and taps *Continue*. When the agent hands the phone
+  over on its own (the server's `hold` event, `by: agent`) the capsule says *Your turn — <why>*
+  with **Done**; when the person took it (`by: user`) it says *You have the phone* with **Done**,
+  and Done tells the server (`POST /api/holds/{id}/done`) — the local password turn and a
+  mirrored hold are one card, not two. An approval the agent waits for is decided on the
+  capsule itself — **Allow once** / **Deny**, `POST /api/approvals/{id}` with scope `once` —
+  so the person is not bounced into the app; only a question still becomes a card with
+  *Open*. When the task is over — a tick, or
   *Stopped* — the phone comes back to nanoMuse, where the report is, as the Android app
   brings itself to the front; and the capsule follows the server's word on the task
   (`phone.task` in the socket's `hello`) rather than the one `end` message, so a socket that
@@ -141,10 +147,10 @@ apps/nanoMuse/
 ├── navigation.ts             go()/back() over the declaration
 ├── navigation.types.ts       re-exports the platform's shared types
 ├── state.ts                  Zustand store: server URL, token, notify and GUI switches, showcase session; wires the bridge
-├── bridge.ts                 WebSocket → NotificationService; device announce (capsule: true), screen/act/task requests, Stop
+├── bridge.ts                 WebSocket → NotificationService; device announce (capsule: true), screen/act/task requests, Stop, holds and approvals decided from the capsule
 ├── demo.ts                   the showcase gateway's API (start/end a hosted session), used on the public site
 ├── gui.ts                    the simulator as a device: DOM → 720×1600 PNG + element list, actions → __SIM_INPUT__
-├── stage.ts                  the capsule and the marks (the Android app's look): step, Stop, Your turn, approval, ring/trail/keys
+├── stage.ts                  the capsule and the marks (the Android app's look): step, Stop, Your turn / Done, Allow once / Deny, ring/trail/keys
 ├── host.ts                   window.__NANOMUSE__ for the page around the phone; drafts to the web app over postMessage
 ├── pages/MusePage.tsx        the web app, full screen (lite on a hosted session)
 ├── pages/SetupPage.tsx       the welcome, sign-in and meet pages (the Android app's): a hosted Muse on the showcase, own key, own server

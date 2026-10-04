@@ -100,7 +100,7 @@ export function FeedScreen() {
   };
   /** "Discuss" on a post: the follow-up it suggested, or the post itself, into the main chat. */
   const discuss = (p: FeedPost) => {
-    void send("main", p.prompt || `${t("Let's talk about this post from my feed:")}\n\n**${p.title}**\n\n${p.body.slice(0, 1200)}`);
+    void send("main", p.prompt || `${t("About this post from my feed:")}\n\n**${p.title}**\n\n${p.body.slice(0, 1200)}`);
     openThread("main");
   };
   const postDays = useMemo(() => groupPostsByDay(posts?.posts ?? []), [posts]);
