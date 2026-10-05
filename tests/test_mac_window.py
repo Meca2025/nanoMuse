@@ -298,6 +298,52 @@ async def test_the_link_works_in_a_window_and_falls_back_to_the_screen(
     assert not link.in_window_mode()
 
 
+async def test_auto_mode_parks_the_hands_on_the_screen_when_the_quartz_layer_breaks(
+    settings: Settings, fake_screen
+) -> None:
+    pytest.importorskip("PIL")
+
+    class BrokenMac(FakeMac):
+        def __init__(self) -> None:
+            super().__init__()
+            self.broken = False
+
+        def windows(self) -> list[mw.WindowInfo]:
+            if self.broken:
+                raise RuntimeError("objc: CGWindowListCopyWindowInfo is gone")
+            return super().windows()
+
+    mac = BrokenMac()
+    link = make_link(settings, mac)
+    link.set_target("Safari")
+    assert (await link.screen()).app == "com.apple.Safari"
+    # pyobjc itself fails (not "the window went away"): one note, then the screen for the
+    # rest of this target — and the actions go to the system mouse
+    mac.broken = True
+    screen = await link.screen()
+    assert screen.app == "firefox" and "window mode failed" in screen.note
+    assert "whole screen" in screen.note
+    assert not link.in_window_mode()
+    assert "window mode failed" in link.status()["window"]["reason"]
+    screen = await link.screen()
+    assert screen.app == "firefox" and not screen.note
+    await link.act({"action": "click", "x": 10, "y": 10, "label": "File"})
+    hands: FakeHands = link._backend  # type: ignore[assignment]
+    assert hands.calls[-1][:3] == ("click", 10.0, 10.0)
+    # a new target gives window mode another chance
+    mac.broken = False
+    link.set_target("Notes")
+    assert link.in_window_mode()
+    assert (await link.screen()).app == "com.apple.Notes"
+    # an explicit `window` mode is the person's choice: it keeps trying every look
+    mac.broken = True
+    link.settings.mode = "window"
+    link.set_target("Safari")
+    screen = await link.screen()
+    assert screen.app == "firefox" and "window mode failed" in screen.note
+    assert link.in_window_mode()
+
+
 async def test_open_app_sets_the_target_and_computer_target_reports(
     settings: Settings, fake_screen
 ) -> None:

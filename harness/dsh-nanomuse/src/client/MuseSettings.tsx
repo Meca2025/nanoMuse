@@ -19,7 +19,7 @@ import { call, type CloudStatus, type Translate } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
-import { IconArchive, IconChevronRight, IconClose, IconCpu, IconDatabase, IconDevices, IconFolder, IconHand, IconHelp, IconKey, IconLink, IconLogOut, IconMessage, IconMic, IconPuzzle, IconScale, IconSettings, IconShield, IconSliders, IconSparkle, IconUser, IconWallet } from './icons.tsx'
+import { IconArchive, IconChevronRight, IconClose, IconCpu, IconDatabase, IconDevices, IconFolder, IconHand, IconHelp, IconImage, IconKey, IconLink, IconLogOut, IconMessage, IconMic, IconPuzzle, IconScale, IconSettings, IconShield, IconSliders, IconSparkle, IconUser, IconVideo, IconWallet } from './icons.tsx'
 import { openShortcutsReference } from './keys.ts'
 import { useLive } from './live.ts'
 import type { RenderSlot } from './MuseSidebar.tsx'
@@ -38,7 +38,9 @@ export const STORAGE_SECTION = 'nanomuse-storage'
 export const CHANNELS_SECTION = 'nanomuse-channels'
 export const HARNESS_SECTION = 'nanomuse-harness'
 /** Muse's nav, in its order; the account page, models and presets are Advanced (the account card on General opens the first). */
-const PRIMARY: readonly string[] = ['general', 'nanomuse-connectors', COMPUTER_SECTION, 'nanomuse-files', 'nanomuse-dictation', WALLET_SECTION, STORAGE_SECTION, 'nanomuse-permissions', CHANNELS_SECTION, 'nanomuse-devices', DATA_SECTION, HELP_SECTION, LEGAL_SECTION]
+/** Desk-B's Media page (image and video models), as registered in `index.ts`. */
+const MEDIA_SECTION = 'nanomuse-media'
+const PRIMARY: readonly string[] = ['general', 'nanomuse-connectors', COMPUTER_SECTION, MEDIA_SECTION, 'nanomuse-files', 'nanomuse-dictation', WALLET_SECTION, STORAGE_SECTION, 'nanomuse-permissions', CHANNELS_SECTION, 'nanomuse-devices', DATA_SECTION, HELP_SECTION, LEGAL_SECTION]
 
 export interface SectionRow {
   id: string
@@ -81,7 +83,7 @@ export interface MuseSettingsProps {
   useSections<S>(selector: (rows: readonly SectionRow[]) => S): S
   useOnboardingSteps<S>(selector: (rows: readonly OnboardingStep[]) => S): S
   /** The sessions store share, when the host passes it; without it onboarding runs once at boot. */
-  useSessions?: (<S>(selector: (state: { phase: string; byId: Record<string, { blank: boolean; retainedBy: { mainView?: number } }> }) => S) => S) | undefined
+  useSessions?: (<S>(selector: (state: { phase: string; byId: Record<string, { blank: boolean; origin?: string; retainedBy: { mainView?: number } }> }) => S) => S) | undefined
 }
 
 function navIcon(id: string): ReactNode {
@@ -92,6 +94,7 @@ function navIcon(id: string): ReactNode {
     case 'agent-presets': return h(IconSparkle, { size: 16 })
     case 'nanomuse-devices': return h(IconDevices, { size: 16 })
     case COMPUTER_SECTION: return h(IconHand, { size: 16 })
+    case MEDIA_SECTION: return h(IconVideo, { size: 16 })
     case 'nanomuse-connectors': return h(IconLink, { size: 16 })
     case 'nanomuse-files': return h(IconFolder, { size: 16 })
     case 'nanomuse-dictation': return h(IconMic, { size: 16 })
@@ -198,6 +201,11 @@ export function MuseSettings(props: MuseSettingsProps): ReactNode {
         return state.phase === 'ready' && (main === undefined || main.blank)
       })
     : true
+  // The phone's `hasSessions`: some chat (not a subagent's) already has messages. The first
+  // run reads it to decide whether its pages are due on a ready install.
+  const hasSessions = typeof useSessions === 'function'
+    ? useSessions((state) => state.phase === 'ready' && Object.values(state.byId).some((s) => !s.blank && s.origin !== 'subagent'))
+    : false
   const step = requested !== undefined
     ? steps.find((s) => s.id === requested)
     : sessionsBlank ? steps.find((s) => !completed.has(s.id)) : undefined
@@ -247,6 +255,7 @@ export function MuseSettings(props: MuseSettingsProps): ReactNode {
       ? renderSlot('settings.onboarding', {
           stepId: step.id,
           explicit: requested !== undefined,
+          hasSessions,
           complete: () => complete(step.id),
           openSection: (id: string) => store.openSection(id),
         }, { only: step.id })
@@ -285,6 +294,13 @@ export function makeGeneralSection(t: Translate, version: string) {
           h('div', { className: 'nm-row-main' },
             h('span', { className: 'nm-row-title' }, t('gnAccount')),
             h('span', { className: 'nm-row-sub' }, live.cloud.signedIn ? t('gnAccountSub', { hint: live.cloud.hint }) : t('gnAccountSignIn'))),
+          h('span', { className: 'nm-row-chevron' }, h(IconChevronRight, { size: 16 }))),
+        // which models draw the pictures and the clips: the Media page, where they are chosen
+        h('button', { type: 'button', className: 'nm-row nm-row-button', onClick: () => { if (!settingsBus.openSection?.(MEDIA_SECTION)) settingsBus.openSection?.('nanomuse-cloud') } },
+          h('span', { className: 'nm-row-icon' }, h(IconImage, { size: 18 })),
+          h('div', { className: 'nm-row-main' },
+            h('span', { className: 'nm-row-title' }, t('vrImageVideo')),
+            h('span', { className: 'nm-row-sub' }, t('vrImageVideoSub'))),
           h('span', { className: 'nm-row-chevron' }, h(IconChevronRight, { size: 16 })))),
       // usage
       h('h2', null, t('gnUsage')),

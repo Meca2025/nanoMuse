@@ -74,6 +74,14 @@ export function DevicesScreen() {
                   : hub?.account.hint
                     ? t("None yet — sign in on your phone as {hint}, the account this device uses.", { hint: hub.account.hint })
                     : t("None yet — open nanoMuse on your phone and sign in with the same account.")}
+              {signedIn && hub?.state === "connected" && (
+                <>
+                  {" "}
+                  <a href="https://nanomuse.cn/dl/" target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline-offset-2 hover:underline">
+                    {t("Get the phone app")}
+                  </a>
+                </>
+              )}
             </p>
           ) : (
             others.map((d, i) => (
@@ -254,7 +262,9 @@ function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => vo
             <MuseCaption className="pb-3 pt-0">
               {hands.window?.active && hands.window.app
                 ? t("Working in {app}'s window; the mouse stays yours.", { app: hands.window.app })
-                : t("One window: the hands work inside the app they were given, send clicks and keys to it alone and leave your mouse alone. Whole screen: the system mouse, like other platforms. Auto picks one window as soon as an app is named.")}
+                : hands.window?.reason && (hands.mode ?? "auto") !== "screen"
+                  ? t("On the whole screen for now: {reason}", { reason: hands.window.reason })
+                  : t("One window: the hands work inside the app they were given, send clicks and keys to it alone and leave your mouse alone. Whole screen: the system mouse, like other platforms. Auto picks one window as soon as an app is named.")}
             </MuseCaption>
           </>
         )}

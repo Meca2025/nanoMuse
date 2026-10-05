@@ -180,6 +180,13 @@ class CloudClient:
         an older relay answers 404, which comes back as a :class:`CloudError`."""
         return await self._request("GET", "/v1/config", token="")
 
+    async def nudges(self) -> dict[str, Any]:
+        """When the app may ask for a star on GitHub (relay 0.18, ``GET /v1/nudges``, contract
+        C1): the policy the operator set, or the relay's defaults. No key needed; an older
+        relay answers 404, which comes back as a :class:`CloudError`. The runtime keeps a
+        copy through :class:`nanomuse.nudges.NudgesPolicy`, which reads once a day."""
+        return await self._request("GET", "/v1/nudges", token="")
+
     async def profile(self, with_face: bool = True) -> dict[str, Any]:
         """The agent's name and look as the account's devices share it (``rev`` 0 = none yet);
         without the face's pictures when ``with_face`` is false."""

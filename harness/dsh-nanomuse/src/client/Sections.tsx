@@ -11,6 +11,7 @@ import { createElement as h, Fragment, useCallback, useEffect, useState, type Re
 import { call, type Translate } from './api.ts'
 import { acceleratorOf, bridge, gatedPermissions, keyLabel, openLink, type DesktopPrefs, type PermissionKind } from './bridge.ts'
 import { RelaunchNotice } from './Onboarding.tsx'
+import { BlackScreenNotice, HandsTryRows, RuntimeRow, type ScreenshotResult } from './HandsCheck.tsx'
 import { usePermissions } from './permissions.ts'
 import { settingsBus } from './bus.ts'
 import { IconBug, IconCheck, IconChevronRight, IconFile, IconHeart, IconLink, IconList, IconPlay, IconScale, IconShield } from './icons.tsx'
@@ -45,12 +46,20 @@ export function makeComputerSection(t: Translate) {
     const name = live.profile.name || t('brand')
     const gated = gatedPermissions()
     const perms = usePermissions(['accessibility', 'screen'])
+    // window mode, as the last test screenshot reported it (the runtime's `hands.status.window.reason`)
+    const [windowMode, setWindowMode] = useState<{ available: boolean; reason: string } | null>(null)
+    const onShot = useCallback((r: ScreenshotResult) => {
+      if (r.window) setWindowMode(r.window)
+    }, [])
     const row = (kind: PermissionKind, title: string, sub: string) => {
+      const granted = perms.granted(kind)
+      // live: re-read every second and a half, on focus and when the page comes back
+      const status = perms.lastCheck ? h('span', { className: `nm-hc-live${granted ? ' nm-hc-live-ok' : ''}` }, granted ? t('pmLiveOn') : t('pmLiveOff')) : null
       return h('div', { key: kind, className: 'nm-row' },
         h('div', { className: 'nm-row-main' },
-          h('span', { className: 'nm-row-title' }, title),
+          h('span', { className: 'nm-row-title' }, title, status),
           h('span', { className: 'nm-row-sub' }, sub)),
-        perms.granted(kind)
+        granted
           ? h('span', { className: 'nm-ob-granted', 'aria-label': t('obAllowed') }, h(IconCheck, { size: 16 }))
           : perms.asked(kind)
             ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => perms.settings(kind) }, t('obOpenSettings'))
@@ -58,17 +67,29 @@ export function makeComputerSection(t: Translate) {
     }
     return h('div', { className: 'nm-section' },
       h('p', null, t('cuLead', { name })),
+      h(BlackScreenNotice, { t, perms }),
       h('h2', null, t('cuPermissions')),
       gated
         ? h('div', { className: 'nm-card' },
             row('accessibility', t('obAccessibility'), t('obAccessibilitySub')),
             row('screen', t('obScreen'), t('obScreenSub')),
             h(RelaunchNotice, { t, perms }),
+            h('div', { className: 'nm-row' },
+              h('span', { className: 'nm-row-sub nm-wrap' }, t('pmOnlyDesktop'), ' ', t('pmMonthly'))),
+            h('div', { className: 'nm-row' },
+              h('div', { className: 'nm-row-main' },
+                h('span', { className: 'nm-row-title' }, t('pmWindowMode')),
+                h('span', { className: 'nm-row-sub nm-wrap' }, windowMode ? (windowMode.available && !windowMode.reason ? t('pmWindowOk') : windowMode.reason) : t('pmWindowSub'))),
+              windowMode?.available && !windowMode.reason ? h('span', { className: 'nm-ob-granted', 'aria-label': t('obAllowed') }, h(IconCheck, { size: 16 })) : null),
             h('div', { className: 'nm-row', style: { gap: 12, flexWrap: 'wrap' } },
               h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('accessibility') } }, t('cuOpenSettingsAccessibility')),
               h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('screen') } }, t('cuOpenSettingsScreen'))))
         : h('p', null, t('cuNotGated')),
+      // "try it": a test screenshot and a small mouse move through the runtime, the way the hands do it
+      h('h2', null, t('pmTry')),
+      h(HandsTryRows, { t, perms, onScreenshot: onShot }),
       h('div', { className: 'nm-card' },
+        h(RuntimeRow, { t }),
         h('div', { className: 'nm-row' },
           h('div', { className: 'nm-row-main' }, h('span', { className: 'nm-row-title' }, t('cuAwake'))),
           h(Switch, { checked: prefs.keepAwake, label: t('cuAwake'), disabled: bridge() === undefined, onChange: (next) => setPrefs({ keepAwake: next }) })),

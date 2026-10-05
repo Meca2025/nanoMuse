@@ -38,10 +38,8 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Status line says what it is on, never "Thinking" | ✓ | ✓ 0.1.32 *"is on it"* | ✓ | ✓ |
 | Status line = the step's own words (`step`: *打开携程网站*), never the raw command | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 |
 | "Show the agent's steps", off by default | ✓ | ✓ 0.1.32 *(2)* | ✓ | ✓ 0.1.32 |
-| Star asked at sign-in | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
-| Star asked after the first finished task | ✓ | ✓ 0.1.33 *(3)* | ✓ 0.1.32 | ✓ |
-| Star asked when the allowance is spent | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
-| Star asked after the tenth task and after a new look (gracious copy) | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 |
+| Star asks at the relay's moments (`/v1/nudges`: sign-in · 3rd / 10th / 30th task · 7th / 30th day · a goal reached · a new look · allowance spent; 7 days apart, 4 per device; never in the first conversation) | ✓ 0.1.35 | ✓ 0.1.35 *(3)* | ✓ 0.1.35 | ✓ 0.1.35 |
+| First conversation: the app speaks first, asks what to call you, the model's `nanomuse-naming` fence becomes the naming card | ✓ | ✓ 0.1.34 | ✓ 0.1.35 *(25)* | ✓ |
 | First run: "Sign in — free" before anything else | ✓ | ✓ 0.1.32 *(4)* | ✓ | ✓ |
 | Approval cards, three tiers, remembered grants | ✓ | upstream's | ✓ | ✓ |
 | Approvals answered outside the app while the hands work | ✓ 0.1.33 capsule *Allow / Deny* | n/a *(10)* | ✓ 0.1.34 stage *Allow once / Always in app / Deny*, capsule when the window is behind *(17)* | n/a |
@@ -62,9 +60,9 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Coding agents (Cursor, Codex, Claude Code on the computers) | ✓ | ✓ 0.1.34 over the hub *(9)* | — *(8)* | ✓ |
 | Devices of the account, remote control, rename, forget | ✓ | ◐ list, Reach sheet 0.1.33 | ✓ | ✓ |
 | Hands — the device's own screen as a hand | ✓ | n/a *(10)* | ✓ the screen; on macOS one window while the person keeps the mouse, per-app grants, glow and capsule out of the shots *(19)* | n/a |
-| Version line and a real check for updates | ✓ Play / APK | ✓ TestFlight | ✓ 0.1.34 GitHub releases → nanomuse.cn mirror | n/a — the runtime's |
+| Installed and latest version, side by side (`nanomuse.cn/dl/index.json` first, GitHub second, a day's cache) | ✓ 0.1.35 Settings → Version | ✓ 0.1.35 Settings → Version | ✓ 0.1.35 About, Settings row | ✓ 0.1.35 Settings |
 | A black capture is an error with the fix (Screen Recording, Wayland), never a picture | n/a | n/a | ✓ 0.1.33 | n/a |
-| macOS permissions read back live; *Open System Settings* after an ask; Screen Recording relaunch notice | n/a | n/a | ✓ 0.1.33 | n/a |
+| macOS permissions read back live; *Open System Settings* after an ask; Screen Recording relaunch notice | n/a | n/a | ✓ 0.1.33; 0.1.35: only *nanoMuse Desktop* has to be switched on, *Try it* rows, a restart dialog when Screen Recording flips on *(26)* | n/a |
 | Mini-Linux sandbox on the device | ✓ | ✓ upstream (iSH) | n/a — the runtime's own sandbox | n/a |
 
 ## Face, rooms, look
@@ -72,12 +70,17 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Feature | Android | iOS | Desktop | Web |
 |---|---|---|---|---|
 | Avatar studio: generate, pick, pose; the face shared across devices | ✓ | ✓ 0.1.33 *(11)* | ✓ | ✓ |
+| Motion clips for a drawn face (idle · working · waiting · happy; `wan2.2-i2v-flash`; *Animate the avatar after a change*) | ✓ | ✓ 0.1.35 | ✓ 0.1.35 header, sidebar, capsule | — *(27)* |
 | Emoji faces | ◐ falls back to the dragon *(12)* | ◐ falls back to the dragon *(12)* | ✓ | ✓ |
 | Theme colour swatches | — | — | — removed 0.1.33 *(13)* | — |
 | Accent follows the avatar | ✓ | ✓ | ✓ | ✓ |
 | Rooms: Feed · Ideas · Goals · Library | ✓ | ✓ 0.1.34 with a scheduler *(11)* | ✓ 0.1.34 on the phone's fence protocol | ✓ |
 | Ideas by kind: chat · routine (at a time) · goal (a category) | ✓ | ✓ 0.1.34 | ✓ 0.1.34 the phone's list | ✓ 0.1.34 |
-| First run: the four pages, then the shell | ✓ | ✓ 0.1.34 *(4)* | ✓ onboarding slides | ✓ onboarding |
+| First run: the phone's pages (sign in · password · which model answers · models · permissions · notifications · meet), then the shell; never skipped on a fresh install | ✓ | ✓ 0.1.34, notifications page 0.1.35 *(4)* | ✓ 0.1.35 kept by the host in `firstrun.json` *(25)* | ✓ onboarding |
+| Feed opens on the intro card (*Write it now*), the first day is written after the first conversation, a daily routine at 08:00 | ✓ | ✓ 0.1.35 | ✓ 0.1.35 | ✓ 0.1.35 |
+| Ideas prefilled with the curated list (`ideas.{en,zh}.json`, byte for byte, with a test) | ✓ | ✓ | ✓ 0.1.34; empty-when-bundled bug fixed 0.1.35 | ✓ 0.1.35 |
+| Splash: wordmark and the person's own face, never the dragon | ✓ | ✓ system launch screen | ✓ 0.1.35 | n/a |
+| Settings as Muse cards in one order (Image & video models · Avatar · Computers · Appearance · … · Version) | ✓ | ✓ 0.1.35 | ✓ sections | ✓ sections |
 | Memory as a room | — settings page *(14)* | — | ✓ | ✓ |
 | Live stage / browser viewer while the hands work | ✓ stage | n/a *(10)* | ✓ live stage — movable, resizable, remembered 0.1.33; Allow/Deny, holds, glow 0.1.34 | ✓ browser viewer you can drive 0.1.34 |
 | Quick chat (global shortcut) | n/a | n/a | ✓ | n/a |
@@ -95,7 +98,9 @@ notes above; a settled item keeps its number and says how it went.
    too, now that the status line says what is going on?*
 3. **iOS · Star after the first task** — done in 0.1.33, as a card pinned under the header (the
    message list is a UICollectionView; nothing can be placed under the last message). A cancelled
-   turn counts as finished, the stream has no cancel signal.
+   turn counts as finished, the stream has no cancel signal. In 0.1.35 the card follows the
+   relay's policy like everyone else (28): no ask in the first conversation, the 3rd task is the
+   first moment.
 4. **iOS · First run** — done in 0.1.34 (`NanoMuseFirstRun.swift`, the Android `needed / stage`
    logic). Shown to anyone without a Cloud account, so a person upgrading who only ever used their
    own key sees it once; *All settings* skips it.
@@ -124,8 +129,8 @@ notes above; a settled item keeps its number and says how it went.
     settings page, and the studio draws through the relay or your own Bailian key. Left: a
     routine runs in the background only when iOS gives the refresh task a slot — the copy says
     so (*at the set time the phone reminds you to open it*); the hub route (a computer of the
-    account runs them) is still the sure one. The iPad's layout is the iPhone's, larger — a
-    split layout of its own is a design call.
+    account runs them) is still the sure one. The iPad's layout is the iPhone's, larger —
+    settled in 0.1.35: no split layout of its own.
 12. **Android and iOS · Emoji faces.** A face set to an emoji on the web or the desktop shows the
     dragon on the phones. Small.
 13. **Theme colour swatches** — settled in 0.1.33: removed from the desktop; one rule everywhere,
@@ -155,7 +160,10 @@ notes above; a settled item keeps its number and says how it went.
     shared, with the UI-TARS-style glow and the overlays kept out of the shots. Left: Linux and
     Windows have no window mode (a virtual display or a second session would be the port — Linux
     first, cheapest); the macOS path is written against the Quartz APIs and must be tried on a
-    Mac (Screen Recording fallback, AX-less clicks, Retina mapping, scroll direction).
+    Mac (Screen Recording fallback, AX-less clicks, Retina mapping, scroll direction). Settled in
+    0.1.35: `auto` stays the default, with a fail-safe — when the Quartz layer itself fails (not
+    "the window went away", which is retried every look) the hands fall back to the whole screen
+    for the rest of that target and say so once; an explicit `window` mode keeps trying.
 20. **Services without a public remote MCP server** — the chat apps are settled in 0.1.34 the
     way nanobot does it: 飞书, 钉钉, 企业微信 and Telegram are *channels* the agent answers in
     (`nanomuse/channels/`, the vendors' long-connection SDKs, no public address, pairing codes),
@@ -182,6 +190,26 @@ notes above; a settled item keeps its number and says how it went.
     them separately and the count exceeds the completion count they are added, otherwise taken
     as included. A provider that reports them separately *and* smaller would be under-counted.
     *Decision: keep the heuristic, or switch per provider?*
+25. **Desktop · first run and first conversation** — settled in 0.1.35 after the phone: the host
+    keeps `firstrun.json` and never skips the pages on a fresh install; the app speaks first
+    (three scripted lines, no tokens), asks what to call you, and the model's `nanomuse-naming`
+    fence becomes the naming card (`take_name` / `ask_user_question` are gone). Left, by design:
+    the scripted lines are a client overlay, not stored messages; the address is a memory line
+    rather than a `GLOBAL.md` edit; the gear on the first-run pages dismisses them for the
+    session only.
+26. **Desktop · macOS permissions** — re-audited in 0.1.35: TCC attributes the bundled runtime to
+    the responsible process, so only *nanoMuse Desktop* has to be switched on (the words say so
+    now; the runtime no longer appears as a second entry to hunt for). Left to try on a Mac: the
+    *Try it* rows after a fresh grant, the restart dialog when Screen Recording flips on, the
+    capsule's `showInactive` (17), window mode's AX-less clicks and Retina mapping (19).
+27. **Web · motion clips.** The clips are per device (drawn where the face lives: the phone, the
+    iPhone, the desktop). The web app shows the still face. *Decision: draw them in the runtime
+    too, or leave the web still?*
+28. **Star asks · what counts.** The policy is the relay's (`/v1/admin/nudges`, console → Star
+    asks) and reaches every client within a day without an update. Two small differences left:
+    Android asks once per phone when the allowance is spent (the other clients the same); the
+    first feed day is not written when the person changes the face during the naming conversation
+    (the first run never reaches *done*). Small.
 
 ## Keeping this true
 
@@ -191,5 +219,15 @@ notes above; a settled item keeps its number and says how it went.
 - Relay-facing code mirrors the same wire format on every client: `nanomuse/cloud.py` (runtime),
   `harness/dsh-nanomuse/src/relay.ts` (desktop), `io.github.nanomuse.cloud.NanoMuseCloud` (Android),
   `NanoMuse/NanoMuseCloud.swift` + `NanoMuseAccount.swift` (iOS). A new relay field lands in all four.
-- The star asks follow one rule everywhere: once per moment per device, never again after
-  *Star on GitHub* (`nm.star.*` / `nanomuse.star.*`).
+- The star asks follow one policy everywhere — the relay's `/v1/nudges` (contract C1 in
+  `docs/cloud.md`), with the same defaults built into every client: a *task* is a turn the person
+  started that got a reply, never the first conversation, a routine, a feed post or a goal
+  check-in; once per moment, `cooldown_days` apart, `max_asks` per device, never again after
+  *Star on GitHub* (`nm.star.*` / `nanomuse.star.*`). Clients: `nanomuse/nudges.py`,
+  `harness/dsh-nanomuse/src/nudges.ts`, `web/src/nudges.ts`, `io.github.nanomuse.community.Nudges`,
+  `NanoMuse/NanoMuseNudges.swift`.
+- The release check reads the same two sources in the same order on every client:
+  `https://nanomuse.cn/dl/index.json`, then GitHub's `releases/latest`; a day's cache; the row
+  always shows the installed version too.
+- `ideas.en.json` / `ideas.zh.json` are one file four times (Android assets, iOS Resources,
+  `harness/dsh-nanomuse/assets`, `web/src/ideas`); the harness and web tests fail when a copy drifts.

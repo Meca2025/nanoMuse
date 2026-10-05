@@ -31,6 +31,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { MuseRoundButton } from "../components/MuseHeader";
 import { Sheet } from "../components/Sheet";
+import { StarNudgeOnce } from "../components/StarNudge";
 import { TabHeader } from "../components/TabHeader";
 import { getLocale, intlLocale, t, useT } from "../i18n";
 import { useStore } from "../store";
@@ -174,9 +175,13 @@ export function GoalsScreen() {
     }
   };
 
+  // a goal just marked done: the moment for a word about a star (contract C1), when the policy allows
+  const [goalDone, setGoalDone] = useState(false);
   const toggleDone = async (g: Goal) => {
     try {
-      await api.patchGoal(g.id, { status: g.status === "done" ? "active" : "done" });
+      const done = g.status !== "done";
+      await api.patchGoal(g.id, { status: done ? "done" : "active" });
+      if (done) setGoalDone(true);
       void refreshGoals();
     } catch (e) {
       toast((e as Error).message);
@@ -217,6 +222,7 @@ export function GoalsScreen() {
           </section>
         )}
 
+        <StarNudgeOnce moment="goal_done" due={goalDone} className="mx-4 mb-3" />
         <SectionHeader label={t("Tracking")} dot onAdd={() => createRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
         {tracked.length === 0 ? (
           <p className="px-5 pb-3 text-[13px] text-muted">{t("Nothing tracked yet")}</p>

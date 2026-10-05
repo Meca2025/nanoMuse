@@ -334,11 +334,12 @@ export function pickAsset(assets: ReleaseAsset[], platform: string, arch: string
 type Fetch = (url: string, init?: { headers?: Record<string, string>; signal?: AbortSignal }) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>
 
 /**
- * Ask GitHub for the latest release; when it does not answer (rate limit, no route
- * to github.com from the mainland), read the mirror's index. Never throws: a
- * failed check is an `UpdateInfo` with `source: 'none'` and an `error`.
+ * The latest release, from the mirror's index on nanomuse.cn first (reachable from the
+ * mainland, no rate limit), then GitHub's API when the index does not answer. Each
+ * request has 5 s (C2). Never throws: a failed check is an `UpdateInfo` with
+ * `source: 'none'` and an `error`.
  */
-export async function checkForUpdate(current: string, fetchImpl: Fetch = fetch as unknown as Fetch, timeoutMs = 8000): Promise<UpdateInfo> {
+export async function checkForUpdate(current: string, fetchImpl: Fetch = fetch as unknown as Fetch, timeoutMs = 5000): Promise<UpdateInfo> {
   const now = Date.now()
   const base: UpdateInfo = { current, latest: '', newer: false, page: RELEASES_PAGE, assets: [], notes: '', source: 'none', checkedAt: now }
   const errors: string[] = []
@@ -352,22 +353,6 @@ export async function checkForUpdate(current: string, fetchImpl: Fetch = fetch a
     } finally {
       clearTimeout(timer)
     }
-  }
-  try {
-    const rel = (await get(RELEASES_API)) as { tag_name?: string; html_url?: string; body?: string; assets?: { name?: string; browser_download_url?: string; size?: number }[] }
-    const latest = String(rel.tag_name ?? '').replace(/^v/, '')
-    if (!latest) throw new Error('no tag')
-    return {
-      ...base,
-      latest,
-      newer: compareVersions(latest, current) > 0,
-      page: rel.html_url || `${RELEASES_PAGE}/tag/v${latest}`,
-      assets: (rel.assets ?? []).flatMap((a) => (a.name && a.browser_download_url ? [{ name: a.name, url: a.browser_download_url, size: Number(a.size ?? 0) || 0 }] : [])),
-      notes: String(rel.body ?? '').slice(0, 4000),
-      source: 'github',
-    }
-  } catch (error: unknown) {
-    errors.push(`github: ${error instanceof Error ? error.message : String(error)}`)
   }
   try {
     const index = (await get(RELEASES_INDEX)) as { repo?: string; releases?: { tag?: string; assets?: { name?: string; size?: number }[] }[] }
@@ -385,6 +370,22 @@ export async function checkForUpdate(current: string, fetchImpl: Fetch = fetch a
     }
   } catch (error: unknown) {
     errors.push(`nanomuse.cn: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  try {
+    const rel = (await get(RELEASES_API)) as { tag_name?: string; html_url?: string; body?: string; assets?: { name?: string; browser_download_url?: string; size?: number }[] }
+    const latest = String(rel.tag_name ?? '').replace(/^v/, '')
+    if (!latest) throw new Error('no tag')
+    return {
+      ...base,
+      latest,
+      newer: compareVersions(latest, current) > 0,
+      page: rel.html_url || `${RELEASES_PAGE}/tag/v${latest}`,
+      assets: (rel.assets ?? []).flatMap((a) => (a.name && a.browser_download_url ? [{ name: a.name, url: a.browser_download_url, size: Number(a.size ?? 0) || 0 }] : [])),
+      notes: String(rel.body ?? '').slice(0, 4000),
+      source: 'github',
+    }
+  } catch (error: unknown) {
+    errors.push(`github: ${error instanceof Error ? error.message : String(error)}`)
   }
   return { ...base, error: errors.join('; ') }
 }

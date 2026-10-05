@@ -106,6 +106,57 @@ export function parseGoalUpdate(json: string): GoalUpdateBlock | undefined {
   }
 }
 
+// ---- the first conversation's naming block ------------------------------------------
+
+export const FENCE_NAMING = 'nanomuse-naming'
+/** A name is one line, at most this long. */
+export const MAX_NAME = 16
+
+/** What the model told the app in a `nanomuse-naming` block (the phone's `NamingBlock`). */
+export interface NamingBlock {
+  /** The block had a `user_address` key (a null value = the person wants no form of address). */
+  addressGiven: boolean
+  userAddress: string | null
+  /** Names the model suggests for itself, cleaned, distinct, at most three. */
+  suggestions: string[]
+  /** The name the person gave the agent, when this block says so. */
+  agentName: string | null
+}
+
+const QUOTES = /^[\s"'“”‘’「」『』]+|[\s"'“”‘’「」『』。，、！!？?.]+$/g
+
+/** A usable name: one line, quotes and trailing punctuation gone, not absurdly long; null otherwise. */
+export function cleanName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const t = raw.replace(QUOTES, '').trim()
+  if (!t || t.includes('\n') || t.length > MAX_NAME) return null
+  return t
+}
+
+/** The last `nanomuse-naming` block in `text`, or null when there is none or it is not JSON. */
+export function parseNamingBlock(text: string | null | undefined): NamingBlock | null {
+  if (!text) return null
+  const fences = findFences(text, FENCE_NAMING)
+  const json = fences[fences.length - 1]
+  if (json === undefined) return null
+  const o = obj(json)
+  if (!o) return null
+  const suggestions: string[] = []
+  if (Array.isArray(o.suggest)) {
+    for (const raw of o.suggest) {
+      const name = cleanName(raw)
+      if (name && !suggestions.includes(name)) suggestions.push(name)
+      if (suggestions.length === 3) break
+    }
+  }
+  return {
+    addressGiven: 'user_address' in o,
+    userAddress: o.user_address === null || o.user_address === undefined ? null : cleanName(o.user_address),
+    suggestions,
+    agentName: o.agent_name === null || o.agent_name === undefined ? null : cleanName(o.agent_name),
+  }
+}
+
 export const FEED_TYPES = ['brief', 'reminder', 'idea', 'goal', 'memory', 'note'] as const
 
 export interface FeedDraft {

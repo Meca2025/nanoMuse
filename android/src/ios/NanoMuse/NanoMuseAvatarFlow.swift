@@ -355,7 +355,7 @@ struct NanoMuseAvatarCostCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(AppLocalized("Before drawing")).font(.subheadline.weight(.semibold))
-            let what = String(format: AppLocalized("A new face is %d pictures"), studio.picturesPerFace)
+            let what = studio.costWhat
             if studio.estimating {
                 HStack(spacing: 8) { ProgressView().controlSize(.small); Text(AppLocalized("Checking today's allowance…")).foregroundStyle(.secondary) }
                     .font(.footnote)

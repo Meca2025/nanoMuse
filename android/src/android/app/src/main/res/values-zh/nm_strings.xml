@@ -21,8 +21,15 @@
     <string name="nm_star_action">去 GitHub 点亮 Star</string>
     <string name="nm_star_later">以后再说</string>
     <string name="nm_star_signed_in">欢迎加入。nanoMuse 免费、开源、非营利，做的是一个属于每个人的个人智能体。如果你认同，GitHub 上的一颗 Star 能让下一个人也找到这里。</string>
-    <string name="nm_star_first_task">第一个任务完成了。如果 nanoMuse 帮上了忙，到 GitHub 点一颗 Star，做它的人就知道了。</string>
-    <string name="nm_star_tenth_task">已经一起完成十个任务了。如果 nanoMuse 成了你日常的一部分，一颗 Star 会让更多人愿意试一试。</string>
+    <plurals name="nm_star_tasks">
+        <item quantity="other">已经一起完成 %1$d 个任务。如果 nanoMuse 帮上了忙，到 GitHub 点一颗 Star，下一个人也能找到它。</item>
+    </plurals>
+    <string name="nm_star_days_used_week">和 nanoMuse 一起过了一周。如果它在你的日常里有了位置，到 GitHub 点一颗 Star，下一个人也能找到它。</string>
+    <string name="nm_star_days_used_month">和 nanoMuse 一起过了一个月。如果它成了你习惯的一部分，一颗 Star 会让更多人愿意试一试。</string>
+    <plurals name="nm_star_days_used">
+        <item quantity="other">和 nanoMuse 一起过了 %1$d 天。如果它在你的日常里有了位置，到 GitHub 点一颗 Star，下一个人也能找到它。</item>
+    </plurals>
+    <string name="nm_star_goal_done">目标达成了。如果 nanoMuse 帮你走到了这一步，到 GitHub 点一颗 Star，做它的人就知道了。</string>
     <string name="nm_star_new_look">一张为你画的新面孔。如果你喜欢 nanoMuse 现在的样子，到 GitHub 点一颗 Star，更多人就能遇见它。</string>
     <string name="nm_star_exhausted">免费额度用完了，谢谢你一路用到这里。如果 nanoMuse 值得，到 GitHub 点一颗 Star，下一个人也能找到它。</string>
     <string name="nm_chat_menu_rename">重命名对话</string>
@@ -203,8 +210,8 @@
     <string name="nm_feed_routine_label">写动态</string>
     <string name="nm_feed_prompt">写今天的动态。</string>
     <string name="nm_feed_default_preferences">给我做一个关于我关心的事的动态。短一点、直接一点，扫一眼就能看完，别搞标题党。</string>
-    <string name="nm_feed_intro_title">动态版块说明</string>
-    <string name="nm_feed_intro_desc">你的动态版块由以下指示驱动。你对此提示做出的任何编辑都将应用于今后的动态帖子。</string>
+    <string name="nm_feed_intro_title">关于动态</string>
+    <string name="nm_feed_intro_desc">这里是你的智能体为你写的短帖子，取材于它记得的东西——记忆文件、最近一周的日记、你的目标。下面这句话决定今后每一条帖子的方向，随时可以改。</string>
     <string name="nm_feed_edit">编辑</string>
     <string name="nm_feed_got_it">知道了</string>
     <string name="nm_feed_save">保存</string>
@@ -227,7 +234,7 @@
     <string name="nm_feed_type_goal">目标</string>
     <string name="nm_feed_type_memory">记忆</string>
     <string name="nm_feed_type_note">随记</string>
-    <string name="nm_feed_empty_title">你的动态版块尚未准备就绪</string>
+    <string name="nm_feed_empty_title">动态里还没有内容</string>
     <string name="nm_feed_empty_body">随着我们相互了解，新的帖子会显示在这里。每天 %1$s，我会读一遍记得的关于你的东西——记忆文件、最近一周的日记、你的目标——然后写几条简短的帖子。</string>
     <string name="nm_feed_empty_how_title">一句话就能调整</string>
     <string name="nm_feed_empty_how_body">点右上角的滑杆，告诉我你想多看什么、关掉每天的例程，或者让我现在就写第一天。</string>
@@ -352,6 +359,13 @@
     <string name="nm_settings_no_model_sub">添加服务商并选择它的模型</string>
     <string name="nm_settings_change_model">更换</string>
     <string name="nm_settings_version">nanoMuse %1$s (%2$d)</string>
+    <string name="nm_version_title">版本</string>
+    <string name="nm_version_checking">正在查看最新版本…</string>
+    <string name="nm_version_have">最新 %1$s——你用的就是它</string>
+    <string name="nm_version_out">%1$s 已发布</string>
+    <string name="nm_version_out_update">%1$s 已发布——点此更新</string>
+    <string name="nm_version_update">更新</string>
+    <string name="nm_version_failed">没查到——点一下再试</string>
     <string name="nm_appearance_section_home">首页</string>
     <string name="nm_appearance_header_model_title">在名字下方显示模型</string>
     <string name="nm_appearance_header_model_footer">Muse 只显示名字。打开后名字下方会显示模型组和服务商 · 模型，点它可以切换。关闭时模型在 ••• → 模型和设置里。</string>

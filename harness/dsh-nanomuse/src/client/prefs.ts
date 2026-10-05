@@ -18,6 +18,8 @@ export interface Prefs {
   approvals: ApprovalRecord[]
   /** Where the Live stage (the picture-in-picture of the hands) was last put and how wide; unset = bottom right, default width. */
   stage?: StagePlace | undefined
+  /** The Feed's "About the feed" card was read ("Got it"); it stays away after. */
+  feedIntroSeen: boolean
 }
 
 export interface StagePlace {
@@ -36,7 +38,7 @@ export interface ApprovalRecord {
 }
 
 const KEY = 'nanomuse.prefs'
-const DEFAULTS: Prefs = { showHarness: false, keepAwake: true, showSteps: false, approvals: [] }
+const DEFAULTS: Prefs = { showHarness: false, keepAwake: true, showSteps: false, approvals: [], feedIntroSeen: false }
 const MAX_APPROVALS = 50
 
 let current: Prefs = read()
@@ -53,6 +55,7 @@ function read(): Prefs {
       showSteps: parsed.showSteps === true,
       approvals: Array.isArray(parsed.approvals) ? parsed.approvals.slice(0, MAX_APPROVALS) : [],
       stage: readStage(parsed.stage),
+      feedIntroSeen: parsed.feedIntroSeen === true,
     }
   } catch {
     return DEFAULTS

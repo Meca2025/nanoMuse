@@ -297,6 +297,14 @@ function startHost(): Promise<string> {
         if (shellPath) env.PATH = shellPath;
         const runtime = bundledRuntime();
         if (!env.NANOMUSE_PY && runtime) env.NANOMUSE_PY = runtime;
+        // Loud when the hands have nothing to run: a packaged build without its runtime, or
+        // NANOMUSE_PY (from the login shell) pointing at a file that is not there. The
+        // Computer-use page shows the same with the fix; this is for the log people send in.
+        if (env.NANOMUSE_PY && !existsSync(env.NANOMUSE_PY)) {
+          log(`runtime: NANOMUSE_PY=${env.NANOMUSE_PY} does not exist — the hands are off until it is fixed or unset`);
+        } else if (!env.NANOMUSE_PY && app.isPackaged) {
+          log(`runtime: no bundled runtime at ${join(resourcesDir(), "runtime")} and NANOMUSE_PY is not set — the hands are off (rebuild with the runtime, or install nanomuse and set NANOMUSE_PY)`);
+        }
         const args = ["--expose-internals", bin, PROFILE, "--no-open", "--port", String(port)];
         log(`host: ${process.execPath} ${args.join(" ")} (DSH_HOME=${home}${env.NANOMUSE_PY ? `, NANOMUSE_PY=${env.NANOMUSE_PY}` : ""})`);
         const proc = spawn(process.execPath, args, { cwd: homedir(), env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
@@ -710,14 +718,14 @@ function registerBridge(): void {
         /* no sources without the permission — that attempt was the point */
       }
       void shell.openExternal(PERMISSION_PANES.screen);
+      watchScreenGrant();
     }
     return permissionState(kind);
   });
   // macOS applies Screen Recording only to freshly started processes: after granting it, the
   // runtime that takes the screenshots has to start again.
   ipcMain.handle("nanomuse:relaunch", () => {
-    app.relaunch();
-    app.exit(0);
+    relaunchNow();
   });
   ipcMain.handle("nanomuse:permissions:settings", (_e, kind: PermissionKind | "files") => {
     if (process.platform === "darwin" && typeof kind === "string" && kind in PERMISSION_PANES) void shell.openExternal(PERMISSION_PANES[kind]);
@@ -911,8 +919,8 @@ async function guidePermissions(): Promise<Record<PermissionKind, PermissionStat
       type: "info",
       message: zh ? "nanoMuse 需要「辅助功能」权限" : "nanoMuse needs Accessibility",
       detail: zh
-        ? "动手操作电脑要靠它移动鼠标和输入。系统会弹出请求；在「系统设置 → 隐私与安全性 → 辅助功能」里打开 nanoMuse Desktop 和它附带的 nanomuse 运行时。"
-        : "The hands move the mouse and type through it. The system asks next; in System Settings → Privacy & Security → Accessibility, switch on nanoMuse Desktop and the bundled nanomuse runtime.",
+        ? "动手操作电脑要靠它移动鼠标和输入。系统会弹出请求；在「系统设置 → 隐私与安全性 → 辅助功能」里打开 nanoMuse Desktop 即可——它附带的运行时作为应用的一部分运行，不会单独出现在列表里。"
+        : "The hands move the mouse and type through it. The system asks next; in System Settings → Privacy & Security → Accessibility, switch on nanoMuse Desktop. The runtime it bundles runs as part of the app and does not appear separately.",
       buttons: [zh ? "继续" : "Continue", zh ? "以后再说" : "Later"],
       defaultId: 0,
       cancelId: 1,
@@ -924,8 +932,8 @@ async function guidePermissions(): Promise<Record<PermissionKind, PermissionStat
       type: "info",
       message: zh ? "nanoMuse 需要「屏幕录制」权限" : "nanoMuse needs Screen Recording",
       detail: zh
-        ? "它靠截图看到屏幕上有什么。系统没有弹窗；点「继续」后在「屏幕录制」面板里打开 nanoMuse Desktop 和 nanomuse，然后重新启动应用。"
-        : "It sees the screen through screenshots. There is no system prompt: after Continue, switch on nanoMuse Desktop and nanomuse in the Screen Recording pane, then relaunch the app.",
+        ? "它靠截图看到屏幕上有什么。系统没有弹窗；点「继续」后在「屏幕录制」面板里打开 nanoMuse Desktop（只需要这一项），然后重新启动应用——macOS 的这项权限只对重新启动后的应用生效。"
+        : "It sees the screen through screenshots. There is no system prompt: after Continue, switch on nanoMuse Desktop in the Screen Recording pane (that one entry is all), then relaunch the app — macOS applies this permission to freshly started apps only.",
       buttons: [zh ? "继续" : "Continue", zh ? "以后再说" : "Later"],
       defaultId: 0,
       cancelId: 1,
@@ -937,9 +945,57 @@ async function guidePermissions(): Promise<Record<PermissionKind, PermissionStat
         /* the attempt is what lists the app in the pane */
       }
       void shell.openExternal(PERMISSION_PANES.screen);
+      watchScreenGrant();
     }
   }
   return state();
+}
+
+/** Quit and start again; the host and its `nanomuse mcp` go with the process tree, the new app starts them afresh. */
+function relaunchNow(): void {
+  app.relaunch();
+  app.exit(0);
+}
+
+let screenGrantWatch: NodeJS.Timeout | null = null;
+
+/**
+ * After the Screen Recording pane was opened for the person: watch for the switch to flip
+ * (the system has no event for it) and, when it does, say the one thing the pane does not —
+ * that the grant reaches only freshly started apps — with the restart button right there.
+ * Gives up quietly after five minutes; the Computer-use page keeps its own notice.
+ */
+function watchScreenGrant(): void {
+  if (process.platform !== "darwin" || screenGrantWatch) return;
+  if (permissionState("screen") === "granted") return;
+  const started = Date.now();
+  screenGrantWatch = setInterval(() => {
+    if (permissionState("screen") !== "granted") {
+      if (Date.now() - started > 5 * 60_000 && screenGrantWatch) {
+        clearInterval(screenGrantWatch);
+        screenGrantWatch = null;
+      }
+      return;
+    }
+    if (screenGrantWatch) clearInterval(screenGrantWatch);
+    screenGrantWatch = null;
+    log("permissions: Screen Recording granted while running — offering a relaunch");
+    void dialog
+      .showMessageBox({
+        type: "info",
+        message: zh ? "屏幕录制已允许，重新启动后生效" : "Screen Recording is on; it takes effect after a restart",
+        detail: zh
+          ? "macOS 只对重新启动后的应用应用这项权限。现在重新启动 nanoMuse，手就能看到屏幕；否则截图仍是一片黑。"
+          : "macOS applies this permission to freshly started apps only. Restart nanoMuse now and the hands see the screen; until then screenshots come back black.",
+        buttons: [zh ? "立即重启" : "Restart now", zh ? "稍后" : "Later"],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      .then(({ response }) => {
+        if (response === 0) relaunchNow();
+      })
+      .catch(() => undefined);
+  }, 1500);
 }
 
 function createWindow(): BrowserWindow {
@@ -985,8 +1041,37 @@ function createWindow(): BrowserWindow {
   win.on("closed", () => {
     mainWindow = null;
   });
-  void win.loadFile(join(ownResources(), "loading.html"), { query: { lang: zh ? "zh" : "en" } });
+  const face = splashFace();
+  void win.loadFile(join(ownResources(), "loading.html"), { query: { lang: zh ? "zh" : "en", ...(face ? { face } : {}) } });
   return win;
+}
+
+/** The splash may show a face only when it is the person's own (C6): a drawn one, as a data URL. */
+const SPLASH_FACE_MAX = 600 * 1024;
+function splashFace(): string | undefined {
+  const store = join(harnessHome(), "nanomuse");
+  const candidates: string[] = [];
+  try {
+    const profile = JSON.parse(readFileSync(join(store, "profile.json"), "utf8")) as { avatar?: string; faceId?: string };
+    if (profile.avatar === "face" && profile.faceId && /^[\w.-]+$/.test(profile.faceId)) {
+      for (const ext of ["webp", "png", "jpg"]) candidates.push(join(store, "faces", profile.faceId, `idle.${ext}`));
+    }
+  } catch {
+    /* no profile yet, or not a face: nothing in the disc */
+  }
+  for (const ext of ["webp", "png", "jpg"]) candidates.push(join(store, "avatar", `base.${ext}`));
+  for (const path of candidates) {
+    try {
+      if (!existsSync(path)) continue;
+      const bytes = readFileSync(path);
+      if (bytes.length === 0 || bytes.length > SPLASH_FACE_MAX) continue;
+      const ext = path.slice(path.lastIndexOf(".") + 1);
+      return `data:image/${ext === "jpg" ? "jpeg" : ext};base64,${bytes.toString("base64")}`;
+    } catch {
+      /* unreadable: try the next */
+    }
+  }
+  return undefined;
 }
 
 async function boot(): Promise<void> {

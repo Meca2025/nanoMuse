@@ -285,6 +285,18 @@ class Database:
                 continue
         return out
 
+    def settings_get(self, key: str) -> tuple[Any, int] | None:
+        """One stored setting with when it was written (``(value, updated_at)``), or None
+        when nothing is stored under the key or the row does not parse."""
+        with self._lock:
+            row = self._conn.execute("SELECT value, updated_at FROM settings WHERE key=?", (key,)).fetchone()
+        if row is None:
+            return None
+        try:
+            return json.loads(row["value"]), int(row["updated_at"])
+        except (ValueError, TypeError):
+            return None
+
     def settings_put(self, key: str, value: Any) -> None:
         """Set an override, or remove it (value None) so the environment's value is back."""
         with self.tx() as c:

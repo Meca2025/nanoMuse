@@ -1,31 +1,36 @@
 /**
- * The first run, the way the Muse desktop opens — the whole window, not a
- * card: the agent's face and "Welcome", a Sign in pill; "Sign in or create an
- * account" with one field for a phone number or an e-mail; the six boxes of
- * the code (or the password, as the other way); a spinner while the account
- * and its look arrive; then the three permission pages of Muse's recording —
- * the computer (Accessibility and Screen Recording, each with an Allow pill
- * that turns into a check), the files (the working folder and what the agent
- * may touch), voice input (the microphone) — each with "Skip" under the card
- * that becomes "Continue" once everything on the page is allowed, a dots pager
- * and arrows in the corner; and at the end the main chat opened with the
- * agent's introduction in it. Registered as the `settings.onboarding` step with
- * the shipped id, so the coordinator shows ours in that turn; it completes
- * itself when a model can already answer (the account, a DeepSeek key, a
- * provider the person added) unless reopened on purpose.
+ * The first run, the way the phone does it (C4): the whole window, one page at a time,
+ * three dots at the top and a gear to Settings. Welcome (the face, one line on what it is,
+ * three feature rows, the free/open-source notice, "Sign in — free"); the sign-in itself
+ * (a phone number or an e-mail, the six boxes of the code, or the password); a password
+ * page for an account that was just created; "Which model answers?" (the Cloud model, or
+ * a key of one's own → the harness's model settings); the models page for one's own key;
+ * the two permissions the hands need (macOS only — elsewhere the page is skipped); and
+ * "Meet <name>" with Start, which opens the main chat as the first conversation, where
+ * the app speaks first (`FirstRun.tsx`).
+ *
+ * Registered as the `settings.onboarding` step with the shipped id, so the coordinator
+ * shows ours in that turn. It completes itself only when the phone's rule says the pages
+ * are not due — signed in (or a model of one's own), a model, and either a chat with
+ * messages or a Start already pressed. A ready install that never saw the pages still
+ * gets them: being ready only skips the account pages. What the pages decide lives on the
+ * host (`$DSH_HOME/nanomuse/firstrun.json`), not in this browser.
  */
 import { useModalLayer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { firstRunNeeded, stageOf, dotOf, type Stage } from '../firstrun.ts'
 import { call, type CloudStatus, type Translate } from './api.ts'
-import { useCloudConfig } from './AccountPage.tsx'
+import { useCloudConfig, type AccountSheet } from './AccountPage.tsx'
 import { Avatar } from './Avatar.tsx'
 import { gatedPermissions, openLink, type PermissionKind } from './bridge.ts'
 import { usePermissions, type Permissions } from './permissions.ts'
-import { IconCheck, IconChevronLeft, IconChevronRight, IconDownload, IconFolder, IconHand, IconHome, IconMic, IconMonitor } from './icons.tsx'
+import { BlackScreenNotice, HandsTryRows } from './HandsCheck.tsx'
+import { IconCheck, IconHand, IconMessage, IconMonitor, IconSettings, IconUsers } from './icons.tsx'
 import { useLive } from './live.ts'
 import { setMainChatId } from './MuseChats.tsx'
-import { nav, roomsCall } from './rooms.ts'
+import { REPO_URL } from './panels.ts'
+import { nav, roomsCall, useRooms } from './rooms.ts'
 
 /** The owner share the onboarding coordinator passes to a step. */
 export interface OnboardingOwnerProps {
@@ -33,22 +38,24 @@ export interface OnboardingOwnerProps {
   explicit?: boolean | undefined
   complete: () => void
   openSection: (id: string) => void
+  /** Some chat already has messages (the phone's `hasSessions`); the settings shell passes it. */
+  hasSessions?: boolean | undefined
   /** The workspace list, when the host passes its share. */
   useWorkspaces?: (<S>(selector: (snapshot: { items: readonly { workspaceId: string; path: string; title: string }[] }) => S) => S) | undefined
 }
 
-/** What the plugin lends the flow: the workspace actions the files page needs. */
+/** What the plugin lends the flow: the workspace actions (kept for the shell's signature). */
 export interface OnboardingActions {
   pickDirectory(): Promise<string | null>
   createWorkspace(path: string): Promise<{ workspaceId: string }>
   openWorkspace(workspaceId: string): Promise<void>
 }
 
-type View = 'loading' | 'welcome' | 'identifier' | 'code' | 'password' | 'wait' | 'slides' | 'starting'
-type SlideId = 'computer' | 'files' | 'voice'
+/** The sign-in's own screens, shown over the Welcome stage. */
+type SignInView = 'identifier' | 'code' | 'password'
 
-/** How long the end of the run may take to open the main chat before we stop waiting. */
-const KICKOFF_MS = 12_000
+/** How long Start may take to open the main chat before we stop waiting. */
+const START_MS = 12_000
 const PRIVACY_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md'
 const TERMS_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/terms.md'
 const HANDS_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/sentinel.md'
@@ -91,95 +98,103 @@ function CodeBoxes({ value, onChange, disabled, label }: { value: string; onChan
       h('div', { key: i, className: `nm-code-box${i === Math.min(digits.length, 5) ? ' nm-code-caret' : ''}${digits[i] ? ' nm-code-filled' : ''}`, 'aria-hidden': true }, digits[i] ?? '')))
 }
 
-const ART_COMPUTER = h('svg', { viewBox: '0 0 240 150', width: 240, height: 150, className: 'nm-art', 'aria-hidden': true },
-  h('rect', { x: 46, y: 10, width: 170, height: 104, rx: 12, className: 'nm-art-back' }),
-  h('rect', { x: 30, y: 26, width: 170, height: 104, rx: 12, className: 'nm-art-mid' }),
-  h('rect', { x: 14, y: 42, width: 170, height: 104, rx: 12, className: 'nm-art-front' }),
-  h('circle', { cx: 30, cy: 56, r: 3.5, className: 'nm-art-dot' }), h('circle', { cx: 41, cy: 56, r: 3.5, className: 'nm-art-dot' }), h('circle', { cx: 52, cy: 56, r: 3.5, className: 'nm-art-dot' }),
-  h('rect', { x: 30, y: 72, width: 90, height: 8, rx: 4, className: 'nm-art-line' }),
-  h('rect', { x: 30, y: 88, width: 130, height: 8, rx: 4, className: 'nm-art-line' }),
-  h('rect', { x: 30, y: 104, width: 70, height: 8, rx: 4, className: 'nm-art-line' }),
-  h('path', { d: 'M150 100l10 26 5-10 10-5z', className: 'nm-art-cursor' }))
+function link(url: string, label: string): ReactNode {
+  return h('a', { href: url, onClick: (e: Event) => { e.preventDefault(); openLink(url) } }, label)
+}
 
-const ART_FILES = h('svg', { viewBox: '0 0 240 150', width: 240, height: 150, className: 'nm-art', 'aria-hidden': true },
-  h('path', { d: 'M28 44a10 10 0 0 1 10-10h44l16 16h96a10 10 0 0 1 10 10v70a10 10 0 0 1-10 10H38a10 10 0 0 1-10-10z', className: 'nm-art-mid' }),
-  h('rect', { x: 90, y: 20, width: 70, height: 88, rx: 8, className: 'nm-art-front' }),
-  h('rect', { x: 102, y: 38, width: 46, height: 6, rx: 3, className: 'nm-art-line' }),
-  h('rect', { x: 102, y: 52, width: 34, height: 6, rx: 3, className: 'nm-art-line' }),
-  h('rect', { x: 102, y: 66, width: 42, height: 6, rx: 3, className: 'nm-art-line' }),
-  h('path', { d: 'M28 70h184v60a10 10 0 0 1-10 10H38a10 10 0 0 1-10-10z', className: 'nm-art-back' }))
-
-const ART_VOICE = h('svg', { viewBox: '0 0 240 150', width: 240, height: 150, className: 'nm-art', 'aria-hidden': true },
-  h('rect', { x: 62, y: 14, width: 116, height: 122, rx: 12, className: 'nm-art-front' }),
-  h('rect', { x: 78, y: 32, width: 60, height: 6, rx: 3, className: 'nm-art-line' }),
-  h('rect', { x: 78, y: 46, width: 84, height: 6, rx: 3, className: 'nm-art-line' }),
-  h('rect', { x: 78, y: 60, width: 48, height: 6, rx: 3, className: 'nm-art-line' }),
-  ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => h('rect', { key: i, x: 80 + i * 7, y: 102 - [6, 12, 20, 9, 16, 24, 14, 8, 18, 11, 6, 10][i]! / 2, width: 4, height: [6, 12, 20, 9, 16, 24, 14, 8, 18, 11, 6, 10][i], rx: 2, className: 'nm-art-accent' })),
-  h('path', { d: 'M66 98l12 6-12 6z', className: 'nm-art-cursor' }))
-
-export function makeOnboarding(t: Translate, actions: OnboardingActions) {
+export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
   return function NanomuseOnboarding(props: OnboardingOwnerProps): ReactNode {
-    const { complete, openSection, explicit = false, useWorkspaces } = props
+    const { complete, openSection, explicit = false, hasSessions = false } = props
     const live = useLive()
-    const [view, setView] = useState<View>('loading')
+    const rooms = useRooms()
     const [status, setStatus] = useState<CloudStatus | undefined>()
+    const [decided, setDecided] = useState(false)
+    const [signIn, setSignIn] = useState<SignInView | null>(null)
     const [identifier, setIdentifier] = useState('')
     const [code, setCode] = useState('')
     const [password, setPassword] = useState('')
     // A friend's invite code (optional, with the six digits): both get credit on a first sign-in.
     const [invite, setInvite] = useState('')
     const [inviteOpen, setInviteOpen] = useState(false)
-    // What the relay gives on sign-up, read before anyone signs in (relay 0.15; silent on older ones).
     const config = useCloudConfig()
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | undefined>()
     const [resent, setResent] = useState(false)
-    const [slide, setSlide] = useState(0)
+    // a sign-in that created the account owes the password page; answered (or skipped) once
+    const [fresh, setFresh] = useState(false)
+    const [passwordSeen, setPasswordSeen] = useState(false)
+    const [modelsSkipped, setModelsSkipped] = useState(false)
+    const [starting, setStarting] = useState(false)
     const [fading, setFading] = useState(false)
     const layer = useRef<HTMLDivElement>(null)
-    useModalLayer(layer, view !== 'loading', () => undefined)
-    // The coordinator hands over a fresh `complete` closure on every render; the
-    // decision below is made once, when the step mounts, so a re-render while the
-    // person is typing a code does not throw them back to the first view.
+    useModalLayer(layer, decided, () => undefined)
+    // The coordinator hands over a fresh `complete` closure on every render; the decision
+    // below is made once, when the step mounts and the host has answered.
     const owner = useRef({ complete, explicit })
     owner.current = { complete, explicit }
 
+    // The rooms' first snapshot carries the first run; the cloud's status says who is signed in.
     useEffect(() => {
       let alive = true
       call<CloudStatus>('status')
-        .then((next) => {
-          if (!alive) return
-          setStatus(next)
-          if (next.ready && !owner.current.explicit) owner.current.complete()
-          else setView((current) => (current === 'loading' ? (next.signedIn ? 'slides' : 'welcome') : current))
-        })
-        .catch(() => {
-          if (!alive) return
-          // Without the host half there is nothing to offer: let the turn pass.
-          owner.current.complete()
-        })
+        .then((next) => { if (alive) setStatus(next) })
+        .catch(() => { if (alive) owner.current.complete() }) // without the host half there is nothing to offer
       return () => { alive = false }
     }, [])
+    useEffect(() => {
+      if (decided || !status || !rooms.streaming) return
+      setDecided(true)
+      if (owner.current.explicit) return
+      // "ready" (a model of one's own) stands for the account on a desktop: it skips the account pages
+      const needed = firstRunNeeded({ signedIn: status.signedIn || status.ready, hasModel: status.ready, hasSessions, done: rooms.firstRun.done })
+      if (!needed) owner.current.complete()
+    }, [decided, status, rooms.streaming, rooms.firstRun.done, hasSessions])
+    // a sign-in or sign-out elsewhere, or a key added in the model settings: ask the host again
+    const seenSignedIn = useRef<boolean | undefined>(undefined)
+    useEffect(() => {
+      if (!live.streaming) return
+      if (seenSignedIn.current !== undefined && seenSignedIn.current !== live.cloud.signedIn) {
+        call<CloudStatus>('status').then((next) => setStatus(next)).catch(() => undefined)
+      }
+      seenSignedIn.current = live.cloud.signedIn
+    }, [live.streaming, live.cloud.signedIn])
+    const gated = gatedPermissions()
+    const stage: Stage | null = status
+      ? stageOf({
+          signedIn: status.signedIn,
+          hasModel: status.ready,
+          freshAccount: fresh,
+          passwordSeen,
+          sourceChosen: rooms.firstRun.sourceChosen,
+          modelsSkipped,
+          gated,
+          permissionsSeen: rooms.firstRun.permissionsSeen,
+        })
+      : null
+    // the models page waits for a key added in the model settings dialog beside it
+    useEffect(() => {
+      if (stage !== 'models') return
+      const timer = window.setInterval(() => { call<CloudStatus>('status').then((next) => setStatus(next)).catch(() => undefined) }, 3000)
+      return () => window.clearInterval(timer)
+    }, [stage])
 
     const finish = useCallback(() => {
       setFading(true)
       window.setTimeout(() => owner.current.complete(), 260)
     }, [])
-    // The end of the run: the main chat is opened with the introduction in it (once
-    // per install; the host says so), then the overlay fades into it.
+    // Start: the host opens the main chat and binds the first conversation to it; the window
+    // goes there and the overlay fades. The app's opening lines appear in the chat itself.
     const start = useCallback(() => {
-      setView('starting')
+      setStarting(true)
       let done = false
       const settle = () => { if (!done) { done = true; finish() } }
-      const timer = window.setTimeout(settle, KICKOFF_MS)
-      roomsCall<{ sessionId?: string; introduced: boolean }>('kickoff', {})
+      const timer = window.setTimeout(settle, START_MS)
+      roomsCall<{ sessionId: string }>('firstrun/start', {})
         .then((result) => {
-          if (result.sessionId) {
-            setMainChatId(result.sessionId)
-            nav.openSession(result.sessionId)
-          }
+          setMainChatId(result.sessionId)
+          nav.openSession(result.sessionId)
         })
-        .catch(() => undefined)
+        .catch(() => roomsCall('firstrun/finish', {}).catch(() => undefined))
         .finally(() => { window.clearTimeout(timer); settle() })
     }, [finish])
 
@@ -199,7 +214,7 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
       void run(async () => {
         await call('code', { identifier: identifier.trim() })
         setCode('')
-        setView('code')
+        setSignIn('code')
       })
     }
     const resend = () => {
@@ -209,11 +224,14 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
         window.setTimeout(() => setResent(false), 4000)
       })
     }
-    const signedIn = (next: CloudStatus) => {
+    const signedIn = async (next: CloudStatus, byCode: boolean) => {
+      // an account that has no password yet was (most likely) created just now: offer one
+      if (byCode) {
+        const sheet = await call<AccountSheet>('me').catch(() => undefined)
+        setFresh(sheet?.account?.has_password === false)
+      }
       setStatus(next)
-      setView('wait')
-      // The spinner, like Muse's, while the look and the devices arrive.
-      window.setTimeout(() => setView('slides'), 900)
+      setSignIn(null)
     }
     const verify = (value: string) => {
       if (busy || value.length !== 6) return
@@ -221,7 +239,7 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
         try {
           const next = await call<CloudStatus>('verify', { identifier: identifier.trim(), code: value, invite: invite.trim().toUpperCase() })
           setCode('')
-          signedIn(next)
+          await signedIn(next, true)
         } catch (err: unknown) {
           // a wrong code leaves empty boxes, not six digits to delete one by one
           setCode('')
@@ -234,39 +252,40 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
       void run(async () => {
         const next = await call<CloudStatus>('login', { identifier: identifier.trim(), password })
         setPassword('')
-        signedIn(next)
+        await signedIn(next, false)
       })
     }
+    const setPasswordNow = (event: FormEvent) => {
+      event.preventDefault()
+      void run(async () => {
+        await call('password', { password })
+        setPassword('')
+        setPasswordSeen(true)
+      })
+    }
+    const choose = (source: 'cloud' | 'own') => {
+      void roomsCall('firstrun/set', { sourceChosen: source }).catch(() => undefined)
+      if (source === 'own') openSection('models')
+    }
+    const permissionsDone = () => { void roomsCall('firstrun/set', { permissionsSeen: true }).catch(() => undefined) }
 
-    if (view === 'loading') return null
+    if (!decided || !status || stage === null) return null
 
-    const profile = live.streaming ? live.profile : status?.profile
+    const profile = live.streaming ? live.profile : status.profile
     const name = profile?.name || 'nanoMuse'
-    const slides: SlideId[] = ['computer', 'files', 'voice']
 
     let body: ReactNode
-    if (view === 'welcome') {
-      body = h('div', { className: 'nm-ob-center' },
-        h(Avatar, { size: 112, profile, mood: 'idle' }),
-        h('h1', { className: 'nm-ob-title' }, t('obWelcomeTitle')),
-        h('p', { className: 'nm-ob-fine' }, config.allowance_cny ? t('obFreeAmount', { allowance: config.allowance_cny }) : t('obFree')),
-        h(Pill, { onClick: () => setView('identifier'), className: 'nm-ob-cta' }, t('obSignIn')),
-        h('div', { className: 'nm-ob-links' },
-          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { openSection('models'); finish() } }, t('obOwnKey')),
-          h('span', { className: 'nm-ob-sep', 'aria-hidden': true }, '·'),
-          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => setView('slides') }, t('obLater'))))
-    } else if (view === 'identifier') {
+    if (starting) {
+      body = h('div', { className: 'nm-ob-center' }, h(Spinner))
+    } else if (signIn === 'identifier') {
       body = h('form', { className: 'nm-ob-center nm-ob-form', onSubmit: sendCode },
         h('h1', { className: 'nm-ob-title' }, t('obSignInTitle')),
         h('input', { className: 'nm-field', value: identifier, placeholder: t('obIdentifier'), autoComplete: 'username', autoFocus: true, 'aria-label': t('obIdentifier'), onChange: (e: FormEvent<HTMLInputElement>) => setIdentifier(e.currentTarget.value) }),
-        h('p', { className: 'nm-ob-fine' },
-          t('obTermsLead'), ' ',
-          h('a', { href: TERMS_URL, onClick: (e: Event) => { e.preventDefault(); openLink(TERMS_URL) } }, t('obTerms')), t('obTermsAnd'),
-          h('a', { href: PRIVACY_URL, onClick: (e: Event) => { e.preventDefault(); openLink(PRIVACY_URL) } }, t('obPrivacy')), t('obTermsEnd')),
+        h('p', { className: 'nm-ob-fine' }, t('obTermsLead'), ' ', link(TERMS_URL, t('obTerms')), t('obTermsAnd'), link(PRIVACY_URL, t('obPrivacy')), t('obTermsEnd')),
         error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
         h(Pill, { type: 'submit', disabled: busy || identifier.trim().length < 3, className: 'nm-ob-wide' }, busy ? t('sending') : t('obContinue')),
-        h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setView('welcome') } }, t('obBack')))
-    } else if (view === 'code') {
+        h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setSignIn(null) } }, t('obBack')))
+    } else if (signIn === 'code') {
       body = h('div', { className: 'nm-ob-center nm-ob-form' },
         h('h1', { className: 'nm-ob-title' }, t('obCodeTitle')),
         h('p', { className: 'nm-ob-fine' },
@@ -280,10 +299,10 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
         error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
         h(Pill, { disabled: busy || code.length !== 6, onClick: () => verify(code), className: 'nm-ob-wide' }, busy ? t('signingIn') : t('obNext')),
         h('div', { className: 'nm-ob-links' },
-          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setView('password') } }, t('obOtherWay')),
+          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setSignIn('password') } }, t('obOtherWay')),
           h('span', { className: 'nm-ob-sep', 'aria-hidden': true }, '·'),
-          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setCode(''); setView('identifier') } }, t('obChangeIdentifier'))))
-    } else if (view === 'password') {
+          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setCode(''); setSignIn('identifier') } }, t('obChangeIdentifier'))))
+    } else if (signIn === 'password') {
       body = h('form', { className: 'nm-ob-center nm-ob-form', onSubmit: login },
         h('h1', { className: 'nm-ob-title' }, t('obPasswordTitle')),
         h('p', { className: 'nm-ob-fine' }, identifier.trim()),
@@ -291,66 +310,123 @@ export function makeOnboarding(t: Translate, actions: OnboardingActions) {
         error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
         h(Pill, { type: 'submit', disabled: busy || password.length === 0, className: 'nm-ob-wide' }, busy ? t('signingIn') : t('obSignIn')),
         h('div', { className: 'nm-ob-links' },
-          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setView('code') } }, t('obUseCode')),
+          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setSignIn('code') } }, t('obUseCode')),
           h('span', { className: 'nm-ob-sep', 'aria-hidden': true }, '·'),
-          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setPassword(''); setView('identifier') } }, t('obChangeIdentifier'))))
-    } else if (view === 'wait' || view === 'starting') {
-      body = h('div', { className: 'nm-ob-center' }, h(Spinner))
+          h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setPassword(''); setSignIn('identifier') } }, t('obChangeIdentifier'))))
+    } else if (stage === 'welcome') {
+      body = h(Page, {
+        hero: h(Avatar, { size: 104, profile, mood: 'idle' }),
+        title: t('frWelcomeTitle'),
+        sub: t('frTagline'),
+        primary: { label: t('frSignIn'), onClick: () => { setError(undefined); setSignIn('identifier') } },
+        fine: config.allowance_cny ? `${t('frWelcomeFine')} ${t('obFreeAmount', { allowance: config.allowance_cny })}` : t('frWelcomeFine'),
+        learnMore: REPO_URL,
+        t,
+      },
+        h('div', { className: 'nm-fr-features' },
+          h(FeatureRow, { icon: h(IconMessage, { size: 18 }), title: t('frFeatChat'), sub: t('frFeatChatSub') }),
+          h(FeatureRow, { icon: h(IconHand, { size: 18 }), title: t('frFeatHands'), sub: t('frFeatHandsSub') }),
+          h(FeatureRow, { icon: h(IconUsers, { size: 18 }), title: t('frFeatReach'), sub: t('frFeatReachSub') })),
+        h('div', { className: 'nm-fr-notice' },
+          h('div', { className: 'nm-fr-notice-title' }, t('frNoticeTitle')),
+          h('p', null, t('frNotice')),
+          h('p', { className: 'nm-fr-notice-closing' }, t('frNoticeClosing'))))
+    } else if (stage === 'password') {
+      body = h('form', { className: 'nm-ob-center nm-fr-page', onSubmit: setPasswordNow },
+        h('h1', { className: 'nm-ob-title nm-ob-title-sm' }, t('frPasswordTitle')),
+        h('p', { className: 'nm-ob-sub' }, t('frPasswordSub')),
+        h('input', { className: 'nm-field', type: 'password', value: password, placeholder: t('obPassword'), autoComplete: 'new-password', autoFocus: true, 'aria-label': t('obPassword'), onChange: (e: FormEvent<HTMLInputElement>) => setPassword(e.currentTarget.value) }),
+        error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
+        h(Pill, { type: 'submit', disabled: busy || password.length < 6, className: 'nm-ob-wide nm-fr-primary' }, busy ? t('sending') : t('frPasswordSet')),
+        h('button', { type: 'button', className: 'nm-ob-skip', onClick: () => { setPassword(''); setPasswordSeen(true) } }, t('frSkip')),
+        h('p', { className: 'nm-ob-fine' }, t('frPasswordFine')))
+    } else if (stage === 'source') {
+      body = h(Page, {
+        title: t('frSourceTitle'),
+        sub: t('frSourceSub'),
+        fine: t('frSourceFine'),
+        t,
+      },
+        h('div', { className: 'nm-fr-choices' },
+          h(ChoiceRow, { title: t('frSourceCloud'), sub: t('frSourceCloudSub'), disabled: !status.signedIn, onClick: () => choose('cloud') }),
+          h(ChoiceRow, { title: t('frOwnKey'), sub: t('frSourceOwnSub'), onClick: () => choose('own') })))
+    } else if (stage === 'models') {
+      body = h(Page, {
+        title: t('frModelsTitle'),
+        sub: t('frModelsSub'),
+        primary: { label: t('frModelsOpen'), onClick: () => openSection('models') },
+        secondary: { label: t('frSkipModels'), onClick: () => setModelsSkipped(true) },
+        fine: t('frModelsFine'),
+        t,
+      })
+    } else if (stage === 'permissions') {
+      body = h(PermissionsPage, { t, name, onDone: permissionsDone })
     } else {
-      const index = Math.min(slide, slides.length - 1)
-      const current = slides[index]!
-      const last = index === slides.length - 1
-      const next = () => { if (last) start(); else setSlide(index + 1) }
-      const props: SlideProps = { t, name, onNext: next, dots: h(Dots, { count: slides.length, index }) }
-      body = h('div', { className: 'nm-ob-slide-wrap' },
-        h('div', { className: 'nm-ob-pager' },
-          h('button', { type: 'button', className: 'nm-ob-pager-btn', 'aria-label': t('obPrev'), disabled: index === 0, onClick: () => setSlide(index - 1) }, h(IconChevronLeft, { size: 16 })),
-          h('button', { type: 'button', className: 'nm-ob-pager-btn', 'aria-label': t('obNextSlide'), disabled: last, onClick: () => setSlide(index + 1) }, h(IconChevronRight, { size: 16 }))),
-        current === 'computer'
-          ? h(ComputerSlide, props)
-          : current === 'files'
-            ? h(FilesSlide, { ...props, actions, useWorkspaces })
-            : h(VoiceSlide, props))
+      body = h(Page, {
+        hero: h(Avatar, { size: 104, profile, mood: 'happy' }),
+        title: t('frMeetTitle', { name }),
+        sub: t('frMeetSub'),
+        primary: { label: t('frStart'), onClick: start },
+        fine: t('frMeetFine'),
+        t,
+      })
     }
 
     return createPortal(
-      h('div', { ref: layer, tabIndex: -1, className: `nm-ob${fading ? ' nm-ob-fading' : ''}`, role: 'dialog', 'aria-modal': true, 'aria-label': t('welcomeTitle'), 'data-shortcut-modal': 'onboarding' },
+      h('div', { ref: layer, tabIndex: -1, className: `nm-ob${fading ? ' nm-ob-fading' : ''}`, role: 'dialog', 'aria-modal': true, 'aria-label': t('frWelcomeTitle'), 'data-shortcut-modal': 'onboarding' },
         h('div', { className: 'nm-ob-drag', 'data-window-drag': true }),
-        body),
+        h('div', { className: 'nm-fr-top' },
+          h(Dots, { count: 3, index: dotOf(stage) }),
+          h('button', { type: 'button', className: 'nm-fr-gear', 'aria-label': t('frSettings'), title: t('frSettings'), onClick: () => { openSection('general'); finish() } }, h(IconSettings, { size: 18 }))),
+        h('div', { className: 'nm-fr-scroll' }, body)),
       document.body)
   }
 }
 
-interface SlideProps {
-  t: Translate
-  name: string
-  /** Moves on: the next page, or the end of the run on the last one. */
-  onNext(): void
-  dots: ReactNode
-}
-
 function Dots({ count, index }: { count: number; index: number }): ReactNode {
-  return h('div', { className: 'nm-ob-dots', 'aria-hidden': true },
-    Array.from({ length: count }, (_, i) => h('span', { key: i, className: `nm-ob-dot${i === index ? ' nm-on' : ''}` })))
+  return h('div', { className: 'nm-fr-dots', 'aria-hidden': true },
+    Array.from({ length: count }, (_, i) => h('span', { key: i, className: `nm-fr-dot${i === index ? ' nm-on' : ''}` })))
 }
 
 /**
- * One page as the recording has it: the picture, the question, a line under it,
- * the card of rows, fine print, then "Skip" in plain text — or the blue
- * "Continue" once everything on the page is allowed — and the dots.
+ * One page as the phone lays it out: a hero, a title, a line under it, the content, the
+ * primary pill, a plain-text secondary, fine print, and "Learn more" when there is a page.
  */
-function SlideFrame({ t, art, title, text, children, fine, onNext, dots, done, above }: Omit<SlideProps, 'name'> & { art: ReactNode; title: string; text: string; children?: ReactNode; fine: ReactNode; done: boolean; above?: ReactNode }): ReactNode {
-  return h('div', { className: 'nm-ob-center nm-ob-slide' },
-    art,
+function Page({ hero, title, sub, children, primary, secondary, fine, learnMore, t }: {
+  hero?: ReactNode
+  title: string
+  sub: string
+  children?: ReactNode
+  primary?: { label: string; onClick(): void; disabled?: boolean } | undefined
+  secondary?: { label: string; onClick(): void } | undefined
+  fine?: string | undefined
+  learnMore?: string | undefined
+  t: Translate
+}): ReactNode {
+  return h('div', { className: 'nm-ob-center nm-fr-page' },
+    hero ?? null,
     h('h1', { className: 'nm-ob-title nm-ob-title-sm' }, title),
-    h('p', { className: 'nm-ob-sub' }, text),
-    above ?? null,
-    h('div', { className: 'nm-ob-card' }, children),
-    h('p', { className: 'nm-ob-fine' }, fine),
-    done
-      ? h(Pill, { onClick: onNext, className: 'nm-ob-wide' }, t('obContinue'))
-      : h('button', { type: 'button', className: 'nm-ob-skip', onClick: onNext }, t('obSkip')),
-    dots)
+    h('p', { className: 'nm-ob-sub' }, sub),
+    children ?? null,
+    primary ? h(Pill, { onClick: primary.onClick, disabled: primary.disabled, className: 'nm-ob-wide nm-fr-primary' }, primary.label) : null,
+    secondary ? h('button', { type: 'button', className: 'nm-ob-skip', onClick: secondary.onClick }, secondary.label) : null,
+    fine ? h('p', { className: 'nm-ob-fine' }, fine, learnMore ? h(Fragment, null, ' ', link(learnMore, t('frLearnMore'))) : null) : null)
+}
+
+function FeatureRow({ icon, title, sub }: { icon: ReactNode; title: string; sub: string }): ReactNode {
+  return h('div', { className: 'nm-fr-feature' },
+    h('span', { className: 'nm-ob-row-icon' }, icon),
+    h('div', { className: 'nm-ob-row-main' },
+      h('div', { className: 'nm-ob-row-title' }, title),
+      h('div', { className: 'nm-ob-row-sub' }, sub)))
+}
+
+/** One of the two ways on the "Which model answers?" page: a card that is a button. */
+function ChoiceRow({ title, sub, onClick, disabled = false }: { title: string; sub: string; onClick(): void; disabled?: boolean }): ReactNode {
+  return h('button', { type: 'button', className: 'nm-fr-choice', onClick, disabled },
+    h('div', { className: 'nm-ob-row-main' },
+      h('div', { className: 'nm-ob-row-title' }, title),
+      h('div', { className: 'nm-ob-row-sub' }, sub)))
 }
 
 function PermissionRow({ t, kind, icon, title, sub, perms }: { t: Translate; kind: PermissionKind; icon: ReactNode; title: string; sub: string; perms: Permissions }): ReactNode {
@@ -361,11 +437,11 @@ function PermissionRow({ t, kind, icon, title, sub, perms }: { t: Translate; kin
       h('div', { className: 'nm-ob-row-title' }, title),
       h('div', { className: 'nm-ob-row-sub' }, sub)),
     granted
-      ? h('span', { className: 'nm-ob-granted', 'aria-label': t('obAllowed') }, h(IconCheck, { size: 16 }))
+      ? h('span', { className: 'nm-fr-granted' }, h(IconCheck, { size: 15 }), h('span', null, t('frAllowed')))
       : perms.asked(kind) && gatedPermissions()
         // a second press cannot bring the system's dialog back: the pane is where the switch is
-        ? h(Pill, { small: true, onClick: () => perms.settings(kind) }, t('obOpenSettings'))
-        : h(Pill, { small: true, onClick: () => perms.allow(kind) }, t('obAllow')))
+        ? h(Pill, { small: true, ghost: true, onClick: () => perms.settings(kind) }, t('frSetUp'))
+        : h(Pill, { small: true, onClick: () => perms.allow(kind) }, t('frTurnOn')))
 }
 
 /** macOS applies Screen Recording only to processes started after the grant: the notice and the restart. */
@@ -376,79 +452,30 @@ export function RelaunchNotice({ t, perms }: { t: Translate; perms: Permissions 
     h(Pill, { small: true, onClick: () => perms.relaunch() }, t('obRelaunchNow')))
 }
 
-/** macOS: Accessibility for clicking and typing, Screen Recording for the screenshots the hands look at. Elsewhere nothing is asked and both rows are already checks. */
-function ComputerSlide(props: SlideProps): ReactNode {
-  const { t, name } = props
+/**
+ * macOS: Accessibility for clicking and typing, Screen Recording for the screenshots the
+ * hands look at. "Continue" once both are on, "Skip for now" until then; either way the page
+ * is seen once. (Where nothing is gated the stage never comes up.)
+ */
+function PermissionsPage({ t, name, onDone }: { t: Translate; name: string; onDone(): void }): ReactNode {
   const perms = usePermissions(['accessibility', 'screen'])
-  return h(SlideFrame, {
-    ...props,
-    art: ART_COMPUTER,
-    title: t('obPermTitle', { name }),
-    text: t('obPermSub', { name }),
-    done: perms.granted('accessibility') && perms.granted('screen'),
-    fine: h(Fragment, null, gatedPermissions() ? t('obPermFine') : t('obPermFineOpen', { name }), ' ', h('a', { href: HANDS_URL, onClick: (e: Event) => { e.preventDefault(); openLink(HANDS_URL) } }, t('obLearnMore'))),
+  const done = perms.granted('accessibility') && perms.granted('screen')
+  return h(Page, {
+    hero: h('span', { className: 'nm-fr-hero-icon' }, h(IconHand, { size: 40 })),
+    title: t('frHandsTitle'),
+    sub: t('frHandsSub'),
+    primary: done ? { label: t('frContinue'), onClick: onDone } : undefined,
+    secondary: done ? undefined : { label: t('frSkip'), onClick: onDone },
+    fine: t('frHandsFine'),
+    learnMore: HANDS_URL,
+    t,
   },
-    h(PermissionRow, { t, kind: 'accessibility', icon: h(IconHand, { size: 18 }), title: t('obAccessibility'), sub: t('obAccessibilitySub', { name }), perms }),
-    h(PermissionRow, { t, kind: 'screen', icon: h(IconMonitor, { size: 18 }), title: t('obScreen'), sub: t('obScreenSub', { name }), perms }),
-    h(RelaunchNotice, { t, perms }))
-}
-
-/** The working folder, and the places the agent may read and write under the default permission preset. */
-function FilesSlide(props: SlideProps & { actions: OnboardingActions; useWorkspaces: OnboardingOwnerProps['useWorkspaces'] }): ReactNode {
-  const { t, name, actions, useWorkspaces } = props
-  const first = typeof useWorkspaces === 'function' ? useWorkspaces((s) => s.items[0]) : undefined
-  const [chosen, setChosen] = useState<string | undefined>()
-  const [busy, setBusy] = useState(false)
-  const path = chosen ?? first?.path
-  const choose = () => {
-    if (busy) return
-    setBusy(true)
-    void actions.pickDirectory()
-      .then(async (picked) => {
-        if (!picked) return
-        const workspace = await actions.createWorkspace(picked)
-        await actions.openWorkspace(workspace.workspaceId)
-        setChosen(picked)
-      })
-      .catch(() => undefined)
-      .finally(() => setBusy(false))
-  }
-  const place = (icon: ReactNode, title: string, sub: string, right: string) => h('div', { className: 'nm-ob-row' },
-    h('span', { className: 'nm-ob-row-icon' }, icon),
-    h('div', { className: 'nm-ob-row-main' },
-      h('div', { className: 'nm-ob-row-title' }, title),
-      h('div', { className: 'nm-ob-row-sub' }, sub)),
-    h('span', { className: 'nm-ob-mode' }, right))
-  return h(SlideFrame, {
-    ...props,
-    art: ART_FILES,
-    title: t('obFilesTitle', { name }),
-    text: t('obFilesSub', { name }),
-    done: true,
-    fine: t('obFilesFine'),
-    above: h(Fragment, null,
-      h('div', { className: 'nm-ob-folder' },
-        h(IconFolder, { size: 16 }),
-        h('span', { className: 'nm-ob-folder-path', title: path }, path ?? t('obFolderNone')),
-        h('button', { type: 'button', className: 'nm-ob-link nm-inline', disabled: busy, onClick: choose }, path ? t('obChange') : t('obChoose'))),
-      h('div', { className: 'nm-ob-card-label' }, t('obPlaces', { name }))),
-  },
-    place(h(IconFolder, { size: 18 }), t('obFolder'), t('obFolderSub', { name }), t('obReadWrite')),
-    place(h(IconHome, { size: 18 }), t('obHome'), t('obHomeSub'), t('obReadAsk')),
-    place(h(IconDownload, { size: 18 }), t('obDownloads'), t('obDownloadsSub'), t('obReadAsk')))
-}
-
-/** Voice input: the microphone, asked for here so the composer's mic works at once. */
-function VoiceSlide(props: SlideProps): ReactNode {
-  const { t, name } = props
-  const perms = usePermissions(['microphone'])
-  return h(SlideFrame, {
-    ...props,
-    art: ART_VOICE,
-    title: t('obVoiceTitle'),
-    text: t('obVoiceSub'),
-    done: perms.granted('microphone'),
-    fine: t('obVoiceFine'),
-  },
-    h(PermissionRow, { t, kind: 'microphone', icon: h(IconMic, { size: 18 }), title: t('obMic'), sub: t('obMicSub', { name }), perms }))
+    h('div', { className: 'nm-ob-card' },
+      h(PermissionRow, { t, kind: 'accessibility', icon: h(IconHand, { size: 18 }), title: t('obAccessibility'), sub: t('obAccessibilitySub', { name }), perms }),
+      h(PermissionRow, { t, kind: 'screen', icon: h(IconMonitor, { size: 18 }), title: t('obScreen'), sub: t('obScreenSub', { name }), perms })),
+    h(RelaunchNotice, { t, perms }),
+    // the two checks from Settings → Computer use: a test screenshot (black = Screen Recording
+    // not in effect yet) and a small mouse move (fails without Accessibility)
+    h(BlackScreenNotice, { t, perms, compact: true }),
+    h('div', { className: 'nm-ob-card' }, h(HandsTryRows, { t, perms })))
 }

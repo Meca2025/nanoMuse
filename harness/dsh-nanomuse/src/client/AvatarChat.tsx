@@ -231,7 +231,8 @@ export function makeAvatarChat(t: Translate) {
 
 function Cost({ t, flow }: { t: Translate; flow: FlowState }): ReactNode {
   const e = flow.estimate
-  const what = t('fcWhat', { n: FACE_PICTURES })
+  // the clips count when the account would draw them after the face (C3)
+  const what = e?.clips ? t('fcWhatClips', { n: FACE_PICTURES, clips: e.clips }) : t('fcWhat', { n: FACE_PICTURES })
   let line: ReactNode
   if (flow.estimateError === 'signed_out') line = h('p', { className: 'nm-ac-err' }, t('stSignedOut'))
   else if (flow.estimateError) line = h('p', null, t('fcUnknown', { what }))

@@ -19,9 +19,12 @@ a fake adapter in the tests on Linux.
 
 What the person grants once: *Screen Recording* for the capture (without it the window
 comes back empty or black), *Accessibility* for the events (``CGEventPostToPid`` needs the
-runtime to be trusted). Both are granted to the runtime binary the desktop app bundles;
-the settings page says which is missing. Everything here fails soft: a window that cannot
-be found, captured or driven raises :class:`WindowUnavailable` with the reason, and
+process to be trusted). macOS attributes both to the *responsible* application — the desktop
+app that spawned this runtime — so the one entry to switch on is **nanoMuse Desktop**; the
+runtime binary does not appear separately (a runtime started from a terminal is attributed
+to that terminal). The settings page says which is missing. Everything here fails soft: a
+window that cannot be found, captured or driven raises :class:`WindowUnavailable` with the
+reason (:class:`WindowLayerBroken` when the Quartz layer itself failed), and
 :class:`~nanomuse.computer.link.ComputerLink` falls back to the shared screen with a notice.
 """
 
@@ -82,6 +85,11 @@ FLAG_BITS = {
 
 class WindowUnavailable(RuntimeError):
     """The window could not be found, captured or driven (and why)."""
+
+
+class WindowLayerBroken(WindowUnavailable):
+    """The Quartz layer itself failed (pyobjc, the window server) — not a window that went
+    away. `auto` mode treats it as "window mode does not work here" for the current target."""
 
 
 @dataclass
@@ -321,7 +329,7 @@ class MacWindowHands:
         try:
             windows = self.adapter.windows()
         except Exception as exc:  # noqa: BLE001 — pyobjc raises many kinds
-            raise WindowUnavailable(f"the windows on screen could not be listed: {exc}") from exc
+            raise WindowLayerBroken(f"the windows on screen could not be listed: {exc}") from exc
         window = choose_window(windows, app, title)
         if window is None:
             raise WindowUnavailable(f"{app} has no window on this screen (is it open?)")
@@ -333,13 +341,14 @@ class MacWindowHands:
         try:
             png = self.adapter.capture(window.id)
         except Exception as exc:  # noqa: BLE001
-            raise WindowUnavailable(
+            raise WindowLayerBroken(
                 f"the window of {window.owner} could not be captured: {exc}"
             ) from exc
         if not png:
             raise WindowUnavailable(
-                f"the window of {window.owner} came back empty: allow Screen Recording for "
-                "nanoMuse (System Settings → Privacy & Security), then quit and reopen the app"
+                f"the window of {window.owner} came back empty: switch on nanoMuse Desktop "
+                "(only that entry) under System Settings → Privacy & Security → Screen "
+                "Recording, then quit and reopen the app"
             )
         width, height = png_size(png)
         if not width or not height:

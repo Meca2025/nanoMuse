@@ -676,6 +676,9 @@ export interface FeedPostsData {
   instructions: string;
   generated_at: string | null;
   posts: FeedPost[];
+  /** The daily routine (contract C5): on by default, at `time` (`HH:MM`, local; 08:00). */
+  daily: boolean;
+  time: string;
   error?: string;
 }
 
@@ -692,13 +695,30 @@ export interface ToolInfo {
   description: string;
 }
 
+/** `GET /api/update`: the installed and the latest release (contract C2). */
 export interface UpdateView {
   current: string;
   enabled: boolean;
   latest: string | null;
   newer: boolean;
+  /** The release page of the latest. */
   url: string;
+  /** The download page (nanomuse.cn/dl). */
+  download_url?: string;
+  /** When the runtime last asked (ISO, UTC), or null before the first check. */
+  checked_at?: string | null;
+  /** Where the answer came from: `nanomuse.cn`, `github`, or null. */
+  source?: string | null;
   error?: string | null;
+}
+
+/** `GET /api/nudges`: the star-ask policy (contract C1) as the runtime holds it. */
+export interface NudgesView {
+  policy: unknown;
+  fetched_at: number | null;
+  source: "default" | "relay" | "me" | string;
+  stale: boolean;
+  error: string | null;
 }
 
 export interface SettingsView {

@@ -76,12 +76,16 @@ object GoalFlow {
                 val o = runCatching { JSONObject(m.groupValues[1].trim()) }.getOrNull() ?: return@forEach
                 val store = GoalStore.get(context)
                 val goalId = o.optString("goal_id").ifEmpty { store.forSession(sessionId)?.id } ?: return@forEach
+                val status = o.stringOrNull("status")
+                val wasDone = store.all().firstOrNull { it.id == goalId }?.status == GoalStatus.DONE
                 store.applyUpdate(
                     goalId = goalId,
                     progress = if (o.has("progress")) o.optInt("progress") else null,
-                    status = o.stringOrNull("status"),
+                    status = status,
                     note = o.stringOrNull("note"),
                 )
+                // A goal reached is a moment for the star ask; the Goals page shows it.
+                if (status == "done" && !wasDone) io.github.nanomuse.community.StarPrompt.offer(context, io.github.nanomuse.community.StarPrompt.Moment.GOAL_DONE)
             }
         }
     }
@@ -195,6 +199,8 @@ object GoalFlow {
         val store = GoalStore.get(context)
         goal.taskId?.let { ScheduledTaskManager(context).setEnabled(it, !done) }
         store.upsert(goal.copy(status = if (done) GoalStatus.DONE else GoalStatus.ACTIVE, progress = if (done) 100 else goal.progress))
+        // A goal reached is a moment for the star ask (StarPrompt); the Goals page shows it.
+        if (done && goal.status != GoalStatus.DONE) io.github.nanomuse.community.StarPrompt.offer(context, io.github.nanomuse.community.StarPrompt.Moment.GOAL_DONE)
     }
 
     /** Deletes the goal and its check; the goal's conversation stays (it is the user's history). */

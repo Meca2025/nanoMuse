@@ -4,8 +4,9 @@
 //
 //  The first run, the way Android does it (ui/onboarding/FirstRunSetup.kt):
 //  Welcome (the account) → Password (only after a sign-in that created the
-//  account) → Which model answers → Meet <name>. The Hands page does not
-//  exist on iPhone: there is no accessibility service to grant.
+//  account) → Which model answers → Notifications → Meet <name>. Android's
+//  Hands page does not exist on iPhone (no accessibility service to grant);
+//  the phone page asks for notifications instead, which routines need.
 //
 //  Then the first conversation (onboarding/FirstConversation.kt): no form.
 //  The app speaks first (scripted, zero tokens), asks what to call the
@@ -19,17 +20,21 @@
 import Combine
 import Foundation
 import SwiftUI
+import UserNotifications
 
 // MARK: - When the setup shows
 
 enum NanoMuseFirstRun {
     private static let doneKey = "nanomuse.setup.done"
     private static let sourceKey = "nanomuse.setup.source_chosen"
+    static let notificationsKey = "nanomuse.setup.notifications_seen"
 
     static var isDone: Bool { UserDefaults.standard.bool(forKey: doneKey) }
     static func markDone() { UserDefaults.standard.set(true, forKey: doneKey) }
     static var sourceChosen: Bool { UserDefaults.standard.bool(forKey: sourceKey) }
     static func markSourceChosen() { UserDefaults.standard.set(true, forKey: sourceKey) }
+    static var notificationsSeen: Bool { UserDefaults.standard.bool(forKey: notificationsKey) }
+    static func markNotificationsSeen() { UserDefaults.standard.set(true, forKey: notificationsKey) }
 
     /// Whether the home shows the setup instead of the chat. The account is required — it is
     /// what keeps a person's devices together and what the free model runs on — so without a
@@ -40,19 +45,27 @@ enum NanoMuseFirstRun {
         !signedIn || !hasProviders || (!hasSessions && !done)
     }
 
-    enum Stage: Int { case welcome, password, source, models, meet }
+    enum Stage: Int { case welcome, password, source, models, notifications, meet }
 
-    /// The page to show, from what the app has.
-    static func stage(signedIn: Bool, hasGroups: Bool, sourceChosen: Bool, modelsSkipped: Bool, fresh: Bool, passwordAnswered: Bool) -> Stage {
+    /// The page to show, from what the app has. Android has a Hands page where the iPhone
+    /// has Notifications: routines and goal check-ins need the permission.
+    static func stage(signedIn: Bool, hasGroups: Bool, sourceChosen: Bool, modelsSkipped: Bool, fresh: Bool, passwordAnswered: Bool, notificationsSeen: Bool = true) -> Stage {
         if !signedIn { return .welcome }
         if fresh && !passwordAnswered { return .password }
         if !sourceChosen { return .source }
         if !hasGroups && !modelsSkipped { return .models }
+        if !notificationsSeen { return .notifications }
         return .meet
     }
 
-    /// The dot that lights: account · meet (the model pages fold into the first).
-    static func dot(_ stage: Stage) -> Int { stage == .meet ? 1 : 0 }
+    /// The dot that lights: account · phone · meet (the model pages fold into the first), as Android.
+    static func dot(_ stage: Stage) -> Int {
+        switch stage {
+        case .welcome, .password, .source, .models: return 0
+        case .notifications: return 1
+        case .meet: return 2
+        }
+    }
 }
 
 // MARK: - The setup screen
@@ -65,6 +78,7 @@ struct NanoMuseFirstRunView: View {
     @ObservedObject private var store = ProviderConfigStore.shared
     @State private var modelsSkipped = false
     @State private var sourceChosen = NanoMuseFirstRun.sourceChosen
+    @State private var notificationsSeen = NanoMuseFirstRun.notificationsSeen
     @State private var passwordAnswered = false
     @State private var showSignIn = false
     @State private var showOwnKey = false
@@ -84,14 +98,15 @@ struct NanoMuseFirstRunView: View {
             sourceChosen: sourceChosen,
             modelsSkipped: modelsSkipped,
             fresh: signedIn && NanoMuseCloud.freshAccount,
-            passwordAnswered: passwordAnswered
+            passwordAnswered: passwordAnswered,
+            notificationsSeen: notificationsSeen
         )
     }
 
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                NanoMuseDots(current: NanoMuseFirstRun.dot(stage), total: 2)
+                NanoMuseDots(current: NanoMuseFirstRun.dot(stage), total: 3)
                 HStack {
                     Spacer()
                     Button(action: onSettings) {
@@ -111,6 +126,7 @@ struct NanoMuseFirstRunView: View {
                 case .password: NanoMusePasswordPage { NanoMuseCloud.clearFreshAccount(); passwordAnswered = true }
                 case .source: sourcePage
                 case .models: modelsPage
+                case .notifications: NanoMuseNotificationsPage { NanoMuseFirstRun.markNotificationsSeen(); notificationsSeen = true }
                 case .meet: meetPage
                 }
             }
@@ -141,8 +157,9 @@ struct NanoMuseFirstRunView: View {
             learnMore: URL(string: "https://github.com/nano-muse/nanoMuse/blob/main/docs/cloud.md")
         ) {
             NanoMuseFeatureRow(symbol: "bubble.left.and.bubble.right", title: AppLocalized("Chat, pictures, video"), subtitle: AppLocalized("A capable model, image and video generation, tools, skills and memory — on your phone"))
-            NanoMuseFeatureRow(symbol: "calendar.badge.clock", title: AppLocalized("Goals and a daily feed"), subtitle: AppLocalized("It checks in on what you are working towards and writes you a short post every morning"))
             NanoMuseFeatureRow(symbol: "desktopcomputer", title: AppLocalized("Reach: your computers, from here"), subtitle: AppLocalized("Pair a Mac, Windows or Linux machine and give it work from the phone"))
+            // Android's third row is Hands (it uses the phone); the iPhone has no such service, so: goals and the feed.
+            NanoMuseFeatureRow(symbol: "calendar.badge.clock", title: AppLocalized("Goals and a daily feed"), subtitle: AppLocalized("It checks in on what you are working towards and writes you a short post every morning"))
             NanoMuseNoticeCard(title: AppLocalized("Free, open source, non-profit"), body: AppLocalized("nanoMuse is a non-profit open-source community project — free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours."))
                 .padding(.top, 8)
         }
@@ -243,6 +260,53 @@ struct NanoMusePasswordPage: View {
             onDone()
         } catch {
             self.error = NanoMuseCloud.describe(error)
+        }
+    }
+}
+
+/// The phone page (Android has Hands here): notifications, so a routine coming due or a goal
+/// check-in can call the person back to the app. Continue asks iOS; Skip leaves it for later.
+struct NanoMuseNotificationsPage: View {
+    var onDone: () -> Void
+    @State private var status: UNAuthorizationStatus = .notDetermined
+    @State private var busy = false
+
+    private var granted: Bool { status == .authorized || status == .provisional || status == .ephemeral }
+
+    var body: some View {
+        NanoMuseSetupPage(
+            hero: { NanoMuseHeroGlyph(symbol: "bell.badge") },
+            title: AppLocalized("Notifications"),
+            subtitle: AppLocalized("Routines and goal check-ins run at a set time. On the iPhone the agent cannot wake itself, so a reminder brings you back when one is due."),
+            primaryLabel: granted ? AppLocalized("Continue") : AppLocalized("Allow notifications"),
+            onPrimary: { if granted { onDone() } else { ask() } },
+            secondaryLabel: granted ? nil : AppLocalized("Skip for now"),
+            onSecondary: onDone,
+            finePrint: AppLocalized("Everything else works without it. It lives under iOS Settings → nanoMuse whenever you want it."),
+            busy: busy
+        ) {
+            NanoMuseFeatureRow(symbol: "clock", title: AppLocalized("Routines"), subtitle: AppLocalized("A message the agent sends itself at a set time — the feed every morning, anything you schedule."))
+            NanoMuseFeatureRow(symbol: "target", title: AppLocalized("Goal check-ins"), subtitle: AppLocalized("It asks how a goal is going, when you said it should."))
+        }
+        .task { await refresh() }
+    }
+
+    private func refresh() async {
+        status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    }
+
+    private func ask() {
+        guard !busy else { return }
+        busy = true
+        Task { @MainActor in
+            defer { busy = false }
+            if status == .notDetermined {
+                _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+            } else if let url = URL(string: UIApplication.openSettingsURLString) {
+                _ = await UIApplication.shared.open(url)
+            }
+            await refresh()
+            if granted { onDone() }
         }
     }
 }
@@ -523,13 +587,20 @@ final class NanoMuseFirstConversation: ObservableObject {
                 applyName(name)
                 phase = .done
                 card = nil
+                finished()
             }
         case .named:
             phase = .done
             card = nil
+            finished()
         case .none, .done:
             break
         }
+    }
+
+    /// The agent has its name (C5): the first feed day gets written in the background, once.
+    private func finished() {
+        NanoMuseFeedFlow.writeFirstDayIfNeeded()
     }
 
     /// A chip was tapped: the name is saved at once; the model's next reply is its first as itself.

@@ -34,35 +34,165 @@ import androidx.compose.ui.unit.sp
 import com.openminis.app.R
 import com.openminis.app.ui.components.openExternalUrl
 import io.github.nanomuse.ui.home.MuseTones
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
- * The ask for a star, at the moments it is fair to make it: when the free allowance was just
- * claimed (the first sign-in), after the first and the tenth task the agent finished, after a
- * face is drawn, and when the allowance is used up (a row among the ways on). Each moment is
- * asked once on a phone;
- * tapping through to GitHub ends them all. Never a dialog — a card where the moment is.
+ * The ask for a star, at the moments it is fair to make it: the first sign-in, a few finished
+ * tasks (never the naming conversation), a new face, the allowance running out, a week or a
+ * month of use, a goal reached. Which moments ask, at which counts, how far apart and how many
+ * times in all is the relay's [Nudges.Policy]; everything else — what was asked and when, the
+ * task and day counters, whether the person went — is the ledger in this phone's prefs.
+ * Each ask is a card where the moment is, never a dialog; tapping through to GitHub ends them all.
  */
 object StarPrompt {
-    /** The repository the star goes to. */
+    /** The repository the star goes to (the policy may point elsewhere; see [url]). */
     const val REPO_URL = "https://github.com/nano-muse/nanoMuse"
 
     private const val PREFS = "nm.star"
     private const val KEY_STARRED = "starred"
+    private const val KEY_TASKS = "tasks"
+    private const val KEY_ASKS = "asks"
+    private const val KEY_LAST_ASK_AT = "last_ask_at"
+    private const val KEY_DAYS = "days"
+    private const val KEY_LAST_DAY = "last_day"
+    private const val DAY_MS = 24L * 60 * 60 * 1000
 
     enum class Moment(internal val key: String) {
         /** The account page the first time it is seen signed in: the allowance was just claimed. */
         SIGNED_IN("signed_in"),
-        /** The first turn that ended with a reply, on this phone. */
-        FIRST_TASK("first_task"),
-        /** The tenth: nanoMuse has become part of the day. */
-        TENTH_TASK("tenth_task"),
+        /** The person's finished tasks reached one of the policy's counts (3, 10, 30 by default). */
+        TASKS("tasks"),
         /** A face was just drawn in the studio — a moment of delight. */
         NEW_LOOK("new_look"),
+        /** The free allowance is used up: a row among the ways on. */
+        EXHAUSTED("exhausted"),
+        /** The app was opened on its 7th / 30th distinct day. */
+        DAYS_USED("days_used"),
+        /** A goal was marked achieved. */
+        GOAL_DONE("goal_done"),
     }
 
-    private const val KEY_TASKS = "tasks"
+    /** One concrete ask: the moment, and for the counted ones the count it fires at. */
+    data class Ask(val moment: Moment, val n: Int = 0) {
+        /** The ledger key; counted moments are spent per count ("tasks_3", "days_used_7"). */
+        val key: String get() = if (n > 0) "${moment.key}_$n" else moment.key
+    }
 
-    /** One more turn that ended with a reply; returns the count so far on this phone. */
+    /** What this phone remembers about the asks — pure data so the gate can be tested. */
+    data class Ledger(
+        /** The person has been to GitHub from one of the asks. */
+        val starred: Boolean = false,
+        /** Asks shown so far (a "Not now" counts). */
+        val asks: Int = 0,
+        /** When the last ask was shown, epoch ms (0 = never). */
+        val lastAskAt: Long = 0L,
+        /** Keys of the asks already spent. */
+        val shown: Set<String> = emptySet(),
+    )
+
+    /** The policy and the ledger, decided — no Android in here. */
+    object Gate {
+        /** The policy lets this ask happen at all (the moment is on; a counted one is at a listed count). */
+        fun allowed(policy: Nudges.Policy, ask: Ask): Boolean {
+            if (!policy.enabled) return false
+            val m = policy.moments
+            return when (ask.moment) {
+                Moment.SIGNED_IN -> m.signedIn
+                Moment.TASKS -> ask.n in m.tasks
+                Moment.NEW_LOOK -> m.newLook
+                Moment.EXHAUSTED -> m.exhausted
+                Moment.DAYS_USED -> ask.n in m.daysUsed
+                Moment.GOAL_DONE -> m.goalDone
+            }
+        }
+
+        /** Worth asking now: allowed, not spent, under the lifetime cap, past the cooldown, and the person has not gone. */
+        fun due(policy: Nudges.Policy, ledger: Ledger, ask: Ask, now: Long): Boolean {
+            if (ledger.starred || !allowed(policy, ask)) return false
+            if (ask.key in ledger.shown) return false
+            if (ledger.asks >= policy.maxAsks) return false
+            if (ledger.lastAskAt > 0 && now - ledger.lastAskAt < policy.cooldownDays * DAY_MS) return false
+            return true
+        }
+
+        /** The ask a finished-task count makes due, if the policy lists that count. */
+        fun taskAsk(policy: Nudges.Policy, n: Int): Ask? = Ask(Moment.TASKS, n).takeIf { n in policy.moments.tasks }
+
+        /** The ask a distinct-day count makes due, if the policy lists that count. */
+        fun dayAsk(policy: Nudges.Policy, days: Int): Ask? = Ask(Moment.DAYS_USED, days).takeIf { days in policy.moments.daysUsed }
+
+        /**
+         * A task, for the counter: a turn the person started (typed, dictated, tapped an idea or
+         * goal card), after the first conversation was over. Turns while the agent is still being
+         * named never count, nor do background runs (routines, the feed, goal checks, heartbeats).
+         */
+        fun countsAsTask(personStarted: Boolean, firstConversationOver: Boolean): Boolean =
+            personStarted && firstConversationOver
+
+        /** How the day counter moves: one more only when [today] differs from the last day seen. */
+        fun nextDays(days: Int, lastDay: String?, today: String): Int = if (lastDay == today) days else days + 1
+    }
+
+    private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    /** The relay's policy in force (the built-in default without one). */
+    fun policy(context: Context): Nudges.Policy = Nudges.current(context)
+
+    /** Where the star goes: the policy's URL (the repository by default). */
+    fun url(context: Context): String = policy(context).url
+
+    /** The ledger as the prefs hold it. */
+    fun ledger(context: Context): Ledger {
+        val p = prefs(context)
+        val all = p.all
+        val shown = all.entries.filter { (k, v) -> v == true && k != KEY_STARRED }.map { it.key }.toSet()
+        // Phones from before the ledger: the asks they already saw count toward the cap.
+        val asks = if (all.containsKey(KEY_ASKS)) p.getInt(KEY_ASKS, 0) else shown.size
+        return Ledger(
+            starred = p.getBoolean(KEY_STARRED, false),
+            asks = asks,
+            lastAskAt = p.getLong(KEY_LAST_ASK_AT, 0L),
+            shown = shown,
+        )
+    }
+
+    /** Still worth asking this now. */
+    fun due(context: Context, ask: Ask): Boolean = Gate.due(policy(context), ledger(context), ask, System.currentTimeMillis())
+
+    fun due(context: Context, moment: Moment): Boolean = due(context, Ask(moment))
+
+    /** The person has been to GitHub from one of the asks. */
+    fun starred(context: Context): Boolean = prefs(context).getBoolean(KEY_STARRED, false)
+
+    private val shownThisRun = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    /** The card was shown (or waved away): this ask is spent, the cooldown starts, the cap moves. */
+    fun markShown(context: Context, ask: Ask) {
+        val p = prefs(context)
+        val asks = ledger(context).asks + 1
+        p.edit().putBoolean(ask.key, true).putInt(KEY_ASKS, asks).putLong(KEY_LAST_ASK_AT, System.currentTimeMillis()).apply()
+        shownThisRun += ask.key
+    }
+
+    /** Shown since the app started: a row that is part of a card stays while that card is around. */
+    fun shownThisRun(ask: Ask): Boolean = ask.key in shownThisRun
+
+    fun markShown(context: Context, moment: Moment) = markShown(context, Ask(moment))
+
+    /** Off to GitHub, and no more asking anywhere. */
+    fun open(context: Context) {
+        prefs(context).edit().putBoolean(KEY_STARRED, true).apply()
+        openExternalUrl(context, url(context))
+    }
+
+    // ── the counters ────────────────────────────────────────────────────────
+
+    /** One more finished task the person started; returns the count so far on this phone. */
     fun countTask(context: Context): Int {
         val p = prefs(context)
         val n = p.getInt(KEY_TASKS, 0) + 1
@@ -70,33 +200,54 @@ object StarPrompt {
         return n
     }
 
-    /** The moment a finished task count makes due, if any: the first and the tenth. */
-    fun momentForTask(n: Int): Moment? = when (n) {
-        1 -> Moment.FIRST_TASK
-        10 -> Moment.TENTH_TASK
-        else -> null
-    }
+    /** The ask a task count makes due right now, if any (not yet marked shown). */
+    fun taskAsk(context: Context, n: Int): Ask? = Gate.taskAsk(policy(context), n)?.takeIf { due(context, it) }
 
-    private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    /** Still worth asking at this moment: not asked before, and the person has not gone to star it yet. */
-    fun due(context: Context, moment: Moment): Boolean {
+    /**
+     * The app came to the foreground: one more distinct calendar day, when it is one. An ask the
+     * day count makes due is offered to whatever screen shows it (the main chat).
+     */
+    fun dayOpened(context: Context) {
         val p = prefs(context)
-        return !p.getBoolean(KEY_STARRED, false) && !p.getBoolean(moment.key, false)
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val days = Gate.nextDays(p.getInt(KEY_DAYS, 0), p.getString(KEY_LAST_DAY, null), today)
+        p.edit().putInt(KEY_DAYS, days).putString(KEY_LAST_DAY, today).apply()
+        Gate.dayAsk(policy(context), days)?.let { offer(context, it) }
     }
 
-    /** The person has been to GitHub from one of the asks. */
-    fun starred(context: Context): Boolean = prefs(context).getBoolean(KEY_STARRED, false)
+    // ── asks that arrive away from the screen that shows them ───────────────
 
-    /** The card was shown (or waved away): this moment is spent. */
-    fun markShown(context: Context, moment: Moment) {
-        prefs(context).edit().putBoolean(moment.key, true).apply()
+    private val _pending = MutableStateFlow<Ask?>(null)
+
+    /** An ask that became due somewhere without a place to show it; the right screen takes it. */
+    val pending: StateFlow<Ask?> = _pending.asStateFlow()
+
+    /** Hold [ask] for its screen when it is due now; the screen re-checks and marks it on show. */
+    fun offer(context: Context, ask: Ask) {
+        if (due(context, ask)) _pending.value = ask
     }
 
-    /** Off to GitHub, and no more asking anywhere. */
-    fun open(context: Context) {
-        prefs(context).edit().putBoolean(KEY_STARRED, true).apply()
-        openExternalUrl(context, REPO_URL)
+    fun offer(context: Context, moment: Moment) = offer(context, Ask(moment))
+
+    /** The pending ask was shown or is no longer wanted. */
+    fun clearPending(ask: Ask? = null) {
+        if (ask == null || _pending.value == ask) _pending.value = null
+    }
+
+    // ── copy ────────────────────────────────────────────────────────────────
+
+    /** The line for an ask, in the device language. */
+    fun text(context: Context, ask: Ask): String = when (ask.moment) {
+        Moment.SIGNED_IN -> context.getString(R.string.nm_star_signed_in)
+        Moment.TASKS -> context.resources.getQuantityString(R.plurals.nm_star_tasks, ask.n, ask.n)
+        Moment.NEW_LOOK -> context.getString(R.string.nm_star_new_look)
+        Moment.EXHAUSTED -> context.getString(R.string.nm_star_exhausted)
+        Moment.DAYS_USED -> when (ask.n) {
+            7 -> context.getString(R.string.nm_star_days_used_week)
+            30 -> context.getString(R.string.nm_star_days_used_month)
+            else -> context.resources.getQuantityString(R.plurals.nm_star_days_used, ask.n, ask.n)
+        }
+        Moment.GOAL_DONE -> context.getString(R.string.nm_star_goal_done)
     }
 }
 

@@ -258,10 +258,25 @@ def test_feed_posts_written_for_the_user(server):
     knows, newest first; a post can be removed; a bad model answer leaves the feed as it was."""
     client, service, llm = server
     r = client.get("/api/feed/posts")
-    assert r.json() == {"instructions": "", "generated_at": None, "posts": []}
+    # the daily routine is there from the start, at 08:00 (contract C5)
+    assert r.json() == {
+        "instructions": "",
+        "generated_at": None,
+        "posts": [],
+        "daily": True,
+        "time": "08:00",
+    }
     assert not service.feed_posts_due()  # nothing known yet, nothing to write from
     r = client.put("/api/feed/instructions", json={"instructions": "Short. Cycling and Rust."})
     assert r.json()["instructions"] == "Short. Cycling and Rust."
+    assert service.feed_posts_due()
+    # the routine can be switched off and moved; only the fields given change
+    r = client.put("/api/feed/instructions", json={"daily": False, "time": "7:30"})
+    assert r.json()["daily"] is False and r.json()["time"] == "07:30"
+    assert r.json()["instructions"] == "Short. Cycling and Rust."
+    assert not service.feed_posts_due()  # off: nothing is due
+    assert client.put("/api/feed/instructions", json={"time": "25:00"}).status_code == 400
+    assert client.put("/api/feed/instructions", json={"daily": True}).json()["daily"] is True
     assert service.feed_posts_due()
 
     llm.script.append(

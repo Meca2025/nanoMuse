@@ -38,7 +38,7 @@ struct NanoMuseDataControlsView: View {
                         }
                     }
                     .disabled(busy || loading || info == nil)
-                    .onChange(of: on) { value in
+                    .nmOnChange(of: on) { value in
                         guard let info, value != info.on, !busy else { return }
                         set(value)
                     }

@@ -74,7 +74,7 @@ export function makeGoalsPanel(t: Translate) {
         h('div', { className: 'nm-room-inner nm-goals' },
           error ? h('div', { className: 'nm-room-error' }, error) : null,
           tracking.length === 0 && !showDone
-            ? h(Empty, { icon: h(IconTarget, { size: 28 }), text: t('goalsEmpty') }, h('p', { className: 'nm-empty-sub' }, t('goalsEmptyHint')))
+            ? h(Empty, { icon: h(IconTarget, { size: 28 }), text: t('goalsEmptyTitle') }, h('p', { className: 'nm-empty-sub' }, t('goalsEmptyBody')))
             : h('section', null,
                 h('div', { className: 'nm-goals-label' }, h('span', { className: 'nm-status-dot nm-on' }), t('goalsTracking')),
                 tracking.map((goal) => h(GoalRow, { key: goal.id, t, goal, onOpen: () => setOpenId(goal.id), onToggle: () => setStatus(goal, 'done'), onCheckIn: () => checkIn(goal), onChat: () => openChat(goal), onDelete: () => remove(goal) })),

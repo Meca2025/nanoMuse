@@ -28,7 +28,7 @@ import {
   TerminalSquare,
   Zap,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { androidApp, keepRunningStatus, type KeepRunningStatus } from "../android";
 import { api, setToken } from "../api";
 import { DRAGON } from "../avatars";
@@ -48,7 +48,7 @@ import { useStore } from "../store";
 import type { Proactivity, PushInfo, UpdateView } from "../types";
 import { MuseCaption, MuseCard, MuseDivider, MuseRow } from "../components/MuseList";
 import { useWide } from "../useWide";
-import { cx } from "../util";
+import { cx, relativeTime } from "../util";
 import { Toggle } from "../components/Form";
 
 const settingsInput = "w-full rounded-2xl bg-surface-2 px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-accent/40";
@@ -83,16 +83,26 @@ export function SettingsScreen() {
   const localeSetting = useLocaleSetting();
   const themeSetting = useThemeSetting();
   const [release, setRelease] = useState<UpdateView | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (!s) void refreshSettings();
   }, [s, refreshSettings]);
 
-  useEffect(() => {
-    // the runtime asks GitHub Releases at most every six hours; a phone shell has its own check
-    if (androidApp()) return;
-    api.update().then(setRelease, () => setRelease(null));
+  // the runtime asks nanomuse.cn/dl (then GitHub) at most once a day; "Check now" asks again
+  const checkRelease = useCallback(async (refresh = false) => {
+    setChecking(true);
+    try {
+      setRelease(await api.update(refresh));
+    } catch {
+      setRelease(null);
+    } finally {
+      setChecking(false);
+    }
   }, []);
+  useEffect(() => {
+    void checkRelease();
+  }, [checkRelease]);
 
   useEffect(() => {
     if (state.profile) setIdentity(identityOf(state.profile, "", AVATAR_COLORS[0]));
@@ -445,18 +455,8 @@ export function SettingsScreen() {
         {show("about") && (
         <Section title={t("About")} id="about" plain={!wide}>
           <CommunityNotice />
+          <VersionRows installed={state.version} release={release} checking={checking} onCheck={() => void checkRelease(true)} />
           <div className="text-[13px] text-muted space-y-1">
-            <div>
-              nanoMuse {state.version}
-              {release?.newer && release.latest && (
-                <>
-                  {" · "}
-                  <a href={release.url} target="_blank" rel="noreferrer" className="text-accent underline-offset-2 hover:underline">
-                    {t("{version} is out", { version: release.latest })}
-                  </a>
-                </>
-              )}
-            </div>
             {s && <div className="break-all">{t("Data:")} {s.data_dir}</div>}
             {s && <div className="break-all">{t("Workspace:")} {s.agent.workspace}</div>}
             <div>{state.connected ? t("Connected") : t("Reconnecting…")}</div>
@@ -492,6 +492,46 @@ const SECTION_IDS: SectionId[] = ["who", "sentinel", "proactivity", "notificatio
  * canvas, grouped the way the Android app groups them — the model, the agent, how it
  * behaves, the app, about — each row opening its own page or screen.
  */
+/**
+ * The Version card (contract C2): the installed release, and the latest one as the runtime
+ * found it on nanomuse.cn/dl or GitHub — "you have it", "x is out" with Update, or "could
+ * not check" with a try again. Permanent: both lines are there whatever the answer. A phone
+ * shell checks on its own, so the latest line says so instead.
+ */
+function VersionRows({ installed, release, checking, onCheck }: { installed: string; release: UpdateView | null; checking: boolean; onCheck: () => void }) {
+  const t = useT();
+  const phone = Boolean(androidApp());
+  const checkNow = (
+    <button type="button" onClick={onCheck} disabled={checking} className="text-accent underline-offset-2 hover:underline disabled:opacity-60">
+      {checking ? t("Checking…") : t("Check now")}
+    </button>
+  );
+  let latest: ReactNode;
+  if (phone) latest = t("The phone app checks for updates on its own.");
+  else if (release && !release.enabled) latest = t("Update checks are off here.");
+  else if (checking && !release) latest = t("Checking…");
+  else if (release?.latest && release.newer)
+    latest = (
+      <>
+        {t("{version} is out", { version: release.latest })}
+        {" · "}
+        <a href={release.download_url || release.url} target="_blank" rel="noreferrer" className="font-medium text-accent underline-offset-2 hover:underline">
+          {t("Update")}
+        </a>
+      </>
+    );
+  else if (release?.latest) latest = <>{t("Latest {version} — you have it", { version: release.latest })} · {checkNow}</>;
+  else latest = <>{t("Could not check")} · {checkNow}</>;
+  return (
+    <div className="rounded-2xl bg-surface-2/60 px-3.5 py-2.5 text-[13px]">
+      <div className="font-medium">{t("nanoMuse {version}", { version: installed })}</div>
+      <div className="mt-0.5 text-muted">{latest}</div>
+      {!phone && release?.latest && release.newer && <div className="mt-1 text-[12px] text-muted">{t("To update: pip install -U nanomuse, pull the new image, or use the desktop app's Update.")}</div>}
+      {!phone && release?.checked_at && <div className="mt-1 text-[12px] text-muted">{t("Checked {when}", { when: relativeTime(release.checked_at) })}</div>}
+    </div>
+  );
+}
+
 function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen: (id: SectionId) => void }) {
   const { state, setTab } = useStore();
   const t = useT();

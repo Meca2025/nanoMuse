@@ -20,8 +20,14 @@ struct NanoMuseCloudView: View {
     @State private var busy = false
     @State private var message: String?
     @State private var failed = false
-    @State private var confirmSignOut = false
+    /// Which way out is being confirmed, if any.
+    @State private var confirm: WayOut?
     @State private var relayBase = ""
+
+    private enum WayOut: String, Identifiable {
+        case here, everywhere, delete
+        var id: String { rawValue }
+    }
 
     private var signedIn: Bool {
         _ = store.instances  // re-evaluate when the provider is removed elsewhere
@@ -31,9 +37,16 @@ struct NanoMuseCloudView: View {
     var body: some View {
         Form {
             if signedIn {
-                accountSections
+                // nanoMuse: the blocks and their order follow the Android account screen —
+                // identity, password, sessions, star, allowance, invite, usage, activity,
+                // devices, links, the ways out, the notice.
+                identitySection
+                NanoMuseAccountSections(account: $account)
                 NanoMuseDevicesSection()
+                linksSection
                 NanoMuseReachSection()
+                waysOutSection
+                noticeSection
             } else {
                 signInSections
             }
@@ -52,11 +65,17 @@ struct NanoMuseCloudView: View {
 
     // MARK: - Signed in
 
-    @ViewBuilder
-    private var accountSections: some View {
+    /// Who is signed in: the hint, the channel it came through, a refresh.
+    private var identitySection: some View {
         Section {
             if let account {
-                LabeledContent(AppLocalized("Signed in as"), value: account.hint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(account.hint)
+                    let channel = account.channel == "phone" ? AppLocalized("Phone number") : account.channel == "email" ? AppLocalized("E-mail") : ""
+                    if !channel.isEmpty {
+                        Text(channel).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             } else {
                 Text(AppLocalized("Signed in."))
                     .foregroundStyle(.secondary)
@@ -72,21 +91,17 @@ struct NanoMuseCloudView: View {
                 Text(message).foregroundStyle(failed ? Color.red : Color.secondary)
             }
         }
+    }
 
-        // The rest of the account — the pool in yuan with the ways on, the invite, usage,
-        // password, the devices holding a key, the timeline, deletion — read live from the relay.
-        NanoMuseAccountSections(account: $account) {
-            account = nil
-            message = nil
-            failed = false
-        }
-
+    /// Where the account's pieces live in the rest of the app.
+    @ViewBuilder
+    private var linksSection: some View {
         if let inst = NanoMuseCloud.instance {
             Section {
                 NavigationLink {
-                    NanoMuseDataControlsView()
+                    NanoMuseMediaModelsView()
                 } label: {
-                    Label(AppLocalized("Data controls"), systemImage: "hand.raised")
+                    Label(AppLocalized("Image & video models"), systemImage: "photo.on.rectangle")
                 }
                 NavigationLink {
                     NanoMuseAvatarStudioView(embedded: true)
@@ -98,29 +113,88 @@ struct NanoMuseCloudView: View {
                 } label: {
                     Label(AppLocalized("Provider settings"), systemImage: "slider.horizontal.3")
                 }
+                NavigationLink {
+                    ModelGroupsView()
+                } label: {
+                    Label(AppLocalized("Model groups"), systemImage: "square.stack.3d.up")
+                }
+                NavigationLink {
+                    NanoMuseDataControlsView()
+                } label: {
+                    Label(AppLocalized("Data controls"), systemImage: "hand.raised")
+                }
             } footer: {
-                Text(AppLocalized("The relay is an ordinary provider named \"nanoMuse Cloud\": its models can join any model group, and a key of your own can sit next to it."))
+                Text(AppLocalized("nanoMuse Cloud is an ordinary provider in this app: its models are listed under Providers and can be mixed with your own in a model group."))
             }
         }
+    }
 
+    /// Sign out here, sign out everywhere, delete — each behind one confirmation.
+    private var waysOutSection: some View {
         Section {
-            Button(role: .destructive) {
-                confirmSignOut = true
+            Button {
+                confirm = .here
             } label: {
-                Label(AppLocalized("Sign out"), systemImage: "rectangle.portrait.and.arrow.right")
+                Label(AppLocalized("Sign out on this phone"), systemImage: "rectangle.portrait.and.arrow.right")
             }
-            .disabled(busy)
-            .confirmationDialog(
-                AppLocalized("Sign out of nanoMuse Cloud?"),
-                isPresented: $confirmSignOut,
-                titleVisibility: .visible
-            ) {
-                Button(AppLocalized("Sign out"), role: .destructive) {
-                    Task { await signOut() }
+            Button {
+                confirm = .everywhere
+            } label: {
+                Label(AppLocalized("Sign out everywhere"), systemImage: "rectangle.portrait.and.arrow.right")
+            }
+            Button(role: .destructive) {
+                confirm = .delete
+            } label: {
+                Label(AppLocalized("Delete the account"), systemImage: "trash")
+            }
+        } footer: {
+            Text(AppLocalized("This phone's key is revoked and the Cloud provider removed; the allowance stays with your account."))
+        }
+        .disabled(busy)
+        .confirmationDialog(
+            confirmTitle,
+            isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
+            titleVisibility: .visible
+        ) {
+            if let way = confirm {
+                Button(way == .delete ? AppLocalized("Delete the account") : AppLocalized("Sign out"), role: .destructive) {
+                    Task { await leave(way) }
                 }
-            } message: {
-                Text(AppLocalized("This phone's key is revoked and the provider is removed. What is left of the allowance stays with the account."))
             }
+        } message: {
+            Text(confirmMessage)
+        }
+    }
+
+    private var confirmTitle: String {
+        switch confirm {
+        case .everywhere: return AppLocalized("Sign out everywhere")
+        case .delete: return AppLocalized("Delete the account")
+        case .here, .none: return AppLocalized("Sign out on this phone")
+        }
+    }
+
+    private var confirmMessage: String {
+        switch confirm {
+        case .everywhere: return AppLocalized("Every device signed in to this account loses its key, this phone included. The account stays; sign in again any time.")
+        case .delete: return AppLocalized("The account, its sign-ins, usage and history are deleted at the relay. This cannot be undone. Chats on this phone stay.")
+        case .here, .none: return AppLocalized("The nanoMuse Cloud provider and its models will be removed from this phone. Chats stay.")
+        }
+    }
+
+    /// What nanoMuse is, in a few lines, and where to bring a bug or a patch.
+    private var noticeSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(AppLocalized("Free, open source, non-profit")).font(.subheadline.weight(.semibold))
+                Text(AppLocalized("nanoMuse is a non-profit open-source community project — free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours."))
+                    .font(.caption).foregroundStyle(.secondary)
+                Text(AppLocalized("Found a bug, want a feature, have a patch? The GitHub repository is the place."))
+                    .font(.caption).foregroundStyle(.secondary)
+                Link(AppLocalized("Open on GitHub"), destination: NanoMuseStar.repoURL)
+                    .font(.caption.weight(.medium))
+            }
+            .padding(.vertical, 4)
         } footer: {
             privacyFooter
         }
@@ -252,7 +326,7 @@ struct NanoMuseCloudView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .onSubmit { NanoMuseCloud.setBaseURL(relayBase) }
-                .onChange(of: relayBase) { newValue in NanoMuseCloud.setBaseURL(newValue) }
+                .nmOnChange(of: relayBase) { newValue in NanoMuseCloud.setBaseURL(newValue) }
         } header: {
             Text("Relay (debug builds only)")
         } footer: {
@@ -326,13 +400,24 @@ struct NanoMuseCloudView: View {
         }
     }
 
-    private func signOut() async {
+    /// One of the ways out; the sign-in form comes back when it worked.
+    private func leave(_ way: WayOut) async {
         busy = true
         defer { busy = false }
-        await NanoMuseCloud.signOut()
-        account = nil
-        message = nil
-        failed = false
+        do {
+            switch way {
+            case .here: await NanoMuseCloud.signOut()
+            case .everywhere: try await NanoMuseCloud.signOutEverywhere()
+            case .delete: try await NanoMuseCloud.deleteAccount()
+            }
+            account = nil
+            message = nil
+            failed = false
+        } catch {
+            failed = true
+            message = NanoMuseCloud.describe(error)
+        }
+        confirm = nil
     }
 }
 

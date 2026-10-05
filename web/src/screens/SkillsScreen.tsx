@@ -108,6 +108,9 @@ export function SkillsScreen() {
                   <p className="mt-1 text-[13.5px] text-muted">
                     {t("After a job went well, tell {name} “save this as a skill” — it writes the steps down and asks you first. Or write one here, or paste a link to a SKILL.md.", { name })}
                   </p>
+                  <button type="button" onClick={() => setAdding(true)} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-[13.5px] font-semibold text-accent-fg">
+                    <Plus size={15} /> {t("Write one")}
+                  </button>
                 </div>
               ) : (
                 <SkillList items={yours} onOpen={setOpen} onChange={load} />

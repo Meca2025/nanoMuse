@@ -79,25 +79,40 @@ test('the installer for this computer is picked from the release', () => {
   assert.equal(pickAsset(assets, 'linux', 'arm64'), undefined)
 })
 
-test('the update check reads GitHub, then the mirror, and never throws', async () => {
+test('the update check reads the nanomuse.cn index first, GitHub second, and never throws (C2)', async () => {
   const github = { tag_name: 'v0.1.34', html_url: 'https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.34', body: 'notes', assets: [{ name: 'nanoMuse-Desktop-0.1.34-win-x64.exe', browser_download_url: 'https://dl/x.exe', size: 5 }] }
-  const ok = (body) => async () => ({ ok: true, status: 200, json: async () => body })
-  const a = await checkForUpdate('0.1.33', ok(github))
-  assert.equal(a.source, 'github')
-  assert.equal(a.latest, '0.1.34')
-  assert.equal(a.newer, true)
-  assert.equal(a.assets[0].url, 'https://dl/x.exe')
-
   const mirror = { repo: 'nano-muse/nanoMuse', releases: [{ tag: 'v0.1.33', assets: [{ name: 'nanoMuse-Desktop-0.1.33-linux-x64.AppImage', size: 3 }] }] }
-  const b = await checkForUpdate('0.1.33', async (url) => (url.includes('github') ? { ok: false, status: 403, json: async () => ({}) } : { ok: true, status: 200, json: async () => mirror }))
-  assert.equal(b.source, 'nanomuse.cn')
-  assert.equal(b.newer, false)
-  assert.equal(b.assets[0].url, 'https://github.com/nano-muse/nanoMuse/releases/download/v0.1.33/nanoMuse-Desktop-0.1.33-linux-x64.AppImage')
+  // both answer: the index wins, and GitHub is not asked at all
+  const asked = []
+  const both = async (url) => { asked.push(url); return { ok: true, status: 200, json: async () => (url.includes('github') ? github : mirror) } }
+  const a = await checkForUpdate('0.1.33', both)
+  assert.equal(a.source, 'nanomuse.cn')
+  assert.equal(a.latest, '0.1.33')
+  assert.equal(a.newer, false)
+  assert.equal(a.assets[0].url, 'https://github.com/nano-muse/nanoMuse/releases/download/v0.1.33/nanoMuse-Desktop-0.1.33-linux-x64.AppImage')
+  assert.deepEqual(asked, ['https://nanomuse.cn/dl/index.json'])
+
+  // the index does not answer: GitHub
+  const b = await checkForUpdate('0.1.33', async (url) => (url.includes('nanomuse.cn') ? { ok: false, status: 502, json: async () => ({}) } : { ok: true, status: 200, json: async () => github }))
+  assert.equal(b.source, 'github')
+  assert.equal(b.latest, '0.1.34')
+  assert.equal(b.newer, true)
+  assert.equal(b.assets[0].url, 'https://dl/x.exe')
 
   const c = await checkForUpdate('0.1.33', async () => { throw new Error('offline') })
   assert.equal(c.source, 'none')
   assert.equal(c.latest, '')
-  assert.match(c.error, /offline/)
+  assert.match(c.error, /nanomuse\.cn: offline; github: offline/)
+})
+
+test('each update request gives up after the timeout (5 s by default)', async () => {
+  // a fetch that never resolves until aborted
+  const hang = (url, init) => new Promise((_, reject) => { init.signal.addEventListener('abort', () => reject(new Error('aborted'))) })
+  const started = Date.now()
+  const info = await checkForUpdate('0.1.33', hang, 30)
+  assert.equal(info.source, 'none')
+  assert.match(info.error, /aborted/)
+  assert.ok(Date.now() - started < 2000)
 })
 
 test('shared connectors carry what and where, never how', () => {

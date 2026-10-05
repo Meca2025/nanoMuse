@@ -77,47 +77,50 @@ list of local apps each with a read-only/… dropdown, *Continue*), *Turn on voi
 (the microphone, *Allow*, *Skip*). Then the main window with the agent's introduction in
 the chat, a card to pick its name, and a connector recommendation.
 
-**nanoMuse on dsh.** The same pages, full-window, in the harness's `settings.onboarding`
-seat (we take the shipped step's id, so a fresh install meets the agent instead of being
-asked for a DeepSeek key):
+**nanoMuse on dsh.** The phone's pages (`FirstRunSetup` on Android), full-window, in
+the harness's `settings.onboarding` seat (we take the shipped step's id, so a fresh
+install meets the agent instead of being asked for a DeepSeek key). The host keeps the
+state in `$DSH_HOME/nanomuse/firstrun.json` (`src/firstrun.ts`) — *done* once Start was
+pressed, the permissions page seen, which source answers — so the pages are never skipped
+on a fresh install and never shown twice:
 
-1. **Welcome** — the face, *Welcome to nanoMuse*, one blue *Sign in* pill; under it, in
-   small type, *Use my own API key* (opens Models) · *Later*.
-2. **Sign in or create an account** — one field, *Phone number or e-mail*, the fine print
-   with the terms and the privacy policy, *Continue*; the same two calls the phone uses
-   (`/v1/auth/code`, `/v1/auth/verify`).
-3. **Enter your code** — *A code was sent to …* with *Resend*, six code boxes that verify
-   themselves on the sixth digit, *Next*, *Try another way* (a password, for accounts
-   that set one: `/v1/auth/login`).
-4. A spinner while the account is adopted (models, name, face), then the **three
-   pages**, ‹ › top right, dots under the card, *Skip* that becomes *Continue* once the
-   page is allowed: **Allow nanoMuse to use your computer?** — *Accessibility* and
-   *Screen Recording* rows, each with *Allow* that asks the system through the desktop
-   shell and turns into a green check as the system grants it (polled, and again when
-   the window gets focus or the page becomes visible — one hook, `permissions.ts`,
-   behind every place that shows a permission); once *Allow* has been pressed the
-   button reads *Open System Settings*, since a second press cannot bring the system's
-   dialog back. For *Screen Recording* the shell makes one capture attempt before it
-   opens the pane, so nanoMuse is on the pane's list, and when the permission is
-   granted while the app runs a notice says macOS applies it only to freshly started
-   apps, with *Restart now* (`relaunch` over the bridge). On Linux and Windows nothing
-   is gated and both rows are checks from the start. **Allow nanoMuse
-   to access your files?** — the working folder as a pill (*Change* opens the native
-   folder picker and creates the workspace) and the places the agent may touch under
-   the default permission preset (the working folder read and write; the home folder
-   and Downloads read, asking before a write). Muse's per-app dropdowns (Mail, Messages,
-   Notes) are macOS app data we do not read, so there is no such list. **Turn on voice
-   input** — the *Microphone* row, *Allow* through the shell (or the page's own prompt
-   in a plain browser).
-5. The overlay waits on the host's `rooms/kickoff`: the **main chat** is created on the
-   agent's own folder (`~/nanoMuse`, registered as a workspace so the composer is live),
-   the introduction is posted into it (`rooms/intro`: hello, three names to pick from or
-   one of your own through `ask_user_question`, `take_name`, a word about Settings →
-   Connectors, one small question) — once per install — and the window fades into it.
+1. **Welcome** — the face, *Welcome to nanoMuse*, the three feature rows (chat, hands,
+   reach), the community notice, one blue *Sign in* pill and *Use my own API key*. Sign-in
+   is the phone's: *Phone number or e-mail*, the code boxes that verify themselves on the
+   sixth digit, *Try another way* for a password (`/v1/auth/code`, `/v1/auth/verify`,
+   `/v1/auth/login`).
+2. **Set a password** (a fresh account only; *Later* skips it).
+3. **Which model answers** — the Cloud account's models, or your own key.
+4. **Choose models** (own key only) — opens Settings → Models beside the page and waits
+   for a key; *Skip for now*.
+5. **Allow nanoMuse to use your computer?** (macOS only) — *Accessibility* and *Screen
+   Recording* rows, each with *Allow* that asks the system through the desktop shell and
+   turns into a green check as the system grants it (polled, and again when the window gets
+   focus or the page becomes visible — one hook, `permissions.ts`, behind every place that
+   shows a permission); once *Allow* has been pressed the button reads *Open System
+   Settings*. Only **nanoMuse Desktop** has to be switched on: macOS attributes the bundled
+   runtime's captures and events to the app that started it, so there is no second entry to
+   hunt for. For *Screen Recording* the shell makes one capture attempt before it opens the
+   pane, so nanoMuse is on the pane's list, and when the permission is granted while the app
+   runs a dialog says macOS applies it only to freshly started apps, with *Restart now*
+   (`relaunch` over the bridge). *Try it* rows — a test screenshot, a mouse move — and the
+   runtime row say whether it works, and a black capture gets its own notice with *Relaunch*.
+   On Linux and Windows the page is skipped.
+6. **Meet <name>** — the face, *Start*.
 
-The step completes itself when a model can already answer (the account, a key, a
-provider the person added) and does not show again; Help & support → *See the first run
-again* reopens the pages on purpose (the kickoff does not repeat).
+Start binds the **main chat** (the agent's own folder, `~/nanoMuse`, registered as a
+workspace so the composer is live) as the **first conversation**, the phone's
+`FirstConversation`: the app speaks first — three scripted lines, no tokens, never in the
+model's history — and asks what to call you. From there the model does the talking and
+reports what happened in a small `nanomuse-naming` block at the end of its reply (the
+address, its name suggestions, the name it got); the chat shows the suggestions as the
+naming card (*NamingCard*, a tap or a typed name), and the phase moves on that block and
+on nothing else — a reply without one means the person talked about something else, the
+model helped and steered back. When the agent has its name the first run is over: the
+Feed's first day is written, the daily routine is set.
+
+Help & support → *See the first run again* reopens the pages on purpose (the first
+conversation does not repeat).
 
 ## The profile and the face
 
@@ -171,10 +174,16 @@ agent's own `draw_new_look` still opens the studio for anything it wants to prop
 (`assets/dragon-<state>.mp4`), played silently in a loop wherever the face is 44 px or
 larger — the header, the profile panel, the stage's cursor marker — with the still as
 the poster, and the still alone below that size, when the system asks for reduced
-motion, or where a list wants a quiet picture. A drawn face has stills only (the relay
-keeps WebP, not video), so it and an emoji move the way CSS can: a slow breath while
-idle, a sway while the agent works, a small hop when it waits for you. The faces route
-(`/face/<id>/<state>.webp|mp4`) serves a clip when a profile ever brings one.
+motion, or where a list wants a quiet picture. A drawn face gets clips of its own, as on
+the phone: four 4-second clips — idle, working, waiting, happy — drawn from the face by
+`wan2.2-i2v-flash` through the relay or your own Bailian key (`src/video.ts`,
+`src/motion.ts`; the phone's prompts word for word), kept under `avatar/motion/` on this
+computer and served by the faces route (`/face/<id>/<state>.webp|mp4`), played in the
+header, the sidebar and the capsule. *Settings → Media* has *Animate the avatar after a
+change* (on by default), *Make / Redo clips* and the models used; the studio's cost
+estimate counts the clips. Until the clips are there, or with the setting off, a drawn
+face and an emoji move the way CSS can: a slow breath while idle, a sway while the agent
+works, a small hop when it waits for you.
 
 ## Computer use
 
@@ -257,21 +266,26 @@ stock General plugin switched off in the bundle layer:
   in*, opening the Account page), **Usage** (the plan and its bar — *Member* /
   *Unlimited*, or the free allowance with what is left and *Upgrade*), **Language** (the
   harness's own row in our card), **Appearance** (the harness's light / dark / system
-  switch and Muse's ten **theme colours** as swatches — the accent of the whole app,
-  kept on the agent's profile), **App behavior** when the desktop shell is there —
+  switch; the accent follows the face), **App behavior** when the desktop shell is there —
   *Open at login* (a login item; a freedesktop autostart entry on Linux), *Show in the
   menu bar* / *system tray* (an icon with *Open nanoMuse*, *New chat*, *Quit*), *Quick
   chat with ⌥ Space* (Ctrl+Alt+Space elsewhere: the window comes up with a fresh chat
   and the composer focused; pressed while it is in front, it steps aside) — kept in
   `desktop.json` under the app's home; **Shortcuts** (*Quick Chat* with its combination —
   *Change* records the next one you press, Esc cancels, *Default* puts the platform's back,
-  and a line says so when another app already holds it — and the keyboard reference); **About** (nanoMuse, built on DeepSeek Harness, the bundle's version, the
-  licence, *Check for updates* → the releases page); and *Developer*: *Show DeepSeek
+  and a line says so when another app already holds it — and the keyboard reference); **About** (nanoMuse, built on DeepSeek Harness, the licence, and two version
+  lines that are always there: *nanoMuse Desktop <app> · harness <bundle> — installed*
+  and *Latest 0.1.x — you have it* / *0.1.x is out — Update* / *Could not check — tap to
+  try again*; the check reads `nanomuse.cn/dl/index.json` first and GitHub's releases
+  second, once a day); and *Developer*: *Show DeepSeek
   Harness controls* (the model picker, the modes, the workspace browser in place of the
   chats column). The harness's other rows (permission presets, font size, link opening,
   Enter to send, performance, session log) live under *Advanced → Harness*.
 - **Account** (under *Advanced*) — the nanoMuse account: sign in or the masked
   identifier, the allowance, the look, the models, *Open Devices*.
+- **Media** — the models that draw the face and its clips (the relay's, or your own
+  Bailian key), *Animate the avatar after a change*, *Make / Redo clips* with the state
+  of each of the four, and the cost note.
 - **Models**, **Agents** — the harness's pages, unchanged, under *Advanced*.
 - **Connectors** — Muse's catalogue shape: a search field, category chips (*All*,
   *Built in*, *Work*, *Talk*, *Files*, *Developer*, *Data*, *Design*, *Money*,
@@ -387,12 +401,16 @@ so the chat column stays where it is and a room opens in its place. One host ser
 (`nanomuse-rooms`, `src/rooms.ts`) keeps them in `$DSH_HOME/nanomuse/rooms.json`,
 serves `/nanomuse/rooms/*` and streams changes to the browser half:
 
-- **Feed** — posts the agent writes for you in a hidden chat (a batch when the room is
-  empty and then every few hours, from your *feed instructions*, your goals and the
-  profile): title, Markdown body with links inline, a picture when the page it read had
-  one, ♡ and **Discuss** (a side chat opened on the post). The sliders icon opens the
-  instructions sheet; a dot on the rail marks posts newer than your last visit. The
-  agent can also post from any chat with `feed_post`.
+- **Feed** — posts the agent writes for you in a hidden chat, from your *feed
+  instructions*, your goals and the profile: title, Markdown body with links inline, a
+  picture when the page it read had one, ♡ and **Discuss** (a side chat opened on the
+  post). The room opens on the phone's intro card (*About the feed* — what the posts are
+  made of, *Edit preferences*, *Got it*); while it is empty the words say when the daily
+  routine runs (*Every day at 08:00 I read what I remember about you …*) with **Write it
+  now**; the first day is written when the first conversation ends, and the daily routine
+  (08:00, a schedule you can move or switch off under the sliders) is created the first
+  time the room opens. A dot on the rail marks posts newer than your last visit. The agent
+  can also post from any chat with `feed_post`.
 - **Ideas** — the phone's curated list (`assets/ideas.{en,zh}.json`, the same 24 items
   in six sections: Travel, Work, Everyday, Learning, Family & friends, More ideas), each
   row an emoji, a first-person pitch and a line of detail; a row opens a sheet that says

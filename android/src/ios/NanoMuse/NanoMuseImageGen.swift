@@ -35,6 +35,14 @@ enum NanoMuseImageGen {
 
     static let defaultsModelKey = "nanomuse.avatar.model"
     static let defaultsInstanceKey = "nanomuse.avatar.instance"
+    private static let defaultsPreferRelayKey = "nanomuse.avatar.prefer_relay"
+
+    /// The person chose nanoMuse Cloud for pictures although a Bailian key is on this phone
+    /// (Settings → Image & video models). Off by default: a key of one's own draws first.
+    static var preferRelay: Bool {
+        get { UserDefaults.standard.bool(forKey: defaultsPreferRelayKey) }
+        set { UserDefaults.standard.set(newValue, forKey: defaultsPreferRelayKey) }
+    }
     /// ¥0.18 a picture; the Pro tier draws the same face for more.
     static let recommendedBailianModel = "qwen-image-3.0"
 
@@ -85,6 +93,7 @@ enum NanoMuseImageGen {
     static func route() -> Route {
         let candidates = bailianInstances()
         guard !candidates.isEmpty else { return .relay }
+        if preferRelay, NanoMuseCloud.isSignedIn { return .relay }
         let savedId = UserDefaults.standard.string(forKey: defaultsInstanceKey)
         let inst = candidates.first { $0.id == savedId } ?? candidates[0]
         guard let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty else { return .relay }
@@ -120,6 +129,7 @@ enum NanoMuseImageGen {
     static func save(instanceId: String, model: String) {
         UserDefaults.standard.set(instanceId, forKey: defaultsInstanceKey)
         UserDefaults.standard.set(model.trimmingCharacters(in: .whitespaces), forKey: defaultsModelKey)
+        preferRelay = false // a key was chosen on purpose
     }
 
     /// "Drawn by nanoMuse Cloud" / "Drawn by Bailian · qwen-image-3.0".

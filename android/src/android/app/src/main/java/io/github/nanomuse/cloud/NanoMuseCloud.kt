@@ -827,6 +827,8 @@ object NanoMuseCloud {
     }
 
     private fun saveAccount(context: Context, reply: JSONObject) {
+        // The nudges policy rides along in /v1/me (contract C1); the sign-in reply may carry it too.
+        io.github.nanomuse.community.Nudges.accept(context, reply.optJSONObject("nudges"))
         val account = reply.optJSONObject("account") ?: JSONObject()
         val tokens = reply.optJSONObject("tokens") ?: JSONObject()
         val spend = reply.optJSONObject("spend") ?: JSONObject()

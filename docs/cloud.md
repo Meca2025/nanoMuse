@@ -153,12 +153,17 @@ Bailian only signs up accounts from the mainland. Other relays may set other rul
 all three figures adjustable while the relay runs, relay 0.15; see
 [`cloud/README.md`](../cloud/README.md)).
 
-nanoMuse asks for one thing in return, and only at three moments — when the
-allowance is claimed, after the first task it finishes for you, and when the
-pool is spent: a star on
+nanoMuse asks for one thing in return: a star on
 [GitHub](https://github.com/nano-muse/nanoMuse), which is what helps the
-project be found. Each ask is a card where it happens, shown once, and none
-comes back after you have been to the page.
+project be found. The moments are the relay's to set, not the app's (0.1.35):
+`GET /v1/nudges` says when an ask is fair — after the third, tenth and
+thirtieth task it finishes for you, on the seventh and thirtieth day you open
+it, when a goal is reached, when a new face is drawn, once on the account page,
+and when the pool is spent — with at least a week between two asks and at most
+four per device. Each ask is a card where it happens; "Not now" counts as one,
+and none comes back after you have been to the page. The operator changes the
+policy on the admin page (*Settings › Star asks*) without an app update; every
+app keeps the same defaults built in for when the relay cannot be reached.
 
 ## Running your own
 
@@ -201,7 +206,8 @@ POST /v1/auth/code          {identifier}                      → 204
 POST /v1/auth/verify        {identifier, code, device}        → {api_key, base_url, account, tokens, models}
 POST /v1/auth/login         {identifier, password, device}    → the same; 401 bad_credentials, 429 locked, 400 no_password
 POST /v1/auth/password      Bearer  {password, current?}      → 204; "" with current removes it
-GET  /v1/me                 Bearer                            → {region: cn | intl | unknown, account{…, has_password, sessions, signed_in_via}, usage{today, total by kind / model}, tokens, spend{…, ways}, models, recent}
+GET  /v1/me                 Bearer                            → {region: cn | intl | unknown, account{…, has_password, sessions, signed_in_via}, usage{today, total by kind / model}, tokens, spend{…, ways}, models, recent, nudges}
+GET  /v1/nudges                                               → {version, star{enabled, url, moments{signed_in, tasks[], new_look, exhausted, days_used[], goal_done}, cooldown_days, max_asks}}; no key, cached an hour
 GET  /v1/me/profile         Bearer  ?face=false               → {rev, device, name, avatar, …, face?, connectors: [{id, label, url, auth, device, device_id, enabled, at}]}
 PUT  /v1/me/profile         Bearer  {device, name?, avatar?, …, connectors?}  → {rev, device}; a device's connectors replace only its own; 400 no_secrets_in_profile, too_many_connectors
 DELETE /v1/me/profile       Bearer                            → 204

@@ -46,8 +46,18 @@ const zhCN: Record<string, string> = {
   "A star on GitHub helps": "GitHub 上的一颗 Star 帮得上忙",
   "Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.":
     "欢迎。nanoMuse 免费、开源、非营利，做的是一个属于每个人的个人智能体。如果你认同，GitHub 上的一颗 Star 能让下一个人也找到这里。",
-  "First task done. If nanoMuse helped, a star on GitHub tells the people building it that it did.":
-    "第一个任务完成了。如果 nanoMuse 帮上了忙，到 GitHub 点一颗 Star，做它的人就知道了。",
+  "Three tasks done. If nanoMuse is useful, a star on GitHub helps the next person find it.":
+    "三个任务完成了。如果 nanoMuse 用得上，到 GitHub 点一颗 Star，下一个人也能找到它。",
+  "{n} tasks done. If nanoMuse is useful, a star on GitHub helps the next person find it.":
+    "已经完成 {n} 个任务了。如果 nanoMuse 用得上，到 GitHub 点一颗 Star，下一个人也能找到它。",
+  "A week with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it.":
+    "和 nanoMuse 一起一周了。如果它在你的日常里站住了脚，到 GitHub 点一颗 Star，下一个人也能找到它。",
+  "A month with nanoMuse. If it has become part of your routine, a star on GitHub tells others it is worth a try.":
+    "和 nanoMuse 一起一个月了。如果它成了你习惯的一部分，一颗 Star 会让更多人愿意试一试。",
+  "{n} days with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it.":
+    "和 nanoMuse 一起 {n} 天了。如果它在你的日常里站住了脚，到 GitHub 点一颗 Star，下一个人也能找到它。",
+  "Goal reached. If nanoMuse helped you get there, a star on GitHub tells the people building it that it did.":
+    "目标达成了。如果 nanoMuse 帮你走到了这里，到 GitHub 点一颗 Star，做它的人就知道了。",
   "Ten tasks together. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try.":
     "已经一起完成十个任务了。如果 nanoMuse 成了你日常的一部分，一颗 Star 会让更多人愿意试一试。",
   "A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.":
@@ -615,6 +625,19 @@ const zhCN: Record<string, string> = {
   "Follow the system": "跟随系统",
   About: "关于",
   "{version} is out": "{version} 已发布",
+  "nanoMuse {version}": "nanoMuse {version}",
+  "Tell {name} something to remember": "在对话里告诉 {name} 一件值得记住的事",
+  "Write one": "写一个",
+  "Get the phone app": "下载手机 App",
+  "Latest {version} — you have it": "最新版 {version}，你已经在用了",
+  Update: "更新",
+  "Check now": "现在检查",
+  "Checking…": "正在检查…",
+  "Could not check": "没能检查到最新版本",
+  "Checked {when}": "上次检查：{when}",
+  "The phone app checks for updates on its own.": "手机 App 会自己检查更新。",
+  "Update checks are off here.": "这里关闭了更新检查。",
+  "To update: pip install -U nanomuse, pull the new image, or use the desktop app's Update.": "更新方式：pip install -U nanomuse、拉取新镜像，或在桌面 App 里点“更新”。",
   "Data:": "数据：",
   "Workspace:": "工作区：",
   "Forget this device's access token": "忘掉这台设备的访问令牌",
@@ -1160,6 +1183,7 @@ const zhCN: Record<string, string> = {
   "One window": "单个窗口",
   "Whole screen": "整个屏幕",
   "Working in {app}'s window; the mouse stays yours.": "正在 {app} 的窗口里操作；鼠标仍归你用。",
+  "On the whole screen for now: {reason}": "暂时在整个屏幕上操作：{reason}",
   "One window: the hands work inside the app they were given, send clicks and keys to it alone and leave your mouse alone. Whole screen: the system mouse, like other platforms. Auto picks one window as soon as an app is named.":
     "单个窗口：只在指定的应用里操作，点击和按键只发给它，不动你的鼠标。整个屏幕：用系统鼠标，和其他平台一样。自动：一旦指定了应用就用单个窗口。",
   "It looks at a screenshot and clicks by position; paying, sending and deleting ask you first.": "它看截图、按位置点击；支付、发送、删除前都会先问你。",
@@ -1544,11 +1568,17 @@ const zhCN: Record<string, string> = {
   "Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.": "给我做一个关于我关心的事的动态。短一点、直接一点，扫一眼就能看完，别搞标题党。",
   "Got it": "知道了",
   "Write it now": "现在写一版",
-  "Your feed is not ready yet": "你的动态版块尚未准备就绪",
-  "As we get to know each other, new posts will show up here. Once a day, while background work is on, I read what I remember about you — your memory, your goals, your instructions — and write a few short posts.":
-    "等我们更熟一些，新内容就会出现在这里。开着后台工作时，我每天会把记得的你的事——记忆、目标、你的交代——过一遍，然后写几条短帖。",
-  "One sentence steers it": "一句话就能调整",
-  "Tap the sliders at the top right to tell me what you want more of, or have me write the first day now.": "点右上角的滑杆，告诉我你想多看什么，或者让我现在就写第一天。",
+  "Nothing in the feed yet": "动态里还没有内容",
+  "As we get to know each other, new posts will show up here. Every day at {time} I read what I remember about you — your memory files, the last week of diary, your goals — and write a few short posts.":
+    "随着我们相互了解，新的帖子会显示在这里。每天 {time}，我会读一遍记得的关于你的东西——记忆文件、最近一周的日记、你的目标——然后写几条简短的帖子。",
+  "Steer it with one sentence": "一句话就能调整",
+  "Tap the sliders at the top right to tell me what you want more of, switch the daily routine off, or have me write the first day now.":
+    "点右上角的滑杆，告诉我你想多看什么、关掉每天的例程，或者让我现在就写第一天。",
+  "Short posts your agent writes for you from what it remembers — your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time.":
+    "这里是你的智能体为你写的短帖子，取材于它记得的东西——记忆文件、最近一周的日记、你的目标。下面这句话决定今后每一条帖子的方向，随时可以改。",
+  "Write it every day": "每天自动写",
+  "Time of day": "时间",
+  "Add a model first — the feed is written by your agent.": "先添加一个模型——动态由你的 agent 来写。",
   Discuss: "讨论",
   "About this post": "这条帖子的信息",
   "Delete this post": "删除这条",

@@ -21,9 +21,9 @@ struct NanoMuseDevicesSection: View {
                     Text(status).font(.footnote).foregroundStyle(.secondary)
                 }
             }
-            .onChange(of: enabled) { on in hub.enabled = on }
+            .nmOnChange(of: enabled) { on in hub.enabled = on }
             Toggle(AppLocalized("Let other devices operate this iPhone"), isOn: $remote)
-                .onChange(of: remote) { on in hub.remoteControl = on }
+                .nmOnChange(of: remote) { on in hub.remoteControl = on }
             Button {
                 editingName = true
             } label: {

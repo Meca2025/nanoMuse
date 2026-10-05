@@ -22,8 +22,17 @@
     <string name="nm_star_action">Star on GitHub</string>
     <string name="nm_star_later">Not now</string>
     <string name="nm_star_signed_in">Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.</string>
-    <string name="nm_star_first_task">First task done. If nanoMuse helped, a star on GitHub tells the people building it that it did.</string>
-    <string name="nm_star_tenth_task">Ten tasks together. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try.</string>
+    <plurals name="nm_star_tasks">
+        <item quantity="one">One task done. If nanoMuse helped, a star on GitHub tells the people building it that it did.</item>
+        <item quantity="other">%1$d tasks done. If nanoMuse is useful, a star on GitHub helps the next person find it.</item>
+    </plurals>
+    <string name="nm_star_days_used_week">A week with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it.</string>
+    <string name="nm_star_days_used_month">A month with nanoMuse. If it has become part of your routine, a star on GitHub tells others it is worth a try.</string>
+    <plurals name="nm_star_days_used">
+        <item quantity="one">A day with nanoMuse. If it helped, a star on GitHub helps the next person find it.</item>
+        <item quantity="other">%1$d days with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it.</item>
+    </plurals>
+    <string name="nm_star_goal_done">Goal reached. If nanoMuse helped you get there, a star on GitHub tells the people building it.</string>
     <string name="nm_star_new_look">A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.</string>
     <string name="nm_star_exhausted">The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.</string>
     <string name="nm_chat_menu_rename">Rename chat</string>
@@ -89,7 +98,7 @@
     <string name="nm_goal_sheet_title">Create a %1$s goal</string>
     <string name="nm_goal_sheet_body1">First, we\'ll shape the goal together in the chat. I\'ll ask a few questions so I understand exactly what you\'re after.</string>
     <string name="nm_goal_sheet_body2">Once it\'s set, I\'ll track your progress here.</string>
-    <string name="nm_goal_sheet_go">Let\'s go</string>
+    <string name="nm_goal_sheet_go">Start</string>
     <string name="nm_goal_create_message">I\'d like to create a %1$s goal.</string>
     <string name="nm_goal_check_task_label">Goal check: %1$s</string>
     <plurals name="nm_goal_every_hours">
@@ -206,7 +215,7 @@
     <string name="nm_feed_prompt">Write today\'s feed.</string>
     <string name="nm_feed_default_preferences">Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.</string>
     <string name="nm_feed_intro_title">About the feed</string>
-    <string name="nm_feed_intro_desc">Your feed is driven by the instruction below. Any edit you make here applies to every post from now on.</string>
+    <string name="nm_feed_intro_desc">Short posts your agent writes for you from what it remembers — your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time.</string>
     <string name="nm_feed_edit">Edit</string>
     <string name="nm_feed_got_it">Got it</string>
     <string name="nm_feed_save">Save</string>
@@ -217,7 +226,7 @@
     <string name="nm_feed_write_now">Write it now</string>
     <string name="nm_feed_generating">Writing…</string>
     <string name="nm_feed_discuss">Discuss</string>
-    <string name="nm_feed_discuss_opener">Let\'s talk about this post from my feed:\n\n**%1$s**\n\n%2$s</string>
+    <string name="nm_feed_discuss_opener">About this post from my feed:\n\n**%1$s**\n\n%2$s</string>
     <string name="nm_feed_delete">Remove this post</string>
     <string name="nm_feed_info_type">Type</string>
     <string name="nm_feed_info_written">Written</string>
@@ -229,7 +238,7 @@
     <string name="nm_feed_type_goal">Goal</string>
     <string name="nm_feed_type_memory">Memory</string>
     <string name="nm_feed_type_note">Note</string>
-    <string name="nm_feed_empty_title">Your feed isn\'t ready yet</string>
+    <string name="nm_feed_empty_title">Nothing in the feed yet</string>
     <string name="nm_feed_empty_body">As we get to know each other, new posts will show up here. Every day at %1$s I read what I remember about you — your memory files, the last week of diary, your goals — and write a few short posts.</string>
     <string name="nm_feed_empty_how_title">Steer it with one sentence</string>
     <string name="nm_feed_empty_how_body">Tap the sliders at the top right to tell me what you want more of, switch the daily routine off, or have me write the first day now.</string>
@@ -354,6 +363,13 @@
     <string name="nm_settings_no_model_sub">Add a provider and pick its models</string>
     <string name="nm_settings_change_model">Change</string>
     <string name="nm_settings_version">nanoMuse %1$s (%2$d)</string>
+    <string name="nm_version_title">Version</string>
+    <string name="nm_version_checking">Checking for the latest release…</string>
+    <string name="nm_version_have">Latest %1$s — you have it</string>
+    <string name="nm_version_out">%1$s is out</string>
+    <string name="nm_version_out_update">%1$s is out — tap to update</string>
+    <string name="nm_version_update">Update</string>
+    <string name="nm_version_failed">Could not check — tap to try again</string>
     <string name="nm_appearance_section_home">Home</string>
     <string name="nm_appearance_header_model_title">Show the model under the name</string>
     <string name="nm_appearance_header_model_footer">Muse shows only the name. Turn this on to see the model group and provider · model under it; tap them to switch. Off, the model is under ••• → Model and in Settings.</string>

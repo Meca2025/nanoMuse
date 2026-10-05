@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { Sheet } from "../components/Sheet";
 import { TabHeader } from "../components/TabHeader";
-import { useT } from "../i18n";
+import { useLocale, useT } from "../i18n";
+import { asIdea, catalogue } from "../ideas";
 import { useStore } from "../store";
 import type { Idea, IdeasData } from "../types";
 import { relativeTime } from "../util";
@@ -23,13 +24,18 @@ const AREAS: Array<{ id: string; label: string; emoji: string }> = [
   { id: "fun", label: "Just for you", emoji: "🎈" },
 ];
 
-/** Muse "always thinks about what it can do for you" — suggestions from goals, memory and recent chat. */
+/**
+ * Muse "always thinks about what it can do for you" — suggestions from goals, memory and recent
+ * chat once the model has written some; until then the curated catalogue every client ships
+ * (contract C5), in the app's language.
+ */
 export function IdeasScreen() {
   const { state, send, openThread, toast } = useStore();
   const [data, setData] = useState<IdeasData | null>(null);
   const [loading, setLoading] = useState(false);
   const name = state.profile?.name ?? "nanoMuse";
   const t = useT();
+  const locale = useLocale();
 
   const load = async (refresh = false) => {
     setLoading(true);
@@ -49,12 +55,15 @@ export function IdeasScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const groups = groupByArea(data?.ideas ?? []);
+  // the model's ideas, grouped by area; or the catalogue's sections, each idea with its own emoji
+  const fromModel = data?.source === "model" && data.ideas.length > 0;
+  const groups: Group[] = fromModel
+    ? groupByArea(data.ideas)
+    : catalogue(locale).sections.map((s) => ({ id: s.id, title: s.title, ideas: s.ideas.map(asIdea) }));
   const [selected, setSelected] = useState<{ idea: Idea; emoji: string } | null>(null);
-  // The runtime's starter ideas are English; the dictionary carries them, model-written ones pass through.
   const sendIdea = (idea: Idea) => {
     setSelected(null);
-    void send("main", t(idea.prompt));
+    void send("main", idea.prompt);
     openThread("main");
   };
   // A routine idea becomes a daily reminder that runs the prompt (the phone's "Create routine").
@@ -62,7 +71,7 @@ export function IdeasScreen() {
     setSelected(null);
     const time = idea.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(idea.time) ? idea.time : "09:00";
     try {
-      await api.createReminder({ text: t(idea.prompt), kind: "task", repeat: `daily ${time}` });
+      await api.createReminder({ text: idea.prompt, kind: "task", repeat: `daily ${time}` });
       toast(t("Routine set — every day at {time}. It is listed under Goals.", { time }));
     } catch (e) {
       toast((e as Error).message);
@@ -75,7 +84,7 @@ export function IdeasScreen() {
     const opener = t("I'd like to create a {category} goal. Ask me a few short questions, one at a time — what exactly I want, why and by when, how often to check in — then create it with concrete steps using the goals tool.", {
       category: t(category.label),
     });
-    void send("main", `${opener} ${t(idea.prompt)}`);
+    void send("main", `${opener} ${idea.prompt}`);
     openThread("main");
   };
   const kindOf = (idea: Idea) => (idea.kind === "routine" || idea.kind === "goal" ? idea.kind : "chat");
@@ -97,17 +106,17 @@ export function IdeasScreen() {
         </button>
       </TabHeader>
       <div className="flex-1 overflow-y-auto pb-6">
-        {groups.map(({ area, ideas }, index) => (
-          <section key={area.id}>
-            {index > 0 && <h2 className="px-5 pt-[22px] pb-1 text-[20px] font-bold">{t(area.label)}</h2>}
+        {groups.map(({ id, title, ideas }, index) => (
+          <section key={id}>
+            {(index > 0 || !fromModel) && <h2 className="px-5 pt-[22px] pb-1 text-[20px] font-bold">{fromModel ? t(title) : title}</h2>}
             <ul>
               {ideas.map((idea) => (
                 <li key={idea.title}>
-                  <button type="button" onClick={() => setSelected({ idea, emoji: area.emoji })} className="flex w-full items-start gap-4 px-5 py-3.5 text-left active:bg-surface-2/70">
-                    <span className="flex w-10 shrink-0 justify-center text-[28px] leading-[34px]">{area.emoji}</span>
+                  <button type="button" onClick={() => setSelected({ idea, emoji: idea.emoji })} className="flex w-full items-start gap-4 px-5 py-3.5 text-left active:bg-surface-2/70">
+                    <span className="flex w-10 shrink-0 justify-center text-[28px] leading-[34px]">{idea.emoji}</span>
                     <span className="min-w-0 flex-1 space-y-1">
-                      <span className="block text-[16px] font-semibold leading-[22px]">{t(idea.title)}</span>
-                      {idea.detail && <span className="line-clamp-4 block text-[13.5px] leading-[19px] text-muted">{t(idea.detail)}</span>}
+                      <span className="block text-[16px] font-semibold leading-[22px]">{idea.title}</span>
+                      {idea.detail && <span className="line-clamp-4 block text-[13.5px] leading-[19px] text-muted">{idea.detail}</span>}
                     </span>
                   </button>
                   <div className="ml-[76px] mr-5 border-b border-border/70" />
@@ -121,11 +130,6 @@ export function IdeasScreen() {
             {data.source === "model" ? t("Generated {when}", { when: relativeTime(data.generated_at) }) : t("Starter ideas — refresh once {name} knows you better.", { name })}
           </div>
         )}
-        {!data && loading && (
-          <div className="flex items-center justify-center gap-2 py-10 text-muted">
-            <Loader2 className="animate-spin" size={18} /> {t("Thinking about what I could do for you…")}
-          </div>
-        )}
       </div>
 
       <Sheet open={selected !== null} onClose={() => setSelected(null)}>
@@ -133,9 +137,9 @@ export function IdeasScreen() {
           <div className="px-1 pb-2">
             <div className="flex items-center gap-3">
               <span className="text-[30px] leading-none">{selected.emoji}</span>
-              <h3 className="flex-1 text-[18px] font-bold leading-6">{t(selected.idea.title)}</h3>
+              <h3 className="flex-1 text-[18px] font-bold leading-6">{selected.idea.title}</h3>
             </div>
-            {selected.idea.detail && <p className="mt-3 text-[15px] leading-[22px]">{t(selected.idea.detail)}</p>}
+            {selected.idea.detail && <p className="mt-3 text-[15px] leading-[22px]">{selected.idea.detail}</p>}
             <div className="mt-3.5 flex items-center gap-1.5 text-[13px] text-muted">
               {kindOf(selected.idea) === "routine" && (
                 <>
@@ -176,12 +180,20 @@ export function IdeasScreen() {
   );
 }
 
-function groupByArea(ideas: Idea[]): Array<{ area: (typeof AREAS)[number]; ideas: Idea[] }> {
+/** A section of the page: the model's area, or the catalogue's section; every idea with its emoji. */
+interface Group {
+  id: string;
+  title: string;
+  ideas: Array<Idea & { emoji: string }>;
+}
+
+function groupByArea(ideas: Idea[]): Group[] {
   const fallback = AREAS[AREAS.length - 1];
-  const out = AREAS.map((area) => ({ area, ideas: [] as Idea[] }));
+  const out = AREAS.map((area) => ({ id: area.id, title: area.label, ideas: [] as Array<Idea & { emoji: string }> }));
   for (const idea of ideas) {
-    const hit = out.find((g) => g.area.id === (idea.area || fallback.id)) ?? out[out.length - 1];
-    hit.ideas.push(idea);
+    const area = AREAS.find((a) => a.id === (idea.area || fallback.id)) ?? fallback;
+    const hit = out.find((g) => g.id === area.id) ?? out[out.length - 1];
+    hit.ideas.push({ ...idea, emoji: area.emoji });
   }
   return out.filter((g) => g.ideas.length > 0);
 }

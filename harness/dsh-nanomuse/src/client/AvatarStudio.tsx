@@ -57,6 +57,9 @@ export interface Estimate {
   unlimited: boolean
   affordable: boolean
   imageModel: string
+  /** The four clips of the new face, when the account would draw them (C3); 0 or absent otherwise. */
+  clips?: number
+  videoModel?: string
 }
 
 type Stage = 'describe' | 'drawing' | 'posing' | 'done'
@@ -207,8 +210,9 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
       h('p', { className: 'nm-fine' },
         estimateError ? t('stNoModel', { message: estimateError })
           : !estimate ? t('stEstimating')
-          : estimate.unlimited ? t('stCostUnlimited', { n: 8 })
+          : estimate.unlimited ? (estimate.clips ? t('stCostUnlimitedClips', { n: 8, clips: estimate.clips }) : t('stCostUnlimited', { n: 8 }))
           : cannot ? t('stCannotAfford', { cost: estimate.cny.toFixed(2), left: estimate.leftCny.toFixed(2) })
+          : estimate.clips ? t('stCostClips', { cost: estimate.cny.toFixed(2), left: estimate.leftCny.toFixed(2) })
           : t('stCost', { cost: estimate.cny.toFixed(2), left: estimate.leftCny.toFixed(2) })),
       error ? h('div', { className: 'nm-room-error' }, error) : null)
     footer = h('div', { className: 'nm-sheet-actions' },

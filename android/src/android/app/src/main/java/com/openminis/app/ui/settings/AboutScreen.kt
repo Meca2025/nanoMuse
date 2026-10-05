@@ -78,15 +78,8 @@ fun AboutScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
-            Text(
-                stringResource(
-                    R.string.about_version_format,
-                    BuildConfig.VERSION_NAME,
-                    BuildConfig.VERSION_CODE.toString(),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            // nanoMuse: the installed build and the latest release (tap: check again / get it).
+            io.github.nanomuse.ui.settings.VersionLines()
             Text(
                 stringResource(R.string.about_minis_tagline),
                 style = MaterialTheme.typography.bodyMedium,

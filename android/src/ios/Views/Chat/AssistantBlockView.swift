@@ -48,6 +48,7 @@ struct AssistantBlockView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(ChatColors.accent.opacity(isHighlighted ? 0.10 : 0))
                     )
+                    .modifier(NanoMuseAssistantBubble(content: block.content)) // nanoMuse: Muse's grey bubble around the reply in the shell
             }
         case .thinking:
             ThinkingBlockView(

@@ -122,7 +122,8 @@ export function makeLibraryPanel(t: Translate) {
     // "Recent" (the last few touched) over "All generated content", as Muse lays the shelf out
     const recent = !query && shelf === 'all' && sort === 'newest' && items.length > 4 ? items.slice(0, 4) : []
     const grid = items.length === 0
-      ? h(Empty, { icon: h(current.icon, { size: 28 }), text: t(current.empty) }, query ? null : h('p', { className: 'nm-empty-sub' }, rooms.ready ? t('libEmptyHint') : t('roomNotReady')))
+      ? h(Empty, { icon: h(current.icon, { size: 28 }), text: query ? t(current.empty) : t(MEDIA.some((m) => m.id === shelf) ? 'libEmptyMediaTitle' : 'libEmptyArtifactsTitle') },
+          query ? null : h('p', { className: 'nm-empty-sub' }, !rooms.ready ? t('roomNotReady') : t(MEDIA.some((m) => m.id === shelf) ? 'libEmptyMediaBody' : 'libEmptyArtifactsBody')))
       : h('div', null,
           recent.length ? h('div', { className: 'nm-lib-recent' }, t('libRecent')) : null,
           recent.length ? h('div', { className: 'nm-lib-grid' }, recent.map(card)) : null,

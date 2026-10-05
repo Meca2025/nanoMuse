@@ -14,10 +14,39 @@
  * Never a key, never a message: the fields are the name, the face kind, the
  * emoji and its colour, the description and style, and the pictures.
  */
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { SharedConnector } from './desk.ts'
 import type { Relay, RelayProfile } from './relay.ts'
+
+// ---- the package's own files ---------------------------------------------------------
+
+const PACKAGE_NAME = 'dsh-nanomuse'
+
+/**
+ * The package's `assets/` directory, found from the module asking: the build splits shared
+ * modules into `lib/chunks/`, so `../assets/` relative to `import.meta.url` is right from
+ * `lib/index.js` and wrong from a chunk. Walks up to the nearest `package.json` named
+ * `dsh-nanomuse` (never more than eight levels), and falls back to the old relative guess.
+ */
+export function packageAssetsDir(moduleUrl: string): string {
+  let dir = dirname(fileURLToPath(moduleUrl))
+  for (let i = 0; i < 8; i++) {
+    const manifest = join(dir, 'package.json')
+    if (existsSync(manifest)) {
+      try {
+        const pkg = JSON.parse(readFileSync(manifest, 'utf8')) as { name?: unknown }
+        if (pkg.name === PACKAGE_NAME) return join(dir, 'assets')
+      } catch { /* not ours, keep climbing */ }
+    }
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return resolve(fileURLToPath(new URL('../assets/', moduleUrl)))
+}
 
 export const MOODS = ['idle', 'working', 'waiting', 'happy', 'error'] as const
 export type Mood = (typeof MOODS)[number]

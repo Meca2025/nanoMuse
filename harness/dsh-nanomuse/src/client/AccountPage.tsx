@@ -7,12 +7,13 @@
  * `/sessions`, `/account-events`, `/password`, …); nothing of it is kept on the computer.
  */
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
-import { createElement as h, Fragment, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { createElement as h, Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { call, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
 import { IconCopy, IconGift, IconHeart, IconKey } from './icons.tsx'
 import { REPO_URL } from './panels.ts'
+import { peekRooms, roomsCall, type NudgeAsk } from './rooms.ts'
 
 /** `GET /v1/me`, the parts this page reads (every field optional: an older relay sends fewer). */
 export interface AccountSheet {
@@ -50,40 +51,36 @@ const OWN_KEY_DOCS = 'https://nanomuse.cn/own-key'
 const yuan = (n: number | undefined | null): string => (n === undefined || n === null ? '—' : `¥${n.toFixed(n % 1 === 0 ? 0 : 2)}`)
 const when = (ts: number | null | undefined, locale: string): string => (ts ? new Date(ts * 1000).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) : '—')
 
-// ---- the star, asked for once at the moments it is fair to --------------------------------
+// ---- the star, asked for at the moments the policy names (C1) ----------------------------
 
 /**
- * The moments: the account just signed in, the first and the tenth task that ran to its end,
- * a face just drawn in the studio. Each is asked once per computer; going to GitHub from any of
- * them ends them all. The tone is a thank-you, never a bill: your support is what keeps us going.
+ * The host keeps the ledger and the gate (`nudges.json`, `src/nudges.ts`): how many tasks ran
+ * to their end, the days the app was opened, how often a star was asked for and when. The
+ * moments it cannot count itself — the account just signed in, a face just drawn, the
+ * allowance used up, a goal reached — are asked for from here with `/nudges/ask`; the host
+ * says yes once per cooldown and at most `max_asks` times, never after a star. The tone is a
+ * thank-you, never a bill.
  */
-export type StarMoment = 'signed_in' | 'first_task' | 'tenth_task' | 'new_look'
-const STARRED_KEY = 'nm.star.starred'
-const TASKS_KEY = 'nm.star.tasks'
-const momentKey = (m: string) => `nm.star.${m}`
-const read = (k: string) => { try { return window.localStorage.getItem(k) === '1' } catch { return false } }
-const write = (k: string) => { try { window.localStorage.setItem(k, '1') } catch { /* private mode: the ask may come back */ } }
-/** Still worth asking at this moment: not asked before, and the person has not gone to star it. */
-export const starDue = (moment: StarMoment): boolean => !read(STARRED_KEY) && !read(momentKey(moment))
-export const starShown = (moment: StarMoment): void => write(momentKey(moment))
-export const starred = (): boolean => read(STARRED_KEY)
-/** One more task ran to its end on this computer; the count so far. */
-export function countTask(): number {
-  try {
-    const n = (Number(window.localStorage.getItem(TASKS_KEY)) || 0) + 1
-    window.localStorage.setItem(TASKS_KEY, String(n))
-    return n
-  } catch { return 1 }
+export type StarMoment = 'signed_in' | 'new_look' | 'exhausted' | 'goal_done'
+/** The words for an ask the host granted. */
+export function nudgeText(t: Translate, ask: NudgeAsk): string {
+  switch (ask.moment) {
+    case 'signed_in': return t('starSignedIn')
+    case 'new_look': return t('starNewLook')
+    case 'exhausted': return t('ndExhausted')
+    case 'goal_done': return t('ndGoalDone')
+    case 'tasks': return ask.n === 1 ? t('ndTasksOne') : t('ndTasks', { n: ask.n ?? 0 })
+    case 'days_used': return ask.n === 7 ? t('ndWeek') : ask.n === 30 ? t('ndMonth') : t('ndDays', { n: ask.n ?? 0 })
+  }
 }
-/** The moment a finished-task count makes due, if any: the first and the tenth. */
-export const momentForTask = (n: number): StarMoment | undefined => (n === 1 ? 'first_task' : n === 10 ? 'tenth_task' : undefined)
-/** The words for a moment. */
-export const starText = (t: Translate, moment: StarMoment): string =>
-  t(moment === 'signed_in' ? 'starSignedIn' : moment === 'first_task' ? 'starFirstTask' : moment === 'tenth_task' ? 'starTenthTask' : 'starNewLook')
-/** Off to GitHub, and no more asking anywhere. */
-export function openStar(): void {
-  write(STARRED_KEY)
-  openLink(REPO_URL)
+/** Off to GitHub (the policy's page), and no more asking anywhere. */
+export function openStar(url?: string): void {
+  void roomsCall('nudges/starred', {}).catch(() => undefined)
+  openLink(url || peekRooms().nudges.policy.star.url || REPO_URL)
+}
+/** "Not now": the host forgets the current ask. */
+export function dismissStar(): void {
+  void roomsCall('nudges/dismiss', {}).catch(() => undefined)
 }
 
 /** One card: the star, a line saying why, "Star on GitHub" and "Not now". */
@@ -96,19 +93,24 @@ export function StarNudge({ t, text, onDone }: { t: Translate; text: string; onD
         h('div', { className: 'nm-star-text' }, text))),
     h('div', { className: 'nm-star-actions' },
       h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => { openStar(); onDone() } }, t('starAction')),
-      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: onDone }, t('starLater'))))
+      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => { dismissStar(); onDone() } }, t('starLater'))))
 }
 
-/** The card for a moment, shown once; marks the moment spent as soon as it is drawn. */
+/** The card for a moment, when the host grants the ask; asked once per mount, while `due`. */
 export function StarNudgeOnce({ t, moment, text, due = true }: { t: Translate; moment: StarMoment; text?: string; due?: boolean }): ReactNode {
-  const [open, setOpen] = useState(false)
+  const [ask, setAsk] = useState<NudgeAsk | null>(null)
+  const asked = useRef(false)
   useEffect(() => {
-    if (!due || open || !starDue(moment)) return
-    starShown(moment)
-    setOpen(true)
-  }, [due, moment, open])
-  if (!open) return null
-  return h(StarNudge, { t, text: text ?? starText(t, moment), onDone: () => setOpen(false) })
+    if (!due || asked.current) return
+    asked.current = true
+    let alive = true
+    roomsCall<{ ask: NudgeAsk | null }>('nudges/ask', { moment })
+      .then((r) => { if (alive && r.ask) setAsk(r.ask) })
+      .catch(() => undefined)
+    return () => { alive = false }
+  }, [due, moment])
+  if (!ask) return null
+  return h(StarNudge, { t, text: text ?? nudgeText(t, ask), onDone: () => setAsk(null) })
 }
 
 // ---- the page ------------------------------------------------------------------------------
@@ -201,7 +203,18 @@ const OPENROUTER_URL = 'https://openrouter.ai/keys'
 
 function WaysOn({ t, exhausted, sheet }: { t: Translate; exhausted: boolean; sheet: AccountSheet }): ReactNode {
   const bonus = sheet.spend?.invite_bonus_cny ?? sheet.invite?.bonus_cny ?? 5
-  const [star, setStar] = useState(!starred())
+  // the allowance used up: the host decides whether the star row is due (C1 `exhausted`)
+  const [star, setStar] = useState(false)
+  const asked = useRef(false)
+  useEffect(() => {
+    if (!exhausted || asked.current) return
+    asked.current = true
+    let alive = true
+    roomsCall<{ ask: NudgeAsk | null }>('nudges/ask', { moment: 'exhausted' })
+      .then((r) => { if (alive && r.ask) setStar(true) })
+      .catch(() => undefined)
+    return () => { alive = false }
+  }, [exhausted])
   const cn = mainland(t, sheet)
   // the provider that suits where the person is comes first; the other stays one line below
   const bailian = h('div', { className: 'nm-way', key: 'bailian' },

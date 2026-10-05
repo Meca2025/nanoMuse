@@ -151,32 +151,18 @@ export function apply(ctx: Context): void {
     'nanomuse rooms: draw_new_look',
   )
 
-  ctx.effect(
-    () =>
-      ctx.tools.register(
-        defineTool({
-          name: 'take_name',
-          description: 'Take the name the person gave you: it becomes your name on every device (under your face, in the chats). Call it only when they named you or asked you to change your name.',
-          parameters: {
-            name: { type: 'string', required: true, description: 'The name, at most 60 characters.' },
-          },
-          output: {
-            schema: { type: 'object', properties: { name: { type: 'string' } }, additionalProperties: false },
-            render: (_args, value) => [{ type: 'text', text: `Your name is now ${value.name}.` }],
-          },
-          async execute(args) {
-            const name = String(args.name ?? '').trim().slice(0, 60)
-            if (!name) throw new Error('A name is needed.')
-            const profile = await ctx.nanomuseCloud.writeProfile({ name })
-            return { name: profile.name }
-          },
-          presentCall: (args) => ({ card: 'generic', title: `Take the name ${args.name || ''}`, kind: 'other', rawInput: args }),
-        }),
-      ),
-    'nanomuse rooms: take_name',
-  )
-
   ctx.inject(['systemPrompt'], (ctx) => {
+    // The first conversation (C4): what the model is told for the chat it is bound to, by
+    // phase — nothing anywhere else, nothing once it is over. The assembly names its agent.
+    ctx.effect(
+      () =>
+        ctx.systemPrompt.context({
+          name: 'nanomuse-firstrun',
+          order: 56,
+          text: (context) => rooms.firstRunAddendum((context as { agent?: { session?: { id?: string } } }).agent?.session?.id),
+        }),
+      'nanomuse rooms: first conversation context',
+    )
     ctx.effect(
       () =>
         ctx.systemPrompt.context({
