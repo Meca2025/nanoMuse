@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.35] - 2026-10-05 · Accord
+
+The iPhone and the desktop brought to the phone's design, screen for screen — the Muse header on every room, the settings as Muse cards, motion clips for a drawn face, the phone's first run and first conversation on the desktop; the face reacts to clicks on a Mac again, Ideas is never empty, the splash has no dragon; when to ask for a star is the relay's policy, read by every client within a day; installed and latest version side by side everywhere. [Release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.35).
+
 ### Runtime
 
 - **When to ask for a star is a policy, not a constant.** The relay says when the apps may ask (`GET /v1/nudges`, see Cloud), the runtime reads it once a day and on sign-in and hands it on as `GET /api/nudges` (`?refresh=1` reads it again), with the same defaults built in for when the relay cannot be reached (`nanomuse/nudges.py`). The rule every client follows: a *task* is a turn the person started that got a reply — never the first conversation (until the agent has a name), never a routine, a feed post or a goal check-in; the asks come at the policy's moments (first sign-in, the 3rd / 10th / 30th task, the 7th / 30th day, a goal reached, a new face, the allowance spent), at least seven days apart and at most four times per device.
