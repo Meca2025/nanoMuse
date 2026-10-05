@@ -11,7 +11,7 @@
  */
 import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process'
 import { access, constants } from 'node:fs/promises'
-import { delimiter, isAbsolute, join } from 'node:path'
+import { delimiter, extname, isAbsolute, join } from 'node:path'
 
 /** The first line of what `computer_screen` says: `<window in front> · <WxH> · …`. */
 function screenHead(text: string): { title: string; width: number; height: number } {
@@ -62,11 +62,16 @@ export async function runtimeInfo(env: NodeJS.ProcessEnv = process.env): Promise
   return { path: '', source: 'none', ok: false, problem: 'not-found' }
 }
 
+/** Windows has no executable bit: what runs is decided by the extension. */
+const WINDOWS_RUNNABLE = ['.exe', '.cmd', '.bat', '.com']
+
 async function executable(path: string): Promise<boolean> {
-  return access(path, constants.X_OK).then(
+  const present = await access(path, constants.X_OK).then(
     () => true,
     () => false,
   )
+  if (!present) return false
+  return process.platform !== 'win32' || WINDOWS_RUNNABLE.includes(extname(path).toLowerCase())
 }
 
 type Content = { type: string; text?: string; data?: string; mimeType?: string }
