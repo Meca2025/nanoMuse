@@ -24,7 +24,7 @@
 
 **nanoMuse는 당신의 모든 기기를 위한 오픈소스 개인 에이전트입니다.** 이름과 모습을 가진 하나의 에이전트로, Meta의 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/)와 같은 종류입니다. 질문에 답하는 대신 직접 일을 하고, 앱을 닫아도 계속 일하고, 당신을 기억하며, 되돌릴 수 없는 일을 하기 전에는 멈춰서 묻습니다.
 
-*nano*는 직접 돌리고 직접 배포할 수 있을 만큼 작은, 완전한 한 벌이라는 뜻입니다. 휴대폰 앱, 데스크톱 앱, 웹 콘솔, 그리고 이들을 잇는 릴레이가 모두 이 저장소에 GPL-3.0-or-later로 들어 있습니다. nanoMuse는 비영리입니다. 로그인하면 커뮤니티 릴레이에서 모델을 쓸 수 있는 무료 사용량을 받습니다. 비용은 개발자가 부담합니다. 다 쓰면 [자신의 키로 바꾸세요](../own-key.md). 같은 릴레이를 자신의 서버에서 돌릴 수도 있어, 아무것도 집 밖으로 나가지 않게 할 수 있습니다. 최신 버전: **0.1.37 Weave** — [릴리스 노트](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.37) · [브라우저에서 써 보기](https://nanomuse.cn/web/).
+*nano*는 직접 돌리고 직접 배포할 수 있을 만큼 작은, 완전한 한 벌이라는 뜻입니다. 휴대폰 앱, 데스크톱 앱, 웹 콘솔, 그리고 이들을 잇는 릴레이가 모두 이 저장소에 GPL-3.0-or-later로 들어 있습니다. nanoMuse는 비영리입니다. 로그인하면 커뮤니티 릴레이에서 모델을 쓸 수 있는 무료 사용량을 받습니다. 비용은 개발자가 부담합니다. 다 쓰면 [자신의 키로 바꾸세요](../own-key.md). 같은 릴레이를 자신의 서버에서 돌릴 수도 있어, 아무것도 집 밖으로 나가지 않게 할 수 있습니다. 최신 버전: **0.1.38 Loom** — [릴리스 노트](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38) · [브라우저에서 써 보기](https://nanomuse.cn/web/).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="채팅: 작업 공간 안의 것을 지우기 전에 에이전트가 멈춰서 묻는다 — 한 번만, 이 대화, 작업 공간에서는 항상, 또는 거부">
@@ -37,11 +37,11 @@
 
 | | |
 |---|---|
-| **Android** 8.0 이상, arm64 | [nanoMuse-0.1.37-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-0.1.37-arm64.apk) — 모든 버전이 같은 키로 서명되어 있어 덮어 설치하면 됩니다 |
+| **Android** 8.0 이상, arm64 | [nanoMuse-0.1.38-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-0.1.38-arm64.apk) — 모든 버전이 같은 키로 서명되어 있어 덮어 설치하면 됩니다 |
 | **iPhone / iPad** | TestFlight, 지금은 내부 테스터만 <!-- coordinator: 공개 TestFlight 링크가 생기면 여기에 --> |
-| **macOS** 12 이상 | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-x64.dmg) — 공증되지 않음: 처음 한 번 우클릭 → 열기 |
-| **Windows** 10 이상 | [nanoMuse-Desktop-0.1.37-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-win-x64.exe) — 실행을 한 번 눌러 주세요 |
-| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.tar.gz) |
+| **macOS** 12 이상 | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-x64.dmg) — 공증되지 않음: 처음 한 번 우클릭 → 열기 |
+| **Windows** 10 이상 | [nanoMuse-Desktop-0.1.38-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-win-x64.exe) — 실행을 한 번 눌러 주세요 |
+| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.tar.gz) |
 | **터미널** | Python 3.11 이상에서 `pipx install "git+https://github.com/nano-muse/nanoMuse"`, 또는 [최신 릴리스](https://github.com/nano-muse/nanoMuse/releases/latest)의 `nanomuse-desktop-terminal` 바이너리 |
 | **Docker** | `bash scripts/self-host.sh --local`로 자신의 릴레이를, `docker compose up -d app`으로 자신의 서버에 웹 앱을 — [직접 호스팅](../self-hosting.md) |
 

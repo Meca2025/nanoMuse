@@ -24,7 +24,7 @@
 
 **nanoMuse is an open-source personal agent for every device you own.** One agent with a name and a look of its own, in the style of Meta's [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/): it does things instead of answering questions, keeps working while the app is closed, remembers you, and stops to ask before anything you could not undo.
 
-*nano* means the whole set, small enough to run and deploy yourself: the phone app, the desktop app, the web console and the relay that joins them are all in this repository, under GPL-3.0-or-later. nanoMuse is non-profit. Sign in and you get a free allowance of model use on the community relay — the developer pays for it; when it is gone, [use your own key](docs/own-key.md). The same relay runs on a server of yours, so nothing has to leave your house. Latest: **0.1.37 Weave** — [release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.37) · [try it in the browser](https://nanomuse.cn/web/).
+*nano* means the whole set, small enough to run and deploy yourself: the phone app, the desktop app, the web console and the relay that joins them are all in this repository, under GPL-3.0-or-later. nanoMuse is non-profit. Sign in and you get a free allowance of model use on the community relay — the developer pays for it; when it is gone, [use your own key](docs/own-key.md). The same relay runs on a server of yours, so nothing has to leave your house. Latest: **0.1.38 Loom** — [release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38) · [try it in the browser](https://nanomuse.cn/web/).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Chat: before deleting in the workspace, the agent stops and asks — once, this chat, always for the workspace, or deny">
@@ -37,11 +37,11 @@
 
 | | |
 |---|---|
-| **Android** 8.0+, arm64 | [nanoMuse-0.1.37-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-0.1.37-arm64.apk) — every version is signed with the same key and installs over the last |
+| **Android** 8.0+, arm64 | [nanoMuse-0.1.38-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-0.1.38-arm64.apk) — every version is signed with the same key and installs over the last |
 | **iPhone / iPad** | TestFlight, internal testers for now <!-- coordinator: put the public TestFlight link here when there is one --> |
-| **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-x64.dmg) — not notarised: right-click → *Open* the first time |
-| **Windows** 10+ | [nanoMuse-Desktop-0.1.37-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-win-x64.exe) — click *Run anyway* once |
-| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.tar.gz) |
+| **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-x64.dmg) — not notarised: right-click → *Open* the first time |
+| **Windows** 10+ | [nanoMuse-Desktop-0.1.38-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-win-x64.exe) — click *Run anyway* once |
+| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.tar.gz) |
 | **Terminal** | `pipx install "git+https://github.com/nano-muse/nanoMuse"` with Python 3.11+, or the `nanomuse-desktop-terminal` binary from the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest) |
 | **Docker** | `bash scripts/self-host.sh --local` for your own relay; `docker compose up -d app` for the web app on a server of yours — [self-hosting](docs/self-hosting.md) |
 
