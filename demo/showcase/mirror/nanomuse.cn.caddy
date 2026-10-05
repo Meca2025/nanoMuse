@@ -58,9 +58,15 @@ nanomuse.cn {
 	}
 
 	# pages: ten minutes, like GitHub Pages; assets are replaced in place across versions, so a day
+	# (the docs site's assets under /docs/assets carry a hash in the name)
 	header Cache-Control "public, max-age=600"
-	@assets path /assets/*
+	@assets path /assets/* /docs/assets/*
 	header @assets Cache-Control "public, max-age=86400"
+
+	# the docs (website/, VitePress, published under /docs): links without .html, served the
+	# way GitHub Pages serves them — /docs/cloud is /docs/cloud.html
+	@docs path /docs/*
+	try_files @docs {path} {path}.html {path}/index.html
 
 	file_server
 }
