@@ -12,9 +12,10 @@ download today.
 
 One APK, one architecture: `nanoMuse-<version>-arm64.apk` (arm64-v8a, Android 8.0 / API 26
 or newer, `targetSdk` 35). Every release is signed with the same key, so a newer APK
-installs over the old one and keeps its data. No Play Store listing: the app checks this
-repository's GitHub Releases for a newer version and offers the download (*Settings →
-About*).
+installs over the old one and keeps its data. No Play Store listing: *Settings → Version* shows
+the installed build next to the newest release (`nanomuse.cn/dl/index.json` first, this
+repository's GitHub Releases second — *Latest 0.1.x — you have it* / *0.1.x is out — tap to
+update*) and offers the download.
 
 ## Install
 
