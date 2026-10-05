@@ -4,6 +4,52 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Runtime
+
+- **When to ask for a star is a policy, not a constant.** The relay says when the apps may ask (`GET /v1/nudges`, see Cloud), the runtime reads it once a day and on sign-in and hands it on as `GET /api/nudges` (`?refresh=1` reads it again), with the same defaults built in for when the relay cannot be reached (`nanomuse/nudges.py`). The rule every client follows: a *task* is a turn the person started that got a reply — never the first conversation (until the agent has a name), never a routine, a feed post or a goal check-in; the asks come at the policy's moments (first sign-in, the 3rd / 10th / 30th task, the 7th / 30th day, a goal reached, a new face, the allowance spent), at least seven days apart and at most four times per device.
+- **Installed and latest.** `GET /api/update` says which version is running and which is the newest release, reading `nanomuse.cn/dl/index.json` first and GitHub's `releases/latest` second, cached a day (`?refresh=1` asks again) — `nanomuse/server/update.py`.
+- **The first run has an end.** `POST /api/onboarded` records it, and with a model configured the Feed's first day is written in the background right then; the Feed's preferences take `daily` / `time` for the daily routine (08:00 by default), which is created the first time the Feed is opened. The macOS screen capture that comes back black says what to switch on and that the app must be relaunched (`BLACK_SCREEN_HINT`).
+- **macOS window mode has a fail-safe.** `auto` stays the default; when the Quartz layer itself breaks (the window list or the capture raises), the hands stay on the whole screen for the rest of that target and say so once (`WindowLayerBroken`; `status()["window"]["reason"]` carries the why); a new target tries again; an explicit `window` mode keeps trying.
+
+### Web
+
+- **Star asks at the policy's moments** (`nudges.ts`): the gate counts only person-started turns after the first run, keeps the cooldown and the lifetime cap per browser, and asks on sign-in, after tasks, on a new face, when the allowance is spent, on the 7th / 30th day and when a goal is reached — never in the first conversation.
+- **Two version lines on Settings** — *nanoMuse 0.1.x · installed* and *Latest 0.1.x — you have it* / *0.1.x is out — Update* / *Could not check — tap to try again*.
+- **Ideas and empty states.** The curated ideas catalogue (`web/src/ideas/`, byte for byte the phone's, with a test); the Feed opens on the intro card with *Write it now*; Memory, Skills and Devices say what will appear and how; the Hands card says why window mode parked (*On the whole screen for now: …*).
+
+### Desktop
+
+- **The phone's first run, kept by the host.** Welcome, sign-in, password, which model answers, models, macOS permissions (with the test screenshot and the mouse move), Meet — recorded in `firstrun.json` as *done*, never skipped on a fresh install (`src/firstrun.ts`, `FirstRun.tsx`). The first conversation is the phone's: the app speaks first (three scripted lines, no tokens), asks what to call you, and the model's `nanomuse-naming` fence becomes the naming card; the `take_name` / `ask_user_question` detour is gone.
+- **The face reacts to clicks again on macOS and Windows.** Chromium reads `-webkit-app-region` from the untransformed layout, so a header centred with a transform was all drag bar; the header is centred with margins and the island is an explicit no-drag region.
+- **Ideas were empty** when the bundle ran from `lib/chunks/` — the `import.meta.url` of a split chunk resolved `../assets/` one level too deep; package assets are found from the package root now (`packageAssetsDir`, with a test).
+- **A splash without the dragon.** Wordmark, a quiet loader, the person's own face when there is one (`harness/desktop/resources/loading.html`, `splashFace()`); the bundled dragon frames are gone.
+- **Motion clips for drawn faces.** Four 4-second clips — idle, working, waiting, happy — drawn from the face by `wan2.2-i2v-flash` through the relay or an own Bailian key (`src/video.ts`, `src/motion.ts`), stored under `avatar/motion/`, served from this computer and played in the header, the sidebar and the capsule; *Animate the avatar after a change* in Settings → Media (on by default) with *Make / Redo clips*; the cost estimate counts them.
+- **Feed, Goals, Library follow the phone.** The intro card and *Write it now*, a daily routine ensured at first open, the first day written when the first conversation ends; the phone's copy on the empty states.
+- **Installed and latest** as two lines in About and on the Settings row (`nanomuse.cn` first, GitHub second). Star asks from the relay's policy, with the moments above.
+- **macOS permissions re-audited.** TCC attributes the bundled runtime to the app, so only *nanoMuse Desktop* has to be switched on under Accessibility and Screen Recording — the words say so now; a restart dialog when Screen Recording flips on; a black-screen notice with *Relaunch*; *Try it* rows (a test screenshot, a mouse move) and the runtime row under Settings → Computer use and on the first run's permissions page.
+
+### Android
+
+- **Star asks from the policy** (`community/Nudges.kt`, the `StarPrompt` gate): the naming conversation, routines, the Feed and goal check-ins never count as a task; the asks come at the 3rd / 10th / 30th task, the 7th / 30th day, a goal reached, a new face, first sign-in and when the allowance is spent — seven days apart, four per phone; the policy comes from `/v1/nudges` once a day and from `/v1/me`, with the defaults built in.
+- **A Version row** in Settings: *Latest 0.1.x — you have it* / *0.1.x is out — tap to update* / *Could not check — tap to try again* (`community/UpdateCheck.kt`: `nanomuse.cn/dl/index.json`, then GitHub).
+- **The first feed day** is written the morning after the first conversation; the Feed's intro card and *Write it now*; the goal sheet's button is *Start*.
+
+### iOS
+
+- **The phone's chrome.** The Muse header — face disc, name pill, live status line, round drawer and menu buttons — on the chat and on Feed, Ideas, Goals and Library (`NanoMuseChrome.swift`); the side drawer after Android's; assistant replies in Muse's grey bubble; the agent page's toolbar as round buttons; room menus; the status line says *needs approval* and *drawing a clip* when that is what is happening.
+- **Settings rebuilt** as Muse cards in the Android order (`NanoMuseSettingsHomeView`): Image & video models, Avatar, Computers, Appearance (avatar size, model under the name, steps, theme — `NanoMuseAppearance.swift`), Notifications, Account, Coding, Scheduled tasks, Shared folders, Chat files, System files, a Version row with installed and latest (`NanoMuseUpdateCheck.swift`) and the Cloud / Account pages in Android's order.
+- **Motion clips.** `NanoMuseVideoGen.swift` (DashScope's async API through the relay or an own Bailian key, the phone's prompts word for word) and `NanoMuseAvatarMotion.swift` (idle, working, waiting, happy; 4 s; per device under `avatar/motion/`); the face plays them (`AVQueuePlayer` + `AVPlayerLooper`, suspended in the background), with bundled clips for the dragon; *Image & video models* lists the models and the *Animate the avatar after a change* switch, *Make / Redo clips*; the studio's estimate counts the clips.
+- **First run and Feed.** A Notifications page in the first run (three dots); the Feed's intro card inline, the empty state, the first day written after the first conversation; a goal reached, a new face, the 7th day and the tasks are the star asks' moments (`NanoMuseNudges.swift`, the relay's policy with the defaults built in).
+- **Words.** 104 more nanoMuse strings in 简体中文 and 繁體中文; *Password* and *From* were English-only.
+
+### Cloud
+
+- **Cloud 0.18.0 — the nudges policy.** `GET /v1/nudges` (public, `Cache-Control: public, max-age=3600`) and `nudges` in `/v1/me` say when the apps may ask for a star: `star.enabled`, `url`, `moments` (`signed_in`, `tasks`, `new_look`, `exhausted`, `days_used`, `goal_done`), `cooldown_days`, `max_asks`; `GET` / `PUT /v1/admin/nudges` (`X-Admin-Token`) read and set it — every field validated, the version bumped by the server, `{"reset": true}` goes back to the defaults; stored in the relay's `settings` table (`nudges.py`). The console's **Star asks** card edits it.
+
+### Docs
+
+- A native-speaker pass over the nine README translations and the website's text (the notice block, the News, the versions table); the README says the iPhone app ships (TestFlight) and 0.2.0 is the App Store. `docs/parity.md` records the round: the iPad keeps the Muse shell (no split layout of its own), `auto` window mode with the fail-safe, the star rule as policy C1.
+
 ## [0.1.34] - 2026-10-05 · Turns
 
 The hands are handed over and wait, on every client, and approvals are answered where you are; chat apps (飞书, 钉钉, 企业微信, Telegram); two model settings and a region-aware way on; connections shared across the account's devices; the iPhone and the desktop catch up with the phone. [Release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.34).

@@ -153,11 +153,36 @@ Ours, in `NanoMuse/`:
 - **Data controls** (`NanoMuseDataControls.swift`): the relay's switch, the kept-turns count, the
   privacy page, deletion with a confirmation. **Reach** (`NanoMuseReach.swift`): a sheet per device
   of the account — open a link, send a note, a shell line, a screenshot — over the hub.
-- **Star asks** at the first and the tenth finished task (`NanoMuseStarWatch`: a session leaving
-  `activeSessions` without an error; a cancelled turn counts too, the stream has no cancel signal)
-  and after a new look, as a card pinned under the header (the message list is a UICollectionView,
-  so nothing can be placed under the last message); the sign-in and spent-allowance moments were
-  already there.
+- **The phone's chrome (0.1.35)** (`NanoMuseChrome.swift`, `NanoMuseAppearance.swift`, Android
+  `ui/chat/MuseHeader.kt` and `ui/settings`): the Muse header — the face disc, the name pill with
+  the live status line under it, round drawer and ••• buttons — on the chat and on Feed, Ideas,
+  Goals and Library; the side drawer after Android's; the agent's grey bubble for its replies
+  (`NanoMuseAssistantBubble` in `NanoMuseChatCards.swift`); the agent page's toolbar as round
+  buttons; *Settings → nanoMuse* rebuilt as Muse cards in the Android order
+  (`NanoMuseSettingsHomeView`: Image & video models, Avatar, Computers, Appearance — avatar size,
+  the model under the name, the steps, the theme — Notifications, Account, Coding, Scheduled
+  tasks, Shared folders, Chat files, System files, Version). A `nmOnChange` helper keeps
+  `onChange` on iOS 16, the app's deployment target.
+- **Motion clips (0.1.35)** (`NanoMuseVideoGen.swift`, `NanoMuseAvatarMotion.swift`,
+  `NanoMuseMediaModels.swift`; Android `avatar/VideoGen.kt`, `avatar/AvatarMotion.kt`): a drawn
+  face gets four 4-second clips — idle, working, waiting, happy — from `wan2.2-i2v-flash`
+  (DashScope's async API through the relay, or your own Bailian key), the phone's prompts word
+  for word, kept per device under `avatar/motion/`; the face plays them with an `AVQueuePlayer`
+  and an `AVPlayerLooper` (suspended in the background), the dragon's clips come from the bundle.
+  *Image & video models* lists the models, *Animate the avatar after a change* (on by default)
+  and *Make / Redo clips*; the studio's cost estimate counts the clips.
+- **Version, star asks, the feed's first day (0.1.35)** (`NanoMuseUpdateCheck.swift`,
+  `NanoMuseNudges.swift`): the Version row shows the installed build and the latest release
+  (`nanomuse.cn/dl/index.json` first, GitHub second, a day's cache — *Latest 0.1.x — you have it*
+  / *0.1.x is out* / *Could not check — tap to try again*). The star asks follow the relay's
+  policy (`/v1/nudges`, `nudges` in `/v1/me`, the same defaults built in): never in the first
+  conversation, then the 3rd / 10th / 30th task (`NanoMuseStarWatch`: a person-started session
+  leaving `activeSessions` without an error), the 7th / 30th day, a goal reached, a new look,
+  sign-in, the allowance spent — seven days apart, four per phone — as a card pinned under the
+  header (the message list is a UICollectionView, so nothing can be placed under the last
+  message). The Feed opens on the intro card, says when the daily routine runs while it is
+  empty, and writes its first day after the first conversation; a Notifications page joined the
+  first run.
 
 ## Building on a Mac
 
@@ -312,11 +337,13 @@ what became of it here:
 | Android (`io.github.nanomuse.*`) | On iOS |
 |---|---|
 | `cloud` — relay client, sign-in, account | Done: `NanoMuse/NanoMuseCloud*.swift`, `NanoMuseAccount*.swift` (0.1.32: password, invite code, the allowance in yuan, usage, sessions, timeline, delete) |
-| `ui.onboarding` — the four-page first run with *Sign in — free* | Done (0.1.34): `NanoMuseFirstRun.swift`, the first conversation included; no Hands page on iOS |
-| `community.StarPrompt` — the star asks | Done: at sign-in, when the allowance is spent, after the first and tenth task, after a new look (`NanoMuseStar`) |
+| `ui.onboarding` — the first run with *Sign in — free* | Done (0.1.34): `NanoMuseFirstRun.swift`, the first conversation included; 0.1.35 the Notifications page; no Hands page on iOS |
+| `community.StarPrompt`, `community.Nudges` — the star asks from the relay's policy | Done (0.1.35): `NanoMuseNudges.swift`, `NanoMuseStar` — the moments, the cooldown and the cap from `/v1/nudges` |
+| `community.UpdateCheck`, the Version row | Done (0.1.35): `NanoMuseUpdateCheck.swift` — installed and latest, `nanomuse.cn/dl/index.json` then GitHub |
+| `avatar.VideoGen`, `avatar.AvatarMotion` — the motion clips | Done (0.1.35): `NanoMuseVideoGen.swift`, `NanoMuseAvatarMotion.swift`, `NanoMuseMediaModels.swift` |
 | `nm.show_steps` — the agent's steps off by default | 0.1.32: `NanoMuseSteps.swift`; finished messages keep to the conversation, a running one shows its steps |
 | `connectors` — the catalogue, `SharedConnectors` | Done: `NanoMuseConnectors.swift` (0.1.33 the catalogue, 0.1.34 the other devices' entries) |
-| `ui.home`, `ui.chat`, `ui.settings`, `ui.profile` — the shell, header, agent page | Done: `NanoMuseShell.swift`, `NanoMuseHeader.swift`, `NanoMuseAgentPage.swift`, `NanoMuseSettings.swift` |
+| `ui.home`, `ui.chat`, `ui.settings`, `ui.profile` — the shell, header, agent page | Done: `NanoMuseShell.swift`, `NanoMuseHeader.swift`, `NanoMuseAgentPage.swift`, `NanoMuseSettings.swift`; 0.1.35 the Muse header on every room, the settings as Muse cards (`NanoMuseChrome.swift`, `NanoMuseAppearance.swift`) |
 | `avatar` — the drawn face, the chat-driven change, the studio | Done (0.1.34): `NanoMuseAvatarFlow.swift`, `NanoMuseAvatarStudio.swift`, `NanoMuseImageGen.swift` |
 | `goals`, `feed`, the scheduler | Done (0.1.34) as far as iOS allows: foreground catch-up, `BGAppRefreshTask`, local notifications. No alarm-exact runs while the app is asleep — the copy says so |
 | `coding` — the computers' coding agents over the hub | Done (0.1.34): `NanoMuseCoding.swift`; the computer must run nanoMuse signed in with the same account |
@@ -325,7 +352,7 @@ what became of it here:
 | Widgets | Upstream's `AgentWidget` as it is |
 
 Still to check on a device, in order: the first run end to end with a fresh account; a chat-driven
-avatar change through the relay and through a Bailian key; a routine coming due with the app in
+avatar change through the relay and through a Bailian key, and the four clips it draws afterwards; a routine coming due with the app in
 the background (does iOS grant the refresh on the tester's phone, and how often); a coding session
 against a computer of the account; the connectors list after a second device signs in.
 

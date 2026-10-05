@@ -375,25 +375,25 @@ struct NanoMuseHomeView: View {
                 .onDisappear { classicWantsSettings = false }
         }
         .sheet(isPresented: $showCoding) {
-            NanoMuseSheet(title: AppLocalized("Coding agents")) { NanoMuseCodingView() }
+            NanoMusePageSheet(title: AppLocalized("Coding agents")) { NanoMuseCodingView() }
         }
         .sheet(isPresented: $showRoutines) {
-            NanoMuseSheet(title: AppLocalized("All routines")) { NanoMuseRoutinesView() }
+            NanoMusePageSheet(title: AppLocalized("All routines")) { NanoMuseRoutinesView() }
         }
         .sheet(isPresented: $showSystemFiles) {
-            NanoMuseSheet(title: AppLocalized("System files")) { NanoMuseSystemFilesView() }
+            NanoMusePageSheet(title: AppLocalized("System files")) { NanoMuseSystemFilesView() }
         }
         .sheet(isPresented: $showSharedFolders) {
-            NanoMuseSheet(title: AppLocalized("Shared Folders")) { SharedFoldersSettingsView() }
+            NanoMusePageSheet(title: AppLocalized("Shared Folders")) { SharedFoldersSettingsView() }
         }
         .sheet(isPresented: $showChatFiles) {
-            NanoMuseSheet(title: AppLocalized("Chat files")) {
+            NanoMusePageSheet(title: AppLocalized("Chat files")) {
                 let base = RootfsManager.shared.dataPath
                 FileBrowserView(rootPath: base, initialPath: base.appendingPathComponent("var/minis"), rootLabel: "/")
             }
         }
         .sheet(isPresented: $showDevices) {
-            NanoMuseSheet(title: AppLocalized("Computers")) { NanoMuseComputersView() }
+            NanoMusePageSheet(title: AppLocalized("Computers")) { NanoMuseComputersView() }
         }
         .sheet(isPresented: $showNanoMuseSettings) {
             NavigationStack {
@@ -801,7 +801,7 @@ struct NanoMuseChatHeaderHost<Leading: View, Trailing: View>: View {
 }
 
 /// A page in a sheet: a navigation stack with a Done button.
-struct NanoMuseSheet<Content: View>: View {
+struct NanoMusePageSheet<Content: View>: View {
     var title: String
     @ViewBuilder var content: () -> Content
     @Environment(\.dismiss) private var dismiss
