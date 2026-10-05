@@ -55,6 +55,37 @@ struct NanoMuseChatCardsHost: View {
     }
 }
 
+// MARK: - The agent's bubble
+
+/// Muse's transcript: the agent's prose sits in a grey bubble (Android:
+/// NmAssistantBubble, MuseTones.bubble, radius 20, at most 340 wide); a block
+/// that is a code fence, a table or raw HTML stays bare, as does everything
+/// in the classic layout.
+struct NanoMuseAssistantBubble: ViewModifier {
+    var content: String
+
+    /// Code, tables and markup read better without the bubble.
+    static func isBare(_ content: String) -> Bool {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") || trimmed.hasPrefix("<") { return true }
+        return trimmed.hasPrefix("|") && trimmed.contains("|\n|")
+    }
+
+    @ViewBuilder
+    func body(content view: Content) -> some View {
+        if NanoMuseShellPrefs.shell && !Self.isBare(content) {
+            view
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(NanoMuseTones.bubble, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .frame(maxWidth: 340, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            view
+        }
+    }
+}
+
 // MARK: - Fence cards inside an assistant turn
 
 /// An assistant text block that carries one or more `nanomuse-*` fences: prose stays

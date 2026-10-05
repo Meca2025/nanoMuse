@@ -277,8 +277,52 @@ final class NanoMuseLogicTests: XCTestCase {
         XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: true, hasGroups: false, sourceChosen: true, modelsSkipped: false, fresh: false, passwordAnswered: false), .models)
         XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: true, hasGroups: true, sourceChosen: true, modelsSkipped: false, fresh: false, passwordAnswered: false), .meet)
         XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: true, hasGroups: false, sourceChosen: true, modelsSkipped: true, fresh: false, passwordAnswered: false), .meet)
-        XCTAssertEqual(NanoMuseFirstRun.dot(.meet), 1)
+        // The phone page (notifications) sits between the model pages and Meet, as Android's Hands page does.
+        XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: true, hasGroups: true, sourceChosen: true, modelsSkipped: false, fresh: false, passwordAnswered: false, notificationsSeen: false), .notifications)
+        XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: true, hasGroups: false, sourceChosen: true, modelsSkipped: false, fresh: false, passwordAnswered: false, notificationsSeen: false), .models)
+        // Three dots: account · phone · meet.
+        XCTAssertEqual(NanoMuseFirstRun.dot(.welcome), 0)
+        XCTAssertEqual(NanoMuseFirstRun.dot(.password), 0)
         XCTAssertEqual(NanoMuseFirstRun.dot(.source), 0)
+        XCTAssertEqual(NanoMuseFirstRun.dot(.models), 0)
+        XCTAssertEqual(NanoMuseFirstRun.dot(.notifications), 1)
+        XCTAssertEqual(NanoMuseFirstRun.dot(.meet), 2)
+    }
+
+    // MARK: - Header status line (Android §2.2 order)
+
+    func testStatusLinePriority() {
+        XCTAssertEqual(NanoMuseStatus.line(waiting: true, needsApproval: true, processing: true, toolName: "shell", toolTitle: "Running ls", request: "hi", studio: "Drawing", motion: "Animating 1/4…"), AppLocalized("Needs approval"))
+        XCTAssertEqual(NanoMuseStatus.line(waiting: true, processing: true, toolName: "shell", toolTitle: "Running ls", request: "hi", studio: "Drawing"), AppLocalized("Waiting for you"))
+        XCTAssertEqual(NanoMuseStatus.line(waiting: false, processing: true, toolName: "shell", toolTitle: "Running ls", request: "hi", studio: "Drawing"), "Drawing")
+        XCTAssertEqual(NanoMuseStatus.line(waiting: false, processing: true, toolName: "shell", toolTitle: "Running ls", request: "hi", studio: nil), "Running ls")
+        XCTAssertEqual(NanoMuseStatus.line(waiting: false, processing: true, toolName: "text", toolTitle: "", request: "hi", studio: nil), AppLocalized("Writing the reply"))
+        XCTAssertEqual(NanoMuseStatus.line(waiting: false, processing: true, toolName: "", toolTitle: "", request: "Plan my week", studio: nil), String(format: AppLocalized("On it: %@"), "Plan my week"))
+        XCTAssertEqual(NanoMuseStatus.line(waiting: false, processing: true, toolName: "", toolTitle: "", request: nil, studio: nil), AppLocalized("On it"))
+        XCTAssertEqual(NanoMuseStatus.line(waiting: false, processing: false, toolName: "", toolTitle: "", request: "hi", studio: nil, motion: "Animating 2/4…"), "Animating 2/4…")
+        XCTAssertNil(NanoMuseStatus.line(waiting: false, processing: false, toolName: "", toolTitle: "", request: "hi", studio: nil))
+    }
+
+    // MARK: - Appearance
+
+    func testAvatarSizes() {
+        XCTAssertEqual(NanoMuseAvatarSize.small.points, 44)
+        XCTAssertEqual(NanoMuseAvatarSize.medium.points, 56)
+        XCTAssertEqual(NanoMuseAvatarSize.large.points, 66)
+        XCTAssertEqual(NanoMuseAvatarSize.extraLarge.points, 76)
+        XCTAssertNil(NanoMuseAvatarSize.hidden.points)
+        XCTAssertEqual(NanoMuseAvatarSize.stored(nil), .extraLarge)
+        XCTAssertEqual(NanoMuseAvatarSize.stored("junk"), .extraLarge)
+        XCTAssertEqual(NanoMuseAvatarSize.stored("small"), .small)
+    }
+
+    // MARK: - Transcript
+
+    func testAssistantBubbleStaysBareForCodeAndTables() {
+        XCTAssertFalse(NanoMuseAssistantBubble.isBare("Here is the plan."))
+        XCTAssertTrue(NanoMuseAssistantBubble.isBare("```swift\nlet a = 1\n```"))
+        XCTAssertTrue(NanoMuseAssistantBubble.isBare("| a | b |\n|---|---|\n| 1 | 2 |"))
+        XCTAssertTrue(NanoMuseAssistantBubble.isBare("<table><tr><td>1</td></tr></table>"))
     }
 
     // MARK: - First conversation (naming)
@@ -407,5 +451,135 @@ final class NanoMuseLogicTests: XCTestCase {
         XCTAssertEqual(a, b, "order and timestamps do not count as a change")
         let c = NanoMuseSharedConnectors.stamp([["id": "a", "enabled": false], ["id": "b", "enabled": true]])
         XCTAssertNotEqual(a, c)
+    }
+
+    // MARK: - Video generation (pure parts)
+
+    func testVideoGenModelSiblingsAndParameters() {
+        XCTAssertEqual(NanoMuseVideoGen.model(for: "wan2.2-i2v-flash", fromImage: true), "wan2.2-i2v-flash")
+        XCTAssertEqual(NanoMuseVideoGen.model(for: "wan2.2-i2v-flash", fromImage: false), "wan2.2-t2v-plus", "Wan 2.2 has no text-to-video Flash")
+        XCTAssertEqual(NanoMuseVideoGen.model(for: "wan2.6-t2v", fromImage: true), "wan2.6-i2v")
+        XCTAssertEqual(NanoMuseVideoGen.model(for: "wan2.6-i2v", fromImage: false), "wan2.6-t2v")
+        XCTAssertEqual(NanoMuseVideoGen.model(for: "MiniMax/MiniMax-H3", fromImage: false), "MiniMax/MiniMax-H3")
+
+        XCTAssertEqual(NanoMuseVideoGen.wanResolution("wan2.2-i2v-flash"), "480P")
+        XCTAssertEqual(NanoMuseVideoGen.wanResolution("wan2.6-i2v"), "720P")
+
+        XCTAssertNil(NanoMuseVideoGen.duration(for: "wan2.2-i2v-flash", seconds: 4), "Wan 2.2 has a fixed length")
+        XCTAssertEqual(NanoMuseVideoGen.duration(for: "wan2.5-i2v-preview", seconds: 4), 5)
+        XCTAssertEqual(NanoMuseVideoGen.duration(for: "wan2.5-i2v-preview", seconds: 8), 10)
+        XCTAssertEqual(NanoMuseVideoGen.duration(for: "wan2.6-i2v", seconds: 1), 2)
+        XCTAssertEqual(NanoMuseVideoGen.duration(for: "wan2.6-i2v", seconds: 40), 15)
+        XCTAssertEqual(NanoMuseVideoGen.duration(for: "MiniMax/MiniMax-H3", seconds: 2), 4)
+
+        XCTAssertEqual(NanoMuseVideoGen.wanSize("16:9"), "1280*720")
+        XCTAssertEqual(NanoMuseVideoGen.wanSize("9:16"), "720*1280")
+        XCTAssertEqual(NanoMuseVideoGen.wanSize("1:1"), "960*960")
+    }
+
+    func testVideoGenHostsAndMessages() {
+        XCTAssertEqual(NanoMuseVideoGen.host(of: "https://dashscope.aliyuncs.com/compatible-mode/v1"), "https://dashscope.aliyuncs.com")
+        XCTAssertEqual(NanoMuseVideoGen.host(of: "https://dashscope.aliyuncs.com/api/v1/"), "https://dashscope.aliyuncs.com")
+        XCTAssertEqual(NanoMuseVideoGen.host(of: "https://relay.example/v1"), "https://relay.example")
+        XCTAssertEqual(NanoMuseVideoGen.host(of: "https://relay.example/"), "https://relay.example")
+        XCTAssertTrue(NanoMuseVideoGen.speaksDashScope("https://dashscope-intl.aliyuncs.com/compatible-mode/v1"))
+        XCTAssertFalse(NanoMuseVideoGen.speaksDashScope("https://api.openai.com/v1"))
+        XCTAssertTrue(NanoMuseVideoGen.looksLikeVideoModel("wan2.6-t2v"))
+        XCTAssertTrue(NanoMuseVideoGen.looksLikeVideoModel("MiniMax/MiniMax-H3"))
+        XCTAssertFalse(NanoMuseVideoGen.looksLikeVideoModel("qwen-image-3.0"))
+        XCTAssertEqual(NanoMuseVideoGen.knownDashScopeModels.first, "wan2.2-i2v-flash")
+
+        XCTAssertTrue(NanoMuseVideoGen.failureMessage(["code": "Arrearage", "message": "Model not activated for this account"]).contains("activate"))
+        XCTAssertEqual(NanoMuseVideoGen.failureMessage(["code": "InvalidParameter", "message": "bad size"]), "InvalidParameter: bad size")
+        XCTAssertEqual(NanoMuseVideoGen.failureMessage(["task_status": "FAILED"]), "Video task FAILED")
+        XCTAssertEqual(NanoMuseVideoGen.failureMessage([:]), "Video task failed")
+        XCTAssertEqual(NanoMuseVideoGen.apiMessage(Data("{\"message\":\"nope\"}".utf8)), ": nope")
+        XCTAssertEqual(NanoMuseVideoGen.apiMessage(Data("{\"error\":{\"message\":\"clips used up\"}}".utf8)), ": clips used up")
+        XCTAssertEqual(NanoMuseVideoGen.apiMessage(Data("not json".utf8)), "")
+
+        XCTAssertNil(NanoMuseVideoGen.frameScale(width: 768, height: 768))
+        XCTAssertEqual(NanoMuseVideoGen.frameScale(width: 2048, height: 2048), 0.5)
+        XCTAssertEqual(NanoMuseVideoGen.frameScale(width: 128, height: 128), 2)
+    }
+
+    // MARK: - Nudges policy and the star gate (contract C1)
+
+    func testNudgePolicyParsesAndKeepsDefaults() {
+        let d = NanoMuseNudgePolicy.defaults
+        XCTAssertTrue(d.enabled)
+        XCTAssertEqual(d.tasks, [3, 10, 30])
+        XCTAssertEqual(d.daysUsed, [7, 30])
+        XCTAssertEqual(d.cooldownDays, 7)
+        XCTAssertEqual(d.maxAsks, 4)
+        XCTAssertEqual(NanoMuseNudgePolicy.parse([:]), d, "an empty reply is the defaults")
+        XCTAssertEqual(NanoMuseNudgePolicy.parse(d.json), d, "round trip")
+
+        let p = NanoMuseNudgePolicy.parse([
+            "version": 1,
+            "star": [
+                "enabled": false,
+                "url": "javascript:alert(1)",
+                "moments": ["tasks": [10, 3, 3, "x"], "days_used": [], "goal_done": false],
+                "cooldown_days": -2,
+                "max_asks": "2",
+            ] as [String: Any],
+        ])
+        XCTAssertFalse(p.enabled)
+        XCTAssertEqual(p.url, d.url, "only https links are taken")
+        XCTAssertEqual(p.tasks, [3, 10])
+        XCTAssertEqual(p.daysUsed, [])
+        XCTAssertFalse(p.goalDone)
+        XCTAssertTrue(p.signedIn, "a missing moment keeps its default")
+        XCTAssertEqual(p.cooldownDays, 0)
+        XCTAssertEqual(p.maxAsks, 2)
+    }
+
+    func testStarGate() {
+        let policy = NanoMuseNudgePolicy.defaults
+        var ledger = NanoMuseStarLedger()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+        XCTAssertTrue(NanoMuseStarGate.due(.signedIn, ledger: ledger, policy: policy, now: now))
+        XCTAssertFalse(NanoMuseStarGate.due(.tasks(2), ledger: ledger, policy: policy, now: now), "2 is not a threshold")
+        XCTAssertTrue(NanoMuseStarGate.due(.tasks(3), ledger: ledger, policy: policy, now: now))
+
+        ledger = NanoMuseStarGate.marked(.tasks(3), in: ledger, now: now)
+        XCTAssertEqual(ledger.asks, 1)
+        XCTAssertFalse(NanoMuseStarGate.due(.tasks(3), ledger: ledger, policy: policy, now: now), "once per threshold")
+        XCTAssertFalse(NanoMuseStarGate.due(.newLook, ledger: ledger, policy: policy, now: now.addingTimeInterval(86_400)), "cooldown")
+        XCTAssertTrue(NanoMuseStarGate.due(.newLook, ledger: ledger, policy: policy, now: now.addingTimeInterval(8 * 86_400)))
+        XCTAssertTrue(NanoMuseStarGate.due(.tasks(10), ledger: ledger, policy: policy, now: now.addingTimeInterval(8 * 86_400)), "the next threshold is its own moment")
+
+        var capped = ledger
+        capped.asks = policy.maxAsks
+        XCTAssertFalse(NanoMuseStarGate.due(.goalDone, ledger: capped, policy: policy, now: now.addingTimeInterval(30 * 86_400)), "lifetime cap")
+
+        var starred = ledger
+        starred.starred = true
+        XCTAssertFalse(NanoMuseStarGate.due(.exhausted, ledger: starred, policy: policy, now: now.addingTimeInterval(30 * 86_400)))
+
+        var off = policy
+        off.enabled = false
+        XCTAssertFalse(NanoMuseStarGate.due(.signedIn, ledger: NanoMuseStarLedger(), policy: off, now: now))
+
+        let day1 = NanoMuseStarGate.dayOpened(NanoMuseStarLedger(), dayKey: "2026-10-05")
+        XCTAssertEqual(day1.days, 1)
+        XCTAssertEqual(NanoMuseStarGate.dayOpened(day1, dayKey: "2026-10-05").days, 1, "the same day counts once")
+        XCTAssertEqual(NanoMuseStarGate.dayOpened(day1, dayKey: "2026-10-06").days, 2)
+        XCTAssertEqual(NanoMuseStarMoment.daysUsed(7).key, "days_used.7")
+        XCTAssertEqual(NanoMuseStarMoment.tasks(30).key, "tasks.30")
+    }
+
+    // MARK: - Update check (contract C2)
+
+    func testVersionCompare() {
+        XCTAssertEqual(NanoMuseUpdateCheck.compareVersions("1.4.0", "1.4.0"), 0)
+        XCTAssertEqual(NanoMuseUpdateCheck.compareVersions("v1.4.0", "1.4"), 0, "a missing part is 0; a leading v is ignored")
+        XCTAssertEqual(NanoMuseUpdateCheck.compareVersions("1.10.0", "1.9.9"), 1, "numbers, not strings")
+        XCTAssertEqual(NanoMuseUpdateCheck.compareVersions("1.4.0", "1.4.1"), -1)
+        XCTAssertEqual(NanoMuseUpdateCheck.compareVersions("1.4.0", "1.4.0-beta.1"), 1, "a release beats its pre-release")
+        XCTAssertEqual(NanoMuseUpdateCheck.compareVersions("1.4.0-beta.1", "1.4.0-beta.2"), -1)
+        XCTAssertEqual(NanoMuseUpdateCheck.compareVersions("1.4.0+7", "1.4.0+9"), 0, "build metadata does not count")
+        XCTAssertEqual(NanoMuseUpdateCheck.normalize(" v2.0.1\n"), "2.0.1")
     }
 }

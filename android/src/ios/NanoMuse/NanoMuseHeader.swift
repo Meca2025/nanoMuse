@@ -19,24 +19,32 @@ extension Notification.Name {
 // MARK: - Status line
 
 enum NanoMuseStatus {
-    /// What the header says, in order of importance:
-    /// waiting for an approval > the running step's own title > writing the
-    /// reply > "On it: <request>" > nothing (idle, the model line shows).
+    /// What the header says, in order of importance (Android §2.2):
+    /// a risky step needs approval > waiting for the person > the avatar
+    /// studio's own line > the running step's own title > writing the
+    /// reply > "On it: <request>" > "On it" > the avatar's motion clips
+    /// being made > nothing (idle, the model line may show).
     static func line(
         waiting: Bool,
+        needsApproval: Bool = false,
         processing: Bool,
         toolName: String,
         toolTitle: String,
         request: String?,
-        studio: String?
+        studio: String?,
+        motion: String? = nil
     ) -> String? {
+        if needsApproval { return AppLocalized("Needs approval") }
         if waiting { return AppLocalized("Waiting for you") }
         if let studio, !studio.isEmpty { return studio }
-        guard processing else { return nil }
-        if toolName == "text" { return AppLocalized("Writing the reply") }
-        if !toolName.isEmpty, !toolTitle.isEmpty { return toolTitle }
-        if let brief = requestBrief(request) { return String(format: AppLocalized("On it: %@"), brief) }
-        return AppLocalized("On it")
+        if processing {
+            if toolName == "text" { return AppLocalized("Writing the reply") }
+            if !toolName.isEmpty, !toolTitle.isEmpty { return toolTitle }
+            if let brief = requestBrief(request) { return String(format: AppLocalized("On it: %@"), brief) }
+            return AppLocalized("On it")
+        }
+        if let motion, !motion.isEmpty { return motion }
+        return nil
     }
 
     /// The first ~36 characters of the request, cut at a word boundary
@@ -97,6 +105,7 @@ struct NanoMuseHeaderTitle: View {
     @ObservedObject private var gate = ConfigConfirmationGate.shared
     @ObservedObject private var studio = NanoMuseAvatarStudioModel.shared
     @ObservedObject private var avatarFlow = NanoMuseAvatarFlow.shared
+    @ObservedObject private var motion = NanoMuseAvatarMotion.shared
     @StateObject private var moods = NanoMuseMoodModel()
 
     private var waiting: Bool {
@@ -114,12 +123,14 @@ struct NanoMuseHeaderTitle: View {
 
     private var statusLine: String? {
         NanoMuseStatus.line(
-            waiting: waiting,
+            waiting: gate.pending != nil,
+            needsApproval: permissions.pendingRequest != nil,
             processing: vm.isProcessing,
             toolName: info?.toolName ?? "",
             toolTitle: info?.toolStatus ?? "",
             request: lastRequest,
-            studio: avatarFlow.statusLine ?? studio.headerStatus
+            studio: avatarFlow.statusLine ?? studio.headerStatus,
+            motion: motion.statusLine
         )
     }
 
@@ -156,7 +167,7 @@ struct NanoMuseHeaderTitle: View {
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: vm.isProcessing) { processing in
+        .nmOnChange(of: vm.isProcessing) { processing in
             guard !processing else { return }
             let failed = vm.errorMessage != nil || vm.messages.last?.error != nil
             moods.turnEnded(withError: failed)

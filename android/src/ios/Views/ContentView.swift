@@ -7428,10 +7428,10 @@ private struct SettingsSheet: View {
     var body: some View {
         NavigationStack(path: $navPath) {
             List {
-                // nanoMuse: the account, coding agents, routines, system files, connectors and the home switches.
+                // nanoMuse: the Muse settings — the model, the agent, the phone, the app, about — as cards.
                 Section {
                     NavigationLink {
-                        NanoMuseSettingsView()
+                        NanoMuseSettingsHomeView()
                     } label: {
                         Label("nanoMuse", systemImage: "sparkles")
                     }

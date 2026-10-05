@@ -322,6 +322,8 @@ final class NanoMuseProfileSync: ObservableObject {
                     }
                     if stills[.idle] != nil {
                         store.wear(remote: stills, faceId: full.faceId, description: full.description, style: full.style)
+                        // nanoMuse: clips are per device — the old ones went with `wear`; new ones when enabled (contract C3)
+                        NanoMuseAvatarMotion.shared.animateIfEnabled()
                     }
                 } else if head.rev > 0, store.hasCustomFace {
                     // Another device went back to the dragon.

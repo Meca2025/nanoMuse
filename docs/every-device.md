@@ -193,7 +193,11 @@ mouse stays yours*, the desktop stage draws the cursor where the click lands
 (the hands' events carry `x`/`y` in screen pixels), and the approval cards
 name the application. A window that cannot be found, captured (no Screen
 Recording — the capture comes back empty) or driven drops back to the whole
-screen with a note in the observation; nothing stops. Linux and Windows stay
+screen with a note in the observation; nothing stops. When the Quartz layer
+itself fails (pyobjc, the window server) *Auto* parks the hands on the whole
+screen for the rest of that target, says so once, and tries the window again
+when the next application is named; *One window* keeps trying, as asked —
+the Hands card's *Where* line shows the reason either way. Linux and Windows stay
 on the shared screen; `pip install "nanomuse[hands]"` brings the pyobjc
 frameworks on macOS only.
 

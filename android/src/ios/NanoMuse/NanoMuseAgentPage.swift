@@ -66,15 +66,17 @@ struct NanoMuseAgentPage: View {
                 }
             }
             .background(NanoMuseTones.canvas.ignoresSafeArea())
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(AppLocalized("Done")) { dismiss() }
+            // Muse's chrome (Android: AgentProfileScreen): a round close disc and a round share disc, no bar.
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack {
+                    NanoMuseRoundButton(symbol: "xmark", label: AppLocalized("Close")) { dismiss() }
+                    Spacer()
+                    NanoMuseRoundButton(symbol: "square.and.arrow.up", label: AppLocalized("Share avatar")) { showShare = true }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showShare = true } label: { Image(systemName: "square.and.arrow.up") }
-                        .accessibilityLabel(Text(AppLocalized("Share avatar")))
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 2)
             }
             .sheet(isPresented: $showShare) { NanoMuseAvatarShareSheet(agentName: name) }
             .sheet(isPresented: $showEditName) {
@@ -114,7 +116,7 @@ struct NanoMuseAgentPage: View {
             Text(name).font(.system(size: 24, weight: .bold))
             HStack(spacing: 6) {
                 Circle().fill(Color.green).frame(width: 8, height: 8)
-                Text(flow.statusLine ?? NanoMuseAvatarStudioModel.shared.headerStatus ?? AppLocalized("online"))
+                Text(flow.statusLine ?? NanoMuseAvatarStudioModel.shared.headerStatus ?? NanoMuseAvatarMotion.shared.statusLine ?? AppLocalized("online"))
                     .font(.subheadline).foregroundStyle(.secondary)
             }
         }

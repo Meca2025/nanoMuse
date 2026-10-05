@@ -9,9 +9,13 @@
  * whole text parses as an object with the fence's keys. The block is hidden and the
  * card inserted beside it; a block still streaming is left alone until it parses.
  */
+import { createElement as h } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { parseNamingBlock } from '../fences.ts'
 import type { Translate } from './api.ts'
 import { stillUrl } from './Avatar.tsx'
 import { peekLive } from './live.ts'
+import { NamingCard } from './NamingCard.tsx'
 import { nav } from './rooms.ts'
 import { FEED_PANEL, GOALS_PANEL } from './panels.ts'
 
@@ -22,6 +26,8 @@ type Fence =
   | { kind: 'goal-update'; progress: number; status: 'on_track' | 'attention' | 'done'; note: string }
   | { kind: 'feed'; title: string; emoji: string; body: string }
   | { kind: 'avatar'; desc: string; chosen: number }
+  /** The first conversation's ```nanomuse-naming block: the chooser when it suggests names, nothing to show otherwise. */
+  | { kind: 'naming'; suggestions: string[]; chooser: boolean }
 
 function readFence(text: string): Fence | undefined {
   const trimmed = text.trim()
@@ -35,6 +41,10 @@ function readFence(text: string): Fence | undefined {
     return undefined
   }
   const str = (v: unknown) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '')
+  if (('user_address' in o || 'suggest' in o || 'agent_name' in o) && !('title' in o) && !('status' in o) && !('desc' in o)) {
+    const naming = parseNamingBlock('```nanomuse-naming\n' + trimmed + '\n```')
+    return { kind: 'naming', suggestions: naming?.suggestions ?? [], chooser: (naming?.suggestions.length ?? 0) > 0 }
+  }
   if (typeof o.desc === 'string' && 'chosen' in o && Array.isArray(o.files)) return { kind: 'avatar', desc: str(o.desc), chosen: Number(o.chosen) || 1 }
   if (('goal_id' in o || 'progress' in o) && 'status' in o && !('title' in o)) {
     const status = str(o.status)
@@ -63,9 +73,17 @@ function button(label: string, onClick: () => void): HTMLElement {
   return b
 }
 
+const roots = new Map<HTMLElement, Root>()
+
 function card(t: Translate, fence: Fence): HTMLElement {
   const root = el('div', `nm-fence nm-fence-${fence.kind}`)
   switch (fence.kind) {
+    case 'naming': {
+      // the chooser is React: it follows the host's first-run state (the names, the pick)
+      roots.set(root, createRoot(root))
+      roots.get(root)!.render(h(NamingCard, { t, suggested: fence.suggestions }))
+      return root
+    }
     case 'goal': {
       root.append(el('div', 'nm-fence-kind', t('fcGoalCreated')))
       root.append(el('div', 'nm-fence-title', fence.title))
@@ -145,6 +163,8 @@ export function renderFenceCards(t: Translate): () => void {
       if (!fence) continue
       block.setAttribute(DONE, fence.kind)
       block.style.display = 'none'
+      // a naming block without suggestions (the address, the final name) only disappears
+      if (fence.kind === 'naming' && !fence.chooser) continue
       block.insertAdjacentElement('afterend', card(t, fence))
     }
   }
@@ -155,6 +175,8 @@ export function renderFenceCards(t: Translate): () => void {
   return () => {
     observer.disconnect()
     if (scheduled) window.cancelAnimationFrame(scheduled)
+    for (const [node, root] of roots) { root.unmount(); node.remove() }
+    roots.clear()
     for (const node of document.querySelectorAll('.nm-fence')) node.remove()
     for (const block of document.querySelectorAll<HTMLElement>(`.md-code-block[${DONE}]`)) {
       block.removeAttribute(DONE)

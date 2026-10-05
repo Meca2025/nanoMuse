@@ -479,6 +479,7 @@ struct ChatMessageRow: View {
     private var assistantRow: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Assistant label
+            if !NanoMuseShellPrefs.shell { // nanoMuse: in the Muse shell the grey bubble is the agent's; no label over it
             HStack(spacing: 6) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 18, weight: .semibold))
@@ -495,6 +496,7 @@ struct ChatMessageRow: View {
                     .foregroundStyle(ChatColors.primaryText)
             }
             .padding(.top, 4)
+            } // nanoMuse:
 
             ForEach(message.blocks) { block in
                 AssistantBlockView(

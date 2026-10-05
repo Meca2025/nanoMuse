@@ -17,7 +17,9 @@
  * the screenshots has to be started again (`needsRelaunch`).
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { call } from './api.ts'
 import { bridge, gatedPermissions, type PermissionKind, type PermissionState } from './bridge.ts'
+import { useLive } from './live.ts'
 
 export type PermissionStates = Partial<Record<PermissionKind, PermissionState>>
 
@@ -35,6 +37,15 @@ export interface Permissions {
   needsRelaunch: boolean
   /** Quit and start again (the desktop shell), or nothing elsewhere. */
   relaunch(): void
+  /** When the system was last asked (ms); 0 before the first reading. The rows can say the status is live. */
+  lastCheck: number
+  /**
+   * The hands saw an all-black screen (the host noticed it on a `computer_*` call or a test
+   * screenshot): Screen Recording is missing for the app, or was granted after it started.
+   * A relaunch is what fixes the second case; the notice stays until one or `clearBlackScreen`.
+   */
+  blackScreen: boolean
+  clearBlackScreen(): void
 }
 
 const POLL_MS = 1500
@@ -49,6 +60,8 @@ export function usePermissions(kinds: PermissionKind[]): Permissions {
     gated ? {} : Object.fromEntries(kinds.filter((k) => k !== 'microphone' || bridge() !== undefined).map((k) => [k, 'not-needed' as PermissionState])))
   const [askedKinds, setAskedKinds] = useState<PermissionKind[]>([])
   const [needsRelaunch, setNeedsRelaunch] = useState(false)
+  const [lastCheck, setLastCheck] = useState(0)
+  const live = useLive()
   // the first reading of Screen Recording in this session: only a later change to granted
   // means the running processes missed it
   const firstScreen = useRef<PermissionState | undefined>()
@@ -58,8 +71,12 @@ export function usePermissions(kinds: PermissionKind[]): Permissions {
       if (firstScreen.current === undefined) firstScreen.current = next.screen
       else if (firstScreen.current !== 'granted' && next.screen === 'granted') setNeedsRelaunch(true)
       setStates(next)
+      setLastCheck(Date.now())
     }).catch(() => undefined)
   }, [gated])
+  const clearBlackScreen = useCallback(() => {
+    void call('hands/black-screen/clear', {}).catch(() => undefined)
+  }, [])
   useEffect(() => {
     refresh()
     if (!gated) return undefined
@@ -96,5 +113,8 @@ export function usePermissions(kinds: PermissionKind[]): Permissions {
     asked: (kind) => askedKinds.includes(kind) && !isGranted(states[kind]),
     needsRelaunch,
     relaunch,
+    lastCheck,
+    blackScreen: live.blackScreenAt > 0,
+    clearBlackScreen,
   }
 }

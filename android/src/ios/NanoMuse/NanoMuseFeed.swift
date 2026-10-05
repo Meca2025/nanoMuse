@@ -324,6 +324,19 @@ enum NanoMuseFeedFlow {
         }
     }
 
+    /// C5: the first feed day, written on its own right after the first conversation ends
+    /// (the agent has its name) when a model is there. Once per phone; a background run in
+    /// the feed's own conversation, so it is never counted as a task.
+    static func writeFirstDayIfNeeded() {
+        let key = "nanomuse.feed.first_day_written"
+        guard hasModel, !UserDefaults.standard.bool(forKey: key), NanoMuseFeedStore.shared.posts.isEmpty, !generating else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        Task { @MainActor in
+            guard let r = await ensureRoutine() else { return }
+            await NanoMuseScheduler.shared.run(r.id, trigger: "feed-first-day")
+        }
+    }
+
     static func setEnabled(_ on: Bool) {
         guard let id = routineId else { return }
         NanoMuseScheduler.shared.setEnabled(id, on)
@@ -406,14 +419,14 @@ enum NanoMuseFeedFlow {
 // MARK: - Feed room
 
 struct NanoMuseFeedRoom: View {
-    var onMenu: () -> Void
+    var chrome: NanoMuseRoomChrome
     var onDiscuss: (NanoMusePost) -> Void
     var onOpenSession: (String) -> Void
 
     @ObservedObject private var store = NanoMuseFeedStore.shared
     @ObservedObject private var scheduler = NanoMuseScheduler.shared
     @State private var showSettings = false
-    @State private var showIntro = false
+    @State private var introShown = !NanoMuseFeedFlow.introAcknowledged
     @State private var detail: NanoMusePost?
 
     private var groupedDays: [String] {
@@ -424,105 +437,144 @@ struct NanoMuseFeedRoom: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            NanoMuseTabHeader(title: AppLocalized("Feed"), onMenu: onMenu) {
-                if NanoMuseFeedFlow.generating {
-                    ProgressView().controlSize(.small).padding(.trailing, 8)
+            // Android: the Feed's header has the sliders where the other rooms have •••.
+            NanoMuseRoomHeader(chrome: chrome) {
+                HStack(spacing: 8) {
+                    if NanoMuseFeedFlow.generating {
+                        ProgressView().controlSize(.small)
+                    }
+                    NanoMuseRoundButton(symbol: "slider.horizontal.3", label: AppLocalized("Feed settings")) { showSettings = true }
                 }
-                Button { showSettings = true } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 18, weight: .medium))
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(AppLocalized("Feed settings")))
             }
-            if store.posts.isEmpty {
-                emptyState
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 14) {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    // C5: the day's title, the intro card until it is acknowledged, then the posts or the empty state.
+                    Text(dayLabel(NanoMuseDay.key()))
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                    if introShown {
+                        introCard
+                    }
+                    if store.posts.isEmpty {
+                        emptyState
+                    } else {
                         ForEach(groupedDays, id: \.self) { day in
-                            Text(dayLabel(day))
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 4)
+                            if day != NanoMuseDay.key() {
+                                Text(dayLabel(day))
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 4)
+                            }
                             ForEach(store.posts.filter { $0.day == day }) { post in
                                 NanoMusePostCard(post: post, onDiscuss: { onDiscuss(post) }, onOpen: { detail = post })
                             }
                         }
                     }
-                    .padding(16)
                 }
-                .refreshable { store.reload() }
+                .padding(16)
             }
+            .refreshable { store.reload() }
         }
         .background(NanoMuseTones.canvas.ignoresSafeArea())
         .onAppear {
             store.reload()
             Task { @MainActor in await NanoMuseFeedFlow.ensureRoutine() }
-            if !NanoMuseFeedFlow.introAcknowledged { showIntro = true }
         }
         .sheet(isPresented: $showSettings) { NanoMuseFeedSettingsSheet(onOpenSession: onOpenSession) }
-        .sheet(isPresented: $showIntro) {
-            NanoMuseFeedIntroSheet {
-                NanoMuseFeedFlow.introAcknowledged = true
-                showIntro = false
-            } onEdit: {
-                NanoMuseFeedFlow.introAcknowledged = true
-                showIntro = false
-                showSettings = true
-            }
-            .presentationDetents([.medium])
-        }
         .sheet(item: $detail) { post in
             NanoMusePostDetail(post: post, onDiscuss: { detail = nil; onDiscuss(post) })
         }
     }
 
-    private var emptyState: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                NanoMuseFaceView(mood: .waiting, size: 88)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 24)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(AppLocalized("Your feed isn't ready yet")).font(.title3.weight(.semibold))
-                    let time = NanoMuseDay.clock(hour: NanoMuseFeedFlow.routine?.hour ?? NanoMuseFeedFlow.defaultHour, minute: NanoMuseFeedFlow.routine?.minute ?? NanoMuseFeedFlow.defaultMinute)
-                    Text(String(format: AppLocalized("As we get to know each other, new posts will show up here. Every day at %@, when the app is open, I read what I remember about you — your memory files, the last week of diary, your goals — and write a few short posts. At that time the phone reminds you to open it."), time))
-                        .font(.subheadline).foregroundStyle(.secondary)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(NanoMuseTones.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(AppLocalized("Steer it with one sentence")).font(.headline)
-                    Text(AppLocalized("Tap the sliders at the top right to tell me what you want more of, switch the daily routine off, or have me write the first day now."))
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    if NanoMuseFeedFlow.hasModel {
-                        Button {
-                            NanoMuseFeedFlow.generateNow()
-                        } label: {
-                            if NanoMuseFeedFlow.generating {
-                                HStack(spacing: 8) { ProgressView().controlSize(.small); Text(AppLocalized("Writing…")) }
-                            } else {
-                                Text(AppLocalized("Write it now"))
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(NanoMuseTones.action)
-                        .disabled(NanoMuseFeedFlow.generating)
-                    } else {
-                        Text(AppLocalized("Add a model first — the feed is written by your agent."))
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(NanoMuseTones.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    /// Android: the "About the feed" card — what drives it, the sentence itself, Edit / Got it.
+    private var introCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(AppLocalized("About the feed")).font(.headline)
+                Text(AppLocalized("Short posts your agent writes for you from what it remembers — your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time."))
+                    .font(.footnote).foregroundStyle(.secondary)
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            NanoMuseTones.hairline.frame(height: 1)
+            VStack(alignment: .leading, spacing: 14) {
+                Text(store.preferences).font(.subheadline)
+                HStack(spacing: 10) {
+                    Spacer(minLength: 0)
+                    Button(AppLocalized("Edit")) {
+                        acknowledgeIntro()
+                        showSettings = true
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 22).padding(.vertical, 10)
+                    .background(NanoMuseTones.fill, in: Capsule())
+                    .buttonStyle(.plain)
+                    Button(AppLocalized("Got it")) { acknowledgeIntro() }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 22).padding(.vertical, 10)
+                        .background(NanoMuseTones.action, in: Capsule())
+                        .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
         }
+        .background(NanoMuseTones.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func acknowledgeIntro() {
+        NanoMuseFeedFlow.introAcknowledged = true
+        withAnimation(.easeInOut(duration: 0.2)) { introShown = false }
+    }
+
+    /// Android: two plain cards, then "Write it now" (or the reason there is nothing to write with).
+    @ViewBuilder
+    private var emptyState: some View {
+        let time = NanoMuseDay.clock(hour: NanoMuseFeedFlow.routine?.hour ?? NanoMuseFeedFlow.defaultHour, minute: NanoMuseFeedFlow.routine?.minute ?? NanoMuseFeedFlow.defaultMinute)
+        staticCard("🖼️", AppLocalized("Nothing in the feed yet"),
+                   String(format: AppLocalized("As we get to know each other, new posts will show up here. Every day at %@ I read what I remember about you — your memory files, the last week of diary, your goals — and write a few short posts."), time))
+        staticCard("📝", AppLocalized("Steer it with one sentence"),
+                   AppLocalized("Tap the sliders at the top right to tell me what you want more of, switch the daily routine off, or have me write the first day now."))
+        VStack(spacing: 8) {
+            if NanoMuseFeedFlow.hasModel {
+                if NanoMuseFeedFlow.generating {
+                    HStack(spacing: 10) {
+                        ProgressView().controlSize(.small)
+                        Text(AppLocalized("Writing…")).font(.subheadline)
+                    }
+                } else {
+                    Button(AppLocalized("Write it now")) { NanoMuseFeedFlow.generateNow() }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 26).padding(.vertical, 11)
+                        .background(NanoMuseTones.action, in: Capsule())
+                        .buttonStyle(.plain)
+                }
+            } else {
+                Text(AppLocalized("Add a model first — the feed is written by your agent."))
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(16)
+        .background(NanoMuseTones.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func staticCard(_ emoji: String, _ title: String, _ body: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(emoji).font(.title2)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.body.weight(.semibold))
+                Text(body).font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NanoMuseTones.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func dayLabel(_ day: String) -> String {
@@ -638,33 +690,6 @@ struct NanoMusePostDetail: View {
     }
 }
 
-/// "About the feed": what steers it, shown once.
-struct NanoMuseFeedIntroSheet: View {
-    var onGotIt: () -> Void
-    var onEdit: () -> Void
-    @ObservedObject private var store = NanoMuseFeedStore.shared
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(AppLocalized("About the feed")).font(.title3.weight(.bold))
-            Text(AppLocalized("Your feed is driven by the instruction below. Any edit you make here applies to every post from now on."))
-                .font(.body).foregroundStyle(.secondary)
-            Text(store.preferences)
-                .font(.body)
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(NanoMuseTones.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Spacer(minLength: 0)
-            HStack {
-                Button(AppLocalized("Edit"), action: onEdit)
-                Spacer()
-                Button(AppLocalized("Got it"), action: onGotIt).buttonStyle(.borderedProminent).tint(NanoMuseTones.action)
-            }
-        }
-        .padding(22)
-    }
-}
-
 /// Preferences, the daily routine and its time, "Write it now".
 struct NanoMuseFeedSettingsSheet: View {
     var onOpenSession: (String) -> Void
@@ -691,7 +716,7 @@ struct NanoMuseFeedSettingsSheet: View {
                         Toggle(AppLocalized("Write it every day"), isOn: Binding(get: { r.enabled }, set: { NanoMuseFeedFlow.setEnabled($0) }))
                             .tint(NanoMuseTones.action)
                         DatePicker(AppLocalized("Time"), selection: $time, displayedComponents: .hourAndMinute)
-                            .onChange(of: time) { t in
+                            .nmOnChange(of: time) { t in
                                 let c = Calendar.current.dateComponents([.hour, .minute], from: t)
                                 NanoMuseFeedFlow.setTime(hour: c.hour ?? NanoMuseFeedFlow.defaultHour, minute: c.minute ?? 0)
                             }

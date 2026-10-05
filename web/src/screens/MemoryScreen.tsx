@@ -11,7 +11,7 @@ const CATEGORIES = ["profile", "preference", "people", "routine", "constraint", 
 
 /** "Your Memory files, which you can read and edit directly." */
 export function MemoryScreen() {
-  const { state, toast } = useStore();
+  const { state, toast, openThread, setTab } = useStore();
   const [items, setItems] = useState<MemoryItem[]>([]);
   const [changes, setChanges] = useState<MemoryChange[]>([]);
   const [content, setContent] = useState("");
@@ -152,6 +152,16 @@ export function MemoryScreen() {
             <p className="mt-1 text-[13.5px] text-muted">
               {t("{name} saves durable facts you share in chat — preferences, people, routines — and never secrets.", { name })}
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                openThread("main");
+                setTab("chat");
+              }}
+              className="mt-3 rounded-full bg-accent px-4 py-2 text-[13.5px] font-semibold text-accent-fg"
+            >
+              {t("Tell {name} something to remember", { name })}
+            </button>
           </div>
         )}
 

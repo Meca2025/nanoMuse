@@ -34,6 +34,8 @@
     POST /api/connections/mcp  DELETE /api/connections/mcp/{name}
     GET  /api/vault  PUT|DELETE /api/vault/{name}   (names only ever come back)
     POST /api/onboarded
+    GET  /api/nudges (?refresh=1)         when the app may ask for a star: the relay's policy, read once a day
+    GET  /api/update (?refresh=1)         installed and latest release (nanomuse.cn/dl first, GitHub second; a day's cache)
     GET  /api/avatar                      the avatar studio: can a face be drawn, the session under way
     POST /api/avatar/begin {description, style?}  a session: the card with the cost in the chat
     POST /api/avatar/start|choose|cancel {session, index?}   draw (or redraw) the four, pick one, stop
@@ -97,7 +99,12 @@ class ThreadBody(BaseModel):
 
 
 class FeedInstructionsBody(BaseModel):
-    instructions: str = ""
+    """The feed's preferences; only the fields given change (``daily``/``time`` are the
+    daily routine, see ``MuseService.feed_posts``)."""
+
+    instructions: str | None = None
+    daily: bool | None = None
+    time: str | None = None
 
 
 class ApprovalBody(BaseModel):
@@ -450,9 +457,10 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     update_check = UpdateCheck(svc.settings.server.update_check)
 
     @app.get("/api/update", dependencies=dep)
-    async def update_status() -> dict[str, Any]:
-        """Whether a newer release exists (GitHub Releases, cached six hours; see ``server.update_check``)."""
-        return await update_check.view()
+    async def update_status(refresh: bool = False) -> dict[str, Any]:
+        """The installed and the latest release (nanomuse.cn/dl first, GitHub second; a day's
+        cache, ``?refresh=1`` asks now; see ``server.update_check``)."""
+        return await update_check.view(force=refresh)
 
     # ------------------------------------------------------------------ threads & chat
     @app.get("/api/threads", dependencies=dep)
@@ -1026,19 +1034,34 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             raise _cloud_http(exc) from exc
         return {"ok": True}
 
+    def _with_nudges(data: dict[str, Any]) -> dict[str, Any]:
+        """A sign-in or an account read answers with the relay's ``/v1/me``, which carries
+        the nudges policy (contract C1): that copy is today's, no separate fetch needed."""
+        svc.nudges.take(data.get("nudges"))
+        return data
+
     @app.post("/api/cloud/verify", dependencies=dep)
     async def cloud_verify(body: CloudVerifyBody) -> dict[str, Any]:
         try:
-            return await svc.hub.verify(body.identifier, body.code, invite=body.invite)
+            return _with_nudges(
+                await svc.hub.verify(body.identifier, body.code, invite=body.invite)
+            )
         except CloudError as exc:
             raise _cloud_http(exc) from exc
 
     @app.post("/api/cloud/login", dependencies=dep)
     async def cloud_login(body: CloudLoginBody) -> dict[str, Any]:
         try:
-            return await svc.hub.login(body.identifier, body.password)
+            return _with_nudges(await svc.hub.login(body.identifier, body.password))
         except CloudError as exc:
             raise _cloud_http(exc) from exc
+
+    @app.get("/api/nudges", dependencies=dep)
+    async def nudges(refresh: bool = False) -> dict[str, Any]:
+        """When the app may ask for a star on GitHub (contract C1): the relay's policy, read
+        at most once a day (``?refresh=1`` asks now), the last good copy or the built-in
+        defaults otherwise. The web keeps its own ledger of asks shown."""
+        return await svc.nudges.refresh(force=refresh)
 
     @app.post("/api/cloud/password", dependencies=dep)
     async def cloud_password(body: CloudPasswordBody) -> dict[str, Any]:
@@ -1093,7 +1116,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.get("/api/cloud/me", dependencies=dep)
     async def cloud_me() -> dict[str, Any]:
         try:
-            return await svc.hub.me()
+            return _with_nudges(await svc.hub.me())
         except CloudError as exc:
             raise _cloud_http(exc) from exc
 
@@ -1434,8 +1457,11 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
 
     @app.post("/api/onboarded", dependencies=dep)
     async def onboarded(body: OnboardedBody) -> dict[str, Any]:
+        """The first run is complete. With a model there, the first feed day is written in
+        the background right away (contract C5); ``feed_started`` says whether it was."""
         conn.set_onboarded(body.done)
-        return {"onboarded": body.done}
+        started = svc.first_feed_day() if body.done else False
+        return {"onboarded": body.done, "feed_started": started}
 
     # ------------------------------------------------------------------ browser view
     @app.get("/api/browser/{thread_id}/frames/{frame_id}.jpg", dependencies=dep_or_signed)
@@ -1518,7 +1544,10 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
 
     @app.put("/api/feed/instructions", dependencies=dep)
     async def feed_instructions(body: FeedInstructionsBody) -> dict[str, Any]:
-        return svc.set_feed_instructions(body.instructions)
+        try:
+            return svc.set_feed_instructions(body.instructions, daily=body.daily, time=body.time)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.post("/api/feed/posts/refresh", dependencies=dep)
     async def feed_refresh() -> dict[str, Any]:

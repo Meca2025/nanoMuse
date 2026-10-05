@@ -126,9 +126,62 @@ export interface DocText {
   template: boolean
 }
 
+/** The feed's daily routine (C5), as the host keeps it. */
+export interface FeedRoutine {
+  on: boolean
+  time: string
+  ensuredAt: number
+}
+
+/** The first run (C4), as `src/firstrun.ts` shapes it, plus the chooser's names. */
+export interface FirstRun {
+  version: 1
+  done: boolean
+  permissionsSeen: boolean
+  sourceChosen: 'cloud' | 'own' | null
+  phase: 'none' | 'ask_user_name' | 'ask_agent_name' | 'named' | 'done'
+  sessionId: string | null
+  userAddress: string | null
+  suggestions: string[]
+  chosen: string | null
+  startedAt: number
+  finishedAt: number
+  chips: string[]
+}
+
+export const FIRST_RUN_INITIAL: FirstRun = { version: 1, done: false, permissionsSeen: false, sourceChosen: null, phase: 'none', sessionId: null, userAddress: null, suggestions: [], chosen: null, startedAt: 0, finishedAt: 0, chips: [] }
+
+/** The star nudges (C1), as `src/nudges.ts` shapes them. */
+export type NudgeMoment = 'signed_in' | 'tasks' | 'new_look' | 'exhausted' | 'days_used' | 'goal_done'
+export interface NudgeAsk {
+  moment: NudgeMoment
+  n?: number
+  key: string
+  at: number
+}
+export interface Nudges {
+  policy: { version: number; star: { enabled: boolean; url: string; moments: { signed_in: boolean; tasks: number[]; new_look: boolean; exhausted: boolean; days_used: number[]; goal_done: boolean }; cooldown_days: number; max_asks: number } }
+  tasks: number
+  days: number
+  asks: number
+  starred: boolean
+  fetchedAt: number
+  current: NudgeAsk | null
+}
+
+export const NUDGES_INITIAL: Nudges = {
+  policy: { version: 1, star: { enabled: true, url: 'https://github.com/nano-muse/nanoMuse', moments: { signed_in: true, tasks: [3, 10, 30], new_look: true, exhausted: true, days_used: [7, 30], goal_done: true }, cooldown_days: 7, max_asks: 4 } },
+  tasks: 0,
+  days: 0,
+  asks: 0,
+  starred: false,
+  fetchedAt: 0,
+  current: null,
+}
+
 export interface Rooms {
   lang: string
-  feed: { instructions: string; generatedAt: number; lastTry: number; posts: FeedPost[] }
+  feed: { instructions: string; generatedAt: number; lastTry: number; posts: FeedPost[]; routine: FeedRoutine }
   ideas: { generatedAt: number; lastTry: number; items: Idea[] }
   goals: Goal[]
   library: LibraryItem[]
@@ -140,6 +193,8 @@ export interface Rooms {
   automations: Record<string, GoalAutomation[]>
   ready: boolean
   studio: { description: string; style: string; at: number }
+  firstRun: FirstRun
+  nudges: Nudges
   /** Whether the stream is open; false before the first snapshot and while reconnecting. */
   streaming: boolean
   /** When the person last had the Feed open (this browser); the rail's dot marks newer posts. */
@@ -150,7 +205,7 @@ const SEEN_KEY = 'nanomuse.feedSeenAt'
 
 const INITIAL: Rooms = {
   lang: '',
-  feed: { instructions: '', generatedAt: 0, lastTry: 0, posts: [] },
+  feed: { instructions: '', generatedAt: 0, lastTry: 0, posts: [], routine: { on: true, time: '08:00', ensuredAt: 0 } },
   ideas: { generatedAt: 0, lastTry: 0, items: [] },
   goals: [],
   library: [],
@@ -162,6 +217,8 @@ const INITIAL: Rooms = {
   automations: {},
   ready: false,
   studio: { description: '', style: 'muse', at: 0 },
+  firstRun: FIRST_RUN_INITIAL,
+  nudges: NUDGES_INITIAL,
   streaming: false,
   feedSeenAt: Number(globalThis.localStorage?.getItem(SEEN_KEY) ?? 0) || 0,
 }
@@ -186,7 +243,8 @@ function open(): void {
   es.onmessage = (event: MessageEvent<string>) => {
     try {
       const data = JSON.parse(event.data) as Omit<Rooms, 'streaming'>
-      publish({ ...snapshot, ...data, streaming: true })
+      // an older host sends no first run, nudges or routine: the defaults stand in
+      publish({ ...snapshot, ...data, feed: { ...INITIAL.feed, ...data.feed, routine: data.feed?.routine ?? INITIAL.feed.routine }, firstRun: data.firstRun ?? FIRST_RUN_INITIAL, nudges: data.nudges ?? NUDGES_INITIAL, streaming: true })
       // The host writes the rooms in the person's language; tell it once which that is.
       if (!langSent && typeof navigator !== 'undefined' && navigator.language && data.lang !== navigator.language) {
         langSent = true
@@ -220,6 +278,11 @@ function subscribe(listener: () => void): () => void {
 }
 
 function getSnapshot(): Rooms {
+  return snapshot
+}
+
+/** The rooms' state right now, outside React. */
+export function peekRooms(): Rooms {
   return snapshot
 }
 

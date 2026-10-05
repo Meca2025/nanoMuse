@@ -232,6 +232,7 @@ enum NanoMuseCloud {
 
         let parsed = parseAccount(reply)
         account = parsed
+        NanoMuseNudges.shared.absorb(me: reply) // nanoMuse: contract C1 — the star policy rides along
         await MainActor.run { NanoMuseHub.shared.restart() } // the new key joins the hub
         return parsed
     }
@@ -245,6 +246,7 @@ enum NanoMuseCloud {
             let me = try await call("GET", "/v1/me", body: nil, token: key)
             let parsed = parseAccount(me)
             account = parsed
+            NanoMuseNudges.shared.absorb(me: me) // nanoMuse: contract C1
             return parsed
         } catch let error as CloudError where error.status == 401 {
             // Revoked elsewhere, or the relay was reset: the provider cannot answer any more.

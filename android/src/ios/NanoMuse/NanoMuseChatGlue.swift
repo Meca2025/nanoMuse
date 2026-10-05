@@ -11,6 +11,30 @@
 
 import Foundation
 
+// MARK: - The Muse header's menu → the chat
+
+extension Notification.Name {
+    /// `object` is the chat's session key (`nmSessionKey`); `userInfo["action"]` a
+    /// `NanoMuseChatAction` raw value. AIChatView acts on it for its own chat.
+    static let nanoMuseChatAction = Notification.Name("nanoMuse.chatAction")
+}
+
+/// What the Muse header's ••• menu can ask of the chat under it (the entries
+/// Android's ChatScreen menu has; the shell's own rows stay in the shell).
+enum NanoMuseChatAction: String {
+    case newChat, model, clearChat, terminal, browser, files, tokenUsage
+
+    static func post(_ action: NanoMuseChatAction, session: String) {
+        NotificationCenter.default.post(name: .nanoMuseChatAction, object: session, userInfo: ["action": action.rawValue])
+    }
+
+    /// The action a notification carries, when it is for the given chat.
+    static func from(_ note: Notification, for session: String) -> NanoMuseChatAction? {
+        guard (note.object as? String) == session, let raw = note.userInfo?["action"] as? String else { return nil }
+        return NanoMuseChatAction(rawValue: raw)
+    }
+}
+
 @MainActor
 extension AIChatViewModel {
     /// What addenda, flows and cards key on: the real session, or the draft until it is created.

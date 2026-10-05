@@ -1,15 +1,14 @@
 import SwiftUI
 
-/// The sections of the account page under the sign-in line: the pool in yuan with the ways on
-/// when it runs low (your own key, an invitation — and a star, once), the invite code, what was
-/// used by kind and by model, the password, the devices holding a key, the account's timeline,
-/// and the way out of everything. Lives inside `NanoMuseCloudView`'s `Form`. Everything comes
-/// from the relay each time the page opens; nothing of it is kept on the phone.
+/// The sections of the account page under the identity line, in the order of the Android
+/// account screen: the password, the devices holding a key, a star row (once, as the policy
+/// says), the pool in yuan with the ways on when it runs low (your own key, an invitation — and
+/// a star, once), the invite code, what was used by kind and by model, the account's timeline.
+/// Lives inside `NanoMuseCloudView`'s `Form`, which adds the links and the ways out below.
+/// Everything comes from the relay each time the page opens; nothing of it is kept on the phone.
 struct NanoMuseAccountSections: View {
     /// The parent's view of the balance, refreshed together with the sheet.
     @Binding var account: NanoMuseCloudAccount?
-    /// The parent shows the sign-in again after a sign-out of every device or a deletion.
-    var onEnded: () -> Void
 
     @State private var sheet: NanoMuseSheet?
     @State private var sessions: [NanoMuseSession] = []
@@ -17,13 +16,17 @@ struct NanoMuseAccountSections: View {
     @State private var error: String?
     @State private var usageScope = 0
     @State private var starAsk = false
+    /// The allowance is used up and the policy says this is a moment to ask: the star row under the ways on.
+    @State private var exhaustedAsk = false
     @State private var ownKey = false
 
     var body: some View {
         Group {
+            passwordSection
+            sessionsSection
             if starAsk {
                 Section {
-                    NanoMuseStarCard(text: NanoMuseStar.text(.signedIn)) {
+                    NanoMuseStarCard(text: NanoMuseStar.words(for: .signedIn)) {
                         starAsk = false
                     }
                 }
@@ -31,10 +34,7 @@ struct NanoMuseAccountSections: View {
             allowanceSection
             if let invite = sheet?.invite { inviteSection(invite) }
             usageSection
-            passwordSection
-            sessionsSection
             if !events.isEmpty { timelineSection }
-            dangerSection
         }
         .task { await load() }
         .sheet(isPresented: $ownKey) { NanoMuseOwnKeySheet { _ in } }
@@ -120,16 +120,16 @@ struct NanoMuseAccountSections: View {
                     Text(AppLocalized("Your code and link are just below.")).font(.caption).foregroundStyle(.secondary)
                 }
             } icon: { Image(systemName: "gift") }
-            if spend.exhausted && !NanoMuseStar.starred {
+            // nanoMuse: the policy's gate (NanoMuseStar / contract C1), not a bare "starred" check
+            if spend.exhausted && exhaustedAsk {
                 Label {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(NanoMuseStar.text(.exhausted))
+                        Text(NanoMuseStar.words(for: .exhausted))
                             .font(.caption).foregroundStyle(.secondary)
                         Button(AppLocalized("Star on GitHub")) { NanoMuseStar.open() }
                             .font(.caption.weight(.medium))
                     }
                 } icon: { Image(systemName: "star") }
-                .onAppear { NanoMuseStar.shown(.exhausted) }
             }
         }
         .padding(.vertical, 4)
@@ -282,7 +282,6 @@ struct NanoMuseAccountSections: View {
     // MARK: - Sessions
 
     @State private var sessionBusy: String?
-    @State private var confirmSignOutAll = false
 
     private var sessionsSection: some View {
         Section {
@@ -306,19 +305,8 @@ struct NanoMuseAccountSections: View {
                     }
                 }
             }
-            if sessions.count > 1 {
-                Button(role: .destructive) { confirmSignOutAll = true } label: {
-                    Label(AppLocalized("Sign out of every device"), systemImage: "rectangle.portrait.and.arrow.right")
-                }
-                .disabled(sessionBusy != nil)
-                .confirmationDialog(AppLocalized("Sign out everywhere?"), isPresented: $confirmSignOutAll, titleVisibility: .visible) {
-                    Button(AppLocalized("Sign out of every device"), role: .destructive) { Task { await signOutEverywhere() } }
-                } message: {
-                    Text(AppLocalized("Every device, this one included, will need to sign in again."))
-                }
-            }
         } header: {
-            Text(AppLocalized("Signed-in devices"))
+            Text(AppLocalized("Signed in on"))
         }
     }
 
@@ -328,17 +316,6 @@ struct NanoMuseAccountSections: View {
         do {
             try await NanoMuseCloud.revokeSession(prefix: prefix)
             sessions = (try? await NanoMuseCloud.sessions()) ?? sessions.filter { $0.prefix != prefix }
-        } catch {
-            self.error = NanoMuseCloud.describe(error)
-        }
-    }
-
-    private func signOutEverywhere() async {
-        sessionBusy = "*"
-        defer { sessionBusy = nil }
-        do {
-            try await NanoMuseCloud.signOutEverywhere()
-            onEnded()
         } catch {
             self.error = NanoMuseCloud.describe(error)
         }
@@ -366,41 +343,6 @@ struct NanoMuseAccountSections: View {
         }
     }
 
-    // MARK: - Delete
-
-    @State private var confirmDelete = false
-    @State private var deleteBusy = false
-
-    private var dangerSection: some View {
-        Section {
-            Button(role: .destructive) { confirmDelete = true } label: {
-                HStack {
-                    Label(AppLocalized("Delete account"), systemImage: "trash")
-                    if deleteBusy { Spacer(); ProgressView() }
-                }
-            }
-            .disabled(deleteBusy)
-            .confirmationDialog(AppLocalized("Delete this account?"), isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button(AppLocalized("Delete account"), role: .destructive) { Task { await deleteAccount() } }
-            } message: {
-                Text(AppLocalized("Removes the account, its allowance, usage and samples from nanoMuse Cloud. Cannot be undone. The chats on this phone stay."))
-            }
-        } footer: {
-            Text(AppLocalized("Removes the account, its allowance, usage and samples from nanoMuse Cloud. Cannot be undone."))
-        }
-    }
-
-    private func deleteAccount() async {
-        deleteBusy = true
-        defer { deleteBusy = false }
-        do {
-            try await NanoMuseCloud.deleteAccount()
-            onEnded()
-        } catch {
-            self.error = NanoMuseCloud.describe(error)
-        }
-    }
-
     // MARK: - Loading
 
     private func load() async {
@@ -409,9 +351,11 @@ struct NanoMuseAccountSections: View {
             let next = try await NanoMuseCloud.sheet()
             sheet = next
             account = NanoMuseCloud.account
-            if NanoMuseStar.due(.signedIn) {
-                NanoMuseStar.shown(.signedIn)
-                starAsk = true
+            // nanoMuse: contract C1 — the policy's gate decides, once per moment
+            if NanoMuseStar.shared.signedIn() { starAsk = true }
+            if next.spend?.exhausted == true, NanoMuseStar.shared.due(.exhausted) {
+                NanoMuseStar.shared.markShown(.exhausted)
+                exhaustedAsk = true
             }
         } catch {
             self.error = NanoMuseCloud.describe(error)
@@ -435,7 +379,7 @@ struct NanoMuseStarCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Label {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(AppLocalized("Your support is what keeps us going")).font(.subheadline.weight(.semibold))
+                    Text(AppLocalized("A star on GitHub helps")).font(.subheadline.weight(.semibold))
                     Text(text).font(.caption).foregroundStyle(.secondary)
                 }
             } icon: {

@@ -1,13 +1,13 @@
 /**
- * About nanoMuse and the update check (0.1.34). The version line reads
+ * About nanoMuse and the version (C2). The installed line reads
  * "nanoMuse Desktop <app> · harness <bundle>": the app's number from the Electron
  * shell (`nanomuse:info`), the bundle's from package.json at build time. The host
- * asks GitHub for the latest release (nanomuse.cn/dl when GitHub is out of
- * reach), compares, and the row says "New: 0.1.x — Download" with the installer
- * for this computer, or "You have the latest". The host checks once a day by
- * itself; the result puts a dot on ••• and an "Update to 0.1.x" row in the menu.
+ * reads the latest release from nanomuse.cn's index (GitHub when the index is out of
+ * reach), compares, and the second line says "0.1.x is out" with Update — the
+ * installer for this computer — or "Latest 0.1.x — you have it". The host checks once
+ * a day by itself; the result puts a dot on ••• and an "Update to 0.1.x" row in the menu.
  */
-import { createElement as h, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { createElement as h, Fragment, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { pickAsset } from '../desk.ts'
 import { call, type Translate } from './api.ts'
 import { bridge, openLink } from './bridge.ts'
@@ -62,24 +62,38 @@ export function useUpdateCheck(): { info: UpdateInfo | null; checking: boolean; 
   return { info: fresh ?? live.update, checking, check }
 }
 
-/** The row under About: what runs, what is new, the button that does the right thing. */
+/**
+ * The version (C2), two lines that are always there: what is installed
+ * ("nanoMuse Desktop 0.1.34 · harness 0.1.34"), and what the check found — "Checking…",
+ * "Latest 0.1.35 — you have it", "0.1.35 is out" with Update, or "Could not check — Check
+ * now". A check runs when the rows appear and nothing is known yet.
+ */
+let autoChecked = false
+
 export function UpdateRow({ t, bundle }: { t: Translate; bundle: string }): ReactNode {
   const app = useAppInfo()
   const { info, checking, check } = useUpdateCheck()
   const asset = info && app ? pickAsset(info.assets, app.platform, app.arch) : undefined
-  let sub: string
-  if (checking) sub = t('gnChecking')
-  else if (!info) sub = t('gnUpdatesSub')
-  else if (info.source === 'none') sub = t('abCheckFailed')
-  else if (info.newer) sub = t('abNewVersion', { version: info.latest })
-  else sub = t('abLatest')
-  const action = info?.newer
-    ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => openLink(asset?.url ?? info.page) }, asset ? t('abDownload') : t('abWhatsNew'))
-    : h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: checking, onClick: check }, checking ? t('gnChecking') : t('gnCheckUpdates'))
-  return h('div', { className: 'nm-row' },
+  // nothing known yet (the host's daily check has not run): one check per window, on sight
+  useEffect(() => { if (!info && !checking && !autoChecked) { autoChecked = true; check() } }, [info === null])
+  const installed = app ? t('vrInstalled', { app: app.version || '—', bundle: bundle || '—' }) : t('abVersionBundle', { bundle: bundle || '—' })
+  let found: ReactNode
+  let action: ReactNode = null
+  if (checking || !info) {
+    found = t('vrChecking')
+  } else if (info.source === 'none') {
+    found = h(Fragment, null, t('vrFailed'), ' — ', h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: check }, t('vrCheckNow')))
+  } else if (info.newer) {
+    found = t('vrOut', { version: info.latest })
+    action = h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => openLink(asset?.url ?? info.page) }, t('vrUpdate'))
+  } else {
+    found = t('vrHave', { version: info.latest })
+  }
+  return h('div', { className: 'nm-row nm-version-row' },
     h('div', { className: 'nm-row-main' },
-      h('span', { className: 'nm-row-title' }, versionLine(t, bundle, app)),
-      h('span', { className: 'nm-row-sub' }, sub)),
+      h('span', { className: 'nm-row-title' }, t('vrTitle')),
+      h('span', { className: 'nm-row-sub nm-version-line' }, installed),
+      h('span', { className: 'nm-row-sub nm-version-line' }, found)),
     action)
 }
 

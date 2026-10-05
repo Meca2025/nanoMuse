@@ -45,6 +45,9 @@ import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner } from './task.ts'
+import { AvatarMotion, ANIMATED, type MotionMood, type MotionView } from './motion.ts'
+import { DEFAULT_VIDEO_MODEL, hostOf, KNOWN_DASHSCOPE_MODELS, looksLikeVideoModel, probe as probeVideoModel, speaksDashScope, type VideoEndpoint } from './video.ts'
+import { checkMove, checkScreenshot, isBlack, runtimeInfo, type MoveCheck, type RuntimeInfo, type ScreenshotCheck } from './hands-check.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -250,6 +253,10 @@ export interface LiveState {
   handsModel: string
   /** The last update check, when one ran. */
   update: UpdateInfo | null
+  /** The face's clips: which exist (with a cache key) and how the drawing goes (desk-b). */
+  motion: MotionView
+  /** When the hands last saw an all-black screen (macOS: Screen Recording missing, or granted after the app started); 0 when they have not. */
+  blackScreenAt: number
 }
 
 /** How long after the last hands call the stage keeps its frame. */
@@ -276,6 +283,32 @@ interface State {
   grants?: Grant[]
   /** The last update check and when it ran, so the badge survives a restart and the check runs once a day. */
   update?: UpdateInfo
+  /** Settings → Media (desk-b): the video model and whether a new face is animated. */
+  media?: MediaState
+}
+
+/** The Media settings as stored. `videoModel` empty means the endpoint's default; `off` means no clips. */
+export interface MediaState {
+  videoModel?: string
+  /** Absent means on. */
+  animate?: boolean
+  /** The last check of which video models the own key reaches: by host, with the models and when. */
+  checked?: Record<string, { models: string[]; at: number }>
+}
+
+/** The `videoModel` value that means "no clips" (the phone's `VIDEO_OFF`). */
+export const VIDEO_OFF = 'off'
+/** How long a video-model check against a provider is trusted. */
+const VIDEO_CHECK_TTL_MS = 24 * 60 * 60_000
+
+/** What Settings → Media shows. */
+export interface MediaView {
+  /** The image model the account would draw with (Cloud), empty when signed out or none. */
+  imageModel: string
+  /** The video source: `cloud`, an own-key provider, or none. */
+  video: { source: 'cloud' | 'provider' | 'none'; label: string; model: string; models: { id: string; name: string }[]; off: boolean; reason: string }
+  animate: boolean
+  motion: MotionView
 }
 
 /** One check a day, at most, by itself; the About row may ask any time. */
@@ -334,6 +367,18 @@ export function refusalOf(result: ToolExecutionResult): string | undefined {
   return hit.slice(start + 'Not done — '.length).trim()
 }
 
+/** Every text of a tool result's error, joined: what the runtime said went wrong. */
+function errorText(result: ToolExecutionResult): string {
+  const texts: string[] = []
+  for (const block of result.content ?? []) {
+    const b = block as { type?: unknown; text?: unknown }
+    if (b.type === 'text' && typeof b.text === 'string') texts.push(b.text)
+  }
+  const m = (result.error as { message?: unknown } | undefined)?.message
+  if (typeof m === 'string') texts.push(m)
+  return texts.join('\n')
+}
+
 function declined(step: string, why: string): ToolExecutionResult {
   const text = `Not done — ${step}. The person did not approve this step on their permission card (${why}); do not retry it. Ask them what to do instead, or carry on without it.`
   return { isError: true, error: { message: text, info: { name: 'HandsDeclined', code: 'REJECTED' } }, content: [{ type: 'text', text }] }
@@ -370,11 +415,23 @@ export default class NanomuseCloud extends Service {
   private readonly holdDesk = new HoldDesk(() => this.broadcast())
   private updateCheck: Promise<UpdateInfo> | undefined
   private lastSharedConnectors = ''
+  /** The face's clips (desk-b). */
+  readonly motion: AvatarMotion
+  private blackScreenAt = 0
 
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'nanomuseCloud')
     this.relay = new Relay(config.baseURL)
     this.profile = new ProfileStore(this.dir(), this.relay)
+    this.motion = new AvatarMotion({
+      dir: join(this.dir(), 'avatar', 'motion'),
+      endpoint: () => this.videoEndpoint(),
+      animate: () => this.state.media?.animate !== false,
+      faceId: () => this.faceId(),
+      still: (mood) => this.faceStill(mood),
+      onChange: () => this.broadcast(),
+      log: (level, text) => this.ctx.logger[level](text),
+    })
     this.hub = new HubClient({
       url: this.relay.hubURL,
       key: () => this.token(),
@@ -398,6 +455,10 @@ export default class NanomuseCloud extends Service {
     }
     await this.profile.load()
     this.profile.onChange(() => this.broadcast())
+    // The face's clips follow the face (C3): a face drawn here or pulled from the account drops the
+    // old clips and, with the Media setting on and a video model at hand, is animated again.
+    await this.motion.init().catch((error: unknown) => this.ctx.logger.warn('nanomuse: avatar clips not read: %s', message(error)))
+    this.profile.onChange(() => void this.animateNewFace().catch((error: unknown) => this.ctx.logger.warn('nanomuse: avatar motion: %s', message(error))))
     this.hub.onState(() => this.broadcast())
     this.hub.onDevices(() => this.broadcast())
     this.hub.onProfile(() => void this.pullProfile().catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error))))
@@ -493,6 +554,8 @@ export default class NanomuseCloud extends Service {
             if (refused) result = await this.confirmStep(ctx, exec, refused)
           }
           if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId)
+          // A black capture (macOS: Screen Recording missing for the app, or granted after it started) puts a relaunch notice up.
+          if (exec.name.startsWith('mcp__nanomuse__computer_') && result.isError && isBlack(errorText(result))) this.sawBlackScreen()
           return result
         } finally {
           this.ended(exec.callId)
@@ -726,6 +789,8 @@ export default class NanomuseCloud extends Service {
       grants: this.state.grants ?? [],
       handsModel: this.handsModel(),
       update: this.state.update ?? null,
+      motion: this.motion.view(),
+      blackScreenAt: this.blackScreenAt,
     }
   }
 
@@ -837,10 +902,197 @@ export default class NanomuseCloud extends Service {
     return token
   }
 
-  /** What four candidates and four poses would cost today. */
+  /** What four candidates and four poses would cost today — and the four clips, when the account would draw them (C3). */
   async studioEstimate(): Promise<Estimate> {
     const token = await this.studioToken()
-    return this.relay.estimate(token, STUDIO_PICTURES)
+    const ep = await this.videoEndpoint()
+    const clips = ep && ep.instanceId === PROVIDER_ID && this.state.media?.animate !== false ? ANIMATED.length : 0
+    return this.relay.estimate(token, STUDIO_PICTURES, clips)
+  }
+
+  // ---- Settings → Media: the video model and the face's clips (desk-b) -------------------
+
+  /** A face arrived (drawn here or on another device): its clips, when the setting and a video model allow; one line in the log when not. */
+  private async animateNewFace(): Promise<void> {
+    const face = this.faceId()
+    const before = this.motion.view().faceId
+    const started = await this.motion.faceChanged()
+    if (started) this.ctx.logger.info('nanomuse: avatar motion: drawing the clips of the new face')
+    else if (face && face !== before && this.state.media?.animate !== false && !(await this.videoEndpoint())) {
+      this.ctx.logger.info('nanomuse: avatar motion: no video model (the account lists none and no Model Studio key is set; OpenRouter and the like have no video) — the face keeps still')
+    }
+  }
+
+  /** The id of the face worn now; empty for the dragon or an emoji. */
+  private faceId(): string {
+    const p = this.profile.current()
+    return p.avatar === 'face' ? p.faceId : ''
+  }
+
+  /** A mood's still of the worn face, as the video model's first frame (the account's 512 px WebP). */
+  private async faceStill(mood: MotionMood): Promise<{ bytes: Uint8Array; mime: string; name: string } | undefined> {
+    const id = this.faceId()
+    const path = id ? this.profile.stillPath(id, mood, 'webp') : undefined
+    if (!path) return undefined
+    try {
+      const bytes = await readFile(path)
+      return bytes.length ? { bytes: new Uint8Array(bytes), mime: 'image/webp', name: `${mood}.webp` } : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** The account's video models, as the relay lists them. */
+  private cloudVideoModels(): RelayModel[] {
+    return (this.state.models ?? []).filter((m) => m.kind === 'video')
+  }
+
+  /**
+   * Where a clip would be drawn: the account when signed in and it lists a video model (the
+   * relay mirrors Model Studio's `/api/v1` paths), else an own Model Studio key among the
+   * providers the person added. Nothing when the setting says off, or no key speaks DashScope
+   * (OpenRouter and the like have no video API).
+   */
+  async videoEndpoint(): Promise<VideoEndpoint | undefined> {
+    const media = this.state.media ?? {}
+    if (media.videoModel === VIDEO_OFF) return undefined
+    const token = this.signedInCache ? await this.token() : undefined
+    const cloud = this.cloudVideoModels()
+    if (token && cloud.length) {
+      const wanted = media.videoModel && cloud.some((m) => m.id === media.videoModel) ? media.videoModel : (cloud.find((m) => m.recommended) ?? cloud[0])?.id
+      if (wanted) return { host: this.relay.origin, apiKey: token, model: wanted, label: 'nanoMuse Cloud', instanceId: PROVIDER_ID }
+    }
+    const own = await this.dashScopeProvider()
+    if (!own) return undefined
+    const known = this.state.media?.checked?.[own.host]
+    const models = known && Date.now() - known.at < VIDEO_CHECK_TTL_MS ? known.models : []
+    let model = media.videoModel && (!models.length || models.includes(media.videoModel)) ? media.videoModel : ''
+    if (!model) model = models[0] ?? DEFAULT_VIDEO_MODEL
+    return { host: own.host, apiKey: own.apiKey, model, label: own.label, instanceId: own.id }
+  }
+
+  /** The first provider row the person added that points at Model Studio, with its key. */
+  private async dashScopeProvider(): Promise<{ id: string; host: string; apiKey: string; label: string } | undefined> {
+    let rows: Record<string, unknown> = {}
+    try {
+      const row = this.ctx.settings.describe().find((d) => d.ns === LLM_ROW)
+      const value = row?.value as { providers?: Record<string, unknown> } | undefined
+      rows = value?.providers ?? {}
+    } catch {
+      return undefined
+    }
+    for (const [id, raw] of Object.entries(rows)) {
+      if (id === PROVIDER_ID || !raw || typeof raw !== 'object') continue
+      const p = raw as { displayName?: unknown; baseURL?: unknown; apiKeyEnv?: unknown; apiKey?: unknown }
+      const baseURL = typeof p.baseURL === 'string' ? p.baseURL : ''
+      if (!baseURL || !speaksDashScope(baseURL)) continue
+      let apiKey = ''
+      if (typeof p.apiKeyEnv === 'string' && p.apiKeyEnv) {
+        try {
+          apiKey = (await this.ctx.credentials.resolve(credentialRef(p.apiKeyEnv)))?.value ?? ''
+        } catch {
+          apiKey = ''
+        }
+      }
+      if (!apiKey && typeof p.apiKey === 'string') apiKey = p.apiKey
+      if (!apiKey) continue
+      return { id, host: hostOf(baseURL), apiKey, label: typeof p.displayName === 'string' && p.displayName ? p.displayName : id }
+    }
+    return undefined
+  }
+
+  /** The Media page: models, the switch, the clips. */
+  async media(): Promise<MediaView> {
+    const media = this.state.media ?? {}
+    const off = media.videoModel === VIDEO_OFF
+    const cloud = this.cloudVideoModels()
+    const signedIn = this.signedInCache && Boolean(this.state.account)
+    const view: MediaView = {
+      imageModel: signedIn ? this.imageModel() : '',
+      video: { source: 'none', label: '', model: '', models: [], off, reason: '' },
+      animate: media.animate !== false,
+      motion: this.motion.view(),
+    }
+    if (signedIn && cloud.length) {
+      const ep = off ? undefined : await this.videoEndpoint()
+      view.video = { source: 'cloud', label: 'nanoMuse Cloud', model: ep?.model ?? '', models: cloud.map((m) => ({ id: m.id, name: m.name || m.id })), off, reason: '' }
+      return view
+    }
+    const own = await this.dashScopeProvider()
+    if (own) {
+      const known = media.checked?.[own.host]
+      const ids = known && Date.now() - known.at < VIDEO_CHECK_TTL_MS ? known.models : KNOWN_DASHSCOPE_MODELS
+      const ep = off ? undefined : await this.videoEndpoint()
+      view.video = { source: 'provider', label: own.label, model: ep?.model ?? '', models: ids.map((id) => ({ id, name: id })), off, reason: known ? '' : 'unchecked' }
+      return view
+    }
+    view.video.reason = signedIn ? 'no_cloud_video' : 'no_provider'
+    return view
+  }
+
+  /** Settings → Media: the video model (`off` for none) and the animate switch. */
+  async setMedia(patch: { videoModel?: string; animate?: boolean }): Promise<MediaView> {
+    const next: MediaState = { ...this.state.media }
+    if (patch.videoModel !== undefined) {
+      const id = patch.videoModel.trim()
+      if (id && id !== VIDEO_OFF && !looksLikeVideoModel(id) && !KNOWN_DASHSCOPE_MODELS.includes(id) && !this.cloudVideoModels().some((m) => m.id === id)) {
+        throw new RelayError(400, 'bad_model', 'Not a video model')
+      }
+      if (id) next.videoModel = id
+      else delete next.videoModel
+    }
+    if (patch.animate !== undefined) {
+      if (patch.animate) delete next.animate
+      else next.animate = false
+    }
+    this.state = { ...this.state, media: next }
+    await this.writeState()
+    this.broadcast()
+    return this.media()
+  }
+
+  /** Which of the known Model Studio video models the own key reaches (one empty task each; nothing is billed). */
+  async checkVideoModels(): Promise<string[]> {
+    const own = await this.dashScopeProvider()
+    if (!own) throw new RelayError(409, 'no_provider', 'No Model Studio key among the providers')
+    const found: string[] = []
+    for (const id of KNOWN_DASHSCOPE_MODELS) {
+      if ((await probeVideoModel(own.host, own.apiKey, id)) === true) found.push(id)
+    }
+    const checked = { ...this.state.media?.checked, [own.host]: { models: found, at: Date.now() } }
+    this.state = { ...this.state, media: { ...this.state.media, checked } }
+    await this.writeState()
+    this.broadcast()
+    return found
+  }
+
+  /** Settings → Computer use: a test screenshot or a small mouse move through a fresh `nanomuse mcp`. */
+  async handsCheck(kind: 'screenshot' | 'move'): Promise<ScreenshotCheck | MoveCheck> {
+    const runtime = await runtimeInfo()
+    if (!runtime.ok) {
+      const error = runtime.problem === 'not-found' ? 'No nanomuse runtime: NANOMUSE_PY is not set and `nanomuse` is not on PATH' : `NANOMUSE_PY points at ${runtime.path}, which ${runtime.problem === 'missing' ? 'does not exist' : 'is not executable'}`
+      return kind === 'screenshot' ? { ok: false, black: false, error } : { ok: false, accessibility: false, error }
+    }
+    const options = { command: runtime.path, args: ['mcp'], env: { NANOMUSE_MCP_CONFIRM: process.env.NANOMUSE_MCP_CONFIRM ?? '' }, timeoutMs: 45_000 }
+    const result = kind === 'screenshot' ? await checkScreenshot(options) : await checkMove(options)
+    if (kind === 'screenshot') {
+      const shot = result as ScreenshotCheck
+      if (shot.black) this.sawBlackScreen()
+      else if (shot.ok && this.blackScreenAt) {
+        this.blackScreenAt = 0
+        this.broadcast()
+      }
+    }
+    return result
+  }
+
+  runtime(): Promise<RuntimeInfo> {
+    return runtimeInfo()
+  }
+
+  private sawBlackScreen(): void {
+    this.blackScreenAt = Date.now()
+    this.broadcast()
   }
 
   /** One candidate, drawn from the words; PNG bytes as the model gave them. */
@@ -1519,6 +1771,43 @@ export default class NanomuseCloud extends Service {
       }
       if (req.method === 'POST' && route === '/notices/clear') {
         this.notices = []
+        this.broadcast()
+        return send(res, 204)
+      }
+      // Settings → Media and the face's clips (desk-b)
+      if (req.method === 'GET' && route === '/media') return send(res, 200, await this.media())
+      if (req.method === 'POST' && route === '/media') {
+        const body = await json(req)
+        const patch: { videoModel?: string; animate?: boolean } = {}
+        if (typeof body.videoModel === 'string') patch.videoModel = body.videoModel
+        if (typeof body.animate === 'boolean') patch.animate = body.animate
+        return send(res, 200, await this.setMedia(patch))
+      }
+      if (req.method === 'POST' && route === '/media/check') return send(res, 200, { models: await this.checkVideoModels() })
+      if (req.method === 'POST' && route === '/media/animate') {
+        const body = await json(req)
+        if (!this.faceId()) return send(res, 409, { error: { code: 'no_face', message: 'No drawn face to animate' } })
+        if (!(await this.videoEndpoint())) return send(res, 409, { error: { code: 'no_video_model', message: 'No video model to draw clips with' } })
+        const started = await this.motion.animateAll(body.force === true)
+        return send(res, 200, { started, motion: this.motion.view() })
+      }
+      if (req.method === 'POST' && route === '/media/cancel') {
+        this.motion.cancel()
+        return send(res, 204)
+      }
+      if (req.method === 'POST' && route === '/media/dismiss') {
+        this.motion.clearProgress()
+        return send(res, 204)
+      }
+      // Settings → Computer use: the runtime and the "try it" checks (desk-b)
+      if (req.method === 'GET' && route === '/hands/runtime') return send(res, 200, await this.runtime())
+      if (req.method === 'POST' && route === '/hands/check') {
+        const body = await json(req)
+        const kind = body.kind === 'move' ? 'move' : 'screenshot'
+        return send(res, 200, await this.handsCheck(kind))
+      }
+      if (req.method === 'POST' && route === '/hands/black-screen/clear') {
+        this.blackScreenAt = 0
         this.broadcast()
         return send(res, 204)
       }

@@ -4,7 +4,8 @@
     POST /v1/auth/verify      {identifier, code, device, invite?} → {api_key, base_url, account, tokens, models}
     POST /v1/auth/login       {identifier, password, device}    → the same, for accounts that set a password
     POST /v1/auth/password    {password, current?}              → 204 (set / change; "" + current removes)
-    GET  /v1/me                                                 → account, tokens, spend (¥ spent / pool / left), invite, contribute, usage by kind, models, recent
+    GET  /v1/me                                                 → account, tokens, spend (¥ spent / pool / left), invite, contribute, usage by kind, models, recent, nudges
+    GET  /v1/nudges                                             → when the apps may ask for a star (0.18; public, cached an hour; the operator's policy over the defaults)
     GET  /v1/me/invite                                          → the invite code and link, who came with it, what they brought
     GET  /v1/estimate         ?images=5&clips=4                 → what that would cost next to what is left (nothing charged)
     GET  /v1/me/sessions                                        → live sign-ins (device, via, when; the current one marked)
@@ -36,6 +37,8 @@
     POST /v1/admin/disable    X-Admin-Token  {account_id | identifier, disabled}
     POST /v1/admin/unlimited  X-Admin-Token  {account_id | identifier, unlimited}  → a member: no limit
     POST /v1/admin/delete     X-Admin-Token  {account_id | identifier}
+    GET  /v1/admin/nudges     X-Admin-Token                     → the nudges policy in force, the defaults, whether the page set it and when (0.18)
+    PUT  /v1/admin/nudges     X-Admin-Token  {version?, star{…}} | {reset: true} → set the policy (version bumped by the server) or go back to the defaults
     GET  /v1/admin/accounts   X-Admin-Token                     → with identifiers in clear, tokens and money
     GET  /v1/admin/accounts/{id} X-Admin-Token ?days=30         → one account in full: usage by kind/model/day, sign-ins, devices, addresses, timeline
     GET  /v1/admin/accounts/{id}/ledger X-Admin-Token ?limit=&before= → the account's statement, every line, page by page (before = last id shown)
@@ -371,6 +374,13 @@ def create_app(
         else:
             await asyncio.to_thread(cloud.set_password, caller, password, current)
         return Response(status_code=204)
+
+    @app.get("/v1/nudges")
+    async def public_nudges() -> Response:
+        """When the apps may ask for a star on GitHub (0.18, nudges.py): the operator's policy
+        over the defaults every client also carries. No key, an hour's cache; the same object
+        rides along in /v1/me for a signed-in client."""
+        return JSONResponse(cloud.nudges(), headers={"Cache-Control": "public, max-age=3600"})
 
     @app.get("/v1/me")
     async def me(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
@@ -1209,6 +1219,19 @@ def create_app(
         """{allowance_cny?, invite_bonus_cny?, signup_open?}: set (a value) or clear back to
         the environment (null). In force at once, kept across restarts."""
         return cloud.admin_update_settings(await _json(request))
+
+    @app.get("/v1/admin/nudges", dependencies=[Depends(admin_dep)])
+    async def admin_nudges_get() -> dict:
+        """The nudges policy (0.18): what is served, the defaults beside it, whether the page
+        set it and when."""
+        return cloud.admin_nudges()
+
+    @app.put("/v1/admin/nudges", dependencies=[Depends(admin_dep)])
+    async def admin_nudges_put(request: Request) -> dict:
+        """The whole policy (the shape of GET /v1/nudges; unknown keys dropped, values checked,
+        400 with a plain message otherwise); `version` is bumped by the server. `{"reset":
+        true}` goes back to the defaults. In force at once, kept across restarts."""
+        return cloud.admin_put_nudges(await _json(request))
 
     @app.post("/v1/admin/allowance/apply", dependencies=[Depends(admin_dep)])
     async def admin_allowance_apply() -> dict:

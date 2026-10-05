@@ -10,6 +10,7 @@
 
 import SwiftUI
 import UIKit
+import AVFoundation
 import ImageIO
 import UniformTypeIdentifiers
 import CryptoKit
@@ -45,7 +46,8 @@ final class NanoMuseFaceStore: ObservableObject {
 
     // MARK: Paths
 
-    static var directory: URL {
+    /// The stills' folder; the motion clips sit under `motion/` inside it (NanoMuseAvatarMotion).
+    nonisolated static var directory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent("nanomuse/avatar", isDirectory: true)
@@ -104,6 +106,8 @@ final class NanoMuseFaceStore: ObservableObject {
     /// whatever was worn before.
     func adopt(_ stills: [NanoMuseMood: UIImage], description: String, style: String) {
         guard let idle = stills[.idle] else { return }
+        // The old face's clips go with it; the new ones follow the poses (NanoMuseAvatarStudio).
+        NanoMuseAvatarMotion.shared.clear()
         let fm = FileManager.default
         try? fm.createDirectory(at: Self.directory, withIntermediateDirectories: true)
         for mood in NanoMuseMood.allCases {
@@ -138,15 +142,18 @@ final class NanoMuseFaceStore: ObservableObject {
 
     /// Back to the dragon.
     func reset(sync: Bool = true) {
+        NanoMuseAvatarMotion.shared.clear()
         try? FileManager.default.removeItem(at: Self.directory)
         custom = [:]
         meta = Meta()
         if sync { NanoMuseProfileSync.shared.faceChanged() }
     }
 
-    /// Wear a face that another device drew (pulled from the profile).
+    /// Wear a face that another device drew (pulled from the profile). Clips are per device:
+    /// the old ones go, and the caller asks NanoMuseAvatarMotion for new ones when enabled.
     func wear(remote stills: [NanoMuseMood: UIImage], faceId: String, description: String, style: String) {
         guard stills[.idle] != nil else { return }
+        NanoMuseAvatarMotion.shared.clear()
         let fm = FileManager.default
         try? fm.removeItem(at: Self.directory)
         try? fm.createDirectory(at: Self.directory, withIntermediateDirectories: true)
@@ -218,25 +225,47 @@ final class NanoMuseFaceStore: ObservableObject {
     }
 }
 
-/// The face at a given size and mood, with the small life the Android
-/// header gives it: a slow breath when idle, a quicker bob while working, a
-/// tilt while waiting, a pop when happy and a shake on error.
+/// The face at a given size and mood. When the mood has a motion clip — a
+/// drawn face's `avatar/motion/<mood>.mp4`, or the bundled dragon's
+/// `dragon-<mood>.mp4` — it plays muted in a loop, clipped to the disc.
+/// Otherwise the still, with the small life the Android header gives it: a
+/// slow breath when idle, a quicker bob while working, a tilt while
+/// waiting, a pop when happy and a shake on error. Android: AgentAvatar.kt.
 struct NanoMuseFaceView: View {
     var mood: NanoMuseMood
     var size: CGFloat
     var showsRing: Bool = true
 
     @ObservedObject private var faces = NanoMuseFaceStore.shared
+    @ObservedObject private var motion = NanoMuseAvatarMotion.shared
+    @Environment(\.scenePhase) private var scenePhase
     @State private var breath = false
     @State private var popped = false
     @State private var shake: CGFloat = 0
+
+    /// The clip for this mood, when there is one for the face that is worn.
+    private var clip: URL? {
+        if faces.hasCustomFace { return motion.clips[mood] }
+        return NanoMuseAvatarMotion.dragonClip(mood)
+    }
 
     var body: some View {
         ZStack {
             if showsRing {
                 Circle().fill(NanoMuseTones.disc)
             }
-            if let img = faces.image(for: mood) {
+            if let clip {
+                ZStack {
+                    // The still underneath covers the first frames while the player warms up.
+                    if let img = faces.image(for: mood) {
+                        Image(uiImage: img).resizable().scaledToFill()
+                    }
+                    NanoMuseLoopingClipView(url: clip, version: motion.clipVersion)
+                }
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+                .transition(.opacity)
+            } else if let img = faces.image(for: mood) {
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFill()
@@ -257,8 +286,14 @@ struct NanoMuseFaceView: View {
         .rotationEffect(.degrees(tilt))
         .offset(x: shake, y: bob)
         .animation(.easeInOut(duration: 0.35), value: mood)
-        .onAppear { startBreathing() }
-        .onChange(of: mood) { newMood in
+        .onAppear {
+            startBreathing()
+            NanoMuseClipPlayers.shared.setSuspended(scenePhase != .active)
+        }
+        .nmOnChange(of: scenePhase) { phase in
+            NanoMuseClipPlayers.shared.setSuspended(phase != .active)
+        }
+        .nmOnChange(of: mood) { newMood in
             if newMood == .happy {
                 popped = true
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) { popped = false }
@@ -272,8 +307,12 @@ struct NanoMuseFaceView: View {
         .accessibilityLabel(Text(AppLocalized("Agent face")))
     }
 
+    /// The still's own motion; a clip brings its own and stays at rest.
+    private var animatesStill: Bool { clip == nil }
+
     private var scale: CGFloat {
         if popped { return 1.12 }
+        guard animatesStill else { return 1.0 }
         switch mood {
         case .working: return breath ? 1.045 : 0.985
         case .idle, .waiting, .happy, .error: return breath ? 1.02 : 1.0
@@ -281,17 +320,124 @@ struct NanoMuseFaceView: View {
     }
 
     private var bob: CGFloat {
-        mood == .working ? (breath ? -1.5 : 1.5) : 0
+        animatesStill && mood == .working ? (breath ? -1.5 : 1.5) : 0
     }
 
     private var tilt: Double {
-        mood == .waiting ? (breath ? 6 : -6) : 0
+        animatesStill && mood == .waiting ? (breath ? 6 : -6) : 0
     }
 
     private func startBreathing() {
         withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
             breath = true
         }
+    }
+}
+
+// MARK: - Clip playback
+
+/// One muted looping player per clip, shared by every face view that shows it (the header,
+/// the agent page, the studio thumbnails all point their layers at the same player). A
+/// player goes when its last view does; all of them pause while the app is not in front.
+@MainActor
+final class NanoMuseClipPlayers {
+    static let shared = NanoMuseClipPlayers()
+
+    private struct Entry {
+        let player: AVQueuePlayer
+        let looper: AVPlayerLooper
+        var users: Int
+    }
+
+    /// Keyed by file and version, so a redone clip (same path, new bytes) gets a fresh player
+    /// while views still on the old one keep theirs until they move over.
+    private var entries: [String: Entry] = [:]
+    private var suspended = false
+
+    private init() {}
+
+    private static func key(_ url: URL, _ version: Int) -> String { "\(version):\(url.path)" }
+
+    func acquire(_ url: URL, version: Int) -> AVQueuePlayer {
+        let key = Self.key(url, version)
+        if var entry = entries[key] {
+            entry.users += 1
+            entries[key] = entry
+            if !suspended { entry.player.play() }
+            return entry.player
+        }
+        let player = AVQueuePlayer()
+        player.isMuted = true
+        player.preventsDisplaySleepDuringVideoPlayback = false
+        player.allowsExternalPlayback = false
+        let looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
+        entries[key] = Entry(player: player, looper: looper, users: 1)
+        if !suspended { player.play() }
+        return player
+    }
+
+    func release(_ url: URL, version: Int) {
+        let key = Self.key(url, version)
+        guard var entry = entries[key] else { return }
+        entry.users -= 1
+        if entry.users <= 0 {
+            entry.player.pause()
+            entries[key] = nil
+        } else {
+            entries[key] = entry
+        }
+    }
+
+    /// Background → pause every loop; foreground → resume.
+    func setSuspended(_ suspend: Bool) {
+        guard suspend != suspended else { return }
+        suspended = suspend
+        for entry in entries.values {
+            if suspend { entry.player.pause() } else { entry.player.play() }
+        }
+    }
+}
+
+/// A `UIView` whose layer is the player layer, so the clip fills the disc without a video player's chrome.
+final class NanoMusePlayerLayerView: UIView {
+    override class var layerClass: AnyClass { AVPlayerLayer.self }
+    var playerLayer: AVPlayerLayer? { layer as? AVPlayerLayer }
+}
+
+/// The muted looping clip behind a face. `version` changes when the file at `url` was rewritten
+/// (a redone clip), so the player is rebuilt instead of showing the old frames.
+struct NanoMuseLoopingClipView: UIViewRepresentable {
+    var url: URL
+    var version: Int
+
+    final class Coordinator {
+        var url: URL?
+        var version = -1
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> NanoMusePlayerLayerView {
+        let view = NanoMusePlayerLayerView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.playerLayer?.videoGravity = .resizeAspectFill
+        return view
+    }
+
+    func updateUIView(_ view: NanoMusePlayerLayerView, context: Context) {
+        let coordinator = context.coordinator
+        guard coordinator.url != url || coordinator.version != version else { return }
+        if let old = coordinator.url { NanoMuseClipPlayers.shared.release(old, version: coordinator.version) }
+        view.playerLayer?.player = NanoMuseClipPlayers.shared.acquire(url, version: version)
+        coordinator.url = url
+        coordinator.version = version
+    }
+
+    static func dismantleUIView(_ view: NanoMusePlayerLayerView, coordinator: Coordinator) {
+        if let old = coordinator.url { NanoMuseClipPlayers.shared.release(old, version: coordinator.version) }
+        coordinator.url = nil
+        view.playerLayer?.player = nil
     }
 }
 

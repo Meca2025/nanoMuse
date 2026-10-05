@@ -1,3 +1,4 @@
+import Combine // nanoMuse: NanoMuseStar publishes its pending ask
 import Foundation
 import UIKit
 
@@ -235,58 +236,229 @@ extension NanoMuseCloud {
     }
 }
 
-/// The ask for a star, once at the moments it is fair to: the first sign-in, the first and the
-/// tenth task that ran to its end, a face just drawn, the allowance used up. Remembered on the
-/// phone (UserDefaults); "Star on GitHub" ends every ask for good. The tone is a thank-you, never
-/// a bill: your support is what keeps us going.
-enum NanoMuseStar {
+/// One ask for a star, ready for the shell to show: the moment and its words.
+struct NanoMuseStarAsk: Equatable, Identifiable {
+    var moment: NanoMuseStarMoment
+    var text: String
+    var id: String { moment.key }
+}
+
+/// The ask for a star at the moments it is fair to (contract C1): the first sign-in, the 3rd /
+/// 10th / 30th task that ran to its end, a face just drawn, the allowance used up, the 7th and
+/// 30th day with the app, a goal reached — as the relay's policy says (NanoMuseNudges), with a
+/// cooldown between asks and a lifetime cap. Remembered on the phone under `nm.star.*`;
+/// "Star on GitHub" ends every ask for good. Never a dialog: `pending` is a card where the
+/// shell puts it, `signedIn()` a row on the account page. Android: community/StarPrompt.kt.
+@MainActor
+final class NanoMuseStar: ObservableObject {
+    static let shared = NanoMuseStar()
     static let repoURL = URL(string: "https://github.com/nano-muse/nanoMuse")!
-    private static let starredKey = "nanomuse.star.starred"
-    private static let tasksKey = "nanomuse.star.tasks"
 
-    enum Moment: String { case signedIn = "signed_in", firstTask = "first_task", tenthTask = "tenth_task", newLook = "new_look", exhausted }
-
-    static var starred: Bool { UserDefaults.standard.bool(forKey: starredKey) }
-
-    /// One more task that ran to its end on this phone; the count so far.
-    static func countTask() -> Int {
-        let n = UserDefaults.standard.integer(forKey: tasksKey) + 1
-        UserDefaults.standard.set(n, forKey: tasksKey)
-        return n
+    /// The moments by name, as the shell's card API has known them. `firstTask` / `tenthTask`
+    /// are the names from before the policy; they read as `tasks` with that count.
+    enum Moment: String {
+        case signedIn = "signed_in", firstTask = "first_task", tenthTask = "tenth_task", newLook = "new_look", exhausted
+        case tasks, daysUsed = "days_used", goalDone = "goal_done"
     }
 
-    /// The moment a finished-task count makes due, if any: the first and the tenth.
-    static func moment(forTask n: Int) -> Moment? { n == 1 ? .firstTask : n == 10 ? .tenthTask : nil }
+    private enum Keys {
+        static let tasks = "nm.star.tasks"
+        static let asks = "nm.star.asks"
+        static let lastAsk = "nm.star.last_ask"
+        static let days = "nm.star.days"
+        static let lastDay = "nm.star.last_day"
+        static let starred = "nm.star.starred"
+        static let shown = "nm.star.shown"
+        static let migrated = "nm.star.migrated"
+    }
 
-    /// The words for a moment (the same words as every other client).
-    static func text(_ moment: Moment) -> String {
-        switch moment {
-        case .signedIn:
-            return AppLocalized("Welcome aboard. nanoMuse is free, open source and non-profit — a personal agent that belongs to everyone who runs it. If you believe in that, a star on GitHub is the biggest support you can give: it is how the next person finds their way here.")
-        case .firstTask:
-            return AppLocalized("First task done. If nanoMuse helped, a star on GitHub would mean a lot to the people building it — your support is what keeps us going.")
-        case .tenthTask:
-            return AppLocalized("Ten tasks together already. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try — and tells us to keep going.")
-        case .newLook:
-            return AppLocalized("A new face, drawn just for you. If you like what nanoMuse is becoming, a star on GitHub helps more people meet it — your support is what keeps us going.")
-        case .exhausted:
-            return AppLocalized("The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub is what keeps the project going for everyone.")
+    /// The ask the shell should show now; nil when there is none. Dismissed by `dismiss()` or `open()`.
+    @Published private(set) var pending: NanoMuseStarAsk?
+    @Published private(set) var ledger: NanoMuseStarLedger
+
+    private init() {
+        Self.migrate()
+        ledger = Self.load()
+    }
+
+    var policy: NanoMuseNudgePolicy { NanoMuseNudges.shared.policy }
+    var starred: Bool { ledger.starred }
+
+    // MARK: The gate
+
+    /// Still worth asking at this moment: on in the policy, not spent, not starred, under the cap, cooldown over.
+    func due(_ moment: NanoMuseStarMoment) -> Bool {
+        NanoMuseStarGate.due(moment, ledger: ledger, policy: policy)
+    }
+
+    /// The card or row was shown (or waved away): the moment is spent and the cooldown starts.
+    func markShown(_ moment: NanoMuseStarMoment) {
+        ledger = NanoMuseStarGate.marked(moment, in: ledger)
+        save()
+    }
+
+    /// Show the moment if it is due: marks it and sets `pending`.
+    private func raise(_ moment: NanoMuseStarMoment) {
+        guard due(moment) else { return }
+        markShown(moment)
+        pending = NanoMuseStarAsk(moment: moment, text: Self.words(for: moment))
+    }
+
+    func dismiss() { pending = nil }
+
+    // MARK: Moments
+
+    /// A model turn the person started ended with a reply. Turns of the first conversation (the
+    /// naming, until the agent has its name) and background runs are not tasks; callers only
+    /// report turns a person started. Returns the count so far on this phone.
+    @discardableResult
+    func taskFinished() -> Int {
+        switch NanoMuseFirstConversation.shared.phase {
+        case .askUserName, .askAgentName: return ledger.tasks
+        case .none, .named, .done: break
         }
+        ledger.tasks += 1
+        save()
+        raise(.tasks(ledger.tasks))
+        return ledger.tasks
     }
 
-    /// Still worth asking: not asked at this moment before, and the person has not gone to star it.
-    static func due(_ moment: Moment) -> Bool {
-        !starred && !UserDefaults.standard.bool(forKey: "nanomuse.star.\(moment.rawValue)")
+    /// The app came to the front: one more distinct day, and the policy refreshed when stale.
+    func dayOpened() {
+        NanoMuseNudges.shared.fetchIfStale()
+        let next = NanoMuseStarGate.dayOpened(ledger, dayKey: NanoMuseDay.key())
+        guard next != ledger else { return }
+        ledger = next
+        save()
+        raise(.daysUsed(ledger.days))
     }
 
-    static func shown(_ moment: Moment) {
-        UserDefaults.standard.set(true, forKey: "nanomuse.star.\(moment.rawValue)")
+    /// A goal was marked achieved.
+    func goalDone() { raise(.goalDone) }
+
+    /// A new face's poses finished.
+    func newLook() { raise(.newLook) }
+
+    /// The account page, seen signed in: true once, for the row (never a popup).
+    func signedIn() -> Bool {
+        guard due(.signedIn) else { return false }
+        markShown(.signedIn)
+        return true
     }
 
     /// Off to GitHub, and no more asking anywhere.
-    @MainActor
-    static func open() {
-        UserDefaults.standard.set(true, forKey: starredKey)
-        UIApplication.shared.open(repoURL)
+    func open() {
+        ledger.starred = true
+        pending = nil
+        save()
+        UIApplication.shared.open(URL(string: policy.url) ?? Self.repoURL)
     }
+
+    // MARK: Words
+
+    /// The words for a moment (the same meaning as every other client).
+    static func words(for moment: NanoMuseStarMoment) -> String {
+        switch moment {
+        case .signedIn:
+            return AppLocalized("Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.")
+        case .tasks(let n) where n == 1:
+            return AppLocalized("One task done. If nanoMuse helped, a star on GitHub tells the people building it that it did.")
+        case .tasks(let n):
+            return String(format: AppLocalized("%d tasks done. If nanoMuse is useful, a star on GitHub helps the next person find it."), n)
+        case .newLook:
+            return AppLocalized("A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.")
+        case .exhausted:
+            return AppLocalized("The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.")
+        case .daysUsed(let n) where n == 1:
+            return AppLocalized("A day with nanoMuse. If it helped, a star on GitHub helps the next person find it.")
+        case .daysUsed(let n) where n == 7:
+            return AppLocalized("A week with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it.")
+        case .daysUsed(let n) where n == 30:
+            return AppLocalized("A month with nanoMuse. If it has become part of your routine, a star on GitHub tells others it is worth a try.")
+        case .daysUsed(let n):
+            return String(format: AppLocalized("%d days with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it."), n)
+        case .goalDone:
+            return AppLocalized("Goal reached. If nanoMuse helped you get there, a star on GitHub tells the people building it.")
+        }
+    }
+
+    // MARK: Ledger on disk
+
+    private static func load() -> NanoMuseStarLedger {
+        let d = UserDefaults.standard
+        var ledger = NanoMuseStarLedger()
+        ledger.tasks = d.integer(forKey: Keys.tasks)
+        ledger.asks = d.integer(forKey: Keys.asks)
+        let last = d.double(forKey: Keys.lastAsk)
+        ledger.lastAsk = last > 0 ? Date(timeIntervalSince1970: last) : nil
+        ledger.days = d.integer(forKey: Keys.days)
+        ledger.lastDay = d.string(forKey: Keys.lastDay) ?? ""
+        ledger.starred = d.bool(forKey: Keys.starred)
+        ledger.shown = Set(d.stringArray(forKey: Keys.shown) ?? [])
+        return ledger
+    }
+
+    private func save() {
+        let d = UserDefaults.standard
+        d.set(ledger.tasks, forKey: Keys.tasks)
+        d.set(ledger.asks, forKey: Keys.asks)
+        d.set(ledger.lastAsk?.timeIntervalSince1970 ?? 0, forKey: Keys.lastAsk)
+        d.set(ledger.days, forKey: Keys.days)
+        d.set(ledger.lastDay, forKey: Keys.lastDay)
+        d.set(ledger.starred, forKey: Keys.starred)
+        d.set(Array(ledger.shown).sorted(), forKey: Keys.shown)
+    }
+
+    /// The keys from before the policy (`nanomuse.star.*`) move over once: the counter, the
+    /// flag per moment (the first and tenth task become `tasks.1` / `tasks.10`), "starred".
+    private static func migrate() {
+        let d = UserDefaults.standard
+        guard !d.bool(forKey: Keys.migrated) else { return }
+        d.set(true, forKey: Keys.migrated)
+        guard d.object(forKey: Keys.tasks) == nil else { return }
+        var ledger = NanoMuseStarLedger()
+        ledger.tasks = d.integer(forKey: "nanomuse.star.tasks")
+        ledger.starred = d.bool(forKey: "nanomuse.star.starred")
+        let moved: [(String, String)] = [
+            ("signed_in", "signed_in"), ("first_task", "tasks.1"), ("tenth_task", "tasks.10"),
+            ("new_look", "new_look"), ("exhausted", "exhausted"),
+        ]
+        for (old, new) in moved where d.bool(forKey: "nanomuse.star.\(old)") {
+            ledger.shown.insert(new)
+        }
+        ledger.asks = ledger.shown.count
+        d.set(ledger.tasks, forKey: Keys.tasks)
+        d.set(ledger.asks, forKey: Keys.asks)
+        d.set(ledger.starred, forKey: Keys.starred)
+        d.set(Array(ledger.shown).sorted(), forKey: Keys.shown)
+    }
+
+    // MARK: The pre-policy static API, kept for the shell
+
+    /// Maps a named moment onto the gate's; the counted ones read the ledger.
+    private static func convert(_ moment: Moment) -> NanoMuseStarMoment {
+        switch moment {
+        case .signedIn: return .signedIn
+        case .firstTask: return .tasks(1)
+        case .tenthTask: return .tasks(10)
+        case .tasks: return .tasks(shared.ledger.tasks)
+        case .newLook: return .newLook
+        case .exhausted: return .exhausted
+        case .daysUsed: return .daysUsed(shared.ledger.days)
+        case .goalDone: return .goalDone
+        }
+    }
+
+    static var starred: Bool { shared.starred }
+
+    /// A task ended with a reply: counts per the policy and raises `shared.pending` when due.
+    static func countTask() -> Int { shared.taskFinished() }
+
+    /// The policy decides which counts ask, and `taskFinished()` already raised the card: nothing here.
+    static func moment(forTask n: Int) -> Moment? { nil }
+
+    static func text(_ moment: Moment) -> String { words(for: convert(moment)) }
+    static func due(_ moment: Moment) -> Bool { shared.due(convert(moment)) }
+    static func shown(_ moment: Moment) { shared.markShown(convert(moment)) }
+    static func open() { shared.open() }
 }

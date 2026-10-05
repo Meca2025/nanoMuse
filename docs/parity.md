@@ -124,8 +124,8 @@ notes above; a settled item keeps its number and says how it went.
     settings page, and the studio draws through the relay or your own Bailian key. Left: a
     routine runs in the background only when iOS gives the refresh task a slot — the copy says
     so (*at the set time the phone reminds you to open it*); the hub route (a computer of the
-    account runs them) is still the sure one. The iPad's layout is the iPhone's, larger — a
-    split layout of its own is a design call.
+    account runs them) is still the sure one. The iPad's layout is the iPhone's, larger —
+    settled in 0.1.35: no split layout of its own.
 12. **Android and iOS · Emoji faces.** A face set to an emoji on the web or the desktop shows the
     dragon on the phones. Small.
 13. **Theme colour swatches** — settled in 0.1.33: removed from the desktop; one rule everywhere,
@@ -155,7 +155,10 @@ notes above; a settled item keeps its number and says how it went.
     shared, with the UI-TARS-style glow and the overlays kept out of the shots. Left: Linux and
     Windows have no window mode (a virtual display or a second session would be the port — Linux
     first, cheapest); the macOS path is written against the Quartz APIs and must be tried on a
-    Mac (Screen Recording fallback, AX-less clicks, Retina mapping, scroll direction).
+    Mac (Screen Recording fallback, AX-less clicks, Retina mapping, scroll direction). Settled in
+    0.1.35: `auto` stays the default, with a fail-safe — when the Quartz layer itself fails (not
+    "the window went away", which is retried every look) the hands fall back to the whole screen
+    for the rest of that target and say so once; an explicit `window` mode keeps trying.
 20. **Services without a public remote MCP server** — the chat apps are settled in 0.1.34 the
     way nanobot does it: 飞书, 钉钉, 企业微信 and Telegram are *channels* the agent answers in
     (`nanomuse/channels/`, the vendors' long-connection SDKs, no public address, pairing codes),

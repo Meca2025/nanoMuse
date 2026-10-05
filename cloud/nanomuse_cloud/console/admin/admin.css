@@ -207,6 +207,11 @@ table.places tr.country td { border-top: 1px solid var(--line, var(--fill)); }
 }
 /* runtime settings (relay 0.15): a number box, its note, the sign-up switch */
 .admin .kv .rt { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
-.admin .kv .rt input[type="number"] { width: 110px; padding: 6px 9px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--fill); font-size: 13px; }
+.admin .kv .rt input[type="number"], .admin .kv .rt input[type="text"], .admin .kv .rt input[type="url"] { width: 110px; padding: 6px 9px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--fill); font-size: 13px; }
+.admin .kv .rt input[type="text"] { width: 180px; }
+.admin .kv .rt input.wide { width: min(420px, 100%); }
+/* the nudges card (relay 0.18): the moment switches stacked one under the other */
+.admin .kv .rt.col { flex-direction: column; align-items: flex-start; gap: 6px; }
+.admin .kv .rt.col .rt { gap: 4px 10px; }
 .admin .kv .rt .sw { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .admin .kv .rt .fine { flex-basis: 100%; }

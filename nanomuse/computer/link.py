@@ -78,6 +78,9 @@ class ComputerLink:
             mac_window.MacWindowHands(window_adapter) if window_adapter is not None else None
         )
         self._window_error = ""
+        # `auto` mode fail-safe: once the Quartz layer itself breaks (not "the window went
+        # away" — that is retried every look), the hands stay on the screen for this target
+        self._window_broken = ""
         # the frame the last window picture was taken in (None in screen mode)
         self.window_frame: mac_window.WindowFrame | None = None
         self.last_screen: Screen | None = None
@@ -135,7 +138,7 @@ class ComputerLink:
             # window mode (macOS): whether it can run here, and what it is working in
             "window": {
                 "available": window_ok,
-                "reason": window_why or self._window_error,
+                "reason": window_why or self._window_broken or self._window_error,
                 "active": self.in_window_mode(),
                 "app": self.target_app,
                 "title": self.target_title,
@@ -165,6 +168,7 @@ class ComputerLink:
         if (app, title) != (self.target_app, self.target_title):
             self.window_frame = None
             self._window_error = ""
+            self._window_broken = ""
         self.target_app, self.target_title = app, title
 
     def in_window_mode(self) -> bool:
@@ -174,7 +178,21 @@ class ComputerLink:
             return False
         if mode == "window":
             return True
+        if self._window_broken:
+            return False
         return mac_window.available()[0] or self._window is not None
+
+    def _window_layer_failed(self, exc: BaseException) -> None:
+        """A failure inside the Quartz layer (pyobjc, the window server) rather than a
+        missing window: in `auto` mode the hands fall back to the screen for the rest of this
+        target, with one note; an explicit `window` mode keeps trying, as the person asked."""
+        self._window_error = f"window mode failed: {exc}"
+        self.window_frame = None
+        if self.settings.mode == "auto":
+            self._window_broken = self._window_error
+            logger.warning("window mode: {} — the screen from here on", exc)
+        else:
+            logger.warning("window mode: {}", exc)
 
     def app_in_front(self) -> tuple[str, str]:
         """``(id, name)`` of the application an action lands in: the target window's bundle
@@ -214,6 +232,11 @@ class ComputerLink:
                 self.last_screen = screen
                 return screen
             note = self._window_error
+            if self._window_broken:
+                self._window_error = ""  # the fail-safe tripped: said once
+        elif self._window_broken and self._window_error:
+            # the fail-safe tripped during an action: say so once, then plain screen pictures
+            note, self._window_error = self._window_error, ""
         try:
             raw = await asyncio.to_thread(
                 capture, self.settings.max_image_width or DEFAULT_MAX_WIDTH
@@ -254,6 +277,11 @@ class ComputerLink:
             raise DeviceError(f"the hands did not finish '{action}' in time") from None
         except DeviceError:
             raise
+        except mac_window.WindowLayerBroken as exc:
+            self._window_layer_failed(exc)
+            raise DeviceError(
+                f"{action} failed: {exc} — the hands work on the whole screen from here"
+            ) from exc
         except mac_window.WindowUnavailable as exc:
             # the window went away under the hands: back to the screen for the next look
             self._window_error = str(exc)
@@ -264,6 +292,11 @@ class ComputerLink:
             if "FailSafe" in name:
                 self._emit({"event": "stop"})
                 raise DeviceStopped("the mouse was thrown into a corner") from exc
+            if isinstance(hands, mac_window.MacWindowHands):
+                self._window_layer_failed(exc)
+                raise DeviceError(
+                    f"{action} failed: {exc} — the hands work on the whole screen from here"
+                ) from exc
             raise DeviceError(f"{action} failed: {exc}") from exc
         settle = max(0.0, self.settings.settle_s - (time.monotonic() - started))
         if action != "wait" and settle:
@@ -281,15 +314,16 @@ class ComputerLink:
         try:
             hands = self._window_hands()
             png, frame = hands.look(self.target_app, self.target_title)
+        except mac_window.WindowLayerBroken as exc:
+            self._window_layer_failed(exc)
+            return None
         except mac_window.WindowUnavailable as exc:
             self._window_error = str(exc)
             self.window_frame = None
             logger.info("window mode: {}", exc)
             return None
         except Exception as exc:  # noqa: BLE001 — pyobjc fails in many ways
-            self._window_error = f"window mode failed: {exc}"
-            self.window_frame = None
-            logger.warning("window mode: {}", exc)
+            self._window_layer_failed(exc)
             return None
         self._window_error = ""
         data, mime = png, "image/png"

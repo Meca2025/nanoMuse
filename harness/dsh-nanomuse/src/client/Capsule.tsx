@@ -10,6 +10,8 @@ import type { Translate } from './api.ts'
 import { call } from './api.ts'
 import { useLive, type LiveAsk, type LiveCall, type LiveNotice } from './live.ts'
 import type { Words } from './locales.ts'
+import { bridge } from './bridge.ts'
+import { BlackScreenNotice, type BlackScreenPerms } from './HandsCheck.tsx'
 
 /** What a call is, in the person's words. */
 export function describeCall(t: Translate, c: LiveCall): string {
@@ -64,9 +66,22 @@ export function makeCapsule({ t }: CapsuleProps) {
   return function Capsule(): ReactNode {
     const live = useLive()
     return h('div', { style: { position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none' } },
+      h(BlackScreenCard, { t }),
       live.hub.asks.map((ask) => h(AskCard, { key: ask.id, t, ask })),
       h(Notices, { t, notices: live.notices }))
   }
+}
+
+/** The hands saw a black screen (desk-b): the one notice that must not be missed, with the relaunch right in it. Read from the live state, so nothing polls while all is well. */
+function BlackScreenCard({ t }: { t: Translate }): ReactNode {
+  const live = useLive()
+  if (!live.blackScreenAt) return null
+  const perms: BlackScreenPerms = {
+    blackScreen: true,
+    relaunch: () => void bridge()?.relaunch?.(),
+    clearBlackScreen: () => void call('hands/black-screen/clear', {}).catch(() => undefined),
+  }
+  return h('div', { style: { pointerEvents: 'auto' } }, h(BlackScreenNotice, { t, perms }))
 }
 
 /** The words for what another device wants to do here. */

@@ -77,6 +77,7 @@ enum NanoMuseTab: String, CaseIterable, Identifiable {
 struct NanoMuseRoot: View {
     @AppStorage("nanomuse.shell.enabled") private var shellEnabled = true
     @ObservedObject private var store = ProviderConfigStore.shared
+    @Environment(\.scenePhase) private var scenePhase
     @State private var hasSessions: Bool?
     @State private var setupDone = NanoMuseFirstRun.isDone
     @State private var showClassicSettings = false
@@ -116,6 +117,13 @@ struct NanoMuseRoot: View {
         .onAppear {
             NanoMuseProfileSync.shared.start()
             NanoMuseStarWatch.shared.start()
+            NanoMuseStar.shared.dayOpened()
+        }
+        .nmOnChange(of: scenePhase) { phase in
+            // C1: one more day with the app, counted when it comes to the front; C2: the release check, when stale.
+            guard phase == .active else { return }
+            NanoMuseStar.shared.dayOpened()
+            NanoMuseUpdateCheck.shared.checkIfStale()
         }
         .task {
             hasSessions = !(await ChatStore.shared.listSessions()).isEmpty
@@ -204,6 +212,8 @@ final class NanoMuseMainChat: ObservableObject {
 
     @Published private(set) var chatId: String?
     @Published private(set) var isDraft = false
+    /// The id the view model is cached under: the session, or nil while a draft has not been sent yet.
+    @Published private(set) var liveId: String?
 
     private var cancellables: Set<AnyCancellable> = []
 
@@ -246,6 +256,7 @@ final class NanoMuseMainChat: ObservableObject {
     private func set(_ id: String, draft: Bool) {
         isDraft = draft
         chatId = id
+        liveId = draft ? nil : id
     }
 
     private func sessionCreated(_ note: Notification) {
@@ -255,6 +266,7 @@ final class NanoMuseMainChat: ObservableObject {
         // The draft became a real session: remember it, keep the view as is
         // (the view model is already cached under the real id).
         UserDefaults.standard.set(realId, forKey: Self.key)
+        liveId = realId
     }
 }
 
@@ -283,7 +295,7 @@ final class NanoMuseKeyboardWatcher: ObservableObject {
 struct NanoMuseHomeView: View {
     @StateObject private var main = NanoMuseMainChat()
     @StateObject private var keyboard = NanoMuseKeyboardWatcher()
-    @ObservedObject private var star = NanoMuseStarWatch.shared
+    @ObservedObject private var star = NanoMuseStar.shared
 
     @State private var tab: NanoMuseTab = .chat
     @State private var drawerOpen = false
@@ -292,6 +304,18 @@ struct NanoMuseHomeView: View {
     @State private var classicWantsSettings = false
     @State private var showNanoMuseSettings = false
     @State private var showCoding = false
+    @State private var showRoutines = false
+    @State private var showSystemFiles = false
+    @State private var showSharedFolders = false
+    @State private var showChatFiles = false
+    @State private var showDevices = false
+    @State private var agentName = NanoMuseHomeView.currentAgentName()
+
+    /// The agent's name from SOUL.md, "nanoMuse" until it has one.
+    static func currentAgentName() -> String {
+        let n = SoulStore.cachedMetadata.name
+        return n.isEmpty ? "nanoMuse" : n
+    }
 
     var body: some View {
         ZStack {
@@ -318,8 +342,13 @@ struct NanoMuseHomeView: View {
         .overlay {
             NanoMuseDrawer(
                 isOpen: $drawerOpen,
+                agentName: agentName,
                 currentId: chatPath.last ?? main.chatId,
                 mainId: main.chatId,
+                onOpenMain: {
+                    chatPath.removeAll()
+                    tab = .chat
+                },
                 onOpenSession: { id in openSideChat(id) },
                 onNewChat: { openSideChat(NanoMuseMainChat.draftPrefix + UUID().uuidString) },
                 onPinMain: { id in
@@ -327,6 +356,9 @@ struct NanoMuseHomeView: View {
                     main.pin(id)
                     tab = .chat
                 },
+                onDevices: { showDevices = true },
+                onCoding: { showCoding = true },
+                onSystemFiles: { showSystemFiles = true },
                 onAllChats: { showClassic = true },
                 onSettings: { showNanoMuseSettings = true }
             )
@@ -336,32 +368,61 @@ struct NanoMuseHomeView: View {
             enabled: !showClassic,
             onOpenSession: { id in openSideChat(id) },
             onPrefillChat: { text in prefillMainChat(text) },
-            onOpenRoutines: { tab = .goals }
+            onOpenRoutines: { showRoutines = true }
         )
         .sheet(isPresented: $showClassic) {
             NanoMuseClassicCover(wantsSettings: classicWantsSettings)
                 .onDisappear { classicWantsSettings = false }
         }
         .sheet(isPresented: $showCoding) {
-            NavigationStack {
-                NanoMuseCodingView()
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Done")) { showCoding = false } } }
+            NanoMuseSheet(title: AppLocalized("Coding agents")) { NanoMuseCodingView() }
+        }
+        .sheet(isPresented: $showRoutines) {
+            NanoMuseSheet(title: AppLocalized("All routines")) { NanoMuseRoutinesView() }
+        }
+        .sheet(isPresented: $showSystemFiles) {
+            NanoMuseSheet(title: AppLocalized("System files")) { NanoMuseSystemFilesView() }
+        }
+        .sheet(isPresented: $showSharedFolders) {
+            NanoMuseSheet(title: AppLocalized("Shared Folders")) { SharedFoldersSettingsView() }
+        }
+        .sheet(isPresented: $showChatFiles) {
+            NanoMuseSheet(title: AppLocalized("Chat files")) {
+                let base = RootfsManager.shared.dataPath
+                FileBrowserView(rootPath: base, initialPath: base.appendingPathComponent("var/minis"), rootLabel: "/")
             }
+        }
+        .sheet(isPresented: $showDevices) {
+            NanoMuseSheet(title: AppLocalized("Computers")) { NanoMuseComputersView() }
         }
         .sheet(isPresented: $showNanoMuseSettings) {
             NavigationStack {
-                NanoMuseSettingsView(onAllSettings: {
+                NanoMuseSettingsHomeView(onAllSettings: {
                     showNanoMuseSettings = false
                     classicWantsSettings = true
                     showClassic = true
                 })
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Done")) { showNanoMuseSettings = false } } }
             }
         }
         .onAppear {
             if main.chatId == nil { main.resolve() }
             // A notification tap that launched the app cold: the conversation it named.
             if let id = NotificationNavigationStore.shared.takePending() { openSideChat(id) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .soulMdChanged)) { _ in
+            agentName = Self.currentAgentName()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nanoMuseHomeAction)) { note in
+            // The Muse header's ••• menu on the rooms, and the rooms' own shortcuts.
+            switch note.object as? String {
+            case "settings": showNanoMuseSettings = true
+            case "coding": showCoding = true
+            case "routines": showRoutines = true
+            case "systemFiles": showSystemFiles = true
+            case "sharedFolders": showSharedFolders = true
+            case "chatFiles": showChatFiles = true
+            default: break
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .nanoMuseOpenChat)) { note in
             guard let id = note.object as? String else { return }
@@ -419,7 +480,27 @@ struct NanoMuseHomeView: View {
 
     private var chatLayer: some View {
         NavigationStack(path: $chatPath) {
-            Group {
+            VStack(spacing: 0) {
+                // Android: MuseHeader over the main chat — the face, the name pill, the drawer and ••• discs.
+                NanoMuseChatHeaderHost(
+                    liveId: main.liveId,
+                    name: agentName,
+                    onFace: { NotificationCenter.default.post(name: .nanoMuseOpenAgentPage, object: main.liveId ?? main.chatId) },
+                    leading: { drawerDisc },
+                    trailing: { chatMenu }
+                )
+                // C1: the ask for a star, when NanoMuseStar's gate raises one; under the header, over the chat.
+                if let ask = star.pending {
+                    NanoMuseStarCard(text: ask.text) {
+                        star.dismiss()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(NanoMuseTones.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 6)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 if let id = main.chatId {
                     AIChatView(sessionId: main.isDraft ? nil : id, draftId: main.isDraft ? id : nil)
                         .id(id)
@@ -428,49 +509,54 @@ struct NanoMuseHomeView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        drawerOpen = true
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                    }
-                    .accessibilityLabel(Text(AppLocalized("Chats and settings")))
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    // Android: the Chat room's ••• menu — the coding agents, then the shared rows.
-                    Menu {
-                        Button { showCoding = true } label: { Label(AppLocalized("Coding agents"), systemImage: "chevron.left.forwardslash.chevron.right") }
-                        Button { tab = .goals } label: { Label(AppLocalized("Scheduled tasks"), systemImage: "clock") }
-                        Divider()
-                        Button { showNanoMuseSettings = true } label: { Label(AppLocalized("Settings"), systemImage: "gearshape") }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .accessibilityLabel(Text(AppLocalized("More")))
-                }
-            }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if let moment = star.card {
-                    NanoMuseStarCard(text: NanoMuseStar.text(moment)) {
-                        star.dismiss()
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(NanoMuseTones.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.horizontal, 12)
-                    .padding(.top, 6)
-                    .padding(.bottom, 4)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-            }
-            .animation(.easeInOut(duration: 0.25), value: star.card)
+            .background(ChatColors.background.ignoresSafeArea())
+            // The system bar stays out of the main chat; side chats pushed from here keep theirs.
+            .toolbar(.hidden, for: .navigationBar)
+            .animation(.easeInOut(duration: 0.25), value: star.pending)
             .navigationDestination(for: String.self) { id in
                 let draft = id.hasPrefix(NanoMuseMainChat.draftPrefix)
                 AIChatView(sessionId: draft ? nil : id, draftId: draft ? id : nil)
                     .id(id)
             }
         }
+    }
+
+    /// The round hamburger: the drawer with the side chats.
+    private var drawerDisc: some View {
+        NanoMuseRoundButton(symbol: "line.3.horizontal", label: AppLocalized("Chats and settings")) {
+            drawerOpen = true
+        }
+    }
+
+    /// Android: the Chat room's ••• menu — this chat's own entries, then the shared rows.
+    private var chatMenu: some View {
+        Menu {
+            Button { chatAction(.newChat) } label: { Label(AppLocalized("New Chat"), systemImage: "square.and.pencil") }
+            if !NanoMuseAppearance.shared.headerModel {
+                Button { chatAction(.model) } label: { Label(AppLocalized("Model"), systemImage: "cpu") }
+            }
+            Button(role: .destructive) { chatAction(.clearChat) } label: { Label(AppLocalized("Clear Chat"), systemImage: "trash") }
+            Divider()
+            Button { chatAction(.terminal) } label: { Label(AppLocalized("Open Terminal"), systemImage: "terminal") }
+            Button { chatAction(.browser) } label: { Label(AppLocalized("Open Browser"), systemImage: "safari") }
+            Button { chatAction(.files) } label: { Label(AppLocalized("Browse Chat Files"), systemImage: "folder") }
+            Button { chatAction(.tokenUsage) } label: { Label(AppLocalized("Token Usage"), systemImage: "chart.bar") }
+            Divider()
+            Button { showCoding = true } label: { Label(AppLocalized("Coding agents"), systemImage: "chevron.left.forwardslash.chevron.right") }
+            Button { showRoutines = true } label: { Label(AppLocalized("All routines"), systemImage: "clock") }
+            Button { showSystemFiles = true } label: { Label(AppLocalized("System files"), systemImage: "doc.text") }
+            Divider()
+            Button { showNanoMuseSettings = true } label: { Label(AppLocalized("Settings"), systemImage: "gearshape") }
+        } label: {
+            NanoMuseRoundDisc(symbol: "ellipsis")
+        }
+        .accessibilityLabel(Text(AppLocalized("More")))
+    }
+
+    /// One of this chat's own menu entries: AIChatView acts on it (see its `// nanoMuse:` hook).
+    private func chatAction(_ action: NanoMuseChatAction) {
+        guard let id = main.chatId else { return }
+        NanoMuseChatAction.post(action, session: main.liveId ?? id)
     }
 
     // MARK: Rooms
@@ -482,28 +568,31 @@ struct NanoMuseHomeView: View {
             EmptyView()
         case .feed:
             NanoMuseFeedRoom(
-                onMenu: { drawerOpen = true },
+                chrome: chrome,
                 onDiscuss: { post in discussPost(post) },
                 onOpenSession: { id in openSideChat(id) }
             )
         case .ideas:
             NanoMuseIdeasRoom(
-                onMenu: { drawerOpen = true },
+                chrome: chrome,
                 onSend: { prompt in startChat(with: prompt) },
                 onCreateRoutine: { idea in createRoutine(from: idea) },
-                onStartGoal: { category, seed in startGoal(category, seed: seed) },
-                onMore: { showNanoMuseSettings = true }
+                onStartGoal: { category, seed in startGoal(category, seed: seed) }
             )
         case .goals:
             NanoMuseGoalsRoom(
-                onMenu: { drawerOpen = true },
+                chrome: chrome,
                 onStartGoal: { category in startGoal(category) },
-                onOpenSession: { id in openSideChat(id) },
-                onMore: { showNanoMuseSettings = true }
+                onOpenSession: { id in openSideChat(id) }
             )
         case .library:
-            NanoMuseLibraryRoom(onMenu: { drawerOpen = true }, sessionId: main.isDraft ? nil : main.chatId, onMore: { showNanoMuseSettings = true })
+            NanoMuseLibraryRoom(chrome: chrome, sessionId: main.isDraft ? nil : main.chatId)
         }
+    }
+
+    /// What the rooms need for their Muse header.
+    private var chrome: NanoMuseRoomChrome {
+        NanoMuseRoomChrome(liveId: main.liveId, name: agentName, hasMainSession: !main.isDraft && main.chatId != nil, onMenu: { drawerOpen = true })
     }
 
     /// "Create a goal › Health": the opener goes to the main chat; the model takes it from there (GoalFlow).
@@ -604,60 +693,160 @@ struct NanoMuseBottomBar: View {
 
 // MARK: - Room header
 
-/// The title row at the top of Feed / Ideas / Goals / Library: hamburger,
-/// title, optional trailing content.
-struct NanoMuseTabHeader<Trailing: View>: View {
-    var title: String
+extension Notification.Name {
+    /// `object` is one of "settings", "coding", "routines", "systemFiles", "sharedFolders",
+    /// "chatFiles": the home opens that page over the current tab.
+    static let nanoMuseHomeAction = Notification.Name("nanoMuse.homeAction")
+}
+
+/// What Feed / Ideas / Goals / Library need to draw the Muse header: the
+/// main chat's live id (its mood and status stay on the face while the
+/// person is elsewhere), the agent's name, and the drawer.
+struct NanoMuseRoomChrome {
+    var liveId: String?
+    var name: String
+    /// The main chat is a real session (its files can be browsed).
+    var hasMainSession: Bool
     var onMenu: () -> Void
+
+    /// Ask the home to open one of its pages ("settings", "systemFiles", …).
+    func open(_ page: String) {
+        NotificationCenter.default.post(name: .nanoMuseHomeAction, object: page)
+    }
+}
+
+/// The big-face header on the four rooms: the drawer disc on the left, the
+/// room's own trailing content on the right (Android: NanoMuseHome.TabHeader).
+struct NanoMuseRoomHeader<Trailing: View>: View {
+    var chrome: NanoMuseRoomChrome
     @ViewBuilder var trailing: () -> Trailing
 
-    init(title: String, onMenu: @escaping () -> Void, @ViewBuilder trailing: @escaping () -> Trailing) {
-        self.title = title
-        self.onMenu = onMenu
+    init(chrome: NanoMuseRoomChrome, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.chrome = chrome
         self.trailing = trailing
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onMenu) {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 18, weight: .medium))
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppLocalized("Chats and settings")))
-            Text(title)
-                .font(.system(size: 20, weight: .semibold))
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            trailing()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        NanoMuseChatHeaderHost(
+            liveId: chrome.liveId,
+            name: chrome.name,
+            onFace: { NotificationCenter.default.post(name: .nanoMuseOpenAgentPage, object: chrome.liveId) },
+            leading: {
+                NanoMuseRoundButton(symbol: "line.3.horizontal", label: AppLocalized("Chats and settings"), action: chrome.onMenu)
+            },
+            trailing: trailing
+        )
     }
 }
 
-extension NanoMuseTabHeader where Trailing == EmptyView {
-    init(title: String, onMenu: @escaping () -> Void) {
-        self.init(title: title, onMenu: onMenu) { EmptyView() }
+/// The ••• menu of a room: the room's own entries first, then System files and Settings, as Android.
+struct NanoMuseRoomMenu<Items: View>: View {
+    var chrome: NanoMuseRoomChrome
+    @ViewBuilder var items: () -> Items
+
+    init(chrome: NanoMuseRoomChrome, @ViewBuilder items: @escaping () -> Items) {
+        self.chrome = chrome
+        self.items = items
+    }
+
+    var body: some View {
+        Menu {
+            items()
+            Button { chrome.open("systemFiles") } label: { Label(AppLocalized("System files"), systemImage: "doc.text") }
+            Button { chrome.open("settings") } label: { Label(AppLocalized("Settings"), systemImage: "gearshape") }
+        } label: {
+            NanoMuseRoundDisc(symbol: "ellipsis")
+        }
+        .accessibilityLabel(Text(AppLocalized("More")))
+    }
+}
+
+/// The big-face header bound to the main chat's view model once it exists
+/// in the cache; until then (a draft that was never sent, the first frame
+/// after launch) the face sits idle.
+struct NanoMuseChatHeaderHost<Leading: View, Trailing: View>: View {
+    /// The id the view model is cached under (nil for an unsent draft).
+    var liveId: String?
+    var name: String
+    var onFace: () -> Void
+    @ViewBuilder var leading: () -> Leading
+    @ViewBuilder var trailing: () -> Trailing
+
+    @State private var vm: AIChatViewModel?
+
+    var body: some View {
+        Group {
+            if let vm {
+                NanoMuseLiveHeader(vm: vm, name: name, onFace: onFace, leading: leading, trailing: trailing)
+            } else {
+                NanoMuseStillHeader(name: name, onFace: onFace, leading: leading, trailing: trailing)
+            }
+        }
+        .task(id: liveId) { await bind() }
+    }
+
+    /// AIChatView puts the view model in the cache as it appears; look a few times, then give up quietly.
+    private func bind() async {
+        vm = nil
+        guard let liveId else { return }
+        for _ in 0..<20 {
+            if let found = ViewModelCache.shared.get(for: liveId) {
+                vm = found
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(150))
+            if Task.isCancelled { return }
+        }
+    }
+}
+
+/// A page in a sheet: a navigation stack with a Done button.
+struct NanoMuseSheet<Content: View>: View {
+    var title: String
+    @ViewBuilder var content: () -> Content
+    @Environment(\.dismiss) private var dismiss
+
+    init(title: String, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.content = content
+    }
+
+    var body: some View {
+        NavigationStack {
+            content()
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(AppLocalized("Done")) { dismiss() }
+                    }
+                }
+        }
     }
 }
 
 // MARK: - Drawer
 
-/// The side drawer: the other chats, a new one, and the way to the upstream
-/// layout and Settings.
+/// The side drawer (Android: SideChatDrawer): the agent's name, the main
+/// chat, Devices and Coding agents, the side chats with the archive glyph
+/// to the full list, and a bottom strip — settings · system files · search
+/// · new side chat.
 struct NanoMuseDrawer: View {
     @Binding var isOpen: Bool
+    var agentName: String
     var currentId: String?
     var mainId: String?
+    var onOpenMain: () -> Void
     var onOpenSession: (String) -> Void
     var onNewChat: () -> Void
     var onPinMain: (String) -> Void
+    var onDevices: () -> Void
+    var onCoding: () -> Void
+    var onSystemFiles: () -> Void
     var onAllChats: () -> Void
     var onSettings: () -> Void
 
+    @ObservedObject private var hub = NanoMuseHub.shared
     @State private var sessions: [ChatSession] = []
     @State private var query = ""
     @State private var dragOffset: CGFloat = 0
@@ -686,7 +875,7 @@ struct NanoMuseDrawer: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: isOpen)
-        .onChange(of: isOpen) { open in
+        .nmOnChange(of: isOpen) { open in
             if open { refresh() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .sessionDidUpdate).throttle(for: .seconds(1), scheduler: RunLoop.main, latest: true)) { _ in
@@ -694,101 +883,191 @@ struct NanoMuseDrawer: View {
         }
     }
 
+    /// The side chats: everything but the main chat, the search applied.
     private var filtered: [ChatSession] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let own = sessions.filter { !$0.isRemote }
+        let own = sessions.filter { !$0.isRemote && $0.id != mainId }
         guard !q.isEmpty else { return own }
         return own.filter { ($0.title ?? "").lowercased().contains(q) || ($0.lastMessage ?? "").lowercased().contains(q) }
     }
 
+    private var mainSelected: Bool { currentId == nil || currentId == mainId }
+
+    /// Android: "Off" when the hub is off, "Only this one" when no other device is online, else the count.
+    private var devicesLine: String {
+        if !hub.enabled { return AppLocalized("Off") }
+        let online = hub.others.filter(\.online).count
+        if online == 0 { return AppLocalized("Only this one") }
+        return String(format: AppLocalized("%d devices"), online)
+    }
+
+    /// Computers online whose runtime can show and steer coding agents (Cursor, Codex, Claude Code).
+    private var codingComputers: Int {
+        hub.others.filter { $0.online && $0.isComputer && ($0.actions.isEmpty || $0.actions.contains("coding.sessions")) }.count
+    }
+
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Text(agentName)
+                .font(.system(size: 24, weight: .bold))
+                .lineLimit(1)
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 14)
+
+            fixedRow(AppLocalized("Main chat"), symbol: "house", selected: mainSelected) {
+                close()
+                onOpenMain()
+            }
+            fixedRow(AppLocalized("Devices"), symbol: "laptopcomputer.and.iphone", value: devicesLine) {
+                close()
+                onDevices()
+            }
+            // Android: the row shows once a computer that can list coding agents is online, with their count.
+            if codingComputers > 0 {
+                fixedRow(AppLocalized("Coding agents"), symbol: "terminal", value: "\(codingComputers)") {
+                    close()
+                    onCoding()
+                }
+            }
+
             HStack {
-                Text(AppLocalized("Chats"))
-                    .font(.title3.weight(.semibold))
+                Text(AppLocalized("Side chats"))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Button {
                     close()
-                    onNewChat()
+                    onAllChats()
                 } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 18, weight: .medium))
+                    Image(systemName: "archivebox")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
                 }
-                .accessibilityLabel(Text(AppLocalized("New chat")))
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(AppLocalized("All chats")))
             }
-            .padding(.horizontal, 16)
+            .padding(.leading, 20)
+            .padding(.trailing, 10)
             .padding(.top, 14)
-            .padding(.bottom, 8)
 
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField(AppLocalized("Search chats"), text: $query)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(NanoMuseTones.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .padding(.horizontal, 12)
-            .padding(.bottom, 6)
-
-            List {
-                ForEach(filtered) { session in
-                    Button {
-                        close()
-                        onOpenSession(session.id)
-                    } label: {
-                        row(session)
-                    }
-                    .listRowBackground(session.id == currentId ? NanoMuseTones.fill : Color.clear)
-                    .contextMenu {
-                        if session.id != mainId {
+            if filtered.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.secondary)
+                    Text(AppLocalized("Start a side chat"))
+                        .font(.body.weight(.medium))
+                    Text(AppLocalized("Side chats are an optional way to keep conversations organised by topic."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                Spacer(minLength: 0)
+            } else {
+                List {
+                    ForEach(filtered) { session in
+                        Button {
+                            close()
+                            onOpenSession(session.id)
+                        } label: {
+                            row(session)
+                        }
+                        .listRowBackground(session.id == currentId ? NanoMuseTones.fill : Color.clear)
+                        .contextMenu {
                             Button {
                                 close()
                                 onPinMain(session.id)
                             } label: {
-                                Label(AppLocalized("Pin as the main chat"), systemImage: "pin")
+                                Label(AppLocalized("Make this the main chat"), systemImage: "house")
                             }
                         }
                     }
                 }
-                if filtered.isEmpty {
-                    Text(AppLocalized("No chats yet"))
-                        .foregroundStyle(.secondary)
-                        .listRowBackground(Color.clear)
-                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
 
             Divider()
-            footerRow(AppLocalized("All chats"), symbol: "list.bullet.rectangle") {
-                close()
-                onAllChats()
+            HStack(spacing: 4) {
+                stripButton(symbol: "gearshape", label: AppLocalized("Settings")) {
+                    close()
+                    onSettings()
+                }
+                stripButton(symbol: "doc.text", label: AppLocalized("System files")) {
+                    close()
+                    onSystemFiles()
+                }
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                    TextField(AppLocalized("Search"), text: $query)
+                        .font(.subheadline)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(NanoMuseTones.fill, in: Capsule())
+                stripButton(symbol: "square.and.pencil", label: AppLocalized("New side chat")) {
+                    close()
+                    onNewChat()
+                }
             }
-            footerRow(AppLocalized("Settings"), symbol: "gearshape") {
-                close()
-                onSettings()
-            }
-            .padding(.bottom, 8)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
         }
         .background(NanoMuseTones.surface.ignoresSafeArea())
+    }
+
+    private func fixedRow(_ title: String, symbol: String, value: String? = nil, selected: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17))
+                    .frame(width: 24)
+                Text(title)
+                    .font(.body)
+                Spacer()
+                if let value {
+                    Text(value)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 11)
+            .background(selected ? NanoMuseTones.fill : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func stripButton(symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 18))
+                .foregroundStyle(.primary)
+                .frame(width: 40, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(label))
     }
 
     private func row(_ session: ChatSession) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text((session.title?.isEmpty == false ? session.title : nil) ?? AppLocalized("Untitled chat"))
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    if session.id == mainId {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Text((session.title?.isEmpty == false ? session.title : nil) ?? AppLocalized("New chat"))
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
                 if let last = session.lastMessage, !last.isEmpty {
                     Text(last)
                         .font(.footnote)
@@ -802,22 +1081,6 @@ struct NanoMuseDrawer: View {
                 .foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
-    }
-
-    private func footerRow(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: symbol)
-                    .frame(width: 24)
-                Text(title)
-                Spacer()
-            }
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 
     private func close() {
@@ -844,14 +1107,12 @@ struct NanoMuseDrawer: View {
 
 // MARK: - Star moments
 
-/// Counts finished tasks on the main thread's activity tracker and raises
-/// the star card at the first and the tenth; `newLook` comes from the
-/// avatar studio.
+/// Watches the activity tracker for turns that ran to their end and reports
+/// each one that counts as a task (C1) to `NanoMuseStar`, whose gate decides
+/// whether to ask for a star; the shell shows `NanoMuseStar.shared.pending`.
 @MainActor
-final class NanoMuseStarWatch: ObservableObject {
+final class NanoMuseStarWatch {
     static let shared = NanoMuseStarWatch()
-
-    @Published private(set) var card: NanoMuseStar.Moment?
 
     private var active: Set<String> = []
     private var cancellable: AnyCancellable?
@@ -866,29 +1127,29 @@ final class NanoMuseStarWatch: ObservableObject {
             .sink { [weak self] now in self?.activeChanged(now) }
     }
 
-    func show(_ moment: NanoMuseStar.Moment) {
-        guard NanoMuseStar.due(moment) else { return }
-        NanoMuseStar.shown(moment)
-        card = moment
-    }
-
-    func dismiss() {
-        card = nil
-    }
-
     private func activeChanged(_ now: Set<String>) {
         let ended = active.subtracting(now)
         active = now
         guard !ended.isEmpty else { return }
-        for sid in ended {
-            if let vm = ViewModelCache.shared.get(for: sid) {
-                if vm.errorMessage != nil || vm.messages.last?.error != nil { continue }
-                guard vm.messages.contains(where: { $0.role == .user }) else { continue }
-            }
-            let count = NanoMuseStar.countTask()
-            if let moment = NanoMuseStar.moment(forTask: count), NanoMuseStar.due(moment) {
-                show(moment)
-            }
+        for sid in ended where Self.countsAsTask(sid) {
+            NanoMuseStar.shared.taskFinished()
         }
+    }
+
+    /// C1: a task is a turn the person started that ran to its end — not the
+    /// first conversation while it is still going, not the feed's writing,
+    /// not a routine's run, not a turn that failed.
+    static func countsAsTask(_ sid: String) -> Bool {
+        if NanoMuseFeedFlow.isFeedSession(sid) { return false }
+        if NanoMuseScheduler.shared.routines.contains(where: { $0.sessionId == sid }) { return false }
+        switch NanoMuseFirstConversation.shared.phase {
+        case .askUserName, .askAgentName, .named: return false
+        default: break
+        }
+        if let vm = ViewModelCache.shared.get(for: sid) {
+            if vm.errorMessage != nil || vm.messages.last?.error != nil { return false }
+            guard vm.messages.contains(where: { $0.role == .user }) else { return false }
+        }
+        return true
     }
 }

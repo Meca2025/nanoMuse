@@ -329,10 +329,10 @@ fun SettingsScreen(
                     // Telegram group, no mailbox), so skip the chooser sheet.
                     onClick = { openExternalUrl(context, buildBugReportUrl()) },
                 )
+                io.github.nanomuse.ui.muse.MuseRowDivider()
+                // nanoMuse: the installed build and the latest release, with Update when one is out.
+                io.github.nanomuse.ui.settings.VersionRow()
             }
-            io.github.nanomuse.ui.muse.MuseCaption(
-                text = stringResource(R.string.nm_settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
-            )
 
             Spacer(Modifier.height(24.dp))
         }

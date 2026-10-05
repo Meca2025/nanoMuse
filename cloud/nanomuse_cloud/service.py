@@ -30,11 +30,17 @@ from .crypto import IdentifierCrypto
 from .db import Database, now
 from .geo import Place
 from .identifiers import BadIdentifier, Identifier, parse
+from .nudges import BadNudges
+from .nudges import defaults as nudges_defaults
+from .nudges import merge as nudges_merge
+from .nudges import validate as nudges_validate
 from .senders import CodeSender, SendError, make_sender
 
 log = logging.getLogger("nanomuse_cloud")
 
 KEY_PREFIX = "nm_"
+# the settings-table key of the nudges policy (0.18, nudges.py)
+NUDGES_KEY = "nudges"
 
 # What one request kind is called in the apps' usage breakdown; the ledger
 # keeps the short names.
@@ -1151,7 +1157,54 @@ class Cloud:
             "models": [m.to_public() for m in self.s.models],
             "base_url": self.s.public_base,
             "recent": [self._ledger_row(r) for r in self.db.recent_ledger(caller.account_id)],
+            # 0.18: when the app may ask for a star (the same object as GET /v1/nudges), so a
+            # signed-in client has today's policy without a second request
+            "nudges": self.nudges(),
         }
+
+    # -- 0.18: the nudges policy (when the apps ask for a star) ---------------------------------
+
+    def nudges(self) -> dict:
+        """The policy as served: what the operator stored, over the defaults."""
+        row = self.db.settings_get(NUDGES_KEY)
+        return nudges_merge(row[0] if row else None)
+
+    def admin_nudges(self) -> dict:
+        """For the page: the policy, whether it is the page's or the built-in one, and when
+        it was last saved (``updated_at`` is null for the defaults)."""
+        row = self.db.settings_get(NUDGES_KEY)
+        return {
+            "nudges": self.nudges(),
+            "defaults": nudges_defaults(),
+            "stored": row is not None,
+            "updated_at": row[1] if row else None,
+        }
+
+    def admin_put_nudges(self, body: dict) -> dict:
+        """The page saved a policy: checked (400 with a plain message when a value is not
+        right), ``version`` bumped past the one in force so every client can tell the copies
+        apart, kept across restarts, noted on the timeline. ``{"reset": true}`` removes the
+        stored policy so the defaults are served again."""
+        if body.get("reset") is True:
+            self.db.settings_put(NUDGES_KEY, None)
+            log.warning("nudges policy reset to the defaults from the page")
+            self.db.add_event("", "nudges.changed", "reset to the defaults")
+            return self.admin_nudges()
+        try:
+            policy = nudges_validate(body)
+        except BadNudges as e:
+            raise CloudError(400, "bad_request", str(e)) from e
+        current = self.nudges()
+        policy["version"] = int(current.get("version") or 0) + 1
+        self.db.settings_put(NUDGES_KEY, policy)
+        star = policy["star"]
+        said = (
+            f"v{policy['version']}: {'on' if star['enabled'] else 'off'}, tasks {star['moments']['tasks']}, "
+            f"days {star['moments']['days_used']}, cooldown {star['cooldown_days']}d, max {star['max_asks']}"
+        )
+        log.warning("nudges policy changed from the page: %s", said)
+        self.db.add_event("", "nudges.changed", said[:200])
+        return self.admin_nudges()
 
     def _ledger_row(self, r) -> dict:
         d = dict(r)

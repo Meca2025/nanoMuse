@@ -698,6 +698,10 @@ struct AIChatView: View {
             }
         }
         .environment(\.chatSessionId, vm.sessionId)
+        .onReceive(NotificationCenter.default.publisher(for: .nanoMuseChatAction)) { note in // nanoMuse: the Muse header's ••• menu drives this chat
+            guard let action = NanoMuseChatAction.from(note, for: vm.nmSessionKey) else { return } // nanoMuse:
+            nmPerform(action) // nanoMuse:
+        } // nanoMuse:
         .modifier(NavBarStyleModifier(topSafeAreaInset: $topSafeAreaInset))
         .navigationBarTitleDisplayMode(.inline)
         // [T-ios-navbar-toolbar-host] The ENTIRE toolbar now lives inside an
@@ -1930,6 +1934,19 @@ struct AIChatView: View {
             }
         )
     }
+
+    // nanoMuse: one of the Muse header's menu entries, the same paths as the "…" menu above.
+    private func nmPerform(_ action: NanoMuseChatAction) { // nanoMuse:
+        switch action { // nanoMuse:
+        case .newChat: requestNewChatFromMenu() // nanoMuse:
+        case .model: showModelPicker = true // nanoMuse:
+        case .clearChat: showClearChatConfirm = true // nanoMuse:
+        case .terminal: showTerminal = true // nanoMuse:
+        case .browser: showBrowserSheet = true // nanoMuse:
+        case .files: showFileBrowser = true // nanoMuse:
+        case .tokenUsage: showTokenUsage = true // nanoMuse:
+        } // nanoMuse:
+    } // nanoMuse:
 
     // MARK: - New Chat (menu entry)
 
@@ -3492,7 +3509,7 @@ struct AIChatView: View {
             // `%@` form ("Message %@ (@ to mention files)") as the lookup
             // key in Localizable.xcstrings, so translators get one
             // parameterized entry per locale instead of one per soul name.
-            placeholder: AppLocalized("Message \(soulName) (@ to mention files)"),
+            placeholder: NanoMuseShellPrefs.shell ? AppLocalized("Message") : AppLocalized("Message \(soulName) (@ to mention files)"), // nanoMuse: Muse's short placeholder in the shell
             onPasteImage: { image in vm.addImageAttachment(image) },
             onPasteFile: { url in vm.addFileAttachment(from: url) },
             onReturnKey: handleReturnKey,

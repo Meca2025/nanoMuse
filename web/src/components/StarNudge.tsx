@@ -2,80 +2,156 @@ import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
+import {
+  askDue,
+  askId,
+  DEFAULT_POLICY,
+  type KV,
+  migrateLedger,
+  type NudgesPolicy,
+  normalizePolicy,
+  readLedger,
+  recordAsk,
+  recordDay,
+  recordStarred,
+  recordTask,
+  type StarMoment,
+} from "../nudges";
 import type { CloudConfig } from "../types";
 import { cx } from "../util";
 import { REPO_URL } from "./CommunityNotice";
 import { primaryBtn, secondaryBtn } from "./Form";
 
+export type { StarMoment } from "../nudges";
+
 /**
- * The ask for a star, at the moments it is fair to make it: when the free allowance was just
- * claimed (the account page after signing in), after the first and the tenth task the agent
- * finished, after a face is drawn in the studio, and when the allowance is used up (a row
- * among the ways on). Each moment is asked once in this browser; going to GitHub from any of
- * them ends them all. A card where the moment is, never a dialog — and the tone is a thank
- * you, not a bill: a star tells the people building it that it helped.
+ * The ask for a star, at the moments it is fair to make it — and the relay says which
+ * (contract C1, `GET /api/nudges`): the account page the first time it is seen signed in,
+ * after the 3rd, 10th and 30th task, after a face is drawn, when the allowance is used up,
+ * on the 7th and 30th day the app was opened, when a goal is marked done. A cooldown between
+ * asks and a lifetime cap, both from the policy; going to GitHub from any of them ends them
+ * all. A card where the moment is, never a dialog — and the tone is a thank you, not a bill.
  */
-export type StarMoment = "signed_in" | "first_task" | "tenth_task" | "new_look";
 
-const STARRED_KEY = "nm.star.starred";
-const TASKS_KEY = "nm.star.tasks";
-const momentKey = (m: StarMoment) => `nm.star.${m}`;
-
-/** One more task finished in this browser; the count so far. */
-export function countTask(): number {
-  try {
-    const n = (Number(localStorage.getItem(TASKS_KEY)) || 0) + 1;
-    localStorage.setItem(TASKS_KEY, String(n));
-    return n;
-  } catch {
-    return 1;
+// ----------------------------------------------------------------------------- the ledger (localStorage)
+const memory = new Map<string, string>();
+/** localStorage, or a page-lifetime map where it is not allowed (private mode): the ask may come back; it is still only a card. */
+const kv: KV = {
+  getItem: (k) => {
+    try {
+      return localStorage.getItem(k);
+    } catch {
+      return memory.get(k) ?? null;
+    }
+  },
+  setItem: (k, v) => {
+    try {
+      localStorage.setItem(k, v);
+    } catch {
+      memory.set(k, v);
+    }
+  },
+  removeItem: (k) => {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      memory.delete(k);
+    }
+  },
+};
+let migrated = false;
+function ledger() {
+  if (!migrated) {
+    migrated = true;
+    return migrateLedger(kv);
   }
+  return readLedger(kv);
 }
-/** The moment a finished-task count makes due, if any: the first and the tenth. */
-export const momentForTask = (n: number): StarMoment | null => (n === 1 ? "first_task" : n === 10 ? "tenth_task" : null);
+
+// ----------------------------------------------------------------------------- the policy (the relay's, through the runtime)
+let policy: NudgesPolicy = DEFAULT_POLICY;
+let policyReady = false;
+let policyPending: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+/** Read once per page load (the runtime itself asks the relay at most once a day). */
+function loadPolicy(): Promise<void> {
+  policyPending ??= api
+    .nudges()
+    .then((v) => {
+      policy = normalizePolicy(v?.policy);
+    })
+    .catch(() => {
+      policy = DEFAULT_POLICY;
+    })
+    .finally(() => {
+      policyReady = true;
+      listeners.forEach((fn) => fn());
+    });
+  return policyPending;
+}
+
+/** The policy in force, and whether it has been read yet (until then, no ask is drawn). */
+export function useStarPolicy(): { policy: NudgesPolicy; ready: boolean } {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const fn = () => tick((n) => n + 1);
+    listeners.add(fn);
+    void loadPolicy();
+    return () => {
+      listeners.delete(fn);
+    };
+  }, []);
+  return { policy, ready: policyReady };
+}
+
+// ----------------------------------------------------------------------------- the moments
+/** One more task finished in this browser; the count so far. */
+export const countTask = (): number => recordTask(kv);
+/** The app was opened today (first time today → `fresh`); the count of days so far. */
+export const countDay = (): { days: number; fresh: boolean } => recordDay(kv, new Date());
+
+/** Still worth asking at this moment (`n`: the task or day count just reached). */
+export const starDue = (m: StarMoment, n?: number): boolean => policyReady && askDue(m, policy, ledger(), Date.now(), n);
+/** The card was shown (or waved away): one ask, the cooldown starts. */
+export const starShown = (m: StarMoment, n?: number): void => {
+  recordAsk(kv, askId(m, n), Date.now());
+};
+/** The person has been to GitHub from one of the asks. */
+export const starred = (): boolean => ledger().starred;
+
+/** Off to GitHub, and no more asking anywhere. */
+export function openStar(repoUrl?: string): void {
+  recordStarred(kv);
+  window.open(repoUrl || policy.star.url || REPO_URL, "_blank", "noopener,noreferrer");
+}
 
 /** The words for each moment (one source, so every client says the same thing). */
-export function starText(t: (s: string) => string, m: StarMoment): string {
+export function starText(t: (s: string, vars?: Record<string, string | number>) => string, m: StarMoment, n?: number): string {
   switch (m) {
     case "signed_in":
       return t(
         "Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.",
       );
-    case "first_task":
-      return t("First task done. If nanoMuse helped, a star on GitHub tells the people building it that it did.");
-    case "tenth_task":
-      return t("Ten tasks together. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try.");
+    case "tasks":
+      return n === 3
+        ? t("Three tasks done. If nanoMuse is useful, a star on GitHub helps the next person find it.")
+        : n === 10
+          ? t("Ten tasks together. If nanoMuse has become part of your day, a star on GitHub tells others it is worth a try.")
+          : t("{n} tasks done. If nanoMuse is useful, a star on GitHub helps the next person find it.", { n: n ?? 0 });
     case "new_look":
       return t("A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.");
+    case "exhausted":
+      return t("The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.");
+    case "days_used":
+      return n === 7
+        ? t("A week with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it.")
+        : n === 30
+          ? t("A month with nanoMuse. If it has become part of your routine, a star on GitHub tells others it is worth a try.")
+          : t("{n} days with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it.", { n: n ?? 0 });
+    case "goal_done":
+      return t("Goal reached. If nanoMuse helped you get there, a star on GitHub tells the people building it that it did.");
   }
-}
-
-const read = (k: string) => {
-  try {
-    return localStorage.getItem(k) === "1";
-  } catch {
-    return false;
-  }
-};
-const write = (k: string) => {
-  try {
-    localStorage.setItem(k, "1");
-  } catch {
-    /* private mode: the ask may come back; it is still only a card */
-  }
-};
-
-/** Still worth asking at this moment: not asked before, and the person has not gone to star it. */
-export const starDue = (m: StarMoment): boolean => !read(STARRED_KEY) && !read(momentKey(m));
-/** The card was shown (or waved away): the moment is spent. */
-export const starShown = (m: StarMoment): void => write(momentKey(m));
-/** The person has been to GitHub from one of the asks. */
-export const starred = (): boolean => read(STARRED_KEY);
-
-/** Off to GitHub, and no more asking anywhere. */
-export function openStar(repoUrl?: string): void {
-  write(STARRED_KEY);
-  window.open(repoUrl || REPO_URL, "_blank", "noopener,noreferrer");
 }
 
 /**
@@ -137,16 +213,29 @@ export function StarNudge({ text, onDone, className }: { text: string; onDone: (
 
 /**
  * The card for a moment, shown once: `due` says the moment has come (the account was just
- * seen signed in; a task just finished). Marks the moment spent as soon as it is drawn.
+ * seen signed in; a task just finished; a goal was marked done), `n` the count reached for
+ * `tasks` / `days_used`. Waits for the policy, then marks the ask as made as soon as the
+ * card is drawn.
  */
-export function StarNudgeOnce({ moment, text, className, due = true }: { moment: StarMoment; text?: string; className?: string; due?: boolean }) {
+export function StarNudgeOnce({ moment, n, text, className, due = true }: { moment: StarMoment; n?: number; text?: string; className?: string; due?: boolean }) {
   const t = useT();
+  const [open, setOpen] = useStarAsk(moment, due, n);
+  if (!open) return null;
+  return <StarNudge text={text ?? starText(t, moment, n)} onDone={() => setOpen(false)} className={className} />;
+}
+
+/**
+ * The gate as a hook, for a place that draws its own row (the allowance "ways" card): once
+ * the policy is read and the moment is due, `open` turns true and the ask is recorded; the
+ * setter closes it.
+ */
+export function useStarAsk(moment: StarMoment, due = true, n?: number): [boolean, (open: boolean) => void] {
+  const { ready } = useStarPolicy();
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    if (!due || open || !starDue(moment)) return;
-    starShown(moment);
+    if (!due || !ready || open || !starDue(moment, n)) return;
+    starShown(moment, n);
     setOpen(true);
-  }, [due, moment, open]);
-  if (!open) return null;
-  return <StarNudge text={text ?? starText(t, moment)} onDone={() => setOpen(false)} className={className} />;
+  }, [due, ready, moment, n, open]);
+  return [open, setOpen];
 }

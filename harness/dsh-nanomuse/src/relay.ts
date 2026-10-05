@@ -42,6 +42,8 @@ export interface Account {
   contribute?: DataControls
   /** The pool in yuan (relay 0.5+): what was granted, spent and is left, and the ways on. */
   spend?: Spend
+  /** The star-nudge policy (C1), when the relay sends it with the account; the rooms read it. */
+  nudges?: unknown
 }
 
 /** `GET /v1/me` → `spend`, trimmed: the lifetime pool in yuan, as the apps show it. */
@@ -121,6 +123,10 @@ export interface Estimate {
   unlimited: boolean
   affordable: boolean
   imageModel: string
+  /** How many clips the estimate counted (0 when the avatar is not animated on Cloud). */
+  clips: number
+  /** The video model the relay would use for them, when it counted any. */
+  videoModel: string
 }
 
 /** The account's profile as the relay keeps it (`docs/hub.md`): the agent's name and look. */
@@ -211,6 +217,7 @@ function toAccount(me: Record<string, unknown>): Account {
     },
     ...(contribute ? { contribute } : {}),
     ...(spend ? { spend } : {}),
+    ...(me.nudges && typeof me.nudges === 'object' ? { nudges: me.nudges } : {}),
   }
 }
 
@@ -295,9 +302,11 @@ export class Relay {
     return Number(out.rev ?? 0)
   }
 
-  /** What `images` pictures would cost today, and the image model the relay would use (nothing charged). */
-  async estimate(apiKey: string, images: number, signal?: AbortSignal): Promise<Estimate> {
-    const res = await this.fetchImpl(`${this.origin}/v1/estimate?images=${Math.max(0, Math.floor(images))}`, { headers: this.auth(apiKey), signal: signal ?? null })
+  /** What `images` pictures and `clips` short videos would cost today, and the models the relay would use (nothing charged). */
+  async estimate(apiKey: string, images: number, clips = 0, signal?: AbortSignal): Promise<Estimate> {
+    const n = Math.max(0, Math.floor(images))
+    const c = Math.max(0, Math.floor(clips))
+    const res = await this.fetchImpl(`${this.origin}/v1/estimate?images=${n}${c ? `&clips=${c}` : ''}`, { headers: this.auth(apiKey), signal: signal ?? null })
     if (!res.ok) await fail(res)
     const body = (await res.json()) as { cny?: number; left_cny?: number; unlimited?: boolean; affordable?: boolean; parts?: { kind?: string; model?: string }[] }
     return {
@@ -306,6 +315,8 @@ export class Relay {
       unlimited: body.unlimited === true,
       affordable: body.affordable !== false,
       imageModel: String(body.parts?.find((p) => p.kind === 'image')?.model ?? ''),
+      clips: c,
+      videoModel: String(body.parts?.find((p) => p.kind === 'video' || p.kind === 'clip')?.model ?? ''),
     }
   }
 

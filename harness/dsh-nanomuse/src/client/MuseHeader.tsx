@@ -8,9 +8,9 @@
  * enlarges it; clicking opens the profile. Occupies `conversation.header.leading`.
  */
 import { createElement as h, Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { countTask, momentForTask, openStar, starDue, starShown, starText, type StarMoment } from './AccountPage.tsx'
+import { dismissStar, nudgeText, openStar } from './AccountPage.tsx'
 import type { Translate } from './api.ts'
-import { Avatar, type Mood } from './Avatar.tsx'
+import { Avatar, motionStatus, type Mood } from './Avatar.tsx'
 import { describeCall } from './Capsule.tsx'
 import { IconCheck, IconChevronLeft, IconHeart, IconMenu, IconSpinner } from './icons.tsx'
 import { useLive } from './live.ts'
@@ -25,6 +25,8 @@ const DONE_MS = 2600
 const TOAST_MS = 3200
 /** The first seconds of a turn read as "gathering thoughts". */
 const PLANNING_MS = 4000
+/** A star ask stays in the status line this long, unless answered. */
+const STAR_MS = 25000
 
 interface SessionStatus {
   running: boolean | undefined
@@ -54,24 +56,18 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
   const [, tick] = useState(0)
   const [toast, setToast] = useState<{ n: number; at: number } | null>(null)
   const approvals = useRef(prefs.approvals.length)
-  // every task that runs to its end is counted; the first and the tenth ask for a star, once per
-  // computer, signed in only. A run the host started on its own — the first meeting, a goal's
-  // check-in — has no request of the person's and is not a task of theirs.
-  const [starAsk, setStarAsk] = useState<StarMoment | undefined>(undefined)
-  const wasRunning = useRef(false)
-  const asked = Boolean(record?.request)
+  // The star (C1): the host counts the tasks that ran to their end, the days and the goals,
+  // and keeps one ask at a time in `nudges.current`; a fresh one shows here for a while, or
+  // until it is answered. (Settings' Account page and the studio show theirs as cards.)
+  const ask = rooms.nudges.current
+  const hostCounted = ask !== null && (ask.moment === 'tasks' || ask.moment === 'days_used' || ask.moment === 'goal_done')
+  const starAsk = ask && hostCounted && Date.now() - ask.at < STAR_MS ? ask : null
+  const [, starTick] = useState(0)
   useEffect(() => {
-    if (running) { wasRunning.current = true; return undefined }
-    if (!wasRunning.current) return undefined
-    wasRunning.current = false
-    if (!live.cloud.signedIn || !asked) return undefined
-    const moment = momentForTask(countTask())
-    if (!moment || !starDue(moment)) return undefined
-    starShown(moment)
-    setStarAsk(moment)
-    const timer = window.setTimeout(() => setStarAsk(undefined), 25000)
+    if (!starAsk) return undefined
+    const timer = window.setTimeout(() => starTick((n) => n + 1), STAR_MS - (Date.now() - starAsk.at) + 50)
     return () => window.clearTimeout(timer)
-  }, [running, live.cloud.signedIn, asked])
+  }, [starAsk])
 
   // "done" lingers, "gathering thoughts" ages into "working": re-render on a clock while it matters
   useEffect(() => {
@@ -116,6 +112,9 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
     line = t('statusSignedOut')
   } else if (live.streaming && !live.hub.connected && live.hub.lastError) {
     line = t('statusHubOffline')
+  } else if (motionStatus(live, t)) {
+    // the studio animating the face, in the background
+    line = motionStatus(live, t)
   }
 
   // Esc leaves any other conversation view (the trajectory a tool row's "Inspect" opens) for
@@ -147,9 +146,9 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
       toast
         ? h('div', { className: 'nm-header-status nm-header-toast' }, h(IconCheck, { size: 13 }), t('statusApproved', { n: toast.n }))
         : starAsk
-          ? h('div', { className: 'nm-header-status nm-header-star' }, h(IconHeart, { size: 13 }), h('span', { className: 'nm-header-line' }, starText(t, starAsk)),
-              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => { openStar(); setStarAsk(undefined) } }, t('starAction')),
-              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => setStarAsk(undefined) }, t('starLater')))
+          ? h('div', { className: 'nm-header-status nm-header-star' }, h(IconHeart, { size: 13 }), h('span', { className: 'nm-header-line' }, nudgeText(t, starAsk)),
+              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => openStar() }, t('starAction')),
+              h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => dismissStar() }, t('starLater')))
         : line
           ? h('div', { className: `nm-header-status ${tone}`.trim() }, running || waiting ? h(IconSpinner, { size: 13 }) : null, h('span', { className: 'nm-header-line' }, line))
           : null))

@@ -10,6 +10,7 @@
 //  Android: avatar/AvatarStudio.kt, ui/avatar/AvatarStudioScreen.kt.
 //
 
+import Combine // nanoMuse: the header follows the motion clips' progress through this model
 import SwiftUI
 import UIKit
 
@@ -115,9 +116,14 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
     @Published private(set) var lastError: String?
     /// Which round of candidates is up; files are named after it.
     private var round = 0
+    /// nanoMuse: `headerStatus` reads the motion clips' progress, so their changes are this model's too.
+    private var motionWatch: AnyCancellable?
 
     private init() {
         description = AppLocalized("A chubby pale-yellow baby dragon with tiny orange horns and small folded wings")
+        motionWatch = NanoMuseAvatarMotion.shared.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
 
     var isBusy: Bool {
@@ -127,16 +133,30 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
         }
     }
 
-    /// What the header says while the studio works in the background.
+    /// What the header says while the studio works in the background — and, once the poses are
+    /// done, while the clips are drawn (contract C3: "Animating 2/4…").
     var headerStatus: String? {
         switch phase {
         case .drawing: return AppLocalized("Generating options")
         case .posing: return AppLocalized("Finalizing avatar")
-        default: return nil
+        default: return NanoMuseAvatarMotion.shared.statusLine // nanoMuse: motion clips
         }
     }
 
     var picturesPerFace: Int { NanoMuseAvatarPrompts.candidates + NanoMuseAvatarPrompts.posedMoods.count }
+
+    /// Clips a new face costs from the allowance: one per animated mood when the video model is
+    /// nanoMuse Cloud and animation is on; 0 when they would come from a key of your own, or not at all.
+    var clipsPerFace: Int {
+        NanoMuseMediaModels.videoOnCloud && NanoMuseMediaModels.animateAvatar ? NanoMuseAvatarMotion.animated.count : 0
+    }
+
+    /// "A new face is 8 pictures" / "… and 4 short clips" — the cost sheet's first line (Android `nm_face_cost_what`).
+    var costWhat: String {
+        clipsPerFace > 0
+            ? String(format: AppLocalized("A new face is %d pictures and %d short clips"), picturesPerFace, clipsPerFace)
+            : String(format: AppLocalized("A new face is %d pictures"), picturesPerFace)
+    }
 
     /// A Bailian key on this phone draws the face; nanoMuse Cloud otherwise.
     var usesOwnKey: Bool { NanoMuseImageGen.usesOwnKey }
@@ -186,7 +206,7 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
         Task { @MainActor [self] in
             defer { estimating = false }
             do {
-                estimate = try await NanoMuseRelayMedia.estimate(images: picturesPerFace)
+                estimate = try await NanoMuseRelayMedia.estimate(images: picturesPerFace, clips: clipsPerFace)
             } catch {
                 estimate = nil
                 estimateError = NanoMuseCloud.describe(error)
@@ -326,7 +346,10 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
             }
             NanoMuseProfileSync.shared.faceChanged()
             self.phase = .finished(drawn: drawn, total: moods.count)
-            NanoMuseStarWatch.shared.show(.newLook)
+            // nanoMuse: the clips, in the background, once the poses are in (contract C3)
+            NanoMuseAvatarMotion.shared.animateIfEnabled()
+            // nanoMuse: the star ask goes through the policy's gate (contract C1)
+            NanoMuseStar.shared.newLook()
         }
     }
 }
@@ -339,6 +362,7 @@ struct NanoMuseAvatarStudioView: View {
 
     @ObservedObject private var studio = NanoMuseAvatarStudioModel.shared
     @ObservedObject private var faces = NanoMuseFaceStore.shared
+    @ObservedObject private var motion = NanoMuseAvatarMotion.shared // nanoMuse: clips
     @Environment(\.dismiss) private var dismiss
     @State private var askCost = false
     @State private var confirmReset = false
@@ -438,6 +462,15 @@ struct NanoMuseAvatarStudioView: View {
                 Spacer()
             }
             .padding(.vertical, 4)
+            // nanoMuse: the clips being drawn, or the last failure, one line (contract C3)
+            if let line = motion.statusLine {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text(line).font(.footnote).foregroundStyle(.secondary)
+                }
+            } else if let note = motion.progress?.error {
+                Text(note).font(.footnote).foregroundStyle(.secondary)
+            }
             if faces.hasCustomFace, !studio.isBusy {
                 HStack(spacing: 10) {
                     ForEach(NanoMuseMood.allCases, id: \.self) { mood in
@@ -447,6 +480,11 @@ struct NanoMuseAvatarStudioView: View {
                 }
                 Button(AppLocalized("Redraw the moods")) { studio.redrawMoods() }
                     .disabled(studio.cannotDrawReason != nil)
+                if motion.progress == nil, NanoMuseMediaModels.videoEndpoint() != nil {
+                    Button(motion.clips.isEmpty ? AppLocalized("Animate the moods") : AppLocalized("Redo the clips")) {
+                        Task { await motion.animateAll(force: true) }
+                    }
+                }
                 Button(AppLocalized("Back to the built-in face"), role: .destructive) { confirmReset = true }
             }
         }
@@ -577,7 +615,7 @@ struct NanoMuseFaceCostSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(AppLocalized("Before drawing")).font(.title3.weight(.semibold))
-            let what = String(format: AppLocalized("A new face is %d pictures"), studio.picturesPerFace)
+            let what = studio.costWhat
             if studio.estimating {
                 HStack(spacing: 10) {
                     ProgressView()
@@ -642,7 +680,7 @@ struct NanoMuseImageModelPicker: View {
                 Picker(AppLocalized("Provider"), selection: $instanceId) {
                     ForEach(instances) { inst in Text(inst.label).tag(inst.id) }
                 }
-                .onChange(of: instanceId) { _ in
+                .nmOnChange(of: instanceId) { _ in
                     if let inst = instances.first(where: { $0.id == instanceId }) { model = NanoMuseImageGen.suggestedModel(for: inst) }
                 }
                 if let inst = instances.first(where: { $0.id == instanceId }) {

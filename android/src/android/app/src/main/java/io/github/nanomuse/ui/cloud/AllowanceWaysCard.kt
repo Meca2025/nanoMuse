@@ -84,7 +84,17 @@ fun AllowanceWaysCard(
     val inviteeBonus = info.inviteeBonusCny.takeIf { it > 0 } ?: account?.inviteeBonusCny?.takeIf { it > 0 } ?: inviteBonus
     var copied by remember { mutableStateOf(false) }
     LaunchedEffect(copied) { if (copied) { kotlinx.coroutines.delay(1500); copied = false } }
-    // The star row goes once the person has been to GitHub (from here or from any other ask).
+    // The star row shows when the policy makes this moment due (StarPrompt: once, past the
+    // cooldown, under the cap) and goes once the person has been to GitHub from any ask.
+    val starAsk = remember(exhausted) {
+        val ask = io.github.nanomuse.community.StarPrompt.Ask(io.github.nanomuse.community.StarPrompt.Moment.EXHAUSTED)
+        when {
+            !exhausted -> false
+            io.github.nanomuse.community.StarPrompt.shownThisRun(ask) -> true // the card scrolled back into view
+            io.github.nanomuse.community.StarPrompt.due(context, ask) -> { io.github.nanomuse.community.StarPrompt.markShown(context, ask); true }
+            else -> false
+        }
+    }
     var starred by remember { mutableStateOf(io.github.nanomuse.community.StarPrompt.starred(context)) }
     val link = info.inviteUrl.ifBlank { account?.inviteUrl.orEmpty() }.ifBlank {
         "https://nanomuse.cn/web/?invite=" + account?.inviteCode.orEmpty()
@@ -172,7 +182,7 @@ fun AllowanceWaysCard(
             }
 
             // ③ a star — asked only when the pool is spent, and only until the person went
-            if (exhausted && !starred) {
+            if (starAsk && !starred) {
                 Way(Icons.Outlined.StarOutline, Color(0xFFF5A623), stringResource(R.string.nm_star_exhausted), null) {
                     TextButton(onClick = { io.github.nanomuse.community.StarPrompt.open(context); starred = true }) {
                         Icon(Icons.Outlined.StarOutline, contentDescription = null, modifier = Modifier.size(15.dp), tint = MuseTones.action)

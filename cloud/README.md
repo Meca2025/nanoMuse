@@ -231,6 +231,38 @@ which are overridden, and the count below the allowance; `GET /v1/config`
 `invite_bonus_cny`, `invitee_bonus_cny`, `usd_cny`, `invite_url`,
 `own_key_docs`, `privacy_url`, `repo_url` and `improve_default`.
 
+### Star asks (0.18)
+
+When the apps may ask for a star on GitHub used to be written into each app.
+Now it is the relay's: `GET /v1/nudges` (no key, `Cache-Control: public,
+max-age=3600`) returns the policy, and `/v1/me` carries the same object under
+`nudges`. Every client — Android, iPhone, desktop, web — reads it at most once
+a day, keeps the last good copy and falls back to the built-in defaults
+(`nanomuse_cloud/nudges.py`, `DEFAULT_NUDGES`) when the relay cannot be
+reached:
+
+```json
+{"version": 1, "star": {"enabled": true, "url": "https://github.com/nano-muse/nanoMuse",
+ "moments": {"signed_in": true, "tasks": [3, 10, 30], "new_look": true, "exhausted": true,
+             "days_used": [7, 30], "goal_done": true},
+ "cooldown_days": 7, "max_asks": 4}}
+```
+
+`tasks` are the finished-task counts at which to ask (a task is a turn the
+person started that ended in a reply; the naming conversation and background
+runs never count), `days_used` the n-th distinct day the app was opened, the
+named moments on or off, `cooldown_days` the least time between two asks,
+`max_asks` the lifetime cap per device ("Not now" counts; a device that went
+to GitHub is never asked again). The operator's page has a *Star asks* card
+under *Settings*; `GET /v1/admin/nudges` returns the policy in force, the
+defaults, whether the page set it and `updated_at`; `PUT /v1/admin/nudges`
+takes the whole policy (unknown keys dropped, ints ≥ 1, lists of distinct
+positive ints sorted ascending, `url` http(s) ≤ 200 characters,
+`cooldown_days` 0–365, `max_asks` 0–50; a bad value is a 400 with a plain
+message), bumps `version` so clients can tell copies apart, and notes a
+`nudges.changed` event; `{"reset": true}` goes back to the defaults. The
+policy lives in the `settings` table under `nudges`.
+
 ### Money
 
 Every request is priced in yuan at the provider's Beijing list prices (set per
@@ -504,6 +536,10 @@ curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' 
 # the same for everyone limited (or account_ids:[...] for a chosen set)
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"all":true,"left_cny":5}' https://$CLOUD_DOMAIN/v1/admin/pool/batch
+# when the apps may ask for a star (0.18): the policy in force, and a new one
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/nudges
+curl -X PUT -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"star":{"moments":{"tasks":[5,20]},"cooldown_days":14}}' https://$CLOUD_DOMAIN/v1/admin/nudges
 ```
 
 Every response carries `X-Nanomuse-Charged` and `X-Nanomuse-Request` so a user

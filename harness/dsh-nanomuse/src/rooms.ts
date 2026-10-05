@@ -27,7 +27,9 @@
  */
 import { avatarFence, avatarMemoryLine } from './avatar-flow.ts'
 import { FENCE_FEED, FENCE_GOAL, FENCE_GOAL_UPDATE, findFences, goalCategory, goalCheckPrompt, goalCreationNote, goalHomeNote, goalOpener, parseFeedDraft, parseGoalBlock, parseGoalUpdate, parseIdeas, type GoalBlock, type GoalUpdateBlock, type IdeaKind, type StaticIdea } from './fences.ts'
-import { fileURLToPath } from 'node:url'
+import { afterTurn, boundTo, currentSuggestions, dismissChooser, FIRST_RUN_EMPTY, pickName, promptAddendum, readFirstRun, startConversation, type FirstRunState } from './firstrun.ts'
+import { DEFAULT_NUDGES, dueAsk, LEDGER_EMPTY, NUDGES_EVERY_MS, NUDGES_ORIGIN, NUDGES_TIMEOUT_MS, readLedger, readNudges, recordAsk, recordDay, recordStarred, recordTask, type Ask, type Moment, type NudgeLedger, type NudgesPolicy, type NudgesView } from './nudges.ts'
+import { packageAssetsDir } from './profile.ts'
 import { randomBytes } from 'node:crypto'
 import { createReadStream, readFileSync } from 'node:fs'
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
@@ -58,8 +60,9 @@ export const API_PREFIX = '/nanomuse/rooms'
 
 /** A background batch may run this long (web searches included). */
 const RUN_TIMEOUT_MS = 8 * 60_000
+/** The package's `assets/` (the curated ideas), found whichever file of `lib/` this code landed in. */
+export const ASSETS_DIR = packageAssetsDir(import.meta.url)
 /** A new feed batch is due this long after the last one. */
-const ASSETS_DIR = fileURLToPath(new URL('../assets/', import.meta.url))
 const FEED_EVERY_MS = 20 * 3600_000
 /** Ideas go stale after a week. */
 /** A failed batch is not retried before this. */
@@ -214,9 +217,18 @@ export interface ActivityRecord {
 /** The agent's own documents: who it is, how it carries itself, and what it remembers. */
 export type DocName = 'identity' | 'soul' | 'memory'
 
+/** The feed's daily routine (C5): on by default, 08:00, ensured when the Feed is first opened. */
+export interface FeedRoutine {
+  on: boolean
+  /** `HH:MM`, local time. */
+  time: string
+  /** When the Feed was first opened and the routine written; 0 until then. */
+  ensuredAt: number
+}
+
 interface Store {
   lang: string
-  feed: { instructions: string; generatedAt: number; lastTry: number; posts: FeedPost[] }
+  feed: { instructions: string; generatedAt: number; lastTry: number; posts: FeedPost[]; routine: FeedRoutine }
   /** `marks` is what the person did with each idea of the static list; `items` is the list as the browser sees it. */
   ideas: { generatedAt: number; lastTry: number; items: Idea[]; marks: Record<string, { started?: string; dismissed?: boolean }> }
   goals: Goal[]
@@ -239,6 +251,10 @@ export interface RoomsView extends Omit<Store, 'activity'> {
   studio: { description: string; style: string; at: number }
   /** The records without their steps' details (the detail view fetches one in full). */
   activity: ActivityRecord[]
+  /** The first run and the first conversation (C4), with the chooser's names resolved. */
+  firstRun: FirstRunState & { chips: string[] }
+  /** The star nudges (C1): the policy, the ledger's figures and the ask on screen. */
+  nudges: NudgesView
 }
 
 /** `dsh-permission-presets`' service, as much of it as we use. */
@@ -277,7 +293,7 @@ interface Run {
 
 const EMPTY: Store = {
   lang: '',
-  feed: { instructions: '', generatedAt: 0, lastTry: 0, posts: [] },
+  feed: { instructions: '', generatedAt: 0, lastTry: 0, posts: [], routine: { on: true, time: '08:00', ensuredAt: 0 } },
   ideas: { generatedAt: 0, lastTry: 0, items: [], marks: {} },
   goals: [],
   library: [],
@@ -343,6 +359,15 @@ export default class NanomuseRooms extends Service {
   /** A broadcast is due: coalesced, so a burst of tool calls is one frame. */
   private pendingFrame: NodeJS.Timeout | undefined
   private pendingSave: NodeJS.Timeout | undefined
+  /** The first run (C4): its own file, so a reset of the rooms leaves it alone. */
+  private firstRun: FirstRunState = { ...FIRST_RUN_EMPTY, suggestions: [] }
+  private writingFirstRun: Promise<void> = Promise.resolve()
+  /** Sessions whose current turn the person started (a `user/message` of theirs since `turn/start`). */
+  private readonly personTurns = new Set<string>()
+  /** The star nudges (C1): the relay's policy, when it was read, and this computer's ledger. */
+  private nudges: { policy: NudgesPolicy; fetchedAt: number; ledger: NudgeLedger; current: Ask | null } = { policy: structuredClone(DEFAULT_NUDGES), fetchedAt: 0, ledger: structuredClone(LEDGER_EMPTY), current: null }
+  private writingNudges: Promise<void> = Promise.resolve()
+  private fetchingNudges = false
 
   constructor(ctx: Context) {
     super(ctx, 'nanomuseRooms')
@@ -350,6 +375,10 @@ export default class NanomuseRooms extends Service {
 
   async [Service.init](): Promise<void> {
     this.store = await this.read()
+    this.firstRun = await this.readSmall(this.firstRunPath, readFirstRun)
+    const nudges = await this.readSmall(this.nudgesPath, (raw) => raw)
+    const saved = nudges && typeof nudges === 'object' ? (nudges as Record<string, unknown>) : {}
+    this.nudges = { policy: readNudges(saved.policy) ?? structuredClone(DEFAULT_NUDGES), fetchedAt: typeof saved.fetchedAt === 'number' ? saved.fetchedAt : 0, ledger: readLedger(saved.ledger), current: null }
     // a record left running by a host that stopped is over
     for (const record of this.store.activity) {
       if (record.status === 'running' || record.status === 'waiting') {
@@ -383,7 +412,247 @@ export default class NanomuseRooms extends Service {
   view(): RoomsView {
     // the records travel without their steps' texts; `/activity?session=` has one in full
     const activity = this.store.activity.map((r) => ({ ...r, steps: r.steps.map((s) => ({ ...s, detail: '', result: '' })) }))
-    return { ...this.store, ideas: { ...this.store.ideas, items: this.ideaItems() }, activity, busy: { ...this.busy }, automations: this.automations, ready: this.ready, studio: this.studio }
+    return {
+      ...this.store,
+      ideas: { ...this.store.ideas, items: this.ideaItems() },
+      activity,
+      busy: { ...this.busy },
+      automations: this.automations,
+      ready: this.ready,
+      studio: this.studio,
+      firstRun: { ...this.firstRun, chips: currentSuggestions(this.firstRun, this.lang) },
+      nudges: this.nudgesView(),
+    }
+  }
+
+  // ---- the first run and the first conversation (C4) -----------------------------------
+
+  private get firstRunPath(): string {
+    return join(dshHome(), 'nanomuse', 'firstrun.json')
+  }
+
+  firstRunState(): FirstRunState {
+    return this.firstRun
+  }
+
+  /** What the model is told for the first conversation in `sessionId`; empty elsewhere and once it is over. */
+  firstRunAddendum(sessionId: string | undefined): string {
+    if (!sessionId || !boundTo(this.firstRun, sessionId)) return ''
+    return promptAddendum(this.firstRun, this.lang, this.ctx.nanomuseCloud.profile.current().name) ?? ''
+  }
+
+  /** The setup pages' choices, as they are made. */
+  async setFirstRun(patch: { sourceChosen?: 'cloud' | 'own' | null; permissionsSeen?: boolean }): Promise<FirstRunState> {
+    if (patch.sourceChosen !== undefined) this.firstRun = { ...this.firstRun, sourceChosen: patch.sourceChosen }
+    if (patch.permissionsSeen !== undefined) this.firstRun = { ...this.firstRun, permissionsSeen: patch.permissionsSeen }
+    await this.saveFirstRun()
+    return this.firstRun
+  }
+
+  /**
+   * Start was pressed: the main chat, opened on the agent's own folder (`~/nanoMuse`,
+   * registered as a workspace so the composer is live at once), bound as the first
+   * conversation. The app speaks first there, from the browser, at no cost in tokens; the
+   * model only hears from the person. A second Start lands in the same chat while it lives.
+   */
+  async startFirstConversation(): Promise<{ sessionId: string }> {
+    const bound = this.firstRun.sessionId
+    if (bound && this.firstRun.phase !== 'none' && (await this.alive(bound))) return { sessionId: bound }
+    const sc = this.ctx.get('sessionController')
+    if (!sc) throw new RelayError(503, 'no_sessions', 'Chats are not available yet')
+    const folder = join(homeDir(), 'nanoMuse')
+    await mkdir(folder, { recursive: true })
+    let workspaceId: string | undefined
+    try {
+      workspaceId = (await (this.ctx.get('workspaceRegistry') as RegistryLike | undefined)?.create(folder, 'nanoMuse'))?.id
+    } catch (error) {
+      this.warn('home workspace', error)
+    }
+    const created = await sc.create(workspaceId ? { agentPreset: 'nanomuse', workspaceId: workspaceId as NonNullable<SessionCreateRequest['workspaceId']> } : { agentPreset: 'nanomuse', cwd: folder })
+    await sc.rename({ sessionId: created.sessionId, title: this.lang.startsWith('zh') ? '主要聊天' : 'Main chat' }).catch(() => undefined)
+    // a conversation that already ran its course on an older chat stays over; a fresh install begins
+    this.firstRun = startConversation(this.firstRun.phase === 'done' ? this.firstRun : { ...this.firstRun, phase: 'none' }, created.sessionId)
+    await this.saveFirstRun()
+    return { sessionId: created.sessionId }
+  }
+
+  /** The setup pages were finished without a chat (an older install, a window that could not open one). */
+  async finishFirstRun(): Promise<void> {
+    if (this.firstRun.done) return
+    this.firstRun = { ...this.firstRun, done: true, finishedAt: Date.now() }
+    await this.saveFirstRun()
+  }
+
+  /**
+   * A chip was picked on the chooser: the name is on the header before the model has even
+   * replied, then the name goes to the chat as the person's message so the model replies as
+   * itself (the system addendum for `named` tells it what happened).
+   */
+  async pickFirstName(name: string): Promise<void> {
+    const next = pickName(this.firstRun, name)
+    if (!next) throw new RelayError(409, 'not_now', 'No name is being chosen right now')
+    this.firstRun = next
+    await this.saveFirstRun()
+    await this.ctx.nanomuseCloud.writeProfile({ name })
+    const sessionId = this.firstRun.sessionId
+    if (sessionId) await this.say(sessionId as SessionId, name)
+  }
+
+  /** The person moved on to something the app handles itself: the chooser goes. */
+  async dismissFirstChooser(): Promise<void> {
+    const next = dismissChooser(this.firstRun)
+    if (next === this.firstRun) return
+    this.firstRun = next
+    await this.saveFirstRun()
+    this.onFirstConversationOver()
+  }
+
+  /** The model's reply in the first conversation ended: read its block, move the phase, keep what it said. */
+  private async firstTurnEnded(words: string): Promise<void> {
+    const outcome = afterTurn(this.firstRun, words)
+    if (outcome.state === this.firstRun) return
+    this.firstRun = outcome.state
+    await this.saveFirstRun()
+    if (outcome.addressGiven) {
+      // the phone's "- Call them: X" under "About the user": one line in the memory, replaced when it changes
+      for (const item of this.store.memory.filter((m) => /^call them:/i.test(m.text))) await this.forget(item.id)
+      await this.remember(`Call them: ${outcome.addressGiven}`, 'agent')
+    }
+    if (outcome.named) await this.ctx.nanomuseCloud.writeProfile({ name: outcome.named }).catch((error: unknown) => this.warn('first name', error))
+    if (this.firstRun.phase === 'done') this.onFirstConversationOver()
+  }
+
+  /** The first conversation reached its end: the feed's first day is written in the background, once. */
+  private onFirstConversationOver(): void {
+    if (this.store.feed.posts.length || this.busy.feed) return
+    if (!this.ready) return
+    void this.refreshFeed().catch((error: unknown) => this.warn('first feed', error))
+  }
+
+  private saveFirstRun(): Promise<void> {
+    const snapshot = JSON.stringify(this.firstRun, null, 2) + '\n'
+    this.writingFirstRun = this.writingFirstRun.then(() => this.writeSmall(this.firstRunPath, snapshot)).catch((error: unknown) => this.warn('first run save', error))
+    this.broadcast()
+    return this.writingFirstRun
+  }
+
+  // ---- the star nudges (C1) ------------------------------------------------------------
+
+  private get nudgesPath(): string {
+    return join(dshHome(), 'nanomuse', 'nudges.json')
+  }
+
+  private nudgesView(): NudgesView {
+    const { policy, fetchedAt, ledger, current } = this.nudges
+    return { policy, tasks: ledger.tasks, days: ledger.days.length, asks: ledger.asks.length, starred: ledger.starred, fetchedAt, current }
+  }
+
+  /**
+   * The one gate: is an ask due for this moment now? When it is, it is recorded before it is
+   * answered — showing the card is the ask. The browser calls this for the moments it sees
+   * (signed in, a new look, the allowance used up); the host calls it for the ones it counts.
+   */
+  async askNudge(moment: Moment, n?: number): Promise<Ask | null> {
+    const ask = dueAsk(this.nudges.policy, this.nudges.ledger, moment, n)
+    if (!ask) return null
+    this.nudges.ledger = recordAsk(this.nudges.ledger, ask)
+    this.nudges.current = ask
+    await this.saveNudges()
+    return ask
+  }
+
+  /** The person went to GitHub from a card: no more asks. */
+  async starred(): Promise<void> {
+    this.nudges.ledger = recordStarred(this.nudges.ledger)
+    this.nudges.current = null
+    await this.saveNudges()
+  }
+
+  /** "Not now", or the card timed out: the ask stays counted, the card goes. */
+  async dismissNudge(): Promise<void> {
+    if (!this.nudges.current) return
+    this.nudges.current = null
+    this.broadcast()
+  }
+
+  /** The app was opened today: the 7th and the 30th distinct day ask once each. */
+  private async nudgeDay(): Promise<void> {
+    const { ledger, newDay } = recordDay(this.nudges.ledger)
+    if (!newDay) return
+    this.nudges.ledger = ledger
+    await this.saveNudges()
+    await this.askNudge('days_used', ledger.days.length)
+  }
+
+  /** A person-started turn ended with a reply: one more task; the thresholds ask once each. */
+  private async nudgeTask(): Promise<void> {
+    this.nudges.ledger = recordTask(this.nudges.ledger)
+    await this.saveNudges()
+    await this.askNudge('tasks', this.nudges.ledger.tasks)
+  }
+
+  /** The policy, from the relay at most once a day; the last good copy stays when the network does not answer. */
+  private async refreshNudges(force = false): Promise<void> {
+    if (this.fetchingNudges) return
+    if (!force && Date.now() - this.nudges.fetchedAt < NUDGES_EVERY_MS) return
+    this.fetchingNudges = true
+    try {
+      const status = await this.ctx.nanomuseCloud.status().catch(() => undefined)
+      const origin = (status?.baseURL || NUDGES_ORIGIN).replace(/\/+$/, '')
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), NUDGES_TIMEOUT_MS)
+      try {
+        const res = await fetch(`${origin}/v1/nudges`, { signal: controller.signal })
+        if (res.ok) {
+          const policy = readNudges(await res.json().catch(() => null))
+          if (policy) this.nudges.policy = policy
+        }
+      } finally {
+        clearTimeout(timer)
+      }
+      // a miss is remembered too: one try a day, quietly
+      this.nudges.fetchedAt = Date.now()
+      await this.saveNudges()
+    } catch {
+      this.nudges.fetchedAt = Date.now()
+    } finally {
+      this.fetchingNudges = false
+    }
+  }
+
+  /** `/v1/me` carried a policy (the relay sends it with the account): adopt it when it differs from the one on file. */
+  adoptNudges(raw: unknown): void {
+    const policy = readNudges(raw)
+    if (!policy) return
+    const fresh = Date.now() - this.nudges.fetchedAt < NUDGES_EVERY_MS
+    if (fresh && JSON.stringify(policy) === JSON.stringify(this.nudges.policy)) return
+    this.nudges.policy = policy
+    this.nudges.fetchedAt = Date.now()
+    void this.saveNudges()
+  }
+
+  private saveNudges(): Promise<void> {
+    const snapshot = JSON.stringify({ policy: this.nudges.policy, fetchedAt: this.nudges.fetchedAt, ledger: this.nudges.ledger }, null, 2) + '\n'
+    this.writingNudges = this.writingNudges.then(() => this.writeSmall(this.nudgesPath, snapshot)).catch((error: unknown) => this.warn('nudges save', error))
+    this.broadcast()
+    return this.writingNudges
+  }
+
+  // ---- small files beside rooms.json -------------------------------------------------
+
+  private async readSmall<T>(path: string, parse: (raw: unknown) => T): Promise<T> {
+    try {
+      return parse(JSON.parse(await readFile(path, 'utf8')) as unknown)
+    } catch {
+      return parse(undefined)
+    }
+  }
+
+  private async writeSmall(path: string, snapshot: string): Promise<void> {
+    await mkdir(join(dshHome(), 'nanomuse'), { recursive: true })
+    const tmp = `${path}.${process.pid}.tmp`
+    await writeFile(tmp, snapshot, { mode: 0o600 })
+    await rename(tmp, path)
   }
 
   /** One task in full, for the detail view. */
@@ -920,7 +1189,9 @@ export default class NanomuseRooms extends Service {
     if (!goal) throw new RelayError(404, 'not_found', `No goal "${ref}"`)
     if (typeof patch.title === 'string' && patch.title.trim()) goal.title = patch.title.trim().slice(0, 80)
     if (typeof patch.description === 'string') goal.description = patch.description.trim().slice(0, 2000)
+    const wasDone = goal.status === 'done'
     if (patch.status === 'tracking' || patch.status === 'done' || patch.status === 'paused') goal.status = patch.status
+    if (goal.status === 'done' && !wasDone) void this.askNudge('goal_done').catch((error: unknown) => this.warn('nudges', error))
     if (typeof patch.summary === 'string') goal.summary = patch.summary.trim().slice(0, 240)
     if (patch.activity && typeof patch.activity.title === 'string' && patch.activity.title.trim()) {
       goal.activity = [{ at: Date.now(), title: patch.activity.title.trim().slice(0, 120), text: (patch.activity.text ?? '').trim().slice(0, 600) }, ...goal.activity].slice(0, ACTIVITY_KEEP)
@@ -1083,39 +1354,8 @@ export default class NanomuseRooms extends Service {
     return join(homeDir(), 'nanoMuse', this.lang.startsWith('zh') ? '构件' : 'Library')
   }
 
-  /**
-   * The end of the first run: the main chat, opened on the agent's own folder
-   * (`~/nanoMuse`, registered as a workspace so the composer is live at once), with
-   * the introduction posted into it. Once per install — a second call returns the
-   * nothing the client expects, unless forced from Settings.
-   */
-  async kickoff(force = false): Promise<{ sessionId?: string; introduced: boolean }> {
-    if (this.store.introducedAt && !force) return { introduced: false }
-    const sc = this.ctx.get('sessionController')
-    if (!sc) throw new RelayError(503, 'no_sessions', 'Chats are not available yet')
-    const folder = join(homeDir(), 'nanoMuse')
-    await mkdir(folder, { recursive: true })
-    let workspaceId: string | undefined
-    try {
-      workspaceId = (await (this.ctx.get('workspaceRegistry') as RegistryLike | undefined)?.create(folder, 'nanoMuse'))?.id
-    } catch (error) {
-      this.warn('home workspace', error)
-    }
-    const created = await sc.create(workspaceId ? { agentPreset: 'nanomuse', workspaceId: workspaceId as NonNullable<SessionCreateRequest['workspaceId']> } : { agentPreset: 'nanomuse', cwd: folder })
-    await sc.rename({ sessionId: created.sessionId, title: this.lang.startsWith('zh') ? '主要聊天' : 'Main chat' }).catch(() => undefined)
-    let introduced = false
-    try {
-      introduced = await this.introduce(created.sessionId, force)
-    } catch (error) {
-      // no model yet (the person skipped signing in): the chat is there, the greeting waits
-      this.warn('introduction', error)
-    }
-    return { sessionId: created.sessionId, introduced }
-  }
-
   // ---- the agent's sessions -------------------------------------------------------------
 
-  /** A new chat the person will see, with its first message sent. */
   /**
    * A chat the person will see. It starts in their home folder; a `preset` of
    * `workspace-write` (used for the Library's creations, whose cwd is the
@@ -1245,6 +1485,7 @@ export default class NanomuseRooms extends Service {
     if (update.progress >= 0) goal.progress = update.progress
     goal.attention = update.status === 'attention'
     if (update.status === 'done') {
+      if (goal.status !== 'done') void this.askNudge('goal_done').catch((error: unknown) => this.warn('nudges', error))
       goal.status = 'done'
       goal.progress = 100
     } else if (goal.status === 'done') goal.status = 'tracking'
@@ -1257,23 +1498,6 @@ export default class NanomuseRooms extends Service {
     }
     goal.updatedAt = Date.now()
     await this.save()
-  }
-
-  /**
-   * The first run's introduction, once: the agent greets the person in the main chat,
-   * offers names to pick from (ask_user_question), and says what it can do here.
-   */
-  async introduce(sessionId: string, force = false): Promise<boolean> {
-    if (this.store.introducedAt && !force) return false
-    const zh = this.lang.startsWith('zh')
-    const profile = this.ctx.nanomuseCloud.profile.current()
-    const prompt = zh
-      ? `[首次见面。这是对方第一次打开 nanoMuse，还没有和你说过话。先用两三句话介绍你自己（作为普通的回复文字，单独成段）：你住在对方自己的设备上，能帮着做事（查资料、整理文件、盯着一个目标、按时提醒），对方随时可以让你换个名字和模样。然后用 ask_user_question 问对方想怎么称呼你——给出 3 个备选名字（比如「${profile.name}」「小满」「阿准」，一个一个短短的）并允许自己写；对方选定后，调用 take_name 把你的名字改成它，用一句话回应，顺带提一句：想让你看邮箱、日历的话，在「设置 → 连接器」里接上就行；再问一个让你更了解对方的小问题（比如最近在忙什么）。不要长篇大论，不要列功能清单。]`
-      : `[First meeting. The person has just opened nanoMuse and has never spoken to you. First introduce yourself in two or three sentences, as plain reply text of its own: you live on their own devices and can get things done (look things up, sort files, keep an eye on a goal, remind them on time), and they can rename you or change your look any time. Then use ask_user_question to ask what they would like to call you — offer 3 short names (for instance "${profile.name}", "Juno", "Pip") and let them write their own; once they pick, call take_name with it, answer in one line, mention in passing that the mailbox, the calendar and services such as Notion, GitHub or Linear can be connected under Settings → Connectors, and ask one small question that helps you know them (what they are busy with these days). No long speeches, no feature lists.]`
-    await this.say(sessionId as SessionId, prompt, undefined, zh ? '初次见面' : 'First meeting')
-    this.store.introducedAt = Date.now()
-    await this.save()
-    return true
   }
 
   private async alive(sessionId: string): Promise<boolean> {
@@ -1344,15 +1568,26 @@ export default class NanomuseRooms extends Service {
     }
     // the agent's last words in any of the person's chats are read for app fences when the turn ends
     if (!run) {
-      if (event.type === 'assistant/message') {
+      if (type === 'turn/start') {
+        this.personTurns.delete(session.id)
+      } else if (event.type === 'user/message') {
+        if (event.data.source.kind === 'user') this.personTurns.add(session.id)
+      } else if (event.type === 'assistant/message') {
         const text = textOf(event.data.message.content)
         if (text) this.fenceWords.set(session.id, text)
       } else if (event.type === 'turn/end') {
         const words = this.fenceWords.get(session.id)
         this.fenceWords.delete(session.id)
-        if (words && event.data.reason.kind === 'completed' && words.includes('```nanomuse-')) {
+        const person = this.personTurns.delete(session.id)
+        const completed = event.data.reason.kind === 'completed'
+        if (words && completed && words.includes('```nanomuse-')) {
           void this.applyFences(session.id, words).catch((error: unknown) => this.warn('fences', error))
         }
+        const first = boundTo(this.firstRun, session.id) && this.firstRun.phase !== 'done'
+        // the first conversation reads every reply of its chat (a reply without a block changes nothing)
+        if (first && completed) void this.firstTurnEnded(words ?? '').catch((error: unknown) => this.warn('first conversation', error))
+        // a task: the person asked, the model answered — never the first conversation's turns, never a schedule's wake or a run
+        if (person && completed && !first) void this.nudgeTask().catch((error: unknown) => this.warn('nudges', error))
       }
     }
     if (!run && !goalId) return
@@ -1411,7 +1646,10 @@ export default class NanomuseRooms extends Service {
 
   /** Whether a model can answer right now (signed in, or another provider set up). */
   private async syncReady(): Promise<boolean> {
-    const ready = (await this.ctx.nanomuseCloud.status().catch(() => ({ ready: false }))).ready
+    const status = await this.ctx.nanomuseCloud.status().catch(() => undefined)
+    const ready = status?.ready === true
+    // the relay sends the nudge policy with the account (`/v1/me`): the same copy `/v1/nudges` would give
+    if (status?.account?.nudges) this.adoptNudges(status.account.nudges)
     if (ready !== this.ready) {
       this.ready = ready
       this.broadcast()
@@ -1421,12 +1659,38 @@ export default class NanomuseRooms extends Service {
 
   private async tick(): Promise<void> {
     const ready = await this.syncReady()
-    if (!ready || !this.known()) return
+    if (!ready) return
     const now = Date.now()
     const feed = this.store.feed
-    if (!this.busy.feed && now - feed.generatedAt > FEED_EVERY_MS && now - feed.lastTry > RETRY_AFTER_MS) {
+    if (this.busy.feed || now - feed.lastTry < RETRY_AFTER_MS) return
+    // the daily routine (C5): once the Feed was opened, a batch every day at its hour
+    if (feed.routine.ensuredAt && feed.routine.on) {
+      if (routineDue(feed.routine.time, feed.generatedAt, now)) await this.refreshFeed().catch((error: unknown) => this.warn('feed', error))
+      return
+    }
+    // before that, the older rhythm: when there is something to write from
+    if (this.known() && now - feed.generatedAt > FEED_EVERY_MS) {
       await this.refreshFeed().catch((error: unknown) => this.warn('feed', error))
     }
+  }
+
+  /** The Feed was opened: the daily routine is written down once (08:00 unless the person changed it). */
+  async ensureFeedRoutine(): Promise<FeedRoutine> {
+    if (!this.store.feed.routine.ensuredAt) {
+      this.store.feed.routine = { ...this.store.feed.routine, ensuredAt: Date.now() }
+      await this.save()
+    }
+    return this.store.feed.routine
+  }
+
+  /** The routine's switch and hour, from the Feed's settings sheet. */
+  async setFeedRoutine(patch: { on?: boolean; time?: string }): Promise<FeedRoutine> {
+    const routine = { ...this.store.feed.routine, ensuredAt: this.store.feed.routine.ensuredAt || Date.now() }
+    if (typeof patch.on === 'boolean') routine.on = patch.on
+    if (typeof patch.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.time)) routine.time = patch.time
+    this.store.feed.routine = routine
+    await this.save()
+    return routine
   }
 
   /** Something to write from: instructions, a goal, or a profile the person shaped. */
@@ -1460,7 +1724,10 @@ export default class NanomuseRooms extends Service {
 
   private feedPrompt(): string {
     const n = 4
-    const instructions = this.store.feed.instructions || '(none yet — write what a good personal agent would: what they follow, their goals, the day ahead)'
+    // the phone's default preferences when the person has not written any
+    const instructions = this.store.feed.instructions || (this.lang.startsWith('zh')
+      ? '给我做一个关于我关心的事的动态。短一点、直接一点，扫一眼就能看完，别搞标题党。'
+      : 'Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.')
     return [
       `[Background job from nanoMuse: write the person's feed. Nobody reads this chat; the app parses your final answer.]`,
       `You are the person's own agent, writing their personal feed: ${n} short posts made just for them, in ${languageName(this.lang)}. Think of a thoughtful friend who knows what they care about: news worth their attention on the topics they follow (use web_search for anything time-sensitive, and link the source inline in Markdown), a nudge on a goal, a small plan for the day, a question worth thinking about. Specific to this person; never generic filler. No greetings, no "as your agent". Do not call feed_post here — the JSON below is how this batch is delivered.`,
@@ -1486,7 +1753,7 @@ export default class NanomuseRooms extends Service {
       const raw = JSON.parse(await readFile(this.path, 'utf8')) as Partial<Store>
       return {
         lang: typeof raw.lang === 'string' ? raw.lang : '',
-        feed: { ...EMPTY.feed, ...(raw.feed ?? {}), posts: Array.isArray(raw.feed?.posts) ? raw.feed!.posts : [] },
+        feed: { ...EMPTY.feed, ...(raw.feed ?? {}), posts: Array.isArray(raw.feed?.posts) ? raw.feed!.posts : [], routine: feedRoutine(raw.feed?.routine) },
         ideas: { ...EMPTY.ideas, items: [], marks: raw.ideas?.marks && typeof raw.ideas.marks === 'object' ? raw.ideas.marks : {} },
         goals: Array.isArray(raw.goals) ? (raw.goals as Partial<Goal>[]).map((g) => ({ steps: [], progress: -1, attention: false, ...g }) as Goal) : [],
         library: Array.isArray(raw.library) ? raw.library : [],
@@ -1531,6 +1798,9 @@ export default class NanomuseRooms extends Service {
       }
       if (req.method === 'GET' && route === '/events') {
         await Promise.all([this.syncReady(), this.refreshAutomations()])
+        // a window opened: a day of use, and the policy's daily read, off the request's path
+        void this.nudgeDay().catch((error: unknown) => this.warn('nudges day', error))
+        void this.refreshNudges().catch(() => undefined)
         return this.stream(req, res)
       }
       if (req.method === 'GET' && route === '/connectors') return send(res, 200, this.connectors())
@@ -1558,6 +1828,10 @@ export default class NanomuseRooms extends Service {
         case '/feed/instructions':
           await this.setFeedInstructions(String(body.text ?? ''))
           return send(res, 204)
+        case '/feed/open':
+          return send(res, 200, await this.ensureFeedRoutine())
+        case '/feed/routine':
+          return send(res, 200, await this.setFeedRoutine({ ...(typeof body.on === 'boolean' ? { on: body.on } : {}), ...(typeof body.time === 'string' ? { time: body.time } : {}) }))
         case '/feed/like':
           await this.likePost(String(body.id ?? ''), body.on !== false)
           return send(res, 204)
@@ -1589,10 +1863,39 @@ export default class NanomuseRooms extends Service {
           await this.writeDoc(doc, String(body.text ?? ''))
           return send(res, 200, this.docs()[doc])
         }
-        case '/intro':
-          return send(res, 200, { introduced: await this.introduce(String(body.sessionId ?? ''), body.force === true) })
-        case '/kickoff':
-          return send(res, 200, await this.kickoff(body.force === true))
+        case '/firstrun/set':
+          return send(res, 200, await this.setFirstRun({
+            ...(body.sourceChosen === 'cloud' || body.sourceChosen === 'own' || body.sourceChosen === null ? { sourceChosen: body.sourceChosen } : {}),
+            ...(typeof body.permissionsSeen === 'boolean' ? { permissionsSeen: body.permissionsSeen } : {}),
+          }))
+        case '/firstrun/start':
+          return send(res, 200, await this.startFirstConversation())
+        case '/firstrun/finish':
+          await this.finishFirstRun()
+          return send(res, 204)
+        case '/firstrun/pick': {
+          const name = String(body.name ?? '').trim().slice(0, 16)
+          if (!name) return send(res, 400, { error: { code: 'bad_request', message: 'name is required' } })
+          await this.pickFirstName(name)
+          return send(res, 204)
+        }
+        case '/firstrun/dismiss':
+          await this.dismissFirstChooser()
+          return send(res, 204)
+        case '/nudges/ask': {
+          const moment = String(body.moment ?? '')
+          if (moment !== 'signed_in' && moment !== 'new_look' && moment !== 'exhausted' && moment !== 'goal_done') return send(res, 400, { error: { code: 'bad_request', message: 'that moment is counted by the host' } })
+          return send(res, 200, { ask: await this.askNudge(moment) })
+        }
+        case '/nudges/starred':
+          await this.starred()
+          return send(res, 204)
+        case '/nudges/dismiss':
+          await this.dismissNudge()
+          return send(res, 204)
+        case '/nudges/refresh':
+          await this.refreshNudges(true)
+          return send(res, 200, this.nudgesView())
         case '/library/begin':
           return send(res, 200, { sessionId: await this.openCreationChat(String(body.kind ?? 'document')) })
         case '/goals/delete':
@@ -1719,6 +2022,31 @@ export default class NanomuseRooms extends Service {
 }
 
 // ---- small helpers ---------------------------------------------------------------------------
+
+/** A routine as the file has it, or the default (on, 08:00, not yet ensured). */
+function feedRoutine(raw: unknown): FeedRoutine {
+  const d = EMPTY.feed.routine
+  if (!raw || typeof raw !== 'object') return { ...d }
+  const r = raw as Record<string, unknown>
+  return {
+    on: typeof r.on === 'boolean' ? r.on : d.on,
+    time: typeof r.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(r.time) ? r.time : d.time,
+    ensuredAt: typeof r.ensuredAt === 'number' ? r.ensuredAt : 0,
+  }
+}
+
+/**
+ * The daily routine is due when today's hour has passed and the last batch was written
+ * before it — so a missed morning (the computer was asleep) is caught up the moment the
+ * app is back, and never twice in a day.
+ */
+export function routineDue(time: string, generatedAt: number, now = Date.now()): boolean {
+  const [hh, mm] = time.split(':').map((n) => Number(n))
+  const today = new Date(now)
+  today.setHours(hh ?? 8, mm ?? 0, 0, 0)
+  const slot = today.getTime()
+  return now >= slot && generatedAt < slot
+}
 
 function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}${randomBytes(3).toString('hex')}`

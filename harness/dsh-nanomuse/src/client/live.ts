@@ -129,9 +129,35 @@ export interface Live {
   handsModel: string
   /** The last update check, or null before one ran. */
   update: UpdateInfo | null
+  /** The drawn face's clips and how their drawing goes (desk-b). */
+  motion: LiveMotion
+  /** When the hands last saw an all-black screen (macOS: Screen Recording missing or granted after launch); 0 when never. */
+  blackScreenAt: number
   /** Whether the stream is open; false before the first snapshot and while reconnecting. */
   streaming: boolean
 }
+
+export type MotionMood = 'idle' | 'working' | 'waiting' | 'happy'
+
+export interface LiveMotionProgress {
+  done: number
+  total: number
+  failed: MotionMood[]
+  running: boolean
+  current?: MotionMood
+  stage?: { kind: 'uploading' | 'submitted' | 'running' | 'downloading'; elapsedSec?: number }
+  error?: string
+}
+
+export interface LiveMotion {
+  progress: LiveMotionProgress | null
+  /** The clips on disk, by mood: size in bytes and the mtime (`v`) the clip URL carries. */
+  clips: Partial<Record<MotionMood, { size: number; v: number }>>
+  /** The face the clips belong to; empty when there are none. */
+  faceId: string
+}
+
+export const NO_MOTION: LiveMotion = { progress: null, clips: {}, faceId: '' }
 
 export const DEFAULT_PROFILE: LiveProfile = { rev: 0, name: 'nanoMuse', avatar: 'dragon', emoji: '', color: '', description: '', style: '', faceId: '', connectors: [] }
 
@@ -147,6 +173,8 @@ const INITIAL: Live = {
   grants: [],
   handsModel: '',
   update: null,
+  motion: NO_MOTION,
+  blackScreenAt: 0,
   streaming: false,
 }
 
@@ -170,7 +198,7 @@ function open(): void {
     try {
       const data = JSON.parse(event.data) as Partial<Omit<Live, 'streaming'>>
       // An older host (0.1.33) sends no approvals/holds; keep the defaults rather than undefined.
-      publish({ ...snapshot, ...data, profile: { ...DEFAULT_PROFILE, ...data.profile }, approvals: data.approvals ?? [], holds: data.holds ?? [], grants: data.grants ?? [], handsModel: data.handsModel ?? '', update: data.update ?? null, streaming: true })
+      publish({ ...snapshot, ...data, profile: { ...DEFAULT_PROFILE, ...data.profile }, approvals: data.approvals ?? [], holds: data.holds ?? [], grants: data.grants ?? [], handsModel: data.handsModel ?? '', update: data.update ?? null, motion: data.motion ?? NO_MOTION, blackScreenAt: data.blackScreenAt ?? 0, streaming: true })
     } catch {
       // a malformed frame is skipped; the next snapshot replaces everything anyway
     }

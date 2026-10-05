@@ -25,6 +25,7 @@ import { TabHeader } from "../components/TabHeader";
 import { intlLocale, localLabel, t, useLocale, useT } from "../i18n";
 import { useStore } from "../store";
 import type { CalendarData, CalendarEvent, FeedItem, FeedPost, FeedPostsData, UpcomingData } from "../types";
+import { Toggle } from "../components/Form";
 import { cx, relativeTime, timeShort } from "../util";
 
 /**
@@ -125,8 +126,21 @@ export function FeedScreen() {
             {!introAck && <IntroCard instructions={posts?.instructions ?? ""} onEdit={() => setSettingsOpen(true)} onAck={ackIntro} />}
             {noPosts && (
               <>
-                <StaticCard emoji="🖼️" title={t("Your feed is not ready yet")} body={t("As we get to know each other, new posts will show up here. Once a day, while background work is on, I read what I remember about you — your memory, your goals, your instructions — and write a few short posts.")} />
-                <StaticCard emoji="📝" title={t("One sentence steers it")} body={t("Tap the sliders at the top right to tell me what you want more of, or have me write the first day now.")} />
+                <StaticCard
+                  emoji="🖼️"
+                  title={t("Nothing in the feed yet")}
+                  body={t("As we get to know each other, new posts will show up here. Every day at {time} I read what I remember about you — your memory files, the last week of diary, your goals — and write a few short posts.", {
+                    time: posts?.time ?? "08:00",
+                  })}
+                />
+                <StaticCard emoji="📝" title={t("Steer it with one sentence")} body={t("Tap the sliders at the top right to tell me what you want more of, switch the daily routine off, or have me write the first day now.")} />
+                {state.settings && !state.settings.llm_ready && (
+                  <FeedCard>
+                    <button type="button" onClick={() => setTab("you")} className="flex w-full items-center gap-2 p-4 text-left text-[14px] text-muted">
+                      <Info size={16} className="shrink-0 text-accent" /> {t("Add a model first — the feed is written by your agent.")}
+                    </button>
+                  </FeedCard>
+                )}
                 <FeedCard>
                   <div className="p-4">
                     {writing ? (
@@ -353,7 +367,7 @@ function IntroCard({ instructions, onEdit, onAck }: { instructions: string; onEd
     <FeedCard>
       <div className="px-4 py-3.5">
         <div className="text-[17px] font-semibold">{t("About the feed")}</div>
-        <p className="mt-1 text-[13px] leading-[18px] text-muted">{t("Your feed is driven by the instruction below. Any edit you make here applies to every post from now on.")}</p>
+        <p className="mt-1 text-[13px] leading-[18px] text-muted">{t("Short posts your agent writes for you from what it remembers — your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time.")}</p>
       </div>
       <div className="border-t border-border/70 px-4 py-3.5">
         <p className="text-[15px] leading-[22px]">{instructions || t("Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.")}</p>
@@ -393,7 +407,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** The sliders sheet: the steering sentence and "Write it now". */
+/** The sliders sheet: the steering sentence, the daily routine (on/off, its time) and "Write it now". */
 function FeedSettingsSheet({
   open,
   onClose,
@@ -409,7 +423,7 @@ function FeedSettingsSheet({
   onChange: (d: FeedPostsData) => void;
   onWriteNow: () => void;
 }) {
-  const { toast } = useStore();
+  const { toast, state } = useStore();
   const t = useT();
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -419,7 +433,7 @@ function FeedSettingsSheet({
   const save = async () => {
     setSaving(true);
     try {
-      onChange(await api.setFeedInstructions(text));
+      onChange(await api.setFeedInstructions({ instructions: text }));
       onClose();
     } catch (e) {
       toast((e as Error).message);
@@ -427,6 +441,15 @@ function FeedSettingsSheet({
       setSaving(false);
     }
   };
+  // the daily routine is saved as it is switched or moved — a setting, not part of the sentence
+  const routine = async (body: { daily?: boolean; time?: string }) => {
+    try {
+      onChange(await api.setFeedInstructions(body));
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
+  const llmReady = state.settings?.llm_ready !== false;
   return (
     <Sheet open={open} onClose={onClose} title={t("Feed")}>
       <div className="space-y-3 px-1 pb-2">
@@ -439,10 +462,31 @@ function FeedSettingsSheet({
           placeholder={t("Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.")}
           className="w-full resize-none rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[15px] leading-snug outline-none focus:ring-2 focus:ring-accent/40"
         />
+        <div className="space-y-2 rounded-2xl bg-surface-2 px-3.5 py-2.5">
+          <Toggle
+            label={t("Write it every day")}
+            hint={data?.daily === false ? undefined : t("Daily at {time}", { time: data?.time ?? "08:00" })}
+            checked={data?.daily !== false}
+            onChange={(v) => void routine({ daily: v })}
+            disabled={!data}
+          />
+          {data?.daily !== false && (
+            <label className="flex items-center justify-between gap-3 text-[13px] text-muted">
+              <span>{t("Time of day")}</span>
+              <input
+                type="time"
+                value={data?.time ?? "08:00"}
+                onChange={(e) => e.target.value && void routine({ time: e.target.value })}
+                className="rounded-lg bg-surface px-2 py-1 text-[13px] text-fg outline-none focus:ring-2 focus:ring-accent/40"
+              />
+            </label>
+          )}
+          {!llmReady && <div className="text-[12.5px] text-muted">{t("Add a model first — the feed is written by your agent.")}</div>}
+        </div>
         <button
           type="button"
           onClick={onWriteNow}
-          disabled={writing || !data}
+          disabled={writing || !data || !llmReady}
           className="flex w-full items-center justify-center gap-2 rounded-full bg-surface-2 py-2.5 text-[15px] font-medium disabled:opacity-60"
         >
           {writing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} className="text-accent" />}

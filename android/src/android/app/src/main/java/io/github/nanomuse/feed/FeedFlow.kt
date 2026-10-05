@@ -40,6 +40,7 @@ object FeedFlow {
     private const val KEY_TASK = "feed.task"
     private const val KEY_SESSION = "feed.session"
     private const val KEY_INTRO_ACK = "feed.intro_ack"
+    private const val KEY_FIRST_DAY = "feed.first_day"
     const val BLOCK = "nanomuse-feed"
     const val DEFAULT_HOUR = 8
     const val DEFAULT_MINUTE = 0
@@ -110,7 +111,20 @@ object FeedFlow {
     }
 
     /** Runs the routine right now (the "Write it now" button). */
-    fun generateNow(context: Context) {
+    fun generateNow(context: Context) = writeNow(context) {}
+
+    /**
+     * The first feed day, written on its own right after the first conversation ends (the
+     * agent has its name, so a model is there to answer). Once per install: the flag is set
+     * when the run is actually dispatched, so a phone without a model yet gets it later.
+     */
+    fun writeFirstDay(context: Context) {
+        val p = prefs(context)
+        if (p.getBoolean(KEY_FIRST_DAY, false)) return
+        writeNow(context) { p.edit().putBoolean(KEY_FIRST_DAY, true).apply() }
+    }
+
+    private fun writeNow(context: Context, onDispatch: () -> Unit) {
         if (_generating.value) return
         scope.launch {
             _generating.value = true
@@ -119,6 +133,7 @@ object FeedFlow {
                     AppLogger.warning(TAG, "no model configured; cannot write the feed")
                     return@launch
                 }
+                onDispatch()
                 val app = context.applicationContext as MinisApp
                 ScheduledAgentRunner.run(app, task, waitForCompletion = true)
             } finally {

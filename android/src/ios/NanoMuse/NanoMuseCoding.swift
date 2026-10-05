@@ -435,10 +435,10 @@ struct NanoMuseCodingSessionView: View {
                     }
                     .padding(.vertical, 12)
                 }
-                .onChange(of: transcript.count) { _ in
+                .nmOnChange(of: transcript.count) { _ in
                     if let last = transcript.last?.id { proxy.scrollTo(last, anchor: .bottom) }
                 }
-                .onChange(of: liveLength) { _ in proxy.scrollTo("live", anchor: .bottom) }
+                .nmOnChange(of: liveLength) { _ in proxy.scrollTo("live", anchor: .bottom) }
             }
             Divider()
             HStack(alignment: .bottom, spacing: 8) {

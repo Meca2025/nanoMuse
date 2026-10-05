@@ -6358,10 +6358,28 @@ class ChatViewModel(
         }
     }
 
+    // nanoMuse: StarPrompt counts a task only for a turn the person started (composer, idea or
+    // goal card) after the first conversation was over. The screens mark that just before
+    // sendMessage; routines, the feed and goal checks (HeadlessChatRunner) never do, and the
+    // screen takes the flag back when the stream ends.
+    @Volatile private var nmCountableTurn = false
+
+    fun nmMarkPersonTurn() {
+        val fc = nmFirstConversation
+        val sid = realSessionId.ifEmpty { sessionId }
+        nmCountableTurn = io.github.nanomuse.community.StarPrompt.Gate.countsAsTask(
+            personStarted = true,
+            firstConversationOver = !fc.isBoundTo(sid) || fc.phase == io.github.nanomuse.onboarding.Phase.DONE,
+        )
+    }
+
+    /** Whether the turn that just ended was one of the person's; reading it clears it. */
+    fun nmTakeCountableTurn(): Boolean = nmCountableTurn.also { nmCountableTurn = false }
+
     fun sendMessage(text: String) {
         // nanoMuse: "change your avatar to …" (and a pick while the options are
         // up) is handled in the app, not by the model.
-        if (nmInterceptAvatar(text)) return
+        if (nmInterceptAvatar(text)) { nmCountableTurn = false; return }
         // nanoMuse: during the first conversation the text goes to the model as
         // it is; the model says what it meant in a `nanomuse-naming` block and
         // nmAfterTurn moves the phase (see FirstConversation).
@@ -6718,11 +6736,17 @@ class ChatViewModel(
         val fc = nmFirstConversation
         if (!fc.isBoundTo(sid)) return
         val reply = _messages.value.lastOrNull { it.role == "assistant" }?.content
+        val phaseBefore = fc.phase
         if (fc.afterTurn(reply)) {
             // The chooser sits under the latest question, so it moves down when the model
             // steered back after a detour.
             _messages.value = _messages.value.filterNot { it.id == nmNamingCardId }
             nmShowNamingCard()
+        }
+        // The agent has its name and a model just answered: the first feed day is written
+        // in the background, once per install (FeedFlow).
+        if (phaseBefore != io.github.nanomuse.onboarding.Phase.DONE && fc.phase == io.github.nanomuse.onboarding.Phase.DONE) {
+            io.github.nanomuse.feed.FeedFlow.writeFirstDay(context)
         }
     }
     // ───────────────────────────────────────────────────────────────────────

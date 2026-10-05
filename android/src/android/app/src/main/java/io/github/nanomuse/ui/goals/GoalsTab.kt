@@ -51,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,8 +112,19 @@ fun GoalsTab(
     var sheetCategory by remember { mutableStateOf<GoalCategory?>(null) }
 
     val activeGoals = remember(goals) { goals.filter { it.status != GoalStatus.DONE } + goals.filter { it.status == GoalStatus.DONE } }
+    // The star ask a reached goal made due (GoalFlow offers it; shown and spent here).
+    var starAsk by remember { mutableStateOf<io.github.nanomuse.community.StarPrompt.Ask?>(null) }
+    val pendingAsk by io.github.nanomuse.community.StarPrompt.pending.collectAsState()
+    LaunchedEffect(pendingAsk) {
+        val ask = pendingAsk ?: return@LaunchedEffect
+        if (ask.moment != io.github.nanomuse.community.StarPrompt.Moment.GOAL_DONE) return@LaunchedEffect
+        io.github.nanomuse.community.StarPrompt.clearPending(ask)
+        if (starAsk != null || !io.github.nanomuse.community.StarPrompt.due(context, ask)) return@LaunchedEffect
+        io.github.nanomuse.community.StarPrompt.markShown(context, ask)
+        starAsk = ask
+    }
     // Index of the "Create a goal" header, for the tracking "+" to scroll to.
-    val createIndex = 1 + 1 + maxOf(activeGoals.size, 1) + 1 + maxOf(visibleRoutines.size, 1) + 1
+    val createIndex = 1 + 1 + maxOf(activeGoals.size, 1) + (if (starAsk != null) 1 else 0) + 1 + maxOf(visibleRoutines.size, 1) + 1
 
     LazyColumn(
         state = listState,
@@ -145,6 +157,17 @@ fun GoalsTab(
         } else {
             items(activeGoals, key = { "goal-" + it.id }) { goal ->
                 GoalRow(goal = goal, onOpenSession = onOpenSession)
+            }
+        }
+        // A goal was just reached: the star ask, under the list, when the policy allows it (StarPrompt).
+        val goalStarAsk = starAsk
+        if (goalStarAsk != null) {
+            item(key = "star-goal-done") {
+                io.github.nanomuse.community.StarNudgeCard(
+                    text = remember(goalStarAsk) { io.github.nanomuse.community.StarPrompt.text(context, goalStarAsk) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    onDone = { starAsk = null },
+                )
             }
         }
 

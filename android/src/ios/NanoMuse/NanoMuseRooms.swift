@@ -101,28 +101,21 @@ enum NanoMuseIdeas {
 }
 
 struct NanoMuseIdeasRoom: View {
-    var onMenu: () -> Void
+    var chrome: NanoMuseRoomChrome
     var onSend: (String) -> Void
     /// A ROUTINE idea: schedule it (NanoMuseScheduler) and open the editor.
     var onCreateRoutine: (NanoMuseIdea) -> Void
     /// A GOAL idea: "Create goal › category" in the main chat, with the idea's prompt as the seed.
     var onStartGoal: (NanoMuseGoalCategory, String?) -> Void
-    var onMore: () -> Void
 
     @State private var sections: [NanoMuseIdeaSection] = []
     @State private var selected: NanoMuseIdea?
 
     var body: some View {
         VStack(spacing: 0) {
-            NanoMuseTabHeader(title: AppLocalized("Ideas"), onMenu: onMenu) {
-                Button(action: onMore) {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 18, weight: .medium))
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(AppLocalized("More")))
+            // Android: the Ideas room's ••• menu has only the shared rows.
+            NanoMuseRoomHeader(chrome: chrome) {
+                NanoMuseRoomMenu(chrome: chrome) { EmptyView() }
             }
             if sections.isEmpty {
                 NanoMuseEmptyState(symbol: "lightbulb", title: AppLocalized("Ideas"),
@@ -350,19 +343,14 @@ enum NanoMuseLibraryIndex {
 }
 
 struct NanoMuseLibraryRoom: View {
-    var onMenu: () -> Void
+    var chrome: NanoMuseRoomChrome
     var sessionId: String?
-    /// The ••• menu's "Settings" (the nanoMuse settings page).
-    var onMore: () -> Void = {}
 
     @State private var entries: [NanoMuseLibraryEntry] = []
     @State private var segment = 0
     @State private var loading = false
     @State private var preview: NanoMuseLibraryEntry?
     @State private var shareItem: NanoMuseShareTarget?
-    @State private var showSharedFolders = false
-    @State private var showChatFiles = false
-    @State private var showSystemFiles = false
 
     private var shown: [NanoMuseLibraryEntry] {
         entries.filter { segment == 0 ? $0.kind == .artifact : $0.kind == .media }
@@ -370,28 +358,17 @@ struct NanoMuseLibraryRoom: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            NanoMuseTabHeader(title: AppLocalized("Library"), onMenu: onMenu) {
-                Button { refresh() } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 16, weight: .medium))
-                        .frame(width: 36, height: 36)
+            // Android: the Library's ••• menu — shared folders, the chat's files, then the shared rows.
+            NanoMuseRoomHeader(chrome: chrome) {
+                HStack(spacing: 8) {
+                    NanoMuseRoundButton(symbol: "arrow.clockwise", label: AppLocalized("Refresh")) { refresh() }
+                    NanoMuseRoomMenu(chrome: chrome) {
+                        Button { chrome.open("sharedFolders") } label: { Label(AppLocalized("Shared folders"), systemImage: "folder.badge.person.crop") }
+                        if chrome.hasMainSession {
+                            Button { chrome.open("chatFiles") } label: { Label(AppLocalized("Browse Chat Files"), systemImage: "folder") }
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(AppLocalized("Refresh")))
-                // Android: the Library's ••• menu — shared folders, the chat's files, the system files, settings.
-                Menu {
-                    Button { showSharedFolders = true } label: { Label(AppLocalized("Shared folders"), systemImage: "folder.badge.person.crop") }
-                    Button { showChatFiles = true } label: { Label(AppLocalized("Browse chat files"), systemImage: "folder") }
-                    Button { showSystemFiles = true } label: { Label(AppLocalized("System files"), systemImage: "doc.text") }
-                    Divider()
-                    Button(action: onMore) { Label(AppLocalized("Settings"), systemImage: "gearshape") }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 18, weight: .medium))
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel(Text(AppLocalized("More")))
             }
             Picker("", selection: $segment) {
                 Text(AppLocalized("Artifacts")).tag(0)
@@ -444,21 +421,6 @@ struct NanoMuseLibraryRoom: View {
         }
         .sheet(item: $shareItem) { target in
             NanoMuseShareSheet(items: [target.url])
-        }
-        .sheet(isPresented: $showSharedFolders) {
-            NavigationStack { SharedFoldersSettingsView() }
-        }
-        .sheet(isPresented: $showChatFiles) {
-            NavigationStack {
-                let base = RootfsManager.shared.dataPath
-                FileBrowserView(rootPath: base, initialPath: base.appendingPathComponent("var/minis"), rootLabel: "/")
-            }
-        }
-        .sheet(isPresented: $showSystemFiles) {
-            NavigationStack {
-                NanoMuseSystemFilesView()
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Done")) { showSystemFiles = false } } }
-            }
         }
     }
 
