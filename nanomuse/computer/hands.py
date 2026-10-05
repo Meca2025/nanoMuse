@@ -365,7 +365,7 @@ def wayland_session(env: dict[str, str] | None = None) -> bool:
     ``DISPLAY`` is the same thing from a compositor started by hand. XWayland (both set,
     session type wayland) counts: the X11 tools would reach X windows only. The desktop
     app's operator (``harness/desktop/src/operator.ts``) draws the same line."""
-    if not sys.platform.startswith("linux"):
+    if not _platform().startswith("linux"):
         return False
     e = os.environ if env is None else env
     if (e.get("XDG_SESSION_TYPE") or "").strip().lower() == "wayland":
