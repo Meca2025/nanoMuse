@@ -194,6 +194,14 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-col-top { height: 
 .nm-chat-more:hover { background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary); }
 .nm-chat-row:hover .nm-chat-title { padding-right: 22px; }
 .nm-chat-edit { flex: 1; min-width: 0; height: 30px; margin: 2px 4px; padding: 0 8px; border: 1px solid var(--nm-blue); border-radius: 7px; background: var(--nm-field); color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; outline: none; }
+/* a chat synced from another device of the account (C7): the badge, the mirror's transcript */
+.nm-chat-from { flex: none; font-size: 11px; color: var(--dsw-alias-label-tertiary); white-space: nowrap; }
+.nm-mirror { display: flex; flex-direction: column; border-radius: 9px; }
+.nm-mirror-body { padding: 2px 10px 8px; font-size: 12.5px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.nm-mirror-line { margin: 0 0 4px; white-space: pre-wrap; word-break: break-word; max-height: 72px; overflow: hidden; }
+.nm-mirror-line b { font-weight: 500; color: var(--dsw-alias-label-primary); }
+.nm-mirror-continue { margin-top: 4px; height: 26px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-primary, rgba(0,0,0,0.12)); border-radius: 7px; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12.5px; cursor: pointer; }
+.nm-mirror-continue:hover { background: var(--nm-hover); }
 
 /* ---- the pinned agent header over the conversation -------------------- */
 header[data-window-drag]:has(.nm-header) { position: relative; min-height: 108px; }

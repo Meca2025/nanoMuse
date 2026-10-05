@@ -3942,9 +3942,6 @@ struct ContentView: View {
                     .multilineTextAlignment(.center)
             }
 
-            // nanoMuse: the way in that needs no key — sign in to nanoMuse Cloud, free.
-            NanoMuseCloudCTA()
-
             // Setup steps
             VStack(spacing: 16) {
                 // Step 1 – Add Provider
@@ -7429,6 +7426,9 @@ private struct SettingsSheet: View {
         NavigationStack(path: $navPath) {
             List {
                 // nanoMuse: the Muse settings — the model, the agent, the phone, the app, about — as cards.
+                // With the shell on, Settings opens them directly and this list is "All settings" under
+                // them, so the row would only lead back; it stays for the classic layout.
+                if !NanoMuseShellPrefs.shell { // nanoMuse:
                 Section {
                     NavigationLink {
                         NanoMuseSettingsHomeView()
@@ -7436,6 +7436,7 @@ private struct SettingsSheet: View {
                         Label("nanoMuse", systemImage: "sparkles")
                     }
                 }
+                } // nanoMuse:
 
                 Section {
                     NavigationLink {
@@ -7640,7 +7641,8 @@ private struct SettingsSheet: View {
                                 .background(.red, in: Circle())
                         }
                     }
-                    if BiometricAuth.isAvailable {
+                    // nanoMuse: the lock is a classic-layout feature; the Muse shell (Android parity) has no Face ID row.
+                    if BiometricAuth.isAvailable, !NanoMuseShellPrefs.shell { // nanoMuse:
                         NavigationLink {
                             FaceIDProtectionSettingsView()
                         } label: {

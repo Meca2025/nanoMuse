@@ -1,6 +1,6 @@
-// The desktop's splash (C6): the wordmark and a quiet loader, no picture of any character;
-// a face only when the shell hands over the person's own as a data URL; the error state
-// keeps the layout. Read as text — the page is opened in no browser here.
+// The desktop's splash: the app icon in a quiet ring, the wordmark, one status line — no picture
+// of any character and no reading of the person's face; the error state keeps the layout.
+// Read as text — the page is opened in no browser here.
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -11,18 +11,21 @@ const here = dirname(fileURLToPath(import.meta.url))
 const resources = join(here, '..', '..', 'desktop', 'resources')
 const html = readFileSync(join(resources, 'loading.html'), 'utf8')
 
-test('the splash shows the wordmark and a loader, and no dragon', () => {
+test('the splash is the logo in a ring, the wordmark and a status line — no dragon, no face', () => {
   assert.match(html, /<h1>nanoMuse<\/h1>/)
-  assert.match(html, /class="loader"/)
+  assert.match(html, /class="mark"[^>]*><span class="ring"><\/span><img src="icon\.png"/)
+  assert.match(html, /<p id="line" role="status">/)
   assert.doesNotMatch(html, /dragon/i)
-  // nothing but the shell's data URL ever lands in the face slot
-  assert.match(html, /params\.get\("face"\)/)
-  assert.match(html, /\^data:image\\\/\(webp\|png\|jpeg\);base64,/)
-  assert.match(html, /img-src 'self' data:/)
+  // the page shows its own icon only: no face parameter, no data URL from anywhere
+  assert.doesNotMatch(html, /params\.get\("face"\)/)
+  assert.doesNotMatch(html, /base64/)
+  assert.match(html, /img-src 'self' file: data:/)
+  assert.ok(existsSync(join(resources, 'icon.png')))
 })
 
-test('the error state keeps the layout: the same card, the message under it', () => {
+test('the error state keeps the layout: the ring stops, the message under it', () => {
   assert.match(html, /window\.__failed = function/)
+  assert.match(html, /\.failed \.ring \{ animation: none;/)
   assert.match(html, /\.failed \.error \{ display: block; \}/)
   assert.match(html, /没能启动/)
   assert.match(html, /Could not start/)

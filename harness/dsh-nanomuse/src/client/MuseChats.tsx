@@ -12,10 +12,82 @@
  * want workspaces as folders.
  */
 import { createElement as h, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
-import type { Translate } from './api.ts'
+import { call, type Translate } from './api.ts'
 import { IconMore, IconPlus, IconSearch } from './icons.tsx'
+import { useLive } from './live.ts'
 
 const MAIN_KEY = 'nanomuse.mainChat'
+
+/** A conversation synced from another device of the account, as `sync/state` lists it (contract C7). */
+export interface MirrorRow {
+  cid: string
+  kind: 'main' | 'side'
+  title: string
+  device: string
+  deviceName: string
+  messages: number
+  updatedAt: number
+  sessionId: string | null
+}
+interface SyncList {
+  enabled: boolean
+  mirrors: MirrorRow[]
+  /** session id → the device the chat came from, for the badge on a continued chat */
+  origins: Record<string, { device: string; deviceName: string }>
+}
+interface MirrorTranscript {
+  messages: Array<{ mid: string; role: 'user' | 'assistant'; text: string; deviceName: string }>
+}
+
+/** The mirrors and origins as the host keeps them; read again whenever the host's live state moves. */
+export function useSyncList(): SyncList {
+  const live = useLive()
+  const [list, setList] = useState<SyncList>({ enabled: true, mirrors: [], origins: {} })
+  useEffect(() => {
+    let alive = true
+    call<SyncList>('sync/state').then((v) => { if (alive) setList({ enabled: v.enabled, mirrors: v.mirrors ?? [], origins: v.origins ?? {} }) }).catch(() => undefined)
+    return () => { alive = false }
+  }, [live])
+  return list
+}
+
+/** One synced conversation that has no session here yet: its title, where it came from, its transcript, "Continue here". */
+function MirrorRowView({ t, mirror, onOpen }: { t: Translate; mirror: MirrorRow; onOpen(sessionId: string): void }): ReactNode {
+  const [open, setOpen] = useState(false)
+  const [lines, setLines] = useState<MirrorTranscript['messages'] | undefined>()
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    let alive = true
+    call<MirrorTranscript>(`sync/mirror?cid=${encodeURIComponent(mirror.cid)}`).then((m) => { if (alive) setLines(m.messages) }).catch(() => { if (alive) setLines([]) })
+    return () => { alive = false }
+  }, [open, mirror.cid, mirror.messages])
+  const cont = async () => {
+    setBusy(true)
+    try {
+      const { sessionId } = await call<{ sessionId: string }>('sync/continue', { cid: mirror.cid })
+      onOpen(sessionId)
+    } catch {
+      setBusy(false)
+    }
+  }
+  const from = mirror.deviceName || mirror.device
+  return h('div', { className: 'nm-mirror', 'data-cid': mirror.cid },
+    h('div', { className: `nm-chat-row${open ? ' nm-selected' : ''}` },
+      h('button', { type: 'button', className: 'nm-chat-open', 'aria-expanded': open, onClick: () => setOpen((v) => !v) },
+        h('span', { className: 'nm-chat-title' }, mirror.title || t('chBlank')),
+        h('span', { className: 'nm-chat-from' }, t('chFrom', { device: from })))),
+    open
+      ? h('div', { className: 'nm-mirror-body' },
+          h('div', null, t('chMirrorHint', { device: from })),
+          lines === undefined
+            ? null
+            : lines.length === 0
+              ? h('div', null, t('chMirrorEmpty'))
+              : lines.slice(-6).map((m) => h('p', { key: m.mid, className: 'nm-mirror-line' }, h('b', null, m.role === 'user' ? '› ' : '‹ '), m.text)),
+          h('button', { type: 'button', className: 'nm-mirror-continue', disabled: busy, onClick: () => void cont() }, busy ? t('chContinuing') : t('chContinue')))
+      : null)
+}
 
 export interface ChatSummary {
   id: string
@@ -119,6 +191,8 @@ interface RowProps {
   t: Translate
   chat: ChatSummary
   label: string
+  /** the device the chat was started on, when it was synced from another device of the account */
+  from?: string | undefined
   main: boolean
   pinned: boolean
   selected: boolean
@@ -127,7 +201,7 @@ interface RowProps {
   onMakeMain(): void
 }
 
-function ChatRow({ t, chat, label, main, pinned, selected, useSessionStatus, actions, onMakeMain }: RowProps): ReactNode {
+function ChatRow({ t, chat, label, from, main, pinned, selected, useSessionStatus, actions, onMakeMain }: RowProps): ReactNode {
   const status = typeof useSessionStatus === 'function' ? useSessionStatus((map) => map.get(chat.id)) : undefined
   const running = status?.running ?? chat.running
   const waiting = status?.pendingInteraction !== undefined
@@ -160,6 +234,7 @@ function ChatRow({ t, chat, label, main, pinned, selected, useSessionStatus, act
       ? h('input', { className: 'nm-chat-edit', value: draft, autoFocus: true, 'aria-label': t('chRename'), onChange: (e: FormEvent<HTMLInputElement>) => setDraft(e.currentTarget.value), onBlur: commit, onKeyDown: onKey })
       : h('button', { type: 'button', className: 'nm-chat-open', 'aria-current': selected ? 'page' : undefined, onClick: () => actions.openSession(chat.id), onDoubleClick: () => { setDraft(label); setEditing(true) } },
           h('span', { className: 'nm-chat-title' }, label),
+          from ? h('span', { className: 'nm-chat-from' }, t('chFrom', { device: from })) : null,
           waiting
             ? h('span', { className: 'nm-chat-mark nm-wait', title: t('chWaiting'), 'aria-label': t('chWaiting') }, 'ℹ')
             : running
@@ -201,9 +276,16 @@ export function MuseChats({ t, useSessions, useSessionStatus, useWorkspaces, act
     if (state.phase !== 'ready') return
     if (mainId !== mainStored) { writeMain(mainId); setMainStored(mainId) }
   }, [mainId, mainStored, state.phase])
+  // The host syncs the main chat as the account's one main conversation (C7): it is told which session that is.
+  useEffect(() => {
+    if (state.phase !== 'ready' || !mainId) return
+    void call('sync/main', { sessionId: mainId }).catch(() => undefined)
+  }, [mainId, state.phase])
+  const sync = useSyncList()
 
   const main = visible.find((s) => s.id === mainId)
   const q = query.trim().toLowerCase()
+  const mirrors = sync.mirrors.filter((m) => m.sessionId === null && (q === '' || m.title.toLowerCase().includes(q)))
   const side = visible
     .filter((s) => s.id !== mainId && (!s.blank || s.id === current))
     .filter((s) => q === '' || s.displayTitle.toLowerCase().includes(q))
@@ -247,11 +329,17 @@ export function MuseChats({ t, useSessions, useSessionStatus, useWorkspaces, act
             t,
             chat,
             label: chat.blank ? t('chBlank') : chat.displayTitle,
+            from: sync.origins[chat.id]?.deviceName || sync.origins[chat.id]?.device,
             main: false,
             pinned: pinnedSet.has(chat.id),
             selected: current === chat.id,
             useSessionStatus,
             actions,
             onMakeMain: () => { writeMain(chat.id); setMainStored(chat.id) },
-          }))))
+          })),
+      // Chats written on the account's other devices and not opened here yet: read-only, with "Continue here".
+      mirrors.length > 0
+        ? h('div', { className: 'nm-chats-section' }, h('span', null, t('chFromDevices')))
+        : null,
+      mirrors.map((m) => h(MirrorRowView, { key: m.cid, t, mirror: m, onOpen: (sessionId) => actions.openSession(sessionId) }))))
 }

@@ -61,6 +61,19 @@ private struct NanoMuseReachSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                // C7: the task goes to that device's Muse; the composer opens with "@<name> " in it.
+                Section {
+                    Button {
+                        dismiss()
+                        NotificationCenter.default.post(name: .nanoMuseHomeAction, object: "askDevice", userInfo: ["text": "@\(device.name) "])
+                    } label: {
+                        Label(AppLocalized("Ask this device"), systemImage: "bubble.left.and.text.bubble.right")
+                    }
+                    .disabled(!device.online)
+                } footer: {
+                    Text(AppLocalized("Start a message with @ and the device's name and your agent there does the work; the answer comes back to this chat."))
+                }
+
                 Section {
                     TextField("https://…", text: $link)
                         .keyboardType(.URL)

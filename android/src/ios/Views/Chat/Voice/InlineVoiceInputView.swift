@@ -24,6 +24,9 @@ struct InlineVoiceInputView: View {
     /// "张山说食堂今天关门" comes back unchanged; with context, "石塘"→"食堂" is caught
     /// immediately. Context is what makes the feature work on day one.
     var conversationContext: (() -> ConversationContext)?
+    /// nanoMuse: the keyboard button in the panel's header — the way back to typing. The
+    /// composer owns the switch (it keeps the transcript in the field and focuses it).
+    var onBackToTyping: (() -> Void)? = nil // nanoMuse:
     /// Tear down voice mode (X button / done).
 
     @FocusState private var editFocused: Bool
@@ -285,9 +288,12 @@ struct InlineVoiceInputView: View {
         // corners in BOTH modes. Leading/trailing insets = 12 to line up with the
         // bottom toolbar's `+` and send buttons (inputBottomRow padding 12).
         .overlay(alignment: .topLeading) {
-            expandCollapseButton
-                .padding(.top, 10)
-                .padding(.leading, 12)
+            HStack(spacing: 8) { // nanoMuse: the keyboard button sits beside the chevron
+                expandCollapseButton
+                if let onBackToTyping { backToTypingButton(onBackToTyping) } // nanoMuse:
+            } // nanoMuse:
+            .padding(.top, 10)
+            .padding(.leading, 12)
         }
         .overlay(alignment: .topTrailing) {
             // [voice-correction, experimental] In DEBUG, this corner doubles as the
@@ -726,6 +732,20 @@ struct InlineVoiceInputView: View {
             : Text("Expand voice panel", comment: "Voice panel expand"))
     }
 
+    // nanoMuse: back to the keyboard. Works while the transcript is being edited too: the
+    // composer's handler resets the editor (reset(clearTranscript: false)) before it leaves voice mode.
+    private func backToTypingButton(_ action: @escaping () -> Void) -> some View { // nanoMuse:
+        Button(action: action) { // nanoMuse:
+            Image(systemName: "keyboard") // nanoMuse:
+                .font(.system(size: 13, weight: .semibold)) // nanoMuse:
+                .foregroundStyle(ChatColors.secondaryText) // nanoMuse:
+                .frame(width: 30, height: 30) // nanoMuse:
+                .background(Circle().fill(ChatColors.inputIconBg)) // nanoMuse:
+                .overlay(Circle().strokeBorder(ChatColors.inputIconBorder, lineWidth: 0.5)) // nanoMuse:
+        } // nanoMuse:
+        .accessibilityLabel(Text(AppLocalized("Back to typing"))) // nanoMuse:
+    } // nanoMuse:
+
     // MARK: - Transcript area (display ↔ editable)
 
     @ViewBuilder
@@ -854,7 +874,9 @@ struct InlineVoiceInputView: View {
         // menu, 30pt each at x=[12,42]). The panel has 16pt outer horizontal
         // padding; 32pt more → text starts at 48pt, clearing the 42pt button
         // edge by 6pt on each side.
-        .padding(.horizontal, 32)
+        // nanoMuse: with the keyboard button beside the chevron the left column reaches 80pt,
+        // so the inset grows to 72 (text from 88pt) — kept symmetric so the centred text stays centred.
+        .padding(.horizontal, onBackToTyping == nil ? 32 : 72) // nanoMuse:
     }
 
     // MARK: - Controls

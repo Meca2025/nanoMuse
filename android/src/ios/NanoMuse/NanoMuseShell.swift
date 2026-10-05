@@ -80,6 +80,7 @@ struct NanoMuseRoot: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var hasSessions: Bool?
     @State private var setupDone = NanoMuseFirstRun.isDone
+    @State private var showSetupSettings = false
     @State private var showClassicSettings = false
 
     /// The Muse shell on iPhone and iPad alike; off → the upstream layout.
@@ -97,8 +98,17 @@ struct NanoMuseRoot: View {
             if needsSetup {
                 NanoMuseFirstRunView(
                     onStart: { setupDone = true },
-                    onSettings: { showClassicSettings = true }
+                    onSettings: { showSetupSettings = true }
                 )
+                // The gear opens Muse's settings page; the OpenMinis list is under "All settings".
+                .sheet(isPresented: $showSetupSettings) {
+                    NavigationStack {
+                        NanoMuseSettingsHomeView(onAllSettings: {
+                            showSetupSettings = false
+                            showClassicSettings = true
+                        })
+                    }
+                }
                 .sheet(isPresented: $showClassicSettings) {
                     NanoMuseClassicCover(wantsSettings: true)
                 }
@@ -116,6 +126,7 @@ struct NanoMuseRoot: View {
         }
         .onAppear {
             NanoMuseProfileSync.shared.start()
+            NanoMuseSync.shared.start() // C7: conversations between the account's devices
             NanoMuseStarWatch.shared.start()
             NanoMuseStar.shared.dayOpened()
         }
@@ -247,6 +258,12 @@ final class NanoMuseMainChat: ObservableObject {
         set(id, draft: false)
     }
 
+    /// C7: a synced main conversation takes the place of a draft that has not been sent yet.
+    func adoptIfDraft(_ id: String) {
+        guard isDraft else { return }
+        pin(id)
+    }
+
     /// Start the main chat over with an empty draft.
     func startFresh() {
         UserDefaults.standard.removeObject(forKey: Self.key)
@@ -296,6 +313,10 @@ struct NanoMuseHomeView: View {
     @StateObject private var main = NanoMuseMainChat()
     @StateObject private var keyboard = NanoMuseKeyboardWatcher()
     @ObservedObject private var star = NanoMuseStar.shared
+    /// The composer's voice panel stands in for the keyboard: the bottom bar leaves the same way.
+    @ObservedObject private var voiceMode = VoiceModePreference.shared
+    /// "Rename chat" from the main chat's ••• menu.
+    @StateObject private var rename = NanoMuseRenamePrompt()
 
     @State private var tab: NanoMuseTab = .chat
     @State private var drawerOpen = false
@@ -317,6 +338,13 @@ struct NanoMuseHomeView: View {
         return n.isEmpty ? "nanoMuse" : n
     }
 
+    /// Hidden while the keyboard is up (Android's IME) and while the chat's voice panel is
+    /// open: the panel's own row — keyboard button, read-aloud, send — would otherwise sit
+    /// under the bar with no way back to typing.
+    private var bottomBarHidden: Bool {
+        keyboard.visible || (tab == .chat && voiceMode.isVoiceActive)
+    }
+
     var body: some View {
         ZStack {
             chatLayer
@@ -330,7 +358,7 @@ struct NanoMuseHomeView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: tab)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !keyboard.visible {
+            if !bottomBarHidden {
                 NanoMuseBottomBar(selected: $tab) { picked in
                     if picked == tab, picked != .chat { return }
                     tab = picked
@@ -338,7 +366,7 @@ struct NanoMuseHomeView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.easeOut(duration: 0.2), value: keyboard.visible)
+        .animation(.easeOut(duration: 0.2), value: bottomBarHidden)
         .overlay {
             NanoMuseDrawer(
                 isOpen: $drawerOpen,
@@ -421,8 +449,19 @@ struct NanoMuseHomeView: View {
             case "systemFiles": showSystemFiles = true
             case "sharedFolders": showSharedFolders = true
             case "chatFiles": showChatFiles = true
+            case "askDevice":
+                // C7: "Ask this device" in the Devices list — the main chat with "@<name> " in the composer.
+                guard let text = note.userInfo?["text"] as? String else { return }
+                showDevices = false
+                showNanoMuseSettings = false
+                prefillMainChat(text)
             default: break
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nanoMuseMainChatAdopt)) { note in
+            // C7: the account's main chat arrived while ours was still an empty draft.
+            guard let id = note.object as? String else { return }
+            main.adoptIfDraft(id)
         }
         .onReceive(NotificationCenter.default.publisher(for: .nanoMuseOpenChat)) { note in
             guard let id = note.object as? String else { return }
@@ -480,27 +519,7 @@ struct NanoMuseHomeView: View {
 
     private var chatLayer: some View {
         NavigationStack(path: $chatPath) {
-            VStack(spacing: 0) {
-                // Android: MuseHeader over the main chat — the face, the name pill, the drawer and ••• discs.
-                NanoMuseChatHeaderHost(
-                    liveId: main.liveId,
-                    name: agentName,
-                    onFace: { NotificationCenter.default.post(name: .nanoMuseOpenAgentPage, object: main.liveId ?? main.chatId) },
-                    leading: { drawerDisc },
-                    trailing: { chatMenu }
-                )
-                // C1: the ask for a star, when NanoMuseStar's gate raises one; under the header, over the chat.
-                if let ask = star.pending {
-                    NanoMuseStarCard(text: ask.text) {
-                        star.dismiss()
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(NanoMuseTones.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 6)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
+            Group {
                 if let id = main.chatId {
                     AIChatView(sessionId: main.isDraft ? nil : id, draftId: main.isDraft ? id : nil)
                         .id(id)
@@ -509,7 +528,40 @@ struct NanoMuseHomeView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+            // Android: the header floats over the transcript, which scrolls under it. A safe-area
+            // inset (not a VStack row) so the message list keeps its full height and only its
+            // content inset moves; the blur is the material, there is no divider line.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                    // MuseHeader over the main chat — the face, the name pill, the drawer and ••• discs.
+                    NanoMuseChatHeaderHost(
+                        liveId: main.liveId,
+                        name: agentName,
+                        onFace: { NotificationCenter.default.post(name: .nanoMuseOpenAgentPage, object: main.liveId ?? main.chatId) },
+                        leading: { drawerDisc },
+                        trailing: { chatMenu }
+                    )
+                    // C1: the ask for a star, when NanoMuseStar's gate raises one; under the header, over the chat.
+                    if let ask = star.pending {
+                        NanoMuseStarCard(text: ask.text) {
+                            star.dismiss()
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(NanoMuseTones.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 6)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                .background {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .ignoresSafeArea(edges: .top)
+                }
+            }
             .background(ChatColors.background.ignoresSafeArea())
+            .nmRenameAlert(rename)
             // The system bar stays out of the main chat; side chats pushed from here keep theirs.
             .toolbar(.hidden, for: .navigationBar)
             .animation(.easeInOut(duration: 0.25), value: star.pending)
@@ -532,6 +584,10 @@ struct NanoMuseHomeView: View {
     private var chatMenu: some View {
         Menu {
             Button { chatAction(.newChat) } label: { Label(AppLocalized("New Chat"), systemImage: "square.and.pencil") }
+            // Android: rename from the room's menu; a chat that has not been sent yet has no row to name.
+            if let id = main.chatId, !main.isDraft {
+                Button { rename.open(id) } label: { Label(AppLocalized("Rename chat"), systemImage: "pencil") }
+            }
             if !NanoMuseAppearance.shared.headerModel {
                 Button { chatAction(.model) } label: { Label(AppLocalized("Model"), systemImage: "cpu") }
             }
@@ -847,9 +903,12 @@ struct NanoMuseDrawer: View {
     var onSettings: () -> Void
 
     @ObservedObject private var hub = NanoMuseHub.shared
+    @ObservedObject private var sync = NanoMuseSync.shared
+    @StateObject private var rename = NanoMuseRenamePrompt()
     @State private var sessions: [ChatSession] = []
     @State private var query = ""
     @State private var dragOffset: CGFloat = 0
+    @State private var deleteCandidate: String?
 
     private var width: CGFloat { min(320, UIScreen.main.bounds.width * 0.82) }
 
@@ -984,11 +1043,35 @@ struct NanoMuseDrawer: View {
                             } label: {
                                 Label(AppLocalized("Make this the main chat"), systemImage: "house")
                             }
+                            Button {
+                                rename.open(session.id)
+                            } label: {
+                                Label(AppLocalized("Rename chat"), systemImage: "pencil")
+                            }
+                            Divider()
+                            Button(role: .destructive) {
+                                deleteCandidate = session.id
+                            } label: {
+                                Label(AppLocalized("Delete chat"), systemImage: "trash")
+                            }
                         }
                     }
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                .nmRenameAlert(rename)
+                .alert(AppLocalized("Delete chat"), isPresented: Binding(get: { deleteCandidate != nil }, set: { if !$0 { deleteCandidate = nil } })) {
+                    Button(AppLocalized("Cancel"), role: .cancel) {}
+                    Button(AppLocalized("Delete"), role: .destructive) {
+                        if let id = deleteCandidate {
+                            NanoMuseChatDelete.delete(id)
+                            sessions.removeAll { $0.id == id }
+                        }
+                        deleteCandidate = nil
+                    }
+                } message: {
+                    Text(AppLocalized("The chat and its messages are removed from this device. With sync on, the other devices remove it too."))
+                }
             }
 
             Divider()
@@ -1068,6 +1151,13 @@ struct NanoMuseDrawer: View {
                     .font(.body)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
+                // C7: a chat that arrived through sync names the device it was started on.
+                if let from = sync.originDeviceName(for: session.id) {
+                    Text(String(format: AppLocalized("From %@"), from))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 if let last = session.lastMessage, !last.isEmpty {
                     Text(last)
                         .font(.footnote)

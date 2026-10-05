@@ -103337,52 +103337,6 @@
         }
       }
     },
-    "A phone number or an e-mail, a code, and %@ of credit comes with the account. No card. Or add a key of your own below." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A phone number or an e-mail, a code, and %@ of credit comes with the account. No card. Or add a key of your own below."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "手机号或邮箱，一个验证码，账号自带 %@ 额度。不需要绑卡。也可以在下面填自己的 Key。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "手機號或電子郵件，一個驗證碼，帳號自帶 %@ 額度。不需要綁卡。也可以在下面填自己的 Key。"
-          }
-        }
-      }
-    },
-    "A phone number or an e-mail, a code, and the model is yours to use. No card. Or add a key of your own below." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A phone number or an e-mail, a code, and the model is yours to use. No card. Or add a key of your own below."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "手机号或邮箱，一个验证码，模型就能用了。不需要绑卡。也可以在下面填自己的 Key。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "手機號或電子郵件，一個驗證碼，模型就能用了。不需要綁卡。也可以在下面填自己的 Key。"
-          }
-        }
-      }
-    },
     "Account activity" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -104115,29 +104069,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "顯示執行步驟"
-          }
-        }
-      }
-    },
-    "Sign in to nanoMuse Cloud — free" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in to nanoMuse Cloud — free"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "登录 nanoMuse 云端——免费"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "登入 nanoMuse 雲端——免費"
           }
         }
       }
@@ -116259,6 +116190,926 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "nanoMuse 雲在這個應用裡就是一個普通的服務商：它的模型列在「服務商」裡，也可以和你自己的模型放進同一個模型組。"
+          }
+        }
+      }
+    },
+    "Back to typing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to typing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到键盘输入"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到鍵盤輸入"
+          }
+        }
+      }
+    },
+    "Commands" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "命令"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "命令"
+          }
+        }
+      }
+    },
+    "Rename chat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename chat"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重命名"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新命名"
+          }
+        }
+      }
+    },
+    "Chat name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat name"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话名称"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "對話名稱"
+          }
+        }
+      }
+    },
+    "Delete chat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete chat"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除对话"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除對話"
+          }
+        }
+      }
+    },
+    "The chat and its messages are removed from this device. With sync on, the other devices remove it too." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The chat and its messages are removed from this device. With sync on, the other devices remove it too."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个对话和它的消息会从这台设备删除。开着同步时，其他设备也会一起删除。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這個對話和它的訊息會從這台裝置刪除。開著同步時，其他裝置也會一起刪除。"
+          }
+        }
+      }
+    },
+    "Background & notifications" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Background & notifications"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "后台与通知"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "背景與通知"
+          }
+        }
+      }
+    },
+    "Allowed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允许"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允許"
+          }
+        }
+      }
+    },
+    "Not asked yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not asked yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未询问"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未詢問"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开设置"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打開設定"
+          }
+        }
+      }
+    },
+    "Background App Refresh" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Background App Refresh"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "后台 App 刷新"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "背景 App 重新整理"
+          }
+        }
+      }
+    },
+    "A notification is how the agent reaches you when the app is closed: a routine finished, a computer answered, a reply came in on another device." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A notification is how the agent reaches you when the app is closed: a routine finished, a computer answered, a reply came in on another device."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知是 App 关着时代理找到你的方式：一个例行任务做完了、一台电脑回话了、另一台设备上来了回复。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知是 App 關著時代理找到你的方式：一個例行任務做完了、一台電腦回話了、另一台裝置上來了回覆。"
+          }
+        }
+      }
+    },
+    "iOS pauses apps that are not on screen. With Background App Refresh on, the app gets short slots to check the hub and finish a routine; without it, work resumes when you open the app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS pauses apps that are not on screen. With Background App Refresh on, the app gets short slots to check the hub and finish a routine; without it, work resumes when you open the app."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 会暂停不在屏幕上的 App。开着后台 App 刷新时，App 能得到一些短暂的时间去查看中枢、把例行任务做完；关着时，要等你打开 App 才会继续。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 會暫停不在螢幕上的 App。開著背景 App 重新整理時，App 能得到一些短暫的時間去查看中樞、把例行任務做完；關著時，要等你打開 App 才會繼續。"
+          }
+        }
+      }
+    },
+    "Long tasks are better placed on a computer that stays on. Your computers run them in full and send the result here." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long tasks are better placed on a computer that stays on. Your computers run them in full and send the result here."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长时间的任务更适合放在一直开着的电脑上。你的电脑会把它们完整跑完，再把结果发到这里。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長時間的任務更適合放在一直開著的電腦上。你的電腦會把它們完整跑完，再把結果發到這裡。"
+          }
+        }
+      }
+    },
+    "Hands" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双手"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "雙手"
+          }
+        }
+      }
+    },
+    "Not on iPhone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not on iPhone"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 上不可用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone 上不可用"
+          }
+        }
+      }
+    },
+    "On this iPhone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On this iPhone"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在这台 iPhone 上"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在這台 iPhone 上"
+          }
+        }
+      }
+    },
+    "Hands on your computers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands on your computers"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在你的电脑上使用双手"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在你的電腦上使用雙手"
+          }
+        }
+      }
+    },
+    "Hands are the agent's way of operating a device itself: tapping through apps, filling forms, reading what is on screen. On Android and on your computers the agent can take the controls when you let it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hands are the agent's way of operating a device itself: tapping through apps, filling forms, reading what is on screen. On Android and on your computers the agent can take the controls when you let it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「双手」是代理亲自操作设备的方式：在 App 里点按、填表、读屏幕上的内容。在 Android 和你的电脑上，你允许后代理就能接手操作。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「雙手」是代理親自操作裝置的方式：在 App 裡點按、填表、讀螢幕上的內容。在 Android 和你的電腦上，你允許後代理就能接手操作。"
+          }
+        }
+      }
+    },
+    "iOS does not let one app operate another, so there is no switch here: the agent can only act inside nanoMuse. It can open pages in the in-app browser, keep its files and run its routines; other apps on this phone are out of its reach by design." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS does not let one app operate another, so there is no switch here: the agent can only act inside nanoMuse. It can open pages in the in-app browser, keep its files and run its routines; other apps on this phone are out of its reach by design."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 不允许一个 App 操作另一个 App，所以这里没有开关：代理只能在 nanoMuse 里面行动。它可以在内置浏览器里打开网页、管理自己的文件、运行例行任务；这台手机上的其他 App 本来就不在它够得到的范围内。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 不允許一個 App 操作另一個 App，所以這裡沒有開關：代理只能在 nanoMuse 裡面行動。它可以在內建瀏覽器裡打開網頁、管理自己的檔案、執行例行任務；這台手機上的其他 App 本來就不在它夠得到的範圍內。"
+          }
+        }
+      }
+    },
+    "A computer with nanoMuse Desktop can operate its own apps, terminal and browser. Ask from here and the result comes back to this chat." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A computer with nanoMuse Desktop can operate its own apps, terminal and browser. Ask from here and the result comes back to this chat."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "装了 nanoMuse Desktop 的电脑可以操作它自己的 App、终端和浏览器。在这里开口，结果会回到这个对话。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "裝了 nanoMuse Desktop 的電腦可以操作它自己的 App、終端機和瀏覽器。在這裡開口，結果會回到這個對話。"
+          }
+        }
+      }
+    },
+    "Sync conversations between my devices" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync conversations between my devices"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在我的设备之间同步对话"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在我的裝置之間同步對話"
+          }
+        }
+      }
+    },
+    "The text of your chats is kept on nanoMuse Cloud so every device shows the same conversations. Files and images stay on the device they were made on." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The text of your chats is kept on nanoMuse Cloud so every device shows the same conversations. Files and images stay on the device they were made on."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话文字会保存在 nanoMuse Cloud，让每台设备看到同样的对话。文件和图片只留在产生它们的设备上。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "對話文字會保存在 nanoMuse Cloud，讓每台裝置看到同樣的對話。檔案和圖片只留在產生它們的裝置上。"
+          }
+        }
+      }
+    },
+    "Sign in to sync" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to sync"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录后才能同步"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入後才能同步"
+          }
+        }
+      }
+    },
+    "Delete synced conversations" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete synced conversations"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除已同步的对话"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除已同步的對話"
+          }
+        }
+      }
+    },
+    "%d conversations, %d messages on nanoMuse Cloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d conversations, %d messages on nanoMuse Cloud."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud 上有 %d 个对话、%d 条消息。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud 上有 %d 個對話、%d 則訊息。"
+          }
+        }
+      }
+    },
+    "The synced conversations are removed from nanoMuse Cloud. The chats on your devices stay." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The synced conversations are removed from nanoMuse Cloud. The chats on your devices stay."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已同步的对话已从 nanoMuse Cloud 删除。各设备上的对话还在。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已同步的對話已從 nanoMuse Cloud 刪除。各裝置上的對話還在。"
+          }
+        }
+      }
+    },
+    "Removes what nanoMuse Cloud holds of your conversations. Every device keeps its own chats; the switch stays as it is." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removes what nanoMuse Cloud holds of your conversations. Every device keeps its own chats; the switch stays as it is."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除 nanoMuse Cloud 上保存的你的对话。每台设备保留自己的对话；开关保持不变。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除 nanoMuse Cloud 上保存的你的對話。每台裝置保留自己的對話；開關保持不變。"
+          }
+        }
+      }
+    },
+    "Deleting a chat on one device deletes it on all of them. Nobody but your devices can read the text; the operator sees counts, not words." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting a chat on one device deletes it on all of them. Nobody but your devices can read the text; the operator sees counts, not words."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在一台设备上删除对话，所有设备都会删除。除了你的设备没人能读到文字；运营方只看到数量，看不到内容。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在一台裝置上刪除對話，所有裝置都會刪除。除了你的裝置沒人能讀到文字；營運方只看到數量，看不到內容。"
+          }
+        }
+      }
+    },
+    "From %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自 %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "來自 %@"
+          }
+        }
+      }
+    },
+    "Files on the other device: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files on the other device: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "留在另一台设备上的文件：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "留在另一台裝置上的檔案：%@"
+          }
+        }
+      }
+    },
+    "Ask this device" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask this device"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让这台设备去做"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "讓這台裝置去做"
+          }
+        }
+      }
+    },
+    "Start a message with @ and the device's name and your agent there does the work; the answer comes back to this chat." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a message with @ and the device's name and your agent there does the work; the answer comes back to this chat."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "消息以 @ 加设备名开头，那台设备上的代理就会去做；回答会回到这个对话。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "訊息以 @ 加裝置名開頭，那台裝置上的代理就會去做；回答會回到這個對話。"
+          }
+        }
+      }
+    },
+    "%@ is not online right now." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is not online right now."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 现在不在线。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 現在不在線上。"
+          }
+        }
+      }
+    },
+    "%@ answered:" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ answered:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 的回答："
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 的回答："
+          }
+        }
+      }
+    },
+    "%@ did not answer: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ did not answer: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 没有回答：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 沒有回答：%@"
+          }
+        }
+      }
+    },
+    "%@ asked for permission for a step and did not get it from here; approve such steps on that device." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ asked for permission for a step and did not get it from here; approve such steps on that device."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 有一步需要许可，这边没有批准；这类步骤请在那台设备上批准。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 有一步需要許可，這邊沒有批准；這類步驟請在那台裝置上批准。"
+          }
+        }
+      }
+    },
+    "The following was asked from %@, one of the user's other devices. Do it on this phone and answer in the user's language." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The following was asked from %@, one of the user's other devices. Do it on this phone and answer in the user's language."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下面这件事是用户在 %@（用户的另一台设备）上交代的。在这台手机上完成，并用用户的语言回答。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下面這件事是使用者在 %@（使用者的另一台裝置）上交代的。在這支手機上完成，並用使用者的語言回答。"
+          }
+        }
+      }
+    },
+    "A step needed permission on this iPhone and was declined: nobody was there to approve it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A step needed permission on this iPhone and was declined: nobody was there to approve it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有一步需要这台 iPhone 上的许可，已被拒绝：当时没有人在这台手机上批准。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有一步需要這台 iPhone 上的許可，已被拒絕：當時沒有人在這支手機上批准。"
+          }
+        }
+      }
+    },
+    "Your other devices can hand this iPhone a task while nanoMuse is open here: start a message there with @ and this iPhone's name." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your other devices can hand this iPhone a task while nanoMuse is open here: start a message there with @ and this iPhone's name."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse 在这台 iPhone 上开着时，你的其他设备可以把任务交给它：在那边以 @ 加这台 iPhone 的名字开头发消息。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse 在這台 iPhone 上開著時，你的其他裝置可以把任務交給它：在那邊以 @ 加這台 iPhone 的名字開頭發訊息。"
           }
         }
       }

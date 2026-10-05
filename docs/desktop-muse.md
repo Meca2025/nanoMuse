@@ -209,9 +209,10 @@ allowed without asking until you revoke the grant, on the agent page or under Se
 Computer use → *Always allowed*. Settings → **Computer use** shows the two macOS
 permissions with *Allow* and *Open System Settings* (through the desktop shell; the
 first time the hands are about to start, the shell asks for them in order with a word on
-why, the phone's and Codex's way — Accessibility, then Screen Recording for **both**
-nanoMuse Desktop and the bundled `nanomuse` runtime, which is the binary that captures
-and clicks), *Keep the screen awake while it works* (the shell holds a power-save
+why, the phone's and Codex's way — Accessibility, then Screen Recording for nanoMuse
+Desktop, which since 0.1.36 is the binary that captures and clicks; the bundled
+`nanomuse` runtime only needs them when it runs without the shell), *Keep the screen
+awake while it works* (the shell holds a power-save
 blocker while a session runs) and the note that anything that sends, pays or deletes is
 asked first.
 
@@ -224,13 +225,32 @@ it outside the window, and the tool call waits (up to ten minutes) until you pre
 /nanomuse/cloud/holds`) so the agent pauses before its next hands call while you use the
 mouse; *Done* resumes. Questions keep *Open*. Stop (the square) still cancels the turn.
 
+**The operator.** The hands themselves are the shell's (`src/operator.ts`, a port of
+UI-TARS-desktop's `NutJSOperator` on `@computer-use/nut-js`): the screenshot through
+Electron's `desktopCapturer` at the display's size, the pointer moved straight to the
+point and left there 100 ms before the click, drags, scrolls, typing through the
+clipboard for anything beyond ASCII, the hotkey table (`ctrl` is ⌘ on a Mac). The
+runtime's `nanomuse mcp` reaches them over a loopback HTTP server the shell starts per
+launch (`NANOMUSE_OPERATOR_URL` / `NANOMUSE_OPERATOR_TOKEN` in its environment, which
+the preset passes through to the MCP server), so the model's coordinates — pixels of
+the picture it was shown — are mapped once to the operator's screen pixels and land
+where it pointed, on a scaled display as on a plain one
+([gui.md](gui.md#hands-on-the-computer-the-picture-is-the-unit)). Without the shell
+(`nanomuse` run on its own) the runtime falls back to `pyautogui` / `xdotool`.
+
 **The glow.** While the hands run, the shell puts a transparent, click-through,
 always-on-top window over the whole display (UI-TARS's ScreenMarker): a slow animated
-gradient along the edge — amber while a hold is on — and the agent's face as a small
-cursor sprite where the hands last pointed, with the step's words under it. It cannot
-take focus or a click, it is gone 400 ms after the hands stop, and it, the capsule and
-the nanoMuse window itself while the hands run all have `setContentProtection(true)`,
-so none of them is in the screenshots the runtime takes.
+gradient along the edge — amber while a hold is on — the agent's face as a small
+cursor sprite where the hands last pointed, with the step's words under it, and the
+**prediction marker** at the exact point the operator acted on: a turning red dashed
+ring with a dot in the middle and the action's name beside it, a dashed line from start
+to end for a drag, fading 1.6 s after the action. The marker comes from the operator
+itself (its own fractions of the display), not from the client's reading of the tool
+call, so it is where the click went. It cannot take focus or a click, it is gone 400 ms
+after the hands stop, and it, the capsule and the nanoMuse window itself while the hands
+run all have `setContentProtection(true)`, so none of them is in the screenshots the
+runtime takes — on Linux, where content protection does nothing, the glow steps out of
+the way for the instant of the capture instead.
 
 **The live stage** is Muse's, picture-in-picture over the chat (bottom right and 400 px
 to begin with; drag it anywhere, resize it from the bottom-right corner, and the place

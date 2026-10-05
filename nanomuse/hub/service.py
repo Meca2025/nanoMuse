@@ -225,6 +225,7 @@ class HubService:
             on_devices=lambda _devices: self.publish(),
             on_state=lambda _state, _detail: self.publish(),
             on_profile=self.profile.on_frame,
+            on_sync=self.svc.sync.on_frame,
         )
         self.client.start()
         self._sync_tools(True)
@@ -354,6 +355,8 @@ class HubService:
         self.publish()
         # the account's name and look, if another device set them first
         self.profile.pull_soon()
+        # the account's conversations (a different account starts from cursor 0)
+        self.svc.sync.account_changed(str(account.get("id") or ""))
         # ``created`` rides along: a brand-new account is offered a password and the
         # model source right after (the clients' first-sign-in steps).
         return {**self.account_view(), "created": bool(data.get("created"))}
@@ -466,6 +469,7 @@ class HubService:
             cloud.pop(key, None)
         self.data["cloud"] = cloud
         self.profile.forget()
+        self.svc.sync.signed_out()
         self._save()
         if was_model:
             # the client would otherwise keep sending the revoked key

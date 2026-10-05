@@ -35,6 +35,9 @@
     GET  /api/vault  PUT|DELETE /api/vault/{name}   (names only ever come back)
     POST /api/onboarded
     GET  /api/nudges (?refresh=1)         when the app may ask for a star: the relay's policy, read once a day
+    GET|PUT /api/sync/state {enabled}     conversations synced between the account's devices: the switch, the cursor, the relay's counts
+    POST /api/sync/delete                 delete what the relay stores for the account (the switch stays)
+    POST /api/sync/pull                   pull the other devices' changes now
     GET  /api/update (?refresh=1)         installed and latest release (nanomuse.cn/dl first, GitHub second; a day's cache)
     GET  /api/avatar                      the avatar studio: can a face be drawn, the session under way
     POST /api/avatar/begin {description, style?}  a session: the card with the cost in the chat
@@ -321,6 +324,10 @@ class AvatarSessionBody(BaseModel):
 
 class CloudContributeBody(BaseModel):
     on: bool = False
+
+
+class SyncStateBody(BaseModel):
+    enabled: bool = True
 
 
 class CloudLoginBody(BaseModel):
@@ -1135,6 +1142,44 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
             return {"deleted": await svc.hub.delete_samples()}
         except CloudError as exc:
             raise _cloud_http(exc) from exc
+
+    # ------------------------------------------------------------------ conversation sync (contract C7)
+    async def _sync_view() -> dict[str, Any]:
+        return {**svc.sync.view(), "relay": await svc.sync.relay_state()}
+
+    @app.get("/api/sync/state", dependencies=dep)
+    async def sync_state() -> dict[str, Any]:
+        """Data controls: the switch here, whether the account is signed in (``available``),
+        the cursor, and the relay's own counts under ``relay`` (null when it cannot be asked)."""
+        return await _sync_view()
+
+    @app.put("/api/sync/state", dependencies=dep)
+    async def sync_set_state(body: SyncStateBody) -> dict[str, Any]:
+        """Off tells the relay, which deletes everything stored for the account; on re-pushes
+        this device's chats and pulls the others'."""
+        try:
+            await svc.sync.set_enabled(body.enabled)
+        except CloudError as exc:
+            raise _cloud_http(exc) from exc
+        return await _sync_view()
+
+    @app.post("/api/sync/delete", dependencies=dep)
+    async def sync_delete() -> dict[str, Any]:
+        """“Delete synced conversations”: the relay's store emptied; the switch and the local
+        chats stay."""
+        try:
+            await svc.sync.delete_remote()
+        except CloudError as exc:
+            raise _cloud_http(exc) from exc
+        return await _sync_view()
+
+    @app.post("/api/sync/pull", dependencies=dep)
+    async def sync_pull() -> dict[str, Any]:
+        try:
+            applied = await svc.sync.pull()
+        except CloudError as exc:
+            raise _cloud_http(exc) from exc
+        return {"applied": applied, **svc.sync.view()}
 
     @app.post("/api/cloud/use-as-model", dependencies=dep)
     async def cloud_use_as_model(body: CloudModelBody) -> dict[str, Any]:

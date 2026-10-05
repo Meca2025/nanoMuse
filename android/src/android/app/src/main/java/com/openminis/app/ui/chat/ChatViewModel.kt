@@ -3627,6 +3627,13 @@ class ChatViewModel(
 
     init {
         loadSession()
+        // nanoMuse: rows synced from the account's other devices land in this chat while it is
+        // open — reloaded from the database between turns, never under a running one.
+        viewModelScope.launch {
+            io.github.nanomuse.sync.ConversationSync.pulled.collect { ids ->
+                if (realSessionId.ifEmpty { sessionId } in ids && !_isStreaming.value) reloadSessionFromDb()
+            }
+        }
         // [T-session-paused-badge-active-false-positive] Drive the session-list
         // PAUSED badge directly off canResume — the authoritative "this session
         // is interrupted (tap Resume)" flag. This is the single chokepoint over
@@ -6380,10 +6387,13 @@ class ChatViewModel(
         // nanoMuse: "change your avatar to …" (and a pick while the options are
         // up) is handled in the app, not by the model.
         if (nmInterceptAvatar(text)) { nmCountableTurn = false; return }
+        // nanoMuse: "@Mac …" opens a turn for that device — the mention comes out of the text,
+        // a one-turn note sends the work there through nanomuse-pc (contract C7, rule 8).
+        val nmText = io.github.nanomuse.sync.DeviceMention.apply(context, realSessionId.ifEmpty { sessionId }, text)
         // nanoMuse: during the first conversation the text goes to the model as
         // it is; the model says what it meant in a `nanomuse-naming` block and
         // nmAfterTurn moves the phase (see FirstConversation).
-        sendMessage(text, skipContextCheck = false)
+        sendMessage(nmText, skipContextCheck = false)
     }
 
     // ─── nanoMuse: changing the face from the chat ─────────────────────────

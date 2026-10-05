@@ -919,4 +919,19 @@
     <string name="nm_connectors_cat_search">搜索与网页</string>
     <string name="nm_connectors_cat_infra">基础设施</string>
     <string name="nm_connectors_cat_misc">更多</string>
+
+    <!-- 账号各设备之间的对话同步（契约 C7） -->
+    <string name="nm_sync_title">在我的设备之间同步对话</string>
+    <string name="nm_sync_caption">对话文字会保存在 nanoMuse Cloud，让每台设备看到同样的对话。文件和图片只留在产生它们的设备上。</string>
+    <string name="nm_sync_sign_in">登录后可同步</string>
+    <string name="nm_sync_on_toast">已开启。正在发送这台手机上的对话。</string>
+    <string name="nm_sync_off_toast">已关闭。云端保存的内容已删除。</string>
+    <string name="nm_sync_delete">删除已同步的对话</string>
+    <string name="nm_sync_delete_sub">从 nanoMuse Cloud 删除对话文字。各设备上已有的对话保留，同步保持开启。</string>
+    <string name="nm_sync_delete_confirm">保存在 nanoMuse Cloud 的对话会被删除。各设备上的聊天保持原样。</string>
+    <string name="nm_sync_deleted">已删除同步的对话。</string>
+    <string name="nm_sync_from">来自 %1$s</string>
+    <string name="nm_sync_attachment_note">[附件 %1$s——只留在产生它的设备上]</string>
+    <string name="nm_devices_ask">交给这台设备</string>
+    <string name="nm_devices_ask_hint">点一台在线的设备，就能在聊天里对它说话：消息以 @ 加设备名开头，由那台设备去做。</string>
 </resources>

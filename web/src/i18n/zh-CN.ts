@@ -1651,6 +1651,27 @@ const zhCN: Record<string, string> = {
   "Soul & memory": "SOUL 与记忆",
   "Handle with care": "请谨慎访问",
   "This device's name": "这台设备的名字",
+
+  // Conversations synced between the account's devices (contract C7)
+  "Sync conversations between my devices": "在我的设备之间同步对话",
+  "The text of your chats is kept on nanoMuse Cloud so every device shows the same conversations. Files and images stay on the device they were made on.":
+    "对话文字会保存在 nanoMuse Cloud，让每台设备看到同样的对话。文件和图片只留在产生它们的设备上。",
+  "Paused: sign in again to continue.": "已暂停：重新登录后继续。",
+  "{c} chats, {m} messages kept so far.": "目前保存了 {c} 个对话、{m} 条消息。",
+  "Delete synced conversations": "删除已同步的对话",
+  "{n} chats": "{n} 个对话",
+  "Removes what nanoMuse Cloud stores for this account; the chats on each device stay, and the switch stays on. Deleting a chat on one device deletes it on all of them.":
+    "删除 nanoMuse Cloud 为这个账号保存的内容；每台设备上的对话保留，开关也保持打开。在一台设备上删除某个对话，会在所有设备上一起删除。",
+  "Off deletes the synced conversations from nanoMuse Cloud. The chats on each device stay.": "关闭后会从 nanoMuse Cloud 删除已同步的对话。每台设备上的对话保留。",
+  "On. Your devices show the same conversations from now on.": "已打开。从现在起，你的设备会看到同样的对话。",
+  "Off. Nothing is kept on nanoMuse Cloud any more.": "已关闭。nanoMuse Cloud 不再保存任何对话。",
+  "The synced conversations are removed from nanoMuse Cloud. The chats on each device stay. This cannot be undone.": "已同步的对话将从 nanoMuse Cloud 删除。每台设备上的对话保留。此操作无法撤销。",
+  "Synced conversations deleted.": "已删除已同步的对话。",
+  "From {device}": "来自 {device}",
+  "to {device}": "发给 {device}",
+  "This goes to {device}.": "这条会发给 {device}。",
+  "Runs this there and reports back": "在那台设备上执行并汇报结果",
+  Offline: "离线",
 };
 
 export default zhCN;

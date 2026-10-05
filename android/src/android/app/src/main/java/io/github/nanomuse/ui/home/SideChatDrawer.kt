@@ -95,6 +95,8 @@ fun SideChatDrawer(
     val codingComputers = remember(hubDevices) {
         hubDevices.count { it.online && it.actions.contains("coding.sessions") && it.id != io.github.nanomuse.hub.Hub.deviceId(context) }
     }
+    // nanoMuse: chats that came from another device of the account carry its name (contract C7)
+    val badges by io.github.nanomuse.sync.ConversationSync.badges.collectAsState()
     var query by remember { mutableStateOf("") }
     val sideChats = remember(sessions, mainSessionId, query) {
         sessions
@@ -254,6 +256,7 @@ fun SideChatDrawer(
                     SideChatRow(
                         session = session,
                         selected = session.id == currentSessionId,
+                        badge = badges[session.id]?.let { stringResource(R.string.nm_sync_from, it) },
                         onClick = { onOpenSession(session.id) },
                         onSetMain = { onSetMain(session.id) },
                     )
@@ -317,6 +320,8 @@ fun SideChatDrawer(
 private fun SideChatRow(
     session: ChatSessionEntity,
     selected: Boolean,
+    /** "From Pixel 8" under the title when the chat was started on another device; null for this phone's own. */
+    badge: String?,
     onClick: () -> Unit,
     onSetMain: () -> Unit,
 ) {
@@ -332,14 +337,24 @@ private fun SideChatRow(
                 .combinedClickable(onClick = onClick, onLongClick = { menu = true })
                 .padding(horizontal = 14.dp, vertical = 11.dp),
         ) {
-            Text(
-                text = session.title?.takeIf { it.isNotBlank() } ?: stringResource(R.string.nm_drawer_untitled),
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = session.title?.takeIf { it.isNotBlank() } ?: stringResource(R.string.nm_drawer_untitled),
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (badge != null) {
+                    Text(
+                        text = badge,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             Spacer(Modifier.size(10.dp))
             Text(
                 text = relativeDay(session.updatedAt),

@@ -230,7 +230,7 @@ function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => vo
         <MuseDivider inset={16} />
         <div className="flex items-center gap-2 px-4 py-3 text-[13px] text-muted">
           <span>{t("Driver")}:</span>
-          {(["auto", "pyautogui", "xdotool"] as const).map((b) => (
+          {(["auto", "desktop", "pyautogui", "xdotool"] as const).map((b) => (
             <button
               key={b}
               type="button"

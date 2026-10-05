@@ -13,6 +13,12 @@
     GET  /v1/me/events                                          → the account's own timeline (sign-ins, password changes…)
     POST /v1/me/contribute {on}                                 → Data controls: "help improve nanoMuse's AI models" — keep the text of my chat turns (the default for new accounts is IMPROVE_DEFAULT)
     DELETE /v1/me/samples                                       → delete every turn kept from me
+    GET  /v1/sync/state                                         → 0.19: {enabled, cursor, counts, limits} — conversation sync between the account's devices
+    PUT  /v1/sync/state       {enabled}                         → the switch; off deletes everything stored
+    GET  /v1/sync/changes     ?since=&limit=                    → conversations and messages after a cursor, in seq order
+    POST /v1/sync/changes     {device, conversations, messages} → {cursor, accepted, rejected}; the other devices hear a hub `sync` frame
+    DELETE /v1/sync/changes                                     → the store emptied, the switch kept
+    DELETE /v1/sync/conversations/{cid}                         → one chat tombstoned everywhere
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
     POST /v1/auth/sign-out-all {all?}                           → {signed_out} (every other device; all=true takes this one too)
     POST /v1/auth/session-key {device?, ttl_s?}                 → {api_key, expires_at} (a key that lapses on its own; nanoMuse Web's containers)
@@ -53,6 +59,7 @@
     GET  /v1/admin/data       X-Admin-Token  ?days=30           → Data controls: accounts with the switch on, kept turns by day / model / app / account, switches on and off, the newest turns
     GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → kept turns (accounts with the switch on only)
     GET  /v1/admin/samples/export X-Admin-Token ?since=&account_id= → the same as JSON lines, without account ids or addresses
+    GET  /v1/admin/sync       X-Admin-Token                     → conversation sync in aggregate: accounts on / off, conversations, messages, bytes (never a text)
 
 The video paths mirror the provider's own so the app's VideoGen, which
 already speaks that API, only needs to point its host at the relay.
@@ -91,6 +98,7 @@ from .geo import Geo, collect_ips, group_places
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
 from .service import Caller, Cloud, CloudError, dumps, estimate_tokens, prompt_chars, usage_from_json
+from .sync import DEFAULT_PAGE, SyncStore
 
 log = logging.getLogger("nanomuse_cloud.api")
 
@@ -484,6 +492,57 @@ def create_app(
             await hub.drop_account(caller.account_id)
         cloud.delete_account(caller)
         return Response(status_code=204)
+
+    # -- conversation sync (0.19, sync.py): the same chats on every device of the account -----------
+
+    sync_store = SyncStore(cloud.db)
+    app.state.sync = sync_store
+
+    @app.get("/v1/sync/state")
+    async def sync_state(caller: Caller = Depends(caller_dep)) -> dict:
+        return sync_store.state(caller.account_id)
+
+    @app.put("/v1/sync/state")
+    async def sync_set_state(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+        """{"enabled": false} turns sync off and deletes everything stored; true turns it on
+        again with an empty store. The account's timeline notes the switch, never a text."""
+        body = await _json(request)
+        if "enabled" not in body:
+            raise CloudError(400, "bad_request", "Say enabled: true or false")
+        enabled = bool(body["enabled"])
+        out = sync_store.state(caller.account_id)
+        if out["enabled"] != enabled:
+            out = sync_store.set_enabled(caller.account_id, enabled)
+            cloud.note(caller.account_id, "sync.on" if enabled else "sync.off")
+        return out
+
+    @app.get("/v1/sync/changes")
+    async def sync_changes(since: int = 0, limit: int = DEFAULT_PAGE, caller: Caller = Depends(caller_dep)) -> dict:
+        return sync_store.changes(caller.account_id, since, limit)
+
+    @app.post("/v1/sync/changes")
+    async def sync_push(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+        body = await _json(request)
+        device = str(body.get("device") or "")[:80]
+        out = sync_store.push(caller.account_id, device, body.get("conversations") or [], body.get("messages") or [])
+        hub = getattr(app.state, "hub", None)
+        if hub is not None and out["accepted"]:
+            await hub.notify_sync(caller.account_id, int(out["cursor"]), device)
+        return out
+
+    @app.delete("/v1/sync/changes")
+    async def sync_wipe(caller: Caller = Depends(caller_dep)) -> dict:
+        out = sync_store.wipe(caller.account_id)
+        cloud.note(caller.account_id, "sync.deleted")
+        return out
+
+    @app.delete("/v1/sync/conversations/{cid}")
+    async def sync_delete_conversation(cid: str, request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+        out = sync_store.delete_conversation(caller.account_id, cid)
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.notify_sync(caller.account_id, int(out["cursor"]), request.headers.get("x-nanomuse-device", "")[:80])
+        return out
 
     # -- models ------------------------------------------------------------------------
 
@@ -1164,6 +1223,12 @@ def create_app(
                 "Content-Length": str(len(body)),
             },
         )
+
+    @app.get("/v1/admin/sync", dependencies=[Depends(admin_dep)])
+    async def admin_sync() -> dict:
+        """Conversation sync in aggregate (0.19): accounts with it on and off, how many
+        conversations and messages are stored and their size. Never a text, never an account."""
+        return sync_store.admin_totals()
 
     @app.post("/v1/admin/grant", dependencies=[Depends(admin_dep)])
     async def admin_grant(request: Request) -> dict:

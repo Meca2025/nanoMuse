@@ -228,6 +228,22 @@ After an action the executor waits for the UI to settle (650 ms on MobileGym; on
 
 On a device with a capsule — the Android app, and the MobileGym module, which draws the same pill in the simulated phone — a task is never silent: a pill at the top of the screen shows the red panda, the step in progress (*Muse · 点击「查询车票」*) and a **Stop** button, over whatever app is being operated. It appears on `task begin`, follows every step, and goes on `task end` — a tick for a moment, then the phone comes back to nanoMuse, where the agent's report is (the Android app brings itself to the front; the MobileGym module resumes the nanoMuse app); it is not part of the screenshot. Stop is the user's brake — no long press, no menu: one tap, the action in flight fails with `nanomuse:stop`, the pill says *Stopped* and hides itself, the phone comes back to nanoMuse, and the agent asks what to do next instead of carrying on. When the agent needs the user (`ask`, `blocked`) the pill grows into a card with the question and an *Open* button that brings nanoMuse to the front; it stays a minute, then folds away.
 
+## Hands on the computer: the picture is the unit
+
+The computer's hands (`computer_screen` / `computer_act`, [every-device.md](every-device.md#hands-on-this-computer)) follow the same rule as the phone's, with one more step, because a computer's picture and its pointer rarely share a size: a 4K display is 3840×2160 to X11 and to the mouse, 1920×1080 "logical" to Electron, and the model is shown a picture of 1596×896. Until 0.1.36 those spaces were mixed — the model was told the screen's size, shown a smaller picture and its numbers were clicked raw — which is why clicks on Linux landed beside their targets.
+
+Now the **picture is the unit**. `computer_screen` says the picture's size on its first line (`<window in front> · 1596×896 · …`) and closes with *Coordinates: pixels of this 1596×896 picture, (0,0) top-left.*; `computer_act` takes `x`, `y` — or a `box` `[x1, y1, x2, y2]`, whose centre is used — in that picture, and `drag` takes `x2`, `y2` / `box2` the same way. The runtime keeps the hands' own space (the operator's screen pixels) apart from the picture and converts once, just before acting and again for the stage and the glow (`nanomuse/computer/coords.py`, `Mapping`). The picture is the screen capped at `[hands] max_image_width`, then snapped to the 28-pixel grid Qwen3-VL resizes to (UI-TARS's `smart_resize`), so the model's own resize is the identity and a pixel it names is a pixel it saw. `[hands] coords = "norm1000"` makes `x`, `y` a 0–1000 grid over the picture instead, for a hands model trained that way.
+
+Where the hands' space comes from, by backend:
+
+| backend | the hands' space | notes |
+|---|---|---|
+| `desktop` (the desktop app) | the display's logical size × its scale factor; the scale factor is 1 on macOS (points) | the app's own operator — `@computer-use/nut-js`, a port of UI-TARS-desktop's — over loopback HTTP; `auto` takes it whenever the app set `NANOMUSE_OPERATOR_URL` |
+| `pyautogui` | `pyautogui.size()` | points on macOS, physical pixels elsewhere |
+| `xdotool` | `xdotool getdisplaygeometry` | X11 root pixels |
+
+What `computer_screen` reports to the client (`status()` / the event): `picture_size` and `screen_size` separately. The desktop app draws the prediction marker — a turning dashed ring, a dot at the exact point, the action's name beside it, a dashed line for a drag — from the operator's own fractions of the display, so what you see is where it clicked, not where the client thought it would.
+
 ## Limits
 
 - One phone at a time: the most recently connected device with `gui: true` is the one the agent operates.

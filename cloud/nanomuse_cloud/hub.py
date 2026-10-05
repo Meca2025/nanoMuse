@@ -22,6 +22,7 @@ From the hub:
     {"type":"result", …}  {"type":"event", …}             forwarded to the caller
     {"type":"error","code","message","id"?}               e.g. device_offline, not_controllable
     {"type":"pong"}
+    {"type":"sync","what":"conversations","cursor","from"}  another device pushed chats; pull (0.19)
 
 `key` in hello is for browsers, which cannot set an Authorization header. A
 `web` device is a front door only: it can call, it cannot be called. Devices of
@@ -226,6 +227,15 @@ class Hub:
         if not conns:
             return
         frame = {"type": "profile", "rev": rev, "device": device}
+        await asyncio.gather(*(c.send(frame) for c in conns))
+
+    async def notify_sync(self, account_id: str, cursor: int, from_device: str) -> None:
+        """0.19: a device pushed conversation changes; every *other* connected device of the
+        account hears the new cursor and pulls what it is missing (sync.py)."""
+        conns = [c for c in self.online.get(account_id, {}).values() if c.device_id != from_device]
+        if not conns:
+            return
+        frame = {"type": "sync", "what": "conversations", "cursor": int(cursor), "from": from_device}
         await asyncio.gather(*(c.send(frame) for c in conns))
 
     def forget(self, account_id: str, device_id: str) -> None:

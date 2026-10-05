@@ -29,7 +29,7 @@ These win over the file. They cover the settings people change most often and wh
 | `NANOMUSE_BROWSER_BACKEND` | `browser.backend`: `auto`, `playwright` or `device` |
 | `NANOMUSE_GUI_ENABLED=1`, `NANOMUSE_GUI_PROVIDER`, `NANOMUSE_GUI_MODEL`, `NANOMUSE_GUI_BASE_URL`, `NANOMUSE_GUI_API_KEY` | `[gui]` — operating the phone, and the model that does it |
 | `NANOMUSE_VAULT_KEY` | Fernet key for the vault (default: `<data_dir>/vault.key`) |
-| `NANOMUSE_CLOUD_BASE_URL`, `NANOMUSE_CLOUD_REQUIRED` | `[cloud]` — the relay a hosted runtime signs in against, and whether a nanoMuse Cloud account is required ([cloud.md](cloud.md); the relay's own variables are in [cloud/README.md](../cloud/README.md)) |
+| `NANOMUSE_CLOUD_BASE_URL`, `NANOMUSE_CLOUD_REQUIRED`, `NANOMUSE_CLOUD_SYNC` | `[cloud]` — the relay a hosted runtime signs in against, whether a nanoMuse Cloud account is required, and the default for *Sync conversations between my devices* (`sync`, on unless set to `0`; the person's switch in *Settings → Data controls*, once touched, is what counts — [every-device.md](every-device.md#the-same-conversations-everywhere)) ([cloud.md](cloud.md); the relay's own variables are in [cloud/README.md](../cloud/README.md)) |
 | `NANOMUSE_HUB_NAME` | `hub.name`, what this device is called on the other devices |
 | `NANOMUSE_CODING_HOME` | where the coding CLIs' own homes (`~/.codex`, `~/.claude`, …) are looked for, default the user's home ([coding-agents.md](coding-agents.md)) |
 | `NANOMUSE_LOG_LEVEL` | `log_level` |
@@ -278,11 +278,14 @@ Logins made in Chromium live in `<workspace>/browser-profile/` and survive a res
 ```toml
 [hands]
 enabled         = false    # the switch is Devices → Hands on this computer in the app
-backend         = "auto"   # auto | pyautogui | xdotool (X11)
+backend         = "auto"   # auto | desktop | pyautogui | xdotool (X11) — desktop: the desktop app's own hands (auto takes them when the app set NANOMUSE_OPERATOR_URL)
 mode            = "auto"   # auto | screen | window — window: one app's window on macOS, events to its process, your mouse untouched; auto = window on macOS once an app is named
+coords          = "pixels" # pixels | norm1000 — what the model's x, y mean: pixels of the picture it was shown (default), or a 0–1000 grid over it
 max_image_width = 1600
 settle_s        = 0.6
 ```
+
+The picture the model sees is the unit: `computer_screen` says its size on the first line and in a closing *Coordinates:* line, and `computer_act` takes `x`, `y` (or a `box`) in it; the runtime maps them to the hands' own pixels once, whatever the display's scale. The picture is the screen capped at `max_image_width`, then snapped to the 28-pixel grid Qwen resizes to, so the model sees exactly what it is pointing at ([gui.md](gui.md#hands-on-the-computer-the-picture-is-the-unit)).
 
 The model, the step cap and the sensitive words are `[gui]`'s. Window mode, the per-app ask (*Let <Muse> use <App>?*, a `computer_app:<id>` grant) and the macOS permissions: [every-device.md](every-device.md#hands-on-this-computer).
 

@@ -179,12 +179,17 @@
               # DISPLAY for the hands on Linux; NANOMUSE_MCP_CONFIRM binds the
               # server's "the person agreed" confirmations to this host (the
               # desktop shell sets it per launch; see nanomuse/bridge/mcp_server.py).
+              # NANOMUSE_OPERATOR_URL/TOKEN: the desktop app's own mouse, keyboard
+              # and screenshot on loopback (harness/desktop/src/operator-server.ts),
+              # which the runtime prefers over its Python backends. Named here
+              # because the harness drops credential-shaped names (…TOKEN) from
+              # a child's inherited environment.
               # The hands model (Settings → Account → Hands model) reaches the
               # runtime's `[gui]` through $DSH_HOME/nanomuse/hands.json, which
               # src/cloud.ts writes; read once, when the server starts.
               env: !!js |
                 Object.assign(
-                  Object.fromEntries(['DISPLAY', 'NANOMUSE_MCP_CONFIRM'].filter((k) => process.env[k]).map((k) => [k, process.env[k]])),
+                  Object.fromEntries(['DISPLAY', 'NANOMUSE_MCP_CONFIRM', 'NANOMUSE_OPERATOR_URL', 'NANOMUSE_OPERATOR_TOKEN'].filter((k) => process.env[k]).map((k) => [k, process.env[k]])),
                   (() => {
                     try {
                       const fs = process.getBuiltinModule('node:fs')

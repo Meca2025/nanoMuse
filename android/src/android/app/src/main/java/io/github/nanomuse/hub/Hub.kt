@@ -104,6 +104,7 @@ object Hub {
             onDevices = { list -> _devices.value = list },
             onState = { on, detail -> _connected.value = on; _detail.value = detail },
             onProfile = { frame -> io.github.nanomuse.cloud.ProfileSync.onFrame(app, frame) },
+            onSync = { frame -> io.github.nanomuse.sync.ConversationSync.onFrame(app, frame) },
         )
         client = c
         c.start()

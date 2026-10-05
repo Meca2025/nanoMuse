@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
 import { useStore } from "../store";
-import type { CloudMe } from "../types";
+import type { CloudMe, SyncState } from "../types";
 import { cx } from "../util";
 import { MuseCaption, MuseCard, MuseDivider, MuseRow, MuseSwitchRow } from "./MuseList";
 
@@ -74,6 +74,7 @@ export function DataControls({ me: given, onChanged, flush = false }: { me?: Clo
 
   return (
     <div className={cx(flush && "-mx-4")}>
+      <SyncControls signedIn={signedIn} />
       <MuseCard>
         <MuseSwitchRow label={t("Help improve nanoMuse's AI models")} checked={signedIn && ct.on} disabled={busy || !signedIn || !me} onChange={(v) => void flip(v)} />
       </MuseCard>
@@ -94,6 +95,75 @@ export function DataControls({ me: given, onChanged, flush = false }: { me?: Clo
           <MuseRow icon={busy ? <Loader2 size={22} className="animate-spin" /> : <Trash2 size={22} />} label={t("Delete the kept conversations")} value={t("{n} turns", { n: String(samples) })} onClick={() => void wipe()} chevron={false} />
           <MuseDivider inset={16} />
           <MuseCaption className="px-4 pb-2.5 pt-2">{t("Removes every turn kept from this account, whether the switch is on or off now. Turning the switch off keeps what was kept until you delete it here.")}</MuseCaption>
+        </MuseCard>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The first card of Data controls (contract C7): *Sync conversations between my devices*, on
+ * by default while signed in. Off tells the relay, which deletes what it stores; on pushes
+ * this device's chats again. *Delete synced conversations* empties the relay's store and
+ * keeps the switch and the chats on every device.
+ */
+export function SyncControls({ signedIn }: { signedIn: boolean }) {
+  const t = useT();
+  const { toast } = useStore();
+  const [sync, setSync] = useState<SyncState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const counts = sync?.relay?.counts ?? { conversations: 0, messages: 0 };
+  const stored = signedIn && (counts.conversations > 0 || counts.messages > 0);
+
+  const load = async () => {
+    try {
+      setSync(await api.syncState());
+    } catch {
+      /* an older runtime without sync: the card shows the switch as unavailable */
+    }
+  };
+  useEffect(() => {
+    void load();
+  }, [signedIn]);
+
+  const run = async (what: () => Promise<SyncState>, said: string) => {
+    setBusy(true);
+    try {
+      setSync(await what());
+      toast(said);
+    } catch (e) {
+      toast((e as Error).message);
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const flip = (on: boolean) => {
+    if (!on && stored && !window.confirm(t("Off deletes the synced conversations from nanoMuse Cloud. The chats on each device stay."))) return;
+    void run(
+      () => api.syncSetState(on),
+      on ? t("On. Your devices show the same conversations from now on.") : t("Off. Nothing is kept on nanoMuse Cloud any more."),
+    );
+  };
+  const wipe = () => {
+    if (!window.confirm(t("The synced conversations are removed from nanoMuse Cloud. The chats on each device stay. This cannot be undone."))) return;
+    void run(() => api.syncDelete(), t("Synced conversations deleted."));
+  };
+
+  return (
+    <div className="mb-6">
+      <MuseCard>
+        <MuseSwitchRow label={t("Sync conversations between my devices")} checked={signedIn && !!sync?.enabled} disabled={busy || !signedIn || !sync} onChange={flip} />
+      </MuseCard>
+      <MuseCaption>
+        {t("The text of your chats is kept on nanoMuse Cloud so every device shows the same conversations. Files and images stay on the device they were made on.")}{" "}
+        {!signedIn ? t("Sign in to nanoMuse Cloud to use it.") : sync?.paused ? t("Paused: sign in again to continue.") : stored && t("{c} chats, {m} messages kept so far.", { c: String(counts.conversations), m: String(counts.messages) })}
+      </MuseCaption>
+      {stored && (
+        <MuseCard className="mt-3">
+          <MuseRow icon={busy ? <Loader2 size={22} className="animate-spin" /> : <Trash2 size={22} />} label={t("Delete synced conversations")} value={t("{n} chats", { n: String(counts.conversations) })} onClick={wipe} chevron={false} />
+          <MuseDivider inset={16} />
+          <MuseCaption className="px-4 pb-2.5 pt-2">{t("Removes what nanoMuse Cloud stores for this account; the chats on each device stay, and the switch stays on. Deleting a chat on one device deletes it on all of them.")}</MuseCaption>
         </MuseCard>
       )}
     </div>

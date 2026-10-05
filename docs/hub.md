@@ -103,6 +103,7 @@ the key in `hello` instead).
 
 → devices  {}        → rename {name}        → forget {device_id}        → ping  ← pong
 ← profile  {rev, device}       the account's name, look or connectors changed (PUT /v1/me/profile); fetch it
+← sync     {what:"conversations", cursor, from}   another device pushed or deleted synced conversations; pull /v1/sync/changes
 ```
 
 Close codes: `4000` hello expected, `4001` bad key, `4002` bad device,
@@ -131,8 +132,18 @@ refuses any entry that carries a token, secret, key, authorization or password
 field — credentials never leave the device that signed in. The other devices
 list those entries under the connectors catalogue as *Connected on \<device\>
 — sign in here to use it on this device*, and the usual local sign-in is the
-action. Nothing else is synchronised — keys, providers and settings stay where
-they were entered.
+action.
+
+Since 0.1.36 the **conversations** travel too, by a different road: their text
+goes to the relay's sync store over REST (`/v1/sync/*`, [cloud.md](cloud.md#conversation-sync)),
+and the hub only carries the nudge. After a push that the relay accepted, or a
+deletion, every *other* socket of the account gets `sync {what:"conversations",
+cursor, from}` — `cursor` is the account's counter after the change, `from` the
+device id that made it — and pulls what is new from its own cursor. A device that
+sees its own id in `from` ignores the frame. Nothing else is synchronised — keys,
+providers and settings stay where they were entered, and files and images stay on
+the device that made them. How the apps use it is in
+[every-device.md](every-device.md#the-same-conversations-everywhere).
 
 ## The code
 

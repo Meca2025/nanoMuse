@@ -52,7 +52,7 @@ struct HubError: LocalizedError {
 final class NanoMuseHub: ObservableObject {
     static let shared = NanoMuseHub()
 
-    static let actions = ["info", "open", "notify"]
+    static let actions = ["info", "open", "notify", "task", "stop"]
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
 
     @Published private(set) var connected = false
@@ -262,6 +262,9 @@ final class NanoMuseHub: ObservableObject {
         case "profile":
             // Another device of the account wrote the agent's look.
             NanoMuseProfileSync.shared.onHubFrame(frame)
+        case "sync":
+            // C7: another device pushed conversations; pull from our cursor.
+            NanoMuseSync.shared.onHubFrame(frame)
         case "error":
             if let id = frame["id"] as? String, let done = pending.removeValue(forKey: id) {
                 eventHandlers.removeValue(forKey: id)
@@ -351,7 +354,22 @@ final class NanoMuseHub: ObservableObject {
             }
         case "screen":
             refuse(id, "no_screen", "this iPhone cannot be screenshotted from another device")
-        case "shell", "files", "file.get", "file.put", "task", "stop", "approve":
+        case "task":
+            // "@iPhone …" from another device: this phone's Muse does it (NanoMuseHubTasks).
+            let sender = frame["from"] as? [String: Any] ?? [:]
+            Task { @MainActor [weak self] in
+                let outcome = await NanoMuseHubTasks.run(args: args, from: sender) { [weak self] body in
+                    self?.event(id, body: body)
+                }
+                switch outcome {
+                case .result(let body): self?.reply(id, body: body)
+                case .failure(let code, let message): self?.refuse(id, code, message)
+                }
+            }
+        case "stop":
+            let sender = frame["from"] as? [String: Any] ?? [:]
+            reply(id, body: ["stopped": NanoMuseHubTasks.stop(args: args, from: sender)])
+        case "shell", "files", "file.get", "file.put", "approve":
             refuse(id, "not_supported", "nanoMuse on iOS does not do '\(action)' for other devices yet; ask on the phone itself")
         default:
             refuse(id, "unknown_action", "this iPhone does not do '\(action)'")
@@ -366,6 +384,11 @@ final class NanoMuseHub: ObservableObject {
         send(["type": "result", "id": id, "ok": false, "error": code, "message": message])
     }
 
+    /// Progress on a call still running (`{"type":"event","id","body"}`, docs/hub.md).
+    private func event(_ id: String, body: [String: Any]) {
+        send(["type": "event", "id": id, "body": body])
+    }
+
     private func info() -> [String: Any] {
         [
             "name": name,
@@ -373,7 +396,7 @@ final class NanoMuseHub: ObservableObject {
             "model": UIDevice.current.model,
             "app": "nanoMuse \(Self.version)",
             "actions": Self.actions,
-            "note": "iOS answers info, open and notify; the phone's own Muse works on the phone",
+            "note": "iOS answers info, open, notify and task (its Muse runs the task while nanoMuse is open); no shell, files or screen",
         ]
     }
 

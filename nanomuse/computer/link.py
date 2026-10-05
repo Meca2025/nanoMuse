@@ -7,8 +7,16 @@ tools and the GUI's cards are shared.
 the Stop button: the next action raises :class:`~nanomuse.phone.link.DeviceStopped`, which
 ends the task the way the phone's Stop pill does. Every action and task boundary is also
 handed to ``on_event`` — the GUI shows a *Hands* card with the current step and the desktop
-stage draws a cursor where the click lands (``x``/``y`` in screen pixels, ``fx``/``fy`` as
-fractions).
+stage draws a cursor where the click lands (``x``/``y`` in the hands' screen pixels,
+``fx``/``fy`` as fractions of the screen).
+
+Coordinates: the picture the model sees is the unit. ``Screen.width``/``height`` are the
+picture's size, and every ``x``/``y`` the tools accept is a pixel of it. The hands move in
+their own screen space (``screen_w``/``screen_h``: X11 root pixels, macOS points, Windows
+physical pixels), and the one place the two meet is :class:`~nanomuse.computer.coords.Mapping`
+— applied in ``_do`` before an action and in ``_where`` before the overlay hears of it.
+When nanoMuse Desktop started this runtime, its operator (:mod:`nanomuse.computer.operator`)
+takes the screenshot and does the moving; otherwise the Python backends do.
 
 Two modes (``[hands] mode``). *Screen*: the whole screen through ``mss`` and the system
 mouse. *Window* (macOS, :mod:`nanomuse.computer.mac_window`): one application's window —
@@ -33,6 +41,8 @@ from typing import Any
 
 from nanomuse.computer import hands as hands_mod
 from nanomuse.computer import mac_window
+from nanomuse.computer import operator as operator_mod
+from nanomuse.computer.coords import Mapping
 from nanomuse.computer.screen import DEFAULT_MAX_WIDTH, active_window, capture, screen_size
 from nanomuse.config import HandsSettings
 from nanomuse.logger import logger
@@ -84,11 +94,13 @@ class ComputerLink:
         # the frame the last window picture was taken in (None in screen mode)
         self.window_frame: mac_window.WindowFrame | None = None
         self.last_screen: Screen | None = None
+        # picture pixels ↔ the hands' screen pixels for the last whole-screen picture
+        self.mapping: Mapping | None = None
         self._stopped = False
         self.task_active = False
         self.task_text = ""
         self.last_action: dict[str, Any] | None = None
-        w, h = screen_size()
+        w, h = self._initial_size()
         self._device = Device(
             id="this-computer",
             name=socket.gethostname() or "this computer",
@@ -99,6 +111,21 @@ class ComputerLink:
             width=w,
             height=h,
         )
+
+    def _initial_size(self) -> tuple[int, int]:
+        """The hands' screen space before the first look: the desktop operator's word when
+        the app is around (asking Python's capture layer on macOS would be a second
+        Screen Recording prompt, for a process that never takes the picture), else the
+        capture's own size."""
+        found = operator_mod.operator_env()
+        if self._backend is None and found is not None:
+            try:
+                info = operator_mod.OperatorClient(*found).info()
+            except operator_mod.OperatorError as exc:
+                logger.debug("desktop operator not asked for the screen size: {}", exc)
+            else:
+                return operator_mod.display_size(info)
+        return screen_size()
 
     # ------------------------------------------------------------------ the device
     @property
@@ -135,6 +162,11 @@ class ComputerLink:
             "backend": self._backend.name if self._backend else None,
             "reason": self._backend_error,
             "mode": self.settings.mode,
+            "coords": self.settings.coords,
+            # the hands' screen space and the picture the model last saw, so a reader can
+            # tell the two apart (docs/gui.md, "Coordinates")
+            "screen_size": [self._device.width, self._device.height],
+            "picture_size": [self.mapping.image_w, self.mapping.image_h] if self.mapping else None,
             # window mode (macOS): whether it can run here, and what it is working in
             "window": {
                 "available": window_ok,
@@ -237,12 +269,7 @@ class ComputerLink:
         elif self._window_broken and self._window_error:
             # the fail-safe tripped during an action: say so once, then plain screen pictures
             note, self._window_error = self._window_error, ""
-        try:
-            raw = await asyncio.to_thread(
-                capture, self.settings.max_image_width or DEFAULT_MAX_WIDTH
-            )
-        except Exception as exc:  # noqa: BLE001 — platform tools fail in many ways
-            raise DeviceError(f"could not take a screenshot of this computer: {exc}") from exc
+        raw = await asyncio.to_thread(self._capture_screen)
         if raw is not None and note:
             raw["note"] = (note + " — showing the whole screen instead")[:300]
         if raw is None:
@@ -251,11 +278,67 @@ class ComputerLink:
                 "(pip install 'nanomuse[hands]') or a screenshot tool, and make sure there is a "
                 "display session"
             )
-        if raw.get("width"):
-            self._device.width, self._device.height = int(raw["width"]), int(raw["height"])
+        self._place(raw)
         screen = Screen.from_device(raw, device=self._device, shots_dir=self.shots_dir)
         self.last_screen = screen
         return screen
+
+    def _operator(self) -> operator_mod.OperatorHands | None:
+        """The desktop app's operator, when it is the hands in use."""
+        try:
+            hands = self._hands()
+        except hands_mod.HandsUnavailable:
+            return None
+        return hands if isinstance(hands, operator_mod.OperatorHands) else None
+
+    def _capture_screen(self) -> dict[str, Any] | None:
+        """The whole screen: through the desktop operator when it has the hands (then the
+        Python capture layer is never touched — on macOS it would be a second Screen
+        Recording prompt for a process that does not need it), else the Python capture."""
+        max_width = self.settings.max_image_width or DEFAULT_MAX_WIDTH
+        operator = self._operator()
+        if operator is not None:
+            try:
+                raw = operator_mod.operator_capture(operator.client, max_width)
+            except operator_mod.OperatorError as exc:
+                raise DeviceError(f"could not take a screenshot of this computer: {exc}") from exc
+            if raw is not None:
+                try:
+                    raw["app"], raw["app_name"] = active_window()
+                except Exception:  # noqa: BLE001 — the picture matters, the name is a caption
+                    raw["app"], raw["app_name"] = "", ""
+                return raw
+        try:
+            return capture(max_width)
+        except Exception as exc:  # noqa: BLE001 — platform tools fail in many ways
+            raise DeviceError(f"could not take a screenshot of this computer: {exc}") from exc
+
+    def _place(self, raw: dict[str, Any]) -> None:
+        """Settle the two sizes of a whole-screen picture: ``width``/``height`` stay the
+        picture's (what the model answers in); the hands' screen space is what the backend
+        says it moves in, else what the capture said (``screen_w``/``screen_h``), else the
+        picture itself (1:1, the case of every device that taps where it looks)."""
+        try:
+            image_w, image_h = int(raw.get("width") or 0), int(raw.get("height") or 0)
+        except (TypeError, ValueError):
+            image_w = image_h = 0
+        try:
+            backend: hands_mod.HandsBackend | None = self._hands()
+        except hands_mod.HandsUnavailable:
+            backend = None
+        space = hands_mod.hands_space(backend) if backend is not None else None
+        if space is None:
+            try:
+                sw, sh = int(raw.get("screen_w") or 0), int(raw.get("screen_h") or 0)
+            except (TypeError, ValueError):
+                sw = sh = 0
+            space = (sw, sh) if sw > 0 and sh > 0 else None
+        screen_w, screen_h = space or (image_w, image_h)
+        if screen_w and screen_h:
+            self._device.width, self._device.height = screen_w, screen_h
+        self.mapping = Mapping(image_w, image_h, screen_w, screen_h)
+        raw.pop("screen_w", None)
+        raw.pop("screen_h", None)
 
     # ------------------------------------------------------------------ acting
     async def act(self, params: dict[str, Any], timeout: float | None = None) -> dict[str, Any]:
@@ -369,7 +452,22 @@ class ComputerLink:
         except hands_mod.HandsUnavailable as exc:
             raise DeviceError(str(exc)) from exc
 
+    def _to_hands(self, hands: hands_mod.HandsBackend, p: dict[str, Any]) -> dict[str, Any]:
+        """The action's points in the hands' screen space. The model's numbers are pixels
+        of the picture; window hands take those as they are (their frame maps them), the
+        screen hands get them mapped here — the one place that happens before acting."""
+        if isinstance(hands, mac_window.MacWindowHands) or self.mapping is None:
+            return p
+        q = dict(p)
+        for kx, ky in (("x", "y"), ("x2", "y2")):
+            if q.get(kx) is not None and q.get(ky) is not None:
+                q[kx], q[ky] = self.mapping.to_screen(float(q[kx]), float(q[ky]))
+        if q.get("dy") is not None:
+            q["dy"] = round(float(q["dy"]) * self.mapping.scale[1], 2)
+        return q
+
     def _do(self, hands: hands_mod.HandsBackend, action: str, p: dict[str, Any]) -> str:
+        p = self._to_hands(hands, p)
         x, y = float(p.get("x") or 0), float(p.get("y") or 0)
         if action == "click":
             hands.click(x, y)
@@ -414,12 +512,14 @@ class ComputerLink:
         return ""
 
     def _where(self, params: dict[str, Any]) -> dict[str, Any]:
-        """The action for the GUI: what and where — the point in screen pixels (``x``/``y``,
-        for a cursor sprite on the desktop stage) and as fractions of the screen
-        (``fx``/``fy``, for the overlay's ring). In window mode the model's coordinates are
-        pixels of the window picture; they are mapped to the screen here."""
+        """The action for the GUI: what and where — the point in the hands' screen pixels
+        (``x``/``y``, for a cursor sprite on the desktop stage) and as fractions of the
+        screen (``fx``/``fy``, for the overlay's marker, which is sized to the display and
+        so lands where the pointer does). The model's coordinates are pixels of the picture
+        — the whole screen's through ``mapping``, a window's through its frame."""
         w, h = self._device.width or 1, self._device.height or 1
         frame = self.window_frame if self.in_window_mode() else None
+        mapping = self.mapping if frame is None else None
         out: dict[str, Any] = {
             "action": params.get("action"),
             "label": str(params.get("label") or "")[:120],
@@ -432,18 +532,22 @@ class ComputerLink:
             if params.get(kx) is None or params.get(ky) is None:
                 return None
             px, py = float(params[kx]), float(params[ky])
-            return frame.to_screen(px, py) if frame is not None else (px, py)
+            if frame is not None:
+                return frame.to_screen(px, py)
+            if mapping is not None:
+                return mapping.to_screen(px, py)
+            return px, py
 
         start = point("x", "y")
         if start is not None:
             out["x"], out["y"] = round(start[0], 1), round(start[1], 1)
-            out["fx"] = round(start[0] / w, 4)
-            out["fy"] = round(start[1] / h, 4)
+            out["fx"] = round(min(max(start[0] / w, 0.0), 1.0), 4)
+            out["fy"] = round(min(max(start[1] / h, 0.0), 1.0), 4)
         end = point("x2", "y2")
         if end is not None:
             out["x2"], out["y2"] = round(end[0], 1), round(end[1], 1)
-            out["fx2"] = round(end[0] / w, 4)
-            out["fy2"] = round(end[1] / h, 4)
+            out["fx2"] = round(min(max(end[0] / w, 0.0), 1.0), 4)
+            out["fy2"] = round(min(max(end[1] / h, 0.0), 1.0), 4)
         if params.get("action") == "type":
             out["text"] = str(params.get("text") or "")[:80]
         if params.get("action") == "key":

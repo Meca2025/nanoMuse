@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import ConfigDict
 
 from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, took_over_note
+from nanomuse.computer.coords import box_centre, from_norm
 from nanomuse.computer.link import ACTIONS, POINTED, ComputerLink
 from nanomuse.config import GUISettings
 from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped
@@ -57,6 +58,11 @@ def _screen_result(screen: Screen, prefix: str = "") -> ToolResult:
     text = (prefix + "\n\n" if prefix else "") + screen.render()
     if not screen.image_path:
         text += "\n(no screenshot came back; the display may be locked)"
+    elif screen.width and screen.height:
+        # the picture is the unit: nothing here speaks of the display's own size
+        text += (
+            f"\nCoordinates: pixels of this {screen.width}×{screen.height} picture, (0,0) top-left."
+        )
     return ToolResult(output=text, images=[screen.image_path] if screen.image_path else None)
 
 
@@ -96,10 +102,10 @@ class ComputerScreen(BaseTool):
 
     name: str = "computer_screen"
     description: str = (
-        "Look at this computer's screen: a screenshot, which window is in front and the screen "
-        "size in pixels. Coordinates for `computer_act` are pixels of that screen, (0,0) "
-        "top-left. Call it again after the screen changed. For a whole job on the screen, "
-        "prefer `computer_task`."
+        "Look at this computer's screen: a screenshot, which window is in front and the "
+        "picture's size as W×H. Coordinates for `computer_act` are pixels of that picture, "
+        "(0,0) top-left — the picture is the unit, not the display. Call it again after the "
+        "screen changed. For a whole job on the screen, prefer `computer_task`."
     )
     parameters: dict[str, Any] = {
         "type": "object",
@@ -137,9 +143,11 @@ class ComputerAct(BaseTool):
     name: str = "computer_act"
     description: str = (
         "One action on this computer's screen, then a fresh look. `click`, `double_click`, "
-        "`right_click`, `middle_click` or `move` at `x`/`y` (pixels of the last screenshot), with "
-        "`label` — the words of what is under the cursor, as the screen shows them; `drag` from "
-        "`x`/`y` to `x2`/`y2`; `scroll` at `x`/`y` by `dy` pixels (negative = up); `type` `text` "
+        "`right_click`, `middle_click` or `move` at `x`/`y` — pixels of the last screenshot, "
+        "(0,0) its top-left, W×H as `computer_screen` said; or `box` [x1,y1,x2,y2] in the same "
+        "pixels, whose centre is used — with `label` — the words of what is under the cursor, "
+        "as the screen shows them; `drag` from `x`/`y` to `x2`/`y2` (or `box` to `box2`); "
+        "`scroll` at `x`/`y` by `dy` pixels (negative = up); `type` `text` "
         "into the focused field (`clear` first, `submit` to press Enter after); `key` presses "
         '`keys` together (e.g. ["ctrl", "s"]); `open_app` starts an application by name; '
         "`wait` `seconds`; `hand_over` with a `reason` gives the screen to the user for a "
@@ -158,10 +166,20 @@ class ComputerAct(BaseTool):
                 "type": "string",
                 "description": "for hand_over: what the user should do, in their language",
             },
-            "x": {"type": "number"},
-            "y": {"type": "number"},
+            "x": {"type": "number", "description": "pixels of the last screenshot, from its left"},
+            "y": {"type": "number", "description": "pixels of the last screenshot, from its top"},
             "x2": {"type": "number"},
             "y2": {"type": "number"},
+            "box": {
+                "type": "array",
+                "items": {"type": "number"},
+                "description": "instead of x/y: [x1, y1, x2, y2] around the target; its centre is used",
+            },
+            "box2": {
+                "type": "array",
+                "items": {"type": "number"},
+                "description": "for drag, instead of x2/y2: the box the drag ends in",
+            },
             "dy": {"type": "number", "description": "scroll amount in pixels; negative = up"},
             "label": {
                 "type": "string",
@@ -301,13 +319,19 @@ class ComputerAct(BaseTool):
         if label:
             params["label"] = label[:120]
         screen = self.link.last_screen
+        norm = self.link.settings.coords == "norm1000"
         if action in (*POINTED, "drag", "scroll"):
-            point = _point(kwargs, "x", "y")
+            try:
+                point = _point(kwargs, "x", "y", "box", screen, norm)
+            except ValueError as exc:
+                return ToolResult.fail(str(exc))
             if point is None:
-                return ToolResult.fail(f"`{action}` needs `x` and `y` (pixels of the screen)")
+                return ToolResult.fail(
+                    f"`{action}` needs `x` and `y` (pixels of the last screenshot) or `box`"
+                )
             if screen is not None and not _inside(point, screen):
                 return ToolResult.fail(
-                    f"({point[0]:g},{point[1]:g}) is outside the {screen.width}×{screen.height} screen"
+                    f"({point[0]:g},{point[1]:g}) is outside the {screen.width}×{screen.height} picture"
                 )
             params["x"], params["y"] = point
         if action in POINTED and action != "move" and not label:
@@ -316,9 +340,12 @@ class ComputerAct(BaseTool):
                 "shows them (the Sentinel and the audit log go by it)"
             )
         if action == "drag":
-            end = _point(kwargs, "x2", "y2")
+            try:
+                end = _point(kwargs, "x2", "y2", "box2", screen, norm)
+            except ValueError as exc:
+                return ToolResult.fail(str(exc))
             if end is None:
-                return ToolResult.fail("`drag` needs `x2`/`y2` (where the drag ends)")
+                return ToolResult.fail("`drag` needs `x2`/`y2` or `box2` (where the drag ends)")
             params["x2"], params["y2"] = end
         if action == "scroll":
             raw_dy = kwargs.get("dy")
@@ -499,13 +526,35 @@ def _num(value: Any) -> str:
         return "?"
 
 
-def _point(args: dict[str, Any], kx: str, ky: str) -> tuple[float, float] | None:
-    if args.get(kx) is None or args.get(ky) is None:
+def _point(
+    args: dict[str, Any],
+    kx: str,
+    ky: str,
+    kbox: str = "",
+    screen: Screen | None = None,
+    norm: bool = False,
+) -> tuple[float, float] | None:
+    """The point an action is aimed at, in pixels of the picture: ``x``/``y`` as given, or
+    the centre of ``box``; on the 0–1000 grid when ``[hands] coords = "norm1000"`` (then
+    the picture's size turns it into pixels). None when nothing was given; ValueError for
+    a box of the wrong shape."""
+    point: tuple[float, float] | None = None
+    box = args.get(kbox) if kbox else None
+    if args.get(kx) is not None and args.get(ky) is not None:
+        try:
+            point = float(args[kx]), float(args[ky])
+        except (TypeError, ValueError):
+            return None
+    elif isinstance(box, list | tuple) and box:
+        try:
+            point = box_centre([float(v) for v in box])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"`{kbox}` must be [x1, y1, x2, y2] in pixels of the picture") from exc
+    if point is None:
         return None
-    try:
-        return float(args[kx]), float(args[ky])
-    except (TypeError, ValueError):
-        return None
+    if norm and screen is not None and screen.width and screen.height:
+        point = from_norm(point[0], point[1], screen.width, screen.height)
+    return point
 
 
 def _inside(point: tuple[float, float], screen: Screen) -> bool:

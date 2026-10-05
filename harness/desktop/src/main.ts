@@ -6,6 +6,8 @@ import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlin
 import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { Operator, type Marker } from "./operator";
+import { startOperatorServer, type OperatorServer } from "./operator-server";
 
 /**
  * nanoMuse Desktop — the nanoMuse desktop, built on DeepSeek Harness.
@@ -67,6 +69,13 @@ const T = {
 
 /** dev flag: `--screenshot=/tmp/x.png` writes the window once the web app is up, then quits (a headless check) */
 const screenshotFlag = process.argv.find((a) => a.startsWith("--screenshot="))?.slice("--screenshot=".length);
+/**
+ * check flag: `--operator-check=/tmp/x.json` starts the operator alone (no host, no window),
+ * asks it over its own HTTP for /info and a small /screenshot — and, with `--operator-move`,
+ * moves the pointer to the display's centre — writes the answers to the file and quits. What
+ * scripts/smoke.mjs runs against a packaged build to see that libnut loaded there.
+ */
+const operatorCheckFlag = process.argv.find((a) => a.startsWith("--operator-check="))?.slice("--operator-check=".length);
 
 const logs: string[] = [];
 let hostStderr = "";
@@ -282,8 +291,8 @@ function startHost(): Promise<string> {
   mkdirSync(home, { recursive: true });
   ensureProfile(dshDir);
   return new Promise<string>((resolve, reject) => {
-    hostPort(home)
-      .then((port) => {
+    Promise.all([hostPort(home), ensureOperator()])
+      .then(([port, operatorServer]) => {
         const env: NodeJS.ProcessEnv = {
           ...process.env,
           ELECTRON_RUN_AS_NODE: "1",
@@ -293,6 +302,13 @@ function startHost(): Promise<string> {
           // the bundle can make (after the permission card), never by the model's own word.
           NANOMUSE_MCP_CONFIRM: randomBytes(24).toString("hex"),
         };
+        if (operatorServer) {
+          // The hands themselves: the runtime's `nanomuse mcp` (a child of the host, which
+          // inherits this environment) finds the operator here and moves the mouse, types
+          // and takes the screenshot through this process (src/operator.ts).
+          env.NANOMUSE_OPERATOR_URL = operatorServer.url;
+          env.NANOMUSE_OPERATOR_TOKEN = operatorServer.token;
+        }
         const shellPath = loginShellPath();
         if (shellPath) env.PATH = shellPath;
         const runtime = bundledRuntime();
@@ -795,6 +811,106 @@ let glowWindow: BrowserWindow | null = null;
 let capsuleWindow: BrowserWindow | null = null;
 let overlayState: OverlayState = { hands: null, cards: [] };
 let glowHideTimer: NodeJS.Timeout | null = null;
+/** The last action the operator carried out, for the glow's marker (UI-TARS's prediction marker): fractions of the display, the words, when. */
+let overlayMarker: (Marker & { at: number }) | null = null;
+let markerTimer: NodeJS.Timeout | null = null;
+/** How long a marker stays after its action; the glow stays up with it even before the web client has caught up. */
+const MARKER_MS = 2200;
+/** True between the operator's "before" and "after" capture hooks (Linux): the glow must not come back into the picture. */
+let capturing = false;
+
+// ---- the operator: the hands of this computer, run by this process -------------------------
+
+let operator: Operator | null = null;
+let operatorServer: OperatorServer | null = null;
+let operatorStarting: Promise<OperatorServer | null> | null = null;
+
+/** The operator and its loopback server, started once; null when the server could not bind (the runtime then uses its own backends). */
+function ensureOperator(): Promise<OperatorServer | null> {
+  if (operatorServer) return Promise.resolve(operatorServer);
+  if (operatorStarting) return operatorStarting;
+  operator ??= new Operator({
+    log,
+    permissions: () => ({ accessibility: permissionState("accessibility") !== "denied", screen: permissionState("screen") === "granted" || permissionState("screen") === "not-needed" }),
+    onAction: (marker) => {
+      overlayMarker = { ...marker, at: Date.now() };
+      if (markerTimer) clearTimeout(markerTimer);
+      markerTimer = setTimeout(() => {
+        markerTimer = null;
+        applyOverlay();
+      }, MARKER_MS + 50);
+      applyOverlay();
+    },
+    // Linux has no content protection: the glow would be in the picture, so it steps out of
+    // the way for the capture (one frame) and comes back; macOS and Windows exclude it anyway.
+    onCapture:
+      process.platform === "linux"
+        ? async (phase) => {
+            capturing = phase === "before";
+            if (!glowWindow || glowWindow.isDestroyed()) return;
+            if (phase === "before" && glowWindow.isVisible()) {
+              glowWindow.hide();
+              await new Promise((r) => setTimeout(r, 70));
+            } else if (phase === "after" && overlayUp()) glowWindow.showInactive();
+          }
+        : undefined,
+  });
+  operatorStarting = startOperatorServer(operator, log)
+    .then((server) => {
+      operatorServer = server;
+      const info = operator?.info();
+      log(`operator: ${info?.available ? "available" : `not available (${info?.reason ?? "?"})`} · display ${info?.display.width}×${info?.display.height} (scale ${info?.display.scaleFactor})`);
+      return server;
+    })
+    .catch((exc: unknown) => {
+      log(`operator: could not start its server: ${String(exc)} — the runtime uses its own backends`);
+      return null;
+    })
+    .finally(() => {
+      operatorStarting = null;
+    });
+  return operatorStarting;
+}
+
+async function stopOperator(): Promise<void> {
+  const server = operatorServer;
+  operatorServer = null;
+  if (server) await server.close().catch(() => undefined);
+}
+
+/** The `--operator-check` run: the operator alone, asked over its own HTTP, the answers to a file. */
+async function operatorCheck(file: string): Promise<void> {
+  const out: Record<string, unknown> = { platform: process.platform, electron: process.versions.electron };
+  try {
+    const server = await ensureOperator();
+    if (!server) throw new Error("the operator server did not start");
+    const call = async (method: string, path: string, body?: unknown) => {
+      const res = await fetch(server.url + path, { method, headers: { authorization: `Bearer ${server.token}`, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+      return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+    };
+    const info = await call("GET", "/info");
+    out.info = info.body;
+    const unauthorised = await fetch(server.url + "/info");
+    out.unauthorised = unauthorised.status;
+    const shot = await call("POST", "/screenshot", { width: 320, height: 180, format: "png" });
+    const png = typeof shot.body.base64 === "string" ? Buffer.from(shot.body.base64, "base64") : Buffer.alloc(0);
+    out.screenshot = { status: shot.status, width: shot.body.width, height: shot.body.height, screen: shot.body.screen, mime: shot.body.mime, bytes: png.length, png: png.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex")), error: shot.body.error };
+    if (process.argv.includes("--operator-move")) {
+      const display = (info.body.display ?? {}) as { width?: number; height?: number };
+      const x = Math.floor((display.width ?? 2) / 2);
+      const y = Math.floor((display.height ?? 2) / 2);
+      out.move = { x, y, ...(await call("POST", "/execute", { action: "move", x, y })) };
+    }
+    out.ok = Boolean((info.body as { available?: boolean }).available) && shot.status === 200;
+  } catch (exc) {
+    out.ok = false;
+    out.error = String((exc as Error).message ?? exc);
+  }
+  writeFileSync(file, `${JSON.stringify(out, null, 2)}\n`);
+  log(`operator check: ${out.ok ? "ok" : "failed"} → ${file}`);
+  await stopOperator();
+  app.exit(out.ok ? 0 : 1);
+}
 
 const OVERLAY_PREFS = { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false, preload: join(__dirname, "overlay-preload.js") };
 
@@ -832,16 +948,33 @@ function sendOverlay(win: BrowserWindow | null, state: unknown): void {
   if (win && !win.isDestroyed()) win.webContents.send("nanomuse:overlay:state", state);
 }
 
-function applyOverlay(): void {
+/** The marker still worth showing: the operator's last action, less than MARKER_MS ago. */
+function freshMarker(): (Marker & { at: number }) | null {
+  return overlayMarker && Date.now() - overlayMarker.at < MARKER_MS ? overlayMarker : null;
+}
+
+/** Whether the glow should be on the screen: the web client says the hands are busy or held, or the operator just acted. */
+function overlayUp(): boolean {
   const hands = overlayState.hands;
-  // the glow: up while the hands are active (or held), down a moment after they stop
-  if (hands && (hands.active || hands.held)) {
+  return Boolean((hands && (hands.active || hands.held)) || freshMarker());
+}
+
+/** What the glow draws: the web client's state (face, caption) and the operator's marker (the exact point of the last action). */
+function glowState(): Record<string, unknown> {
+  const hands = overlayState.hands ?? { active: false, held: false, x: -1, y: -1, kind: "", text: "", face: "" };
+  const marker = freshMarker();
+  return { ...hands, active: true, marker: marker ? { x: marker.fx, y: marker.fy, x2: marker.fx2 ?? -1, y2: marker.fy2 ?? -1, kind: marker.kind, text: marker.text, at: marker.at } : null };
+}
+
+function applyOverlay(): void {
+  // the glow: up while the hands are active (or held) or the operator just acted, down a moment after
+  if (overlayUp()) {
     if (glowHideTimer) { clearTimeout(glowHideTimer); glowHideTimer = null; }
     if (!glowWindow || glowWindow.isDestroyed()) glowWindow = overlayWindow("glow");
     const display = screen.getPrimaryDisplay();
     glowWindow.setBounds(display.bounds);
-    if (!glowWindow.isVisible()) glowWindow.showInactive();
-    sendOverlay(glowWindow, { ...hands, active: true });
+    if (!glowWindow.isVisible() && !capturing) glowWindow.showInactive();
+    sendOverlay(glowWindow, glowState());
   } else if (glowWindow && !glowWindow.isDestroyed() && glowWindow.isVisible()) {
     sendOverlay(glowWindow, { active: false });
     if (!glowHideTimer) glowHideTimer = setTimeout(() => { glowHideTimer = null; glowWindow?.hide(); }, 400);
@@ -1193,6 +1326,10 @@ if (!app.requestSingleInstanceLock()) {
     prefs = readPrefs();
     applyPrefs();
     log(`nanoMuse Desktop ${app.getVersion()} starting (${process.platform} ${process.arch}, packaged=${app.isPackaged})`);
+    if (operatorCheckFlag) {
+      await operatorCheck(operatorCheckFlag);
+      return;
+    }
     try {
       await boot();
     } catch (exc) {
@@ -1215,9 +1352,9 @@ if (!app.requestSingleInstanceLock()) {
     globalShortcut.unregisterAll();
     if (quitting) return;
     quitting = true;
-    if (child) {
+    if (child || operatorServer) {
       e.preventDefault();
-      void stopHost().then(() => app.quit());
+      void Promise.all([stopHost(), stopOperator()]).then(() => app.quit());
     }
   });
 }

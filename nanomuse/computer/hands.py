@@ -1,17 +1,25 @@
 """The hands on this computer: a mouse and a keyboard, driven by coordinates.
 
-Two backends do the same eight things — click (left, right, middle, double), move, drag,
+Three backends do the same eight things — click (left, right, middle, double), move, drag,
 scroll, type, press keys, open an application:
 
+* ``desktop``: the nanoMuse Desktop app's own operator (UI-TARS-desktop's nut.js operator,
+  :mod:`nanomuse.computer.operator`), reached over loopback when the app started this
+  runtime (``NANOMUSE_OPERATOR_URL``). Preferred whenever it is there: the app is the
+  process the system grants input and screen capture to.
 * ``pyautogui`` (``pip install 'nanomuse[hands]'``): every platform; its fail-safe stays on,
   so throwing the mouse into a screen corner aborts whatever the hands were doing — a stop
   button that needs no window.
 * ``xdotool``: X11 only, no Python packages; also how non-ASCII text is typed on Linux when
   ``pyautogui`` cannot (it types by key codes, which have no 中文).
 
-Which one is used is ``[hands] backend``: ``auto`` takes ``pyautogui`` when it is there and
-``xdotool`` otherwise. Wayland sessions have neither a global cursor nor a screen to grab
-without a portal; the hands say so instead of pretending.
+Which one is used is ``[hands] backend``: ``auto`` takes the desktop operator when the app
+is around, then ``pyautogui`` when it is installed, then ``xdotool``. Every backend moves
+in its own screen space — X11 root pixels, macOS points, Windows physical pixels — and
+says how big that space is (``size()``) so :class:`~nanomuse.computer.link.ComputerLink`
+can map the model's picture pixels onto it (:mod:`nanomuse.computer.coords`). Wayland
+sessions have neither a global cursor nor a screen to grab without a portal; the hands say
+so instead of pretending.
 
 Nothing here decides *whether* to act: :class:`~nanomuse.tools.computer.ComputerAct` carries
 the words under the cursor to the Sentinel first, exactly like the phone's ``phone_act``.
@@ -95,6 +103,20 @@ class HandsBackend(Protocol):
     def open_app(self, name: str) -> str: ...
 
 
+def hands_space(backend: Any) -> tuple[int, int] | None:
+    """The size of the screen space a backend moves in, when it can say (``size()``);
+    None for one that cannot (a fake, an older backend) — the capture's size stands in."""
+    size = getattr(backend, "size", None)
+    if not callable(size):
+        return None
+    try:
+        w, h = size()
+        w, h = int(w), int(h)
+    except Exception:  # noqa: BLE001 — a backend that cannot measure is one without a say
+        return None
+    return (w, h) if w > 0 and h > 0 else None
+
+
 def _normalise_key(key: str, table: dict[str, str]) -> str:
     k = key.strip()
     return table.get(k.lower(), k if len(k) > 1 else k.lower()) if k else k
@@ -130,6 +152,12 @@ class PyAutoGUIHands:
         pyautogui.FAILSAFE = True  # the mouse in a corner aborts: a physical Stop
         pyautogui.PAUSE = 0.05
         self._gui = pyautogui
+
+    def size(self) -> tuple[int, int]:
+        """The space ``moveTo`` takes: points on macOS (half a Retina capture), physical
+        pixels on Windows (pyautogui makes the process DPI-aware), root pixels on X11."""
+        w, h = self._gui.size()
+        return int(w), int(h)
 
     def click(self, x: float, y: float, button: str = "left", clicks: int = 1) -> None:
         self._gui.click(x=x, y=y, button=button, clicks=clicks, interval=0.08)
@@ -189,6 +217,15 @@ class XdotoolHands:
     @staticmethod
     def _run(*args: str) -> None:
         subprocess.run(["xdotool", *args], check=True, timeout=15, capture_output=True)
+
+    def size(self) -> tuple[int, int]:
+        """The X root window: the pixels ``mousemove`` takes, and what ``mss`` grabs."""
+        out = subprocess.run(
+            ["xdotool", "getdisplaygeometry"], capture_output=True, text=True, timeout=5
+        ).stdout.split()
+        if len(out) != 2:
+            raise RuntimeError("xdotool getdisplaygeometry said nothing")
+        return int(out[0]), int(out[1])
 
     def click(self, x: float, y: float, button: str = "left", clicks: int = 1) -> None:
         code = {"left": "1", "middle": "2", "right": "3"}.get(button, "1")
@@ -310,25 +347,57 @@ def _desktop_entry(name: str) -> Path | None:
     return best[1] if best else None
 
 
+BACKENDS = ("auto", "desktop", "pyautogui", "xdotool")
+
+
+def _make_backend(name: str) -> HandsBackend:
+    if name == "desktop":
+        from nanomuse.computer.operator import OperatorHands
+
+        return OperatorHands.from_env()
+    if name == "pyautogui":
+        return PyAutoGUIHands()
+    return XdotoolHands()
+
+
 def pick_backend(preference: str = "auto") -> HandsBackend:
     """The hands to use, or :class:`HandsUnavailable` saying what is missing."""
     preference = (preference or "auto").lower()
+    from nanomuse.computer.operator import operator_env
+
+    # The desktop app's operator goes first — and when it is there but says no (a Wayland
+    # session, a macOS permission missing), its reason is the one worth reading; the
+    # Python backends would fail for the same cause with vaguer words.
+    operator_reason = ""
+    if preference in ("auto", "desktop") and operator_env() is not None:
+        try:
+            backend = _make_backend("desktop")
+        except HandsUnavailable as exc:
+            operator_reason = str(exc)
+        else:
+            logger.info("computer hands: {}", backend.name)
+            return backend
+    if preference == "desktop":
+        raise HandsUnavailable(
+            operator_reason or "the desktop operator is not running (no NANOMUSE_OPERATOR_URL)"
+        )
     if (
         sys.platform.startswith("linux")
         and os.environ.get("WAYLAND_DISPLAY")
         and not os.environ.get("DISPLAY")
     ):
         raise HandsUnavailable(
-            "this is a Wayland session without XWayland: the mouse and keyboard cannot be "
+            operator_reason
+            or "this is a Wayland session without XWayland: the mouse and keyboard cannot be "
             "driven from a program here. Log in to an X11 session, or run the phone's hands."
         )
-    errors: list[str] = []
+    errors: list[str] = [operator_reason] if operator_reason else []
     order = {"pyautogui": ["pyautogui"], "xdotool": ["xdotool"]}.get(
         preference, ["pyautogui", "xdotool"]
     )
     for name in order:
         try:
-            backend: HandsBackend = PyAutoGUIHands() if name == "pyautogui" else XdotoolHands()
+            backend = _make_backend(name)
         except HandsUnavailable as exc:
             errors.append(str(exc))
             continue
@@ -350,11 +419,13 @@ def describe_availability(preference: str = "auto") -> dict[str, Any]:
 
 
 __all__ = [
+    "BACKENDS",
     "HandsBackend",
     "HandsUnavailable",
     "PyAutoGUIHands",
     "XdotoolHands",
     "describe_availability",
+    "hands_space",
     "open_application",
     "pick_backend",
 ]

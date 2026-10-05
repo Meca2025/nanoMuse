@@ -45,6 +45,7 @@ from nanomuse.server.events import MAIN_THREAD, EventBus, Timeline, new_id, now_
 from nanomuse.server.failures import failure_notice
 from nanomuse.server.push import PushService
 from nanomuse.server.webui import WebUI, current_thread
+from nanomuse.sync import ConversationSync, parse_mention, system_note
 from nanomuse.tools.browser import Browser
 from nanomuse.tools.coding_tool import CodingAgents
 from nanomuse.tools.reminder_tools import Reminders
@@ -313,6 +314,10 @@ class Thread:
     device_name: str = ""
     # a chat another device opened here with a `task` over the hub: who asked
     remote_from: dict[str, Any] | None = None
+    # a chat that came in through conversation sync (contract C7): the device that started
+    # it, for the "From Pixel 8" badge; "" for chats started here
+    origin_device: str = ""
+    origin_device_name: str = ""
 
     def meta(self) -> dict[str, Any]:
         meta: dict[str, Any] = {
@@ -329,6 +334,9 @@ class Thread:
             meta["device_name"] = self.device_name
         if self.remote_from:
             meta["remote_from"] = self.remote_from
+        if self.origin_device:
+            meta["origin_device"] = self.origin_device
+            meta["origin_device_name"] = self.origin_device_name
         return meta
 
 
@@ -392,6 +400,8 @@ class MuseService:
         self.connections = Connections(self)
         # this computer on the hub: the Cloud account, the other devices, their side chats
         self.hub = HubService(self)
+        # the same conversations on every device of the account (contract C7; docs/every-device.md)
+        self.sync = ConversationSync(self)
         # when the app may ask for a star on GitHub: the relay's policy, a day at a time
         # (contract C1; GET /api/nudges hands it to the web app)
         self.nudges = NudgesPolicy(self.data_dir, settings.cloud.base_url)
@@ -444,6 +454,7 @@ class MuseService:
         await self._step("tools", self.app.start(), 90)
         self._started = True
         await self._step("cloud account and hub", self.hub.start(), 30)
+        self.sync.start()
         self._scheduler = asyncio.create_task(self._goal_scheduler(), name="goal-scheduler")
         self.starting = ""
         logger.info(
@@ -474,6 +485,7 @@ class MuseService:
         for t in self.threads.values():
             t.timeline.flush()
         if self._started:
+            await self.sync.stop()
             await self.coding.close()
             await self.avatar.close()
             await self.hub.stop()
@@ -599,6 +611,9 @@ class MuseService:
                 thread.device_name = str(m.get("device_name") or m["device"])
             if isinstance(m.get("remote_from"), dict):
                 thread.remote_from = dict(m["remote_from"])
+            if m.get("origin_device"):
+                thread.origin_device = str(m["origin_device"])
+                thread.origin_device_name = str(m.get("origin_device_name") or "")
         self._save_index()
 
     def _save_index(self) -> None:
@@ -615,6 +630,9 @@ class MuseService:
                 m["device_name"] = t.device_name
             if t.remote_from:
                 m["remote_from"] = t.remote_from
+            if t.origin_device:
+                m["origin_device"] = t.origin_device
+                m["origin_device_name"] = t.origin_device_name
             metas.append(m)
         (self.threads_dir / "index.json").write_text(
             json.dumps(metas, ensure_ascii=False, indent=1), "utf-8"
@@ -694,6 +712,7 @@ class MuseService:
         thread = self._make_thread(tid, title.strip() or "Side chat")
         self._save_index()
         self.bus.publish({"kind": "thread", "thread": thread.meta()})
+        self.sync.thread_changed(thread)
         return thread
 
     def rename_thread(self, thread_id: str, title: str) -> Thread | None:
@@ -704,6 +723,7 @@ class MuseService:
         thread.updated_at = now_iso()
         self._save_index()
         self.bus.publish({"kind": "thread", "thread": thread.meta()})
+        self.sync.thread_changed(thread)
         return thread
 
     def delete_thread(self, thread_id: str) -> bool:
@@ -721,6 +741,7 @@ class MuseService:
         self.app.sentinel.end_conversation(thread_id)
         self._save_index()
         self.bus.publish({"kind": "thread_deleted", "thread": thread_id})
+        self.sync.thread_deleted(thread_id)
         return True
 
     def stop_thread(self, thread_id: str) -> bool:
@@ -804,7 +825,21 @@ class MuseService:
                 # asked by another device over the hub; shown as a bubble with its name
                 event_data["via"] = label
                 thread.purposes[text] = f"asked from {label}" if label else "asked from a device"
+            note = ""
+            if source == "user" and text.startswith("@"):
+                # "@Pixel 8 open the calendar": the work is for that device (contract C7, rule
+                # 8). The bubble shows the text without the mention and whom it is for; the
+                # agent gets one system note in front and hands the task over with `delegate`.
+                mention = parse_mention(text, self.hub.others(), self.hub.device_id)
+                if mention is not None and (mention.text or attachments):
+                    text = mention.text
+                    event_data["text"] = text
+                    event_data["to_device"] = mention.device_id
+                    event_data["to_device_name"] = mention.device_name
+                    note = system_note(mention.device_name, mention.device_id)
             event = self.ui.emit(event_data)
+            if note:
+                text = f"[{note}]\n\n{text}" if text else f"[{note}]"
             self.bus.publish({"kind": "thread", "thread": thread.meta()})
             if not attachments and self.ui.answer_question(thread_id, text):
                 return event
@@ -935,6 +970,8 @@ class MuseService:
                 event = existing
         if purpose and event and event.get("text") and not event.get("quiet"):
             self._push_background(event)
+        # the turn is done: its texts go to the account's other devices in a moment
+        self.sync.turn_finished(thread)
 
     # ------------------------------------------------------------------ approvals
     def decide(

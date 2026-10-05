@@ -70,9 +70,16 @@ The relay is the code in [`cloud/`](../cloud/README.md). It stores:
   open — and when), so another device can say "connected on your Mac". The
   credential itself stays on the device that holds it; the relay refuses an
   entry that carries anything named like one. Never a key or a setting.
+- since relay 0.19, the **synced conversations** (*Sync conversations between
+  my devices*, on by default): the text of the account's chats — each
+  conversation's title, kind and which device started it, each message's role,
+  text, time and device, and the names and sizes of attached files, never the
+  files themselves — so every device shows the same ones. Turning the switch
+  off deletes all of it; so does deleting the account. The section
+  [Conversation sync](#conversation-sync) below has the shape.
 
 Images and tool results are never stored, and message content only as the
-*Data controls* section below says — with the switch off, nothing: the request
+*Data controls* and *Conversation sync* sections below say — with both switches off, nothing: the request
 is forwarded to the upstream model (Alibaba Cloud Model Studio) and the reply
 is streamed back. Every response carries an `X-Nanomuse-Request` id so a problem report
 can be matched to a ledger row without any content being logged. Deleting the
@@ -113,6 +120,67 @@ they are deleted with the account. From relay 0.11 the admin page also says
 where an address is — country, province, city — looked up in an offline copy
 of ip2region's database on the relay's own disk; no third party is asked, and
 nothing more is stored (the place is computed when the page is drawn).
+
+### Conversation sync
+
+*Settings → Data controls → Sync conversations between my devices* (0.1.36,
+relay 0.19) is the other switch on that page, **on by default** for a signed-in
+account. With it on, each device pushes the text of its finished turns to the
+relay and pulls what the others pushed, so the phone, the computer and the web
+app show the same chats: the title of each conversation, who started it, and
+each message's role, text, time and device. Files and images are not uploaded
+— a synced message carries only the names and sizes of what was attached, and
+the files stay on the device that made them. Deleting a chat on one device
+deletes it on all of them; renaming does the same. The main chat of every
+device is one conversation on the relay (the first device to push it names it;
+the others adopt that id and send their own main chat's messages into it);
+side chats are separate conversations, and chats addressed to another device
+or run for one (*From Pixel 8*) are not synced at all.
+
+The relay keeps at most 20 000 messages per account (the oldest conversations'
+messages go first, their titles stay) and 16 384 bytes per message (longer
+text is cut and marked `truncated`). Turning the switch off on any device tells
+the relay, which deletes everything stored and refuses the other devices with
+`sync_off` until the switch is turned on again — their switches follow.
+*Delete synced conversations* on the same page empties the store and leaves the
+switch as it is. Nobody but the account's devices can read the store: the
+operator's admin page shows counts only — accounts with it on and off, how many
+conversations and messages, their size — never a text, never which account
+(`GET /v1/admin/sync`). The pulls are triggered by the hub's `sync` frame
+([hub.md](hub.md#frames)), at launch and once a minute.
+
+The API, all under the account's key (401 without one; 409 `sync_off` while the
+switch is off, for reads as well as writes):
+
+```
+GET    /v1/sync/state                   → {enabled, cursor, counts{conversations, messages}, limits{messages, text_bytes}}
+PUT    /v1/sync/state   {enabled}       → the same; false deletes everything stored, the counter keeps counting
+GET    /v1/sync/changes ?since=0&limit=500   → {cursor, more, conversations[], messages[]}
+POST   /v1/sync/changes {device, conversations[], messages[]}   → {cursor, accepted, rejected[{cid | mid, reason, cid_main?}]}
+DELETE /v1/sync/changes                 → the state, counts at zero     everything stored, switch unchanged
+DELETE /v1/sync/conversations/{cid}     → {cursor, deleted: true}      a tombstone the other devices apply; 404 no_conversation
+```
+
+A conversation is `{cid, kind: main | side, title, device, device_name,
+created_at, updated_at, deleted, seq}` and a message `{mid, cid, seq, device,
+device_name, role: user | assistant, text, truncated, attachments[{name, mime,
+size}], created_at, deleted}`; `cid` and `mid` are UUIDs the device makes (4–64
+characters of `a-z 0-9 . _ : -`, folded to lower case), times are Unix seconds.
+Every accepted change takes the account's next `seq`; a device keeps the
+highest `cursor` it has pulled and asks for `since=` that. A push is idempotent
+— a known `mid` is left alone unless the new row is a tombstone, a known `cid`
+takes the newer title — and at most 200 messages or conversations long (413
+`too_many_messages`). A page lists its conversations and messages in `seq`
+order, and the relay adds the conversation of every message in the page even
+when that conversation's own `seq` lies ahead (a rename moves it), so a client
+applies the page's conversations first, then its messages, and is never handed
+an orphan. Refusals name the row: `main_exists` with `cid_main` when a second
+`main` is pushed — the device then re-sends under `cid_main` —, `unknown_cid`,
+`conversation_deleted`, `bad_cid`, `bad_mid`, `bad_kind`, `bad_role`. A
+tombstone keeps its row for 30 days and is then swept. After an accepted push
+or a deletion the hub tells the account's other devices with a `sync` frame
+(`DELETE` from the console carries the deleting device in `X-Nanomuse-Device`
+so it can skip its own echo).
 
 nanoMuse is a community project and charges nothing. The public relay at
 `cloud.nanomuse.cn` is paid for by the developer, so each account has a pool
@@ -229,4 +297,6 @@ are `{"error": {"message", "type": "nanomuse_cloud", "code"}}` with a stable
 
 Devices: `GET /v1/devices` lists the account's devices (online or last seen),
 `DELETE /v1/devices/{id}` forgets an offline one, and `WS /v1/hub` is the hub
-itself — the frames are in [hub.md](hub.md).
+itself — the frames are in [hub.md](hub.md). Conversations: `/v1/sync/state`,
+`/v1/sync/changes` and `/v1/sync/conversations/{cid}` — the section
+[Conversation sync](#conversation-sync) above.

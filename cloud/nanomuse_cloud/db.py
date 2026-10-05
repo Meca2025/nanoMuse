@@ -166,6 +166,44 @@ CREATE TABLE IF NOT EXISTS settings (
     value         TEXT NOT NULL,               -- JSON
     updated_at    INTEGER NOT NULL
 );
+-- 0.19: the text of an account's conversations, so every device of it shows the same
+-- chats (sync.py). Only user and assistant texts and attachment names; never a file or a
+-- picture. Deleted with the account, on request, or when the person turns sync off.
+CREATE TABLE IF NOT EXISTS sync_conversations (
+    account_id    TEXT NOT NULL REFERENCES accounts(id),
+    cid           TEXT NOT NULL,              -- minted by the device that started it
+    kind          TEXT NOT NULL,              -- main | side (one main per account)
+    title         TEXT NOT NULL DEFAULT '',
+    device        TEXT NOT NULL DEFAULT '',   -- the device that started it (devices.id)
+    created_at    INTEGER NOT NULL,
+    updated_at    INTEGER NOT NULL,
+    deleted       INTEGER NOT NULL DEFAULT 0,
+    deleted_at    INTEGER,                    -- tombstones are swept after 30 days
+    seq           INTEGER NOT NULL,           -- the account's change counter when last written
+    PRIMARY KEY (account_id, cid)
+);
+CREATE INDEX IF NOT EXISTS sync_conversations_seq ON sync_conversations(account_id, seq);
+CREATE TABLE IF NOT EXISTS sync_messages (
+    account_id    TEXT NOT NULL REFERENCES accounts(id),
+    mid           TEXT NOT NULL,              -- minted by the device that wrote it
+    cid           TEXT NOT NULL,
+    seq           INTEGER NOT NULL,
+    device        TEXT NOT NULL DEFAULT '',
+    role          TEXT NOT NULL,              -- user | assistant
+    text          TEXT NOT NULL DEFAULT '',
+    truncated     INTEGER NOT NULL DEFAULT 0, -- cut at 16 KB
+    attachments   TEXT NOT NULL DEFAULT '[]', -- JSON [{name, mime, size}] — names and sizes only
+    created_at    INTEGER NOT NULL,
+    deleted       INTEGER NOT NULL DEFAULT 0,
+    deleted_at    INTEGER,
+    PRIMARY KEY (account_id, mid)
+);
+CREATE INDEX IF NOT EXISTS sync_messages_seq ON sync_messages(account_id, seq);
+CREATE INDEX IF NOT EXISTS sync_messages_cid ON sync_messages(account_id, cid);
+CREATE TABLE IF NOT EXISTS sync_cursors (
+    account_id    TEXT PRIMARY KEY REFERENCES accounts(id),
+    seq           INTEGER NOT NULL DEFAULT 0  -- one counter per account; cursor = its value
+);
 """
 
 
@@ -270,6 +308,8 @@ class Database:
         # 0.17: the connectors each device of the account holds — a label and a sign-in kind
         # per service, never a credential — merged by the device that wrote them
         add("profiles", "connectors", "TEXT NOT NULL DEFAULT '[]'")
+        # 0.19: conversation sync is on unless the person turned it off (sync.py)
+        add("accounts", "sync_enabled", "INTEGER NOT NULL DEFAULT 1")
 
     # -- 0.15: settings the operator changes while the relay runs ------------------------------
 
@@ -540,6 +580,9 @@ class Database:
             c.execute("DELETE FROM video_tasks WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM devices WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM profiles WHERE account_id=?", (account_id,))
+            c.execute("DELETE FROM sync_messages WHERE account_id=?", (account_id,))
+            c.execute("DELETE FROM sync_conversations WHERE account_id=?", (account_id,))
+            c.execute("DELETE FROM sync_cursors WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM ledger WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM api_keys WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM accounts WHERE id=?", (account_id,))

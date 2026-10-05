@@ -44,7 +44,7 @@
 
 ## Community
 
-nanoMuse is open source and free. Sign in with a phone number or an e-mail and you get a starting allowance; the developer pays for it. The account page shows what is left and how to add more. When it is gone, use your own key — Alibaba Cloud Bailian in mainland China, OpenRouter elsewhere ([how](https://github.com/nano-muse/nanoMuse/blob/main/docs/own-key.md)). Messages are not stored by default and nothing is sold ([privacy policy](https://nanomuse.cn/privacy/)); delete the account whenever you want.
+nanoMuse is open source and free. Sign in with a phone number or an e-mail and you get a starting allowance; the developer pays for it. The account page shows what is left and how to add more. When it is gone, use your own key — Alibaba Cloud Bailian in mainland China, OpenRouter elsewhere ([how](https://github.com/nano-muse/nanoMuse/blob/main/docs/own-key.md)). With an account, the text of your conversations is kept on nanoMuse Cloud so that your devices show the same chats — one switch in Data controls turns it off and deletes it; nothing is sold ([privacy policy](https://nanomuse.cn/privacy/)); delete the account whenever you want.
 
 This is a preview. We use it every day and know where it is rough; tell us where it broke for you and what you want it to do. Thanks to everyone who tried a build and reported what broke. [Open an issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [send a pull request](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [star the repo](https://github.com/nano-muse/nanoMuse) — if it is useful to you, a star helps others find it.
 
@@ -84,7 +84,7 @@ Based on [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 (GPL-3.0), mod
 
 ### 社区
 
-nanoMuse 开源、免费。手机号或邮箱登录后有一份起始额度，钱是开发者出的；剩多少、怎么加，账号页里有数。用完可以填自己的 key：国内用阿里云百炼，海外用 OpenRouter（[教程](https://github.com/nano-muse/nanoMuse/blob/main/docs/own-key.md)）。消息默认不存服务器，数据不卖（[隐私政策](https://nanomuse.cn/privacy/)）；账号想删就删。
+nanoMuse 开源、免费。手机号或邮箱登录后有一份起始额度，钱是开发者出的；剩多少、怎么加，账号页里有数。用完可以填自己的 key：国内用阿里云百炼，海外用 OpenRouter（[教程](https://github.com/nano-muse/nanoMuse/blob/main/docs/own-key.md)）。登录后，对话文字会保存在 nanoMuse Cloud，让你的几台设备看到同样的对话——「数据控制」里一个开关就能关掉并删除；数据不卖（[隐私政策](https://nanomuse.cn/privacy/)）；账号想删就删。
 
 现在是预览版。我们自己每天在用，知道哪些地方还糙；哪里坏了、想要什么，直接提 issue。谢谢每一位装过、试过、报过问题的人。[提 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [发 PR](https://github.com/nano-muse/nanoMuse/blob/main/CONTRIBUTING.md) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [点个 Star](https://github.com/nano-muse/nanoMuse)——觉得有用，点个 Star，让更多人看到。
 
