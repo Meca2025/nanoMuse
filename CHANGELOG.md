@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.36] - 2026-10-05 · Thread
+
+One conversation across your devices: the text of the chats lives on nanoMuse Cloud and every device signed into the account shows the same threads; `@<device>` hands a turn to another device, and the iPhone takes such tasks too. The desktop's hands on UI-TARS-desktop's wheels — the operator in the Electron process, the picture as the coordinate unit, the prediction marker — so clicks land where the model meant. The iPhone level with the phone on voice, composer, header, rename and settings; the Mac face click, the logo splash, Ubuntu icons and the console's Star asks fixed. [Release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.36).
+
 ### Runtime
 
 - **The picture is the unit.** The computer hands clicked beside their targets on scaled displays because the model saw a picture scaled to 1,600 pixels wide and was told its coordinates were pixels of the screen. Now `computer_screen` says the picture's size and `computer_act` takes `x`/`y` — or a `box` — in that picture; the runtime maps them once to the hands' own pixels (`nanomuse/computer/coords.py`: UI-TARS's `smart_resize` to Qwen's 28-pixel grid, so the model's own resize is the identity; `Mapping` between picture and screen). `[hands] coords = "norm1000"` for models that answer on a 0–1000 grid. Status and events carry `screen_size` and `picture_size` apart.
