@@ -50,7 +50,8 @@ final class NanoMuseComposerWatch: ObservableObject {
 
     private static let log = Logger(subsystem: "io.github.nanomuse.app", category: "nm.composer")
     /// How long a wrong state may last before the stack is rebuilt.
-    private static let patience: TimeInterval = 1.0
+    // nonisolated: read as a default argument (a nonisolated context); Xcode 27's compiler warns otherwise
+    private nonisolated static let patience: TimeInterval = 1.0
     /// Two rebuilds are never closer than this.
     private static let cooldown: TimeInterval = 3.0
 
