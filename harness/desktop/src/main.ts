@@ -6,7 +6,8 @@ import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlin
 import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { Operator, type Marker } from "./operator";
+import * as macPermissions from "./mac-permissions";
+import { Operator, SCREEN_PERMISSION_TEXT, type Marker } from "./operator";
 import { startOperatorServer, type OperatorServer } from "./operator-server";
 
 /**
@@ -76,6 +77,14 @@ const screenshotFlag = process.argv.find((a) => a.startsWith("--screenshot="))?.
  * scripts/smoke.mjs runs against a packaged build to see that libnut loaded there.
  */
 const operatorCheckFlag = process.argv.find((a) => a.startsWith("--operator-check="))?.slice("--operator-check=".length);
+
+if (process.platform === "darwin") {
+  // electron/electron#44504: since 29.1 Chromium takes desktopCapturer's thumbnails through
+  // ScreenCaptureKit on macOS, and that path drops frames non-deterministically (an empty or
+  // stale picture for the hands). These features off, the thumbnails come from CGWindowList
+  // as before — the same switch UI-TARS-desktop and the issue's workaround use. Before ready.
+  app.commandLine.appendSwitch("disable-features", "ThumbnailCapturerMac:capture_mode/sc_screenshot_manager,ScreenCaptureKitPickerScreen,ScreenCaptureKitStreamPickerSonoma");
+}
 
 const logs: string[] = [];
 let hostStderr = "";
@@ -490,9 +499,19 @@ function overlayColors(dark = nativeTheme.shouldUseDarkColors): Electron.TitleBa
 type PermissionKind = "accessibility" | "screen" | "microphone";
 type PermissionState = "granted" | "denied" | "not-determined" | "not-needed";
 
-/** Where one permission the hands use stands; only macOS gates them. */
+/**
+ * Where one permission the hands use stands; only macOS gates them. TCC's own answer through
+ * the native module when it loaded (src/mac-permissions.ts); Electron's `systemPreferences`
+ * probes otherwise, as before.
+ */
 function permissionState(kind: PermissionKind): PermissionState {
   if (process.platform !== "darwin") return "not-needed";
+  if (kind !== "microphone") {
+    const native = macPermissions.status(kind);
+    if (native === "authorized") return "granted";
+    if (native === "not determined") return "not-determined";
+    if (native !== null) return "denied";
+  }
   if (kind === "accessibility") return systemPreferences.isTrustedAccessibilityClient(false) ? "granted" : "denied";
   const status = systemPreferences.getMediaAccessStatus(kind);
   if (status === "granted") return "granted";
@@ -719,23 +738,9 @@ function registerBridge(): void {
   ipcMain.handle("nanomuse:permissions:request", async (_e, kind: PermissionKind) => {
     if (process.platform !== "darwin") return "not-needed" satisfies PermissionState;
     if (!(kind in PERMISSION_PANES)) return "denied" satisfies PermissionState;
-    if (kind === "accessibility") {
-      // the system's own dialog, which also lists the app in the Accessibility pane
-      if (!systemPreferences.isTrustedAccessibilityClient(true)) void shell.openExternal(PERMISSION_PANES.accessibility);
-    } else if (kind === "microphone") {
-      await systemPreferences.askForMediaAccess("microphone").catch(() => false);
-    } else {
-      // Screen Recording has no prompt API. A first capture attempt is what puts the app on
-      // the pane's list (and shows the system's own notice); without it the user finds
-      // nothing to switch on. Then the pane, where the switch is.
-      try {
-        await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 1, height: 1 } });
-      } catch {
-        /* no sources without the permission — that attempt was the point */
-      }
-      void shell.openExternal(PERMISSION_PANES.screen);
-      watchScreenGrant();
-    }
+    if (kind === "accessibility") requestAccessibility();
+    else if (kind === "microphone") await systemPreferences.askForMediaAccess("microphone").catch(() => false);
+    else await requestScreenRecording();
     return permissionState(kind);
   });
   // macOS applies Screen Recording only to freshly started processes: after granting it, the
@@ -1058,36 +1063,75 @@ async function guidePermissions(): Promise<Record<PermissionKind, PermissionStat
       defaultId: 0,
       cancelId: 1,
     });
-    if (response === 0 && !systemPreferences.isTrustedAccessibilityClient(true)) void shell.openExternal(PERMISSION_PANES.accessibility);
+    if (response === 0) requestAccessibility();
   }
   if (permissionState("screen") !== "granted") {
     const { response } = await dialog.showMessageBox({
       type: "info",
       message: zh ? "nanoMuse 需要「屏幕录制」权限" : "nanoMuse needs Screen Recording",
       detail: zh
-        ? "它靠截图看到屏幕上有什么。系统没有弹窗；点「继续」后在「屏幕录制」面板里打开 nanoMuse Desktop（只需要这一项），然后重新启动应用——macOS 的这项权限只对重新启动后的应用生效。"
-        : "It sees the screen through screenshots. There is no system prompt: after Continue, switch on nanoMuse Desktop in the Screen Recording pane (that one entry is all), then relaunch the app — macOS applies this permission to freshly started apps only.",
+        ? "它靠截图看到屏幕上有什么。点「继续」后系统会询问一次；在「屏幕录制」面板里打开 nanoMuse Desktop（只需要这一项），然后重新启动应用——macOS 的这项权限只对重新启动后的应用生效。"
+        : "It sees the screen through screenshots. After Continue the system asks once; switch on nanoMuse Desktop in the Screen Recording pane (that one entry is all), then relaunch the app — macOS applies this permission to freshly started apps only.",
       buttons: [zh ? "继续" : "Continue", zh ? "以后再说" : "Later"],
       defaultId: 0,
       cancelId: 1,
     });
-    if (response === 0) {
-      try {
-        await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 1, height: 1 } });
-      } catch {
-        /* the attempt is what lists the app in the pane */
-      }
-      void shell.openExternal(PERMISSION_PANES.screen);
-      watchScreenGrant();
-    }
+    if (response === 0) await requestScreenRecording();
   }
   return state();
 }
 
-/** Quit and start again; the host and its `nanomuse mcp` go with the process tree, the new app starts them afresh. */
+/**
+ * Ask macOS for Screen Recording the way the system does it: `CGRequestScreenCaptureAccess`
+ * through the native module — the system's dialog the first time, and the app on the pane's
+ * list. Without the module, a 1×1 `desktopCapturer` probe, which is what listed the app
+ * before 0.1.37. Then the pane, where the switch is, and the watch for the grant.
+ */
+async function requestScreenRecording(openPane = true): Promise<void> {
+  if (!macPermissions.askScreen()) {
+    try {
+      await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 1, height: 1 } });
+    } catch {
+      /* no sources without the permission — that attempt was the point */
+    }
+  }
+  if (openPane) void shell.openExternal(PERMISSION_PANES.screen);
+  watchScreenGrant();
+}
+
+/** The Accessibility dialog (`AXIsProcessTrustedWithOptions` with the prompt — it also lists the app in the pane), then the pane when it is still off. */
+function requestAccessibility(openPane = true): void {
+  const asked = macPermissions.askAccessibility();
+  const trusted = systemPreferences.isTrustedAccessibilityClient(!asked);
+  if (!trusted && openPane) void shell.openExternal(PERMISSION_PANES.accessibility);
+}
+
+/**
+ * At launch on macOS (UI-TARS-desktop's `ensurePermissions`): when either permission the
+ * hands need is not granted, the system's own dialogs — Screen Recording first, then
+ * Accessibility — and the Screen Recording pane opened once per launch, so the person
+ * finds the switch without hunting for it; `watchScreenGrant()` then offers the relaunch
+ * the grant needs. Nothing is asked when both are already on, nor under `--operator-check`
+ * / `--screenshot` (the checks must not block on a dialog). The status goes to the log.
+ */
+function ensureMacPermissionsAtLaunch(): void {
+  if (process.platform !== "darwin") return;
+  const accessibility = permissionState("accessibility");
+  const screen = permissionState("screen");
+  log(`permissions: accessibility=${accessibility} screen=${screen} (${macPermissions.loaded() ? "native" : `systemPreferences — ${macPermissions.loadError()}`})`);
+  if (accessibility === "granted" && screen === "granted") return;
+  if (screen !== "granted") void requestScreenRecording(true);
+  if (accessibility !== "granted") requestAccessibility(false);
+}
+
+/**
+ * Quit and start again. Through `app.quit()`, not `app.exit()`: `before-quit` stops the host
+ * and the operator server first, so the old `nanomuse mcp` — started before the permission
+ * was granted, and so still without it — does not outlive the relaunch.
+ */
 function relaunchNow(): void {
   app.relaunch();
-  app.exit(0);
+  app.quit();
 }
 
 let screenGrantWatch: NodeJS.Timeout | null = null;
@@ -1131,6 +1175,25 @@ function watchScreenGrant(): void {
   }, 1500);
 }
 
+/**
+ * The main window closed. On macOS the app stays in the Dock, as apps there do. On Linux
+ * and Windows it stays only when there is a tray to come back from (the menu-bar switch on,
+ * and `new Tray` worked): the tray's click, *Open* and the launcher all bring the window
+ * back. Without a tray the app quits — before 0.1.37 it lived on headless: the glow and the
+ * capsule are BrowserWindows too, so `window-all-closed` never fired once the hands had been
+ * used, and every later launcher click was a second instance that found no window to show.
+ */
+function mainWindowClosed(): void {
+  mainWindow = null;
+  if (process.platform === "darwin" || quitting) return;
+  if (tray) {
+    log("window closed; the app stays in the tray (Open, or the launcher, brings it back)");
+    return;
+  }
+  log("window closed; no tray — quitting");
+  app.quit();
+}
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
@@ -1171,9 +1234,7 @@ function createWindow(): BrowserWindow {
     // the microphone for voice input; nothing else is asked for
     callback(permission === "media");
   });
-  win.on("closed", () => {
-    mainWindow = null;
-  });
+  win.on("closed", mainWindowClosed);
   // the splash: the logo in a loading ring and the wordmark (resources/loading.html) — no face
   void win.loadFile(join(ownResources(), "loading.html"), { query: { lang: zh ? "zh" : "en" } });
   return win;
@@ -1255,7 +1316,12 @@ function buildMenu(): void {
     { label: T.builtOn, click: () => void shell.openExternal(HARNESS_PAGE) },
     { label: T.openLogFolder, click: () => shell.showItemInFolder(join(harnessHome(), "desktop.log")) },
   ];
-  if (process.platform !== "darwin") help.push({ type: "separator" }, { label: T.about, click: about });
+  // Linux and Windows: About, and a Quit with Ctrl+Q — the one way out that needs no tray.
+  // With the menu-bar switch on, closing the window keeps the app in the tray, and on a
+  // GNOME whose appindicator extension does not take Electron 44's registration (Ubuntu
+  // 20.04: "org.freedesktop.StatusNotifierItem-<pid>-1/StatusNotifierItem/1" is not a bus
+  // name to it) the tray icon never appears, so its Quit cannot be reached.
+  if (process.platform !== "darwin") help.push({ type: "separator" }, { label: T.about, click: about }, { type: "separator" }, { label: T.quit, role: "quit", accelerator: "CmdOrCtrl+Q" });
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(process.platform === "darwin"
       ? [
@@ -1308,10 +1374,10 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+    // the launcher clicked while this instance runs — with its window closed, too (the
+    // tray case): showWindow() makes the window again when it is gone
+    log(`second instance: ${mainWindow ? "focusing the window" : hostUrl ? "opening the window again" : "still starting"}`);
+    showWindow();
   });
   app.setAboutPanelOptions({
     applicationName: "nanoMuse",
@@ -1330,6 +1396,7 @@ if (!app.requestSingleInstanceLock()) {
       await operatorCheck(operatorCheckFlag);
       return;
     }
+    if (!screenshotFlag) ensureMacPermissionsAtLaunch();
     try {
       await boot();
     } catch (exc) {
@@ -1338,14 +1405,14 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
   app.on("activate", () => {
-    if (!mainWindow && hostUrl) {
-      mainWindow = createWindow();
-      void mainWindow.loadURL(hostUrl);
-    }
+    // the Dock icon on macOS: the window again when it was closed
+    showWindow();
   });
   app.on("window-all-closed", () => {
-    // the Host keeps running on macOS while the app is in the Dock, as apps there do
-    if (process.platform !== "darwin") app.quit();
+    // The main window's own `closed` decides (mainWindowClosed): the Host keeps running on
+    // macOS while the app is in the Dock, and on Linux and Windows while there is a tray.
+    // This fires only when the overlays are gone too; the same rule applies.
+    if (process.platform !== "darwin" && !tray) app.quit();
   });
   app.on("before-quit", (e) => {
     releaseAwake();

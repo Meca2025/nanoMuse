@@ -460,6 +460,18 @@ export default class NanomuseRooms extends Service {
     if (bound && this.firstRun.phase !== 'none' && (await this.alive(bound))) return { sessionId: bound }
     const sc = this.ctx.get('sessionController')
     if (!sc) throw new RelayError(503, 'no_sessions', 'Chats are not available yet')
+    // One thread (C8): signed in before Start, the account's main conversation may already live in
+    // a session here (pulled from the relay) — the first conversation is that session.
+    const synced = this.ctx.nanomuseCloud.syncMainSession()
+    if (synced && (await this.alive(synced))) {
+      // A conversation already underway on another device of the account (its turns are here)
+      // is not begun again: no opening, no name to choose — the thread simply continues.
+      const underway = this.ctx.nanomuseCloud.syncRemoteLines(synced) > 0
+      const base: FirstRunState = this.firstRun.phase === 'done' ? this.firstRun : { ...this.firstRun, phase: underway ? 'done' : 'none' }
+      this.firstRun = startConversation(base, synced)
+      await this.saveFirstRun()
+      return { sessionId: synced }
+    }
     const folder = join(homeDir(), 'nanoMuse')
     await mkdir(folder, { recursive: true })
     let workspaceId: string | undefined
@@ -473,6 +485,8 @@ export default class NanomuseRooms extends Service {
     // a conversation that already ran its course on an older chat stays over; a fresh install begins
     this.firstRun = startConversation(this.firstRun.phase === 'done' ? this.firstRun : { ...this.firstRun, phase: 'none' }, created.sessionId)
     await this.saveFirstRun()
+    // the main chat from its first turn: pushed as the account's main conversation (C8)
+    await this.ctx.nanomuseCloud.setSyncMain(String(created.sessionId)).catch((error: unknown) => this.warn('sync main', error))
     return { sessionId: created.sessionId }
   }
 

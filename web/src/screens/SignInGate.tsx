@@ -1,6 +1,6 @@
 import { Cloud, Hand, MonitorSmartphone, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
-import { Avatar } from "../components/Avatar";
+import { BrandMark } from "../components/BrandMark";
 import { CommunityNotice } from "../components/CommunityNotice";
 import { PRIVACY_URL } from "../components/DataControls";
 import { SignIn } from "../components/SignIn";
@@ -37,9 +37,8 @@ export function SignInGate() {
         <div className="mx-auto w-full wide:grid wide:max-w-[980px] wide:grid-cols-[1.1fr_1fr] wide:items-center wide:gap-16">
           {/* the words */}
           <div className="safe-top flex flex-col items-center pt-14 text-center wide:items-start wide:pt-0 wide:text-left">
-            <div className="rounded-full bg-surface p-3 shadow-[0_20px_60px_-24px_rgba(0,100,212,0.55)]">
-              <Avatar profile={state.profile} size={88} still />
-            </div>
+            {/* the door is the app's, so the app's mark — the face comes once there is a Muse to meet */}
+            <BrandMark size={88} className="drop-shadow-[0_20px_40px_rgba(0,100,212,0.28)]" />
             <h1 className="mt-6 text-[28px] font-bold tracking-tight wide:text-[34px]">{t("Sign in to {name}", { name })}</h1>
             <p className="mt-2 max-w-sm text-[14.5px] leading-relaxed text-muted wide:max-w-md wide:text-[15.5px]">
               {t("One free account. It is what lets your phone and computers work as one and brings a model to start with.")}

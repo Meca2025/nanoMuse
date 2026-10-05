@@ -264,6 +264,14 @@ function upsertEvent(list: TimelineEvent[] | undefined, ev: TimelineEvent): Time
     next[idx] = ev;
     return next;
   }
+  // A row pulled from another device of the account (C8) may be older than what is on
+  // screen: it goes where its time says, after anything written here in the same moment.
+  // Everything else happens now and lands at the end.
+  if (ev.synced && ev.ts && events.length > 0 && (events[events.length - 1]?.ts ?? "") > ev.ts) {
+    let at = events.length;
+    while (at > 0 && (events[at - 1]?.ts ?? "") > ev.ts) at -= 1;
+    return [...events.slice(0, at), ev, ...events.slice(at)];
+  }
   return [...events, ev];
 }
 

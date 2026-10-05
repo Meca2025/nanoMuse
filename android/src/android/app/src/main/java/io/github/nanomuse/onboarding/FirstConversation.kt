@@ -249,6 +249,18 @@ class FirstConversation(
         private const val TAKEN_NAMES = "Siri, Alexa, Cortana, Jarvis, Muse, Gemini, Copilot, 小爱, 小度, 小艺, 天猫精灵, 豆包, 文心, 通义, 阿福"
         private const val MAX_NAME = 16
 
+        /**
+         * The opening the app spoke in [sessionId] on its own behalf, as one text — for the
+         * conversation sync, which has no row for it. Null when [sessionId] is not the first
+         * conversation (or it never started).
+         */
+        fun introOf(context: Context, sessionId: String): String? {
+            val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            if (p.getString(KEY_SESSION, null) != sessionId) return null
+            if (p.getString(KEY_PHASE, null).let { it == null || it == Phase.NONE.name }) return null
+            return FirstConversation(context, null).intro().joinToString("\n\n")
+        }
+
         private val blockRegex = Regex("```$BLOCK[ \\t]*\\r?\\n([\\s\\S]*?)```")
         private val QUOTES = Regex("^[\\s\"'“”‘’「」『』]+|[\\s\"'“”‘’「」『』。，、！!？?.]+$")
 

@@ -95,8 +95,8 @@ fun SideChatDrawer(
     val codingComputers = remember(hubDevices) {
         hubDevices.count { it.online && it.actions.contains("coding.sessions") && it.id != io.github.nanomuse.hub.Hub.deviceId(context) }
     }
-    // nanoMuse: chats that came from another device of the account carry its name (contract C7)
-    val badges by io.github.nanomuse.sync.ConversationSync.badges.collectAsState()
+    // nanoMuse: a chat from another device of the account is the same chat here (contract C8) — no
+    // badge per chat; the turns written elsewhere carry "From Pixel 8" in the bubble instead
     var query by remember { mutableStateOf("") }
     val sideChats = remember(sessions, mainSessionId, query) {
         sessions
@@ -256,7 +256,6 @@ fun SideChatDrawer(
                     SideChatRow(
                         session = session,
                         selected = session.id == currentSessionId,
-                        badge = badges[session.id]?.let { stringResource(R.string.nm_sync_from, it) },
                         onClick = { onOpenSession(session.id) },
                         onSetMain = { onSetMain(session.id) },
                     )
@@ -320,8 +319,6 @@ fun SideChatDrawer(
 private fun SideChatRow(
     session: ChatSessionEntity,
     selected: Boolean,
-    /** "From Pixel 8" under the title when the chat was started on another device; null for this phone's own. */
-    badge: String?,
     onClick: () -> Unit,
     onSetMain: () -> Unit,
 ) {
@@ -345,15 +342,6 @@ private fun SideChatRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (badge != null) {
-                    Text(
-                        text = badge,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
             Spacer(Modifier.size(10.dp))
             Text(

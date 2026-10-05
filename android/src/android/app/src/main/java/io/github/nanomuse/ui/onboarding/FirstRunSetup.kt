@@ -243,12 +243,12 @@ fun FirstRunSetupScreen(
 
 // ── the pages ──────────────────────────────────────────────────────────────
 
-/** The first page: the face, one line on what it is, the notice, and the one door — the account. */
+/** The first page: the app's icon, one line on what it is, the notice, and the one door — the account. */
 @Composable
 private fun WelcomePage(onSignIn: () -> Unit) {
     val context = LocalContext.current
     Page(
-        hero = { AgentAvatarDisc(mood = AgentMood.IDLE, discSize = 104.dp) },
+        hero = { io.github.nanomuse.ui.muse.NmBrandMark(size = 104.dp) }, // the face comes with the conversation, on the last page
         title = stringResource(R.string.nm_setup_title),
         subtitle = stringResource(R.string.nm_welcome_tagline),
         primaryLabel = stringResource(R.string.nm_welcome_email),

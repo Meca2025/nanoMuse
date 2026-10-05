@@ -3628,10 +3628,24 @@ class ChatViewModel(
     init {
         loadSession()
         // nanoMuse: rows synced from the account's other devices land in this chat while it is
-        // open — reloaded from the database between turns, never under a running one.
+        // open — reloaded from the database between turns, never under a running one; what
+        // arrives during a turn is shown the moment the turn ends (C8: no reload by hand).
         viewModelScope.launch {
-            io.github.nanomuse.sync.ConversationSync.pulled.collect { ids ->
-                if (realSessionId.ifEmpty { sessionId } in ids && !_isStreaming.value) reloadSessionFromDb()
+            var nmPulledWhileStreaming = false
+            launch {
+                io.github.nanomuse.sync.ConversationSync.pulled.collect { ids ->
+                    if (realSessionId.ifEmpty { sessionId } !in ids) return@collect
+                    if (_isStreaming.value) nmPulledWhileStreaming = true else reloadSessionFromDb()
+                }
+            }
+            _isStreaming.collect { streaming ->
+                if (!streaming && nmPulledWhileStreaming) {
+                    // a breath after the end: the turn's last rows are still being written
+                    kotlinx.coroutines.delay(1_500)
+                    if (_isStreaming.value) return@collect
+                    nmPulledWhileStreaming = false
+                    reloadSessionFromDb()
+                }
             }
         }
         // [T-session-paused-badge-active-false-positive] Drive the session-list
@@ -6186,6 +6200,7 @@ class ChatViewModel(
             bodyPartsJson = queuedPaste?.partsJson,
         )
         val userEntity = chatRepository.appendMessage(sid, "user", userPartsJson)
+        io.github.nanomuse.sync.ConversationSync.sent() // nanoMuse: pushed at send (C8)
         agentHistory.add(
             LLMMessage(
                 role = LLMMessage.Role.USER,
@@ -6332,6 +6347,7 @@ class ChatViewModel(
                 bodyPartsJson = drainPaste?.partsJson,
             )
             chatRepository.appendMessage(sid, "user", userPartsJson)
+            io.github.nanomuse.sync.ConversationSync.sent() // nanoMuse: pushed at send (C8)
 
             agentHistory.add(LLMMessage(
                 role = LLMMessage.Role.USER,
@@ -6911,6 +6927,7 @@ class ChatViewModel(
                 bodyPartsJson = pasted?.partsJson,
             )
             val persistedUser = chatRepository.appendMessage(activeSessionId, "user", userPartsJson)
+            io.github.nanomuse.sync.ConversationSync.sent() // nanoMuse: the person's line reaches the other devices at send (C8)
 
             val userMsg = ChatMessage(
                 id = persistedUser.id,

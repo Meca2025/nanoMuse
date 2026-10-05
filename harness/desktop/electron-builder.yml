@@ -51,6 +51,11 @@ linux:
       arch: [x64]
     - target: deb
       arch: [x64]
+    # the same unpacked app as an archive: for machines where the AppImage cannot mount
+    # (no FUSE, or fusermount not permitted — `--appimage-extract-and-run` is the other way)
+    # and the .deb does not apply; unpack anywhere and run ./nanomuse-desktop (docs/desktop.md)
+    - target: tar.gz
+      arch: [x64]
   artifactName: nanoMuse-Desktop-${version}-linux-x64.${ext}
   category: Utility
   # the icon set, one PNG per size (resources/icons/<n>x<n>.png, made from app-icon.png): the deb

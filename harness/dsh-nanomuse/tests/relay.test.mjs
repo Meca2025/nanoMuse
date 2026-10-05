@@ -187,3 +187,16 @@ test('profile asks for the face only when told and maps the account\'s look', as
   await relay.profile('sk-test-device-key', true)
   assert.equal(seen.at(-1).url, '/v1/me/profile?face=true')
 })
+
+test('putConnectors writes this device’s connections alone — never the look it happens to wear', async () => {
+  const rows = [{ id: 'gh', label: 'GitHub', url: 'https://mcp.example/gh', auth: 'key', device: 'Desk', device_id: 'desk-1', enabled: true, at: '2026-10-05T00:00:00Z' }]
+  const rev = await relay.putConnectors('sk-test-device-key', rows, 'desk-1', 'desk-1')
+  const last = seen.at(-1)
+  assert.equal(rev, 3)
+  assert.equal(last.method, 'PUT')
+  assert.equal(last.url, '/v1/me/profile')
+  assert.deepEqual(Object.keys(last.body).sort(), ['connectors', 'device', 'device_id'])
+  assert.deepEqual(last.body.connectors, rows)
+  assert.equal('name' in last.body, false)
+  assert.equal('avatar' in last.body, false)
+})

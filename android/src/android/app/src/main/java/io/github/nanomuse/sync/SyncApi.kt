@@ -64,6 +64,7 @@ object SyncJson {
                     attachments = attachments(it.optJSONArray("attachments")),
                     createdAt = it.optLong("created_at"),
                     deleted = it.optBoolean("deleted", false),
+                    deviceName = it.optString("device_name"),
                 )
             }.filter { it.mid.isNotBlank() },
         )

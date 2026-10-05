@@ -21,6 +21,7 @@ import { profileBus, settingsBus } from './bus.ts'
 import { makeAboutSheet } from './About.tsx'
 import { syncOverlay } from './overlay.ts'
 import { renderFenceCards } from './FenceCards.ts'
+import { renderRemoteBubbles } from './RemoteBubbles.ts'
 import { makeFirstRunIntro } from './FirstRun.tsx'
 import { interceptComposer, makeAvatarChat } from './AvatarChat.tsx'
 import { makeCapsule } from './Capsule.tsx'
@@ -598,6 +599,8 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => syncOverlay(t), 'nanomuse: overlays')
   // The agent's app fences (goal created, goal update, feed post, new look) as cards in the chat.
   ctx.effect(() => renderFenceCards(t), 'nanomuse: fence cards')
+  // The turns written on the account's other devices, as bubbles in the thread (C8).
+  ctx.effect(() => renderRemoteBubbles(t), 'nanomuse: remote bubbles')
 
   // The avatar studio: a sheet over the window, from the look editor or the agent's draw_new_look.
   const AvatarStudio = makeAvatarStudio({ t })

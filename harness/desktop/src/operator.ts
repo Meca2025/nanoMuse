@@ -113,6 +113,32 @@ export class OperatorError extends Error {
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
+/** What a Mac without Screen Recording is told — the one text, from `/info` and from a refused `/screenshot` alike. */
+export const SCREEN_PERMISSION_TEXT = "macOS: switch on nanoMuse Desktop under System Settings → Privacy & Security → Screen Recording, then quit and reopen the app.";
+/** A channel below this in every sampled pixel means a black picture (macOS without the permission). */
+const BLACK_LEVEL = 8;
+
+/**
+ * Whether a picture is black all over — what macOS hands a process without Screen Recording
+ * (desktopCapturer's thumbnail, or libnut's grab, of the wallpaper-less void). Samples a grid
+ * of the bitmap (about 4,096 points) rather than every pixel; true when no channel of any
+ * sample reaches BLACK_LEVEL. An empty image counts as black.
+ */
+export function isBlackImage(image: Electron.NativeImage): boolean {
+  const { width, height } = image.getSize();
+  if (width <= 0 || height <= 0) return true;
+  const bitmap = image.toBitmap(); // BGRA, 4 bytes a pixel
+  if (bitmap.length < width * height * 4) return bitmap.length === 0;
+  const step = Math.max(1, Math.floor(Math.sqrt((width * height) / 4096)));
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const i = (y * width + x) * 4;
+      if ((bitmap[i] ?? 0) >= BLACK_LEVEL || (bitmap[i + 1] ?? 0) >= BLACK_LEVEL || (bitmap[i + 2] ?? 0) >= BLACK_LEVEL) return false;
+    }
+  }
+  return true;
+}
+
 export class Operator {
   private nut: typeof Nut | null = null;
   private loadError = "";
@@ -175,7 +201,7 @@ export class Operator {
       if (missing.length) {
         return {
           available: false,
-          reason: `macOS: switch on nanoMuse Desktop under System Settings → Privacy & Security → ${missing.join(" and ")}${p.screen ? "" : ", then quit and reopen the app"}.`,
+          reason: p.accessibility ? SCREEN_PERMISSION_TEXT : `macOS: switch on nanoMuse Desktop under System Settings → Privacy & Security → ${missing.join(" and ")}${p.screen ? "" : ", then quit and reopen the app"}.`,
         };
       }
     }
@@ -219,14 +245,28 @@ export class Operator {
     };
   }
 
+  /**
+   * The picture of the primary display. On macOS a process without Screen Recording gets no
+   * picture, only a black one — and it gets it two ways: Electron ≥ 32 rejects
+   * `getSources` outright (`TryPromptUserForScreenCapture` → `HandleFailure`), and libnut's
+   * grab comes back all black. Either is answered with 403 and the permission text, never
+   * with the black picture — one error, in the words the Computer-use page uses, instead of
+   * a model told to act on a black screen.
+   */
   private async capture(space: ScreenSpace): Promise<Electron.NativeImage> {
+    const mac = process.platform === "darwin";
     try {
       const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: space.width, height: space.height } });
       const primary = sources.find((s) => s.display_id === String(space.id)) ?? sources[0];
-      if (primary && !primary.thumbnail.isEmpty()) return primary.thumbnail;
+      if (primary && !primary.thumbnail.isEmpty()) {
+        if (mac && isBlackImage(primary.thumbnail)) throw new OperatorError(`no screenshot: the picture is black — ${SCREEN_PERMISSION_TEXT}`, 403);
+        return primary.thumbnail;
+      }
       this.log(`desktopCapturer: no picture of display ${space.id} (${sources.length} sources)`);
     } catch (exc) {
+      if (exc instanceof OperatorError) throw exc;
       this.log(`desktopCapturer failed: ${String(exc)}`);
+      if (mac) throw new OperatorError(`no screenshot: ${SCREEN_PERMISSION_TEXT}`, 403);
     }
     // the fallback UI-TARS's nut operator uses: libnut's own grab, scaled to the screen space
     const nut = this.load();
@@ -235,6 +275,7 @@ export class Operator {
     if (grabbed.channels !== 4) throw new OperatorError(`no screenshot: libnut returned ${grabbed.channels}-channel pixels`, 500);
     const bitmap = nativeImage.createFromBitmap(Buffer.from(grabbed.data), { width: grabbed.width, height: grabbed.height });
     if (bitmap.isEmpty()) throw new OperatorError("no screenshot: the capture came back empty", 500);
+    if (mac && isBlackImage(bitmap)) throw new OperatorError(`no screenshot: the picture is black — ${SCREEN_PERMISSION_TEXT}`, 403);
     return bitmap;
   }
 

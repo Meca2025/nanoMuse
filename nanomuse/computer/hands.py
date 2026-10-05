@@ -14,7 +14,9 @@ scroll, type, press keys, open an application:
   ``pyautogui`` cannot (it types by key codes, which have no 中文).
 
 Which one is used is ``[hands] backend``: ``auto`` takes the desktop operator when the app
-is around, then ``pyautogui`` when it is installed, then ``xdotool``. Every backend moves
+is around, then ``pyautogui`` when it is installed, then ``xdotool`` — except on macOS under
+the desktop app, where it is the operator or its reason (a fallback would mean a second TCC
+prompt for the runtime; :func:`nanomuse.computer.operator.operator_owns_the_screen`). Every backend moves
 in its own screen space — X11 root pixels, macOS points, Windows physical pixels — and
 says how big that space is (``size()``) so :class:`~nanomuse.computer.link.ComputerLink`
 can map the model's picture pixels onto it (:mod:`nanomuse.computer.coords`). Wayland
@@ -363,7 +365,7 @@ def _make_backend(name: str) -> HandsBackend:
 def pick_backend(preference: str = "auto") -> HandsBackend:
     """The hands to use, or :class:`HandsUnavailable` saying what is missing."""
     preference = (preference or "auto").lower()
-    from nanomuse.computer.operator import operator_env
+    from nanomuse.computer.operator import operator_env, operator_owns_the_screen
 
     # The desktop app's operator goes first — and when it is there but says no (a Wayland
     # session, a macOS permission missing), its reason is the one worth reading; the
@@ -381,6 +383,10 @@ def pick_backend(preference: str = "auto") -> HandsBackend:
         raise HandsUnavailable(
             operator_reason or "the desktop operator is not running (no NANOMUSE_OPERATOR_URL)"
         )
+    if operator_reason and operator_owns_the_screen():
+        # macOS under the desktop app: the operator or nothing. pyautogui here would ask
+        # TCC a second time, for the runtime, and the fix is the one the operator named.
+        raise HandsUnavailable(operator_reason)
     if (
         sys.platform.startswith("linux")
         and os.environ.get("WAYLAND_DISPLAY")

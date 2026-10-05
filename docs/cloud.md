@@ -125,17 +125,31 @@ nothing more is stored (the place is computed when the page is drawn).
 
 *Settings → Data controls → Sync conversations between my devices* (0.1.36,
 relay 0.19) is the other switch on that page, **on by default** for a signed-in
-account. With it on, each device pushes the text of its finished turns to the
-relay and pulls what the others pushed, so the phone, the computer and the web
-app show the same chats: the title of each conversation, who started it, and
-each message's role, text, time and device. Files and images are not uploaded
-— a synced message carries only the names and sizes of what was attached, and
-the files stay on the device that made them. Deleting a chat on one device
-deletes it on all of them; renaming does the same. The main chat of every
-device is one conversation on the relay (the first device to push it names it;
-the others adopt that id and send their own main chat's messages into it);
-side chats are separate conversations, and chats addressed to another device
+account. With it on, each device pushes the text of its turns to the relay and
+pulls what the others pushed, so the phone, the computer and the web app show
+the same chats: the title of each conversation, who started it, and each
+message's role, text, time and device. Files and images are not uploaded — a
+synced message carries only the names and sizes of what was attached, and the
+files stay on the device that made them. Deleting a chat on one device deletes
+it on all of them; renaming does the same. Chats addressed to another device
 or run for one (*From Pixel 8*) are not synced at all.
+
+**One thread** (0.1.37). An account has one main conversation, and every
+device's main chat *is* it: the first device to push names its id, the others
+adopt it (`main_exists` → `cid_main`, pull first on sign-in), and the main chat
+on each device shows the union of what was said on all of them, ordered by
+time (a tie keeps the local message first, a message is known by its `mid`, so
+nothing shows twice and a device's own messages coming back are ignored). A
+message written on another device is a read-only bubble with *From Pixel 8*
+under it, and the model reads it with the rest of the conversation. A side
+chat pulled from the relay is a chat on the device at once, with its title and
+time, and continues there under the same conversation id. The person's message
+goes up the moment it is sent — the other devices see it in real time, before
+the reply — and the assistant's final text when the turn ends; signing in or
+turning the switch on sends the device's whole eligible history, oldest first,
+200 messages a request. The muse's name is part of the account's profile: a
+rename on any device, including the first conversation's naming, reaches the
+others on the next pull.
 
 The relay keeps at most 20 000 messages per account (the oldest conversations'
 messages go first, their titles stay) and 16 384 bytes per message (longer

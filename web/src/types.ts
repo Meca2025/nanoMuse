@@ -11,6 +11,9 @@ interface BaseEvent {
   about?: string;
   /** The device a message came from; "call": said on a voice call in 0.1.20–0.1.21. */
   via?: "call" | string;
+  /** on the relay (contract C7): pushed from here, or pulled from another device of the account */
+  synced?: boolean;
+  mid?: string;
 }
 
 /** A file attached to a message: in the workspace under attachments/. */

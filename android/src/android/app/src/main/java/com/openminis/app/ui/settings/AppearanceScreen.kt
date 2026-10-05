@@ -153,12 +153,12 @@ fun headerModelEnabled(context: Context): Boolean =
     getAppearancePrefs(context).getBoolean(KEY_NM_HEADER_MODEL, false)
 
 // nanoMuse: the agent's steps in the chat — the tool pills, the reasoning
-// blocks, the bar over the composer that opens the Computer sheet — are off
-// by default; the line under the face says what it is doing instead. A
-// Setting shows them for whoever wants to see how the work was done.
-const val KEY_NM_SHOW_STEPS = "nm.show_steps"  // Boolean, default false
+// blocks, the bar over the composer that opens the Computer sheet — are on
+// by default (0.1.37); a Setting hides them for whoever only wants the line
+// under the face. A stored false wins over the default.
+const val KEY_NM_SHOW_STEPS = "nm.show_steps"  // Boolean, default true
 fun showStepsEnabled(context: Context): Boolean =
-    getAppearancePrefs(context).getBoolean(KEY_NM_SHOW_STEPS, false)
+    getAppearancePrefs(context).getBoolean(KEY_NM_SHOW_STEPS, true)
 
 /** Font scale levels matching iOS: XS(-2) Small(-1) Default(0) Medium(1) Large(2) XL(3) */
 /**
@@ -284,7 +284,7 @@ fun AppearanceScreen(
     var selectedLanguage by remember { mutableStateOf(prefs.getString(KEY_LANGUAGE, "") ?: "") }
     var selectedAppIcon by remember { mutableStateOf(AppIconRepository.current(context)) }
     var headerModel by remember { mutableStateOf(prefs.getBoolean(KEY_NM_HEADER_MODEL, false)) } // nanoMuse
-    var showSteps by remember { mutableStateOf(prefs.getBoolean(KEY_NM_SHOW_STEPS, false)) } // nanoMuse
+    var showSteps by remember { mutableStateOf(prefs.getBoolean(KEY_NM_SHOW_STEPS, true)) } // nanoMuse: on by default
     var avatarSize by remember { mutableStateOf(io.github.nanomuse.ui.avatar.AvatarSize.current(context)) } // nanoMuse
 
     val fontsModified = chatInputLevel != 0 || messageLevel != 0 || appBaseLevel != 0

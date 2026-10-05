@@ -1,8 +1,7 @@
 import { LayoutGrid, Lightbulb, Loader2, MessageCircle, Newspaper, SquareCheckBig, WifiOff } from "lucide-react";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { api, setToken } from "./api";
-import { dragonUrl } from "./avatars";
-import { Avatar } from "./components/Avatar";
+import { BrandMark } from "./components/BrandMark";
 import { DesktopRemoteHint } from "./components/DesktopRemoteHint";
 import { ChatsDrawer } from "./components/ChatsDrawer";
 import { FileViewer } from "./components/FileViewer";
@@ -204,7 +203,8 @@ function Connecting({ error }: { error: string | null }) {
   const t = useT();
   return (
     <div className="mx-auto flex h-[100dvh] max-w-sm flex-col items-center justify-center px-6 text-center">
-      <Avatar profile={null} size={72} still />
+      {/* the web's splash: the app's mark, no face (the face is the Muse, who is not here yet) */}
+      <BrandMark size={72} />
       {error ? (
         <>
           <p className="mt-6 text-[15px] font-medium">{t("Could not reach your nanoMuse.")}</p>
@@ -227,7 +227,7 @@ function TokenGate() {
   const t = useT();
   return (
     <div className="mx-auto flex h-[100dvh] max-w-md flex-col items-center justify-center px-6 text-center">
-      <img src={dragonUrl("idle")} alt="" draggable={false} className="h-24 w-24 rounded-full bg-[#f1efeb] object-cover" />
+      <BrandMark size={88} />
       <h1 className="mt-4 text-[22px] font-bold">{t("Connect to your nanoMuse")}</h1>
       <p className="mt-2 text-[14px] text-muted">
         {t("This app talks to the nanoMuse server you run yourself. Scan the QR code printed by")}{" "}

@@ -150,6 +150,8 @@ fun DevicesSection(
                             d.online -> stringResource(R.string.nm_devices_online)
                             else -> stringResource(R.string.nm_devices_offline)
                         },
+                        // offline: when it was last here, in the system's own words ("5 min. ago")
+                        if (!d.online && d.lastSeen > 0) android.text.format.DateUtils.getRelativeTimeSpanString(d.lastSeen).toString() else "",
                     ).filter { it.isNotBlank() }.joinToString(" · "),
                     chevron = askable,
                     onClick = { if (askable) onAsk?.invoke(d) else if (!d.online) forget = d },

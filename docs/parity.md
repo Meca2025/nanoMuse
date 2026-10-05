@@ -37,7 +37,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 |---|---|---|---|---|
 | Status line says what it is on, never "Thinking" | ✓ | ✓ 0.1.32 *"is on it"* | ✓ | ✓ |
 | Status line = the step's own words (`step`: *打开携程网站*), never the raw command | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 |
-| "Show the agent's steps", off by default | ✓ | ✓ 0.1.32 *(2)* | ✓ | ✓ 0.1.32 |
+| "Show the agent's steps", on by default since 0.1.37 (a stored off stays off) | ✓ 0.1.37 (`nm.show_steps`) | ✓ 0.1.37 (`nanomuse.show_steps`) *(2)* | ✓ 0.1.37 | ✓ 0.1.37 |
 | Star asks at the relay's moments (`/v1/nudges`: sign-in · 3rd / 10th / 30th task · 7th / 30th day · a goal reached · a new look · allowance spent; 7 days apart, 4 per device; never in the first conversation) | ✓ 0.1.35 | ✓ 0.1.35 *(3)* | ✓ 0.1.35 | ✓ 0.1.35 |
 | First conversation: the app speaks first, asks what to call you, the model's `nanomuse-naming` fence becomes the naming card | ✓ | ✓ 0.1.34 | ✓ 0.1.35 *(25)* | ✓ |
 | First run: "Sign in — free" before anything else | ✓ | ✓ 0.1.32 *(4)* | ✓ | ✓ |
@@ -230,9 +230,14 @@ notes above; a settled item keeps its number and says how it went.
     text of the chats lives on the relay (`/v1/sync/*`, relay 0.19), on by default when signed in,
     with the switch and the delete under Data controls on every client; one main conversation per
     account; what a device started on its own (routines, goals, the feed, work for another device)
-    stays on it. The desktop's dsh sessions are append-only logs, so other devices' chats are
-    read-only mirrors there until *Continue here*. Left: the dsh plugin has no delete, so an
-    archived session is not a tombstone; switching sync off on one device reaches the others at
+    stays on it. One thread since 0.1.37 (contract C8): the main chat on every device is the union
+    of what was said on all of them in time order, the other devices' turns as read-only bubbles
+    (*From Pixel 8*) the model reads too; a side chat from elsewhere is a chat on the device at
+    once; the person's message goes up when sent, the reply at the turn's end; the whole history
+    is backfilled on sign-in. The desktop appends the other devices' turns to the dsh session log
+    (`user/message`, source `nanomuse-sync`) and dresses them in the browser. Left: the dsh plugin
+    has no delete, so an archived session is not a tombstone, a message deleted elsewhere is hidden
+    rather than removed from the log; switching sync off on one device reaches the others at
     their next push or pull (a `409`), not at once; on iOS a pulled message that arrives late sits
     after the local ones (the OpenMinis store appends). `@<device name>` runs a turn on another
     device — computers whenever online, phones while the app is open; on iOS the mention goes to

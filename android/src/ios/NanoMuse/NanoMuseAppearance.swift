@@ -78,7 +78,7 @@ final class NanoMuseAppearance: ObservableObject {
 /// Settings → Appearance, as Muse cards.
 struct NanoMuseAppearanceView: View {
     @ObservedObject private var appearance = NanoMuseAppearance.shared
-    @AppStorage(NanoMuseSteps.key) private var showSteps = false
+    @AppStorage(NanoMuseSteps.key) private var showSteps = NanoMuseSteps.defaultValue
     @AppStorage("appearanceMode") private var appearanceMode = 0
     @AppStorage("nanomuse.shell.enabled") private var shellEnabled = true
     @AppStorage("nanomuse.header.enabled") private var museHeader = true

@@ -2,12 +2,17 @@
 //  NanoMuseSync.swift
 //  nanoMuse
 //
-//  Contract C7: the text of the account's conversations is the same on every
-//  device. This is the client: a side table that gives each local session a
-//  `cid` (upstream's schema is not touched), a push of user and final
-//  assistant texts after each turn, a pull on launch, foreground, the hub's
-//  `sync` frame and every minute, and the one-main-chat rule. Files and
-//  images stay where they were made; only their names and sizes travel.
+//  Contract C7, display rules C8: the account's conversations are the same
+//  on every device. This is the client: a side table that gives each local
+//  session a `cid` (upstream's schema is not touched), a push of the
+//  person's line when it is sent and of the final assistant text when the
+//  turn ends, a pull on launch, foreground, the hub's `sync` frame and every
+//  minute, and the one-main-chat rule. The whole eligible history goes up
+//  on sign-in (oldest first, 200 a POST, the first conversation included);
+//  what comes down is inserted into the chat by time, deduplicated by `mid`,
+//  and shown as the other device's bubble with a "From {device}" caption.
+//  Pulled side conversations are ordinary chats here. Files and images stay
+//  where they were made; only their names and sizes travel.
 //  Relay: GET/PUT /v1/sync/state, GET/POST /v1/sync/changes,
 //  DELETE /v1/sync/conversations/{cid}, DELETE /v1/sync/changes.
 //
@@ -43,6 +48,16 @@ final class NanoMuseSync: ObservableObject {
         var knownMids: Set<String> = []
     }
 
+    /// A pulled text that could not be written yet (its chat was running a turn here).
+    struct Pending: Codable {
+        var mid: String
+        var cid: String
+        var role: String
+        var text: String
+        var createdAt: Int
+        var deviceName: String
+    }
+
     private struct Store: Codable {
         /// The account the table belongs to; another account starts from an empty one.
         var account = ""
@@ -53,6 +68,32 @@ final class NanoMuseSync: ObservableObject {
         var mainCid: String?
         /// Conversations deleted locally whose tombstone has not reached the relay yet.
         var pendingDeletes: [String] = []
+        /// Whether this table has pulled at least once: a push waits for that (C8 — a device that
+        /// has never pulled pulls first, so its main joins the account's instead of racing it).
+        var pulled = false
+        /// Message id (lowercase) → the name of the device it was written on, for the texts
+        /// that came down from elsewhere (the bubble's "From {device}").
+        var remoteMids: [String: String] = [:]
+        /// Pulled texts waiting for their chat to finish a turn here.
+        var deferred: [Pending] = []
+
+        init(account: String = "") {
+            self.account = account
+        }
+
+        /// The 0.1.36 table has none of the C8 fields; they default rather than fail the decode
+        /// (a failed decode would mean a fresh table — and every conversation pushed again under new cids).
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            account = try c.decodeIfPresent(String.self, forKey: .account) ?? ""
+            cursor = try c.decodeIfPresent(Int.self, forKey: .cursor) ?? 0
+            entries = try c.decodeIfPresent([String: Entry].self, forKey: .entries) ?? [:]
+            mainCid = try c.decodeIfPresent(String.self, forKey: .mainCid)
+            pendingDeletes = try c.decodeIfPresent([String].self, forKey: .pendingDeletes) ?? []
+            pulled = try c.decodeIfPresent(Bool.self, forKey: .pulled) ?? (cursor > 0)
+            remoteMids = try c.decodeIfPresent([String: String].self, forKey: .remoteMids) ?? [:]
+            deferred = try c.decodeIfPresent([Pending].self, forKey: .deferred) ?? []
+        }
     }
 
     private enum Keys {
@@ -157,6 +198,30 @@ final class NanoMuseSync: ObservableObject {
     func turnFinished(session: String) {
         guard !session.hasPrefix(NanoMuseMainChat.draftPrefix) else { return }
         schedulePush()
+        // Texts that arrived while this chat was busy go in once the activity tracker has let go.
+        if !store.deferred.isEmpty {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                await self.flushDeferred()
+            }
+        }
+    }
+
+    /// C8: the person's line goes up when it is sent, not when the turn ends. Called by the view
+    /// model right after the user row is written; the turn's assistant text follows at the end.
+    func userMessageSent(session: String) {
+        guard active, !session.hasPrefix(NanoMuseMainChat.draftPrefix) else { return }
+        pushDebounce?.cancel()
+        pushDebounce = nil
+        push()
+    }
+
+    /// The device a pulled text was written on — the bubble's "From {device}" — or nil for this
+    /// phone's own. Cheap: a dictionary lookup, read for every row the chat lays out.
+    func fromDevice(mid: String) -> String? {
+        if !loaded { load() }
+        guard let name = store.remoteMids[mid.lowercased()] else { return nil }
+        return name.isEmpty ? AppLocalized("A device") : name
     }
 
     /// The chat was renamed (or otherwise changed) — push soon.
@@ -208,8 +273,10 @@ final class NanoMuseSync: ObservableObject {
             if on {
                 load()
                 for key in store.entries.keys { store.entries[key]?.knownMids = []; store.entries[key]?.pushedTitle = nil }
+                // The relay's store is empty again: pull first (the cursor keeps counting), then
+                // everything this phone has goes up — the full backfill, oldest first.
+                store.pulled = false
                 save()
-                push()
                 foregrounded()
             } else {
                 pullTimer?.invalidate()
@@ -265,6 +332,10 @@ final class NanoMuseSync: ObservableObject {
     /// Everything the relay does not have yet: new or changed conversations, new texts, tombstones.
     func push() {
         guard active, let token = NanoMuseCloud.apiKey else { return }
+        load()
+        // A table that never pulled pulls first: the account's main may already exist, and our
+        // main must join it rather than race it. The pull schedules this push when it is done.
+        guard store.pulled else { pull(); return }
         if pushing { pushAgain = true; return }
         pushing = true
         syncing = true
@@ -299,7 +370,9 @@ final class NanoMuseSync: ObservableObject {
     }
 
     private func pushChanges(token: String) async throws {
-        let sessions = await eligibleSessions()
+        // Oldest first (C8): a sign-in backfills the whole history in the order it happened, the
+        // first conversation at the head.
+        let sessions = await eligibleSessions().sorted { $0.createdAt < $1.createdAt }
         let mainId = Self.localMainSessionId()
         let alive = Set(sessions.map(\.id))
 
@@ -336,14 +409,25 @@ final class NanoMuseSync: ObservableObject {
             guard entry.knownMids.isEmpty || entry.pushedUpdatedAt != updated else { continue }
             let local = await ChatStore.shared.loadMessages(sessionId: session.id)
             let present = Set(local.map { $0.id.lowercased() })
+            // The first conversation's opening (what the app said on the agent's behalf) is virtual
+            // here — in the message list, never in the database — so the other devices get it
+            // from this table, under stable ids, dated just before the person's first line.
+            let intro = Self.introRecords(for: session, cid: entry.cid)
+            let introMids = Set(intro.compactMap { $0["mid"] as? String })
             // Texts that were deleted here since the relay got them.
-            for mid in entry.knownMids where !present.contains(mid) {
+            for mid in entry.knownMids where !present.contains(mid) && !introMids.contains(mid) {
                 messages.append(["mid": mid, "cid": entry.cid, "role": "user", "text": "", "created_at": Int(Date().timeIntervalSince1970), "deleted": true])
+                pending.append((session.id, mid))
+            }
+            for record in intro {
+                guard let mid = record["mid"] as? String, !entry.knownMids.contains(mid) else { continue }
+                messages.append(record)
                 pending.append((session.id, mid))
             }
             for message in local.sorted(by: { $0.createdAt < $1.createdAt }) {
                 let mid = message.id.lowercased()
-                guard !entry.knownMids.contains(mid), let record = Self.record(message, cid: entry.cid) else { continue }
+                // What came down from another device is theirs to push, not ours.
+                guard !entry.knownMids.contains(mid), store.remoteMids[mid] == nil, let record = Self.record(message, cid: entry.cid) else { continue }
                 messages.append(record)
                 pending.append((session.id, mid))
             }
@@ -405,6 +489,24 @@ final class NanoMuseSync: ObservableObject {
         save()
         revision += 1
         pushAgain = true
+    }
+
+    /// The first conversation's scripted opening as relay records, when `session` is where it
+    /// happened: three assistant lines under ids derived from the session (so every push names
+    /// the same ones), dated just before the session began. Empty for any other chat.
+    private static func introRecords(for session: ChatSession, cid: String) -> [[String: Any]] {
+        let flow = NanoMuseFirstConversation.shared
+        guard flow.isBound(to: session.id) else { return [] }
+        let base = Int(session.createdAt.timeIntervalSince1970) - 3
+        return flow.intro().enumerated().map { index, text in
+            [
+                "mid": "intro-\(session.id.lowercased())-\(index)",
+                "cid": cid,
+                "role": "assistant",
+                "text": text,
+                "created_at": base + index,
+            ]
+        }
     }
 
     /// The record for a text the relay should have, or nil for what is not synced (tool steps, empties).
@@ -470,6 +572,10 @@ final class NanoMuseSync: ObservableObject {
                     save()
                     more = (reply["more"] as? Bool) ?? false
                     if cursor <= 0 { more = false }
+                }
+                if !store.pulled {
+                    store.pulled = true
+                    save()
                 }
                 lastError = nil
                 if touched {
@@ -553,7 +659,6 @@ final class NanoMuseSync: ObservableObject {
 
         // Texts, grouped by conversation so each session's ids are read once.
         var presentBySession: [String: Set<String>] = [:]
-        var inserts: [RawMessage] = []
         for record in reply["messages"] as? [[String: Any]] ?? [] {
             guard let mid = (record["mid"] as? String)?.lowercased(), let cid = record["cid"] as? String,
                   let sessionId = store.entries.first(where: { $0.value.cid == cid })?.key else { continue }
@@ -562,18 +667,19 @@ final class NanoMuseSync: ObservableObject {
                 await ChatStore.shared.deleteLocalMessage(messageId: mid)
                 await ChatStore.shared.deleteLocalMessage(messageId: mid.uppercased())
                 store.entries[sessionId]?.knownMids.remove(mid)
+                store.remoteMids.removeValue(forKey: mid)
+                store.deferred.removeAll { $0.mid == mid }
                 changed = true
                 continue
             }
-            // Our own texts are here already (or were deleted here, which the push says).
+            // Our own texts are here already (or were deleted here, which the push says): the echo.
             if (record["device"] as? String) == me { store.entries[sessionId]?.knownMids.insert(mid); continue }
-            if store.entries[sessionId]?.knownMids.contains(mid) == true { continue }
+            if store.entries[sessionId]?.knownMids.contains(mid) == true || store.deferred.contains(where: { $0.mid == mid }) { continue }
             if presentBySession[sessionId] == nil {
                 presentBySession[sessionId] = Set(await ChatStore.shared.loadMessages(sessionId: sessionId).map { $0.id.lowercased() })
             }
-            store.entries[sessionId]?.knownMids.insert(mid)
-            if presentBySession[sessionId]?.contains(mid) == true { continue }
-            guard let roleName = record["role"] as? String, let role = MessageRole(rawValue: roleName) else { continue }
+            if presentBySession[sessionId]?.contains(mid) == true { store.entries[sessionId]?.knownMids.insert(mid); continue }
+            guard let roleName = record["role"] as? String, MessageRole(rawValue: roleName) != nil else { continue }
             var text = (record["text"] as? String) ?? ""
             if let attachments = record["attachments"] as? [[String: Any]], !attachments.isEmpty {
                 let names = attachments.compactMap { $0["name"] as? String }.filter { !$0.isEmpty }
@@ -582,17 +688,61 @@ final class NanoMuseSync: ObservableObject {
                     text = text.isEmpty ? line : text + "\n\n" + line
                 }
             }
-            guard !text.isEmpty else { continue }
-            let created = (record["created_at"] as? Int).map { Date(timeIntervalSince1970: TimeInterval($0)) }
-                ?? (record["created_at"] as? Double).map { Date(timeIntervalSince1970: $0) } ?? Date()
-            inserts.append(RawMessage(id: mid, sessionId: sessionId, role: role, parts: [.text(text)], createdAt: created))
-            presentBySession[sessionId]?.insert(mid)
+            guard !text.isEmpty else { store.entries[sessionId]?.knownMids.insert(mid); continue }
+            let created = (record["created_at"] as? Int) ?? Int((record["created_at"] as? Double) ?? Date().timeIntervalSince1970)
+            let pending = Pending(mid: mid, cid: cid, role: roleName, text: text, createdAt: created, deviceName: (record["device_name"] as? String) ?? "")
+            if await insert(pending, into: sessionId) {
+                presentBySession[sessionId]?.insert(mid)
+                changed = true
+            }
         }
-        if !inserts.isEmpty {
-            await ChatStore.shared.appendMessages(inserts)
-            changed = true
-        }
+        if !store.deferred.isEmpty, await writeDeferred() { changed = true }
         return changed
+    }
+
+    /// One pulled text into its chat, by time (C8: a late row goes where it happened, not at the
+    /// end). While that chat runs a turn here the store refuses — the row waits in `deferred` and
+    /// `turnFinished` / the next pull write it. Returns true when the row is in the database.
+    private func insert(_ pending: Pending, into sessionId: String) async -> Bool {
+        if SessionActivityTracker.isActiveThreadSafe(sessionId) {
+            if !store.deferred.contains(where: { $0.mid == pending.mid }) { store.deferred.append(pending) }
+            return false
+        }
+        guard let data = try? JSONEncoder().encode([ContentPart.text(pending.text)]), let partsJSON = String(data: data, encoding: .utf8) else { return false }
+        await ChatStore.shared.mergeRemoteMessage(
+            id: pending.mid, sessionId: sessionId, role: pending.role, partsJson: partsJSON,
+            createdAt: Date(timeIntervalSince1970: TimeInterval(pending.createdAt)), tokenUsageJson: nil, sortOrder: 0,
+            reasoningContent: nil, streamInterruptCount: 0
+        )
+        await ChatStore.shared.nmTouchSession(sessionId)
+        store.entries[sessionId]?.knownMids.insert(pending.mid)
+        store.remoteMids[pending.mid] = pending.deviceName
+        store.deferred.removeAll { $0.mid == pending.mid }
+        return true
+    }
+
+    /// The texts that waited for a running chat, tried again. True when any went in.
+    private func writeDeferred() async -> Bool {
+        var wrote = false
+        for pending in store.deferred {
+            guard let sessionId = store.entries.first(where: { $0.value.cid == pending.cid })?.key else {
+                store.deferred.removeAll { $0.mid == pending.mid }
+                continue
+            }
+            if await insert(pending, into: sessionId) { wrote = true }
+        }
+        return wrote
+    }
+
+    /// After a turn: the waiting texts go in and the open chat is told.
+    private func flushDeferred() async {
+        load()
+        let wrote = await writeDeferred()
+        save()
+        guard wrote else { return }
+        revision += 1
+        NotificationCenter.default.post(name: .cloudSyncDidFetchChanges, object: nil)
+        NotificationCenter.default.post(name: .sessionDidUpdate, object: nil)
     }
 
     // MARK: - Sessions

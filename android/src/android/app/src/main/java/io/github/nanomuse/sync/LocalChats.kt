@@ -29,6 +29,13 @@ interface LocalChats {
     /** A message from another device, placed by [createdAt] among the chat's rows. Returns the row id. */
     suspend fun insertMessage(sessionId: String, role: String, text: String, attachments: List<Attachment>, createdAt: Long): String
     suspend fun deleteMessage(id: String)
+    /**
+     * What the chat showed on the app's own behalf before its first row — the scripted opening
+     * of the first conversation, which is never written to the database — so the other devices
+     * see that conversation from its first word (contract C8). Empty for every other chat; the
+     * ids must be the same on every call, since they are mapped to mids like rows.
+     */
+    suspend fun prelude(sessionId: String): List<TranscriptItem> = emptyList()
 }
 
 /** The OpenMinis database, read and written through its own DAO — no schema change, no upstream call that would push again. */
@@ -116,6 +123,14 @@ class RoomChats(private val context: Context, private val repo: ChatRepository) 
 
     override suspend fun deleteMessage(id: String) {
         db.execSQL("DELETE FROM messages WHERE id = ?", arrayOf(id))
+    }
+
+    // the first conversation's opening ("what should I call you?") lives in the view model only;
+    // it goes out as one assistant line dated just before the chat, under a fixed id
+    override suspend fun prelude(sessionId: String): List<TranscriptItem> {
+        val intro = io.github.nanomuse.onboarding.FirstConversation.introOf(context, sessionId) ?: return emptyList()
+        val at = dao.getSession(sessionId)?.createdAt ?: return emptyList()
+        return listOf(TranscriptItem("nm-intro:$sessionId", "assistant", intro, emptyList(), at - 1000))
     }
 
     // a blank title and none are the same thing to the relay

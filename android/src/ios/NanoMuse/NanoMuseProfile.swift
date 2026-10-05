@@ -253,9 +253,11 @@ enum NanoMuseRelayMedia {
 
 // MARK: - Profile sync
 
-/// Keeps the face this phone wears in step with the account: pulls the
-/// profile when the app starts or the hub says another device wrote it,
-/// pushes after the studio adopted or reset a face.
+/// Keeps the face — and, contract C8, the name — this phone wears in step
+/// with the account: pulls the profile when the app starts or the hub says
+/// another device wrote it, pushes after the studio adopted or reset a face
+/// and a moment after the name changed (Settings, the naming card, the model
+/// through minis-config — every write goes through `SoulStore.save`).
 @MainActor
 final class NanoMuseProfileSync: ObservableObject {
     static let shared = NanoMuseProfileSync()
@@ -263,19 +265,67 @@ final class NanoMuseProfileSync: ObservableObject {
     private enum Keys {
         static let rev = "nanomuse.profile.rev"
         static let pushedConnectors = "nanomuse.profile.pushed_connectors"
+        /// The name the relay last heard from or gave this phone (Android: `KEY_PUSHED_NAME`).
+        /// A local name that differs from it is a rename not yet pushed, and a pull must not undo it.
+        static let pushedName = "nanomuse.profile.pushed_name"
     }
+
+    /// Android's `PUSH_DELAY_MS`: a rename is pushed once the typing has settled.
+    private static let nameDelay: UInt64 = 2_000_000_000
 
     @Published private(set) var syncing = false
     @Published private(set) var lastError: String?
 
     private var pulling = false
+    /// True while a pulled name is being written to SOUL.md, so the write does not push itself back.
+    private var applying = false
+    private var namePush: Task<Void, Never>?
+    private var soulObserver: NSObjectProtocol?
 
     private init() {}
 
     /// Called once from the app root.
     func start() {
         NanoMuseSharedConnectors.shared.watch()
+        if soulObserver == nil {
+            soulObserver = NotificationCenter.default.addObserver(forName: .soulMdChanged, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.nameChanged() }
+            }
+        }
         pull()
+    }
+
+    /// The name SOUL.md carries, or nothing for the default.
+    private static var localName: String {
+        let name = SoulStore.cachedMetadata.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name == SoulMetadata.default.name ? "" : name
+    }
+
+    private static var pushedName: String? {
+        get { UserDefaults.standard.string(forKey: Keys.pushedName) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.pushedName) }
+    }
+
+    /// A relay name lands in SOUL.md (C8: the name follows the account). Skipped when this
+    /// phone renamed after its last push — that rename is about to go up and wins.
+    private func apply(remoteName: String) {
+        let remote = remoteName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !remote.isEmpty, remote.count <= 60 else { return }
+        let local = Self.localName
+        if remote == local {
+            Self.pushedName = remote
+            return
+        }
+        if let pushed = Self.pushedName, !local.isEmpty, local != pushed {
+            // renamed here since the last push: ours is newer than what the relay shows
+            return
+        }
+        applying = true
+        defer { applying = false }
+        var file = SoulStore.load() ?? SoulMDParser.parse(SoulStore.defaultContent)
+        file.metadata.name = remote
+        try? SoulStore.save(file)
+        Self.pushedName = remote
     }
 
     /// The hub heard `{"type":"profile","rev":N}` from another device.
@@ -297,16 +347,25 @@ final class NanoMuseProfileSync: ObservableObject {
                 // the other devices' connections come with every read, whatever the rev
                 NanoMuseSharedConnectors.shared.absorb(["connectors": head.connectors])
                 if head.rev <= known, head.rev > 0 || known > 0 {
-                    // the look is current; this phone's connections may still be unsaid
+                    // the look is current; this phone's connections — or a rename — may still be unsaid
                     if NanoMuseSharedConnectors.shared.stamp() != UserDefaults.standard.string(forKey: Keys.pushedConnectors) {
                         connectorsChanged()
+                    } else {
+                        nameChanged()
                     }
                     return
                 }
-                if head.rev == 0, known == 0, !NanoMuseSharedConnectors.shared.mine().isEmpty {
-                    // the relay has nothing for this account yet: this phone's connections seed it
-                    connectorsChanged()
+                if head.rev == 0, known == 0 {
+                    // the relay has nothing for this account yet: this phone's connections and its
+                    // name (when it has one) seed it, as Android does
+                    if !NanoMuseSharedConnectors.shared.mine().isEmpty {
+                        connectorsChanged()
+                    } else if !Self.localName.isEmpty {
+                        nameChanged(now: true)
+                    }
                 }
+                // C8: the account's name, before the pictures — a rename elsewhere is often all that moved
+                if head.rev > 0 { apply(remoteName: head.name) }
                 let store = NanoMuseFaceStore.shared
                 if head.hasFace {
                     if head.faceId == store.meta.faceId && store.hasCustomFace {
@@ -361,17 +420,35 @@ final class NanoMuseProfileSync: ObservableObject {
                     body["avatar"] = "dragon"
                     body["face"] = NSNull()
                 }
-                let name = SoulStore.cachedMetadata.name
-                if !name.isEmpty { body["name"] = name }
+                let name = Self.localName
+                if !name.isEmpty { body["name"] = String(name.prefix(60)) }
                 let mine = NanoMuseSharedConnectors.shared.mine()
                 body["connectors"] = mine
                 let rev = try await NanoMuseRelayMedia.putProfile(body)
                 UserDefaults.standard.set(rev, forKey: Keys.rev)
                 UserDefaults.standard.set(NanoMuseSharedConnectors.stamp(mine), forKey: Keys.pushedConnectors)
+                if !name.isEmpty { Self.pushedName = name }
                 lastError = nil
             } catch {
                 lastError = NanoMuseCloud.describe(error)
             }
+        }
+    }
+
+    /// The agent's name changed on this phone (C8): the account hears it a moment later, with
+    /// the face as "keep what you have" and this phone's connectors, like `connectorsChanged`.
+    /// A no-op when the relay already has this name; `now` skips the wait (the seeding pull).
+    func nameChanged(now: Bool = false) {
+        guard NanoMuseCloud.isSignedIn, !applying else { return }
+        let name = Self.localName
+        guard !name.isEmpty, name != Self.pushedName else { return }
+        namePush?.cancel()
+        namePush = Task { @MainActor [weak self] in
+            if !now {
+                try? await Task.sleep(nanoseconds: NanoMuseProfileSync.nameDelay)
+                guard !Task.isCancelled else { return }
+            }
+            await self?.pushKeepingFace()
         }
     }
 
@@ -383,33 +460,44 @@ final class NanoMuseProfileSync: ObservableObject {
         let stamp = NanoMuseSharedConnectors.stamp(mine)
         guard stamp != UserDefaults.standard.string(forKey: Keys.pushedConnectors) || UserDefaults.standard.string(forKey: Keys.pushedConnectors) == nil else { return }
         Task { @MainActor [self] in
-            do {
-                let store = NanoMuseFaceStore.shared
-                var body: [String: Any] = ["connectors": mine]
-                if store.hasCustomFace {
-                    body["avatar"] = "face"
-                    body["description"] = store.meta.description
-                    body["style"] = store.meta.style
-                } else {
-                    body["avatar"] = "dragon"
-                    body["face"] = NSNull()
-                }
-                let name = SoulStore.cachedMetadata.name
-                if !name.isEmpty { body["name"] = name }
-                let rev = try await NanoMuseRelayMedia.putProfile(body)
-                UserDefaults.standard.set(rev, forKey: Keys.rev)
-                UserDefaults.standard.set(stamp, forKey: Keys.pushedConnectors)
-                lastError = nil
-            } catch {
-                lastError = NanoMuseCloud.describe(error)
+            await pushKeepingFace()
+        }
+    }
+
+    /// One PUT with the name and the connectors, the face left as the relay has it.
+    private func pushKeepingFace() async {
+        guard NanoMuseCloud.isSignedIn else { return }
+        let mine = NanoMuseSharedConnectors.shared.mine()
+        let stamp = NanoMuseSharedConnectors.stamp(mine)
+        let name = Self.localName
+        do {
+            let store = NanoMuseFaceStore.shared
+            var body: [String: Any] = ["connectors": mine]
+            if store.hasCustomFace {
+                body["avatar"] = "face"
+                body["description"] = store.meta.description
+                body["style"] = store.meta.style
+            } else {
+                body["avatar"] = "dragon"
+                body["face"] = NSNull()
             }
+            if !name.isEmpty { body["name"] = String(name.prefix(60)) }
+            let rev = try await NanoMuseRelayMedia.putProfile(body)
+            UserDefaults.standard.set(rev, forKey: Keys.rev)
+            UserDefaults.standard.set(stamp, forKey: Keys.pushedConnectors)
+            if !name.isEmpty { Self.pushedName = name }
+            lastError = nil
+        } catch {
+            lastError = NanoMuseCloud.describe(error)
         }
     }
 
     /// Signed out: another account's devices are not ours to list.
     func forget() {
         NanoMuseSharedConnectors.shared.forget()
+        namePush?.cancel()
         UserDefaults.standard.removeObject(forKey: Keys.rev)
         UserDefaults.standard.removeObject(forKey: Keys.pushedConnectors)
+        UserDefaults.standard.removeObject(forKey: Keys.pushedName)
     }
 }

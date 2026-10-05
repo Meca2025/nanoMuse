@@ -401,6 +401,7 @@ struct ChatMessageRow: View {
                         }
                     }
                 }
+                NanoMuseFromDeviceCaption(message.nmFromDevice) // nanoMuse: C8 — "From Pixel 8" under a synced line
             }
             .modifier(MinisOpenURLHandler())
             .contentShape(Rectangle())
@@ -424,14 +425,14 @@ struct ChatMessageRow: View {
                         Label(AppLocalized("Copy Screenshot"), systemImage: "camera.viewfinder")
                     }
                 }
-                if let onEdit {
+                if let onEdit, message.nmFromDevice == nil { // nanoMuse: C8 — another device's line is read-only here
                     Button {
                         onEdit()
                     } label: {
                         Label("Edit", systemImage: "square.and.pencil")
                     }
                 }
-                if let onRetry {
+                if let onRetry, message.nmFromDevice == nil { // nanoMuse: C8
                     Button {
                         onRetry()
                     } label: {
@@ -533,6 +534,8 @@ struct ChatMessageRow: View {
                     detailBlock: $detailBlock
                 )
             }
+
+            NanoMuseFromDeviceCaption(message.nmFromDevice) // nanoMuse: C8 — "From Pixel 8" under a synced reply
 
             // Typing indicator — "request out, nothing back yet", evaluated per
             // ROUND. See `ChatMessage.shouldShowTypingIndicator`.

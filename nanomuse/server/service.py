@@ -841,6 +841,8 @@ class MuseService:
             if note:
                 text = f"[{note}]\n\n{text}" if text else f"[{note}]"
             self.bus.publish({"kind": "thread", "thread": thread.meta()})
+            # the person's words reach the account's other devices now (C8), not after the turn
+            self.sync.message_sent(thread)
             if not attachments and self.ui.answer_question(thread_id, text):
                 return event
             # nanoMuse: a request for a new look (or the pick among four candidates) is the

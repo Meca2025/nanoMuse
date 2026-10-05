@@ -239,8 +239,10 @@ Where the hands' space comes from, by backend:
 | backend | the hands' space | notes |
 |---|---|---|
 | `desktop` (the desktop app) | the display's logical size × its scale factor; the scale factor is 1 on macOS (points) | the app's own operator — `@computer-use/nut-js`, a port of UI-TARS-desktop's — over loopback HTTP; `auto` takes it whenever the app set `NANOMUSE_OPERATOR_URL` |
-| `pyautogui` | `pyautogui.size()` | points on macOS, physical pixels elsewhere |
+| `pyautogui` | `pyautogui.size()` | points on macOS, physical pixels elsewhere; not used on a Mac under the desktop app |
 | `xdotool` | `xdotool getdisplaygeometry` | X11 root pixels |
+
+On macOS under the desktop app there is **one path**: the operator takes every screenshot and every move, or the tool fails with the operator's reason — without Screen Recording that is *macOS: switch on nanoMuse Desktop under System Settings → Privacy & Security → Screen Recording, then quit and reopen the app.* (the operator detects the refusal and the all-black capture and answers `403`). The runtime never falls back to `mss` / `screencapture` or `pyautogui` there: the permission belongs to the app bundle, a fallback would ask TCC a second time for a process that is not in the pane, and a black picture would reach the model as if it were the screen. Linux and Windows keep the Python fallbacks, and so does a runtime started without the app ([desktop.md](desktop.md#macos-permissions)).
 
 What `computer_screen` reports to the client (`status()` / the event): `picture_size` and `screen_size` separately. The desktop app draws the prediction marker — a turning dashed ring, a dot at the exact point, the action's name beside it, a dashed line for a drag — from the operator's own fractions of the display, so what you see is where it clicked, not where the client thought it would.
 

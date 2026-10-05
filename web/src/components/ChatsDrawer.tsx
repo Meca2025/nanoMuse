@@ -204,15 +204,12 @@ function SideRow({
       <button type="button" onClick={onPick} className="flex min-w-0 flex-1 items-center gap-2 py-2.5 text-left">
         {thread.device ? (
           <span className="shrink-0 text-accent">{kind === "computer" ? <Monitor size={15} /> : <Smartphone size={15} />}</span>
-        ) : thread.remote_from || thread.origin_device ? (
+        ) : thread.remote_from ? (
           <MonitorSmartphone size={15} className="shrink-0 text-muted" />
         ) : null}
-        <span className="min-w-0 flex-1 truncate text-[15px]">
-          {thread.title || t("New chat")}
-          {thread.origin_device && !thread.remote_from && (
-            <span className="ml-1.5 text-[12px] text-muted">{t("From {device}", { device: thread.origin_device_name || thread.origin_device })}</span>
-          )}
-        </span>
+        {/* a chat started on another device of the account is a normal chat here (C8): no
+            badge in the list — the turns written elsewhere carry their caption instead */}
+        <span className="min-w-0 flex-1 truncate text-[15px]">{thread.title || t("New chat")}</span>
         {thread.busy && <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-400" />}
         <span className="shrink-0 text-[12px] text-muted">{relativeDay(thread.updated_at)}</span>
       </button>

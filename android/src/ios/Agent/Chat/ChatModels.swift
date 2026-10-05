@@ -78,6 +78,9 @@ final class ChatMessage: Identifiable, ObservableObject {
     var lastSourceSortOrder: Int?
     /// Links back to the QueuedPrompt so we can withdraw it.
     var queuedPromptId: UUID?
+    /// nanoMuse: C8 — the device this row was written on when it came down through account sync
+    /// (the bubble's "From {device}" caption); nil for this phone's own rows.
+    var nmFromDevice: String? // nanoMuse:
     let timestamp = Date()
 
     init(role: ChatMessageRole, content: String, blocks: [AssistantBlock] = [], isQueued: Bool = false) {
