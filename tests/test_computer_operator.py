@@ -193,6 +193,9 @@ def test_backend_choice_prefers_the_operator(
     assert hands_mod.pick_backend("auto").name == "desktop"
     assert hands_mod.pick_backend("desktop").name == "desktop"
     # the operator says no (a Wayland session): its reason leads, the Python backends follow
+    # — a Linux rule; on a Mac the operator is the only path (the test below), so the
+    # platform is pinned here for the macOS runner
+    monkeypatch.setattr(op, "_platform", lambda: "linux")
     operator.available, operator.reason = False, "Wayland session: no global screen or cursor"
     monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
     monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", None)
