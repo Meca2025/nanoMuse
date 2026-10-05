@@ -322,7 +322,7 @@ final class NanoMuseSync: ObservableObject {
         if haltedAccount != key { haltedAccount = nil }
         NanoMusePresence.shared.reset()
         // the lists and the Chat tab: off the view update that may have asked for the table
-        DispatchQueue.main.async { [self] in
+        Task { @MainActor [self] in
             revision += 1
             NotificationCenter.default.post(name: .nanoMuseAccountSwitched, object: key)
             NotificationCenter.default.post(name: .sessionDidUpdate, object: nil)
