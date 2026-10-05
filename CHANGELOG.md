@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### iOS
+
+- **No crash on launch after onboarding.** Build 9 (0.1.38) died on an iPad every time the chat appeared, with a stack overflow in the chat screen's body: the body is one chain of some sixty modifiers and 0.1.38 added four (the composer's fail-safe host and the presence hooks), enough for the getter's stack frame and the runtime's type instantiation to overrun the main thread's 1 MB. The four are one link each now (`NanoMuseComposerHost`, `NanoMuseChatHooks`) and the composer stack is boxed, so the body is smaller than 0.1.37's; a test keeps its size and depth under a ceiling.
+
 ## [0.1.38] - 2026-10-05 · Loom
 
 Loom: the thread from 0.1.37, made to carry its weight. Side chats stay on the device that made them unless you say otherwise, so a new device signing in gets the main conversation's newest three hundred lines in one pull instead of the account's whole history; a device at work says so under its line on the others instead of leaving a prompt that looks interrupted; and the computer-use turn that failed with 413 *Request too large* cannot — the hands keep four screenshots of two megapixels at most in a request, on every client, and the relay accepts sixteen megabytes. The Mac's hands have their own helper app, *nanoMuse Computer Use*, so the Screen Recording and Accessibility grants belong to it and the app no longer restarts to pick them up; the desktop no longer re-reads every session log every two seconds, which is where the slowness of 0.1.37 came from. Ubuntu's hands were run on this machine, under a nested X server, and fixed where they failed: the glow swallowed every click, Shift was dropped for symbols, an approved step came back *Not done*. The iPhone's composer is a native field with a second place to stand; the launch screen is the mark; every client can point at a relay of yours. The README is half as long, `AGENTS.md` says how to work in the tree, the docs are a site, and `scripts/self-host.sh` brings up your own nanoMuse Cloud.
