@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.37] - 2026-10-05 · Weave
+
+One thread, woven: every device shows the account's one main conversation and the same side chats — merged in time, backfilled from the first naming conversation, each turn from another device marked with where it was written — and the muse's name travels with them. The blue mark on the splash, the sign-in and the permission pages; the agent's steps shown by default; Devices as cards. Linux opens again from the icon; the Mac asks for Screen Recording and Accessibility at launch and never hands the model a black screen; the iPad's composer comes back when the keyboard took it. [Release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.37).
+
 ### Web
 
 - **Devices as cards.** The Devices page is a settings page: a line on what devices are for and a quiet count ("3 devices · 2 online"); *this device* first — its glyph, its name renamed in place, OS and version, the online dot, what it can do as chips (Tasks, Commands, Files, Screenshot, Open links, Coding agents, Notifications; Hands when they are on), the hub and remote-control switches; then the other devices in a grid of the same cards with *Online · just now* / *Last seen 2 h ago*, a *Type @Pixel 8 in the chat to hand it work* hint for the ones that take tasks, *Ask*, and *Forget this device* behind the dots; only this device, a card on how to add one with the download link. The hands card stays. `last_seen` is read as the relay's Unix seconds (it showed *20711 d ago* before).
