@@ -67,6 +67,15 @@ enum Input {
             let names = (body["keys"] as? [Any] ?? []).map { "\($0)" }
             guard !names.isEmpty else { throw Failure.message("key needs keys") }
             try Keyboard.hotkey(names)
+        case "press", "release":
+            // UI-TARS's hold: keys down across the actions that follow (shift-click, a game)
+            let names = (body["keys"] as? [Any] ?? []).map { "\($0)" }
+            guard !names.isEmpty else { throw Failure.message("\(kind) needs keys") }
+            if kind == "press" {
+                try Keyboard.press(names)
+            } else {
+                try Keyboard.release(names)
+            }
         case "wait":
             let seconds = min(10, max(0.2, Service.number(body["seconds"]) ?? 1))
             pause(ms: Int(seconds * 1000))
@@ -96,6 +105,10 @@ enum Mouse {
         if type != .mouseMoved {
             // a double click is two clicks whose events say so; apps count by this field
             event.setIntegerValueField(.mouseEventClickState, value: clicks)
+        }
+        // a modifier held by `press` rides on the clicks in between (shift-click, cmd-click)
+        if !Keyboard.heldFlags.isEmpty {
+            event.flags = Keyboard.heldFlags
         }
         event.post(tap: .cghidEventTap)
     }
@@ -152,6 +165,9 @@ enum Mouse {
         while remaining != 0 {
             let step = max(-120, min(120, remaining))
             guard let event = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: step, wheel2: 0, wheel3: 0) else { return }
+            if !Keyboard.heldFlags.isEmpty {
+                event.flags = Keyboard.heldFlags
+            }
             event.post(tap: .cghidEventTap)
             pause(ms: 10)
             remaining -= step
@@ -160,9 +176,14 @@ enum Mouse {
 }
 
 enum Keyboard {
+    /// What `press` holds down until `release` (or the end of the process): the modifiers as
+    /// flags for every event in between, and the keys themselves, so each goes up once.
+    private(set) static var heldFlags: CGEventFlags = []
+    private static var heldCodes: [CGKeyCode] = []
+
     private static func post(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
         guard let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down) else { return }
-        event.flags = flags
+        event.flags = flags.union(heldFlags)
         event.post(tap: .cghidEventTap)
     }
 
@@ -174,9 +195,8 @@ enum Keyboard {
         pause(ms: 8)
     }
 
-    /// `["cmd", "shift", "s"]`: the modifiers go down as keys of their own (apps that watch
-    /// them see them), the other keys are tapped with the flags set, the modifiers come up.
-    static func hotkey(_ names: [String]) throws {
+    /// The names as flags (the modifiers) and codes (the other keys), or the unknown one.
+    private static func parse(_ names: [String]) throws -> (CGEventFlags, [CGKeyCode]) {
         var flags: CGEventFlags = []
         var codes: [CGKeyCode] = []
         for name in names {
@@ -192,6 +212,47 @@ enum Keyboard {
                 codes.append(key.code)
             }
         }
+        return (flags, codes)
+    }
+
+    /// Keys down and kept down: the modifiers first (as keys of their own, so apps that watch
+    /// them see them), then the others. A key already held is not pressed twice.
+    static func press(_ names: [String]) throws {
+        let (flags, codes) = try parse(names)
+        heldFlags.formUnion(flags)
+        for code in Keys.modifierCodes(flags) + codes where !heldCodes.contains(code) {
+            heldCodes.append(code)
+            post(code, down: true, flags: [])
+            pause(ms: 8)
+        }
+    }
+
+    /// The held keys named go up, in the reverse order; their modifier flags stop riding along.
+    static func release(_ names: [String]) throws {
+        let (flags, codes) = try parse(names)
+        heldFlags.subtract(flags)
+        for code in (Keys.modifierCodes(flags) + codes).reversed() where heldCodes.contains(code) {
+            heldCodes.removeAll { $0 == code }
+            post(code, down: false, flags: [])
+            pause(ms: 8)
+        }
+    }
+
+    /// Everything `press` left down goes up (before the process ends).
+    static func releaseAll() {
+        for code in heldCodes.reversed() {
+            heldFlags = []
+            post(code, down: false, flags: [])
+            pause(ms: 8)
+        }
+        heldCodes.removeAll()
+        heldFlags = []
+    }
+
+    /// `["cmd", "shift", "s"]`: the modifiers go down as keys of their own (apps that watch
+    /// them see them), the other keys are tapped with the flags set, the modifiers come up.
+    static func hotkey(_ names: [String]) throws {
+        let (flags, codes) = try parse(names)
         let held = Keys.modifierCodes(flags)
         for code in held {
             post(code, down: true, flags: flags)

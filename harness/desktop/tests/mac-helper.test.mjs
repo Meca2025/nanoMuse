@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
-import { MacHelper, MacHelperError, HELPER_NAME, defaultHelperPath, describeAction } from "../out/mac-helper.js";
+import { MacHelper, MacHelperError, HELPER_NAME, QUARANTINE_KEPT_TEXT, clearQuarantine, defaultHelperPath, describeAction, translocated } from "../out/mac-helper.js";
 
 const roots = [];
 after(() => {
@@ -209,6 +209,78 @@ test("restart: /quit to the old one, then a fresh launch with a new token", asyn
   assert.notEqual(fake.token, first);
   assert.equal(helper.running(), true);
   await helper.stop();
+});
+
+test("restart: two at once are one — a single /quit, a single fresh launch; busy() and the last known status meanwhile", async () => {
+  const dir = scratch();
+  const fake = fakeHelper();
+  const helper = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data"), launch: fake.launch });
+  assert.equal(await helper.ready(), true);
+  assert.equal(helper.busy(), false);
+  const first = helper.restart();
+  const second = helper.restart();
+  assert.equal(first, second);
+  // between the processes: not "not in use" — busy, and the last status stands in for the readers
+  assert.equal(helper.busy(), true);
+  assert.equal(helper.lastKnownStatus().screen, "granted");
+  assert.deepEqual(await Promise.all([first, second]), [true, true]);
+  assert.equal(fake.quit, 1);
+  assert.equal(fake.servers.length, 2);
+  assert.equal(helper.busy(), false);
+  await helper.stop();
+});
+
+test("quarantine: a flag that came off is logged; one that stays is why the helper is not started", async () => {
+  const dir = scratch();
+  const fake = fakeHelper();
+  const lines = [];
+  const removed = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data"), launch: fake.launch, quarantine: () => ({ result: "removed", detail: "" }), log: (l) => lines.push(l) });
+  assert.equal(await removed.ready(), true);
+  assert.ok(lines.some((l) => /removed the quarantine flag/.test(l)));
+  await removed.stop();
+  const stuck = fakeHelper();
+  const kept = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data2"), launch: stuck.launch, quarantine: () => ({ result: "kept", detail: "Operation not permitted" }) });
+  assert.equal(await kept.ready(), false);
+  assert.equal(stuck.args, undefined);
+  assert.ok(kept.failure().includes(QUARANTINE_KEPT_TEXT));
+  assert.match(kept.failure(), /Operation not permitted/);
+});
+
+test("clearQuarantine: xattr's answers → none, removed, kept (with what it said); nothing off macOS", () => {
+  const calls = [];
+  const fakeXattr = (answers) => (cmd, args) => {
+    calls.push([cmd, ...args]);
+    const next = answers.shift();
+    return typeof next === "string" ? { status: 1, stderr: next } : next;
+  };
+  const absent = { status: 1, stderr: "No such xattr: com.apple.quarantine" };
+  const present = { status: 0, stdout: "0083;00000000;;UUID" };
+  assert.deepEqual(clearQuarantine("/x/Helper.app", fakeXattr([absent]), "darwin"), { result: "none", detail: "" });
+  assert.deepEqual(calls.at(-1), ["xattr", "-p", "com.apple.quarantine", "/x/Helper.app"]);
+  assert.deepEqual(clearQuarantine("/x/Helper.app", fakeXattr([present, { status: 0, stderr: "" }, absent]), "darwin"), { result: "removed", detail: "" });
+  assert.deepEqual(calls.at(-2), ["xattr", "-dr", "com.apple.quarantine", "/x/Helper.app"]);
+  assert.deepEqual(clearQuarantine("/x/Helper.app", fakeXattr([present, { status: 1, stderr: "xattr: [Errno 30] Read-only file system\nmore" }, present]), "darwin"), {
+    result: "kept",
+    detail: "xattr: [Errno 30] Read-only file system",
+  });
+  assert.deepEqual(clearQuarantine("/x/Helper.app", fakeXattr([present, { error: new Error("spawn xattr ENOENT") }, present]), "darwin"), { result: "kept", detail: "spawn xattr ENOENT" });
+  const before = calls.length;
+  assert.deepEqual(clearQuarantine("/x/Helper.app", fakeXattr([]), "linux"), { result: "none", detail: "" });
+  assert.equal(calls.length, before);
+});
+
+test("an app under App Translocation does not start its helper, and says why", async () => {
+  const dir = scratch();
+  const app = join(dir, "AppTranslocation", "4F1C", "d", "nanoMuse.app", "Contents", "Helpers", `${HELPER_NAME}.app`);
+  mkdirSync(app, { recursive: true });
+  assert.equal(translocated(app), true);
+  assert.equal(translocated("/Applications/nanoMuse.app/Contents/Helpers/x.app"), false);
+  const fake = fakeHelper();
+  const helper = new MacHelper({ appPath: app, dataDir: join(dir, "data"), launch: fake.launch, quarantine: () => ({ result: "none", detail: "" }) });
+  assert.equal(helper.present(), true);
+  assert.equal(await helper.ready(), false);
+  assert.equal(fake.args, undefined);
+  assert.match(helper.failure(), /Applications folder/);
 });
 
 test("defaultHelperPath: the env override, Contents/Helpers when packaged, the build dir in development", () => {

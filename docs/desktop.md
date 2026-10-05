@@ -111,22 +111,67 @@ grants and to ask for the missing ones — and quits it when it quits; the helpe
 on its own when the app is gone. It has no window and no Dock icon; Activity Monitor lists it
 as *nanoMuse Computer Use*.
 
-What this changes for you:
+What you do, once, on a Mac that has not granted anything yet (checked on macOS 27.0.1,
+Apple silicon):
 
-- The panes list *nanoMuse Computer Use*. Switch that on; nothing else needs a switch.
-- Screen Recording reaches freshly started processes only — now that process is the helper.
-  When the switch flips while the app runs, the app restarts the helper by itself (the log
-  says so); nothing to restart on your side, the conversation goes on. The *Restart* button
-  on the Permissions page restarts the helper too.
-- Without Screen Recording the operator answers `403` with *macOS: switch on nanoMuse
-  Computer Use under System Settings → Privacy & Security → Screen Recording. The helper
-  restarts by itself; the app does not need to.* — the runtime shows that sentence and never
-  falls back to `mss` / `screencapture`.
+1. Open nanoMuse from the Applications folder (drag it there from the disk image first — see
+   *The quarantine flag* below). Settings → Computer use → Permissions, or the first time the
+   hands are about to be used: a short dialog of ours says what is being asked and why.
+2. **Screen Recording.** The system's dialog appears — *"nanoMuse Computer Use" would like to
+   record this computer's screen and audio* — with *Open System Settings*. The pane (called
+   *Screen & System Audio Recording* on macOS 15 and later) lists **nanoMuse Computer Use**;
+   switch it on. macOS may offer to *Quit & Reopen* the helper: either answer is fine, the
+   app starts the helper again by itself and the next screenshot is the real screen. Nothing
+   of nanoMuse itself restarts; the conversation goes on.
+3. **Accessibility.** The system's dialog again, then the switch next to **nanoMuse Computer
+   Use** in the Accessibility pane; macOS asks for your password or Touch ID to flip it. It
+   takes effect at once.
+
+The Permissions page shows both rows live, names the helper as the thing to switch on, and
+its *Try it* buttons take a test screenshot and move the mouse through the real chain (the
+app → the runtime → the helper), so what passes there passes in a chat. Switch a grant off in
+the pane and the hands say so on their next step: *macOS: switch on nanoMuse Computer Use
+under System Settings → Privacy & Security → Screen Recording. The helper restarts by itself;
+the app does not need to.* (`403` from the operator; the runtime never falls back to `mss` or
+`screencapture`).
+
+**The quarantine flag.** The disk image you download carries macOS's quarantine flag, and so
+does every file copied out of it, the helper included. Opening nanoMuse settles the flag for
+nanoMuse — Gatekeeper's dialog, *Open Anyway* — but not for the helper, which LaunchServices
+starts as an app of its own. A quarantined, unapproved helper is started from a *translocated*
+copy — a read-only mount under `/private/var/folders/…/AppTranslocation/<random>/d/` whose
+name changes on every launch — and Gatekeeper's own *could not verify* dialog can come up
+for it as well, with the helper never answering. That is what 0.1.38 did: the helper ran (Activity Monitor showed it),
+Accessibility could be granted, and no *nanoMuse Computer Use* row ever appeared in the
+Screen Recording pane, because tccd had recorded a path that no longer existed. Since 0.1.39
+the app removes the flag from the helper before the first launch (`xattr -dr
+com.apple.quarantine` on `Contents/Helpers/nanoMuse Computer Use.app`; the log says
+`helper: removed the quarantine flag…`), after which the helper starts in place and its rows
+stay. This needs the bundle to be writable — your own copy in Applications is. Run from the
+disk image or straight from Downloads, nanoMuse itself is translocated, the helper cannot be
+fixed and is not started; the log says *move it to the Applications folder and open it
+again*, and the hands use the app's own path meanwhile (below).
+
+More to know:
+
+- Screen Recording reaches freshly started processes only — that process is the helper. When
+  the switch flips while the app runs, the app restarts the helper by itself (the log says
+  `restarting the helper for the new grant`); the *Restart* button on the Permissions page
+  restarts the helper too, never the app, and two clicks are one restart.
+- The picture is the main display, at most 2 Mpx (a 3456×2234 Retina panel comes down to
+  1758×1137), coordinates in points. Only the main display is captured and driven. Holding a
+  key across actions (`press` / `release`, UI-TARS's names) works since 0.1.39.
+- *Window mode* — the hands working inside one application's window — is the runtime's own
+  Quartz code and is attributed to **nanoMuse** itself, not the helper: it needs the
+  *nanoMuse* rows in both panes on top of the helper's, and falls back to the whole screen
+  with a notice when they are missing. Settings → Computer use says whether it is available.
+- macOS 15 and later asks again from time to time whether an app that captures the screen
+  without the system's picker may go on; answer *Allow* for nanoMuse Computer Use.
 - To start the permission flow over: `tccutil reset ScreenCapture
   io.github.nanomuse.desktop.computer-use; tccutil reset Accessibility
-  io.github.nanomuse.desktop.computer-use`, then open Settings → Computer use → Permissions
-  again. A grant left on *nanoMuse Desktop* from an earlier version can be switched off; the
-  app no longer uses it.
+  io.github.nanomuse.desktop.computer-use`, then Settings → Computer use → Permissions again.
+  A grant left on *nanoMuse Desktop* / *nanoMuse* from an earlier version is used by window
+  mode only (above) and can otherwise be switched off.
 
 Without the helper — a build without it, or one whose helper did not start (the log's
 `helper:` lines say why) — the app works as before 0.1.38: the grants are nanoMuse Desktop's
@@ -141,7 +186,9 @@ to build, so the grant survives updates. The project's certificate is still pend
 the Account Holder, so today's builds are ad-hoc signed: an ad-hoc signature is keyed to the
 binary's hash, and every new build of the helper starts the two grants over (as it did for
 the app itself). Until the certificate is there, expect to switch the helper on again after
-each update.
+each update — and, when developing, after each `build.sh`: a helper you rebuilt is a new
+app to tccd, so `npm start` asks for both grants again each time the Swift changed (the
+TypeScript can change freely).
 
 ## macOS signing
 
