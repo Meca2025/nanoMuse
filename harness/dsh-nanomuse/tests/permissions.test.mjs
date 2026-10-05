@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { test } from 'node:test'
 import { checkMove, checkScreenshot, isBlack, needsAccessibility, runtimeInfo, windowStatus, withMcp } from '../lib/hands-check.js'
 
@@ -116,15 +116,16 @@ test('a command that cannot start is reported', async () => {
 test('runtimeInfo: NANOMUSE_PY as set, PATH otherwise, loud about a wrong path', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'nm-rt-'))
   try {
-    const bin = join(dir, 'nanomuse')
-    await writeFile(bin, '#!/bin/sh\nexit 0\n')
+    // Windows has no executable bit; there the name decides (nanomuse.cmd is on the lookup list)
+    const bin = join(dir, process.platform === 'win32' ? 'nanomuse.cmd' : 'nanomuse')
+    await writeFile(bin, process.platform === 'win32' ? '@exit /b 0\r\n' : '#!/bin/sh\nexit 0\n')
     await chmod(bin, 0o755)
     const plain = join(dir, 'notes.txt')
     await writeFile(plain, 'x')
     assert.deepEqual(await runtimeInfo({ NANOMUSE_PY: bin, PATH: '' }), { path: bin, source: 'env', ok: true })
     assert.deepEqual(await runtimeInfo({ NANOMUSE_PY: join(dir, 'gone'), PATH: dir }), { path: join(dir, 'gone'), source: 'env', ok: false, problem: 'missing' })
     assert.deepEqual(await runtimeInfo({ NANOMUSE_PY: plain, PATH: dir }), { path: plain, source: 'env', ok: false, problem: 'not-executable' })
-    assert.deepEqual(await runtimeInfo({ PATH: `/nonexistent:${dir}` }), { path: bin, source: 'path', ok: true })
+    assert.deepEqual(await runtimeInfo({ PATH: `/nonexistent${delimiter}${dir}` }), { path: bin, source: 'path', ok: true })
     assert.deepEqual(await runtimeInfo({ PATH: '/nonexistent' }), { path: '', source: 'none', ok: false, problem: 'not-found' })
   } finally {
     await rm(dir, { recursive: true, force: true })
