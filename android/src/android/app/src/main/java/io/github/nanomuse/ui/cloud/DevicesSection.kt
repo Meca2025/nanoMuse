@@ -62,7 +62,10 @@ import io.github.nanomuse.ui.muse.MuseSectionLabel
  * the web console's address. Shown only while signed in.
  */
 @Composable
-fun DevicesSection() {
+fun DevicesSection(
+    /** "Ask this device": the chat with "@<name> " typed, so the next message runs there (contract C7, rule 8). */
+    onAsk: ((io.github.nanomuse.hub.Device) -> Unit)? = null,
+) {
     val context = LocalContext.current
     val connected by Hub.connected.collectAsState()
     val detail by Hub.detail.collectAsState()
@@ -135,18 +138,28 @@ fun DevicesSection() {
         } else {
             others.forEachIndexed { i, d ->
                 if (i > 0) MuseRowDivider()
+                // online, and the chat can reach it: the row is "Ask this device"; offline: a tap offers to forget it
+                val askable = d.online && onAsk != null
                 MuseRow(
                     title = d.name,
                     icon = if (d.isPhone) Icons.Outlined.PhoneAndroid else Icons.Outlined.Computer,
-                    value = listOf(d.os, if (d.online) stringResource(R.string.nm_devices_online) else stringResource(R.string.nm_devices_offline)).filter { it.isNotBlank() }.joinToString(" · "),
-                    chevron = false,
-                    onClick = { if (!d.online) forget = d },
+                    value = listOf(
+                        d.os,
+                        when {
+                            askable -> stringResource(R.string.nm_devices_ask)
+                            d.online -> stringResource(R.string.nm_devices_online)
+                            else -> stringResource(R.string.nm_devices_offline)
+                        },
+                    ).filter { it.isNotBlank() }.joinToString(" · "),
+                    chevron = askable,
+                    onClick = { if (askable) onAsk?.invoke(d) else if (!d.online) forget = d },
                     trailing = { OnlineDot(d.online) },
                 )
             }
         }
     }
     MuseCaption(stringResource(R.string.nm_devices_how))
+    if (onAsk != null && others.any { it.online }) MuseCaption(stringResource(R.string.nm_devices_ask_hint))
     MuseGap()
     MuseCard {
         MuseRow(

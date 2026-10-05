@@ -25,7 +25,7 @@
 </p>
 
 > [!IMPORTANT]
-> **免费、开源、非盈利。** 手机号或邮箱登录后有一份起始额度，钱是开发者出的；剩多少、怎么加，账号页里有数。用完可以填自己的 key：国内用阿里云百炼，海外用 OpenRouter（[教程](../own-key.md)）。消息默认不存服务器，数据不卖（[隐私政策](https://nanomuse.cn/privacy/)）；账号想删就删。**[在线体验](https://nanomuse.cn/web/)**，或者[下载 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
+> **免费、开源、非盈利。** 手机号或邮箱登录后有一份起始额度，钱是开发者出的；剩多少、怎么加，账号页里有数。用完可以填自己的 key：国内用阿里云百炼，海外用 OpenRouter（[教程](../own-key.md)）。登录后，对话文字会保存在 nanoMuse Cloud，让你的几台设备看到同样的对话——「数据控制」里一个开关就能关掉并删除；数据不卖（[隐私政策](https://nanomuse.cn/privacy/)）；账号想删就删。**[在线体验](https://nanomuse.cn/web/)**，或者[下载 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
 
 nanoMuse 是一个开源的个人智能体，面向你的每一台设备。和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一样，它是一个有名字、有自己形象的智能体：不只回答问题，而是动手做事；App 关掉了也继续干活；记得你；遇到无法撤销的操作会先停下来问你。Android App 把整个智能体跑在**手机上**：Linux 根文件系统、shell、浏览器、MCP、技能和定时任务都在 APK 里，模型由你自己带。它有一双手，能去碰那些没有 API 的 App——经你允许后，直接操作手机屏幕；也能伸到你的电脑上：在手机上说一句，事情在电脑上办好。桌面 App、网页版和 iPhone App（TestFlight）也已经有了；接下来是眼镜。用自己的 key，或者领一份开放中继的起始额度；GPL-3.0——也是一个底子，可以在它上面做出你自己的 Muse。
 

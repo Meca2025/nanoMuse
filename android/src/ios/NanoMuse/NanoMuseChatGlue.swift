@@ -48,10 +48,12 @@ extension AIChatViewModel {
         guard !text.isEmpty else { return false }
         if NanoMuseAvatarFlow.shared.handle(text, in: self) { return true }
         if NanoMuseFirstConversation.shared.handle(text, in: self) { return true }
+        // C7: "@Pixel 8 open the calendar" — the task runs on that device, its answer comes back here.
+        if NanoMuseDeviceMention.handle(text, in: self) { return true }
         return false
     }
 
-    /// After a turn ended: goals, the feed, the naming flow read the reply; addenda tick.
+    /// After a turn ended: goals, the feed, the naming flow read the reply; addenda tick; sync pushes.
     func nmAfterTurn() {
         let key = nmSessionKey
         let reply = nmLastAssistantText()
@@ -59,6 +61,7 @@ extension AIChatViewModel {
         NanoMuseFeedFlow.afterTurn(session: key, assistantText: reply)
         NanoMuseFirstConversation.shared.afterTurn(session: key, assistantText: reply, vm: self)
         NanoMuseSessionAddenda.onTurnFinished(session: key)
+        NanoMuseSync.shared.turnFinished(session: key)
     }
 
     /// Appended to the system prompt of this session (empty when there is nothing to add).

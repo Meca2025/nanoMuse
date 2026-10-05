@@ -36,7 +36,9 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
 import type { ToolDispatchExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, ToolCallId, type ContentBlock } from '@deepseek-ai/dsh-llm'
+import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import z from '@deepseek-ai/schemastery'
 import { mountGuarded } from './admit.ts'
@@ -44,7 +46,8 @@ import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './ac
 import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
-import { TaskRunner } from './task.ts'
+import { TaskRunner, textOf } from './task.ts'
+import { SyncEngine, SyncRelay, type SessionLine, type SyncState } from './sync.ts'
 import { AvatarMotion, ANIMATED, type MotionMood, type MotionView } from './motion.ts'
 import { DEFAULT_VIDEO_MODEL, hostOf, KNOWN_DASHSCOPE_MODELS, looksLikeVideoModel, probe as probeVideoModel, speaksDashScope, type VideoEndpoint } from './video.ts'
 import { checkMove, checkScreenshot, isBlack, runtimeInfo, type MoveCheck, type RuntimeInfo, type ScreenshotCheck } from './hands-check.ts'
@@ -277,6 +280,8 @@ interface State {
   trusted?: Record<string, { name: string; at: number }>
   /** The session each other device's conversation lives in (`<device id>\n<conversation>` → session id). */
   taskSessions?: Record<string, string>
+  /** Conversations synced between the account's devices (C7): the cursor, the ids, the mirrors. */
+  sync?: SyncState
   /** The hands model the person chose; absent means the account's default. */
   handsModel?: string
   /** "Always allow" given on the stage, per app. */
@@ -410,6 +415,8 @@ export default class NanomuseCloud extends Service {
   private signedInCache = false
   /** Tasks from other devices, once the session API is up. */
   private tasks: TaskRunner | undefined
+  /** Conversations synced between the account's devices (contract C7), once the session API is up. */
+  private sync: SyncEngine | undefined
   /** Approvals the stage may answer (C2) and holds of the hands (C1). */
   private readonly approvalDesk = new ApprovalDesk(() => this.broadcast(), (req) => this.granted(req.toolName))
   private readonly holdDesk = new HoldDesk(() => this.broadcast())
@@ -512,6 +519,62 @@ export default class NanomuseCloud extends Service {
       ctx.effect(() => () => {
         this.tasks = undefined
       }, 'nanomuse cloud: tasks off')
+      // The account's conversations, the same on every device (C7): the sessions here go up after
+      // each turn, the other devices' show as mirrors in the chats column.
+      const sync = new SyncEngine({
+        relay: new SyncRelay(this.config.baseURL),
+        sessions: {
+          list: async () => {
+            const { items } = await ctx.sessionController.list({}, new AbortController().signal)
+            const rows = await Promise.all(
+              items
+                .filter((s) => !s.parentSessionId && s.origin !== 'subagent')
+                .map(async (s) => ({ id: String(s.sessionId), title: await this.sessionTitle(ctx, s.sessionId), blank: s.blank, createdAt: s.updatedAt, updatedAt: s.updatedAt })),
+            )
+            return rows
+          },
+          lines: (sessionId) => this.sessionLines(ctx, sessionId),
+          create: async (title) => {
+            const created = await ctx.sessionController.create({ agentPreset: 'nanomuse' })
+            await ctx.sessionController.rename({ sessionId: created.sessionId, title }).catch(() => undefined)
+            return String(created.sessionId)
+          },
+          rename: async (sessionId, title) => {
+            await ctx.sessionController.rename({ sessionId: sessionId as SessionId, title })
+          },
+          inject: async (sessionId, text) => {
+            const resolved = await ctx.sessionController.resolveAgent(sessionId as SessionId)
+            if ('error' in resolved) throw new Error(String(resolved.error))
+            resolved.agent.inject(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
+          },
+        },
+        token: () => this.token(),
+        deviceId: () => this.state.deviceId ?? '',
+        isTaskSession: (sessionId) => Object.values(this.state.taskSessions ?? {}).includes(sessionId),
+        load: () => this.state.sync,
+        save: async (state) => {
+          this.state.sync = state
+          await this.writeState()
+        },
+        onChange: () => this.broadcast(),
+        log: (level, text) => this.ctx.logger[level](text),
+      })
+      this.sync = sync
+      ctx.effect(
+        () =>
+          ctx.on('session/event', (session: Session, event: SessionEvent) => {
+            // `session/title` is dsh-session-title's event (not a dependency here): matched by name
+            if (event.type === 'turn/end') sync.turnEnded(String(session.id))
+            else if ((event as { type: string }).type === 'session/title') sync.sessionRenamed(String(session.id))
+          }),
+        'nanomuse cloud: sync turns',
+      )
+      ctx.effect(() => this.hub.onSync((cursor, from) => sync.onFrame({ cursor, from })), 'nanomuse cloud: sync frame')
+      if (this.state.account) sync.start()
+      ctx.effect(() => () => {
+        sync.stop()
+        this.sync = undefined
+      }, 'nanomuse cloud: sync off')
       if (this.hub.connected) this.hub.restart()
     })
 
@@ -844,6 +907,10 @@ export default class NanomuseCloud extends Service {
     this.ctx.logger.info('nanomuse cloud: signed in as %s (%s)', signIn.account.hint, signIn.account.channel)
     await this.profile.pull(signIn.apiKey, true).catch((error: unknown) => this.ctx.logger.warn('nanomuse: profile pull failed: %s', message(error)))
     this.hub.restart()
+    if (this.sync) {
+      this.sync.start()
+      await this.sync.accountChanged(signIn.account.id)
+    }
     this.broadcast()
     return this.status()
   }
@@ -1331,6 +1398,8 @@ export default class NanomuseCloud extends Service {
     }
     const { deviceId, deviceName, remoteControl } = this.state
     this.state = { ...(deviceId ? { deviceId } : {}), ...(deviceName ? { deviceName } : {}), ...(remoteControl === true ? { remoteControl } : {}) }
+    this.sync?.stop()
+    this.sync?.signedOut()
     this.signedInCache = false
     this.lastSharedConnectors = ''
     await this.writeState()
@@ -1546,9 +1615,54 @@ export default class NanomuseCloud extends Service {
         ...(raw.remoteControl === true ? { remoteControl: true } : {}),
         ...(raw.trusted && typeof raw.trusted === 'object' ? { trusted: trustedOf(raw.trusted) } : {}),
         ...(raw.taskSessions && typeof raw.taskSessions === 'object' ? { taskSessions: raw.taskSessions } : {}),
+        ...(raw.sync && typeof raw.sync === 'object' ? { sync: raw.sync } : {}),
       }
     } catch {
       return {}
+    }
+  }
+
+  /** The session's title as the chats column shows it: the latest `session/title` event, else its first prompt. */
+  private async sessionTitle(ctx: Context, sessionId: SessionId): Promise<string> {
+    try {
+      const inspection = await ctx.sessionController.inspect(sessionId)
+      let title = ''
+      let first = ''
+      for (const event of inspection.events as ReadonlyArray<{ type: string; data: unknown }>) {
+        if (event.type === 'session/title') title = String((event.data as { title?: string }).title ?? '')
+        else if (!first && event.type === 'user/message' && (event.data as { source?: { kind?: string } }).source?.kind === 'user') first = textOf((event.data as { content?: readonly ContentBlock[] }).content)
+      }
+      return (title || first).replace(/\s+/g, ' ').trim().slice(0, 120)
+    } catch {
+      return ''
+    }
+  }
+
+  /** The person's prompts and the model's final texts of one session, for the sync engine. */
+  private async sessionLines(ctx: Context, sessionId: string): Promise<SessionLine[]> {
+    try {
+      const inspection = await ctx.sessionController.inspect(sessionId as SessionId)
+      const lines: SessionLine[] = []
+      // the final assistant text of a turn is the last `assistant/message` before its `turn/end`
+      let lastAssistant: SessionLine | undefined
+      for (const event of inspection.events) {
+        if (event.type === 'user/message') {
+          const data = event.data as unknown as { id?: string; content?: readonly ContentBlock[]; source?: { kind?: string } }
+          if (data.source?.kind !== 'user') continue
+          const text = textOf(data.content)
+          if (text && !text.startsWith('[Asked from ')) lines.push({ id: String(data.id ?? `u${event.seq}`), role: 'user', text, at: event.time })
+        } else if (event.type === 'assistant/message') {
+          const data = event.data as unknown as { message?: { id?: string; content?: readonly ContentBlock[] }; interrupted?: true }
+          const text = textOf(data.message?.content)
+          if (text && data.interrupted !== true) lastAssistant = { id: String(data.message?.id ?? `a${event.seq}`), role: 'assistant', text, at: event.time }
+        } else if (event.type === 'turn/end') {
+          if (lastAssistant) lines.push(lastAssistant)
+          lastAssistant = undefined
+        }
+      }
+      return lines
+    } catch {
+      return []
     }
   }
 
@@ -1703,6 +1817,34 @@ export default class NanomuseCloud extends Service {
         return send(res, 200, await this.setContribute(body.on !== false))
       }
       if (req.method === 'POST' && route === '/data/delete-samples') return send(res, 200, await this.deleteSamples())
+      // Conversations synced between the account's devices (C7): the switch, the delete, the mirrors.
+      if (route === '/sync/state' || route.startsWith('/sync/')) {
+        const sync = this.sync
+        if (!sync) return send(res, 503, { error: { code: 'not_ready', message: 'The session API is not up yet' } })
+        if (req.method === 'GET' && route === '/sync/state') {
+          await sync.relayStatus()
+          return send(res, 200, sync.view())
+        }
+        if (req.method === 'POST' && route === '/sync/state') {
+          const body = await json(req)
+          return send(res, 200, await sync.setEnabled(body.enabled !== false))
+        }
+        if (req.method === 'POST' && route === '/sync/delete') return send(res, 200, await sync.deleteRemote())
+        if (req.method === 'POST' && route === '/sync/pull') return send(res, 200, { applied: await sync.pull(), ...sync.view() })
+        if (req.method === 'POST' && route === '/sync/main') {
+          const body = await json(req)
+          await sync.setMain(String(body.sessionId ?? ''))
+          return send(res, 204)
+        }
+        if (req.method === 'GET' && route === '/sync/mirror') {
+          const mirror = sync.mirror(url.searchParams.get('cid') ?? '')
+          return mirror ? send(res, 200, mirror) : send(res, 404, { error: { code: 'not_found', message: 'No such synced conversation' } })
+        }
+        if (req.method === 'POST' && route === '/sync/continue') {
+          const body = await json(req)
+          return send(res, 200, { sessionId: await sync.continueHere(String(body.cid ?? ''), this.deviceName()) })
+        }
+      }
       if (req.method === 'POST' && route === '/profile/refresh') return send(res, 200, await this.pullProfile(true))
       if (req.method === 'POST' && route === '/devices/refresh') {
         this.hub.refreshDevices()
@@ -1845,12 +1987,16 @@ export function stageAction(args: unknown): StageAction {
   const kind = typeof a.action === 'string' ? a.action : 'act'
   const keys = Array.isArray(a.keys) ? a.keys.filter((k): k is string => typeof k === 'string').join('+') : ''
   const text = kind === 'key' ? keys : kind === 'open_app' ? String(a.app ?? '') : typeof a.text === 'string' ? a.text : ''
+  // `box: [x1, y1, x2, y2]` stands in for x, y when the model gave a box (computer_act): its centre
+  const box = Array.isArray(a.box) && a.box.length === 4 ? a.box.map(num) : []
+  const [bx1 = -1, by1 = -1, bx2 = -1, by2 = -1] = box
+  const boxed = box.length === 4 && box.every((v) => v >= 0)
   return {
     kind,
     label: typeof a.label === 'string' ? a.label.replace(/\s+/g, ' ').trim().slice(0, 80) : '',
     text: text.replace(/\s+/g, ' ').trim().slice(0, 80),
-    x: num(a.x),
-    y: num(a.y),
+    x: boxed && a.x === undefined ? (bx1 + bx2) / 2 : num(a.x),
+    y: boxed && a.y === undefined ? (by1 + by2) / 2 : num(a.y),
     at: Date.now(),
   }
 }

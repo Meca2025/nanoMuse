@@ -6,6 +6,8 @@
 //
 //   node scripts/smoke.mjs                 # development: node_modules/electron + ./dsh
 //   node scripts/smoke.mjs --app <dir>     # the unpacked app electron-builder left (dist/*-unpacked, dist/mac*/…​.app)
+//   node scripts/smoke.mjs --operator      # also: the app's own hands (src/operator.ts) load and answer
+//                                          # /info and /screenshot — needs a display (DISPLAY on Linux)
 
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -145,3 +147,27 @@ if (warnings > 0) {
   throw new Error("some entries did not activate");
 }
 console.log("ok: the harness boots with the nanoMuse bundle");
+
+// 4. opt-in: the operator — the app as an app this time (not Node mode), with the check flag
+// src/main.ts answers: it starts the operator server alone, asks it for /info and a small
+// /screenshot through HTTP, writes the answers and quits. Shows libnut's addon loaded from
+// where the build put it (asarUnpack) and that the display is readable.
+if (args.includes("--operator")) {
+  const file = join(tmpdir(), `nanomuse-operator-check-${process.pid}.json`);
+  const appArgs = args.includes("--app") && appArg ? [] : [appDir];
+  const userData = mkdtempSync(join(tmpdir(), "nanomuse-desktop-operator-"));
+  const run = spawnSync(electron, [...appArgs, `--user-data-dir=${userData}`, `--operator-check=${file}`], { env: { ...process.env, ELECTRON_NO_ATTACH_CONSOLE: "1" }, encoding: "utf8", timeout: 120_000 });
+  rmSync(userData, { recursive: true, force: true });
+  if (!existsSync(file)) {
+    console.error(run.stdout.slice(-2000));
+    console.error(run.stderr.slice(-4000));
+    throw new Error(`operator check: the app wrote nothing (exit ${run.status})`);
+  }
+  const { readFileSync } = await import("node:fs");
+  const result = JSON.parse(readFileSync(file, "utf8"));
+  rmSync(file, { force: true });
+  const shot = result.screenshot ?? {};
+  console.log(`operator: ${result.info?.available ? "available" : `not available (${result.info?.reason ?? result.error ?? "?"})`} · display ${result.info?.display?.width}×${result.info?.display?.height} · screenshot ${shot.width}×${shot.height} ${shot.mime ?? ""} ${shot.bytes ?? 0} bytes · no token → ${result.unauthorised}`);
+  if (!result.ok || result.unauthorised !== 401 || !shot.png) throw new Error(`operator check failed: ${result.error ?? shot.error ?? "see above"}`);
+  console.log("ok: the operator answers");
+}

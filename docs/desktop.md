@@ -45,8 +45,16 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
   `/account-events`, `/password`, `/sign-out-all`, `/delete-account`, `/config`);
 - **Hands** on this computer: `nanomuse mcp` from the bundled runtime over stdio, the
   runtime's `computer_screen` and `computer_act` tools with their approvals, so "what is
-  on my screen?" and "open the settings and turn the volume down" work out of the box;
-  the connectors the runtime's `config.toml` turns on (mailbox, calendar, address book)
+  on my screen?" and "open the settings and turn the volume down" work out of the box.
+  The mouse, the keyboard and the screenshot are the app's own (`src/operator.ts`, a
+  port of UI-TARS-desktop's operator on `@computer-use/nut-js`), answered to the runtime
+  over a loopback HTTP server with a per-launch token (`NANOMUSE_OPERATOR_URL` /
+  `NANOMUSE_OPERATOR_TOKEN` in the runtime's environment; `GET /info`, `POST
+  /screenshot`, `POST /execute`) — one capture path and one pointer space on every
+  platform, no `xdotool` or `pyautogui` needed, and coordinates that are pixels of the
+  picture the model saw ([gui.md](gui.md#hands-on-the-computer-the-picture-is-the-unit)).
+  The runtime's own backends remain the fallback when the app is not the one running it.
+  The connectors the runtime's `config.toml` turns on (mailbox, calendar, address book)
   arrive over the same server, and Settings → Connectors shows how to set each one up;
 - **the rooms**: Feed, Ideas, Goals and Library as Muse has them, kept by the host in
   `nanomuse/rooms.json` and written by the agent in hidden chats (feed and ideas) or
@@ -124,5 +132,9 @@ python -m pytest desktop/tests
 
 The macOS `.pkg` installs `/usr/local/bin/nanomuse-desktop` and a small "nanoMuse
 Desktop.app" that opens it in Terminal; the Windows setup adds the folder to `PATH` and
-a Start-menu entry; the `.deb` installs `/usr/bin/…` and a desktop entry. Nothing is
-signed — macOS asks for right-click → Open once, Windows for "Run anyway".
+a Start-menu entry; the `.deb` (package `nanomuse-desktop-terminal`) installs
+`/usr/bin/nanomuse-desktop-terminal`, a desktop entry "nanoMuse Desktop (terminal)" with its
+own icon, and registers the command as a lower-priority alternative for `nanomuse-desktop`,
+so it installs next to the desktop app's `.deb` and the plain name keeps working when the app
+is not there. Nothing is signed — macOS asks for right-click → Open once, Windows for "Run
+anyway".

@@ -99,9 +99,19 @@ The web app's typeface, [Figtree](https://github.com/erikdkennedy/figtree) by Er
 
 The Feishu channel's WebSocket runner (`nanomuse/channels/feishu.py`, class `_Runner`) follows the shape of `FeishuWsRunner` in [nanobot](https://github.com/HKUDS/nanobot) (Copyright (c) 2025 HKUDS): the SDK's client on a thread with its own event loop, swapping the module-level loop and calling its private `_connect` / `_disconnect` / `_ping_loop`. Rewritten for nanoMuse's channel base; the arrangement is theirs.
 
+### UI-TARS-desktop — Apache-2.0
+
+The desktop app's hands on the computer are ported from [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (Copyright (c) 2025 Bytedance, Inc. and its affiliates), Apache-2.0:
+
+- `harness/desktop/src/operator.ts` — the operator (`NutJSOperator` in `packages/ui-tars/operators/nut-js/src/index.ts`, `NutJSElectronOperator` in `apps/ui-tars/src/main/agent/operator.ts`, `getScreenSize` in `apps/ui-tars/src/main/utils/screen.ts`): the screenshot through Electron's `desktopCapturer` at the display's size with the libnut fallback, the action switch (move straight to the point, a 100 ms rest, then the click; drag; scroll; type through the clipboard; the hotkey table with `ctrl` as ⌘ on a Mac), the screen size as logical size × scale factor (1 on macOS), the mouse speed.
+- `harness/desktop/resources/glow.html` — the prediction marker (`apps/ui-tars/src/main/shared/setOfMarks.ts`, `apps/ui-tars/src/main/window/ScreenMarker.ts`): the turning dashed ring with a dot at the point and the action's name beside it; the edge flow was already after their "screen water flow".
+- `nanomuse/computer/coords.py` — `smart_resize` and the picture-size rules (`smartResizeForV15` in `packages/ui-tars/action-parser/src/actionParser.ts`, `parseBoxToScreenCoords` in `packages/ui-tars/sdk/src/utils.ts`: factor 28, the pixel bounds, the 1000-grid conversion).
+
+Each file carries the attribution line; rewritten in nanoMuse's structure (the operator answers the runtime over loopback HTTP rather than running the model loop itself). The dependency `@computer-use/nut-js` (`harness/desktop/package.json`) is their fork of nut.js, Apache-2.0, with libnut's prebuilt addon per platform.
+
 ### Python and JavaScript dependencies
 
-Installed from PyPI and npm, not vendored; each carries its own license: openai, pydantic, httpx, typer, rich, loguru, cryptography, tenacity, ddgs, beautifulsoup4, html2text, mcp, fastapi, uvicorn, qrcode, pywebpush, python-dateutil, pillow, pypdf (Python); lark-oapi, dingtalk-stream, wecom-aibot-sdk-python when the `channels` extras are installed; react, react-dom, react-markdown, remark-gfm, lucide-react, tailwindcss, vite (web). `pip show <name>` / `npm view <name> license` for any of them.
+Installed from PyPI and npm, not vendored; each carries its own license: openai, pydantic, httpx, typer, rich, loguru, cryptography, tenacity, ddgs, beautifulsoup4, html2text, mcp, fastapi, uvicorn, qrcode, pywebpush, python-dateutil, pillow, pypdf (Python); lark-oapi, dingtalk-stream, wecom-aibot-sdk-python when the `channels` extras are installed; react, react-dom, react-markdown, remark-gfm, lucide-react, tailwindcss, vite (web); `@computer-use/nut-js` (desktop, above). `pip show <name>` / `npm view <name> license` for any of them.
 
 ### Tools called, not bundled
 

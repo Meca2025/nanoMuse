@@ -105,6 +105,8 @@ fun CloudAccountScreen(
     onOpenProvider: (instanceId: String) -> Unit,
     onOpenModelGroups: () -> Unit,
     onOpenDataControls: () -> Unit = {},
+    /** Devices → "Ask this device": back to the chat with "@<name> " typed (contract C7, rule 8). */
+    onAskDevice: ((name: String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -612,7 +614,7 @@ fun CloudAccountScreen(
                     MuseRow(title = stringResource(R.string.settings_model_groups), onClick = onOpenModelGroups)
                 }
                 MuseGap()
-                DevicesSection()
+                DevicesSection(onAsk = onAskDevice?.let { ask -> { d -> ask(d.name) } })
 
                 // -- the ways out -----------------------------------------------------------
                 MuseGap()

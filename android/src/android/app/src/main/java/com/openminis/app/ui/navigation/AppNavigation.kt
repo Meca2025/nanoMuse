@@ -667,6 +667,8 @@ fun AppNavigation(
                 onOpenProvider = { id -> navController.safeNavigate(Routes.providerDetail(id)) },
                 onOpenModelGroups = { navController.safeNavigate(Routes.MODEL_GROUPS) },
                 onOpenDataControls = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_DATA_CONTROLS) },
+                // nanoMuse: "Ask this device" — back to the chat with "@<name> " in the composer
+                onAskDevice = { name -> io.github.nanomuse.ui.home.HomeShell.prefill(navController, "@$name ") },
             )
         }
         // nanoMuse: Settings → Data controls — the switch over what nanoMuse Cloud keeps of the chats.

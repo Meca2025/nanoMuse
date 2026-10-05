@@ -70,4 +70,26 @@ object HomeShell {
         HomeBus.showSession(sessionId)
         return true
     }
+
+    /**
+     * Back to the main chat with [text] in the composer — Devices' "Ask this device" puts
+     * "@Mac " there so the next message runs on that device (contract C7, rule 8). Returns
+     * false in wide windows, where there is no shell to come back to.
+     */
+    fun prefill(nav: NavController, text: String): Boolean {
+        if (!active) return false
+        val shellRoute = Routes.SESSION_LIST
+        val onStack = try {
+            nav.getBackStackEntry(shellRoute); true
+        } catch (_: IllegalArgumentException) {
+            false
+        }
+        if (onStack) {
+            nav.popBackStack(shellRoute, inclusive = false)
+        } else {
+            nav.navigate(shellRoute) { popUpTo(nav.graph.startDestinationId) { inclusive = true } }
+        }
+        HomeBus.prefillComposer(text)
+        return true
+    }
 }

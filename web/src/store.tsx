@@ -442,6 +442,11 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
         holds: state.holds.filter((h) => h.thread !== msg.thread),
         pendingApprovals: state.pendingApprovals.filter((a) => a.thread !== msg.thread),
       };
+    case "event_removed": {
+      const list = state.events[msg.thread];
+      if (!list) return state;
+      return { ...state, events: { ...state.events, [msg.thread]: list.filter((e) => e.id !== msg.id) } };
+    }
     case "goals":
       return { ...state, goalsVersion: state.goalsVersion + 1 };
     case "memory":

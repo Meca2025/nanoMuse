@@ -128,11 +128,25 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-rail-top { height:
 /* macOS, no title bar: the empty tops of the rail, the column and the chat are drag handles.
    Windows draws its caption buttons over the top right corner (titleBarOverlay, 40px): the same
    drag handles, and the chat's header keeps clear of the buttons. Linux has its system bar. */
-html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) [data-window-drag], html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) .nm-ob, html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) [data-slot="conversation.session.header"] > :first-child { -webkit-app-region: drag; }
+html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) [data-window-drag], html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) .nm-ob { -webkit-app-region: drag; }
 html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) :is([data-window-drag], .nm-ob, [data-slot="conversation.session.header"]) :is(button, a, input, select, textarea, [contenteditable], [role="button"], [role="dialog"], [role="menu"]) { -webkit-app-region: no-drag; }
-html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-main-top { height: 12px; }
+/* The chat's header is not a drag region (the shell marks its <header data-window-drag>; that
+   and its leading box are reset here): the only handle over the chat is .nm-header-drag, an
+   empty strip above the face (MuseHeader). Chromium builds the window's drag map as
+   union(drag boxes) − union(no-drag boxes), so a box that is never "drag" needs no carve-out —
+   which is what kept failing for the face on macOS. The face also sits below the macOS title
+   bar band (traffic lights at y 18 → ~36px), which the system handles before the page. */
+html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) header[data-window-drag]:has(.nm-header), html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) [data-conversation-header-leading] { -webkit-app-region: initial; }
+.nm-header-drag { position: absolute; left: 0; right: 0; top: 0; height: 10px; z-index: 1; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-header-drag { height: 36px; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-header { top: 40px; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-header-back { top: 42px; }
+html[data-nm-platform='darwin']:not([data-nm-fullscreen]) header[data-window-drag]:has(.nm-header) { min-height: 136px; }
 html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-rail-top { height: 24px; }
-html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-main-top { height: 12px; }
+html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-header-drag { height: 22px; right: 150px; }
+html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-header { top: 26px; }
+html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-header-back { top: 28px; }
+html[data-nm-platform='win32']:not([data-nm-fullscreen]) header[data-window-drag]:has(.nm-header) { min-height: 122px; }
 html[data-nm-platform='win32']:not([data-nm-fullscreen]) [data-slot="conversation.session.header"] > :first-child { padding-right: 150px; min-height: 40px; }
 html[data-nm-platform='win32']:not([data-nm-fullscreen]) .nm-ob-pager { top: 48px; }
 .nm-rail-avatar { width: 44px; height: 44px; margin: 2px 0 10px; border: 0; padding: 0; border-radius: 50%; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -180,6 +194,14 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-col-top { height: 
 .nm-chat-more:hover { background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary); }
 .nm-chat-row:hover .nm-chat-title { padding-right: 22px; }
 .nm-chat-edit { flex: 1; min-width: 0; height: 30px; margin: 2px 4px; padding: 0 8px; border: 1px solid var(--nm-blue); border-radius: 7px; background: var(--nm-field); color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; outline: none; }
+/* a chat synced from another device of the account (C7): the badge, the mirror's transcript */
+.nm-chat-from { flex: none; font-size: 11px; color: var(--dsw-alias-label-tertiary); white-space: nowrap; }
+.nm-mirror { display: flex; flex-direction: column; border-radius: 9px; }
+.nm-mirror-body { padding: 2px 10px 8px; font-size: 12.5px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.nm-mirror-line { margin: 0 0 4px; white-space: pre-wrap; word-break: break-word; max-height: 72px; overflow: hidden; }
+.nm-mirror-line b { font-weight: 500; color: var(--dsw-alias-label-primary); }
+.nm-mirror-continue { margin-top: 4px; height: 26px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-primary, rgba(0,0,0,0.12)); border-radius: 7px; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12.5px; cursor: pointer; }
+.nm-mirror-continue:hover { background: var(--nm-hover); }
 
 /* ---- the pinned agent header over the conversation -------------------- */
 header[data-window-drag]:has(.nm-header) { position: relative; min-height: 108px; }
@@ -1047,9 +1069,10 @@ html[data-nm-profile] .nm-ac { left: calc(50% - 155px); }
 .nm-ac-share-canvas { width: 100%; max-width: 360px; aspect-ratio: 1; border-radius: 14px; display: block; margin: 10px auto 0; box-shadow: 0 6px 24px rgba(0,0,0,0.18); }
 
 /* desk-a */
-/* The face, the name and the status line are one no-drag island in the draggable chat header,
-   on macOS and Windows alike; the face on the rail and the drawer's own face too. Plain
-   boxes, no transform and no pointer-events games: Chromium maps drag regions from layout. */
+/* Belt and braces: the face, the name and the status line are a no-drag island on macOS and
+   Windows alike (the header itself is no longer a drag region, see the platform block above);
+   the face on the rail and the drawer's own face too. Plain boxes, no transform and no
+   pointer-events games: Chromium maps drag regions from layout. */
 html:is([data-nm-platform='darwin'], [data-nm-platform='win32']) :is(.nm-header, .nm-header-face, .nm-header-back, .nm-rail-face, button:has(> .nm-rail-face)) { -webkit-app-region: no-drag; }
 
 /* The first run (C4): the phone's pages, one at a time, the dots and the gear on top. */

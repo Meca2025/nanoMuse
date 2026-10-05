@@ -147,6 +147,8 @@ private struct UserBubbleSurface: ViewModifier {
                         .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
                         .foregroundStyle(ChatColors.secondaryText.opacity(0.5))
                 )
+        } else if NanoMuseShellPrefs.shell { // nanoMuse: Muse's user bubble — flat grey, 18 pt, no glass (Android: MuseTones.bubble)
+            content.background(shape.fill(NanoMuseTones.bubble)) // nanoMuse:
         } else if #available(iOS 26.0, *) {
             content.glassEffect(.regular, in: shape)
         } else {

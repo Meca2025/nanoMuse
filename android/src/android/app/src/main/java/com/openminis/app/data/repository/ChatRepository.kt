@@ -92,10 +92,12 @@ class ChatRepository(internal val dao: ChatDao) {
 
     suspend fun updateSessionTitle(id: String, title: String) {
         dao.updateSessionTitle(id, title, System.currentTimeMillis())
+        io.github.nanomuse.sync.ConversationSync.changed() // nanoMuse: the new title reaches the account's other devices
     }
 
     suspend fun updateSessionTitleAndCategory(id: String, title: String, category: String?) {
         dao.updateSessionTitleAndCategory(id, title, category, System.currentTimeMillis())
+        io.github.nanomuse.sync.ConversationSync.changed() // nanoMuse
     }
 
     suspend fun updateSessionModel(sessionId: String, modelId: String) {
@@ -110,6 +112,7 @@ class ChatRepository(internal val dao: ChatDao) {
         dao.deleteMessages(id)
         dao.deleteSession(id)
         io.github.nanomuse.guard.Grants.clearSession(id) // nanoMuse
+        io.github.nanomuse.sync.ConversationSync.changed() // nanoMuse: a tombstone goes to the other devices
     }
 
     // ─── Session groups ("folders") ────────────────────────────────────────
@@ -312,8 +315,10 @@ class ChatRepository(internal val dao: ChatDao) {
         return result
     }
 
-    suspend fun deleteMessagesAfter(sessionId: String, keepCount: Int) =
+    suspend fun deleteMessagesAfter(sessionId: String, keepCount: Int) {
         dao.deleteMessagesAfter(sessionId, keepCount)
+        io.github.nanomuse.sync.ConversationSync.changed() // nanoMuse: an edit or regenerate — the cut rows become tombstones
+    }
 
     /**
      * Rewrite a single message row's parts_json in place. Used by
@@ -402,6 +407,8 @@ class ChatRepository(internal val dao: ChatDao) {
         } else {
             dao.touchSession(sessionId, now)
         }
+        // nanoMuse: a moment after the turn's last row, the chat reaches the account's other devices
+        io.github.nanomuse.sync.ConversationSync.changed()
         return message
     }
 

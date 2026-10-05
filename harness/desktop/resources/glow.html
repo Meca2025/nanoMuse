@@ -5,9 +5,13 @@
 <title>nanoMuse hands</title>
 <style>
   /* A transparent, click-through, always-on-top window over the whole display while the hands
-     work (UI-TARS's ScreenMarker, in our colours): a water-flow gradient runs along the edges
-     and the agent's face follows the pointer. Nothing here is ever in a screenshot: the window
-     has content protection on. */
+     work (UI-TARS's ScreenMarker, in our colours): a water-flow gradient runs along the edges,
+     the agent's face follows the pointer, and the prediction marker — a turning dashed ring with
+     a dot at the exact point of the last action and the action's name beside it — sits where the
+     operator just clicked, dragged or scrolled. Nothing here is ever in a screenshot: the window
+     has content protection on (macOS, Windows) or steps aside for the capture (Linux).
+     Marker portions derived from UI-TARS-desktop (https://github.com/bytedance/UI-TARS-desktop),
+     © 2025 Bytedance, Inc. and its affiliates, Apache-2.0. */
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; pointer-events: none; }
   .edge { position: fixed; inset: 0; border-radius: 14px; padding: 6px; opacity: 0; transition: opacity 240ms ease; 
     background: conic-gradient(from var(--a), #22c1ff, #7a5cff, #ff6ab0, #ffb347, #22c1ff);
@@ -21,17 +25,46 @@
   .on .glow { opacity: 1; }
   .cursor { position: fixed; left: 0; top: 0; width: 44px; height: 44px; transform: translate(-50%, -50%) scale(0.6); opacity: 0; transition: left 180ms ease-out, top 180ms ease-out, opacity 160ms ease, transform 160ms ease; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45)); }
   .cursor.shown { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  /* while the operator's marker is on the point, the face sits just above-left of it so the ring and dot stay in view */
+  .cursor.shown.beside { transform: translate(-108%, -108%) scale(0.9); }
   .cursor img { width: 100%; height: 100%; border-radius: 50%; background: #fff; display: block; }
   .cursor .ring { position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.9); opacity: 0; }
   .cursor.click .ring { animation: ring 520ms ease-out; }
   @keyframes ring { from { transform: scale(0.6); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
   .label { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 6px 14px; border-radius: 999px; background: rgba(20,20,24,0.85); color: #fff; font: 500 13px/1.3 -apple-system, "Segoe UI", system-ui, sans-serif; opacity: 0; transition: opacity 200ms ease; max-width: 60vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .on .label.shown { opacity: 1; }
+  /* The prediction marker (UI-TARS's: r=16 dashed ring turning once a second, a dot, the action's
+     name beside), in our red, placed at the operator's own fractions of the display, gone 1.6 s
+     after the action. A drag also draws the line it travelled. */
+  .marker { position: fixed; left: 0; top: 0; width: 0; height: 0; opacity: 0; transition: opacity 180ms ease; }
+  .marker.shown { opacity: 1; }
+  .marker.fade { opacity: 0; transition: opacity 600ms ease; }
+  .marker .ring { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; }
+  .marker .ring circle { fill: none; stroke: #ff3b30; stroke-width: 3; stroke-dasharray: 80 20; stroke-linecap: round; transform-origin: 50% 50%; animation: turn 1s linear infinite; }
+  @keyframes turn { to { transform: rotate(360deg); } }
+  .marker .dot { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: #ff3b30; }
+  .marker .name { position: absolute; left: 26px; top: 0; transform: translateY(-50%); color: #ff3b30; font: 600 16px/1 -apple-system, "Segoe UI", system-ui, Arial, sans-serif; white-space: nowrap; text-shadow: 0 0 3px rgba(255,255,255,0.9), 0 0 1px rgba(255,255,255,0.9); max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+  .marker.left .name { left: auto; right: 26px; }
+  .marker .pulse { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,59,48,0.9); opacity: 0; }
+  .marker.click .pulse { animation: pulse 600ms ease-out; }
+  @keyframes pulse { from { transform: scale(0.8); opacity: 1; } to { transform: scale(2.4); opacity: 0; } }
+  .trail { position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 180ms ease; }
+  .trail.shown { opacity: 1; }
+  .trail.fade { opacity: 0; transition: opacity 600ms ease; }
+  .trail line { stroke: #ff3b30; stroke-width: 3; stroke-dasharray: 10 8; stroke-linecap: round; }
+  .trail circle { fill: none; stroke: #ff3b30; stroke-width: 2; }
 </style>
 </head>
 <body>
   <div class="glow"></div>
   <div class="edge"></div>
+  <svg class="trail" id="trail"><line id="trailLine" x1="0" y1="0" x2="0" y2="0" /><circle id="trailFrom" r="6" cx="0" cy="0" /></svg>
+  <div class="marker" id="marker">
+    <span class="pulse"></span>
+    <svg class="ring" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" /></svg>
+    <span class="dot"></span>
+    <span class="name" id="markerName"></span>
+  </div>
   <div class="cursor" id="cursor"><span class="ring"></span><img id="face" alt="" /></div>
   <div class="label" id="label"></div>
   <script>
@@ -39,22 +72,61 @@
     const cursor = document.getElementById('cursor')
     const face = document.getElementById('face')
     const label = document.getElementById('label')
+    const marker = document.getElementById('marker')
+    const markerName = document.getElementById('markerName')
+    const trail = document.getElementById('trail')
+    const trailLine = document.getElementById('trailLine')
+    const trailFrom = document.getElementById('trailFrom')
     let clickTimer = 0
-    // The shell sends {active, held, x, y, kind, text, face} with x,y as fractions of the display.
+    let markerAt = 0
+    let markerTimer = 0
+    const MARKER_MS = 1600
+    const fraction = (v) => typeof v === 'number' && v >= 0 && v <= 1
+    // The shell sends {active, held, x, y, kind, text, face, marker} — x,y fractions of the display
+    // from the web client, and marker {x, y, x2, y2, kind, text, at} from the operator itself (the
+    // exact point it acted on, in the same fractions; x2,y2 the far end of a drag, else -1).
+    const showMarker = (m) => {
+      if (!m || !fraction(m.x) || !fraction(m.y) || m.at === markerAt) return
+      markerAt = m.at
+      marker.style.left = `${m.x * 100}%`
+      marker.style.top = `${m.y * 100}%`
+      marker.classList.toggle('left', m.x > 0.8)
+      markerName.textContent = m.text || m.kind || ''
+      marker.classList.remove('fade'); marker.classList.add('shown')
+      // the face moves to the point as well (the web client's x,y lag the operator by a turn), beside the ring
+      cursor.style.left = `${m.x * 100}%`; cursor.style.top = `${m.y * 100}%`; cursor.classList.add('shown', 'beside')
+      if (m.kind === 'click' || m.kind === 'double_click' || m.kind === 'right_click' || m.kind === 'middle_click') {
+        marker.classList.remove('click'); void marker.offsetWidth; marker.classList.add('click')
+      }
+      if (m.kind === 'drag' && fraction(m.x2) && fraction(m.y2)) {
+        const w = window.innerWidth, h = window.innerHeight
+        trailLine.setAttribute('x1', m.x * w); trailLine.setAttribute('y1', m.y * h)
+        trailLine.setAttribute('x2', m.x2 * w); trailLine.setAttribute('y2', m.y2 * h)
+        trailFrom.setAttribute('cx', m.x * w); trailFrom.setAttribute('cy', m.y * h)
+        trail.classList.remove('fade'); trail.classList.add('shown')
+        marker.style.left = `${m.x2 * 100}%`; marker.style.top = `${m.y2 * 100}%`
+        cursor.style.left = `${m.x2 * 100}%`; cursor.style.top = `${m.y2 * 100}%`
+      } else trail.classList.remove('shown')
+      clearTimeout(markerTimer)
+      markerTimer = setTimeout(() => { marker.classList.add('fade'); trail.classList.add('fade'); cursor.classList.remove('beside') }, MARKER_MS)
+    }
     window.nanomuseGlow?.onState((s) => {
       root.classList.toggle('on', Boolean(s.active))
       root.classList.toggle('held', Boolean(s.held))
       if (s.face && face.getAttribute('src') !== s.face) face.setAttribute('src', s.face)
-      if (s.active && typeof s.x === 'number' && typeof s.y === 'number' && s.x >= 0 && s.y >= 0) {
+      const markerFresh = s.marker && Date.now() - (s.marker.at || 0) < MARKER_MS
+      if (s.active && typeof s.x === 'number' && typeof s.y === 'number' && s.x >= 0 && s.y >= 0 && !markerFresh) {
         cursor.style.left = `${s.x * 100}%`
         cursor.style.top = `${s.y * 100}%`
-        cursor.classList.add('shown')
+        cursor.classList.add('shown'); cursor.classList.remove('beside')
         if (s.kind === 'click' || s.kind === 'tap' || s.kind === 'double_click') {
           cursor.classList.remove('click'); void cursor.offsetWidth; cursor.classList.add('click')
           clearTimeout(clickTimer); clickTimer = setTimeout(() => cursor.classList.remove('click'), 600)
         }
-      } else cursor.classList.remove('shown')
+      } else if (!s.active || !markerFresh) cursor.classList.remove('shown')
       if (s.text) { label.textContent = s.text; label.classList.add('shown') } else label.classList.remove('shown')
+      if (s.active) showMarker(s.marker)
+      else { marker.classList.remove('shown', 'click'); trail.classList.remove('shown') }
     })
   </script>
 </body>

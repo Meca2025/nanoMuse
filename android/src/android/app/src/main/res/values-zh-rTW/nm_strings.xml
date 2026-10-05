@@ -914,4 +914,19 @@
     <string name="nm_connectors_cat_search">搜尋與網頁</string>
     <string name="nm_connectors_cat_infra">基礎設施</string>
     <string name="nm_connectors_cat_misc">更多</string>
+
+    <!-- 帳號各裝置之間的對話同步（契約 C7） -->
+    <string name="nm_sync_title">在我的裝置之間同步對話</string>
+    <string name="nm_sync_caption">對話文字會保存在 nanoMuse Cloud，讓每台裝置看到同樣的對話。檔案和圖片只留在產生它們的裝置上。</string>
+    <string name="nm_sync_sign_in">登入後可同步</string>
+    <string name="nm_sync_on_toast">已開啟。正在傳送這支手機上的對話。</string>
+    <string name="nm_sync_off_toast">已關閉。雲端保存的內容已刪除。</string>
+    <string name="nm_sync_delete">刪除已同步的對話</string>
+    <string name="nm_sync_delete_sub">從 nanoMuse Cloud 刪除對話文字。各裝置上已有的對話保留，同步保持開啟。</string>
+    <string name="nm_sync_delete_confirm">保存在 nanoMuse Cloud 的對話會被刪除。各裝置上的聊天保持原樣。</string>
+    <string name="nm_sync_deleted">已刪除同步的對話。</string>
+    <string name="nm_sync_from">來自 %1$s</string>
+    <string name="nm_sync_attachment_note">[附件 %1$s——只留在產生它的裝置上]</string>
+    <string name="nm_devices_ask">交給這台裝置</string>
+    <string name="nm_devices_ask_hint">點一台在線的裝置，就能在聊天裡對它說話：訊息以 @ 加裝置名開頭，由那台裝置去做。</string>
 </resources>

@@ -35,7 +35,7 @@ const PLATFORM_MODULES = [
 await rm(new URL('./lib/', import.meta.url), { recursive: true, force: true })
 
 await build({
-  entryPoints: ['src/index.ts', 'src/admit.ts', 'src/cloud.ts', 'src/relay.ts', 'src/reach.ts', 'src/hub.ts', 'src/profile.ts', 'src/actions.ts', 'src/task.ts', 'src/rooms.ts', 'src/rooms-tools.ts', 'src/connectors.ts', 'src/connectors-tools.ts', 'src/desk.ts', 'src/avatar-flow.ts', 'src/fences.ts', 'src/video.ts', 'src/motion.ts', 'src/hands-check.ts', 'src/firstrun.ts', 'src/nudges.ts'],
+  entryPoints: ['src/index.ts', 'src/admit.ts', 'src/cloud.ts', 'src/relay.ts', 'src/reach.ts', 'src/hub.ts', 'src/profile.ts', 'src/actions.ts', 'src/task.ts', 'src/sync.ts', 'src/rooms.ts', 'src/rooms-tools.ts', 'src/connectors.ts', 'src/connectors-tools.ts', 'src/desk.ts', 'src/avatar-flow.ts', 'src/fences.ts', 'src/video.ts', 'src/motion.ts', 'src/hands-check.ts', 'src/firstrun.ts', 'src/nudges.ts'],
   outdir: 'lib',
   format: 'esm',
   platform: 'node',

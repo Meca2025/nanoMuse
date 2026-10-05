@@ -37,6 +37,10 @@ extraResources:
     to: runtime
     filter: ["**/*"]
 asar: true
+# the operator's native addon (@computer-use/nut-js → libnut's prebuilt .node per platform) is
+# loaded with require() from a real file, not from inside the archive (src/operator.ts)
+asarUnpack:
+  - "**/node_modules/@computer-use/**"
 compression: normal
 npmRebuild: false
 nodeGypRebuild: false
@@ -49,7 +53,10 @@ linux:
       arch: [x64]
   artifactName: nanoMuse-Desktop-${version}-linux-x64.${ext}
   category: Utility
-  icon: resources/app-icon.png
+  # the icon set, one PNG per size (resources/icons/<n>x<n>.png, made from app-icon.png): the deb
+  # installs each under /usr/share/icons/hicolor/<n>x<n>/apps/. A single 1024px PNG landed only in
+  # hicolor/1024x1024, a size the theme index does not list, and GNOME showed a gear (0.1.35).
+  icon: resources/icons
   synopsis: an open-source personal agent for every device you own — the desktop built on DeepSeek Harness
   desktop:
     entry:

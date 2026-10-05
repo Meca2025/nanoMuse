@@ -925,4 +925,19 @@
     <string name="nm_connectors_cat_search">Search &amp; web</string>
     <string name="nm_connectors_cat_infra">Infrastructure</string>
     <string name="nm_connectors_cat_misc">More</string>
+
+    <!-- Conversation sync between the account's devices (contract C7) -->
+    <string name="nm_sync_title">Sync conversations between my devices</string>
+    <string name="nm_sync_caption">The text of your chats is kept on nanoMuse Cloud so every device shows the same conversations. Files and images stay on the device they were made on.</string>
+    <string name="nm_sync_sign_in">Sign in to sync</string>
+    <string name="nm_sync_on_toast">On. This phone\'s conversations are being sent.</string>
+    <string name="nm_sync_off_toast">Off. What was kept has been deleted.</string>
+    <string name="nm_sync_delete">Delete synced conversations</string>
+    <string name="nm_sync_delete_sub">Removes the text of your conversations from nanoMuse Cloud. Each device keeps what it already has; sync stays on.</string>
+    <string name="nm_sync_delete_confirm">The conversations kept on nanoMuse Cloud are removed. The chats on your devices stay as they are.</string>
+    <string name="nm_sync_deleted">Synced conversations deleted.</string>
+    <string name="nm_sync_from">From %1$s</string>
+    <string name="nm_sync_attachment_note">[Attachment %1$s — stays on the device it was made on]</string>
+    <string name="nm_devices_ask">Ask this device</string>
+    <string name="nm_devices_ask_hint">Tap a device that is online to write to it from the chat: the message starts with @ and its name, and that device does the work.</string>
 </resources>

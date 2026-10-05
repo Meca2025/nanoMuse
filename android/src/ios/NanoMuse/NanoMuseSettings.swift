@@ -117,6 +117,9 @@ struct NanoMuseSettingsHomeView: View {
             Group {
                 NanoMuseLinkRow(title: AppLocalized("Connectors")) { NanoMuseConnectorsView() }
                 NanoMuseRowDivider()
+                // Android's Hands row; on iPhone the page explains why the switch is not here.
+                NanoMuseLinkRow(title: AppLocalized("Hands"), value: AppLocalized("Not on iPhone")) { NanoMuseHandsView() }
+                NanoMuseRowDivider()
                 NanoMuseLinkRow(title: AppLocalized("Computers"), value: computers == 0 ? AppLocalized("None") : "\(computers)") { NanoMuseComputersView() }
                 NanoMuseRowDivider()
                 NanoMuseLinkRow(title: AppLocalized("Coding agents")) { NanoMuseCodingView() }
@@ -132,10 +135,9 @@ struct NanoMuseSettingsHomeView: View {
         NanoMuseCard {
             Group {
                 NanoMuseLinkRow(title: AppLocalized("Permissions")) { OffloadPermissionSettingsView() }
-                if BiometricAuth.isAvailable {
-                    NanoMuseRowDivider()
-                    NanoMuseLinkRow(title: String(format: AppLocalized("%@ Protection"), BiometricAuth.biometryDisplayName)) { FaceIDProtectionSettingsView() }
-                }
+                NanoMuseRowDivider()
+                // Android: "Background & notifications" — what the phone lets the agent do while the app is away.
+                NanoMuseLinkRow(title: AppLocalized("Background & notifications")) { NanoMuseBackgroundView() }
                 NanoMuseRowDivider()
                 NanoMuseLinkRow(title: AppLocalized("Storage")) { StorageManagementView() }
                 NanoMuseRowDivider()

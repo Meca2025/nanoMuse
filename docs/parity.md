@@ -122,7 +122,9 @@ notes above; a settled item keeps its number and says how it went.
    coding agents page yes (the web app has one), skills no (duplicate).*
 9. **iOS · Coding agents** — done in 0.1.34 (`NanoMuseCoding.swift`, the hub's `coding.*`).
 10. **iOS · Hands.** iOS does not let an app drive another; App Intents / Shortcuts are the door.
-    Not planned as "hands".
+    Not planned as "hands". Settled in 0.1.36: the Settings row is there (*Hands — Not on iPhone*)
+    and opens a page that says why, and what a computer of the account can do; the iPhone's own
+    Muse takes `task` calls from the other devices while the app is open (`@iPhone …`).
 11. **iOS · The Muse shell** — done in 0.1.33 on the iPhone; in 0.1.34 Feed and Goals are real
     (`NanoMuseScheduler.swift`: foreground catch-up, `BGAppRefreshTask`, a local notification at
     the set time), the iPad runs the shell too, the shell and header switches are in the nanoMuse
@@ -148,7 +150,8 @@ notes above; a settled item keeps its number and says how it went.
 17. **Desktop · approvals outside the window** — settled in 0.1.34: the live stage carries
     *Allow once / Always in <app> / Deny*, and a small always-on-top capsule shows the same card
     when the main window is not in front. Left to check on a Mac: the capsule's `showInactive`
-    must not steal focus from the app being driven.
+    must not steal focus from the app being driven — on the Mac task sheet
+    (`docs/tasks/mac-check-0.1.36.md`, D).
 18. **Connections shared across devices** — settled in 0.1.34: the profile's `connectors`
     (relay 0.17; merged per device, 64 at most, a key-like field name is a 400), four clients
     read and write it, the other devices' entries show as *Connected on <device> — sign in
@@ -163,7 +166,15 @@ notes above; a settled item keeps its number and says how it went.
     Mac (Screen Recording fallback, AX-less clicks, Retina mapping, scroll direction). Settled in
     0.1.35: `auto` stays the default, with a fail-safe — when the Quartz layer itself fails (not
     "the window went away", which is retried every look) the hands fall back to the whole screen
-    for the rest of that target and say so once; an explicit `window` mode keeps trying.
+    for the rest of that target and say so once; an explicit `window` mode keeps trying. Settled
+    in 0.1.36 for the pointer itself: the desktop's hands are UI-TARS-desktop's operator moved
+    into the Electron main process (`harness/desktop/src/operator.ts`, `@computer-use/nut-js`,
+    loopback HTTP to the runtime's `desktop` backend), and the model's coordinates are pixels of
+    the picture it saw, mapped once to the operator's screen (`nanomuse/computer/coords.py`) — the
+    clicks that landed beside their targets on scaled displays are gone (≤1 px on a 4K display at
+    scale 2). Left to try on a Mac and on Windows: the native addon in the packaged app, the
+    coordinate space (points on a Mac), scroll units, ⌘ for `ctrl`, content protection — the Mac
+    task sheet, F.
 20. **Services without a public remote MCP server** — the chat apps are settled in 0.1.34 the
     way nanobot does it: 飞书, 钉钉, 企业微信 and Telegram are *channels* the agent answers in
     (`nanomuse/channels/`, the vendors' long-connection SDKs, no public address, pairing codes),
@@ -172,7 +183,9 @@ notes above; a settled item keeps its number and says how it went.
     邮箱, 微信读书 — each a bridge of its own over the vendor's REST API, one developer account
     per vendor. *Decision: which, if any, are worth a bridge?*
 21. **Hands on Linux under Wayland.** The capture and the pointer need X11 or XWayland today; a
-    Wayland session gives a black frame (now an error with the hint). The portal route
+    Wayland session gives a black frame (now an error with the hint). Since 0.1.36 the operator
+    says so itself (`/info` → `available: false`, *Wayland session … log in with Xorg*), and the
+    Hands card shows the reason; UI-TARS-desktop has no Wayland path either. The portal route
     (`xdg-desktop-portal` ScreenCast + `libei`) would make it work natively, at the cost of a
     permission dialog per session. *Decision: worth it before the Linux desktop is promoted?*
 22. **Chat apps on the phones.** The channels live in the runtime; the web app (and so the
@@ -201,7 +214,10 @@ notes above; a settled item keeps its number and says how it went.
     the responsible process, so only *nanoMuse Desktop* has to be switched on (the words say so
     now; the runtime no longer appears as a second entry to hunt for). Left to try on a Mac: the
     *Try it* rows after a fresh grant, the restart dialog when Screen Recording flips on, the
-    capsule's `showInactive` (17), window mode's AX-less clicks and Retina mapping (19).
+    capsule's `showInactive` (17), window mode's AX-less clicks and Retina mapping (19), the
+    face click after 0.1.36's change (no drag region under the face at all; the face below the
+    title-bar band) — all on the Mac task sheet, `docs/tasks/mac-check-0.1.36.md`, written so that
+    an agent on a Mac can run it end to end and send the fixes back.
 27. **Web · motion clips.** The clips are per device (drawn where the face lives: the phone, the
     iPhone, the desktop). The web app shows the still face. *Decision: draw them in the runtime
     too, or leave the web still?*
@@ -210,6 +226,26 @@ notes above; a settled item keeps its number and says how it went.
     Android asks once per phone when the allowance is spent (the other clients the same); the
     first feed day is not written when the person changes the face during the naming conversation
     (the first run never reaches *done*). Small.
+29. **One conversation on every device** — settled in 0.1.36 (contract C7 in `docs/cloud.md`): the
+    text of the chats lives on the relay (`/v1/sync/*`, relay 0.19), on by default when signed in,
+    with the switch and the delete under Data controls on every client; one main conversation per
+    account; what a device started on its own (routines, goals, the feed, work for another device)
+    stays on it. The desktop's dsh sessions are append-only logs, so other devices' chats are
+    read-only mirrors there until *Continue here*. Left: the dsh plugin has no delete, so an
+    archived session is not a tombstone; switching sync off on one device reaches the others at
+    their next push or pull (a `409`), not at once; on iOS a pulled message that arrives late sits
+    after the local ones (the OpenMinis store appends). `@<device name>` runs a turn on another
+    device — computers whenever online, phones while the app is open; on iOS the mention goes to
+    the hub directly (no `delegate` tool there) and the iPhone answers `task` calls itself.
+30. **iOS · composer, bubbles, header** — settled in 0.1.36 after the phone: the one-row pill,
+    flat grey bubbles for the person, a floating translucent header. Left: on iOS 16–18 the
+    transcript starts below the header's edge rather than scrolling under it (the UIKit list
+    needs the inset passed down; to be tried on a device — the risk of covering the first message
+    was not worth taking blind).
+31. **Desktop · the operator on a Mac and on Windows.** Ported from UI-TARS-desktop and proven on
+    Linux X11; the native addon, the coordinate space (points on a Mac, physical pixels on
+    Windows), scroll units, ⌘ for `ctrl`, content protection of the glow are on the Mac task
+    sheet (`docs/tasks/mac-check-0.1.36.md`, F). Wayland stays item 21.
 
 ## Keeping this true
 
@@ -229,5 +265,11 @@ notes above; a settled item keeps its number and says how it went.
 - The release check reads the same two sources in the same order on every client:
   `https://nanomuse.cn/dl/index.json`, then GitHub's `releases/latest`; a day's cache; the row
   always shows the installed version too.
+- Conversation sync speaks one wire format (contract C7 in `docs/cloud.md`) from four clients and
+  one relay: `cloud/nanomuse_cloud/sync.py`, `nanomuse/sync/` (runtime and web), `harness/dsh-nanomuse/src/sync.ts`
+  (desktop), `io.github.nanomuse.sync` (Android), `NanoMuse/NanoMuseSync.swift` (iOS). Every client
+  applies a page's conversations before its messages and moves its cursor only on a pull; every
+  client pushes the person's lines and the final answer only — never tool steps, tool results or the
+  system prompt — and leaves routines, goals, the feed and work for another device at home.
 - `ideas.en.json` / `ideas.zh.json` are one file four times (Android assets, iOS Resources,
   `harness/dsh-nanomuse/assets`, `web/src/ideas`); the harness and web tests fail when a copy drifts.

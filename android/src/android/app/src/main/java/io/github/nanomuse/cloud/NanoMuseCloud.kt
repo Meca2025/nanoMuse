@@ -546,6 +546,7 @@ object NanoMuseCloud {
         _signedIn.value = true
         io.github.nanomuse.hub.Hub.restart(context) // the new key joins the hub
         ProfileSync.pullSoon(context) // the name and look the account's other devices wear
+        io.github.nanomuse.sync.ConversationSync.signedIn(context) // the account's conversations (contract C7)
         return account(context)!!
     }
 
@@ -948,6 +949,7 @@ object NanoMuseCloud {
             .remove(KEY_MENU_IDS).remove(KEY_CATALOG_IDS).remove(KEY_RECOMMENDED).remove(KEY_SIGHTED).remove(KEY_MODELS_AT)
             .apply()
         ProfileSync.forget(context)
+        io.github.nanomuse.sync.ConversationSync.forget(context) // the next account starts with its own ids and cursor
     }
 
     private fun call(context: Context, method: String, path: String, body: JSONObject?, token: String?): JSONObject {

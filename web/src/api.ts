@@ -33,6 +33,7 @@ import type {
   StateSnapshot,
   StudioSession,
   StudioView,
+  SyncState,
   TestResult,
   ThreadMeta,
   TidyReport,
@@ -168,6 +169,13 @@ export const api = {
   cloudContribute: (on: boolean) => request<{ on: boolean; samples: number; default_on?: boolean; privacy_url?: string }>("/api/cloud/contribute", json({ on })),
   cloudDeleteSamples: () => request<{ deleted: number }>("/api/cloud/samples", { method: "DELETE" }),
   cloudUseAsModel: (model = "") => request<Record<string, unknown>>("/api/cloud/use-as-model", json({ model })),
+  // ---- conversations synced between the account's devices (contract C7)
+  syncState: () => request<SyncState>("/api/sync/state"),
+  /** off tells the relay, which deletes what it stores; on pushes this device's chats again */
+  syncSetState: (enabled: boolean) => request<SyncState>("/api/sync/state", { method: "PUT", body: JSON.stringify({ enabled }) }),
+  /** "Delete synced conversations": the relay's store emptied, the switch and the local chats kept */
+  syncDelete: () => request<SyncState>("/api/sync/delete", json({})),
+  syncPull: () => request<SyncState & { applied: number }>("/api/sync/pull", json({})),
   /** the avatar studio: whether a face can be drawn, and the session under way */
   avatarView: () => request<StudioView>("/api/avatar"),
   /** a session; `thread` "" runs it from the studio screen, without a card in the chat */

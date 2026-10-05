@@ -118,7 +118,13 @@ export class HubClient {
   private pingTimer: ReturnType<typeof setInterval> | undefined
   private readonly pending = new Map<string, Pending>()
   private readonly handlers = new Map<string, ActionHandler>()
-  private readonly listeners = { state: new Set<Listener>(), devices: new Set<Listener>(), profile: new Set<(rev: number, device: string) => void>(), unauthorized: new Set<Listener>() }
+  private readonly listeners = {
+    state: new Set<Listener>(),
+    devices: new Set<Listener>(),
+    profile: new Set<(rev: number, device: string) => void>(),
+    sync: new Set<(cursor: number, device: string) => void>(),
+    unauthorized: new Set<Listener>(),
+  }
   private seq = 0
 
   constructor(private readonly options: HubClientOptions) {}
@@ -172,6 +178,12 @@ export class HubClient {
   onProfile(listener: (rev: number, device: string) => void): () => void {
     this.listeners.profile.add(listener)
     return () => this.listeners.profile.delete(listener)
+  }
+
+  /** Another device pushed conversations (contract C7): pull from `cursor`. */
+  onSync(listener: (cursor: number, device: string) => void): () => void {
+    this.listeners.sync.add(listener)
+    return () => this.listeners.sync.delete(listener)
   }
 
   /** The relay refused the key (close 4001): the owner should forget the account. */
@@ -331,6 +343,9 @@ export class HubClient {
         return
       case 'profile':
         for (const listener of this.listeners.profile) listener(Number(frame.rev ?? 0), String(frame.device ?? ''))
+        return
+      case 'sync':
+        if (frame.what === 'conversations') for (const listener of this.listeners.sync) listener(Number(frame.cursor ?? 0), String(frame.from ?? ''))
         return
       case 'pong':
         return

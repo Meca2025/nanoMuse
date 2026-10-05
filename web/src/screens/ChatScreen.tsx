@@ -10,6 +10,7 @@ import { Markdown, splitBlocks } from "../components/Markdown";
 import { MuseHeader, MuseRoundButton } from "../components/MuseHeader";
 import { MoreMenu } from "../components/TabHeader";
 import { localLabel, useT } from "../i18n";
+import { mentionSuggestions, mentionTarget } from "../mention";
 import { useStore } from "../store";
 import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, UserEvent } from "../types";
 import { cx, timeDivider, timeShort } from "../util";
@@ -139,6 +140,10 @@ export function ChatScreen() {
             ) : thread.remote_from ? (
               <span className="flex max-w-full items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">
                 <MonitorSmartphone size={11} /> <span className="truncate">{t("from {device}", { device: thread.remote_from.name })}</span>
+              </span>
+            ) : thread.origin_device ? (
+              <span className="flex max-w-full items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">
+                <MonitorSmartphone size={11} /> <span className="truncate">{t("From {device}", { device: thread.origin_device_name || thread.origin_device })}</span>
               </span>
             ) : (
               <span className="truncate rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">{thread.title}</span>
@@ -311,8 +316,16 @@ function UserBubble({ event, onOpenFile }: { event: UserEvent; onOpenFile: (path
         <span className="mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted">
           <Phone size={11} /> {t("said on a call")}
         </span>
+      ) : event.via ? (
+        <span className="mb-1 text-[11.5px] font-medium text-muted">{t("asked from {device}", { device: event.via })}</span>
+      ) : event.to_device_name || event.to_device ? (
+        <span className="mb-1 flex items-center gap-1 text-[11.5px] font-medium text-accent">
+          <MonitorSmartphone size={11} /> {t("to {device}", { device: event.to_device_name || event.to_device || "" })}
+        </span>
       ) : (
-        event.via && <span className="mb-1 text-[11.5px] font-medium text-muted">{t("asked from {device}", { device: event.via })}</span>
+        (event.via_device_name || event.via_device) && (
+          <span className="mb-1 text-[11.5px] font-medium text-muted">{t("From {device}", { device: event.via_device_name || event.via_device || "" })}</span>
+        )
       )}
       {pictures.length > 0 && (
         <div className="mb-1 flex max-w-full flex-wrap justify-end gap-1.5">
@@ -619,6 +632,14 @@ function Composer({
     setText(`/${sk.name} `);
     ref.current?.focus();
   };
+  // "@" at the start names another device of the account: the turn runs there (contract C7 rule 8)
+  const hubDevices = state.hub?.devices ?? [];
+  const mentions = mentionSuggestions(text, hubDevices);
+  const target = mentions.length === 0 ? mentionTarget(text, hubDevices) : null;
+  const pickDevice = (d: HubDevice) => {
+    setText(`@${d.name} `);
+    ref.current?.focus();
+  };
 
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
@@ -658,6 +679,26 @@ function Composer({
             </li>
           ))}
         </ul>
+      )}
+      {mentions.length > 0 && (
+        <ul className="mb-2 max-h-72 overflow-y-auto rounded-3xl border border-border/70 bg-surface shadow-lg divide-y divide-border/70" role="listbox" aria-label={t("Devices")}>
+          {mentions.map((d) => (
+            <li key={d.id}>
+              <button type="button" onClick={() => pickDevice(d)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-2/70 active:bg-surface-2">
+                <span className="shrink-0 text-accent">{d.kind === "computer" ? <Monitor size={16} /> : <Smartphone size={16} />}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[14px] font-medium">@{d.name}</span>
+                  <span className="block truncate text-[12.5px] text-muted">{d.online ? t("Runs this there and reports back") : t("Offline")}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {target && (
+        <div className="flex items-center gap-1.5 px-2 pb-1 text-[12px] text-muted">
+          <MonitorSmartphone size={12} /> {t("This goes to {device}.", { device: target.name })}
+        </div>
       )}
       {pending.length > 0 && (
         <div className="mb-1 flex gap-2.5 overflow-x-auto px-1 pt-2.5 pb-1 pr-3" role="list" aria-label={t("Attachments")}>
@@ -726,6 +767,11 @@ function Composer({
             if (e.key === "Tab" && matches.length > 0 && matches[0]) {
               e.preventDefault();
               pick(matches[0]);
+              return;
+            }
+            if (e.key === "Tab" && mentions.length > 0 && mentions[0]) {
+              e.preventDefault();
+              pickDevice(mentions[0]);
               return;
             }
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -832,13 +878,14 @@ export function ThreadList({
               <div className={cx("font-medium truncate flex items-center gap-2", compact ? "text-[13.5px]" : "text-[15px]")}>
                 {th.device ? (
                   <span className="text-accent">{kindOf(th.device) === "computer" ? <Monitor size={14} /> : <Smartphone size={14} />}</span>
-                ) : th.remote_from ? (
+                ) : th.remote_from || th.origin_device ? (
                   <MonitorSmartphone size={14} className="text-muted" />
                 ) : null}
                 <span className="truncate">{th.id === "main" ? t(th.title) : th.title}</span>
                 {th.busy && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 animate-pulse" />}
               </div>
               <div className={cx("text-muted", compact ? "text-[11.5px]" : "text-[12px]")}>
+                {th.origin_device && !th.remote_from ? `${t("From {device}", { device: th.origin_device_name || th.origin_device })} · ` : ""}
                 {t("{n} events", { n: th.events })}{th.queued ? ` · ${t("{n} queued", { n: th.queued })}` : ""} · {timeShort(th.updated_at)}
               </div>
             </button>

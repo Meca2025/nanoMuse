@@ -377,8 +377,13 @@ class HandsSettings(BaseModel):
     """
 
     enabled: bool = False
-    # "auto": pyautogui when installed, else xdotool on X11; or "pyautogui" / "xdotool"
+    # "auto": the desktop app's operator when it started this runtime, else pyautogui when
+    # installed, else xdotool on X11; or "desktop" / "pyautogui" / "xdotool"
     backend: str = "auto"
+    # How the model gives points: "pixels" of the picture it was shown (Qwen2.5-VL and the
+    # computer_use dialect), or "norm1000" — a 0–1000 grid over the picture (Qwen3-VL's
+    # default, UI-TARS). Boxes ([x1, y1, x2, y2]) are taken either way; their centre counts.
+    coords: Literal["pixels", "norm1000"] = "pixels"
     # Where the hands work: "screen" — the whole screen and the system mouse; "window" —
     # one application's window on macOS, events delivered to that process, the person's
     # cursor untouched (nanomuse.computer.mac_window); "auto" — window on macOS as soon as
@@ -400,6 +405,10 @@ class CloudSettings(BaseModel):
     # an account (with it, the relay can be the model and the devices meet).
     # Self-hosters who run without a relay set this to false.
     required: bool = True
+    # Conversations synced between the account's devices (docs/every-device.md): the text
+    # of the chats on the relay, so every device shows the same ones. The person's switch
+    # in Settings → Data controls is what counts once set; this is the default for it.
+    sync: bool = True
 
 
 class HubSettings(BaseModel):
@@ -631,6 +640,8 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
         raw.setdefault("cloud", {})["base_url"] = val.rstrip("/")
     if val := os.environ.get("NANOMUSE_CLOUD_REQUIRED"):
         raw.setdefault("cloud", {})["required"] = val.strip().lower() in ("1", "true", "yes", "on")
+    if val := os.environ.get("NANOMUSE_CLOUD_SYNC"):
+        raw.setdefault("cloud", {})["sync"] = val.strip().lower() in ("1", "true", "yes", "on")
     if val := os.environ.get("NANOMUSE_HUB_NAME"):
         raw.setdefault("hub", {})["name"] = val[:60]
     gui = raw.setdefault("gui", {})
@@ -757,8 +768,10 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
     if hands := data.get("hands"):
         if "enabled" in hands:
             settings.hands.enabled = bool(hands["enabled"])
-        if hands.get("backend") in ("auto", "pyautogui", "xdotool"):
+        if hands.get("backend") in ("auto", "desktop", "pyautogui", "xdotool"):
             settings.hands.backend = hands["backend"]
+        if hands.get("coords") in ("pixels", "norm1000"):
+            settings.hands.coords = hands["coords"]
     if cloud := data.get("cloud"):
         if cloud.get("base_url"):
             settings.cloud.base_url = str(cloud["base_url"]).strip().rstrip("/")

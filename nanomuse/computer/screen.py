@@ -3,8 +3,12 @@
 ``take_screenshot`` is what the hub's ``screen`` action and the ``computer_screen`` tool
 share: ``mss`` + Pillow when they are installed (every platform, no external program), else
 the platform's own tool (``screencapture``, PowerShell, ``grim`` / ``gnome-screenshot`` /
-``spectacle`` / ``import`` / ``scrot``). The picture is scaled to ``max_width`` for the
-model; the physical size is returned next to it so coordinates map back to the real screen.
+``spectacle`` / ``import`` / ``scrot``). The picture is scaled for the model — capped at
+``max_width``, then to the size the Qwen-VL family would resize it to anyway
+(:func:`nanomuse.computer.coords.picture_size`), so the model's pixels are the picture's;
+the capture's own size is returned next to it so coordinates map back to the real screen.
+This is the fallback: the desktop app's operator (:mod:`nanomuse.computer.operator`) takes
+the screenshot when the app started the runtime.
 
 ``active_window`` names what is in front — *Firefox*, *Terminal* — so an approval card and
 the audit log can say *in Firefox*, the way the phone's say *in 支付宝*.
@@ -24,6 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from nanomuse.computer.coords import picture_size
 from nanomuse.logger import logger
 
 DEFAULT_MAX_WIDTH = 1600
@@ -33,7 +38,7 @@ DEFAULT_MAX_WIDTH = 1600
 class Shot:
     data: bytes
     mime: str
-    width: int  # the physical screen, in pixels
+    width: int  # the capture: the physical screen, in pixels
     height: int
     image_width: int  # the picture handed out (scaled)
     image_height: int
@@ -43,14 +48,19 @@ class Shot:
         return base64.b64encode(self.data).decode()
 
     def to_raw(self, app: str = "", title: str = "", note: str = "") -> dict[str, Any]:
-        """The shape :meth:`nanomuse.phone.screen.Screen.from_device` takes."""
+        """The shape :meth:`nanomuse.phone.screen.Screen.from_device` takes: ``width`` and
+        ``height`` are the picture's (the space the model answers in), ``screen_w`` and
+        ``screen_h`` the capture's, for the link to map one onto the other."""
         return {
             "app": app,
             "app_name": title or app,
-            "width": self.width,
-            "height": self.height,
+            "width": self.image_width or self.width,
+            "height": self.image_height or self.height,
+            "screen_w": self.width,
+            "screen_h": self.height,
             "keyboard": False,
             "screenshot": self.base64,
+            "mime": self.mime,
             "note": note,
         }
 
@@ -124,8 +134,7 @@ def take_screenshot(max_width: int = DEFAULT_MAX_WIDTH) -> Shot | None:
         if _is_black(img):
             raise BlackScreen(BLACK_SCREEN_HINT)
         width, height = img.size
-        if max_width and img.width > max_width:
-            img = img.resize((max_width, int(img.height * max_width / img.width)))
+        img = _fit(img, picture_size(width, height, max_width))
         buf = io.BytesIO()
         img.save(buf, "JPEG", quality=80)
         return Shot(buf.getvalue(), "image/jpeg", width, height, img.width, img.height)
@@ -136,17 +145,34 @@ def take_screenshot(max_width: int = DEFAULT_MAX_WIDTH) -> Shot | None:
     data = _platform_screenshot()
     if data is None:
         return None
+    width, height = _png_size(data)
     try:
         from PIL import Image
 
-        if _is_black(Image.open(io.BytesIO(data))):
+        img = Image.open(io.BytesIO(data))
+        if _is_black(img):
             raise BlackScreen(BLACK_SCREEN_HINT)
+        width, height = img.size
+        size = picture_size(width, height, max_width)
+        if all(size) and size != (width, height):
+            fitted = _fit(img.convert("RGB"), size)
+            buf = io.BytesIO()
+            fitted.save(buf, "JPEG", quality=80)
+            return Shot(buf.getvalue(), "image/jpeg", width, height, fitted.width, fitted.height)
     except BlackScreen:
         raise
     except Exception:  # noqa: BLE001 — without Pillow the picture goes out as it is
         pass
-    width, height = _png_size(data)
     return Shot(data, "image/png", width, height, width, height)
+
+
+def _fit(img: Any, size: tuple[int, int]) -> Any:
+    """The picture at ``size`` (a smart-resize result), or itself when it already is."""
+    if not all(size) or tuple(img.size) == size:
+        return img
+    from PIL import Image
+
+    return img.resize(size, Image.Resampling.LANCZOS)
 
 
 def _platform_screenshot() -> bytes | None:

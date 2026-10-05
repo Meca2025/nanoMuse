@@ -91,6 +91,59 @@ you, on the phone ──"编译一下项目，把日志发我"──▶ phone's 
 - Files and screenshots travel base64 in the frames; the size limits are the
   hub's.
 
+## The same conversations everywhere
+
+Since 0.1.36 the chats themselves follow the account. Signed in, each device
+sends the text of its finished turns to the relay's sync store
+([cloud.md](cloud.md#conversation-sync)) and pulls what the others sent — at
+launch, when the hub says `sync`, and once a minute — so a chat begun on the
+phone in the morning is on the computer at the desk, with the phone's name on
+it (*From Pixel 8* · 来自 Pixel 8), and continuing it there runs the turn on
+*that* device with the synced transcript as its history; what it answers goes
+back the same way. The main chat is one conversation across all devices; side
+chats keep their own. Chats addressed to a device, or run on this device for
+another, stay where they are. Rename or delete a chat anywhere and it is renamed
+or deleted everywhere. Text only: files and images stay on the device they were
+made on, and a synced message shows their names and sizes.
+
+The switch is *Settings → Data controls → Sync conversations between my
+devices*, on by default; off tells the relay to delete the account's store, and
+every other device's switch follows. *Delete synced conversations* empties the
+store and keeps the switch. The phone and the web app map each local chat to a
+conversation id and apply the other devices' changes straight into their chat
+lists. **nanoMuse Desktop (the dsh plugin) takes a different path**: a dsh
+session log is written only by its own agent loop, so another device's
+transcript cannot be appended to it as history. The desktop lists the other
+devices' chats in the chats column under *From other devices* as read-only
+mirrors — expand one to read it — and *Continue here* opens a new dsh session
+with the same title, mapped to the same conversation, with the transcript given
+to the model as context; from then on the session's turns sync into that
+conversation, and anything the other devices add to it while it is open reaches
+the session as a short *Meanwhile, on another device…* note. The desktop's main
+chat (the one the chats column shows first) is the account's main conversation.
+Code: the runtime's [`nanomuse/sync/`](../nanomuse/sync/) (`ConversationSync`,
+`/api/sync/*` in [app.md](app.md#api)), the web app's `SyncControls` and the
+badges in `web/src/`, the plugin's `src/sync.ts` and `tests/sync.test.mjs`, the
+relay's [`cloud/nanomuse_cloud/sync.py`](../cloud/nanomuse_cloud/sync.py).
+
+**Work on another device.** The default is always the device you are typing
+on. To send one message elsewhere, start it with `@` and the device's name as
+the hub lists it — `@Desk compile the project and send me the log` — a prefix
+match, case-insensitive; the composer offers the names as you type, the mention
+is taken off the text, the bubble says *to Desk*, and a one-line note in front
+of the turn tells this device's agent to hand it to that device with `delegate`
+(`nanomuse-pc task … --on` on the phone) and report what it did; the Devices
+page's *Ask this device* does the same. On the iPhone, which has no delegate
+tool, the mention goes to the hub directly — `task` to that device, its answer
+shown as a turn in the chat — and only devices that are online are matched.
+Which devices can be a target: **computers** — nanoMuse Desktop, a runtime —
+whenever they are online, since their hub socket stays up; **phones** — Android
+and the iPhone — only while the nanoMuse app is open, because the socket lives
+in the app and neither keeps it in the background. A device that is not online
+is offered as a target all the same on the web and the desktop and answers
+`device_offline`; the web console is never one. The session a device runs for
+another is kept on that device and is not synced.
+
 ## The computer: nanoMuse Desktop
 
 The desktop is the Python runtime (`nanomuse serve`) with three front doors on
