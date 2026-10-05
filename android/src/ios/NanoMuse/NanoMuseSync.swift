@@ -21,6 +21,15 @@
 //  300 texts per conversation, not the whole history. Presence — "{device}
 //  is working…" — is NanoMusePresence; this file tells it when a turn's
 //  user line has been pushed and when the turn's end has.
+//  C10 (0.1.39): a conversation belongs to the account that first pushed or
+//  pulled it — the table that maps it is that account's, and every account
+//  that ever synced on this phone keeps its table (`Tables`). Signed in as B,
+//  the lists show B's and the unowned conversations, the push takes the same
+//  (an unowned one becomes B's with its first push), and A's stay on the
+//  phone, hidden, until A is back. A different account than last time starts
+//  its table's cursor over (a `tail` pull) and clears presence. Signed out,
+//  everything on the phone shows and nothing moves. Accounts are told apart
+//  by the relay's opaque `account.id`, never by the identifier.
 //  Relay: GET/PUT /v1/sync/state, GET/POST /v1/sync/changes,
 //  DELETE /v1/sync/conversations/{cid}, DELETE /v1/sync/changes.
 //
@@ -33,6 +42,9 @@ extension Notification.Name {
     /// A main conversation arrived from another device while this phone's main chat was still a
     /// draft; the object is the local session id the shell should show as the main chat.
     static let nanoMuseMainChatAdopt = Notification.Name("nanoMuseMainChatAdopt")
+    /// C10: the signed-in account is not the one the tables were open for; the object is the
+    /// new account's key. The lists re-read, the main chat re-resolves.
+    static let nanoMuseAccountSwitched = Notification.Name("nanoMuseAccountSwitched")
 }
 
 @MainActor
@@ -84,6 +96,9 @@ final class NanoMuseSync: ObservableObject {
         var remoteMids: [String: String] = [:]
         /// Pulled texts waiting for their chat to finish a turn here.
         var deferred: [Pending] = []
+        /// C10: the local session the Chat tab showed when this account was last signed in, so
+        /// the same chat is the main one again when it comes back.
+        var mainSession: String?
 
         init(account: String = "") {
             self.account = account
@@ -101,7 +116,16 @@ final class NanoMuseSync: ObservableObject {
             pulled = try c.decodeIfPresent(Bool.self, forKey: .pulled) ?? (cursor > 0)
             remoteMids = try c.decodeIfPresent([String: String].self, forKey: .remoteMids) ?? [:]
             deferred = try c.decodeIfPresent([Pending].self, forKey: .deferred) ?? []
+            mainSession = try c.decodeIfPresent(String.self, forKey: .mainSession)
         }
+    }
+
+    /// C10: every account's table, by account key. The one signed in is `store` (and its copy
+    /// here is refreshed on every save); the others wait, and say which sessions are theirs.
+    private struct Tables: Codable {
+        var stores: [String: Store] = [:]
+        /// The key of the account the tables were last open for ("" before the first sign-in).
+        var current = ""
     }
 
     private enum Keys {
@@ -127,6 +151,8 @@ final class NanoMuseSync: ObservableObject {
     @Published private(set) var revision = 0
 
     private var store = Store()
+    /// C10: the other accounts' tables (and the current one's last saved copy).
+    private var tables = Tables()
     private var loaded = false
     private var started = false
     private var inForeground = false
@@ -197,7 +223,111 @@ final class NanoMuseSync: ObservableObject {
         NanoMuseCloud.isSignedIn && enabled && haltedAccount != accountKey
     }
 
-    private var accountKey: String { NanoMuseCloud.account?.hint ?? (NanoMuseCloud.apiKey.map { String($0.suffix(8)) } ?? "") }
+    /// C10: the key a table is filed under — the relay's opaque `account.id`; the 0.1.38 key
+    /// (the hint, or the key's tail) only for a relay that sends no id. "" when signed out.
+    private var accountKey: String {
+        Self.accountKey(id: NanoMuseCloud.account?.id, hint: NanoMuseCloud.account?.hint, apiKey: NanoMuseCloud.apiKey)
+    }
+
+    /// What 0.1.38 filed the one table under, to find it again the first time after the update.
+    private var legacyAccountKey: String {
+        Self.accountKey(id: nil, hint: NanoMuseCloud.account?.hint, apiKey: NanoMuseCloud.apiKey)
+    }
+
+    /// The table's key for an account: its id when the relay gave one, else the hint, else the
+    /// key's last eight characters; "" for none of the three (signed out).
+    nonisolated static func accountKey(id: String?, hint: String?, apiKey: String?) -> String {
+        if let id, !id.isEmpty { return id }
+        if let hint, !hint.isEmpty { return hint }
+        if let apiKey, !apiKey.isEmpty { return String(apiKey.suffix(8)) }
+        return ""
+    }
+
+    /// C10, rule 2: whether a session is shown and pushed under the signed-in account — one no
+    /// account has synced yet, or one of the current account's. Signed out, everything shows.
+    nonisolated static func visible(owner: String?, current: String) -> Bool {
+        current.isEmpty || owner == nil || owner == current
+    }
+
+    // MARK: - C10: whose conversation
+
+    /// The account a session belongs to — the one whose table maps it (it was pushed to or
+    /// pulled from that account); nil for a session no account has synced.
+    func owner(of sessionId: String) -> String? {
+        if !loaded { load() }
+        if store.entries[sessionId] != nil { return store.account }
+        for (key, table) in tables.stores where key != store.account && table.entries[sessionId] != nil { return key }
+        return nil
+    }
+
+    /// Whether the lists show this session right now (`visible(owner:current:)` for it).
+    func shows(_ sessionId: String) -> Bool {
+        Self.visible(owner: owner(of: sessionId), current: accountKey)
+    }
+
+    /// The sessions the lists show: `shows` over a list.
+    func visible(_ sessions: [ChatSession]) -> [ChatSession] {
+        sessions.filter { shows($0.id) }
+    }
+
+    /// The local session the Chat tab showed when the current account was last signed in, if
+    /// it is remembered (set when the account was switched away from).
+    var rememberedMainSession: String? {
+        if !loaded { load() }
+        return store.mainSession
+    }
+
+    /// NanoMuseCloud signed an account in or out: the tables are re-filed now rather than at
+    /// the next push, so the lists and the main chat follow at once.
+    func accountChanged() {
+        load()
+        if accountKey.isEmpty {
+            // signed out: what the relay said about the account's conversations is forgotten and
+            // the lists show everything on the phone again; the table waits for an account
+            workingToSend = [:]
+            NanoMusePresence.shared.reset()
+            revision += 1
+            NotificationCenter.default.post(name: .sessionDidUpdate, object: nil)
+        }
+    }
+
+    /// The signed-in account is not the one `store` is for: file the current table, take the
+    /// account's own (re-keyed from the 0.1.38 key when that is how it was filed) or a fresh
+    /// one, start its cursor over (rule 4), clear presence, tell the lists and the main chat.
+    private func activate(_ key: String) {
+        let previous = tables.current
+        if !previous.isEmpty {
+            store.mainSession = Self.localMainSessionId()
+            tables.stores[previous] = store
+        }
+        let legacyKey = legacyAccountKey
+        var next: Store
+        if let own = tables.stores[key] {
+            next = own
+        } else if !legacyKey.isEmpty, legacyKey != key, let legacy = tables.stores.removeValue(forKey: legacyKey) {
+            next = legacy
+        } else {
+            next = Store(account: key)
+        }
+        next.account = key
+        // the cursor over: the next pull is the tail pull, and the push waits for it
+        next.cursor = 0
+        next.pulled = false
+        store = next
+        tables.current = key
+        tables.stores[key] = next
+        save()
+        workingToSend = [:]
+        fullPullWanted = false
+        if haltedAccount != key { haltedAccount = nil }
+        NanoMusePresence.shared.reset()
+        // the lists and the Chat tab: off the view update that may have asked for the table
+        DispatchQueue.main.async { [self] in
+            revision += 1
+            NotificationCenter.default.post(name: .nanoMuseAccountSwitched, object: key)
+            NotificationCenter.default.post(name: .sessionDidUpdate, object: nil)
+        }
+    }
 
     // MARK: - Lifecycle
 
@@ -443,13 +573,16 @@ final class NanoMuseSync: ObservableObject {
         // Oldest first (C8): a sign-in backfills the whole history in the order it happened, the
         // first conversation at the head.
         let every = await eligibleSessions().sorted { $0.createdAt < $1.createdAt }
-        let mainId = Self.localMainSessionId()
+        let mainId = ownMainSessionId()
         let alive = Set(every.map(\.id))
         // C9: with the side-chat switch off only the main chat goes up — the one mapped as main,
         // or the shell's main when it has no entry yet. The side chats stay this phone's.
+        // C10, rule 3: another account's conversations never go up under this one — only the
+        // current account's and the unowned (which become this account's with this push).
         let sideChats = sideChats
         let sessions = every.filter { session in
-            sideChats || session.id == mainId || store.entries[session.id]?.kind == "main"
+            guard Self.visible(owner: owner(of: session.id), current: store.account) else { return false }
+            return sideChats || session.id == mainId || store.entries[session.id]?.kind == "main"
         }
 
         // Sessions that vanished without passing through the drawer's delete (Clear-all, upstream list).
@@ -681,7 +814,9 @@ final class NanoMuseSync: ObservableObject {
     private func apply(changes reply: [String: Any]) async -> Bool {
         var changed = false
         let me = NanoMuseHub.shared.deviceId
-        let mainId = Self.localMainSessionId()
+        // C10: the account's main joins the shell's main chat only when that chat is this
+        // account's business — never another account's conversation still pinned to the tab
+        let mainId = ownMainSessionId()
         let sideChats = sideChats
 
         for record in reply["conversations"] as? [[String: Any]] ?? [] {
@@ -861,6 +996,13 @@ final class NanoMuseSync: ObservableObject {
         return id
     }
 
+    /// C10: the Chat tab's session when it may be this account's main — unowned, or already the
+    /// current account's; nil while another account's conversation is still pinned there.
+    private func ownMainSessionId() -> String? {
+        guard let id = Self.localMainSessionId() else { return nil }
+        return Self.visible(owner: owner(of: id), current: store.account) ? id : nil
+    }
+
     private static func defaultModelId() -> String {
         ProviderConfigStore.shared.defaultPrimaryGroupId ?? LLMModel.claudeHaiku45.id
     }
@@ -911,37 +1053,43 @@ final class NanoMuseSync: ObservableObject {
 
     // MARK: - Persistence
 
-    private static var fileURL: URL {
-        let base = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
+    private static var supportDirectory: URL {
+        (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
-        return base.appendingPathComponent("nanomuse-sync.json")
     }
+
+    /// The one table of 0.1.36–0.1.38 (read once, to become the first entry of `tablesURL`).
+    private static var fileURL: URL { supportDirectory.appendingPathComponent("nanomuse-sync.json") }
+    /// C10: every account's table.
+    private static var tablesURL: URL { supportDirectory.appendingPathComponent("nanomuse-sync-accounts.json") }
 
     private func load() {
         let account = accountKey
         if !loaded {
             loaded = true
-            if let data = try? Data(contentsOf: Self.fileURL), let saved = try? JSONDecoder().decode(Store.self, from: data) {
-                store = saved
+            if let data = try? Data(contentsOf: Self.tablesURL), let saved = try? JSONDecoder().decode(Tables.self, from: data) {
+                tables = saved
+            } else if let data = try? Data(contentsOf: Self.fileURL), let saved = try? JSONDecoder().decode(Store.self, from: data), !saved.account.isEmpty {
+                // the 0.1.38 table, filed under the key it carried (the hint); `activate` re-keys
+                // it to the account's id the first time that account is seen signed in
+                tables = Tables(stores: [saved.account: saved], current: saved.account)
             } else {
-                store = Store(account: account)
+                tables = Tables()
             }
+            store = tables.stores[tables.current] ?? Store(account: tables.current)
         }
-        // Signed out: the table waits for the same account to come back.
+        // Signed out: the tables wait for an account; what is on the phone is the person's to see.
         guard !account.isEmpty else { return }
-        if store.account.isEmpty {
-            store.account = account
-            save()
-        } else if store.account != account {
-            // Another account: its table is not ours.
-            store = Store(account: account)
-            save()
+        if tables.current != account {
+            activate(account)
         }
         if haltedAccount != nil, haltedAccount != account { haltedAccount = nil }
     }
 
     private func save() {
-        guard let data = try? JSONEncoder().encode(store) else { return }
-        try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtection])
+        if !store.account.isEmpty { tables.stores[store.account] = store }
+        if tables.current.isEmpty { tables.current = store.account }
+        guard let data = try? JSONEncoder().encode(tables) else { return }
+        try? data.write(to: Self.tablesURL, options: [.atomic, .completeFileProtection])
     }
 }

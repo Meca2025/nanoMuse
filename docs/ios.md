@@ -229,6 +229,18 @@ Ours, in `NanoMuse/`:
   `172.16–31.`, `localhost`, `*.local`, `*.ts.net`). Signed in, the account page shows *Server:
   〈host〉* with *Change*, which signs this phone out first — a key belongs to the relay that
   issued it.
+- **One account's conversations, not the last person's (0.1.39, Contract C10)**
+  (`NanoMuseSync.swift`, `NanoMuseShell.swift`): a conversation belongs to the account that first
+  pushed or pulled it — the sync table that maps it is that account's, and every account that has
+  synced on the phone keeps its table (`nanomuse-sync-accounts.json`, keyed by the relay's opaque
+  `account.id`, never the phone number or e-mail). Signed in, the chat lists and the Chat tab show
+  the account's own conversations and the ones no account has synced yet; another account's stay
+  on the phone, hidden, and are never pushed under the signed-in account — an unowned one becomes
+  the account's with its first push. Signing in as a different account than last time starts
+  that account's cursor over (the `tail=300` pull) and forgets presence; signing back in as the
+  first account brings its conversations and its main chat back. Signed out, everything on the
+  phone shows and nothing moves. The agent's name and look already follow the account; the local
+  memory files do not yet.
 
 ## Building on a Mac
 

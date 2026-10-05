@@ -1621,7 +1621,7 @@ struct ContentView: View {
             }
         }
         .task {
-            sessions = await ChatStore.shared.listSessions()
+            sessions = NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()) // nanoMuse: C10 — another account's conversations stay hidden
             // Folders must load WITH the first session batch: groupedSessionIDs
             // treats a folder_id whose folder isn't loaded as an orphan and
             // renders the session ungrouped, so a first paint with sessions
@@ -4139,7 +4139,7 @@ struct ContentView: View {
         }
         sessionRefreshInFlight = true
         Task(priority: .utility) { @MainActor in
-            sessions = await ChatStore.shared.listSessions()
+            sessions = NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()) // nanoMuse: C10 — another account's conversations stay hidden
             folders = await ChatStore.shared.listFolders()
             sessionRefreshInFlight = false
             if sessionRefreshPending {
