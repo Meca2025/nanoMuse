@@ -13,6 +13,14 @@
 //  and shown as the other device's bubble with a "From {device}" caption.
 //  Pulled side conversations are ordinary chats here. Files and images stay
 //  where they were made; only their names and sizes travel.
+//  C9 (0.1.38): side chats are per device — "Also sync side chats", default
+//  off: only the main goes up, the pull asks `scope=main`, side rows that
+//  still arrive are ignored. Switching it on pulls everything once
+//  (`since=0&scope=all&tail=300`, idempotent) and the side chats go up with
+//  the next push. The first pull of a table is `since=0&tail=300`: the last
+//  300 texts per conversation, not the whole history. Presence — "{device}
+//  is working…" — is NanoMusePresence; this file tells it when a turn's
+//  user line has been pushed and when the turn's end has.
 //  Relay: GET/PUT /v1/sync/state, GET/POST /v1/sync/changes,
 //  DELETE /v1/sync/conversations/{cid}, DELETE /v1/sync/changes.
 //
@@ -99,9 +107,13 @@ final class NanoMuseSync: ObservableObject {
     private enum Keys {
         /// The local switch (Data controls). Default on, as the contract says.
         static let enabled = "nanomuse.sync.enabled"
+        /// C9: "Also sync side chats", per device. Default off.
+        static let sideChats = "nanomuse.sync.sidechats"
     }
 
     static let pushLimit = 200
+    /// C9: how many texts per conversation a first (or switch-on) pull asks for.
+    static let tail = 300
 
     // MARK: - Observable state
 
@@ -127,6 +139,11 @@ final class NanoMuseSync: ObservableObject {
     /// 401: nothing more until the account changes.
     private var haltedAccount: String?
     private var observers: [NSObjectProtocol] = []
+    /// C9: the presence this phone owes the relay once the next push has gone through —
+    /// session id → working. `true` after the user line, `false` after the turn's end.
+    private var workingToSend: [String: Bool] = [:]
+    /// A pull that starts at 0 whatever the cursor says (the side-chat switch turned on).
+    private var fullPullWanted = false
 
     private init() {}
 
@@ -136,6 +153,44 @@ final class NanoMuseSync: ObservableObject {
     var enabled: Bool {
         get { UserDefaults.standard.object(forKey: Keys.enabled) == nil ? true : UserDefaults.standard.bool(forKey: Keys.enabled) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.enabled) }
+    }
+
+    /// C9: whether this device's side chats travel too. Default off: they stay on this phone and
+    /// the other devices' side chats do not come here.
+    var sideChats: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.sideChats) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.sideChats) }
+    }
+
+    /// The side-chat switch: on → one pull of everything (idempotent — what is here already is
+    /// known by mid), then this phone's side chats go up with the next push. Off → the pushes
+    /// and pulls narrow to the main; what came down stays, as ordinary chats.
+    func setSideChats(_ on: Bool) {
+        guard on != sideChats else { return }
+        sideChats = on
+        revision += 1
+        guard on, active else { return }
+        fullPullWanted = true
+        pull()
+    }
+
+    /// The query a pull makes. `tail` is asked on a table's first pull (cursor 0) and on the
+    /// switch-on pull; otherwise the pull is incremental.
+    nonisolated static func pullPath(since: Int, sideChats: Bool, tail: Int? = nil) -> String {
+        var path = "/v1/sync/changes?since=\(since)&limit=500&scope=\(sideChats ? "all" : "main")"
+        if let tail { path += "&tail=\(tail)" }
+        return path
+    }
+
+    /// The cid of a mapped session, for presence; nil for a draft or an unmapped chat.
+    func cid(for sessionId: String) -> String? {
+        if !loaded { load() }
+        return store.entries[sessionId]?.cid
+    }
+
+    /// Whether a conversation of `kind` is this device's business under the switch.
+    nonisolated static func takes(kind: String, sideChats: Bool) -> Bool {
+        kind == "main" || sideChats
     }
 
     private var active: Bool {
@@ -197,6 +252,7 @@ final class NanoMuseSync: ObservableObject {
     /// A turn finished in `session` (the real id, or a draft id that is not a session yet).
     func turnFinished(session: String) {
         guard !session.hasPrefix(NanoMuseMainChat.draftPrefix) else { return }
+        if active { workingToSend[session] = false } // C9: "working: false" follows the turn's last push
         schedulePush()
         // Texts that arrived while this chat was busy go in once the activity tracker has let go.
         if !store.deferred.isEmpty {
@@ -211,9 +267,20 @@ final class NanoMuseSync: ObservableObject {
     /// model right after the user row is written; the turn's assistant text follows at the end.
     func userMessageSent(session: String) {
         guard active, !session.hasPrefix(NanoMuseMainChat.draftPrefix) else { return }
+        workingToSend[session] = true // C9: "working: true" follows the push of this line
         pushDebounce?.cancel()
         pushDebounce = nil
         push()
+    }
+
+    /// C9: the presence owed after a push that went through — one POST per session, never retried.
+    private func sendWorking() {
+        let owed = workingToSend
+        workingToSend = [:]
+        for (session, on) in owed {
+            guard let entry = store.entries[session], Self.takes(kind: entry.kind, sideChats: sideChats) else { continue }
+            NanoMusePresence.shared.send(cid: entry.cid, working: on)
+        }
     }
 
     /// The device a pulled text was written on — the bubble's "From {device}" — or nil for this
@@ -313,6 +380,8 @@ final class NanoMuseSync: ObservableObject {
             conversationCount = (counts["conversations"] as? Int) ?? 0
             messageCount = (counts["messages"] as? Int) ?? 0
         }
+        // C9: who is at work on what, as the relay remembers it (unexpired only).
+        if let working = reply["working"] as? [[String: Any]] { NanoMusePresence.shared.apply(list: working) }
     }
 
     // MARK: - Push
@@ -350,6 +419,7 @@ final class NanoMuseSync: ObservableObject {
                 try await pushTombstones(token: token)
                 try await pushChanges(token: token)
                 lastError = nil
+                sendWorking()
             } catch {
                 note(error)
             }
@@ -372,9 +442,15 @@ final class NanoMuseSync: ObservableObject {
     private func pushChanges(token: String) async throws {
         // Oldest first (C8): a sign-in backfills the whole history in the order it happened, the
         // first conversation at the head.
-        let sessions = await eligibleSessions().sorted { $0.createdAt < $1.createdAt }
+        let every = await eligibleSessions().sorted { $0.createdAt < $1.createdAt }
         let mainId = Self.localMainSessionId()
-        let alive = Set(sessions.map(\.id))
+        let alive = Set(every.map(\.id))
+        // C9: with the side-chat switch off only the main chat goes up — the one mapped as main,
+        // or the shell's main when it has no entry yet. The side chats stay this phone's.
+        let sideChats = sideChats
+        let sessions = every.filter { session in
+            sideChats || session.id == mainId || store.entries[session.id]?.kind == "main"
+        }
 
         // Sessions that vanished without passing through the drawer's delete (Clear-all, upstream list).
         for (id, entry) in store.entries where !alive.contains(id) {
@@ -393,6 +469,8 @@ final class NanoMuseSync: ObservableObject {
 
         for session in sessions {
             let entry = ensureEntry(for: session, isMain: session.id == mainId)
+            // The shell's main can map as side when another local session already holds the shared cid.
+            guard Self.takes(kind: entry.kind, sideChats: sideChats) else { continue }
             let updated = Int(session.updatedAt.timeIntervalSince1970)
             if entry.pushedTitle != (session.title ?? "") || entry.pushedUpdatedAt != updated {
                 var record: [String: Any] = [
@@ -563,15 +641,23 @@ final class NanoMuseSync: ObservableObject {
             do {
                 var more = true
                 var touched = false
+                // C9: a table's first pull and the switch-on pull start at 0 and ask for the last
+                // `tail` texts per conversation; the switch-on pull leaves the cursor where it is
+                // (only ever raised) so nothing is pulled twice later.
+                let full = fullPullWanted || store.cursor == 0
+                fullPullWanted = false
+                var since = full ? 0 : store.cursor
                 while more {
-                    let reply = try await NanoMuseCloud.call("GET", "/v1/sync/changes?since=\(store.cursor)&limit=500", body: nil, token: token)
+                    let path = Self.pullPath(since: since, sideChats: sideChats, tail: full ? Self.tail : nil)
+                    let reply = try await NanoMuseCloud.call("GET", path, body: nil, token: token)
                     let changed = await apply(changes: reply)
                     touched = touched || changed
                     let cursor = (reply["cursor"] as? Int) ?? Int((reply["cursor"] as? Double) ?? 0)
                     if cursor > store.cursor { store.cursor = cursor }
                     save()
                     more = (reply["more"] as? Bool) ?? false
-                    if cursor <= 0 { more = false }
+                    if cursor <= since { more = false }
+                    since = cursor
                 }
                 if !store.pulled {
                     store.pulled = true
@@ -596,6 +682,7 @@ final class NanoMuseSync: ObservableObject {
         var changed = false
         let me = NanoMuseHub.shared.deviceId
         let mainId = Self.localMainSessionId()
+        let sideChats = sideChats
 
         for record in reply["conversations"] as? [[String: Any]] ?? [] {
             guard let cid = record["cid"] as? String else { continue }
@@ -605,6 +692,8 @@ final class NanoMuseSync: ObservableObject {
             let device = record["device"] as? String
             let deviceName = record["device_name"] as? String
             let local = store.entries.first(where: { $0.value.cid == cid })
+            // C9: with the switch off a side conversation this phone does not know is not its business.
+            if !Self.takes(kind: kind, sideChats: sideChats), local == nil { continue }
 
             if deleted {
                 if let local {
@@ -661,7 +750,10 @@ final class NanoMuseSync: ObservableObject {
         var presentBySession: [String: Set<String>] = [:]
         for record in reply["messages"] as? [[String: Any]] ?? [] {
             guard let mid = (record["mid"] as? String)?.lowercased(), let cid = record["cid"] as? String,
-                  let sessionId = store.entries.first(where: { $0.value.cid == cid })?.key else { continue }
+                  let entry = store.entries.first(where: { $0.value.cid == cid }) else { continue }
+            let sessionId = entry.key
+            // C9: a side chat's texts stay where they were written while the switch is off.
+            guard Self.takes(kind: entry.value.kind, sideChats: sideChats) else { continue }
             let deleted = (record["deleted"] as? Bool) ?? false
             if deleted {
                 await ChatStore.shared.deleteLocalMessage(messageId: mid)

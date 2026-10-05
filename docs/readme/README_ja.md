@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — an open-source personal agent for every device you own">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — あなたのすべてのデバイスのための、オープンソースのパーソナルエージェント">
 </p>
 
 <p align="center">
@@ -14,93 +14,97 @@
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ru.md">Русский</a> |
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_vi.md">Tiếng Việt</a>
 </p>
-
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="GitHub スター"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="ダウンロード数"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/%E3%83%96%E3%83%A9%E3%82%A6%E3%82%B6%E3%81%A7%E8%A9%A6%E3%81%99-nanomuse.cn%2Fweb-5B4EE6" alt="ブラウザで試す"></a>
-  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%E5%85%AC%E5%BC%8F%E3%82%B5%E3%82%A4%E3%83%88-nanomuse.cn-0a66e4" alt="公式サイト"></a>
+  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="ドキュメント"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
 </p>
 
-> [!IMPORTANT]
-> **無料、オープンソース、非営利。** 電話番号かメールアドレスでサインインすると無料枠がもらえます。費用は開発者が負担しています。残りと追加の方法はアカウントページにあります。使い切ったら自分のキーを：中国本土では Alibaba Cloud Bailian、それ以外では OpenRouter（[手順](../own-key.md)）。メッセージは既定では保存されず、何も販売しません（[プライバシーポリシー](https://nanomuse.cn/privacy/)）。アカウントはいつでも削除できます。**[ブラウザで試す](https://nanomuse.cn/web/)**、または[アプリをダウンロード](https://github.com/nano-muse/nanoMuse/releases/latest)。
+**nanoMuse は、あなたのすべてのデバイスのためのオープンソースのパーソナルエージェントです。** 名前と姿を持つひとりのエージェント。Meta の [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) と同じ種類のもので、質問に答えるのではなく実際に手を動かし、アプリを閉じても働き続け、あなたのことを覚えていて、取り消せない操作の前には立ち止まって尋ねます。
 
-> このページは[英語版 README](../../README.md) の翻訳です。英語版が基準で、最新情報と完全なバージョン表はそちらにあります。
-
-nanoMuse は、あなたのすべてのデバイスで使えるオープンソースのパーソナルエージェントです。Meta の [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) のように、自分の名前と姿を持つひとりのエージェントが、質問に答えるのではなく物事を片づけ、アプリを閉じていても働き続け、あなたのことを覚え、取り消せない操作の前には立ち止まって確認します。Android アプリはエージェント全体を**スマートフォン上で**動かします。Linux のルートファイルシステム、シェル、ブラウザ、MCP、スキル、スケジュールタスクが APK の中にあり、モデルはあなたが用意します。API を持たないアプリのための「手」もあります —— あなたの許可のもと、スマートフォンの画面そのものを見て、タップします。そしてあなたのパソコンにも届きます。スマートフォンで言えば、パソコンで実行されます。デスクトップアプリ、Web 版、iPhone アプリ（TestFlight）もあります。グラスはこの後に続きます。モデルは自分のキーでも、オープンなリレーの無料枠でも。GPL-3.0 —— そして、あなた自身の Muse を作るための土台でもあります。
+*nano* は、自分で動かして自分で配備できるくらい小さい、ひとそろいの完全なセットという意味です。スマホアプリ、デスクトップアプリ、ウェブコンソール、そしてそれらをつなぐリレーが、すべてこのリポジトリに GPL-3.0-or-later で入っています。nanoMuse は非営利です。サインインするとコミュニティのリレーでモデルを使える無料枠がもらえます。費用は開発者が負担しています。使い切ったら[自分のキーに切り替えて](../own-key.md)ください。同じリレーは自分のサーバーでも動くので、データを外に出さないこともできます。最新版は **0.1.37 Weave** — [リリースノート](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.37) · [ブラウザで試す](https://nanomuse.cn/web/)。
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="同じ小さなドラゴンの五つの状態：休憩、作業中、待機、嬉しい、ごめんなさい">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="チャット: ワークスペース内を削除する前にエージェントが立ち止まって尋ねる — 一度だけ、このチャット、ワークスペースでは常に許可、または拒否">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="フィード: 今朝あなたのために書かれた投稿">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="目標: スケジュールどおりに確認され、ルーティンもある">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="アバター: 姿を言葉で描写すると画像モデルが描き、気に入ったものを選ぶ">
 </p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="チャット：ワークスペース内で削除する前にエージェントが立ち止まって確認 —— 今回だけ、このチャット、ワークスペースでは常に許可、または拒否">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="フィード：今朝あなたのために書かれた投稿">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="ゴール：スケジュールに沿って追跡、ルーティン付き">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="アバター：姿を言葉で描写すると画像モデルが描き、気に入ったものを選ぶ">
-</p>
-
-## なぜ nanoMuse か
-
-このプロジェクトを定義する四つのこと。
-
-| | |
-|---|---|
-| **Muse スタイル** | ツールボックスではなく、ひとりのエージェント。自分の名前と姿、最初の会話、あなたのために書かれるフィード、バックグラウンドで進むゴール、読んで編集できる記憶、そして取り消せない操作の前の承認。 |
-| **完全にオープン** | GPL-3.0-or-later、リポジトリ全体が対象です。クローズドなコンポーネントはなく、使わなければならないアカウントやサーバーもモデルもありません —— オプションの nanoMuse Cloud リレーもリポジトリにあり、誰でも自分で動かせます。各リリースはそのタグからビルドされ、手動でインストールします。Muse、豆包、千問は与えられる製品。nanoMuse はあなたが所有するもの —— そして、自分の Muse を作るための土台です。名前を変え、姿を描き直し、性格を書き換え、自分のモデルとツールをつなげられます。 |
-| **API の有無を問わず、どんなアプリでも** | 中国では、一日の大半は API を持ったことのないアプリの中で過ぎていきます。エージェントは段階を踏みます —— まずスキル、CLI、MCP サーバー、次にあなたのログインで取得したページ、次にアプリ内ブラウザ、そして許可があればデバイスの画面そのものを、あなたと同じように見てタップします —— 支払い・送信・削除の前には同じ承認があります。デフォルトではオフです。 |
-| **すべてのデバイス** | ひとりのエージェント。あなたの持つすべてのデバイスが、その手であり入口です。スマートフォンで言えば PC で実行され、グラスに言えば両方で実行されます。スマートフォンからパソコンを操作することはすでにでき、デスクトップアプリ、Web、iPhone アプリもあります。グラスが続きます。 |
-
-Muse との比較、そしてアプリの土台であるランタイム OpenMinis との比較は[英語版 README](../../README.md#compared-with-muse-and-openminis) に。計画とその理由は [docs/roadmap.md](../roadmap.md) に。
 
 ## インストール
 
-まずは何もインストールせずに：[nanomuse.cn/web](https://nanomuse.cn/web/) を開くとブラウザの中にシミュレートされたスマートフォンが現れ、その中にあなた専用の nanoMuse がいます。電話番号かメールアドレスと認証コードでサインインすれば試せます —— これはデモで、アプリとは大きく違います。本格的に使うなら、以下のスマートフォンアプリとデスクトップアプリを同じアカウントで。自分のデバイス向けには[ダウンロード](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 用デスクトップアプリ（`nanoMuse-Desktop-<version>-…`）、ターミナル版バイナリ（`nanomuse-desktop-terminal-<version>-…`）、または Python 3.11+ で `pipx install "git+https://github.com/nano-muse/nanoMuse"`。私たちの計測では、中国からでも GitHub が最速のダウンロード元です。うまくいかない場合は、同じファイルがプロジェクトのミラー [nanomuse.cn/dl](https://nanomuse.cn/dl/) にあります（リリース後15分以内に同期、SHA-256 で検証）。それぞれがどうつながるかは [docs/desktop.md](../desktop.md) と [docs/every-device.md](../every-device.md) に。スマートフォンでは：
+| | |
+|---|---|
+| **Android** 8.0 以上、arm64 | [nanoMuse-0.1.37-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-0.1.37-arm64.apk) — すべてのバージョンが同じ鍵で署名され、上書きインストールできます |
+| **iPhone / iPad** | TestFlight、現在は内部テスターのみ <!-- coordinator: 公開 TestFlight リンクができたらここに --> |
+| **macOS** 12 以上 | [Apple シリコン](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-x64.dmg) — 公証なし。初回は右クリック → 「開く」 |
+| **Windows** 10 以上 | [nanoMuse-Desktop-0.1.37-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-win-x64.exe) — 一度だけ「実行」を押してください |
+| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.tar.gz) |
+| **ターミナル** | Python 3.11 以上で `pipx install "git+https://github.com/nano-muse/nanoMuse"`、または[最新リリース](https://github.com/nano-muse/nanoMuse/releases/latest)の `nanomuse-desktop-terminal` バイナリ |
+| **Docker** | `bash scripts/self-host.sh --local` で自分のリレーを、`docker compose up -d app` で自分のサーバーにウェブアプリを — [セルフホスティング](../self-hosting.md) |
 
-1. [最新リリース](https://github.com/nano-muse/nanoMuse/releases/latest)から `nanoMuse-<version>-arm64.apk` をダウンロード —— Android 8.0 以降、64 ビットの端末。必要なら `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` で検証してください。
-2. 開きます。Android がインストールの許可を一度だけ尋ねます。どのバージョンも同じキーで署名されているので、更新は前のバージョンに上書きされ、データは保持されます。
-3. モデルをつなぎます。*サインイン —— 無料*：電話番号（コードは SMS で届きます）かメールアドレスで、エージェントは [nanoMuse Cloud](../cloud.md) の無料枠を使えます —— キー不要、支払いなし。アカウントページに残量と増え方が表示されます。チャットモデルは `deepseek-v4.1-flash`、手は `qwen3.8-27b` を使い、二つは別々の設定です。使い切ったら自分のキーを：中国本土では [Alibaba Cloud Bailian](../own-key.md)、それ以外では [OpenRouter](../own-key.md)（Bailian は中国本土以外のアカウントを登録できません）、OpenAI 互換のエンドポイント、またはアプリに同梱の OAuth サインインのいずれか。その後、よければエージェントがスマートフォンのアプリを使うための二つの権限（スキップ可）、そして最初の会話 —— あなたの呼び方を尋ね、エージェントが自分の名前を選びます。
-4. 任意 —— *設定 → 画像・動画モデル*：画像モデル（Alibaba Cloud Model Studio の qwen-image-3.0、gpt-image-1、または OpenAI の images エンドポイントを持つ任意のプロバイダー）があれば、エージェントは姿を変えたり絵を描いたりできます。動画モデル（Model Studio の wan2.2-i2v-flash）があれば、その姿が動きます。Muse はこれらを内蔵していますが、nanoMuse はあなたのものを使い、足りないときはエージェントがそう伝えます。
-
-アプリはこのリポジトリのリリースを見て更新を確認します。デスクトップアプリは「設定 → 情報」にバージョンを表示し、「アップデートを確認」ボタンもそこにあります。各バージョンのリリースノートは [docs/releases/](../releases) と [CHANGELOG](../../CHANGELOG.md) に。
+ダウンロードはすべて [GitHub の最新リリース](https://github.com/nano-muse/nanoMuse/releases/latest)から。GitHub が遅い地域では同じファイルが [nanomuse.cn/dl](https://nanomuse.cn/dl/) にあります。アプリを開き、メールアドレスか中国本土の携帯番号でサインインすれば、エージェントは考えるためのモデルを持ちます。スマホ、デスクトップ、ウェブはひとつのアカウントを共有し、同じ会話が見えます。
 
 ## できること
 
-| | |
-|---|---|
-| **物事を片づける** | Linux シェル、ブラウザ、MCP サーバー、[Agent Skills](https://agentskills.io) 形式のスキル、そして *ハンズ* をオンにすれば、スマートフォンのアプリをその画面を通じて操作します。スクリーンショット、ひとつの操作、またスクリーンショット —— API を先に試す梯子、ログイン時の引き継ぎ、同じ承認とともに。エージェントは仕事に必要な手を選び、各ステップを開けるカードとして見せます。ログインやコードなど、ページがあなたを必要とするときは止まって手を渡し、「完了」で再開します —— スマートフォンでもデスクトップでも Web でも。macOS では、手がひとつのアプリのウィンドウだけを独自のイベントで操作できるので、カーソルはあなたのままです。アプリごとに初回に確認します。 |
-| **先に尋ねる** | 削除・送信・支払いの前に止まります —— シェルでも、ブラウザでも、ハンズがスマートフォンの画面をタップするときも。承認の範囲は、今回だけ、このチャット、またはこの宛先・ドメイン・フォルダでは常に、から選べ、「権限」で取り消せます。パスワードと認証コードは、いつもあなたが入力します。デスクトップでは「一度許可 / 拒否」がライブステージに、スマートフォンではカプセルにあります —— アプリに戻らず、その場で答えられます。 |
-| **いつもの場所で** | 飞书、钉钉、企业微信、Telegram から自分の Muse に話しかけられます。ボットはメッセンジャーの中にいて、最初のメッセージでコードによるペアリングを済ませ、その場で答えます（[docs/channels.md](../channels.md)）。ある端末でつないだサービスは、他の端末に「あなたの Mac で接続済み —— ここで使うにはここでサインイン」と表示され、認証情報はサインインした端末に残ります。 |
-| **続ける** | ゴールはチャットの中で形になり、専用の会話でスケジュールに沿って確認されます。ルーティンはアプリを閉じていても動き、スマートフォンを操作している間は画面が点いたままになり、200 ステップで早めに切り上げる代わりに「続けますか？」と尋ねます。 |
-| **あなたのためにフィードを書く** | 毎朝、あなたについて知っていることと、追いかけるよう頼まれたことから、三〜六本の短い投稿をカードとして。いいねしたり、サイドチャットで話したり、削除したりできます。一文で方向を変えられます。 |
-| **あなたを覚えている** | 自分が誰か（`SOUL.md`）、あなたについて知っていること（`USER.md`）、覚えていること（`GLOBAL.md` と日記）、いつ目を覚ますか（`HEARTBEAT.md`）は、アプリ内で読んで編集できるファイルです。別のアシスタントが知っていたことは *記憶をインポート* で持ち込めます。 |
-| **自分の姿** | 一文で描写すると、あなたの画像モデルが描き、気に入ったものを選びます。アプリはそれをすべての状態 —— 作業中、待機、嬉しい、ごめんなさい —— のポーズにし、エージェントの動きに合わせて息をし、揺れ、首をかしげ、跳ね、震えます。動画モデルがあれば、各状態は短いループ動画になります。デフォルトは、静止画とクリップ付きの淡い黄色の小さなドラゴンです。 |
-| **アイデアとライブラリ** | ゴールと記憶から生まれる、次に聞くこと。そして作ったものすべてを、プレビュー付きで。 |
+- **実際に手を動かす。** Linux シェル、ブラウザ、MCP サーバー、スキル。さらに *Hands* をオンにすれば、API が一度も存在しなかったものに向けて、スマホのアプリやパソコンのウィンドウを画面越しに操作します。
+- **先に尋ねる。** 削除、送信、支払いの前に一度止まり、「一度だけ / このチャット / 常に」として記憶します。パスワードや認証コードはあなたが入力します。ログインや CAPTCHA はあなたに引き渡され、「完了」で再開します。
+- **他のデバイスに届く。** スマホで言えば PC で実行されます。メッセージの先頭に `@Mac …` と書くとそのマシンへ送られます。承認は手元のデバイスに戻ってきます。
+- **動き続ける。** 目標はスケジュールどおりに確認され、ルーティンはアプリを閉じていても動き、毎朝あなた宛てのフィードが書かれます。
+- **あなたを覚えている。** 自分が何者か、あなたについて何を知っているか、いつ起きるかは、読めて編集できる Markdown ファイルです。
+- **チャットアプリの中に住む。** 飞书、钉钉、企业微信、Telegram で返事をします。
+- **自分の姿。** 言葉で描写すれば画像モデルが描き、動画モデルが動かします。デフォルトは小さなドラゴン。
+- **どのモデルでも。** リレーのモデル、Bailian や OpenRouter のキー、あるいは OpenAI 互換のエンドポイント。
 
-これらはすべてスマートフォン上で動きます。OpenMinis のそれ以外 —— ターミナル、アプリ内ブラウザ、MCP とスキルの管理、モデルグループ、トークン使用量、アクセシビリティ実行器、共有フォルダ —— も残っていて、同じメニューから使えます。
+## 仕組み
 
-## バージョン
+どのデバイスも自分のエージェントを動かします。スマホは APK の中で(proot 上の Alpine Linux、シェル、ブラウザ、MCP)、パソコンは nanoMuse Desktop の中で(DeepSeek Harness と、手のための Python ランタイム)。サインインするとリレーで出会い、互いに頼みごとができます。会話のテキストはリレーを通りますが、ファイルやスクリーンショットは作られたデバイスに残ります。
 
-段階ごとに小さなバージョンをひとつ、それぞれ APK 付きの GitHub リリースです。最新情報と完全なバージョン表は[英語版 README](../../README.md#versions) に、計画とその理由は [docs/roadmap.md](../roadmap.md) に、各バージョンのノートは [docs/releases/](../releases) と [CHANGELOG](../../CHANGELOG.md) に。この後は順に：自分のマシン（VM やホームサーバー）で動かす Web 版、グラス。
+```
+スマホ ──┐                         ┌── パソコン(nanoMuse Desktop)
+         ├──▶  nanoMuse Cloud  ◀───┤        リレー: サインイン、モデル、
+ウェブ ──┘        /v1/hub          └── 別のスマホ / パソコン    hub、会話の同期
+```
 
-## いまどの段階か
+デバイスについては [docs/every-device.md](../every-device.md)、フレームは [docs/hub.md](../hub.md)、リレーは [docs/cloud.md](../cloud.md)、何を保存するかは [docs/privacy.md](../privacy.md)。
 
-0.1 はプレビュー版です。私たち自身が毎日使っていて、どこがまだ粗いかは分かっています。あなたの手元で何が壊れたか、何ができてほしいかを教えてください。開発者向けの面——自分のモデル、シェル、MCP、スキル、ハーネス、ランタイムの API——は設定とドキュメントにあります。ランタイムのインターフェース、スキルとプラグインのインターフェースは、しばらく変わり続けます。何が変わったかは [CHANGELOG](../../CHANGELOG.md) に、次に何をするかは[ロードマップ](../roadmap.md)にあります。役に立ったなら、スターを付けてもらえると他の人が見つけやすくなります。
+## Muse、OpenMinis との比較
+
+| | Meta Muse | OpenMinis | nanoMuse |
+|---|---|---|---|
+| エージェントが動く場所 | ユーザーごとのクラウド VM | インストールしたスマホ | あなたのスマホ、パソコン、または自分のサーバー — ひとつのアカウントで |
+| API のないアプリ | 届かない。VM はデバイスに触れない | Android のアクセシビリティ CLI | スマホでもパソコンでも画面を手として使う。スクリーンショットを見て、API を先に試し、ログインはあなたが引き受ける。iOS では不可 — OS が許していない |
+| 他のデバイス | ひとつの VM のクライアント | インストールした 1 台だけ | デバイス同士が hub 経由で頼み合い、承認はあなたのいる場所で |
+| モデル | Meta のもの | 自分で用意 | リレーの無料枠、または自分のもの |
+| ライセンス | クローズド | GPL-3.0 | GPL-3.0-or-later、OpenMinis の上に構築 |
+
+## ドキュメント
+
+[nanomuse.cn/docs](https://nanomuse.cn/docs/) — プラットフォーム別のインストール、すべてのデバイス、Hands、コネクタ、記憶、セルフホスティング、プロトコル。ソースは [docs/](../) に、各バージョンの変更点は [CHANGELOG](../../CHANGELOG.md) と [docs/releases/](../releases/) にあります。
+
+## セルフホスティング
+
+VPS 1 台、1 時間: [docs/self-hosting.md](../self-hosting.md)。三つの道 — サーバーなしで自分のキーだけ、`scripts/self-host.sh` で自分のリレー、ウェブアプリ用に自分のランタイム。
 
 ## 貢献する
 
-**[Issue を開く](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Discussions で質問・共有する](https://github.com/nano-muse/nanoMuse/discussions) · [リポジトリにスターを付ける](https://github.com/nano-muse/nanoMuse)**。無料枠、自分のキー、あなたのデータの扱い：[docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md)。ビルド環境、規約（`com.openminis.app` は維持、新しいコードは `io.github.nanomuse.*` に、上流ファイルの変更には `// nanoMuse:`、コミットには `Signed-off-by`）、リリースの切り方は [CONTRIBUTING.md](../../CONTRIBUTING.md) に。
+実際の用事に使い、壊れたところを報告し、それから小さく具体的なことをひとつ選んでください。[CONTRIBUTING.md](../../CONTRIBUTING.md) にセットアップと規約、[AGENTS.md](../../AGENTS.md) にこのツリーでコーディングエージェントが守るルール、[ロードマップ](../roadmap.md)にどこから始めるか。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions)。
 
 ## 謝辞
 
-nanoMuse は他の人々の仕事の上に立っています。[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) に各ライセンスがあります。アプリは [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 の上に作られています —— proot 上の Linux、シェル、ブラウザ、MCP、スキル、スケジュールタスク、アクセシビリティ実行器。サンドボックスは [proot](https://github.com/proot-me/proot) と [Alpine Linux](https://alpinelinux.org/) によるものです。
+nanoMuse は他の人たちの仕事の上に立っています。条件は [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) に。
+
+- [OpenMinis](https://github.com/OpenMinis/OpenMinis) — スマホアプリの土台となったオンデバイスのエージェント。サンドボックスは [proot](https://github.com/nano-muse/proot) と [Alpine Linux](https://alpinelinux.org/)。
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — デスクトップアプリがプラグインとして載っているエージェントハーネス。
+- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop)(ByteDance)— デスクトップの手のオペレーターはその移植で、ステージのマーカーは ScreenMarker に倣っています。
+- [MobileGym](https://github.com/Purewhiter/mobilegym)、[MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench)、[PhoneHarness](https://github.com/lsdefine/PhoneHarness)、[CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse)、[Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM)、[ClawGUI](https://github.com/ClawGUI/ClawGUI-APP) — スマホのオペレーター、トレース、製品の着想。
 
 ## 免責事項
 
-nanoMuse は独立したコミュニティプロジェクトです。Meta Platforms, Inc. およびその製品 Muse とは提携しておらず、承認も受けておらず、派生したものでもありません。Muse は Meta Platforms, Inc. の商標です。ドラゴンはこのプロジェクト独自のものです。
+nanoMuse は独立したコミュニティプロジェクトで、Meta Platforms, Inc. とは無関係であり、その支持も受けていません。Muse は同社の商標です。ドラゴンはこのプロジェクトのものです。
 
 ## ライセンス
 
-[GPL-3.0-or-later](../../LICENSE)。Android アプリは OpenMinis 1.13（GPL-3.0）をもとに、2026-09-24 以降に変更を加えたものです。[NOTICE](../../NOTICE) と [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) を参照してください。Python 系統の初期バージョンは MIT で公開されていました（タグ `pre-openminis`）。
+[GPL-3.0-or-later](../../LICENSE)。スマホアプリは OpenMinis 1.13(GPL-3.0)をもとに 2026-09-24 以降改変しています — [NOTICE](../../NOTICE) を参照。それ以前の Python 系統のバージョンは MIT でした(タグ `pre-openminis`)。

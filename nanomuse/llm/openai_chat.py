@@ -7,6 +7,7 @@ gateway that speaks ``/chat/completions`` (extra headers/body supported).
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import openai
@@ -81,6 +82,14 @@ class OpenAIChatLLM(BaseLLM):
             params["tool_choice"] = tool_choice
         if self.settings.extra_body:
             params["extra_body"] = self.settings.extra_body
+        # the body's size, so the next 413 from a relay is diagnosable from the log (the
+        # pictures are in it as base64); measured only when debug logging is on
+        logger.opt(lazy=True).debug(
+            "chat request: {} bytes, {} messages, {} with images",
+            lambda: len(json.dumps(params, ensure_ascii=False, default=str)),
+            lambda: len(params["messages"]),
+            lambda: sum(1 for m in params["messages"] if isinstance(m.get("content"), list)),
+        )
         try:
             resp = await self._send(params, on_delta)
         except openai.BadRequestError as e:

@@ -78,6 +78,7 @@ import com.openminis.app.R
 import com.openminis.app.ui.components.openExternalUrl
 import io.github.nanomuse.cloud.AllowanceSignal
 import io.github.nanomuse.cloud.NanoMuseCloud
+import io.github.nanomuse.cloud.RelayAddress
 import io.github.nanomuse.sysfiles.SystemFiles
 import io.github.nanomuse.ui.home.MuseTones
 import io.github.nanomuse.ui.muse.MuseCard
@@ -118,6 +119,7 @@ fun CloudAccountScreen(
     var showToday by remember { mutableStateOf(true) }
     var passwordDialog by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
+    var changeServer by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -183,6 +185,12 @@ fun CloudAccountScreen(
                     }
                     MuseRowDivider(inset = 16.dp)
                     MuseRow(title = stringResource(R.string.nm_cloud_sign_in), onClick = onSignIn, titleColor = MuseTones.action)
+                    val base = NanoMuseCloud.baseUrl(context)
+                    if (!RelayAddress.isDefault(base)) {
+                        // pointed at someone's own relay: say which, so a sign-in that fails is understood
+                        MuseRowDivider(inset = 16.dp)
+                        MuseRow(title = stringResource(R.string.nm_cloud_server_row), value = RelayAddress.display(base), chevron = false, onClick = onSignIn)
+                    }
                 }
             } else {
                 val a = account
@@ -233,6 +241,20 @@ fun CloudAccountScreen(
                         value = (if (sessions.isNotEmpty()) sessions.size else a?.sessions ?: 0).toString(),
                         chevron = false,
                         onClick = { refresh() },
+                    )
+                    MuseRowDivider()
+                    // the relay the key belongs to (0.1.38: people who run their own); changing it means signing out first
+                    MuseRow(
+                        title = stringResource(R.string.nm_cloud_server_row),
+                        icon = Icons.Outlined.Storage,
+                        value = RelayAddress.display(NanoMuseCloud.baseUrl(context)),
+                        chevron = false,
+                        trailing = {
+                            TextButton(onClick = { changeServer = true }) {
+                                Text(stringResource(R.string.nm_cloud_server_change), color = MuseTones.action, fontSize = 13.sp)
+                            }
+                        },
+                        onClick = { changeServer = true },
                     )
                     if (a?.accountId?.isNotEmpty() == true) {
                         Text(
@@ -705,6 +727,38 @@ fun CloudAccountScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirm = null }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+
+    if (changeServer) {
+        // the key belongs to one relay: out of this one first, then the sign-in screen with its server form
+        AlertDialog(
+            onDismissRequest = { changeServer = false },
+            title = { Text(stringResource(R.string.nm_cloud_server_change)) },
+            text = { Text(stringResource(R.string.nm_cloud_server_change_confirm)) },
+            confirmButton = {
+                TextButton(
+                    enabled = !busy,
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            try {
+                                NanoMuseCloud.signOut(context)
+                                leave()
+                                changeServer = false
+                                onSignIn()
+                            } catch (e: Exception) {
+                                error = NanoMuseCloud.describe(context, e)
+                                changeServer = false
+                            }
+                            busy = false
+                        }
+                    },
+                ) { Text(stringResource(R.string.nm_cloud_sign_out)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { changeServer = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }

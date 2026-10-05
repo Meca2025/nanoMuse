@@ -151,6 +151,20 @@ turning the switch on sends the device's whole eligible history, oldest first,
 rename on any device, including the first conversation's naming, reaches the
 others on the next pull.
 
+**Main first** (0.1.38, relay 0.20). By default only the main conversation
+travels: side chats stay on the device that made them, and a device pulls with
+`scope=main` so other devices' side chats never arrive. *Also sync side chats*
+(a second switch under *Data controls*, off by default, **per device** — the
+relay has no account-wide setting for it) turns that around for the device it is
+flipped on: its side chats go up, the other devices' side chats come down, and
+the first pull after the flip starts over from zero. The first pull of a fresh
+sign-in asks for the **tail** — the newest 300 messages with the conversations
+they belong to — so a long history opens at once instead of paging from the
+start; the older messages it skipped stay on the relay and are not pulled. While a
+device is answering, the others show *kwai is working…* under the last message:
+a `working` note that goes through the relay's memory and the hub, is never
+stored, and dies after ten minutes if the device never says it is done.
+
 The relay keeps at most 20 000 messages per account (the oldest conversations'
 messages go first, their titles stay) and 16 384 bytes per message (longer
 text is cut and marked `truncated`). Turning the switch off on any device tells
@@ -167,13 +181,29 @@ The API, all under the account's key (401 without one; 409 `sync_off` while the
 switch is off, for reads as well as writes):
 
 ```
-GET    /v1/sync/state                   → {enabled, cursor, counts{conversations, messages}, limits{messages, text_bytes}}
+GET    /v1/sync/state                   → {enabled, cursor, counts{conversations, messages}, limits{messages, text_bytes}, working[]}
 PUT    /v1/sync/state   {enabled}       → the same; false deletes everything stored, the counter keeps counting
-GET    /v1/sync/changes ?since=0&limit=500   → {cursor, more, conversations[], messages[]}
+GET    /v1/sync/changes ?since=0&limit=500&scope=all|main&tail=K   → {cursor, more, conversations[], messages[], skipped?}
 POST   /v1/sync/changes {device, conversations[], messages[]}   → {cursor, accepted, rejected[{cid | mid, reason, cid_main?}]}
+POST   /v1/sync/working {cid, working, device?}   → 204; the hub tells the other devices   404 no_conversation
 DELETE /v1/sync/changes                 → the state, counts at zero     everything stored, switch unchanged
 DELETE /v1/sync/conversations/{cid}     → {cursor, deleted: true}      a tombstone the other devices apply; 404 no_conversation
 ```
+
+`scope` (relay 0.20) is `all` unless said; `main` returns only the main
+conversation and its messages, and an account with no main yet gets an empty
+page whose `cursor` is the account's counter. `tail=K` (K ≤ 500, honoured with
+`since=0` only) returns the newest K messages in `seq` order, the conversations
+they belong to, `cursor` at the account's counter, `more: false` and `skipped`
+— how many older messages were left out. Any other `scope` is 400 `bad_scope`.
+`POST /v1/sync/working` says the device named in `device` (or in
+`X-Nanomuse-Device`) is answering in `cid` (`working: true`) or has finished
+(`false`); the relay keeps the live ones in memory for ten minutes — never in
+the database, so a restart forgets them — lists them under `working` in the
+state (`[{cid, from, device_name, working, at}]`) and sends a `working` frame
+to the account's other sockets ([hub.md](hub.md#frames)). Request bodies over
+`MAX_REQUEST_BYTES` (16 MiB by default since 0.20) are 413 `too_large` with
+*Request body is N MB; this relay accepts up to M MB*.
 
 A conversation is `{cid, kind: main | side, title, device, device_name,
 created_at, updated_at, deleted, seq}` and a message `{mid, cid, seq, device,

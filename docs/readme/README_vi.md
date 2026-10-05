@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — an open-source personal agent for every device you own">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — trợ lý cá nhân mã nguồn mở cho mọi thiết bị của bạn">
 </p>
 
 <p align="center">
@@ -14,93 +14,97 @@
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ru.md">Русский</a> |
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_vi.md">Tiếng Việt</a>
 </p>
-
 <p align="center">
-  <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="Sao trên GitHub"></a>
+  <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="Sao GitHub"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="Lượt tải"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/D%C3%B9ng%20th%E1%BB%AD%20tr%C3%AAn%20tr%C3%ACnh%20duy%E1%BB%87t-nanomuse.cn%2Fweb-5B4EE6" alt="Dùng thử trên trình duyệt"></a>
-  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/Trang%20web-nanomuse.cn-0a66e4" alt="Trang web"></a>
+  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="Tài liệu"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
 </p>
 
-> [!IMPORTANT]
-> **Miễn phí, mã nguồn mở, phi lợi nhuận.** Đăng nhập bằng số điện thoại hoặc e-mail là có một hạn mức ban đầu; nhà phát triển trả tiền cho nó. Trang tài khoản cho biết còn bao nhiêu và cách thêm. Khi hết, dùng khóa của riêng bạn: Alibaba Cloud Bailian ở Trung Quốc đại lục, OpenRouter ở nơi khác ([cách làm](../own-key.md)). Tin nhắn mặc định không được lưu và không có gì được đem bán ([chính sách quyền riêng tư](https://nanomuse.cn/privacy/)); xóa tài khoản bất cứ lúc nào bạn muốn. **[Dùng thử trên trình duyệt](https://nanomuse.cn/web/)**, hoặc [tải ứng dụng](https://github.com/nano-muse/nanoMuse/releases/latest).
+**nanoMuse là một trợ lý cá nhân mã nguồn mở cho mọi thiết bị của bạn.** Một trợ lý duy nhất có tên và hình dáng riêng, cùng loại với [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) của Meta: nó làm việc thay vì chỉ trả lời câu hỏi, tiếp tục làm khi ứng dụng đã đóng, nhớ bạn, và dừng lại hỏi trước bất cứ việc gì bạn không thể hoàn tác.
 
-> Trang này là bản dịch của [README tiếng Anh](../../README.md); bản tiếng Anh là bản tham chiếu, nơi có tin tức và bảng phiên bản đầy đủ.
-
-nanoMuse là một trợ lý cá nhân mã nguồn mở cho mọi thiết bị bạn có: một trợ lý duy nhất với tên và hình dáng riêng, giống [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) của Meta, làm việc thay vì chỉ trả lời câu hỏi, tiếp tục làm việc khi ứng dụng đã đóng, nhớ bạn, và dừng lại hỏi trước bất cứ việc gì bạn không thể hoàn tác. Ứng dụng Android chạy toàn bộ trợ lý **ngay trên điện thoại**: một hệ thống tệp gốc Linux, shell, trình duyệt, MCP, các kỹ năng và tác vụ theo lịch nằm trong APK, với mô hình do bạn mang đến. Nó có "đôi tay" cho những ứng dụng chưa bao giờ có API — chính màn hình điện thoại, với sự cho phép của bạn — và vươn tới máy tính của bạn: nói trên điện thoại, việc được làm xong ở đó. Ứng dụng máy tính, phiên bản web và ứng dụng iPhone (TestFlight) cũng đã có; kính thông minh sẽ đến sau. Khóa của riêng bạn hoặc một hạn mức khởi đầu từ relay mở, GPL-3.0 — và một nền tảng để bạn dựng Muse của riêng mình.
+*nano* nghĩa là trọn bộ nhưng đủ nhỏ để bạn tự chạy và tự triển khai: ứng dụng điện thoại, ứng dụng máy tính, bảng điều khiển web và relay nối chúng lại đều nằm trong kho này, theo giấy phép GPL-3.0-or-later. nanoMuse phi lợi nhuận. Đăng nhập là bạn có một khoản miễn phí để dùng mô hình qua relay của cộng đồng — do người phát triển trả; dùng hết thì [chuyển sang khóa của riêng bạn](../own-key.md). Cùng relay đó chạy được trên máy chủ của bạn, nên không có gì buộc phải rời khỏi nhà. Phiên bản mới nhất: **0.1.37 Weave** — [ghi chú phát hành](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.37) · [dùng thử trên trình duyệt](https://nanomuse.cn/web/).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="Cùng một chú rồng nhỏ trong năm trạng thái: nghỉ, đang làm việc, đang chờ, vui, xin lỗi">
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Trò chuyện: trước khi xóa trong không gian làm việc, trợ lý dừng lại và hỏi — một lần, cuộc trò chuyện này, luôn luôn cho không gian làm việc, hoặc từ chối">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Trò chuyện: trước khi xóa trong không gian làm việc, trợ lý dừng lại hỏi — một lần, cuộc trò chuyện này, luôn cho phép trong không gian làm việc, hoặc từ chối">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="Bảng tin: những bài viết dành cho bạn sáng nay">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Mục tiêu: theo dõi theo lịch, có các thói quen">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Hình đại diện: mô tả một hình dáng, mô hình ảnh của bạn vẽ nó, chọn cái bạn thích">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Mục tiêu: được kiểm tra theo lịch, kèm các thói quen">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Hình đại diện: mô tả một dáng vẻ, mô hình ảnh của bạn vẽ ra, bạn chọn cái mình thích">
 </p>
-
-## Vì sao là nanoMuse
-
-Bốn điều định nghĩa dự án này.
-
-| | |
-|---|---|
-| **Phong cách Muse** | Một trợ lý, không phải một hộp công cụ: tên và hình dáng riêng, cuộc trò chuyện đầu tiên, một bảng tin viết cho bạn, các mục tiêu được theo đuổi trong nền, bộ nhớ bạn có thể đọc và sửa, và một lần xác nhận trước bất cứ việc gì không thể hoàn tác. |
-| **Mở hoàn toàn** | GPL-3.0-or-later, toàn bộ kho mã. Không có thành phần đóng, không có tài khoản hay máy chủ bắt buộc, không có mô hình bắt buộc — relay nanoMuse Cloud tùy chọn cũng nằm trong kho mã và ai cũng có thể tự vận hành; mỗi bản phát hành được build từ tag của nó và cài thủ công. Muse, 豆包 và 千问 là những sản phẩm người ta trao cho bạn; nanoMuse là thứ bạn sở hữu — và là nền tảng để dựng Muse của riêng bạn: đổi tên, vẽ lại, viết lại tính cách, nối vào mô hình và công cụ của bạn. |
-| **Mọi ứng dụng, có API hay không** | Ở Trung Quốc, phần lớn một ngày trôi qua trong những ứng dụng chưa bao giờ có API. Trợ lý đi từng bậc — trước hết là kỹ năng, CLI hoặc máy chủ MCP, rồi đến trang web lấy bằng phiên đăng nhập của bạn, rồi trình duyệt trong ứng dụng, và khi bạn cho phép, chính màn hình thiết bị, nhìn và chạm như cách bạn làm — với cùng những lần xác nhận trước khi thanh toán, gửi hay xóa. Mặc định tắt. |
-| **Mọi thiết bị** | Một trợ lý, và mỗi thiết bị bạn có là một đôi tay và một cánh cửa: nói trên điện thoại, việc diễn ra trên PC; nói với kính, việc diễn ra ở cả hai. Điện thoại đã có thể điều khiển máy tính của bạn, ứng dụng máy tính, web và ứng dụng iPhone đã có mặt; kính sẽ đến sau. |
-
-So sánh với Muse và với OpenMinis — runtime mà ứng dụng được xây trên đó: xem [README tiếng Anh](../../README.md#compared-with-muse-and-openminis). Kế hoạch và lý do: [docs/roadmap.md](../roadmap.md).
 
 ## Cài đặt
 
-Xem thử mà không cần cài gì: [nanomuse.cn/web](https://nanomuse.cn/web/) mở ra một chiếc điện thoại mô phỏng trong trình duyệt với một nanoMuse của riêng nó, sau khi đăng nhập bằng số điện thoại hoặc e-mail và một mã xác nhận — đây là bản demo, còn xa mới bằng ứng dụng; muốn dùng bản đầy đủ, hãy dùng ứng dụng điện thoại và máy tính bên dưới với cùng tài khoản. Cho thiết bị của riêng bạn — [tải về](https://nanomuse.cn/#download): APK Android, ứng dụng máy tính cho Windows, macOS và Linux (`nanoMuse-Desktop-<version>-…`), bản chạy trong terminal (`nanomuse-desktop-terminal-<version>-…`), hoặc `pipx install "git+https://github.com/nano-muse/nanoMuse"` với Python 3.11+. Theo đo đạc của chúng tôi, GitHub cũng là nguồn tải nhanh nhất kể cả từ Trung Quốc; nếu tải từ GitHub không được ở nơi bạn ở, các tệp giống hệt có trên mirror của dự án tại [nanomuse.cn/dl](https://nanomuse.cn/dl/) (đồng bộ trong vòng mười lăm phút sau mỗi bản phát hành, kiểm tra SHA-256); [docs/desktop.md](../desktop.md) và [docs/every-device.md](../every-device.md) nói về cách các thiết bị kết nối với nhau. Trên điện thoại:
+| | |
+|---|---|
+| **Android** 8.0 trở lên, arm64 | [nanoMuse-0.1.37-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-0.1.37-arm64.apk) — mọi phiên bản ký cùng một khóa, cài đè lên bản cũ là được |
+| **iPhone / iPad** | TestFlight, hiện chỉ cho người thử nghiệm nội bộ <!-- coordinator: đặt liên kết TestFlight công khai ở đây khi có --> |
+| **macOS** 12 trở lên | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-x64.dmg) — chưa được công chứng: lần đầu nhấp chuột phải → *Mở* |
+| **Windows** 10 trở lên | [nanoMuse-Desktop-0.1.37-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-win-x64.exe) — bấm *Vẫn chạy* một lần |
+| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.tar.gz) |
+| **Terminal** | `pipx install "git+https://github.com/nano-muse/nanoMuse"` với Python 3.11 trở lên, hoặc tệp thực thi `nanomuse-desktop-terminal` từ [bản phát hành mới nhất](https://github.com/nano-muse/nanoMuse/releases/latest) |
+| **Docker** | `bash scripts/self-host.sh --local` để có relay của riêng bạn; `docker compose up -d app` để chạy ứng dụng web trên máy chủ của bạn — [tự lưu trữ](../self-hosting.md) |
 
-1. Tải `nanoMuse-<version>-arm64.apk` từ [bản phát hành mới nhất](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 trở lên, điện thoại 64-bit. Kiểm tra bằng `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` nếu muốn.
-2. Mở tệp. Android hỏi một lần để cho phép cài đặt; mọi phiên bản đều được ký bằng cùng một khóa, nên bản cập nhật cài đè lên bản trước và giữ nguyên dữ liệu của bạn.
-3. Kết nối một mô hình. *Đăng nhập — miễn phí*: số điện thoại (mã gửi qua SMS) hoặc e-mail, và trợ lý có một hạn mức miễn phí trên [nanoMuse Cloud](../cloud.md) — không cần khóa, không phải trả gì; trang tài khoản cho biết còn bao nhiêu và tăng thế nào. Mô hình trò chuyện là `deepseek-v4.1-flash`, đôi tay dùng `qwen3.8-27b`; đây là hai cài đặt riêng. Khi hết, dùng khóa của riêng bạn: [Alibaba Cloud Bailian](../own-key.md) ở Trung Quốc đại lục, [OpenRouter](../own-key.md) ở nơi khác (Bailian không nhận đăng ký tài khoản từ ngoài Trung Quốc), bất kỳ endpoint tương thích OpenAI nào, hoặc một trong các cách đăng nhập OAuth có sẵn trong ứng dụng. Sau đó, nếu muốn, hai quyền cho phép trợ lý dùng các ứng dụng trên điện thoại (có thể bỏ qua), và cuộc trò chuyện đầu tiên — nó hỏi nên gọi bạn là gì và tự chọn tên cho mình.
-4. Tùy chọn — *Cài đặt → Mô hình ảnh & video*: một mô hình ảnh (qwen-image-3.0 trên Alibaba Cloud Model Studio, gpt-image-1, hoặc bất kỳ nhà cung cấp nào có endpoint images của OpenAI) cho phép trợ lý đổi hình dáng và vẽ tranh; một mô hình video (wan2.2-i2v-flash trên Model Studio) làm hình dáng đó chuyển động. Muse có sẵn những thứ này; nanoMuse dùng của bạn, và trợ lý sẽ cho bạn biết khi thiếu cái nào.
-
-Ứng dụng kiểm tra các bản phát hành của kho mã này để cập nhật; ứng dụng máy tính hiển thị phiên bản trong *Cài đặt → Giới thiệu*, kèm nút *Kiểm tra cập nhật*. Ghi chú phát hành của từng phiên bản nằm trong [docs/releases/](../releases) và [CHANGELOG](../../CHANGELOG.md).
+Mọi bản tải đều từ [bản phát hành mới nhất trên GitHub](https://github.com/nano-muse/nanoMuse/releases/latest); cùng các tệp đó có tại [nanomuse.cn/dl](https://nanomuse.cn/dl/) nếu GitHub chậm ở chỗ bạn. Mở ứng dụng, đăng nhập bằng e-mail hoặc số điện thoại Trung Quốc đại lục, và trợ lý đã có một mô hình để suy nghĩ. Điện thoại, máy tính và web dùng chung một tài khoản và hiển thị cùng những cuộc trò chuyện.
 
 ## Nó làm được gì
 
-| | |
-|---|---|
-| **Làm việc** | Shell Linux, trình duyệt, máy chủ MCP, kỹ năng theo định dạng [Agent Skills](https://agentskills.io), và — khi bạn bật *Đôi tay* — các ứng dụng trên điện thoại qua chính màn hình của chúng: một ảnh chụp màn hình, một thao tác, một ảnh chụp nữa, với chiếc thang thử API trước, chuyển quyền cho bạn khi cần đăng nhập, và cùng những lần xác nhận. Trợ lý chọn "bàn tay" mà công việc cần và hiển thị từng bước như một thẻ bạn có thể mở ra. Khi một trang cần đến bạn — đăng nhập, mã xác nhận — nó dừng lại và nhường cho bạn; bấm *Xong* để tiếp tục, trên điện thoại, máy tính và web. Trên macOS, đôi tay có thể điều khiển cửa sổ của một ứng dụng bằng sự kiện riêng, nên con trỏ vẫn là của bạn; mỗi ứng dụng được hỏi ở lần đầu. |
-| **Hỏi trước** | Dừng lại trước khi xóa, gửi hay thanh toán — trong shell, trong trình duyệt và trên màn hình điện thoại khi Đôi tay chạm — với một lần xác nhận bạn giới hạn ở một lần, cuộc trò chuyện này, hoặc luôn luôn cho người nhận, tên miền hay thư mục này, và có thể thu hồi trong mục Quyền. Mật khẩu và mã xác minh luôn do bạn tự nhập. Trên máy tính, *Cho phép một lần / Từ chối* nằm ngay trên sân khấu trực tiếp; trên điện thoại, trên viên nang — bạn trả lời ngay tại chỗ, không cần quay lại ứng dụng. |
-| **Ở nơi bạn vẫn dùng** | Nói chuyện với Muse của bạn từ 飞书, 钉钉, 企业微信 hoặc Telegram: bot sống ngay trong ứng dụng nhắn tin, ghép nối bằng mã ở tin nhắn đầu tiên và trả lời ngay tại đó ([docs/channels.md](../channels.md)). Dịch vụ đã kết nối trên một thiết bị hiện trên các thiết bị khác là "đã kết nối trên Mac của bạn — đăng nhập ở đây để dùng ở đây"; thông tin đăng nhập ở lại thiết bị đã đăng nhập. |
-| **Tiếp tục làm** | Mục tiêu được định hình trong cuộc trò chuyện và được kiểm tra theo lịch trong cuộc trò chuyện riêng của nó; các thói quen chạy khi ứng dụng đã đóng; màn hình sáng trong lúc nó điều khiển điện thoại; đến bước 200 nó hỏi "tiếp tục không?" thay vì kết thúc sớm. |
-| **Viết bảng tin cho bạn** | Mỗi sáng, ba đến sáu bài ngắn từ những gì nó biết về bạn và những gì bạn nhờ nó theo dõi, dưới dạng thẻ bạn có thể thích, bàn luận trong một cuộc trò chuyện phụ, hoặc xóa. Một câu là đủ để điều hướng nó. |
-| **Nhớ bạn** | Nó là ai (`SOUL.md`), nó biết gì về bạn (`USER.md`), nó nhớ gì (`GLOBAL.md` và một cuốn nhật ký) và khi nào nó thức dậy (`HEARTBEAT.md`) là những tệp bạn có thể đọc và sửa trong ứng dụng. Mang theo những gì một trợ lý khác từng biết bằng *Nhập bộ nhớ*. |
-| **Hình dáng riêng** | Mô tả bằng một câu; mô hình ảnh của bạn vẽ; bạn chọn cái mình thích. Ứng dụng tạo tư thế cho từng trạng thái — đang làm việc, đang chờ, vui, xin lỗi — và nó thở, lắc lư, nghiêng đầu, nhảy lên, rung mình theo việc trợ lý đang làm; với một mô hình video, mỗi trạng thái là một đoạn clip ngắn lặp lại. Mặc định là một chú rồng nhỏ màu vàng nhạt, có sẵn cả ảnh tĩnh lẫn clip. |
-| **Ý tưởng và Thư viện** | Những điều nên hỏi tiếp theo, từ mục tiêu và bộ nhớ của bạn; và mọi thứ nó đã tạo ra, kèm bản xem trước. |
+- **Làm việc.** Shell Linux, trình duyệt, máy chủ MCP và kỹ năng — và khi bật *Hands*, cả ứng dụng trên điện thoại lẫn cửa sổ trên máy tính qua màn hình của chúng, cho những thứ chưa bao giờ có API.
+- **Hỏi trước.** Dừng lại trước khi xóa, gửi hay thanh toán, và nhớ lựa chọn cho một lần, cuộc trò chuyện này hoặc mãi mãi; mật khẩu và mã xác minh do bạn tự gõ. Gặp đăng nhập hay CAPTCHA, nó trao lại cho bạn; bấm *Xong* là tiếp tục.
+- **Với tới các thiết bị khác của bạn.** Nói trên điện thoại, chạy trên PC; `@Mac …` ở đầu tin nhắn gửi việc sang máy đó. Các phê duyệt quay về thiết bị bạn đang cầm.
+- **Không ngừng lại.** Mục tiêu được kiểm tra theo lịch, thói quen chạy khi ứng dụng đã đóng, mỗi sáng có một bảng tin viết cho bạn.
+- **Nhớ bạn.** Nó là ai, biết gì về bạn và khi nào thức dậy là những tệp Markdown bạn đọc và sửa được.
+- **Sống trong ứng dụng chat của bạn.** Trả lời trong 飞书, 钉钉, 企业微信 và Telegram.
+- **Có dáng vẻ riêng.** Mô tả một dáng vẻ, mô hình ảnh của bạn vẽ ra, mô hình video làm nó chuyển động. Mặc định là một chú rồng nhỏ.
+- **Mô hình nào cũng được.** Mô hình của relay, một khóa Bailian hay OpenRouter, hoặc bất kỳ endpoint tương thích OpenAI nào.
 
-Tất cả chạy trên điện thoại; phần còn lại của OpenMinis — terminal, trình duyệt trong ứng dụng, quản lý MCP và kỹ năng, nhóm mô hình, mức dùng token, bộ thực thi trợ năng, thư mục chia sẻ — vẫn được giữ và truy cập được từ cùng các menu.
+## Cách hoạt động
 
-## Phiên bản
+Mỗi thiết bị chạy trợ lý của riêng mình — điện thoại trong APK (Alpine Linux dưới proot, shell, trình duyệt, MCP), máy tính trong nanoMuse Desktop (DeepSeek Harness cùng runtime Python cho đôi tay). Đăng nhập xong, chúng gặp nhau trên relay và có thể nhờ vả nhau; văn bản trò chuyện đi qua relay, còn tệp và ảnh chụp màn hình ở lại nơi chúng được tạo ra.
 
-Mỗi giai đoạn một phiên bản nhỏ, mỗi phiên bản là một bản phát hành GitHub kèm APK. Tin tức và bảng phiên bản đầy đủ nằm trong [README tiếng Anh](../../README.md#versions); kế hoạch và lý do trong [docs/roadmap.md](../roadmap.md); ghi chú từng phiên bản trong [docs/releases/](../releases) và [CHANGELOG](../../CHANGELOG.md). Sau đó, theo thứ tự: phiên bản web trên máy của riêng bạn (máy ảo, máy chủ tại nhà); kính thông minh.
+```
+điện thoại ──┐                         ┌── máy tính (nanoMuse Desktop)
+             ├──▶  nanoMuse Cloud  ◀───┤        relay: đăng nhập, mô hình,
+web  ────────┘        /v1/hub          └── điện thoại / máy tính khác    hub, đồng bộ trò chuyện
+```
 
-## Chúng tôi đang ở đâu
+[docs/every-device.md](../every-device.md) nói về các thiết bị, [docs/hub.md](../hub.md) về khung tin, [docs/cloud.md](../cloud.md) về relay, [docs/privacy.md](../privacy.md) về những gì nó lưu.
 
-0.1 là bản xem trước. Chúng tôi dùng nó mỗi ngày và biết chỗ nào còn thô; hãy cho chúng tôi biết nó hỏng ở đâu với bạn và bạn muốn nó làm gì. Phía dành cho nhà phát triển — mô hình của riêng bạn, shell, MCP, kỹ năng, harness, API của runtime — nằm trong Cài đặt và tài liệu. Giao diện của runtime, của kỹ năng và plugin sẽ còn thay đổi một thời gian; [CHANGELOG](../../CHANGELOG.md) ghi lại điều gì đã thay đổi và [lộ trình](../roadmap.md) nói điều gì sẽ đến tiếp. Nếu nó có ích với bạn, một ngôi sao giúp người khác tìm thấy nó.
+## So với Muse và OpenMinis
+
+| | Meta Muse | OpenMinis | nanoMuse |
+|---|---|---|---|
+| Trợ lý chạy ở đâu | Một VM đám mây cho mỗi người dùng | Chiếc điện thoại cài nó | Điện thoại, máy tính của bạn hoặc máy chủ của bạn — một tài khoản cho tất cả |
+| Ứng dụng không có API | Ngoài tầm với; VM không bao giờ chạm vào thiết bị của bạn | Một CLI trợ năng trên Android | Màn hình làm đôi tay trên cả điện thoại lẫn máy tính: ảnh chụp màn hình, thử API trước, đăng nhập thì bạn tiếp quản. Không có trên iOS — hệ thống không cho phép |
+| Thiết bị khác | Các máy khách của một VM | Chỉ chiếc đã cài | Các thiết bị nhờ nhau qua hub, phê duyệt ở nơi bạn đang có mặt |
+| Mô hình | Của Meta | Tự mang | Khoản miễn phí của relay, hoặc của riêng bạn |
+| Giấy phép | Đóng | GPL-3.0 | GPL-3.0-or-later, xây trên OpenMinis |
+
+## Tài liệu
+
+[nanomuse.cn/docs](https://nanomuse.cn/docs/) — cài đặt theo từng nền tảng, mọi thiết bị, Hands, trình kết nối, bộ nhớ, tự lưu trữ, các giao thức. Nguồn ở [docs/](../); mỗi phiên bản thay đổi gì ở [CHANGELOG](../../CHANGELOG.md) và [docs/releases/](../releases/).
+
+## Tự lưu trữ
+
+Một VPS, một giờ: [docs/self-hosting.md](../self-hosting.md). Ba con đường — không cần máy chủ, chỉ dùng khóa của bạn; relay của riêng bạn với `scripts/self-host.sh`; hoặc runtime của riêng bạn cho ứng dụng web.
 
 ## Đóng góp
 
-**[Mở issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [hỏi hoặc chia sẻ trong Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [gắn sao cho kho mã](https://github.com/nano-muse/nanoMuse)**. Hạn mức miễn phí, khóa của riêng bạn và dữ liệu của bạn hoạt động ra sao: [docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md). Cách thiết lập build, các quy ước (`com.openminis.app` giữ nguyên, mã mới đặt trong `io.github.nanomuse.*`, `// nanoMuse:` ở các chỉnh sửa upstream, `Signed-off-by` trên mỗi commit) và cách phát hành: [CONTRIBUTING.md](../../CONTRIBUTING.md).
+Dùng nó cho một việc thật, kể lại chỗ nào hỏng, rồi chọn một việc nhỏ và cụ thể: [CONTRIBUTING.md](../../CONTRIBUTING.md) có phần thiết lập và quy ước, [AGENTS.md](../../AGENTS.md) là các quy tắc một trợ lý lập trình tuân theo trong cây mã này, và [lộ trình](../roadmap.md) chỉ chỗ bắt đầu. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions).
 
-## Lời cảm ơn
+## Ghi nhận
 
-nanoMuse đứng trên công sức của người khác; [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) ghi các điều khoản. Ứng dụng được xây trên [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 — Linux qua proot, shell, trình duyệt, MCP, kỹ năng, tác vụ theo lịch, bộ thực thi trợ năng; sandbox đến từ [proot](https://github.com/proot-me/proot) và [Alpine Linux](https://alpinelinux.org/).
+nanoMuse đứng trên công sức của người khác; điều khoản ở [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
 
-## Miễn trừ trách nhiệm
+- [OpenMinis](https://github.com/OpenMinis/OpenMinis) — trợ lý chạy trên thiết bị mà ứng dụng điện thoại được xây dựng từ đó, với [proot](https://github.com/nano-muse/proot) và [Alpine Linux](https://alpinelinux.org/) làm hộp cát.
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — harness trợ lý mà ứng dụng máy tính là một plugin của nó.
+- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance) — bộ điều khiển đôi tay trên máy tính được chuyển từ mã của họ, và các điểm đánh dấu trên sân khấu theo ScreenMarker của họ.
+- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/lsdefine/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ClawGUI/ClawGUI-APP) — bộ điều khiển điện thoại, dấu vết và ý tưởng sản phẩm.
 
-nanoMuse là một dự án cộng đồng độc lập. Nó không liên kết với, không được chứng thực bởi, và không phái sinh từ Meta Platforms, Inc. hay sản phẩm Muse của họ; Muse là nhãn hiệu của Meta Platforms, Inc. Chú rồng là của riêng dự án.
+## Tuyên bố
+
+nanoMuse là dự án cộng đồng độc lập, không liên kết với và không được Meta Platforms, Inc. bảo trợ; Muse là nhãn hiệu của họ. Chú rồng là của dự án này.
 
 ## Giấy phép
 
-[GPL-3.0-or-later](../../LICENSE). Ứng dụng Android dựa trên OpenMinis 1.13 (GPL-3.0), được chỉnh sửa từ 2026-09-24; xem [NOTICE](../../NOTICE) và [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md). Các phiên bản đầu của nhánh Python được phát hành theo giấy phép MIT (tag `pre-openminis`).
+[GPL-3.0-or-later](../../LICENSE). Ứng dụng điện thoại dựa trên OpenMinis 1.13 (GPL-3.0), được sửa đổi từ ngày 2026-09-24 — xem [NOTICE](../../NOTICE). Các phiên bản trước đó của nhánh Python theo giấy phép MIT (tag `pre-openminis`).

@@ -17,11 +17,23 @@ interface SyncApi {
     @Throws(SyncException::class)
     fun setEnabled(on: Boolean): SyncState
 
+    /**
+     * Changes after [since]. [scope] `all` or `main` (C9: the main conversation only); [tail]
+     * with `since=0` asks for the newest K messages and their conversations instead of
+     * everything — a fresh device's first pull. 0 = no tail.
+     */
     @Throws(SyncException::class)
-    fun changes(since: Long, limit: Int = 500): Changes
+    fun changes(since: Long, limit: Int = 500, scope: String = SCOPE_ALL, tail: Int = 0): Changes
 
     @Throws(SyncException::class)
     fun push(device: String, conversations: List<OutConversation>, messages: List<OutMessage>): PushResult
+
+    /**
+     * Presence (C9): this device started ([working] true) or finished a turn on [cid]. Best
+     * effort — the caller never retries and never blocks on it.
+     */
+    @Throws(SyncException::class)
+    fun working(device: String, cid: String, working: Boolean)
 
     @Throws(SyncException::class)
     fun deleteConversation(cid: String)
@@ -29,6 +41,11 @@ interface SyncApi {
     /** Wipes the account's store; the switch stays as it is. */
     @Throws(SyncException::class)
     fun wipe()
+
+    companion object {
+        const val SCOPE_ALL = "all"
+        const val SCOPE_MAIN = "main"
+    }
 }
 
 /** The wire shapes, apart so the parsing can be tested without a socket. */
@@ -39,6 +56,7 @@ object SyncJson {
         return Changes(
             cursor = o.optLong("cursor", 0),
             more = o.optBoolean("more", false),
+            skipped = o.optInt("skipped", 0),
             conversations = (0 until convs.length()).mapNotNull { convs.optJSONObject(it) }.map {
                 RemoteConversation(
                     cid = it.optString("cid"),
@@ -133,7 +151,20 @@ object SyncJson {
             cursor = o.optLong("cursor", 0),
             conversations = counts.optInt("conversations", 0),
             messages = counts.optInt("messages", 0),
+            working = working(o.optJSONArray("working")),
         )
+    }
+
+    /** `working[]` of the state, or one hub `working` frame's body ([working] with `working: false` gives null). */
+    fun working(arr: JSONArray?): List<WorkingPresence> =
+        (0 until (arr?.length() ?: 0)).mapNotNull { arr?.optJSONObject(it) }.mapNotNull { working(it) }
+
+    fun working(o: JSONObject): WorkingPresence? {
+        if (o.has("working") && !o.optBoolean("working", true)) return null
+        val cid = o.optString("cid")
+        val from = o.optString("from")
+        if (cid.isBlank() || from.isBlank()) return null
+        return WorkingPresence(cid, from, o.optString("device_name"), o.optLong("at", 0))
     }
 }
 
@@ -152,11 +183,15 @@ class RelaySyncApi(
     override fun setEnabled(on: Boolean): SyncState =
         SyncJson.state(call("PUT", "/v1/sync/state", JSONObject().put("enabled", on)))
 
-    override fun changes(since: Long, limit: Int): Changes =
-        SyncJson.changes(call("GET", "/v1/sync/changes?since=$since&limit=$limit"))
+    override fun changes(since: Long, limit: Int, scope: String, tail: Int): Changes =
+        SyncJson.changes(call("GET", changesPath(since, limit, scope, tail)))
 
     override fun push(device: String, conversations: List<OutConversation>, messages: List<OutMessage>): PushResult =
         SyncJson.pushResult(call("POST", "/v1/sync/changes", SyncJson.pushBody(device, conversations, messages)))
+
+    override fun working(device: String, cid: String, working: Boolean) {
+        call("POST", "/v1/sync/working", JSONObject().put("cid", cid).put("working", working).put("device", device))
+    }
 
     override fun deleteConversation(cid: String) {
         call("DELETE", "/v1/sync/conversations/$cid")
@@ -194,10 +229,17 @@ class RelaySyncApi(
         }
     }
 
-    private companion object {
-        val json = "application/json; charset=utf-8".toMediaType()
-        val defaultClient: OkHttpClient by lazy {
+    companion object {
+        private val json = "application/json; charset=utf-8".toMediaType()
+        private val defaultClient: OkHttpClient by lazy {
             OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
+        }
+
+        /** The query as the relay reads it; `scope` and `tail` only when they say something (an older relay ignores them anyway). */
+        fun changesPath(since: Long, limit: Int, scope: String, tail: Int): String = buildString {
+            append("/v1/sync/changes?since=").append(since).append("&limit=").append(limit)
+            if (scope != SyncApi.SCOPE_ALL) append("&scope=").append(scope)
+            if (since == 0L && tail > 0) append("&tail=").append(tail)
         }
     }
 }

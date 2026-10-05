@@ -629,7 +629,23 @@
     <string name="nm_cloud_resend">Send again</string>
     <string name="nm_cloud_resend_in">Send again in %1$ds</string>
     <string name="nm_cloud_verify">Sign in</string>
-    <string name="nm_cloud_debug_base">Relay (debug build)</string>
+    <!-- Your own relay (0.1.38): the sign-in screen's server form and the account page's row -->
+    <string name="nm_cloud_other_server">Use a different server</string>
+    <string name="nm_cloud_server_url">Relay address</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Check</string>
+    <string name="nm_cloud_server_use">Use this server</string>
+    <string name="nm_cloud_server_now">Server: %1$s</string>
+    <string name="nm_cloud_server_ok">%1$s answered: relay %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Enter the relay\'s address, like https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Use https for a server outside your own network. http is fine for a private address (10.x, 192.168.x, 172.16–31.x, localhost, a .local or .ts.net name).</string>
+    <string name="nm_cloud_server_unreachable">No relay answered at %1$s. Check the address and that the relay is running.</string>
+    <string name="nm_cloud_server_default">Back to nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Server</string>
+    <string name="nm_cloud_server_change">Change</string>
+    <string name="nm_cloud_server_change_confirm">This phone\'s key belongs to the current server. Sign out here first, then sign in to the other server from the sign-in screen.</string>
+    <!-- Text-message codes: said on the sign-in screen before asking, and for the relay's phone_region answer -->
+    <string name="nm_cloud_sms_region">Text-message codes reach mainland-China numbers only. Use an e-mail address instead.</string>
     <string name="nm_cloud_fine_print">The relay keeps an account id, a masked identifier, usage counts and your agent\'s name and look; what else, and what is yours to switch off, is in the privacy policy.</string>
     <string name="nm_cloud_not_signed_in">Not signed in</string>
     <string name="nm_cloud_not_signed_in_sub">Sign in with a phone number or an e-mail for a free allowance. Your own providers stay as they are.</string>
@@ -657,7 +673,6 @@
     <string name="nm_cloud_err_code_too_often">Too many codes in a row. Wait a few minutes.</string>
     <string name="nm_cloud_err_not_invited">This relay is private; that address is not on its list.</string>
     <string name="nm_cloud_err_send_failed">The code could not be sent. Try again in a moment.</string>
-    <string name="nm_cloud_err_phone_region">Codes reach mainland China numbers only for now; elsewhere, sign in with an e-mail address.</string>
     <string name="nm_cloud_err_disabled">This account has been disabled.</string>
     <string name="nm_cloud_err_bad_key">The relay no longer recognises this phone. Sign in again.</string>
     <string name="nm_cloud_err_out_of_tokens">The allowance is used up.</string>
@@ -938,6 +953,10 @@
     <string name="nm_sync_deleted">Synced conversations deleted.</string>
     <string name="nm_sync_from">From %1$s</string>
     <string name="nm_sync_attachment_note">[Attachment %1$s — stays on the device it was made on]</string>
+    <!-- Contract C9 (0.1.38): side chats stay local unless asked for; the device working on a line -->
+    <string name="nm_sync_side_title">Also sync side chats</string>
+    <string name="nm_sync_side_sub">Off: side chats stay on this device. On: this device\'s side chats go to the account and the other devices\' side chats come here.</string>
+    <string name="nm_sync_working">%1$s is working…</string>
     <string name="nm_devices_ask">Ask this device</string>
     <string name="nm_devices_ask_hint">Tap a device that is online to write to it from the chat: the message starts with @ and its name, and that device does the work.</string>
 </resources>

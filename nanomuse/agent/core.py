@@ -14,6 +14,7 @@ from nanomuse.config import Settings
 from nanomuse.contacts import ContactBook
 from nanomuse.goals import GoalStore
 from nanomuse.llm.base import BaseLLM
+from nanomuse.llm.vision import keep_newest_images
 from nanomuse.logger import logger
 from nanomuse.memory import MemoryItem, MemoryStore
 from nanomuse.runtime import device
@@ -320,15 +321,22 @@ class MuseAgent:
 
     # ------------------------------------------------------------------ context window
     def context_messages(self) -> list[Message]:
+        """The window the model sees: the newest ``max_context_messages`` (never starting
+        inside a tool exchange), with pictures only on the newest ``max_context_images``
+        image-bearing messages — a hands session would otherwise send every screenshot of
+        the run on every step (C9). Copies where a picture was dropped; the history itself
+        keeps them."""
         limit = self.settings.agent.max_context_messages
         msgs = self.messages
         if len(msgs) <= limit:
-            return list(msgs)
-        cutoff = len(msgs) - limit
-        # Never start in the middle of a tool exchange: advance to the next user message.
-        while cutoff < len(msgs) and msgs[cutoff].role != Role.USER:
-            cutoff += 1
-        return list(msgs[cutoff:]) if cutoff < len(msgs) else list(msgs[-limit:])
+            window = list(msgs)
+        else:
+            cutoff = len(msgs) - limit
+            # Never start in the middle of a tool exchange: advance to the next user message.
+            while cutoff < len(msgs) and msgs[cutoff].role != Role.USER:
+                cutoff += 1
+            window = list(msgs[cutoff:]) if cutoff < len(msgs) else list(msgs[-limit:])
+        return keep_newest_images(window, self.settings.agent.max_context_images)
 
     # ------------------------------------------------------------------ stuck detection
     def _is_stuck(self) -> bool:

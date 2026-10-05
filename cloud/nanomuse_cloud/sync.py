@@ -16,6 +16,14 @@ On by default for a signed-in account; turning it off deletes everything stored.
 a chat tombstones the conversation (so the other devices drop it) and removes its texts at
 once; tombstones go after 30 days. At most 20,000 messages per account: beyond that, the
 oldest conversations' messages are dropped from the relay (devices keep their own copies).
+
+Main first (0.20, contract C9). A device that only wants the account's main conversation
+pulls with ``scope=main``; a fresh device asks for the tail — ``since=0&tail=300`` — and
+gets the newest messages with their conversations instead of the whole store, so the first
+sign-in shows a chat in seconds however big the history is. Presence rides alongside: a
+device says ``working`` on a conversation when a turn starts there and when it ends; the
+relay tells the account's other sockets and remembers the latest ``working: true`` for ten
+minutes, in memory only — it is a hint for the screen, not data worth a table.
 """
 
 from __future__ import annotations
@@ -37,6 +45,11 @@ TOMBSTONE_DAYS = 30
 MAX_ATTACHMENTS = 20
 KINDS = ("main", "side")
 ROLES = ("user", "assistant")
+SCOPES = ("all", "main")
+MAX_TAIL = 500
+# how long a device's `working: true` stands without a `working: false` (the device may
+# have lost its network mid-turn; the readers' line goes away on its own)
+WORKING_TTL_S = 10 * 60
 _ID = re.compile(r"^[a-z0-9][a-z0-9._:-]{3,63}$")
 
 
@@ -134,6 +147,48 @@ def _message_row(r: sqlite3.Row, names: dict[str, str]) -> dict:
     }
 
 
+# -- presence -----------------------------------------------------------------------------------
+
+
+class Presence:
+    """Who is working on which conversation right now (0.20): the latest `working: true` per
+    (account, cid), kept in memory for WORKING_TTL_S and dropped by a `working: false` from
+    the same device. Never written to disk — a restart forgets it, and that is right."""
+
+    def __init__(self, clock=time.time):
+        self.clock = clock
+        self._live: dict[tuple[str, str], dict] = {}
+
+    def set(self, account_id: str, cid: str, device: str, device_name: str, working: bool) -> dict:
+        """Record the change; returns the frame body the hub sends (without `type`)."""
+        at = int(self.clock())
+        key = (account_id, cid)
+        if working:
+            self._live[key] = {"cid": cid, "from": device, "device_name": device_name, "at": at}
+        else:
+            cur = self._live.get(key)
+            # another device's `true` stands: the one that finished is not the one working
+            if cur is not None and cur["from"] == device:
+                del self._live[key]
+        return {"cid": cid, "from": device, "device_name": device_name, "working": working, "at": at}
+
+    def working(self, account_id: str) -> list[dict]:
+        """The unexpired entries of one account, oldest first."""
+        self._sweep()
+        out = [dict(v) for (acc, _), v in self._live.items() if acc == account_id]
+        out.sort(key=lambda v: v["at"])
+        return out
+
+    def forget(self, account_id: str) -> None:
+        for key in [k for k in self._live if k[0] == account_id]:
+            del self._live[key]
+
+    def _sweep(self) -> None:
+        cutoff = int(self.clock()) - WORKING_TTL_S
+        for key in [k for k, v in self._live.items() if v["at"] < cutoff]:
+            del self._live[key]
+
+
 # -- the store ----------------------------------------------------------------------------------
 
 
@@ -141,8 +196,9 @@ class SyncStore:
     """The account's synced conversations over the relay's database. Every public method is
     one transaction; `push` is the only one with rules worth reading (above)."""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, presence: Presence | None = None):
         self.db = db
+        self.presence = presence if presence is not None else Presence()
 
     # -- state --
 
@@ -164,6 +220,7 @@ class SyncStore:
             "cursor": self._cursor(c, account_id),
             "counts": {"conversations": int(convs), "messages": int(msgs)},
             "limits": dict(LIMITS),
+            "working": self.presence.working(account_id),
         }
 
     def state(self, account_id: str) -> dict:
@@ -182,6 +239,7 @@ class SyncStore:
     def _wipe(self, c: sqlite3.Connection, account_id: str) -> None:
         c.execute("DELETE FROM sync_messages WHERE account_id=?", (account_id,))
         c.execute("DELETE FROM sync_conversations WHERE account_id=?", (account_id,))
+        self.presence.forget(account_id)
 
     def wipe(self, account_id: str) -> dict:
         """`DELETE /v1/sync/changes`: the store emptied, the switch left where it is."""
@@ -195,27 +253,60 @@ class SyncStore:
         rows = c.execute("SELECT id, name FROM devices WHERE account_id=?", (account_id,)).fetchall()
         return {str(r["id"]): str(r["name"]) for r in rows}
 
-    def changes(self, account_id: str, since: int = 0, limit: int = DEFAULT_PAGE) -> dict:
+    def changes(self, account_id: str, since: int = 0, limit: int = DEFAULT_PAGE, scope: str = "all", tail: int = 0) -> dict:
         """Everything with a seq after `since`, in seq order, at most `limit` rows; `more`
         says there is another page, and `cursor` is where to continue (the account's counter
-        when this was the last page)."""
+        when this was the last page).
+
+        `scope="main"` (0.20) narrows it to the account's main conversation — its row, its
+        messages, its tombstone; with no main yet the page is empty and `cursor` the
+        account's counter. `tail=K` (with `since=0` only) is the first pull of a fresh
+        device: the newest K messages of the scope in seq order plus the rows of the
+        conversations they belong to, `cursor` at the account's counter, `more` false and
+        `skipped` saying how many older messages stayed on the relay."""
         since = max(0, int(since))
         limit = max(1, min(int(limit), MAX_PAGE))
+        if scope not in SCOPES:
+            raise CloudError(400, "bad_scope", "scope is all or main")
+        tail = max(0, min(int(tail or 0), MAX_TAIL)) if since == 0 else 0
+        # the scope as a SQL fragment over sync_conversations (sc) and sync_messages (sm)
+        conv_scope = " AND kind='main'" if scope == "main" else ""
+        msg_scope = (
+            " AND cid IN (SELECT cid FROM sync_conversations WHERE account_id=? AND kind='main')" if scope == "main" else ""
+        )
         with self.db.tx() as c:
             if not self._enabled(c, account_id):
                 raise CloudError(409, "sync_off", "Conversation sync is off for this account")
             names = self._device_names(c, account_id)
-            convs = c.execute(
-                "SELECT * FROM sync_conversations WHERE account_id=? AND seq>? ORDER BY seq LIMIT ?", (account_id, since, limit + 1)
-            ).fetchall()
-            msgs = c.execute(
-                "SELECT * FROM sync_messages WHERE account_id=? AND seq>? ORDER BY seq LIMIT ?", (account_id, since, limit + 1)
-            ).fetchall()
-            rows: list[tuple[int, str, sqlite3.Row]] = [(int(r["seq"]), "c", r) for r in convs] + [(int(r["seq"]), "m", r) for r in msgs]
-            rows.sort(key=lambda x: x[0])
-            more = len(rows) > limit
-            rows = rows[:limit]
-            cursor = rows[-1][0] if more and rows else self._cursor(c, account_id)
+            skipped: int | None = None
+            if tail:
+                msgs = c.execute(
+                    f"SELECT * FROM sync_messages WHERE account_id=?{msg_scope} ORDER BY seq DESC LIMIT ?",
+                    (account_id, *((account_id,) if msg_scope else ()), tail),
+                ).fetchall()
+                msgs.reverse()
+                total = c.execute(
+                    f"SELECT COUNT(*) FROM sync_messages WHERE account_id=?{msg_scope}",
+                    (account_id, *((account_id,) if msg_scope else ())),
+                ).fetchone()[0]
+                skipped = max(0, int(total) - len(msgs))
+                rows: list[tuple[int, str, sqlite3.Row]] = [(int(r["seq"]), "m", r) for r in msgs]
+                more = False
+                cursor = self._cursor(c, account_id)
+            else:
+                convs = c.execute(
+                    f"SELECT * FROM sync_conversations WHERE account_id=? AND seq>?{conv_scope} ORDER BY seq LIMIT ?",
+                    (account_id, since, limit + 1),
+                ).fetchall()
+                msgs = c.execute(
+                    f"SELECT * FROM sync_messages WHERE account_id=? AND seq>?{msg_scope} ORDER BY seq LIMIT ?",
+                    (account_id, since, *((account_id,) if msg_scope else ()), limit + 1),
+                ).fetchall()
+                rows = [(int(r["seq"]), "c", r) for r in convs] + [(int(r["seq"]), "m", r) for r in msgs]
+                rows.sort(key=lambda x: x[0])
+                more = len(rows) > limit
+                rows = rows[:limit]
+                cursor = rows[-1][0] if more and rows else self._cursor(c, account_id)
             conversations = [r for _, k, r in rows if k == "c"]
             # A rename gives a conversation a seq above its messages, so a device starting
             # from zero would meet the messages first. Every message's conversation rides
@@ -230,12 +321,31 @@ class SyncStore:
                     (account_id, *wanted),
                 ).fetchall()
                 conversations.extend(extra)
-        return {
+        out = {
             "cursor": cursor,
             "more": more,
             "conversations": [_conversation_row(r, names) for r in conversations],
             "messages": [_message_row(r, names) for _, k, r in rows if k == "m"],
         }
+        if skipped is not None:
+            out["skipped"] = skipped
+        return out
+
+    def set_working(self, account_id: str, cid: str, device: str, working: bool) -> dict:
+        """`POST /v1/sync/working`: presence for one conversation. Returns the frame body the
+        hub sends to the account's other sockets. 404 for a cid the relay does not hold."""
+        cid_ok = valid_id(cid)
+        if cid_ok is None:
+            raise CloudError(400, "bad_cid", "That is not a conversation id")
+        device = str(device or "")[:80]
+        with self.db.tx() as c:
+            if not self._enabled(c, account_id):
+                raise CloudError(409, "sync_off", "Conversation sync is off for this account")
+            row = c.execute("SELECT deleted FROM sync_conversations WHERE account_id=? AND cid=?", (account_id, cid_ok)).fetchone()
+            if row is None or row["deleted"]:
+                raise CloudError(404, "no_conversation", "No synced conversation with that id")
+            name = self._device_names(c, account_id).get(device, "")
+        return self.presence.set(account_id, cid_ok, device, name, bool(working))
 
     def _enabled(self, c: sqlite3.Connection, account_id: str) -> bool:
         row = c.execute("SELECT sync_enabled FROM accounts WHERE id=?", (account_id,)).fetchone()

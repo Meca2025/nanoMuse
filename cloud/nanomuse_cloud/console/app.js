@@ -11,7 +11,7 @@
   const zh = (navigator.language || "").toLowerCase().startsWith("zh");
   const T = zh ? {
     tagline: "你的每一台设备，都是你的 Muse。",
-    identifier: "中国大陆手机号或邮箱", code: "验证码", password: "密码", sendCode: "发送验证码", signIn: "登录", another: "换一个账号",
+    identifier: "中国大陆手机号或邮箱", smsRegion: "短信验证码只能发到中国大陆手机号。其他地区请用邮箱登录。", code: "验证码", password: "密码", sendCode: "发送验证码", signIn: "登录", another: "换一个账号",
     byCode: "验证码登录", byPassword: "密码登录", forgot: "忘了密码？用验证码登录", show: "显示", hide: "隐藏",
     codeSent: "验证码已发送，十分钟内有效。", relay: "服务器", fine: "登录后，这个页面能看到你账号下所有在线的设备，并让它们各自的 Muse 去做事。网页本身不操作任何设备。",
     devices: "设备", noDevices: "还没有设备接入。用同一个账号在手机上登录 nanoMuse，或在电脑上运行 nanoMuse Desktop，它们就会出现在这里。",
@@ -45,7 +45,7 @@
       bad_credentials: "邮箱或密码不对。", no_password: "这个账号还没设置密码，请用验证码登录。", locked: "密码试错太多次，请稍后再试或用验证码登录。", password_short: "密码至少 8 位。", password_long: "密码太长了。", password_weak: "密码太简单了。", password_wrong: "当前密码不对。", password_required: "请输入当前密码。", disabled: "这个账号已被停用。" },
   } : {
     tagline: "Every device you own, a Muse of yours.",
-    identifier: "Mainland China phone number or e-mail", code: "Verification code", password: "Password", sendCode: "Send code", signIn: "Sign in", another: "Use another account",
+    identifier: "Mainland China phone number or e-mail", smsRegion: "Text-message codes reach mainland-China numbers only. Use an e-mail address instead.", code: "Verification code", password: "Password", sendCode: "Send code", signIn: "Sign in", another: "Use another account",
     byCode: "With a code", byPassword: "With a password", forgot: "Forgot it? Sign in with a code", show: "Show", hide: "Hide",
     codeSent: "A six-digit code is on its way; it is good for ten minutes.", relay: "Server", fine: "Once signed in, this page shows every device of your account that is online and lets each device's Muse do things. The page itself operates nothing.",
     devices: "Devices", noDevices: "No device yet. Sign in to nanoMuse on your phone with this account, or run nanoMuse Desktop on a computer, and they appear here.",
@@ -168,7 +168,9 @@
           h("button", { class: byPw ? "" : "on", onclick: () => { mode = "code"; LS.setItem("nm.mode", mode); msg = ""; draw(); } }, T.byCode),
           h("button", { class: byPw ? "on" : "", onclick: () => { mode = "password"; LS.setItem("nm.mode", mode); sent = false; msg = ""; draw(); } }, T.byPassword)),
         h("div", { class: "field" }, h("label", {}, T.identifier),
-          h("div", { class: "in" }, h("input", { id: "ident", type: "text", autocomplete: "username", inputmode: /^\s*[+\d]/.test(identifier) ? "tel" : "email", value: identifier, disabled: sent ? "" : null, oninput: (e) => { identifier = e.target.value; e.target.inputMode = /^\s*[+\d]/.test(identifier) ? "tel" : "email"; }, onkeydown: (e) => { if (e.key === "Enter") go(); } }))),
+          h("div", { class: "in" }, h("input", { id: "ident", type: "text", autocomplete: "username", inputmode: /^\s*[+\d]/.test(identifier) ? "tel" : "email", value: identifier, disabled: sent ? "" : null, oninput: (e) => { identifier = e.target.value; e.target.inputMode = /^\s*[+\d]/.test(identifier) ? "tel" : "email"; }, onkeydown: (e) => { if (e.key === "Enter") go(); } })),
+          // said up front, not only after a code never came: SMS reaches mainland numbers only (0.20)
+          !byPw && !sent ? h("p", { class: "fine", style: "margin:6px 0 0" }, T.smsRegion) : null),
         byPw ? h("div", { class: "field" }, h("label", {}, T.password),
           h("div", { class: "in" }, h("input", { id: "pw", type: showPw ? "text" : "password", autocomplete: "current-password", onkeydown: (e) => { if (e.key === "Enter") go(); } }),
             h("button", { type: "button", onclick: () => { showPw = !showPw; const i = document.getElementById("pw"); if (i) i.type = showPw ? "text" : "password"; } }, showPw ? T.hide : T.show))) : null,

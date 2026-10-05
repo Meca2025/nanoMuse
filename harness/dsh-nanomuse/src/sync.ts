@@ -25,6 +25,14 @@
  * reaches the sessions here), then the whole eligible history of this computer goes
  * up, oldest first, 200 messages a POST.
  *
+ * **Main first** (C9). Only the main conversation syncs unless this device's "Also sync
+ * side chats" is on (`state.sideChats`): off, side chats are neither pushed nor pulled
+ * (`scope=main`), and a side row that still arrives makes no session. The first pull of an
+ * account asks for the newest 300 messages (`tail=300`); the switch going on pulls the
+ * account's side chats the same way, once. While a turn runs here on a synced conversation
+ * the relay is told (`POST /v1/sync/working`, best-effort), and the other devices' `working`
+ * frames put a quiet "kwai is working…" line under their last prompt here (`workingOf`).
+ *
  * Never a key in a log, never a file: attachments travel as names and sizes.
  */
 import { randomUUID } from 'node:crypto'
@@ -54,7 +62,26 @@ export interface SyncRelayState {
   enabled: boolean
   cursor: number
   counts: { conversations: number; messages: number }
+  /** Devices working on a conversation right now (C9), unexpired. */
+  working: WireWorking[]
 }
+
+/** The hub's `working` frame and the rows of `/v1/sync/state`'s `working` (C9). */
+export interface WireWorking {
+  cid: string
+  from: string
+  device_name: string
+  working: boolean
+  /** Unix seconds, the relay's clock. */
+  at: number
+}
+
+/** The newest messages a first pull asks for (C9): `since=0&tail=300`. */
+export const TAIL = 300
+/** A `working` presence is over this long after its `at` (C9). */
+export const WORKING_TTL_MS = 10 * 60_000
+/** The hub's `sync` frames arriving together become one pull. */
+export const FRAME_COALESCE_MS = 1000
 
 export interface WireConversation {
   cid: string
@@ -114,8 +141,13 @@ export class SyncRelay {
     return toState(await res.json())
   }
 
-  async changes(apiKey: string, since: number, limit = PAGE): Promise<SyncChanges> {
-    const res = await this.fetchImpl(`${this.origin}/v1/sync/changes?since=${since}&limit=${limit}`, { headers: this.auth(apiKey) })
+  /**
+   * The changes since a cursor (C7); `scope: 'main'` asks for the main conversation only, `tail`
+   * (with `since=0`) for the newest `tail` messages of the scope and their conversations' rows (C9).
+   */
+  async changes(apiKey: string, since: number, limit = PAGE, scope: 'all' | 'main' = 'all', tail = 0): Promise<SyncChanges> {
+    const query = `since=${since}&limit=${limit}${scope === 'main' ? '&scope=main' : ''}${tail > 0 && since === 0 ? `&tail=${tail}` : ''}`
+    const res = await this.fetchImpl(`${this.origin}/v1/sync/changes?${query}`, { headers: this.auth(apiKey) })
     if (!res.ok) await fail(res)
     const body = (await res.json()) as Record<string, unknown>
     return {
@@ -124,6 +156,16 @@ export class SyncRelay {
       conversations: Array.isArray(body.conversations) ? body.conversations.map(toConversation) : [],
       messages: Array.isArray(body.messages) ? body.messages.map(toMessage) : [],
     }
+  }
+
+  /** Presence (C9): this device started or finished a turn on a conversation. Best-effort: the caller never retries. */
+  async working(apiKey: string, device: string, cid: string, working: boolean): Promise<void> {
+    const res = await this.fetchImpl(`${this.origin}/v1/sync/working`, {
+      method: 'POST',
+      headers: { ...this.auth(apiKey), ...JSON_HEADERS },
+      body: JSON.stringify({ cid, working, device }),
+    })
+    if (!res.ok) await fail(res)
   }
 
   async push(apiKey: string, device: string, conversations: Record<string, unknown>[], messages: Record<string, unknown>[]): Promise<PushResult> {
@@ -174,7 +216,17 @@ async function fail(res: Response): Promise<never> {
 function toState(value: unknown): SyncRelayState {
   const b = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
   const counts = (b.counts && typeof b.counts === 'object' ? b.counts : {}) as Record<string, unknown>
-  return { enabled: b.enabled !== false, cursor: Number(b.cursor ?? 0), counts: { conversations: Number(counts.conversations ?? 0), messages: Number(counts.messages ?? 0) } }
+  return {
+    enabled: b.enabled !== false,
+    cursor: Number(b.cursor ?? 0),
+    counts: { conversations: Number(counts.conversations ?? 0), messages: Number(counts.messages ?? 0) },
+    working: Array.isArray(b.working) ? b.working.map((w) => toWorking(w, true)) : [],
+  }
+}
+
+export function toWorking(value: unknown, working?: boolean): WireWorking {
+  const w = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
+  return { cid: String(w.cid ?? ''), from: String(w.from ?? ''), device_name: String(w.device_name ?? ''), working: working ?? w.working === true, at: Number(w.at ?? 0) }
 }
 
 function toConversation(value: unknown): WireConversation {
@@ -374,6 +426,8 @@ export interface SyncState {
   enabled: boolean
   /** The session that is the main chat here: the account's one main conversation. */
   mainSession: string
+  /** "Also sync side chats" (C9), per device, off by default: off → only the main conversation goes up and comes down. */
+  sideChats: boolean
   /** dsh session id → conversation id. */
   cids: Record<string, string>
   /** dsh message id → the mid it was pushed as. */
@@ -393,7 +447,7 @@ export interface SyncState {
 }
 
 export function emptyState(): SyncState {
-  return { accountId: '', cursor: 0, enabled: true, mainSession: '', cids: {}, mids: {}, titles: {}, conversations: {}, pulled: {}, hidden: [], toArchive: [] }
+  return { accountId: '', cursor: 0, enabled: true, mainSession: '', sideChats: false, cids: {}, mids: {}, titles: {}, conversations: {}, pulled: {}, hidden: [], toArchive: [] }
 }
 
 /**
@@ -403,7 +457,7 @@ export function emptyState(): SyncState {
  */
 export function migrate(state: SyncState | undefined): SyncState {
   if (!state) return emptyState()
-  const next: SyncState = { ...emptyState(), ...state }
+  const next: SyncState = { ...emptyState(), ...state, sideChats: state.sideChats === true }
   if ('mirrors' in next || !state.conversations) {
     delete next.mirrors
     next.cursor = 0
@@ -430,11 +484,14 @@ export interface SyncEngineOptions {
   log?(level: 'info' | 'warn' | 'debug', text: string): void
   pushDelayMs?: number
   pullEveryMs?: number
+  frameCoalesceMs?: number
 }
 
 /** What the browser half reads: Data controls, the chats column and the bubbles from elsewhere. */
 export interface SyncView {
   enabled: boolean
+  /** "Also sync side chats" (C9), this device's setting. */
+  sideChats: boolean
   available: boolean
   paused: boolean
   cursor: number
@@ -451,12 +508,26 @@ export interface SyncView {
   toArchive: string[]
 }
 
+/** Another device working on a conversation that lives in a session here (C9), for the browser half's line. */
+export interface WorkingPresence {
+  from: string
+  deviceName: string
+  /** Unix epoch milliseconds. */
+  at: number
+}
+
 export class SyncEngine {
   state: SyncState
   private paused = false
   private pushTimer: ReturnType<typeof setTimeout> | undefined
   private pullTimer: ReturnType<typeof setInterval> | undefined
+  private frameTimer: ReturnType<typeof setTimeout> | undefined
+  private workingTimer: ReturnType<typeof setTimeout> | undefined
   private readonly dirty = new Set<string>()
+  /** Sessions whose turn started (true) or ended (false) here, told to the relay after the push (C9). */
+  private readonly presence = new Map<string, boolean>()
+  /** cid → the other device working on it (C9). */
+  private readonly working = new Map<string, WorkingPresence>()
   private pulling: Promise<number> | undefined
   private pushing: Promise<void> | undefined
   private relayState: SyncRelayState | null = null
@@ -479,6 +550,7 @@ export class SyncEngine {
   view(): SyncView {
     return {
       enabled: this.state.enabled,
+      sideChats: this.state.sideChats,
       available: !this.paused && Boolean(this.state.accountId),
       paused: this.paused,
       cursor: this.state.cursor,
@@ -509,13 +581,17 @@ export class SyncEngine {
     this.pullTimer = undefined
     if (this.pushTimer) clearTimeout(this.pushTimer)
     this.pushTimer = undefined
+    if (this.frameTimer) clearTimeout(this.frameTimer)
+    this.frameTimer = undefined
+    if (this.workingTimer) clearTimeout(this.workingTimer)
+    this.workingTimer = undefined
   }
 
   /** A sign-in: a different account starts from cursor 0 with fresh ids. */
   async accountChanged(accountId: string): Promise<void> {
     this.paused = false
     if (accountId && accountId !== this.state.accountId) {
-      this.state = { ...emptyState(), enabled: this.state.enabled, mainSession: this.state.mainSession, accountId }
+      this.state = { ...emptyState(), enabled: this.state.enabled, sideChats: this.state.sideChats, mainSession: this.state.mainSession, accountId }
       await this.save()
     }
     void this.pullQuietly().then(() => this.pushAllSoon())
@@ -595,15 +671,83 @@ export class SyncEngine {
     return this.view()
   }
 
+  /**
+   * "Also sync side chats" (C9), this device's setting. On: the side chats here go up (oldest
+   * first, as the history did) after one pull of the account's newest side turns
+   * (`since=0&scope=all&tail=300`, idempotent by mid and cid). Off: side chats stop going
+   * up and coming down; what was synced stays where it is.
+   */
+  async setSideChats(on: boolean): Promise<SyncView> {
+    if (on === this.state.sideChats) return this.view()
+    this.state.sideChats = on
+    await this.save()
+    if (on) void this.pullTail().then(() => this.pushAllSoon())
+    this.changed()
+    return this.view()
+  }
+
   async relayStatus(): Promise<SyncRelayState | null> {
     const token = await this.options.token()
     if (!token) return (this.relayState = null)
     try {
       this.relayState = await this.options.relay.state(token)
+      for (const w of this.relayState.working) this.noteWorking(w, false)
+      this.expireWorking()
     } catch (error: unknown) {
       this.noteError(error)
     }
     return this.relayState
+  }
+
+  // ---- presence (C9) ------------------------------------------------------------------------
+
+  /** The hub's `working` frame: another device started or finished a turn on a conversation. */
+  onWorking(frame: WireWorking): void {
+    if (this.noteWorking(frame, true)) this.changed()
+  }
+
+  /** The other device working on the conversation that lives in a session here, if any (and not 10 minutes old). */
+  workingOf(sessionId: string): WorkingPresence | null {
+    this.expireWorking()
+    const cid = this.state.cids[sessionId]
+    return (cid && this.working.get(cid)) || null
+  }
+
+  /** Whether the line the browser half shows moved. */
+  private noteWorking(w: WireWorking, tell: boolean): boolean {
+    if (!w.cid || w.from === this.options.deviceId()) return false
+    const at = w.at * 1000
+    if (!w.working || Date.now() - at >= WORKING_TTL_MS) return this.working.delete(w.cid)
+    const known = this.working.get(w.cid)
+    if (known && known.from === w.from && known.at >= at) return false
+    this.working.set(w.cid, { from: w.from, deviceName: w.device_name, at })
+    // the line goes away by itself 10 minutes after the last `at`
+    if (this.workingTimer) clearTimeout(this.workingTimer)
+    this.workingTimer = setTimeout(() => {
+      this.workingTimer = undefined
+      if (this.expireWorking()) this.changed()
+    }, Math.max(0, at + WORKING_TTL_MS - Date.now()) + 50)
+    return tell
+  }
+
+  private expireWorking(): boolean {
+    let dropped = false
+    for (const [cid, w] of this.working) {
+      if (Date.now() - w.at >= WORKING_TTL_MS) {
+        this.working.delete(cid)
+        dropped = true
+      }
+    }
+    return dropped
+  }
+
+  /** Told to the relay after the push: best-effort, once, never blocking (C9). */
+  private tellWorking(token: string, sessionId: string): void {
+    const working = this.presence.get(sessionId)
+    this.presence.delete(sessionId)
+    if (working === undefined || !this.syncs(sessionId)) return
+    const cid = this.state.cids[sessionId]
+    if (cid) void this.options.relay.working(token, this.options.deviceId(), cid, working).catch(() => undefined)
   }
 
   /** "Delete synced conversations": the relay's store emptied; what it knew is forgotten here, the sessions stay. */
@@ -625,8 +769,9 @@ export class SyncEngine {
 
   /** The person sent a message in a session here: it goes up now (C8), not when the turn ends. */
   messageSent(sessionId: string): void {
-    if (this.options.isTaskSession?.(sessionId)) return
+    if (!this.syncs(sessionId)) return
     this.dirty.add(sessionId)
+    this.presence.set(sessionId, true)
     this.pushSoon(Math.min(SEND_DELAY_MS, this.options.pushDelayMs ?? PUSH_DELAY_MS))
     // a new prompt here is a new anchor for the other devices' bubbles: the browser half re-reads them
     if (this.kept(sessionId)) this.changed()
@@ -637,24 +782,35 @@ export class SyncEngine {
     return Object.values(this.state.pulled).includes(sessionId)
   }
 
+  /** Whether a session's turns go up: not another device's task, and a side chat only when the switch is on (C9). */
+  private syncs(sessionId: string): boolean {
+    if (this.options.isTaskSession?.(sessionId)) return false
+    return this.state.sideChats || sessionId === this.state.mainSession
+  }
+
   /** A turn ended in a session here: the model's final text goes up after the debounce. */
   turnEnded(sessionId: string): void {
-    if (this.options.isTaskSession?.(sessionId)) return
+    if (!this.syncs(sessionId)) return
     this.dirty.add(sessionId)
+    this.presence.set(sessionId, false)
     this.pushSoon(this.options.pushDelayMs ?? PUSH_DELAY_MS)
   }
 
   sessionRenamed(sessionId: string): void {
-    if (this.options.isTaskSession?.(sessionId)) return
+    if (!this.syncs(sessionId)) return
     this.dirty.add(sessionId)
     this.pushSoon(200)
   }
 
-  /** The relay's `sync` frame: another device pushed. */
+  /** The relay's `sync` frame: another device pushed. Frames arriving together become one pull. */
   onFrame(frame: { cursor?: number; from?: string }): void {
     if (frame.from && frame.from === this.options.deviceId()) return
     if (typeof frame.cursor === 'number' && frame.cursor <= this.state.cursor) return
-    void this.pullQuietly()
+    if (this.frameTimer) return
+    this.frameTimer = setTimeout(() => {
+      this.frameTimer = undefined
+      void this.pullQuietly()
+    }, this.options.frameCoalesceMs ?? FRAME_COALESCE_MS)
   }
 
   // ---- push ---------------------------------------------------------------------------------
@@ -672,7 +828,7 @@ export class SyncEngine {
     void this.options.sessions
       .list()
       .then((sessions) => {
-        for (const s of sessions) if (!s.blank && !this.options.isTaskSession?.(s.id)) this.dirty.add(s.id)
+        for (const s of sessions) if (!s.blank && this.syncs(s.id)) this.dirty.add(s.id)
         this.pushSoon(this.options.pushDelayMs ?? PUSH_DELAY_MS)
       })
       .catch(() => undefined)
@@ -709,11 +865,12 @@ export class SyncEngine {
       const messages: Record<string, unknown>[] = []
       const pending: Array<{ sessionId: string; line: SessionLine; mid: string }> = []
       const touched: string[] = []
-      const unvisited = new Set(ids)
+      // sessions with more than 200 new lines and those the round did not reach go again
+      const again = new Set(ids)
       for (const sessionId of ids) {
-        unvisited.delete(sessionId)
+        again.delete(sessionId)
         const info = sessions.get(sessionId)
-        if (!info || this.options.isTaskSession?.(sessionId)) continue
+        if (!info || !this.syncs(sessionId)) continue
         const cid = this.cidFor(sessionId)
         const title = info.title || 'New chat'
         if (this.state.titles[sessionId] !== title) {
@@ -722,7 +879,10 @@ export class SyncEngine {
         const lines = await this.options.sessions.lines(sessionId)
         for (const line of lines) {
           if (this.state.mids[line.id]) continue
-          if (messages.length >= MAX_POST_MESSAGES) break
+          if (messages.length >= MAX_POST_MESSAGES) {
+            again.add(sessionId)
+            break
+          }
           const mid = randomUUID()
           messages.push({ mid, cid, role: line.role, text: line.text, created_at: Math.floor(line.at / 1000) })
           pending.push({ sessionId, line, mid })
@@ -730,7 +890,12 @@ export class SyncEngine {
         touched.push(sessionId)
         if (messages.length >= MAX_POST_MESSAGES) break
       }
-      if (conversations.length === 0 && messages.length === 0) break
+      if (conversations.length === 0 && messages.length === 0) {
+        // nothing new in these sessions: they are done, not dirty again
+        for (const sid of touched) this.tellWorking(token, sid)
+        ids.splice(0, ids.length, ...ids.filter((sid) => again.has(sid)))
+        break
+      }
       const out = await this.options.relay.push(token, device, conversations, messages)
       const redirect = new Map<string, string>()
       for (const r of out.rejected) if (r.reason === 'main_exists' && r.cid && r.cid_main) redirect.set(r.cid, r.cid_main)
@@ -741,6 +906,7 @@ export class SyncEngine {
           if (to) {
             this.state.cids[sid] = to
             delete this.state.titles[sid]
+            again.add(sid)
             this.log('info', 'nanomuse sync: the main chat adopts the account’s conversation id')
           }
         }
@@ -766,12 +932,8 @@ export class SyncEngine {
         }
       }
       await this.save()
-      // sessions with more than 200 new lines, the redirected ones and those the round did not reach go again
-      const again = new Set<string>(unvisited)
-      for (const sid of touched) {
-        const lines = await this.options.sessions.lines(sid)
-        if (lines.some((l) => !this.state.mids[l.id])) again.add(sid)
-      }
+      // the turn's start or end told once the words are up (C9)
+      for (const sid of touched) if (!again.has(sid)) this.tellWorking(token, sid)
       ids.splice(0, ids.length, ...ids.filter((sid) => again.has(sid)))
     }
     if (ids.length > 0) {
@@ -801,9 +963,9 @@ export class SyncEngine {
   }
 
   /** What the other devices pushed since our cursor, applied in order; how many rows. One at a time. */
-  pull(): Promise<number> {
+  pull(tail = false): Promise<number> {
     const run = (): Promise<number> => {
-      const p = this.pullNow()
+      const p = this.pullNow(tail)
         .catch((error: unknown) => {
           this.noteError(error)
           throw error
@@ -817,15 +979,23 @@ export class SyncEngine {
     return this.pulling ? this.pulling.then(run, run) : run()
   }
 
-  private async pullNow(): Promise<number> {
+  /** The side-chat switch went on: the account's newest side turns, once, from the start (C9). */
+  private pullTail(): Promise<number> {
+    return this.pull(true).catch(() => 0)
+  }
+
+  private async pullNow(tail: boolean): Promise<number> {
     if (!(await this.active())) return 0
     const token = await this.options.token()
     if (!token) return 0
     let applied = 0
     // what the other devices added to conversations living in sessions here: context for the model, per session
     const notes = new Map<string, RemoteLine[]>()
+    const scope = this.state.sideChats ? 'all' : 'main'
     for (let page = 0; page < 50; page++) {
-      const out = await this.options.relay.changes(token, this.state.cursor, PAGE)
+      // the first pull after sign-in asks for the newest 300 of the scope (C9): the chat shows before the history
+      const since = tail ? 0 : this.state.cursor
+      const out = await this.options.relay.changes(token, since, PAGE, scope, since === 0 ? TAIL : 0)
       // The page's conversations first, then its messages, each in seq order: a rename puts
       // a conversation's seq above its messages, and the relay sends every message's
       // conversation along with the page so none of them is an orphan.
@@ -839,7 +1009,7 @@ export class SyncEngine {
       }
       this.state.cursor = Math.max(this.state.cursor, out.cursor)
       await this.save()
-      if (!out.more) break
+      if (!out.more || tail) break
     }
     this.lastError = ''
     for (const [sessionId, lines] of notes) {
@@ -864,6 +1034,8 @@ export class SyncEngine {
       }
       return
     }
+    // side chats off (C9): a side conversation from elsewhere is not a chat here, and one that was stays as it is
+    if (c.kind === 'side' && !this.state.sideChats) return
     const known = this.state.conversations[c.cid]
     this.state.conversations[c.cid] = {
       kind: c.kind,
@@ -919,6 +1091,10 @@ export class SyncEngine {
     // once is enough: a row kept here already, or our own words coming back
     if (this.state.pulled[m.mid]) return
     if (m.device === this.options.deviceId()) return
+    // side chats off (C9): a side chat's rows stay where they were written
+    if (!this.state.sideChats && this.state.conversations[m.cid]?.kind !== 'main') return
+    // the reply arrived: the other device is not working on it any more
+    if (m.role === 'assistant') this.working.delete(m.cid)
     const sessionId = this.sessionOf(m.cid)
     if (!sessionId) return
     const line: RemoteLine = { mid: m.mid, role: m.role, text: m.text, at: m.created_at * 1000, device: m.device, deviceName: m.device_name }

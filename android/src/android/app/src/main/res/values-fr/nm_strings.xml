@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse : chaînes propres à nanoMuse (0.1.38). Ce qui manque ici s’affiche en anglais. -->
+<resources>
+    <string name="nm_cloud_other_server">Utiliser un autre serveur</string>
+    <string name="nm_cloud_server_url">Adresse du relais</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Vérifier</string>
+    <string name="nm_cloud_server_use">Utiliser ce serveur</string>
+    <string name="nm_cloud_server_now">Serveur : %1$s</string>
+    <string name="nm_cloud_server_ok">%1$s a répondu : relais %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Saisis l’adresse du relais, par exemple https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Utilise https pour un serveur hors de ton propre réseau. http convient pour une adresse privée (10.x, 192.168.x, 172.16–31.x, localhost, un nom .local ou .ts.net).</string>
+    <string name="nm_cloud_server_unreachable">Aucun relais n’a répondu à %1$s. Vérifie l’adresse et que le relais tourne.</string>
+    <string name="nm_cloud_server_default">Revenir à nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Serveur</string>
+    <string name="nm_cloud_server_change">Changer</string>
+    <string name="nm_cloud_server_change_confirm">La clé de ce téléphone appartient au serveur actuel. Déconnecte-toi ici d’abord, puis connecte-toi à l’autre serveur depuis l’écran de connexion.</string>
+    <string name="nm_cloud_sms_region">Les codes par SMS n’atteignent que les numéros de Chine continentale. Utilise plutôt une adresse e-mail.</string>
+    <string name="nm_sync_side_title">Synchroniser aussi les discussions secondaires</string>
+    <string name="nm_sync_side_sub">Désactivé : les discussions secondaires restent sur cet appareil. Activé : celles de cet appareil vont dans le compte et celles des autres appareils arrivent ici.</string>
+    <string name="nm_sync_working">%1$s s’en occupe…</string>
+</resources>

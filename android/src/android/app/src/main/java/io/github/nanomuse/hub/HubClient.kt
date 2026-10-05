@@ -96,6 +96,8 @@ class HubClient(
     private val onProfile: (JSONObject) -> Unit = {},
     /** another device pushed conversations: `{"type": "sync", "what", "cursor", "from"}` (contract C7) */
     private val onSync: (JSONObject) -> Unit = {},
+    /** a turn started or ended on another device: `{"type": "working", "cid", "from", "device_name", "working", "at"}` (contract C9) */
+    private val onWorking: (JSONObject) -> Unit = {},
 ) {
     private class Pending(val onEvent: ((JSONObject) -> Unit)?) {
         val done = CountDownLatch(1)
@@ -209,6 +211,7 @@ class HubClient(
             }
             "profile" -> runCatching { onProfile(frame) }
             "sync" -> runCatching { onSync(frame) }
+            "working" -> runCatching { onWorking(frame) }
             "call" -> {
                 val call = IncomingCall(
                     id = frame.optString("id"),

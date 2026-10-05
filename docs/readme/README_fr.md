@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — an open-source personal agent for every device you own">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — un agent personnel open source pour chacun de vos appareils">
 </p>
 
 <p align="center">
@@ -14,93 +14,97 @@
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ru.md">Русский</a> |
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_vi.md">Tiếng Việt</a>
 </p>
-
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="Étoiles GitHub"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="Téléchargements"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/Essayer%20dans%20le%20navigateur-nanomuse.cn%2Fweb-5B4EE6" alt="Essayer dans le navigateur"></a>
-  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/Site%20web-nanomuse.cn-0a66e4" alt="Site web"></a>
+  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="Documentation"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
 </p>
 
-> [!IMPORTANT]
-> **Gratuit, open source, à but non lucratif.** Connectez-vous avec un numéro de téléphone ou une adresse e-mail et vous recevez un crédit de départ ; c'est le développeur qui le paie. La page du compte indique ce qu'il reste et comment en ajouter. Quand il est épuisé, utilisez votre propre clé : Alibaba Cloud Bailian en Chine continentale, OpenRouter ailleurs ([comment](../own-key.md)). Les messages ne sont pas conservés par défaut et rien n'est vendu ([politique de confidentialité](https://nanomuse.cn/privacy/)) ; supprimez le compte quand vous voulez. **[Essayez-le dans le navigateur](https://nanomuse.cn/web/)** ou [téléchargez l'application](https://github.com/nano-muse/nanoMuse/releases/latest).
+**nanoMuse est un agent personnel open source pour chacun de vos appareils.** Un seul agent, avec un nom et une apparence à lui, dans l'esprit du [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) de Meta : il agit au lieu de répondre à des questions, continue de travailler quand l'app est fermée, se souvient de vous, et s'arrête pour demander avant tout ce que vous ne pourriez pas annuler.
 
-> Cette page est une traduction du [README anglais](../../README.md), qui fait référence et contient les actualités et le tableau complet des versions.
-
-nanoMuse est un agent personnel open source pour chacun de vos appareils : un seul agent avec un nom et une apparence à lui, comme le [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) de Meta, qui fait les choses au lieu de répondre à des questions, continue de travailler quand l'application est fermée, se souvient de vous et s'arrête pour demander avant tout ce que vous ne pourriez pas annuler. L'application Android fait tourner l'agent entier **sur le téléphone** : un système de fichiers Linux, un shell, un navigateur, MCP, des compétences et des tâches planifiées dans l'APK, avec un modèle que vous apportez. Elle a des mains pour les applications qui n'ont jamais eu d'API — l'écran même du téléphone, avec votre permission — et atteint votre ordinateur : dites-le sur le téléphone, c'est fait là-bas. L'application de bureau, la version web et l'application iPhone (TestFlight) sont là aussi ; les lunettes suivent. Votre propre clé ou un crédit de départ d'un relais ouvert, GPL-3.0 — et une base sur laquelle construire votre propre Muse.
+*nano* veut dire l'ensemble complet, assez petit pour que vous le fassiez tourner et le déployiez vous-même : l'app du téléphone, l'app de bureau, la console web et le relais qui les relie sont tous dans ce dépôt, sous GPL-3.0-or-later. nanoMuse est à but non lucratif. Connectez-vous et vous recevez un crédit gratuit d'utilisation des modèles sur le relais de la communauté — payé par le développeur ; quand il est épuisé, [utilisez votre propre clé](../own-key.md). Le même relais tourne sur un serveur à vous, et rien n'a besoin de sortir de chez vous. Dernière version : **0.1.37 Weave** — [notes de version](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.37) · [essayer dans le navigateur](https://nanomuse.cn/web/).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="Le même petit dragon dans cinq états : au repos, au travail, en attente, content, désolé">
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Discussion : avant de supprimer dans l'espace de travail, l'agent s'arrête et demande — une fois, cette discussion, toujours pour l'espace de travail, ou refuser">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Chat : avant de supprimer dans l'espace de travail, l'agent s'arrête et demande — une fois, cette conversation, toujours pour l'espace de travail, ou refuser">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="Fil : des billets écrits pour vous ce matin">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Objectifs : suivis selon un calendrier, avec des routines">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar : décrivez une apparence, votre modèle d'image la dessine, choisissez celle qui vous plaît">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Objectifs : suivis selon un planning, avec des routines">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar : décrivez une apparence, votre modèle d'image la dessine, vous choisissez celle qui vous plaît">
 </p>
-
-## Pourquoi nanoMuse
-
-Quatre choses définissent le projet.
-
-| | |
-|---|---|
-| **À la manière de Muse** | Un agent, pas une boîte à outils : un nom et une apparence à lui, une première conversation, un fil écrit pour vous, des objectifs poursuivis en arrière-plan, une mémoire que vous pouvez lire et modifier, une approbation avant tout ce que vous ne pourriez pas annuler. |
-| **Entièrement ouvert** | GPL-3.0-or-later, tout le dépôt. Aucun composant fermé, aucun compte ni serveur imposé, aucun modèle imposé — le relais optionnel nanoMuse Cloud est lui aussi dans le dépôt, et chacun peut en faire tourner un ; chaque version est construite depuis son tag et installée à la main. Muse, 豆包 et 千问 sont des produits qu'on vous donne ; nanoMuse est un produit que vous possédez — et une base pour construire votre propre Muse : renommez-le, redessinez-le, réécrivez sa personnalité, branchez vos propres modèles et outils. |
-| **Toute application, avec ou sans API** | En Chine, une bonne part de la journée passe par des applications qui n'ont jamais eu d'API. L'agent monte les échelons un à un — une compétence, une CLI ou un serveur MCP d'abord, puis une page récupérée avec votre session, puis le navigateur intégré, et, quand vous le permettez, l'écran même de l'appareil, en regardant et en touchant comme vous le feriez — avec les mêmes approbations avant de payer, d'envoyer ou de supprimer. Désactivé par défaut. |
-| **Chaque appareil** | Un agent, et chaque appareil que vous possédez est une paire de mains et une porte d'entrée : dites-le sur le téléphone, cela se fait sur votre PC ; dites-le à vos lunettes, cela se fait sur les deux. Le téléphone pilote déjà votre ordinateur, l'application de bureau, le web et l'application iPhone sont là ; les lunettes suivent. |
-
-La comparaison avec Muse et avec OpenMinis, le runtime sur lequel l'application est construite : dans le [README anglais](../../README.md#compared-with-muse-and-openminis). Le plan et ses raisons : [docs/roadmap.md](../roadmap.md).
 
 ## Installation
 
-Un premier aperçu sans rien installer : [nanomuse.cn/web](https://nanomuse.cn/web/) ouvre un téléphone simulé dans le navigateur avec un nanoMuse à lui, après une connexion par numéro de téléphone ou adresse e-mail et un code — une démo, loin des applications ; pour la version complète, l'application pour téléphone et celle de bureau ci-dessous, avec le même compte. Pour vos propres appareils, les [téléchargements](https://nanomuse.cn/#download) : l'APK Android, l'application de bureau pour Windows, macOS et Linux (`nanoMuse-Desktop-<version>-…`), le binaire en terminal (`nanomuse-desktop-terminal-<version>-…`), ou `pipx install "git+https://github.com/nano-muse/nanoMuse"` avec Python 3.11+. Dans nos mesures, GitHub est aussi la source la plus rapide depuis la Chine ; si les téléchargements échouent là où vous êtes, les mêmes fichiers sont sur le miroir du projet, [nanomuse.cn/dl](https://nanomuse.cn/dl/) (synchronisé dans le quart d'heure qui suit une version, vérifié par SHA-256) ; [docs/desktop.md](../desktop.md) et [docs/every-device.md](../every-device.md) expliquent comment ils se connectent entre eux. Sur le téléphone :
+| | |
+|---|---|
+| **Android** 8.0+, arm64 | [nanoMuse-0.1.37-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-0.1.37-arm64.apk) — chaque version est signée avec la même clé et s'installe par-dessus la précédente |
+| **iPhone / iPad** | TestFlight, testeurs internes pour l'instant <!-- coordinator: lien TestFlight public quand il existera --> |
+| **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-x64.dmg) — non notarisé : clic droit → *Ouvrir* la première fois |
+| **Windows** 10+ | [nanoMuse-Desktop-0.1.37-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-win-x64.exe) — cliquez une fois sur *Exécuter quand même* |
+| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.tar.gz) |
+| **Terminal** | `pipx install "git+https://github.com/nano-muse/nanoMuse"` avec Python 3.11+, ou le binaire `nanomuse-desktop-terminal` de la [dernière version](https://github.com/nano-muse/nanoMuse/releases/latest) |
+| **Docker** | `bash scripts/self-host.sh --local` pour votre propre relais ; `docker compose up -d app` pour l'app web sur un serveur à vous — [auto-hébergement](../self-hosting.md) |
 
-1. Téléchargez `nanoMuse-<version>-arm64.apk` depuis la [dernière version](https://github.com/nano-muse/nanoMuse/releases/latest) — Android 8.0 ou plus récent, un téléphone 64 bits. Vérifiez avec `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` si vous le souhaitez.
-2. Ouvrez-le. Android demande une fois d'autoriser l'installation ; chaque version est signée avec la même clé, les mises à jour s'installent donc par-dessus la précédente et conservent vos données.
-3. Connectez un modèle. *Se connecter — gratuit* : un numéro de téléphone (le code arrive par SMS) ou une adresse e-mail, et l'agent dispose d'un crédit gratuit sur [nanoMuse Cloud](../cloud.md) — pas de clé, rien à payer ; la page du compte dit ce qu'il reste et comment il augmente. Le modèle de conversation est `deepseek-v4.1-flash`, les mains utilisent `qwen3.8-27b` ; ce sont deux réglages distincts. Quand le crédit est épuisé, utilisez votre propre clé : [Alibaba Cloud Bailian](../own-key.md) en Chine continentale, [OpenRouter](../own-key.md) ailleurs (Bailian n'inscrit pas de comptes hors de Chine), n'importe quel point de terminaison compatible OpenAI, ou l'une des connexions OAuth livrées avec l'application. Ensuite, si vous le voulez, les deux autorisations qui laissent l'agent utiliser les applications de votre téléphone (facultatives), puis la première conversation, qui demande comment vous appeler et laisse l'agent choisir son propre nom.
-4. Facultatif — *Réglages → Modèles d'image et de vidéo* : un modèle d'image (qwen-image-3.0 sur Alibaba Cloud Model Studio, gpt-image-1, ou tout fournisseur disposant du point de terminaison images d'OpenAI) permet à l'agent de changer d'apparence et de dessiner ; un modèle vidéo (wan2.2-i2v-flash sur Model Studio) anime l'apparence. Muse les a intégrés ; nanoMuse utilise les vôtres, et l'agent vous le dit quand il en manque un.
-
-L'application vérifie les versions de ce dépôt pour les mises à jour ; l'application de bureau affiche sa version dans *Réglages → À propos*, avec un bouton *Rechercher des mises à jour*. Les notes de chaque version sont dans [docs/releases/](../releases) et le [CHANGELOG](../../CHANGELOG.md).
+Tous les téléchargements viennent de la [dernière version](https://github.com/nano-muse/nanoMuse/releases/latest) ; les mêmes fichiers sont sur [nanomuse.cn/dl](https://nanomuse.cn/dl/) si GitHub est lent là où vous êtes. Ouvrez l'app, connectez-vous avec une adresse e-mail ou un numéro de téléphone de Chine continentale, et l'agent a un modèle pour réfléchir. Le téléphone, le bureau et le web partagent un compte et montrent les mêmes conversations.
 
 ## Ce qu'il fait
 
-| | |
-|---|---|
-| **Il agit** | Un shell Linux, un navigateur, des serveurs MCP, des compétences au format [Agent Skills](https://agentskills.io), et — quand vous activez les *Mains* — les applications de votre téléphone à travers leur écran : une capture, une action, une autre capture, avec une échelle qui essaie d'abord les API, une prise en main pour les connexions et les mêmes approbations. L'agent choisit la main qu'il faut et montre chaque étape sous forme de carte que vous pouvez ouvrir. Quand une page a besoin de vous — une connexion, un code — il s'arrête et vous passe la main ; *Terminé* reprend, sur le téléphone, le bureau et le web. Sur macOS, les mains peuvent piloter la fenêtre d'une seule application avec leurs propres événements, votre curseur reste donc le vôtre ; chaque application est demandée la première fois. |
-| **Il demande d'abord** | Un arrêt avant de supprimer, d'envoyer ou de payer — dans le shell, dans le navigateur et sur l'écran du téléphone quand les Mains touchent — avec une approbation que vous limitez à une fois, à cette discussion, ou à toujours pour ce destinataire, ce domaine ou ce dossier, et que vous pouvez révoquer dans Autorisations. Les mots de passe et les codes de vérification, c'est toujours vous qui les tapez. Sur le bureau, *Autoriser une fois / Refuser* sont sur la scène en direct ; sur le téléphone, sur la capsule — vous répondez là où vous êtes, sans revenir dans l'application. |
-| **Là où vous êtes déjà** | Parlez à votre Muse depuis 飞书, 钉钉, 企业微信 ou Telegram : le bot vit dans la messagerie, s'appaire avec un code au premier message et répond sur place ([docs/channels.md](../channels.md)). Un service connecté sur un appareil apparaît sur les autres comme « connecté sur votre Mac — connectez-vous ici pour l'utiliser ici » ; les identifiants restent sur l'appareil qui s'est connecté. |
-| **Il continue** | Les objectifs se définissent dans la discussion et sont vérifiés selon un calendrier dans leur propre conversation ; les routines tournent quand l'application est fermée ; l'écran reste allumé pendant qu'il pilote le téléphone ; à 200 étapes, il demande « continuer ? » au lieu de conclure trop tôt. |
-| **Il vous écrit un fil** | Chaque matin, de trois à six billets courts à partir de ce qu'il sait de vous et de ce que vous lui avez demandé de suivre, sous forme de cartes que vous pouvez aimer, discuter dans un fil latéral ou supprimer. Une phrase suffit à l'orienter. |
-| **Il se souvient de vous** | Qui il est (`SOUL.md`), ce qu'il sait de vous (`USER.md`), ce dont il se souvient (`GLOBAL.md` et un journal) et quand il se réveille (`HEARTBEAT.md`) sont des fichiers que vous pouvez lire et modifier dans l'application. Rapportez ce qu'un autre assistant savait avec *Importer la mémoire*. |
-| **Une apparence à lui** | Décrivez-la en une phrase ; votre modèle d'image la dessine ; vous choisissez celle qui vous plaît. L'application la pose pour chaque état — au travail, en attente, content, désolé — et elle respire, se balance, penche la tête, sursaute et se secoue au rythme de ce que fait l'agent ; avec un modèle vidéo, chaque état est un court clip en boucle. Un petit dragon jaune pâle, images et clips compris, est l'apparence par défaut. |
-| **Idées et Bibliothèque** | Des choses à demander ensuite, à partir de vos objectifs et de votre mémoire ; et tout ce qu'il a produit, avec aperçus. |
+- **Il agit.** Un shell Linux, un navigateur, des serveurs MCP et des compétences — et, avec *Mains* activé, les apps de votre téléphone et les fenêtres de votre ordinateur à travers leur écran, pour tout ce qui n'a jamais eu d'API.
+- **Il demande d'abord.** Un arrêt avant de supprimer, d'envoyer ou de payer, mémorisé pour une fois, cette conversation ou toujours ; les mots de passe et les codes, c'est vous qui les tapez. Une connexion ou un CAPTCHA vous est remis ; *Terminé* reprend.
+- **Il atteint vos autres appareils.** Dites-le sur le téléphone, ça s'exécute sur votre PC ; `@Mac …` au début d'un message envoie la tâche là-bas. Les approbations reviennent sur l'appareil que vous tenez.
+- **Il continue.** Des objectifs vérifiés selon un planning, des routines qui tournent app fermée, un fil écrit pour vous chaque matin.
+- **Il se souvient de vous.** Ce qu'il est, ce qu'il sait de vous et quand il se réveille sont des fichiers Markdown que vous pouvez lire et modifier.
+- **Il vit dans vos messageries.** Il répond dans 飞书, 钉钉, 企业微信 et Telegram.
+- **Une apparence à lui.** Décrivez-la, votre modèle d'image la dessine, un modèle vidéo la fait bouger. Un petit dragon par défaut.
+- **N'importe quel modèle.** Ceux du relais, une clé Bailian ou OpenRouter, ou tout endpoint compatible OpenAI.
 
-Tout cela tourne sur le téléphone ; le reste d'OpenMinis — le terminal, le navigateur intégré, la gestion de MCP et des compétences, les groupes de modèles, l'usage des jetons, l'exécuteur d'accessibilité, les dossiers partagés — est conservé et accessible depuis les mêmes menus.
+## Comment ça marche
 
-## Versions
+Chaque appareil fait tourner son propre agent — le téléphone dans l'APK (Alpine Linux sous proot, un shell, un navigateur, MCP), l'ordinateur dans nanoMuse Desktop (DeepSeek Harness avec le runtime Python pour les mains). Connectés, ils se retrouvent sur le relais et peuvent se demander des choses ; le texte des conversations passe par lui, les fichiers et les captures restent là où ils ont été faits.
 
-Une petite version par étape, chacune une release GitHub avec un APK. Les actualités et le tableau complet des versions sont dans le [README anglais](../../README.md#versions) ; le plan et ses raisons dans [docs/roadmap.md](../roadmap.md) ; les notes de chaque version dans [docs/releases/](../releases) et le [CHANGELOG](../../CHANGELOG.md). Ensuite, dans l'ordre : la version web sur une machine à vous (une VM, un serveur à la maison) ; les lunettes.
+```
+téléphone ──┐                         ┌── ordinateur (nanoMuse Desktop)
+            ├──▶  nanoMuse Cloud  ◀───┤        le relais : connexion, modèles,
+web  ───────┘        /v1/hub          └── un autre téléphone / ordinateur    hub, synchronisation
+```
 
-## Où nous en sommes
+[docs/every-device.md](../every-device.md) explique les appareils, [docs/hub.md](../hub.md) les trames, [docs/cloud.md](../cloud.md) le relais, [docs/privacy.md](../privacy.md) ce qu'il conserve.
 
-0.1 est une préversion. Nous l'utilisons chaque jour et savons où elle accroche encore ; dites-nous où elle a cassé chez vous et ce que vous voudriez qu'elle fasse. Le côté développeur — votre propre modèle, le shell, MCP, les compétences, le harness, l'API du runtime — est dans les Réglages et la documentation. Les interfaces du runtime, des compétences et des plugins vont encore bouger un temps ; le [CHANGELOG](../../CHANGELOG.md) dit ce qui a changé et la [feuille de route](../roadmap.md) ce qui vient ensuite. Si elle vous est utile, une étoile aide les autres à la trouver.
+## Comparé à Muse et à OpenMinis
+
+| | Meta Muse | OpenMinis | nanoMuse |
+|---|---|---|---|
+| Où tourne l'agent | Une VM cloud par utilisateur | Le téléphone où il est installé | Votre téléphone, votre ordinateur ou un serveur à vous — un compte pour tous |
+| Les apps sans API | Hors de portée ; la VM ne touche jamais vos appareils | Une CLI d'accessibilité sur Android | L'écran comme main, sur le téléphone et l'ordinateur : captures, API d'abord, vous reprenez la main pour les connexions. Pas sur iOS — le système ne le permet pas |
+| Les autres appareils | Des clients d'une seule VM | Celui où il est installé | Les appareils se demandent des choses via le hub, les approbations là où vous êtes |
+| Modèles | Ceux de Meta | Les vôtres | Le crédit gratuit du relais, ou les vôtres |
+| Licence | Fermée | GPL-3.0 | GPL-3.0-or-later, construit sur OpenMinis |
+
+## Documentation
+
+[nanomuse.cn/docs](https://nanomuse.cn/docs/) — l'installation par plateforme, tous les appareils, les mains, les connecteurs, la mémoire, l'auto-hébergement, les protocoles. Les sources sont dans [docs/](../) ; ce qui a changé à chaque version est dans le [CHANGELOG](../../CHANGELOG.md) et [docs/releases/](../releases/).
+
+## Auto-hébergement
+
+Un VPS, une heure : [docs/self-hosting.md](../self-hosting.md). Trois voies — aucun serveur, avec votre propre clé ; votre propre relais avec `scripts/self-host.sh` ; ou un runtime à vous pour l'app web.
 
 ## Contribuer
 
-**[Ouvrir une issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [demander ou montrer dans Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [mettre une étoile au dépôt](https://github.com/nano-muse/nanoMuse)**. Comment fonctionnent le crédit gratuit, votre propre clé et vos données : [docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md). La configuration de build, les conventions (`com.openminis.app` reste, le nouveau code va dans `io.github.nanomuse.*`, `// nanoMuse:` sur les modifications de l'upstream, `Signed-off-by` sur les commits) et la façon dont les versions sont publiées : [CONTRIBUTING.md](../../CONTRIBUTING.md).
+Servez-vous-en pour une vraie tâche, signalez ce qui a cassé, puis choisissez quelque chose de précis : [CONTRIBUTING.md](../../CONTRIBUTING.md) a l'installation et les conventions, [AGENTS.md](../../AGENTS.md) les règles qu'un agent de programmation suit dans cet arbre, et la [feuille de route](../roadmap.md) dit par où commencer. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions).
 
 ## Remerciements
 
-nanoMuse s'appuie sur le travail d'autres personnes ; [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) en donne les conditions. L'application est construite sur [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 — Linux sous proot, shell, navigateur, MCP, compétences, tâches planifiées, l'exécuteur d'accessibilité ; le bac à sable vient de [proot](https://github.com/proot-me/proot) et d'[Alpine Linux](https://alpinelinux.org/).
+nanoMuse s'appuie sur le travail d'autres ; [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) en donne les termes.
+
+- [OpenMinis](https://github.com/OpenMinis/OpenMinis) — l'agent sur l'appareil sur lequel l'app du téléphone est construite, avec [proot](https://github.com/nano-muse/proot) et [Alpine Linux](https://alpinelinux.org/) pour le bac à sable.
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — le harnais d'agents dont l'app de bureau est un plugin.
+- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance) — l'opérateur des mains du bureau est un portage du leur, et les marqueurs de la scène suivent leur ScreenMarker.
+- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/lsdefine/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ClawGUI/ClawGUI-APP) — l'opérateur du téléphone, les traces et les idées de produit.
 
 ## Avertissement
 
-nanoMuse est un projet communautaire indépendant. Il n'est ni affilié à Meta Platforms, Inc. ou à son produit Muse, ni approuvé par eux, ni dérivé d'eux ; Muse est une marque de Meta Platforms, Inc. Le dragon appartient au projet.
+nanoMuse est un projet communautaire indépendant, sans lien avec Meta Platforms, Inc. et sans son soutien ; Muse est leur marque. Le dragon appartient au projet.
 
 ## Licence
 
-[GPL-3.0-or-later](../../LICENSE). L'application Android est basée sur OpenMinis 1.13 (GPL-3.0), modifiée depuis le 2026-09-24 ; voir [NOTICE](../../NOTICE) et [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md). Les versions antérieures de la lignée Python ont été publiées sous MIT (tag `pre-openminis`).
+[GPL-3.0-or-later](../../LICENSE). L'app du téléphone est basée sur OpenMinis 1.13 (GPL-3.0), modifiée depuis le 2026-09-24 — voir [NOTICE](../../NOTICE). Les versions antérieures de la ligne Python étaient sous MIT (tag `pre-openminis`).

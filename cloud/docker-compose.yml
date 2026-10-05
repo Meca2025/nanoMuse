@@ -1,8 +1,15 @@
+# The relay behind Caddy, which fetches the TLS certificate for CLOUD_DOMAIN.
+# scripts/self-host.sh writes .env and runs this; docker-compose.local.yml is
+# the override for a LAN or home server without TLS. docs/self-hosting.md
+# walks through both.
 services:
   relay:
     build: .
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      # not required so the local override can point at an .env kept elsewhere
+      - path: .env
+        required: false
     volumes:
       - ./data:/srv/nanomuse-cloud/data
     expose:
@@ -18,6 +25,8 @@ services:
       - "443:443"
     environment:
       CLOUD_DOMAIN: ${CLOUD_DOMAIN:-localhost}
+      # where Let's Encrypt writes about an expiring certificate; empty is allowed
+      ACME_EMAIL: ${ACME_EMAIL:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

@@ -26,6 +26,18 @@ test('screenHead reads the window in front and the size', () => {
   assert.deepEqual(screenHead('\n  phone · home · 1080x2400 · keyboard shown'), { title: 'phone', width: 1080, height: 2400, mode: 'screen' })
   assert.deepEqual(screenHead('Numbers — Budget · 1440×900 · window'), { title: 'Numbers — Budget', width: 1440, height: 900, mode: 'window' })
   assert.deepEqual(screenHead(''), { title: '', width: 0, height: 0, mode: 'screen' })
+  // `computer_act` answers "Done. Screen now:" first — the head is the line with the size, not the first line
+  const act = 'Done. Screen now:\n\n计算器 (Gnome-calculator) · 1596×1204 · keyboard hidden\nCoordinates: pixels of this 1596×1204 picture, (0,0) top-left.'
+  assert.deepEqual(screenHead(act), { title: '计算器 (Gnome-calculator)', width: 1596, height: 1204, mode: 'screen' })
+  assert.deepEqual(screenHead('Done. Screen now:\n\nnothing with a size here'), { title: '', width: 0, height: 0, mode: 'screen' })
+})
+
+test('a grant 0.1.37 wrote for the mis-read head is dropped', async () => {
+  const { MISREAD_GRANT } = await import('../lib/cloud.js')
+  assert.equal(MISREAD_GRANT.test('computer_app:Done. Screen now:'), true)
+  assert.equal(MISREAD_GRANT.test('computer_app:Done. Screen now'), true)
+  assert.equal(MISREAD_GRANT.test('computer_app:计算器 (Gnome-calculator)'), false)
+  assert.equal(MISREAD_GRANT.test('computer_app:Safari'), false)
 })
 
 test('a hands refusal is recognised and confirmed with the ticket the runtime checks', async () => {

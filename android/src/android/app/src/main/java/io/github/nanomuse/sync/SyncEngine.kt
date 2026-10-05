@@ -2,8 +2,19 @@ package io.github.nanomuse.sync
 
 import java.util.UUID
 
-/** What a pull changed locally, for the UI: chats that got rows, and whether any chat row changed. */
-data class PullResult(val applied: Int, val touchedSessions: Set<String>, val cursor: Long)
+/**
+ * What a pull changed locally, for the UI: chats that got rows, and whether any chat row
+ * changed. [replied] are the chats that got another device's assistant line — the reply
+ * that clears the "kwai is working…" line (C9); [skipped] how many older messages a tail
+ * page left on the relay.
+ */
+data class PullResult(
+    val applied: Int,
+    val touchedSessions: Set<String>,
+    val cursor: Long,
+    val replied: Set<String> = emptySet(),
+    val skipped: Int = 0,
+)
 
 /**
  * The conversation sync of contract C7, apart from Android: a [SyncStore] for the ids, the
@@ -26,6 +37,15 @@ data class PullResult(val applied: Int, val touchedSessions: Set<String>, val cu
  * the main chat is the union of the local rows and the relay's, placed by time, one row per
  * `mid`, this phone's own echoes skipped; pulled side chats are ordinary, continuable chats;
  * rows written elsewhere remember their device for the "From Pixel 8" caption ([captions]).
+ *
+ * Contract C9 (0.1.38): main first. With [sideChats] off (the default) only the main chat
+ * goes up and only `scope=main` comes down; side chats stay on the phone, and side rows that
+ * arrive anyway are ignored. The first pull of an account — and the one right after the
+ * side-chat switch is turned on — asks for the tail (`since=0&tail=300`): the newest rows
+ * and their chats, applied as one write, so a fresh sign-in shows the chat at once instead
+ * of replaying the account's whole history. Presence rides apart from the data: [working]
+ * says a turn started or ended here; the rows this phone did not write are [remoteRows],
+ * which no "interrupted — continue" detection may ever treat as this phone's unfinished turn.
  */
 class SyncEngine(
     private val store: SyncStore,
@@ -35,6 +55,8 @@ class SyncEngine(
     private val account: String,
     private val now: () -> Long = { System.currentTimeMillis() },
     private val newId: () -> String = { UUID.randomUUID().toString() },
+    /** Settings → Data controls → "Also sync side chats": per device, off by default (C9). */
+    private val sideChats: () -> Boolean = { false },
 ) {
     /** The cursor last applied, or null before the first pull of this account. */
     suspend fun cursor(): Long? = store.meta(SyncStore.CURSOR)?.toLongOrNull()
@@ -64,8 +86,12 @@ class SyncEngine(
         val pending = mutableListOf<SyncMessage>()
         val titles = mutableMapOf<String, Pair<SyncConversation, String?>>()
         val gone = mutableListOf<SyncMessage>()
-        val liveSessions = chats.sessions()
-        val liveIds = liveSessions.map { it.id }.toSet()
+        val allLive = chats.sessions()
+        val liveIds = allLive.map { it.id }.toSet()
+        val side = sideChats()
+        // C9: with side chats off, only the main chat is this phone's business here — a side
+        // chat gets no cid, no rows go up, and one synced earlier is left as it is
+        val liveSessions = if (side) allLive else allLive.filter { it.id == mainId || store.conversation(it.id)?.kind == "main" }
 
         for (s in liveSessions) {
             var map = store.conversation(s.id)
@@ -123,8 +149,8 @@ class SyncEngine(
                 titles[map.cid] = map to s.title
             }
         }
-        // chats deleted here: a tombstone, then the relay's delete route
-        val deletedMaps = store.conversations().filter { it.sessionId !in liveIds }
+        // chats deleted here: a tombstone, then the relay's delete route (side chats only while the switch is on)
+        val deletedMaps = store.conversations().filter { it.sessionId !in liveIds && (side || it.kind == "main") }
         for (map in deletedMaps) {
             if (!map.pushed) {
                 // the relay never saw it; nothing to tell
@@ -192,28 +218,44 @@ class SyncEngine(
 
     // ── pull ──────────────────────────────────────────────────────────────
 
-    /** Fetches and applies everything after the stored cursor. */
+    /**
+     * Fetches and applies everything after the stored cursor — or, before there is one, the
+     * tail of the scope (C9): the newest [TAIL] messages and their chats, in one page. Each
+     * page is written as one transaction.
+     */
     suspend fun pull(): PullResult {
         ensureAccount()
+        val first = cursor() == null
         var cursor = cursor() ?: 0L
         var applied = 0
+        var skipped = 0
         val touched = mutableSetOf<String>()
+        val replied = mutableSetOf<String>()
+        val scope = if (sideChats()) SyncApi.SCOPE_ALL else SyncApi.SCOPE_MAIN
         while (true) {
-            val page = api.changes(cursor, PAGE)
-            for (c in page.conversations) {
-                if (applyConversation(c, touched)) applied++
-            }
-            for (m in page.messages) {
-                if (applyMessage(m, touched)) applied++
+            val page = api.changes(cursor, PAGE, scope, if (first && cursor == 0L) TAIL else 0)
+            skipped += page.skipped
+            applied += chats.transaction {
+                var n = 0
+                for (c in page.conversations) {
+                    if (applyConversation(c, touched)) n++
+                }
+                for (m in page.messages) {
+                    if (applyMessage(m, touched, replied)) n++
+                }
+                n
             }
             cursor = maxOf(cursor, page.cursor)
             store.putMeta(SyncStore.CURSOR, cursor.toString())
             if (!page.more || (page.conversations.isEmpty() && page.messages.isEmpty())) break
         }
-        return PullResult(applied, touched, cursor)
+        return PullResult(applied, touched, cursor, replied, skipped)
     }
 
     private suspend fun applyConversation(c: RemoteConversation, touched: MutableSet<String>): Boolean {
+        // C9: side chats are not this phone's business while the switch is off — none should
+        // arrive with scope=main; one that does makes no chat here and changes none
+        if (c.kind != "main" && !sideChats()) return false
         val known = store.conversationByCid(c.cid)
         if (c.deleted) {
             if (known == null) return false
@@ -269,10 +311,11 @@ class SyncEngine(
         return true
     }
 
-    private suspend fun applyMessage(m: RemoteMessage, touched: MutableSet<String>): Boolean {
+    private suspend fun applyMessage(m: RemoteMessage, touched: MutableSet<String>, replied: MutableSet<String>): Boolean {
         val known = store.messageByMid(m.mid)
         if (m.deleted) {
             if (known == null) return false
+            if (!sideChats() && store.conversation(known.sessionId)?.kind == "side") return false // C9: side chats rest while off
             chats.deleteMessage(known.messageId)
             store.removeMessages(listOf(known.messageId))
             touched += known.sessionId
@@ -283,10 +326,12 @@ class SyncEngine(
         if (m.role != "user" && m.role != "assistant") return false
         val conv = store.conversationByCid(m.cid) ?: return false
         if (conv.deleted) return false
+        if (conv.kind != "main" && !sideChats()) return false // C9: a side row while the switch is off
         // by time among the chat's rows, not at the end (C8)
         val id = chats.insertMessage(conv.sessionId, m.role, m.text, m.attachments, m.createdAt * 1000)
         store.putMessages(listOf(SyncMessage(id, m.mid, conv.sessionId, pushed = true, device = m.device, deviceName = m.deviceName)))
         touched += conv.sessionId
+        if (m.role == "assistant") replied += conv.sessionId
         return true
     }
 
@@ -304,6 +349,17 @@ class SyncEngine(
         return state
     }
 
+    /**
+     * "Also sync side chats" was turned on (C9): the next pull starts from zero with the tail
+     * of the whole scope — idempotent by `mid` and `cid`, so what is here already stays as it
+     * is — and the next push backfills the side chats, oldest first. Turning it off needs
+     * nothing here: [sideChats] is read on every push and pull.
+     */
+    suspend fun sideChatsTurnedOn() {
+        ensureAccount()
+        store.putMeta(SyncStore.CURSOR, null)
+    }
+
     /** "Delete synced conversations": the relay's store goes, the switch and the local chats stay. */
     suspend fun wipe() {
         api.wipe()
@@ -312,10 +368,35 @@ class SyncEngine(
     /** The relay's view of the switch and the counts. */
     suspend fun state(): SyncState = api.state()
 
+    // ── presence (C9) ─────────────────────────────────────────────────────
+
+    /**
+     * A turn started ([on]) or ended on local chat [sessionId]: the account's other devices
+     * hear it. Only for a chat the relay knows; false when nothing was sent. Errors are the
+     * caller's to ignore — presence is never retried.
+     */
+    suspend fun working(sessionId: String, on: Boolean): Boolean {
+        val map = store.conversation(sessionId) ?: return false
+        if (!map.pushed || map.deleted) return false
+        if (map.kind != "main" && !sideChats()) return false
+        api.working(deviceId, map.cid, on)
+        return true
+    }
+
+    /** The local chat a relay `cid` stands for, if this phone has it. */
+    suspend fun sessionOf(cid: String): String? = store.conversationByCid(cid)?.sessionId
+
     /** Which local rows were written on another device, and that device's name — the "From Pixel 8" caption. */
     suspend fun captions(): Map<String, String> = captions(store, deviceId)
 
+    /** The local rows another device wrote, and which device (C9: never this phone's unfinished turn). */
+    suspend fun remoteRows(): Map<String, String> = remoteRows(store, deviceId)
+
     companion object {
+        /** Local row id → the id of the device that wrote it, for the rows that came from the account's other devices (C9). */
+        suspend fun remoteRows(store: SyncStore, deviceId: String): Map<String, String> =
+            store.pulledMessages().filter { it.device.isNotBlank() && it.device != deviceId }.associate { it.messageId to it.device }
+
         /**
          * Local row id → the name of the device it came from, for rows pulled from the account's
          * other devices (contract C8: a caption per message, no badge per chat — the main chat
@@ -331,5 +412,7 @@ class SyncEngine(
         /** The relay's ceiling per POST. */
         const val BATCH = 200
         const val PAGE = 500
+        /** The first pull of an account asks for this many of the newest messages (C9). */
+        const val TAIL = 300
     }
 }

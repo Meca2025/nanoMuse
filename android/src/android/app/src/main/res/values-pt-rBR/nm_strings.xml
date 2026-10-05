@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: textos que só existem no nanoMuse (0.1.38). O que faltar aqui aparece em inglês. -->
+<resources>
+    <string name="nm_cloud_other_server">Usar outro servidor</string>
+    <string name="nm_cloud_server_url">Endereço do relay</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Verificar</string>
+    <string name="nm_cloud_server_use">Usar este servidor</string>
+    <string name="nm_cloud_server_now">Servidor: %1$s</string>
+    <string name="nm_cloud_server_ok">%1$s respondeu: relay %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Digite o endereço do relay, como https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Use https para um servidor fora da sua própria rede. http serve para um endereço privado (10.x, 192.168.x, 172.16–31.x, localhost, um nome .local ou .ts.net).</string>
+    <string name="nm_cloud_server_unreachable">Nenhum relay respondeu em %1$s. Confira o endereço e se o relay está rodando.</string>
+    <string name="nm_cloud_server_default">Voltar ao nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Servidor</string>
+    <string name="nm_cloud_server_change">Trocar</string>
+    <string name="nm_cloud_server_change_confirm">A chave deste telefone pertence ao servidor atual. Saia aqui primeiro e depois entre no outro servidor pela tela de login.</string>
+    <string name="nm_cloud_sms_region">Códigos por SMS só chegam a números da China continental. Use um endereço de e-mail em vez disso.</string>
+    <string name="nm_sync_side_title">Sincronizar também as conversas paralelas</string>
+    <string name="nm_sync_side_sub">Desligado: as conversas paralelas ficam neste aparelho. Ligado: as conversas paralelas deste aparelho vão para a conta e as dos outros aparelhos chegam aqui.</string>
+    <string name="nm_sync_working">%1$s está cuidando disso…</string>
+</resources>

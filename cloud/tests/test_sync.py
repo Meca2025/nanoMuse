@@ -53,7 +53,7 @@ async def test_state_is_on_by_default_and_round_trips_changes():
     key = await signed_in(client, sender)
     r = await client.get("/v1/sync/state", headers=auth(key))
     assert r.status_code == 200
-    assert r.json() == {"enabled": True, "cursor": 0, "counts": {"conversations": 0, "messages": 0}, "limits": LIMITS}
+    assert r.json() == {"enabled": True, "cursor": 0, "counts": {"conversations": 0, "messages": 0}, "limits": LIMITS, "working": []}
 
     cid = uid()
     m1, m2 = uid(), uid()
@@ -394,3 +394,150 @@ def test_hub_tells_the_other_devices_after_an_accepting_push(ws_client):
         r = ws_client.delete(f"/v1/sync/conversations/{cid}", headers={"Authorization": f"Bearer {key}"})
         assert r.status_code == 200
         assert pc.receive_json()["type"] == "sync" and phone.receive_json()["type"] == "sync"
+
+
+# -- 0.20, contract C9: main first --------------------------------------------------------------
+
+
+async def test_scope_main_delivers_the_main_conversation_only():
+    app, client, sender, up, cloud, settings = make()
+    key = await signed_in(client, sender)
+    # no main yet: an empty page whose cursor is the account's counter
+    side, s1 = uid(), uid()
+    await client.post("/v1/sync/changes", json={"device": "a", "conversations": [conv(side, "side", "Side")], "messages": [msg(s1, side)]}, headers=auth(key))
+    r = await client.get("/v1/sync/changes?scope=main", headers=auth(key))
+    assert r.status_code == 200 and r.json() == {"cursor": 2, "more": False, "conversations": [], "messages": []}
+    main, m1 = uid(), uid()
+    await client.post(
+        "/v1/sync/changes", json={"device": "a", "conversations": [conv(main, "main", "Main")], "messages": [msg(m1, main)]}, headers=auth(key)
+    )
+    out = (await client.get("/v1/sync/changes?scope=main", headers=auth(key))).json()
+    assert [c["cid"] for c in out["conversations"]] == [main] and [m["mid"] for m in out["messages"]] == [m1]
+    assert out["cursor"] == 4 and out["more"] is False and "skipped" not in out
+    # the default scope is still everything; a cursor works the same within the scope
+    assert len((await client.get("/v1/sync/changes", headers=auth(key))).json()["messages"]) == 2
+    assert (await client.get("/v1/sync/changes?scope=main&since=3", headers=auth(key))).json()["messages"][0]["mid"] == m1
+    assert (await client.get("/v1/sync/changes?scope=main&since=4", headers=auth(key))).json()["messages"] == []
+    # paging inside the scope: the side chat's rows never count against the page
+    page = (await client.get("/v1/sync/changes?scope=main&limit=1", headers=auth(key))).json()
+    assert page["more"] is True and page["cursor"] == 3 and [c["cid"] for c in page["conversations"]] == [main]
+    # the main's tombstone is part of the scope
+    await client.delete(f"/v1/sync/conversations/{main}", headers=auth(key))
+    out = (await client.get("/v1/sync/changes?scope=main&since=4", headers=auth(key))).json()
+    assert [(c["cid"], c["deleted"]) for c in out["conversations"]] == [(main, True)]
+    assert (await client.get("/v1/sync/changes?scope=weird", headers=auth(key))).status_code == 400
+
+
+async def test_tail_is_the_newest_messages_with_their_conversations():
+    app, client, sender, up, cloud, settings = make()
+    key = await signed_in(client, sender)
+    main, old_side, new_side = uid(), uid(), uid()
+    await client.post(
+        "/v1/sync/changes",
+        json={"device": "a", "conversations": [conv(main, "main", "Main"), conv(old_side, "side", "Old"), conv(new_side, "side", "New")]},
+        headers=auth(key),
+    )
+    mids = []
+    for i in range(6):  # seq 4..9: main, old, main, old, main, old
+        cid = main if i % 2 == 0 else old_side
+        mid = uid()
+        mids.append((cid, mid))
+        await client.post("/v1/sync/changes", json={"device": "a", "messages": [msg(mid, cid, text=f"m{i}", created_at=1738000000 + i)]}, headers=auth(key))
+    newest = uid()  # seq 10, in the side chat nobody else wrote in
+    await client.post("/v1/sync/changes", json={"device": "a", "messages": [msg(newest, new_side, text="newest")]}, headers=auth(key))
+    # the two newest messages, in seq order, with the rows of their conversations and nothing else
+    out = (await client.get("/v1/sync/changes?since=0&tail=2", headers=auth(key))).json()
+    assert [m["mid"] for m in out["messages"]] == [mids[5][1], newest]
+    assert sorted(c["cid"] for c in out["conversations"]) == sorted([old_side, new_side])
+    assert out["cursor"] == 10 and out["more"] is False and out["skipped"] == 5
+    # within the main scope: the main's newest two and its row
+    out = (await client.get("/v1/sync/changes?since=0&tail=2&scope=main", headers=auth(key))).json()
+    assert [m["mid"] for m in out["messages"]] == [mids[2][1], mids[4][1]]
+    assert [c["cid"] for c in out["conversations"]] == [main] and out["skipped"] == 1 and out["cursor"] == 10
+    # a tail larger than the store is the store; a tail with a cursor is an ordinary pull
+    out = (await client.get("/v1/sync/changes?since=0&tail=500", headers=auth(key))).json()
+    assert len(out["messages"]) == 7 and out["skipped"] == 0
+    out = (await client.get("/v1/sync/changes?since=9&tail=2", headers=auth(key))).json()
+    assert [m["mid"] for m in out["messages"]] == [newest] and "skipped" not in out
+    # the device continues from the cursor it was handed: nothing is missed, nothing repeats
+    await client.post("/v1/sync/changes", json={"device": "a", "messages": [msg(uid(), main, text="after")]}, headers=auth(key))
+    out = (await client.get("/v1/sync/changes?since=10", headers=auth(key))).json()
+    assert [m["text"] for m in out["messages"]] == ["after"]
+
+
+async def test_working_is_presence_kept_ten_minutes_in_memory():
+    app, client, sender, up, cloud, settings = make()
+    key = await signed_in(client, sender)
+    account_id = cloud.authenticate(key).account_id
+    cloud.db.upsert_device(account_id, "pc-1", "Desk", "computer", "Linux", "0.1", "[]")
+    main = uid()
+    await client.post("/v1/sync/changes", json={"device": "pc-1", "conversations": [conv(main, "main", "Main")]}, headers=auth(key))
+    r = await client.post("/v1/sync/working", json={"cid": main, "working": True, "device": "pc-1"}, headers=auth(key))
+    assert r.status_code == 204, r.text
+    st = (await client.get("/v1/sync/state", headers=auth(key))).json()
+    assert len(st["working"]) == 1
+    w = st["working"][0]
+    assert w["cid"] == main and w["from"] == "pc-1" and w["device_name"] == "Desk" and isinstance(w["at"], int)
+    # another device's `false` does not clear the desk's `true`; the desk's own does
+    await client.post("/v1/sync/working", json={"cid": main, "working": False, "device": "phone-1"}, headers=auth(key))
+    assert len((await client.get("/v1/sync/state", headers=auth(key))).json()["working"]) == 1
+    r = await client.post("/v1/sync/working", json={"cid": main, "working": False}, headers={**auth(key), "X-Nanomuse-Device": "pc-1"})
+    assert r.status_code == 204
+    assert (await client.get("/v1/sync/state", headers=auth(key))).json()["working"] == []
+    # expiry: ten minutes without a `false` and the entry is gone
+    store = app.state.sync
+    store.presence.set(account_id, main, "pc-1", "Desk", True)
+    store.presence._live[(account_id, main)]["at"] -= 601
+    assert (await client.get("/v1/sync/state", headers=auth(key))).json()["working"] == []
+    # nothing of it in the database
+    with cloud.db.tx() as c:
+        tables = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    assert not any("working" in t or "presence" in t for t in tables)
+    # refusals: an unknown or deleted cid, a bad body, sync off
+    assert (await client.post("/v1/sync/working", json={"cid": uid(), "working": True}, headers=auth(key))).status_code == 404
+    assert (await client.post("/v1/sync/working", json={"cid": main}, headers=auth(key))).status_code == 400
+    await client.delete(f"/v1/sync/conversations/{main}", headers=auth(key))
+    assert (await client.post("/v1/sync/working", json={"cid": main, "working": True}, headers=auth(key))).status_code == 404
+    await client.put("/v1/sync/state", json={"enabled": False}, headers=auth(key))
+    r = await client.post("/v1/sync/working", json={"cid": main, "working": True}, headers=auth(key))
+    assert r.status_code == 409 and r.json()["error"]["code"] == "sync_off"
+
+
+def test_hub_carries_working_to_the_other_devices(ws_client):
+    key = ws_sign_up(ws_client, "13800138000")
+    headers = {"Authorization": f"Bearer {key}"}
+    with connect(ws_client, key) as phone, connect(ws_client, key) as pc:
+        phone.send_json(hello("phone", "phone-1", "Pixel"))
+        phone.receive_json()  # welcome
+        phone.receive_json()  # devices
+        pc.send_json(hello("computer", "pc-1", "desk"))
+        pc.receive_json()  # welcome
+        pc.receive_json()  # devices
+        phone.receive_json()  # devices (pc arrived)
+        cid = uid()
+        ws_client.post("/v1/sync/changes", json={"device": "pc-1", "conversations": [conv(cid, "main")]}, headers=headers)
+        phone.receive_json()  # sync
+        r = ws_client.post("/v1/sync/working", json={"cid": cid, "working": True, "device": "pc-1"}, headers=headers)
+        assert r.status_code == 204
+        frame = phone.receive_json()
+        assert frame["type"] == "working" and frame["cid"] == cid and frame["from"] == "pc-1"
+        assert frame["device_name"] == "desk" and frame["working"] is True and isinstance(frame["at"], int)
+        # the sender hears nothing of its own (its next frame is the pong)
+        pc.send_json({"type": "ping"})
+        assert pc.receive_json()["type"] == "pong"
+        ws_client.post("/v1/sync/working", json={"cid": cid, "working": False, "device": "pc-1"}, headers=headers)
+        assert phone.receive_json()["working"] is False
+
+
+async def test_a_body_over_the_limit_names_both_sizes():
+    app, client, sender, up, cloud, settings = make(max_request_bytes=1024)
+    key = await signed_in(client, sender)
+    cid = uid()
+    r = await client.post("/v1/sync/changes", json={"device": "a", "conversations": [conv(cid, title="x" * 2000)]}, headers=auth(key))
+    assert r.status_code == 413
+    err = r.json()["error"]
+    assert err["code"] == "too_large" and err["message"] == "Request body is 0.0 MB; this relay accepts up to 0 MB"
+    # the default is 16 MiB since 0.20
+    from nanomuse_cloud.config import Settings as RelaySettings
+
+    assert RelaySettings(database=":memory:", secret="s").max_request_bytes == 16 * 1024 * 1024

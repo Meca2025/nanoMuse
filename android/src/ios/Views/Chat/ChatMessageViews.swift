@@ -401,7 +401,7 @@ struct ChatMessageRow: View {
                         }
                     }
                 }
-                NanoMuseFromDeviceCaption(message.nmFromDevice) // nanoMuse: C8 — "From Pixel 8" under a synced line
+                NanoMuseFromDeviceCaption(message.nmFromDevice, working: message.nmWorkingDevice) // nanoMuse: C8 "From Pixel 8" + C9 "{device} is working…"
             }
             .modifier(MinisOpenURLHandler())
             .contentShape(Rectangle())

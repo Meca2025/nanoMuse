@@ -49,11 +49,25 @@ def test_smart_resize_keeps_the_contract() -> None:
 def test_picture_size_caps_then_resizes() -> None:
     # a 4K X11 screen with the default cap: 1600 wide, then to multiples of 28
     assert picture_size(3840, 2160, 1600) == (1596, 896)
-    # no cap: the screen's own size rounded
-    assert picture_size(1920, 1080, 0) == (1932, 1092)
+    # no width cap: the screen's own size rounded (1680×1050 is under the pixel budget)
+    assert picture_size(1680, 1050, 0) == (1680, 1064)
     # a cap wider than the screen changes nothing but the rounding
     assert picture_size(1440, 900, 1600) == (1428, 896)
     assert picture_size(0, 0, 1600) == (0, 0)
+
+
+def test_picture_size_keeps_the_pixel_budget() -> None:
+    # the shared rule: at most 2 Mpx before encoding. A 4K screen with no width cap comes
+    # down to about half its side; the aspect ratio is kept
+    w, h = picture_size(3840, 2160, 0)
+    assert w * h <= 2_000_000 and abs(w / h - 16 / 9) < 0.02
+    # 1080p (2.07 Mpx) is trimmed a little, in either orientation
+    assert picture_size(1920, 1080, 0) == (1876, 1064)
+    assert picture_size(1080, 1920, 0) == (1064, 1876)
+    # max_pixels=0 switches the budget off; a tighter one is honoured
+    assert picture_size(3840, 2160, 0, max_pixels=0) == (3836, 2156)
+    w, h = picture_size(1920, 1080, 0, max_pixels=500_000)
+    assert w * h <= 520_000  # smart_resize rounds to 28s, a little over is the rounding
 
 
 def test_boxes_and_the_norm_grid() -> None:

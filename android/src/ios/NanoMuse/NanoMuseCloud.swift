@@ -3,8 +3,8 @@ import UIKit
 
 /// nanoMuse Cloud: the "start now" path. A phone number or an e-mail address, a code, and the
 /// app has a provider with a starter allowance — no key of one's own needed. The server is the
-/// relay in `cloud/` of the repository; anyone can run one, and a debug build can be pointed at
-/// a different one.
+/// relay in `cloud/` of the repository; anyone can run one, and the app can be pointed at it
+/// ("Use a different server" on the sign-in page, `NanoMuseRelayPicker`).
 ///
 /// To the rest of the app the relay is an ordinary OpenAI-compatible provider: an API-key
 /// `ProviderInstance` on the relay's base URL, whose key is the `nm_…` token the relay issued.
@@ -90,14 +90,9 @@ enum NanoMuseCloud {
 
     // MARK: - State
 
-    /// Debug builds may talk to another relay (a laptop on the same Wi-Fi).
-    static var canOverrideBase: Bool {
-        #if DEBUG
-        return true
-        #else
-        return false
-        #endif
-    }
+    /// Any build may talk to another relay (0.1.38: "Use a different server" on the sign-in
+    /// sheet, NanoMuseRelayPicker). The address must pass `relayProblem` first.
+    static var canOverrideBase: Bool { true }
 
     /// The relay this build talks to.
     static var baseURL: String {
@@ -109,6 +104,12 @@ enum NanoMuseCloud {
         return defaultBase
     }
 
+    /// Whether the relay is one of the person's own rather than the default.
+    static var usesOwnRelay: Bool { baseURL != defaultBase }
+
+    /// The host of the relay in use, for "Server: …" rows.
+    static var relayHost: String { URL(string: baseURL)?.host ?? baseURL }
+
     static func setBaseURL(_ url: String?) {
         let trimmed = url?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if trimmed.isEmpty {
@@ -116,6 +117,86 @@ enum NanoMuseCloud {
         } else {
             UserDefaults.standard.set(trimSlash(trimmed), forKey: Keys.base)
         }
+    }
+
+    // MARK: - Own relay
+
+    /// What a person typed, as the base URL it means: a scheme added when none was given
+    /// (https), trailing slashes gone. Nil when it is not a URL with a host.
+    nonisolated static func normalizedRelay(_ raw: String) -> String? {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        if !text.contains("://") { text = "https://" + text }
+        guard let url = URL(string: text), let host = url.host, !host.isEmpty, url.scheme != nil else { return nil }
+        var out = text
+        while out.hasSuffix("/") { out.removeLast() }
+        return out
+    }
+
+    /// A host on one's own network, where plain http is allowed: `10.`, `192.168.`, `172.16–31.`,
+    /// `localhost`, `*.local`, `*.ts.net`.
+    nonisolated static func isPrivateHost(_ host: String) -> Bool {
+        let h = host.lowercased()
+        if h == "localhost" || h == "127.0.0.1" || h == "::1" || h.hasSuffix(".local") || h.hasSuffix(".ts.net") { return true }
+        if h.hasPrefix("10.") || h.hasPrefix("192.168.") { return true }
+        if h.hasPrefix("172.") {
+            let parts = h.split(separator: ".")
+            if parts.count == 4, let second = Int(parts[1]), (16...31).contains(second) { return true }
+        }
+        return false
+    }
+
+    /// Why an address cannot be used as the relay, as a sentence; nil when it can.
+    nonisolated static func relayProblem(_ raw: String) -> String? {
+        guard let base = normalizedRelay(raw), let url = URL(string: base), let host = url.host else {
+            return AppLocalized("Enter the server's address, for example https://relay.example.org.")
+        }
+        let scheme = url.scheme?.lowercased() ?? ""
+        if scheme == "https" { return nil }
+        if scheme == "http" {
+            return isPrivateHost(host) ? nil : AppLocalized("Use https unless the server is on your own network.")
+        }
+        return AppLocalized("Enter the server's address, for example https://relay.example.org.")
+    }
+
+    /// Whether `base` answers as a relay: `GET /healthz` with a 2xx. Throws the cloud error otherwise.
+    static func checkRelay(_ base: String) async throws {
+        guard let url = URL(string: base + "/healthz") else {
+            throw CloudError(code: "bad_base", message: "Bad relay address", status: 0)
+        }
+        var request = URLRequest(url: url)
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10
+        let response: URLResponse
+        do {
+            (_, response) = try await session.data(for: request)
+        } catch {
+            throw CloudError(code: "unreachable", message: error.localizedDescription, status: 0)
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw CloudError(code: "http_\(status)", message: "HTTP \(status)", status: status)
+        }
+    }
+
+    // MARK: - Phone numbers
+
+    /// Whether a phone number cannot get a text-message code before the relay is asked: a
+    /// number with a country code other than China's (+86). Bare digits are left to the relay
+    /// (its `phone_region` says the same sentence); an e-mail address never qualifies.
+    nonisolated static func needsEmailInstead(identifier raw: String) -> Bool {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty || text.contains("@") { return false }
+        let compact = text.filter { !" -()".contains($0) }
+        guard compact.allSatisfy({ $0.isNumber || $0 == "+" }) else { return false }
+        if compact.hasPrefix("+") { return !compact.hasPrefix("+86") }
+        if compact.hasPrefix("00") { return !compact.hasPrefix("0086") }
+        return false
+    }
+
+    /// The sentence for a number that cannot get a code (also `describe("phone_region")`).
+    nonisolated static var phoneRegionSentence: String {
+        AppLocalized("Text-message codes reach mainland-China numbers only. Use an e-mail address instead.")
     }
 
     /// The provider instance the relay is signed in as, if it still exists.
@@ -280,6 +361,8 @@ enum NanoMuseCloud {
         switch cloud.code {
         case "bad_identifier":
             return AppLocalized("Enter a phone number or an e-mail address.")
+        case "phone_region":
+            return phoneRegionSentence
         case "code_wrong":
             return AppLocalized("That code is not right.")
         case "code_expired":

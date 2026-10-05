@@ -2262,6 +2262,9 @@ class MuseService:
             # this computer's own screen and hands
             "hands": self.hands_view(),
             "holds": self.holds_view(),
+            # the other devices' turns under way on synced chats (C9), for the line under
+            # a message written elsewhere; `working` frames keep it current
+            "working": self.sync.working_view(),
         }
 
 

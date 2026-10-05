@@ -13,14 +13,16 @@ import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process'
 import { access, constants } from 'node:fs/promises'
 import { delimiter, extname, isAbsolute, join } from 'node:path'
 
-/** The first line of what `computer_screen` says: `<window in front> · <WxH> · …`. */
+const SIZE_PART = /^(\d{2,5})[×x](\d{2,5})$/
+
+/** The head line of what `computer_screen` says (the one with the size): `<window in front> · <WxH> · …`. */
 function screenHead(text: string): { title: string; width: number; height: number } {
-  const line = text.split('\n').find((l) => l.trim()) ?? ''
+  const line = text.split('\n').find((l) => l.split(' · ').some((p) => SIZE_PART.test(p.trim()))) ?? ''
   let width = 0
   let height = 0
   const rest: string[] = []
   for (const part of line.split(' · ').map((p) => p.trim())) {
-    const m = /^(\d{2,5})[×x](\d{2,5})$/.exec(part)
+    const m = SIZE_PART.exec(part)
     if (m) {
       width = Number(m[1])
       height = Number(m[2])
@@ -39,6 +41,37 @@ export interface RuntimeInfo {
   ok: boolean
   /** Why not, for the row in Settings. */
   problem?: 'missing' | 'not-executable' | 'not-found'
+  /** Linux: the display session the hands would work on (absent elsewhere). */
+  display?: DisplayInfo
+}
+
+/**
+ * The sentence the desktop operator and the runtime (`nanomuse.computer.hands.WAYLAND_TEXT`)
+ * both give for a Wayland login — the same words in Settings → Computer use, so the three
+ * places agree.
+ */
+export const WAYLAND_TEXT = 'Wayland session: no global screen or cursor for a program to drive. Log in with Xorg (the session chooser on the login screen), or run the hands on another computer of the account.'
+
+/** Linux: which kind of display session this is, and why the hands are off when they are. */
+export interface DisplayInfo {
+  session: 'x11' | 'wayland' | 'none'
+  /** Empty on X11; the runtime's reason otherwise. */
+  reason: string
+}
+
+/**
+ * Read from the environment the way the operator and the runtime do: `XDG_SESSION_TYPE`
+ * says `wayland`, or there is a `WAYLAND_DISPLAY` and no `DISPLAY` (a compositor started by
+ * hand); an X11 session has a `DISPLAY`. `undefined` off Linux.
+ */
+export function displayInfo(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): DisplayInfo | undefined {
+  if (platform !== 'linux') return undefined
+  const type = (env.XDG_SESSION_TYPE ?? '').trim().toLowerCase()
+  const x = (env.DISPLAY ?? '').trim()
+  const wayland = (env.WAYLAND_DISPLAY ?? '').trim()
+  if (type === 'wayland' || (wayland && !x)) return { session: 'wayland', reason: WAYLAND_TEXT }
+  if (x) return { session: 'x11', reason: '' }
+  return { session: 'none', reason: 'No display: DISPLAY is not set, so there is no screen for the hands to see.' }
 }
 
 export async function runtimeInfo(env: NodeJS.ProcessEnv = process.env): Promise<RuntimeInfo> {

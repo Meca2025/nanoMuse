@@ -95,6 +95,20 @@ for inner in runtime dsh app.asar.unpacked; do
   find "$app/Contents/Resources/$inner" -type f \( -perm -u+x -o -name "*.so" -o -name "*.dylib" -o -name "*.node" \) -print0 \
     | xargs -0 -n 50 codesign --force --sign "$identity" "${sign_flags[@]}" 2>/dev/null || true
 done
+# "nanoMuse Computer Use.app" (harness/desktop/mac/computer-use): the helper that holds Screen
+# Recording and Accessibility. Signed as a bundle of its own, before the outer app, with the
+# same identity and the hardened runtime but none of the app's entitlements (it is a plain
+# Foundation program: no JIT, no foreign libraries). Its identifier is what the privacy panes
+# remember: with a Developer ID the designated requirement is the same from build to build and
+# the grant survives updates; ad-hoc, it is keyed to this binary's hash and each build starts
+# over (docs/desktop.md "macOS permissions").
+helper="$app/Contents/Helpers/nanoMuse Computer Use.app"
+if [ -d "$helper" ]; then
+  helper_flags=(--timestamp=none)
+  [ "$identity" != "-" ] && helper_flags=(--timestamp --options runtime)
+  codesign --force --sign "$identity" "${helper_flags[@]}" --identifier io.github.nanomuse.desktop.computer-use "$helper"
+  codesign --verify --strict "$helper" && echo "helper signature ok"
+fi
 codesign --force --deep --sign "$identity" "${sign_flags[@]}" "$app"
 codesign --verify --deep --strict "$app" && echo "signature ok"
 

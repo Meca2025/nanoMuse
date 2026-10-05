@@ -345,6 +345,12 @@ def ios_project() -> None:
                 r'(INFOPLIST_FILE = "\$\(SRCROOT\)/Info\.plist";\n)(?!\t*INFOPLIST_KEY_CFBundleDisplayName)',
                 f"\\g<1>\t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = {NAME};\n",
             ),
+            # The launch screen: upstream's "Open Minis — … is starting" storyboard is left in
+            # place; the app shows NanoMuse/NanoMuseLaunch.storyboard (the mark, no words).
+            (
+                r'INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";',
+                "INFOPLIST_KEY_UILaunchStoryboardName = NanoMuseLaunch;",
+            ),
         ],
     )
 

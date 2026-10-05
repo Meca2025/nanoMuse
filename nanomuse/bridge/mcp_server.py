@@ -88,24 +88,36 @@ def confirm_secret() -> str:
     return os.environ.get(CONFIRM_SECRET_ENV, "").strip()
 
 
-def ticket(secret: str, args: dict[str, Any]) -> str:
+def ticket(secret: str, args: dict[str, Any], signed_step: bool = True) -> str:
     """The confirmation ticket for one exact call: HMAC of its arguments under the secret.
 
-    The plugin and this server compute it the same way (sorted keys, compact JSON, the
-    ``confirmed`` field left out), so a ticket confirms these arguments and no others.
+    The plugin (``harness/dsh-nanomuse/src/cloud.ts`` ``confirmTicket``) and this server
+    compute it the same way — sorted keys, compact JSON, the ``confirmed`` field left out —
+    so a ticket confirms these arguments and no others. The ``step`` words are part of the
+    arguments the plugin signs; ``signed_step=False`` is the ticket without them (the
+    arguments the tool itself runs on), which :func:`_confirmed` accepts as well.
     """
-    clean = {k: v for k, v in args.items() if k not in (CONFIRMED, STEP_KEY)}
+    skip = (CONFIRMED,) if signed_step else (CONFIRMED, STEP_KEY)
+    clean = {k: v for k, v in args.items() if k not in skip}
     body = json.dumps(clean, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hmac.new(secret.encode(), body.encode(), hashlib.sha256).hexdigest()[:32]
 
 
 def _confirmed(args: dict[str, Any]) -> bool:
-    """Whether this call carries a confirmation the server accepts."""
+    """Whether this call carries a confirmation the server accepts: the host's ticket over
+    the arguments as the host saw them (``step`` included — what the plugin signs) or over
+    the arguments the tool runs on (``step`` left out). Before 0.1.38 only the second was
+    accepted, and the plugin signs the first, so every step the person agreed to on the
+    permission card came back "Not done" when the model had written a ``step``."""
     given = args.get(CONFIRMED)
     secret = confirm_secret()
     if not secret:
         return given is True
-    return isinstance(given, str) and hmac.compare_digest(given, ticket(secret, args))
+    if not isinstance(given, str):
+        return False
+    return hmac.compare_digest(given, ticket(secret, args)) or hmac.compare_digest(
+        given, ticket(secret, args, signed_step=False)
+    )
 
 
 def exposed_schema(tool: BaseTool) -> dict[str, Any]:

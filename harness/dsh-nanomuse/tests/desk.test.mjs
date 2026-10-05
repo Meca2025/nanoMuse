@@ -24,6 +24,41 @@ test('an approval the stage answers first wins; the chat card is let go', async 
   assert.ok(changes >= 2)
 })
 
+test('the stage\'s answer withdraws the chat card through a signal of its own; the asker\'s signal still cancels both', async () => {
+  const desk = new ApprovalDesk(() => undefined)
+  const asker = new AbortController()
+  const request = { ...req('c1b'), signal: asker.signal }
+  // the chat card, as the bridge shows it: it reads the request's signal when it is shown and ends with it
+  let cardSignal
+  const chat = () => new Promise((resolve, reject) => {
+    cardSignal = request.signal
+    cardSignal.addEventListener('abort', () => reject(cardSignal.reason), { once: true })
+  })
+  const outcome = desk.handle(request, chat)
+  await new Promise((r) => setImmediate(r))
+  assert.notEqual(cardSignal, asker.signal, 'the card follows a signal of its own')
+  assert.equal(desk.decide('c1b', true), true)
+  assert.equal(await outcome, 'allowed-once')
+  assert.equal(cardSignal.aborted, true, 'the card is taken down')
+  assert.equal(asker.signal.aborted, false, 'the tool call itself is not cancelled')
+  assert.equal(request.signal, asker.signal, 'the request is put back as it came')
+
+  // the asker gives up (the turn is stopped): stage and card both end
+  const asker2 = new AbortController()
+  const request2 = { ...req('c1c'), signal: asker2.signal }
+  let card2
+  const chat2 = () => new Promise((_resolve, reject) => {
+    card2 = request2.signal
+    card2.addEventListener('abort', () => reject(card2.reason), { once: true })
+  })
+  const outcome2 = desk.handle(request2, chat2)
+  await new Promise((r) => setImmediate(r))
+  asker2.abort(new Error('stopped'))
+  assert.equal(await outcome2, 'cancelled')
+  assert.equal(card2.aborted, true)
+  assert.equal(desk.list().length, 0)
+})
+
 test('an approval the chat answers first clears the stage', async () => {
   const desk = new ApprovalDesk(() => undefined)
   const outcome = await desk.handle(req('c2'), async () => 'allowed-once')
@@ -149,4 +184,23 @@ test('the chat and hands defaults follow the relay\'s `for`, with the 0.1.34 nam
   assert.equal(takesImages({ id: 'deepseek-v4.1-flash', inputModalities: ['text'] }), true)
   assert.equal(takesImages({ id: 'deepseek-ocr', inputModalities: [] }), true)
   assert.equal(takesImages({ id: 'qwen3-vl', inputModalities: ['text', 'image'] }), true)
+})
+
+test('the provider row carries the image budget of a request through the relay (413 too_large): 5 MiB of base64 images, 2 Mpx a picture, the per-image byte cap left to dsh', async () => {
+  const { providerRowFor, IMAGE_BUDGET } = await import('../lib/cloud.js')
+  const row = providerRowFor('https://relay.test/v1', [
+    { id: 'deepseek-v4.1', name: 'DeepSeek V4.1', kind: 'chat', recommended: true, inputModalities: ['text', 'image'], for: ['chat'] },
+    { id: 'qwen3.8-27b', name: 'Qwen', kind: 'chat', recommended: false, inputModalities: ['text', 'image'], for: ['gui'] },
+    { id: 'wan-video', name: 'Wan', kind: 'video', recommended: false, inputModalities: ['text'], for: ['video'] },
+  ])
+  assert.equal(row.api, 'openai-completions')
+  assert.equal(row.baseURL, 'https://relay.test/v1')
+  assert.equal(row.maxRequestImageBytes, 5 * 1024 * 1024)
+  assert.equal(row.requestImagePixelBudget, 2 * 1024 * 1024)
+  assert.equal(row.requestImageMaxBytes, undefined)
+  assert.deepEqual(IMAGE_BUDGET, { maxRequestImageBytes: 5 * 1024 * 1024, requestImagePixelBudget: 2 * 1024 * 1024 })
+  // under the relay's 6 MiB cap with room for the text
+  assert.ok(row.maxRequestImageBytes < 6 * 1024 * 1024)
+  assert.deepEqual(row.models.map((m) => m.id), ['deepseek-v4.1'])
+  assert.deepEqual(row.models[0].input, ['text', 'image'])
 })

@@ -344,7 +344,10 @@ class Settings:
     signup_tokens: int = field(default_factory=lambda: _int("SIGNUP_TOKENS", 0))
     daily_cap_tokens: int = field(default_factory=lambda: _int("DAILY_CAP_TOKENS", 0))
     per_minute_requests: int = field(default_factory=lambda: _int("PER_MINUTE_REQUESTS", 30))
-    max_request_bytes: int = field(default_factory=lambda: _int("MAX_REQUEST_BYTES", 6 * 1024 * 1024))
+    # The largest JSON body (a chat request with its pictures, a sync push, a profile). 16 MiB
+    # since 0.20: a computer-use turn carries a few screenshots, and the apps now keep at most
+    # four and scale them down, so a body that still passes this is a bug on their side.
+    max_request_bytes: int = field(default_factory=lambda: _int("MAX_REQUEST_BYTES", 16 * 1024 * 1024))
     # Requests under way for one account at the same time (0 = no cap). Each holds a
     # reservation against the allowance while it runs — a picture's or a clip's known price,
     # a chat's typical one — so several requests cannot each pass the check and together

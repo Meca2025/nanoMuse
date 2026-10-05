@@ -87,26 +87,61 @@ steps and progress, which ideas were tried, the library index, memory).
 
 ## macOS permissions
 
-The hands need two things from macOS, both granted to **nanoMuse Desktop** (the app
-bundle, `io.github.nanomuse.desktop` — the runtime it bundles runs as part of the app and
-never appears in the panes): *Screen Recording* for the screenshots and *Accessibility*
-for the mouse and the keyboard. At launch the app asks for whichever is missing with the
-system's own dialogs (`CGRequestScreenCaptureAccess`, `AXIsProcessTrustedWithOptions`,
-through `@computer-use/node-mac-permissions` and `@computer-use/mac-screen-capture-permissions`
-— the modules UI-TARS-desktop uses) and opens the Screen Recording pane once, where the
-switch is; Settings → Computer use → Permissions asks again on request and shows TCC's own
-status for each. Screen Recording reaches freshly started apps only: when the switch flips
-while the app runs, it offers *Restart now*, and the restart goes through a proper quit, so
-the old host and the old `nanomuse mcp` (started without the permission) go with it.
+The hands need two things from macOS: *Screen Recording* for the screenshots and
+*Accessibility* for the mouse and the keyboard. Since 0.1.38 both belong to a small app of
+their own, **nanoMuse Computer Use** (`nanoMuse.app/Contents/Helpers/nanoMuse Computer
+Use.app`, bundle id `io.github.nanomuse.desktop.computer-use`): that is the row you switch
+on in System Settings → Privacy & Security → Screen Recording and → Accessibility. nanoMuse
+Desktop itself holds neither.
 
-There is one screenshot path on a Mac: the app's operator. Without Screen Recording,
-`desktopCapturer` refuses or the capture is black, and the operator answers `403` with
-*macOS: switch on nanoMuse Desktop under System Settings → Privacy & Security → Screen
-Recording, then quit and reopen the app.* — the runtime shows that sentence and never falls
-back to `mss` / `screencapture` (which would mean a second prompt, for a process you cannot
-find in the pane, and a black picture handed to the model). To start the permission flow
-over: `tccutil reset ScreenCapture io.github.nanomuse.desktop; tccutil reset Accessibility
-io.github.nanomuse.desktop`, then relaunch.
+Why a second app. macOS attributes a permission request to the *responsible process* — the
+one LaunchServices started, together with everything it spawned. A child process of the
+app is the app, as far as the panes are concerned, which is why the bundled runtime never
+appeared in them; an app bundle started through `open` is responsible for itself and gets
+its own row, named for what it does (Qt's write-up *The Curious Case of the Responsible
+Process* walks through the attribution; Codex's *Codex Computer Use.app* is the same
+arrangement). The helper is a few hundred lines of Swift (`harness/desktop/mac/computer-use/`)
+on a loopback HTTP server with a per-launch token: it reports its two grants, asks for them
+with the system's own dialogs (`CGRequestScreenCaptureAccess`,
+`AXIsProcessTrustedWithOptions`), takes the picture with `CGDisplayCreateImage` — not
+Chromium's `desktopCapturer`, whose black and absent frames were the 0.1.36 trouble — and
+moves the mouse and types with `CGEvent` (text of any script goes in as the characters
+themselves, so 中文 types without the clipboard). The app starts it at launch — to read the
+grants and to ask for the missing ones — and quits it when it quits; the helper also leaves
+on its own when the app is gone. It has no window and no Dock icon; Activity Monitor lists it
+as *nanoMuse Computer Use*.
+
+What this changes for you:
+
+- The panes list *nanoMuse Computer Use*. Switch that on; nothing else needs a switch.
+- Screen Recording reaches freshly started processes only — now that process is the helper.
+  When the switch flips while the app runs, the app restarts the helper by itself (the log
+  says so); nothing to restart on your side, the conversation goes on. The *Restart* button
+  on the Permissions page restarts the helper too.
+- Without Screen Recording the operator answers `403` with *macOS: switch on nanoMuse
+  Computer Use under System Settings → Privacy & Security → Screen Recording. The helper
+  restarts by itself; the app does not need to.* — the runtime shows that sentence and never
+  falls back to `mss` / `screencapture`.
+- To start the permission flow over: `tccutil reset ScreenCapture
+  io.github.nanomuse.desktop.computer-use; tccutil reset Accessibility
+  io.github.nanomuse.desktop.computer-use`, then open Settings → Computer use → Permissions
+  again. A grant left on *nanoMuse Desktop* from an earlier version can be switched off; the
+  app no longer uses it.
+
+Without the helper — a build without it, or one whose helper did not start (the log's
+`helper:` lines say why) — the app works as before 0.1.38: the grants are nanoMuse Desktop's
+own (`io.github.nanomuse.desktop`), read through `@computer-use/node-mac-permissions` and
+`@computer-use/mac-screen-capture-permissions`, the picture comes from `desktopCapturer`
+and the input from `@computer-use/nut-js`, and a Screen Recording grant needs the app
+restarted (*Restart now*). The Permissions page names whichever is in use.
+
+The honest caveat: macOS keys a grant to the app's code signature. With a Developer ID
+signature the helper's *designated requirement* (identifier + team) is the same from build
+to build, so the grant survives updates. The project's certificate is still pending with
+the Account Holder, so today's builds are ad-hoc signed: an ad-hoc signature is keyed to the
+binary's hash, and every new build of the helper starts the two grants over (as it did for
+the app itself). Until the certificate is there, expect to switch the helper on again after
+each update.
 
 ## macOS signing
 
@@ -118,6 +153,16 @@ Developer ID Application certificate under the hardened runtime
 (`harness/desktop/resources/entitlements.mac.plist`), notarizes with notarytool and
 staples. The certificate is exported from Keychain Access as a `.p12` and base64-encoded;
 the App Store Connect key is the `.p8`'s text.
+
+The helper, *nanoMuse Computer Use.app*, is built on the macOS runner by
+`harness/desktop/mac/computer-use/build.sh` (plain `swiftc`, arm64 and x86_64 joined with
+`lipo`, deployment target macOS 12) before electron-builder copies it into
+`Contents/Helpers` (`mac.extraFiles` in `electron-builder.yml`). `package-mac.sh` signs it
+first, as a bundle of its own — same identity, hardened runtime, its own identifier
+`io.github.nanomuse.desktop.computer-use`, none of the app's entitlements — and then the
+outer app. A local macOS build wants `build.sh` run before `npm run dist:dir`; without it
+electron-builder only warns that the source is missing and the app ships without the
+helper, on the pre-0.1.38 path.
 
 ## Linux notes
 
@@ -146,9 +191,31 @@ the App Store Connect key is the `.p8`'s text.
   Ubuntu 22.04 and newer show it. On 20.04 use Ctrl+Q, or switch the menu-bar option off so
   that closing the window quits.
 - **Wayland.** The hands drive the mouse and read the screen through X11; on a Wayland
-  session they say so and stay off. Choose *Ubuntu on Xorg* on the login screen.
-- The log is `~/.nanomuse/desktop/desktop.log`; the launcher's side is in
-  `journalctl --user -n 200`.
+  session they say so and stay off — Settings → Computer use's *Take a test shot* and the
+  first "what is on my screen?" both answer *the hands are off on this computer: Wayland
+  session: … Log in with Xorg …* — and the runtime does not try `xdotool` or `pyautogui`
+  behind the app's back (under XWayland they would start and move nothing you can see).
+  Choose *Ubuntu on Xorg* on the login screen. The session type is read from
+  `XDG_SESSION_TYPE`; a Wayland compositor started by hand shows as `WAYLAND_DISPLAY`
+  without a `DISPLAY`, which counts too.
+- **Hands on this computer** (X11). Nothing to grant: the app's own operator moves the
+  pointer and types through libnut (XTEST) and takes the picture through Electron's
+  capturer, and the runtime's `nanomuse mcp` reaches it over loopback — no `xdotool`,
+  `pyautogui` or `mss` is needed, and none is used while the app's operator answers. The
+  pointer moves on the X display the app was started on (`DISPLAY`), in root pixels: on a
+  HiDPI desktop that is the logical size × the scale factor (a 1920×1080 scale-2 display is
+  3840×2160 to the hands), and the picture the model sees is that root scaled down to at
+  most 1600 wide and 2 Mpx. The frame the app draws around the screen while the hands work
+  (the glow) is click-through; a window manager is needed for a sensible picture (without
+  one Electron's capturer can return a black frame — the runtime then falls back to its own
+  capture). Steps that act on your behalf (Enter, a submit, heavy shortcuts, clicks on words
+  from the sensitive list) wait for the card in the chat or on the live stage; *Allow once*
+  runs the step, *Always allow in <app>* keeps the hands going in that app until you revoke
+  it under Settings → Permissions. Text outside ASCII is typed through the clipboard
+  (`xclip`/`xsel` are not needed — Electron's clipboard is used) and Ctrl+V; the previous
+  clipboard content is put back afterwards.
+- The log is `~/.nanomuse/desktop/desktop.log` (each operator action is a line, `operator:
+  click at 1249,1096`); the launcher's side is in `journalctl --user -n 200`.
 
 ## The terminal binary
 

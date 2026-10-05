@@ -16,6 +16,11 @@ export function isMainland(account?: Pick<CloudAccount, "channel" | "region" | "
   return getLocale() === "zh-CN";
 }
 
+/** A number with a country code that is not mainland China's: no text message can reach it. */
+export function looksLikeForeignNumber(value: string): boolean {
+  return /^\s*(\+|00)(?!86\b)\d/.test(value);
+}
+
 export interface OwnKeyWay {
   /** the preset id in Connections: "qwen" (Bailian) or "openrouter" */
   preset: "qwen" | "openrouter";

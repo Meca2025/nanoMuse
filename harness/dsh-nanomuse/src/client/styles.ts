@@ -203,6 +203,10 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-col-top { height: 
 .nm-remote-user .nm-remote-bubble { background: var(--dsw-specific-bubble, var(--nm-hover)); }
 .nm-remote-assistant .nm-remote-bubble { padding-left: 0; padding-right: 0; }
 .nm-remote-from { font-size: 11px; color: var(--dsw-alias-label-tertiary); padding: 0 4px; }
+/* the other device is working on its last prompt (C9): a quiet line with a slow dot */
+.nm-remote-working { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dsw-alias-label-tertiary); padding: 0 4px; }
+.nm-remote-working::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: nm-remote-pulse 1.6s ease-in-out infinite; }
+@keyframes nm-remote-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 /* a session with no turn of its own yet (the chat's "hero" layout centres the composer): the other
    devices' turns sit above the composer, bottom-aligned like a transcript, inside the scrolling body */
 [data-conversation-content][data-content-phase="hero"] > [data-conversation-scroll]:has(.nm-remote) { justify-content: flex-end; }

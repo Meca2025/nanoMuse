@@ -85,6 +85,20 @@ fun SyncConversationsCard(signedIn: Boolean, onSignIn: () -> Unit) {
             if (!signedIn) append(' ').append(stringResource(R.string.nm_sync_sign_in))
         },
     )
+    if (on) {
+        // contract C9: main first — side chats stay on this phone unless asked for (per device, off by default)
+        val sideChats by ConversationSync.sideChats.collectAsState()
+        MuseGap()
+        MuseCard {
+            MuseRow(
+                title = stringResource(R.string.nm_sync_side_title),
+                chevron = false,
+                onClick = { ConversationSync.setSideChats(context, !sideChats) },
+                trailing = { Switch(checked = sideChats, enabled = !busy, onCheckedChange = { ConversationSync.setSideChats(context, it) }) },
+            )
+        }
+        MuseCaption(text = stringResource(R.string.nm_sync_side_sub))
+    }
     if (signedIn) {
         MuseGap()
         MuseCard {

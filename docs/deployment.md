@@ -2,6 +2,8 @@
 
 Meta runs each Muse in a per-user secure VM. Locally, a container is the nearest equivalent: the agent sees only its data directory and its workspace.
 
+This page is about the Python runtime — the web app's agent — in Docker. Running the relay (your own sign-in, hub and sync) and pointing the apps at it is [self-hosting.md](self-hosting.md), which also puts the three ways to run nanoMuse yourself in order.
+
 ## Docker
 
 ```bash

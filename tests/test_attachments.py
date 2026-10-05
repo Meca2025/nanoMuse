@@ -22,7 +22,14 @@ from nanomuse.llm import openai_chat as chat_mod
 from nanomuse.llm.openai_chat import OpenAIChatLLM
 from nanomuse.llm.openai_responses import _to_input_items
 from nanomuse.llm.prompt_tools import PromptToolAdapter
-from nanomuse.llm.vision import content_parts, image_data_url, says_no_images, without_images
+from nanomuse.llm.vision import (
+    REMOVED_NOTE,
+    content_parts,
+    image_data_url,
+    keep_newest_images,
+    says_no_images,
+    without_images,
+)
 from nanomuse.schema import Attachment, LLMResponse, Message
 from nanomuse.sentinel import AuditLog, Sentinel
 from nanomuse.server.api import create_app
@@ -187,6 +194,56 @@ def test_images_are_scaled_and_encoded(tmp_path: Path):
     url = image_data_url(str(alpha))
     assert url and url.startswith("data:image/png;base64,")
     assert image_data_url(str(tmp_path / "gone.png")) is None
+
+
+def test_screenshots_are_kept_under_two_megapixels(tmp_path: Path):
+    """C9: a 4K screenshot (PNG, 8 Mpx) goes to the model at ≤ 2 Mpx as JPEG 85; a square
+    one, whose longest side alone would pass, is scaled by its area."""
+    import base64
+
+    shot = tmp_path / "screen.png"
+    shot.write_bytes(png_bytes(3840, 2160))
+    url = image_data_url(str(shot))
+    assert url and url.startswith("data:image/jpeg;base64,")
+    raw = base64.b64decode(url.split(",", 1)[1])
+    scaled = Image.open(io.BytesIO(raw))
+    w, h = scaled.size
+    assert w * h <= 2_000_000 and abs(w / h - 16 / 9) < 0.01 and len(raw) < 1024 * 1024
+    square = tmp_path / "square.png"
+    square.write_bytes(png_bytes(1500, 1500))  # 2.25 Mpx, longest side under 1568
+    url = image_data_url(str(square))
+    assert url and url.startswith("data:image/jpeg;base64,")
+    w, h = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1]))).size
+    assert w * h <= 2_000_000 and w == h
+
+
+def test_only_the_newest_images_stay_in_the_request():
+    """C9: a hands run adds a screenshot per step; the request keeps the newest four."""
+    msgs = [Message.system("s")]
+    for i in range(6):
+        msgs.append(Message.assistant(tool_calls=None, content=f"step {i}"))
+        msgs.append(
+            Message.user(
+                "[The screenshot that goes with the tool result above.]", images=[f"/shots/{i}.png"]
+            )
+        )
+    msgs.append(Message.user("and now?"))
+    out = keep_newest_images(msgs, 4)
+    kept = [m.images[0] for m in out if m.images]
+    assert kept == ["/shots/2.png", "/shots/3.png", "/shots/4.png", "/shots/5.png"]
+    dropped = [
+        m
+        for m in out
+        if m.role.value == "user"
+        and m.images is None
+        and m.content
+        and m.content.endswith(REMOVED_NOTE)
+    ]
+    assert len(dropped) == 2 and dropped[0].content.startswith("[The screenshot")
+    # the originals are untouched, the text-only user message too; 0 keeps everything
+    assert all(m.images for m in msgs if "screenshot" in (m.content or ""))
+    assert out[-1].content == "and now?" and out[-1].images is None
+    assert keep_newest_images(msgs, 0) == msgs and keep_newest_images(msgs, 6) == msgs
 
 
 def test_content_parts_and_the_note(tmp_path: Path):

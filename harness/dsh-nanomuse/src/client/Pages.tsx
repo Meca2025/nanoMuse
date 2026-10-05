@@ -7,7 +7,7 @@
 import { createElement as h, Fragment, useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { bridge, gatedPermissions, type PermissionKind } from './bridge.ts'
-import { usePermissions } from './permissions.ts'
+import { permissionTitle, usePermissions } from './permissions.ts'
 import { settingsBus } from './bus.ts'
 import { IconCheck, IconChevronRight, IconDevices, IconFolder, IconHand, IconLink, IconMic, IconShield } from './icons.tsx'
 import { useLive } from './live.ts'
@@ -58,7 +58,7 @@ export function makePermissionsSection(t: Translate) {
       h('p', null, t('pmLead')),
       h('h2', null, t('pmWhat')),
       h('div', { className: 'nm-card' },
-        h(Row, { icon: h(IconHand, { size: 18 }), title: t('pmComputer'), sub: `${t('obAccessibility')}: ${word('accessibility')} · ${t('obScreen')}: ${word('screen')}`, onClick: () => { settingsBus.openSection?.(COMPUTER_SECTION) } }),
+        h(Row, { icon: h(IconHand, { size: 18 }), title: t('pmComputer'), sub: `${permissionTitle(t, 'accessibility', gated)}: ${word('accessibility')} · ${permissionTitle(t, 'screen', gated)}: ${word('screen')}`, onClick: () => { settingsBus.openSection?.(COMPUTER_SECTION) } }),
         h(Row, { icon: h(IconFolder, { size: 18 }), title: t('pmFiles'), sub: t('pmFilesSub'), onClick: () => { settingsBus.openSection?.(FILES_SECTION) } }),
         h(Row, { icon: h(IconMic, { size: 18 }), title: t('pmMic'), sub: word('microphone'), onClick: () => { settingsBus.openSection?.(DICTATION_SECTION) } }),
         h(Row, { icon: h(IconLink, { size: 18 }), title: t('pmConnectors'), sub: connectors ? t('pmConnectorsSub', { n: connectors.servers.length }) : '…', onClick: () => { settingsBus.openSection?.(CONNECTORS_SECTION) } }),

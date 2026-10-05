@@ -11,7 +11,7 @@ import { createElement as h, Fragment, useCallback, useEffect, useState, type Re
 import { call, type Translate } from './api.ts'
 import { acceleratorOf, bridge, gatedPermissions, keyLabel, openLink, type DesktopPrefs, type PermissionKind } from './bridge.ts'
 import { RelaunchNotice } from './Onboarding.tsx'
-import { BlackScreenNotice, HandsTryRows, RuntimeRow, type ScreenshotResult } from './HandsCheck.tsx'
+import { BlackScreenNotice, DisplayRows, HandsTryRows, RuntimeRow, type ScreenshotResult } from './HandsCheck.tsx'
 import { usePermissions } from './permissions.ts'
 import { settingsBus } from './bus.ts'
 import { IconBug, IconCheck, IconChevronRight, IconFile, IconHeart, IconLink, IconList, IconPlay, IconScale, IconShield } from './icons.tsx'
@@ -75,7 +75,7 @@ export function makeComputerSection(t: Translate) {
             row('screen', t('obScreen'), t('obScreenSub')),
             h(RelaunchNotice, { t, perms }),
             h('div', { className: 'nm-row' },
-              h('span', { className: 'nm-row-sub nm-wrap' }, t('pmOnlyDesktop'), ' ', t('pmMonthly'))),
+              h('span', { className: 'nm-row-sub nm-wrap' }, t(perms.helper ? 'pmOnlyHelper' : 'pmOnlyDesktop'), ' ', t('pmMonthly'))),
             h('div', { className: 'nm-row' },
               h('div', { className: 'nm-row-main' },
                 h('span', { className: 'nm-row-title' }, t('pmWindowMode')),
@@ -84,7 +84,7 @@ export function makeComputerSection(t: Translate) {
             h('div', { className: 'nm-row', style: { gap: 12, flexWrap: 'wrap' } },
               h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('accessibility') } }, t('cuOpenSettingsAccessibility')),
               h('button', { type: 'button', className: 'nm-ob-link', style: { padding: 0 }, onClick: () => { void bridge()?.openPermissionSettings('screen') } }, t('cuOpenSettingsScreen'))))
-        : h('p', null, t('cuNotGated')),
+        : h(DisplayRows, { t, name }),
       // "try it": a test screenshot and a small mouse move through the runtime, the way the hands do it
       h('h2', null, t('pmTry')),
       h(HandsTryRows, { t, perms, onScreenshot: onShot }),

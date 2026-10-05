@@ -1,6 +1,8 @@
 # Contributing
 
-Use nanoMuse for a real task, report what broke, then pick something focused. Issues and pull requests are welcome; for anything larger than a fix, open an issue first so we can agree on the shape.
+Use nanoMuse for a real task, report what broke, then pick something focused. Issues and pull requests are welcome; for anything larger than a fix, open an issue first so we can agree on the shape. [docs/roadmap.md](docs/roadmap.md) says where help is wanted and where to start in each area.
+
+[AGENTS.md](AGENTS.md) is the short version of this file for coding agents and for people in a hurry: the layout, the check commands per area, and the conventions below in one screen. The two must agree; when they do not, fix both.
 
 ## Two trees
 
@@ -64,6 +66,10 @@ cd web && npm run check && npm run build       # if you touched web/; commit the
 ```
 
 Guidelines that still apply there: everything that acts goes through the Sentinel with an honest `risk`; secrets never reach the model (`{{vault:NAME}}`); test with `MockLLM`; no internal endpoints or keys in the repo; Ruff, line length 100, type hints; docs are part of the change.
+
+## Every string in every language
+
+nanoMuse is used in more than one country, so a user-visible string is never added in one language. Write it in English first, then in 简体中文, then in every other locale the file already has — `res/values-*/nm_strings.xml` on Android (keys start with `nm_`; upstream's `strings.xml` is not ours to edit), `Localizable.xcstrings` on iOS, `en` and `zh` in `harness/dsh-nanomuse/src/client/locales.ts` on the desktop, the console and e-mail templates in `cloud/`. Dates, numbers and currency use the person's locale. Do not assume a +86 phone number, a Chinese app or Beijing time: SMS codes reach mainland-China numbers only, so a sign-in screen says that and offers e-mail. The voice is the same in every language — plain, specific, no marketing words, no exclamation marks — and Meta's own UI text is never copied verbatim.
 
 ## Commits and pull requests
 

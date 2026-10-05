@@ -12,14 +12,16 @@ import org.junit.Test
 class SyncEngineTest {
     private val uuid = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 
-    private class Phone(val relay: FakeRelay, val device: String, account: String = "acct-1") {
+    /** A phone; the C7/C8 tests below were written with side chats on, C9's own tests set it per case. */
+    private class Phone(val relay: FakeRelay, val device: String, account: String = "acct-1", sideChats: Boolean = true) {
         val store = MemorySyncStore()
         val chats = MemoryChats()
         var clock = 1_700_000_000_000L
-        val engine = SyncEngine(store, chats, relay, device, account, now = { clock })
+        var sideChats = sideChats
+        val engine = SyncEngine(store, chats, relay, device, account, now = { clock }, sideChats = { this.sideChats })
     }
 
-    private fun phone(relay: FakeRelay, device: String, account: String = "acct-1") = Phone(relay, device, account)
+    private fun phone(relay: FakeRelay, device: String, account: String = "acct-1", sideChats: Boolean = true) = Phone(relay, device, account, sideChats)
 
     @Test fun `first push mints a cid per chat and a mid per message, main as main`() = runTest {
         val relay = FakeRelay()
@@ -232,14 +234,20 @@ class SyncEngineTest {
         repeat(1200) { relay.seedMessage("pixel", "cid-s", "mid-$it", if (it % 2 == 0) "user" else "assistant", "line $it", 1_700_000_001L + it) }
         val p = phone(relay, "phone-a")
 
+        // the first pull after sign-in is the tail (C9): the chat and its newest 300 rows, in one page
         val r = p.engine.pull()
 
-        assertEquals(1201, r.applied)
+        assertEquals(1 + SyncEngine.TAIL, r.applied)
+        assertEquals(1200 - SyncEngine.TAIL, r.skipped)
         assertEquals(relay.seq, r.cursor)
         assertEquals(relay.seq.toString(), p.store.meta[SyncStore.CURSOR])
-        // later changes only
-        relay.seedMessage("pixel", "cid-s", "mid-new", "user", "one more", 1_700_000_900)
-        assertEquals(1, p.engine.pull().applied)
+        // later changes only, in pages of 500 followed to the end
+        repeat(1200) { relay.seedMessage("pixel", "cid-s", "mid-new-$it", "user", "more $it", 1_700_002_000L + it) }
+        val r2 = p.engine.pull()
+        assertEquals(1200, r2.applied)
+        assertEquals(0, r2.skipped)
+        assertEquals(relay.seq, r2.cursor)
+        assertEquals(1500, p.chats.messages(p.store.conversationByCid("cid-s")!!.sessionId).size)
     }
 
     @Test fun `a push of many messages goes in batches of 200`() = runTest {
@@ -259,7 +267,7 @@ class SyncEngineTest {
         p.chats.user("main", "hi")
         p.engine.push()
         val relay2 = FakeRelay()
-        val q = SyncEngine(p.store, p.chats, relay2, "phone-a", "acct-2")
+        val q = SyncEngine(p.store, p.chats, relay2, "phone-a", "acct-2", sideChats = { true })
         q.push()
         assertEquals("acct-2", p.store.meta[SyncStore.ACCOUNT])
         assertEquals(1, relay2.msgs.size)
@@ -411,5 +419,157 @@ class SyncEngineTest {
         p.chats.user("main", "x".repeat(40_000))
         p.engine.push()
         assertEquals(SyncEngine.TEXT_MAX, relay.msgs.values.single().text.length)
+    }
+
+    // ── contract C9: main first ───────────────────────────────────────────
+
+    @Test fun `C9 scope - with side chats off only the main chat goes out and the pull asks for scope=main`() = runTest {
+        val relay = FakeRelay()
+        val p = phone(relay, "phone-a", sideChats = false)
+        p.chats.addSession("main"); p.chats.main = "main"
+        p.chats.addSession("side", "Trip")
+        p.chats.user("main", "hi"); p.chats.assistant("main", "hello")
+        p.chats.user("side", "plan a trip"); p.chats.assistant("side", "where to?")
+
+        assertEquals(3, p.engine.push())
+
+        assertEquals(setOf("main"), relay.convs.values.map { it.kind }.toSet())
+        assertEquals(2, relay.msgs.size)
+        assertNull(p.store.convs["side"])
+        assertTrue(relay.changeCalls.all { it.second == SyncApi.SCOPE_MAIN })
+        // the first pull after sign-in asks for the tail; the ones after it do not
+        assertEquals(Triple(0L, SyncApi.SCOPE_MAIN, SyncEngine.TAIL), relay.changeCalls.first())
+        p.engine.pull()
+        assertEquals(0, relay.changeCalls.last().third)
+    }
+
+    @Test fun `C9 scope - a side row that arrives while the switch is off makes no chat and no row here`() = runTest {
+        val relay = FakeRelay(mapOf("pixel" to "Pixel 8"))
+        relay.seed("pixel", "cid-m", "main", null, 1_700_000_000)
+        relay.seedMessage("pixel", "cid-m", "mid-m", "user", "main line", 1_700_000_001)
+        relay.seed("pixel", "cid-s", "side", "Groceries", 1_700_000_000)
+        relay.seedMessage("pixel", "cid-s", "mid-s", "user", "milk", 1_700_000_002)
+        val p = phone(relay, "phone-a", sideChats = false)
+        p.chats.addSession("main"); p.chats.main = "main"
+
+        // the fake honours scope=main; make it send the side rows anyway, as a relay from before C9 would
+        relay.ignoreScope = true
+        assertEquals(2, relay.changes(0, 500, SyncApi.SCOPE_MAIN, 0).conversations.size)
+        p.engine.pull()
+
+        assertEquals(1, p.chats.sessions.size)
+        assertEquals(listOf("main line"), p.chats.messages("main").map { Transcript.items(listOf(it)).first().text })
+        assertNull(p.store.conversationByCid("cid-s"))
+    }
+
+    @Test fun `C9 tail - the first pull after sign-in gets the newest rows, the rest is reported as skipped, the cursor is the latest`() = runTest {
+        val relay = FakeRelay(mapOf("desk-1" to "Mac"))
+        relay.seed("desk-1", "cid-main", "main", null, 1_700_000_000)
+        for (i in 1..(SyncEngine.TAIL + 50)) relay.seedMessage("desk-1", "cid-main", "mid-$i", if (i % 2 == 1) "user" else "assistant", "line $i", 1_700_000_000L + i)
+        val p = phone(relay, "phone-a", sideChats = false)
+
+        val r = p.engine.pull()
+
+        assertEquals(50, r.skipped)
+        assertEquals(SyncEngine.TAIL, p.store.msgs.size)
+        val main = p.chats.mainSessionId()!!
+        val texts = p.chats.messages(main).map { Transcript.items(listOf(it)).first().text }
+        assertEquals("line 51", texts.first())
+        assertEquals("line ${SyncEngine.TAIL + 50}", texts.last())
+        assertEquals(relay.seq, r.cursor)
+        // a later pull continues from the cursor: nothing older comes, something newer does
+        relay.seedMessage("desk-1", "cid-main", "mid-new", "assistant", "newest", 1_700_000_900)
+        val r2 = p.engine.pull()
+        assertEquals(1, r2.applied)
+        assertEquals(0, r2.skipped)
+        assertEquals(SyncEngine.TAIL + 1, p.store.msgs.size)
+        // the relay's assistant row is reported, so the "working" line can go
+        assertEquals(setOf(main), r2.replied)
+    }
+
+    @Test fun `C9 switch - turning side chats on pulls once from zero with scope=all and backfills this phone's side chats`() = runTest {
+        val relay = FakeRelay(mapOf("pixel" to "Pixel 8"))
+        relay.seed("pixel", "cid-s", "side", "Groceries", 1_700_000_000)
+        relay.seedMessage("pixel", "cid-s", "mid-s", "user", "milk", 1_700_000_002)
+        val p = phone(relay, "phone-a", sideChats = false)
+        p.chats.addSession("main"); p.chats.main = "main"
+        p.chats.addSession("side", "Trip")
+        p.chats.user("main", "hi")
+        p.chats.user("side", "plan a trip", at = 1_690_000_000_000L); p.chats.assistant("side", "where to?", at = 1_690_000_001_000L)
+        p.engine.push()
+        assertFalse(p.chats.sessions.values.any { it.title == "Groceries" }) // the other device's side chat is not here
+        assertEquals(1, relay.convs.values.count { it.kind == "main" })
+        assertNull(p.store.convs["side"])
+
+        // the switch goes on
+        p.sideChats = true
+        p.engine.sideChatsTurnedOn()
+        p.engine.pull()
+        assertEquals(Triple(0L, SyncApi.SCOPE_ALL, SyncEngine.TAIL), relay.changeCalls.last())
+        // the other device's side chat is here now, the main chat is unchanged (one row per mid)
+        assertTrue(p.chats.sessions.values.any { it.title == "Groceries" })
+        assertEquals(1, p.chats.messages("main").size)
+        // and the backfill: this phone's side chat goes up, oldest first
+        p.engine.push()
+        val sideCid = p.store.convs.getValue("side").cid
+        assertEquals("side", relay.convs.getValue(sideCid).kind)
+        val sent = relay.msgs.values.filter { it.cid == sideCid }.sortedBy { it.seq }
+        assertEquals(listOf("plan a trip", "where to?"), sent.map { it.text })
+
+        // off again: the side chats rest, the main chat still moves
+        p.sideChats = false
+        p.chats.user("side", "more"); p.chats.user("main", "again")
+        p.engine.push()
+        assertTrue(relay.msgs.values.any { it.text == "again" })
+        assertFalse(relay.msgs.values.any { it.text == "more" })
+        relay.seedMessage("pixel", "cid-s", "mid-s2", "user", "eggs", 1_700_000_500)
+        assertEquals(0, p.engine.pull().applied)
+        assertEquals(SyncApi.SCOPE_MAIN, relay.changeCalls.last().second)
+        assertEquals(1, p.chats.messages(p.chats.sessions.values.first { it.title == "Groceries" }.id).size)
+    }
+
+    @Test fun `C9 remote rows - the rows another device wrote are known by id, this phone's are not`() = runTest {
+        val relay = FakeRelay(mapOf("desk-1" to "Mac"))
+        relay.seed("desk-1", "cid-main", "main", null, 1_700_000_000)
+        relay.seedMessage("desk-1", "cid-main", "mid-0", "user", "from the mac", 1_700_000_000)
+        val p = phone(relay, "phone-a", sideChats = false)
+        p.chats.addSession("main"); p.chats.main = "main"
+        p.chats.user("main", "from the phone", at = 1_700_000_001_000)
+        p.engine.push()
+
+        val remote = p.engine.remoteRows()
+        val rows = p.chats.messages("main")
+        assertEquals(2, rows.size)
+        val macRow = rows.first { Transcript.items(listOf(it)).first().text == "from the mac" }
+        val phoneRow = rows.first { Transcript.items(listOf(it)).first().text == "from the phone" }
+        assertEquals(mapOf(macRow.id to "desk-1"), remote)
+        assertFalse(phoneRow.id in remote)
+        // an echo of our own row under a lost mid stays ours
+        relay.seedMessage("phone-a", "cid-main", "mid-lost", "user", "from the phone", 1_700_000_001)
+        p.engine.pull()
+        assertEquals(1, p.engine.remoteRows().size)
+    }
+
+    @Test fun `C9 working - presence goes out for a pushed chat in scope, never for one the relay does not know`() = runTest {
+        val relay = FakeRelay()
+        val p = phone(relay, "phone-a", sideChats = false)
+        p.chats.addSession("main"); p.chats.main = "main"
+        p.chats.addSession("side", "Trip")
+        p.chats.user("main", "hi"); p.chats.user("side", "x")
+
+        // before the first push nothing is mapped: nothing goes out
+        assertFalse(p.engine.working("main", true))
+        p.engine.push()
+        assertTrue(p.engine.working("main", true))
+        assertTrue(p.engine.working("main", false))
+        // a side chat while the switch is off is not on the relay
+        assertFalse(p.engine.working("side", true))
+        val cid = p.store.convs.getValue("main").cid
+        assertEquals(listOf(Triple("phone-a", cid, true), Triple("phone-a", cid, false)), relay.workingCalls)
+        // what the relay reports is readable through state()
+        relay.workingNow += WorkingPresence(cid, "desk-1", "Mac", 1_700_000_000L)
+        assertEquals("desk-1", relay.state().working.single().from)
+        assertTrue(relay.state().working.single().live(1_700_000_000L + 599))
+        assertFalse(relay.state().working.single().live(1_700_000_000L + 600))
     }
 }

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — an open-source personal agent for every device you own">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — 당신의 모든 기기를 위한 오픈소스 개인 에이전트">
 </p>
 
 <p align="center">
@@ -14,93 +14,97 @@
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ru.md">Русский</a> |
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_vi.md">Tiếng Việt</a>
 </p>
-
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="GitHub 스타"></a>
-  <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="다운로드 수"></a>
+  <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="다운로드"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/%EB%B8%8C%EB%9D%BC%EC%9A%B0%EC%A0%80%EC%97%90%EC%84%9C%20%EC%8D%A8%20%EB%B3%B4%EA%B8%B0-nanomuse.cn%2Fweb-5B4EE6" alt="브라우저에서 써 보기"></a>
-  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%EC%9B%B9%EC%82%AC%EC%9D%B4%ED%8A%B8-nanomuse.cn-0a66e4" alt="웹사이트"></a>
+  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="문서"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
 </p>
 
-> [!IMPORTANT]
-> **무료, 오픈 소스, 비영리.** 전화번호나 이메일로 로그인하면 무료 사용량을 받습니다. 비용은 개발자가 냅니다. 남은 양과 추가하는 방법은 계정 페이지에 있습니다. 다 쓰면 자신의 키를 쓰세요. 중국 본토에서는 Alibaba Cloud Bailian, 그 외 지역에서는 OpenRouter([방법](../own-key.md)). 메시지는 기본적으로 저장되지 않고 아무것도 판매하지 않습니다([개인정보 처리방침](https://nanomuse.cn/privacy/)). 계정은 언제든 삭제할 수 있습니다. **[브라우저에서 써 보기](https://nanomuse.cn/web/)** 또는 [앱 다운로드](https://github.com/nano-muse/nanoMuse/releases/latest).
+**nanoMuse는 당신의 모든 기기를 위한 오픈소스 개인 에이전트입니다.** 이름과 모습을 가진 하나의 에이전트로, Meta의 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/)와 같은 종류입니다. 질문에 답하는 대신 직접 일을 하고, 앱을 닫아도 계속 일하고, 당신을 기억하며, 되돌릴 수 없는 일을 하기 전에는 멈춰서 묻습니다.
 
-> 이 페이지는 [영어 README](../../README.md)의 번역본입니다. 영어판이 기준이며, 소식과 전체 버전 표는 그곳에 있습니다.
-
-nanoMuse는 당신이 가진 모든 기기에서 쓰는 오픈 소스 개인 에이전트입니다. Meta의 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/)처럼 자기만의 이름과 모습을 가진 하나의 에이전트가 질문에 답하는 대신 일을 해내고, 앱을 닫아도 계속 일하며, 당신을 기억하고, 되돌릴 수 없는 일 앞에서는 멈춰서 먼저 묻습니다. Android 앱은 에이전트 전체를 **휴대폰 위에서** 실행합니다. Linux 루트 파일 시스템, 셸, 브라우저, MCP, 스킬, 예약 작업이 APK 안에 들어 있고, 모델은 당신이 가져옵니다. API가 없는 앱을 위한 '손'도 있습니다 — 당신의 허락 아래 휴대폰 화면 자체를 보고 누릅니다 — 그리고 당신의 컴퓨터까지 닿습니다. 휴대폰에서 말하면 컴퓨터에서 처리됩니다. 데스크톱 앱, 웹 버전, iPhone 앱(TestFlight)도 있고, 글래스가 뒤따릅니다. 모델은 자신의 키로도, 공개 릴레이의 무료 사용량으로도 쓸 수 있습니다. GPL-3.0 — 그리고 자신만의 Muse를 만들 토대이기도 합니다.
+*nano*는 직접 돌리고 직접 배포할 수 있을 만큼 작은, 완전한 한 벌이라는 뜻입니다. 휴대폰 앱, 데스크톱 앱, 웹 콘솔, 그리고 이들을 잇는 릴레이가 모두 이 저장소에 GPL-3.0-or-later로 들어 있습니다. nanoMuse는 비영리입니다. 로그인하면 커뮤니티 릴레이에서 모델을 쓸 수 있는 무료 사용량을 받습니다. 비용은 개발자가 부담합니다. 다 쓰면 [자신의 키로 바꾸세요](../own-key.md). 같은 릴레이를 자신의 서버에서 돌릴 수도 있어, 아무것도 집 밖으로 나가지 않게 할 수 있습니다. 최신 버전: **0.1.37 Weave** — [릴리스 노트](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.37) · [브라우저에서 써 보기](https://nanomuse.cn/web/).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="같은 작은 용의 다섯 가지 상태: 휴식, 작업 중, 대기, 기쁨, 미안함">
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="대화: 작업 공간에서 삭제하기 전에 에이전트가 멈춰서 묻는다 — 이번 한 번, 이 대화, 작업 공간에서는 항상, 또는 거부">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="채팅: 작업 공간 안의 것을 지우기 전에 에이전트가 멈춰서 묻는다 — 한 번만, 이 대화, 작업 공간에서는 항상, 또는 거부">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="피드: 오늘 아침 당신을 위해 쓴 글">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="목표: 일정에 따라 추적, 루틴 포함">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="아바타: 모습을 설명하면 이미지 모델이 그리고, 마음에 드는 것을 고른다">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="목표: 일정에 따라 확인하고, 루틴도 있다">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="아바타: 모습을 말로 묘사하면 이미지 모델이 그리고, 마음에 드는 것을 고른다">
 </p>
-
-## 왜 nanoMuse인가
-
-네 가지가 이 프로젝트를 정의합니다.
-
-| | |
-|---|---|
-| **Muse 스타일** | 도구 상자가 아니라 하나의 에이전트: 자기만의 이름과 모습, 첫 대화, 당신을 위해 쓰는 피드, 백그라운드에서 진행되는 목표, 읽고 고칠 수 있는 기억, 그리고 되돌릴 수 없는 일 앞에서의 승인. |
-| **완전히 공개** | GPL-3.0-or-later, 저장소 전체. 닫힌 구성 요소도, 꼭 써야 하는 계정이나 서버도, 꼭 써야 하는 모델도 없습니다 — 선택 사항인 nanoMuse Cloud 릴레이도 저장소에 있어 누구나 직접 운영할 수 있고, 모든 릴리스는 태그에서 빌드되어 수동으로 설치됩니다. Muse, 豆包, 千问은 누군가 주는 제품이지만 nanoMuse는 당신이 소유하는 것 — 그리고 자신만의 Muse를 만들 토대입니다. 이름을 바꾸고, 모습을 다시 그리고, 성격을 다시 쓰고, 자신의 모델과 도구를 연결하세요. |
-| **API가 있든 없든, 어떤 앱이든** | 중국에서는 하루의 대부분이 API가 있어 본 적 없는 앱 안에서 흘러갑니다. 에이전트는 단계를 밟습니다 — 먼저 스킬, CLI, MCP 서버, 다음은 당신의 로그인으로 가져온 페이지, 다음은 앱 내 브라우저, 그리고 허락하면 기기 화면 자체를 당신처럼 보고 누릅니다 — 결제, 전송, 삭제 전에는 같은 승인을 거칩니다. 기본은 꺼짐입니다. |
-| **모든 기기** | 하나의 에이전트, 그리고 당신이 가진 모든 기기가 그 손이자 입구입니다. 휴대폰에서 말하면 PC에서 이루어지고, 글래스에 말하면 둘 다에서 이루어집니다. 휴대폰이 컴퓨터를 조작하는 것은 이미 가능하고, 데스크톱 앱, 웹, iPhone 앱도 있습니다. 글래스가 뒤따릅니다. |
-
-Muse 및 앱의 토대인 런타임 OpenMinis와의 비교는 [영어 README](../../README.md#compared-with-muse-and-openminis)에, 계획과 그 이유는 [docs/roadmap.md](../roadmap.md)에 있습니다.
 
 ## 설치
 
-설치 없이 먼저 한번 보기: [nanomuse.cn/web](https://nanomuse.cn/web/)을 열면 브라우저 안에 시뮬레이션된 휴대폰이 나타나고, 그 안에 당신만의 nanoMuse가 있습니다. 전화번호나 이메일과 인증 코드로 로그인하면 써 볼 수 있습니다 — 데모이며, 앱과는 차이가 큽니다. 제대로 쓰려면 아래의 휴대폰 앱과 데스크톱 앱을 같은 계정으로 쓰세요. 자신의 기기에는 [다운로드](https://nanomuse.cn/#download): Android APK, Windows / macOS / Linux용 데스크톱 앱(`nanoMuse-Desktop-<version>-…`), 터미널 바이너리(`nanomuse-desktop-terminal-<version>-…`), 또는 Python 3.11+에서 `pipx install "git+https://github.com/nano-muse/nanoMuse"`. 우리 측정으로는 중국에서도 GitHub가 가장 빠른 다운로드 소스입니다. 그래도 안 되는 곳이라면 같은 파일이 프로젝트 미러 [nanomuse.cn/dl](https://nanomuse.cn/dl/)에 있습니다(릴리스 후 15분 안에 동기화, SHA-256 검증). 기기들이 어떻게 연결되는지는 [docs/desktop.md](../desktop.md)와 [docs/every-device.md](../every-device.md)에 있습니다. 휴대폰에서는:
-
-1. [최신 릴리스](https://github.com/nano-muse/nanoMuse/releases/latest)에서 `nanoMuse-<version>-arm64.apk`를 내려받습니다 — Android 8.0 이상, 64비트 휴대폰. 원한다면 `sha256sum -c nanoMuse-<version>-arm64.apk.sha256`로 검증하세요.
-2. 파일을 엽니다. Android가 설치 허용을 한 번 묻습니다. 모든 버전이 같은 키로 서명되어 있어 업데이트는 이전 버전 위에 설치되고 데이터는 유지됩니다.
-3. 모델을 연결합니다. *로그인 — 무료*: 전화번호(코드는 SMS로 옵니다)나 이메일 주소로, 에이전트는 [nanoMuse Cloud](../cloud.md)의 무료 사용량을 갖게 됩니다 — 키도, 결제도 필요 없고, 계정 페이지에 남은 양과 늘어나는 방식이 표시됩니다. 채팅 모델은 `deepseek-v4.1-flash`, 손은 `qwen3.8-27b`를 쓰며 둘은 별개의 설정입니다. 다 쓰면 자신의 키를 쓰세요. 중국 본토에서는 [Alibaba Cloud Bailian](../own-key.md), 그 외 지역에서는 [OpenRouter](../own-key.md)(Bailian은 중국 본토 밖의 계정을 받지 않습니다), OpenAI 호환 엔드포인트, 또는 앱에 포함된 OAuth 로그인 중 하나로. 그다음 원하면 에이전트가 휴대폰 앱을 쓸 수 있게 하는 두 가지 권한(건너뛸 수 있음), 그리고 첫 대화 — 당신을 어떻게 부를지 묻고 에이전트가 자기 이름을 고릅니다.
-4. 선택 사항 — *설정 → 이미지·영상 모델*: 이미지 모델(Alibaba Cloud Model Studio의 qwen-image-3.0, gpt-image-1, 또는 OpenAI images 엔드포인트가 있는 어떤 제공자든)이 있으면 에이전트가 모습을 바꾸고 그림을 그릴 수 있고, 영상 모델(Model Studio의 wan2.2-i2v-flash)이 있으면 그 모습이 움직입니다. Muse에는 이것들이 내장되어 있지만 nanoMuse는 당신의 것을 쓰며, 없으면 에이전트가 알려 줍니다.
-
-앱은 이 저장소의 릴리스를 확인해 업데이트합니다. 데스크톱 앱은 *설정 → 정보*에 버전을 표시하고, 거기에 *업데이트 확인* 버튼이 있습니다. 각 버전의 릴리스 노트는 [docs/releases/](../releases)와 [CHANGELOG](../../CHANGELOG.md)에 있습니다.
-
-## 무엇을 하는가
-
 | | |
 |---|---|
-| **일을 해낸다** | Linux 셸, 브라우저, MCP 서버, [Agent Skills](https://agentskills.io) 형식의 스킬, 그리고 *핸즈*를 켜면 휴대폰의 앱을 화면을 통해 다룹니다. 스크린샷, 동작 하나, 또 스크린샷 — API를 먼저 시도하는 사다리, 로그인 때의 넘겨받기, 같은 승인과 함께. 에이전트는 일에 필요한 손을 고르고, 각 단계를 열어 볼 수 있는 카드로 보여 줍니다. 로그인이나 인증 코드처럼 페이지가 당신을 필요로 하면 멈추고 넘겨줍니다. *완료*를 누르면 이어서 합니다 — 휴대폰, 데스크톱, 웹 모두 같습니다. macOS에서는 손이 한 앱의 창만 자체 이벤트로 조작할 수 있어 커서는 그대로 당신 것이고, 앱마다 처음에 한 번 묻습니다. |
-| **먼저 묻는다** | 삭제, 전송, 결제 전에 멈춥니다 — 셸에서도, 브라우저에서도, 핸즈가 휴대폰 화면을 누를 때도. 승인 범위는 이번 한 번, 이 대화, 또는 이 수신자·도메인·폴더에 대해 항상 중에서 정할 수 있고, '권한'에서 취소할 수 있습니다. 비밀번호와 인증 코드는 언제나 당신이 직접 입력합니다. 데스크톱에서는 *한 번 허용 / 거부*가 라이브 스테이지에, 휴대폰에서는 캡슐에 있어 앱으로 돌아가지 않고 그 자리에서 답할 수 있습니다. |
-| **이미 쓰는 곳에서** | 飞书, 钉钉, 企业微信, Telegram에서 바로 Muse에게 말할 수 있습니다. 봇은 메신저 안에 있으면서 첫 메시지에서 코드로 페어링하고, 그 자리에서 답합니다([docs/channels.md](../channels.md)). 한 기기에서 연결한 서비스는 다른 기기에 "당신의 Mac에서 연결됨 — 여기서 쓰려면 여기서 로그인"으로 표시되고, 자격 증명은 로그인한 기기에 남습니다. |
-| **계속 나아간다** | 목표는 대화 속에서 만들어지고, 자체 대화에서 일정에 따라 점검됩니다. 루틴은 앱이 닫혀 있어도 실행되고, 휴대폰을 조작하는 동안 화면은 켜져 있으며, 200단계에 이르면 일찍 마무리하는 대신 "계속할까요?"라고 묻습니다. |
-| **당신을 위한 피드를 쓴다** | 매일 아침, 당신에 대해 아는 것과 지켜보라고 한 것들로 서너 편에서 여섯 편의 짧은 글을 카드로 씁니다. 좋아요를 누르거나, 옆 대화에서 이야기하거나, 지울 수 있습니다. 한 문장이면 방향을 바꿀 수 있습니다. |
-| **당신을 기억한다** | 자신이 누구인지(`SOUL.md`), 당신에 대해 아는 것(`USER.md`), 기억하는 것(`GLOBAL.md`와 일기), 언제 깨어나는지(`HEARTBEAT.md`)는 앱에서 읽고 고칠 수 있는 파일입니다. 다른 어시스턴트가 알던 것은 *기억 가져오기*로 옮겨 올 수 있습니다. |
-| **자기만의 모습** | 한 문장으로 설명하면 이미지 모델이 그리고, 마음에 드는 것을 고릅니다. 앱은 모든 상태 — 작업 중, 대기, 기쁨, 미안함 — 의 자세를 만들고, 에이전트가 하는 일에 맞춰 숨 쉬고, 흔들리고, 고개를 갸웃하고, 튀어 오르고, 떱니다. 영상 모델이 있으면 각 상태는 짧은 반복 클립이 됩니다. 기본은 정지 이미지와 클립이 모두 들어 있는 연한 노란색 작은 용입니다. |
-| **아이디어와 라이브러리** | 목표와 기억에서 나온, 다음에 물어볼 것들. 그리고 에이전트가 만든 모든 것을 미리보기와 함께. |
+| **Android** 8.0 이상, arm64 | [nanoMuse-0.1.37-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-0.1.37-arm64.apk) — 모든 버전이 같은 키로 서명되어 있어 덮어 설치하면 됩니다 |
+| **iPhone / iPad** | TestFlight, 지금은 내부 테스터만 <!-- coordinator: 공개 TestFlight 링크가 생기면 여기에 --> |
+| **macOS** 12 이상 | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-mac-x64.dmg) — 공증되지 않음: 처음 한 번 우클릭 → 열기 |
+| **Windows** 10 이상 | [nanoMuse-Desktop-0.1.37-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-win-x64.exe) — 실행을 한 번 눌러 주세요 |
+| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.37/nanoMuse-Desktop-0.1.37-linux-x64.tar.gz) |
+| **터미널** | Python 3.11 이상에서 `pipx install "git+https://github.com/nano-muse/nanoMuse"`, 또는 [최신 릴리스](https://github.com/nano-muse/nanoMuse/releases/latest)의 `nanomuse-desktop-terminal` 바이너리 |
+| **Docker** | `bash scripts/self-host.sh --local`로 자신의 릴레이를, `docker compose up -d app`으로 자신의 서버에 웹 앱을 — [직접 호스팅](../self-hosting.md) |
 
-이 모든 것이 휴대폰에서 실행됩니다. OpenMinis의 나머지 — 터미널, 앱 내 브라우저, MCP와 스킬 관리, 모델 그룹, 토큰 사용량, 접근성 실행기, 공유 폴더 — 도 그대로 남아 같은 메뉴에서 쓸 수 있습니다.
+모든 다운로드는 [GitHub 최신 릴리스](https://github.com/nano-muse/nanoMuse/releases/latest)에서 옵니다. GitHub가 느린 곳이라면 같은 파일이 [nanomuse.cn/dl](https://nanomuse.cn/dl/)에 있습니다. 앱을 열고 이메일이나 중국 본토 휴대폰 번호로 로그인하면 에이전트가 생각할 모델을 갖게 됩니다. 휴대폰, 데스크톱, 웹은 하나의 계정을 공유하고 같은 대화를 보여 줍니다.
 
-## 버전
+## 무엇을 하나
 
-단계마다 작은 버전 하나, 각각 APK가 포함된 GitHub 릴리스입니다. 소식과 전체 버전 표는 [영어 README](../../README.md#versions)에, 계획과 그 이유는 [docs/roadmap.md](../roadmap.md)에, 각 버전의 노트는 [docs/releases/](../releases)와 [CHANGELOG](../../CHANGELOG.md)에 있습니다. 그다음은 순서대로: 자신의 머신(VM, 홈 서버)에서 돌리는 웹 버전, 글래스.
+- **직접 일을 합니다.** Linux 셸, 브라우저, MCP 서버, 스킬 — 그리고 *Hands*를 켜면 API가 한 번도 없었던 것들을 위해 휴대폰의 앱과 컴퓨터의 창을 화면을 통해 다룹니다.
+- **먼저 묻습니다.** 삭제, 전송, 결제 전에 한 번 멈추고, 한 번만 / 이 대화 / 항상으로 기억합니다. 비밀번호와 인증 코드는 당신이 입력합니다. 로그인이나 CAPTCHA는 당신에게 넘기고, 완료를 누르면 이어서 합니다.
+- **다른 기기에 닿습니다.** 휴대폰에서 말하면 PC에서 실행됩니다. 메시지 앞에 `@Mac …`을 붙이면 그 기기로 보냅니다. 승인은 손에 든 기기로 돌아옵니다.
+- **계속 움직입니다.** 목표는 일정에 따라 확인하고, 루틴은 앱을 닫아도 돌아가며, 매일 아침 당신을 위한 피드가 쓰입니다.
+- **당신을 기억합니다.** 자기가 누구인지, 당신에 대해 무엇을 아는지, 언제 깨어나는지는 읽고 고칠 수 있는 Markdown 파일입니다.
+- **메신저 안에 삽니다.** 飞书, 钉钉, 企业微信, Telegram에서 답합니다.
+- **자기만의 모습.** 말로 묘사하면 이미지 모델이 그리고, 비디오 모델이 움직이게 합니다. 기본은 작은 용입니다.
+- **어떤 모델이든.** 릴레이의 모델, Bailian이나 OpenRouter 키, 또는 OpenAI 호환 엔드포인트.
 
-## 지금 어디까지 왔나
+## 어떻게 동작하나
 
-0.1은 프리뷰입니다. 우리가 매일 쓰고 있고 어디가 아직 거친지 압니다. 여러분에게서 무엇이 깨졌는지, 무엇을 해 주길 바라는지 알려 주세요. 개발자 쪽 — 자신의 모델, 셸, MCP, 스킬, 하네스, 런타임 API — 은 설정과 문서에 있습니다. 런타임의 인터페이스, 스킬과 플러그인 인터페이스는 한동안 더 바뀝니다. 무엇이 바뀌었는지는 [CHANGELOG](../../CHANGELOG.md)에, 다음에 무엇을 할지는 [로드맵](../roadmap.md)에 있습니다. 쓸모가 있었다면 스타 하나가 다른 사람이 찾는 데 도움이 됩니다.
+모든 기기가 자기 에이전트를 돌립니다. 휴대폰은 APK 안에서(proot 위의 Alpine Linux, 셸, 브라우저, MCP), 컴퓨터는 nanoMuse Desktop 안에서(DeepSeek Harness와 손을 위한 Python 런타임). 로그인하면 릴레이에서 만나 서로 부탁할 수 있습니다. 대화 텍스트는 릴레이를 지나지만, 파일과 스크린샷은 만들어진 기기에 남습니다.
+
+```
+휴대폰 ──┐                         ┌── 컴퓨터 (nanoMuse Desktop)
+         ├──▶  nanoMuse Cloud  ◀───┤        릴레이: 로그인, 모델,
+웹 ──────┘        /v1/hub          └── 다른 휴대폰 / 컴퓨터    hub, 대화 동기화
+```
+
+기기에 대해서는 [docs/every-device.md](../every-device.md), 프레임은 [docs/hub.md](../hub.md), 릴레이는 [docs/cloud.md](../cloud.md), 무엇을 저장하는지는 [docs/privacy.md](../privacy.md).
+
+## Muse, OpenMinis와 비교
+
+| | Meta Muse | OpenMinis | nanoMuse |
+|---|---|---|---|
+| 에이전트가 도는 곳 | 사용자마다 클라우드 VM 하나 | 설치된 휴대폰 | 당신의 휴대폰, 컴퓨터, 또는 자신의 서버 — 하나의 계정으로 |
+| API 없는 앱 | 닿지 않음. VM은 기기를 건드리지 않음 | Android의 접근성 CLI | 휴대폰과 컴퓨터 모두 화면을 손으로 씀: 스크린샷을 보고, API를 먼저 시도하고, 로그인은 당신이 맡음. iOS에서는 안 됨 — 시스템이 허용하지 않음 |
+| 다른 기기 | 하나의 VM의 클라이언트들 | 설치된 한 대만 | 기기끼리 hub로 부탁하고, 승인은 당신이 있는 곳에서 |
+| 모델 | Meta의 것 | 직접 가져옴 | 릴레이의 무료 사용량, 또는 자신의 것 |
+| 라이선스 | 비공개 | GPL-3.0 | GPL-3.0-or-later, OpenMinis 위에 구축 |
+
+## 문서
+
+[nanomuse.cn/docs](https://nanomuse.cn/docs/) — 플랫폼별 설치, 모든 기기, Hands, 커넥터, 기억, 직접 호스팅, 프로토콜. 원본은 [docs/](../)에, 버전마다 바뀐 것은 [CHANGELOG](../../CHANGELOG.md)와 [docs/releases/](../releases/)에 있습니다.
+
+## 직접 호스팅
+
+VPS 한 대, 한 시간: [docs/self-hosting.md](../self-hosting.md). 세 가지 길 — 서버 없이 자신의 키만으로, `scripts/self-host.sh`로 자신의 릴레이, 웹 앱을 위한 자신의 런타임.
 
 ## 기여하기
 
-**[이슈 열기](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [Discussions에서 묻거나 보여 주기](https://github.com/nano-muse/nanoMuse/discussions) · [저장소에 스타 주기](https://github.com/nano-muse/nanoMuse)**. 무료 사용량, 자신의 키, 데이터가 어떻게 다뤄지는지: [docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md). 빌드 환경, 규약(`com.openminis.app` 유지, 새 코드는 `io.github.nanomuse.*`에, 업스트림 수정에는 `// nanoMuse:`, 커밋에는 `Signed-off-by`), 릴리스 방법은 [CONTRIBUTING.md](../../CONTRIBUTING.md)에 있습니다.
+실제 일에 써 보고, 어디가 고장 났는지 알리고, 그다음 작고 구체적인 것 하나를 고르세요. [CONTRIBUTING.md](../../CONTRIBUTING.md)에 설정과 규약이, [AGENTS.md](../../AGENTS.md)에 이 트리에서 코딩 에이전트가 따르는 규칙이, [로드맵](../roadmap.md)에 어디서 시작할지가 있습니다. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions).
 
 ## 감사의 말
 
-nanoMuse는 다른 이들의 작업 위에 서 있습니다. [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)에 각 조건이 있습니다. 앱은 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 위에 만들어졌습니다 — proot 위의 Linux, 셸, 브라우저, MCP, 스킬, 예약 작업, 접근성 실행기. 샌드박스는 [proot](https://github.com/proot-me/proot)와 [Alpine Linux](https://alpinelinux.org/)에서 왔습니다.
+nanoMuse는 다른 사람들의 작업 위에 서 있습니다. 조건은 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)에.
 
-## 면책 조항
+- [OpenMinis](https://github.com/OpenMinis/OpenMinis) — 휴대폰 앱의 바탕이 된 온디바이스 에이전트. 샌드박스는 [proot](https://github.com/nano-muse/proot)와 [Alpine Linux](https://alpinelinux.org/).
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — 데스크톱 앱이 플러그인으로 올라가 있는 에이전트 하네스.
+- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance) — 데스크톱 손의 오퍼레이터는 이것을 포팅한 것이고, 스테이지의 마커는 ScreenMarker를 따릅니다.
+- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/lsdefine/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ClawGUI/ClawGUI-APP) — 휴대폰 오퍼레이터, 트레이스, 제품 아이디어.
 
-nanoMuse는 독립적인 커뮤니티 프로젝트입니다. Meta Platforms, Inc. 또는 그 제품 Muse와 제휴하거나 승인을 받거나 그로부터 파생된 것이 아닙니다. Muse는 Meta Platforms, Inc.의 상표입니다. 용은 이 프로젝트 고유의 것입니다.
+## 고지
+
+nanoMuse는 독립적인 커뮤니티 프로젝트로, Meta Platforms, Inc.와 관련이 없고 그 지지를 받지도 않습니다. Muse는 그들의 상표입니다. 용은 이 프로젝트의 것입니다.
 
 ## 라이선스
 
-[GPL-3.0-or-later](../../LICENSE). Android 앱은 OpenMinis 1.13(GPL-3.0)을 기반으로 2026-09-24부터 수정한 것입니다. [NOTICE](../../NOTICE)와 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)를 참고하세요. Python 계열의 초기 버전은 MIT로 공개되었습니다(태그 `pre-openminis`).
+[GPL-3.0-or-later](../../LICENSE). 휴대폰 앱은 OpenMinis 1.13(GPL-3.0)을 바탕으로 2026-09-24부터 수정했습니다 — [NOTICE](../../NOTICE) 참고. 그 이전 Python 계열 버전은 MIT였습니다(태그 `pre-openminis`).

@@ -243,6 +243,8 @@ final class NanoMuseHub: ObservableObject {
             backoff = 1
             detail = "connected"
             devices = (frame["devices"] as? [[String: Any]] ?? []).compactMap(HubDevice.init)
+            // C9: what the relay remembers of who is working on what (frames missed while away).
+            NanoMusePresence.shared.refresh()
         case "devices":
             devices = (frame["devices"] as? [[String: Any]] ?? []).compactMap(HubDevice.init)
         case "ping":
@@ -265,6 +267,9 @@ final class NanoMuseHub: ObservableObject {
         case "sync":
             // C7: another device pushed conversations; pull from our cursor.
             NanoMuseSync.shared.onHubFrame(frame)
+        case "working":
+            // C9: another device started or ended a turn on a synced conversation.
+            NanoMusePresence.shared.onHubFrame(frame)
         case "error":
             if let id = frame["id"] as? String, let done = pending.removeValue(forKey: id) {
                 eventHandlers.removeValue(forKey: id)

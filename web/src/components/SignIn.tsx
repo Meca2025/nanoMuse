@@ -2,7 +2,7 @@ import { KeyRound, Loader2, MessageSquareText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
-import { isMainland } from "../region";
+import { isMainland, looksLikeForeignNumber } from "../region";
 import { cx } from "../util";
 import { markFirstSignIn } from "./FirstSignInSteps";
 import { inputCls, primaryBtn, secondaryBtn } from "./Form";
@@ -171,6 +171,9 @@ export function SignIn({
           placeholder={t("138 0000 0000 or you@example.com")}
           className={cx(inputCls, "mt-1")}
         />
+        {mode === "code" && !sent && (!isMainland() || looksLikeForeignNumber(identifier)) && (
+          <p className="mt-1.5 text-[12px] text-muted">{t("Text-message codes reach mainland-China numbers only. Use an e-mail address instead.")}</p>
+        )}
       </div>
       {mode === "password" ? (
         <div>

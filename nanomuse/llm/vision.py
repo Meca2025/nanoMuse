@@ -24,7 +24,11 @@ from nanomuse.schema import Message, Role
 
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 MAX_SIDE = 1568
+# at most this many pixels after scaling (C9): a 4K screenshot is 8 Mpx and 3–8 MB as PNG;
+# at 2 Mpx and JPEG 85 it is a few hundred KB and still readable for a hands model
+MAX_PIXELS = 2_000_000
 MAX_BYTES = 4 * 1024 * 1024  # an image that is still bigger than this after scaling is left out
+REMOVED_NOTE = " (screenshot removed to keep the request small)"
 _NO_IMAGES_RE = re.compile(
     r"image|vision|multimodal|multi-modal|image_url|input_image|content type|content must be a string|"
     r"invalid type for 'messages\[\d+\]\.content'|unsupported content|expected a string|"
@@ -76,10 +80,11 @@ def _encoded(path: str, mtime_ns: int, size: int) -> tuple[str, str] | None:
             animated = getattr(opened, "is_animated", False)
             if (
                 max(w, h) > MAX_SIDE
+                or w * h > MAX_PIXELS
                 or len(data) > 1024 * 1024
                 or (media == "image/gif" and not animated)
             ):
-                scale = min(1.0, MAX_SIDE / max(w, h))
+                scale = min(1.0, MAX_SIDE / max(w, h), (MAX_PIXELS / (w * h)) ** 0.5)
                 if scale < 1.0:
                     im = im.resize((max(1, round(w * scale)), max(1, round(h * scale))))
                 if media == "image/png" and im.mode in ("RGBA", "LA", "P") and _has_alpha(im):
@@ -163,6 +168,29 @@ def content_parts(message: Message, image_type: str = "image_url") -> str | list
     return [{"type": text_type, "text": text}, *parts]
 
 
+def keep_newest_images(messages: list[Message], keep: int) -> list[Message]:
+    """The same conversation with pictures only on the newest ``keep`` image-bearing
+    messages (C9: a hands session adds a screenshot or two per step, and every step sends
+    the whole conversation again). Older ones lose their images and say so in a short note,
+    so the model still knows a screenshot was there. ``keep <= 0`` keeps everything. Pure:
+    copies, never the originals."""
+    if keep <= 0:
+        return list(messages)
+    with_images = [i for i, m in enumerate(messages) if m.role == Role.USER and m.images]
+    drop = set(with_images[:-keep]) if len(with_images) > keep else set()
+    if not drop:
+        return list(messages)
+    out: list[Message] = []
+    for i, m in enumerate(messages):
+        if i in drop:
+            out.append(
+                m.model_copy(update={"images": None, "content": (m.content or "") + REMOVED_NOTE})
+            )
+        else:
+            out.append(m)
+    return out
+
+
 def without_images(messages: list[Message]) -> list[Message]:
     """The same conversation for a model that cannot take images: pictures dropped, and
     each message that had some says so."""
@@ -187,6 +215,7 @@ __all__ = [
     "has_images",
     "image_data_url",
     "is_image",
+    "keep_newest_images",
     "missing_note",
     "says_no_images",
     "without_images",

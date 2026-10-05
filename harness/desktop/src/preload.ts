@@ -21,8 +21,8 @@ const bridge = {
   platform: process.platform,
   /** The app's version, its platform and arch. */
   info: (): Promise<{ version: string; platform: string; arch: string }> => ipcRenderer.invoke("nanomuse:info"),
-  /** Where every permission the hands use stands right now. */
-  permissions: (): Promise<Record<PermissionKind, PermissionState>> => ipcRenderer.invoke("nanomuse:permissions"),
+  /** Where every permission the hands use stands right now; `helper` (0.1.38) when "nanoMuse Computer Use" holds them — the rows to switch on are its, and a grant needs no app restart. */
+  permissions: (): Promise<Record<PermissionKind, PermissionState> & { helper?: boolean }> => ipcRenderer.invoke("nanomuse:permissions"),
   /** Ask the system for one permission (its own dialog, or the Settings pane); the new state. */
   requestPermission: (kind: PermissionKind): Promise<PermissionState> => ipcRenderer.invoke("nanomuse:permissions:request", kind),
   /** Open the System Settings pane for one permission (macOS); a no-op elsewhere. */

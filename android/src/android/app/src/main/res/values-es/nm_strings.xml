@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: cadenas propias de nanoMuse (0.1.38). Lo que falte aquí se muestra en inglés. -->
+<resources>
+    <string name="nm_cloud_other_server">Usar otro servidor</string>
+    <string name="nm_cloud_server_url">Dirección del relay</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Comprobar</string>
+    <string name="nm_cloud_server_use">Usar este servidor</string>
+    <string name="nm_cloud_server_now">Servidor: %1$s</string>
+    <string name="nm_cloud_server_ok">%1$s respondió: relay %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Escribe la dirección del relay, por ejemplo https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Usa https para un servidor fuera de tu propia red. http sirve para una dirección privada (10.x, 192.168.x, 172.16–31.x, localhost, un nombre .local o .ts.net).</string>
+    <string name="nm_cloud_server_unreachable">Ningún relay respondió en %1$s. Revisa la dirección y que el relay esté en marcha.</string>
+    <string name="nm_cloud_server_default">Volver a nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Servidor</string>
+    <string name="nm_cloud_server_change">Cambiar</string>
+    <string name="nm_cloud_server_change_confirm">La clave de este teléfono pertenece al servidor actual. Cierra sesión aquí primero y luego inicia sesión en el otro servidor desde la pantalla de inicio de sesión.</string>
+    <string name="nm_cloud_sms_region">Los códigos por SMS solo llegan a números de China continental. Usa una dirección de correo en su lugar.</string>
+    <string name="nm_sync_side_title">Sincronizar también los chats secundarios</string>
+    <string name="nm_sync_side_sub">Desactivado: los chats secundarios se quedan en este dispositivo. Activado: los chats secundarios de este dispositivo van a la cuenta y los de los otros dispositivos llegan aquí.</string>
+    <string name="nm_sync_working">%1$s está en ello…</string>
+</resources>

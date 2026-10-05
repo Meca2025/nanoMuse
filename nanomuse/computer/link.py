@@ -319,6 +319,13 @@ class ComputerLink:
         if operator_mod.operator_owns_the_screen():
             why = self._backend_error or "the desktop app's operator returned no picture"
             raise DeviceError(f"could not take a screenshot of this computer: {why}")
+        if hands_mod.wayland_session():
+            # Linux under Wayland: mss would grab the XWayland root — black, or the X
+            # windows alone — and the hands could not act on it anyway. Said plainly, on
+            # the first attempt, with the same words as Settings → Computer use.
+            raise DeviceError(
+                f"the hands are off on this computer: {self._backend_error or hands_mod.WAYLAND_TEXT}"
+            )
         try:
             return capture(max_width)
         except Exception as exc:  # noqa: BLE001 — platform tools fail in many ways

@@ -110,12 +110,24 @@ max_steps            = 30              # tool calls per turn before it must wrap
 # workspace          = "./workspace"   # the only directory the files tool can touch; default ./workspace if present here, else <data_dir>/workspace
 language             = "auto"          # or a fixed language: "English", "中文", ...
 max_context_messages = 80
+max_context_images   = 4               # screenshots kept in the request: the newest N; 0 keeps all
 show_thinking        = false
 user_profile         = ""              # free text injected into the system prompt
 instructions         = ""              # extra rules appended to the system prompt
 ```
 
 With `language = "auto"` the system prompt names the language of the latest user message (detected by script) and tells the model to answer in it. A generic "reply in the user's language" instruction turned out to be unreliable with some models; naming it works.
+
+`max_context_images` is for the hands. A run on a screen appends a screenshot per step and the whole conversation goes up again on every step, so a dozen full-size pictures had passed the relay's body limit (413 `too_large`, 0.1.37). Only the newest four travel now, each downscaled to at most two megapixels; the older ones are replaced by a one-line note so the model still knows a screenshot was there. The desktop app's harness keeps the same budget on its side.
+
+## `[sync]`
+
+```toml
+[sync]
+side_chats = false   # off: only the main conversation travels between devices
+```
+
+The account-wide sync switch is in the app (*Data controls → Sync*); this is the per-device default for *Also sync side chats*. Off, only the main conversation is pushed and pulled; side chats stay on the device that made them and no other device's arrive. On, this device's side chats go to the account and the other devices' come here. The person's choice in the app is kept in `sync.json` and wins over this file. [every-device.md](every-device.md#the-same-conversations-everywhere) has the whole picture.
 
 ## `[sentinel]`
 

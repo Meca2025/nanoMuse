@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test tests/*.test.mjs",
     "prepare-dsh": "node scripts/prepare-dsh.mjs",
     "start": "tsc -p tsconfig.json && electron .",
     "smoke": "node scripts/smoke.mjs",
