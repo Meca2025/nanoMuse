@@ -132,6 +132,19 @@ test('runtimeInfo: NANOMUSE_PY as set, PATH otherwise, loud about a wrong path',
   }
 })
 
+test('displayInfo: Linux reads the session the way the operator and the runtime do; nothing elsewhere', async () => {
+  const { displayInfo, WAYLAND_TEXT } = await import('../lib/hands-check.js')
+  assert.deepEqual(displayInfo({ DISPLAY: ':0', XDG_SESSION_TYPE: 'x11' }, 'linux'), { session: 'x11', reason: '' })
+  assert.deepEqual(displayInfo({ DISPLAY: ':0', XDG_SESSION_TYPE: 'wayland', WAYLAND_DISPLAY: 'wayland-0' }, 'linux'), { session: 'wayland', reason: WAYLAND_TEXT })
+  // a compositor started by hand: WAYLAND_DISPLAY without a DISPLAY counts too; with XWayland's DISPLAY it is X11 for the hands
+  assert.equal(displayInfo({ WAYLAND_DISPLAY: 'wayland-1' }, 'linux').session, 'wayland')
+  assert.equal(displayInfo({ WAYLAND_DISPLAY: 'wayland-1', DISPLAY: ':1' }, 'linux').session, 'x11')
+  assert.equal(displayInfo({}, 'linux').session, 'none')
+  assert.match(WAYLAND_TEXT, /^Wayland session: .*Log in with Xorg/)
+  assert.equal(displayInfo({ DISPLAY: ':0' }, 'darwin'), undefined)
+  assert.equal(displayInfo({ XDG_SESSION_TYPE: 'wayland' }, 'win32'), undefined)
+})
+
 test('the words that mean "grant Screen Recording" and "grant Accessibility"', () => {
   assert.ok(isBlack('the screenshot came back all black. On macOS, allow Screen Recording'))
   assert.ok(isBlack('the window of Finder came back empty: allow Screen Recording for nanoMuse Desktop'))

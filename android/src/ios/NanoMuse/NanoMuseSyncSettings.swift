@@ -3,8 +3,9 @@
 //  nanoMuse
 //
 //  Contract C7, rule 6: the switch and the delete action for synced
-//  conversations, as a section of Data controls. Android: the same rows in
-//  DataControlsScreen.kt.
+//  conversations, as a section of Data controls; C9: the per-device
+//  "Also sync side chats" switch under it, default off. Android: the same
+//  rows in DataControlsScreen.kt.
 //
 
 import SwiftUI
@@ -12,6 +13,7 @@ import SwiftUI
 struct NanoMuseSyncSection: View {
     @ObservedObject private var sync = NanoMuseSync.shared
     @State private var on = true
+    @State private var sideChats = false
     @State private var busy = false
     @State private var confirmDelete = false
     @State private var message: String?
@@ -48,6 +50,21 @@ struct NanoMuseSyncSection: View {
             }
             .nmOnChange(of: sync.serverEnabled) { _ in
                 on = sync.enabled
+            }
+            // C9: per device, default off. Only meaningful while the account's switch is on.
+            Toggle(isOn: $sideChats) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(AppLocalized("Also sync side chats"))
+                    Text(AppLocalized("Off: side chats stay on this device. On: this device's side chats go to the account and the other devices' side chats come here."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .disabled(!signedIn || !on || busy)
+            .onAppear { sideChats = sync.sideChats }
+            .nmOnChange(of: sideChats) { value in
+                guard value != sync.sideChats else { return }
+                sync.setSideChats(value)
             }
         } footer: {
             VStack(alignment: .leading, spacing: 8) {

@@ -72,6 +72,10 @@ max_steps = 30
 extra_roots = []                # e.g. ["~/Documents/notes"]
 language = "auto"               # "auto" | "zh" | "en" | ...
 max_context_messages = 80
+# Screenshots kept in the request: the newest N, older ones replaced by a note.
+# A long run of the hands sends the conversation again on every step; a dozen
+# full-size screenshots went past the relay's body limit (413). 0 keeps all.
+max_context_images = 4
 show_thinking = false
 # Free text about you, injected into the system prompt.
 user_profile = ""
@@ -270,3 +274,14 @@ cors_origins = []        # only for the Vite dev server of the web app, e.g. ["h
 max_upload_mb = 25       # largest file the app may attach to a message
 update_check = true      # say under Settings → About when a newer release is out (GitHub Releases, every 6 h; nothing is sent)
 start_grace = 4          # seconds the tools/MCP servers/cloud account may take before the app answers anyway (/api/health names the step still running)
+
+# ------------------------------------------------------------------------------
+# Conversation sync — what this device sends to and takes from the account
+# (the account-wide switch is Data controls → Sync; see docs/every-device.md)
+# ------------------------------------------------------------------------------
+[sync]
+# Off: only the main conversation travels; side chats stay on the device that
+# made them and no other device's arrive. On: this device's side chats go to the
+# account and the other devices' come here. The person's choice in *Data
+# controls → Also sync side chats* is kept in sync.json; this is its default.
+side_chats = false

@@ -1120,6 +1120,7 @@ const zhCN: Record<string, string> = {
   "Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go.":
     "海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费。",
   "E-mail (or a mainland China phone number)": "邮箱（或中国大陆手机号）",
+  "Text-message codes reach mainland-China numbers only. Use an e-mail address instead.": "短信验证码只能发到中国大陆手机号。其他地区请用邮箱登录。",
   "Step-by-step guide": "图文教程",
   "Invite a friend: +¥{bonus} for you and +¥{bonus} for them, for each new person who signs up with your link.": "邀请朋友：每有一位新用户通过你的链接注册，你 +¥{bonus}，对方也 +¥{bonus}。",
   "Your invite link is under Account": "邀请链接在「账号」页",
@@ -1688,6 +1689,13 @@ const zhCN: Record<string, string> = {
   "Off. Nothing is kept on nanoMuse Cloud any more.": "已关闭。nanoMuse Cloud 不再保存任何对话。",
   "The synced conversations are removed from nanoMuse Cloud. The chats on each device stay. This cannot be undone.": "已同步的对话将从 nanoMuse Cloud 删除。每台设备上的对话保留。此操作无法撤销。",
   "Synced conversations deleted.": "已删除已同步的对话。",
+  // Main first (contract C9): side chats per device, the working line
+  "Also sync side chats": "同时同步旁聊",
+  "Off: side chats stay on this device. On: this device's side chats go to the account and the other devices' side chats come here.":
+    "关：旁聊只留在本机。开：本机的旁聊上传到账号，其他设备的旁聊也会同步过来。",
+  "On. This device's side chats go to the account; the other devices' are on their way.": "已打开。本机的旁聊会上传到账号，其他设备的旁聊正在同步过来。",
+  "Off. Side chats stay on this device from now on.": "已关闭。从现在起，旁聊只留在本机。",
+  "{device} is working…": "{device} 正在处理…",
   "From {device}": "来自 {device}",
   "to {device}": "发给 {device}",
   "This goes to {device}.": "这条会发给 {device}。",

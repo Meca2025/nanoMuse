@@ -10,6 +10,7 @@ import {
 } from "react";
 import { api, AuthError, connectWs, getToken } from "./api";
 import { t } from "./i18n";
+import { liveWorking } from "./presence";
 import { registerWorker, setAppBadge } from "./push";
 import { useTheme } from "./theme";
 import type {
@@ -29,6 +30,7 @@ import type {
   Status,
   ThreadMeta,
   TimelineEvent,
+  WorkingPresence,
   WsMessage,
 } from "./types";
 
@@ -140,6 +142,12 @@ export interface AppState {
   /** The avatar studio's session as the runtime last reported it (null until one runs). */
   studio: StudioSession | null;
   /**
+   * The other devices' turns under way on synced chats (contract C9), by thread: the line
+   * "Pixel 8 is working…" under a message written there. Set by the `working` frames, cleared
+   * when the reply arrives, when that device says done, or ten minutes after `at`.
+   */
+  working: Record<string, WorkingPresence | undefined>;
+  /**
    * `?ui=lite`: the app as it is shown inside the simulated phone of the showcase
    * (demo/mobilegym) — the phone layout with its tabs at any width, no sidebar, no first-run
    * setup and no desktop hints. Kept for the tab (sessionStorage) so a reload inside the frame
@@ -231,6 +239,7 @@ const initial: AppState = {
   holds: [],
   handsLive: null,
   studio: null,
+  working: {},
 };
 
 function upsertApproval(list: ApprovalEvent[], ev: TimelineEvent): ApprovalEvent[] {
@@ -314,6 +323,7 @@ function reducer(state: AppState, action: Action): AppState {
         hub: s.hub ?? state.hub,
         hands: s.hands ?? state.hands,
         holds: (s.holds ?? []).map(normalizeEvent),
+        working: liveWorking(s.working),
       };
     }
     case "connection":
@@ -388,10 +398,17 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       // fetched when opened. The approvals queue and the Feed follow every thread.
       const loaded = state.events[ev.thread] !== undefined;
       const mishap = (ev.type === "tool" && (ev.status === "error" || ev.status === "blocked")) || (ev.type === "notice" && ev.level === "error");
+      // the reply from the device that was working arrived: its line goes (C9)
+      let working = state.working;
+      const line = working[ev.thread];
+      if (line && ev.type === "assistant" && ev.synced && ev.via_device === line.device) {
+        working = { ...working, [ev.thread]: undefined };
+      }
       return {
         ...state,
         streams,
         threads,
+        working,
         events: loaded ? { ...state.events, [ev.thread]: upsertEvent(state.events[ev.thread], ev) } : state.events,
         holds: ev.type === "hold" ? upsertHold(state.holds, ev) : state.holds,
         pendingApprovals: upsertApproval(state.pendingApprovals, ev),
@@ -454,6 +471,16 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       const list = state.events[msg.thread];
       if (!list) return state;
       return { ...state, events: { ...state.events, [msg.thread]: list.filter((e) => e.id !== msg.id) } };
+    }
+    case "working": {
+      // another device started or finished a turn on a synced chat (C9); a `false` from a
+      // device other than the one shown changes nothing
+      const { kind: _kind, working: on, ...who } = msg;
+      void _kind;
+      const current = state.working[who.thread];
+      if (on) return { ...state, working: { ...state.working, [who.thread]: who } };
+      if (!current || current.device !== who.device) return state;
+      return { ...state, working: { ...state.working, [who.thread]: undefined } };
     }
     case "goals":
       return { ...state, goalsVersion: state.goalsVersion + 1 };
@@ -569,8 +596,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     getToken();
+    // Frames that arrive together are applied together: a first pull brings 300 rows as 300
+    // `event` frames in a burst (C9 tail), and one render for the burst is smooth where one
+    // per frame is not. Deltas of a streaming reply wait a few milliseconds at most.
+    const queue: WsMessage[] = [];
+    let flush = 0;
+    const drain = () => {
+      flush = 0;
+      const batch = queue.splice(0);
+      for (const m of batch) dispatch({ type: "ws", msg: m });
+    };
     const ws = connectWs({
-      onMessage: (msg) => dispatch({ type: "ws", msg }),
+      onMessage: (msg) => {
+        queue.push(msg);
+        if (!flush) flush = window.setTimeout(drain, 0);
+      },
       onOpen: () => dispatch({ type: "connection", connected: true }),
       onClose: () => dispatch({ type: "connection", connected: false }),
       onAuthError: () => dispatch({ type: "authError" }),
@@ -583,7 +623,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (e instanceof AuthError) dispatch({ type: "authError" });
         else dispatch({ type: "error", error: String(e.message ?? e) });
       });
-    return () => ws.close();
+    return () => {
+      if (flush) window.clearTimeout(flush);
+      ws.close();
+    };
   }, []);
 
   const loadGeneration = useRef<Record<string, number>>({});

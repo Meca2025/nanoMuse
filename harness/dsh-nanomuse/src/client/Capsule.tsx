@@ -5,7 +5,7 @@
  * that shows the notices (`notify`, and each remote `call` that ran here).
  */
 import { Button, Toast } from '@deepseek-ai/dsh-client-ui-primitives'
-import { createElement as h, useState, type ReactNode } from 'react'
+import { createElement as h, useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { call } from './api.ts'
 import { useLive, type LiveAsk, type LiveCall, type LiveNotice } from './live.ts'
@@ -75,9 +75,20 @@ export function makeCapsule({ t }: CapsuleProps) {
 /** The hands saw a black screen (desk-b): the one notice that must not be missed, with the relaunch right in it. Read from the live state, so nothing polls while all is well. */
 function BlackScreenCard({ t }: { t: Translate }): ReactNode {
   const live = useLive()
-  if (!live.blackScreenAt) return null
+  const shown = live.blackScreenAt > 0
+  // whether the helper app holds the grants (macOS, 0.1.38): asked once per notice, so the
+  // button says the helper is restarted rather than the whole app
+  const [helper, setHelper] = useState(false)
+  useEffect(() => {
+    if (!shown) return undefined
+    let on = true
+    void bridge()?.permissions().then((p) => { if (on) setHelper(p.helper === true) }).catch(() => undefined)
+    return () => { on = false }
+  }, [shown])
+  if (!shown) return null
   const perms: BlackScreenPerms = {
     blackScreen: true,
+    helper,
     relaunch: () => void bridge()?.relaunch?.(),
     clearBlackScreen: () => void call('hands/black-screen/clear', {}).catch(() => undefined),
   }

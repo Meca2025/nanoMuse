@@ -61,6 +61,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openminis.app.R
 import io.github.nanomuse.cloud.NanoMuseCloud
+import io.github.nanomuse.cloud.RelayAddress
+import io.github.nanomuse.cloud.SignInIdentifier
 import io.github.nanomuse.ui.home.MuseTones
 import io.github.nanomuse.ui.muse.MuseTopAppBar
 import kotlinx.coroutines.delay
@@ -99,9 +101,13 @@ fun CloudSignInScreen(
     var showPassword by remember { mutableStateOf(false) }
     var countdown by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
-    var baseOverride by remember { mutableStateOf(if (NanoMuseCloud.canOverrideBase()) NanoMuseCloud.baseUrl(context) else "") }
+    // Someone's own relay (0.1.38): the address lives in NanoMuseCloud once "Use this server"
+    // is tapped; the form opens by itself when the phone is already pointed away from the default.
+    var serverOpen by remember { mutableStateOf(!RelayAddress.isDefault(NanoMuseCloud.baseUrl(context))) }
     val onSurface = MaterialTheme.colorScheme.onSurface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    // a number the relay cannot text: said here, before the code is asked for (item 8)
+    val phoneAbroad = SignInIdentifier.phoneOutsideMainland(identifier)
 
     LaunchedEffect(countdown) {
         if (countdown > 0) {
@@ -111,12 +117,11 @@ fun CloudSignInScreen(
     }
 
     fun sendCode() {
-        if (sending || identifier.isBlank()) return
+        if (sending || identifier.isBlank() || phoneAbroad) return
         error = null
         sending = true
         scope.launch {
             try {
-                if (NanoMuseCloud.canOverrideBase()) NanoMuseCloud.setBaseUrl(context, baseOverride)
                 NanoMuseCloud.requestCode(context, identifier)
                 codeSent = true
                 countdown = 60
@@ -148,7 +153,6 @@ fun CloudSignInScreen(
         verifying = true
         scope.launch {
             try {
-                if (NanoMuseCloud.canOverrideBase()) NanoMuseCloud.setBaseUrl(context, baseOverride)
                 NanoMuseCloud.login(context, identifier, password)
                 onSignedIn()
             } catch (e: Exception) {
@@ -161,7 +165,7 @@ fun CloudSignInScreen(
     val canSubmit = when {
         byPassword -> identifier.isNotBlank() && password.isNotEmpty() && !verifying
         codeSent -> code.length >= 4 && !verifying
-        else -> identifier.isNotBlank() && !sending
+        else -> identifier.isNotBlank() && !sending && !phoneAbroad
     }
     fun submit() = when {
         byPassword -> login()
@@ -251,6 +255,16 @@ fun CloudSignInScreen(
                     .fillMaxWidth()
                     .semantics { contentType = ContentType.Username + ContentType.PhoneNumber + ContentType.EmailAddress },
             )
+            if (phoneAbroad && !byPassword) {
+                // the relay would answer `phone_region`; better said now, in the same words
+                Text(
+                    text = stringResource(R.string.nm_cloud_sms_region),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, start = 4.dp, end = 4.dp),
+                )
+            }
             Spacer(Modifier.height(12.dp))
             if (byPassword) {
                 OutlinedTextField(
@@ -305,7 +319,7 @@ fun CloudSignInScreen(
                 Spacer(Modifier.padding(horizontal = 6.dp))
                 TextButton(
                     onClick = { sendCode() },
-                    enabled = identifier.isNotBlank() && countdown == 0 && !sending && !verifying,
+                    enabled = identifier.isNotBlank() && countdown == 0 && !sending && !verifying && !phoneAbroad,
                 ) {
                     if (sending) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MuseTones.action)
@@ -316,7 +330,7 @@ fun CloudSignInScreen(
                                 codeSent -> stringResource(R.string.nm_cloud_resend)
                                 else -> stringResource(R.string.nm_cloud_send_code)
                             },
-                            color = if (identifier.isNotBlank() && countdown == 0) MuseTones.action else muted,
+                            color = if (identifier.isNotBlank() && countdown == 0 && !phoneAbroad) MuseTones.action else muted,
                             fontSize = 14.sp,
                         )
                     }
@@ -348,17 +362,14 @@ fun CloudSignInScreen(
                 }
             }
 
-            if (NanoMuseCloud.canOverrideBase()) {
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = baseOverride,
-                    onValueChange = { baseOverride = it },
-                    label = { Text(stringResource(R.string.nm_cloud_debug_base)) },
-                    singleLine = true,
-                    enabled = !verifying,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            // Your own relay: a small link under the form, then the address, Check, Use this server.
+            Spacer(Modifier.height(6.dp))
+            if (!serverOpen) {
+                TextButton(onClick = { serverOpen = true }, modifier = Modifier.align(Alignment.End)) {
+                    Text(stringResource(R.string.nm_cloud_other_server), color = MuseTones.action, fontSize = 13.sp)
+                }
+            } else {
+                RelayServerForm(enabled = !verifying && !sending, onClose = { serverOpen = false })
             }
 
             error?.let {
@@ -405,6 +416,117 @@ fun CloudSignInScreen(
             // decision is made, not only on the account page afterwards.
             CommunityNoticeCard(inset = 0.dp)
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/**
+ * The relay's address for people who run their own (0.1.38): the field, *Check* (the relay's
+ * `/healthz`, its version shown), *Use this server*, and a way back to nanoMuse Cloud. https
+ * unless the host is on a private network. What is chosen here is what the key will belong
+ * to — the account page shows it, and changing it later means signing out first.
+ */
+@Composable
+private fun RelayServerForm(enabled: Boolean, onClose: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val current = NanoMuseCloud.baseUrl(context)
+    var text by remember { mutableStateOf(if (RelayAddress.isDefault(current)) "" else current) }
+    var checking by remember { mutableStateOf(false) }
+    var line by remember { mutableStateOf<String?>(null) }
+    var bad by remember { mutableStateOf(false) }
+    var inUse by remember { mutableStateOf(current) }
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+
+    fun problemLine(p: RelayAddress.Problem): String = when (p) {
+        RelayAddress.Problem.EMPTY, RelayAddress.Problem.NOT_A_URL -> context.getString(R.string.nm_cloud_server_bad_url)
+        RelayAddress.Problem.HTTP_PUBLIC -> context.getString(R.string.nm_cloud_server_https)
+    }
+
+    fun check(then: ((String) -> Unit)? = null) {
+        if (checking) return
+        val problem = RelayAddress.problem(text)
+        if (problem != null) {
+            line = problemLine(problem); bad = true
+            return
+        }
+        val url = RelayAddress.normalize(text) ?: return
+        checking = true
+        line = null
+        scope.launch {
+            try {
+                val h = NanoMuseCloud.checkRelay(url)
+                line = context.getString(R.string.nm_cloud_server_ok, RelayAddress.display(url), h.version)
+                bad = false
+                then?.invoke(url)
+            } catch (e: Exception) {
+                line = context.getString(R.string.nm_cloud_server_unreachable, RelayAddress.display(url))
+                bad = true
+            }
+            checking = false
+        }
+    }
+
+    Column(Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it; line = null },
+            label = { Text(stringResource(R.string.nm_cloud_server_url)) },
+            placeholder = { Text(stringResource(R.string.nm_cloud_server_hint)) },
+            singleLine = true,
+            enabled = enabled && !checking,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { check() }),
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MuseTones.action,
+                cursorColor = MuseTones.action,
+                focusedLabelColor = MuseTones.action,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.nm_cloud_server_now, RelayAddress.display(inUse)),
+                fontSize = 12.sp,
+                color = muted,
+                modifier = Modifier.weight(1f).padding(start = 4.dp),
+            )
+            TextButton(onClick = { check() }, enabled = enabled && !checking && text.isNotBlank()) {
+                if (checking) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MuseTones.action)
+                else Text(stringResource(R.string.nm_cloud_server_check), color = MuseTones.action, fontSize = 13.sp)
+            }
+            TextButton(
+                onClick = {
+                    check { url ->
+                        NanoMuseCloud.setBaseUrl(context, url)
+                        inUse = url
+                    }
+                },
+                enabled = enabled && !checking && text.isNotBlank(),
+            ) { Text(stringResource(R.string.nm_cloud_server_use), color = MuseTones.action, fontSize = 13.sp) }
+        }
+        line?.let {
+            Text(
+                text = it,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                color = if (bad) MaterialTheme.colorScheme.error else muted,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+        if (!RelayAddress.isDefault(inUse)) {
+            TextButton(
+                onClick = {
+                    NanoMuseCloud.setBaseUrl(context, null)
+                    inUse = NanoMuseCloud.DEFAULT_BASE
+                    text = ""
+                    line = null
+                    onClose()
+                },
+                enabled = enabled && !checking,
+                modifier = Modifier.align(Alignment.End),
+            ) { Text(stringResource(R.string.nm_cloud_server_default), color = MuseTones.action, fontSize = 13.sp) }
         }
     }
 }

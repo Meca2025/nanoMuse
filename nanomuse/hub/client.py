@@ -90,7 +90,8 @@ OnDevices = Callable[[list[dict[str, Any]]], None]
 OnState = Callable[[str, str], None]
 # the account's profile (name and look) changed on the relay: the frame, with its rev
 OnProfile = Callable[[dict[str, Any]], None]
-# another device pushed conversations (contract C7): the frame, with the relay's cursor
+# another device pushed conversations (contract C7): the frame, with the relay's cursor;
+# or said it is working on one (C9): the `working` frame
 OnSync = Callable[[dict[str, Any]], None]
 
 
@@ -291,8 +292,9 @@ class HubClient:
                     self.on_profile(frame)
                 except Exception:  # noqa: BLE001
                     logger.exception("hub on_profile")
-        elif kind == "sync":
-            # another device pushed conversations (contract C7): the engine pulls
+        elif kind in ("sync", "working"):
+            # another device pushed conversations (contract C7): the engine pulls; or a turn
+            # started or ended there (C9 `working`): the engine notes who is working
             if self.on_sync is not None:
                 try:
                     self.on_sync(frame)

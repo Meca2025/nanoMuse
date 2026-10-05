@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: texte care există doar în nanoMuse (0.1.38). Ce lipsește aici apare în engleză. -->
+<resources>
+    <string name="nm_cloud_other_server">Folosește alt server</string>
+    <string name="nm_cloud_server_url">Adresa relay-ului</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Verifică</string>
+    <string name="nm_cloud_server_use">Folosește acest server</string>
+    <string name="nm_cloud_server_now">Server: %1$s</string>
+    <string name="nm_cloud_server_ok">%1$s a răspuns: relay %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Introdu adresa relay-ului, de exemplu https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Folosește https pentru un server din afara propriei rețele. http e în regulă pentru o adresă privată (10.x, 192.168.x, 172.16–31.x, localhost, un nume .local sau .ts.net).</string>
+    <string name="nm_cloud_server_unreachable">Niciun relay nu a răspuns la %1$s. Verifică adresa și dacă relay-ul rulează.</string>
+    <string name="nm_cloud_server_default">Înapoi la nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Server</string>
+    <string name="nm_cloud_server_change">Schimbă</string>
+    <string name="nm_cloud_server_change_confirm">Cheia acestui telefon aparține serverului actual. Deconectează-te mai întâi aici, apoi conectează-te la celălalt server din ecranul de conectare.</string>
+    <string name="nm_cloud_sms_region">Codurile prin SMS ajung doar la numere din China continentală. Folosește în schimb o adresă de e-mail.</string>
+    <string name="nm_sync_side_title">Sincronizează și conversațiile secundare</string>
+    <string name="nm_sync_side_sub">Oprit: conversațiile secundare rămân pe acest dispozitiv. Pornit: conversațiile secundare ale acestui dispozitiv merg în cont, iar cele ale celorlalte dispozitive vin aici.</string>
+    <string name="nm_sync_working">%1$s se ocupă…</string>
+</resources>

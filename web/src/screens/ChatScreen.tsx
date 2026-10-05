@@ -11,8 +11,9 @@ import { MuseHeader, MuseRoundButton } from "../components/MuseHeader";
 import { MoreMenu } from "../components/TabHeader";
 import { localLabel, useT } from "../i18n";
 import { mentionSuggestions, mentionTarget } from "../mention";
+import { WORKING_TTL_MS } from "../presence";
 import { useStore } from "../store";
-import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, UserEvent } from "../types";
+import type { AttachmentInfo, HubDevice, SkillInfo, ThreadMeta, TimelineEvent, UserEvent, WorkingPresence } from "../types";
 import { cx, timeDivider, timeShort } from "../util";
 import { MuseSheet } from "./MuseSheet";
 import { countDay, countTask, StarNudgeOnce } from "../components/StarNudge";
@@ -34,6 +35,8 @@ export function ChatScreen() {
   const name = profile?.name ?? "nanoMuse";
   // a chat addressed to another device: is that device still on the hub?
   const deviceOnline = thread?.device ? (state.hub?.devices.find((d) => d.id === thread.device)?.online ?? null) : null;
+  // another device of the account is working on this chat (C9): the quiet line under its message
+  const working = useLiveWorking(state.working[activeThread]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -188,6 +191,9 @@ export function ChatScreen() {
         {(thread?.busy || status.state !== "idle") && !stream?.text && status.state !== "waiting" && (
           <TypingIndicator label={thread?.queued ? t("{n} queued", { n: thread.queued }) : undefined} />
         )}
+        {/* A message written on another device is never this device's unfinished turn (C9):
+            nothing here ever offers to continue it. While that device works, this says so. */}
+        {working && !thread?.busy && <WorkingLine who={working} />}
         {!thread?.busy && status.state === "idle" && taskCount !== null && <StarNudgeOnce moment="tasks" n={taskCount} className="mx-1 my-2" />}
         {!thread?.busy && status.state === "idle" && dayCount !== null && <StarNudgeOnce moment="days_used" n={dayCount} className="mx-1 my-2" />}
         {showJump && (
@@ -471,6 +477,40 @@ function TypingIndicator({ label }: { label?: string }) {
         <span className="typing-dot h-2 w-2 rounded-full bg-muted" />
       </div>
       {label && <span className="text-[12px] text-muted">{label}</span>}
+    </div>
+  );
+}
+
+/**
+ * The presence line for this chat while it is worth showing (C9): the entry as the store
+ * holds it, or null once it is ten minutes old. Re-renders at the moment it expires, so the
+ * line goes on its own when the other device never said it was done.
+ */
+function useLiveWorking(who: WorkingPresence | undefined): WorkingPresence | null {
+  const expiresAt = who ? who.at * 1000 + WORKING_TTL_MS : 0;
+  // the moment this entry went stale (0 while it is live); set by the timer below
+  const [expired, setExpired] = useState(0);
+  useEffect(() => {
+    if (!expiresAt) return;
+    const left = expiresAt - Date.now();
+    if (left <= 0) {
+      setExpired(expiresAt);
+      return;
+    }
+    const timer = window.setTimeout(() => setExpired(expiresAt), left + 50);
+    return () => window.clearTimeout(timer);
+  }, [expiresAt]);
+  if (!who || expired === expiresAt) return null;
+  return who;
+}
+
+/** "Pixel 8 is working…" — quiet, under the message the other device is answering. */
+function WorkingLine({ who }: { who: WorkingPresence }) {
+  const t = useT();
+  return (
+    <div className="flex items-center gap-1.5 px-1 text-[12px] text-muted">
+      <Loader2 size={12} className="animate-spin" />
+      <span>{t("{device} is working…", { device: who.device_name || who.device })}</span>
     </div>
   );
 }

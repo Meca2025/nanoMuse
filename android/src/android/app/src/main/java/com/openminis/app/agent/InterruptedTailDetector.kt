@@ -54,6 +54,9 @@ object InterruptedTailDetector {
      */
     fun classify(lastEntry: LLMMessage?): InterruptedTailShape {
         if (lastEntry == null) return InterruptedTailShape.NONE
+        // nanoMuse: a line another device wrote (synced in) is that device's turn, not a cut
+        // stream here — no Resume for it, ever (contract C9).
+        if (io.github.nanomuse.sync.RemoteRows.isRemote(lastEntry)) return InterruptedTailShape.NONE
         return when (lastEntry.role) {
             LLMMessage.Role.USER -> {
                 val parts = lastEntry.contentParts

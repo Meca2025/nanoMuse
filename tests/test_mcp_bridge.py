@@ -105,6 +105,42 @@ def test_with_a_host_secret_only_the_hosts_ticket_confirms(
     assert gate(screen, {}) is None
 
 
+def test_the_plugins_ticket_with_the_step_words_confirms(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """What harness/dsh-nanomuse/src/cloud.ts `confirmTicket` signs after the person said
+    yes on the permission card: every argument but `confirmed`, the `step` words included
+    (the model writes them on each call). The server must take that ticket — 0.1.37
+    checked one without `step` only, and every approved step came back "Not done"."""
+    import hashlib
+    import hmac
+    import json
+
+    from nanomuse.bridge.mcp_server import CONFIRM_SECRET_ENV, ticket
+    from nanomuse.schema import STEP_KEY
+
+    _screen, act = tools(settings)
+    monkeypatch.setenv(CONFIRM_SECRET_ENV, "s3cret")
+    args = {"action": "type", "text": "2*34", "submit": True, STEP_KEY: "输入 2*34 并回车"}
+    # the plugin's canonical form: keys sorted, compact, raw unicode, `confirmed` left out
+    body = json.dumps(args, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    plugin_ticket = hmac.new(b"s3cret", body.encode(), hashlib.sha256).hexdigest()[:32]
+    assert plugin_ticket == ticket("s3cret", args)
+    assert gate(act, {**args, CONFIRMED: plugin_ticket}) is None
+    # the ticket without the step words (the arguments the tool runs on) is taken too
+    assert gate(act, {**args, CONFIRMED: ticket("s3cret", args, signed_step=False)}) is None
+    # other step words under the same ticket: the plugin's form no longer matches, the
+    # step-less one still does — the words are for the person, not the tool
+    assert (
+        gate(act, {**args, STEP_KEY: "x", CONFIRMED: ticket("s3cret", args, signed_step=False)})
+        is None
+    )
+    # a different action under either ticket: refused
+    other = {**args, "text": "rm -rf"}
+    assert gate(act, {**other, CONFIRMED: plugin_ticket}) is not None
+    assert gate(act, {**other, CONFIRMED: ticket("s3cret", args, signed_step=False)}) is not None
+
+
 async def test_call_runs_the_tool_without_the_flag_and_returns_pictures(settings: Settings) -> None:
     screen, act = tools(settings)
     result = await call(screen, {})

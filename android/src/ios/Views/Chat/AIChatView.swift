@@ -573,53 +573,22 @@ struct AIChatView: View {
                     //      top edge. inputBarHeight here is just the input
                     //      bar (NOT including toolbar) so popup covers
                     //      toolbar when both visible.
-                    ZStack(alignment: .bottom) {
-                        // Tap-outside catcher placed UNDER the popup (declared
-                        // first → lower z-order). When the popup is visible,
-                        // the catcher fills the ZStack and absorbs taps that
-                        // land outside the popup card. Taps on the popup
-                        // itself naturally fall through to the popup view
-                        // because it sits on top in z-order.
-                        if vm.showSlashMenu || vm.showMentionMenu {
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    if vm.showSlashMenu { vm.dismissSlashMenu() }
-                                    else if vm.showMentionMenu { vm.dismissMentionMenu() }
-                                }
-                        }
-                        VStack(spacing: 0) {
-                            // nanoMuse: virtual cards for this chat (avatar price/takes/share, the name chooser).
-                            NanoMuseChatCardsHost(vm: vm)
-                                .frame(maxWidth: maxContentWidth)
-                                .onGeometryChange(for: CGFloat.self) { proxy in
-                                    proxy.size.height
-                                } action: { newH in
-                                    nmCardsHeight = newH
-                                }
-                            floatingToolPreview
-                                .shadow(color: Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0, alpha: 0.25) : UIColor(white: 0, alpha: 0) }), radius: 6, x: 0, y: 4)
-                            #if DEBUG
-                            if isReadOnly {
-                                forkBanner
-                            } else {
-                                inputBar
-                            }
-                            #else
-                            inputBar
-                            #endif
-                        }
-                        // nanoMuse: the probe tells the watch whether this stack is really in a window and how
-                        // tall it is; a tick on `.id` rebuilds the whole host when it is not (NanoMuseComposerWatch).
-                        .background(NanoMuseComposerProbe(watch: nmComposer)) // nanoMuse:
-                        .id(nmComposer.rebuildTick) // nanoMuse:
-                        // Register the composer (tool preview + input bar) as a
-                        // region the global speech capsule must not cover.
-                        .capsuleProtectedFrame("inputBar")
-                        inputPopupOverlay
-                            .padding(.bottom, inputBarHeight)
-                    }
+                    // nanoMuse: the ZStack moved to `nmComposerStack` so the fail-safe below can host
+                    // the same stack from another attachment point when this overlay shows nothing.
+                    if !nmComposer.failSafe { // nanoMuse:
+                        nmComposerStack // nanoMuse:
+                    } // nanoMuse:
                 }
+                // nanoMuse: the composer's fail-safe (NanoMuseComposerWatch.failSafe): a second after the
+                // chat appeared or a message went out with no composer height reported, the same stack
+                // is hosted here, as a bottom safe-area inset — a different host than the overlay's, so
+                // whatever left the overlay's host empty does not apply to it. The list's bottom inset
+                // is then 0 (nmListInset): the inset already keeps the composer's room.
+                .safeAreaInset(edge: .bottom, spacing: 0) { // nanoMuse:
+                    if nmComposer.failSafe { // nanoMuse:
+                        nmComposerStack // nanoMuse:
+                    } // nanoMuse:
+                } // nanoMuse:
                 // Collapse the expanded speech player on a tap anywhere in the chat
                 // area. Attached as a SIMULTANEOUS TapGesture directly on the content
                 // (no full-screen hit-test overlay, which blocked scrolling) so a tap
@@ -707,6 +676,11 @@ struct AIChatView: View {
             guard let action = NanoMuseChatAction.from(note, for: vm.nmSessionKey) else { return } // nanoMuse:
             nmPerform(action) // nanoMuse:
         } // nanoMuse:
+        .nmOnChange(of: vm.isProcessing) { running in // nanoMuse: a message went out (any path: the pill, a card's pick, a flow) or a turn ended —
+            if !isReadOnly { nmComposer.expect(running ? "a message went out" : "the turn ended") } // nanoMuse: the composer must be there a second later
+        } // nanoMuse:
+        .onReceive(NanoMusePresence.shared.$revision) { _ in vm.nmApplyPresence() } // nanoMuse: C9 — "{device} is working…" under the last remote line
+        .onReceive(vm.$messages) { _ in vm.nmApplyPresence() } // nanoMuse: C9 — the reply arriving clears it
         .modifier(NavBarStyleModifier(topSafeAreaInset: $topSafeAreaInset))
         .navigationBarTitleDisplayMode(.inline)
         // [T-ios-navbar-toolbar-host] The ENTIRE toolbar now lives inside an
@@ -1236,6 +1210,7 @@ struct AIChatView: View {
             inputBarHeightDebounce = nil
             AppLogger(category: "InputBarLayout").info("inputBarHeight re-arm seed on appear (was \(inputBarHeight))")
             nmComposer.visible = true // nanoMuse: the composer watch only acts while the chat is on screen
+            if !isReadOnly { nmComposer.expect("the chat appeared") } // nanoMuse: a composer must report a height within a second, or the fail-safe shows it
             vm.sessionId = sessionId
             vm.draftId = draftId
             vm.remoteDeviceId = remoteDeviceId
@@ -2704,8 +2679,8 @@ struct AIChatView: View {
                     screenshotPreview = ChatScreenshotPreview(image: image)
                 },
                 maxContentWidth: maxContentWidth ?? 0,
-                floatingBarHeight: floatingBarHeight + nmCardsHeight, // nanoMuse: the cards above the composer count too
-                inputBarHeight: inputBarHeight
+                floatingBarHeight: nmListFloating, // nanoMuse: the cards above the composer count too; 0 on the fail-safe path
+                inputBarHeight: nmListInset // nanoMuse: 0 on the fail-safe path (the composer is a safe-area inset then)
             )
             // Empty/loading overlay for tap-to-dismiss-keyboard.
             // Placed BEFORE the directory timeline in the ZStack so the
@@ -2771,7 +2746,7 @@ struct AIChatView: View {
                 .padding(.trailing, 4)
                 .frame(maxWidth: maxContentWidth ?? .infinity, alignment: .trailing)
                 .padding(.horizontal, 12)
-                .padding(.bottom, inputBarHeight + (hasFloatingPreview ? 80 : 12))
+                .padding(.bottom, nmListInset + (hasFloatingPreview ? 80 : 12)) // nanoMuse: nmListInset — 0 on the fail-safe path
                 .animation(.easeInOut(duration: 0.2), value: vm.isNearBottom)
                 .animation(.easeInOut(duration: 0.2), value: vm.isAtFirstTurn)
                 .animation(.easeInOut(duration: 0.2), value: hasFloatingPreview)
@@ -2791,7 +2766,7 @@ struct AIChatView: View {
             .padding(.trailing, 4)
             .frame(maxWidth: maxContentWidth ?? .infinity, alignment: .trailing)
             .padding(.horizontal, 12)
-            .padding(.bottom, inputBarHeight + (hasFloatingPreview ? 80 : 12) + 92)
+            .padding(.bottom, nmListInset + (hasFloatingPreview ? 80 : 12) + 92) // nanoMuse: nmListInset
             .animation(.easeInOut(duration: 0.2), value: hasFloatingPreview)
             .capsuleProtectedFrame("downloadButton")
         }
@@ -3525,6 +3500,63 @@ struct AIChatView: View {
     // nanoMuse: whether the composer is Muse's pill (the shell on) or the OpenMinis bar.
     private var nmPill: Bool { NanoMuseShellPrefs.shell } // nanoMuse:
 
+    // nanoMuse: the message list's bottom room for the composer. On the fail-safe path the stack is
+    // a safe-area inset and the list is already short by its height, so the extra inset is 0.
+    private var nmListInset: CGFloat { nmComposer.failSafe ? 0 : inputBarHeight } // nanoMuse:
+    private var nmListFloating: CGFloat { nmComposer.failSafe ? 0 : floatingBarHeight + nmCardsHeight } // nanoMuse:
+
+    // nanoMuse: the composer stack — the cards, the tool strip, the input bar, the `/` and `@` popup —
+    // upstream's ZStack from the message list's `.overlay(alignment: .bottom)`, in one place so the
+    // fail-safe can host the same view as a safe-area inset. The comments on its layout stay at the overlay.
+    private var nmComposerStack: some View { // nanoMuse:
+        ZStack(alignment: .bottom) {
+            // Tap-outside catcher placed UNDER the popup (declared
+            // first → lower z-order). When the popup is visible,
+            // the catcher fills the ZStack and absorbs taps that
+            // land outside the popup card. Taps on the popup
+            // itself naturally fall through to the popup view
+            // because it sits on top in z-order.
+            if vm.showSlashMenu || vm.showMentionMenu {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if vm.showSlashMenu { vm.dismissSlashMenu() }
+                        else if vm.showMentionMenu { vm.dismissMentionMenu() }
+                    }
+            }
+            VStack(spacing: 0) {
+                // nanoMuse: virtual cards for this chat (avatar price/takes/share, the name chooser).
+                NanoMuseChatCardsHost(vm: vm)
+                    .frame(maxWidth: maxContentWidth)
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.height
+                    } action: { newH in
+                        nmCardsHeight = newH
+                    }
+                floatingToolPreview
+                    .shadow(color: Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0, alpha: 0.25) : UIColor(white: 0, alpha: 0) }), radius: 6, x: 0, y: 4)
+                #if DEBUG
+                if isReadOnly {
+                    forkBanner
+                } else {
+                    inputBar
+                }
+                #else
+                inputBar
+                #endif
+            }
+            // nanoMuse: the probe tells the watch whether this stack is really in a window and how
+            // tall it is; a tick on `.id` rebuilds the whole host when it is not (NanoMuseComposerWatch).
+            .background(NanoMuseComposerProbe(watch: nmComposer)) // nanoMuse:
+            .id(nmComposer.rebuildTick) // nanoMuse:
+            // Register the composer (tool preview + input bar) as a
+            // region the global speech capsule must not cover.
+            .capsuleProtectedFrame("inputBar")
+            inputPopupOverlay
+                .padding(.bottom, inputBarHeight)
+        }
+    } // nanoMuse:
+
     // nanoMuse: the pill's rows. Text mode: plus · field · mic-or-send on one row (the field grows
     // to several lines on its own). Voice mode and the legacy dictation band keep upstream's panel
     // and its bottom row inside the same pill, so the keyboard button, read-aloud and send stay.
@@ -3550,6 +3582,7 @@ struct AIChatView: View {
                 onCamera: { showCamera = true }, // nanoMuse:
                 onPhotos: { showPhotoPicker = true }, // nanoMuse:
                 onFile: { showDocumentPicker = true }, // nanoMuse:
+                onPasteImage: { image in vm.addImageAttachment(image) }, // nanoMuse: the pill's field is SwiftUI's and takes no image paste; the plus menu does
                 onCommands: { vm.showSlashMenuOverInput(); inputFocused = true }, // nanoMuse:
                 onMic: { nmEnterVoice() }, // nanoMuse:
                 onSend: { performSend() }, // nanoMuse:
@@ -3561,13 +3594,27 @@ struct AIChatView: View {
         } // nanoMuse:
     } // nanoMuse:
 
-    // nanoMuse: the field alone — the pill adds its own insets. The iPad resize floor still applies.
+    // nanoMuse: the field alone — the pill adds its own insets. SwiftUI's own TextField since 0.1.38
+    // (NanoMuseComposerField): no representable host under the pill that could vanish. The handlers
+    // are the ones composerTextField wires; the caret is the end of the text, the scroll flags are
+    // an estimate (the field tells no more), the iPad resize height still applies.
     private var nmPillField: AnyView { // nanoMuse:
-        let field = composerTextField // nanoMuse:
-        if let height = composerTextHeight { return AnyView(field.frame(height: height)) } // nanoMuse:
-        // nanoMuse: never below one line — a text view whose host has not laid out measures 0 and would
-        // fold the pill down to its padding (NanoMuseComposerWatch.fieldFloor is the natural one-line height).
-        return AnyView(field.fixedSize(horizontal: false, vertical: true).frame(minHeight: NanoMuseComposerWatch.fieldFloor)) // nanoMuse:
+        AnyView( // nanoMuse:
+            NanoMuseComposerField( // nanoMuse:
+                text: inputTextBinding, // nanoMuse:
+                isFocused: $inputFocused, // nanoMuse:
+                placeholder: AppLocalized("Message"), // nanoMuse:
+                fixedHeight: composerTextHeight, // nanoMuse:
+                onReturn: { handleReturnKey() }, // nanoMuse:
+                onCaret: { handleCaretChange($0) }, // nanoMuse:
+                onArrowUp: { handleArrowUp() }, // nanoMuse:
+                onArrowDown: { handleArrowDown() }, // nanoMuse:
+                onTab: { handleTabKey() }, // nanoMuse:
+                onOverflow: { over in inputIsScrollable = over; inputAtScrollBottom = !over } // nanoMuse:
+            ) // nanoMuse:
+            // nanoMuse: never below one line (NanoMuseComposerWatch.fieldFloor is the natural one-line height).
+            .frame(minHeight: NanoMuseComposerWatch.fieldFloor) // nanoMuse:
+        ) // nanoMuse:
     } // nanoMuse:
 
     // nanoMuse: the pill's mic — the same switch into voice mode as MicButton's onTap.
@@ -4702,6 +4749,7 @@ struct AIChatView: View {
         speechManager.recognizedText = ""
         lastRecognizedLength = 0
         hasInjectedShareContent = false
+        nmComposer.expect("a message was sent") // nanoMuse: the composer must still be there a second after a send
         // Send FIRST while inputText still holds the recognized text. Clearing the
         // voice transcript here (clearAndRearm) mirrors "" into inputText via the
         // onChange binding, so doing it before send() left send() with empty text

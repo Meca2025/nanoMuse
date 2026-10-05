@@ -169,7 +169,16 @@ def test_operator_hands_speak_the_contract(operator: FakeOperator) -> None:
     assert (raw["width"], raw["height"]) == (1596, 896)
     assert (raw["screen_w"], raw["screen_h"]) == (3840, 2160)
     assert raw["mime"] == "image/png" and raw["screenshot"]
-    assert operator.shots[-1] == {"format": "jpeg", "quality": 80, "width": 1596, "height": 896}
+    assert operator.shots[-1] == {
+        "format": "jpeg",
+        "quality": 80,
+        "max_pixels": 2_000_000,
+        "width": 1596,
+        "height": 896,
+    }
+    # a PNG without a size: the operator decides the size under the pixel budget
+    hands.client.screenshot(fmt="png", max_pixels=0)
+    assert operator.shots[-1] == {"format": "png", "quality": 80, "max_pixels": 0}
 
 
 def test_operator_env_and_token(operator: FakeOperator, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -200,6 +209,7 @@ def test_backend_choice_prefers_the_operator(
     monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
     monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", None)
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.delenv("XDG_SESSION_TYPE", raising=False)
     with pytest.raises(hands_mod.HandsUnavailable, match="Wayland session") as exc:
         hands_mod.pick_backend("auto")
     assert "xdotool" in str(exc.value)  # the fallbacks were tried and said why too
@@ -209,6 +219,54 @@ def test_backend_choice_prefers_the_operator(
         hands_mod.pick_backend("desktop")
     info = hands_mod.describe_availability("auto")
     assert info["available"] is False and info["reason"].startswith("Wayland session")
+
+
+def test_wayland_session_is_read_from_the_environment() -> None:
+    linux = hands_mod.sys.platform.startswith("linux")
+    assert hands_mod.wayland_session({"XDG_SESSION_TYPE": "wayland", "DISPLAY": ":0"}) is linux
+    assert hands_mod.wayland_session({"XDG_SESSION_TYPE": "Wayland"}) is linux
+    assert hands_mod.wayland_session({"WAYLAND_DISPLAY": "wayland-0"}) is linux
+    # XWayland by hand (both set, no session type): the X11 tools reach X windows — allowed
+    assert hands_mod.wayland_session({"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":1"}) is False
+    assert hands_mod.wayland_session({"XDG_SESSION_TYPE": "x11", "DISPLAY": ":0"}) is False
+    assert hands_mod.wayland_session({}) is False
+
+
+@pytest.mark.skipif(not hands_mod.sys.platform.startswith("linux"), reason="a Linux rule")
+async def test_linux_wayland_says_the_hands_are_off(
+    settings: Settings, operator: FakeOperator, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Wayland login on Linux: the operator says no, and the runtime does not try xdotool
+    or pyautogui behind its back (XWayland would take them and move nothing visible), nor
+    does it hand a grab of the XWayland root on as the screen — the first attempt says
+    plainly that the hands are off here, with the words of Settings → Computer use."""
+    monkeypatch.setattr(op, "_platform", lambda: "linux")
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    monkeypatch.setenv("DISPLAY", ":0")
+    operator.available, operator.reason = False, hands_mod.WAYLAND_TEXT
+    operator.refuse_shot = (503, f"no screenshot: {hands_mod.WAYLAND_TEXT}")
+
+    def never(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("a Python backend was tried under Wayland")
+
+    monkeypatch.setattr(hands_mod, "_import_pyautogui", never)
+    monkeypatch.setattr(hands_mod, "XdotoolHands", never)
+    monkeypatch.setattr("nanomuse.computer.link.capture", never)
+    with pytest.raises(hands_mod.HandsUnavailable) as exc:
+        hands_mod.pick_backend("auto")
+    assert str(exc.value) == hands_mod.WAYLAND_TEXT
+    assert hands_mod.describe_availability("auto")["reason"] == hands_mod.WAYLAND_TEXT
+    link = ComputerLink(HandsSettings(enabled=True, settle_s=0.0))
+    with pytest.raises(DeviceError, match=r"^the hands are off on this computer: Wayland session"):
+        await link.screen()
+    # the same without the desktop app around (the CLI on a Wayland desktop): the same words
+    monkeypatch.delenv(op.URL_ENV)
+    with pytest.raises(hands_mod.HandsUnavailable) as exc:
+        hands_mod.pick_backend("auto")
+    assert str(exc.value) == hands_mod.WAYLAND_TEXT
+    link2 = ComputerLink(HandsSettings(enabled=True, settle_s=0.0))
+    with pytest.raises(DeviceError, match="the hands are off on this computer: Wayland session"):
+        await link2.screen()
 
 
 # ----------------------------------------------------------------------------- one path on a Mac
@@ -261,6 +319,7 @@ def test_mac_backend_choice_is_the_operator_or_its_reason(
     monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", None)
     monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.delenv("XDG_SESSION_TYPE", raising=False)
     with pytest.raises(hands_mod.HandsUnavailable, match="xdotool"):
         hands_mod.pick_backend("auto")
 
@@ -302,6 +361,7 @@ async def test_mac_screenshot_never_falls_back_to_python(
     monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", None)
     monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.delenv("XDG_SESSION_TYPE", raising=False)
     raw = {
         "app": "gedit", "app_name": "gedit", "width": 1596, "height": 896,
         "screen_w": 3840, "screen_h": 2160, "keyboard": False, "screenshot": png(64, 40),

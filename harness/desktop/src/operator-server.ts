@@ -9,8 +9,10 @@ import { Operator, OperatorError, type OperatorAction, type ScreenshotRequest } 
  * routes, and nothing a browser could use by accident (no CORS, no GET with effects):
  *
  *   GET  /info        → { available, reason, platform, display: { width, height, scaleFactor, logical } }
- *   POST /screenshot  { width?, height?, format?: "png"|"jpeg", quality? }
+ *   POST /screenshot  { width?, height?, format?: "png"|"jpeg", quality?, max_pixels? }
  *                     → { base64, mime, width, height, screen: { width, height }, scaleFactor, display: { id, bounds } }
+ *                     width×height is the picture asked for; without them the screen's size, capped at
+ *                     max_pixels (default 2 Mpx, 0 = uncapped) with the aspect kept
  *   POST /execute     { action, x?, y?, x2?, y2?, dy?, text?, submit?, clear?, keys?, seconds? }
  *                     → { ok: true, note } — coordinates in the operator's screen pixels
  *

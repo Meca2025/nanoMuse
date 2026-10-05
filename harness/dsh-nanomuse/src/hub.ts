@@ -22,6 +22,16 @@ export interface HubDevice {
   actions: string[]
 }
 
+/** The hub's `working` frame (contract C9): a device started or finished a turn on a synced conversation. */
+export interface HubWorking {
+  cid: string
+  from: string
+  device_name: string
+  working: boolean
+  /** Unix seconds, the relay's clock. */
+  at: number
+}
+
 /** What this device says about itself in `hello`. */
 export interface HelloDevice {
   id: string
@@ -123,6 +133,7 @@ export class HubClient {
     devices: new Set<Listener>(),
     profile: new Set<(rev: number, device: string) => void>(),
     sync: new Set<(cursor: number, device: string) => void>(),
+    working: new Set<(frame: HubWorking) => void>(),
     unauthorized: new Set<Listener>(),
   }
   private seq = 0
@@ -184,6 +195,12 @@ export class HubClient {
   onSync(listener: (cursor: number, device: string) => void): () => void {
     this.listeners.sync.add(listener)
     return () => this.listeners.sync.delete(listener)
+  }
+
+  /** Another device started or finished a turn on a synced conversation (contract C9). */
+  onWorking(listener: (frame: HubWorking) => void): () => void {
+    this.listeners.working.add(listener)
+    return () => this.listeners.working.delete(listener)
   }
 
   /** The relay refused the key (close 4001): the owner should forget the account. */
@@ -347,6 +364,11 @@ export class HubClient {
       case 'sync':
         if (frame.what === 'conversations') for (const listener of this.listeners.sync) listener(Number(frame.cursor ?? 0), String(frame.from ?? ''))
         return
+      case 'working': {
+        const working: HubWorking = { cid: String(frame.cid ?? ''), from: String(frame.from ?? ''), device_name: String(frame.device_name ?? ''), working: frame.working === true, at: Number(frame.at ?? 0) }
+        for (const listener of this.listeners.working) listener(working)
+        return
+      }
       case 'pong':
         return
       case 'event': {

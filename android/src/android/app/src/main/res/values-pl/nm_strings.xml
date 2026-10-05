@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: teksty występujące tylko w nanoMuse (0.1.38). Czego tu brakuje, wyświetla się po angielsku. -->
+<resources>
+    <string name="nm_cloud_other_server">Użyj innego serwera</string>
+    <string name="nm_cloud_server_url">Adres relay</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Sprawdź</string>
+    <string name="nm_cloud_server_use">Użyj tego serwera</string>
+    <string name="nm_cloud_server_now">Serwer: %1$s</string>
+    <string name="nm_cloud_server_ok">%1$s odpowiedział: relay %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Wpisz adres relay, na przykład https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Dla serwera poza własną siecią użyj https. http wystarczy dla adresu prywatnego (10.x, 192.168.x, 172.16–31.x, localhost, nazwa .local lub .ts.net).</string>
+    <string name="nm_cloud_server_unreachable">Pod adresem %1$s nie odpowiedział żaden relay. Sprawdź adres i czy relay działa.</string>
+    <string name="nm_cloud_server_default">Wróć do nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Serwer</string>
+    <string name="nm_cloud_server_change">Zmień</string>
+    <string name="nm_cloud_server_change_confirm">Klucz tego telefonu należy do obecnego serwera. Najpierw wyloguj się tutaj, potem zaloguj się do innego serwera z ekranu logowania.</string>
+    <string name="nm_cloud_sms_region">Kody SMS docierają tylko na numery z Chin kontynentalnych. Użyj zamiast tego adresu e-mail.</string>
+    <string name="nm_sync_side_title">Synchronizuj też czaty poboczne</string>
+    <string name="nm_sync_side_sub">Wyłączone: czaty poboczne zostają na tym urządzeniu. Włączone: czaty poboczne tego urządzenia trafiają na konto, a czaty poboczne innych urządzeń przychodzą tutaj.</string>
+    <string name="nm_sync_working">%1$s nad tym pracuje…</string>
+</resources>

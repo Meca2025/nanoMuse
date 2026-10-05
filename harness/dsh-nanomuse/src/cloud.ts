@@ -36,7 +36,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
 import type { ToolDispatchExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
-import { createUserMessage, ToolCallId, type ContentBlock } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionCreateRequest } from '@deepseek-ai/dsh-api-session-controller/types'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
@@ -48,10 +48,10 @@ import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner, textOf } from './task.ts'
-import { RemoteStore, SyncEngine, SyncRelay, type RemoteLine, type SessionLine, type SyncState } from './sync.ts'
+import { RemoteStore, SyncEngine, SyncRelay, type RemoteLine, type SessionInfo, type SessionLine, type SyncState } from './sync.ts'
 import { AvatarMotion, ANIMATED, type MotionMood, type MotionView } from './motion.ts'
 import { DEFAULT_VIDEO_MODEL, hostOf, KNOWN_DASHSCOPE_MODELS, looksLikeVideoModel, probe as probeVideoModel, speaksDashScope, type VideoEndpoint } from './video.ts'
-import { checkMove, checkScreenshot, isBlack, runtimeInfo, type MoveCheck, type RuntimeInfo, type ScreenshotCheck } from './hands-check.ts'
+import { checkMove, checkScreenshot, displayInfo, isBlack, runtimeInfo, type MoveCheck, type RuntimeInfo, type ScreenshotCheck } from './hands-check.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -65,6 +65,13 @@ export const TOKEN_REF = 'NANOMUSE_CLOUD_TOKEN'
 export const PROVIDER_ID = 'nanomuse'
 /** The profile row the Models page edits too. */
 export const LLM_ROW = 'llm-pi-ai'
+/**
+ * The image budget of one request through the relay (`dsh-llm-pi-ai` profile keys): the relay
+ * refuses a body past 6 MiB (413 `too_large`), so the base64 images of a request are held to
+ * 5 MiB — the oldest offloaded — and each image is scaled to 2 Mpx before it is encoded.
+ * `requestImageMaxBytes` keeps dsh's default (1 MiB a picture).
+ */
+export const IMAGE_BUDGET = { maxRequestImageBytes: 5 * 1024 * 1024, requestImagePixelBudget: 2 * 1024 * 1024 } as const
 /** Where the browser half talks to us. */
 export const API_PREFIX = '/nanomuse/cloud'
 /** What this device reports as its software. */
@@ -422,6 +429,12 @@ export default class NanomuseCloud extends Service {
   private sync: SyncEngine | undefined
   /** The other devices' turns kept for the transcript (C8), by session. */
   private kept: RemoteStore | undefined
+  /**
+   * What the sync needs of a session's log, read once per change: a session's log is read
+   * in full (and decompressed) by `inspect`, so the title, the lines and the prompts'
+   * positions are kept here until the session's next event (`session/event`) drops them.
+   */
+  private readonly logCache = new Map<string, { title?: { at: number; title: string }; lines?: SessionLine[]; prompts?: Array<{ key: string; time: number }> }>()
   /** Approvals the stage may answer (C2) and holds of the hands (C1). */
   private readonly approvalDesk = new ApprovalDesk(() => this.broadcast(), (req) => this.granted(req.toolName))
   private readonly holdDesk = new HoldDesk(() => this.broadcast())
@@ -534,11 +547,17 @@ export default class NanomuseCloud extends Service {
         sessions: {
           list: async () => {
             const { items } = await ctx.sessionController.list({}, new AbortController().signal)
-            const rows = await Promise.all(
-              items
-                .filter((s) => !s.parentSessionId && s.origin !== 'subagent')
-                .map(async (s) => ({ id: String(s.sessionId), title: await this.sessionTitle(ctx, s.sessionId), blank: s.blank, createdAt: s.updatedAt, updatedAt: s.updatedAt })),
-            )
+            // The title comes from the list's own `title` projection when the host has one; only a
+            // session without it (no title landed yet) is read, and that once per change: reading
+            // every log on every push kept the host busy for seconds on a big account.
+            const rows: SessionInfo[] = []
+            for (const s of items) {
+              if (s.parentSessionId || s.origin === 'subagent') continue
+              const id = String(s.sessionId)
+              const hint = s.projections?.values?.title
+              const title = typeof hint === 'string' && hint ? hint : await this.sessionTitle(ctx, s.sessionId, s.updatedAt)
+              rows.push({ id, title, blank: s.blank, createdAt: s.updatedAt, updatedAt: s.updatedAt })
+            }
             return rows
           },
           lines: (sessionId) => this.sessionLines(ctx, sessionId),
@@ -584,6 +603,7 @@ export default class NanomuseCloud extends Service {
           ctx.on('session/event', (session: Session, event: SessionEvent) => {
             // `session/title` is dsh-session-title's event (not a dependency here): matched by name
             const id = String(session.id)
+            this.logChanged(id)
             if (event.type === 'turn/end') sync.turnEnded(id)
             else if (event.type === 'user/message' && (event.data as { source?: { kind?: string } }).source?.kind === 'user') sync.messageSent(id)
             else if ((event as { type: string }).type === 'session/title') sync.sessionRenamed(String(session.id))
@@ -591,6 +611,7 @@ export default class NanomuseCloud extends Service {
         'nanomuse cloud: sync turns',
       )
       ctx.effect(() => this.hub.onSync((cursor, from) => sync.onFrame({ cursor, from })), 'nanomuse cloud: sync frame')
+      ctx.effect(() => this.hub.onWorking((frame) => sync.onWorking(frame)), 'nanomuse cloud: working frame')
       if (this.state.account) sync.start()
       ctx.effect(() => () => {
         sync.stop()
@@ -637,7 +658,7 @@ export default class NanomuseCloud extends Service {
           let result = await next()
           if (exec.name === 'mcp__nanomuse__computer_act' && result.isError) {
             const refused = refusalOf(result)
-            if (refused) result = await this.confirmStep(ctx, exec, refused)
+            if (refused) result = await this.confirmStep(ctx, exec, refused, next)
           }
           if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId)
           // A black capture (macOS: Screen Recording missing for the app, or granted after it started) puts a relaunch notice up.
@@ -1185,8 +1206,11 @@ export default class NanomuseCloud extends Service {
     return result
   }
 
-  runtime(): Promise<RuntimeInfo> {
-    return runtimeInfo()
+  /** Which binary the hands run — and on Linux the display session they would work on (Settings → Computer use). */
+  async runtime(): Promise<RuntimeInfo> {
+    const info = await runtimeInfo()
+    const display = displayInfo()
+    return display ? { ...info, display } : info
   }
 
   private sawBlackScreen(): void {
@@ -1241,7 +1265,7 @@ export default class NanomuseCloud extends Service {
         const [account, models] = await Promise.all([this.relay.me(token), this.relay.models(token)])
         // The row is rewritten when the menu changed — and when it is simply not there: a profile
         // made again around an account that is still signed in has the credential but no row.
-        if (!sameModels(models, this.state.models ?? []) || !this.providerPresent()) await this.writeProvider(models)
+        if (!sameModels(models, this.state.models ?? []) || !this.providerPresent() || !this.providerBudgetCurrent()) await this.writeProvider(models)
         await this.adoptDefaultModel(models)
         this.state = { ...this.state, account, models }
         await this.writeState()
@@ -1375,20 +1399,15 @@ export default class NanomuseCloud extends Service {
 
   // -- the provider row -----------------------------------------------------------
 
-  /** The `nanomuse` provider as the Models page would have written it. */
+  /**
+   * The `nanomuse` provider as the Models page would have written it — with the image budget
+   * of a request that goes through the relay: the relay refuses a body past its cap (413
+   * `too_large`), and a computer-use turn accumulates screenshots, so the base64 images of one
+   * request are held to `IMAGE_BUDGET` (the oldest offloaded, as `dsh-llm-pi-ai` does past the
+   * budget) and each is scaled to the pixel budget before it is encoded.
+   */
   providerRow(models: RelayModel[]): Record<string, unknown> {
-    const chat = models.filter((m) => modelFor(m).includes('chat'))
-    return {
-      displayName: 'nanoMuse Cloud',
-      api: 'openai-completions',
-      baseURL: this.relay.openaiBase,
-      apiKeyEnv: TOKEN_REF,
-      models: chat.map((m) => ({
-        id: m.id,
-        displayName: m.name,
-        input: takesImages(m) ? ['text', 'image'] : ['text'],
-      })),
-    }
+    return providerRowFor(this.relay.openaiBase, models)
   }
 
   private async writeProvider(models: RelayModel[]): Promise<void> {
@@ -1449,6 +1468,19 @@ export default class NanomuseCloud extends Service {
   /** Whether the `nanomuse` provider row is in the model layer (it lives in the profile's patch file). */
   private providerPresent(): boolean {
     return this.providers().some((p) => p.id === PROVIDER_ID)
+  }
+
+  /** Whether the row written earlier carries today's image budget: a budget change counts as a changed menu. */
+  private providerBudgetCurrent(): boolean {
+    try {
+      const row = this.ctx.settings.describe().find((d) => d.ns === LLM_ROW)
+      const providers = (row?.value as { providers?: Record<string, unknown> } | undefined)?.providers ?? {}
+      const ours = providers[PROVIDER_ID]
+      if (!ours || typeof ours !== 'object') return false
+      return Object.entries(IMAGE_BUDGET).every(([key, value]) => (ours as Record<string, unknown>)[key] === value)
+    } catch {
+      return true
+    }
   }
 
   /** Another model can answer without the account: a DeepSeek key, or a provider the person added. */
@@ -1523,11 +1555,17 @@ export default class NanomuseCloud extends Service {
    * the arguments under the secret the desktop shell gave both of us (NANOMUSE_MCP_CONFIRM).
    * Without the secret (a hand-made dsh profile) the server takes `confirmed: true`, so
    * that is what the re-dispatch carries; either way the model never confirms on its own.
+   *
+   * The second run goes through the *same* execution (`exec` with the ticket added to its
+   * arguments, then `next()` once more) rather than a nested `tools.execute`: the registry
+   * re-renders a wrapper-authored result from its value through the tool's text projection,
+   * and the MCP bridge keeps the admitted screenshot of a result keyed by the execution it
+   * ran for — a nested call's picture never reached the model (0.1.37: "Image didn't come
+   * through" after every approved step). The arguments the model wrote are put back after.
    */
-  private async confirmStep(ctx: Context, exec: ToolDispatchExecution, refused: string): Promise<ToolExecutionResult> {
+  private async confirmStep(ctx: Context, exec: ToolDispatchExecution, refused: string, next: () => Promise<ToolExecutionResult>): Promise<ToolExecutionResult> {
     const approval = ctx.get('approval')
-    const tools = ctx.get('tools')
-    if (!approval || !tools || !exec.agent) return declined(refused, 'approval is not available here')
+    if (!approval || !exec.agent) return declined(refused, 'approval is not available here')
     const step = refused.replace(/\.\s+(The person has to agree|Ask the person)[\s\S]*$/, '').trim()
     const outcome = await approval.request({
       agent: exec.agent,
@@ -1541,15 +1579,14 @@ export default class NanomuseCloud extends Service {
     const args = exec.arguments && typeof exec.arguments === 'object' && !Array.isArray(exec.arguments) ? (exec.arguments as Record<string, unknown>) : {}
     const secret = process.env.NANOMUSE_MCP_CONFIRM?.trim()
     const confirmed: string | true = secret ? confirmTicket(secret, args) : true
-    return tools.execute({
-      callId: ToolCallId(`${exec.callId}:confirmed`),
-      rootCallId: exec.rootCallId,
-      name: exec.name,
-      arguments: { ...args, confirmed },
-      agent: exec.agent,
-      parent: exec.token,
-      signal: exec.signal,
-    })
+    const mutable = exec as { arguments: unknown }
+    const written = mutable.arguments
+    mutable.arguments = Object.freeze({ ...args, confirmed })
+    try {
+      return await next()
+    } finally {
+      mutable.arguments = written
+    }
   }
 
   /** The screenshot and the words that came back from `computer_screen` / `computer_act` (an MCP result). */
@@ -1642,7 +1679,8 @@ export default class NanomuseCloud extends Service {
         ...(typeof raw.deviceId === 'string' && raw.deviceId ? { deviceId: raw.deviceId } : {}),
         ...(typeof raw.deviceName === 'string' && raw.deviceName ? { deviceName: raw.deviceName } : {}),
         ...(typeof raw.handsModel === 'string' && raw.handsModel ? { handsModel: raw.handsModel } : {}),
-        ...(Array.isArray(raw.grants) ? { grants: (raw.grants as Grant[]).filter((g) => g && typeof g.id === 'string' && typeof g.target === 'string').map((g) => ({ id: g.id, target: g.target, at: Number(g.at) || 0 })) } : {}),
+        // a grant 0.1.37 kept for the "app" "Done. Screen now:" (the mis-read head line) names nothing — dropped
+        ...(Array.isArray(raw.grants) ? { grants: (raw.grants as Grant[]).filter((g) => g && typeof g.id === 'string' && typeof g.target === 'string' && !MISREAD_GRANT.test(g.target)).map((g) => ({ id: g.id, target: g.target, at: Number(g.at) || 0 })) } : {}),
         ...(raw.update && typeof raw.update === 'object' && typeof (raw.update as UpdateInfo).checkedAt === 'number' ? { update: raw.update as UpdateInfo } : {}),
         ...(raw.remoteControl === true ? { remoteControl: true } : {}),
         ...(raw.trusted && typeof raw.trusted === 'object' ? { trusted: trustedOf(raw.trusted) } : {}),
@@ -1654,8 +1692,24 @@ export default class NanomuseCloud extends Service {
     }
   }
 
+  /** A session's cached log facts, dropped: its log changed. */
+  private logChanged(sessionId: string): void {
+    this.logCache.delete(sessionId)
+  }
+
+  private cached(sessionId: string): { title?: { at: number; title: string }; lines?: SessionLine[]; prompts?: Array<{ key: string; time: number }> } {
+    let entry = this.logCache.get(sessionId)
+    if (!entry) {
+      entry = {}
+      this.logCache.set(sessionId, entry)
+    }
+    return entry
+  }
+
   /** The session's title as the chats column shows it: the latest `session/title` event, else its first prompt. */
-  private async sessionTitle(ctx: Context, sessionId: SessionId): Promise<string> {
+  private async sessionTitle(ctx: Context, sessionId: SessionId, updatedAt: number): Promise<string> {
+    const entry = this.cached(String(sessionId))
+    if (entry.title && entry.title.at === updatedAt) return entry.title.title
     try {
       const inspection = await ctx.sessionController.inspect(sessionId)
       let title = ''
@@ -1664,7 +1718,9 @@ export default class NanomuseCloud extends Service {
         if (event.type === 'session/title') title = String((event.data as { title?: string }).title ?? '')
         else if (!first && event.type === 'user/message' && (event.data as { source?: { kind?: string } }).source?.kind === 'user') first = textOf((event.data as { content?: readonly ContentBlock[] }).content)
       }
-      return (title || first).replace(/\s+/g, ' ').trim().slice(0, 120)
+      const out = (title || first).replace(/\s+/g, ' ').trim().slice(0, 120)
+      entry.title = { at: updatedAt, title: out }
+      return out
     } catch {
       return ''
     }
@@ -1672,6 +1728,8 @@ export default class NanomuseCloud extends Service {
 
   /** The person's prompts and the model's final texts of one session, for the sync engine. */
   private async sessionLines(ctx: Context, sessionId: string): Promise<SessionLine[]> {
+    const entry = this.cached(sessionId)
+    if (entry.lines) return entry.lines
     try {
       const inspection = await ctx.sessionController.inspect(sessionId as SessionId)
       const lines: SessionLine[] = []
@@ -1692,6 +1750,7 @@ export default class NanomuseCloud extends Service {
           lastAssistant = undefined
         }
       }
+      entry.lines = lines
       return lines
     } catch {
       return []
@@ -1707,18 +1766,23 @@ export default class NanomuseCloud extends Service {
   private async remoteLines(ctx: Context, sessionId: string): Promise<Array<RemoteLine & { id: string; before: string | null }>> {
     const lines = this.kept?.linesOf(sessionId) ?? []
     if (lines.length === 0) return []
-    const prompts: Array<{ key: string; time: number }> = []
-    const sc = ctx.get('sessionController')
-    if (sc) {
-      try {
-        const inspection = await sc.inspect(sessionId as SessionId)
-        for (const event of inspection.events) {
-          if (event.type !== 'user/message') continue
-          const data = event.data as unknown as { id?: string; source?: { kind?: string } }
-          if (data.source?.kind === 'user') prompts.push({ key: `13:input-message${String(data.id ?? '')}`, time: event.time })
+    const entry = this.cached(sessionId)
+    let prompts = entry.prompts
+    if (!prompts) {
+      prompts = []
+      const sc = ctx.get('sessionController')
+      if (sc) {
+        try {
+          const inspection = await sc.inspect(sessionId as SessionId)
+          for (const event of inspection.events) {
+            if (event.type !== 'user/message') continue
+            const data = event.data as unknown as { id?: string; source?: { kind?: string } }
+            if (data.source?.kind === 'user') prompts.push({ key: `13:input-message${String(data.id ?? '')}`, time: event.time })
+          }
+          entry.prompts = prompts
+        } catch {
+          // a session that cannot be read: the bubbles go after whatever is shown
         }
-      } catch {
-        // a session that cannot be read: the bubbles go after whatever is shown
       }
     }
     return lines.map((line) => ({ ...line, id: line.mid, before: prompts.find((p) => p.time > line.at)?.key ?? null }))
@@ -1884,7 +1948,9 @@ export default class NanomuseCloud extends Service {
           return send(res, 200, sync.view())
         }
         if (req.method === 'POST' && route === '/sync/state') {
+          // the account-wide switch (`enabled`), or this device's "Also sync side chats" (`sideChats`, C9)
           const body = await json(req)
+          if (typeof body.sideChats === 'boolean') return send(res, 200, await sync.setSideChats(body.sideChats))
           return send(res, 200, await sync.setEnabled(body.enabled !== false))
         }
         if (req.method === 'POST' && route === '/sync/delete') return send(res, 200, await sync.deleteRemote())
@@ -1896,7 +1962,8 @@ export default class NanomuseCloud extends Service {
         }
         if (req.method === 'GET' && route === '/sync/remote') {
           const sessionId = url.searchParams.get('session') ?? ''
-          return send(res, 200, { lines: sessionId ? await this.remoteLines(this.ctx, sessionId) : [], hidden: sync.view().hidden })
+          const lines = sessionId ? await this.remoteLines(this.ctx, sessionId) : []
+          return send(res, 200, { lines, hidden: sync.view().hidden, working: sync.workingOf(sessionId) })
         }
         if (req.method === 'POST' && route === '/sync/archived') {
           const body = await json(req)
@@ -2024,6 +2091,23 @@ export default class NanomuseCloud extends Service {
 }
 
 /** `$DSH_HOME`, or `~/.dsh` — the same rule the launcher applies. */
+/** The `nanomuse` provider row for a relay's OpenAI root and its model list (see `providerRow`). */
+export function providerRowFor(openaiBase: string, models: RelayModel[]): Record<string, unknown> {
+  const chat = models.filter((m) => modelFor(m).includes('chat'))
+  return {
+    displayName: 'nanoMuse Cloud',
+    api: 'openai-completions',
+    baseURL: openaiBase,
+    apiKeyEnv: TOKEN_REF,
+    ...IMAGE_BUDGET,
+    models: chat.map((m) => ({
+      id: m.id,
+      displayName: m.name,
+      input: takesImages(m) ? ['text', 'image'] : ['text'],
+    })),
+  }
+}
+
 export function dshHome(): string {
   const configured = process.env.DSH_HOME
   if (configured) return configured
@@ -2060,16 +2144,27 @@ export function stageAction(args: unknown): StageAction {
   }
 }
 
-/** The first line of what `computer_screen` says: `<window in front> · <WxH> · …` → title and size. */
+/** A `<WxH>` part of the screen head (`1596×1204`, `1920x1080`). */
+const SIZE_PART = /^(\d{2,5})[×x](\d{2,5})$/
+/** The grant target 0.1.37 wrote when it took `computer_act`'s first line for the window title. */
+export const MISREAD_GRANT = /^computer_app:Done\. Screen now:?$/
+
+/**
+ * The head line of what `computer_screen` / `computer_act` say: `<window in front> · <WxH> · …`
+ * → title and size. It is the line that carries the size, wherever it stands: `computer_act`
+ * puts "Done. Screen now:" first, and 0.1.37 took that for the window's title (so the stage
+ * was titled "Done. Screen now:" and an "always allow" was kept for that "app").
+ */
 export function screenHead(text: string): { title: string; width: number; height: number; mode: 'screen' | 'window' } {
-  const line = text.split('\n').find((l) => l.trim()) ?? ''
+  const lines = text.split('\n').filter((l) => l.trim())
+  const line = lines.find((l) => l.split(' · ').some((p) => SIZE_PART.test(p.trim()))) ?? ''
   const parts = line.split(' · ').map((p) => p.trim())
   let width = 0
   let height = 0
   let mode: 'screen' | 'window' = 'screen'
   const rest: string[] = []
   for (const part of parts) {
-    const m = /^(\d{2,5})[×x](\d{2,5})$/.exec(part)
+    const m = SIZE_PART.exec(part)
     if (m) {
       width = Number(m[1])
       height = Number(m[2])

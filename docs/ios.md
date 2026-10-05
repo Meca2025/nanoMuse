@@ -68,7 +68,7 @@ Ours, in `NanoMuse/`:
   provider in the app, with a model group of its own that becomes the default when there is none.
   Same wire format and the same rules as the Android client (`io.github.nanomuse.cloud`): one
   instance per relay, nothing of the user's own replaced, a 401 on refresh removes the provider.
-  Debug builds can point at another relay. Since 0.1.32 the page is the whole account — the
+  Any build can point at another relay (*Use a different server*, below). Since 0.1.32 the page is the whole account — the
   password as the other way in, a friend's invite code, the pool in yuan with the ways on when it
   runs low (your own key, an invitation, a star once), usage by kind and by model, the devices
   holding a key, the timeline, deletion — the same sections as the phone's `CloudAccountScreen`.
@@ -183,6 +183,52 @@ Ours, in `NanoMuse/`:
   message). The Feed opens on the intro card, says when the daily routine runs while it is
   empty, and writes its first day after the first conversation; a Notifications page joined the
   first run.
+- **The composer (0.1.38)** (`NanoMuseComposerField.swift`, `NanoMuseComposerWatch.swift`, the
+  `// nanoMuse:` lines in `Views/Chat/AIChatView.swift`): the pill's field is SwiftUI's own
+  `TextField(axis: .vertical)` with `@FocusState` and `lineLimit(1...6)`, not upstream's
+  `UIViewRepresentable` text view. The reason is the 0.1.36 and 0.1.37 reports of a chat with
+  only the tab bar at the bottom — right after the first conversation's naming on the
+  maintainer's iPhone: the overlay that holds the composer was a UIKit host (because of the
+  representable inside it), and iOS left that host standing with no subviews when the naming
+  card left the same stack as the turn ended; nothing SwiftUI owned changed, so nothing redrew,
+  and the 0.1.37 watchdog dropped the check that fell inside its cooldown. The watchdog stays
+  as the last net and now re-schedules a check it cannot run yet; a second after the chat
+  appears, a message goes out or a turn ends, the composer must have reported a height, or the
+  **fail-safe** hosts the same stack as a bottom safe-area inset (`NanoMuseComposerWatch.failSafe`),
+  which is a different host from the overlay's. What the representable did and the native field
+  does not: an image pasted straight into the field (the plus menu has *Paste image* when the
+  pasteboard holds one), the select-and-replace capture for the correction learner, the exact
+  caret for the `@` menu (now the end of the text), swipe-to-send on texts estimated longer than
+  six lines, and hardware arrow / Tab navigation of the popups on iOS 16 (iOS 17+ has them via
+  `onKeyPress`). Return on a hardware keyboard sends, Shift+Return breaks the line, the on-screen
+  Return follows *Settings → Appearance → Return sends*; dictation still ends in *Back to typing*.
+- **The launch screen (0.1.38)** (`NanoMuse/NanoMuseLaunch.storyboard`,
+  `NanoMuse/NanoMuseLaunch.xcassets`): the mark on the system background, no words, light and
+  dark. Upstream's storyboard stays in the tree; `scripts/rebrand.py` points
+  `INFOPLIST_KEY_UILaunchStoryboardName` at ours. iOS caches launch screens per install: after
+  an update the old one can show a few more times, a reinstall shows the new one at once.
+- **Side chats and presence (0.1.38, Contract C9)** (`NanoMuseSync.swift`, `NanoMusePresence.swift`,
+  `NanoMuseSyncSettings.swift`, `NanoMuseFromDeviceCaption.swift`): *Data controls → Also sync
+  side chats* is per device and off by default — only the main conversation goes up and the pull
+  asks `scope=main`; side rows that still arrive are ignored. Turning it on pulls once from
+  `since=0&scope=all&tail=300` (idempotent by `mid`) and the side chats go up with the next push;
+  turning it off narrows the traffic again and deletes nothing. A table's first pull is
+  `since=0&tail=300`: the newest 300 texts, not the whole history. Presence: `POST
+  /v1/sync/working {cid, working}` after the user line is pushed and after the turn's end is;
+  the hub's `working` frame and `/v1/sync/state`'s `working` list fill a map that expires after
+  ten minutes, and the chat shows *〈device〉 is working…* under the last message when it is
+  another device's user line (`ChatMessage.nmWorkingDevice`). A remote user line as the tail is
+  never this phone's interrupted turn: `recheckCanResumeFromHistory` leaves `canResume` off for
+  it, so no banner, no Resume, nothing re-sent.
+- **Sign-in and the relay (0.1.38)** (`NanoMuseCloud.swift`, `NanoMuseCloudView.swift`,
+  `NanoMuseRelayPicker.swift`): a phone number with a country code other than +86 is told
+  *Text-message codes reach mainland-China numbers only. Use an e-mail address instead.* before
+  the code is requested, and the relay's `phone_region` error reads the same. *Use a different
+  server* on the sign-in page opens a sheet: the address, *Check* (`GET /healthz`), *Use this
+  server*; https is required unless the host is on one's own network (`10.`, `192.168.`,
+  `172.16–31.`, `localhost`, `*.local`, `*.ts.net`). Signed in, the account page shows *Server:
+  〈host〉* with *Change*, which signs this phone out first — a key belongs to the relay that
+  issued it.
 
 ## Building on a Mac
 

@@ -570,6 +570,8 @@ fun ChatScreen(
     // nanoMuse: the screen stays on while the agent drives the browser or another app's screen.
     io.github.nanomuse.status.KeepAwake.Effect(isStreaming)
     val canResume by viewModel.canResume.collectAsState()
+    // nanoMuse: the rows the account's other devices wrote — never this phone's turn to resume (C9)
+    val nmRemoteRows by io.github.nanomuse.sync.ConversationSync.remoteRows.collectAsState()
     val nmContinueAsk by viewModel.nmContinueAsk.collectAsState() // nanoMuse: "continue?" card replaces the banner while shown
     // nanoMuse: Muse's header carries only the name; the model rows under it are a
     // Setting (Appearance → Home), off by default on the main chat of the home shell.
@@ -4120,7 +4122,16 @@ fun ChatScreen(
                             )
                         }
                     }
-                    if (canResume && !isStreaming && error == null && !lastAssistantHasError && nmContinueAsk == null) {
+                    // nanoMuse: the last line came from another device (C9) — never this phone's
+                    // turn to resume; while that device works, say so in the banner's place.
+                    val nmLastId = messages.lastOrNull()?.id
+                    val nmRemoteTail = nmLastId != null && nmLastId.substringBefore('#') in nmRemoteRows
+                    if (nmRemoteTail) {
+                        item(key = "__nm_working__", contentType = "nm_working") {
+                            io.github.nanomuse.ui.chat.NmWorkingLine(viewModel.realSessionId.ifEmpty { sessionId }, nmLastId)
+                        }
+                    }
+                    if (canResume && !isStreaming && error == null && !lastAssistantHasError && nmContinueAsk == null && !nmRemoteTail) {
                         item(key = "__resume_banner__", contentType = "resume_banner") {
                             ResumeBanner(onResume = {
                                 viewModel.resume()

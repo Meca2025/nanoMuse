@@ -13,9 +13,11 @@ The contract (``harness/desktop/src/operator-server.ts``), JSON both ways, beare
 * ``GET /info`` → ``{available, reason, platform, display: {width, height, scaleFactor}}`` —
   ``display.width/height`` is the space the hands move in (X11 root pixels on Linux,
   points on macOS, physical pixels on Windows).
-* ``POST /screenshot {width?, height?, format?}`` → ``{base64, mime, width, height,
-  screen: {width, height}, scaleFactor, display: {id, bounds}}`` — the primary display,
-  scaled to the requested size (the picture the model sees), ``screen`` the hands' space.
+* ``POST /screenshot {width?, height?, format?, quality?, max_pixels?}`` → ``{base64, mime,
+  width, height, screen: {width, height}, scaleFactor, display: {id, bounds}}`` — the
+  primary display, scaled to the requested size (the picture the model sees; without one
+  the screen's size under ``max_pixels``, 2 Mpx by default), ``screen`` the hands' space.
+  On Linux under Wayland the operator refuses (503) with the same reason ``/info`` gives.
 * ``POST /execute {action, x, y, x2, y2, dy, text, submit, clear, keys, seconds}`` →
   ``{ok, note}``; coordinates in the hands' space. Errors are 4xx/5xx with ``{error}``.
 
@@ -33,7 +35,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from nanomuse.computer.coords import picture_size
+from nanomuse.computer.coords import PICTURE_MAX_PIXELS, picture_size
 from nanomuse.computer.hands import HandsUnavailable, open_application
 from nanomuse.logger import logger
 
@@ -115,9 +117,16 @@ class OperatorClient:
         return self._call("GET", "/info")
 
     def screenshot(
-        self, width: int = 0, height: int = 0, fmt: str = "jpeg", quality: int = 80
+        self,
+        width: int = 0,
+        height: int = 0,
+        fmt: str = "jpeg",
+        quality: int = 80,
+        max_pixels: int = PICTURE_MAX_PIXELS,
     ) -> dict[str, Any]:
-        body: dict[str, Any] = {"format": fmt, "quality": quality}
+        """The picture: ``width``×``height`` when both are given, else the screen's size
+        under ``max_pixels`` (0 = the screen as it is), as ``fmt`` (``jpeg`` or ``png``)."""
+        body: dict[str, Any] = {"format": fmt, "quality": quality, "max_pixels": int(max_pixels)}
         if width and height:
             body["width"], body["height"] = int(width), int(height)
         return self._call("POST", "/screenshot", body)

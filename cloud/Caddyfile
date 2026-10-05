@@ -1,3 +1,9 @@
+{
+	# Let's Encrypt writes to this address when a certificate is about to expire
+	# and could not be renewed. Empty is allowed; scripts/self-host.sh fills it in.
+	email "{$ACME_EMAIL}"
+}
+
 {$CLOUD_DOMAIN} {
 	encode zstd gzip
 	# Streams must not be buffered; Caddy flushes SSE by default, this just

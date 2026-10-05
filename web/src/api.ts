@@ -173,6 +173,8 @@ export const api = {
   syncState: () => request<SyncState>("/api/sync/state"),
   /** off tells the relay, which deletes what it stores; on pushes this device's chats again */
   syncSetState: (enabled: boolean) => request<SyncState>("/api/sync/state", { method: "PUT", body: JSON.stringify({ enabled }) }),
+  /** C9: "Also sync side chats" — per device; on pulls the other devices' side chats once from the start */
+  syncSetSideChats: (side_chats: boolean) => request<SyncState>("/api/sync/state", { method: "PUT", body: JSON.stringify({ side_chats }) }),
   /** "Delete synced conversations": the relay's store emptied, the switch and the local chats kept */
   syncDelete: () => request<SyncState>("/api/sync/delete", json({})),
   syncPull: () => request<SyncState & { applied: number }>("/api/sync/pull", json({})),

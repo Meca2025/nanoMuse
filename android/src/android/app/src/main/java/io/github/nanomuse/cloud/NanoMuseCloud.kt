@@ -231,18 +231,26 @@ object NanoMuseCloud {
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    /** The relay this build talks to. Debug builds may override it (a laptop on the same Wi-Fi). */
+    /**
+     * The relay this phone talks to: nanoMuse Cloud, or the one the person named on the
+     * sign-in screen ("Use a different server" — people who run their own, 0.1.38). Kept
+     * across launches; the hub, the console links and the media models all read it from here.
+     */
     fun baseUrl(context: Context): String =
-        prefs(context).getString(KEY_BASE, null)?.takeIf { BuildConfig.DEBUG && it.isNotBlank() }?.trimEnd('/')
+        prefs(context).getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.trimEnd('/')
             ?: DEFAULT_BASE
 
     fun setBaseUrl(context: Context, url: String?) {
         prefs(context).edit().apply {
-            if (url.isNullOrBlank()) remove(KEY_BASE) else putString(KEY_BASE, url.trim().trimEnd('/'))
+            if (url.isNullOrBlank() || url.trim().trimEnd('/') == DEFAULT_BASE) remove(KEY_BASE) else putString(KEY_BASE, url.trim().trimEnd('/'))
         }.apply()
     }
 
-    fun canOverrideBase(): Boolean = BuildConfig.DEBUG
+    /** Every build may point at another relay now (0.1.38); kept for the callers that asked. */
+    fun canOverrideBase(): Boolean = true
+
+    /** Asks the relay at [url] for its `/healthz`; the version it reports. Throws [IOException]. */
+    suspend fun checkRelay(url: String): RelayAddress.Health = withContext(Dispatchers.IO) { RelayAddress.check(url) }
 
     /** The provider instance the relay is signed in as, if it still exists. */
     fun instance(context: Context): ProviderInstance? {
@@ -607,7 +615,7 @@ object NanoMuseCloud {
             "code_too_often" -> context.getString(R.string.nm_cloud_err_code_too_often)
             "not_invited" -> context.getString(R.string.nm_cloud_err_not_invited)
             "send_failed" -> context.getString(R.string.nm_cloud_err_send_failed)
-            "phone_region" -> context.getString(R.string.nm_cloud_err_phone_region)
+            "phone_region" -> context.getString(R.string.nm_cloud_sms_region) // the same sentence the sign-in screen shows before asking
             "account_disabled" -> context.getString(R.string.nm_cloud_err_disabled)
             "bad_key" -> context.getString(R.string.nm_cloud_err_bad_key)
             "out_of_tokens" -> context.getString(R.string.nm_cloud_err_out_of_tokens)

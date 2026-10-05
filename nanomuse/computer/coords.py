@@ -31,6 +31,11 @@ MIN_PIXELS = 100 * IMAGE_FACTOR * IMAGE_FACTOR
 MAX_PIXELS = 16384 * IMAGE_FACTOR * IMAGE_FACTOR
 MAX_RATIO = 200
 NORM = 1000  # the 0–1000 grid UI-TARS and Qwen3-VL answer in by default
+# The most pixels a picture for the model has (the shared budget rule: ≤ 2 Mpx before
+# encoding). A 4K screen comes down to half its side, 1080p (2.07 Mpx) is trimmed a
+# little, 1680×1050 and below pass untouched. A request with a few 4K JPEGs in it was what
+# hit the relay's body cap (413).
+PICTURE_MAX_PIXELS = 2_000_000
 
 
 def _round_by(num: float, factor: int) -> int:
@@ -77,16 +82,21 @@ def smart_resize(
     return w_bar, h_bar
 
 
-def picture_size(screen_w: int, screen_h: int, max_width: int = 0) -> tuple[int, int]:
+def picture_size(
+    screen_w: int, screen_h: int, max_width: int = 0, max_pixels: int = PICTURE_MAX_PIXELS
+) -> tuple[int, int]:
     """How big the picture handed to the model is for a ``screen_w``×``screen_h`` screen:
-    capped at ``max_width`` (0 = no cap) keeping the aspect ratio, then :func:`smart_resize`.
-    ``(0, 0)`` when the screen's size is unknown."""
+    capped at ``max_width`` (0 = no cap) and at ``max_pixels`` (0 = no cap) keeping the
+    aspect ratio, then :func:`smart_resize`. ``(0, 0)`` when the screen's size is unknown."""
     if screen_w <= 0 or screen_h <= 0:
         return 0, 0
     w, h = float(screen_w), float(screen_h)
     if max_width and w > max_width:
         h = h * max_width / w
         w = float(max_width)
+    if max_pixels and w * h > max_pixels:
+        k = math.sqrt(max_pixels / (w * h))
+        w, h = w * k, h * k
     try:
         return smart_resize(max(1, int(round(h))), max(1, int(round(w))))
     except ValueError:
@@ -153,6 +163,7 @@ __all__ = [
     "MAX_PIXELS",
     "MIN_PIXELS",
     "NORM",
+    "PICTURE_MAX_PIXELS",
     "Mapping",
     "box_centre",
     "from_norm",

@@ -47,6 +47,9 @@ export interface AssistantEvent extends BaseEvent {
   quiet?: boolean;
   /** the device whose Muse said this (a chat addressed to a device) */
   device?: string;
+  /** a synced reply written on another device of the account */
+  via_device?: string;
+  via_device_name?: string;
 }
 
 export interface ToolEvent extends BaseEvent {
@@ -287,6 +290,10 @@ export interface ThreadMeta {
 export interface SyncState {
   /** the switch on this device */
   enabled: boolean;
+  /** C9: this device's side chats too (per device, default off); off = the main chat only */
+  side_chats?: boolean;
+  /** C9: the other devices' turns under way on synced chats */
+  working?: WorkingPresence[];
   /** signed in to nanoMuse Cloud, so syncing can happen at all */
   available: boolean;
   /** the relay refused the key: nothing moves until the next sign-in */
@@ -297,6 +304,19 @@ export interface SyncState {
   error: string;
   /** the relay's own view; null when it could not be asked */
   relay: { enabled: boolean; cursor: number; counts: { conversations: number; messages: number }; limits: { messages: number; text_bytes: number } } | null;
+}
+
+/**
+ * Another device of the account is working on a synced chat (contract C9): the hub's
+ * `working` frame as the runtime keeps it. `at` is Unix seconds; a line older than ten
+ * minutes is stale and not shown.
+ */
+export interface WorkingPresence {
+  thread: string;
+  cid: string;
+  device: string;
+  device_name: string;
+  at: number;
 }
 
 /** A device of the account on the hub (docs/hub.md). */
@@ -1064,6 +1084,8 @@ export interface StateSnapshot {
   hands?: HandsStatus;
   /** the holds that are on (contract C1), as `hold` events */
   holds?: HoldEvent[];
+  /** the other devices' turns under way on synced chats (contract C9) */
+  working?: WorkingPresence[];
 }
 
 export interface AuditEntry {
@@ -1214,6 +1236,8 @@ export type WsMessage =
   | { kind: "thread_cleared"; thread: string }
   /** a synced message deleted on another device (contract C7 tombstone) */
   | { kind: "event_removed"; thread: string; id: string }
+  /** another device started (`working: true`) or finished a turn on a synced chat (contract C9) */
+  | ({ kind: "working"; working: boolean } & WorkingPresence)
   | { kind: "goals" }
   | { kind: "memory" }
   | { kind: "reminders" }

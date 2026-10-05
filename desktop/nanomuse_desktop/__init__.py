@@ -7,4 +7,4 @@ another computer in turn. Standard library only at runtime, so a single file
 built by PyInstaller is the whole install.
 """
 
-__version__ = "0.1.37"
+__version__ = "0.1.38"

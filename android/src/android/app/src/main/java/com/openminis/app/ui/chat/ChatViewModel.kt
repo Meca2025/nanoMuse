@@ -2572,7 +2572,9 @@ class ChatViewModel(
     private fun applyRequestImageBudget(messages: List<LLMMessage>): List<LLMMessage> {
         // Collect every image in chronological order so the planner can
         // walk in reverse and protect the most recent images.
-        data class ImageRef(val msgIdx: Int, val partIdx: Int, val image: ImageBudget.BudgetImage)
+        // nanoMuse: `screenshot` marks a tool-result image (a screen the agent took), which the
+        // count rule below applies to; the person's own pictures are never counted (C9).
+        data class ImageRef(val msgIdx: Int, val partIdx: Int, val image: ImageBudget.BudgetImage, val screenshot: Boolean = false)
         val images = mutableListOf<ImageRef>()
         messages.forEachIndexed { mi, msg ->
             msg.contentParts.forEachIndexed { pi, part ->
@@ -2596,6 +2598,7 @@ class ChatViewModel(
                                         part.imageLinuxPath,
                                         part.imageMimeType ?: "image/jpeg",
                                     ),
+                                    screenshot = true, // nanoMuse
                                 )
                             )
                         }
@@ -2606,7 +2609,12 @@ class ChatViewModel(
         }
         if (images.isEmpty()) return messages
 
-        val plan = ImageBudget.planRequestBudget(images.map { it.image })
+        // nanoMuse: the four newest screenshots only, whatever the bytes — the relay caps a request at 6 MiB (C9)
+        val plan = io.github.nanomuse.chat.ScreenshotBudget.apply(
+            ImageBudget.planRequestBudget(images.map { it.image }),
+            images.map { it.image },
+            images.map { it.screenshot },
+        )
         if (!plan.mutated) return messages
 
         // For dropped images without a linuxPath, lazily spill to disk so
@@ -3639,6 +3647,8 @@ class ChatViewModel(
                 }
             }
             _isStreaming.collect { streaming ->
+                // the turn is over: the reply goes up and the other devices hear "done" (C9)
+                if (!streaming) io.github.nanomuse.sync.ConversationSync.turnEnded(realSessionId.ifEmpty { sessionId })
                 if (!streaming && nmPulledWhileStreaming) {
                     // a breath after the end: the turn's last rows are still being written
                     kotlinx.coroutines.delay(1_500)
@@ -4368,7 +4378,11 @@ class ChatViewModel(
             // while a request is genuinely in flight THERE. Without it, Case D
             // would light Resume on a turn that is merely still waiting.
             val trackerActive = SessionActivityTracker.isActive(activeSessionId)
-            if (lastEntry != null && !_isStreaming.value && !trackerActive) {
+            // nanoMuse: a tail another device wrote (a message synced in while that device
+            // works on it) is not this phone's turn — no Resume banner, no PAUSED badge (C9).
+            val nmRemoteTail = lastEntry != null &&
+                io.github.nanomuse.sync.RemoteRows.isRemote(context, activeSessionId, lastEntry.dbMessageId)
+            if (lastEntry != null && !_isStreaming.value && !trackerActive && !nmRemoteTail) {
                 val isInterrupted = when (lastEntry.role) {
                     LLMMessage.Role.USER -> {
                         val parts = lastEntry.contentParts
@@ -6200,7 +6214,7 @@ class ChatViewModel(
             bodyPartsJson = queuedPaste?.partsJson,
         )
         val userEntity = chatRepository.appendMessage(sid, "user", userPartsJson)
-        io.github.nanomuse.sync.ConversationSync.sent() // nanoMuse: pushed at send (C8)
+        io.github.nanomuse.sync.ConversationSync.sent(sid) // nanoMuse: pushed at send (C8), then "working" (C9)
         agentHistory.add(
             LLMMessage(
                 role = LLMMessage.Role.USER,
@@ -6347,7 +6361,7 @@ class ChatViewModel(
                 bodyPartsJson = drainPaste?.partsJson,
             )
             chatRepository.appendMessage(sid, "user", userPartsJson)
-            io.github.nanomuse.sync.ConversationSync.sent() // nanoMuse: pushed at send (C8)
+            io.github.nanomuse.sync.ConversationSync.sent(sid) // nanoMuse: pushed at send (C8), then "working" (C9)
 
             agentHistory.add(LLMMessage(
                 role = LLMMessage.Role.USER,
@@ -6927,7 +6941,7 @@ class ChatViewModel(
                 bodyPartsJson = pasted?.partsJson,
             )
             val persistedUser = chatRepository.appendMessage(activeSessionId, "user", userPartsJson)
-            io.github.nanomuse.sync.ConversationSync.sent() // nanoMuse: the person's line reaches the other devices at send (C8)
+            io.github.nanomuse.sync.ConversationSync.sent(activeSessionId) // nanoMuse: the person's line reaches the other devices at send (C8), then "working" (C9)
 
             val userMsg = ChatMessage(
                 id = persistedUser.id,

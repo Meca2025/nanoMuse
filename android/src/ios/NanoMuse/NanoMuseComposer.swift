@@ -10,6 +10,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// The pill's row. AIChatView hands it the text field it already builds and
 /// the actions its own buttons run, so the behaviour is upstream's and only
@@ -23,6 +24,10 @@ struct NanoMuseComposerPill<Field: View>: View {
     var onCamera: () -> Void
     var onPhotos: () -> Void
     var onFile: () -> Void
+    /// An image on the pasteboard, as an attachment. The pill's field is SwiftUI's (0.1.38) and
+    /// does not take an image paste the way upstream's text view did; the plus menu offers it
+    /// whenever the pasteboard holds one.
+    var onPasteImage: (UIImage) -> Void
     /// The slash commands: the "/" button has no seat in the pill, so they open from the plus menu.
     var onCommands: () -> Void
     var onMic: () -> Void
@@ -78,6 +83,15 @@ struct NanoMuseComposerPill<Field: View>: View {
         Button(action: onCamera) { Label("Take Photo", systemImage: "camera") }
         Button(action: onPhotos) { Label("Choose Photos & Videos", systemImage: "photo.on.rectangle") }
         Button(action: onFile) { Label("Add File", systemImage: "doc") }
+        // `hasImages` reads only the pasteboard's types, so no paste banner; the image itself is
+        // read when the person asks for it.
+        if UIPasteboard.general.hasImages {
+            Button {
+                if let image = UIPasteboard.general.image { onPasteImage(image) }
+            } label: {
+                Label(AppLocalized("Paste image"), systemImage: "doc.on.clipboard")
+            }
+        }
         Button(action: onCommands) { Label(AppLocalized("Commands"), systemImage: "terminal") }
     }
 

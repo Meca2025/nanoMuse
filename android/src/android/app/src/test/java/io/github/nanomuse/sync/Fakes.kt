@@ -153,7 +153,7 @@ class FakeRelay(private val names: Map<String, String> = emptyMap()) : SyncApi {
 
     override fun state(): SyncState {
         check()
-        return SyncState(enabled, seq, convs.size, msgs.size)
+        return SyncState(enabled, seq, convs.size, msgs.size, working = workingNow.toList())
     }
 
     override fun setEnabled(on: Boolean): SyncState {
@@ -163,23 +163,51 @@ class FakeRelay(private val names: Map<String, String> = emptyMap()) : SyncApi {
         return state()
     }
 
-    override fun changes(since: Long, limit: Int): Changes {
+    /** Every `changes` call as (since, scope, tail), to check what the engine asked for. */
+    val changeCalls = mutableListOf<Triple<Long, String, Int>>()
+    /** Every `working` call as (device, cid, working). */
+    val workingCalls = mutableListOf<Triple<String, String, Boolean>>()
+    /** What `state()` reports under `working` (another device's presence). */
+    val workingNow = mutableListOf<WorkingPresence>()
+
+    /** A relay from before C9 that sends everything whatever the scope says. */
+    var ignoreScope = false
+
+    override fun changes(since: Long, limit: Int, scope: String, tail: Int): Changes {
         check()
         if (!enabled) throw SyncException(409, "sync_off", "sync is off")
-        val cs = convs.values.filter { it.seq > since }.sortedBy { it.seq }
-        val ms = msgs.values.filter { it.seq > since }.sortedBy { it.seq }
+        changeCalls += Triple(since, scope, tail)
+        val mainOnly = scope == SyncApi.SCOPE_MAIN && !ignoreScope
+        val inScope: (String) -> Boolean = { cid -> !mainOnly || convs[cid]?.kind == "main" }
+        val cs = convs.values.filter { it.seq > since && inScope(it.cid) }.sortedBy { it.seq }
+        val ms = msgs.values.filter { it.seq > since && inScope(it.cid) }.sortedBy { it.seq }
+        if (since == 0L && tail > 0 && ms.size > tail) {
+            // C9 tail: the newest K live messages and every conversation row; the rest is reported as skipped
+            val keep = ms.filter { !it.deleted }.takeLast(tail).map { it.mid }.toSet()
+            val skipped = ms.count { it.mid !in keep }
+            val kept = ms.filter { it.mid in keep }
+            return Changes(
+                cursor = seq, more = false, skipped = skipped,
+                conversations = cs.map { it.remote() },
+                messages = kept.map { it.remote() },
+            )
+        }
         val all = (cs.map { it.seq } + ms.map { it.seq }).sorted().take(limit)
         val cut = all.lastOrNull() ?: since
         return Changes(
             cursor = if (all.size < limit) seq else cut,
             more = all.size >= limit && (cs.any { it.seq > cut } || ms.any { it.seq > cut }),
-            conversations = cs.filter { it.seq <= cut }.map {
-                RemoteConversation(it.cid, it.kind, it.title, it.device, names[it.device] ?: it.device, it.createdAt, it.updatedAt, it.deleted, it.seq)
-            },
-            messages = ms.filter { it.seq <= cut }.map {
-                RemoteMessage(it.mid, it.cid, it.seq, it.device, it.role, it.text, it.text.length > 16_384, it.attachments, it.createdAt, it.deleted, names[it.device] ?: "")
-            },
+            conversations = cs.filter { it.seq <= cut }.map { it.remote() },
+            messages = ms.filter { it.seq <= cut }.map { it.remote() },
         )
+    }
+
+    private fun Conv.remote() = RemoteConversation(cid, kind, title, device, names[device] ?: device, createdAt, updatedAt, deleted, seq)
+    private fun Msg.remote() = RemoteMessage(mid, cid, seq, device, role, text, text.length > 16_384, attachments, createdAt, deleted, names[device] ?: "")
+
+    override fun working(device: String, cid: String, working: Boolean) {
+        check()
+        workingCalls += Triple(device, cid, working)
     }
 
     override fun push(device: String, conversations: List<OutConversation>, messages: List<OutMessage>): PushResult {

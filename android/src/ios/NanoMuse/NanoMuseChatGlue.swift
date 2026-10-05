@@ -138,4 +138,21 @@ extension AIChatViewModel {
         inputText = text
         send()
     }
+
+    // MARK: C9 presence
+
+    /// Put "{device} is working…" under the last message when it is another device's user line
+    /// and presence says that device is at work on this conversation; take it off otherwise
+    /// (the reply arrived, presence said done, or ten minutes passed). Cheap: the last row only.
+    func nmApplyPresence() {
+        let key = nmSessionKey
+        let last = messages.last
+        let remote = last.map { $0.role == .user && $0.nmFromDevice != nil } ?? false
+        var entry: NanoMusePresence.Working?
+        if remote, let sid = sessionId, let cid = NanoMuseSync.shared.cid(for: sid) {
+            entry = NanoMusePresence.shared.working(for: cid)
+        }
+        let line = NanoMusePresence.line(lastIsRemoteUser: remote, lastFromDevice: last?.nmFromDevice, entry: entry, me: NanoMuseHub.shared.deviceId)
+        NanoMusePresence.shared.show(line, on: last, session: key)
+    }
 }

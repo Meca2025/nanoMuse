@@ -23,6 +23,7 @@ From the hub:
     {"type":"error","code","message","id"?}               e.g. device_offline, not_controllable
     {"type":"pong"}
     {"type":"sync","what":"conversations","cursor","from"}  another device pushed chats; pull (0.19)
+    {"type":"working","cid","from","device_name","working","at"}  a turn started or ended there (0.20)
 
 `key` in hello is for browsers, which cannot set an Authorization header. A
 `web` device is a front door only: it can call, it cannot be called. Devices of
@@ -236,6 +237,16 @@ class Hub:
         if not conns:
             return
         frame = {"type": "sync", "what": "conversations", "cursor": int(cursor), "from": from_device}
+        await asyncio.gather(*(c.send(frame) for c in conns))
+
+    async def notify_working(self, account_id: str, body: dict) -> None:
+        """0.20: a device said it is working (or done) on a synced conversation; every *other*
+        connected device of the account hears it and shows or clears the line under the
+        message. `body` is what sync.Presence.set returned: cid, from, device_name, working, at."""
+        conns = [c for c in self.online.get(account_id, {}).values() if c.device_id != str(body.get("from") or "")]
+        if not conns:
+            return
+        frame = {"type": "working", **body}
         await asyncio.gather(*(c.send(frame) for c in conns))
 
     def forget(self, account_id: str, device_id: str) -> None:

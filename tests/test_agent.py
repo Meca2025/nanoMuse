@@ -156,6 +156,34 @@ async def test_context_window_trims_at_user_boundary(settings: Settings):
     assert [m.content for m in ctx] == ["u2", "a2"]
 
 
+async def test_context_window_keeps_only_the_newest_images(settings: Settings):
+    """C9: `agent.max_context_images` — the pictures of the newest N image-bearing messages
+    go to the model; older ones are replaced by a note. The history itself keeps them."""
+    settings.agent.max_context_images = 2
+    agent, *_ = make_agent(settings, [])
+    from nanomuse.schema import Message
+
+    agent.messages = [
+        Message.user("look", images=["/a.png"]),
+        Message.assistant("ok"),
+        Message.user("[The screenshot that goes with the tool result above.]", images=["/b.png"]),
+        Message.assistant("next"),
+        Message.user("[The screenshot that goes with the tool result above.]", images=["/c.png"]),
+    ]
+    ctx = agent.context_messages()
+    assert [m.images for m in ctx] == [None, None, ["/b.png"], None, ["/c.png"]]
+    assert ctx[0].content == "look (screenshot removed to keep the request small)"
+    assert agent.messages[0].images == ["/a.png"] and agent.messages[0].content == "look"
+    settings.agent.max_context_images = 0
+    assert [m.images for m in agent.context_messages()] == [
+        ["/a.png"],
+        None,
+        ["/b.png"],
+        None,
+        ["/c.png"],
+    ]
+
+
 async def test_session_roundtrip(settings: Settings, tmp_path):
     agent, *_ = make_agent(settings, [LLMResponse(content="hello")])
     agent.session_file = tmp_path / "s.json"

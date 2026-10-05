@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: строки, которые есть только в nanoMuse (0.1.38). Чего здесь нет, показывается по-английски. -->
+<resources>
+    <string name="nm_cloud_other_server">Использовать другой сервер</string>
+    <string name="nm_cloud_server_url">Адрес релея</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Проверить</string>
+    <string name="nm_cloud_server_use">Использовать этот сервер</string>
+    <string name="nm_cloud_server_now">Сервер: %1$s</string>
+    <string name="nm_cloud_server_ok">%1$s ответил: релей %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Введите адрес релея, например https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Для сервера вне вашей собственной сети используйте https. Для частного адреса (10.x, 192.168.x, 172.16–31.x, localhost, имя .local или .ts.net) подойдёт и http.</string>
+    <string name="nm_cloud_server_unreachable">По адресу %1$s релей не ответил. Проверьте адрес и что релей запущен.</string>
+    <string name="nm_cloud_server_default">Вернуться к nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Сервер</string>
+    <string name="nm_cloud_server_change">Сменить</string>
+    <string name="nm_cloud_server_change_confirm">Ключ этого телефона принадлежит текущему серверу. Сначала выйдите здесь, затем войдите на другой сервер с экрана входа.</string>
+    <string name="nm_cloud_sms_region">Коды по SMS приходят только на номера материкового Китая. Используйте вместо этого адрес электронной почты.</string>
+    <string name="nm_sync_side_title">Синхронизировать и побочные чаты</string>
+    <string name="nm_sync_side_sub">Выкл.: побочные чаты остаются на этом устройстве. Вкл.: побочные чаты этого устройства уходят в аккаунт, а побочные чаты других устройств приходят сюда.</string>
+    <string name="nm_sync_working">%1$s работает над этим…</string>
+</resources>

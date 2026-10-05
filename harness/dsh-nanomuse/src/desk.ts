@@ -40,6 +40,39 @@ export function appOf(title: string): string {
 }
 
 /**
+ * Give the listeners after us (the card in the chat, bridged to the client with the
+ * request's `signal`) a signal the stage can abort: the request object is the asker's own
+ * plain object, read by the bridge when the card is shown, so its `signal` is swapped for
+ * the card's lifetime and put back after. The approval service read the asker's signal
+ * before the waterfall began, so aborting the card's never turns the outcome into
+ * `cancelled`. `undefined` when the request cannot be changed (then the card stays as before).
+ */
+export function cardSignal(req: ApprovalRequestEvent): { abort(reason: Error): void; release(): void } | undefined {
+  const target = req as { signal?: AbortSignal }
+  const own = Object.getOwnPropertyDescriptor(target, 'signal')
+  if (Object.isFrozen(target) || (own && (!own.writable || !own.configurable))) return undefined
+  const original = target.signal
+  if (original?.aborted) return undefined
+  const controller = new AbortController()
+  const forward = () => controller.abort(original?.reason as Error | undefined)
+  original?.addEventListener('abort', forward, { once: true })
+  try {
+    target.signal = controller.signal
+  } catch {
+    original?.removeEventListener('abort', forward)
+    return undefined
+  }
+  return {
+    abort: (reason) => controller.abort(reason),
+    release: () => {
+      original?.removeEventListener('abort', forward)
+      if (original === undefined) delete target.signal
+      else target.signal = original
+    },
+  }
+}
+
+/**
  * Approval requests pass the chat card *and* the stage: whichever answers first
  * wins, the other is let go. `handle` sits first in dsh's `approval/request`
  * waterfall; `next()` is the harness's own card in the chat.
@@ -83,15 +116,29 @@ export class ApprovalDesk {
       status: 'pending',
       at: Date.now(),
     }
-    const fromStage = new Promise<ApprovalOutcome>((resolve) => this.pending.set(id, { row, resolve }))
+    let stageAnswered = false
+    const fromStage = new Promise<ApprovalOutcome>((resolve) =>
+      this.pending.set(id, {
+        row,
+        resolve: (outcome) => {
+          stageAnswered = true
+          resolve(outcome)
+        },
+      }),
+    )
     const onAbort = () => this.settle(id, 'cancelled')
     req.signal?.addEventListener('abort', onAbort, { once: true })
+    // The card in the chat follows a signal of its own: the stage's answer withdraws the card
+    // (one decision, both surfaces), while the asker's signal still cancels both.
+    const card = cardSignal(req)
     this.changed()
     try {
       return await Promise.race([next(), fromStage])
     } finally {
       req.signal?.removeEventListener('abort', onAbort)
       if (this.pending.delete(id)) this.changed()
+      if (stageAnswered) card?.abort(new Error('answered on the stage'))
+      card?.release()
     }
   }
 

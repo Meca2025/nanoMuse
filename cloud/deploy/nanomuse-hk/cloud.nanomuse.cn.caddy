@@ -18,11 +18,13 @@ cloud.nanomuse.cn {
 		-Server
 	}
 
-	# The console at /app is a small static app; the API is JSON. One frame of
-	# the hub may carry a file or a screenshot, which is why the body limit is
-	# what HUB_FRAME_LIMIT says rather than Caddy's default.
+	# The console at /app is a small static app; the API is JSON. A chat
+	# request may carry a few screenshots and one frame of the hub a file,
+	# so the body limit sits just above MAX_REQUEST_BYTES (16 MiB) and
+	# HUB_FRAME_LIMIT rather than at Caddy's default; the relay answers 413
+	# with its own message before Caddy would.
 	request_body {
-		max_size 16MB
+		max_size 20MB
 	}
 
 	reverse_proxy nanomuse-relay:8787 {

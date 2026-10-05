@@ -17,10 +17,38 @@
  * loaded with `require` inside a try: a Linux or Windows build, or a Mac build whose addon did
  * not come along, has `loaded === false` and main.ts keeps Electron's own `systemPreferences`
  * probes, as before 0.1.37. Nothing here runs off macOS.
+ *
+ * Since 0.1.38 the grants belong to the helper app, "nanoMuse Computer Use" (mac-helper.ts),
+ * when it is running: `useHelper()` puts it first, and `status()`, `askScreen()` and
+ * `askAccessibility()` then report and ask for *its* grants — the app's own, read by the
+ * modules above, are what the panes show only in a build without the helper, or when it
+ * could not start. The helper's status is the last one it gave (it is re-read every two
+ * seconds while it runs), because the readers here are synchronous.
  */
+import type { MacHelper } from "./mac-helper";
 
 export type AuthStatus = "authorized" | "denied" | "restricted" | "not determined";
 export type MacPermissionKind = "accessibility" | "screen";
+
+let helper: MacHelper | null = null;
+
+/** The helper whose grants count (null: the app's own, as before). */
+export function useHelper(next: MacHelper | null): void {
+  helper = next;
+}
+
+/** Whether a running helper is the one holding the grants right now. */
+export function helperInUse(): boolean {
+  return helper?.running() === true;
+}
+
+/** The helper's last status as TCC words, or null when it is not running. */
+function helperStatus(kind: MacPermissionKind): AuthStatus | null {
+  const status = helper?.cachedStatus();
+  if (!status) return null;
+  if (kind === "accessibility") return status.accessibility ? "authorized" : "denied";
+  return status.screen === "granted" ? "authorized" : status.screen === "denied" ? "denied" : "not determined";
+}
 
 interface NodeMacPermissions {
   getAuthStatus(type: MacPermissionKind): AuthStatus;
@@ -85,6 +113,8 @@ export function loadError(): string {
  * list and can lag a moment after the switch flips.
  */
 export function status(kind: MacPermissionKind): AuthStatus | null {
+  const viaHelper = helperStatus(kind);
+  if (viaHelper) return viaHelper;
   load();
   if (!permissions) return null;
   try {
@@ -107,6 +137,11 @@ export function status(kind: MacPermissionKind): AuthStatus | null {
  * True when the request could be made.
  */
 export function askScreen(): boolean {
+  if (helper?.running()) {
+    // the helper's own dialog and pane entry; the status follows on its next reading
+    void helper.request("screen").catch(() => undefined);
+    return true;
+  }
   load();
   if (!permissions) return false;
   try {
@@ -119,6 +154,10 @@ export function askScreen(): boolean {
 
 /** `AXIsProcessTrustedWithOptions` with the prompt: the Accessibility dialog. True when asked. */
 export function askAccessibility(): boolean {
+  if (helper?.running()) {
+    void helper.request("accessibility").catch(() => undefined);
+    return true;
+  }
   load();
   if (!permissions) return false;
   try {

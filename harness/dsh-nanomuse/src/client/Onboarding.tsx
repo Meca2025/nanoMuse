@@ -25,7 +25,7 @@ import { useCloudConfig, type AccountSheet } from './AccountPage.tsx'
 import { Avatar } from './Avatar.tsx'
 import { BrandMark } from './BrandMark.tsx'
 import { gatedPermissions, openLink, type PermissionKind } from './bridge.ts'
-import { usePermissions, type Permissions } from './permissions.ts'
+import { permissionSub, permissionTitle, usePermissions, type Permissions } from './permissions.ts'
 import { BlackScreenNotice, HandsTryRows } from './HandsCheck.tsx'
 import { IconCheck, IconHand, IconMessage, IconMonitor, IconSettings, IconUsers } from './icons.tsx'
 import { useLive } from './live.ts'
@@ -477,8 +477,8 @@ function PermissionsPage({ t, name, onDone }: { t: Translate; name: string; onDo
     t,
   },
     h('div', { className: 'nm-ob-card' },
-      h(PermissionRow, { t, kind: 'accessibility', icon: h(IconHand, { size: 18 }), title: t('obAccessibility'), sub: t('obAccessibilitySub', { name }), perms }),
-      h(PermissionRow, { t, kind: 'screen', icon: h(IconMonitor, { size: 18 }), title: t('obScreen'), sub: t('obScreenSub', { name }), perms })),
+      h(PermissionRow, { t, kind: 'accessibility', icon: h(IconHand, { size: 18 }), title: permissionTitle(t, 'accessibility'), sub: permissionSub(t, 'accessibility', name), perms }),
+      h(PermissionRow, { t, kind: 'screen', icon: h(IconMonitor, { size: 18 }), title: permissionTitle(t, 'screen'), sub: permissionSub(t, 'screen', name), perms })),
     h(RelaunchNotice, { t, perms }),
     // the two checks from Settings → Computer use: a test screenshot (black = Screen Recording
     // not in effect yet) and a small mouse move (fails without Accessibility)

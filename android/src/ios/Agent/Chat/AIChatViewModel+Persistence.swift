@@ -874,7 +874,11 @@ extension AIChatViewModel {
             // A cold start after a kill satisfies all four precisely because
             // the process that was processing no longer exists.
             let isUnansweredUserTurn = !allToolResults && !isContinueMessage
-            isInterrupted = allToolResults || isContinueMessage || isUnansweredUserTurn
+            // nanoMuse: C9 — a line written on another device (it came down through account sync)
+            // is never this phone's unfinished turn: no banner, no Resume, nothing re-sent.
+            // Presence says "{device} is working…" under it instead (NanoMusePresence).
+            let nmRemote = lastEntry.dbMessageId.map { NanoMuseSync.shared.fromDevice(mid: $0) != nil } ?? false // nanoMuse:
+            isInterrupted = !nmRemote && (allToolResults || isContinueMessage || isUnansweredUserTurn) // nanoMuse: was `allToolResults || isContinueMessage || isUnansweredUserTurn`
         } else if lastEntry.role == .assistant {
             let hasToolUse = lastEntry.parts.contains {
                 if case .toolUse = $0 { return true }; return false

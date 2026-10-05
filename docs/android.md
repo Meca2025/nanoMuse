@@ -38,6 +38,16 @@ update*) and offers the download.
 4. Optional: the two permissions that let the agent use your phone's apps (skippable and
    revocable), and *Settings → Image & video models* for a look that can change and move.
 
+**Your own relay.** The sign-in screen talks to nanoMuse Cloud unless you tell it
+otherwise: *Use a different server* under the sign-in form takes the address of a relay
+you run yourself ([cloud.md](cloud.md), `cloud/docker-compose.yml`), *Check* asks its
+`/healthz` and shows the version it answers with, *Use this server* keeps the address
+across launches. `https://` is required for anything outside your own network; plain
+`http://` is accepted for a private address (`10.x`, `172.16–31.x`, `192.168.x`,
+`localhost`, a `.local` or `.ts.net` name). Settings → Account shows *Server: `<host>`* with *Change*, which signs the phone out first — the key it holds belongs to the
+server that issued it. Everything the app does with the account (sign-in, the hub, sync,
+usage, the model menu) goes to that address.
+
 ## What the phone does
 
 | | |

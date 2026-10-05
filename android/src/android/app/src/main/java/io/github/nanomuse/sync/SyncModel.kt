@@ -46,7 +46,23 @@ data class Changes(
     val more: Boolean,
     val conversations: List<RemoteConversation>,
     val messages: List<RemoteMessage>,
+    /** A tail page (C9): how many older messages the relay kept back. 0 on an ordinary page. */
+    val skipped: Int = 0,
 )
+
+/**
+ * Another device is working on a synced conversation (contract C9): the relay's `working`
+ * frame and the `working[]` of `GET /v1/sync/state`. [at] in Unix seconds, as the relay
+ * stamped it; the line in the chat goes away ten minutes after it.
+ */
+data class WorkingPresence(val cid: String, val from: String, val deviceName: String, val at: Long) {
+    /** Still worth showing: the relay forgets a `true` after ten minutes, and so do we. */
+    fun live(nowSeconds: Long): Boolean = nowSeconds - at < TTL_SECONDS
+
+    companion object {
+        const val TTL_SECONDS = 10 * 60L
+    }
+}
 
 /** A conversation as this device posts it. */
 data class OutConversation(
@@ -74,8 +90,14 @@ data class Rejection(val mid: String?, val cid: String?, val reason: String, val
 
 data class PushResult(val cursor: Long, val accepted: Int, val rejected: List<Rejection>)
 
-/** `GET /v1/sync/state`. */
-data class SyncState(val enabled: Boolean, val cursor: Long, val conversations: Int, val messages: Int)
+/** `GET /v1/sync/state`; [working] is who is on which conversation right now (relay 0.20, empty before). */
+data class SyncState(
+    val enabled: Boolean,
+    val cursor: Long,
+    val conversations: Int,
+    val messages: Int,
+    val working: List<WorkingPresence> = emptyList(),
+)
 
 /**
  * The relay said no, or could not be reached ([status] 0). `code` is the relay's stable word

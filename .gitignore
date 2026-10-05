@@ -37,6 +37,8 @@ npm-debug.log*
 
 # website: generated from web/ and docs/ by `npm run site:mascot` (see site/README.md)
 site/assets/
+# the docs site, built by pages.yml from website/ into site/docs/
+site/docs/
 
 # nanoMuse on DeepSeek Harness (harness/README.md): built by `pnpm build`, not committed
 harness/dsh-nanomuse/node_modules/

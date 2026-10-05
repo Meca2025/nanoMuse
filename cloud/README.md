@@ -90,12 +90,19 @@ curl -X POST localhost:8787/v1/auth/code -H 'Content-Type: application/json' -d 
 curl -X POST localhost:8787/v1/auth/verify -H 'Content-Type: application/json' -d '{"identifier":"13800138000","code":"123456","device":"curl"}'
 ```
 
-Production, on any VPS with Docker:
+Production, on any VPS with Docker — `scripts/self-host.sh` at the repository root asks the five questions, writes `.env` and runs this; [docs/self-hosting.md](../docs/self-hosting.md) is the guide, including how to point each app at your relay:
 
 ```bash
 cp .env.example .env      # fill in CLOUD_DOMAIN, PUBLIC_BASE, CLOUD_SECRET, CLOUD_ADMIN_TOKEN, UPSTREAM_KEY, sender settings
 docker compose up -d      # Caddy fetches the TLS certificate for CLOUD_DOMAIN
 curl https://$CLOUD_DOMAIN/healthz
+```
+
+Without TLS, for this machine or a LAN — the relay alone on `127.0.0.1:8787`, codes in the log:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+RELAY_BIND=0.0.0.0 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d   # reachable from the LAN
 ```
 
 Back up `data/cloud.db` together with `CLOUD_SECRET`: the hashes are useless
@@ -150,6 +157,7 @@ for the full list. The ones that matter:
 | `CLOUD_GEOIP_DB`, `CLOUD_GEOIP_URL`, `CLOUD_GEOIP_V6_URL` | next to the database; the project's `ip2region_v4.xdb`; empty | the file, where to fetch it, and the IPv6 file (37 MB) for a relay reached over IPv6 |
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames); one socket may also send at most 60 frames and 8 MB a second sustained (twice that in a burst) — over it frames are dropped with one `rate_limited` error a second, and a socket that keeps flooding is closed with 4008 (0.13) |
+| `MAX_REQUEST_BYTES` | 16 MB (0.20; was 6) | largest REST request body — a chat request with a few screenshots, a sync push of 200 messages; over it the answer is 413 `too_large`, *Request body is N MB; this relay accepts up to M MB* |
 
 The default menu (0.17): `deepseek-v4.1-flash` (the chat model — text and
 images in, ¥2 / ¥8 per million tokens, charged at 0.7×; it thinks before it

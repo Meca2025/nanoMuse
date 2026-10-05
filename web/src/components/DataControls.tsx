@@ -149,16 +149,32 @@ export function SyncControls({ signedIn }: { signedIn: boolean }) {
     if (!window.confirm(t("The synced conversations are removed from nanoMuse Cloud. The chats on each device stay. This cannot be undone."))) return;
     void run(() => api.syncDelete(), t("Synced conversations deleted."));
   };
+  // C9: side chats, per device — off by default; on brings the other devices' over once
+  const flipSide = (on: boolean) => {
+    void run(
+      () => api.syncSetSideChats(on),
+      on ? t("On. This device's side chats go to the account; the other devices' are on their way.") : t("Off. Side chats stay on this device from now on."),
+    );
+  };
+  const syncOn = signedIn && !!sync?.enabled;
 
   return (
     <div className="mb-6">
       <MuseCard>
-        <MuseSwitchRow label={t("Sync conversations between my devices")} checked={signedIn && !!sync?.enabled} disabled={busy || !signedIn || !sync} onChange={flip} />
+        <MuseSwitchRow label={t("Sync conversations between my devices")} checked={syncOn} disabled={busy || !signedIn || !sync} onChange={flip} />
       </MuseCard>
       <MuseCaption>
         {t("The text of your chats is kept on nanoMuse Cloud so every device shows the same conversations. Files and images stay on the device they were made on.")}{" "}
         {!signedIn ? t("Sign in to nanoMuse Cloud to use it.") : sync?.paused ? t("Paused: sign in again to continue.") : stored && t("{c} chats, {m} messages kept so far.", { c: String(counts.conversations), m: String(counts.messages) })}
       </MuseCaption>
+      {sync && "side_chats" in sync && (
+        <>
+          <MuseCard className="mt-3">
+            <MuseSwitchRow label={t("Also sync side chats")} checked={syncOn && !!sync.side_chats} disabled={busy || !syncOn} onChange={flipSide} />
+          </MuseCard>
+          <MuseCaption>{t("Off: side chats stay on this device. On: this device's side chats go to the account and the other devices' side chats come here.")}</MuseCaption>
+        </>
+      )}
       {stored && (
         <MuseCard className="mt-3">
           <MuseRow icon={busy ? <Loader2 size={22} className="animate-spin" /> : <Trash2 size={22} />} label={t("Delete synced conversations")} value={t("{n} chats", { n: String(counts.conversations) })} onClick={wipe} chevron={false} />

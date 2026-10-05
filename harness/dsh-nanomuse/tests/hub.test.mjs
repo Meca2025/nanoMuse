@@ -179,3 +179,28 @@ test('without a key nothing connects until restart', async () => {
   assert.equal(sockets.length, 1)
   client.stop()
 })
+
+test('the sync frame carries the cursor and the device; the working frame (C9) reaches its listener as it came', async () => {
+  const h = harness()
+  const s = await connected(h)
+  const syncs = []
+  const working = []
+  const offSync = h.client.onSync((cursor, from) => syncs.push([cursor, from]))
+  const offWorking = h.client.onWorking((frame) => working.push(frame))
+  s.push({ type: 'sync', what: 'conversations', cursor: 42, from: 'phone-1' })
+  s.push({ type: 'sync', what: 'something-else', cursor: 43, from: 'phone-1' })
+  s.push({ type: 'working', cid: 'c1', from: 'phone-1', device_name: 'Pixel 8', working: true, at: 1738000000 })
+  s.push({ type: 'working', cid: 'c1', from: 'phone-1', device_name: 'Pixel 8', working: false, at: 1738000009 })
+  s.push({ type: 'working', cid: 'c2' })
+  assert.deepEqual(syncs, [[42, 'phone-1']])
+  assert.deepEqual(working, [
+    { cid: 'c1', from: 'phone-1', device_name: 'Pixel 8', working: true, at: 1738000000 },
+    { cid: 'c1', from: 'phone-1', device_name: 'Pixel 8', working: false, at: 1738000009 },
+    { cid: 'c2', from: '', device_name: '', working: false, at: 0 },
+  ])
+  offSync()
+  offWorking()
+  s.push({ type: 'working', cid: 'c3', from: 'phone-1', device_name: 'Pixel 8', working: true, at: 1 })
+  assert.equal(working.length, 3)
+  h.client.stop()
+})

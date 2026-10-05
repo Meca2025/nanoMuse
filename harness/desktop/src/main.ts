@@ -6,6 +6,7 @@ import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlin
 import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { defaultHelperPath, HELPER_NAME, MacHelper } from "./mac-helper";
 import * as macPermissions from "./mac-permissions";
 import { Operator, SCREEN_PERMISSION_TEXT, type Marker } from "./operator";
 import { startOperatorServer, type OperatorServer } from "./operator-server";
@@ -527,6 +528,41 @@ const PERMISSION_PANES: Record<PermissionKind | "files", string> = {
   files: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
 };
 
+// ---- macOS: "nanoMuse Computer Use", the helper that holds the hands' permissions ----------
+//
+// The grants go to the responsible process, so a separate app bundle started through `open`
+// has its own rows in the Screen Recording and Accessibility panes and can be restarted on
+// its own when a grant lands (src/mac-helper.ts has the why and the protocol). The operator
+// sends it every screenshot and action; mac-permissions.ts reads its grants. Without the
+// bundle (a development run without build.sh, an older build) everything works as before.
+
+let macHelper: MacHelper | null = null;
+
+/** The helper client, made once on macOS; null elsewhere. Starting it is `helperReady()`. */
+function helper(): MacHelper | null {
+  if (process.platform !== "darwin") return null;
+  if (!macHelper) {
+    macHelper = new MacHelper({
+      appPath: defaultHelperPath(process.execPath, app.isPackaged, join(__dirname, ".."), process.env),
+      dataDir: join(app.getPath("userData"), "computer-use"),
+      log,
+    });
+    macPermissions.useHelper(macHelper);
+  }
+  return macHelper;
+}
+
+/** The helper running (started now if need be); false where there is none or it failed to start. */
+async function helperReady(): Promise<boolean> {
+  const h = helper();
+  return h ? h.ready() : false;
+}
+
+/** What the permission dialogs name as the switch to flip. */
+function permissionTarget(): string {
+  return macPermissions.helperInUse() ? HELPER_NAME : "nanoMuse Desktop";
+}
+
 /** The only links that leave the app: http(s) with a host. */
 const EXTERNAL_URL = /^https?:\/\/[^/]/;
 let awakeBlocker: number | null = null;
@@ -730,11 +766,16 @@ async function reportBug(): Promise<{ screenshot: string; url: string }> {
 /** The requests the preload bridge forwards from the web client (see preload.ts). */
 function registerBridge(): void {
   ipcMain.handle("nanomuse:info", () => ({ version: app.getVersion(), platform: process.platform, arch: process.arch }));
-  ipcMain.handle("nanomuse:permissions", () => ({
-    accessibility: permissionState("accessibility"),
-    screen: permissionState("screen"),
-    microphone: permissionState("microphone"),
-  }));
+  ipcMain.handle("nanomuse:permissions", async () => {
+    // the helper's grants, fresh, when it runs; `helper` tells the page which rows to name
+    if (macHelper?.running()) await macHelper.status().catch(() => undefined);
+    return {
+      accessibility: permissionState("accessibility"),
+      screen: permissionState("screen"),
+      microphone: permissionState("microphone"),
+      helper: macPermissions.helperInUse(),
+    };
+  });
   ipcMain.handle("nanomuse:permissions:request", async (_e, kind: PermissionKind) => {
     if (process.platform !== "darwin") return "not-needed" satisfies PermissionState;
     if (!(kind in PERMISSION_PANES)) return "denied" satisfies PermissionState;
@@ -744,7 +785,8 @@ function registerBridge(): void {
     return permissionState(kind);
   });
   // macOS applies Screen Recording only to freshly started processes: after granting it, the
-  // runtime that takes the screenshots has to start again.
+  // process that takes the screenshots has to start again — the helper when it is in use,
+  // the whole app otherwise.
   ipcMain.handle("nanomuse:relaunch", () => {
     relaunchNow();
   });
@@ -816,6 +858,8 @@ let glowWindow: BrowserWindow | null = null;
 let capsuleWindow: BrowserWindow | null = null;
 let overlayState: OverlayState = { hands: null, cards: [] };
 let glowHideTimer: NodeJS.Timeout | null = null;
+/** The display bounds the glow was last given (JSON), so applyOverlay does not set them again and again. */
+let glowBounds = "";
 /** The last action the operator carried out, for the glow's marker (UI-TARS's prediction marker): fractions of the display, the words, when. */
 let overlayMarker: (Marker & { at: number }) | null = null;
 let markerTimer: NodeJS.Timeout | null = null;
@@ -823,6 +867,39 @@ let markerTimer: NodeJS.Timeout | null = null;
 const MARKER_MS = 2200;
 /** True between the operator's "before" and "after" capture hooks (Linux): the glow must not come back into the picture. */
 let capturing = false;
+/**
+ * Settles once the glow, last shown, is click-through again. On X11 Electron's input shape
+ * (setIgnoreMouseEvents) is forgotten whenever the window maps, and the full-screen glow
+ * then swallows every click of the hands — so it is set again a moment after each showing,
+ * and the operator waits for that before it moves the pointer (operator.ts, onAction).
+ */
+let glowClickThrough: Promise<void> = Promise.resolve();
+/** How long after `showInactive()` the X server has the glow mapped, so the shape set then sticks (100 ms is enough; 50 is not). */
+const GLOW_SHAPE_MS = 150;
+
+/**
+ * Linux: sets the glow's input shape again in a moment. Needed after it maps, and also
+ * after the X window is configured (the shape was seen full again after a focus change
+ * with the glow up — and a click into it then went nowhere), so every action arms this.
+ */
+function armGlowClickThrough(): void {
+  const win = glowWindow;
+  if (!win || win.isDestroyed() || process.platform !== "linux") return;
+  glowClickThrough = new Promise<void>((resolve) =>
+    setTimeout(() => {
+      if (!win.isDestroyed()) win.setIgnoreMouseEvents(true, { forward: true });
+      resolve();
+    }, GLOW_SHAPE_MS),
+  );
+}
+
+/** Shows the glow (never taking focus) and, on Linux, makes it click-through again once it is up. */
+function showGlow(): void {
+  const win = glowWindow;
+  if (!win || win.isDestroyed()) return;
+  win.showInactive();
+  armGlowClickThrough();
+}
 
 // ---- the operator: the hands of this computer, run by this process -------------------------
 
@@ -837,6 +914,8 @@ function ensureOperator(): Promise<OperatorServer | null> {
   operator ??= new Operator({
     log,
     permissions: () => ({ accessibility: permissionState("accessibility") !== "denied", screen: permissionState("screen") === "granted" || permissionState("screen") === "not-needed" }),
+    // macOS: "nanoMuse Computer Use" takes the screenshots and moves the mouse when it is there (src/mac-helper.ts)
+    helper: helper() ?? undefined,
     onAction: (marker) => {
       overlayMarker = { ...marker, at: Date.now() };
       if (markerTimer) clearTimeout(markerTimer);
@@ -845,6 +924,10 @@ function ensureOperator(): Promise<OperatorServer | null> {
         applyOverlay();
       }, MARKER_MS + 50);
       applyOverlay();
+      // Linux: the glow (just shown for this marker, or up from the last one) must be
+      // click-through before the pointer moves; the operator awaits this
+      if (glowWindow && !glowWindow.isDestroyed() && glowWindow.isVisible()) armGlowClickThrough();
+      return glowClickThrough;
     },
     // Linux has no content protection: the glow would be in the picture, so it steps out of
     // the way for the capture (one frame) and comes back; macOS and Windows exclude it anyway.
@@ -856,7 +939,7 @@ function ensureOperator(): Promise<OperatorServer | null> {
             if (phase === "before" && glowWindow.isVisible()) {
               glowWindow.hide();
               await new Promise((r) => setTimeout(r, 70));
-            } else if (phase === "after" && overlayUp()) glowWindow.showInactive();
+            } else if (phase === "after" && overlayUp()) showGlow();
           }
         : undefined,
   });
@@ -881,6 +964,8 @@ async function stopOperator(): Promise<void> {
   const server = operatorServer;
   operatorServer = null;
   if (server) await server.close().catch(() => undefined);
+  // macOS: the helper goes with us (it would notice on its own within two seconds)
+  if (macHelper) await macHelper.stop().catch(() => undefined);
 }
 
 /** The `--operator-check` run: the operator alone, asked over its own HTTP, the answers to a file. */
@@ -975,10 +1060,18 @@ function applyOverlay(): void {
   // the glow: up while the hands are active (or held) or the operator just acted, down a moment after
   if (overlayUp()) {
     if (glowHideTimer) { clearTimeout(glowHideTimer); glowHideTimer = null; }
-    if (!glowWindow || glowWindow.isDestroyed()) glowWindow = overlayWindow("glow");
     const display = screen.getPrimaryDisplay();
-    glowWindow.setBounds(display.bounds);
-    if (!glowWindow.isVisible() && !capturing) glowWindow.showInactive();
+    const bounds = JSON.stringify(display.bounds);
+    if (!glowWindow || glowWindow.isDestroyed()) {
+      glowWindow = overlayWindow("glow"); // made at the display's bounds
+      glowBounds = bounds;
+    }
+    // only when the display changed: on X11 every configure of the window costs it its input shape
+    if (bounds !== glowBounds) {
+      glowBounds = bounds;
+      glowWindow.setBounds(display.bounds);
+    }
+    if (!glowWindow.isVisible() && !capturing) showGlow();
     sendOverlay(glowWindow, glowState());
   } else if (glowWindow && !glowWindow.isDestroyed() && glowWindow.isVisible()) {
     sendOverlay(glowWindow, { active: false });
@@ -1052,13 +1145,21 @@ function registerOverlays(): void {
 async function guidePermissions(): Promise<Record<PermissionKind, PermissionState>> {
   const state = () => ({ accessibility: permissionState("accessibility"), screen: permissionState("screen"), microphone: permissionState("microphone") });
   if (process.platform !== "darwin") return state();
+  // the helper first, so the dialogs name its rows and its grants are the ones read
+  await helperReady();
+  const viaHelper = macPermissions.helperInUse();
+  const target = permissionTarget();
   if (permissionState("accessibility") !== "granted") {
     const { response } = await dialog.showMessageBox({
       type: "info",
       message: zh ? "nanoMuse 需要「辅助功能」权限" : "nanoMuse needs Accessibility",
       detail: zh
-        ? "动手操作电脑要靠它移动鼠标和输入。系统会弹出请求；在「系统设置 → 隐私与安全性 → 辅助功能」里打开 nanoMuse Desktop 即可——它附带的运行时作为应用的一部分运行，不会单独出现在列表里。"
-        : "The hands move the mouse and type through it. The system asks next; in System Settings → Privacy & Security → Accessibility, switch on nanoMuse Desktop. The runtime it bundles runs as part of the app and does not appear separately.",
+        ? viaHelper
+          ? `动手操作电脑要靠它移动鼠标和输入。系统会弹出请求；在「系统设置 → 隐私与安全性 → 辅助功能」里打开 ${target} 即可——这是 nanoMuse 自带的一个小程序，专门负责截图和操作，权限只给它。`
+          : "动手操作电脑要靠它移动鼠标和输入。系统会弹出请求；在「系统设置 → 隐私与安全性 → 辅助功能」里打开 nanoMuse Desktop 即可——它附带的运行时作为应用的一部分运行，不会单独出现在列表里。"
+        : viaHelper
+          ? `The hands move the mouse and type through it. The system asks next; in System Settings → Privacy & Security → Accessibility, switch on ${target} — the small program nanoMuse brings along for the screenshots and the input. Only it needs the permission.`
+          : "The hands move the mouse and type through it. The system asks next; in System Settings → Privacy & Security → Accessibility, switch on nanoMuse Desktop. The runtime it bundles runs as part of the app and does not appear separately.",
       buttons: [zh ? "继续" : "Continue", zh ? "以后再说" : "Later"],
       defaultId: 0,
       cancelId: 1,
@@ -1070,8 +1171,12 @@ async function guidePermissions(): Promise<Record<PermissionKind, PermissionStat
       type: "info",
       message: zh ? "nanoMuse 需要「屏幕录制」权限" : "nanoMuse needs Screen Recording",
       detail: zh
-        ? "它靠截图看到屏幕上有什么。点「继续」后系统会询问一次；在「屏幕录制」面板里打开 nanoMuse Desktop（只需要这一项），然后重新启动应用——macOS 的这项权限只对重新启动后的应用生效。"
-        : "It sees the screen through screenshots. After Continue the system asks once; switch on nanoMuse Desktop in the Screen Recording pane (that one entry is all), then relaunch the app — macOS applies this permission to freshly started apps only.",
+        ? viaHelper
+          ? `它靠截图看到屏幕上有什么。点「继续」后系统会询问一次；在「屏幕录制」面板里打开 ${target}（只需要这一项）。打开后它会自己重新启动，应用本身不用重启。`
+          : "它靠截图看到屏幕上有什么。点「继续」后系统会询问一次；在「屏幕录制」面板里打开 nanoMuse Desktop（只需要这一项），然后重新启动应用——macOS 的这项权限只对重新启动后的应用生效。"
+        : viaHelper
+          ? `It sees the screen through screenshots. After Continue the system asks once; switch on ${target} in the Screen Recording pane (that one entry is all). It restarts by itself once the switch is on; the app does not need to.`
+          : "It sees the screen through screenshots. After Continue the system asks once; switch on nanoMuse Desktop in the Screen Recording pane (that one entry is all), then relaunch the app — macOS applies this permission to freshly started apps only.",
       buttons: [zh ? "继续" : "Continue", zh ? "以后再说" : "Later"],
       defaultId: 0,
       cancelId: 1,
@@ -1088,6 +1193,12 @@ async function guidePermissions(): Promise<Record<PermissionKind, PermissionStat
  * before 0.1.37. Then the pane, where the switch is, and the watch for the grant.
  */
 async function requestScreenRecording(openPane = true): Promise<void> {
+  if (await helperReady()) {
+    // the helper's own request: its row appears in the pane; it opens the pane itself when asked
+    await macHelper?.request("screen", openPane).catch(() => undefined);
+    watchScreenGrant();
+    return;
+  }
   if (!macPermissions.askScreen()) {
     try {
       await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 1, height: 1 } });
@@ -1101,6 +1212,11 @@ async function requestScreenRecording(openPane = true): Promise<void> {
 
 /** The Accessibility dialog (`AXIsProcessTrustedWithOptions` with the prompt — it also lists the app in the pane), then the pane when it is still off. */
 function requestAccessibility(openPane = true): void {
+  if (macPermissions.helperInUse()) {
+    // the helper's dialog and row; the pane when its grant is still off
+    void macHelper?.request("accessibility", openPane && permissionState("accessibility") !== "granted").catch(() => undefined);
+    return;
+  }
   const asked = macPermissions.askAccessibility();
   const trusted = systemPreferences.isTrustedAccessibilityClient(!asked);
   if (!trusted && openPane) void shell.openExternal(PERMISSION_PANES.accessibility);
@@ -1114,22 +1230,33 @@ function requestAccessibility(openPane = true): void {
  * the grant needs. Nothing is asked when both are already on, nor under `--operator-check`
  * / `--screenshot` (the checks must not block on a dialog). The status goes to the log.
  */
-function ensureMacPermissionsAtLaunch(): void {
+async function ensureMacPermissionsAtLaunch(): Promise<void> {
   if (process.platform !== "darwin") return;
+  // the helper first: when it runs, its grants are the ones that count and the ones asked for
+  await helperReady();
   const accessibility = permissionState("accessibility");
   const screen = permissionState("screen");
-  log(`permissions: accessibility=${accessibility} screen=${screen} (${macPermissions.loaded() ? "native" : `systemPreferences — ${macPermissions.loadError()}`})`);
+  const source = macPermissions.helperInUse() ? `${HELPER_NAME} ${macHelper?.cachedStatus()?.version ?? ""}`.trim() : macPermissions.loaded() ? "native" : `systemPreferences — ${macPermissions.loadError()}`;
+  log(`permissions: accessibility=${accessibility} screen=${screen} (${source}${!macPermissions.helperInUse() && macHelper ? `; helper: ${macHelper.failure()}` : ""})`);
   if (accessibility === "granted" && screen === "granted") return;
   if (screen !== "granted") void requestScreenRecording(true);
   if (accessibility !== "granted") requestAccessibility(false);
 }
 
 /**
- * Quit and start again. Through `app.quit()`, not `app.exit()`: `before-quit` stops the host
- * and the operator server first, so the old `nanomuse mcp` — started before the permission
- * was granted, and so still without it — does not outlive the relaunch.
+ * Start the process that takes the screenshots again, so a Screen Recording grant takes
+ * effect. With the helper in use that is the helper alone — `/quit` and a fresh `open`, the
+ * app and the conversation untouched. Otherwise the whole app: through `app.quit()`, not
+ * `app.exit()`, so `before-quit` stops the host and the operator server first and the old
+ * `nanomuse mcp` — started before the permission was granted, and so still without it —
+ * does not outlive the relaunch.
  */
 function relaunchNow(): void {
+  if (macPermissions.helperInUse()) {
+    log("permissions: restarting the helper for the new grant");
+    void macHelper?.restart();
+    return;
+  }
   app.relaunch();
   app.quit();
 }
@@ -1156,6 +1283,12 @@ function watchScreenGrant(): void {
     }
     if (screenGrantWatch) clearInterval(screenGrantWatch);
     screenGrantWatch = null;
+    if (macPermissions.helperInUse()) {
+      // the grant is the helper's: a quiet restart of that one process, nothing to ask
+      log("permissions: Screen Recording granted to the helper while running — restarting it");
+      void macHelper?.restart();
+      return;
+    }
     log("permissions: Screen Recording granted while running — offering a relaunch");
     void dialog
       .showMessageBox({
@@ -1396,7 +1529,7 @@ if (!app.requestSingleInstanceLock()) {
       await operatorCheck(operatorCheckFlag);
       return;
     }
-    if (!screenshotFlag) ensureMacPermissionsAtLaunch();
+    if (!screenshotFlag) void ensureMacPermissionsAtLaunch().catch((exc: unknown) => log(`permissions: ${String(exc)}`));
     try {
       await boot();
     } catch (exc) {
@@ -1419,7 +1552,7 @@ if (!app.requestSingleInstanceLock()) {
     globalShortcut.unregisterAll();
     if (quitting) return;
     quitting = true;
-    if (child || operatorServer) {
+    if (child || operatorServer || macHelper?.running()) {
       e.preventDefault();
       void Promise.all([stopHost(), stopOperator()]).then(() => app.quit());
     }

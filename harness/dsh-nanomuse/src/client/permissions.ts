@@ -17,7 +17,7 @@
  * the screenshots has to be started again (`needsRelaunch`).
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { call } from './api.ts'
+import { call, type Translate } from './api.ts'
 import { bridge, gatedPermissions, type PermissionKind, type PermissionState } from './bridge.ts'
 import { useLive } from './live.ts'
 
@@ -35,8 +35,14 @@ export interface Permissions {
   asked(kind: PermissionKind): boolean
   /** Screen Recording was granted while the app ran; the runtime must start again to see it. */
   needsRelaunch: boolean
-  /** Quit and start again (the desktop shell), or nothing elsewhere. */
+  /** Quit and start again (the desktop shell — the helper alone when it is in use), or nothing elsewhere. */
   relaunch(): void
+  /**
+   * The shell's helper app, "nanoMuse Computer Use", holds the grants (macOS, 0.1.38+): the
+   * panes list it, not nanoMuse Desktop, and the shell restarts it by itself when Screen
+   * Recording lands — so `needsRelaunch` stays false.
+   */
+  helper: boolean
   /** When the system was last asked (ms); 0 before the first reading. The rows can say the status is live. */
   lastCheck: number
   /**
@@ -54,12 +60,28 @@ export function isGranted(state: PermissionState | undefined): boolean {
   return state === 'granted' || state === 'not-needed'
 }
 
+/**
+ * What the two hands rows are called: macOS's grants where the system gates them
+ * (Accessibility, Screen Recording); elsewhere there is nothing to grant and the rows stand
+ * for what they are — the screen, and the mouse and keyboard.
+ */
+export function permissionTitle(t: Translate, kind: 'accessibility' | 'screen', gated = gatedPermissions()): string {
+  if (gated) return t(kind === 'screen' ? 'obScreen' : 'obAccessibility')
+  return t(kind === 'screen' ? 'cuScreenRow' : 'cuInputRow')
+}
+
+export function permissionSub(t: Translate, kind: 'accessibility' | 'screen', name: string, gated = gatedPermissions()): string {
+  if (gated) return t(kind === 'screen' ? 'obScreenSub' : 'obAccessibilitySub', { name })
+  return t(kind === 'screen' ? 'cuScreenRowSub' : 'cuInputRowSub', { name })
+}
+
 export function usePermissions(kinds: PermissionKind[]): Permissions {
   const gated = gatedPermissions()
   const [states, setStates] = useState<PermissionStates>(() =>
     gated ? {} : Object.fromEntries(kinds.filter((k) => k !== 'microphone' || bridge() !== undefined).map((k) => [k, 'not-needed' as PermissionState])))
   const [askedKinds, setAskedKinds] = useState<PermissionKind[]>([])
   const [needsRelaunch, setNeedsRelaunch] = useState(false)
+  const [helper, setHelper] = useState(false)
   const [lastCheck, setLastCheck] = useState(0)
   const live = useLive()
   // the first reading of Screen Recording in this session: only a later change to granted
@@ -68,9 +90,12 @@ export function usePermissions(kinds: PermissionKind[]): Permissions {
   const refresh = useCallback(() => {
     if (!gated) return
     void bridge()?.permissions().then((next) => {
+      const { helper: viaHelper, ...rest } = next
       if (firstScreen.current === undefined) firstScreen.current = next.screen
-      else if (firstScreen.current !== 'granted' && next.screen === 'granted') setNeedsRelaunch(true)
-      setStates(next)
+      // with the helper the shell restarts it by itself; nothing for the person to do
+      else if (firstScreen.current !== 'granted' && next.screen === 'granted' && viaHelper !== true) setNeedsRelaunch(true)
+      setHelper(viaHelper === true)
+      setStates(rest)
       setLastCheck(Date.now())
     }).catch(() => undefined)
   }, [gated])
@@ -113,6 +138,7 @@ export function usePermissions(kinds: PermissionKind[]): Permissions {
     asked: (kind) => askedKinds.includes(kind) && !isGranted(states[kind]),
     needsRelaunch,
     relaunch,
+    helper,
     lastCheck,
     blackScreen: live.blackScreenAt > 0,
     clearBlackScreen,

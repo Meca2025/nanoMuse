@@ -116,6 +116,21 @@ soon as it is sent, the reply when the turn ends; signing in sends the device's
 whole history, oldest first. Rename the muse anywhere — the first
 conversation's naming included — and the name follows on the next pull.
 
+Since 0.1.38 it is **main first**. Only the main conversation travels unless a
+device asks for more: side chats stay on the device that made them, and no other
+device's side chats arrive. *Also sync side chats* (同时同步旁聊), under the sync
+switch in *Data controls*, is per device and off by default — *Off: side chats
+stay on this device. On: this device's side chats go to the account and the
+other devices' side chats come here.* Turning it on sends this device's side
+chats up and pulls the others' down once from the start. A fresh sign-in pulls
+the newest 300 messages first so a long history is readable at once instead of
+arriving oldest-first. While another device is answering, the chat shows *kwai
+is working…* (kwai 正在处理…) under the last message — a presence note the relay
+passes on and never stores; it goes when the reply lands, when the device says
+it is done, or after ten minutes. A message that arrived from another device is
+never shown as interrupted and never offers *Continue* — only the device that
+ran the turn knows how it ended.
+
 The switch is *Settings → Data controls → Sync conversations between my
 devices*, on by default; off tells the relay to delete the account's store, and
 every other device's switch follows. *Delete synced conversations* empties the
@@ -133,7 +148,18 @@ conversation pulled from the relay gets its dsh session at once (listed in
 account's main conversation lives in, and the first conversation starts in it
 when the account already has one. The harness has no delete and a log forgets
 nothing: a message deleted elsewhere is hidden here, a chat deleted elsewhere
-is archived here. Code: the runtime's [`nanomuse/sync/`](../nanomuse/sync/)
+is archived here. Since 0.1.38 the plugin keeps *Also sync side chats* with its
+own state (off by default; off, a side chat here is neither listed nor read for
+the push, and a side row that still arrives makes no session), asks the relay
+for `scope=main` and, on the first pull and when the side switch goes on, for
+the tail; the other device's *kwai is working…* line is drawn under its last
+bubble from the hub's `working` frame and cleared by its reply, by
+`working: false` or after ten minutes — the remote rows are never in the
+session log, so the harness cannot take one for an unfinished turn. The host
+reads a session's log once per change (title, lines and prompt positions are
+kept until the session's next event) and turns a burst of `sync` frames into
+one pull a second, so a big account costs the chat nothing while idle.
+Code: the runtime's [`nanomuse/sync/`](../nanomuse/sync/)
 (`ConversationSync`, `/api/sync/*` in [app.md](app.md#api)), the web app's
 `SyncControls` and the message captions in `web/src/`, the plugin's
 `src/sync.ts`, `client/RemoteBubbles.ts` and `tests/sync.test.mjs`, the relay's

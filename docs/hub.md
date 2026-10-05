@@ -104,6 +104,7 @@ the key in `hello` instead).
 → devices  {}        → rename {name}        → forget {device_id}        → ping  ← pong
 ← profile  {rev, device}       the account's name, look or connectors changed (PUT /v1/me/profile); fetch it
 ← sync     {what:"conversations", cursor, from}   another device pushed or deleted synced conversations; pull /v1/sync/changes
+← working  {cid, from, device_name, working, at}  another device started (true) or finished (false) a turn in that synced conversation
 ```
 
 Close codes: `4000` hello expected, `4001` bad key, `4002` bad device,
@@ -140,9 +141,16 @@ and the hub only carries the nudge. After a push that the relay accepted, or a
 deletion, every *other* socket of the account gets `sync {what:"conversations",
 cursor, from}` — `cursor` is the account's counter after the change, `from` the
 device id that made it — and pulls what is new from its own cursor. A device that
-sees its own id in `from` ignores the frame. Nothing else is synchronised — keys,
-providers and settings stay where they were entered, and files and images stay on
-the device that made them. How the apps use it is in
+sees its own id in `from` ignores the frame. Since 0.1.38 (relay 0.20) the hub
+also carries **who is answering**: a device that starts or ends a turn in a
+synced conversation posts `/v1/sync/working`, and the other sockets get
+`working {cid, from, device_name, working, at}` — the apps show *kwai is
+working…* under the last message until `working: false` arrives, the reply
+itself lands, or ten minutes pass. The relay keeps these in memory only. By
+default only the main conversation is synced; side chats travel only from and to
+devices that turned *Also sync side chats* on. Nothing else is synchronised —
+keys, providers and settings stay where they were entered, and files and images
+stay on the device that made them. How the apps use it is in
 [every-device.md](every-device.md#the-same-conversations-everywhere).
 
 ## The code

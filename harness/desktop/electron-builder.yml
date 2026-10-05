@@ -89,3 +89,12 @@ mac:
   hardenedRuntime: false
   gatekeeperAssess: false
   identity: null
+  # "nanoMuse Computer Use.app" — the helper that holds Screen Recording and Accessibility and
+  # takes the screenshots and moves the mouse (mac/computer-use/, built by its build.sh in the
+  # workflow before electron-builder runs). extraFiles land under Contents/; a bundle in
+  # Contents/Helpers is nested code, which package-mac.sh signs before the outer app.
+  # Nothing is signed here (identity: null), so the helper arrives as build.sh left it.
+  extraFiles:
+    - from: mac/computer-use/build/nanoMuse Computer Use.app
+      to: Helpers/nanoMuse Computer Use.app
+      filter: ["**/*"]

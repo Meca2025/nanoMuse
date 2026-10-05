@@ -26,6 +26,21 @@ addressed to another device (``Thread.device``) and chats another device opened 
 (``Thread.remote_from``) are not synced — the other device has the same conversation as
 its own.
 
+**Main first** (C9, relay 0.20). By default only the main conversation syncs: pushes send
+``kind: main`` alone and pulls ask for ``scope=main``. *Settings → Data controls → Also sync
+side chats* (``side_chats`` here, default from ``[sync] side_chats``) turns the side chats
+on for this device: they are pushed too, pulls ask for ``scope=all``, and the moment it is
+turned on one pull from ``since=0&scope=all&tail=300`` brings the other devices' side chats
+(idempotent by ``mid`` / ``cid``). Off again stops pushing and pulling them; what was synced
+stays where it is. A fresh device's first pull asks for the **tail** — the newest 300
+messages and their conversations — so the chat is on screen in seconds; older history stays
+on the devices that wrote it. **Presence**: a turn that starts on a synced conversation
+posts ``working: true`` to the relay right after the person's message went up, and
+``working: false`` after the assistant's text; the hub's ``working`` frames from the other
+devices land in a small map (:meth:`working_view`) the web app reads, and leave it when the
+reply arrives, when the device says done, or ten minutes after ``at``. Presence is best
+effort: never retried, never awaited on the turn's path, errors at debug.
+
 Nothing here reaches the network when the account is signed out; ``sync_off`` from the
 relay flips the local switch, ``bad_key`` pauses until the next sign-in."""
 
@@ -52,6 +67,10 @@ PUSH_DELAY_S = 2.0
 PULL_EVERY_S = 60.0
 BATCH = 200
 PAGE = 500
+# the first pull of a fresh device: the newest messages of the scope, not the whole store (C9)
+TAIL = 300
+# a `working: true` without a `false` stands this long (the device may have lost its network)
+WORKING_TTL_S = 10 * 60
 # how many POSTs one push may make before it lets go (a brand-new device with a long history)
 MAX_ROUNDS = 50
 
@@ -85,6 +104,8 @@ class ConversationSync:
             "account_id": "",
             "cursor": 0,
             "enabled": bool(svc.settings.cloud.sync),
+            # C9: this device's side chats too (and the other devices'); off = main only
+            "side_chats": bool(svc.settings.sync.side_chats),
             "cids": {},  # thread id → cid
             "titles": {},  # thread id → the title last pushed
         }
@@ -95,6 +116,11 @@ class ConversationSync:
         self._timer: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
         self._tasks: set[asyncio.Task[Any]] = set()
+        # presence (C9): cid → {thread, device, device_name, at} for the other devices' turns
+        # under way; a frame says so, a reply or ten minutes clears it
+        self.working: dict[str, dict[str, Any]] = {}
+        # a one-off pull from zero waiting its turn (side chats just turned on)
+        self._pull_from_zero = False
         # a 401 from the relay: nothing more until the next sign-in
         self._paused = False
         self._applying = False
@@ -113,7 +139,7 @@ class ConversationSync:
         except (OSError, ValueError):
             return
         if isinstance(data, dict):
-            for key in ("account_id", "cursor", "enabled"):
+            for key in ("account_id", "cursor", "enabled", "side_chats"):
                 if key in data:
                     self.state[key] = data[key]
             for key in ("cids", "titles"):
@@ -129,6 +155,14 @@ class ConversationSync:
     @property
     def enabled(self) -> bool:
         return bool(self.state.get("enabled", True))
+
+    @property
+    def side_chats(self) -> bool:
+        return bool(self.state.get("side_chats", False))
+
+    @property
+    def scope(self) -> str:
+        return "all" if self.side_chats else "main"
 
     @property
     def cursor(self) -> int:
@@ -150,7 +184,11 @@ class ConversationSync:
         return None
 
     def _eligible(self, thread: Thread) -> bool:
-        return not thread.device and not thread.remote_from
+        """Synced from here: not a chat for or from another device, and — with side chats
+        off (C9) — the main chat only."""
+        if thread.device or thread.remote_from:
+            return False
+        return self.side_chats or thread.id == MAIN_THREAD
 
     def _cid_for(self, thread: Thread) -> str:
         cid = self.cid_of(thread.id)
@@ -164,13 +202,23 @@ class ConversationSync:
         """What the Data controls page shows: the switch, whether it can be used, the cursor."""
         return {
             "enabled": self.enabled,
+            "side_chats": self.side_chats,
             "available": self.svc.hub.signed_in,
             "paused": self._paused,
             "cursor": self.cursor,
             "last_pull_at": self.last_pull_at,
             "last_push_at": self.last_push_at,
             "error": self.last_error,
+            "working": self.working_view(),
         }
+
+    def working_view(self) -> list[dict[str, Any]]:
+        """The other devices' turns under way (C9): ``[{thread, cid, device, device_name,
+        at}]``, ``at`` in Unix seconds, entries older than ten minutes dropped."""
+        cutoff = int(time.time()) - WORKING_TTL_S
+        for cid in [c for c, w in self.working.items() if int(w.get("at") or 0) < cutoff]:
+            del self.working[cid]
+        return [dict(w) for w in self.working.values()]
 
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> None:
@@ -254,6 +302,21 @@ class ConversationSync:
                     t.cancel()
         return {**self.view(), "relay": relay}
 
+    def set_side_chats(self, on: bool) -> dict[str, Any]:
+        """Data controls → *Also sync side chats* (C9). On: this device's side chats go up
+        (oldest first, with the next push) and one pull from zero with ``scope=all&tail=300``
+        brings the other devices'. Off: they stop moving; what was synced stays."""
+        on = bool(on)
+        if on == self.side_chats:
+            return self.view()
+        self.state["side_chats"] = on
+        self._save()
+        if on and self.active:
+            self._pull_from_zero = True
+            self.pull_soon()
+            self.push_soon(delay=0.5)
+        return self.view()
+
     async def relay_state(self) -> dict[str, Any] | None:
         """The relay's own view (counts, limits), or None when it cannot be asked."""
         if not self.svc.hub.signed_in:
@@ -279,13 +342,41 @@ class ConversationSync:
     # ------------------------------------------------------------------ hooks from the service
     def message_sent(self, thread: Thread) -> None:
         """The person's message is on the timeline: it goes up now (C8, real time), not
-        when the turn ends."""
+        when the turn ends — and right after it, ``working: true`` (C9)."""
         if self.active and self._eligible(thread):
             self.push_soon(delay=0.0)
+            self._working_soon(thread, True)
 
     def turn_finished(self, thread: Thread) -> None:
         if self.active and self._eligible(thread):
             self.push_soon(delay=PUSH_DELAY_S)
+            self._working_soon(thread, False)
+
+    def _working_soon(self, thread: Thread, working: bool) -> None:
+        """Presence to the relay once the push it belongs to is through — so the
+        conversation exists there and carries the id it ended up with. Off the turn's path,
+        never retried, errors at debug."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._keep(loop.create_task(self._send_working(thread, working), name="sync-working"))
+
+    async def _send_working(self, thread: Thread, working: bool) -> None:
+        for _ in range(3):  # a push rescheduled under us: wait for the one that replaced it
+            push = self._push_task
+            if push is None or push.done():
+                break
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await push
+        cid = self.cid_of(thread.id)
+        if not cid or not self.active:
+            return
+        self.client.cloud.api_key = self.svc.hub._key()
+        try:
+            await self.client.working(cid, working, self.svc.hub.device_id)
+        except Exception as exc:  # noqa: BLE001 — presence is a hint, never worth a retry
+            logger.debug("sync: working={} not delivered: {}", working, exc)
 
     def thread_changed(self, thread: Thread) -> None:
         """Created or renamed: push now (a rename is one small request)."""
@@ -296,7 +387,15 @@ class ConversationSync:
         cid = self.state["cids"].pop(thread_id, None)
         self.state["titles"].pop(thread_id, None)
         self._save()
-        if cid and self.active and not self._applying:
+        for c in [c for c, w in self.working.items() if w.get("thread") == thread_id]:
+            del self.working[c]
+        # a side chat with side chats off: nothing of it moves any more, its copy elsewhere stays
+        if (
+            cid
+            and self.active
+            and not self._applying
+            and (self.side_chats or thread_id == MAIN_THREAD)
+        ):
             try:
                 loop = asyncio.get_running_loop()
             except RuntimeError:
@@ -304,11 +403,57 @@ class ConversationSync:
             self._keep(loop.create_task(self._delete_remote_conversation(cid), name="sync-delete"))
 
     def on_frame(self, frame: dict[str, Any]) -> None:
-        """The hub says another device pushed: pull when our cursor is behind."""
+        """The hub says another device pushed: pull when our cursor is behind. Or (C9) that
+        a turn started or ended there: the presence map and the web app hear it."""
         if str(frame.get("from") or "") == self.svc.hub.device_id:
+            return
+        if frame.get("type") == "working":
+            self._apply_working(frame)
             return
         if int(frame.get("cursor") or 0) > self.cursor and self.active:
             self.pull_soon()
+
+    def _apply_working(self, frame: dict[str, Any]) -> None:
+        cid = str(frame.get("cid") or "")
+        if not cid:
+            return
+        thread = self.thread_of(cid)
+        if thread is None or not self._eligible(thread):
+            return
+        device = str(frame.get("from") or "")
+        at = int(frame.get("at") or time.time())
+        if frame.get("working"):
+            self.working[cid] = {
+                "thread": thread.id,
+                "cid": cid,
+                "device": device,
+                "device_name": str(frame.get("device_name") or ""),
+                "at": at,
+            }
+        else:
+            current = self.working.get(cid)
+            # another device's `true` stands: the one that finished is not the one working
+            if current is None or (device and current.get("device") != device):
+                return
+            del self.working[cid]
+        self.svc.bus.publish(
+            {
+                "kind": "working",
+                "thread": thread.id,
+                "cid": cid,
+                "device": device,
+                "device_name": str(frame.get("device_name") or ""),
+                "working": bool(frame.get("working")),
+                "at": at,
+            }
+        )
+
+    def _clear_working(self, cid: str, device: str) -> None:
+        """The reply from that device arrived: its line goes."""
+        current = self.working.get(cid)
+        if current is None or current.get("device") != device:
+            return
+        self._apply_working({"cid": cid, "from": device, "working": False, "at": time.time()})
 
     def _keep(self, task: asyncio.Task[Any]) -> None:
         self._tasks.add(task)
@@ -546,8 +691,23 @@ class ConversationSync:
     async def _pull_locked(self) -> int:
         self.client.cloud.api_key = self.svc.hub._key()
         applied = 0
+        # C9: a fresh device (cursor 0) asks for the tail of its scope, not the whole store;
+        # side chats just turned on ask once more from zero, for everything, as a tail too
+        from_zero = self._pull_from_zero or self.cursor == 0
+        self._pull_from_zero = False
         for _page in range(MAX_ROUNDS):
-            out = await self.client.changes(self.cursor, PAGE)
+            if from_zero:
+                out = await self.client.changes(0, PAGE, scope=self.scope, tail=TAIL)
+                from_zero = False
+                skipped = int(out.get("skipped") or 0)
+                if skipped:
+                    logger.info(
+                        "sync: the newest {} messages pulled; {} older stay on the relay",
+                        TAIL,
+                        skipped,
+                    )
+            else:
+                out = await self.client.changes(self.cursor, PAGE, scope=self.scope)
             # The page's conversations first, then its messages, each in seq order: a rename
             # puts a conversation's seq above its messages, and the relay sends every
             # message's conversation along with the page so none of them is an orphan.
@@ -582,6 +742,10 @@ class ConversationSync:
         if not cid:
             return
         kind = str(row.get("kind") or "side")
+        if kind != "main" and not self.side_chats:
+            # C9: side chats stay where they were written; a row that still arrives (an
+            # older relay without `scope`) is left alone, as is a copy already here
+            return
         thread = self.thread_of(cid)
         if row.get("deleted"):
             if thread is None:
@@ -697,6 +861,9 @@ class ConversationSync:
         # local event with the same second stays in front — C8: ties, local first)
         thread.timeline.events.sort(key=lambda e: str(e.get("ts") or ""))
         thread.updated_at = max(thread.updated_at, ev["ts"])
+        if role == "assistant" and device:
+            # the reply is here: that device's "working…" line goes (C9)
+            self._clear_working(cid, device)
         if not thread.busy:
             # the agent reads it as history on its next turn here
             msg = Message.user(text) if role == "user" else Message.assistant(text)

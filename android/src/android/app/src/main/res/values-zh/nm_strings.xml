@@ -625,7 +625,23 @@
     <string name="nm_cloud_resend">重新发送</string>
     <string name="nm_cloud_resend_in">%1$d 秒后可重发</string>
     <string name="nm_cloud_verify">登录</string>
-    <string name="nm_cloud_debug_base">中转服务器（调试版）</string>
+    <!-- 自建中转服务器（0.1.38）：登录页的服务器表单与账号页的那一行 -->
+    <string name="nm_cloud_other_server">使用其他服务器</string>
+    <string name="nm_cloud_server_url">服务器地址</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">检查</string>
+    <string name="nm_cloud_server_use">使用这个服务器</string>
+    <string name="nm_cloud_server_now">服务器：%1$s</string>
+    <string name="nm_cloud_server_ok">%1$s 已响应：中转服务 %2$s。</string>
+    <string name="nm_cloud_server_bad_url">请填写服务器地址，例如 https://relay.example.org。</string>
+    <string name="nm_cloud_server_https">本机网络之外的服务器请用 https。内网地址（10.x、192.168.x、172.16–31.x、localhost、.local 或 .ts.net 域名）可以用 http。</string>
+    <string name="nm_cloud_server_unreachable">%1$s 没有中转服务响应。请检查地址，并确认服务已经在运行。</string>
+    <string name="nm_cloud_server_default">改回 nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">服务器</string>
+    <string name="nm_cloud_server_change">更换</string>
+    <string name="nm_cloud_server_change_confirm">这台手机的密钥属于当前服务器。请先在这里退出登录，再到登录页登录另一个服务器。</string>
+    <!-- 短信验证码：登录页在发送前就说明；中转服务返回 phone_region 时也用这一句 -->
+    <string name="nm_cloud_sms_region">短信验证码只能发到中国大陆手机号。请改用邮箱。</string>
     <string name="nm_cloud_fine_print">服务器保存账号 id、打码后的手机号或邮箱、用量，以及你的智能体的名字和形象；其余保存什么、哪些由你决定，见隐私政策。</string>
     <string name="nm_cloud_not_signed_in">尚未登录</string>
     <string name="nm_cloud_not_signed_in_sub">用手机号或邮箱登录，送一份免费额度。你自己添加的服务商不受影响。</string>
@@ -653,7 +669,6 @@
     <string name="nm_cloud_err_code_too_often">发送太频繁了，请过几分钟再试。</string>
     <string name="nm_cloud_err_not_invited">这是一台私人中转，这个邮箱不在名单上。</string>
     <string name="nm_cloud_err_send_failed">验证码没发出去，请稍后再试。</string>
-    <string name="nm_cloud_err_phone_region">短信验证码目前只支持中国大陆手机号，海外用户请用邮箱登录。</string>
     <string name="nm_cloud_err_disabled">这个账号已停用。</string>
     <string name="nm_cloud_err_bad_key">服务器已不认识这台手机，请重新登录。</string>
     <string name="nm_cloud_err_out_of_tokens">额度用完了。</string>
@@ -932,6 +947,10 @@
     <string name="nm_sync_deleted">已删除同步的对话。</string>
     <string name="nm_sync_from">来自 %1$s</string>
     <string name="nm_sync_attachment_note">[附件 %1$s——只留在产生它的设备上]</string>
+    <!-- 约定 C9（0.1.38）：旁聊默认只留在本机；某台设备正在处理某一行 -->
+    <string name="nm_sync_side_title">同时同步旁聊</string>
+    <string name="nm_sync_side_sub">关：旁聊只留在本机。开：本机的旁聊上传到账号，其他设备的旁聊也会同步过来。</string>
+    <string name="nm_sync_working">%1$s 正在处理…</string>
     <string name="nm_devices_ask">交给这台设备</string>
     <string name="nm_devices_ask_hint">点一台在线的设备，就能在聊天里对它说话：消息以 @ 加设备名开头，由那台设备去做。</string>
 </resources>

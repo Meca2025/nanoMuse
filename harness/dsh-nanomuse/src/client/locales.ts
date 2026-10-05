@@ -95,8 +95,15 @@ export const en = {
   syncDeleted: 'Synced conversations deleted.',
   syncOffConfirm: 'Off deletes the synced conversations from nanoMuse Cloud. The chats on each device stay.',
   syncNotReady: 'Sync is not up yet; try again in a moment.',
+  // this device's own switch (C9)
+  syncSide: 'Also sync side chats',
+  syncSideWhy: "Off: side chats stay on this device. On: this device's side chats go to the account and the other devices' side chats come here.",
   // under a turn written on another device of the account (C8)
   chFrom: 'From {device}',
+  // under the other device's last prompt while it works (C9)
+  chWorking: 'kwai is working…',
+  // the relay refused a model request past its body cap (413 `too_large`)
+  cloudTooLarge: 'The request to the model was too large. Start a new chat or let the conversation be compacted.',
   // first run
   welcomeTitle: 'Meet nanoMuse',
   // the capsule
@@ -461,6 +468,17 @@ export const en = {
   cuLead: '{name} works this computer with the mouse and keyboard, looking at the screen before each step.',
   cuPermissions: 'System permissions',
   cuNotGated: 'Nothing to grant on this system.',
+  // Linux: no grants, but a display session that may or may not let the hands work
+  cuScreenRow: 'Screen',
+  cuScreenRowSub: 'What {name} looks at before each step',
+  cuInputRow: 'Mouse and keyboard',
+  cuInputRowSub: 'How {name} clicks and types',
+  cuX11: 'X11 session · nothing to grant',
+  cuWaylandBadge: 'Wayland session · hands off',
+  cuNoDisplayBadge: 'No display · hands off',
+  cuHandsOff: 'The hands are off on this computer.',
+  cuWaylandHint: 'To switch: log out, click the gear by the password field on the login screen and choose “Ubuntu on Xorg”.',
+  cuDisplayNone: 'No display session: the app was started without a DISPLAY.',
   cuOpenSettingsAccessibility: 'Open Accessibility settings',
   cuOpenSettingsScreen: 'Open Screen Recording settings',
   cuAwake: 'Keep the screen awake while it works',
@@ -1291,6 +1309,11 @@ export const en = {
   libEmptyArtifactsBody: 'Documents, tables and pages I write for you will show up here.',
   libEmptyMediaTitle: 'No media yet',
   libEmptyMediaBody: 'Pictures, screenshots and recordings I produce will show up here.',
+  // 0.1.38 — macOS: the grants belong to the helper app, "nanoMuse Computer Use"
+  pmOnlyHelper: 'The entry to switch on in both panes is nanoMuse Computer Use — the small program nanoMuse brings along for the screenshots and the mouse. nanoMuse itself holds neither permission.',
+  pmTryShotBlackHelper: 'Black frame. Switch on nanoMuse Computer Use in System Settings → Privacy & Security → Screen Recording; the helper restarts by itself.',
+  pmBlackBodyHelper: 'Make sure nanoMuse Computer Use is on in System Settings → Privacy & Security → Screen Recording. The helper that takes the screenshots restarts by itself once it is; this button restarts it now.',
+  pmBlackRelaunchHelper: 'Restart the helper',
 }
 
 export const zh: typeof en = {
@@ -1383,7 +1406,11 @@ export const zh: typeof en = {
   syncDeleted: '已删除已同步的对话。',
   syncOffConfirm: '关闭后会从 nanoMuse Cloud 删除已同步的对话。每台设备上的对话保留。',
   syncNotReady: '同步还没就绪，稍后再试。',
+  syncSide: '同时同步旁聊',
+  syncSideWhy: '关：旁聊只留在本机。开：本机的旁聊上传到账号，其他设备的旁聊也会同步过来。',
   chFrom: '来自 {device}',
+  chWorking: 'kwai 正在处理…',
+  cloudTooLarge: '发给模型的请求太大。开一个新聊天，或等对话压缩后再试。',
   welcomeTitle: '认识一下 nanoMuse',
   capsuleHands: '双手',
   capsuleReach: '多端',
@@ -1739,6 +1766,16 @@ export const zh: typeof en = {
   cuLead: '{name} 用鼠标和键盘操作这台电脑，每一步动手前都先看一眼屏幕。',
   cuPermissions: '系统权限',
   cuNotGated: '这个系统不需要额外授权。',
+  cuScreenRow: '屏幕',
+  cuScreenRowSub: '{name} 每一步之前看的画面',
+  cuInputRow: '鼠标和键盘',
+  cuInputRowSub: '{name} 点按和输入的方式',
+  cuX11: 'X11 会话 · 不需要授权',
+  cuWaylandBadge: 'Wayland 会话 · 手关着',
+  cuNoDisplayBadge: '没有显示 · 手关着',
+  cuHandsOff: '这台电脑上手是关着的。',
+  cuWaylandHint: '切换方法：注销，在登录界面密码框旁的齿轮里选「Ubuntu on Xorg」。',
+  cuDisplayNone: '没有显示会话：应用启动时没有 DISPLAY。',
   cuOpenSettingsAccessibility: '打开「辅助功能」设置',
   cuOpenSettingsScreen: '打开「屏幕录制」设置',
   cuAwake: '操作时保持屏幕常亮',
@@ -2569,6 +2606,10 @@ export const zh: typeof en = {
   libEmptyArtifactsBody: '我为你写的文档、表格和页面会显示在这里。',
   libEmptyMediaTitle: '还没有影音内容',
   libEmptyMediaBody: '我生成的图片、截图和录音会显示在这里。',
+  pmOnlyHelper: '两个面板里要打开的是 nanoMuse Computer Use——nanoMuse 自带的一个小程序，专门负责截图和鼠标。nanoMuse 本身不持有这两项权限。',
+  pmTryShotBlackHelper: '画面全黑。在 系统设置 → 隐私与安全性 → 屏幕录制 里打开 nanoMuse Computer Use；这个小程序会自己重新启动。',
+  pmBlackBodyHelper: '确认 系统设置 → 隐私与安全性 → 屏幕录制 里 nanoMuse Computer Use 已打开。负责截图的小程序打开后会自己重新启动；这个按钮现在就重启它。',
+  pmBlackRelaunchHelper: '重启小程序',
 }
 
 export type Words = keyof typeof en

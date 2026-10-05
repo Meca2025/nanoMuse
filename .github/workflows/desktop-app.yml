@@ -10,7 +10,9 @@
 # the runtime (scripts/desktop-app/build-runtime.py --target harness/desktop/runtime, a
 # PyInstaller build), wraps it all with electron-builder, and
 # then boots the unpacked app's harness once in Node mode (scripts/smoke.mjs) to see the Host
-# come up with the bundle's rows. On macOS electron-builder only lays out the .app;
+# come up with the bundle's rows. On macOS the Swift helper that holds the hands' permissions
+# (harness/desktop/mac/computer-use/build.sh → "nanoMuse Computer Use.app") is built first and
+# electron-builder lays out the .app with it inside;
 # scripts/desktop-app/package-mac.sh ad-hoc signs it (or signs and notarizes with the Apple
 # secrets; docs/desktop.md says how they are made) and writes the zip and an APFS dmg.
 # No Windows certificate: Windows asks for "Run anyway"; without the Apple secrets the macOS
@@ -126,6 +128,12 @@ jobs:
           npm ci
           npm run typecheck
           npm run dist
+      - name: The helper that holds the hands' permissions (macOS — nanoMuse Computer Use.app, Swift)
+        if: runner.os == 'macOS'
+        shell: bash
+        # a universal bundle (arm64 + x86_64) under harness/desktop/mac/computer-use/build/,
+        # which electron-builder.yml copies into nanoMuse.app/Contents/Helpers
+        run: harness/desktop/mac/computer-use/build.sh
       - name: The app (macOS — signed and notarized with the Apple secrets, ad-hoc without; zip and APFS dmg by hand)
         if: runner.os == 'macOS'
         working-directory: harness/desktop

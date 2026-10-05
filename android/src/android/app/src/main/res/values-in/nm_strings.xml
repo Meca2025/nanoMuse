@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: string yang hanya ada di nanoMuse (0.1.38). Yang tidak ada di sini tampil dalam bahasa Inggris. -->
+<resources>
+    <string name="nm_cloud_other_server">Gunakan server lain</string>
+    <string name="nm_cloud_server_url">Alamat relay</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Periksa</string>
+    <string name="nm_cloud_server_use">Gunakan server ini</string>
+    <string name="nm_cloud_server_now">Server: %1$s</string>
+    <string name="nm_cloud_server_ok">%1$s menjawab: relay %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Masukkan alamat relay, misalnya https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Gunakan https untuk server di luar jaringanmu sendiri. http cukup untuk alamat privat (10.x, 192.168.x, 172.16–31.x, localhost, nama .local atau .ts.net).</string>
+    <string name="nm_cloud_server_unreachable">Tidak ada relay yang menjawab di %1$s. Periksa alamatnya dan pastikan relay berjalan.</string>
+    <string name="nm_cloud_server_default">Kembali ke nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Server</string>
+    <string name="nm_cloud_server_change">Ganti</string>
+    <string name="nm_cloud_server_change_confirm">Kunci ponsel ini milik server saat ini. Keluar dulu di sini, lalu masuk ke server lain dari layar masuk.</string>
+    <string name="nm_cloud_sms_region">Kode SMS hanya sampai ke nomor Tiongkok daratan. Gunakan alamat e-mail saja.</string>
+    <string name="nm_sync_side_title">Sinkronkan juga obrolan sampingan</string>
+    <string name="nm_sync_side_sub">Mati: obrolan sampingan tetap di perangkat ini. Nyala: obrolan sampingan perangkat ini masuk ke akun, dan obrolan sampingan perangkat lain datang ke sini.</string>
+    <string name="nm_sync_working">%1$s sedang mengerjakannya…</string>
+</resources>

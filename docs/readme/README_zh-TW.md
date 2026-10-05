@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — an open-source personal agent for every device you own">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse——開源的個人智慧體，面向你的每一台裝置">
 </p>
 
 <p align="center">
@@ -14,93 +14,97 @@
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_ru.md">Русский</a> |
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/docs/readme/README_vi.md">Tiếng Việt</a>
 </p>
-
 <p align="center">
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="GitHub stars"></a>
-  <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="下載次數"></a>
+  <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="下載量"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/web/"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%80%8F%E8%A6%BD%E5%99%A8%E8%A3%A1%E8%A9%A6-nanomuse.cn%2Fweb-5B4EE6" alt="在瀏覽器裡試"></a>
-  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%E7%B6%B2%E7%AB%99-nanomuse.cn-0a66e4" alt="網站"></a>
+  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/%E6%96%87%E4%BB%B6-nanomuse.cn%2Fdocs-0a66e4" alt="文件"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
 </p>
 
-> [!IMPORTANT]
-> **免費、開源、非營利。** 用手機號碼或電子郵件登入後有一份起始額度，費用由開發者出；剩多少、怎麼加，帳號頁裡有數。用完可以填自己的 key：中國大陸用阿里雲百煉，其他地區用 OpenRouter（[教學](../own-key.md)）。訊息預設不存伺服器，資料不賣（[隱私權政策](https://nanomuse.cn/privacy/)）；帳號想刪就刪。**[在瀏覽器裡試試](https://nanomuse.cn/web/)**，或[下載 App](https://github.com/nano-muse/nanoMuse/releases/latest)。
+**nanoMuse 是一個開源的個人智慧體，面向你的每一台裝置。** 一個有名字、有自己形象的智慧體，和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 是同一類東西：不只回答問題，而是動手做事；App 關了也繼續做；記得你；遇到無法復原的操作會先停下來問你。
 
-> 這一頁是 [英文 README](../../README.md) 的譯文；英文版是基準，最新消息與完整版本表都在那裡。
-
-nanoMuse 是一個開源的個人智慧體，為你的每一台裝置而生：一個有自己名字和形象的智慧體，像 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 一樣，不只回答問題，而是把事情做完；App 關掉它也繼續工作，記得你，在任何無法復原的操作前先停下來問你。Android App 把整個智慧體跑在**手機上**：Linux 根檔案系統、shell、瀏覽器、MCP、技能和排程任務都在 APK 裡，模型由你自備。對那些從來沒有 API 的 App，它有一雙「手」——經你允許，直接看、直接點手機螢幕；它還能伸到你的電腦上：在手機上說一句，電腦上就做完。桌面版、網頁版和 iPhone App（TestFlight）也已經推出；眼鏡接著來。自己的 key，或是來自開放中繼的起始額度，GPL-3.0——也是一個底子，可以在它上面做出你自己的 Muse。
+*nano* 的意思是完整的一套，小到你自己就能跑、能部署：手機 App、桌面 App、網頁主控台，還有把它們連在一起的中繼，都在這個儲存庫裡，GPL-3.0-or-later。nanoMuse 非營利。登入就有一份免費的模型額度，走社群中繼，錢是開發者出的；用完可以[換成自己的 key](../own-key.md)。同一套中繼也能跑在你自己的伺服器上，資料不必出門。最新版本：**0.1.38 Loom**——[發行說明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38) · [線上體驗](https://nanomuse.cn/web/)。
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/avatar-moods.png" width="88%" alt="同一隻小龍的五種狀態：休息、工作中、等待、開心、抱歉">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/chat-approval.png" width="23%" alt="對話：刪除工作區裡的東西之前停下來問你——只此一次、本次對話、對工作區總是允許，或者拒絕">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/feed.png" width="23%" alt="動態：今天早上寫給你的幾則">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/goals.png" width="23%" alt="目標：按時檢查，還有例行工作">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/avatar.png" width="23%" alt="形象：描述一句，你的圖像模型來畫，你挑一張喜歡的">
 </p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="對話：在工作區刪除之前，智慧體停下來問——只這一次、這個對話、工作區永遠允許，或拒絕">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="動態：今天早上為你寫的貼文">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="目標：按排程追蹤，還有例程">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="形象：描述一句，你的圖片模型畫出來，挑一張你喜歡的">
-</p>
-
-## 為什麼是 nanoMuse
-
-四件事定義了這個專案。
-
-| | |
-|---|---|
-| **Muse 風格** | 一個智慧體，不是一堆工具：自己的名字和形象、第一次對話、為你寫的動態、在背景推進的目標、可以讀也可以改的記憶，以及任何無法復原的操作之前先問你一次。 |
-| **完全開源** | GPL-3.0-or-later，整個倉庫。沒有閉源元件，沒有非用不可的帳號、伺服器或模型——可選的 nanoMuse Cloud 中繼也在倉庫裡，任何人都能自己架一個；每個版本都從它的 tag 建置、手動安裝。Muse、豆包、千問是別人給你的產品；nanoMuse 是你自己擁有的——也是做你自己的 Muse 的底子：改名字、換形象、重寫個性、接上你自己的模型和工具。 |
-| **任何 App，有沒有 API 都行** | 在中國，一天裡的大半事情都在從來沒有 API 的 App 裡完成。智慧體順著一把梯子往上試——先是技能、CLI 或 MCP 伺服器，再用你的登入狀態抓一頁，再是 App 內瀏覽器，最後在你允許之後直接操作裝置螢幕，像你一樣看、一樣點——付款、傳送、刪除前照樣先問你。預設關閉。 |
-| **每一台裝置** | 一個智慧體，你擁有的每一台裝置都是它的一雙手、一個入口：在手機上說，在電腦上發生；對眼鏡說，兩邊都發生。手機已經能驅動你的電腦，桌面版、網頁版和 iPhone App 都已經推出；眼鏡接著來。 |
-
-和 Muse、以及這個 App 所基於的執行環境 OpenMinis 怎麼比：見[英文 README](../../README.md#compared-with-muse-and-openminis)。計畫與理由：[docs/roadmap.md](../roadmap.md)。
 
 ## 安裝
 
-什麼都不用裝就能先看一眼：[nanomuse.cn/web](https://nanomuse.cn/web/) 打開是瀏覽器裡的一台模擬手機，裡面有一個你自己的 nanoMuse，用手機號碼或電子郵件收個驗證碼登入就能試——這是示範，和 App 差得不少；要完整體驗，請裝下面的手機 App 和桌面版，同一個帳號。給你自己的裝置——[下載](https://nanomuse.cn/#download)：Android APK、Windows / macOS / Linux 桌面版（`nanoMuse-Desktop-<version>-…`）、終端機版（`nanomuse-desktop-terminal-<version>-…`），或用 Python 3.11+ 執行 `pipx install "git+https://github.com/nano-muse/nanoMuse"`；實測從中國大陸直接下載 GitHub 也是最快的；萬一在你那裡下不動，同樣的檔案也在專案的鏡像 [nanomuse.cn/dl](https://nanomuse.cn/dl/)（發佈後十五分鐘內同步，SHA-256 校驗過）；[docs/desktop.md](../desktop.md) 與 [docs/every-device.md](../every-device.md) 說明它們怎麼連在一起。在手機上：
-
-1. 從[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下載 `nanoMuse-<version>-arm64.apk`——Android 8.0 或更新、64 位元手機。願意的話用 `sha256sum -c nanoMuse-<version>-arm64.apk.sha256` 校驗。
-2. 開啟它。Android 會問一次是否允許安裝；每個版本都用同一把金鑰簽名，所以更新會覆蓋安裝並保留你的資料。
-3. 接上模型。「登入，免費開始」：手機號碼（驗證碼走簡訊）或電子郵件，智慧體就有了 [nanoMuse Cloud](../cloud.md) 的免費額度——不用 key，不用付錢；帳號頁會說還剩多少、怎麼增加。對話模型是 `deepseek-v4.1-flash`，「手」用 `qwen3.8-27b`，兩者是分開的設定。用完了換自己的 key：中國大陸用[阿里雲百煉](../own-key.md)，其他地區用 [OpenRouter](../own-key.md)（百煉不接受海外身分註冊）；任何 OpenAI 相容端點，或 App 內建的 OAuth 登入之一。然後，如果你願意，開啟讓它操作手機 App 的兩項權限（可跳過），再進行第一次對話：它會問怎麼稱呼你，並為自己挑一個名字。
-4. 可選——*設定 → 圖片與影片模型*：一個圖片模型（阿里雲百煉的 qwen-image-3.0、gpt-image-1，或任何有 OpenAI images 端點的供應商）讓它能換形象、畫圖；一個影片模型（百煉的 wan2.2-i2v-flash）讓形象動起來。Muse 這兩樣是內建的；nanoMuse 用你自己的，缺哪個它會開口告訴你。
-
-App 會到這個倉庫的 Releases 檢查更新；桌面版的版本號在「設定 → 關於」，旁邊有「檢查更新」。每個版本的發佈說明在 [docs/releases/](../releases) 與 [CHANGELOG](../../CHANGELOG.md)。
-
-## 它能做什麼
-
 | | |
 |---|---|
-| **把事做完** | Linux shell、瀏覽器、MCP 伺服器、[Agent Skills](https://agentskills.io) 格式的技能，以及——開啟 Hands 之後——透過螢幕操作手機上的 App：截一張圖、做一步、再截一張，先試 API 再上螢幕，登入由你接手，該問的照樣問（0.1.12）。用哪隻手它自己挑，每一步都是一張可以展開的卡片。頁面需要你本人——登入、驗證碼——它會停下來交給你，按「完成」繼續；手機、桌面、網頁都一樣。macOS 上「手」可以只操作某一個 App 的視窗、用自己的事件，你的游標還是你的；每個 App 第一次會問你。 |
-| **先問再做** | 刪除、傳送、付款之前停下來問你——在 shell 裡、瀏覽器裡，以及 Hands 在手機螢幕上點按時都一樣——範圍由你定：只這一次、這個對話，或對這個收件人 / 網域 / 資料夾永遠允許，在「權限」裡隨時可以撤銷。密碼和驗證碼永遠由你自己輸入。桌面版的「允許一次 / 拒絕」就在舞台上，手機上在膠囊上——在哪就在哪答，不用切回 App。 |
-| **在你常用的地方** | 在飛書、釘釘、企業微信或 Telegram 裡直接和你的 Muse 說話：機器人住在聊天軟體裡，第一則訊息用配對碼認人，就在那裡回答你（[docs/channels.md](../channels.md)）。在一台裝置上連好的服務，其他裝置會顯示「已在你的 Mac 上連接——在這台登入即可使用」；憑證留在登入的那台裝置上。 |
-| **一直在做** | 目標在對話裡定下來，之後在各自的對話裡按排程檢查；例程在 App 關著時照樣跑；它操作手機時螢幕不會熄滅；到 200 步會問你「繼續嗎？」，而不是草草收尾。 |
-| **為你寫動態** | 每天早上三到六則短貼文，來自它對你的了解和你要它留意的事，做成卡片——可以按讚、在旁聊裡討論，或刪掉。一句話就能調整方向。 |
-| **記得你** | 它是誰（`SOUL.md`）、它了解你什麼（`USER.md`）、它記得什麼（`GLOBAL.md` 和一本日記）、它什麼時候醒來（`HEARTBEAT.md`）都是你在 App 裡可以讀、可以改的檔案。用「匯入記憶」把另一個助理知道的帶過來。 |
-| **自己的形象** | 一句話描述；你的圖片模型畫出來；你挑一張喜歡的。App 再把它擺成每種狀態的姿勢——工作中、等待、開心、抱歉——並隨它正在做的事呼吸、晃動、歪頭、彈跳、搖頭；有影片模型時，每種狀態是一段循環短片。預設是一隻淡黃色的小龍，靜圖和短片都內建。 |
-| **點子與資源庫** | 從目標和記憶裡冒出來的、接下來可以問的事；以及它做出來的一切，附預覽。 |
+| **Android** 8.0 以上，arm64 | [nanoMuse-0.1.38-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-0.1.38-arm64.apk)——每個版本同一把簽章，覆蓋安裝即可升級 |
+| **iPhone / iPad** | TestFlight，目前僅限內部測試員 <!-- coordinator: 有公開的 TestFlight 連結後放在這裡 --> |
+| **macOS** 12 以上 | [Apple 晶片](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-x64.dmg)——未經公證：第一次右鍵 → 打開 |
+| **Windows** 10 以上 | [nanoMuse-Desktop-0.1.38-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-win-x64.exe)——點一次「仍要執行」 |
+| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.tar.gz) |
+| **終端機** | Python 3.11 以上：`pipx install "git+https://github.com/nano-muse/nanoMuse"`；或者從[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下載 `nanomuse-desktop-terminal` 執行檔 |
+| **Docker** | `bash scripts/self-host.sh --local` 架自己的中繼；`docker compose up -d app` 在自己的伺服器上跑網頁版——見[自己部署](../self-hosting.md) |
 
-全部都在手機上執行；OpenMinis 的其餘部分——終端機、App 內瀏覽器、MCP 與技能管理、模型群組、token 用量、無障礙執行器、共用資料夾——都保留著，從同一組選單就能進入。
+下載都來自 [GitHub 最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)；GitHub 下載不順時，同樣的檔案在 [nanomuse.cn/dl](https://nanomuse.cn/dl/)。打開 App，用電子郵件或中國大陸手機號登入，它就有模型可用。手機、桌面和網頁共用一個帳號，看到的是同樣的對話。
 
-## 版本
+## 能做什麼
 
-每個階段一個小版本，每個版本都是附 APK 的 GitHub release。最新消息與完整版本表見[英文 README](../../README.md#versions)；計畫與理由在 [docs/roadmap.md](../roadmap.md)；每個版本的說明在 [docs/releases/](../releases) 與 [CHANGELOG](../../CHANGELOG.md)。接下來依序是：在你自己的機器上跑網頁版（虛擬機、家用伺服器）；眼鏡。
+- **動手做事。** Linux shell、瀏覽器、MCP 伺服器、技能；打開「手」之後，手機上的 App 和電腦上的視窗也能透過螢幕操作——給那些從來沒有 API 的東西。
+- **關鍵處先問。** 刪除、傳送、付款前先停下來問你，可以記住：只此一次、本次對話，或者一直允許；密碼和驗證碼永遠由你自己輸入。碰到登入或人機驗證就交給你，點「完成」接著做。
+- **搆得著別的裝置。** 手機上說一句，電腦上執行；訊息以 `@Mac …` 開頭，任務就去那台機器。審批回到你手上這台。
+- **一直在做。** 目標按時檢查，例行工作在 App 關著時照樣跑，每天早上有寫給你的動態。
+- **記得你。** 它是誰、了解你什麼、什麼時候醒來，都是你能看、能改的 Markdown 檔案。
+- **住在你的聊天軟體裡。** 飛書、釘釘、企業微信、Telegram 裡都能回覆你。
+- **有自己的形象。** 描述一句，你的圖像模型來畫，影片模型讓它動起來。預設是一隻小龍。
+- **任何模型。** 中繼的預設模型，一把百煉或 OpenRouter 的 key，或者任何 OpenAI 相容介面。
 
-## 現在走到哪裡了
+## 怎麼運作
 
-現在是 0.1 預覽版。我們自己每天在用，知道哪些地方還粗糙；哪裡壞了、想要什麼，直接開 issue。想折騰的——自己的模型、shell、MCP、技能、harness、執行環境的 API——都在設定和文件裡。執行環境的各個面、技能與外掛介面一段時間內還會變；[CHANGELOG](../../CHANGELOG.md) 記錄改了什麼，[路線圖](../roadmap.md) 說接下來做什麼。覺得有用，給一顆星，讓更多人看到。
+每台裝置上都跑著自己的智慧體——手機上在 APK 裡（proot 下的 Alpine Linux、shell、瀏覽器、MCP），電腦上在 nanoMuse Desktop 裡（DeepSeek Harness 加上負責「手」的 Python 執行環境）。登入後它們在中繼上相遇，可以互相拜託；對話的文字經中繼傳遞，檔案和截圖留在產生它們的裝置上。
+
+```
+手機 ──┐                          ┌── 電腦（nanoMuse Desktop）
+       ├──▶  nanoMuse Cloud  ◀───┤        中繼：登入、模型、
+網頁 ──┘        /v1/hub           └── 另一台手機 / 電腦          hub、對話同步
+```
+
+[docs/every-device.md](../every-device.md) 講裝置之間怎麼配合，[docs/hub.md](../hub.md) 講訊框格式，[docs/cloud.md](../cloud.md) 講中繼，[docs/privacy.md](../privacy.md) 講它保存什麼。
+
+## 和 Muse、OpenMinis 的比較
+
+| | Meta Muse | OpenMinis | nanoMuse |
+|---|---|---|---|
+| 智慧體跑在哪 | 每人一台雲端 VM | 裝了它的那台手機 | 你的手機、你的電腦，或者你自己的伺服器——一個帳號串起來 |
+| 沒有 API 的 App | 碰不到；VM 不碰你的裝置 | Android 上的一個無障礙 CLI | 手機和電腦上都把螢幕當手：看截圖，先試 API，登入由你接管。iOS 上沒有——系統不允許 |
+| 其他裝置 | 同一台 VM 的多個用戶端 | 只有裝了它的那一台 | 裝置之間透過 hub 互相拜託，審批在你手上的那台 |
+| 模型 | Meta 的 | 自己帶 | 中繼的免費額度，或者自己的 |
+| 授權 | 閉源 | GPL-3.0 | GPL-3.0-or-later，基於 OpenMinis |
+
+## 文件
+
+[nanomuse.cn/docs](https://nanomuse.cn/docs/)——各平台的安裝、多裝置、「手」、連接器、記憶、自己部署、協定。原始檔在 [docs/](../)；每個版本改了什麼在 [CHANGELOG](../../CHANGELOG.md) 和 [docs/releases/](../releases/)。
+
+## 自己部署
+
+一台 VPS，一個小時：[docs/self-hosting.md](../self-hosting.md)。三條路——不要伺服器、只用自己的 key；用 `scripts/self-host.sh` 架自己的中繼；在自己的機器上跑網頁版的執行環境。
 
 ## 參與
 
-**[開 issue](https://github.com/nano-muse/nanoMuse/issues/new/choose) · [在 Discussions 提問或分享](https://github.com/nano-muse/nanoMuse/discussions) · [給倉庫一顆星](https://github.com/nano-muse/nanoMuse)**。免費額度、自己的 key 和你的資料怎麼運作：[docs/cloud.md](../cloud.md) · [docs/own-key.md](../own-key.md) · [docs/privacy.md](../privacy.md)。建置方式、慣例（`com.openminis.app` 保留、新程式碼放在 `io.github.nanomuse.*`、上游改動標 `// nanoMuse:`、commit 帶 `Signed-off-by`）與發版流程見 [CONTRIBUTING.md](../../CONTRIBUTING.md)。
+拿它做一件真事，回報哪裡壞了，然後挑一件小而具體的事做：[CONTRIBUTING.md](../../CONTRIBUTING.md) 有環境和約定，[AGENTS.md](../../AGENTS.md) 是程式智慧體在這棵樹裡要守的規矩，[路線圖](../roadmap.md)說從哪裡入手。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions)。
 
 ## 致謝
 
-nanoMuse 站在他人的工作之上；[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) 列出各自的授權條款。App 建立在 [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 之上——proot Linux、shell、瀏覽器、MCP、技能、排程任務、無障礙執行器；沙箱來自 [proot](https://github.com/proot-me/proot) 與 [Alpine Linux](https://alpinelinux.org/)。
+nanoMuse 站在別人的工作之上；條款見 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)。
 
-## 免責聲明
+- [OpenMinis](https://github.com/OpenMinis/OpenMinis)——手機 App 所基於的裝置端智慧體，沙箱來自 [proot](https://github.com/nano-muse/proot) 和 [Alpine Linux](https://alpinelinux.org/)。
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)——桌面 App 作為外掛程式運行在它上面。
+- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop)（字節跳動）——桌面端「手」的操作器移植自它，舞台上的標記參考它的 ScreenMarker。
+- [MobileGym](https://github.com/Purewhiter/mobilegym)、[MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench)、[PhoneHarness](https://github.com/lsdefine/PhoneHarness)、[CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse)、[Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM)、[ClawGUI](https://github.com/ClawGUI/ClawGUI-APP)——手機操作器、軌跡和產品思路。
 
-nanoMuse 是獨立的社群專案，與 Meta Platforms, Inc. 及其 Muse 產品無關，未獲其背書，亦非衍生自它；Muse 是 Meta Platforms, Inc. 的商標。小龍是本專案自己的。
+## 聲明
+
+nanoMuse 是獨立的社群專案，與 Meta Platforms, Inc. 無關，也未獲其背書；Muse 是他們的商標。小龍是本專案自己的。
 
 ## 授權
 
-[GPL-3.0-or-later](../../LICENSE)。Android App 基於 OpenMinis 1.13（GPL-3.0），自 2026-09-24 起修改；見 [NOTICE](../../NOTICE) 與 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)。Python 線的早期版本以 MIT 發佈（tag `pre-openminis`）。
+[GPL-3.0-or-later](../../LICENSE)。手機 App 基於 OpenMinis 1.13（GPL-3.0），自 2026-09-24 起修改，見 [NOTICE](../../NOTICE)。Python 線更早的版本是 MIT（tag `pre-openminis`）。

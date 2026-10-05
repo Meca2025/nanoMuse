@@ -13,10 +13,11 @@
     GET  /v1/me/events                                          → the account's own timeline (sign-ins, password changes…)
     POST /v1/me/contribute {on}                                 → Data controls: "help improve nanoMuse's AI models" — keep the text of my chat turns (the default for new accounts is IMPROVE_DEFAULT)
     DELETE /v1/me/samples                                       → delete every turn kept from me
-    GET  /v1/sync/state                                         → 0.19: {enabled, cursor, counts, limits} — conversation sync between the account's devices
+    GET  /v1/sync/state                                         → 0.19: {enabled, cursor, counts, limits, working[]} — conversation sync between the account's devices
     PUT  /v1/sync/state       {enabled}                         → the switch; off deletes everything stored
-    GET  /v1/sync/changes     ?since=&limit=                    → conversations and messages after a cursor, in seq order
+    GET  /v1/sync/changes     ?since=&limit=&scope=&tail=       → conversations and messages after a cursor, in seq order (0.20: scope=all|main, tail=K with since=0)
     POST /v1/sync/changes     {device, conversations, messages} → {cursor, accepted, rejected}; the other devices hear a hub `sync` frame
+    POST /v1/sync/working     {cid, working, device?}           → 0.20: 204; the other devices hear a hub `working` frame (presence, kept 10 min in memory)
     DELETE /v1/sync/changes                                     → the store emptied, the switch kept
     DELETE /v1/sync/conversations/{cid}                         → one chat tombstoned everywhere
     POST /v1/auth/sign-out                                      → 204 (revokes this key)
@@ -517,8 +518,29 @@ def create_app(
         return out
 
     @app.get("/v1/sync/changes")
-    async def sync_changes(since: int = 0, limit: int = DEFAULT_PAGE, caller: Caller = Depends(caller_dep)) -> dict:
-        return sync_store.changes(caller.account_id, since, limit)
+    async def sync_changes(
+        since: int = 0, limit: int = DEFAULT_PAGE, scope: str = "all", tail: int = 0, caller: Caller = Depends(caller_dep)
+    ) -> dict:
+        """0.20: `scope=main` for the main conversation only; `tail=K` with `since=0` for the
+        newest K messages and their conversations (a fresh device's first pull)."""
+        return sync_store.changes(caller.account_id, since, limit, scope=scope, tail=tail)
+
+    @app.post("/v1/sync/working", status_code=204)
+    async def sync_working(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
+        """0.20: {cid, working, device?} — a turn started or ended on that conversation on the
+        calling device (`device` as `push` carries it, else `X-Nanomuse-Device`). The
+        account's other sockets hear a hub `working` frame; the relay remembers a `true` for
+        ten minutes. Presence, not data: nothing is written."""
+        body = await _json(request)
+        cid = str(body.get("cid") or "")
+        if not cid or "working" not in body:
+            raise CloudError(400, "bad_request", "Say cid and working: true or false")
+        device = str(body.get("device") or request.headers.get("x-nanomuse-device", ""))[:80]
+        frame = sync_store.set_working(caller.account_id, cid, device, bool(body["working"]))
+        hub = getattr(app.state, "hub", None)
+        if hub is not None:
+            await hub.notify_working(caller.account_id, frame)
+        return Response(status_code=204)
 
     @app.post("/v1/sync/changes")
     async def sync_push(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
@@ -1342,7 +1364,13 @@ def create_app(
             # a server error worth a traceback in the log
             raise CloudError(400, "client_disconnected", "The request ended before its body") from e
         if len(raw) > settings.max_request_bytes:
-            raise CloudError(413, "too_large", "Request too large")
+            # a dozen screenshots in one chat request got here (0.19): name the two sizes so
+            # the person, or the log, can tell at once which side has to give
+            raise CloudError(
+                413,
+                "too_large",
+                f"Request body is {len(raw) / 1048576:.1f} MB; this relay accepts up to {settings.max_request_bytes / 1048576:.0f} MB",
+            )
         try:
             obj = json.loads(raw or b"{}")
         except ValueError as e:

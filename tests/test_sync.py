@@ -77,8 +77,11 @@ class FakeSyncRelay:
         self.convs: dict[str, dict[str, Any]] = {}
         self.msgs: dict[str, dict[str, Any]] = {}
         self.pushes: list[dict[str, Any]] = []
+        self.pulls: list[dict[str, Any]] = []
+        self.working_calls: list[dict[str, Any]] = []
         self.calls: list[str] = []
         self.fail: CloudError | None = None
+        self.fail_working: CloudError | None = None
         self.names = {"phone-1": "Pixel 8", "pc-self": "Desk"}
 
     def _next(self) -> int:
@@ -157,20 +160,52 @@ class FakeSyncRelay:
             self.msgs.clear()
         return await self.state()
 
-    async def changes(self, since: int = 0, limit: int = 500) -> dict[str, Any]:
+    async def changes(
+        self, since: int = 0, limit: int = 500, scope: str = "all", tail: int = 0
+    ) -> dict[str, Any]:
         self._check("changes")
-        rows = [("c", c) for c in self.convs.values() if c["seq"] > since] + [
-            ("m", m) for m in self.msgs.values() if m["seq"] > since
+        self.pulls.append({"since": since, "limit": limit, "scope": scope, "tail": tail})
+        convs = [c for c in self.convs.values() if scope != "main" or c["kind"] == "main"]
+        cids = {c["cid"] for c in convs}
+        msgs = [m for m in self.msgs.values() if m["cid"] in cids]
+        if tail and since == 0:
+            # C9: the newest `tail` messages with their conversations, cursor at the end
+            msgs.sort(key=lambda m: m["seq"])
+            kept = msgs[-tail:]
+            parents = {m["cid"] for m in kept}
+            return {
+                "cursor": self.seq,
+                "more": False,
+                "skipped": len(msgs) - len(kept),
+                "conversations": [dict(c) for c in convs if c["cid"] in parents],
+                "messages": [dict(m) for m in kept],
+            }
+        rows = [("c", c) for c in convs if c["seq"] > since] + [
+            ("m", m) for m in msgs if m["seq"] > since
         ]
         rows.sort(key=lambda x: x[1]["seq"])
         more = len(rows) > limit
         rows = rows[:limit]
+        conversations = [dict(r) for k, r in rows if k == "c"]
+        have = {c["cid"] for c in conversations}
+        for k, r in rows:  # every message's conversation rides along
+            if k == "m" and r["cid"] not in have and r["cid"] in self.convs:
+                conversations.append(dict(self.convs[r["cid"]]))
+                have.add(r["cid"])
         return {
             "cursor": rows[-1][1]["seq"] if more else self.seq,
             "more": more,
-            "conversations": [dict(r) for k, r in rows if k == "c"],
+            "conversations": conversations,
             "messages": [dict(r) for k, r in rows if k == "m"],
         }
+
+    async def working(self, cid: str, working: bool, device: str) -> None:
+        self._check("working")
+        if self.fail_working is not None:
+            raise self.fail_working
+        if cid not in self.convs:
+            raise CloudError(404, "no_conversation", "none")
+        self.working_calls.append({"cid": cid, "working": working, "device": device})
 
     async def push(
         self, device: str, conversations: list[dict[str, Any]], messages: list[dict[str, Any]]
@@ -260,11 +295,13 @@ def synced(
     settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[tuple[TestClient, MuseService, MockLLM, FakeSyncRelay]]:
     """A signed-in runtime (a key in the vault, the hub switched off so no socket opens) whose
-    sync engine talks to the fake relay; pushes go out a few milliseconds after a turn."""
+    sync engine talks to the fake relay; pushes go out a few milliseconds after a turn. Side
+    chats are switched on here (C9 default is off; the C9 tests below cover the default)."""
     settings.server.token = "secret-token"
     settings.hub.enabled = False
     settings.hub.device_id = "pc-self"
     settings.hub.name = "Desk"
+    settings.sync.side_chats = True
     settings.cloud.base_url = "http://127.0.0.1:9"  # never reached: every relay call is faked
 
     async def fake_models(self: CloudClient) -> list[dict[str, Any]]:
@@ -521,11 +558,14 @@ def test_a_mention_hands_the_turn_to_the_device(synced, monkeypatch: pytest.Monk
 
 
 # ----------------------------------------------------------------------------- C8: one thread
-def _signed_in(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> MuseService:
+def _signed_in(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch, side_chats: bool = True
+) -> MuseService:
     settings.server.token = "secret-token"
     settings.hub.enabled = False
     settings.hub.device_id = "pc-self"
     settings.hub.name = "Desk"
+    settings.sync.side_chats = side_chats
     settings.cloud.base_url = "http://127.0.0.1:9"
 
     async def fake_models(self: CloudClient) -> list[dict[str, Any]]:
@@ -694,3 +734,210 @@ def test_sync_state_survives_a_restart(settings: Settings, tmp_path: Path) -> No
     again = MuseService(settings, llm=MockLLM([]))
     assert again.sync.cid_of(MAIN_THREAD) == "abc" and again.sync.cursor == 7
     assert again.sync.thread_of("abc") is again.threads[MAIN_THREAD]
+
+
+# ----------------------------------------------------------------------------- C9: main first
+@pytest.fixture()
+def main_only(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[TestClient, MuseService, MockLLM, FakeSyncRelay]]:
+    """The default: side chats off — the main conversation alone moves."""
+    service = _signed_in(settings, monkeypatch, side_chats=False)
+    relay = FakeSyncRelay()
+    service.sync.client = relay  # type: ignore[assignment]
+    llm = service.threads[MAIN_THREAD].agent.llm
+    assert isinstance(llm, MockLLM)
+    with TestClient(create_app(settings, service)) as client:
+        client.headers["Authorization"] = "Bearer secret-token"
+        yield client, service, llm, relay
+
+
+def test_side_chats_stay_local_by_default(main_only) -> None:
+    client, service, llm, relay = main_only
+    st = client.get("/api/sync/state").json()
+    assert st["enabled"] is True and st["side_chats"] is False and st["working"] == []
+    # the first pull of a fresh device: the tail of the main scope
+    wait_for(lambda: relay.pulls)
+    assert relay.pulls[0] == {"since": 0, "limit": 500, "scope": "main", "tail": 300}
+    # a turn in the main chat goes up; a side chat here does not
+    llm.script.append(LLMResponse(content="main answer", finish_reason="stop"))
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "main question"})
+    wait_for(lambda: any(m["text"] == "main answer" for m in relay.msgs.values()))
+    side = client.post("/api/threads", json={"title": "Local work"}).json()
+    llm.script.append(LLMResponse(content="side answer", finish_reason="stop"))
+    client.post(f"/api/threads/{side['id']}/send", json={"text": "side question"})
+    wait_for(lambda: any(e["type"] == "assistant" for e in _events(client, side["id"])))
+    time.sleep(0.3)
+    assert {c["kind"] for c in relay.convs.values()} == {"main"}
+    assert "side question" not in {m["text"] for m in relay.msgs.values()}
+    assert service.sync.cid_of(side["id"]) is None
+    # later pulls ask for the main scope from the cursor (the tail is for a cursor at zero)
+    wait_for(lambda: service.sync.cursor == relay.seq)
+    client.post("/api/sync/pull")
+    assert all(p["scope"] == "main" for p in relay.pulls)
+    assert relay.pulls[-1]["tail"] == 0 and relay.pulls[-1]["since"] == relay.seq > 0
+    # a side row that still arrives (an older relay) is ignored; a main row is applied
+    cid = str(uuid.uuid4())
+    relay.add_conversation(cid, "side", "From the phone")
+    relay.add_message(cid, "user", "phone side")
+    relay.add_message(relay_main(relay), "user", "phone main", created_at=int(time.time()) + 1)
+    client.post("/api/sync/pull")
+    titles = [t["title"] for t in client.get("/api/threads").json()]
+    assert "From the phone" not in titles
+    assert "phone main" in [e["text"] for e in _events(client, MAIN_THREAD)]
+    # deleting the local side chat sends no tombstone: nothing of it was ever on the relay
+    calls = relay.calls.count("delete_conversation")
+    client.delete(f"/api/threads/{side['id']}")
+    time.sleep(0.2)
+    assert relay.calls.count("delete_conversation") == calls
+
+
+def test_turning_side_chats_on_pulls_once_from_zero_and_pushes_them(main_only) -> None:
+    client, service, llm, relay = main_only
+    wait_for(lambda: relay.pulls)
+    # a side chat here, and one on the phone that the main-only pulls left out
+    side = client.post("/api/threads", json={"title": "Here first"}).json()
+    theirs = str(uuid.uuid4())
+    relay.add_conversation(theirs, "side", "Phone side")
+    relay.add_message(theirs, "user", "from the phone's side chat")
+    client.post("/api/sync/pull")
+    assert "Phone side" not in [t["title"] for t in client.get("/api/threads").json()]
+    cursor_before = service.sync.cursor
+    assert cursor_before == relay.seq
+    n_pulls = len(relay.pulls)
+    st = client.put("/api/sync/state", json={"side_chats": True}).json()
+    assert st["side_chats"] is True and service.sync.state["side_chats"] is True
+    # one pull from zero, everything, as a tail — the phone's side chat is here now
+    wait_for(lambda: len(relay.pulls) > n_pulls)
+    assert relay.pulls[n_pulls] == {"since": 0, "limit": 500, "scope": "all", "tail": 300}
+    wait_for(lambda: "Phone side" in [t["title"] for t in client.get("/api/threads").json()])
+    # and ours went up
+    wait_for(lambda: any(c["title"] == "Here first" for c in relay.convs.values()))
+    assert service.sync.cid_of(side["id"]) is not None
+    # the cursor did not go backwards; the pulls that follow are `all` from the cursor
+    wait_for(lambda: service.sync.cursor == relay.seq)
+    assert service.sync.cursor >= cursor_before
+    assert relay.pulls[-1]["scope"] == "all" and relay.pulls[-1]["tail"] == 0
+    # off again: a new side chat stays here, the synced one keeps its place everywhere
+    client.put("/api/sync/state", json={"side_chats": False})
+    assert client.get("/api/sync/state").json()["side_chats"] is False
+    client.post("/api/threads", json={"title": "After off"})
+    time.sleep(0.3)
+    assert "After off" not in {c["title"] for c in relay.convs.values()}
+    assert any(c["title"] == "Here first" for c in relay.convs.values())
+    assert "Phone side" in [t["title"] for t in client.get("/api/threads").json()]
+    # the setting survives a restart
+    assert client.put("/api/sync/state", json={}).status_code == 400
+    again = MuseService(settings=service.settings, llm=MockLLM([]))
+    assert again.sync.side_chats is False
+
+
+def test_working_goes_up_with_the_turn_and_comes_down_from_the_hub(main_only) -> None:
+    client, service, llm, relay = main_only
+    gate = asyncio.Event()
+
+    class GatedLLM(MockLLM):
+        async def ask(self, messages: Any, *args: Any, **kwargs: Any) -> LLMResponse:
+            await gate.wait()
+            return await super().ask(messages, *args, **kwargs)
+
+    service.threads[MAIN_THREAD].agent.llm = GatedLLM(
+        [LLMResponse(content="late", finish_reason="stop")]
+    )
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "go"})
+    # working: true right after the person's message is on the relay, under the main's cid
+    wait_for(lambda: relay.working_calls)
+    assert relay.working_calls[0] == {
+        "cid": relay_main(relay),
+        "working": True,
+        "device": "pc-self",
+    }
+    assert [m["text"] for m in relay.msgs.values()] == ["go"]
+    client.portal.call(gate.set)  # type: ignore[union-attr]
+    wait_for(lambda: len(relay.working_calls) == 2)
+    assert relay.working_calls[1]["working"] is False
+    assert any(m["text"] == "late" for m in relay.msgs.values())
+    # the other way: the phone says it is working on the main chat
+    main_cid = relay_main(relay)
+    frame = {
+        "type": "working",
+        "cid": main_cid,
+        "from": "phone-1",
+        "device_name": "Pixel 8",
+        "working": True,
+        "at": int(time.time()),
+    }
+    client.portal.call(service.sync.on_frame, frame)  # type: ignore[union-attr]
+    st = client.get("/api/sync/state").json()
+    assert st["working"] == [
+        {
+            "thread": MAIN_THREAD,
+            "cid": main_cid,
+            "device": "phone-1",
+            "device_name": "Pixel 8",
+            "at": frame["at"],
+        }
+    ]
+    # our own echo is ignored; another device's `false` does not clear the phone's line
+    client.portal.call(service.sync.on_frame, {**frame, "from": "pc-self"})  # type: ignore[union-attr]
+    client.portal.call(  # type: ignore[union-attr]
+        service.sync.on_frame, {**frame, "from": "mac-1", "working": False}
+    )
+    assert len(client.get("/api/sync/state").json()["working"]) == 1
+    # the phone's reply arrives: the line goes
+    relay.add_message(main_cid, "assistant", "phone reply", created_at=int(time.time()) + 2)
+    client.post("/api/sync/pull")
+    assert client.get("/api/sync/state").json()["working"] == []
+    # ten minutes without news and it goes on its own
+    client.portal.call(service.sync.on_frame, {**frame, "at": int(time.time()) - 601})  # type: ignore[union-attr]
+    assert client.get("/api/sync/state").json()["working"] == []
+    # an unknown conversation is nobody's line
+    client.portal.call(service.sync.on_frame, {**frame, "cid": str(uuid.uuid4())})  # type: ignore[union-attr]
+    assert client.get("/api/sync/state").json()["working"] == []
+    # a relay that refuses presence changes nothing here: the turn and its push go on
+    relay.fail_working = CloudError(404, "no_conversation", "none")
+    service.threads[MAIN_THREAD].agent.llm = MockLLM(
+        [LLMResponse(content="fine", finish_reason="stop")]
+    )
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "again"})
+    wait_for(lambda: any(m["text"] == "fine" for m in relay.msgs.values()))
+    wait_for(lambda: relay.calls.count("working") >= 3)
+    assert service.sync.active and client.get("/api/sync/state").json()["error"] == ""
+
+
+def test_the_working_frame_reaches_the_web_app(main_only) -> None:
+    client, service, llm, relay = main_only
+    wait_for(lambda: relay.pulls)
+    llm.script.append(LLMResponse(content="ok", finish_reason="stop"))
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "hi"})
+    wait_for(lambda: any(m["text"] == "ok" for m in relay.msgs.values()))
+    main_cid = relay_main(relay)
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "auth", "token": "secret-token"})
+        hello = ws.receive_json()
+        assert hello["kind"] == "hello" and hello["state"]["working"] == []
+        frame = {
+            "type": "working",
+            "cid": main_cid,
+            "from": "phone-1",
+            "device_name": "Pixel 8",
+            "working": True,
+            "at": int(time.time()),
+        }
+        client.portal.call(service.sync.on_frame, frame)  # type: ignore[union-attr]
+        msg = ws.receive_json()
+        while msg["kind"] != "working":
+            msg = ws.receive_json()
+        assert msg == {
+            "kind": "working",
+            "thread": MAIN_THREAD,
+            "cid": main_cid,
+            "device": "phone-1",
+            "device_name": "Pixel 8",
+            "working": True,
+            "at": frame["at"],
+        }
+    # a fresh page sees it in the snapshot
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "auth", "token": "secret-token"})
+        assert ws.receive_json()["state"]["working"][0]["device"] == "phone-1"

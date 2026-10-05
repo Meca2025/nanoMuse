@@ -327,7 +327,9 @@ class CloudContributeBody(BaseModel):
 
 
 class SyncStateBody(BaseModel):
-    enabled: bool = True
+    enabled: bool | None = None
+    # C9: this device's side chats too (per device, default off)
+    side_chats: bool | None = None
 
 
 class CloudLoginBody(BaseModel):
@@ -1155,10 +1157,17 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
 
     @app.put("/api/sync/state", dependencies=dep)
     async def sync_set_state(body: SyncStateBody) -> dict[str, Any]:
-        """Off tells the relay, which deletes everything stored for the account; on re-pushes
-        this device's chats and pulls the others'."""
+        """``{enabled}``: off tells the relay, which deletes everything stored for the account;
+        on re-pushes this device's chats and pulls the others'. ``{side_chats}`` (C9, per
+        device): on sends this device's side chats too and pulls the other devices' once
+        from the start; off stops both and leaves what was synced where it is."""
+        if body.enabled is None and body.side_chats is None:
+            raise HTTPException(400, "say enabled or side_chats")
         try:
-            await svc.sync.set_enabled(body.enabled)
+            if body.enabled is not None:
+                await svc.sync.set_enabled(body.enabled)
+            if body.side_chats is not None:
+                svc.sync.set_side_chats(body.side_chats)
         except CloudError as exc:
             raise _cloud_http(exc) from exc
         return await _sync_view()

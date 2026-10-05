@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: mga string na sa nanoMuse lang (0.1.38). Ang wala rito ay lalabas sa Ingles. -->
+<resources>
+    <string name="nm_cloud_other_server">Gumamit ng ibang server</string>
+    <string name="nm_cloud_server_url">Address ng relay</string>
+    <string name="nm_cloud_server_hint">https://relay.example.org</string>
+    <string name="nm_cloud_server_check">Suriin</string>
+    <string name="nm_cloud_server_use">Gamitin ang server na ito</string>
+    <string name="nm_cloud_server_now">Server: %1$s</string>
+    <string name="nm_cloud_server_ok">Sumagot ang %1$s: relay %2$s.</string>
+    <string name="nm_cloud_server_bad_url">Ilagay ang address ng relay, tulad ng https://relay.example.org.</string>
+    <string name="nm_cloud_server_https">Gumamit ng https para sa server na nasa labas ng sarili mong network. Puwede ang http para sa pribadong address (10.x, 192.168.x, 172.16–31.x, localhost, isang .local o .ts.net na pangalan).</string>
+    <string name="nm_cloud_server_unreachable">Walang relay na sumagot sa %1$s. Suriin ang address at kung tumatakbo ang relay.</string>
+    <string name="nm_cloud_server_default">Bumalik sa nanoMuse Cloud</string>
+    <string name="nm_cloud_server_row">Server</string>
+    <string name="nm_cloud_server_change">Palitan</string>
+    <string name="nm_cloud_server_change_confirm">Ang key ng teleponong ito ay para sa kasalukuyang server. Mag-sign out muna rito, saka mag-sign in sa ibang server mula sa sign-in screen.</string>
+    <string name="nm_cloud_sms_region">Ang mga code sa text message ay umaabot lang sa mga numero sa mainland China. Gumamit na lang ng e-mail address.</string>
+    <string name="nm_sync_side_title">I-sync din ang mga side chat</string>
+    <string name="nm_sync_side_sub">Naka-off: nananatili sa device na ito ang mga side chat. Naka-on: pupunta sa account ang mga side chat ng device na ito at darating dito ang mga side chat ng ibang device.</string>
+    <string name="nm_sync_working">Ginagawa ito ng %1$s…</string>
+</resources>

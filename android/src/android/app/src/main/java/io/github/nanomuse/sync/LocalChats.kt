@@ -1,6 +1,7 @@
 package io.github.nanomuse.sync
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.openminis.app.MinisApp
 import com.openminis.app.R
 import com.openminis.app.data.db.AppDatabase
@@ -36,6 +37,11 @@ interface LocalChats {
      * ids must be the same on every call, since they are mapped to mids like rows.
      */
     suspend fun prelude(sessionId: String): List<TranscriptItem> = emptyList()
+    /**
+     * Runs [block] as one write to the chats' database, so a pulled page — three hundred rows
+     * on a fresh device (C9) — lands at once instead of three hundred times. In tests, just the block.
+     */
+    suspend fun <T> transaction(block: suspend () -> T): T = block()
 }
 
 /** The OpenMinis database, read and written through its own DAO — no schema change, no upstream call that would push again. */
@@ -124,6 +130,9 @@ class RoomChats(private val context: Context, private val repo: ChatRepository) 
     override suspend fun deleteMessage(id: String) {
         db.execSQL("DELETE FROM messages WHERE id = ?", arrayOf(id))
     }
+
+    override suspend fun <T> transaction(block: suspend () -> T): T =
+        AppDatabase.getInstance(context).withTransaction { block() }
 
     // the first conversation's opening ("what should I call you?") lives in the view model only;
     // it goes out as one assistant line dated just before the chat, under a fixed id

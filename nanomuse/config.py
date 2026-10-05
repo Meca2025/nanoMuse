@@ -92,6 +92,12 @@ class AgentSettings(BaseModel):
     # "auto" → answer in the user's language; or force e.g. "zh" / "en".
     language: str = "auto"
     max_context_messages: int = 80
+    # How many of the newest image-bearing messages keep their pictures in a model request.
+    # A computer- or phone-hands session adds a screenshot or two per step, and the whole
+    # conversation goes up again on every step: a dozen 4K screenshots passed the relay's
+    # body limit (0.1.37, 413 too_large). Older ones are replaced by a short note so the
+    # model still knows a screenshot was there. 0 = keep every picture.
+    max_context_images: int = 4
     show_thinking: bool = False
     # Optional free-text profile injected into the system prompt.
     user_profile: str = ""
@@ -411,6 +417,19 @@ class CloudSettings(BaseModel):
     sync: bool = True
 
 
+class SyncSettings(BaseModel):
+    """Conversation sync, what this device sends and takes (contract C9). The account-wide
+    switch is ``[cloud] sync``; these are per device."""
+
+    # Off: only the main conversation is pushed and pulled (``scope=main``); side chats stay
+    # on the device that wrote them — they are often device-bound work, a run on this
+    # computer's screen, and most people do not want every one of them on every device.
+    # On: this device's side chats go to the account and the other devices' come here.
+    # *Settings → Data controls → Also sync side chats*; the person's switch, once set, is
+    # kept in ``sync.json`` and this is only its default.
+    side_chats: bool = False
+
+
 class HubSettings(BaseModel):
     """The hub: this computer as one of the account's devices (see docs/hub.md).
 
@@ -463,6 +482,7 @@ class Settings(BaseModel):
     gui: GUISettings = Field(default_factory=GUISettings)
     hands: HandsSettings = Field(default_factory=HandsSettings)
     cloud: CloudSettings = Field(default_factory=CloudSettings)
+    sync: SyncSettings = Field(default_factory=SyncSettings)
     hub: HubSettings = Field(default_factory=HubSettings)
     mcp: MCPSettings = Field(default_factory=MCPSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)

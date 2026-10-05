@@ -1,7 +1,7 @@
 {
   "name": "nanomuse-desktop",
   "private": true,
-  "version": "0.1.37",
+  "version": "0.1.38",
   "description": "nanoMuse Desktop: the nanoMuse desktop built on DeepSeek Harness — the harness's web app in a window of our own, with nanoMuse's account, face, Hands and Reach as plugins and the runtime for the hands bundled.",
   "homepage": "https://nanomuse.cn/",
   "license": "GPL-3.0-or-later",
@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test tests/*.test.mjs",
     "prepare-dsh": "node scripts/prepare-dsh.mjs",
     "start": "tsc -p tsconfig.json && electron .",
     "smoke": "node scripts/smoke.mjs",

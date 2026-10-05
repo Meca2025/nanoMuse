@@ -22,7 +22,8 @@ struct NanoMuseCloudView: View {
     @State private var failed = false
     /// Which way out is being confirmed, if any.
     @State private var confirm: WayOut?
-    @State private var relayBase = ""
+    /// "Use a different server" (NanoMuseRelayPicker).
+    @State private var pickingRelay = false
 
     private enum WayOut: String, Identifiable {
         case here, everywhere, delete
@@ -50,15 +51,14 @@ struct NanoMuseCloudView: View {
             } else {
                 signInSections
             }
-            if NanoMuseCloud.canOverrideBase {
-                relaySection
-            }
         }
         .navigationTitle(NanoMuseCloud.label)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $pickingRelay, onDismiss: { Task { config = await NanoMuseCloud.config() } }) {
+            NanoMuseRelayPickerSheet()
+        }
         .task {
             account = NanoMuseCloud.account
-            relayBase = NanoMuseCloud.baseURL == NanoMuseCloud.defaultBase ? "" : NanoMuseCloud.baseURL
             if signedIn { await refresh(quiet: true) } else { config = await NanoMuseCloud.config() }
         }
     }
@@ -86,6 +86,10 @@ struct NanoMuseCloudView: View {
                 Label(AppLocalized("Refresh"), systemImage: "arrow.clockwise")
             }
             .disabled(busy)
+            // The relay this sign-in belongs to; changing it signs out first.
+            NanoMuseRelayRow(busy: busy) {
+                Task { await changeRelay() }
+            }
         } footer: {
             if let message {
                 Text(message).foregroundStyle(failed ? Color.red : Color.secondary)
@@ -308,6 +312,16 @@ struct NanoMuseCloudView: View {
         } footer: {
             privacyFooter
         }
+
+        // Anyone can run the relay; the sign-in can go to one's own.
+        Section {
+            Button(AppLocalized("Use a different server")) { pickingRelay = true }
+                .disabled(busy)
+        } footer: {
+            if NanoMuseCloud.usesOwnRelay {
+                Text(String(format: AppLocalized("Server: %@"), NanoMuseCloud.relayHost))
+            }
+        }
     }
 
     private var privacyFooter: some View {
@@ -317,26 +331,27 @@ struct NanoMuseCloudView: View {
         }
     }
 
-    // MARK: - Debug
-
-    private var relaySection: some View {
-        Section {
-            TextField(NanoMuseCloud.defaultBase, text: $relayBase)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .onSubmit { NanoMuseCloud.setBaseURL(relayBase) }
-                .nmOnChange(of: relayBase) { newValue in NanoMuseCloud.setBaseURL(newValue) }
-        } header: {
-            Text("Relay (debug builds only)")
-        } footer: {
-            Text("Another relay to sign in against, for example one running on a laptop on the same Wi-Fi. Empty means the default.")
-        }
-    }
-
     // MARK: - Actions
 
+    /// Settings → Account → Change: sign out on this phone, then the picker.
+    private func changeRelay() async {
+        busy = true
+        defer { busy = false }
+        await NanoMuseCloud.signOut()
+        account = nil
+        message = nil
+        failed = false
+        pickingRelay = true
+    }
+
     private func sendCode() async {
+        // A number outside mainland China gets no text message; say so before asking the relay
+        // (whose `phone_region` answer is the same sentence).
+        if NanoMuseCloud.needsEmailInstead(identifier: identifier) {
+            failed = true
+            message = NanoMuseCloud.phoneRegionSentence
+            return
+        }
         busy = true
         failed = false
         defer { busy = false }

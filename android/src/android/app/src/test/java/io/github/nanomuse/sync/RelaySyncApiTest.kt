@@ -114,6 +114,56 @@ class RelaySyncApiTest {
         assertNull(boom.cause)
     }
 
+    // ── contract C9 ───────────────────────────────────────────────────────
+
+    @Test fun `C9 the changes path carries scope and tail only when they mean something`() {
+        assertEquals("/v1/sync/changes?since=0&limit=500", RelaySyncApi.changesPath(0, 500, SyncApi.SCOPE_ALL, 0))
+        assertEquals("/v1/sync/changes?since=0&limit=500&scope=main", RelaySyncApi.changesPath(0, 500, SyncApi.SCOPE_MAIN, 0))
+        assertEquals("/v1/sync/changes?since=0&limit=500&scope=main&tail=300", RelaySyncApi.changesPath(0, 500, SyncApi.SCOPE_MAIN, 300))
+        assertEquals("/v1/sync/changes?since=0&limit=500&tail=300", RelaySyncApi.changesPath(0, 500, SyncApi.SCOPE_ALL, 300))
+        // tail is a since=0 thing: a later page never asks for it
+        assertEquals("/v1/sync/changes?since=1200&limit=500&scope=main", RelaySyncApi.changesPath(1200, 500, SyncApi.SCOPE_MAIN, 300))
+    }
+
+    @Test fun `C9 a tail page reports what it kept back`() {
+        server.enqueue(MockResponse().setBody("""{"cursor":900,"more":false,"skipped":612,"conversations":[],"messages":[]}"""))
+        val ch = api.changes(0, 500, SyncApi.SCOPE_MAIN, 300)
+        assertEquals("/v1/sync/changes?since=0&limit=500&scope=main&tail=300", server.takeRequest().path)
+        assertEquals(612, ch.skipped)
+        assertEquals(900, ch.cursor)
+        assertFalse(ch.more)
+    }
+
+    @Test fun `C9 working goes out as a POST and is read back from state`() {
+        server.enqueue(MockResponse().setResponseCode(204))
+        api.working("phone-1", "c-main", true)
+        val req = server.takeRequest()
+        assertEquals("POST", req.method)
+        assertEquals("/v1/sync/working", req.path)
+        val body = JSONObject(req.body.readUtf8())
+        assertEquals("c-main", body.getString("cid"))
+        assertTrue(body.getBoolean("working"))
+        assertEquals("phone-1", body.getString("device"))
+
+        server.enqueue(
+            MockResponse().setBody(
+                """{"enabled":true,"cursor":12,"counts":{"conversations":1,"messages":3},
+                    "working":[{"cid":"c-main","from":"desk-1","device_name":"Mac","working":true,"at":1738000000},
+                               {"cid":"c-side","from":"desk-1","device_name":"Mac","working":false,"at":1738000001}]}""",
+            ),
+        )
+        val s = api.state()
+        assertEquals(listOf(WorkingPresence("c-main", "desk-1", "Mac", 1738000000)), s.working)
+    }
+
+    @Test fun `C9 a working frame from the hub is one presence or none`() {
+        val on = JSONObject("""{"type":"working","cid":"c1","from":"desk-1","device_name":"Mac","working":true,"at":1738000000}""")
+        assertEquals(WorkingPresence("c1", "desk-1", "Mac", 1738000000), SyncJson.working(on))
+        val off = JSONObject("""{"type":"working","cid":"c1","from":"desk-1","working":false,"at":1738000000}""")
+        assertNull(SyncJson.working(off))
+        assertNull(SyncJson.working(JSONObject("""{"type":"working","working":true}""")))
+    }
+
     @Test fun `no server is status 0`() {
         val gone = RelaySyncApi("http://127.0.0.1:1", "k", "ua")
         val e = runCatching { gone.state() }.exceptionOrNull() as SyncException
