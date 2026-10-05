@@ -3,7 +3,7 @@
 #
 #   Windows  nanoMuse-Desktop-<v>-win-x64.exe        (NSIS installer)
 #   macOS    nanoMuse-Desktop-<v>-mac-arm64.dmg / -x64.dmg  (+ .zip)
-#   Linux    nanoMuse-Desktop-<v>-linux-x64.AppImage / .deb
+#   Linux    nanoMuse-Desktop-<v>-linux-x64.AppImage / .deb / .tar.gz
 #
 # Each platform builds the bundle (harness/dsh-nanomuse: pnpm build, test, pack), stages dsh
 # next to it with npm (scripts/prepare-dsh.mjs — the platform's own native prebuilds), builds
@@ -163,6 +163,7 @@ jobs:
           path: |
             harness/desktop/dist/*.AppImage
             harness/desktop/dist/*.deb
+            harness/desktop/dist/*.tar.gz
             harness/desktop/dist/*.exe
             harness/desktop/dist/*.dmg
             harness/desktop/dist/*.zip

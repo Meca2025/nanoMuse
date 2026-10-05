@@ -23,6 +23,7 @@ import { firstRunNeeded, stageOf, dotOf, type Stage } from '../firstrun.ts'
 import { call, type CloudStatus, type Translate } from './api.ts'
 import { useCloudConfig, type AccountSheet } from './AccountPage.tsx'
 import { Avatar } from './Avatar.tsx'
+import { BrandMark } from './BrandMark.tsx'
 import { gatedPermissions, openLink, type PermissionKind } from './bridge.ts'
 import { usePermissions, type Permissions } from './permissions.ts'
 import { BlackScreenNotice, HandsTryRows } from './HandsCheck.tsx'
@@ -278,7 +279,9 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
     if (starting) {
       body = h('div', { className: 'nm-ob-center' }, h(Spinner))
     } else if (signIn === 'identifier') {
+      // the sign-in pages are the app's own, so the app's mark is their hero (the face comes later: the welcome and "Meet" pages)
       body = h('form', { className: 'nm-ob-center nm-ob-form', onSubmit: sendCode },
+        h(BrandMark, { size: 72, className: 'nm-fr-hero-mark' }),
         h('h1', { className: 'nm-ob-title' }, t('obSignInTitle')),
         h('input', { className: 'nm-field', value: identifier, placeholder: t('obIdentifier'), autoComplete: 'username', autoFocus: true, 'aria-label': t('obIdentifier'), onChange: (e: FormEvent<HTMLInputElement>) => setIdentifier(e.currentTarget.value) }),
         h('p', { className: 'nm-ob-fine' }, t('obTermsLead'), ' ', link(TERMS_URL, t('obTerms')), t('obTermsAnd'), link(PRIVACY_URL, t('obPrivacy')), t('obTermsEnd')),
@@ -287,6 +290,7 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
         h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setSignIn(null) } }, t('obBack')))
     } else if (signIn === 'code') {
       body = h('div', { className: 'nm-ob-center nm-ob-form' },
+        h(BrandMark, { size: 72, className: 'nm-fr-hero-mark' }),
         h('h1', { className: 'nm-ob-title' }, t('obCodeTitle')),
         h('p', { className: 'nm-ob-fine' },
           t('obCodeSent', { identifier: identifier.trim() }), ' ',
@@ -304,6 +308,7 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
           h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setCode(''); setSignIn('identifier') } }, t('obChangeIdentifier'))))
     } else if (signIn === 'password') {
       body = h('form', { className: 'nm-ob-center nm-ob-form', onSubmit: login },
+        h(BrandMark, { size: 72, className: 'nm-fr-hero-mark' }),
         h('h1', { className: 'nm-ob-title' }, t('obPasswordTitle')),
         h('p', { className: 'nm-ob-fine' }, identifier.trim()),
         h('input', { className: 'nm-field', type: 'password', value: password, placeholder: t('obPassword'), autoComplete: 'current-password', autoFocus: true, 'aria-label': t('obPassword'), onChange: (e: FormEvent<HTMLInputElement>) => setPassword(e.currentTarget.value) }),
@@ -461,7 +466,8 @@ function PermissionsPage({ t, name, onDone }: { t: Translate; name: string; onDo
   const perms = usePermissions(['accessibility', 'screen'])
   const done = perms.granted('accessibility') && perms.granted('screen')
   return h(Page, {
-    hero: h('span', { className: 'nm-fr-hero-icon' }, h(IconHand, { size: 40 })),
+    // the app asks for the permissions, so the app's mark is the hero (the hand stays on the rows)
+    hero: h(BrandMark, { size: 72, className: 'nm-fr-hero-mark' }),
     title: t('frHandsTitle'),
     sub: t('frHandsSub'),
     primary: done ? { label: t('frContinue'), onClick: onDone } : undefined,

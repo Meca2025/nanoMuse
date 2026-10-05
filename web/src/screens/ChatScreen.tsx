@@ -141,10 +141,6 @@ export function ChatScreen() {
               <span className="flex max-w-full items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">
                 <MonitorSmartphone size={11} /> <span className="truncate">{t("from {device}", { device: thread.remote_from.name })}</span>
               </span>
-            ) : thread.origin_device ? (
-              <span className="flex max-w-full items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">
-                <MonitorSmartphone size={11} /> <span className="truncate">{t("From {device}", { device: thread.origin_device_name || thread.origin_device })}</span>
-              </span>
             ) : (
               <span className="truncate rounded-full bg-surface-2 px-2.5 py-0.5 text-[11.5px] font-medium text-fg/80">{thread.title}</span>
             )
@@ -878,14 +874,13 @@ export function ThreadList({
               <div className={cx("font-medium truncate flex items-center gap-2", compact ? "text-[13.5px]" : "text-[15px]")}>
                 {th.device ? (
                   <span className="text-accent">{kindOf(th.device) === "computer" ? <Monitor size={14} /> : <Smartphone size={14} />}</span>
-                ) : th.remote_from || th.origin_device ? (
+                ) : th.remote_from ? (
                   <MonitorSmartphone size={14} className="text-muted" />
                 ) : null}
                 <span className="truncate">{th.id === "main" ? t(th.title) : th.title}</span>
                 {th.busy && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 animate-pulse" />}
               </div>
               <div className={cx("text-muted", compact ? "text-[11.5px]" : "text-[12px]")}>
-                {th.origin_device && !th.remote_from ? `${t("From {device}", { device: th.origin_device_name || th.origin_device })} · ` : ""}
                 {t("{n} events", { n: th.events })}{th.queued ? ` · ${t("{n} queued", { n: th.queued })}` : ""} · {timeShort(th.updated_at)}
               </div>
             </button>

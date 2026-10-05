@@ -319,6 +319,7 @@ struct AIChatView: View {
 
     @State private var floatingBarHeight: CGFloat = 0
     @State private var nmCardsHeight: CGFloat = 0 // nanoMuse: the cards above the composer (avatar takes, name chooser)
+    @StateObject private var nmComposer = NanoMuseComposerWatch() // nanoMuse: rebuilds the composer host when it stops laying out (the "lost keyboard")
     @State private var showFileBrowser = false
     // [T-browser-download-ux-v2] Downloads panel + "Show in Files" locate target.
     @State private var showDownloadsPanel = false
@@ -608,6 +609,10 @@ struct AIChatView: View {
                             inputBar
                             #endif
                         }
+                        // nanoMuse: the probe tells the watch whether this stack is really in a window and how
+                        // tall it is; a tick on `.id` rebuilds the whole host when it is not (NanoMuseComposerWatch).
+                        .background(NanoMuseComposerProbe(watch: nmComposer)) // nanoMuse:
+                        .id(nmComposer.rebuildTick) // nanoMuse:
                         // Register the composer (tool preview + input bar) as a
                         // region the global speech capsule must not cover.
                         .capsuleProtectedFrame("inputBar")
@@ -1230,6 +1235,7 @@ struct AIChatView: View {
             inputBarHeightDebounce?.cancel()
             inputBarHeightDebounce = nil
             AppLogger(category: "InputBarLayout").info("inputBarHeight re-arm seed on appear (was \(inputBarHeight))")
+            nmComposer.visible = true // nanoMuse: the composer watch only acts while the chat is on screen
             vm.sessionId = sessionId
             vm.draftId = draftId
             vm.remoteDeviceId = remoteDeviceId
@@ -1349,6 +1355,7 @@ struct AIChatView: View {
         }
         .onDisappear {
             isChatViewVisible = false
+            nmComposer.visible = false // nanoMuse: a host torn down because the chat left is not a failure
             // [T-voice-inputbar-collapse-selfheal] The health probe must not
             // outlive the view — its report would describe a composer that no
             // longer exists.
@@ -1482,8 +1489,10 @@ struct AIChatView: View {
                         AppLogger(category: "InputBarLayout").info("[InputBarHealth] OK after foreground — composer re-reported geometry (h=\(latestInputBarFrameH) committed=\(inputBarHeight))")
                     } else {
                         AppLogger(category: "InputBarLayout").error("[InputBarHealth] STALLED — no geometry callback 900ms after foreground. committed=\(inputBarHeight) latest=\(latestInputBarFrameH) lastReport=\(String(format: "%.1f", age))s ago voice=\(voiceInputActive) editing=\(voiceVM.isEditingTranscript) seeded=\(didSeedInputBarHeight). The composer host is not laying out; expect a blank bottom area. Leaving and re-entering the session rebuilds it.")
+                        nmComposer.stalled() // nanoMuse: the rebuild upstream only describes — if the host really is gone, NanoMuseComposerWatch re-creates it
                     }
                 }
+                nmComposer.sceneActive() // nanoMuse: and a plain check a beat after every foreground
                 // [T-voice-bg-fg-gap] Foreground reseal: if we return to a
                 // voice-mode-not-editing state, no responder should be armed.
                 // Releasing here is a no-op when nothing is focused and clears
@@ -3556,7 +3565,9 @@ struct AIChatView: View {
     private var nmPillField: AnyView { // nanoMuse:
         let field = composerTextField // nanoMuse:
         if let height = composerTextHeight { return AnyView(field.frame(height: height)) } // nanoMuse:
-        return AnyView(field.fixedSize(horizontal: false, vertical: true)) // nanoMuse:
+        // nanoMuse: never below one line — a text view whose host has not laid out measures 0 and would
+        // fold the pill down to its padding (NanoMuseComposerWatch.fieldFloor is the natural one-line height).
+        return AnyView(field.fixedSize(horizontal: false, vertical: true).frame(minHeight: NanoMuseComposerWatch.fieldFloor)) // nanoMuse:
     } // nanoMuse:
 
     // nanoMuse: the pill's mic — the same switch into voice mode as MicButton's onTap.
@@ -3810,6 +3821,7 @@ struct AIChatView: View {
                 proxy.frame(in: .global)
             } action: { frame in
                 let newH = frame.size.height
+                nmComposer.geometry(height: newH) // nanoMuse: every sample, the zero ones included — a lasting 0 is the collapsed composer
                 // [voice-inputbar-padding-zero] Guard against transient 0.
                 guard newH > 0 else { return }
 

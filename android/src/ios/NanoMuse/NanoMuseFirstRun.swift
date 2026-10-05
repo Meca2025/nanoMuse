@@ -145,10 +145,11 @@ struct NanoMuseFirstRunView: View {
         }
     }
 
-    // The first page: the face, one line on what it is, the notice, and the one door — the account.
+    // The first page: the app's tile (docs/brand.md: the sign-in page stands for the app, not the
+    // agent), one line on what it is, the notice, and the one door — the account.
     private var welcomePage: some View {
         NanoMuseSetupPage(
-            hero: { NanoMuseFaceView(mood: .idle, size: 104) },
+            hero: { NanoMuseBrandMark(size: 96) },
             title: AppLocalized("Welcome to nanoMuse"),
             subtitle: AppLocalized("An open-source personal agent for every device you own."),
             primaryLabel: AppLocalized("Sign in — free"),
@@ -631,6 +632,8 @@ final class NanoMuseFirstConversation: ObservableObject {
         var file = current
         file.metadata.name = name
         try? SoulStore.save(file)
+        // C8: the name is the account's — the other devices hear it (debounced, with the face kept).
+        NanoMuseProfileSync.shared.nameChanged()
         card = NanoMuseNamingCard(suggestions: card?.suggestions ?? currentSuggestions(), chosen: name)
     }
 

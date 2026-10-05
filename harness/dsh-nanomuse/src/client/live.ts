@@ -133,6 +133,8 @@ export interface Live {
   motion: LiveMotion
   /** When the hands last saw an all-black screen (macOS: Screen Recording missing or granted after launch); 0 when never. */
   blackScreenAt: number
+  /** Conversation sync (C8): `rev` moves with every change; the session that is the account's main conversation. Absent on an older host. */
+  sync?: { rev: number; mainSession: string } | undefined
   /** Whether the stream is open; false before the first snapshot and while reconnecting. */
   streaming: boolean
 }

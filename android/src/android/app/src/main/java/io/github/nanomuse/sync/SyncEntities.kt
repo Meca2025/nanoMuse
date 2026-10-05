@@ -1,6 +1,7 @@
 package io.github.nanomuse.sync
 
 import android.content.Context
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -11,6 +12,8 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /*
  * What this phone remembers about sync, apart from the chats themselves: which local chat is
@@ -43,6 +46,9 @@ data class SyncMessage(
     val mid: String,
     val sessionId: String,
     val pushed: Boolean,
+    /** The device that wrote the row — blank for this phone's own; another id for a pulled one (contract C8's caption). */
+    @ColumnInfo(defaultValue = "") val device: String = "",
+    @ColumnInfo(defaultValue = "") val deviceName: String = "",
 )
 
 @Entity(tableName = "sync_meta")
@@ -59,6 +65,8 @@ interface SyncStore {
     suspend fun removeConversation(sessionId: String)
     suspend fun messages(sessionId: String): List<SyncMessage>
     suspend fun messageByMid(mid: String): SyncMessage?
+    /** The rows that came from the relay with a device on them (pulled, not this phone's own). */
+    suspend fun pulledMessages(): List<SyncMessage>
     suspend fun putMessages(list: List<SyncMessage>)
     suspend fun removeMessages(messageIds: List<String>)
     suspend fun removeMessagesOf(sessionId: String)
@@ -104,6 +112,9 @@ interface SyncDao {
     @Query("SELECT * FROM sync_messages WHERE mid = :mid")
     suspend fun messageByMid(mid: String): SyncMessage?
 
+    @Query("SELECT * FROM sync_messages WHERE device != ''")
+    suspend fun pulledMessages(): List<SyncMessage>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun putMessages(list: List<SyncMessage>)
 
@@ -129,15 +140,24 @@ interface SyncDao {
     suspend fun clearMeta()
 }
 
-@Database(entities = [SyncConversation::class, SyncMessage::class, SyncMeta::class], version = 1, exportSchema = false)
+@Database(entities = [SyncConversation::class, SyncMessage::class, SyncMeta::class], version = 2, exportSchema = false)
 abstract class SyncDatabase : RoomDatabase() {
     abstract fun dao(): SyncDao
 
     companion object {
         @Volatile private var instance: SyncDatabase? = null
 
+        /** 0.1.37: which device wrote a pulled row, for the per-message caption. The ids and the cursor must survive. */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sync_messages ADD COLUMN device TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE sync_messages ADD COLUMN deviceName TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun get(context: Context): SyncDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, SyncDatabase::class.java, "nanomuse_sync.db")
+                .addMigrations(MIGRATION_1_2)
                 .fallbackToDestructiveMigration()
                 .build()
                 .also { instance = it }
@@ -159,6 +179,7 @@ class RoomSyncStore(private val dao: SyncDao) : SyncStore {
     override suspend fun removeConversation(sessionId: String) = dao.removeConversation(sessionId)
     override suspend fun messages(sessionId: String): List<SyncMessage> = dao.messages(sessionId)
     override suspend fun messageByMid(mid: String): SyncMessage? = dao.messageByMid(mid)
+    override suspend fun pulledMessages(): List<SyncMessage> = dao.pulledMessages()
     override suspend fun putMessages(list: List<SyncMessage>) {
         if (list.isNotEmpty()) dao.putMessages(list)
     }

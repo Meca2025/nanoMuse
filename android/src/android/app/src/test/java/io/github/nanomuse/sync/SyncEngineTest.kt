@@ -87,8 +87,9 @@ class SyncEngineTest {
         // and the phone's line went up under the adopted cid
         assertEquals(setOf("cid-main"), relay.msgs.values.map { it.cid }.toSet())
         assertEquals(3, relay.msgs.size)
-        // the main chat is never badged as another device's
-        assertTrue(p.engine.badges().isEmpty())
+        // the mac's two rows carry its name; the phone's own row carries nothing
+        val rows = p.chats.messages("main")
+        assertEquals(mapOf(rows[0].id to "Mac", rows[1].id to "Mac"), p.engine.captions())
     }
 
     @Test fun `no main chat yet - the remote one becomes it`() = runTest {
@@ -127,7 +128,7 @@ class SyncEngineTest {
         assertTrue(b.store.msgs.values.all { it.pushed })
     }
 
-    @Test fun `a side chat from another device appears with its badge and can be continued`() = runTest {
+    @Test fun `a side chat from another device appears as a normal chat, its rows captioned, and can be continued`() = runTest {
         val relay = FakeRelay(mapOf("pixel" to "Pixel 8"))
         relay.seed("pixel", "cid-s", "side", "Groceries", 1_700_000_000)
         relay.seedMessage("pixel", "cid-s", "mid-1", "user", "milk, eggs", 1_700_000_001, listOf(Attachment("list.pdf", "application/pdf", 12)))
@@ -139,14 +140,16 @@ class SyncEngineTest {
         assertEquals(3, r.applied)
         val local = p.chats.sessions.values.single()
         assertEquals("Groceries", local.title)
-        assertEquals(mapOf(local.id to "Pixel 8"), p.engine.badges())
         val rows = p.chats.messages(local.id)
         assertEquals(2, rows.size)
         assertTrue(rows[0].partsJson.contains("[Attachment list.pdf]"))
+        // per message, not per chat: each pulled row says where it was written
+        assertEquals(rows.associate { it.id to "Pixel 8" }, p.engine.captions())
         // the person goes on here: the new turn syncs back under the same cid
         p.chats.user(local.id, "and bread"); p.chats.assistant(local.id, "added")
         p.engine.push()
         assertEquals(4, relay.msgs.values.count { it.cid == "cid-s" })
+        assertEquals(2, p.engine.captions().size) // this phone's own two rows carry no caption
         // the second pull brings nothing new: known mids are left alone
         assertEquals(0, p.engine.pull().applied)
         assertEquals(4, p.chats.messages(local.id).size)
@@ -292,6 +295,113 @@ class SyncEngineTest {
         assertTrue(relay.msgs.isEmpty())
         assertEquals(1, p.chats.messages("main").size)
         assertFalse(p.store.convs.isEmpty())
+    }
+
+    // ── contract C8 ───────────────────────────────────────────────────────
+
+    @Test fun `C8 backfill - the whole history goes out oldest first, the first conversation's opening and naming fence included`() = runTest {
+        val relay = FakeRelay()
+        val p = phone(relay, "phone-a")
+        // the first conversation, weeks ago: the scripted opening is virtual, the rows are real
+        p.chats.addSession("first", createdAt = 1_690_000_000_000L); p.chats.main = "first"
+        p.chats.preludes["first"] = listOf(TranscriptItem("nm-intro:first", "assistant", "Hello. What should I call you?", emptyList(), 1_689_999_999_000L))
+        p.chats.user("first", "Call me Bob", at = 1_690_000_001_000L)
+        val fence = "Bob it is. What would you like to call me?\n\n```nanomuse-naming\n{\"user_address\": \"Bob\", \"suggest\": [\"Pip\", \"Wren\"]}\n```"
+        p.chats.assistant("first", fence, at = 1_690_000_002_000L)
+        p.chats.user("first", "Pip", at = 1_690_000_003_000L)
+        p.chats.assistant("first", "Pip, then.\n\n```nanomuse-naming\n{\"agent_name\": \"Pip\"}\n```", at = 1_690_000_004_000L)
+        // a side chat in between, and more in the main chat later
+        p.chats.addSession("trip", "Trip", createdAt = 1_690_000_100_000L)
+        p.chats.user("trip", "plan a trip", at = 1_690_000_100_000L); p.chats.assistant("trip", "where to?", at = 1_690_000_101_000L)
+        p.chats.user("first", "later question", at = 1_690_000_200_000L); p.chats.assistant("first", "later answer", at = 1_690_000_201_000L)
+
+        // sign-in: the pull first (nothing), then everything
+        p.engine.push()
+
+        val sent = relay.msgs.values.sortedBy { it.seq }
+        assertEquals(
+            listOf("Hello. What should I call you?", "Call me Bob", fence, "Pip", "Pip, then.\n\n```nanomuse-naming\n{\"agent_name\": \"Pip\"}\n```",
+                "plan a trip", "where to?", "later question", "later answer"),
+            sent.map { it.text },
+        )
+        assertEquals(sent.map { it.createdAt }, sent.map { it.createdAt }.sorted())
+        assertEquals("main", relay.convs.getValue(p.store.convs.getValue("first").cid).kind)
+        // the opening is mapped like a row and is not sent twice
+        assertEquals(0, p.engine.push())
+        assertEquals(9, relay.msgs.size)
+    }
+
+    @Test fun `C8 push at send - the person's line goes out while the turn runs, the reply when it ends, nothing twice`() = runTest {
+        val relay = FakeRelay()
+        val p = phone(relay, "phone-a")
+        p.chats.addSession("main"); p.chats.main = "main"
+        p.chats.user("main", "do the thing")
+
+        p.engine.push() // ConversationSync.sent(): right after the row is written
+        assertEquals(listOf("user" to "do the thing"), relay.msgs.values.map { it.role to it.text })
+
+        // the turn runs: tool steps are not the conversation; the lone user row is not sent again
+        p.chats.assistantTool("main", "On it."); p.chats.toolResult("main")
+        assertEquals(0, p.engine.push())
+        assertEquals(1, relay.msgs.size)
+
+        // the turn ends: the final text goes, under a mid of its own
+        p.chats.assistant("main", "Done.")
+        p.engine.push()
+        assertEquals(listOf("user" to "do the thing", "assistant" to "Done."), relay.msgs.values.sortedBy { it.seq }.map { it.role to it.text })
+        assertEquals(2, relay.msgs.keys.toSet().size)
+    }
+
+    @Test fun `C8 main merge - the local main shows the union with the relay's rows in time order, by mid once`() = runTest {
+        val relay = FakeRelay(mapOf("desk-1" to "Mac"))
+        relay.seed("desk-1", "cid-main", "main", null, 1_700_000_000)
+        relay.seedMessage("desk-1", "cid-main", "mid-0", "user", "mac 0", 1_700_000_000)
+        relay.seedMessage("desk-1", "cid-main", "mid-2", "assistant", "mac 2", 1_700_000_002)
+        relay.seedMessage("desk-1", "cid-main", "mid-4", "user", "mac 4", 1_700_000_004)
+        val p = phone(relay, "phone-a")
+        p.chats.addSession("main"); p.chats.main = "main"
+        p.chats.user("main", "phone 1", at = 1_700_000_001_000)
+        p.chats.assistant("main", "phone 3", at = 1_700_000_003_000)
+
+        p.engine.push() // pull, adopt, merge, then ours go up
+
+        val texts = p.chats.messages("main").map { Transcript.items(listOf(it)).first().text }
+        assertEquals(listOf("mac 0", "phone 1", "mac 2", "phone 3", "mac 4"), texts)
+        // one row per mid, here and there
+        assertEquals(5, p.store.msgs.values.map { it.mid }.toSet().size)
+        assertEquals(5, relay.msgs.size)
+        assertEquals(1, relay.convs.size)
+        // the mac's rows between ours are not "steps" of our turns: no tombstone goes out for them
+        assertTrue(relay.msgs.values.none { it.deleted })
+        // nothing more to say in either direction
+        assertEquals(0, p.engine.pull().applied)
+        assertEquals(0, p.engine.push())
+        assertEquals(5, p.chats.messages("main").size)
+    }
+
+    @Test fun `C8 echo - a message this phone pushed comes back and makes no second row`() = runTest {
+        val relay = FakeRelay(mapOf("phone-a" to "Pixel 8"))
+        val p = phone(relay, "phone-a")
+        p.chats.addSession("main"); p.chats.main = "main"
+        p.chats.user("main", "hi"); p.chats.assistant("main", "hello")
+        p.engine.push()
+        val cid = p.store.convs.getValue("main").cid
+
+        // the relay lists our rows as changes after the cursor we pushed at (as a real relay does)
+        relay.msgs.values.forEach { it.seq = ++relay.seq }
+        assertEquals(0, p.engine.pull().applied)
+        assertEquals(2, p.chats.messages("main").size)
+        assertTrue(p.engine.captions().isEmpty())
+
+        // a row of ours under a mid this phone no longer maps (the mapping was lost): still ours, still skipped
+        relay.seedMessage("phone-a", cid, "mid-lost", "user", "hi", 1_700_000_000)
+        assertEquals(0, p.engine.pull().applied)
+        assertEquals(2, p.chats.messages("main").size)
+
+        // another device's row under the same cid is new, and captioned
+        relay.seedMessage("desk-1", cid, "mid-desk", "user", "from the desk", 1_700_000_100)
+        assertEquals(1, p.engine.pull().applied)
+        assertEquals(3, p.chats.messages("main").size)
     }
 
     @Test fun `a long text is cut at what the relay keeps`() = runTest {

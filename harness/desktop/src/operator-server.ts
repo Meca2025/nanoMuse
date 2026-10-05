@@ -87,7 +87,8 @@ export function startOperatorServer(operator: Operator, log: (line: string) => v
     handle(req, res).catch((exc: unknown) => {
       const status = exc instanceof OperatorError ? exc.status : 500;
       const message = exc instanceof Error ? exc.message : String(exc);
-      if (status >= 500) log(`operator server: ${req.method} ${req.url}: ${message}`);
+      // 5xx and the permission refusal (403, macOS without Screen Recording) go to desktop.log; the client's own mistakes (4xx) do not
+      if (status >= 500 || status === 403) log(`operator server: ${req.method} ${req.url}: ${status} ${message}`);
       if (!res.headersSent) send(res, status, { error: message });
       else res.end();
     });

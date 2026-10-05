@@ -1151,13 +1151,8 @@ struct NanoMuseDrawer: View {
                     .font(.body)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                // C7: a chat that arrived through sync names the device it was started on.
-                if let from = sync.originDeviceName(for: session.id) {
-                    Text(String(format: AppLocalized("From %@"), from))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                // C8: a chat that arrived through sync is an ordinary chat in this list; the
+                // device shows under each of its bubbles ("From Pixel 8"), not here.
                 if let last = session.lastMessage, !last.isEmpty {
                     Text(last)
                         .font(.footnote)

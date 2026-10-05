@@ -33,8 +33,9 @@ import org.json.JSONObject
  * said. On by default once signed in; Settings → Data controls turns it off (the relay then
  * deletes what it kept).
  *
- * - **Push** two seconds after a row is written, a chat renamed or deleted (the hooks in
- *   `ChatRepository`), and when the app goes to the background.
+ * - **Push** at once when the person sends a message ([sent], from the view model's send
+ *   path — contract C8), two seconds after any other row is written, a chat renamed or deleted
+ *   (the hooks in `ChatRepository`), and when the app goes to the background.
  * - **Pull** when the app comes to the foreground, on the hub's `sync` frame (another device
  *   pushed), and every minute while in the foreground.
  * - 409 `sync_off` turns the local switch off; 401 stops everything until the next sign-in;
@@ -59,9 +60,9 @@ object ConversationSync {
     /** The switch as this phone knows it (the relay's word wins when it differs). */
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
 
-    private val _badges = MutableStateFlow<Map<String, String>>(emptyMap())
-    /** Local chat id → the name of the device it came from, for the drawer's "From Pixel 8". */
-    val badges: StateFlow<Map<String, String>> = _badges.asStateFlow()
+    private val _captions = MutableStateFlow<Map<String, String>>(emptyMap())
+    /** Local message row id → the name of the device it was written on, for the bubble's "From Pixel 8" (C8: per message, never per chat). */
+    val captions: StateFlow<Map<String, String>> = _captions.asStateFlow()
 
     private val _pulled = MutableSharedFlow<Set<String>>(extraBufferCapacity = 16)
     /** Chats that just got rows from another device; an open chat reloads itself. */
@@ -69,7 +70,7 @@ object ConversationSync {
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    /** App start: the switch, the lifecycle, the badges the drawer shows. */
+    /** App start: the switch, the lifecycle, the captions the bubbles show. */
     fun init(context: Context) {
         val ctx = context.applicationContext
         app = ctx
@@ -90,7 +91,7 @@ object ConversationSync {
                 }
             },
         )
-        scope.launch { lock.withLock { runCatching { _badges.value = SyncEngine.badges(RoomSyncStore(ctx), Hub.deviceId(ctx)) } } }
+        scope.launch { lock.withLock { runCatching { _captions.value = SyncEngine.captions(RoomSyncStore(ctx), Hub.deviceId(ctx)) } } }
     }
 
     /** Signed in, and the switch is on, and the relay has not refused the key. */
@@ -115,6 +116,16 @@ object ConversationSync {
         if (!active(ctx)) return
         pushJob?.cancel()
         scope.launch { run(ctx) { it.push() } }
+    }
+
+    /**
+     * The person sent a message (its row is written): it reaches the other devices now, not at
+     * the end of the turn (contract C8). The reply still goes with the turn's last row, through
+     * [changed] — [Transcript] holds it back until the turn is finished.
+     */
+    fun sent() {
+        val ctx = app ?: return
+        pushNow(ctx)
     }
 
     fun pullSoon(context: Context) {
@@ -165,7 +176,7 @@ object ConversationSync {
         pushJob?.cancel()
         prefs(ctx).edit().remove(KEY_ENABLED).apply()
         _enabled.value = true
-        _badges.value = emptyMap()
+        _captions.value = emptyMap()
         scope.launch { lock.withLock { runCatching { RoomSyncStore(ctx).clear() } } }
     }
 
@@ -252,7 +263,7 @@ object ConversationSync {
             } catch (x: Exception) {
                 AppLogger.warning(TAG, "sync: ${x.message}")
             }
-            runCatching { _badges.value = e.badges() }
+            runCatching { _captions.value = e.captions() }
         }
     }
 

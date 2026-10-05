@@ -1,35 +1,50 @@
 /**
- * Conversations synced between the account's devices (contract C7), the desktop's
- * half. The relay keeps the text of every conversation under `/v1/sync/*`; this
- * computer pushes the user and assistant texts of its dsh sessions after each
- * finished turn and pulls what the other devices pushed — on start, on the hub's
- * `sync` frame and every minute.
+ * Conversations synced between the account's devices (contracts C7 and C8), the
+ * desktop's half. The relay keeps the text of every conversation under `/v1/sync/*`;
+ * this computer pushes the person's words the moment they are sent and the model's
+ * final text when the turn ends, and pulls what the other devices pushed — on start,
+ * on the hub's `sync` frame and every minute.
  *
- * The path taken here: **mirrors**. A dsh session's log is append-only and owned
- * by the agent loop (`Session.append` needs turn and step numbers, surface intents
- * and, for an assistant message, its model stream), so a transcript written on
- * another device cannot be appended to a session as history. A synced
- * conversation therefore shows in the chats column as a *mirror* — the title, the
- * device it came from ("From Pixel 8") and its transcript, read-only — with
- * **Continue here**: that starts a dsh session with the same title, maps it to the
- * conversation, and hands the transcript to the model as context (`agent.inject`,
- * model-facing, not shown as the person's words). From then on the session's turns
- * sync back under the same conversation id, and what the other devices add to the
- * conversation reaches the session as context the same way, so the model knows
- * what was said elsewhere.
+ * **One thread** (C8). A conversation written on another device is not a mirror
+ * beside the chats here: it *is* a chat here. The account's one main conversation
+ * lives in the main chat of this computer (its id adopted from the relay when the
+ * relay has one), and a side conversation pulled from the relay gets a dsh session
+ * at once, with its title, so it continues here like any other chat and its turns
+ * go up under the same conversation id. The turns written elsewhere are *kept* by the
+ * host in a store of its own (`$DSH_HOME/nanomuse/sync-remote.json`) — never written
+ * into the session's log: a `user/message` appended there outside a turn makes the log
+ * unreadable once a turn runs, and the chat does not render such a row anyway — and the
+ * browser half (`client/RemoteBubbles.ts`) shows them as the other device's bubbles,
+ * "From Pixel 8" under each, placed by their time among the local turns. The model
+ * hears them as context for its next step (`agent.inject`, a note per pull: "Meanwhile,
+ * in this same conversation on another device…"), model-facing, never the person's
+ * words, so never pushed back; a row from this device coming back on a pull is known
+ * by its device and never kept twice.
  *
- * The main chat: the chats column decides which session is the main chat (the
- * host is told with `sync/main`); that session is pushed as `kind: "main"`, and the
- * relay's one main conversation per account is adopted when it already has one.
+ * On sign-in and when the switch goes on the pull comes first (the relay's history
+ * reaches the sessions here), then the whole eligible history of this computer goes
+ * up, oldest first, 200 messages a POST.
  *
  * Never a key in a log, never a file: attachments travel as names and sizes.
  */
 import { randomUUID } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { mkdir, rename, writeFile } from 'node:fs/promises'
+import { dirname } from 'node:path'
 import { RelayError } from './relay.ts'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    /** A turn of this conversation written on another device of the account (C8). */
+    'nanomuse-sync': { kind: 'nanomuse-sync'; role: 'user' | 'assistant'; mid: string; device: string; deviceName: string; at: number }
+  }
+}
 
 /** The relay's limits (contract C7). */
 export const MAX_POST_MESSAGES = 200
 export const PUSH_DELAY_MS = 2000
+/** The person's words go up this soon after they are sent (C8). */
+export const SEND_DELAY_MS = 50
 export const PULL_EVERY_MS = 60_000
 export const PAGE = 500
 
@@ -213,6 +228,17 @@ export interface SessionInfo {
   updatedAt: number
 }
 
+/** A turn of the conversation written on another device, as it goes into a session's log here (C8). */
+export interface RemoteLine {
+  mid: string
+  role: 'user' | 'assistant'
+  text: string
+  /** Unix epoch milliseconds (the relay's `created_at`, in ms). */
+  at: number
+  device: string
+  deviceName: string
+}
+
 /** The slice of the session API the engine uses; `cloud.ts` binds it to `ctx.sessionController`, tests fake it. */
 export interface SyncSessions {
   list(): Promise<SessionInfo[]>
@@ -220,51 +246,173 @@ export interface SyncSessions {
   lines(sessionId: string): Promise<SessionLine[]>
   create(title: string): Promise<string>
   rename(sessionId: string, title: string): Promise<void>
-  /** Model-facing context for the session's next step (`agent.inject`); never shown as the person's words. */
+  /**
+   * A turn from another device, kept by the host for the transcript — in a store of its own,
+   * never in the session's log: a surface message appended there outside a turn makes the log
+   * unreadable once a turn runs ("system/message requires a protected first surface head").
+   */
+  keep(sessionId: string, line: RemoteLine): Promise<void>
+  /** A kept turn deleted elsewhere. */
+  forget(sessionId: string, mid: string): Promise<void>
+  /** Model-facing context for the session's next step (`agent.inject`): what the other devices said; never shown as the person's words. */
   inject(sessionId: string, text: string): Promise<void>
+}
+
+/**
+ * The other devices' turns, kept by session for the transcript: one JSON file, read once,
+ * written whole after each change (coalesced, atomically — a temp file renamed over). A
+ * line is kept once (by `mid`), in time order.
+ */
+export class RemoteStore {
+  private lines = new Map<string, RemoteLine[]>()
+  private loaded = false
+  private timer: ReturnType<typeof setTimeout> | undefined
+  private writing: Promise<void> = Promise.resolve()
+
+  constructor(
+    private readonly path: string,
+    private readonly onError: (error: unknown) => void = () => undefined,
+  ) {}
+
+  private load(): void {
+    if (this.loaded) return
+    this.loaded = true
+    try {
+      const raw = JSON.parse(readFileSync(this.path, 'utf8')) as Record<string, RemoteLine[]>
+      for (const [sessionId, lines] of Object.entries(raw)) if (Array.isArray(lines)) this.lines.set(sessionId, lines)
+    } catch {
+      // no store yet
+    }
+  }
+
+  linesOf(sessionId: string): RemoteLine[] {
+    this.load()
+    return [...(this.lines.get(sessionId) ?? [])]
+  }
+
+  add(sessionId: string, line: RemoteLine): void {
+    this.load()
+    const list = this.lines.get(sessionId) ?? []
+    if (list.some((l) => l.mid === line.mid)) return
+    list.push(line)
+    list.sort((a, b) => a.at - b.at)
+    this.lines.set(sessionId, list)
+    this.saveSoon()
+  }
+
+  remove(sessionId: string, mid: string): void {
+    this.load()
+    const list = this.lines.get(sessionId)
+    if (!list) return
+    const next = list.filter((l) => l.mid !== mid)
+    if (next.length === list.length) return
+    if (next.length === 0) this.lines.delete(sessionId)
+    else this.lines.set(sessionId, next)
+    this.saveSoon()
+  }
+
+  private saveSoon(): void {
+    if (this.timer) return
+    this.timer = setTimeout(() => {
+      this.timer = undefined
+      this.writing = this.writing.then(() => this.write()).catch(this.onError)
+    }, 200)
+    this.timer.unref?.()
+  }
+
+  private async write(): Promise<void> {
+    await mkdir(dirname(this.path), { recursive: true })
+    const tmp = `${this.path}.${process.pid}.tmp`
+    await writeFile(tmp, JSON.stringify(Object.fromEntries(this.lines)) + '\n', { mode: 0o600 })
+    await rename(tmp, this.path)
+  }
+
+  /** Written now (the host stopping). */
+  async flush(): Promise<void> {
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = undefined
+      this.writing = this.writing.then(() => this.write()).catch(this.onError)
+    }
+    await this.writing
+  }
+}
+
+/** The note that hands the model what the other devices added to a conversation that lives in a session here. */
+export function meanwhileNote(lines: RemoteLine[]): string {
+  const MAX_LINES = 40
+  const MAX_CHARS = 12_000
+  const recent = lines.slice(-MAX_LINES)
+  const rows: string[] = []
+  let size = 0
+  for (const l of [...recent].reverse()) {
+    const row = `${l.role === 'user' ? 'Person' : 'Muse'}${l.deviceName ? ` (on ${l.deviceName})` : ''}: ${l.text}`
+    if (size + row.length > MAX_CHARS && rows.length > 0) break
+    rows.unshift(row)
+    size += row.length
+  }
+  const omitted = lines.length - rows.length
+  return `[Meanwhile, in this same conversation on another device of the account${omitted > 0 ? ` (${omitted} earlier turn${omitted === 1 ? '' : 's'} not shown)` : ''}:]\n${rows.join('\n')}`
 }
 
 // ---- state --------------------------------------------------------------------------------
 
-export interface MirrorMessage {
-  mid: string
-  role: 'user' | 'assistant'
-  text: string
-  /** Unix seconds, the relay's clock. */
-  createdAt: number
-  device: string
-  deviceName: string
-}
-
-/** A synced conversation as this computer keeps it: the relay's copy, read-only until "Continue here". */
-export interface Mirror {
-  cid: string
+/** A conversation as the relay lists it, kept so a late session, a rename or a tombstone finds it. */
+export interface KnownConversation {
   kind: 'main' | 'side'
   title: string
   device: string
   deviceName: string
+  /** Unix seconds, the relay's clock. */
   createdAt: number
   updatedAt: number
-  messages: MirrorMessage[]
 }
 
 export interface SyncState {
   accountId: string
   cursor: number
   enabled: boolean
-  /** The session the chats column calls the main chat. */
+  /** The session that is the main chat here: the account's one main conversation. */
   mainSession: string
   /** dsh session id → conversation id. */
   cids: Record<string, string>
   /** dsh message id → the mid it was pushed as. */
   mids: Record<string, string>
-  /** session id → the title last pushed. */
+  /** session id → the title last pushed (or pulled: not pushed back). */
   titles: Record<string, string>
-  mirrors: Record<string, Mirror>
+  /** cid → what the relay says of the conversation. */
+  conversations: Record<string, KnownConversation>
+  /** mid → the session it was appended to: a row goes into a log once. */
+  pulled: Record<string, string>
+  /** Rows deleted elsewhere after they were appended here: a log forgets nothing, the browser half hides them. */
+  hidden: string[]
+  /** Sessions whose conversation was deleted elsewhere: the browser half archives them (the host has no archive) and reports back. */
+  toArchive: string[]
+  /** 0.1.36 kept the other devices' chats as mirrors; a state that still has them is migrated (`migrate`). */
+  mirrors?: Record<string, unknown>
 }
 
 export function emptyState(): SyncState {
-  return { accountId: '', cursor: 0, enabled: true, mainSession: '', cids: {}, mids: {}, titles: {}, mirrors: {} }
+  return { accountId: '', cursor: 0, enabled: true, mainSession: '', cids: {}, mids: {}, titles: {}, conversations: {}, pulled: {}, hidden: [], toArchive: [] }
+}
+
+/**
+ * A 0.1.36 state (mirrors, no `conversations`) starts the pull over from zero: what the
+ * mirrors held becomes sessions and log rows on that pull; the ids of what this device
+ * pushed stay, so nothing goes up twice, and our own rows coming back are known by device.
+ */
+export function migrate(state: SyncState | undefined): SyncState {
+  if (!state) return emptyState()
+  const next: SyncState = { ...emptyState(), ...state }
+  if ('mirrors' in next || !state.conversations) {
+    delete next.mirrors
+    next.cursor = 0
+    next.conversations = {}
+    next.pulled = {}
+    next.hidden = []
+    next.toArchive = []
+  }
+  return next
 }
 
 export interface SyncEngineOptions {
@@ -284,29 +432,23 @@ export interface SyncEngineOptions {
   pullEveryMs?: number
 }
 
-/** What the browser half shows: Data controls and the mirrors in the chats column. */
+/** What the browser half reads: Data controls, the chats column and the bubbles from elsewhere. */
 export interface SyncView {
   enabled: boolean
   available: boolean
   paused: boolean
   cursor: number
   relay: SyncRelayState | null
-  mirrors: Array<{ cid: string; kind: 'main' | 'side'; title: string; device: string; deviceName: string; messages: number; updatedAt: number; sessionId: string | null }>
-  /** session id → the device the conversation came from, for the badge on a continued chat. */
-  origins: Record<string, { device: string; deviceName: string }>
-}
-
-/** The one-line note the model reads in front of a transcript from elsewhere. */
-export function transcriptNote(title: string, deviceName: string, messages: MirrorMessage[], here: string): string {
-  const lines = messages.map((m) => `${m.role === 'user' ? 'Person' : 'Muse'}${m.deviceName && m.deviceName !== here ? ` (on ${m.deviceName})` : ''}: ${m.text}`)
-  const from = deviceName ? ` on ${deviceName}` : ' on another device'
-  return `[This conversation, "${title}", was started${from} and continues here on ${here}. What was said so far:]\n${lines.join('\n')}`
-}
-
-/** The note for messages added elsewhere to a conversation that lives in a session here. */
-export function meanwhileNote(messages: MirrorMessage[]): string {
-  const lines = messages.map((m) => `${m.role === 'user' ? 'Person' : 'Muse'}${m.deviceName ? ` (on ${m.deviceName})` : ''}: ${m.text}`)
-  return `[Meanwhile, in this same conversation on another device of the account:]\n${lines.join('\n')}`
+  /** Grows with every change applied here; the browser half re-reads a session's remote rows when it moves. */
+  rev: number
+  /** The session that holds the account's main conversation ('' before the chats column named one). */
+  mainSession: string
+  /** Sessions that hold a synced conversation: listed in the chats column even before a turn ran here. */
+  sessions: string[]
+  /** mids of rows deleted elsewhere: hidden in the transcript. */
+  hidden: string[]
+  /** Sessions whose conversation was deleted elsewhere: to be archived by the browser half. */
+  toArchive: string[]
 }
 
 export class SyncEngine {
@@ -319,9 +461,10 @@ export class SyncEngine {
   private pushing: Promise<void> | undefined
   private relayState: SyncRelayState | null = null
   private lastError = ''
+  private rev = 0
 
   constructor(private readonly options: SyncEngineOptions) {
-    this.state = options.load() ?? emptyState()
+    this.state = migrate(options.load())
   }
 
   get enabled(): boolean {
@@ -334,35 +477,30 @@ export class SyncEngine {
   }
 
   view(): SyncView {
-    const bySession = new Map(Object.entries(this.state.cids).map(([sid, cid]) => [cid, sid]))
-    const origins: SyncView['origins'] = {}
-    for (const [sid, cid] of Object.entries(this.state.cids)) {
-      const m = this.state.mirrors[cid]
-      if (m && m.device && m.device !== this.options.deviceId()) origins[sid] = { device: m.device, deviceName: m.deviceName }
-    }
     return {
       enabled: this.state.enabled,
       available: !this.paused && Boolean(this.state.accountId),
       paused: this.paused,
       cursor: this.state.cursor,
       relay: this.relayState,
-      mirrors: Object.values(this.state.mirrors)
-        .filter((m) => m.device !== this.options.deviceId() || bySession.has(m.cid))
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((m) => ({ cid: m.cid, kind: m.kind, title: m.title, device: m.device, deviceName: m.deviceName, messages: m.messages.length, updatedAt: m.updatedAt, sessionId: bySession.get(m.cid) ?? null })),
-      origins,
+      rev: this.rev,
+      mainSession: this.state.mainSession,
+      sessions: Object.keys(this.state.cids),
+      hidden: [...this.state.hidden],
+      toArchive: [...this.state.toArchive],
     }
   }
 
-  /** The transcript of one mirror, for the read-only view. */
-  mirror(cid: string): Mirror | undefined {
-    return this.state.mirrors[cid]
+  /** The conversation id a session syncs under, when it has one. */
+  cidOf(sessionId: string): string | undefined {
+    return this.state.cids[sessionId]
   }
 
   // ---- lifecycle ----------------------------------------------------------------------------
 
   start(): void {
     this.pullTimer ??= setInterval(() => void this.pullQuietly(), this.options.pullEveryMs ?? PULL_EVERY_MS)
+    // pull first: the relay's history reaches the sessions here before ours goes up
     void this.pullQuietly().then(() => this.pushAllSoon())
   }
 
@@ -386,17 +524,50 @@ export class SyncEngine {
   signedOut(): void {
     this.paused = false
     this.relayState = null
-    this.options.onChange?.()
+    this.changed()
   }
 
-  /** The chats column's main chat: pushed as the account's one main conversation. */
-  async setMain(sessionId: string): Promise<void> {
-    if (!sessionId || this.state.mainSession === sessionId) return
+  /**
+   * The chats column's main chat. While the account's main conversation already lives in a
+   * session here, that session stays the main chat (one thread, C8): the id of the one it
+   * lives in comes back for the column to adopt. Otherwise the session becomes the main chat
+   * and takes the relay's main conversation id when the relay has one.
+   */
+  async setMain(sessionId: string): Promise<string> {
+    const current = this.state.mainSession
+    if (!sessionId || current === sessionId) return current
+    if (current && this.holdsMain(current)) return current
     this.state.mainSession = sessionId
-    delete this.state.titles[sessionId]
+    const mainCid = this.mainCid()
+    if (mainCid && !this.state.cids[sessionId]) {
+      this.state.cids[sessionId] = mainCid
+      this.state.titles[sessionId] = this.state.conversations[mainCid]?.title ?? ''
+    } else {
+      delete this.state.titles[sessionId]
+    }
     await this.save()
     this.dirty.add(sessionId)
     this.pushSoon(200)
+    this.changed()
+    return sessionId
+  }
+
+  /** The browser half archived the sessions whose conversations were deleted elsewhere. */
+  async archived(sessionIds: string[]): Promise<void> {
+    const done = new Set(sessionIds)
+    this.state.toArchive = this.state.toArchive.filter((id) => !done.has(id))
+    await this.save()
+    this.changed()
+  }
+
+  private holdsMain(sessionId: string): boolean {
+    const cid = this.state.cids[sessionId]
+    return Boolean(cid && this.state.conversations[cid]?.kind === 'main')
+  }
+
+  private mainCid(): string | undefined {
+    for (const [cid, c] of Object.entries(this.state.conversations)) if (c.kind === 'main') return cid
+    return undefined
   }
 
   // ---- the switch ---------------------------------------------------------------------------
@@ -420,7 +591,7 @@ export class SyncEngine {
     }
     await this.save()
     if (enabled) void this.pullQuietly().then(() => this.pushAllSoon())
-    this.options.onChange?.()
+    this.changed()
     return this.view()
   }
 
@@ -435,24 +606,38 @@ export class SyncEngine {
     return this.relayState
   }
 
-  /** "Delete synced conversations": the relay's store emptied; the mirrors here go with it, the sessions stay. */
+  /** "Delete synced conversations": the relay's store emptied; what it knew is forgotten here, the sessions stay. */
   async deleteRemote(): Promise<SyncView> {
     const token = await this.options.token()
     if (token) {
       this.relayState = await this.options.relay.wipe(token)
       this.state.cursor = this.relayState.cursor
     }
-    this.state.mirrors = {}
+    this.state.conversations = {}
     this.state.mids = {}
     this.state.titles = {}
     await this.save()
-    this.options.onChange?.()
+    this.changed()
     return this.view()
   }
 
   // ---- hooks --------------------------------------------------------------------------------
 
-  /** A turn ended in a session here: its new lines go up after the debounce. */
+  /** The person sent a message in a session here: it goes up now (C8), not when the turn ends. */
+  messageSent(sessionId: string): void {
+    if (this.options.isTaskSession?.(sessionId)) return
+    this.dirty.add(sessionId)
+    this.pushSoon(Math.min(SEND_DELAY_MS, this.options.pushDelayMs ?? PUSH_DELAY_MS))
+    // a new prompt here is a new anchor for the other devices' bubbles: the browser half re-reads them
+    if (this.kept(sessionId)) this.changed()
+  }
+
+  /** Whether a session shows turns from the other devices (a pulled row, or one hidden). */
+  private kept(sessionId: string): boolean {
+    return Object.values(this.state.pulled).includes(sessionId)
+  }
+
+  /** A turn ended in a session here: the model's final text goes up after the debounce. */
   turnEnded(sessionId: string): void {
     if (this.options.isTaskSession?.(sessionId)) return
     this.dirty.add(sessionId)
@@ -493,7 +678,7 @@ export class SyncEngine {
       .catch(() => undefined)
   }
 
-  /** The dirty sessions' new lines to the relay, one POST of up to 200 messages at a time; one push at a time. */
+  /** The dirty sessions' new lines to the relay, oldest session first, one POST of up to 200 messages at a time; one push at a time. */
   push(): Promise<void> {
     const run = (): Promise<void> => {
       const p = this.pushNow()
@@ -515,15 +700,18 @@ export class SyncEngine {
     const token = await this.options.token()
     if (!token) return
     const device = this.options.deviceId()
-    const ids = [...this.dirty]
-    this.dirty.clear()
     const sessions = new Map((await this.options.sessions.list()).map((s) => [s.id, s]))
+    // oldest first: a history going up in full arrives in the order it was lived
+    const ids = [...this.dirty].sort((a, b) => (sessions.get(a)?.createdAt ?? 0) - (sessions.get(b)?.createdAt ?? 0))
+    this.dirty.clear()
     for (let round = 0; round < 50 && ids.length > 0; round++) {
       const conversations: Record<string, unknown>[] = []
       const messages: Record<string, unknown>[] = []
       const pending: Array<{ sessionId: string; line: SessionLine; mid: string }> = []
       const touched: string[] = []
+      const unvisited = new Set(ids)
       for (const sessionId of ids) {
+        unvisited.delete(sessionId)
         const info = sessions.get(sessionId)
         if (!info || this.options.isTaskSession?.(sessionId)) continue
         const cid = this.cidFor(sessionId)
@@ -567,24 +755,39 @@ export class SyncEngine {
       for (const c of conversations) {
         if (out.rejected.some((r) => r.cid === c.cid)) continue
         for (const [sid, cid] of Object.entries(this.state.cids)) if (cid === c.cid) this.state.titles[sid] = String(c.title)
+        const known = this.state.conversations[String(c.cid)]
+        this.state.conversations[String(c.cid)] = {
+          kind: c.kind === 'main' ? 'main' : 'side',
+          title: String(c.title),
+          device: known?.device || device,
+          deviceName: known?.deviceName ?? '',
+          createdAt: known?.createdAt || Number(c.created_at),
+          updatedAt: Math.max(known?.updatedAt ?? 0, Number(c.updated_at)),
+        }
       }
       await this.save()
-      // sessions with more than 200 new lines, and the redirected ones, go again
-      const again = new Set<string>()
+      // sessions with more than 200 new lines, the redirected ones and those the round did not reach go again
+      const again = new Set<string>(unvisited)
       for (const sid of touched) {
         const lines = await this.options.sessions.lines(sid)
         if (lines.some((l) => !this.state.mids[l.id])) again.add(sid)
       }
-      ids.splice(0, ids.length, ...again)
+      ids.splice(0, ids.length, ...ids.filter((sid) => again.has(sid)))
     }
-    // our rows come back on the next pull (known mids, no change) and the cursor catches up
+    if (ids.length > 0) {
+      // a very long history: the rest goes after the next debounce
+      for (const sid of ids) this.dirty.add(sid)
+      this.pushSoon(this.options.pushDelayMs ?? PUSH_DELAY_MS)
+    }
+    // our rows come back on the next pull (known by device, no change) and the cursor catches up
     void this.pullQuietly()
   }
 
   private cidFor(sessionId: string): string {
     let cid = this.state.cids[sessionId]
     if (!cid) {
-      cid = randomUUID()
+      // the main chat takes the account's main conversation id when the relay has one
+      cid = (sessionId === this.state.mainSession ? this.mainCid() : undefined) ?? randomUUID()
       this.state.cids[sessionId] = cid
     }
     return cid
@@ -619,18 +822,19 @@ export class SyncEngine {
     const token = await this.options.token()
     if (!token) return 0
     let applied = 0
-    const notes = new Map<string, MirrorMessage[]>()
+    // what the other devices added to conversations living in sessions here: context for the model, per session
+    const notes = new Map<string, RemoteLine[]>()
     for (let page = 0; page < 50; page++) {
       const out = await this.options.relay.changes(token, this.state.cursor, PAGE)
       // The page's conversations first, then its messages, each in seq order: a rename puts
       // a conversation's seq above its messages, and the relay sends every message's
       // conversation along with the page so none of them is an orphan.
       for (const c of [...out.conversations].sort((a, b) => a.seq - b.seq)) {
-        this.applyConversation(c)
+        await this.applyConversation(c)
         applied += 1
       }
       for (const m of [...out.messages].sort((a, b) => a.seq - b.seq)) {
-        this.applyMessage(m, notes)
+        await this.applyMessage(m, notes)
         applied += 1
       }
       this.state.cursor = Math.max(this.state.cursor, out.cursor)
@@ -638,103 +842,98 @@ export class SyncEngine {
       if (!out.more) break
     }
     this.lastError = ''
-    // what the other devices added to conversations living in sessions here: context for the model
-    for (const [sessionId, messages] of notes) {
-      await this.options.sessions.inject(sessionId, meanwhileNote(messages)).catch((error: unknown) => this.log('warn', `nanomuse sync: context not injected: ${message(error)}`))
+    for (const [sessionId, lines] of notes) {
+      await this.options.sessions.inject(sessionId, meanwhileNote(lines)).catch((error: unknown) => this.log('warn', `nanomuse sync: context not injected: ${message(error)}`))
     }
     if (applied > 0) {
       this.log('info', `nanomuse sync: ${applied} change(s) from the account’s other devices`)
-      this.options.onChange?.()
+      this.changed()
     }
     return applied
   }
 
-  private applyConversation(c: WireConversation): void {
-    const sessionId = this.sessionOf(c.cid)
+  private async applyConversation(c: WireConversation): Promise<void> {
+    let sessionId = this.sessionOf(c.cid)
     if (c.deleted) {
-      delete this.state.mirrors[c.cid]
+      delete this.state.conversations[c.cid]
       if (sessionId) {
-        // the session stays (the harness has no delete); it just stops syncing under that id
+        // the harness has no delete: the session stops syncing under that id, and the chats column archives it
         delete this.state.cids[sessionId]
         delete this.state.titles[sessionId]
+        if (sessionId !== this.state.mainSession && !this.state.toArchive.includes(sessionId)) this.state.toArchive.push(sessionId)
       }
       return
     }
-    const known = this.state.mirrors[c.cid]
-    if (c.kind === 'main' && !sessionId && this.state.mainSession) {
-      // Identifiers: the account's main conversation already exists — our main chat adopts its id
-      // (ours was never accepted as main, or the relay would have refused theirs: its lines are
-      // still unpushed and go up under the adopted id)
-      if (this.state.cids[this.state.mainSession] !== c.cid) {
-        this.state.cids[this.state.mainSession] = c.cid
-        delete this.state.titles[this.state.mainSession]
-        this.dirty.add(this.state.mainSession)
-        this.pushSoon(500)
-      }
-    }
-    this.state.mirrors[c.cid] = {
-      cid: c.cid,
+    const known = this.state.conversations[c.cid]
+    this.state.conversations[c.cid] = {
       kind: c.kind,
-      title: c.title || known?.title || 'New chat',
+      title: c.title || known?.title || '',
       device: known?.device || c.device,
       deviceName: known?.deviceName || c.device_name,
       createdAt: known?.createdAt || c.created_at,
       updatedAt: Math.max(known?.updatedAt ?? 0, c.updated_at),
-      messages: known?.messages ?? [],
     }
-    if (sessionId && known && known.title !== c.title && c.title && this.state.titles[sessionId] !== c.title) {
+    if (!sessionId) {
+      if (c.kind === 'main' && this.state.mainSession) {
+        // Identifiers: the account's main conversation already exists — our main chat adopts its id
+        // (ours was never accepted as main, or the relay would have refused theirs: its lines are
+        // still unpushed and go up under the adopted id)
+        sessionId = this.state.mainSession
+        this.state.cids[sessionId] = c.cid
+        if (c.title) this.state.titles[sessionId] = c.title
+        else delete this.state.titles[sessionId]
+        this.dirty.add(sessionId)
+        this.pushSoon(500)
+        this.log('info', 'nanomuse sync: the main chat adopts the account’s conversation id')
+      } else {
+        // one thread (C8): a conversation from elsewhere is a chat here from the moment it is known
+        const title = c.title || (c.kind === 'main' ? 'Main chat' : 'New chat')
+        try {
+          sessionId = await this.options.sessions.create(title)
+        } catch (error: unknown) {
+          this.log('warn', `nanomuse sync: no session for a synced conversation: ${message(error)}`)
+          return
+        }
+        this.state.cids[sessionId] = c.cid
+        this.state.titles[sessionId] = title
+        if (c.kind === 'main') this.state.mainSession = sessionId
+      }
+      return
+    }
+    if (c.title && known && known.title !== c.title && this.state.titles[sessionId] !== c.title) {
+      // renamed elsewhere: renamed here, and not pushed back
       this.state.titles[sessionId] = c.title
-      void this.options.sessions.rename(sessionId, c.title).catch(() => undefined)
+      await this.options.sessions.rename(sessionId, c.title).catch(() => undefined)
     }
   }
 
-  private applyMessage(m: WireMessage, notes: Map<string, MirrorMessage[]>): void {
-    const mirror = this.state.mirrors[m.cid]
-    if (!mirror) return
+  private async applyMessage(m: WireMessage, notes: Map<string, RemoteLine[]>): Promise<void> {
     if (m.deleted) {
-      mirror.messages = mirror.messages.filter((x) => x.mid !== m.mid)
+      const kept = this.state.pulled[m.mid]
+      if (kept) {
+        if (!this.state.hidden.includes(m.mid)) this.state.hidden.push(m.mid)
+        await this.options.sessions.forget(kept, m.mid).catch(() => undefined)
+      }
       return
     }
-    if (mirror.messages.some((x) => x.mid === m.mid)) return
-    const own = m.device === this.options.deviceId()
-    const row: MirrorMessage = { mid: m.mid, role: m.role, text: m.text, createdAt: m.created_at, device: m.device, deviceName: m.device_name }
-    mirror.messages.push(row)
-    mirror.messages.sort((a, b) => a.createdAt - b.createdAt)
-    mirror.updatedAt = Math.max(mirror.updatedAt, m.created_at)
+    // once is enough: a row kept here already, or our own words coming back
+    if (this.state.pulled[m.mid]) return
+    if (m.device === this.options.deviceId()) return
     const sessionId = this.sessionOf(m.cid)
-    if (sessionId && !own) {
-      const list = notes.get(sessionId) ?? []
-      list.push(row)
-      notes.set(sessionId, list)
+    if (!sessionId) return
+    const line: RemoteLine = { mid: m.mid, role: m.role, text: m.text, at: m.created_at * 1000, device: m.device, deviceName: m.device_name }
+    try {
+      await this.options.sessions.keep(sessionId, line)
+      this.state.pulled[m.mid] = sessionId
+      notes.set(sessionId, [...(notes.get(sessionId) ?? []), line])
+    } catch (error: unknown) {
+      this.log('warn', `nanomuse sync: a turn from ${m.device_name || 'another device'} did not reach its chat: ${message(error)}`)
     }
   }
 
   private sessionOf(cid: string): string | undefined {
     for (const [sid, c] of Object.entries(this.state.cids)) if (c === cid) return sid
     return undefined
-  }
-
-  // ---- continue here ------------------------------------------------------------------------
-
-  /**
-   * A mirror becomes a session here: created with the conversation's title, mapped to its id,
-   * the transcript handed to the model as context. The relay already has these messages, so
-   * nothing is pushed for them; the session's own turns sync from now on.
-   */
-  async continueHere(cid: string, here: string): Promise<string> {
-    const mirror = this.state.mirrors[cid]
-    if (!mirror) throw new RelayError(404, 'not_found', 'No such synced conversation')
-    const existing = this.sessionOf(cid)
-    if (existing) return existing
-    const sessionId = await this.options.sessions.create(mirror.title)
-    this.state.cids[sessionId] = cid
-    this.state.titles[sessionId] = mirror.title
-    await this.save()
-    if (mirror.messages.length > 0) {
-      await this.options.sessions.inject(sessionId, transcriptNote(mirror.title, mirror.deviceName, mirror.messages, here)).catch((error: unknown) => this.log('warn', `nanomuse sync: transcript not injected: ${message(error)}`))
-    }
-    this.options.onChange?.()
-    return sessionId
   }
 
   // ---- errors -------------------------------------------------------------------------------
@@ -746,13 +945,13 @@ export class SyncEngine {
         this.state.enabled = false
         void this.save()
         this.log('info', 'nanomuse sync: turned off on another device; off here too')
-        this.options.onChange?.()
+        this.changed()
         return
       }
       if (error.status === 401) {
         this.paused = true
         this.lastError = 'signed_out'
-        this.options.onChange?.()
+        this.changed()
         return
       }
       this.lastError = error.code
@@ -764,6 +963,11 @@ export class SyncEngine {
 
   get error(): string {
     return this.lastError
+  }
+
+  private changed(): void {
+    this.rev += 1
+    this.options.onChange?.()
   }
 
   private async save(): Promise<void> {

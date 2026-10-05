@@ -47,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.contentType
@@ -192,12 +191,8 @@ fun CloudSignInScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.height(12.dp))
-            Icon(
-                painter = painterResource(R.drawable.ic_stat_nanomuse),
-                contentDescription = null,
-                tint = MuseTones.action,
-                modifier = Modifier.size(44.dp),
-            )
+            // the app's icon, not the face: this screen is about the account
+            io.github.nanomuse.ui.muse.NmBrandMark(size = 64.dp)
             Spacer(Modifier.height(18.dp))
             Text(
                 text = stringResource(R.string.nm_cloud_signin_title),

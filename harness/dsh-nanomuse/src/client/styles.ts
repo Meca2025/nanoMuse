@@ -194,14 +194,20 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-col-top { height: 
 .nm-chat-more:hover { background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary); }
 .nm-chat-row:hover .nm-chat-title { padding-right: 22px; }
 .nm-chat-edit { flex: 1; min-width: 0; height: 30px; margin: 2px 4px; padding: 0 8px; border: 1px solid var(--nm-blue); border-radius: 7px; background: var(--nm-field); color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; outline: none; }
-/* a chat synced from another device of the account (C7): the badge, the mirror's transcript */
-.nm-chat-from { flex: none; font-size: 11px; color: var(--dsw-alias-label-tertiary); white-space: nowrap; }
-.nm-mirror { display: flex; flex-direction: column; border-radius: 9px; }
-.nm-mirror-body { padding: 2px 10px 8px; font-size: 12.5px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
-.nm-mirror-line { margin: 0 0 4px; white-space: pre-wrap; word-break: break-word; max-height: 72px; overflow: hidden; }
-.nm-mirror-line b { font-weight: 500; color: var(--dsw-alias-label-primary); }
-.nm-mirror-continue { margin-top: 4px; height: 26px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-primary, rgba(0,0,0,0.12)); border-radius: 7px; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12.5px; cursor: pointer; }
-.nm-mirror-continue:hover { background: var(--nm-hover); }
+/* a turn of the conversation written on another device of the account (C8): the person's bubble on the
+   right like the harness's own, the Muse's on the left, "From Pixel 8" under either (RemoteBubbles.ts) */
+.nm-remote { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.nm-remote-user { align-items: flex-end; }
+.nm-remote-assistant { align-items: flex-start; }
+.nm-remote-bubble { max-width: 100%; padding: 10px 16px; border-radius: var(--dsw-radius-xl, 16px); font-size: var(--dsh-content-font-size, 14px); line-height: calc(22px + var(--dsh-content-font-delta, 0px)); white-space: pre-wrap; word-break: break-word; color: var(--dsw-alias-label-primary); }
+.nm-remote-user .nm-remote-bubble { background: var(--dsw-specific-bubble, var(--nm-hover)); }
+.nm-remote-assistant .nm-remote-bubble { padding-left: 0; padding-right: 0; }
+.nm-remote-from { font-size: 11px; color: var(--dsw-alias-label-tertiary); padding: 0 4px; }
+/* a session with no turn of its own yet (the chat's "hero" layout centres the composer): the other
+   devices' turns sit above the composer, bottom-aligned like a transcript, inside the scrolling body */
+[data-conversation-content][data-content-phase="hero"] > [data-conversation-scroll]:has(.nm-remote) { justify-content: flex-end; }
+[data-conversation-content][data-content-phase="hero"] > [data-conversation-scroll] > .nm-remote { flex: 0 0 auto; width: min(var(--dsh-chat-content-width, 680px), 100%); align-self: center; box-sizing: border-box; padding: 0 var(--dsh-composer-side-clearance, 16px); }
+[data-conversation-content][data-content-phase="hero"] > [data-conversation-scroll] > .nm-remote:first-child { margin-top: 16px; }
 
 /* ---- the pinned agent header over the conversation -------------------- */
 header[data-window-drag]:has(.nm-header) { position: relative; min-height: 108px; }
@@ -1088,7 +1094,33 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-fr-top { height: 6
 .nm-fr-page { width: min(420px, 100%); gap: 14px; margin: auto 0; }
 .nm-fr-page .nm-ob-sub { margin: -4px 0 2px; }
 .nm-fr-primary { margin-top: 4px; }
-.nm-fr-hero-icon { width: 72px; height: 72px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--nm-accent) 16%, transparent); color: var(--nm-accent); }
+/* The app's mark as a page hero (sign-in, permissions): the tile on the page background, its own hairline edge, nothing added (docs/brand.md). */
+.nm-fr-hero-mark { flex: none; display: block; width: 72px; height: 72px; }
+.nm-ob-form > .nm-fr-hero-mark { margin-bottom: 2px; }
+
+/* The Devices page as cards (0.1.37): this computer first, the others in a grid (one column
+   narrow, two from 560px of page), 16 px corners, a hairline so the card holds in both themes. */
+.nm-dv .nm-page-inner { gap: 12px; container-type: inline-size; }
+.nm-dv-head { display: flex; flex-direction: column; gap: 6px; }
+.nm-dv-count { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
+.nm-dv-card { box-sizing: border-box; min-width: 0; border-radius: 16px; background: var(--nm-card); box-shadow: 0 0 0 1px var(--nm-divider); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.nm-dv-top { display: flex; align-items: flex-start; gap: 12px; }
+.nm-dv-glyph { flex: none; width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); }
+.nm-dv-glyph.nm-on { background: color-mix(in srgb, var(--nm-blue) 12%, transparent); color: var(--nm-blue); }
+.nm-dv-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.nm-dv-name-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.nm-dv-name { font-size: 15px; font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm-dv-sub { font-size: 12.5px; line-height: 1.45; color: var(--dsw-alias-label-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm-dv-sub.nm-wrap { white-space: normal; }
+.nm-dv-rename { display: flex; align-items: center; gap: 8px; }
+.nm-dv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.nm-dv-chip { padding: 4px 10px; border-radius: 999px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.4; font-weight: 500; }
+.nm-dv-hint { margin-top: 4px; font-size: 12.5px; line-height: 1.45; color: var(--dsw-alias-label-secondary); }
+.nm-dv-rows { margin: 2px -16px -10px; padding: 0 16px; border-top: 1px solid var(--nm-divider); }
+.nm-dv-rows .nm-row:last-child { border-bottom: 0; }
+.nm-dv-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@container (min-width: 600px) { .nm-dv-grid { grid-template-columns: 1fr 1fr; } }
+.nm-dv .nm-more.nm-icon-btn { flex: none; }
 .nm-fr-features { width: 100%; display: flex; flex-direction: column; gap: 4px; text-align: left; }
 .nm-fr-feature { display: flex; align-items: flex-start; gap: 12px; padding: 8px 6px; }
 .nm-fr-feature .nm-ob-row-icon { flex: none; }

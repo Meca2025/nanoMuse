@@ -19,6 +19,13 @@ data class PullResult(val applied: Int, val touchedSessions: Set<String>, val cu
  *   tombstones delete. The first remote `main` is adopted as this phone's main chat.
  * - `main_exists` in a push's answer re-homes the local main chat under the relay's cid and
  *   posts its messages again.
+ *
+ * Contract C8 (0.1.37) on top: a push is the whole eligible history, oldest first (the first
+ * conversation's scripted opening included, see [LocalChats.prelude]); the person's row goes
+ * out at send (the caller pushes then — [Transcript] already lets a lone user row through);
+ * the main chat is the union of the local rows and the relay's, placed by time, one row per
+ * `mid`, this phone's own echoes skipped; pulled side chats are ordinary, continuable chats;
+ * rows written elsewhere remember their device for the "From Pixel 8" caption ([captions]).
  */
 class SyncEngine(
     private val store: SyncStore,
@@ -74,8 +81,15 @@ class SyncEngine(
                 )
                 store.putConversation(map)
             }
-            val known = store.messages(s.id).associateBy { it.messageId }
-            val items = Transcript.items(chats.messages(s.id))
+            val knownList = store.messages(s.id)
+            val known = knownList.associateBy { it.messageId }
+            val rows = chats.messages(s.id)
+            // rows written on another device sit among ours (C8's merged main chat); they are not
+            // this phone's turns — kept out of the transcript rule, never replaced from here
+            val pulledIds = knownList.filter { it.device.isNotBlank() }.map { it.messageId }.toSet()
+            val presentIds = rows.map { it.id }.toSet()
+            // the first conversation's scripted opening rides ahead of the rows (C8: the whole history)
+            val items = chats.prelude(s.id) + Transcript.items(rows.filter { it.id !in pulledIds })
             val itemIds = items.map { it.messageId }.toSet()
             val fresh = mutableListOf<SyncMessage>()
             for (item in items) {
@@ -92,6 +106,7 @@ class SyncEngine(
             // rows that are gone (edited, regenerated, cut): their mids become tombstones
             for (m in known.values) {
                 if (m.messageId in itemIds) continue
+                if (m.messageId in pulledIds && m.messageId in presentIds) continue // another device's row, still here
                 if (!m.pushed) {
                     // never reached the relay: forget it quietly
                     gone += m
@@ -125,8 +140,10 @@ class SyncEngine(
 
         var accepted = 0
         val rejected = mutableListOf<Rejection>()
+        // oldest first across every chat (a backfill is the whole history; tombstones, dated now, last);
         // the conversations ride with the first batch so every message finds its cid
-        val batches = if (msgs.isEmpty()) listOf(emptyList()) else msgs.chunked(BATCH)
+        val ordered = msgs.sortedBy { it.createdAt }
+        val batches = if (ordered.isEmpty()) listOf(emptyList()) else ordered.chunked(BATCH)
         batches.forEachIndexed { i, batch ->
             val r = api.push(deviceId, if (i == 0) convs else emptyList(), batch)
             accepted += r.accepted
@@ -261,12 +278,14 @@ class SyncEngine(
             touched += known.sessionId
             return true
         }
-        if (known != null) return false // ours, or seen before
+        if (known != null) return false // ours, or seen before: never a second row for one mid
+        if (m.device == deviceId) return false // our own echo under a mid this phone no longer maps
         if (m.role != "user" && m.role != "assistant") return false
         val conv = store.conversationByCid(m.cid) ?: return false
         if (conv.deleted) return false
+        // by time among the chat's rows, not at the end (C8)
         val id = chats.insertMessage(conv.sessionId, m.role, m.text, m.attachments, m.createdAt * 1000)
-        store.putMessages(listOf(SyncMessage(id, m.mid, conv.sessionId, pushed = true)))
+        store.putMessages(listOf(SyncMessage(id, m.mid, conv.sessionId, pushed = true, device = m.device, deviceName = m.deviceName)))
         touched += conv.sessionId
         return true
     }
@@ -293,15 +312,19 @@ class SyncEngine(
     /** The relay's view of the switch and the counts. */
     suspend fun state(): SyncState = api.state()
 
-    /** Which local chats came from another device, and that device's name — the drawer's badge. */
-    suspend fun badges(): Map<String, String> = badges(store, deviceId)
+    /** Which local rows were written on another device, and that device's name — the "From Pixel 8" caption. */
+    suspend fun captions(): Map<String, String> = captions(store, deviceId)
 
     companion object {
-        /** Side chats started on another device; the main chat is everyone's and carries no badge. */
-        suspend fun badges(store: SyncStore, deviceId: String): Map<String, String> =
-            store.conversations()
-                .filter { it.kind != "main" && it.device.isNotBlank() && it.device != deviceId && it.deviceName.isNotBlank() && !it.deleted }
-                .associate { it.sessionId to it.deviceName }
+        /**
+         * Local row id → the name of the device it came from, for rows pulled from the account's
+         * other devices (contract C8: a caption per message, no badge per chat — the main chat
+         * is everyone's and a side chat is the same chat everywhere).
+         */
+        suspend fun captions(store: SyncStore, deviceId: String): Map<String, String> =
+            store.pulledMessages()
+                .filter { it.device.isNotBlank() && it.device != deviceId && it.deviceName.isNotBlank() }
+                .associate { it.messageId to it.deviceName }
 
         /** The relay keeps 16 KB; sending more only to have it cut gains nothing. */
         const val TEXT_MAX = 16_384

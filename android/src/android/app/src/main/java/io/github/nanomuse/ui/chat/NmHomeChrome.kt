@@ -57,7 +57,7 @@ fun rememberHeaderModelShown(): State<Boolean> {
 
 /**
  * Whether the chat shows the agent's steps — tool pills, reasoning, the bar over the composer
- * (Settings → Appearance → Conversation; off by default). Observed like the switch above.
+ * (Settings → Appearance → Conversation; on by default, a stored false wins). Observed like the switch above.
  */
 @Composable
 fun rememberShowSteps(): State<Boolean> {
@@ -66,7 +66,7 @@ fun rememberShowSteps(): State<Boolean> {
     DisposableEffect(Unit) {
         val prefs = getAppearancePrefs(context)
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
-            if (key == KEY_NM_SHOW_STEPS) state.value = p.getBoolean(KEY_NM_SHOW_STEPS, false)
+            if (key == KEY_NM_SHOW_STEPS) state.value = p.getBoolean(KEY_NM_SHOW_STEPS, true)
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }

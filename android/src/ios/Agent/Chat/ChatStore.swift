@@ -4348,6 +4348,11 @@ actor ChatStore {
         return order
     }
 
+    /// nanoMuse: C8 — a text pulled from another device moves its chat up the list, as a local one would.
+    func nmTouchSession(_ sessionId: String) { // nanoMuse:
+        touchSession(sessionId) // nanoMuse:
+    } // nanoMuse:
+
     private func touchSession(_ sessionId: String) {
         invalidateSessionListCache()
         let sql = "UPDATE sessions SET updated_at = ? WHERE id = ?"

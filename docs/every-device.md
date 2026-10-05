@@ -94,37 +94,50 @@ you, on the phone ──"编译一下项目，把日志发我"──▶ phone's 
 ## The same conversations everywhere
 
 Since 0.1.36 the chats themselves follow the account. Signed in, each device
-sends the text of its finished turns to the relay's sync store
+sends the text of its turns to the relay's sync store
 ([cloud.md](cloud.md#conversation-sync)) and pulls what the others sent — at
 launch, when the hub says `sync`, and once a minute — so a chat begun on the
-phone in the morning is on the computer at the desk, with the phone's name on
-it (*From Pixel 8* · 来自 Pixel 8), and continuing it there runs the turn on
-*that* device with the synced transcript as its history; what it answers goes
-back the same way. The main chat is one conversation across all devices; side
-chats keep their own. Chats addressed to a device, or run on this device for
-another, stay where they are. Rename or delete a chat anywhere and it is renamed
-or deleted everywhere. Text only: files and images stay on the device they were
-made on, and a synced message shows their names and sizes.
+phone in the morning is on the computer at the desk, and continuing it there
+runs the turn on *that* device with the synced transcript as its history; what
+it answers goes back the same way. Chats addressed to a device, or run on this
+device for another, stay where they are. Rename or delete a chat anywhere and
+it is renamed or deleted everywhere. Text only: files and images stay on the
+device they were made on, and a synced message shows their names and sizes.
+
+Since 0.1.37 it is **one thread**. The main chat is one conversation across
+all devices: what you say to the muse on the phone is in the main chat on the
+computer and in the web app, in time order among what was said there, as a
+read-only bubble with *From Pixel 8* (来自 Pixel 8) under it — and the muse,
+wherever it answers next, has read it. A side chat from another device is a
+chat on this one from the moment it is pulled, with its title, and continues
+here under the same conversation; nothing in the chat list says where a chat
+was written, the bubbles do. The person's message is on the other devices as
+soon as it is sent, the reply when the turn ends; signing in sends the device's
+whole history, oldest first. Rename the muse anywhere — the first
+conversation's naming included — and the name follows on the next pull.
 
 The switch is *Settings → Data controls → Sync conversations between my
 devices*, on by default; off tells the relay to delete the account's store, and
 every other device's switch follows. *Delete synced conversations* empties the
 store and keeps the switch. The phone and the web app map each local chat to a
 conversation id and apply the other devices' changes straight into their chat
-lists. **nanoMuse Desktop (the dsh plugin) takes a different path**: a dsh
-session log is written only by its own agent loop, so another device's
-transcript cannot be appended to it as history. The desktop lists the other
-devices' chats in the chats column under *From other devices* as read-only
-mirrors — expand one to read it — and *Continue here* opens a new dsh session
-with the same title, mapped to the same conversation, with the transcript given
-to the model as context; from then on the session's turns sync into that
-conversation, and anything the other devices add to it while it is open reaches
-the session as a short *Meanwhile, on another device…* note. The desktop's main
-chat (the one the chats column shows first) is the account's main conversation.
-Code: the runtime's [`nanomuse/sync/`](../nanomuse/sync/) (`ConversationSync`,
-`/api/sync/*` in [app.md](app.md#api)), the web app's `SyncControls` and the
-badges in `web/src/`, the plugin's `src/sync.ts` and `tests/sync.test.mjs`, the
-relay's [`cloud/nanomuse_cloud/sync.py`](../cloud/nanomuse_cloud/sync.py).
+lists. **nanoMuse Desktop (the dsh plugin)** keeps another device's turns in
+its own store (`$DSH_HOME/nanomuse/sync-remote.json`, by session — a dsh session
+log is append-only and owned by its agent loop, and a row written into it
+outside a turn is neither shown nor safe), shows them in the browser as the
+other device's bubbles (`client/RemoteBubbles.ts`), placed by time among the
+turns typed here, and hands the model what arrived as one note before its next
+step (`agent.inject`; the note is context, never a row, never pushed back). A side
+conversation pulled from the relay gets its dsh session at once (listed in
+*Side chats* though no turn ran here yet); the main chat is the session the
+account's main conversation lives in, and the first conversation starts in it
+when the account already has one. The harness has no delete and a log forgets
+nothing: a message deleted elsewhere is hidden here, a chat deleted elsewhere
+is archived here. Code: the runtime's [`nanomuse/sync/`](../nanomuse/sync/)
+(`ConversationSync`, `/api/sync/*` in [app.md](app.md#api)), the web app's
+`SyncControls` and the message captions in `web/src/`, the plugin's
+`src/sync.ts`, `client/RemoteBubbles.ts` and `tests/sync.test.mjs`, the relay's
+[`cloud/nanomuse_cloud/sync.py`](../cloud/nanomuse_cloud/sync.py).
 
 **Work on another device.** The default is always the device you are typing
 on. To send one message elsewhere, start it with `@` and the device's name as

@@ -287,7 +287,10 @@ extension AIChatViewModel {
             }
 
             if raw.role == .assistant {
-                if let assistant = currentAssistant {
+                // nanoMuse: C8 — a reply that came down from another device is its own bubble; it
+                // never folds into this phone's turn (nor the other way round), so the caption is honest.
+                let nmOrigin = NanoMuseSync.shared.fromDevice(mid: raw.id) // nanoMuse:
+                if let assistant = currentAssistant, assistant.nmFromDevice == nmOrigin { // nanoMuse: was `if let assistant = currentAssistant`
                     // Continuation of an agent loop — append new blocks to
                     // existing assistant message AND extend the source-sort
                     // range so compact-marker resolution can map raw[i] back
@@ -335,6 +338,14 @@ extension AIChatViewModel {
                     let msg = raw.toChatMessage(mediaResolver: resolver, showThinking: showThinking)
                     msg.sourceSortOrder = raw.sortOrder
                     msg.lastSourceSortOrder = raw.sortOrder
+                    msg.nmFromDevice = nmOrigin // nanoMuse: C8 caption
+                    // nanoMuse: a remote reply landing inside this phone's turn (by time) is shown
+                    // there but does not take the turn over — later local rows and tool results
+                    // keep folding into the local assistant message.
+                    if nmOrigin != nil, currentAssistant != nil { // nanoMuse:
+                        loadedUIMessages.append(msg) // nanoMuse:
+                        continue // nanoMuse:
+                    } // nanoMuse:
                     currentAssistant = msg
                     loadedUIMessages.append(msg)
                 }
@@ -358,6 +369,7 @@ extension AIChatViewModel {
             }
             msg.sourceSortOrder = raw.sortOrder
             msg.lastSourceSortOrder = raw.sortOrder
+            msg.nmFromDevice = NanoMuseSync.shared.fromDevice(mid: raw.id) // nanoMuse: C8 caption
             loadedUIMessages.append(msg)
         }
 

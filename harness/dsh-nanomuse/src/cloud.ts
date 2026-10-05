@@ -38,6 +38,7 @@ import type {} from '@deepseek-ai/dsh-settings'
 import type { ToolDispatchExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import { createUserMessage, ToolCallId, type ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionCreateRequest } from '@deepseek-ai/dsh-api-session-controller/types'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import z from '@deepseek-ai/schemastery'
@@ -47,7 +48,7 @@ import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner, textOf } from './task.ts'
-import { SyncEngine, SyncRelay, type SessionLine, type SyncState } from './sync.ts'
+import { RemoteStore, SyncEngine, SyncRelay, type RemoteLine, type SessionLine, type SyncState } from './sync.ts'
 import { AvatarMotion, ANIMATED, type MotionMood, type MotionView } from './motion.ts'
 import { DEFAULT_VIDEO_MODEL, hostOf, KNOWN_DASHSCOPE_MODELS, looksLikeVideoModel, probe as probeVideoModel, speaksDashScope, type VideoEndpoint } from './video.ts'
 import { checkMove, checkScreenshot, isBlack, runtimeInfo, type MoveCheck, type RuntimeInfo, type ScreenshotCheck } from './hands-check.ts'
@@ -260,6 +261,8 @@ export interface LiveState {
   motion: MotionView
   /** When the hands last saw an all-black screen (macOS: Screen Recording missing, or granted after the app started); 0 when they have not. */
   blackScreenAt: number
+  /** Conversation sync (C8): `rev` moves with every change pulled or pushed; the session that is the account's main conversation. */
+  sync: { rev: number; mainSession: string }
 }
 
 /** How long after the last hands call the stage keeps its frame. */
@@ -280,7 +283,7 @@ interface State {
   trusted?: Record<string, { name: string; at: number }>
   /** The session each other device's conversation lives in (`<device id>\n<conversation>` → session id). */
   taskSessions?: Record<string, string>
-  /** Conversations synced between the account's devices (C7): the cursor, the ids, the mirrors. */
+  /** Conversations synced between the account's devices (C7, C8): the cursor, the ids, what the relay knows. */
   sync?: SyncState
   /** The hands model the person chose; absent means the account's default. */
   handsModel?: string
@@ -417,6 +420,8 @@ export default class NanomuseCloud extends Service {
   private tasks: TaskRunner | undefined
   /** Conversations synced between the account's devices (contract C7), once the session API is up. */
   private sync: SyncEngine | undefined
+  /** The other devices' turns kept for the transcript (C8), by session. */
+  private kept: RemoteStore | undefined
   /** Approvals the stage may answer (C2) and holds of the hands (C1). */
   private readonly approvalDesk = new ApprovalDesk(() => this.broadcast(), (req) => this.granted(req.toolName))
   private readonly holdDesk = new HoldDesk(() => this.broadcast())
@@ -519,8 +524,11 @@ export default class NanomuseCloud extends Service {
       ctx.effect(() => () => {
         this.tasks = undefined
       }, 'nanomuse cloud: tasks off')
-      // The account's conversations, the same on every device (C7): the sessions here go up after
-      // each turn, the other devices' show as mirrors in the chats column.
+      // The account's conversations, the same on every device (C7, C8): the person's words go up as
+      // they are sent and the model's when the turn ends; the other devices' conversations are chats
+      // here, their turns kept in the host's own store for the transcript and handed to the model as context.
+      const kept = new RemoteStore(join(dshHome(), 'nanomuse', 'sync-remote.json'), (error) => this.ctx.logger.warn('nanomuse cloud: remote turns not saved: %s', message(error)))
+      this.kept = kept
       const sync = new SyncEngine({
         relay: new SyncRelay(this.config.baseURL),
         sessions: {
@@ -535,17 +543,28 @@ export default class NanomuseCloud extends Service {
           },
           lines: (sessionId) => this.sessionLines(ctx, sessionId),
           create: async (title) => {
-            const created = await ctx.sessionController.create({ agentPreset: 'nanomuse' })
+            // In the home workspace (`~/nanoMuse`), as the first conversation is: a session the
+            // browser cannot place in a workspace shows a disabled composer and no transcript.
+            const folder = join(homedir(), 'nanoMuse')
+            await mkdir(folder, { recursive: true }).catch(() => undefined)
+            const registry = ctx.get('workspaceRegistry') as { create(path: string, title?: string): Promise<{ id: string }> } | undefined
+            const workspaceId = await registry?.create(folder, 'nanoMuse').then((w) => w.id).catch(() => undefined)
+            const created = await ctx.sessionController.create(
+              workspaceId ? { agentPreset: 'nanomuse', workspaceId: workspaceId as NonNullable<SessionCreateRequest['workspaceId']> } : { agentPreset: 'nanomuse', cwd: folder },
+            )
             await ctx.sessionController.rename({ sessionId: created.sessionId, title }).catch(() => undefined)
             return String(created.sessionId)
           },
           rename: async (sessionId, title) => {
             await ctx.sessionController.rename({ sessionId: sessionId as SessionId, title })
           },
+          keep: async (sessionId, line) => kept.add(sessionId, line),
+          forget: async (sessionId, mid) => kept.remove(sessionId, mid),
           inject: async (sessionId, text) => {
             const resolved = await ctx.sessionController.resolveAgent(sessionId as SessionId)
             if ('error' in resolved) throw new Error(String(resolved.error))
-            resolved.agent.inject(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
+            // model-facing: a `nanomuse-sync` source, so the push (`sessionLines`, `user` sources only) never sends it back
+            resolved.agent.inject(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'nanomuse-sync', role: 'user', mid: '', device: '', deviceName: '', at: Date.now() } }))
           },
         },
         token: () => this.token(),
@@ -564,7 +583,9 @@ export default class NanomuseCloud extends Service {
         () =>
           ctx.on('session/event', (session: Session, event: SessionEvent) => {
             // `session/title` is dsh-session-title's event (not a dependency here): matched by name
-            if (event.type === 'turn/end') sync.turnEnded(String(session.id))
+            const id = String(session.id)
+            if (event.type === 'turn/end') sync.turnEnded(id)
+            else if (event.type === 'user/message' && (event.data as { source?: { kind?: string } }).source?.kind === 'user') sync.messageSent(id)
             else if ((event as { type: string }).type === 'session/title') sync.sessionRenamed(String(session.id))
           }),
         'nanomuse cloud: sync turns',
@@ -574,6 +595,8 @@ export default class NanomuseCloud extends Service {
       ctx.effect(() => () => {
         sync.stop()
         this.sync = undefined
+        this.kept = undefined
+        void kept.flush()
       }, 'nanomuse cloud: sync off')
       if (this.hub.connected) this.hub.restart()
     })
@@ -770,18 +793,11 @@ export default class NanomuseCloud extends Service {
     const rows = sharedConnectors(connectors.view().connections, this.deviceName(), this.state.deviceId ?? '')
     const key = JSON.stringify(rows.map(({ at: _at, ...rest }) => rest))
     if (key === this.lastSharedConnectors) return
-    const current = this.profile.current()
-    const write: ProfileWrite = {
-      name: current.name,
-      avatar: current.avatar,
-      emoji: current.emoji,
-      color: current.color,
-      style: current.style,
-      description: current.description,
-      connectors: rows,
-      device_id: this.state.deviceId ?? '',
-    }
-    await this.relay.putProfile(token, write, this.writerId())
+    // Only the connectors: the relay keeps the look as it is for a write that carries nothing
+    // else. (0.1.36 sent the look this device wore too, so a desktop that had just signed in,
+    // still wearing the default, renamed the account's muse back to "nanoMuse" and took a drawn
+    // face off every device before its first pull landed.)
+    await this.relay.putConnectors(token, rows, this.state.deviceId ?? '', this.writerId())
     this.lastSharedConnectors = key
     await this.profile.pull(token, true).catch(() => undefined)
   }
@@ -854,7 +870,23 @@ export default class NanomuseCloud extends Service {
       update: this.state.update ?? null,
       motion: this.motion.view(),
       blackScreenAt: this.blackScreenAt,
+      sync: this.sync ? { rev: this.sync.view().rev, mainSession: this.sync.state.mainSession } : { rev: 0, mainSession: '' },
     }
+  }
+
+  /** The session that holds the account's main conversation (C8), '' before one is known. */
+  syncMainSession(): string {
+    return this.sync?.state.mainSession ?? ''
+  }
+
+  /** How many turns from the account's other devices a session here shows (C8). */
+  syncRemoteLines(sessionId: string): number {
+    return this.kept?.linesOf(sessionId).length ?? 0
+  }
+
+  /** The main chat named by the host (the first conversation): the session it ends up in. */
+  async setSyncMain(sessionId: string): Promise<string> {
+    return this.sync ? this.sync.setMain(sessionId) : sessionId
   }
 
   /** Step one: a code to the phone or the mailbox. */
@@ -1666,6 +1698,32 @@ export default class NanomuseCloud extends Service {
     }
   }
 
+  /**
+   * The turns from the account's other devices kept for one session (C8), for the browser
+   * half's bubbles: in time order, each with the key of the first prompt typed here that is
+   * younger than it (`before`, the row's `data-chat-node-key`), so the bubble is shown
+   * before that prompt; none when the turn is the newest thing in the chat.
+   */
+  private async remoteLines(ctx: Context, sessionId: string): Promise<Array<RemoteLine & { id: string; before: string | null }>> {
+    const lines = this.kept?.linesOf(sessionId) ?? []
+    if (lines.length === 0) return []
+    const prompts: Array<{ key: string; time: number }> = []
+    const sc = ctx.get('sessionController')
+    if (sc) {
+      try {
+        const inspection = await sc.inspect(sessionId as SessionId)
+        for (const event of inspection.events) {
+          if (event.type !== 'user/message') continue
+          const data = event.data as unknown as { id?: string; source?: { kind?: string } }
+          if (data.source?.kind === 'user') prompts.push({ key: `13:input-message${String(data.id ?? '')}`, time: event.time })
+        }
+      } catch {
+        // a session that cannot be read: the bubbles go after whatever is shown
+      }
+    }
+    return lines.map((line) => ({ ...line, id: line.mid, before: prompts.find((p) => p.time > line.at)?.key ?? null }))
+  }
+
   private async writeState(): Promise<void> {
     const path = this.statePath()
     await mkdir(dirname(path), { recursive: true })
@@ -1817,7 +1875,7 @@ export default class NanomuseCloud extends Service {
         return send(res, 200, await this.setContribute(body.on !== false))
       }
       if (req.method === 'POST' && route === '/data/delete-samples') return send(res, 200, await this.deleteSamples())
-      // Conversations synced between the account's devices (C7): the switch, the delete, the mirrors.
+      // Conversations synced between the account's devices (C7, C8): the switch, the delete, the main chat, the rows from elsewhere.
       if (route === '/sync/state' || route.startsWith('/sync/')) {
         const sync = this.sync
         if (!sync) return send(res, 503, { error: { code: 'not_ready', message: 'The session API is not up yet' } })
@@ -1832,17 +1890,18 @@ export default class NanomuseCloud extends Service {
         if (req.method === 'POST' && route === '/sync/delete') return send(res, 200, await sync.deleteRemote())
         if (req.method === 'POST' && route === '/sync/pull') return send(res, 200, { applied: await sync.pull(), ...sync.view() })
         if (req.method === 'POST' && route === '/sync/main') {
+          // the session the column named, or the one the account's main conversation already lives in
           const body = await json(req)
-          await sync.setMain(String(body.sessionId ?? ''))
+          return send(res, 200, { sessionId: await sync.setMain(String(body.sessionId ?? '')) })
+        }
+        if (req.method === 'GET' && route === '/sync/remote') {
+          const sessionId = url.searchParams.get('session') ?? ''
+          return send(res, 200, { lines: sessionId ? await this.remoteLines(this.ctx, sessionId) : [], hidden: sync.view().hidden })
+        }
+        if (req.method === 'POST' && route === '/sync/archived') {
+          const body = await json(req)
+          await sync.archived(Array.isArray(body.sessionIds) ? body.sessionIds.map(String) : [])
           return send(res, 204)
-        }
-        if (req.method === 'GET' && route === '/sync/mirror') {
-          const mirror = sync.mirror(url.searchParams.get('cid') ?? '')
-          return mirror ? send(res, 200, mirror) : send(res, 404, { error: { code: 'not_found', message: 'No such synced conversation' } })
-        }
-        if (req.method === 'POST' && route === '/sync/continue') {
-          const body = await json(req)
-          return send(res, 200, { sessionId: await sync.continueHere(String(body.cid ?? ''), this.deviceName()) })
         }
       }
       if (req.method === 'POST' && route === '/profile/refresh') return send(res, 200, await this.pullProfile(true))

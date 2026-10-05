@@ -302,6 +302,23 @@ export class Relay {
     return Number(out.rev ?? 0)
   }
 
+  /**
+   * Write this device's connections alone (`PUT /v1/me/profile` with only `connectors`):
+   * the relay replaces this device's rows, keeps the other devices' and leaves the
+   * account's name and look untouched.
+   */
+  async putConnectors(apiKey: string, connectors: SharedConnector[], deviceId: string, device: string, signal?: AbortSignal): Promise<number> {
+    const res = await this.fetchImpl(`${this.origin}/v1/me/profile`, {
+      method: 'PUT',
+      headers: { ...this.auth(apiKey), ...JSON_HEADERS },
+      body: JSON.stringify({ connectors, device_id: deviceId.slice(0, 80), device: device.slice(0, 80) }),
+      signal: signal ?? null,
+    })
+    if (!res.ok) await fail(res)
+    const out = (await res.json().catch(() => ({}))) as { rev?: number }
+    return Number(out.rev ?? 0)
+  }
+
   /** What `images` pictures and `clips` short videos would cost today, and the models the relay would use (nothing charged). */
   async estimate(apiKey: string, images: number, clips = 0, signal?: AbortSignal): Promise<Estimate> {
     const n = Math.max(0, Math.floor(images))

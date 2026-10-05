@@ -1,8 +1,10 @@
 /**
- * "Show the agent's steps": every tool the agent uses becomes a chip in the chat. Off by
- * default, as on the phone and the desktop — the chat keeps to the conversation, and the
- * line under the name says what the agent is on. Kept on this device like the theme.
- * Approvals, questions, files and the browser view are not steps and always show.
+ * "Show the agent's steps": every tool the agent uses becomes a chip in the chat. On by
+ * default since 0.1.37, as on the phone and the desktop — the maintainer wants the agent's
+ * actions visible; off, the chat keeps to the conversation and the line under the name says
+ * what the agent is on. Kept on this device like the theme (`nm.show_steps`, "1"/"0"); a
+ * stored "0" wins over the default. Approvals, questions, files and the browser view are not
+ * steps and always show.
  */
 import { useSyncExternalStore } from "react";
 
@@ -10,9 +12,9 @@ const STORAGE_KEY = "nm.show_steps";
 
 function load(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
+    return localStorage.getItem(STORAGE_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
 

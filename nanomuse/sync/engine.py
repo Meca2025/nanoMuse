@@ -1,24 +1,30 @@
-"""Conversation sync (contract C7): the runtime's chats are the same on every device of the
-account.
+"""Conversation sync (contracts C7 and C8): the runtime's chats are the same on every device
+of the account.
 
 The relay (``/v1/sync/*``, relay 0.19) keeps the text of the account's conversations —
 user and final assistant messages, attachment names and sizes — and a change counter per
 account. This engine:
 
-* **pushes** this runtime's threads after each finished turn (debounced two seconds), when a
-  chat is created, renamed or deleted, and in full when sync is turned on again;
+* **pushes** the person's message the moment it is sent, the assistant's final text when
+  the turn ends (debounced two seconds), a chat's title when it is created or renamed, a
+  tombstone when it is deleted — and the **whole eligible history** of this runtime,
+  oldest first in pages of 200, on sign-in and when sync is turned on again (every event
+  is unmarked, so the first conversation goes up along with the rest);
 * **pulls** on start, on sign-in, on the hub's ``sync`` frame and every 60 seconds, and
   applies what came in ``seq`` order: new conversations become threads (title, the device
-  that started them as a badge), new messages become timeline events and history for the
-  agent, tombstones remove messages and threads.
+  that started them), new messages become timeline events sorted into time order and
+  history for the agent, tombstones remove messages and threads.
 
 Every synced thread has a ``cid`` (kept in ``data_dir/sync.json`` next to the cursor);
 every synced event carries a ``mid`` and ``synced: true`` in the timeline. The main chat
-is ``kind: main`` and one conversation for the whole account: the first device to push it
-names its cid, every other device adopts that cid on its first pull (``main_exists`` says
-which when two race). Chats addressed to another device (``Thread.device``) and chats
-another device opened here (``Thread.remote_from``) are not synced — the other device has
-the same conversation as its own.
+is ``kind: main`` and **one conversation for the whole account** (C8): the first device to
+push it names its cid, every other device adopts that cid on its first pull (``main_exists``
+says which when two race), and the local main chat shows the union of its own turns and the
+other devices' — merged by ``created_at``, local first on a tie, deduplicated by ``mid``.
+A pulled message this device wrote (the echo of its own push) is never added twice. Chats
+addressed to another device (``Thread.device``) and chats another device opened here
+(``Thread.remote_from``) are not synced — the other device has the same conversation as
+its own.
 
 Nothing here reaches the network when the account is signed out; ``sync_off`` from the
 relay flips the local switch, ``bad_key`` pauses until the next sign-in."""
@@ -92,6 +98,10 @@ class ConversationSync:
         # a 401 from the relay: nothing more until the next sign-in
         self._paused = False
         self._applying = False
+        # the scheduled push is still waiting out its delay (it may be rescheduled); once it
+        # is on the wire a new request queues a second round behind it instead
+        self._push_waiting = False
+        self._push_again: float | None = None
         self.last_pull_at: str | None = None
         self.last_push_at: str | None = None
         self.last_error = ""
@@ -213,7 +223,8 @@ class ConversationSync:
     def _clear_thread_marks(thread: Thread) -> None:
         changed = False
         for ev in thread.timeline.events:
-            if ev.get("synced"):
+            # another device's row is that device's to send again, not ours (C8)
+            if ev.get("synced") and not ev.get("via_device"):
                 ev["synced"] = False
                 changed = True
         if changed:
@@ -266,6 +277,12 @@ class ConversationSync:
         return out
 
     # ------------------------------------------------------------------ hooks from the service
+    def message_sent(self, thread: Thread) -> None:
+        """The person's message is on the timeline: it goes up now (C8, real time), not
+        when the turn ends."""
+        if self.active and self._eligible(thread):
+            self.push_soon(delay=0.0)
+
     def turn_finished(self, thread: Thread) -> None:
         if self.active and self._eligible(thread):
             self.push_soon(delay=PUSH_DELAY_S)
@@ -314,17 +331,31 @@ class ConversationSync:
         except RuntimeError:
             return
         if self._push_task is not None and not self._push_task.done():
+            if not self._push_waiting:
+                # on the wire already: one more round once it is through (the shorter wait wins)
+                self._push_again = (
+                    min(self._push_again, delay) if self._push_again is not None else delay
+                )
+                return
             self._push_task.cancel()
         self._push_task = loop.create_task(self._push_later(delay), name="sync-push")
 
     async def _push_later(self, delay: float) -> None:
-        await asyncio.sleep(delay)
-        try:
-            await self.push()
-        except CloudError:
-            pass  # noted by push(); rule 7: nothing is shown, the next trigger tries again
-        except Exception:  # noqa: BLE001
-            logger.exception("sync push")
+        while True:
+            self._push_waiting = True
+            try:
+                await asyncio.sleep(delay)
+            finally:
+                self._push_waiting = False
+            try:
+                await self.push()
+            except CloudError:
+                pass  # noted by push(); rule 7: nothing is shown, the next trigger tries again
+            except Exception:  # noqa: BLE001
+                logger.exception("sync push")
+            if self._push_again is None:
+                return
+            delay, self._push_again = self._push_again, None
 
     def pull_soon(self) -> None:
         if not self.active:
@@ -382,6 +413,9 @@ class ConversationSync:
         for ev in thread.timeline.events:
             kind = ev.get("type")
             if kind not in ("user", "assistant") or ev.get("synced") or ev.get("quiet"):
+                continue
+            if ev.get("via_device"):
+                # written on another device: shown here, never pushed as ours
                 continue
             if kind == "assistant" and not ev.get("final"):
                 continue
@@ -621,6 +655,11 @@ class ConversationSync:
             return
         if existing is not None:
             return
+        device = str(row.get("device") or "")
+        if device and device == self.svc.hub.device_id:
+            # the echo of our own push (or a row of ours the timeline no longer holds):
+            # never a second bubble (C8)
+            return
         role = str(row.get("role") or "")
         if role not in ("user", "assistant"):
             return
@@ -632,8 +671,7 @@ class ConversationSync:
             "synced": True,
             "ts": _iso(row.get("created_at")),
         }
-        device = str(row.get("device") or "")
-        if device and device != self.svc.hub.device_id:
+        if device:
             event["via_device"] = device
             event["via_device_name"] = str(row.get("device_name") or "")
         if role == "assistant":
@@ -655,7 +693,8 @@ class ConversationSync:
                 if isinstance(a, dict)
             ]
         ev = thread.timeline.add(event)
-        # in time order with what is here already (add() appends)
+        # in time order with what is here already (add() appends; the sort is stable, so a
+        # local event with the same second stays in front — C8: ties, local first)
         thread.timeline.events.sort(key=lambda e: str(e.get("ts") or ""))
         thread.updated_at = max(thread.updated_at, ev["ts"])
         if not thread.busy:

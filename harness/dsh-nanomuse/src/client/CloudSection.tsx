@@ -21,15 +21,18 @@ type Phase = 'loading' | 'signedOut' | 'signedIn'
 /** Where the privacy policy is when the relay did not name one. */
 const PRIVACY_URL = 'https://nanomuse.cn/privacy/'
 
-/** `GET nanomuse/cloud/sync/state`: the switch, the relay's counts, the mirrors (see `sync.ts`). */
+/** `GET nanomuse/cloud/sync/state`: the switch, the relay's counts, the main chat and the synced sessions (see `sync.ts`). */
 export interface SyncView {
   enabled: boolean
   available: boolean
   paused: boolean
   cursor: number
   relay: { enabled: boolean; cursor: number; counts: { conversations: number; messages: number } } | null
-  mirrors: Array<{ cid: string; kind: 'main' | 'side'; title: string; device: string; deviceName: string; messages: number; updatedAt: number; sessionId: string | null }>
-  origins: Record<string, { device: string; deviceName: string }>
+  rev: number
+  mainSession: string
+  sessions: string[]
+  hidden: string[]
+  toArchive: string[]
 }
 
 /**

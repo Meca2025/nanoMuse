@@ -87,9 +87,10 @@ fi
 
 # ---------------------------------------------------------------------------- the signature
 echo "== signature"
-# inner code first: the bundled runtime's executables and libraries, and the staged harness's
-# Node addons, are loose files under Resources, which --deep does not visit
-for inner in runtime dsh; do
+# inner code first: the bundled runtime's executables and libraries, the staged harness's
+# Node addons and the unpacked native modules (nut.js, the macOS permission helpers) are
+# loose files under Resources, which --deep does not visit — unsigned, notarization refuses them
+for inner in runtime dsh app.asar.unpacked; do
   [ -d "$app/Contents/Resources/$inner" ] || continue
   find "$app/Contents/Resources/$inner" -type f \( -perm -u+x -o -name "*.so" -o -name "*.dylib" -o -name "*.node" \) -print0 \
     | xargs -0 -n 50 codesign --force --sign "$identity" "${sign_flags[@]}" 2>/dev/null || true

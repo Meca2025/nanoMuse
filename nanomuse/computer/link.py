@@ -125,6 +125,8 @@ class ComputerLink:
                 logger.debug("desktop operator not asked for the screen size: {}", exc)
             else:
                 return operator_mod.display_size(info)
+            if operator_mod.operator_owns_the_screen():
+                return 0, 0  # the first look through the operator sets it; never mss here
         return screen_size()
 
     # ------------------------------------------------------------------ the device
@@ -294,7 +296,13 @@ class ComputerLink:
     def _capture_screen(self) -> dict[str, Any] | None:
         """The whole screen: through the desktop operator when it has the hands (then the
         Python capture layer is never touched — on macOS it would be a second Screen
-        Recording prompt for a process that does not need it), else the Python capture."""
+        Recording prompt for a process that does not need it), else the Python capture.
+
+        On macOS under the desktop app there is no "else": when the app set the operator
+        variables, the screenshot goes through the operator or fails with the operator's
+        reason (the permission text) — never ``mss`` / ``screencapture``, which would mean a
+        second TCC prompt, for the runtime, and a second error text. Linux, Windows and runs
+        without the app keep the Python capture."""
         max_width = self.settings.max_image_width or DEFAULT_MAX_WIDTH
         operator = self._operator()
         if operator is not None:
@@ -308,6 +316,9 @@ class ComputerLink:
                 except Exception:  # noqa: BLE001 — the picture matters, the name is a caption
                     raw["app"], raw["app_name"] = "", ""
                 return raw
+        if operator_mod.operator_owns_the_screen():
+            why = self._backend_error or "the desktop app's operator returned no picture"
+            raise DeviceError(f"could not take a screenshot of this computer: {why}")
         try:
             return capture(max_width)
         except Exception as exc:  # noqa: BLE001 — platform tools fail in many ways

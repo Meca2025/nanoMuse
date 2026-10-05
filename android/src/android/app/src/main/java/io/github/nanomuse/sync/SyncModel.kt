@@ -36,6 +36,8 @@ data class RemoteMessage(
     val attachments: List<Attachment>,
     val createdAt: Long,
     val deleted: Boolean,
+    /** The name of the device that wrote it (`device_name`), for the "From Pixel 8" caption. */
+    val deviceName: String = "",
 )
 
 /** A page of changes since a cursor, in `seq` order. */

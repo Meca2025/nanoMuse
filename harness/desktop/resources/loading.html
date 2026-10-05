@@ -5,9 +5,10 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' file: data:">
 <title>nanoMuse</title>
 <style>
-  /* The splash: the nanoMuse logo inside a quiet loading ring, the wordmark, one line of
-     status. No character and no face here — the logo is the app's, whoever the agent looks
-     like. The error state keeps the layout and shows what went wrong. */
+  /* The splash: the nanoMuse logo (logo.png — the N mark on its white tile, docs/brand.md)
+     inside a quiet loading ring, the wordmark, one line of status. No character and no face
+     here — the logo is the app's, whoever the agent looks like. The error state keeps the
+     layout and shows what went wrong. */
   :root { color-scheme: light dark; --fg: #1b1b1f; --muted: #6b6f76; --bg: #f9f9f9; --err: #b3261e; --ring: #0064d4; --track: rgba(127,127,127,0.18); }
   @media (prefers-color-scheme: dark) { :root { --fg: #f1f1f4; --muted: #9a9ea6; --bg: #171717; --ring: #5aa2ff; --track: rgba(255,255,255,0.14); } }
   html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg);
@@ -15,7 +16,7 @@
   body { display: flex; align-items: center; justify-content: center; -webkit-app-region: drag; user-select: none; }
   .card { text-align: center; max-width: 420px; padding: 24px; }
   .mark { position: relative; width: 96px; height: 96px; margin: 0 auto 18px; }
-  .mark img { position: absolute; left: 16px; top: 16px; width: 64px; height: 64px; border-radius: 16px; display: block; }
+  .mark img { position: absolute; left: 16px; top: 16px; width: 64px; height: 64px; display: block; }
   .ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid var(--track); border-top-color: var(--ring); animation: spin 1.1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .ring { animation: none; border-top-color: var(--track); } }
@@ -28,7 +29,7 @@
 </head>
 <body>
   <div class="card">
-    <div class="mark" aria-hidden="true"><span class="ring"></span><img src="icon.png" alt=""></div>
+    <div class="mark" aria-hidden="true"><span class="ring"></span><img src="logo.png" alt=""></div>
     <h1>nanoMuse</h1>
     <p id="line" role="status"></p>
     <p id="error" class="error"></p>

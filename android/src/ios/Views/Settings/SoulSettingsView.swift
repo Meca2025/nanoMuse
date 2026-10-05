@@ -327,6 +327,7 @@ struct SoulSettingsView: View {
         do {
             let f = currentFile
             try SoulStore.save(f)
+            NanoMuseProfileSync.shared.nameChanged() // nanoMuse: C8 — a rename here reaches the account's other devices
             loadedRef.value = f
             saveError = nil
             withAnimation { didJustSave = true }

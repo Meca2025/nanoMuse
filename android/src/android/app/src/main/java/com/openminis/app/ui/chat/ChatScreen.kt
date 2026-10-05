@@ -4263,7 +4263,9 @@ fun ChatScreen(
                                 ),
                         ) {
                         when (item) {
-                            is FlatChatItem.UserBubble -> {
+                            is FlatChatItem.UserBubble -> Column { // nanoMuse: a column, for the sync caption over the bubble
+                                // nanoMuse: "From Pixel 8" when the line was written on another device (C8)
+                                io.github.nanomuse.ui.chat.NmSyncCaption(item.message.id.substringBefore('#'), end = true)
                                 // User bubbles intentionally don't register
                                 // MinisTextKit shards — long-press on a user
                                 // bubble shows its own action menu (Copy /
@@ -4344,7 +4346,11 @@ fun ChatScreen(
                             // grey bubbles per block, no name above each turn (the face
                             // in the header says who is talking); a small gap keeps the
                             // turns apart.
-                            is FlatChatItem.AssistantHeader -> if (nmHome != null) Spacer(Modifier.height(6.dp)) else AssistantHeader()
+                            is FlatChatItem.AssistantHeader -> Column {
+                                if (nmHome != null) Spacer(Modifier.height(6.dp)) else AssistantHeader()
+                                // nanoMuse: "From Pixel 8" when the reply was written on another device (C8)
+                                io.github.nanomuse.ui.chat.NmSyncCaption(item.messageId.substringBefore('#'), end = false)
+                            }
                             is FlatChatItem.AssistantText -> BoundsTrackedBlock(
                                 messageId = item.messageId,
                                 slotKey = "text:${item.block.id}",

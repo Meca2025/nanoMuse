@@ -4,6 +4,7 @@ conversation, tombstones, the switch — and the ``@<device>`` mention in the co
 
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from collections.abc import Callable, Iterator
@@ -517,6 +518,171 @@ def test_a_mention_hands_the_turn_to_the_device(synced, monkeypatch: pytest.Monk
     assert r.json()["event"]["text"] == "@everyone hello" and "to_device" not in r.json()["event"]
     # the synced copy carries the text without the mention
     wait_for(lambda: any(m["text"] == "what is on the screen?" for m in relay.msgs.values()))
+
+
+# ----------------------------------------------------------------------------- C8: one thread
+def _signed_in(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> MuseService:
+    settings.server.token = "secret-token"
+    settings.hub.enabled = False
+    settings.hub.device_id = "pc-self"
+    settings.hub.name = "Desk"
+    settings.cloud.base_url = "http://127.0.0.1:9"
+
+    async def fake_models(self: CloudClient) -> list[dict[str, Any]]:
+        return []
+
+    monkeypatch.setattr(CloudClient, "models", fake_models)
+    monkeypatch.setattr(engine_mod, "PUSH_DELAY_S", 0.05)
+    service = MuseService(settings, llm=MockLLM([]))
+    service.app.vault.set("NANOMUSE_CLOUD_KEY", "test-key")
+    return service
+
+
+def test_sign_in_backfills_the_whole_history_oldest_first(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A runtime with a long past signs in: everything eligible goes up — the first
+    conversation included — oldest first, 200 messages a POST, across several rounds."""
+    service = _signed_in(settings, monkeypatch)
+    relay = FakeSyncRelay()
+    service.sync.client = relay  # type: ignore[assignment]
+    main = service.threads[MAIN_THREAD]
+    base = 1738000000
+    for i in range(130):  # 260 messages in the main chat alone: more than one page
+        main.timeline.add(
+            {"type": "user", "text": f"q{i}", "ts": _iso_at(base + 10 * i)},
+        )
+        main.timeline.add(
+            {"type": "assistant", "text": f"a{i}", "final": True, "ts": _iso_at(base + 10 * i + 5)}
+        )
+    side = service.create_thread("An old side chat")
+    side.timeline.add({"type": "user", "text": "side q", "ts": _iso_at(base + 5000)})
+    # not eligible: a step of the agent's, a chat for another device
+    main.timeline.add({"type": "assistant", "text": "thinking…", "ts": _iso_at(base + 9000)})
+    other = service.create_thread("On the phone")
+    other.device = "phone-1"
+    other.timeline.add({"type": "user", "text": "runs on the phone", "ts": _iso_at(base + 9500)})
+    with TestClient(create_app(settings, service)) as client:
+        client.headers["Authorization"] = "Bearer secret-token"
+        wait_for(lambda: len(relay.msgs) == 261)
+        texts = {m["text"] for m in relay.msgs.values()}
+        assert "thinking…" not in texts and "runs on the phone" not in texts
+        assert {c["title"] for c in relay.convs.values()} == {"Main chat", "An old side chat"}
+        # pages of 200, the main chat oldest first, then the rest
+        batches = [p["messages"] for p in relay.pushes if p["messages"]]
+        assert len(batches[0]) == 200 and [m["text"] for m in batches[0][:4]] == [
+            "q0",
+            "a0",
+            "q1",
+            "a1",
+        ]
+        stamps = [m["created_at"] for p in batches for m in p if m["cid"] == relay_main(relay)]
+        assert stamps == sorted(stamps)
+        # the pulled echo adds nothing: still one bubble per line
+        client.post("/api/sync/pull")
+        evs = client.get(f"/api/threads/{MAIN_THREAD}/events?limit=1000").json()["events"]
+        evs = [e for e in evs if e["type"] in ("user", "assistant")]
+        assert len(evs) == 261 and sum(1 for e in evs if e["text"] == "q0") == 1
+
+
+def _iso_at(unix: int) -> str:
+    return engine_mod._iso(unix)
+
+
+def relay_main(relay: FakeSyncRelay) -> str:
+    return next(c["cid"] for c in relay.convs.values() if c["kind"] == "main")
+
+
+def test_the_persons_message_is_pushed_when_it_is_sent(synced) -> None:
+    """Real time (C8): the user line goes up at once, the assistant's text when the turn ends."""
+    client, service, llm, relay = synced
+    gate = asyncio.Event()
+
+    class GatedLLM(MockLLM):
+        """Answers only once the test lets it: the turn stays open meanwhile."""
+
+        async def ask(self, messages: Any, *args: Any, **kwargs: Any) -> LLMResponse:
+            await gate.wait()
+            return await super().ask(messages, *args, **kwargs)
+
+    service.threads[MAIN_THREAD].agent.llm = GatedLLM(
+        [LLMResponse(content="late answer", finish_reason="stop")]
+    )
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "right now"})
+    wait_for(lambda: any(m["text"] == "right now" for m in relay.msgs.values()))
+    # the turn is still running: nothing from the assistant yet
+    assert [m["role"] for m in relay.msgs.values()] == ["user"]
+    assert service.threads[MAIN_THREAD].busy
+    client.portal.call(gate.set)  # type: ignore[union-attr]
+    wait_for(lambda: any(m["text"] == "late answer" for m in relay.msgs.values()))
+    assert sorted(m["role"] for m in relay.msgs.values()) == ["assistant", "user"]
+
+
+def test_the_main_chat_merges_the_other_devices_turns_in_time_order(synced) -> None:
+    client, service, llm, relay = synced
+    # a turn here, at "now"
+    llm.script.append(LLMResponse(content="desk answer", finish_reason="stop"))
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "desk question"})
+    wait_for(lambda: any(m["text"] == "desk answer" for m in relay.msgs.values()))
+    cid = relay_main(relay)
+    local_ts = next(e["ts"] for e in _events(client, MAIN_THREAD) if e["text"] == "desk question")
+    local_unix = engine_mod._unix(local_ts)
+    # the phone wrote into the same conversation: one turn an hour ago, one just after ours
+    relay.add_message(cid, "user", "earlier on the phone", created_at=local_unix - 3600)
+    relay.add_message(cid, "assistant", "phone answer", created_at=local_unix - 3590)
+    relay.add_message(cid, "user", "later on the phone", created_at=local_unix + 60)
+    client.post("/api/sync/pull")
+    evs = [e for e in _events(client, MAIN_THREAD) if e["type"] in ("user", "assistant")]
+    assert [e["text"] for e in evs] == [
+        "earlier on the phone",
+        "phone answer",
+        "desk question",
+        "desk answer",
+        "later on the phone",
+    ]
+    # the phone's rows carry the caption, ours do not; still one main chat in the list
+    assert all(e.get("via_device_name") == "Pixel 8" for e in evs if "phone" in e["text"])
+    assert all("via_device" not in e for e in evs if "desk" in e["text"])
+    titles = [t["title"] for t in client.get("/api/threads").json()]
+    assert titles.count("Main chat") == 1 and not any(
+        t.get("origin_device") for t in client.get("/api/threads").json()
+    )
+    # the agent knows what was said elsewhere on its next turn here
+    llm.script.append(LLMResponse(content="ok", finish_reason="stop"))
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "and now?"})
+    wait_for(lambda: any(m["text"] == "ok" for m in relay.msgs.values()))
+    seen = [m.content for m in llm.calls[-1]["messages"] if m.role.value == "user"]
+    assert "later on the phone" in seen
+    # the switch off and on again: our whole history goes up — the phone's rows are the phone's
+    client.put("/api/sync/state", json={"enabled": False})
+    client.put("/api/sync/state", json={"enabled": True})
+    wait_for(lambda: any(m["text"] == "ok" for m in relay.msgs.values()))
+    assert sorted(m["text"] for m in relay.msgs.values()) == [
+        "and now?",
+        "desk answer",
+        "desk question",
+        "ok",
+    ]
+
+
+def test_the_echo_of_our_own_push_is_never_a_second_bubble(synced) -> None:
+    client, service, llm, relay = synced
+    llm.script.append(LLMResponse(content="echo answer", finish_reason="stop"))
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "echo question"})
+    wait_for(lambda: any(m["text"] == "echo answer" for m in relay.msgs.values()))
+    wait_for(lambda: service.sync.cursor == relay.seq)
+    for _ in range(2):
+        client.post("/api/sync/pull")
+    evs = [e for e in _events(client, MAIN_THREAD) if e["type"] in ("user", "assistant")]
+    assert [e["text"] for e in evs] == ["echo question", "echo answer"]
+    # the mapping lost (a reset, a trimmed timeline): a row from this device is still not
+    # added again — the relay says who wrote it
+    service.sync.state["cursor"] = 0
+    for e in service.threads[MAIN_THREAD].timeline.events:
+        e.pop("mid", None)
+    client.post("/api/sync/pull")
+    evs = [e for e in _events(client, MAIN_THREAD) if e["type"] in ("user", "assistant")]
+    assert [e["text"] for e in evs] == ["echo question", "echo answer"]
 
 
 def test_sync_state_survives_a_restart(settings: Settings, tmp_path: Path) -> None:

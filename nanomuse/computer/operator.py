@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import sys
 import urllib.error
 import urllib.request
 from typing import Any
@@ -52,6 +53,22 @@ def operator_env(env: dict[str, str] | None = None) -> tuple[str, str] | None:
     if not url or not token:
         return None
     return url, token
+
+
+def _platform() -> str:
+    # a function, so tests can stand on another platform and mypy checks every branch
+    return sys.platform
+
+
+def operator_owns_the_screen(env: dict[str, str] | None = None) -> bool:
+    """Whether every screenshot and every move must go through the operator, with no
+    Python fallback: macOS under the desktop app. The app bundle is the process macOS
+    grants Screen Recording and Accessibility to; a fallback to ``mss`` / ``pyautogui`` in
+    the runtime would mean a second TCC prompt (for a process the person never sees in the
+    pane), a second error text, and a black picture handed on as if it were the screen.
+    Linux and Windows keep the fallbacks (no such gate there), and so does every run
+    without the app (no operator variables)."""
+    return _platform() == "darwin" and operator_env(env) is not None
 
 
 class OperatorClient:
@@ -233,4 +250,5 @@ __all__ = [
     "OperatorHands",
     "operator_capture",
     "operator_env",
+    "operator_owns_the_screen",
 ]

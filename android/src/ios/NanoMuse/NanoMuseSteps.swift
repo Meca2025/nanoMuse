@@ -1,13 +1,13 @@
 import SwiftUI
 
 /// "Show the agent's steps": whether the tool capsules (a command run, a file read, a page
-/// opened…) stay in the chat once a message is finished. Off by default, as on the phone, the
-/// web app and the desktop — the chat keeps to the conversation. While a message is still
-/// running its steps show either way, since the phone has no status line under the face to
-/// say what it is on. This device only (`@AppStorage`).
+/// opened…) stay in the chat once a message is finished. On by default since 0.1.37, as on
+/// the phone, the web app and the desktop — a stored `false` still wins. While a message is
+/// still running its steps show either way, since the phone has no status line under the face
+/// to say what it is on. This device only (`@AppStorage`).
 enum NanoMuseSteps {
     static let key = "nanomuse.show_steps"
-    static let defaultValue = false
+    static let defaultValue = true
 
     /// Whether to leave this block out of the chat.
     static func hidden(_ kind: AssistantBlockKind, active: Bool, showSteps: Bool) -> Bool {

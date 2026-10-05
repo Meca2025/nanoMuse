@@ -36,6 +36,9 @@ class FakeOperator:
         self.executed: list[dict[str, Any]] = []
         self.shots: list[dict[str, Any]] = []
         self.fail_next = ""
+        # (status, error) the next /screenshot answers with — the operator's 403 on a Mac
+        # without Screen Recording (harness/desktop/src/operator.ts capture())
+        self.refuse_shot: tuple[int, str] | None = None
         fake = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -78,6 +81,9 @@ class FakeOperator:
                 body = json.loads(self.rfile.read(length) or b"{}")
                 if self.path == "/screenshot":
                     fake.shots.append(body)
+                    if fake.refuse_shot is not None:
+                        code, why = fake.refuse_shot
+                        return self._send(code, {"error": why})
                     w, h = (
                         int(body.get("width") or fake.width),
                         int(body.get("height") or fake.height),
@@ -187,6 +193,9 @@ def test_backend_choice_prefers_the_operator(
     assert hands_mod.pick_backend("auto").name == "desktop"
     assert hands_mod.pick_backend("desktop").name == "desktop"
     # the operator says no (a Wayland session): its reason leads, the Python backends follow
+    # — a Linux rule; on a Mac the operator is the only path (the test below), so the
+    # platform is pinned here for the macOS runner
+    monkeypatch.setattr(op, "_platform", lambda: "linux")
     operator.available, operator.reason = False, "Wayland session: no global screen or cursor"
     monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
     monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", None)
@@ -200,6 +209,108 @@ def test_backend_choice_prefers_the_operator(
         hands_mod.pick_backend("desktop")
     info = hands_mod.describe_availability("auto")
     assert info["available"] is False and info["reason"].startswith("Wayland session")
+
+
+# ----------------------------------------------------------------------------- one path on a Mac
+MAC_SCREEN_TEXT = (
+    "macOS: switch on nanoMuse Desktop under System Settings → Privacy & Security → "
+    "Screen Recording, then quit and reopen the app."
+)
+
+
+def _never_capture(*args: Any, **kwargs: Any) -> Any:
+    raise AssertionError("the Python capture layer was touched on a Mac under the desktop app")
+
+
+def test_operator_owns_the_screen_on_a_mac_under_the_app(
+    operator: FakeOperator, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(op, "_platform", lambda: "darwin")
+    assert op.operator_owns_the_screen() is True
+    monkeypatch.setattr(op, "_platform", lambda: "linux")
+    assert op.operator_owns_the_screen() is False
+    monkeypatch.setattr(op, "_platform", lambda: "darwin")
+    monkeypatch.delenv(op.URL_ENV)
+    assert op.operator_owns_the_screen() is False  # no app around: the Python backends as before
+
+
+def test_mac_backend_choice_is_the_operator_or_its_reason(
+    operator: FakeOperator, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Mac without Screen Recording: the operator says no, and that is the answer —
+    pyautogui is never tried (it would be a second TCC prompt, for the runtime)."""
+    monkeypatch.setattr(op, "_platform", lambda: "darwin")
+    operator.available, operator.reason = False, MAC_SCREEN_TEXT
+
+    def no_pyautogui() -> Any:
+        raise AssertionError("pyautogui was tried on a Mac under the desktop app")
+
+    monkeypatch.setattr(hands_mod, "_import_pyautogui", no_pyautogui)
+    with pytest.raises(hands_mod.HandsUnavailable) as exc:
+        hands_mod.pick_backend("auto")
+    assert str(exc.value) == MAC_SCREEN_TEXT
+    info = hands_mod.describe_availability("auto")
+    assert info == {"available": False, "backend": None, "reason": MAC_SCREEN_TEXT}
+    # the same Mac with the app's server gone: still no Python fallback, the reason says so
+    monkeypatch.setenv(op.URL_ENV, "http://127.0.0.1:9")
+    with pytest.raises(hands_mod.HandsUnavailable, match="not reachable"):
+        hands_mod.pick_backend("auto")
+    # Linux keeps the fallbacks (the Wayland test above): the operator's reason leads, the rest follow
+    monkeypatch.setattr(op, "_platform", lambda: "linux")
+    monkeypatch.setenv(op.URL_ENV, operator.url)
+    monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", None)
+    monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    with pytest.raises(hands_mod.HandsUnavailable, match="xdotool"):
+        hands_mod.pick_backend("auto")
+
+
+async def test_mac_screenshot_never_falls_back_to_python(
+    settings: Settings, operator: FakeOperator, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(op, "_platform", lambda: "darwin")
+    monkeypatch.setattr("nanomuse.computer.link.capture", _never_capture)
+    monkeypatch.setattr("nanomuse.computer.link.screen_size", _never_capture)
+    # 1. the operator refuses the picture (403, the permission text): the tool's error, in its words
+    link = ComputerLink(HandsSettings(enabled=True, settle_s=0.0))
+    assert (link.device.width, link.device.height) == (3840, 2160)
+    operator.refuse_shot = (403, f"no screenshot: the picture is black — {MAC_SCREEN_TEXT}")
+    with pytest.raises(DeviceError, match="Screen Recording, then quit and reopen") as exc:
+        await link.screen()
+    assert "could not take a screenshot of this computer" in str(exc.value)
+    operator.refuse_shot = None
+    screen = await link.screen()
+    assert (screen.width, screen.height) == (1596, 896)
+    # 2. the operator is not available at all (the permission missing at start): no Python
+    #    capture, the operator's reason — and no mss for the screen size either
+    operator.available, operator.reason = False, MAC_SCREEN_TEXT
+    link2 = ComputerLink(HandsSettings(enabled=True, settle_s=0.0))
+    assert link2.connected is False
+    with pytest.raises(DeviceError, match=r"^could not take a screenshot of this computer: macOS"):
+        await link2.screen()
+    assert link2.status()["reason"] == MAC_SCREEN_TEXT
+    # 3. the app's server is gone: still nothing from Python; the size waits for the first look
+    monkeypatch.setenv(op.URL_ENV, "http://127.0.0.1:9")
+    link3 = ComputerLink(HandsSettings(enabled=True, settle_s=0.0))
+    assert (link3.device.width, link3.device.height) == (0, 0)
+    with pytest.raises(DeviceError, match="not reachable"):
+        await link3.screen()
+    # 4. Linux with the operator saying no (and no Python hands either): the Python capture
+    #    is the fallback for the picture, as before
+    monkeypatch.setattr(op, "_platform", lambda: "linux")
+    monkeypatch.setenv(op.URL_ENV, operator.url)
+    monkeypatch.setitem(hands_mod.sys.modules, "pyautogui", None)
+    monkeypatch.setattr(hands_mod.shutil, "which", lambda name: None)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    raw = {
+        "app": "gedit", "app_name": "gedit", "width": 1596, "height": 896,
+        "screen_w": 3840, "screen_h": 2160, "keyboard": False, "screenshot": png(64, 40),
+    }  # fmt: skip
+    monkeypatch.setattr("nanomuse.computer.link.capture", lambda max_width=1600: dict(raw))
+    monkeypatch.setattr("nanomuse.computer.link.screen_size", lambda: (3840, 2160))
+    link4 = ComputerLink(HandsSettings(enabled=True, settle_s=0.0))
+    screen = await link4.screen()
+    assert (screen.width, screen.height) == (1596, 896)
 
 
 # ----------------------------------------------------------------------------- the link

@@ -24,6 +24,7 @@ class MemorySyncStore : SyncStore {
     }
     override suspend fun messages(sessionId: String) = msgs.values.filter { it.sessionId == sessionId }
     override suspend fun messageByMid(mid: String) = msgs.values.firstOrNull { it.mid == mid }
+    override suspend fun pulledMessages() = msgs.values.filter { it.device.isNotBlank() }
     override suspend fun putMessages(list: List<SyncMessage>) {
         for (m in list) msgs[m.messageId] = m
     }
@@ -48,6 +49,8 @@ class MemoryChats : LocalChats {
 
     val sessions = LinkedHashMap<String, Session>()
     val rows = LinkedHashMap<String, MutableList<LocalMessage>>()
+    /** What a chat showed before its rows (the first conversation's opening), per session id. */
+    val preludes = HashMap<String, List<TranscriptItem>>()
     var main: String? = null
     private var seq = 0
     val attachmentLine: (String) -> String = { "[Attachment $it]" }
@@ -121,6 +124,7 @@ class MemoryChats : LocalChats {
         return id
     }
     override suspend fun deleteMessage(id: String) = removeRow(id)
+    override suspend fun prelude(sessionId: String): List<TranscriptItem> = preludes[sessionId].orEmpty()
 }
 
 /**
@@ -173,7 +177,7 @@ class FakeRelay(private val names: Map<String, String> = emptyMap()) : SyncApi {
                 RemoteConversation(it.cid, it.kind, it.title, it.device, names[it.device] ?: it.device, it.createdAt, it.updatedAt, it.deleted, it.seq)
             },
             messages = ms.filter { it.seq <= cut }.map {
-                RemoteMessage(it.mid, it.cid, it.seq, it.device, it.role, it.text, it.text.length > 16_384, it.attachments, it.createdAt, it.deleted)
+                RemoteMessage(it.mid, it.cid, it.seq, it.device, it.role, it.text, it.text.length > 16_384, it.attachments, it.createdAt, it.deleted, names[it.device] ?: "")
             },
         )
     }
