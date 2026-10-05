@@ -948,8 +948,14 @@ function ensureOperator(): Promise<OperatorServer | null> {
   operatorStarting = startOperatorServer(operator, log)
     .then((server) => {
       operatorServer = server;
-      const info = operator?.info();
-      log(`operator: ${info?.available ? "available" : `not available (${info?.reason ?? "?"})`} · display ${info?.display.width}×${info?.display.height} (scale ${info?.display.scaleFactor})`);
+      const status = () => {
+        const info = operator?.info();
+        log(`operator: ${info?.available ? "available" : `not available (${info?.reason ?? "?"})`} · display ${info?.display.width}×${info?.display.height} (scale ${info?.display.scaleFactor})`);
+      };
+      // macOS: the line is about the helper's grants once it runs — written after it is up
+      // (or has failed), not before, when it would name nanoMuse Desktop's own rows
+      if (process.platform === "darwin" && helper()?.present()) void helperReady().then(status, status);
+      else status();
       return server;
     })
     .catch((exc: unknown) => {
