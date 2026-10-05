@@ -2,39 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' file: data:">
 <title>nanoMuse</title>
 <style>
-  /* The splash (C6): the wordmark and a quiet loader; no picture of any character. A face the
-     person drew themselves may sit in the disc above the wordmark when the shell hands it over
-     (`?face=<data URL>`); otherwise there is no disc. The error state keeps the layout. */
-  :root { color-scheme: light dark; --fg: #1b1b1f; --muted: #6b6f76; --bg: #f9f9f9; --err: #b3261e; --dot: #9a9ea6; }
-  @media (prefers-color-scheme: dark) { :root { --fg: #f1f1f4; --muted: #9a9ea6; --bg: #171717; --dot: #6b6f76; } }
+  /* The splash: the nanoMuse logo inside a quiet loading ring, the wordmark, one line of
+     status. No character and no face here — the logo is the app's, whoever the agent looks
+     like. The error state keeps the layout and shows what went wrong. */
+  :root { color-scheme: light dark; --fg: #1b1b1f; --muted: #6b6f76; --bg: #f9f9f9; --err: #b3261e; --ring: #0064d4; --track: rgba(127,127,127,0.18); }
+  @media (prefers-color-scheme: dark) { :root { --fg: #f1f1f4; --muted: #9a9ea6; --bg: #171717; --ring: #5aa2ff; --track: rgba(255,255,255,0.14); } }
   html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg);
     font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
   body { display: flex; align-items: center; justify-content: center; -webkit-app-region: drag; user-select: none; }
   .card { text-align: center; max-width: 420px; padding: 24px; }
-  .disc { display: none; width: 96px; height: 96px; margin: 0 auto 14px; border-radius: 50%; overflow: hidden; background: rgba(127,127,127,0.12); }
-  .disc img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .has-face .disc { display: block; }
-  h1 { font-size: 26px; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.01em; }
+  .mark { position: relative; width: 96px; height: 96px; margin: 0 auto 18px; }
+  .mark img { position: absolute; left: 16px; top: 16px; width: 64px; height: 64px; border-radius: 16px; display: block; }
+  .ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid var(--track); border-top-color: var(--ring); animation: spin 1.1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .ring { animation: none; border-top-color: var(--track); } }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
   p { margin: 0; color: var(--muted); }
-  .loader { display: flex; justify-content: center; gap: 7px; height: 8px; margin: 14px 0 10px; }
-  .loader i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot); opacity: 0.25; animation: fade 1.2s ease-in-out infinite; }
-  .loader i:nth-child(2) { animation-delay: 0.2s; }
-  .loader i:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes fade { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .loader i { animation: none; opacity: 0.6; } }
   .error { display: none; color: var(--err); white-space: pre-wrap; text-align: left; font-size: 13px; margin-top: 12px; -webkit-app-region: no-drag; user-select: text; }
-  .failed .loader { visibility: hidden; }
+  .failed .ring { animation: none; border-color: var(--track); }
   .failed .error { display: block; }
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="disc"><img id="face" alt="" src=""></div>
+    <div class="mark" aria-hidden="true"><span class="ring"></span><img src="icon.png" alt=""></div>
     <h1>nanoMuse</h1>
-    <div class="loader" aria-hidden="true"><i></i><i></i><i></i></div>
     <p id="line" role="status"></p>
     <p id="error" class="error"></p>
   </div>
@@ -44,13 +39,6 @@
       var zh = params.get("lang") === "zh" || (!params.get("lang") && /^zh/i.test(navigator.language));
       var line = document.getElementById("line");
       var error = document.getElementById("error");
-      // a face of the person's own, as a data URL from the shell; nothing else is ever shown here
-      var face = params.get("face") || "";
-      if (/^data:image\/(webp|png|jpeg);base64,/.test(face)) {
-        var img = document.getElementById("face");
-        img.onload = function () { document.body.classList.add("has-face"); };
-        img.src = face;
-      }
       line.textContent = zh ? "正在启动" : "Starting";
       window.__failed = function (message) {
         document.body.classList.add("failed");

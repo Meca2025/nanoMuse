@@ -1257,7 +1257,7 @@
     const limited = Math.max(0, Number(c.total || 0) - Number(c.unlimited || 0) - Number(c.disabled || 0));
     const note = (key) => h("span", { class: "fine" }, (set[key] ? T.rtSet + " · " : "") + T.rtEnv(typeof env[key] === "boolean" ? (env[key] ? T.on : T.off) : env[key]));
     const num = (key, label) => [h("b", {}, label), h("span", { class: "rt" },
-      h("input", { type: "number", step: "0.5", min: "0", "data-focus": "rt-" + key, value: key in RT_DRAFT ? RT_DRAFT[key] : (v[key] ?? ""), oninput: (e) => { RT_DRAFT[key] = e.target.value; } }), note(key))];
+      h("input", { type: "number", step: "0.5", min: "0", "data-focus": "rt-" + key, value: key in RT_DRAFT ? RT_DRAFT[key] : (v[key] ?? ""), oninput: (e) => { RT_DRAFT[key] = e.target.value; draw(); } }), note(key))];
     const on = "signup_open" in RT_DRAFT ? RT_DRAFT.signup_open : !!v.signup_open;
     const dirty = Object.keys(RT_DRAFT).length > 0;
     return h("div", { class: "panel" }, h("h2", {}, T.rtTitle, h("span", { class: "sp" }), h("button", { class: "btn sm", disabled: dirty && !rtBusy ? null : "", onclick: rtSave }, T.rtSave)),
@@ -1306,7 +1306,7 @@
       h("label", { class: "sw" }, h("input", { type: "checkbox", checked: on ? "" : null, disabled: ndBusy ? "" : null, onchange: (e) => { set(e.target.checked); draw(); } }), " ", label),
       hint ? h("span", { class: "fine" }, hint) : null);
     const text = (key, value, set, hint, type, attrs) => h("span", { class: "rt" },
-      h("input", { type: type || "text", "data-focus": "nd-" + key, value, disabled: ndBusy ? "" : null, ...(attrs || {}), oninput: (e) => { set(e.target.value); } }),
+      h("input", { type: type || "text", "data-focus": "nd-" + key, value, disabled: ndBusy ? "" : null, ...(attrs || {}), oninput: (e) => { set(e.target.value); draw(); } }),
       hint ? h("span", { class: "fine" }, hint) : null);
     const momentSw = (name, label, hint) => sw(!!m[name], (v) => { ndEdit(nv).star.moments[name] = v; }, label, hint);
     return h("div", { class: "panel" },

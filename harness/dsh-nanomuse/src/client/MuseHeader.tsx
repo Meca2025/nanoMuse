@@ -136,6 +136,9 @@ export function MuseHeader({ t, openProfile, useSessionStatus }: MuseHeaderProps
   const main = mainChatId()
   const side = current !== null && main !== undefined && main !== current
   return h(Fragment, null,
+    // The only drag handle over the chat (macOS/Windows): an empty strip above the face.
+    // Nothing draggable lies under the face itself, so a click there is always a click.
+    h('div', { className: 'nm-header-drag', 'data-window-drag': true, 'aria-hidden': 'true' }),
     split !== null
       ? h('button', { type: 'button', className: 'nm-header-back nm-header-chats', 'aria-label': t('railChats'), title: t('splitClose'), onClick: () => nav.split(null) }, h(IconMenu, { size: 18 }), h('span', null, t('railChats')))
       : side ? h('button', { type: 'button', className: 'nm-header-back', 'aria-label': t('chMain'), title: t('chMain'), onClick: () => nav.openSession(main) }, h(IconChevronLeft, { size: 18 })) : null,

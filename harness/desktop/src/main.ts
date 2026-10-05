@@ -1041,37 +1041,9 @@ function createWindow(): BrowserWindow {
   win.on("closed", () => {
     mainWindow = null;
   });
-  const face = splashFace();
-  void win.loadFile(join(ownResources(), "loading.html"), { query: { lang: zh ? "zh" : "en", ...(face ? { face } : {}) } });
+  // the splash: the logo in a loading ring and the wordmark (resources/loading.html) — no face
+  void win.loadFile(join(ownResources(), "loading.html"), { query: { lang: zh ? "zh" : "en" } });
   return win;
-}
-
-/** The splash may show a face only when it is the person's own (C6): a drawn one, as a data URL. */
-const SPLASH_FACE_MAX = 600 * 1024;
-function splashFace(): string | undefined {
-  const store = join(harnessHome(), "nanomuse");
-  const candidates: string[] = [];
-  try {
-    const profile = JSON.parse(readFileSync(join(store, "profile.json"), "utf8")) as { avatar?: string; faceId?: string };
-    if (profile.avatar === "face" && profile.faceId && /^[\w.-]+$/.test(profile.faceId)) {
-      for (const ext of ["webp", "png", "jpg"]) candidates.push(join(store, "faces", profile.faceId, `idle.${ext}`));
-    }
-  } catch {
-    /* no profile yet, or not a face: nothing in the disc */
-  }
-  for (const ext of ["webp", "png", "jpg"]) candidates.push(join(store, "avatar", `base.${ext}`));
-  for (const path of candidates) {
-    try {
-      if (!existsSync(path)) continue;
-      const bytes = readFileSync(path);
-      if (bytes.length === 0 || bytes.length > SPLASH_FACE_MAX) continue;
-      const ext = path.slice(path.lastIndexOf(".") + 1);
-      return `data:image/${ext === "jpg" ? "jpeg" : ext};base64,${bytes.toString("base64")}`;
-    } catch {
-      /* unreadable: try the next */
-    }
-  }
-  return undefined;
 }
 
 async function boot(): Promise<void> {

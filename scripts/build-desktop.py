@@ -93,7 +93,7 @@ def make_icons() -> None:
         except (FileNotFoundError, subprocess.CalledProcessError) as e:
             print(f"iconutil failed ({e}); building without an .icns")
     else:
-        for size in (48, 128, 256, 512):
+        for size in (16, 24, 32, 48, 64, 128, 256, 512):
             src.resize((size, size), Image.LANCZOS).save(BUILD / f"icon-{size}.png")
 
 
@@ -330,14 +330,45 @@ case ":$PATH:" in *":$DEST:"*) ;; *) echo "Add $DEST to your PATH (e.g. in ~/.pr
 echo "Installed. Run: nanomuse-desktop"
 """
 
-DESKTOP_ENTRY = """[Desktop Entry]
+# The deb is its own package, apart from the desktop app's (electron-builder names that one
+# `nanomuse-desktop` and links /usr/bin/nanomuse-desktop through update-alternatives at 100):
+# the two install side by side, so every file name here carries the -terminal suffix and
+# the command is a lower-priority alternative for the same `nanomuse-desktop` name.
+DESKTOP_ENTRY = f"""[Desktop Entry]
 Type=Application
-Name=nanoMuse Desktop
-Comment=Your computer's Muse; hands on this machine and on your other devices
-Exec=nanomuse-desktop run --open
-Icon=nanomuse-desktop
+Name=nanoMuse Desktop (terminal)
+Comment=Your computer's Muse in a terminal; hands on this machine and on your other devices
+Exec={PACKAGE} run --open
+Icon={PACKAGE}
 Terminal=true
 Categories=Utility;
+"""
+
+POSTINST = f"""#!/bin/sh
+set -e
+if command -v update-alternatives >/dev/null 2>&1; then
+    update-alternatives --install /usr/bin/{NAME} {NAME} /usr/bin/{PACKAGE} 50 || true
+fi
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+fi
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+fi
+exit 0
+"""
+
+POSTRM = f"""#!/bin/sh
+set -e
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    if command -v update-alternatives >/dev/null 2>&1; then
+        update-alternatives --remove {NAME} /usr/bin/{PACKAGE} || true
+    fi
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+    fi
+fi
+exit 0
 """
 
 
@@ -358,20 +389,25 @@ def package_linux(exe: Path, ver: str, installer: bool) -> None:
     (stage / "DEBIAN").mkdir(parents=True)
     (stage / "usr" / "bin").mkdir(parents=True)
     (stage / "usr" / "share" / "applications").mkdir(parents=True)
-    shutil.copy(exe, stage / "usr" / "bin" / NAME)
-    (stage / "usr" / "bin" / NAME).chmod(0o755)
-    (stage / "usr" / "share" / "applications" / f"{NAME}.desktop").write_text(DESKTOP_ENTRY)
-    for size in (48, 128, 256, 512):
+    shutil.copy(exe, stage / "usr" / "bin" / PACKAGE)
+    (stage / "usr" / "bin" / PACKAGE).chmod(0o755)
+    (stage / "usr" / "share" / "applications" / f"{PACKAGE}.desktop").write_text(DESKTOP_ENTRY)
+    for size in (16, 24, 32, 48, 64, 128, 256, 512):
         icon = BUILD / f"icon-{size}.png"
         if icon.exists():
             d = stage / "usr" / "share" / "icons" / "hicolor" / f"{size}x{size}" / "apps"
             d.mkdir(parents=True)
-            shutil.copy(icon, d / f"{NAME}.png")
+            shutil.copy(icon, d / f"{PACKAGE}.png")
     deb_arch = {"x64": "amd64", "arm64": "arm64"}.get(arch(), arch())
     (stage / "DEBIAN" / "control").write_text(
-        f"Package: {NAME}\nVersion: {ver}\nSection: utils\nPriority: optional\nArchitecture: {deb_arch}\nMaintainer: nanoMuse <hello@nanomuse.cn>\n"
-        f"Homepage: https://nanomuse.cn/\nDescription: nanoMuse Desktop\n Your computer's Muse: hands on this machine and, through the hub, on every other device of the account.\n"
+        f"Package: {PACKAGE}\nVersion: {ver}\nSection: utils\nPriority: optional\nArchitecture: {deb_arch}\nMaintainer: nanoMuse <hello@nanomuse.cn>\n"
+        f"Homepage: https://nanomuse.cn/\nDescription: nanoMuse Desktop (terminal)\n Your computer's Muse in a terminal: hands on this machine and, through the hub, on every other device of the account.\n"
+        f" Installs alongside the nanoMuse desktop app; `{PACKAGE}` is the command, also `{NAME}` when the app is not installed.\n"
     )
+    for name, body in (("postinst", POSTINST), ("postrm", POSTRM)):
+        script = stage / "DEBIAN" / name
+        script.write_text(body)
+        script.chmod(0o755)
     for p in stage.rglob("*"):
         if p.is_dir():
             p.chmod(0o755)

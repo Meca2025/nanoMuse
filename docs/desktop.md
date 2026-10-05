@@ -124,5 +124,9 @@ python -m pytest desktop/tests
 
 The macOS `.pkg` installs `/usr/local/bin/nanomuse-desktop` and a small "nanoMuse
 Desktop.app" that opens it in Terminal; the Windows setup adds the folder to `PATH` and
-a Start-menu entry; the `.deb` installs `/usr/bin/…` and a desktop entry. Nothing is
-signed — macOS asks for right-click → Open once, Windows for "Run anyway".
+a Start-menu entry; the `.deb` (package `nanomuse-desktop-terminal`) installs
+`/usr/bin/nanomuse-desktop-terminal`, a desktop entry "nanoMuse Desktop (terminal)" with its
+own icon, and registers the command as a lower-priority alternative for `nanomuse-desktop`,
+so it installs next to the desktop app's `.deb` and the plain name keeps working when the app
+is not there. Nothing is signed — macOS asks for right-click → Open once, Windows for "Run
+anyway".
