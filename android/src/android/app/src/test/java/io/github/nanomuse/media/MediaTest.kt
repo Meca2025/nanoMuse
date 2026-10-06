@@ -62,7 +62,8 @@ class MediaTest {
     @Test fun `the missing-model addendum points at the setting and forbids inventing`() {
         val text = MediaModels.missingImageAddendum()
         assertTrue(text.contains(MediaModels.DEEP_LINK))
-        assertTrue(text.contains("qwen-image-3.0"))
+        assertTrue(text.contains("Bailian") && text.contains("Gemini") && text.contains("OpenRouter"))
+        assertTrue(text.contains("not a ChatGPT plan signed in through Codex"))
         assertTrue(text.contains("do not describe or invent"))
     }
 

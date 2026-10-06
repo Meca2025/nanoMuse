@@ -121,6 +121,13 @@ fun NanoMuseHome(
         if (chatSessionId == null) chatSessionId = main
     }
 
+    // contract C10: a sign-in made the open chat another account's — the home is this account's now
+    val hiddenSessions by io.github.nanomuse.sync.ConversationSync.hidden.collectAsState()
+    LaunchedEffect(hiddenSessions, mainSessionId) {
+        val shown = chatSessionId ?: return@LaunchedEffect
+        if (shown in hiddenSessions) chatSessionId = mainSessionId ?: MainChat.resolve(context, chatRepository)
+    }
+
     val isMainChat = chatSessionId?.let { MainChat.isMain(context, it) } ?: true
 
     // Each time the home comes to the foreground: one more distinct day for the star asks'

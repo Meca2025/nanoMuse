@@ -144,7 +144,8 @@ fun MediaModelsScreen(
         // ── image ──
         SettingsSection(
             header = stringResource(R.string.nm_media_section_image),
-            footer = if (imageInstances.isEmpty()) stringResource(R.string.nm_media_image_none) else stringResource(R.string.nm_media_image_footer),
+            // C11: no configured provider draws — the one sentence that says which would
+            footer = if (imageInstances.isEmpty()) stringResource(R.string.nm_cap_pictures_unavailable) else stringResource(R.string.nm_media_image_footer),
         ) {
             StatusRow(
                 icon = Icons.Outlined.Image,
@@ -192,7 +193,7 @@ fun MediaModelsScreen(
         // ── video ──
         SettingsSection(
             header = stringResource(R.string.nm_media_section_video),
-            footer = if (videoInstances.isEmpty()) stringResource(R.string.nm_media_video_none) else stringResource(R.string.nm_media_video_footer),
+            footer = if (videoInstances.isEmpty()) stringResource(R.string.nm_cap_clips_unavailable) else stringResource(R.string.nm_media_video_footer),
         ) {
             StatusRow(
                 icon = Icons.Outlined.Movie,

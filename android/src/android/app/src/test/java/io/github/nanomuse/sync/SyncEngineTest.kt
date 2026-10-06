@@ -260,7 +260,7 @@ class SyncEngineTest {
         assertEquals(500, relay.msgs.size)
     }
 
-    @Test fun `another account starts clean`() = runTest {
+    @Test fun `another account starts with its own cursor and none of the first account's chats`() = runTest {
         val relay = FakeRelay()
         val p = phone(relay, "phone-a", account = "acct-1")
         p.chats.addSession("main"); p.chats.main = "main"
@@ -270,7 +270,10 @@ class SyncEngineTest {
         val q = SyncEngine(p.store, p.chats, relay2, "phone-a", "acct-2", sideChats = { true })
         q.push()
         assertEquals("acct-2", p.store.meta[SyncStore.ACCOUNT])
-        assertEquals(1, relay2.msgs.size)
+        // C10: the first account's chat is not pushed into the second; its mapping is kept for its return
+        assertEquals(0, relay2.msgs.size)
+        assertEquals("acct-1", p.store.convs.getValue("main").owner)
+        assertNull(p.chats.main) // the home belongs to acct-1; acct-2 starts on a draft
     }
 
     @Test fun `sync_off is a 409 the caller sees, the switch on re-pushes everything`() = runTest {

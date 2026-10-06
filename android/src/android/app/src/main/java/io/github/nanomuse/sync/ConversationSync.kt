@@ -89,6 +89,16 @@ object ConversationSync {
     /** Local chat id → the device working on it right now (C9), while its `at` is under ten minutes old. */
     val working: StateFlow<Map<String, WorkingPresence>> = _working.asStateFlow()
 
+    private val _hidden = MutableStateFlow<Set<String>>(emptySet())
+    /**
+     * Local chat ids synced under an account other than the signed-in one (contract C10): on the
+     * phone, kept, but not in the list, not pushed, not the home. Empty while signed out — the
+     * device is the person's, everything on it shows — and the moment the account signs back in.
+     * `ChatRepository.observeSessions()` leaves these out, so the drawer, the search and the
+     * "working" line follow.
+     */
+    val hidden: StateFlow<Set<String>> = _hidden.asStateFlow()
+
     private val _pulled = MutableSharedFlow<Set<String>>(extraBufferCapacity = 16)
     /** Chats that just got rows from another device; an open chat reloads itself. */
     val pulled: SharedFlow<Set<String>> = _pulled.asSharedFlow()
@@ -121,11 +131,32 @@ object ConversationSync {
             lock.withLock {
                 runCatching {
                     val store = RoomSyncStore(ctx)
-                    _captions.value = SyncEngine.captions(store, Hub.deviceId(ctx))
-                    _remoteRows.value = SyncEngine.remoteRows(store, Hub.deviceId(ctx))
+                    val account = accountKey(ctx)
+                    _hidden.value = SyncEngine.hidden(store, account)
+                    _captions.value = SyncEngine.captions(store, Hub.deviceId(ctx), account)
+                    _remoteRows.value = SyncEngine.remoteRows(store, Hub.deviceId(ctx), account)
                 }
             }
         }
+    }
+
+    /**
+     * The account the ids are scoped to: the relay's id for it (`/v1/me` → `account.id`), or the
+     * key itself on a relay that gives none; null while signed out.
+     */
+    private fun accountKey(ctx: Context): String? {
+        val token = NanoMuseCloud.apiKey(ctx) ?: return null
+        return NanoMuseCloud.account(ctx)?.accountId?.takeIf { it.isNotBlank() } ?: token.hashCode().toString()
+    }
+
+    /** The signed-in account is not the one the last sync ran for (C10): nothing of the old one is shown as the new one's. */
+    private fun accountChanged() {
+        _working.value = emptyMap()
+        workingSent.clear()
+        _captions.value = emptyMap()
+        _remoteRows.value = emptyMap()
+        // the hub's device list went with Hub.restart() at sign-in; the cursor and the home
+        // conversation are the engine's (SyncEngine.ensureAccount)
     }
 
     /** Signed in, and the switch is on, and the relay has not refused the key. */
@@ -228,6 +259,7 @@ object ConversationSync {
         val presence = if (on) SyncJson.working(frame) else null
         scope.launch {
             val sessionId = runCatching { RoomSyncStore(ctx).conversationByCid(cid)?.sessionId }.getOrNull() ?: return@launch
+            if (sessionId in _hidden.value) return@launch // C10: another account's chat is not on this screen
             _working.update { map ->
                 val cur = map[sessionId]
                 when {
@@ -262,6 +294,10 @@ object ConversationSync {
         val ctx = context.applicationContext
         scope.launch {
             run(ctx) {
+                // C10: the list is this account's from the first frame — another account's chats
+                // go out of sight before anything is pulled, and the home follows
+                it.accountSignedIn()
+                _hidden.value = it.hidden()
                 val state = runCatching { it.state() }.getOrNull()
                 if (state != null) setLocalEnabled(ctx, state.enabled)
                 if (_enabled.value) {
@@ -273,7 +309,11 @@ object ConversationSync {
         }
     }
 
-    /** Signed out: the next account starts with no ids, no cursor, the switch on, side chats off. */
+    /**
+     * Signed out: the switch on, side chats off, nothing shown as anyone's. The ids, the cursor
+     * and whose chat is whose stay (C10): the same account signing in again goes on where it
+     * was, another one starts its own cursor and sees only its own and the unsynced.
+     */
     fun forget(context: Context) {
         val ctx = context.applicationContext
         halted = false
@@ -284,8 +324,8 @@ object ConversationSync {
         _captions.value = emptyMap()
         _remoteRows.value = emptyMap()
         _working.value = emptyMap()
+        _hidden.value = emptySet()
         workingSent.clear()
-        scope.launch { lock.withLock { runCatching { RoomSyncStore(ctx).clear() } } }
     }
 
     private fun startTicker(ctx: Context) {
@@ -360,7 +400,7 @@ object ConversationSync {
         val repo = (ctx.applicationContext as? MinisApp)?.chatRepositoryOrNull ?: return null
         val token = NanoMuseCloud.apiKey(ctx) ?: return null
         // the ids are per account: the relay's id for it, or the key itself on a relay that gives none
-        val account = NanoMuseCloud.account(ctx)?.accountId?.takeIf { it.isNotBlank() } ?: token.hashCode().toString()
+        val account = accountKey(ctx) ?: return null
         return SyncEngine(
             store = RoomSyncStore(ctx),
             chats = RoomChats(ctx, repo),
@@ -368,6 +408,7 @@ object ConversationSync {
             deviceId = Hub.deviceId(ctx),
             account = account,
             sideChats = { _sideChats.value },
+            onAccountChanged = { accountChanged() },
         )
     }
 
@@ -393,6 +434,7 @@ object ConversationSync {
                 AppLogger.warning(TAG, "sync: ${x.message}")
             }
             runCatching {
+                _hidden.value = e.hidden()
                 _captions.value = e.captions()
                 _remoteRows.value = e.remoteRows()
             }

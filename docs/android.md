@@ -57,7 +57,7 @@ usage, the model menu) goes to that address.
 | **Reach** (`reach/`) | Your computers, from the phone: "say it on the phone, it gets done there" — a shell command, a file, the computer's screen, or a whole task for the nanoMuse running there. The way in is the hub (next row): install nanoMuse Desktop on the computer and sign in with the same account, and it is under *Account → Devices* within seconds, on any network — the only way since 0.1.24 (the local-network host script is gone). *Settings → Computers* lists the account's computers and says which account the phone uses, since a missing computer has nearly always signed in with another one. Approvals are decided on the phone before anything is sent. [every-device.md](every-device.md). |
 | **The hub** (`hub/`) | Every signed-in device of the account meets on the relay's hub: the phone sees your computers, asks them to do things, gets their approvals as cards, and can be asked by them. A foreground service keeps it reachable in the background (Android 13+ asks for the notification permission for that). [hub.md](hub.md). |
 | **Coding agents** (`ui/coding/`) | The Cursor, Codex and Claude Code sessions on your computers, seen and steered from the phone. [coding-agents.md](coding-agents.md). |
-| **Account** (`ui/cloud/`) | Who is signed in, the password, every device holding a key, usage by kind and by model, the ways out. When the free pool is spent or past 80 %, the account page and the refused turn show the two ways on: an invitation, and your own key — Alibaba Cloud Bailian first for people in mainland China (the UI in simplified Chinese, a phone-number sign-in, or the relay saying so), OpenRouter first everywhere else with *Sign in with OpenRouter* as the one button (Bailian only signs up accounts from the mainland); the other vendor is a text link away. |
+| **Account** (`ui/cloud/`) | Who is signed in, the password, every device holding a key, usage by kind and by model, the ways out. When the free pool is spent or past 80 %, the account page and the refused turn show the ways on: your own key — the providers of the catalogue, the region's first (Alibaba Cloud Bailian for people in mainland China: the UI in simplified Chinese, a phone-number sign-in, or the relay saying so; OpenRouter and OpenAI everywhere else), each saying what it covers — a subscription you already pay for (ChatGPT, Claude, Kimi, OpenRouter sign in instead of a key), and an invitation. See [Your own key](#your-own-key) below. A phone shows and syncs the signed-in account's conversations only: a chat synced under another account stays on the phone, out of the list and never pushed, until that account signs in again; signed out, everything on the phone shows ([every-device.md](every-device.md#whose-conversations-a-device-shows)). |
 | **The browser handed over** (`browser/`) | A page that needs you — a login, a verification code, a payment, a CAPTCHA — is handed over instead of described: `browser_use`'s `hand_over` action opens the agent's own tab (same WebView, same session) in the browser sheet with the agent's hold released, a **Your turn** card above the composer says what the page asks of you with *Open the page* and *Done, continue*, the sheet carries the same line and button, and the tool call waits for *Done* (fifteen minutes at most) before the agent goes on from the page as it is. `io.github.nanomuse.browser.BrowserHandOver`. |
 | **Connectors** (`connectors/`, `ui/connectors/`) | The services the agent can be let into — the desktop's catalogue of 75 remote MCP servers (Notion, Linear, GitHub, GitLab, Slack, Stripe, Miro, …), shipped as `assets/nanomuse/connectors.json`. The only Settings row for all of this is *Connectors*; the upstream MCP editor (by address, by command, imported JSON) is *Your own servers* at the end of the page. Open servers add with a tap; a key service takes the key; an OAuth service runs the MCP authorization flow (discovery, dynamic client registration, PKCE in a Custom Tab) and the token goes into the entry's `Authorization` header for the in-guest MCP client, refreshed at app start; a service whose authorization server registers no clients (`clientIdRequired` — GitHub, Slack, Discord, HubSpot, Render, Bitrise, PagerDuty, Box) asks for an OAuth client id and secret made at the vendor's developer page with the app's callback address, which the sheet shows and copies. A connected service is an MCP server entry under the same id — *Your own servers* manages it too. What is connected is shared with the account's other devices through the relay profile — the entries (id, label, address, kind of auth, which device, when), never a token — so the page also lists *On your other devices*: a service connected on the desktop shows as *Connected on <device> — sign in here to use it on this phone*, one tap into the same sheet. |
 | **The chat, plain** | While the agent works, the line under its avatar names the step under way — *nanoMuse is using Shell*, *Writing the reply*, *On it: book the table* — never a state of mind. The tool pills, the Computer sheet and the floating step bar are **off by default**; *Settings → Appearance → Show the agent's steps* turns them on. With them on, a finished step reads *nanoMuse used Shell · Done*, and its sheet closes on ×, swipe or Back. |
@@ -65,6 +65,41 @@ usage, the model menu) goes to that address.
 The web console of the same account is at the relay (`/app`), the desktop app in
 [desktop.md](desktop.md); the phone, the desktop and the web share the design language
 described in [brand.md](brand.md).
+
+## Your own key
+
+The vendors the app knows are one file, `assets/nanomuse/providers.json` — a copy of the
+runtime's `nanomuse/llm/providers.json` written by `node scripts/providers-json.mjs`, the same
+catalogue every client reads ([own-key.md](own-key.md)). Each entry says where the endpoint is,
+where a key is made, which sign-ins it has, where it signs people up (`cn`, `global`) and what
+its models can do: `chat`, `vision` (the hands' screen), `image` (pictures), `video` (clips).
+
+**The card.** When the allowance is spent or nearly, *Use your own model key* lists the
+catalogue, the region's vendors first — Alibaba Cloud Bailian on the mainland (one key covers
+all four; it signs up accounts from mainland China only), OpenRouter and OpenAI elsewhere —
+then the rest, three at a time behind *More providers*. Every row says what the vendor covers
+(*chat · screen · pictures · clips*); *Add* opens the provider form pre-filled with its name,
+endpoint and `/v1` setting (`minis://settings/providers/add?preset=<id>`), *Get a key* opens
+the vendor's key page. No vendor is recommended. *A subscription you already pay for* lists
+the vendors whose plan signs in instead of a key — ChatGPT (OpenAI's Codex OAuth), Claude,
+Kimi (a device code) and OpenRouter; *Sign in* opens the same form on the sign-in button
+(`?preset=<id>:oauth`), which runs OpenMinis' own `OpenAIOAuthManager`, `ClaudeOAuthManager`,
+`KimiOAuthManager` or `OpenRouterOAuthManager`. The ChatGPT row carries the line that
+OpenAI's terms cover a ChatGPT plan inside OpenAI's own Codex, that other apps have had this
+access cut off before (OpenCode, January 2026), and that an API key works if it stops.
+Anthropic and Gemini open on OpenMinis' own provider types for them; everything else on the
+OpenAI-compatible form.
+
+**What each covers.** The capabilities decide what the app offers (`cloud/Capabilities.kt`):
+pictures (Settings → Image & video models, the avatar studio, `nanomuse-media image`) pick a
+provider only among those whose vendor has `image`; clips among those with `video` that the
+app can drive (Bailian's video API); the hands' screen model and its picker list only models of
+vendors with `vision`. A ChatGPT plan signed in through Codex is chat and vision — the Codex
+backend has no image or video endpoints — so it is never offered for pictures. A vendor the
+catalogue does not know (a gateway, a relay of your own, nanoMuse Cloud) is taken at its
+models' word, as before. When no configured provider has a capability, the page says so in one
+sentence — *Pictures need a provider with image models — Bailian, OpenAI, Gemini or
+OpenRouter.* — instead of failing.
 
 ## Privacy and permissions
 
@@ -126,11 +161,12 @@ like the Python package's version does.
 | Path (`android/src/android/app/src/main/java/io/github/nanomuse/`) | Does |
 | --- | --- |
 | `cloud/NanoMuseCloud.kt` | The account: sign-in with a code or a password, the key in the encrypted store, `/v1/me`, usage, sessions, the localized error sentences; the relay's menu and its two defaults (`for: chat` / `for: gui`) |
-| `cloud/Region.kt`, `cloud/OwnKeyPresets.kt`, `cloud/ProfileSync.kt` | Which own-key vendor comes first (mainland → Bailian, else OpenRouter); the pre-filled provider forms; the relay profile (name, look, connectors) pulled and pushed |
+| `cloud/Region.kt`, `cloud/ProviderCatalogue.kt`, `cloud/Capabilities.kt`, `cloud/OwnKeyPresets.kt`, `cloud/ProfileSync.kt` | Which region's vendors come first (mainland → Bailian, else OpenRouter and OpenAI); the own-key catalogue read from `assets/nanomuse/providers.json` and which vendor a configured provider is; what a provider covers and the one-sentence "unavailable" lines; the pre-filled provider forms (`?preset=<id>[:oauth]`); the relay profile (name, look, connectors) pulled and pushed |
+| `sync/` | Conversation sync (contracts C7–C10): `SyncEngine` (what goes up and comes down; `owner` per mapping, the account's only), `ConversationSync` (when; `hidden` — the chats of another account, left out of `ChatRepository.observeSessions()`), `LocalChats`, the Room store `nanomuse_sync.db` |
 | `hub/` | `Hub` (state, device identity, settings), `HubClient` (the socket with backoff; stops when the relay refuses the key), `HubService` (the foreground service), `HubActions` (what other devices may ask this phone), `HubErrors` (failures in words) |
 | `reach/` | `Computers` (paired computers, tokens in the encrypted store), the offload handler that sends work to a computer |
 | `hands/` | The accessibility service as the hand, the stage and the capsule, the screen reader; `Hands.screenModel` picks the Hands model (chosen → the Cloud's `qwen3.8-27b` → the same under your own key → a chat model that sees → the Vision Group) |
 | `ui/coding/` | The coding agents of your computers |
 | `connectors/`, `ui/connectors/` | The connectors catalogue (`ConnectorsCatalogue` reads the asset), MCP authorization discovery + registration (`McpAuthDiscovery`), connecting and token refresh (`Connectors`), what this phone connected as published to the profile and what the other devices did (`SharedConnectors`), the Settings → Connectors page |
 | `ui/cloud/` | Sign-in, the Account screen, the Devices section |
-| `res/values*/nm_strings.xml` | Every nanoMuse string, in English, 简体中文 and 繁體中文 (the three files carry the same keys) |
+| `res/values*/nm_strings.xml` | Every nanoMuse string in the seventeen languages the app has (English, 简体中文, 繁體中文, German, Spanish, Filipino, French, Indonesian, Japanese, Korean, Malay, Polish, Brazilian Portuguese, Romanian, Russian, Thai, Turkish); every file carries the same keys, and a missing one falls back to English |
