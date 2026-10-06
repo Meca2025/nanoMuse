@@ -423,6 +423,14 @@ class Settings:
     # private and only members may sign in at all (the pre-release behaviour).
     allowed_identifiers: str = field(default_factory=lambda: _env("ALLOWED_IDENTIFIERS"))
     signup_open: bool = field(default_factory=lambda: _env("SIGNUP_OPEN", "1") not in ("0", "false", "no"))
+    # A sign-in for an app store's reviewer, who cannot receive our codes: for the
+    # e-mail addresses in REVIEW_ADDRESSES (comma-separated) a code request sends nothing and
+    # answers as if it had, and /v1/auth/verify accepts exactly REVIEW_CODE (six digits) —
+    # within the same code lifetime, attempt and rate limits as anyone's. The account is an
+    # ordinary one, tagged `review` on the operator's page and left out of its sign-up counts.
+    # Either value empty = off, nothing changes.
+    review_addresses: str = field(default_factory=lambda: _env("REVIEW_ADDRESSES"))
+    review_code: str = field(default_factory=lambda: _env("REVIEW_CODE"))
     code_per_ip_hour: int = field(default_factory=lambda: _int("CODE_PER_IP_HOUR", 10))
     code_max_attempts: int = field(default_factory=lambda: _int("CODE_MAX_ATTEMPTS", 5))
     # One phone/e-mail = one grant; a second device signing in with the same

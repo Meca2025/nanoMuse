@@ -6,6 +6,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Cloud
 
+- **A sign-in for the app store's reviewer.** `REVIEW_ADDRESSES` (e-mail addresses) and `REVIEW_CODE` (six digits), both empty by default: a code request for one of those addresses sends nothing and answers as if it had, and `/v1/auth/verify` accepts exactly that code for it, under the same code lifetime, attempt and rate limits as anyone's. The account is an ordinary one; the admin console tags it *review* in the People table and on its page and leaves it out of the sign-up counts on the Overview and the Stats page. With either value empty nothing changes.
+
 ### Runtime
 
 ### Web

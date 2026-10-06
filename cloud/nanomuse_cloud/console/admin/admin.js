@@ -32,7 +32,7 @@
     kinds: { chat: "对话", image: "图片", video: "视频", realtime: "实时通话", grant: "加 tokens", credit: "加额度" },
     lanes: { chat: "聊天", gui: "动手" }, laneDefault: (l) => `${l}默认`, laneTitle: (l) => `这个模型供「${l}」选择器选用`, laneDefaultTitle: (l) => `「${l}」选择器的默认模型`,
     thWho: "账号", thJoined: "注册", thSpent: "花费 累计 / 今天", thTokens: "tokens 累计 / 今天", thReqs: "请求", thActive: "最近活跃", thDevices: "设备",
-    never: "从未", phone: "手机", email: "邮箱", disabled: "已停用", locked: "已锁定", member: "成员", listed: "白名单", password: "密码", noAccounts: "还没有人登录过。", search: "搜索提示 / ID / 地址…",
+    never: "从未", phone: "手机", email: "邮箱", disabled: "已停用", locked: "已锁定", member: "成员", listed: "白名单", review: "审核", reviewNote: "应用商店审核员的登录账号（REVIEW_ADDRESSES）：固定验证码，不计入注册数", password: "密码", noAccounts: "还没有人登录过。", search: "搜索提示 / ID / 地址…",
     reqs: (n) => `${fmt(n)} 次`, tokens: (n) => `${fmt(n)} tokens`, seconds: (n) => `${fmt(n)} 秒`, pictures: (n) => `${fmt(n)} 张`, inOut: (i, o) => `输入 ${fmt(i)} · 输出 ${fmt(o)}`,
     all: "全部", signIns: "登录", refusals: "超额", errors: "错误", calls: "通话", passwords: "密码",
     eventName: {
@@ -156,7 +156,7 @@
     kinds: { chat: "Chat", image: "Pictures", video: "Video", realtime: "Calls", grant: "Tokens granted", credit: "Credit" },
     lanes: { chat: "chat", gui: "hands" }, laneDefault: (l) => `${l} default`, laneTitle: (l) => `offered in the ${l} picker`, laneDefaultTitle: (l) => `the ${l} picker's default`,
     thWho: "Account", thJoined: "Joined", thSpent: "Spent all / today", thTokens: "Tokens all / today", thReqs: "Requests", thActive: "Last active", thDevices: "Devices",
-    never: "never", phone: "phone", email: "e-mail", disabled: "disabled", locked: "locked", member: "member", listed: "listed", password: "password", noAccounts: "Nobody has signed in yet.", search: "Search hint / id / address…",
+    never: "never", phone: "phone", email: "e-mail", disabled: "disabled", locked: "locked", member: "member", listed: "listed", review: "review", reviewNote: "the app store reviewer's sign-in (REVIEW_ADDRESSES): a fixed code, left out of the sign-up counts", password: "password", noAccounts: "Nobody has signed in yet.", search: "Search hint / id / address…",
     reqs: (n) => `${fmt(n)} req`, tokens: (n) => `${fmt(n)} tokens`, seconds: (n) => `${fmt(n)} s`, pictures: (n) => `${fmt(n)} pictures`, inOut: (i, o) => `${fmt(i)} in · ${fmt(o)} out`,
     all: "All", signIns: "Sign-ins", refusals: "Refusals", errors: "Errors", calls: "Calls", passwords: "Passwords",
     eventName: {
@@ -873,6 +873,7 @@
     const tags = [
       h("span", { class: "pill" }, a.channel === "phone" ? T.phone : T.email),
       a.member ? h("span", { class: "pill ok", title: a.listed ? T.listedNote : "" }, a.listed ? T.listed : T.member) : null,
+      a.review ? h("span", { class: "pill", title: T.reviewNote }, T.review) : null,
       a.has_password ? h("span", { class: "pill violet" }, T.hasPassword) : h("span", { class: "pill" }, T.noPassword),
       a.disabled ? h("span", { class: "pill bad" }, T.disabled) : null,
       a.locked ? h("span", { class: "pill warn" }, T.locked) : null,
@@ -1002,7 +1003,7 @@
     const start = dayStart - (n - 1) * step;
     const counts = new Array(n).fill(0);
     let total = 0;
-    for (const a of list) { const c = a.created_at || 0; if (c < start) continue; counts[Math.min(n - 1, Math.floor((c - start) / step))]++; total++; }
+    for (const a of list) { if (a.review) continue; const c = a.created_at || 0; if (c < start) continue; counts[Math.min(n - 1, Math.floor((c - start) / step))]++; total++; }
     const every = labelEvery(n);
     const items = counts.map((v, i) => ({ value: v, label: i % every === 0 ? day(start + i * step) : "", title: `${day(start + i * step)}${weekly ? " +7d" : ""} · ${fmt(v)}` }));
     return chart(`${T.cSignups} · ${T.period(days)}`, fmt(total), vbars(items, "ok"), weekly ? T.byWeekLabel : T.byDayLabel);
@@ -1085,6 +1086,7 @@
             h("div", { class: "tags" },
               h("span", { class: "pill" }, a.channel === "phone" ? T.phone : T.email),
               a.member ? h("span", { class: "pill ok" }, a.listed ? T.listed : T.member) : null,
+              a.review ? h("span", { class: "pill", title: T.reviewNote }, T.review) : null,
               a.has_password ? h("span", { class: "pill violet" }, T.password) : null,
               a.disabled ? h("span", { class: "pill bad" }, T.disabled) : null,
               a.locked ? h("span", { class: "pill warn" }, T.locked) : null)))),

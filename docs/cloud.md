@@ -373,6 +373,14 @@ addresses sign in; everyone else gets `not_invited` before any code is sent.
 The trial deployments ran this way. With sign-up open, the same list names
 the members who have no daily cap; the admin page can add more.
 
+For an app store's review, `REVIEW_ADDRESSES` and `REVIEW_CODE` give the
+reviewer a way in: a code request for one of those e-mail addresses sends
+nothing and answers as if it had, and the six-digit `REVIEW_CODE` signs in,
+under the same code lifetime, attempt and rate limits as anyone's. The
+account is an ordinary one; the admin page tags it *review* and leaves it out
+of the sign-up counts. Both empty (the default) and nothing changes. The
+details are in [`cloud/README.md`](../cloud/README.md#for-app-store-review).
+
 The relay is also the meeting point for the account's devices — the **hub** at
 `/v1/hub` and the web console at `/app`; see [hub.md](hub.md). `HUB_ENABLED`
 turns it off, `HUB_FRAME_LIMIT` caps one frame (files and screenshots travel

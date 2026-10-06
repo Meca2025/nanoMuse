@@ -364,6 +364,11 @@ class Cloud:
         # The members' identifiers, hashed once so a request can be matched
         # against the list without ever seeing the plaintext.
         self.member_hashes: frozenset[str] = frozenset(i.hash(settings.hmac_key) for i in self._listed_identifiers())
+        # The reviewer's addresses (REVIEW_ADDRESSES), hashed the same way; empty — and so
+        # the whole feature off — unless REVIEW_CODE is six digits as well.
+        self.review_hashes: frozenset[str] = frozenset(i.hash(settings.hmac_key) for i in self._review_identifiers())
+        if self.review_hashes:
+            log.warning("review sign-in is on for %d address(es): a fixed code, nothing sent", len(self.review_hashes))
         if settings.signup_open:
             log.info(
                 "sign-up is open: %d member(s) without a limit, everyone else ¥%.2f in all (+¥%.2f an invite, to both sides); "
@@ -599,18 +604,48 @@ class Cloud:
                 log.warning("ALLOWED_IDENTIFIERS has an entry that is neither a number nor an address; ignored")
         return out
 
+    def _review_identifiers(self) -> list[Identifier]:
+        """The reviewer's addresses (REVIEW_ADDRESSES) — only when REVIEW_CODE is six digits
+        too; an entry that is not an e-mail address is ignored (a reviewer has no mainland
+        number, and a fixed code on a number is not something to offer)."""
+        code = self.s.review_code.strip()
+        if not (len(code) == 6 and code.isdigit()):
+            if self.s.review_addresses.strip():
+                log.warning("REVIEW_ADDRESSES is set but REVIEW_CODE is not six digits; review sign-in is off")
+            return []
+        out = []
+        for item in self.s.review_addresses.split(","):
+            if not item.strip():
+                continue
+            try:
+                ident = parse(item)
+            except BadIdentifier:
+                log.warning("REVIEW_ADDRESSES has an entry that is not an address; ignored")
+                continue
+            if ident.channel != "email":
+                log.warning("REVIEW_ADDRESSES has a phone number; only e-mail addresses are taken")
+                continue
+            out.append(ident)
+        return out
+
     def listed(self, ident: Identifier) -> bool:
         """On the operator's list (ALLOWED_IDENTIFIERS)."""
         return ident.hash(self.s.hmac_key) in self.member_hashes
 
+    def is_review(self, ident: Identifier) -> bool:
+        """The reviewer's address (REVIEW_ADDRESSES, with REVIEW_CODE set)."""
+        return bool(self.review_hashes) and ident.hash(self.s.hmac_key) in self.review_hashes
+
     def allowed(self, ident: Identifier) -> bool:
-        """May this identifier sign in? Anyone when sign-up is open; else members only."""
-        return self.s.signup_open or self.listed(ident)
+        """May this identifier sign in? Anyone when sign-up is open; else members only — and
+        the reviewer's address either way, since the operator named it."""
+        return self.s.signup_open or self.listed(ident) or self.is_review(ident)
 
     def _refuse_if_signups_closed(self, ident: Identifier) -> None:
         """0.22: the *Sign-ups* switch is off — an identifier without an account is turned
-        away (`signup_closed`); everyone who already has one carries on."""
-        if self.controls.on("signups") or self.db.account_by_hash(ident.hash(self.s.hmac_key)) is not None:
+        away (`signup_closed`); everyone who already has one carries on, and so does the
+        reviewer's address (a review must not fail on a paused switch)."""
+        if self.controls.on("signups") or self.is_review(ident) or self.db.account_by_hash(ident.hash(self.s.hmac_key)) is not None:
             return
         raise CloudError(
             403,
@@ -619,7 +654,8 @@ class Cloud:
         )
 
     def request_code(self, ident: Identifier, ip: str) -> None:
-        if not self.sender.accepts(ident):
+        review = self.is_review(ident)
+        if not review and not self.sender.accepts(ident):
             # the honest answer up front: a Hong Kong or overseas number gets no SMS from
             # 号码认证, so the person should not wait for one — e-mail works everywhere
             if ident.channel == "phone" and not ident.value.startswith("+86"):
@@ -641,8 +677,13 @@ class Cloud:
             raise CloudError(429, "code_too_often", "Too many codes for this address; wait a few minutes")
         if ip and self.db.codes_recent_for_ip(ip, t - 3600) >= self.s.code_per_ip_hour:
             raise CloudError(429, "code_too_often", "Too many codes from this network; wait an hour")
-        code = f"{secrets.randbelow(1_000_000):06d}"
+        # The reviewer's code is the fixed one and goes nowhere: the row is written like
+        # anyone's, so the lifetime, the attempt limit and the rate limits are the same.
+        code = self.s.review_code.strip() if review else f"{secrets.randbelow(1_000_000):06d}"
         self.db.insert_code(ident.hash(self.s.hmac_key), _sha256(code), ip, self.s.code_ttl_s)
+        if review:
+            log.info("review sign-in: a code request for the reviewer's address; nothing sent")
+            return
         try:
             self.sender.send(ident, code)
         except SendError as e:
@@ -1960,6 +2001,7 @@ class Cloud:
             d["unlimited"] = bool(d.get("unlimited"))
             d["listed"] = id_hash in self.member_hashes
             d["member"] = d["unlimited"] or d["listed"]
+            d["review"] = id_hash in self.review_hashes
             d["spent_today_cny"] = self.s.uy_to_cny(int(d.pop("spent_today_uy", 0) or 0))
             d["spent_cny"] = self.s.uy_to_cny(int(d.pop("spent_uy", 0) or 0))
             self._pool_fields(d, spent_cny=d["spent_cny"])
@@ -2023,7 +2065,7 @@ class Cloud:
                 "completion_tokens": int(r["completion_tokens"] or 0),
                 "cost_cny": self.s.uy_to_cny(int(r["cost_uy"] or 0)),
                 "active_accounts": self.db.active_accounts_since(s),
-                "new_accounts": self.db.accounts_created_since(s),
+                "new_accounts": self.db.accounts_created_since(s, self.review_hashes),
                 "by_kind": self._rows_cny(self.db.usage_by_kind(s)),
             }
 
@@ -2083,7 +2125,7 @@ class Cloud:
         by_day: dict[int, dict[str, int]] = {}
         for r in self.db.events_by_day(since, off):
             by_day.setdefault(int(r["day"]), {})[str(r["kind"])] = int(r["n"])
-        new = {int(r["day"]): int(r["n"]) for r in self.db.accounts_by_day(since, off)}
+        new = {int(r["day"]): int(r["n"]) for r in self.db.accounts_by_day(since, off, self.review_hashes)}
         active = {int(r["day"]): int(r["n"]) for r in self.db.active_by_day(since, off)}
         rows = []
         for i in range(days):
@@ -2210,6 +2252,7 @@ class Cloud:
         a["unlimited"] = bool(a.get("unlimited"))
         a["listed"] = id_hash in self.member_hashes
         a["member"] = a["unlimited"] or a["listed"]
+        a["review"] = id_hash in self.review_hashes
         a["locked"] = bool(row["locked_until"] and int(row["locked_until"]) > t)
         spent_total = self.db.spent_since(account_id, 0)
         self._pool_fields(a, spent_cny=self.s.uy_to_cny(spent_total))

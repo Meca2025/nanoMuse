@@ -132,6 +132,7 @@ for the full list. The ones that matter:
 | `CHAT_DEFAULTS` | `{"enable_thinking": false}` | merged into chat requests for fields the app did not set |
 | `SIGNUP_OPEN` | `1` | anyone may sign in; `0` = members only (a private relay). *Runtime setting* — see below |
 | `ALLOWED_IDENTIFIERS` | empty | comma-separated numbers / addresses of the **members**: no spend limit |
+| `REVIEW_ADDRESSES`, `REVIEW_CODE` | empty (off) | an app store reviewer's sign-in: for these e-mail addresses no code is sent and the six-digit `REVIEW_CODE` signs in — see *For App Store review* below |
 | `ALLOWANCE_CNY` | 10 | yuan per non-member account **for its lifetime**, at the list prices below; 0 = no limit. *Runtime setting* |
 | `INVITE_BONUS_CNY` | 5 | added to **both** pools — the inviter's and the newcomer's — per new person who signs up with the code. *Runtime setting* |
 | `REPO_URL` | `https://github.com/nano-muse/nanoMuse` | the repository the apps ask people to star, in `/v1/config` |
@@ -699,6 +700,23 @@ report can be matched to a ledger row without any content being logged.
 - `both` routes by identifier type. Non-mainland numbers are accepted as
   identifiers but the Aliyun sender only covers `+86`; use e-mail for the rest
   or plug in another sender in `senders.py`.
+
+### For App Store review
+
+Apple's and Google's reviewers sign in with an account you give them, and
+they cannot receive our codes. `REVIEW_ADDRESSES` (comma-separated e-mail
+addresses) and `REVIEW_CODE` (six digits) name that account: a code request
+for one of those addresses sends nothing and answers `204` as if it had, and
+`POST /v1/auth/verify` accepts exactly `REVIEW_CODE` for it — within the same
+code lifetime (`CODE_TTL_S`), attempt limit (`CODE_MAX_ATTEMPTS`) and rate
+limits as any address, and whether sign-up is open or paused. The account is
+an ordinary one with the usual allowance; the admin page tags it *review* in
+the People table and on its page and leaves it out of the sign-up counts on
+the Overview and the Stats page. With either value empty nothing changes.
+Put the address and the code into the review notes in App Store Connect
+(`tf-contact.env`: `DEMO_NAME`, `DEMO_PASSWORD`), nowhere else, and change
+the code once the review is through. Only e-mail addresses are taken; a
+phone number in the list is ignored with a line in the log.
 
 ## Tests
 
