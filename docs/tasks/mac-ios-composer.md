@@ -18,11 +18,23 @@
   （内部测试员组可装）。版本号这一轮**仍然不碰**，修复进 0.1.40，由 L 发布。
 - 你的本地 clone 大概率还停在旧的 main：先 `git fetch origin && git checkout main && git pull --ff-only`。
   Mac 磁盘上次只剩 ≈5 GB（`~/Library/Caches` 26 GB），构建前先腾地方。
-- 维护者用 build 10 在 **iPhone** 上测了（机型、iOS 版本未说；他的 iPad 是 iPad 第 8 代、
-  iPadOS 26.7.1），结论一句话：**「输入的消息框还是显示不出来」**。没有截图、没有日志。
-  闪退（#96）没有再提，可以认为已经不崩了。「还是」接的是前两轮「输入框会掉」，所以按**底部
-  输入框（胶囊）不显示**处理；但第一步复现时顺手确认另一种读法——能不能打字、发出去的消息
-  有没有出现在对话里——一并记进报告。
+- 维护者用 build 10 测了，结论一句话：**「输入的消息框还是显示不出来」**。闪退（#96）没有再提，
+  可以认为已经不崩了。「还是」接的是前两轮「输入框会掉」，所以按**底部输入框（胶囊）不显示**处理。
+- **已有的真机证据（维护者的两张截图，2026-10-06）**。两张都是 768×1024、3:4——是 **iPad（第 8 代、
+  iPadOS 26.7.1，就是你手边那台）** 上截的，虽然维护者说的是「iPhone」；iPhone 上是否同样，还没确认。
+  1. **Muse 壳开着、进主聊天**：有 Muse 头部、有一条来自 Xiaomi 手机（同步过来的主对话）的灰色气泡、
+     有底栏；**底部没有胶囊**。量过像素：底栏顶边在 970/1024（56 pt，iPad 没有 home 指示条），最后一个
+     气泡的底边在 949——只差 21 px。消息列表的底部内边距是 `inputBarHeight + floatingBarHeight + 8`，
+     所以 **`inputBarHeight ≈ 0`：输入条从来没有报出过高度**，不是「在底栏后面」（那样气泡会高出
+     60 多像素）。先按 3.2 的 **b / c / d** 查，a 的可能性很小。
+  2. **设置 → 外观 → 关掉 Muse home、回到上游 OpenMinis 布局**：上游的输入条**在**（占位文字、+、/、
+     话筒、发送、iPad 的拖动把手都在）。但这张是**一个空的新会话**，不是第一张那个主对话——所以
+     这个对照只说明「上游路径在这台 iPad 上能画出输入条」，还分不出是壳（host）的问题、胶囊的问题，
+     还是那个同步过来的主对话本身的问题。3.4 的三个对照把这三者分开。
+  L 在 Linux 上把壳和胶囊的代码（`NanoMuseShell.swift`、`NanoMuseComposer*.swift`、`AIChatView.swift`
+  的 `nmComposerTree` / `nmPillRows` / `inputBar`）从头读了一遍，没有找到能让胶囊**确定性**消失的分支：
+  `inputBar` 在 Release 里无条件构建，胶囊的加号和话筒各 40 pt，字段有 `minHeight`，iPad 专有的只有
+  `maxContentWidth = 900` 和拖动把手。**所以这一轮不再猜，先看层级。**
 
 ## 1. 这个问题的来历（为什么说「还是」）
 
@@ -67,8 +79,9 @@
 
 ### 3.1 复现
 
-`android/src/ios/Minis.xcodeproj`，scheme `Minis`，**Debug** 构建装到维护者的 iPhone（问他要机型和
-iOS 版本；拿不到 iPhone 就用 iPad，两台都测最好）。脚本：**删 app → 装 → 走完引导（登录由维护者
+`android/src/ios/Minis.xcodeproj`，scheme `Minis`，**Debug** 构建先装到手边的 **iPad**（第 0 节的截图
+就是它拍的，复现应当是立刻的：**不用删 app、不用重走引导——装上 Debug 构建、进主聊天、看底部**）。
+如果 Debug 构建上胶囊反而在，再按下面的完整脚本从头走一遍：**删 app → 装 → 走完引导（登录由维护者
 输验证码）→ 进主聊天**。每一步截图，记下**输入框第一次看不见是在哪一步**：
 
 1. 引导结束、主聊天刚出现（应有三段开场白 + 底部胶囊）；
@@ -94,6 +107,11 @@ iOS 版本；拿不到 iPhone 就用 iPad，两台都测最好）。脚本：**�
 顺手记下：胶囊 hosting view 的 `alpha`、`isHidden`、`clipsToBounds`，它上面有没有一层全屏透明视图
 （`NanoMuseDrawer` 的 overlay、`kernelBootOverlay`、`SessionLockGateOverlay`）。
 
+两个现成的锚点：栈的背景里有一个真正的 UIKit 视图 **`NanoMuseComposerProbeView`**（`NanoMuseComposerWatch.swift`
+末尾），在层级里按类名就能找到——**它在不在、frame 多大、在屏幕哪里**，一下就把 b / c / d 分开：
+在且高度正常 → 看它上面的 SwiftUI 子树为什么没画（c）；在但高度 0 → b；不在 → d。胶囊的字段是 SwiftUI 的
+`TextField`，在 UIKit 层级里是一个 `UITextField` 子类，搜 `TextField` 也能定位。
+
 ### 3.3 日志
 
 手机连 Mac，Console.app 选这台设备，过滤 `subsystem:io.github.nanomuse.app`，或者终端：
@@ -114,14 +132,23 @@ Debug 构建还带着上游的调试服务（`Debug/DebugServer.swift`，端口 
 `debug.viewTree`、`debug.inspect {"address": …}` 能在不断点的情况下导出活的视图树——上游当年
 就是这么抓到 `nkids=0` 的。Xcode 的 View Debugger 够用就不必折腾它。
 
-### 3.4 两个对照实验
+### 3.4 三个对照实验（各一分钟，截图）
 
-- **关掉 Muse 壳**：设置 → 外观（`NanoMuseAppearance.swift`）→ **Muse home** 开关
-  （UserDefaults `nanomuse.shell.enabled`）→ 回到上游 OpenMinis 布局再进同一个会话。上游的输入条看得见 → 问题在我们的胶囊/字段（b）或壳的几何（a）；也看不见 → 问题在
-  host/看门狗那层（c/d），和胶囊无关。
-- **换个会话**：抽屉 → 新聊天（旁聊，是 `NavigationStack` push 出来的、带系统导航栏的那种）。
-  旁聊里有输入框而主聊天没有 → 看 `NanoMuseHomeView.chatLayer` 那条路径（顶部 `safeAreaInset`
-  头部、`.toolbar(.hidden)`、底栏 `safeAreaInset`）；都没有 → `AIChatView` 自己的事。
+壳（`NanoMuseHomeView` 作 host）和胶囊（`nmPill`）由**同一个开关** `NanoMuseShellPrefs.shell` 决定，
+所以关壳一次分不开两者；再加上第 0 节那两张图不是同一个会话，要补齐下面三个：
+
+1. **壳关、同一个主对话**：设置 → 外观（`NanoMuseAppearance.swift`）→ **Muse home** 关 → 在上游布局的
+   会话列表里打开**那个带 Xiaomi 气泡的主对话**。输入条在 → 不是会话的问题；不在 → 是这个同步过来的
+   对话本身（看 `NanoMuseSync` 给它的消息加了什么）。
+2. **壳开、新会话**：抽屉 → 新聊天（旁聊，是 `NavigationStack` push 出来的、带系统导航栏的那种）。
+   旁聊里有胶囊而主聊天没有 → 看 `NanoMuseHomeView.chatLayer` 那条路径（顶部 `safeAreaInset` 头部、
+   `.toolbar(.hidden)`、底栏 `safeAreaInset`）；旁聊也没有 → 胶囊 / host 自己的事，和壳的几何无关。
+3. **壳开、胶囊关**（只改本地，不提交）：把 `AIChatView.swift` 里 `private var nmPill: Bool` 临时改成
+   `false`，Debug 装上再进主聊天。上游的输入条在壳里显示 → 问题在 `nmPillRows` / `NanoMuseComposerPill` /
+   `NanoMuseComposerField`（b）；还是不显示 → 问题在 host（`NanoMuseComposerHost` 的 overlay / inset）
+   或壳（c / d）。
+
+另外请维护者（或你，如果 iPhone 在手边）在 **iPhone** 上进主聊天截一张：第 0 节的两张图都是 iPad 的。
 
 ## 4. 修
 
