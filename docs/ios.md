@@ -248,25 +248,39 @@ Ours, in `NanoMuse/`:
   message). The Feed opens on the intro card, says when the daily routine runs while it is
   empty, and writes its first day after the first conversation; a Notifications page joined the
   first run.
-- **The composer (0.1.38)** (`NanoMuseComposerField.swift`, `NanoMuseComposerWatch.swift`, the
-  `// nanoMuse:` lines in `Views/Chat/AIChatView.swift`): the pill's field is SwiftUI's own
+- **The composer (0.1.38, 0.1.40)** (`NanoMuseShell.swift` → `NanoMuseHomeView.body`,
+  `NanoMuseChatModifiers.swift`, `NanoMuseComposerField.swift`, `NanoMuseComposerWatch.swift`,
+  `NanoMuseComposerCheck.swift`, the `// nanoMuse:` lines in `Views/Chat/AIChatView.swift`). Four
+  releases reported a chat with no input field — 0.1.36 and 0.1.37 on the maintainer's iPhone after
+  the first conversation's naming, 0.1.39 on the iPad — and the 0.1.37 watchdog, the 0.1.38 native
+  field and the 0.1.38 fail-safe (a second host when the overlay reported nothing) were all written
+  against screenshots of a composer that was, in fact, there. What the maintainer saw in the end:
+  the field shows when the app opens and is gone for good once the keyboard has been dismissed; the
+  0.1.36 screenshot has the top edge of the composer peeking out above the bottom bar. The shell's
+  bottom bar was a `safeAreaInset` on the `NavigationStack`'s ancestor, hidden while the keyboard is
+  up; the chat respected that inset at launch and no longer after the bar had left and come back,
+  so the whole chat ran under the bar and the composer — bottom-aligned, laid out, healthy by every
+  measure the watchdog had — sat behind it. Since 0.1.40 the **bar is a row under the rooms** (a
+  `VStack`, as on Android), and the composer column (the cards, the tool strip, the input bar) is
+  likewise **a row under the message list**: `NanoMuseComposerHost` is a plain `VStack`, the list is
+  passed a bottom inset of 0, the `/` and `@` popup is an overlay of the list's bottom edge and so
+  stands on the column's top edge by layout. Nothing lies over the UIKit list and there is no
+  second host to switch to. The watch stays as the last net (a column that detaches or measures 0
+  while the chat is on screen is rebuilt through `.id(rebuildTick)`, at most twice per appearance so
+  a mis-measured healthy composer cannot take the keyboard away repeatedly), and it keeps what it
+  sees: **Settings → Appearance → Composer check** draws a red frame around the column (the probe
+  view in its background) and writes a report — the window and its safe area, the column's frame,
+  every UIKit ancestor of the probe with its frame, hidden flag and alpha, the text fields and
+  collection views in the window, the watch's events — with a *Copy* row for a bug report. That
+  page is the view hierarchy a device can give without a Mac. The pill's field is SwiftUI's own
   `TextField(axis: .vertical)` with `@FocusState` and `lineLimit(1...6)`, not upstream's
-  `UIViewRepresentable` text view. The reason is the 0.1.36 and 0.1.37 reports of a chat with
-  only the tab bar at the bottom — right after the first conversation's naming on the
-  maintainer's iPhone: the overlay that holds the composer was a UIKit host (because of the
-  representable inside it), and iOS left that host standing with no subviews when the naming
-  card left the same stack as the turn ended; nothing SwiftUI owned changed, so nothing redrew,
-  and the 0.1.37 watchdog dropped the check that fell inside its cooldown. The watchdog stays
-  as the last net and now re-schedules a check it cannot run yet; a second after the chat
-  appears, a message goes out or a turn ends, the composer must have reported a height, or the
-  **fail-safe** hosts the same stack as a bottom safe-area inset (`NanoMuseComposerWatch.failSafe`),
-  which is a different host from the overlay's. What the representable did and the native field
-  does not: an image pasted straight into the field (the plus menu has *Paste image* when the
-  pasteboard holds one), the select-and-replace capture for the correction learner, the exact
-  caret for the `@` menu (now the end of the text), swipe-to-send on texts estimated longer than
-  six lines, and hardware arrow / Tab navigation of the popups on iOS 16 (iOS 17+ has them via
-  `onKeyPress`). Return on a hardware keyboard sends, Shift+Return breaks the line, the on-screen
-  Return follows *Settings → Appearance → Return sends*; dictation still ends in *Back to typing*.
+  `UIViewRepresentable` text view. What the representable did and the native field does not: an
+  image pasted straight into the field (the plus menu has *Paste image* when the pasteboard holds
+  one), the select-and-replace capture for the correction learner, the exact caret for the `@` menu
+  (now the end of the text), swipe-to-send on texts estimated longer than six lines, and hardware
+  arrow / Tab navigation of the popups on iOS 16 (iOS 17+ has them via `onKeyPress`). Return on a
+  hardware keyboard sends, Shift+Return breaks the line, the on-screen Return follows *Settings →
+  Appearance → Return sends*; dictation still ends in *Back to typing*.
 - **The launch screen (0.1.38)** (`NanoMuse/NanoMuseLaunch.storyboard`,
   `NanoMuse/NanoMuseLaunch.xcassets`): the mark on the system background, no words, light and
   dark. Upstream's storyboard stays in the tree; `scripts/rebrand.py` points

@@ -2537,6 +2537,65 @@
         }
       }
     },
+    "Composer check" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingabefeld prüfen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Composer check"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobar el campo de texto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifier le champ de saisie"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入力欄の確認"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "입력창 확인"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверка поля ввода"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入框检查"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輸入框檢查"
+          }
+        }
+      }
+    },
     "Could not reach %@ through the proxy: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3526,6 +3585,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未包含文件"
+          }
+        }
+      }
+    },
+    "For a chat whose input field does not show. Turn the outline on, go back to the chat and take a screenshot: the red frame is where the app laid the composer out. The report below says the same in numbers; copy it into the bug report." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für einen Chat, in dem das Eingabefeld nicht erscheint. Rahmen einschalten, zurück in den Chat und ein Bildschirmfoto machen: der rote Rahmen zeigt, wo die App die Eingabeleiste platziert hat. Der Bericht darunter sagt dasselbe in Zahlen; in die Fehlermeldung kopieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For a chat whose input field does not show. Turn the outline on, go back to the chat and take a screenshot: the red frame is where the app laid the composer out. The report below says the same in numbers; copy it into the bug report."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para un chat en el que no aparece el campo de texto. Activa el marco, vuelve al chat y haz una captura: el marco rojo es donde la app colocó la barra de entrada. El informe de abajo dice lo mismo en números; cópialo en el informe de error."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pour une discussion où le champ de saisie n'apparaît pas. Activez le cadre, revenez à la discussion et faites une capture d'écran : le cadre rouge est l'endroit où l'app a placé la barre de saisie. Le rapport ci-dessous dit la même chose en chiffres ; copiez-le dans le rapport de bug."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チャットで入力欄が表示されないときに使います。枠をオンにしてチャットに戻り、スクリーンショットを撮ってください。赤い枠が、アプリが入力バーを置いた場所です。下のレポートは同じ内容を数値で示します。コピーして不具合報告に貼ってください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "채팅에서 입력창이 보이지 않을 때 씁니다. 테두리를 켜고 채팅으로 돌아가 스크린샷을 찍으세요. 빨간 테두리가 앱이 입력 막대를 배치한 자리입니다. 아래 보고서는 같은 내용을 숫자로 보여 줍니다. 복사해서 문제 보고에 붙여 넣으세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для чата, в котором не видно поля ввода. Включите рамку, вернитесь в чат и сделайте снимок экрана: красная рамка — это место, куда приложение поместило панель ввода. Отчёт ниже говорит то же самое в цифрах; скопируйте его в сообщение об ошибке."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "给聊天里看不到输入框的情况用。打开红框，回到聊天截一张图：红框就是应用把输入栏排在了哪里。下面的报告用数字说同一件事，复制后贴进问题报告。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "給聊天裡看不到輸入框的情況用。打開紅框，回到聊天截一張圖：紅框就是應用把輸入列排在了哪裡。下面的報告用數字說同一件事，複製後貼進問題回報。"
           }
         }
       }
@@ -5653,6 +5771,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "優先 OpenRouter 或 OpenAI：一個 key，大多數模型，按量付費。下面每個服務商都寫明了它涵蓋什麼。"
+          }
+        }
+      }
+    },
+    "Outline the composer in red" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingabeleiste rot umranden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outline the composer in red"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcar la barra de entrada en rojo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encadrer la barre de saisie en rouge"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入力バーを赤枠で囲む"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "입력 막대를 빨간 테두리로 표시"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обвести панель ввода красным"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用红框标出输入栏"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用紅框標出輸入列"
           }
         }
       }

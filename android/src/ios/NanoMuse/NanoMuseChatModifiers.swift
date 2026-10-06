@@ -17,33 +17,43 @@
 //  symbolised with the dSYM of TestFlight run 9).
 //
 //  The cure: our links are grouped here into two modifiers, so the chain is
-//  as long as 0.1.37's again, and the composer stack is boxed in an `AnyView`,
-//  so the body's value carries one pointer for the largest subtree instead of
-//  the subtree itself. New chat-wide behaviour goes into these modifiers (or a
-//  third one), never as another link on `AIChatView.body`;
-//  `NanoMuseRound6Tests.testChatBodyTypeStaysShallow` keeps the depth in check.
+//  as long as 0.1.37's again, and the composer column and the popup layer are
+//  boxed in `AnyView`s, so the body's value carries one pointer for the
+//  largest subtrees instead of the subtrees themselves. New chat-wide
+//  behaviour goes into these modifiers (or a third one), never as another
+//  link on `AIChatView.body`; `NanoMuseRound6Tests.testChatBodyStaysSmallAndShallow`
+//  keeps the depth in check.
 //
 
 import SwiftUI
 
-/// The composer stack at the bottom of the message list — as the list's overlay normally
-/// and, on the fail-safe path (`NanoMuseComposerWatch.failSafe`), as a bottom safe-area inset:
-/// a different host than the overlay's, so whatever left that one empty does not apply to it.
-/// The list's own bottom inset is 0 then (`nmListInset`), the inset keeps the composer's room.
+/// The composer's place in the chat: a row under the message list, inside the safe area —
+/// not an overlay of the list (upstream, 0.1.36–0.1.37) and not a safe-area inset of it (the
+/// 0.1.38 fail-safe). A plain `VStack` has nothing to go wrong with: the list takes what is
+/// left above the column, the keyboard shortens both, and the column is where SwiftUI put it
+/// — which the check page (Settings → Appearance → Composer check) can now report in numbers.
+/// The list needs no bottom inset for the composer any more (0 is passed to it). The `/` and
+/// `@` popup and its tap-outside catcher stay an overlay of the list, so the popup's bottom
+/// edge is the column's top edge by layout, as upstream's note wanted.
+///
+/// The composer that could not be seen in 0.1.36–0.1.39 was not this host's doing: the chat
+/// as a whole ran under the shell's bottom bar once the keyboard had come and gone, and the
+/// column — wherever it was attached — sat behind the bar. That is fixed where it was, in
+/// `NanoMuseHomeView.body` (the bar is a row, not a safe-area inset); this host stays because
+/// a row is the simpler of the two layouts and the one the Android app has.
 struct NanoMuseComposerHost: ViewModifier {
-    let failSafe: Bool
-    /// The stack, type-erased: its tree (the input bar, the tool strip, the popups) is the
+    /// The column, type-erased: its tree (the cards, the tool strip, the input bar) is the
     /// heaviest part of the chat's body, and a box keeps it out of the body's value and type.
     let stack: AnyView
+    /// The popup layer, type-erased for the same reason.
+    let popup: AnyView
 
     func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .bottom) {
-                if !failSafe { stack }
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if failSafe { stack }
-            }
+        VStack(spacing: 0) {
+            content
+                .overlay(alignment: .bottom) { popup }
+            stack
+        }
     }
 }
 
