@@ -229,6 +229,18 @@ Ours, in `NanoMuse/`:
   `172.16–31.`, `localhost`, `*.local`, `*.ts.net`). Signed in, the account page shows *Server:
   〈host〉* with *Change*, which signs this phone out first — a key belongs to the relay that
   issued it.
+- **One account's conversations, not the last person's (0.1.39, Contract C10)**
+  (`NanoMuseSync.swift`, `NanoMuseShell.swift`): a conversation belongs to the account that first
+  pushed or pulled it — the sync table that maps it is that account's, and every account that has
+  synced on the phone keeps its table (`nanomuse-sync-accounts.json`, keyed by the relay's opaque
+  `account.id`, never the phone number or e-mail). Signed in, the chat lists and the Chat tab show
+  the account's own conversations and the ones no account has synced yet; another account's stay
+  on the phone, hidden, and are never pushed under the signed-in account — an unowned one becomes
+  the account's with its first push. Signing in as a different account than last time starts
+  that account's cursor over (the `tail=300` pull) and forgets presence; signing back in as the
+  first account brings its conversations and its main chat back. Signed out, everything on the
+  phone shows and nothing moves. The agent's name and look already follow the account; the local
+  memory files do not yet.
 
 ## Building on a Mac
 
@@ -248,6 +260,17 @@ open src/ios/Minis.xcodeproj
 Pick the **Minis** scheme, set your team under *Signing & Capabilities* (the project ships with an
 empty `DEVELOPMENT_TEAM`), build for a device: the native libraries are device-only, so the
 simulator does not link — see the troubleshooting section of BUILDING.md.
+
+One rule of the chat screen, learnt from build 9 of 0.1.38: **nothing new goes on the end of
+`AIChatView.body`'s modifier chain.** The body is one expression of some sixty chained
+modifiers; its getter keeps copies of the growing value on the stack, and the four links 0.1.38
+added were enough to overflow the main thread's 1 MB on an iPad the moment the chat appeared
+after onboarding — a crash on every launch, in `AIChatView.body.getter` →
+`__swift_instantiateConcreteTypeFromMangledNameV2`. Chat-wide behaviour of ours lives in
+`NanoMuse/NanoMuseChatModifiers.swift` (`NanoMuseChatHooks`, `NanoMuseComposerHost`): add to
+those, or add a third modifier — one link. The composer stack is an `AnyView` there on purpose.
+`MinisTests/NanoMuseRound6Tests.swift` measures the body's value size and type depth and fails
+when either grows past its ceiling.
 
 ## TestFlight
 

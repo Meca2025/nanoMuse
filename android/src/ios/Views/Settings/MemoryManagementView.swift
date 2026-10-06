@@ -60,8 +60,13 @@ struct MemoryManagementView: View {
         .navigationTitle("Memory")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if #available(iOS 17.0, *), iCloudSyncEnabled {
-                ToolbarItem(placement: .topBarTrailing) {
+            // nanoMuse: the iOS 27 SDK's ToolbarContentBuilder has no `buildLimitedAvailability` below
+            // iOS 17.5, so `if #available` cannot stand at the toolbar's level on a 16.0 target (Xcode
+            // 27.0 refuses the file). The check moved inside the item, a ViewBuilder, where it may stand;
+            // `.navigationBarTrailing` is `.topBarTrailing`'s older name and needs none.
+            if iCloudSyncEnabled { // nanoMuse: was `if #available(iOS 17.0, *), iCloudSyncEnabled {`
+                ToolbarItem(placement: .navigationBarTrailing) { // nanoMuse: was `.topBarTrailing` (iOS 17+)
+                    if #available(iOS 17.0, *) { // nanoMuse: `forceSyncMemory()` is iOS 17+
                     Menu {
                         Button {
                             Task { await forceSyncMemory() }
@@ -72,6 +77,7 @@ struct MemoryManagementView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
+                    } // nanoMuse:
                 }
             }
         }
