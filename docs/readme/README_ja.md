@@ -25,7 +25,7 @@
 
 **nanoMuse は、あなたのすべてのデバイスのためのオープンソースのパーソナルエージェントです。** 名前と姿を持つひとりのエージェント。Meta の [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) と同じ種類のもので、質問に答えるのではなく実際に手を動かし、アプリを閉じても働き続け、あなたのことを覚えていて、取り消せない操作の前には立ち止まって尋ねます。
 
-*nano* は、自分で動かして自分で配備できるくらい小さい、ひとそろいの完全なセットという意味です。スマホアプリ、デスクトップアプリ、ウェブコンソール、そしてそれらをつなぐリレーが、すべてこのリポジトリに GPL-3.0-or-later で入っています。nanoMuse は非営利です。サインインするとコミュニティのリレーでモデルを使える無料枠がもらえます。費用は開発者が負担しています。使い切ったら[自分のキーに切り替えて](../own-key.md)ください。同じリレーは自分のサーバーでも動くので、データを外に出さないこともできます。最新版は **0.1.39 Keys** — [リリースノート](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39) · [ブラウザで試す](https://nanomuse.cn/web/)。
+*nano* は、自分で動かして自分で配備できるくらい小さい、ひとそろいの完全なセットという意味です。スマホアプリ、デスクトップアプリ、ウェブコンソール、そしてそれらをつなぐリレーが、すべてこのリポジトリに GPL-3.0-or-later で入っています。nanoMuse は非営利です。サインインするとコミュニティのリレーでモデルを使える無料枠がもらえます。費用は開発者が負担しています。使い切ったら[自分のキーに切り替えて](../own-key.md)ください。同じリレーは自分のサーバーでも動くので、データを外に出さないこともできます。最新版は **0.1.40 Clear** — [リリースノート](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [ブラウザで試す](https://nanomuse.cn/web/)。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="チャット: ワークスペース内を削除する前にエージェントが立ち止まって尋ねる — 一度だけ、このチャット、ワークスペースでは常に許可、または拒否">
@@ -38,11 +38,11 @@
 
 | | |
 |---|---|
-| **Android** 8.0 以上、arm64 | [nanoMuse-0.1.39-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.39/nanoMuse-0.1.39-arm64.apk) — すべてのバージョンが同じ鍵で署名され、上書きインストールできます |
+| **Android** 8.0 以上、arm64 | [nanoMuse-0.1.40-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-0.1.40-arm64.apk) — すべてのバージョンが同じ鍵で署名され、上書きインストールできます |
 | **iPhone / iPad** | TestFlight、現在は内部テスターのみ <!-- coordinator: 公開 TestFlight リンクができたらここに --> |
-| **macOS** 12 以上 | [Apple シリコン](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.39/nanoMuse-Desktop-0.1.39-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.39/nanoMuse-Desktop-0.1.39-mac-x64.dmg) — 公証なし。初回は右クリック → 「開く」 |
-| **Windows** 10 以上 | [nanoMuse-Desktop-0.1.39-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.39/nanoMuse-Desktop-0.1.39-win-x64.exe) — 一度だけ「実行」を押してください |
-| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.39/nanoMuse-Desktop-0.1.39-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.39/nanoMuse-Desktop-0.1.39-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.39/nanoMuse-Desktop-0.1.39-linux-x64.tar.gz) |
+| **macOS** 12 以上 | [Apple シリコン](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-x64.dmg) — 公証なし。初回は右クリック → 「開く」 |
+| **Windows** 10 以上 | [nanoMuse-Desktop-0.1.40-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-win-x64.exe) — 一度だけ「実行」を押してください |
+| **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.tar.gz) |
 | **Docker** | `bash scripts/self-host.sh --local` で自分のリレーを、`docker compose up -d app` で自分のサーバーにウェブアプリを — [セルフホスティング](../self-hosting.md) |
 
 ダウンロードはすべて [GitHub の最新リリース](https://github.com/nano-muse/nanoMuse/releases/latest)から。GitHub が遅い地域では同じファイルが [nanomuse.cn/dl](https://nanomuse.cn/dl/) にあります。アプリを開き、メールアドレスか中国本土の携帯番号でサインインすれば、エージェントは考えるためのモデルを持ちます。スマホ、デスクトップ、ウェブはひとつのアカウントを共有し、同じ会話が見えます。
