@@ -206,7 +206,9 @@ works, a small hop when it waits for you.
 to stop top-left, take-over controls top-right, a caption bottom-left saying what was
 just done ("typed · <app>", "pressed ↵ · <app>"), the face as the cursor marker. Inline
 permission cards in the chat — *allow <name> to take a screenshot?* / *write a file?* —
-with *Allow (this task)*, *Always allow*, *Deny*.
+with *Allow (this task)*, *Always allow*, *Deny*. (nanoMuse had a stage like that from
+0.1.34 to 0.1.39 and dropped it in 0.1.40 for the trajectory below: a picture-in-picture
+that follows the hands is one more thing moving, and it cannot be looked back at.)
 
 **nanoMuse on dsh.** Hands are the runtime's `computer_screen` / `computer_act` over
 MCP, so what the model sees is the screenshot it asked for and the status chip says
@@ -214,11 +216,11 @@ MCP, so what the model sees is the screenshot it asked for and the status chip s
 into Muse's permission card — a shield, the headline, the detail, *Allow once* in blue
 first and *Reject* in grey — and every answer is written to the agent page's
 *Approvals* tab; the Sentinel's reasons ([sentinel.md](sentinel.md)) are in the
-headline. The same question is on the **stage** while the hands work — *Allow once*,
-*Always in <app>* (for the hands' tools; the app is the window title's first part), *Deny*
-(the host's `ApprovalDesk` sits first in the `approval/request` waterfall and answers
-for the card) — and on the **capsule**, a small always-on-top window the shell shows
-when the nanoMuse window is not in front, so you can answer from wherever you are.
+headline. The same question — *Allow once*, *Always in <app>* (for the hands' tools; the
+app is the window title's first part), *Deny* (the host's `ApprovalDesk` sits first in
+the `approval/request` waterfall and answers for the card) — is on the **capsule**, the
+small always-on-top pill the shell shows when the nanoMuse window is not in front, so
+you can answer from wherever you are.
 *Always in <app>* writes a `computer_app:<app>` grant: the hands' tools in that app are
 allowed without asking until you revoke the grant, on the agent page or under Settings →
 Computer use → *Always allowed*. Settings → **Computer use** shows the two macOS
@@ -234,11 +236,12 @@ asked first.
 **Holds — whose turn it is.** When the agent needs you (a password, a captcha, a choice
 it should not make) it calls `computer_act` with `action: "hand_over"` and a `reason`;
 the host opens a *hold* (contract C1: `{type:"hold", tool:"computer", status:"on",
-by:"agent", reason}`), the stage says **Your turn — <reason> — Done**, the capsule says
-it outside the window, and the tool call waits (up to ten minutes) until you press
-**Done**. **I'll take it** on the stage opens a hold yourself (`POST
-/nanomuse/cloud/holds`) so the agent pauses before its next hands call while you use the
-mouse; *Done* resumes. Questions keep *Open*. Stop (the square) still cancels the turn.
+by:"agent", reason}`), the trajectory card in the chat says **Your turn — <reason> —
+Done**, the capsule says it outside the window (amber, the glow amber with it), and the
+tool call waits (up to ten minutes) until you press **Done**. **I'll take it** — on the
+trajectory card and on the capsule — opens a hold yourself (`POST /nanomuse/cloud/holds`)
+so the agent pauses before its next hands call while you use the mouse; *Done* resumes.
+Questions keep *Open*. Stop (the square) still cancels the turn.
 
 **The operator.** The hands themselves are the shell's (`src/operator.ts`, a port of
 UI-TARS-desktop's `NutJSOperator` on `@computer-use/nut-js`): the screenshot through
@@ -253,36 +256,83 @@ where it pointed, on a scaled display as on a plain one
 ([gui.md](gui.md#hands-on-the-computer-the-picture-is-the-unit)). Without the shell
 (`nanomuse` run on its own) the runtime falls back to `pyautogui` / `xdotool`.
 
-**The glow.** While the hands run, the shell puts a transparent, click-through,
-always-on-top window over the whole display (UI-TARS's ScreenMarker): a slow animated
-gradient along the edge — amber while a hold is on — the agent's face as a small
-cursor sprite where the hands last pointed, with the step's words under it, and the
-**prediction marker** at the exact point the operator acted on: a turning red dashed
-ring with a dot in the middle and the action's name beside it, a dashed line from start
-to end for a drag, fading 1.6 s after the action. The marker comes from the operator
-itself (its own fractions of the display), not from the client's reading of the tool
-call, so it is where the click went. It cannot take focus or a click, it is gone 400 ms
-after the hands stop, and it, the capsule and the nanoMuse window itself while the hands
-run all have `setContentProtection(true)`, so none of them is in the screenshots the
-runtime takes — on Linux, where content protection does nothing, the glow steps out of
-the way for the instant of the capture instead.
+**Breathing, not flowing.** Since 0.1.40 nothing in the desktop app runs round a rim,
+sweeps across a surface or shimmers: every light that says "working" — the dot by a
+chat's name, the status dot in the header, the dot of another device's turn, the
+thinking dots under a running turn, the microphone while it listens, the glow, the
+capsule's ring and bars, the trajectory's live dot — breathes at the phone's rhythm,
+2.4 s in and 2.4 s out, ease-in-out, between a dim and a full light. One-shot motions
+stay (a card sliding in, the marker locking on, the two ripples of a click), and so do
+the face's moods and the plain spinners. Under the system's *reduce motion* setting every
+breathing light is a steady light and the marker's arc stands still.
 
-**The live stage** is Muse's, picture-in-picture over the chat (bottom right and 400 px
-to begin with; drag it anywhere, resize it from the bottom-right corner, and the place
-is remembered in `prefs.stage` and kept inside the window): the latest screenshot the
-agent took, dimmed while it works, × top-left to put it away,
-*Expand* top-right (the frame in a sheet), a **Take over** pill while a step runs (it
-cancels the session's turn — the agent lets go, your mouse is yours), a caption bottom-
-left — *looking at the screen · nanoMuse*, *clicked "Save" · Finder*, *typed "hello" ·
-WeChat*, *pressed ⌘ S · Pages* — and the agent's face as the cursor marker, with a
-ripple, where it last clicked. The host keeps one frame in memory and no history: a
-`tools/execute` middleware around the hands' calls takes the picture out of the MCP
-result (`computer_screen` returns it; `computer_act` returns the screen after the
-action) with the window title and size from the first line, and `GET
-/nanomuse/cloud/stage/frame?seq=N` serves it to the browser half; ten minutes after the
-last step the frame is dropped. When the agent looks at a *phone* through Reach
-(`device_screen`), the same stage shows that screen with the device's name — that is
-what the phone app shows while its own Hands work ([gui.md](gui.md)), seen from here.
+**The glow.** While the hands run, the shell puts a transparent, click-through,
+always-on-top window over the whole display (UI-TARS's ScreenMarker, in the phone's
+vocabulary — `HandsStage.kt` drawn for a desktop): a light breathing along the four
+edges, 7 % of the shorter side deep with a 1.5 px hairline at the rim — Muse's action blue
+while the hands work, amber while a hold is on — and at the exact point the operator
+acted on, the **marker**: a soft halo, a 12 px ring in the action blue with a cyan arc
+turning round it, a dot with a white core at the centre, and the action's name in a dark
+pill beside it (to its left near the right edge). It locks on in 220 ms from 1.8× and,
+for a click, ripples twice as the click lands; for a drag it draws the path as a dashed
+line from blue to cyan with an arrowhead and a landing ring at the far end and sends the
+ring along it; typing, a key chord, an app opening and a wait, which have no point on the
+screen, write their name where the last ring was. The marker fades 1.6 s after the
+action. It comes from the operator itself (its own fractions of the display), not from
+the client's reading of the tool call, so it is where the click went; when another
+backend acts (the runtime's own hands), the client's point stands in, without words. The
+glow cannot take focus or a click, it is gone 400 ms after the hands stop, and it, the
+capsule and the nanoMuse window itself while the hands run all have
+`setContentProtection(true)`, so none of them is in the screenshots the runtime takes —
+on Linux, where content protection does nothing, the glow and the capsule step out of the
+way for the instant of the capture instead. The phone's long-press ring has no desktop
+equivalent (nothing is long-pressed); the phone's face follows the finger only inside its
+capsule, so the desktop's face at the pointer (0.1.34–0.1.39) is gone.
+
+**The capsule** is the phone's `HandsCapsule`, sized for a pointer: a pill at most 420 px
+wide at the top centre of the work area (ink at 82 %, a white hairline), the agent's face
+in a 36 px ring of three hues — the action blue, violet, cyan — breathing with four small
+bars, **Step N** and what the hands are doing (*clicked "Save"*, *typed "hello"*, *looking
+at the screen*), **I'll take it** and a red **Stop**. It slides in over 320 ms when the
+hands start, is shown only while the nanoMuse window is not the one in front (the chat
+shows the same in the trajectory card), and goes 220 ms after the run ends. When the
+hands are about to click or drag under it, it moves to the bottom of the work area first
+(and back up next time), the way the phone's capsule dodges the finger. A hold turns it
+amber with **Your turn — <reason> — Done**; a question the agent asked before a step
+hangs under it as a card with *Allow once*, *Always in <app>*, *Deny*. The shell feeds it
+over IPC from the main window (`nanomuse:overlay`, `{hands: {active, held, step, title,
+text, face, stop, take, x, y, kind}, cards}`) and its answers come back the same way.
+
+**The trajectory** is how a hands run is looked at, during and after it, in the chat: a
+card under the run's last tool call (the chat's own row, so it scrolls with the thread)
+with the step's screenshot and, drawn on it in the marker's hues, what the hands did
+there — the ring and dot of a click (two rings for a double click), the dashed path and
+arrowhead of a drag, a chevron for a scroll, the typed text, the key chord or the app's
+name in the label pill when the action had no point — a caption in words (*Step 3 ·
+clicked "Save" · Finder*), the agent's words from just before the step (its short
+reasoning, clamped to three lines on the card), a filmstrip of thumbnails, *previous* and
+*next* (the ← and → keys when the card has focus, Home and End for the ends), *Open
+large* (the step in a sheet with the whole text) and *Copy this step*. While the run is
+on the card follows the newest step with a breathing dot and offers **I'll take it** and
+**Stop**; a hold shows *Your turn — <reason>* with **Done**. Pictures are loaded lazily
+and only the chosen step's at full size. The host keeps the run in memory
+(`src/trajectory.ts`): a *run* opens with the first hands call of a turn and closes when
+the turn ends or the hands rest for ten minutes; a *step* is a frame the model was shown
+(`computer_screen` returns one, `computer_act` the screen after the action — a
+`tools/execute` middleware takes it out of the MCP result with the window title and size
+from the first line), with the action the model then took on it and the words of its last
+assistant message before acting. The caps: **40 steps per run** (older ones drop off the
+front and the card says *the first N steps are no longer kept*), **4 runs in all**, and
+the pictures together under **64 MB** (the oldest go first; their steps keep their words
+and say the picture is gone). Nothing is written to disk; a restart forgets it. The
+browser half reads `GET /nanomuse/cloud/trajectory?session=<id>` (`{rev, runs: [{id,
+sessionId, source, device, startedAt, endedAt, firstCall, lastCall, dropped, steps: [{i,
+seq, at, width, height, title, action, words, callId}]}]}`, no bytes) and `GET
+/nanomuse/cloud/stage/frame?seq=N` for a picture (immutable, cached an hour); the live
+state's `trajectory: {rev, sessions}` says when to read again. When the agent looks at a
+*phone* through Reach (`device_screen`), the run is a *device* run with the phone's name —
+that is what the phone app shows while its own Hands work ([gui.md](gui.md)), seen from
+here.
 
 ## Settings
 

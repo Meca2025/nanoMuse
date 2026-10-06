@@ -1,6 +1,6 @@
 /**
- * The desk behind the Live stage (0.1.34): the approvals and holds the stage
- * answers (shared contracts C1 and C2 of this release), what the account's
+ * The desk behind the hands (0.1.34): the approvals and holds the chat's cards and
+ * the capsule answer (shared contracts C1 and C2 of this release), what the account's
  * connectors look like to the other devices (C3), and the update check the
  * About row runs (GitHub releases first, nanomuse.cn/dl as the fallback).
  *
@@ -11,7 +11,7 @@ import type { ApprovalOutcome, ApprovalRequestEvent } from '@deepseek-ai/dsh-use
 
 // ---- approvals (C2) ------------------------------------------------------------------
 
-/** One question the agent asked before a step, as the stage and the capsule show it. */
+/** One question the agent asked before a step, as the chat's card and the capsule show it. */
 export interface PendingApproval {
   id: string
   sessionId: string
@@ -26,10 +26,10 @@ export interface PendingApproval {
 
 export type ApprovalScope = 'once' | 'conversation' | 'always'
 
-/** A standing "always allow": the hands in one app (`computer_app:<app>`), given on the stage, revocable on the Permissions page. */
+/** A standing "always allow": the hands in one app (`computer_app:<app>`), given on a permission card, revocable on the Permissions page. */
 export interface Grant {
   id: string
-  /** `computer_app:Safari` — the kind and the app the stage showed when it was given. */
+  /** `computer_app:Safari` — the kind and the app the card showed when it was given. */
   target: string
   at: number
 }

@@ -48,6 +48,7 @@ import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner, textOf } from './task.ts'
+import { Trajectory, type StepAction, type TrajectoryView } from './trajectory.ts'
 import { RemoteStore, SyncEngine, SyncRelay, type RemoteLine, type SessionInfo, type SessionLine, type SyncState } from './sync.ts'
 import { AvatarMotion, ANIMATED, type MotionMood, type MotionView } from './motion.ts'
 import { DEFAULT_VIDEO_MODEL, hostOf, KNOWN_DASHSCOPE_MODELS, looksLikeVideoModel, probe as probeVideoModel, speaksDashScope, type VideoEndpoint } from './video.ts'
@@ -213,17 +214,8 @@ export interface Notice {
   at: number
 }
 
-/** The last thing the hands did, for the stage's caption and cursor marker. */
-export interface StageAction {
-  /** `click`, `type`, `key`, `scroll`, `drag`, `open_app`, `wait`, `look`… */
-  kind: string
-  label: string
-  text: string
-  /** Pixels of the frame the action was aimed at; -1 when it had no point. */
-  x: number
-  y: number
-  at: number
-}
+/** The last thing the hands did, for the stage's caption and marker; since 0.1.40 also a drag's far end (`x2`, `y2`) and a scroll's `dy`. */
+export type StageAction = StepAction
 
 /**
  * The Live stage: the latest screenshot the agent took while using a screen —
@@ -273,6 +265,8 @@ export interface LiveState {
   sync: { rev: number; mainSession: string }
   /** Own keys and the ChatGPT sign-in (C11): how many rows, what the sign-in is doing, whether its proxy is up. */
   ownKeys: { count: number; capabilities: Capability[]; chatgpt: { signedIn: boolean; label: string; proxy: boolean; login: LoginView } }
+  /** The hands' trajectory (0.1.40): `rev` moves with every step; the sessions that have a run to look back at. The runs themselves are `GET /trajectory?session=`. */
+  trajectory: { rev: number; sessions: string[] }
 }
 
 /** What Settings → Account's "ways on", the own-key step and the pickers read (`GET /providers`). */
@@ -475,7 +469,8 @@ export default class NanomuseCloud extends Service {
   private readonly asks = new AskDesk(() => this.broadcast())
   private noticeSeq = 0
   private stage: StageState = NO_STAGE
-  private frame: { seq: number; bytes: Buffer; mime: string } | undefined
+  /** The hands' runs, step by step, with their pictures (0.1.40). */
+  private readonly trajectory = new Trajectory()
   private stageTimer: NodeJS.Timeout | undefined
   private signedInCache = false
   /** Tasks from other devices, once the session API is up. */
@@ -714,7 +709,7 @@ export default class NanomuseCloud extends Service {
         if (exec.name === 'mcp__nanomuse__computer_act' && handOverOf(exec.arguments)) {
           const reason = handOverOf(exec.arguments) ?? ''
           this.began(exec.callId, exec.name, exec.arguments, sessionId)
-          this.acted({ kind: 'hold', label: reason, text: reason, x: -1, y: -1, at: Date.now() }, sessionId)
+          this.acted({ kind: 'hold', label: reason, text: reason, x: -1, y: -1, x2: -1, y2: -1, dy: 0, at: Date.now() }, sessionId, exec.callId)
           try {
             const hold = this.holdDesk.begin(sessionId, 'computer', 'agent', reason)
             const how = await this.holdDesk.wait(sessionId)
@@ -728,15 +723,15 @@ export default class NanomuseCloud extends Service {
         // While the person has the screen, the hands wait rather than fail.
         if (this.holdDesk.on(sessionId)) await this.holdDesk.wait(sessionId)
         this.began(exec.callId, exec.name, exec.arguments, sessionId)
-        if (exec.name === 'mcp__nanomuse__computer_act') this.acted(stageAction(exec.arguments), sessionId)
-        else if (exec.name === 'mcp__nanomuse__computer_screen') this.acted({ kind: 'look', label: '', text: '', x: -1, y: -1, at: Date.now() }, sessionId)
+        if (exec.name === 'mcp__nanomuse__computer_act') this.acted(stageAction(exec.arguments), sessionId, exec.callId)
+        else if (exec.name === 'mcp__nanomuse__computer_screen') this.acted({ kind: 'look', label: '', text: '', x: -1, y: -1, x2: -1, y2: -1, dy: 0, at: Date.now() }, sessionId, exec.callId)
         try {
           let result = await next()
           if (exec.name === 'mcp__nanomuse__computer_act' && result.isError) {
             const refused = refusalOf(result)
             if (refused) result = await this.confirmStep(ctx, exec, refused, next)
           }
-          if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId)
+          if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId, exec.callId)
           // A black capture (macOS: Screen Recording missing for the app, or granted after it started) puts a relaunch notice up.
           if (exec.name.startsWith('mcp__nanomuse__computer_') && result.isError && isBlack(errorText(result))) this.sawBlackScreen()
           return result
@@ -745,6 +740,19 @@ export default class NanomuseCloud extends Service {
         }
       })
     })
+    // The trajectory (0.1.40): the model's words before a step, and the turn's end closing the run.
+    this.ctx.effect(
+      () =>
+        this.ctx.on('session/event', (session: Session, event: SessionEvent) => {
+          const id = String(session.id)
+          if (event.type === 'assistant/message') this.trajectory.said(id, textOf(event.data.message.content))
+          else if (event.type === 'turn/end' && this.trajectory.running(id)) {
+            this.trajectory.turnEnded(id)
+            this.broadcast()
+          }
+        }),
+      'nanomuse cloud: trajectory',
+    )
     this.ctx.effect(() => () => {
       this.hub.stop('shutting down')
       this.chatgpt.stop()
@@ -1251,7 +1259,13 @@ export default class NanomuseCloud extends Service {
         capabilities: this.capabilities(),
         chatgpt: { signedIn: Boolean(this.state.chatgpt), label: this.state.chatgpt?.label ?? '', proxy: Boolean(this.chatgpt.ready), login: this.chatgpt.login },
       },
+      trajectory: { rev: this.trajectory.view().rev, sessions: [...new Set(this.trajectory.view().runs.map((r) => r.sessionId))] },
     }
+  }
+
+  /** The hands' runs of a session (or all), without pictures: `GET /trajectory?session=`. */
+  trajectoryView(sessionId?: string): TrajectoryView {
+    return this.trajectory.view(sessionId)
   }
 
   /** The session that holds the account's main conversation (C8), '' before one is known. */
@@ -1895,6 +1909,7 @@ export default class NanomuseCloud extends Service {
     this.lastCallAt = now
     this.steps += 1
     this.calls.set(callId, { id: callId, name, args: pickArgs(args), sessionId, since: now })
+    this.trajectory.began(sessionId, callId)
     this.broadcast()
   }
 
@@ -1915,10 +1930,9 @@ export default class NanomuseCloud extends Service {
   // -- the Live stage -------------------------------------------------------------------
 
   /** A frame of a screen the agent is working on; `meta.device` names another device, else it is this computer's. */
-  stageFrame(bytes: Buffer, mime: string, meta: { device?: string; width?: number; height?: number; title?: string; mode?: 'screen' | 'window'; sessionId: string }): void {
+  stageFrame(bytes: Buffer, mime: string, meta: { device?: string; width?: number; height?: number; title?: string; mode?: 'screen' | 'window'; sessionId: string; callId?: string }): void {
     if (bytes.length === 0 || bytes.length > 12 * 1024 * 1024) return
-    const seq = (this.frame?.seq ?? 0) + 1
-    this.frame = { seq, bytes, mime }
+    const seq = this.trajectory.frame(bytes, mime, meta)
     const sameScreen = this.stage.source === (meta.device ? 'device' : 'computer') && this.stage.device === (meta.device ?? '')
     this.stage = {
       seq,
@@ -1936,9 +1950,10 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
-  /** What the hands are about to do on this computer's screen. */
-  private acted(action: StageAction, sessionId: string): void {
+  /** What the hands are about to do on this computer's screen: the stage's marker, and a step of the trajectory. */
+  private acted(action: StageAction, sessionId: string, callId: string): void {
     this.stage = { ...this.stage, action, sessionId: sessionId || this.stage.sessionId }
+    this.trajectory.acted(sessionId, callId, action)
     this.broadcast()
   }
 
@@ -1984,7 +1999,7 @@ export default class NanomuseCloud extends Service {
   }
 
   /** The screenshot and the words that came back from `computer_screen` / `computer_act` (an MCP result). */
-  private frameFromMcp(value: unknown, sessionId: string): void {
+  private frameFromMcp(value: unknown, sessionId: string, callId: string): void {
     const content = (value as { content?: unknown[] } | undefined)?.content
     if (!Array.isArray(content)) return
     let image: { data: string; mime: string } | undefined
@@ -1997,14 +2012,13 @@ export default class NanomuseCloud extends Service {
     }
     if (!image) return
     const head = screenHead(text)
-    this.stageFrame(Buffer.from(image.data, 'base64'), image.mime, { ...head, sessionId })
+    this.stageFrame(Buffer.from(image.data, 'base64'), image.mime, { ...head, sessionId, callId })
   }
 
-  /** The agent has stopped using that screen for a while: the stage can go. */
+  /** The agent has stopped using that screen for a while: the stage can go (the trajectory stays, for looking back). */
   private clearStage(): void {
     if (this.stage.seq === 0) return
     this.stage = NO_STAGE
-    this.frame = undefined
     this.broadcast()
   }
 
@@ -2255,14 +2269,18 @@ export default class NanomuseCloud extends Service {
       if (req.method === 'GET' && route === '/events') return this.stream(req, res)
       if (req.method === 'GET' && route === '/live') return send(res, 200, this.live())
       if (req.method === 'GET' && route === '/stage/frame') {
-        const frame = this.frame
+        // `seq` names a step's picture (0.1.40); without it, the newest
+        const frame = this.trajectory.frameOf(Number(url.searchParams.get('seq') ?? 0) || 0)
         if (!frame) return send(res, 404, { error: { code: 'no_frame', message: 'Nothing on the stage' } })
-        res.writeHead(200, { 'content-type': frame.mime, 'content-length': frame.bytes.length, 'cache-control': 'private, max-age=600' })
+        res.writeHead(200, { 'content-type': frame.mime, 'content-length': frame.bytes.length, 'cache-control': 'private, max-age=3600, immutable' })
         res.end(frame.bytes)
         return
       }
+      if (req.method === 'GET' && route === '/trajectory') return send(res, 200, this.trajectoryView(url.searchParams.get('session') ?? undefined))
       if (req.method === 'POST' && route === '/stage/clear') {
         this.clearStage()
+        this.trajectory.clear()
+        this.broadcast()
         return send(res, 204)
       }
       if (req.method === 'POST' && route === '/code') {
@@ -2561,16 +2579,26 @@ export function stageAction(args: unknown): StageAction {
   const kind = typeof a.action === 'string' ? a.action : 'act'
   const keys = Array.isArray(a.keys) ? a.keys.filter((k): k is string => typeof k === 'string').join('+') : ''
   const text = kind === 'key' ? keys : kind === 'open_app' ? String(a.app ?? '') : typeof a.text === 'string' ? a.text : ''
-  // `box: [x1, y1, x2, y2]` stands in for x, y when the model gave a box (computer_act): its centre
-  const box = Array.isArray(a.box) && a.box.length === 4 ? a.box.map(num) : []
-  const [bx1 = -1, by1 = -1, bx2 = -1, by2 = -1] = box
-  const boxed = box.length === 4 && box.every((v) => v >= 0)
+  // `box: [x1, y1, x2, y2]` stands in for x, y when the model gave a box (computer_act): its centre; `box2` the same for a drag's end
+  const centre = (raw: unknown, x: unknown, y: unknown): [number, number] => {
+    const box = Array.isArray(raw) && raw.length === 4 ? raw.map(num) : []
+    const [bx1 = -1, by1 = -1, bx2 = -1, by2 = -1] = box
+    const boxed = box.length === 4 && box.every((v) => v >= 0)
+    return [boxed && x === undefined ? (bx1 + bx2) / 2 : num(x), boxed && y === undefined ? (by1 + by2) / 2 : num(y)]
+  }
+  const [x, y] = centre(a.box, a.x, a.y)
+  const [x2, y2] = kind === 'drag' ? centre(a.box2, a.x2, a.y2) : [-1, -1]
+  // the runtime scrolls 300 px down when the model names no amount
+  const dy = kind === 'scroll' ? (a.dy === undefined ? 300 : num(a.dy)) : 0
   return {
     kind,
     label: typeof a.label === 'string' ? a.label.replace(/\s+/g, ' ').trim().slice(0, 80) : '',
     text: text.replace(/\s+/g, ' ').trim().slice(0, 80),
-    x: boxed && a.x === undefined ? (bx1 + bx2) / 2 : num(a.x),
-    y: boxed && a.y === undefined ? (by1 + by2) / 2 : num(a.y),
+    x,
+    y,
+    x2,
+    y2,
+    dy,
     at: Date.now(),
   }
 }

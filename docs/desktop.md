@@ -28,8 +28,9 @@ A dsh Host started by the shell as a child process, showing the harness's web ap
 window of ours: the rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, the
 hamburger), the chats column with the main chat and the side chats, the face and name
 pinned over the conversation with a live status line and *Stop*, Muse's permission card
-over the harness's approvals, the live stage (the screen the agent is working on,
-picture-in-picture, with a caption and *Take over*), the profile panel with memory,
+over the harness's approvals, the trajectory of a hands run in the chat (each step's
+screenshot with the action drawn on it and the agent's words, to look back at during
+and after the run), the profile panel with memory,
 Muse's Settings pages (Connectors, Computer use, File system access, Dictation,
 Permissions, Data controls with export and reset), the full-window first run. The agent
 is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-agents, MCP
@@ -253,7 +254,7 @@ helper, on the pre-0.1.38 path.
   HiDPI desktop that is the logical size × the scale factor (a 1920×1080 scale-2 display is
   3840×2160 to the hands), and the picture the model sees is that root scaled down to at
   most 1600 wide and 2 Mpx. The frame the app draws around the screen while the hands work
-  (the glow) takes no clicks: it steps aside for every pointer action — hidden before the
+  (the glow, a light breathing along the four edges) takes no clicks: it steps aside for every pointer action — hidden before the
   pointer moves, back right after with the marker where the click landed, so it blinks for
   about 150 ms per click — and its X11 input region, which Chromium clears whenever the
   window's bounds change, is set again after every such change; should a click ever reach
@@ -262,7 +263,7 @@ helper, on the pre-0.1.38 path.
   so the glow stays up for them and focus is untouched. A window manager is needed for a
   sensible picture (without one Electron's capturer can return a black frame — the runtime
   then falls back to its own capture). Steps that act on your behalf (Enter, a submit, heavy shortcuts, clicks on words
-  from the sensitive list) wait for the card in the chat or on the live stage; *Allow once*
+  from the sensitive list) wait for the card in the chat or on the capsule; *Allow once*
   runs the step, *Always allow in <app>* keeps the hands going in that app until you revoke
   it under Settings → Permissions. Text outside ASCII is typed through the clipboard
   (`xclip`/`xsel` are not needed — Electron's clipboard is used) and Ctrl+V; the previous

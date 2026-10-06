@@ -48,8 +48,8 @@ const bridge = {
   guidePermissions: (): Promise<Record<PermissionKind, PermissionState>> => ipcRenderer.invoke("nanomuse:permissions:guide"),
   /** Keep this window out of screenshots while the hands work. */
   setContentProtection: (on: boolean): Promise<void> => ipcRenderer.invoke("nanomuse:content-protection", on),
-  /** What the overlays show: the hands' pointer for the glow window, the cards for the capsule. */
-  setOverlay: (state: { hands: { active: boolean; held: boolean; x: number; y: number; kind: string; text: string; face: string } | null; cards: { id: string; kind: "approval" | "hold"; title: string; text: string; actions: { id: string; label: string; tone?: "on" | "no" }[] }[] }): void => ipcRenderer.send("nanomuse:overlay", state),
+  /** What the overlays show: the hands' pointer for the glow window; the step, its words, the face and the buttons for the capsule, with the cards. */
+  setOverlay: (state: { hands: { active: boolean; held: boolean; x: number; y: number; kind: string; step: number; title: string; text: string; face: string; stop: string; take: string } | null; cards: { id: string; kind: "approval" | "hold"; title: string; text: string; actions: { id: string; label: string; tone?: "on" | "no" }[] }[] }): void => ipcRenderer.send("nanomuse:overlay", state),
   /** A button pressed on the capsule window. */
   onOverlayAction: (listener: (card: string, action: string) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, payload: { card: string; action: string }) => listener(payload.card, payload.action);

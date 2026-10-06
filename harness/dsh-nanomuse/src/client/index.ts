@@ -28,7 +28,7 @@ import { makeCapsule } from './Capsule.tsx'
 import { prefillComposer } from './composer.ts'
 import { makeMicButton, makeQuoteAction } from './ComposerExtras.tsx'
 import { makeDocEditor } from './DocEditor.tsx'
-import { makeLiveStage } from './LiveStage.tsx'
+import { renderTrajectory } from './Trajectory.tsx'
 import { makeCloudSection } from './CloudSection.tsx'
 import { makeDevicesPanel } from './DevicesPanel.tsx'
 import { makeFeedPanel } from './FeedPanel.tsx'
@@ -596,7 +596,7 @@ export function apply(ctx: ClientContext): void {
   })
   if (quickChatOff) ctx.effect(() => quickChatOff, 'nanomuse: quick chat')
   // The shell's overlays while the hands work: the glow and the capsule outside this window.
-  ctx.effect(() => syncOverlay(t), 'nanomuse: overlays')
+  ctx.effect(() => syncOverlay({ t, stop }), 'nanomuse: overlays')
   // The agent's app fences (goal created, goal update, feed post, new look) as cards in the chat.
   ctx.effect(() => renderFenceCards(t), 'nanomuse: fence cards')
   // The turns written on the account's other devices, as bubbles in the thread (C8).
@@ -607,8 +607,6 @@ export function apply(ctx: ClientContext): void {
   slots.inject('shell.overlay', () =>
     slots.register({ name: 'shell.overlay', id: 'nanomuse.studio' }, AvatarStudio))
 
-  // The Live stage: the screen the agent is working on, picture-in-picture over the chat.
-  const LiveStage = makeLiveStage({ t, stop })
-  slots.inject('shell.overlay', () =>
-    slots.register({ name: 'shell.overlay', id: 'nanomuse.stage' }, LiveStage))
+  // The trajectory of a hands run, as a card in the chat (0.1.40; the picture-in-picture Live stage is gone).
+  ctx.effect(() => renderTrajectory(t, stop), 'nanomuse: trajectory')
 }
