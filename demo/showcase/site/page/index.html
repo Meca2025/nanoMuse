@@ -13,10 +13,18 @@
     <link rel="stylesheet" href="/page/mobilegym.css" />
     <link rel="stylesheet" href="/page/page.css" />
     <script>
-      // the language before the first paint, so nothing flashes: a remembered choice, else the browser's
+      // the language before the first paint, so nothing flashes: the page that embeds this one
+      // (?lang=), else a remembered choice, else the browser's. ?embed=1 is the frame on the
+      // project site: no header of its own, and the phone waits for a tap (page.js).
       (function () {
         try {
-          var s = localStorage.getItem("nm-lang");
+          var q = new URLSearchParams(location.search);
+          if (q.get("embed") === "1") {
+            document.documentElement.setAttribute("data-embed", "1");
+            if (q.get("theme") === "dark") document.documentElement.setAttribute("data-theme", "dark");
+          }
+          var p = q.get("lang");
+          var s = p === "zh" || p === "en" ? p : localStorage.getItem("nm-lang");
           var l = s ? (s === "zh" ? "zh" : "en") : /^zh/i.test(navigator.language || "") ? "zh" : "en";
           document.documentElement.setAttribute("data-lang", l);
           document.documentElement.lang = l === "zh" ? "zh-CN" : "en";
@@ -63,7 +71,7 @@
                 <span class="boot-ring">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>
                 </span>
-                <span class="hero-boot-label">Click to start</span>
+                <span class="hero-boot-label"><i class="en">Click to start</i><i class="zh">点击开机</i></span>
               </button>
             </div>
 

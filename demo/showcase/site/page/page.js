@@ -12,6 +12,14 @@
   var frame = document.getElementById("demo-frame");
   var status = document.getElementById("status");
   var lookGroup = document.getElementById("group-look");
+  // ?embed=1 (the inline script in index.html sets data-embed): this page is the frame on the
+  // project site, nanomuse.cn. The site has the header, so ours is hidden (page.css); the phone
+  // is not turned on until the visitor taps it, so opening the homepage starts nothing; links
+  // out of the page open in the top window, not inside the frame; and the site tells us its
+  // language and theme over postMessage ({type: "nanomuse:lang", lang} / {type: "nanomuse:theme",
+  // theme}), the first paint taking them from ?lang= and ?theme=.
+  var embed = root.getAttribute("data-embed") === "1";
+  var EMBEDDERS = ["https://nanomuse.cn", "https://www.nanomuse.cn", "https://nano-muse.github.io"];
 
   // ---- language -------------------------------------------------------------------------
   function lang() {
@@ -31,6 +39,21 @@
   document.getElementById("lang").addEventListener("click", function () {
     setLang(lang() === "zh" ? "en" : "zh");
   });
+  if (embed) {
+    window.addEventListener("message", function (ev) {
+      if (EMBEDDERS.indexOf(ev.origin) < 0) return;
+      var d = ev.data;
+      if (!d) return;
+      if (d.type === "nanomuse:lang" && (d.lang === "zh" || d.lang === "en") && d.lang !== lang()) setLang(d.lang);
+      if (d.type === "nanomuse:theme") {
+        if (d.theme === "dark") root.setAttribute("data-theme", "dark");
+        else root.removeAttribute("data-theme");
+      }
+    });
+    document.querySelectorAll('a[href^="http"]').forEach(function (a) {
+      a.setAttribute("target", "_top");
+    });
+  }
   function tr(en, zh) {
     return lang() === "zh" ? zh : en;
   }
@@ -253,7 +276,7 @@
       text = flash;
       cls += " flash";
     } else if (!phoneWindow()) {
-      text = tr("The phone is off — Click to start.", "手机关着——点屏幕上的「Click to start」开机。");
+      text = tr("The phone is off — Click to start.", "手机关着——点一下屏幕开机。");
     } else if (!host) {
       text = tr("Starting the phone…", "手机启动中…");
     } else if (!state.configured && info && info.signin_required && !state.signedIn) {
@@ -355,6 +378,7 @@
   });
 
   render();
-  // the phone turns itself on; a beat after the page is there, so the switch-on is seen
-  setTimeout(powerOn, 400);
+  // the phone turns itself on; a beat after the page is there, so the switch-on is seen — unless
+  // this is the frame on the project site, where it waits for the visitor's tap
+  if (!embed) setTimeout(powerOn, 400);
 })();
