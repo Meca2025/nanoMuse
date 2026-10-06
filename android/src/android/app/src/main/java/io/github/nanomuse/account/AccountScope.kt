@@ -29,6 +29,18 @@ object AccountScope {
             ?: token?.takeIf { it.isNotBlank() }?.hashCode()?.toString()
             ?: LOCAL
 
+    /** The relay's error code for a key whose account no longer exists (relay 0.1.40). */
+    const val ACCOUNT_DELETED = "account_deleted"
+
+    /**
+     * What becomes of the account's data when the relay refuses its key — a 401 nobody on this
+     * phone asked for (signed out from another device, a relay reset, a relay bug). Kept: put
+     * aside as *Keep this account's chats on this device* would, for the next sign-in with the
+     * same account. Only when the relay says the account itself is gone ([ACCOUNT_DELETED]) is
+     * there nothing to come back to, and the data goes as *Delete the account* would.
+     */
+    fun keepOnRefusedKey(code: String?): Boolean = code != ACCOUNT_DELETED
+
     /** What [reconcile] decided: rows to write, rows to drop, and what to hide right now. */
     data class Reconciled(
         /** Sessions that had no owner, and the owner each gets. */

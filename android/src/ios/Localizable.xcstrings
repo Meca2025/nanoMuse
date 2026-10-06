@@ -4209,6 +4209,65 @@
         }
       }
     },
+    "This account was deleted. Sign in again to start a new one." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto wurde gelöscht. Melde dich erneut an, um ein neues zu beginnen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This account was deleted. Sign in again to start a new one."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta fue eliminada. Inicia sesión de nuevo para empezar una nueva."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce compte a été supprimé. Reconnectez-vous pour en commencer un nouveau."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアカウントは削除されました。もう一度サインインすると新しいアカウントが作られます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 계정은 삭제되었습니다. 다시 로그인하면 새 계정이 만들어집니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот аккаунт удалён. Войдите снова, чтобы начать новый."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个账号已删除。重新登录会建立一个新账号。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這個帳號已刪除。重新登入會建立一個新帳號。"
+          }
+        }
+      }
+    },
     "This message and all messages after it will be deleted. This cannot be undone." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4635,6 +4694,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已保留此设备上现有的 API 密钥——备份中的密钥与本机凭据一致，无需覆盖。"
+          }
+        }
+      }
+    },
+    "Your sign-in on this phone was ended — sign in again to continue; your chats are kept on this device until then." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anmeldung auf diesem Telefon wurde beendet — melde dich erneut an, um weiterzumachen; bis dahin bleiben deine Chats auf diesem Gerät."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your sign-in on this phone was ended — sign in again to continue; your chats are kept on this device until then."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu sesión en este teléfono se cerró — inicia sesión de nuevo para continuar; hasta entonces tus chats se conservan en este dispositivo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre connexion sur ce téléphone a pris fin — reconnectez-vous pour continuer ; d’ici là, vos discussions restent sur cet appareil."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この端末でのサインインは終了しました。続けるにはもう一度サインインしてください。それまでチャットはこの端末に残ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 휴대전화의 로그인이 끝났습니다. 계속하려면 다시 로그인하세요. 그때까지 채팅은 이 기기에 남아 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход на этом телефоне завершён — войдите снова, чтобы продолжить; до тех пор ваши чаты остаются на этом устройстве."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台手机上的登录已结束——重新登录即可继续；在那之前，你的聊天会留在这台设备上。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這台手機上的登入已結束——重新登入即可繼續；在那之前，你的聊天會留在這台裝置上。"
           }
         }
       }

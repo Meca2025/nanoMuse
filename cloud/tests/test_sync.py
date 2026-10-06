@@ -562,7 +562,15 @@ async def test_deleting_the_account_purges_everything_and_the_next_sign_in_start
     assert app.state.sync.presence.working(account_id)
 
     assert (await client.post("/v1/auth/delete", headers=auth(key))).status_code == 204
-    assert (await client.get("/v1/sync/state", headers=auth(key))).status_code == 401
+    # the key of a deleted account is told apart from a revoked one: the phone keeps the
+    # account's data on `bad_key` and deletes it on `account_deleted` only (contract C12)
+    for path in ("/v1/me", "/v1/models", "/v1/sync/state"):
+        r = await client.get(path, headers=auth(key))
+        assert r.status_code == 401 and r.json()["error"]["code"] == "account_deleted", path
+    r = await client.post("/v1/chat/completions", json={"model": "x", "messages": []}, headers=auth(key))
+    assert r.status_code == 401 and r.json()["error"]["code"] == "account_deleted"
+    assert cloud.db._conn.execute("SELECT COUNT(*) FROM deleted_keys").fetchone()[0] == 1
+    assert cloud.db._conn.execute("SELECT * FROM deleted_keys").fetchone().keys() == ["key_hash", "deleted_at"], "a dead key's hash names nobody"
 
     # every table that names the account is empty of it
     for table, column in (
@@ -591,3 +599,29 @@ async def test_deleting_the_account_purges_everything_and_the_next_sign_in_start
     state = (await client.get("/v1/sync/state", headers=auth(again["api_key"]))).json()
     assert state["counts"] == {"conversations": 0, "messages": 0} and state["working"] == []
     assert (await client.get("/v1/me/profile", headers=auth(again["api_key"]))).json().get("rev", 0) == 0
+
+
+async def test_a_revoked_or_reset_key_is_bad_key_not_account_deleted():
+    """Only a deleted account answers `account_deleted`. A key revoked by a sign-out, one the
+    relay never issued (a reset), or one whose tombstone has aged out, is `bad_key` — the
+    phone keeps the account's data aside and waits for the next sign-in (contract C12)."""
+    from nanomuse_cloud import db as dbmod
+
+    app, client, sender, up, cloud, settings = make()
+    first = await sign_up(client, sender, "13800138001", "pixel")
+    key = first["api_key"]
+    assert (await client.post("/v1/auth/sign-out", headers=auth(key))).status_code == 204
+    r = await client.get("/v1/me", headers=auth(key))
+    assert r.status_code == 401 and r.json()["error"]["code"] == "bad_key"
+    r = await client.get("/v1/me", headers=auth("nm_" + "0" * 40))
+    assert r.status_code == 401 and r.json()["error"]["code"] == "bad_key"
+
+    # a deleted account's key, once the tombstone has aged out
+    second = await sign_up(client, sender, "13800138002", "pixel")
+    assert (await client.post("/v1/auth/delete", headers=auth(second["api_key"]))).status_code == 204
+    r = await client.get("/v1/me", headers=auth(second["api_key"]))
+    assert r.json()["error"]["code"] == "account_deleted"
+    with cloud.db.tx() as c:
+        c.execute("UPDATE deleted_keys SET deleted_at=?", (dbmod.now() - dbmod.DELETED_KEYS_TTL_S - 1,))
+    r = await client.get("/v1/me", headers=auth(second["api_key"]))
+    assert r.json()["error"]["code"] == "bad_key"

@@ -214,6 +214,22 @@ fun CloudSignInScreen(
                 color = muted,
                 textAlign = TextAlign.Center,
             )
+            if (NanoMuseCloud.signInEnded(context)) {
+                // the relay refused the phone's key: the account's chats wait here for the same
+                // account to sign in again (contract C12)
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.nm_cloud_sign_in_ended),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MuseTones.fill, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                )
+            }
             Spacer(Modifier.height(24.dp))
 
             // Two ways in: a code to the address, or the password set under Account.

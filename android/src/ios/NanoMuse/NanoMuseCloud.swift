@@ -84,10 +84,16 @@ enum NanoMuseCloud {
         static let instance = "nanomuse.cloud.instance_id"
         static let account = "nanomuse.cloud.account"
         static let fresh = "nanomuse.cloud.fresh_account"
+        /// The relay refused the key and the account's data was kept aside (C12); the sign-in page says so until the next sign-in.
+        static let ended = "nanomuse.cloud.sign_in_ended"
     }
 
     /// True after a sign-in that created the account, until the first run's password page was answered.
     static var freshAccount: Bool { UserDefaults.standard.bool(forKey: Keys.fresh) }
+
+    /// True after the relay refused the phone's key and the account's data was put aside (C12)
+    /// — the sign-in page tells the person so — until the next sign-in.
+    static var signInEnded: Bool { UserDefaults.standard.bool(forKey: Keys.ended) }
     static func clearFreshAccount() { UserDefaults.standard.removeObject(forKey: Keys.fresh) }
 
     typealias Account = NanoMuseCloudAccount
@@ -311,6 +317,7 @@ enum NanoMuseCloud {
             inst = fresh
         }
         UserDefaults.standard.set(inst.id, forKey: Keys.instance)
+        UserDefaults.standard.removeObject(forKey: Keys.ended) // a sign-in answers the sentence (C12)
         // A sign-in that created the account owes the first run a password page (NanoMuseFirstRun).
         if (reply["created"] as? Bool) == true { UserDefaults.standard.set(true, forKey: Keys.fresh) }
         if let region = reply["region"] as? String, !region.isEmpty { UserDefaults.standard.set(region, forKey: "nanomuse.relay.region") }
@@ -349,9 +356,13 @@ enum NanoMuseCloud {
             return parsed
         } catch let error as CloudError where error.status == 401 {
             // Revoked elsewhere, or the relay was reset: the provider cannot answer any more.
-            // Nobody could tick *Keep*, so the account's local data goes (C12); with sync on,
-            // the relay still has the chats for the next sign-in.
-            await forgetLocally(keep: false)
+            // Nobody on this phone asked, so the account's data is put aside as *Keep* would
+            // and comes back with the next sign-in as the same account (C12). Only
+            // `account_deleted` — the account itself is gone at the relay — leaves nothing to
+            // come back to, and the data goes.
+            let keep = NanoMuseAccountData.keepOnRefusedKey(code: error.code)
+            await forgetLocally(keep: keep)
+            if keep { UserDefaults.standard.set(true, forKey: Keys.ended) }
             return nil
         }
     }
@@ -406,6 +417,8 @@ enum NanoMuseCloud {
             return AppLocalized("This account has been disabled.")
         case "bad_key":
             return AppLocalized("This sign-in is no longer valid. Sign in again.")
+        case "account_deleted":
+            return AppLocalized("This account was deleted. Sign in again to start a new one.")
         case "out_of_tokens":
             return AppLocalized("The starter allowance is used up. Add a provider of your own to keep going.")
         case "allowance_exhausted":

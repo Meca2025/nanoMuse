@@ -67,7 +67,8 @@ Ours, in `NanoMuse/`:
   e-mail address, a code, and the relay ([cloud.md](cloud.md)) is an ordinary OpenAI-compatible
   provider in the app, with a model group of its own that becomes the default when there is none.
   Same wire format and the same rules as the Android client (`io.github.nanomuse.cloud`): one
-  instance per relay, nothing of the user's own replaced, a 401 on refresh removes the provider.
+  instance per relay, nothing of the user's own replaced, a 401 on refresh removes the provider
+  (and keeps the account's data aside — Contract C12 below).
   Any build can point at another relay (*Use a different server*, below). Since 0.1.32 the page is the whole account — the
   password as the other way in, a friend's invite code, the pool in yuan with the ways on when it
   runs low (your own key, an invitation, a star once), usage by kind and by model, the devices
@@ -250,7 +251,12 @@ Ours, in `NanoMuse/`:
   routines and face leave the phone (its sync table too, so a later sign-in never tombstones
   them on its other devices); on, they are put aside under `MinisConfig/nanomuse/accounts/<hash>/`
   and come back with the account. Signing in as another account goes through the same path.
-  *Delete the account* removes all of it with no question. The relay's key is saved on this
+  *Delete the account* removes all of it with no question. A key the relay refuses on a refresh
+  (`401 bad_key` — revoked from another device, a relay reset) takes the *keep* path instead:
+  the data goes aside, the key goes, and the sign-in form says *Your sign-in on this phone was
+  ended — sign in again to continue; your chats are kept on this device until then* until the
+  next sign-in (`NanoMuseCloud.signInEnded`); only `401 account_deleted` deletes
+  (`NanoMuseAccountData.keepOnRefusedKey`, tested in `NanoMuseAccountsTests`). The relay's key is saved on this
   device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, never iCloud Keychain); a
   fresh install with no marker, no provider and no chat sweeps the device-only Keychain items a
   previous install left. The full table is [sync.md](sync.md).

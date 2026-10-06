@@ -689,6 +689,7 @@
     <string name="nm_cloud_err_send_failed">O código não pôde ser enviado. Tente de novo em instantes.</string>
     <string name="nm_cloud_err_disabled">Esta conta foi desativada.</string>
     <string name="nm_cloud_err_bad_key">O relay não reconhece mais este celular. Entre de novo.</string>
+    <string name="nm_cloud_err_account_deleted">Esta conta foi excluída. Entre de novo para começar uma nova.</string>
     <string name="nm_cloud_err_out_of_tokens">A cota acabou.</string>
     <string name="nm_cloud_err_daily_cap">A cota de tokens de hoje acabou; ela volta amanhã.</string>
     <string name="nm_cloud_err_allowance">A cota gratuita acabou. Convide um amigo (+¥%1$s para cada um de vocês) ou adicione sua própria chave em Configurações → Provedores — o Alibaba Cloud Bailian é o caminho rápido.</string>
@@ -834,6 +835,7 @@
     <string name="nm_cloud_delete_account_confirm">A conta, seus logins, uso e histórico são excluídos no relay, e as conversas, a memória, o feed, as metas e o rosto desta conta são removidos deste celular. Isso não pode ser desfeito.</string>
     <string name="nm_cloud_keep_chats">Manter as conversas desta conta neste aparelho</string>
     <string name="nm_cloud_keep_chats_sub">Desligado: as conversas, a memória, o feed, as metas e o rosto desta conta são removidos deste celular. Com a sincronização ligada, o relay ainda tem as conversas para o próximo login.</string>
+    <string name="nm_cloud_sign_in_ended">Seu login neste celular foi encerrado — entre de novo para continuar; até lá, suas conversas ficam neste aparelho.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agentes de código</string>

@@ -692,6 +692,7 @@
     <string name="nm_cloud_err_send_failed">Codul nu a putut fi trimis. Încearcă din nou peste puțin.</string>
     <string name="nm_cloud_err_disabled">Acest cont a fost dezactivat.</string>
     <string name="nm_cloud_err_bad_key">Relay-ul nu mai recunoaște acest telefon. Conectează-te din nou.</string>
+    <string name="nm_cloud_err_account_deleted">Acest cont a fost șters. Conectează-te din nou ca să începi unul nou.</string>
     <string name="nm_cloud_err_out_of_tokens">Creditul s-a epuizat.</string>
     <string name="nm_cloud_err_daily_cap">Cota de tokenuri de azi s-a epuizat; revine mâine.</string>
     <string name="nm_cloud_err_allowance">Creditul gratuit s-a epuizat. Invită un prieten (+¥%1$s pentru fiecare dintre voi) sau adaugă propria cheie sub Setări → Furnizori — Alibaba Cloud Bailian e varianta rapidă.</string>
@@ -837,6 +838,7 @@
     <string name="nm_cloud_delete_account_confirm">Contul, conectările, utilizarea și istoricul lui sunt șterse de pe relay, iar conversațiile, memoria, fluxul, obiectivele și chipul acestui cont sunt eliminate de pe acest telefon. Nu se poate anula.</string>
     <string name="nm_cloud_keep_chats">Păstrează conversațiile acestui cont pe acest dispozitiv</string>
     <string name="nm_cloud_keep_chats_sub">Oprit: conversațiile, memoria, fluxul, obiectivele și chipul acestui cont sunt eliminate de pe acest telefon. Cu sincronizarea pornită, relay-ul păstrează conversațiile pentru următoarea conectare.</string>
+    <string name="nm_cloud_sign_in_ended">Conectarea ta pe acest telefon s-a încheiat — conectează-te din nou ca să continui; până atunci conversațiile tale rămân pe acest dispozitiv.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agenți de programare</string>

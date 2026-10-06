@@ -686,6 +686,7 @@
     <string name="nm_cloud_err_send_failed">コードを送信できませんでした。少ししてからもう一度お試しください。</string>
     <string name="nm_cloud_err_disabled">このアカウントは無効化されています。</string>
     <string name="nm_cloud_err_bad_key">リレーがこの端末を認識しなくなりました。もう一度サインインしてください。</string>
+    <string name="nm_cloud_err_account_deleted">このアカウントは削除されました。もう一度サインインすると新しいアカウントが作られます。</string>
     <string name="nm_cloud_err_out_of_tokens">無料枠を使い切りました。</string>
     <string name="nm_cloud_err_daily_cap">今日のトークン枠を使い切りました。明日戻ります。</string>
     <string name="nm_cloud_err_allowance">無料枠を使い切りました。友だちを招待する（お互いに +¥%1$s）か、設定 → プロバイダで自分のキーを追加してください — Alibaba Cloud 百煉が手早い方法です。</string>
@@ -831,6 +832,7 @@
     <string name="nm_cloud_delete_account_confirm">アカウント、そのサインイン、使用状況、履歴がリレーから削除され、このアカウントのチャット、記憶、フィード、目標、顔もこの端末から削除されます。元に戻せません。</string>
     <string name="nm_cloud_keep_chats">このアカウントのチャットをこの端末に残す</string>
     <string name="nm_cloud_keep_chats_sub">オフ：このアカウントのチャット、記憶、フィード、目標、顔がこの端末から削除されます。同期がオンなら、次のサインインのためにリレーにチャットが残ります。</string>
+    <string name="nm_cloud_sign_in_ended">この端末でのサインインは終了しました。続けるにはもう一度サインインしてください。それまでチャットはこの端末に残ります。</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">コーディングエージェント</string>

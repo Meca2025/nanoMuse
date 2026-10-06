@@ -689,6 +689,7 @@
     <string name="nm_cloud_err_send_failed">Kod gönderilemedi. Birazdan yeniden dene.</string>
     <string name="nm_cloud_err_disabled">Bu hesap devre dışı bırakıldı.</string>
     <string name="nm_cloud_err_bad_key">Relay bu telefonu artık tanımıyor. Yeniden oturum aç.</string>
+    <string name="nm_cloud_err_account_deleted">Bu hesap silindi. Yeni bir hesap başlatmak için yeniden oturum aç.</string>
     <string name="nm_cloud_err_out_of_tokens">Kota bitti.</string>
     <string name="nm_cloud_err_daily_cap">Bugünün token kotası bitti; yarın yenilenir.</string>
     <string name="nm_cloud_err_allowance">Ücretsiz kota bitti. Bir arkadaşını davet et (ikinize de +¥%1$s) ya da Ayarlar → Sağlayıcılar altından kendi anahtarını ekle — Alibaba Cloud Bailian en hızlısı.</string>
@@ -834,6 +835,7 @@
     <string name="nm_cloud_delete_account_confirm">Hesap, oturumları, kullanımı ve geçmişi relay’de silinir; bu hesabın sohbetleri, hafızası, akışı, hedefleri ve yüzü bu telefondan kaldırılır. Bu geri alınamaz.</string>
     <string name="nm_cloud_keep_chats">Bu hesabın sohbetlerini bu cihazda tut</string>
     <string name="nm_cloud_keep_chats_sub">Kapalı: bu hesabın sohbetleri, hafızası, akışı, hedefleri ve yüzü bu telefondan kaldırılır. Eşitleme açıksa relay sohbetleri bir sonraki oturum açma için saklar.</string>
+    <string name="nm_cloud_sign_in_ended">Bu telefondaki oturumun sona erdi — devam etmek için yeniden oturum aç; o zamana kadar sohbetlerin bu cihazda kalır.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Kodlama ajanları</string>

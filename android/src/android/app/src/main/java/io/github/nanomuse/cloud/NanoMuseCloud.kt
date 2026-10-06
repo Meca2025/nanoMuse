@@ -90,6 +90,8 @@ object NanoMuseCloud {
     private const val KEY_PRIVACY_URL = "cloud.privacy_url"
     /** The code sign-in created the account: the first-run setup owes the password step. */
     private const val KEY_FRESH = "cloud.fresh_account"
+    /** The relay refused the key and the phone kept the account's data aside (contract C12); the sign-in page says so until the next sign-in. */
+    private const val KEY_ENDED = "cloud.sign_in_ended"
     private const val KEY_WARNED_GRANT = "cloud.warned_grant"
     private const val KEY_SAMPLES = "cloud.samples"
     /** The relay's menu and what lies beyond it, so the picker and the hands can tell them apart. */
@@ -333,6 +335,12 @@ object NanoMuseCloud {
     fun clearFreshAccount(context: Context) { prefs(context).edit().remove(KEY_FRESH).apply() }
 
     /**
+     * True after the relay refused the phone's key and the account's data was put aside
+     * (contract C12) — the sign-in page tells the person so — until the next sign-in.
+     */
+    fun signInEnded(context: Context): Boolean = prefs(context).getBoolean(KEY_ENDED, false)
+
+    /**
      * The 80 % heads-up is said once per pool size: true the first time it is asked for a
      * pool of [grantCny] (and records it), false afterwards — until the pool grows.
      */
@@ -564,7 +572,7 @@ object NanoMuseCloud {
             appendV1Suffix = true,
         ).also { repo.addInstance(it) }
         repo.saveApiKey(inst.id, apiKey)
-        prefs(context).edit().putString(KEY_INSTANCE, inst.id).apply()
+        prefs(context).edit().putString(KEY_INSTANCE, inst.id).remove(KEY_ENDED).apply()
 
         // The models the relay serves — same `/v1/models` call every provider gets; the relay
         // includes modalities so the picture model is recognised as one.
@@ -605,9 +613,13 @@ object NanoMuseCloud {
         } catch (e: CloudException) {
             if (e.status == 401) {
                 // Revoked elsewhere, or the relay was reset: the provider cannot answer any
-                // more. Nobody could tick *Keep*, so the account's local data goes (contract
-                // C12); with sync on, the relay still has the chats for the next sign-in.
-                forgetLocally(context, keep = false)
+                // more. Nobody on this phone asked, so the account's data is put aside as
+                // *Keep* would and comes back with the next sign-in as the same account
+                // (contract C12). Only `account_deleted` — the account itself is gone at the
+                // relay — leaves nothing to come back to, and the data goes.
+                val keep = io.github.nanomuse.account.AccountScope.keepOnRefusedKey(e.code)
+                forgetLocally(context, keep)
+                if (keep) prefs(context).edit().putBoolean(KEY_ENDED, true).apply()
                 null
             } else {
                 account(context)
@@ -652,6 +664,7 @@ object NanoMuseCloud {
             "phone_region" -> context.getString(R.string.nm_cloud_sms_region) // the same sentence the sign-in screen shows before asking
             "account_disabled" -> context.getString(R.string.nm_cloud_err_disabled)
             "bad_key" -> context.getString(R.string.nm_cloud_err_bad_key)
+            "account_deleted" -> context.getString(R.string.nm_cloud_err_account_deleted)
             "out_of_tokens" -> context.getString(R.string.nm_cloud_err_out_of_tokens)
             "daily_cap" -> context.getString(R.string.nm_cloud_err_daily_cap)
             "allowance_exhausted" -> allowanceSentence(context)

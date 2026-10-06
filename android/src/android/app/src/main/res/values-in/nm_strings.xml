@@ -686,6 +686,7 @@
     <string name="nm_cloud_err_send_failed">Kode tidak bisa dikirim. Coba lagi sebentar lagi.</string>
     <string name="nm_cloud_err_disabled">Akun ini telah dinonaktifkan.</string>
     <string name="nm_cloud_err_bad_key">Relay tidak lagi mengenali ponsel ini. Masuk lagi.</string>
+    <string name="nm_cloud_err_account_deleted">Akun ini telah dihapus. Masuk lagi untuk memulai akun baru.</string>
     <string name="nm_cloud_err_out_of_tokens">Kuota sudah habis.</string>
     <string name="nm_cloud_err_daily_cap">Jatah token hari ini sudah habis; kembali lagi besok.</string>
     <string name="nm_cloud_err_allowance">Kuota gratis sudah habis. Undang teman (+¥%1$s untuk kalian masing-masing) atau tambahkan kuncimu sendiri di Pengaturan → Penyedia — Alibaba Cloud Bailian yang paling cepat.</string>
@@ -831,6 +832,7 @@
     <string name="nm_cloud_delete_account_confirm">Akun, riwayat masuk, pemakaian dan riwayatnya dihapus di relay, dan obrolan, memori, feed, tujuan dan wajah akun ini dihapus dari ponsel ini. Ini tidak bisa dibatalkan.</string>
     <string name="nm_cloud_keep_chats">Simpan obrolan akun ini di perangkat ini</string>
     <string name="nm_cloud_keep_chats_sub">Mati: obrolan, memori, feed, tujuan dan wajah akun ini dihapus dari ponsel ini. Jika sinkronisasi aktif, relay masih menyimpan obrolan untuk masuk berikutnya.</string>
+    <string name="nm_cloud_sign_in_ended">Sesi masuk di ponsel ini telah berakhir — masuk lagi untuk melanjutkan; sampai saat itu obrolanmu tetap ada di perangkat ini.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agen coding</string>

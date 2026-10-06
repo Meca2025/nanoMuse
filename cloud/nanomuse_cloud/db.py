@@ -204,7 +204,18 @@ CREATE TABLE IF NOT EXISTS sync_cursors (
     account_id    TEXT PRIMARY KEY REFERENCES accounts(id),
     seq           INTEGER NOT NULL DEFAULT 0  -- one counter per account; cursor = its value
 );
+-- 0.1.40: the hashes of the keys a deleted account had, for DELETED_KEYS_TTL_S, so a device
+-- that still holds one hears `account_deleted` rather than `bad_key` and knows there is
+-- nothing to come back to. A hash of a dead key names nobody; no account id is kept with it.
+CREATE TABLE IF NOT EXISTS deleted_keys (
+    key_hash      TEXT PRIMARY KEY,
+    deleted_at    INTEGER NOT NULL
+);
 """
+
+# How long a deleted account's key hashes are remembered. Long enough for every device of the
+# account to come back online and hear the answer; short enough that a deletion is a deletion.
+DELETED_KEYS_TTL_S = 90 * 24 * 3600
 
 
 def now() -> int:
@@ -584,8 +595,26 @@ class Database:
             c.execute("DELETE FROM sync_conversations WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM sync_cursors WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM ledger WHERE account_id=?", (account_id,))
+            # the keys' hashes stay a while, so a device still holding one hears
+            # `account_deleted` (0.1.40); the rows that named the account do not
+            ts = now()
+            c.execute("DELETE FROM deleted_keys WHERE deleted_at < ?", (ts - DELETED_KEYS_TTL_S,))
+            c.execute(
+                "INSERT OR REPLACE INTO deleted_keys(key_hash, deleted_at) "
+                "SELECT key_hash, ? FROM api_keys WHERE account_id=?",
+                (ts, account_id),
+            )
             c.execute("DELETE FROM api_keys WHERE account_id=?", (account_id,))
             c.execute("DELETE FROM accounts WHERE id=?", (account_id,))
+
+    def key_deleted(self, key_hash: str) -> bool:
+        """Whether this key belonged to an account that was deleted (within the tombstones' time)."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT 1 FROM deleted_keys WHERE key_hash=? AND deleted_at >= ?",
+                (key_hash, now() - DELETED_KEYS_TTL_S),
+            ).fetchone()
+        return row is not None
 
     def grant(self, account_id: str, tokens: int, kind: str = "grant") -> None:
         with self.tx() as c:

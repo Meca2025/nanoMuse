@@ -113,6 +113,20 @@ class AccountScopeRulesTest {
         assertFalse(AccountScope.isAccountPref("cloud.instance"))
     }
 
+    // -- a key the relay refuses ---------------------------------------------------------------
+
+    @Test fun `a refused key keeps the account's data aside — a sign-out nobody here asked for`() {
+        assertTrue("revoked elsewhere, or by the person's own Sign out everywhere", AccountScope.keepOnRefusedKey("bad_key"))
+        assertTrue("a relay reset or a relay bug answers like a revoked key", AccountScope.keepOnRefusedKey(null))
+        assertTrue(AccountScope.keepOnRefusedKey(""))
+        assertTrue("an older relay, or a code the phone does not know", AccountScope.keepOnRefusedKey("http_401"))
+    }
+
+    @Test fun `only a deleted account leaves nothing to come back to`() {
+        assertFalse(AccountScope.keepOnRefusedKey(AccountScope.ACCOUNT_DELETED))
+        assertEquals("the relay's code, as documented", "account_deleted", AccountScope.ACCOUNT_DELETED)
+    }
+
     @Test fun `the account's files are under the app's files directory and never the grants`() {
         assertTrue(AccountScope.accountPaths.contains("minis-global/memory"))
         assertTrue(AccountScope.accountPaths.contains("minis-global/nanomuse/goals.json"))

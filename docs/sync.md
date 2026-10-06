@@ -29,9 +29,18 @@ earlier rule for conversations alone (C10, 0.1.39) is in
 - **Delete the account** deletes it at the relay and removes everything of it
   from the phone, with no question — there is nothing to come back to. The next
   sign-in with the same address is a new account and starts empty.
-- **A key the relay refuses** (signed out everywhere from another device, or a
-  relay reset) is a sign-out nobody could answer: the account's data is removed
-  from the phone. With sync on, the chats are still on the relay.
+- **A key the relay refuses** (*Sign out everywhere* from another device, a
+  relay reset, a relay bug — a `401` nobody on this phone asked for) is a
+  sign-out nobody could answer, so the phone answers it the careful way: the
+  account's data is **kept**, exactly as *Keep this account's chats on this
+  device* would — the chats stay hidden behind their owner rows, the files and
+  preferences go aside under the account's folder, the relay key is removed —
+  and the sign-in page says *Your sign-in on this phone was ended — sign in
+  again to continue; your chats are kept on this device until then.* The next
+  sign-in with the **same account id** restores all of it; a different account
+  sees nothing of it. Only when the relay answers `401 account_deleted` — the
+  account itself no longer exists — is there nothing to come back to, and the
+  phone removes the data as *Delete the account* would.
 - **A reinstall starts empty.** On Android, the app no longer takes part in the
   device backup (`allowBackup="false"`): nothing of it is copied to Google, and a
   fresh install has no chats, no memory, no key. On the iPhone, a fresh install
@@ -50,25 +59,26 @@ earlier rule for conversations alone (C10, 0.1.39) is in
 Paths are under the app's private `files/`; preferences are the `nanomuse`
 SharedPreferences file unless named. *Out* means removed; *aside* means moved
 under `minis-global/nanomuse/accounts/<key>/` and restored when that account
-returns; *stays* means untouched.
+returns; *stays* means untouched. The *Key refused* column reads `bad_key` (or
+any other `401`) first, `account_deleted` second.
 
-| State | Where | Whose | Sign out (keep off / on) | Switch | Delete account | Reinstall |
-|---|---|---|---|---|---|---|
-| Chats, messages, attachments, hands traces | upstream `minis.db`, `minis-sessions/<id>/` | account (owner row in `nanomuse_sync.db` → `session_owners`) | out / stay hidden | as sign out, then the new account's show | out | gone (no backup) |
-| Chats made while signed out | the same | nobody (`""`) | aside while signed in, back when signed out | aside | stay | gone |
-| Sync mappings (cids, cursor, known mids) | `nanomuse_sync.db` | account | out with the chats / stay | stay for the account that left | out | gone |
-| What the muse remembers (SOUL.md, USER.md, GLOBAL.md, diary) | `minis-global/memory/` | account | out / aside | aside; the new account's back or empty | out | gone |
-| Feed posts and preferences | `minis-global/nanomuse/feed/`, `feed-preferences.md` | account | out / aside | aside | out | gone |
-| Goals | `minis-global/nanomuse/goals.json` | account | out / aside | aside | out | gone |
-| Routines (the scheduled tasks, the feed's and the goals' included) | `minis_scheduled_tasks_prefs` | account | alarms off, out / aside (`routines.json`) | aside | out | gone |
-| The face | `minis-global/nanomuse/avatar/` | account (the relay's profile has it too) | out / aside | aside | out | gone |
-| The shared workspace | `minis-global/shared/` | account | out / aside | aside | out | gone |
-| Main chat, first conversation, feed switches | prefs `main_chat.*`, `first_conversation.*`, `feed.*` | account | out / aside (`prefs.json`) | aside | out | gone |
-| The relay key, account id, allowance, models | the provider store (the key encrypted), prefs `cloud.*` and the account rows of `nanomuse` | account | out | replaced | out | gone |
-| Device name and presence at the hub | `minis_device_identity`, prefs `hub.*` | device | stay | stay | stay | new identity |
-| Remembered approvals | `minis-global/nanomuse/grants.json` | device | stay (per chat: out with the chat) | stay | stay | gone |
-| Your own providers and keys, appearance, hands, language | upstream stores | device | stay | stay | stay | gone |
-| Ideas | app assets | nobody | — | — | — | — |
+| State | Where | Whose | Sign out (keep off / on) | Switch | Key refused (`bad_key` / `account_deleted`) | Delete account | Reinstall |
+|---|---|---|---|---|---|---|---|
+| Chats, messages, attachments, hands traces | upstream `minis.db`, `minis-sessions/<id>/` | account (owner row in `nanomuse_sync.db` → `session_owners`) | out / stay hidden | as sign out, then the new account's show | stay hidden / out | out | gone (no backup) |
+| Chats made while signed out | the same | nobody (`""`) | aside while signed in, back when signed out | aside | back / back | stay | gone |
+| Sync mappings (cids, cursor, known mids) | `nanomuse_sync.db` | account | out with the chats / stay | stay for the account that left | stay / out | out | gone |
+| What the muse remembers (SOUL.md, USER.md, GLOBAL.md, diary) | `minis-global/memory/` | account | out / aside | aside; the new account's back or empty | aside / out | out | gone |
+| Feed posts and preferences | `minis-global/nanomuse/feed/`, `feed-preferences.md` | account | out / aside | aside | aside / out | out | gone |
+| Goals | `minis-global/nanomuse/goals.json` | account | out / aside | aside | aside / out | out | gone |
+| Routines (the scheduled tasks, the feed's and the goals' included) | `minis_scheduled_tasks_prefs` | account | alarms off, out / aside (`routines.json`) | aside | alarms off, aside / out | out | gone |
+| The face | `minis-global/nanomuse/avatar/` | account (the relay's profile has it too) | out / aside | aside | aside / out | out | gone |
+| The shared workspace | `minis-global/shared/` | account | out / aside | aside | aside / out | out | gone |
+| Main chat, first conversation, feed switches | prefs `main_chat.*`, `first_conversation.*`, `feed.*` | account | out / aside (`prefs.json`) | aside | aside / out | out | gone |
+| The relay key, account id, allowance, models | the provider store (the key encrypted), prefs `cloud.*` and the account rows of `nanomuse` | account | out | replaced | out / out | out | gone |
+| Device name and presence at the hub | `minis_device_identity`, prefs `hub.*` | device | stay | stay | stay / stay | stay | new identity |
+| Remembered approvals | `minis-global/nanomuse/grants.json` | device | stay (per chat: out with the chat) | stay | stay / stay (per chat: out with the chat) | stay | gone |
+| Your own providers and keys, appearance, hands, language | upstream stores | device | stay | stay | stay / stay | stay | gone |
+| Ideas | app assets | nobody | — | — | — | — | — |
 
 Code: `io.github.nanomuse.account.AccountScope` (the rules, unit-tested),
 `AccountData` (applies them: `reconcile`, `leave`, `enter`), the `session_owners`
@@ -80,25 +90,26 @@ out), the hooks in `ChatRepository.createSession` and `MinisApp`, the sheet in
 
 Paths are in the app's sandbox — Application Support, or the app group's
 `MinisConfig/` and `var/minis/`. *Aside* means moved under
-`MinisConfig/nanomuse/accounts/<hash>/`.
+`MinisConfig/nanomuse/accounts/<hash>/`. The *Key refused* column reads as on
+Android: `bad_key` first, `account_deleted` second.
 
-| State | Where | Whose | Sign out (keep off / on) | Switch | Delete account | Reinstall |
-|---|---|---|---|---|---|---|
-| Chats, messages, media | upstream's SQLite store | account (owner row in `nanomuse-owners.json`) | out / stay hidden | as sign out, then the new account's show | out | gone |
-| Chats made while signed out | the same | nobody | aside while signed in, back when signed out | aside | stay | gone |
-| Sync tables (per account, cids, cursor, known mids) | `nanomuse-sync-accounts.json` | account | out with the chats / stay | stay for the account that left | out | gone |
-| What the muse remembers | app group `memory/` | account | out / aside | aside | out | gone |
-| Feed posts and preferences | `MinisConfig/nanomuse/feed/`, `feed-preferences.md` | account | out / aside | aside | out | gone |
-| Goals | `MinisConfig/nanomuse/goals.json` | account | out / aside | aside | out | gone |
-| Routines | `MinisConfig/nanomuse/routines.json` | account | notifications off, out / aside | aside | out | gone |
-| The face (stills; the clips are redrawn) | Application Support `nanomuse/avatar/` | account | out / aside | aside | out | gone |
-| The shared workspace | app group `shared/` | account | out / aside | aside | out | gone |
-| Main chat, first conversation, feed switches | UserDefaults `nanomuse.main_chat.*`, `nanomuse.first_conversation.*`, `nanomuse.feed.*` | account | out / aside (`defaults.plist`) | aside | out | gone |
-| The relay key | Keychain, this device only (`…ThisDeviceOnly`, not synchronizable) | account | out | replaced | out | swept on the first launch |
-| Account id, allowance, models, region | UserDefaults `nanomuse.cloud.*`, the provider store | account | out | replaced | out | gone |
-| Device id and name at the hub | UserDefaults `nanomuse.hub.*`, Keychain `…app.device` | device | stay | stay | stay | new identity |
-| Your own providers and keys | the provider store; keys in Keychain, synchronizable (upstream's choice) | device | stay | stay | stay | the config is gone; a synchronizable key stays in the person's iCloud Keychain |
-| Appearance, the star, setup flags | UserDefaults | device | stay | stay | stay | gone |
+| State | Where | Whose | Sign out (keep off / on) | Switch | Key refused (`bad_key` / `account_deleted`) | Delete account | Reinstall |
+|---|---|---|---|---|---|---|---|
+| Chats, messages, media | upstream's SQLite store | account (owner row in `nanomuse-owners.json`) | out / stay hidden | as sign out, then the new account's show | stay hidden / out | out | gone |
+| Chats made while signed out | the same | nobody | aside while signed in, back when signed out | aside | back / back | stay | gone |
+| Sync tables (per account, cids, cursor, known mids) | `nanomuse-sync-accounts.json` | account | out with the chats / stay | stay for the account that left | stay / out | out | gone |
+| What the muse remembers | app group `memory/` | account | out / aside | aside | aside / out | out | gone |
+| Feed posts and preferences | `MinisConfig/nanomuse/feed/`, `feed-preferences.md` | account | out / aside | aside | aside / out | out | gone |
+| Goals | `MinisConfig/nanomuse/goals.json` | account | out / aside | aside | aside / out | out | gone |
+| Routines | `MinisConfig/nanomuse/routines.json` | account | notifications off, out / aside | aside | notifications off, aside / out | out | gone |
+| The face (stills; the clips are redrawn) | Application Support `nanomuse/avatar/` | account | out / aside | aside | aside / out | out | gone |
+| The shared workspace | app group `shared/` | account | out / aside | aside | aside / out | out | gone |
+| Main chat, first conversation, feed switches | UserDefaults `nanomuse.main_chat.*`, `nanomuse.first_conversation.*`, `nanomuse.feed.*` | account | out / aside (`defaults.plist`) | aside | aside / out | out | gone |
+| The relay key | Keychain, this device only (`…ThisDeviceOnly`, not synchronizable) | account | out | replaced | out / out | out | swept on the first launch |
+| Account id, allowance, models, region | UserDefaults `nanomuse.cloud.*`, the provider store | account | out | replaced | out / out | out | gone |
+| Device id and name at the hub | UserDefaults `nanomuse.hub.*`, Keychain `…app.device` | device | stay | stay | stay / stay | stay | new identity |
+| Your own providers and keys | the provider store; keys in Keychain, synchronizable (upstream's choice) | device | stay | stay | stay / stay | stay | the config is gone; a synchronizable key stays in the person's iCloud Keychain |
+| Appearance, the star, setup flags | UserDefaults | device | stay | stay | stay / stay | stay | gone |
 
 **iCloud.** Upstream's own iCloud sync of chats and providers (*Settings → iCloud*,
 off by default) and iCloud Keychain are the person's Apple ID, not the account's.
@@ -122,6 +133,15 @@ the account's live *working* notes too (they were memory, not rows). The relay's
 tests sign an account up, fill every table, delete it, and check that every
 table has zero rows for it and that the same address signing up again gets a new
 account id and an empty sync store.
+
+One thing outlives the account for a while: the SHA-256 hashes of the keys it
+held, in `deleted_keys`, for 90 days. They name nobody (no account id, no
+address, no device), and they are what lets a phone that still holds one of
+those keys hear `401 account_deleted` instead of `401 bad_key` — the difference
+between *remove the account's data, there is nothing to come back to* and *keep
+it aside, the person may sign in again*. A relay from before 0.1.40 answers
+`bad_key` for both, and the phone keeps the data; nothing is lost, the folder
+simply waits.
 
 ## For the maintainers
 

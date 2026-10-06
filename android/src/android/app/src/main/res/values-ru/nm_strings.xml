@@ -695,6 +695,7 @@
     <string name="nm_cloud_err_send_failed">Не удалось отправить код. Попробуйте чуть позже.</string>
     <string name="nm_cloud_err_disabled">Этот аккаунт отключён.</string>
     <string name="nm_cloud_err_bad_key">Релей больше не узнаёт этот телефон. Войдите снова.</string>
+    <string name="nm_cloud_err_account_deleted">Этот аккаунт удалён. Войдите снова, чтобы начать новый.</string>
     <string name="nm_cloud_err_out_of_tokens">Лимит исчерпан.</string>
     <string name="nm_cloud_err_daily_cap">Дневная квота токенов исчерпана; она вернётся завтра.</string>
     <string name="nm_cloud_err_allowance">Бесплатный лимит исчерпан. Пригласите друга (+¥%1$s каждому из вас) или добавьте свой ключ в Настройки → Провайдеры — быстрее всего через Alibaba Cloud Bailian.</string>
@@ -840,6 +841,7 @@
     <string name="nm_cloud_delete_account_confirm">Аккаунт, его входы, использование и история удаляются на релее, а чаты, память, лента, цели и лицо этого аккаунта удаляются с этого телефона. Это нельзя отменить.</string>
     <string name="nm_cloud_keep_chats">Оставить чаты этого аккаунта на этом устройстве</string>
     <string name="nm_cloud_keep_chats_sub">Выключено: чаты, память, лента, цели и лицо этого аккаунта удаляются с этого телефона. Если синхронизация включена, чаты остаются на релее до следующего входа.</string>
+    <string name="nm_cloud_sign_in_ended">Вход на этом телефоне завершён — войдите снова, чтобы продолжить; до тех пор ваши чаты остаются на этом устройстве.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Агенты для кода</string>

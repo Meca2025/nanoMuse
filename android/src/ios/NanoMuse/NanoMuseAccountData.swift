@@ -41,6 +41,19 @@ final class NanoMuseAccountData {
     /// The UserDefaults keys that are the account's rather than the phone's, by prefix.
     nonisolated static let prefPrefixes = ["nanomuse.main_chat.", "nanomuse.first_conversation.", "nanomuse.feed."]
 
+    /// The relay's error code for a key whose account no longer exists (relay 0.1.40).
+    nonisolated static let accountDeleted = "account_deleted"
+
+    /// What becomes of the account's data when the relay refuses its key — a 401 nobody on
+    /// this phone asked for (signed out from another device, a relay reset, a relay bug).
+    /// Kept: put aside as *Keep this account's chats on this device* would, for the next
+    /// sign-in with the same account. Only when the relay says the account itself is gone
+    /// (`accountDeleted`) is there nothing to come back to, and the data goes as *Delete the
+    /// account* would.
+    nonisolated static func keepOnRefusedKey(code: String?) -> Bool {
+        code != accountDeleted
+    }
+
     private var owners: [String: String] = [:]
     private var loaded = false
     private var started = false

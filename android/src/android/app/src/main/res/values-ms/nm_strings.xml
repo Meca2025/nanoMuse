@@ -686,6 +686,7 @@
     <string name="nm_cloud_err_send_failed">Kod tidak dapat dihantar. Cuba lagi sebentar nanti.</string>
     <string name="nm_cloud_err_disabled">Akaun ini telah dinyahaktifkan.</string>
     <string name="nm_cloud_err_bad_key">Relay tidak lagi mengenali telefon ini. Log masuk semula.</string>
+    <string name="nm_cloud_err_account_deleted">Akaun ini telah dipadam. Log masuk semula untuk memulakan yang baharu.</string>
     <string name="nm_cloud_err_out_of_tokens">Peruntukan sudah habis.</string>
     <string name="nm_cloud_err_daily_cap">Kuota token hari ini sudah habis; ia kembali esok.</string>
     <string name="nm_cloud_err_allowance">Peruntukan percuma sudah habis. Jemput rakan (+¥%1$s untuk setiap seorang daripada anda) atau tambah kunci anda sendiri di bawah Tetapan → Penyedia — Alibaba Cloud Bailian yang paling cepat.</string>
@@ -831,6 +832,7 @@
     <string name="nm_cloud_delete_account_confirm">Akaun, log masuknya, penggunaan dan sejarahnya dipadam di relay, dan sembang, ingatan, suapan, matlamat dan wajah akaun ini dibuang dari telefon ini. Ini tidak boleh dibuat asal.</string>
     <string name="nm_cloud_keep_chats">Simpan sembang akaun ini pada peranti ini</string>
     <string name="nm_cloud_keep_chats_sub">Mati: sembang, ingatan, suapan, matlamat dan wajah akaun ini dibuang dari telefon ini. Jika penyegerakan dihidupkan, relay masih menyimpan sembang untuk log masuk seterusnya.</string>
+    <string name="nm_cloud_sign_in_ended">Log masuk anda pada telefon ini telah tamat — log masuk semula untuk meneruskan; sehingga itu sembang anda kekal pada peranti ini.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Ejen pengekodan</string>

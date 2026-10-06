@@ -695,6 +695,7 @@
     <string name="nm_cloud_err_send_failed">Nie udało się wysłać kodu. Spróbuj ponownie za chwilę.</string>
     <string name="nm_cloud_err_disabled">To konto zostało wyłączone.</string>
     <string name="nm_cloud_err_bad_key">Relay nie rozpoznaje już tego telefonu. Zaloguj się ponownie.</string>
+    <string name="nm_cloud_err_account_deleted">To konto zostało usunięte. Zaloguj się ponownie, aby założyć nowe.</string>
     <string name="nm_cloud_err_out_of_tokens">Limit się wyczerpał.</string>
     <string name="nm_cloud_err_daily_cap">Dzisiejsza pula tokenów się wyczerpała; wróci jutro.</string>
     <string name="nm_cloud_err_allowance">Darmowy limit się wyczerpał. Zaproś znajomego (+¥%1$s dla każdego z was) albo dodaj własny klucz w Ustawienia → Dostawcy — Alibaba Cloud Bailian to najszybsza droga.</string>
@@ -840,6 +841,7 @@
     <string name="nm_cloud_delete_account_confirm">Konto, jego logowania, użycie i historia zostaną usunięte na relayu, a czaty, pamięć, kanał, cele i twarz tego konta zostaną usunięte z tego telefonu. Tego nie da się cofnąć.</string>
     <string name="nm_cloud_keep_chats">Zachowaj czaty tego konta na tym urządzeniu</string>
     <string name="nm_cloud_keep_chats_sub">Wyłączone: czaty, pamięć, kanał, cele i twarz tego konta zostaną usunięte z tego telefonu. Przy włączonej synchronizacji relay nadal ma czaty na następne logowanie.</string>
+    <string name="nm_cloud_sign_in_ended">Twoje logowanie na tym telefonie zostało zakończone — zaloguj się ponownie, aby kontynuować; do tego czasu Twoje czaty pozostają na tym urządzeniu.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agenci kodowania</string>

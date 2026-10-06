@@ -185,6 +185,15 @@ fun CloudAccountScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp),
                         )
+                        if (NanoMuseCloud.signInEnded(context)) {
+                            // the relay refused the key; the account's data waits for its return (contract C12)
+                            Text(
+                                stringResource(R.string.nm_cloud_sign_in_ended),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
                     }
                     MuseRowDivider(inset = 16.dp)
                     MuseRow(title = stringResource(R.string.nm_cloud_sign_in), onClick = onSignIn, titleColor = MuseTones.action)

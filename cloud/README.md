@@ -61,7 +61,8 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 400 | `bad_identifier` | not a phone number or e-mail address |
 | 400 | `phone_region` | a number the SMS sender cannot reach (号码认证 sends to mainland China only); e-mail works everywhere |
 | 400 | `code_wrong` / `code_expired` | verification code |
-| 401 | `bad_key` | unknown or revoked key |
+| 401 | `bad_key` | unknown or revoked key — the phone keeps the account's data aside for the next sign-in |
+| 401 | `account_deleted` | the key's account was deleted (0.1.40; remembered for 90 days) — the phone may delete the account's data |
 | 402 | `out_of_tokens` | grant used up — top up with the admin endpoint |
 | 403 | `account_disabled` | |
 | 404 | `model_not_offered` | not on the menu |

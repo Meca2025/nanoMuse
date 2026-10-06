@@ -669,6 +669,7 @@
     <string name="nm_cloud_err_send_failed">验证码没发出去，请稍后再试。</string>
     <string name="nm_cloud_err_disabled">这个账号已停用。</string>
     <string name="nm_cloud_err_bad_key">服务器已不认识这台手机，请重新登录。</string>
+    <string name="nm_cloud_err_account_deleted">这个账号已删除。重新登录会建立一个新账号。</string>
     <string name="nm_cloud_err_out_of_tokens">额度用完了。</string>
     <string name="nm_cloud_err_daily_cap">今天的 token 配额用完了，明天恢复。</string>
     <string name="nm_cloud_err_allowance">免费额度已用完。邀请一位新用户（你和对方各 +¥%1$s），或在 设置 → 服务商 里添加自己的 key，推荐阿里云百炼。</string>
@@ -794,6 +795,7 @@
     <string name="nm_cloud_delete_account_confirm">账号、登录记录、用量和动态都会从服务器删除，这个账号在这台手机上的聊天、记忆、动态、目标和头像也会一并清除。无法恢复。</string>
     <string name="nm_cloud_keep_chats">把这个账号的聊天留在这台设备上</string>
     <string name="nm_cloud_keep_chats_sub">关闭时：这个账号的聊天、记忆、动态、目标和头像会从这台手机上清除。开着同步的话，服务器上仍有聊天记录，下次登录会取回。</string>
+    <string name="nm_cloud_sign_in_ended">这台手机上的登录已结束——重新登录即可继续；在那之前，你的聊天会留在这台设备上。</string>
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">编程助手</string>
     <string name="nm_coding_intro">你电脑上的 Cursor、Codex、Claude Code：在这里看它们的会话和最近的回复，直接给任何一个发消息。它们的内容不会复制到手机上。</string>

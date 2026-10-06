@@ -213,6 +213,12 @@ struct NanoMuseCloudView: View {
     @ViewBuilder
     private var signInSections: some View {
         Section {
+            if NanoMuseCloud.signInEnded {
+                // the relay refused the phone's key: the account's chats wait here for the
+                // same account to sign in again (C12)
+                Label(AppLocalized("Your sign-in on this phone was ended — sign in again to continue; your chats are kept on this device until then."), systemImage: "person.crop.circle.badge.clock")
+                    .font(.subheadline)
+            }
             Text(AppLocalized("Sign in with a phone number or an e-mail address and start right away with a starter allowance — no key of your own needed. A provider of your own can be added at any time."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
