@@ -139,6 +139,9 @@ object OwnProviderProxy {
     /** The hosts the proxy is used for (tests). */
     fun routedHosts(): Set<String> = hosts
 
+    /** Whether [url] is the relay's (nanoMuse Cloud, or the one the person named): its refusals are read as the relay's. */
+    fun isRelay(url: String): Boolean = relayHost.isNotBlank() && hostOf(url) == relayHost
+
     /** Whether a request to [host] goes through the proxy, with the configuration in force. */
     fun routes(host: String?): Boolean {
         val cfg = current

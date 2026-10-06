@@ -711,6 +711,20 @@
     <string name="nm_cloud_err_password_required">Сначала введите текущий пароль.</string>
     <string name="nm_cloud_err_password_short">Пароль должен быть не короче 8 символов.</string>
     <string name="nm_cloud_err_password_weak">Этот пароль слишком легко угадать.</string>
+    <string name="nm_cloud_err_signup_closed">Регистрация на этом релее пока приостановлена. Уже существующий аккаунт может войти как прежде.</string>
+    <string name="nm_cloud_err_too_large">Это сообщение слишком велико для модели. Сократите его, уберите часть вложений или начните новый чат.</string>
+    <string name="nm_cloud_err_provider_busy">Провайдер модели сейчас перегружен. Повторите через минуту.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Провайдер модели сейчас перегружен. Повторите через %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud больше не предлагает эту модель. Выберите другую в Настройки → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud не ответил. Повторите через минуту.</string>
+    <string name="nm_cloud_err_allowance_paused">Бесплатный лимит на этом релее пока приостановлен — не исчерпан. Добавьте свой ключ или войдите с подпиской, за которую уже платите, в Настройки → nanoMuse Cloud. Ваш вход, ваши устройства и остаток сохраняются как есть.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud пока приостановлен оператором; ваш вход и данные сохранены. Повторите позже.</string>
+    <string name="nm_cloud_err_sync_paused">Синхронизация разговоров на этом релее пока приостановлена; сохранённое остаётся, а устройства работают каждое само по себе.</string>
+    <string name="nm_cloud_err_hub_paused">Связь между устройствами на этом релее пока приостановлена; каждое устройство работает само по себе.</string>
+    <string name="nm_refusal_relay_says">Релей сообщает: %1$s</string>
+    <string name="nm_refusal_new_chat">Новый чат</string>
+    <string name="nm_refusal_sign_in">Войти</string>
+    <string name="nm_refusal_open_settings">Открыть настройки</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">с %1$s</string>
@@ -757,6 +771,8 @@
     <string name="nm_notice_issue">Сообщить об ошибке или предложить функцию</string>
     <string name="nm_ways_title_out">Бесплатный лимит исчерпан.</string>
     <string name="nm_ways_title_warn">Почти исчерпан: осталось ¥%1$s из ¥%2$s.</string>
+    <string name="nm_ways_title_paused">Бесплатный лимит на этом релее пока приостановлен — не исчерпан.</string>
+    <string name="nm_ways_paused_sub">Остаток сохраняется как есть; способы ниже работают уже сейчас.</string>
     <string name="nm_ways_sub">Два пути дальше — ваш вход и ваши устройства работают в любом случае.</string>
     <string name="nm_ways_key_title">Использовать свой ключ модели</string>
     <string name="nm_ways_key_guide">Пошаговая инструкция</string>

@@ -702,6 +702,20 @@
     <string name="nm_cloud_err_password_required">Masukkan kata laluan semasa dahulu.</string>
     <string name="nm_cloud_err_password_short">Kata laluan memerlukan sekurang-kurangnya 8 aksara.</string>
     <string name="nm_cloud_err_password_weak">Kata laluan itu terlalu mudah diteka.</string>
+    <string name="nm_cloud_err_signup_closed">Pendaftaran di relay ini dijeda buat masa ini. Akaun yang sudah ada masih boleh log masuk.</string>
+    <string name="nm_cloud_err_too_large">Mesej itu terlalu besar untuk model. Pendekkan, buang beberapa lampiran, atau mulakan sembang baharu.</string>
+    <string name="nm_cloud_err_provider_busy">Penyedia model sedang sibuk. Cuba lagi sebentar nanti.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Penyedia model sedang sibuk. Cuba lagi dalam %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud tidak lagi menawarkan model itu. Pilih yang lain di Tetapan → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud tidak menjawab. Cuba lagi sebentar nanti.</string>
+    <string name="nm_cloud_err_allowance_paused">Peruntukan percuma di relay ini dijeda buat masa ini — bukan habis. Tambah kunci anda sendiri atau log masuk dengan pelan yang sudah anda bayar, di Tetapan → nanoMuse Cloud. Log masuk, peranti dan baki anda kekal seperti sedia ada.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud dijeda oleh pengendalinya buat masa ini; log masuk dan data anda disimpan. Cuba lagi kemudian.</string>
+    <string name="nm_cloud_err_sync_paused">Penyegerakan perbualan di relay ini dijeda buat masa ini; yang tersimpan kekal, dan peranti anda terus berfungsi sendiri.</string>
+    <string name="nm_cloud_err_hub_paused">Hubungan antara peranti di relay ini dijeda buat masa ini; setiap peranti terus berfungsi sendiri.</string>
+    <string name="nm_refusal_relay_says">Kata relay: %1$s</string>
+    <string name="nm_refusal_new_chat">Sembang baharu</string>
+    <string name="nm_refusal_sign_in">Log masuk</string>
+    <string name="nm_refusal_open_settings">Buka Tetapan</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">sejak %1$s</string>
@@ -748,6 +762,8 @@
     <string name="nm_notice_issue">Laporkan pepijat atau minta ciri</string>
     <string name="nm_ways_title_out">Peruntukan percuma sudah habis.</string>
     <string name="nm_ways_title_warn">Hampir habis: ¥%1$s daripada ¥%2$s berbaki.</string>
+    <string name="nm_ways_title_paused">Peruntukan percuma di relay ini dijeda buat masa ini — bukan habis.</string>
+    <string name="nm_ways_paused_sub">Baki kekal seperti sedia ada; cara di bawah boleh digunakan sekarang.</string>
     <string name="nm_ways_sub">Dua cara untuk meneruskan — log masuk dan peranti anda terus berfungsi dengan mana-mana cara.</string>
     <string name="nm_ways_key_title">Guna kunci model anda sendiri</string>
     <string name="nm_ways_key_guide">Panduan langkah demi langkah</string>

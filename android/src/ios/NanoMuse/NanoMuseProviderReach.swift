@@ -26,6 +26,8 @@ enum NanoMuseProviderReach {
         case signedOut = "signed_out"
         case quota
         case rateLimited = "rate_limited"
+        /// nanoMuse Cloud refused the turn (`nm_relay:` line; NanoMuseRelayRefusal): `detail` is the whole line, the card is NanoMuseRelayRefusalCard.
+        case relay
     }
 
     struct Reach: Equatable, Sendable {
@@ -80,6 +82,7 @@ enum NanoMuseProviderReach {
     static func classify(_ text: String, hintHost: String? = nil) -> Reach? {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.isEmpty { return nil }
+        if NanoMuseRelayRefusal.isCanonical(t) { return Reach(kind: .relay, host: "", detail: t) }
         if let c = parseCanonical(t) { return c }
         let low = t.lowercased()
         let hint = (hintHost ?? "").lowercased()
@@ -189,6 +192,8 @@ final class NanoMuseReachSignal: @unchecked Sendable {
 
     /// Call for every non-2xx answer of a model request; only the ones the card is for are kept.
     func noteHTTPError(status: Int, body: String?, host: String, oauth: Bool, retryAfter: String? = nil) {
+        // nanoMuse Cloud's refusals (413 too large, the allowance, the operator's switches …) have a card of their own
+        if NanoMuseRelaySignal.shared.noteHTTPError(status: status, body: body, host: host) { return }
         let retry = retryAfter.flatMap { Double($0.trimmingCharacters(in: .whitespaces)) }.map { Int($0) }
         guard let reach = NanoMuseProviderReach.fromHTTP(status: status, body: body, host: host, oauth: oauth, retryAfterS: retry) else { return }
         lock.lock(); defer { lock.unlock() }
@@ -206,6 +211,17 @@ final class NanoMuseReachSignal: @unchecked Sendable {
     /// What the chat stores for a failed turn: the canonical line of a fresh side-channel
     /// reach, else `raw` as it came. Called from `friendlyErrorMessage`.
     func lineForError(_ raw: String) -> String? {
+        if let fresh = NanoMuseRelaySignal.shared.takeFresh() {
+            // the relay refused the turn: the stored line is ours, and an allowance refusal pins the card
+            let refusal = fresh.refusal
+            let facts = fresh.facts
+            if refusal.isAllowance {
+                Task { @MainActor in NanoMuseAllowance.shared.refused(refusal, facts: facts) }
+            } else if refusal.kind == .signedOut {
+                Task { _ = try? await NanoMuseCloud.refresh() } // the key is gone: the account page says so
+            }
+            return NanoMuseRelayRefusal.canonical(refusal)
+        }
         guard let reach = takeFresh() else { return nil }
         return NanoMuseProviderReach.canonical(reach)
     }

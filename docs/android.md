@@ -90,6 +90,15 @@ access cut off before (OpenCode, January 2026), and that an API key works if it 
 Anthropic and Gemini open on OpenMinis' own provider types for them; everything else on the
 OpenAI-compatible form.
 
+**Where the list comes from.** The relay's `/v1/me` carries `spend.guidance` (relay 0.21,
+[cloud.md](cloud.md)): the providers for the person's region in the relay's order, each with
+what it covers, the plans one can sign in with and which clients they are for, the local
+servers, the docs link and the honest line about the ChatGPT sign-in. `cloud/Guidance.kt`
+parses it, `Ways.resolve` prefers it, and the card and Settings → nanoMuse Cloud read the
+bundled catalogue only when the relay sent none (an older relay) — so a vendor added on the
+relay shows before the app is updated, and a provider the relay no longer lists is gone the same
+day. A `429 allowance_exhausted` carries the same block beside the figures.
+
 **What each covers.** The capabilities decide what the app offers (`cloud/Capabilities.kt`):
 pictures (Settings → Image & video models, the avatar studio, `nanomuse-media image`) pick a
 provider only among those whose vendor has `image`; clips among those with `video` that the
@@ -115,6 +124,23 @@ upstream's. The relay's `daily_cap` 429 is now read like `allowance_exhausted` a
 says today's share is spent and comes back with the day. The allowance card also lists a model
 of your own (Ollama, LM Studio, vLLM on a computer you own) and, for a signed-in account, your
 computer — *@* and its name in the chat runs the turn there.
+
+**When the relay refuses a turn** (`cloud/RelayRefusal.kt`, `ui/chat/RelayRefusalCard.kt`).
+Every refusal nanoMuse Cloud sends is one plain sentence in the phone's language and the button
+that fits — never a status code, the relay's JSON or upstream's *Rate limited*. The reply is
+read where the body is still whole (`AllowanceSignal.noteHttpError`, through the same
+`// nanoMuse:` spot in `OpenAIProvider`), stored in the message as a canonical `nm_relay:` line
+and drawn by the card: `413 too_large` (also a proxy's plain 413 from the relay's host) → *That
+message is too large for the model. Shorten it, leave out some attachments, or start a new
+chat.* with *New chat*; `401 bad_key` / `account_deleted` → *Sign in*; `403 not_invited` /
+`account_disabled` / `signup_closed` → *Open Settings*; `429 too_many_in_flight` / `locked` /
+`rate_limited` and `provider_busy` (with the wait from `retry_after`) → *Try again*; `404
+model_not_offered` → *Open Settings*; `503 service_paused`, `sync_paused`, `hub_paused` and any
+5xx or empty answer → *Try again*. `429 allowance_exhausted` and `daily_cap` keep the allowance
+card; with `paused: true` (relay 0.22) its lead says the allowance is *paused on this relay for
+now — not used up* and that what is left stays as it is. The sentences are
+`NanoMuseCloud.describe`'s, the same ones the sign-in and account pages use, in all 17 locales
+(`nm_cloud_err_*`). Unit tests: `RelayRefusalTest`, `GuidanceTest`.
 
 **Settings → Network** (`net/OwnProviderProxy.kt`, `ui/net/NetworkScreen.kt`,
 `minis://settings/network`). The HTTP proxy for own providers: host, port, optional user name

@@ -18,6 +18,8 @@ struct NanoMuseSheet: Sendable {
         var inviteBonusCny: Double?
         var inviteeBonusCny: Double?
         var ownKeyDocs: String?
+        /// Relay 0.21 (contract C11): the ways on for the person's region, as the relay lists them; nil from an older relay.
+        var guidance: NanoMuseGuidance?
 
         /// What is left, from the relay or from the grant and the total.
         var remaining: Double? {
@@ -88,7 +90,8 @@ struct NanoMuseSheet: Sendable {
                 usdCny: num(s["usd_cny"]),
                 inviteBonusCny: num(s["invite_bonus_cny"]),
                 inviteeBonusCny: num(s["invitee_bonus_cny"]),
-                ownKeyDocs: (s["own_key_docs"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+                ownKeyDocs: (s["own_key_docs"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                guidance: NanoMuseGuidance.parse(s["guidance"] as? [String: Any])
             )
         }
         var invite: Invite?
@@ -173,6 +176,7 @@ extension NanoMuseCloud {
     static func sheet() async throws -> NanoMuseSheet {
         let reply = try await call("GET", "/v1/me", body: nil, token: key())
         account = parseAccount(reply)
+        NanoMuseAllowance.shared.absorb(me: reply) // the 80 % heads-up, the region's guidance (contract C11)
         return NanoMuseSheet.parse(reply)
     }
 

@@ -59,6 +59,7 @@ import io.github.nanomuse.cloud.NanoMuseCloud
 import io.github.nanomuse.cloud.OwnKeyPresets
 import io.github.nanomuse.cloud.ProviderCatalogue
 import io.github.nanomuse.cloud.Region
+import io.github.nanomuse.cloud.Ways
 import io.github.nanomuse.ui.home.MuseTones
 
 /** The public guide for bringing one's own key, when the relay did not name one. */
@@ -74,15 +75,17 @@ val OWN_KEY_OPENROUTER_DEEP_LINK: String = OwnKeyPresets.deepLink(OwnKeyPresets.
 private const val SHOWN_FIRST = 3
 
 /**
- * The ways on when the free allowance is spent (or nearly), contract C11: one's own key —
- * the vendors of the catalogue ([ProviderCatalogue]), the region's first (Alibaba Cloud
- * Bailian for mainland China, where it signs up accounts; OpenRouter and OpenAI elsewhere),
- * each saying what it covers (chat · screen · pictures · clips), *Add* opening the pre-filled
- * provider form and *Get a key* the vendor's key page; a subscription one already pays for
- * (ChatGPT, Claude, Kimi, OpenRouter), *Sign in* going through upstream's OAuth managers from
- * the same form; and an invitation (both sides gain). No vendor is recommended; the text says
- * what each one covers. Shown on the account page whenever the pool is spent or past 80 %,
- * and in the chat when a turn was refused for it. [exhausted] false = the heads-up wording.
+ * The ways on when the free allowance is spent (or nearly, or paused by the operator),
+ * contract C11: one's own key — the vendors as the relay lists them for the region
+ * (`spend.guidance`, [Ways.resolve]; the bundled [ProviderCatalogue] only when the relay sent
+ * none), the region's first (Alibaba Cloud Bailian for mainland China, where it signs up
+ * accounts; OpenRouter and OpenAI elsewhere), each saying what it covers (chat · screen ·
+ * pictures · clips), *Add* opening the pre-filled provider form and *Get a key* the vendor's
+ * key page; a subscription one already pays for (ChatGPT, Claude, Kimi, OpenRouter), *Sign in*
+ * going through upstream's OAuth managers from the same form; and an invitation (both sides
+ * gain). No vendor is recommended; the text says what each one covers. Shown on the account
+ * page whenever the pool is spent or past 80 %, and in the chat when a turn was refused for
+ * it. [exhausted] false = the heads-up wording; `info.paused` = the operator's switch, not use.
  */
 @Composable
 fun AllowanceWaysCard(
@@ -112,14 +115,17 @@ fun AllowanceWaysCard(
     val link = info.inviteUrl.ifBlank { account?.inviteUrl.orEmpty() }.ifBlank {
         "https://nanomuse.cn/web/?invite=" + account?.inviteCode.orEmpty()
     }
-    val guideUrl = info.ownKeyDocs.ifBlank { account?.ownKeyDocs.orEmpty() }.ifBlank { OWN_KEY_DOCS }
-
-    // the catalogue, the region's vendors first
+    // the ways as the relay lists them (`guidance`, contract C11) first — the one sent with the
+    // refusal, else the one kept from /v1/me — and the bundled catalogue only when it sent none
     val mainland = remember { Region.mainland(context) }
     val chinese = remember { ProviderCatalogue.chinese(context) }
-    val vendors = remember(mainland) { ProviderCatalogue.ordered(ProviderCatalogue.load(context), mainland) }
-    val signIns = remember(mainland) { ProviderCatalogue.signIns(ProviderCatalogue.load(context), mainland) }
-    val locals = remember { ProviderCatalogue.load(context).filter { it.local } }
+    val ways = remember(info.guidance, mainland) {
+        Ways.resolve(info.guidance ?: NanoMuseCloud.guidance(context), ProviderCatalogue.load(context), mainland, chinese)
+    }
+    val guideUrl = info.ownKeyDocs.ifBlank { account?.ownKeyDocs.orEmpty() }.ifBlank { ways.docs }.ifBlank { OWN_KEY_DOCS }
+    val vendors = ways.vendors
+    val signIns = ways.signIns
+    val locals = ways.locals
     val signedIn = remember { NanoMuseCloud.isSignedIn(context) }
     var more by remember { mutableStateOf(false) }
 
@@ -132,6 +138,7 @@ fun AllowanceWaysCard(
         Column(Modifier.padding(14.dp)) {
             Text(
                 text = when {
+                    info.paused -> stringResource(R.string.nm_ways_title_paused)
                     info.dailyCap -> stringResource(R.string.nm_ways_title_day)
                     exhausted -> stringResource(R.string.nm_ways_title_out)
                     else -> stringResource(R.string.nm_ways_title_warn, money(info.leftCny), money(info.grantCny))
@@ -141,7 +148,13 @@ fun AllowanceWaysCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(if (info.dailyCap) R.string.nm_ways_day_sub else R.string.nm_ways_sub),
+                text = stringResource(
+                    when {
+                        info.paused -> R.string.nm_ways_paused_sub
+                        info.dailyCap -> R.string.nm_ways_day_sub
+                        else -> R.string.nm_ways_sub
+                    },
+                ),
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -188,14 +201,16 @@ fun AllowanceWaysCard(
             // ② a subscription one already pays for — the vendor's sign-in, through the same form
             if (signIns.isNotEmpty()) {
                 Way(Icons.Outlined.Person, Color(0xFF2E9E6B), stringResource(R.string.nm_ways_sub_title), stringResource(R.string.nm_ways_sub_body)) {}
-                signIns.forEach { v ->
+                signIns.forEach { s ->
                     VendorRow(
-                        v,
-                        covers = Capabilities.covers(context, v.capabilitiesFor(v.signIn)),
+                        s.vendor,
+                        covers = Capabilities.covers(context, s.covers),
                         chinese = chinese,
                         mainland = mainland,
                         signIn = true,
-                        note = if (v.signIn == ProviderCatalogue.AUTH_CHATGPT) stringResource(R.string.nm_ways_chatgpt_note) else null,
+                        brand = s.name,
+                        // the honest line about the ChatGPT sign-in: the relay's when it sent one, else ours
+                        note = if (s.auth == ProviderCatalogue.AUTH_CHATGPT) ways.chatgptCaveat.ifBlank { stringResource(R.string.nm_ways_chatgpt_note) } else null,
                     )
                 }
             }
@@ -276,14 +291,9 @@ private fun openUrl(context: Context, url: String) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun VendorRow(v: CatalogueProvider, covers: String, chinese: Boolean, mainland: Boolean, signIn: Boolean, note: String? = null) {
+private fun VendorRow(v: CatalogueProvider, covers: String, chinese: Boolean, mainland: Boolean, signIn: Boolean, brand: String? = null, note: String? = null) {
     val context = LocalContext.current
-    val brand = if (signIn) when (v.signIn) {
-        ProviderCatalogue.AUTH_CHATGPT -> "ChatGPT"
-        ProviderCatalogue.AUTH_CLAUDE -> "Claude"
-        ProviderCatalogue.AUTH_KIMI -> "Kimi"
-        else -> v.displayName(chinese)
-    } else v.displayName(chinese)
+    val brand = brand ?: if (signIn) Ways.planName(v.signIn.orEmpty(), v, chinese) else v.displayName(chinese)
     Row(Modifier.fillMaxWidth().padding(start = 28.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(brand, fontSize = 13.sp, fontWeight = FontWeight.Medium, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurface)

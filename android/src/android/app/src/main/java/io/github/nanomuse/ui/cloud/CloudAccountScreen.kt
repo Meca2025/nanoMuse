@@ -509,6 +509,7 @@ fun CloudAccountScreen(
                             inviteBonusCny = a.inviteBonusCny,
                             inviteeBonusCny = a.inviteeBonusCny,
                             ownKeyDocs = a.ownKeyDocs,
+                            guidance = NanoMuseCloud.guidance(context), // the relay's list for the region first (contract C11)
                         ),
                         exhausted = a.exhausted,
                         modifier = Modifier.padding(horizontal = 16.dp),

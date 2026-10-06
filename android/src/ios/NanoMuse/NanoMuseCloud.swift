@@ -70,6 +70,10 @@ struct NanoMuseCloudError: LocalizedError, Sendable {
     let code: String
     let message: String
     let status: Int
+    /// `retry_after` in seconds, when the relay said when to come back (`provider_busy`).
+    var retryAfterS: Int? = nil
+    /// Relay 0.22: the refusal is one of the operator's switches, not use (`paused: true` beside `allowance_exhausted`).
+    var paused: Bool = false
 
     var errorDescription: String? { NanoMuseCloud.describe(self) }
 }
@@ -353,6 +357,7 @@ enum NanoMuseCloud {
             let parsed = parseAccount(me)
             account = parsed
             NanoMuseNudges.shared.absorb(me: me) // nanoMuse: contract C1
+            NanoMuseAllowance.shared.absorb(me: me) // the 80 % heads-up, the region's guidance (contract C11)
             return parsed
         } catch let error as CloudError where error.status == 401 {
             // Revoked elsewhere, or the relay was reset: the provider cannot answer any more.
@@ -415,14 +420,40 @@ enum NanoMuseCloud {
             return AppLocalized("The code could not be sent. Try again in a minute.")
         case "account_disabled":
             return AppLocalized("This account has been disabled.")
+        case "not_invited":
+            return AppLocalized("This relay is private; that address is not on its list.")
         case "bad_key":
             return AppLocalized("This sign-in is no longer valid. Sign in again.")
         case "account_deleted":
             return AppLocalized("This account was deleted. Sign in again to start a new one.")
         case "out_of_tokens":
             return AppLocalized("The starter allowance is used up. Add a provider of your own to keep going.")
+        case "allowance_exhausted" where cloud.paused:
+            // relay 0.22: the operator's switch, not use — the same card, another lead
+            return AppLocalized("The free allowance is paused on this relay for now — not used up. Add a key of your own or sign in with a plan you already pay for, under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are.")
         case "allowance_exhausted":
             return AppLocalized("The free allowance is used up. Use a key of your own, or invite a friend — both under nanoMuse Cloud in Settings.")
+        case "too_large":
+            return AppLocalized("That message is too large for the model. Shorten it, leave out some attachments, or start a new chat.")
+        case "too_many_in_flight":
+            return AppLocalized("Too many requests at once. Try again shortly.")
+        case "provider_busy":
+            if let s = cloud.retryAfterS, s > 0 {
+                return String(format: AppLocalized("The model provider is busy right now. Try again in %@."), NanoMuseProviderReach.duration(s))
+            }
+            return AppLocalized("The model provider is busy right now. Try again in a moment.")
+        case "locked":
+            return AppLocalized("Too many requests at once. Try again shortly.")
+        case "model_not_offered":
+            return AppLocalized("nanoMuse Cloud no longer offers that model. Pick another under Settings → nanoMuse Cloud.")
+        case "service_paused":
+            return AppLocalized("nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later.")
+        case "sync_paused":
+            return AppLocalized("Conversation sync is paused on this relay for now; what is stored is kept, and your devices keep working on their own.")
+        case "hub_paused":
+            return AppLocalized("The device hub is paused on this relay for now; each device keeps working on its own.")
+        case "upstream":
+            return AppLocalized("nanoMuse Cloud did not answer. Try again in a moment.")
         case "password_wrong":
             return AppLocalized("That password is not right.")
         case "password_required", "no_password":
@@ -432,7 +463,7 @@ enum NanoMuseCloud {
         case "invite_bad":
             return AppLocalized("That invite code is not one we know. Check it, or leave it empty.")
         case "signup_closed":
-            return AppLocalized("Sign-up is paused right now. Try again later, or use a key of your own.")
+            return AppLocalized("Sign-ups are paused on this relay for now. An account that already exists can still sign in.")
         case "daily_cap":
             return AppLocalized("Today's allowance is used up. It resets tomorrow.")
         case "rate_limited":
@@ -440,7 +471,15 @@ enum NanoMuseCloud {
         case "unreachable":
             return AppLocalized("Could not reach nanoMuse Cloud. Check the connection and try again.")
         default:
-            return cloud.message.isEmpty ? AppLocalized("nanoMuse Cloud could not complete the request.") : cloud.message
+            // a code we do not know: the status says what kind of thing it was
+            switch cloud.status {
+            case 413: return AppLocalized("That message is too large for the model. Shorten it, leave out some attachments, or start a new chat.")
+            case 401: return AppLocalized("This sign-in is no longer valid. Sign in again.")
+            case 500...: return AppLocalized("nanoMuse Cloud did not answer. Try again in a moment.")
+            default: break
+            }
+            let bare = cloud.message.isEmpty || cloud.message.hasPrefix("HTTP ")
+            return bare ? AppLocalized("nanoMuse Cloud could not complete the request.") : cloud.message
         }
     }
 
@@ -509,6 +548,7 @@ enum NanoMuseCloud {
         UserDefaults.standard.removeObject(forKey: Keys.instance)
         UserDefaults.standard.removeObject(forKey: Keys.account)
         UserDefaults.standard.removeObject(forKey: Keys.fresh)
+        NanoMuseAllowance.shared.forget() // the pinned card, the heads-up and the guidance were this account's
         // another account's devices and their connections are not ours to list
         NanoMuseProfileSync.shared.forget()
         NanoMuseSync.shared.accountChanged() // C10: signed out — the presence of the account that left goes too
@@ -566,6 +606,8 @@ enum NanoMuseCloud {
         let err = object?["error"] as? [String: Any]
         let code = (err?["code"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "http_\(status)"
         let message = (err?["message"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "HTTP \(status)"
-        throw CloudError(code: code, message: message, status: status)
+        let retry = (err?["retry_after"] as? NSNumber).map { $0.doubleValue }.flatMap { $0 > 0 ? Int(ceil($0)) : nil }
+        let paused = (err?["paused"] as? Bool) ?? ((err?["paused"] as? NSNumber)?.boolValue ?? false)
+        throw CloudError(code: code, message: message, status: status, retryAfterS: retry, paused: paused)
     }
 }

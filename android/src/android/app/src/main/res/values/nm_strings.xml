@@ -689,6 +689,20 @@
     <string name="nm_cloud_err_password_required">Enter the current password first.</string>
     <string name="nm_cloud_err_password_short">The password needs at least 8 characters.</string>
     <string name="nm_cloud_err_password_weak">That password is too easy to guess.</string>
+    <string name="nm_cloud_err_signup_closed">Sign-ups are paused on this relay for now. An account that already exists can still sign in.</string>
+    <string name="nm_cloud_err_too_large">That message is too large for the model. Shorten it, leave out some attachments, or start a new chat.</string>
+    <string name="nm_cloud_err_provider_busy">The model provider is busy right now. Try again in a moment.</string>
+    <string name="nm_cloud_err_provider_busy_wait">The model provider is busy right now. Try again in %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud no longer offers that model. Pick another under Settings → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud did not answer. Try again in a moment.</string>
+    <string name="nm_cloud_err_allowance_paused">The free allowance is paused on this relay for now — not used up. Add a key of your own or sign in with a plan you already pay for, under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later.</string>
+    <string name="nm_cloud_err_sync_paused">Conversation sync is paused on this relay for now; what is stored is kept, and your devices keep working on their own.</string>
+    <string name="nm_cloud_err_hub_paused">The device hub is paused on this relay for now; each device keeps working on its own.</string>
+    <string name="nm_refusal_relay_says">The relay says: %1$s</string>
+    <string name="nm_refusal_new_chat">New chat</string>
+    <string name="nm_refusal_sign_in">Sign in</string>
+    <string name="nm_refusal_open_settings">Open Settings</string>
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">since %1$s</string>
     <string name="nm_cloud_account_id">Account %1$s…</string>
@@ -734,6 +748,8 @@
     <string name="nm_notice_issue">Report a bug or ask for a feature</string>
     <string name="nm_ways_title_out">The free allowance is used up.</string>
     <string name="nm_ways_title_warn">Nearly used up: ¥%1$s of ¥%2$s left.</string>
+    <string name="nm_ways_title_paused">The free allowance is paused on this relay for now — not used up.</string>
+    <string name="nm_ways_paused_sub">What is left stays as it is; the ways below work now.</string>
     <string name="nm_ways_sub">Two ways on — your sign-in and your devices keep working either way.</string>
     <string name="nm_ways_key_title">Use your own model key</string>
     <string name="nm_ways_key_guide">Step-by-step guide</string>

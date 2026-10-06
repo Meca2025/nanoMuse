@@ -711,6 +711,20 @@
     <string name="nm_cloud_err_password_required">Najpierw wpisz obecne hasło.</string>
     <string name="nm_cloud_err_password_short">Hasło musi mieć co najmniej 8 znaków.</string>
     <string name="nm_cloud_err_password_weak">To hasło jest zbyt łatwe do odgadnięcia.</string>
+    <string name="nm_cloud_err_signup_closed">Rejestracja na tym relayu jest na razie wstrzymana. Istniejące konto nadal może się zalogować.</string>
+    <string name="nm_cloud_err_too_large">Ta wiadomość jest za duża dla modelu. Skróć ją, usuń część załączników albo zacznij nowy czat.</string>
+    <string name="nm_cloud_err_provider_busy">Dostawca modelu jest teraz zajęty. Spróbuj ponownie za chwilę.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Dostawca modelu jest teraz zajęty. Spróbuj ponownie za %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud nie oferuje już tego modelu. Wybierz inny w Ustawienia → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud nie odpowiedział. Spróbuj ponownie za chwilę.</string>
+    <string name="nm_cloud_err_allowance_paused">Darmowy limit na tym relayu jest na razie wstrzymany — nie wyczerpany. Dodaj własny klucz albo zaloguj się planem, za który już płacisz, w Ustawienia → nanoMuse Cloud. Logowanie, urządzenia i pozostały limit zostają bez zmian.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud jest na razie wstrzymany przez operatora; logowanie i dane są zachowane. Spróbuj ponownie później.</string>
+    <string name="nm_cloud_err_sync_paused">Synchronizacja rozmów na tym relayu jest na razie wstrzymana; zapisane treści są zachowane, a urządzenia działają dalej samodzielnie.</string>
+    <string name="nm_cloud_err_hub_paused">Łączenie urządzeń na tym relayu jest na razie wstrzymane; każde urządzenie działa dalej samodzielnie.</string>
+    <string name="nm_refusal_relay_says">Relay mówi: %1$s</string>
+    <string name="nm_refusal_new_chat">Nowy czat</string>
+    <string name="nm_refusal_sign_in">Zaloguj się</string>
+    <string name="nm_refusal_open_settings">Otwórz ustawienia</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">od %1$s</string>
@@ -757,6 +771,8 @@
     <string name="nm_notice_issue">Zgłoś błąd lub poproś o funkcję</string>
     <string name="nm_ways_title_out">Darmowy limit się wyczerpał.</string>
     <string name="nm_ways_title_warn">Prawie wyczerpany: zostało ¥%1$s z ¥%2$s.</string>
+    <string name="nm_ways_title_paused">Darmowy limit na tym relayu jest na razie wstrzymany — nie wyczerpany.</string>
+    <string name="nm_ways_paused_sub">Pozostały limit zostaje bez zmian; poniższe sposoby działają już teraz.</string>
     <string name="nm_ways_sub">Dwie drogi dalej — logowanie i urządzenia działają tak czy inaczej.</string>
     <string name="nm_ways_key_title">Użyj własnego klucza do modelu</string>
     <string name="nm_ways_key_guide">Przewodnik krok po kroku</string>

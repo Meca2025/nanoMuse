@@ -705,6 +705,20 @@
     <string name="nm_cloud_err_password_required">Gib zuerst das aktuelle Passwort ein.</string>
     <string name="nm_cloud_err_password_short">Das Passwort braucht mindestens 8 Zeichen.</string>
     <string name="nm_cloud_err_password_weak">Dieses Passwort ist zu leicht zu erraten.</string>
+    <string name="nm_cloud_err_signup_closed">Neue Konten sind auf diesem Relay vorerst ausgesetzt. Ein bestehendes Konto kann sich weiter anmelden.</string>
+    <string name="nm_cloud_err_too_large">Diese Nachricht ist zu groß für das Modell. Kürze sie, lass einige Anhänge weg oder beginne einen neuen Chat.</string>
+    <string name="nm_cloud_err_provider_busy">Der Modellanbieter ist gerade ausgelastet. Versuche es gleich noch einmal.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Der Modellanbieter ist gerade ausgelastet. Versuche es in %1$s noch einmal.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud bietet dieses Modell nicht mehr an. Wähle unter Einstellungen → nanoMuse Cloud ein anderes.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud hat nicht geantwortet. Versuche es gleich noch einmal.</string>
+    <string name="nm_cloud_err_allowance_paused">Das kostenlose Guthaben ist auf diesem Relay vorerst ausgesetzt — nicht aufgebraucht. Füge unter Einstellungen → nanoMuse Cloud einen eigenen Schlüssel hinzu oder melde dich mit einem Abo an, das du schon bezahlst. Deine Anmeldung, deine Geräte und der Rest bleiben, wie sie sind.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud ist vom Betreiber vorerst angehalten; deine Anmeldung und deine Daten bleiben erhalten. Versuche es später noch einmal.</string>
+    <string name="nm_cloud_err_sync_paused">Die Gesprächssynchronisierung ist auf diesem Relay vorerst ausgesetzt; Gespeichertes bleibt erhalten, und deine Geräte arbeiten für sich weiter.</string>
+    <string name="nm_cloud_err_hub_paused">Die Geräteverbindung ist auf diesem Relay vorerst ausgesetzt; jedes Gerät arbeitet für sich weiter.</string>
+    <string name="nm_refusal_relay_says">Das Relay sagt: %1$s</string>
+    <string name="nm_refusal_new_chat">Neuer Chat</string>
+    <string name="nm_refusal_sign_in">Anmelden</string>
+    <string name="nm_refusal_open_settings">Einstellungen öffnen</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">seit %1$s</string>
@@ -751,6 +765,8 @@
     <string name="nm_notice_issue">Fehler melden oder Funktion vorschlagen</string>
     <string name="nm_ways_title_out">Das kostenlose Guthaben ist aufgebraucht.</string>
     <string name="nm_ways_title_warn">Fast aufgebraucht: ¥%1$s von ¥%2$s übrig.</string>
+    <string name="nm_ways_title_paused">Das kostenlose Guthaben ist auf diesem Relay vorerst ausgesetzt — nicht aufgebraucht.</string>
+    <string name="nm_ways_paused_sub">Der Rest bleibt, wie er ist; die Wege unten funktionieren jetzt.</string>
     <string name="nm_ways_sub">Zwei Wege weiter — deine Anmeldung und deine Geräte funktionieren so oder so.</string>
     <string name="nm_ways_key_title">Eigenen Modellschlüssel verwenden</string>
     <string name="nm_ways_key_guide">Schritt-für-Schritt-Anleitung</string>

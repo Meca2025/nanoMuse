@@ -124,8 +124,8 @@ Ours, in `NanoMuse/`:
 - **First run and settings (0.1.34)** (`NanoMuseFirstRun.swift`, `NanoMuseSettings.swift`,
   `NanoMuseCoding.swift`, `NanoMuseSystemFiles.swift`): the four pages of the Android first run
   (welcome → sign in — free → a password once for a fresh account → which model answers → meet
-  〈name〉), with *I have my own API key* opening the own-key sheet (Bailian / OpenRouter, ordered by
-  region; OpenRouter's sign-in without a paste), and the first conversation afterwards (the
+  〈name〉), with *I have my own API key* opening the own-key sheet (the whole catalogue —
+  see *Your own key* below), and the first conversation afterwards (the
   opening lines, "what should I call you?", the name chooser from the model's ` ```nanomuse-naming `
   block, GLOBAL.md and SOUL.md written). *Settings → nanoMuse*: the account, **Coding agents**
   (Cursor / Codex / Claude Code sessions on the computers of the account over the hub's
@@ -166,6 +166,48 @@ Ours, in `NanoMuse/`:
   sign-in reads *Sign in again*, a spent plan window *The ChatGPT plan has nothing left for now*
   with OpenAI's sentence and the reset time. The same kinds, lines and rules as Android's
   `ProviderReach`.
+- **When the relay refuses a turn** (`NanoMuseRelayRefusal.swift`,
+  `NanoMuseRelayRefusalCard.swift`): every refusal nanoMuse Cloud sends is one plain sentence in
+  the phone's language and the button that fits — never a status code, the relay's JSON or
+  upstream's *Rate limited*. `NanoMuseReachSignal` hands each non-2xx reply of a model call to
+  `NanoMuseRelaySignal` first (the same existing `// nanoMuse:` spot in `mapHTTPError`, nothing
+  new in upstream's files); a reply with `type: nanomuse_cloud` or one of the relay's codes — or a
+  bare 413 / 401 / 5xx from the relay's host — becomes a canonical `nm_relay:` line in the
+  message, which `NanoMuseProviderReachCard` draws as the refusal card. The sentence is
+  `NanoMuseCloud.describe`'s, the same the sign-in and account pages use, in all nine locales:
+  `413 too_large` → *That message is too large for the model. Shorten it, leave out some
+  attachments, or start a new chat.* with *New chat*; `401 bad_key` / `account_deleted` → *Sign
+  in*; `403 not_invited` / `account_disabled` / `signup_closed` → *Open Settings*; `429
+  too_many_in_flight` / `locked` / `rate_limited` and `provider_busy` (with the wait from
+  `retry_after`) → *Try again*; `404 model_not_offered` → *Open Settings*; `503 service_paused`,
+  `sync_paused`, `hub_paused` and any 5xx or empty answer → *Try again*.
+- **The allowance in the chat** (`NanoMuseAllowance.swift`, `NanoMuseAllowanceCard.swift`;
+  Android `AllowanceSignal` + `AllowanceWaysCard`): a turn refused with `429 allowance_exhausted`
+  or `daily_cap` pins a card under the chat header the way the star card is pinned (the shell's
+  top inset, no new link on `AIChatView.body`): the lead — *The free allowance is used up.*,
+  *Today's share …*, or with `paused: true` (relay 0.22) *paused on this relay for now — not
+  used up* and that what is left stays as it is — then the ways on and *Try again* (the open
+  chat's last turn once more). At 80 % of the pool (`spend.warn` from `/v1/me`) one line sits
+  above the composer in `NanoMuseChatCardsHost` — *Nearly used up: ¥… of ¥… left …* — once per
+  pool size (a new grant says it again), waved away with the ×; the card replaces it.
+- **Your own key** (`NanoMuseCatalogue.swift`, `NanoMuseVendorSheet.swift`,
+  `NanoMuseOwnKeySheet` in `NanoMuseModels.swift`; [own-key.md](own-key.md)): the vendors are
+  the bundled `NanoMuse/Resources/providers.json` (`node scripts/providers-json.mjs` keeps it
+  current, `--check` in CI) — and the relay's `spend.guidance` first when it sent one (relay
+  0.21; also beside a `429 allowance_exhausted`), kept in `UserDefaults` between runs, so a
+  vendor added on the relay shows before the app is updated. `NanoMuseWaysList` is the one list
+  on the pinned card, Settings → nanoMuse Cloud and the own-key sheet: *Use your own model key*
+  — the region's lead first (Alibaba Cloud Bailian on the mainland, OpenRouter and OpenAI
+  elsewhere), three at a time behind *More providers*, every row saying what it covers (*chat ·
+  screen · pictures · clips*), *Get a key* opening the vendor's key page, *Add* opening
+  `NanoMuseVendorSheet` on that vendor (the key pasted, the instance added with the vendor's
+  endpoint and `/v1` setting, its models fetched, a group named after it the default when there
+  was none); *A subscription you already pay for* — ChatGPT through upstream's `CodexOAuthManager`,
+  Claude, OpenRouter, Kimi's device code through `KimiDeviceLoginSheet` — with the line under the
+  ChatGPT row that OpenAI's terms cover a plan inside OpenAI's own Codex, that other apps have had
+  this access cut off before (OpenCode, January 2026), and that an API key works if it stops (the
+  relay's own wording when it sent one); *On a computer of your own* — Ollama, LM Studio, vLLM —
+  takes the address. No vendor is recommended.
 - **Network** (`NanoMuseProxy.swift`, `NanoMuseNetworkView.swift`, *Settings → nanoMuse →
   Network*): the HTTP proxy for own providers — host, port, optional user name and password, off
   by default, in `UserDefaults` on this phone only. `URLSession` has no per-host proxy switch, so

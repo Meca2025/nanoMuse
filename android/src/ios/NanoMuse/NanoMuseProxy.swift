@@ -149,6 +149,16 @@ enum NanoMuseProxy {
         return routedHosts().contains { h == $0 || h.hasSuffix("." + $0) }
     }
 
+    /// Whether `host` is the relay's (as `refreshHosts` last read it): a 413 or a bare 5xx from
+    /// there is nanoMuse Cloud's refusal, not another provider's (NanoMuseRelayRefusal).
+    static func isRelayHost(_ host: String) -> Bool {
+        let h = host.lowercased()
+        lock.lock()
+        let relay = relayHost
+        lock.unlock()
+        return !relay.isEmpty && h == relay
+    }
+
     static func isLocal(_ host: String) -> Bool {
         if host == "localhost" || host.hasSuffix(".local") || host.hasSuffix(".home.arpa") { return true }
         if host.hasPrefix("127.") || host.hasPrefix("10.") || host.hasPrefix("192.168.") || host.hasPrefix("169.254.") || host == "::1" { return true }

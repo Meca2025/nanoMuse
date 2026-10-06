@@ -705,6 +705,20 @@
     <string name="nm_cloud_err_password_required">Ilagay muna ang kasalukuyang password.</string>
     <string name="nm_cloud_err_password_short">Kailangan ng password ng hindi bababa sa 8 character.</string>
     <string name="nm_cloud_err_password_weak">Masyadong madaling hulaan ang password na iyan.</string>
+    <string name="nm_cloud_err_signup_closed">Naka-pause muna ang pag-sign up sa relay na ito. Puwede pa ring mag-sign in ang account na mayroon na.</string>
+    <string name="nm_cloud_err_too_large">Masyadong malaki ang mensaheng iyan para sa model. Paikliin ito, alisin ang ilang attachment, o magsimula ng bagong chat.</string>
+    <string name="nm_cloud_err_provider_busy">Abala ngayon ang provider ng model. Subukan muli maya-maya.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Abala ngayon ang provider ng model. Subukan muli pagkalipas ng %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">Hindi na inaalok ng nanoMuse Cloud ang model na iyan. Pumili ng iba sa Settings → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">Hindi sumagot ang nanoMuse Cloud. Subukan muli maya-maya.</string>
+    <string name="nm_cloud_err_allowance_paused">Naka-pause muna ang libreng allowance sa relay na ito — hindi ito naubos. Magdagdag ng sarili mong key o mag-sign in gamit ang plan na binabayaran mo na, sa Settings → nanoMuse Cloud. Mananatili ang sign-in mo, ang mga device mo at ang natitira.</string>
+    <string name="nm_cloud_err_service_paused">Naka-pause muna ang nanoMuse Cloud ng operator nito; nakatago ang sign-in at data mo. Subukan muli mamaya.</string>
+    <string name="nm_cloud_err_sync_paused">Naka-pause muna ang pag-sync ng mga usapan sa relay na ito; nananatili ang nakatago, at gumagana pa rin ang mga device mo nang mag-isa.</string>
+    <string name="nm_cloud_err_hub_paused">Naka-pause muna ang ugnayan ng mga device sa relay na ito; gumagana pa rin ang bawat device nang mag-isa.</string>
+    <string name="nm_refusal_relay_says">Sabi ng relay: %1$s</string>
+    <string name="nm_refusal_new_chat">Bagong chat</string>
+    <string name="nm_refusal_sign_in">Mag-sign in</string>
+    <string name="nm_refusal_open_settings">Buksan ang Settings</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">mula %1$s</string>
@@ -751,6 +765,8 @@
     <string name="nm_notice_issue">Mag-ulat ng bug o humiling ng feature</string>
     <string name="nm_ways_title_out">Naubos na ang libreng allowance.</string>
     <string name="nm_ways_title_warn">Malapit nang maubos: ¥%1$s sa ¥%2$s ang natitira.</string>
+    <string name="nm_ways_title_paused">Naka-pause muna ang libreng allowance sa relay na ito — hindi ito naubos.</string>
+    <string name="nm_ways_paused_sub">Nananatili ang natitira; gumagana na ngayon ang mga paraan sa ibaba.</string>
     <string name="nm_ways_sub">Dalawang paraan para magpatuloy — gumagana pa rin ang sign-in at mga device mo alinman ang piliin.</string>
     <string name="nm_ways_key_title">Gamitin ang sarili mong model key</string>
     <string name="nm_ways_key_guide">Gabay nang sunod-sunod</string>

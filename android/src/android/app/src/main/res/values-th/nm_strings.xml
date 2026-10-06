@@ -702,6 +702,20 @@
     <string name="nm_cloud_err_password_required">กรอกรหัสผ่านปัจจุบันก่อน</string>
     <string name="nm_cloud_err_password_short">รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร</string>
     <string name="nm_cloud_err_password_weak">รหัสผ่านนั้นเดาง่ายเกินไป</string>
+    <string name="nm_cloud_err_signup_closed">รีเลย์นี้หยุดรับสมัครชั่วคราว บัญชีที่มีอยู่แล้วยังลงชื่อเข้าใช้ได้</string>
+    <string name="nm_cloud_err_too_large">ข้อความนี้ใหญ่เกินไปสำหรับโมเดล ย่อให้สั้นลง ตัดไฟล์แนบบางส่วนออก หรือเริ่มแชตใหม่</string>
+    <string name="nm_cloud_err_provider_busy">ผู้ให้บริการโมเดลกำลังยุ่งอยู่ ลองอีกครั้งในอีกสักครู่</string>
+    <string name="nm_cloud_err_provider_busy_wait">ผู้ให้บริการโมเดลกำลังยุ่งอยู่ ลองอีกครั้งในอีก %1$s</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud ไม่ให้บริการโมเดลนี้แล้ว เลือกโมเดลอื่นได้ที่ การตั้งค่า → nanoMuse Cloud</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud ไม่ตอบกลับ ลองอีกครั้งในอีกสักครู่</string>
+    <string name="nm_cloud_err_allowance_paused">โควตาฟรีบนรีเลย์นี้หยุดชั่วคราว — ไม่ได้หมด เพิ่มคีย์ของคุณเองหรือลงชื่อเข้าใช้ด้วยแพ็กเกจที่จ่ายอยู่แล้วได้ที่ การตั้งค่า → nanoMuse Cloud การลงชื่อเข้าใช้ อุปกรณ์ และโควตาที่เหลือยังอยู่เหมือนเดิม</string>
+    <string name="nm_cloud_err_service_paused">ผู้ดูแลหยุด nanoMuse Cloud ไว้ชั่วคราว การลงชื่อเข้าใช้และข้อมูลของคุณยังเก็บไว้ ลองอีกครั้งภายหลัง</string>
+    <string name="nm_cloud_err_sync_paused">การซิงค์บทสนทนาบนรีเลย์นี้หยุดชั่วคราว สิ่งที่เก็บไว้ยังอยู่ และอุปกรณ์ของคุณยังใช้งานต่อได้ด้วยตัวเอง</string>
+    <string name="nm_cloud_err_hub_paused">การเชื่อมต่อระหว่างอุปกรณ์บนรีเลย์นี้หยุดชั่วคราว แต่ละอุปกรณ์ยังใช้งานต่อได้ด้วยตัวเอง</string>
+    <string name="nm_refusal_relay_says">รีเลย์แจ้งว่า: %1$s</string>
+    <string name="nm_refusal_new_chat">แชตใหม่</string>
+    <string name="nm_refusal_sign_in">ลงชื่อเข้าใช้</string>
+    <string name="nm_refusal_open_settings">เปิดการตั้งค่า</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">ตั้งแต่ %1$s</string>
@@ -748,6 +762,8 @@
     <string name="nm_notice_issue">รายงานบั๊กหรือขอฟีเจอร์</string>
     <string name="nm_ways_title_out">โควตาฟรีหมดแล้ว</string>
     <string name="nm_ways_title_warn">ใกล้หมดแล้ว: เหลือ ¥%1$s จาก ¥%2$s</string>
+    <string name="nm_ways_title_paused">โควตาฟรีบนรีเลย์นี้หยุดชั่วคราว — ไม่ได้หมด</string>
+    <string name="nm_ways_paused_sub">โควตาที่เหลือยังอยู่เหมือนเดิม วิธีด้านล่างใช้ได้ทันที</string>
     <string name="nm_ways_sub">มีสองทางให้ไปต่อ — การลงชื่อเข้าใช้และอุปกรณ์ของคุณยังใช้งานได้ไม่ว่าทางไหน</string>
     <string name="nm_ways_key_title">ใช้คีย์โมเดลของคุณเอง</string>
     <string name="nm_ways_key_guide">คู่มือทีละขั้นตอน</string>

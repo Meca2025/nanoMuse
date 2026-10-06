@@ -3432,7 +3432,7 @@ class OpenAIProvider private constructor(
         // nanoMuse: the relay's "allowance used up" is a 429 with a structured body, and the
         // ChatGPT plan's "region not supported" / "sign-in expired" / "nothing left" are a 403,
         // a 401 and a 429 whose bodies the mapping below drops; keep them for the chat's cards.
-        io.github.nanomuse.cloud.AllowanceSignal.noteHttpError(statusCode, body)
+        io.github.nanomuse.cloud.AllowanceSignal.noteHttpError(statusCode, body, fromRelay = io.github.nanomuse.net.OwnProviderProxy.isRelay(basePath))
         io.github.nanomuse.net.ReachSignal.noteHttpError(
             statusCode, body,
             host = if (isOAuth && !forceChatCompletions) "chatgpt.com" else io.github.nanomuse.net.OwnProviderProxy.hostOf(basePath),

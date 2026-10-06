@@ -1181,6 +1181,124 @@
         }
       }
     },
+    "A ChatGPT, Claude or Kimi plan can sign in here instead of a key. It covers chat and the screen, not pictures or clips." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein ChatGPT-, Claude- oder Kimi-Abo kann sich hier statt eines Schlüssels anmelden. Es deckt Chat und den Bildschirm ab, keine Bilder oder Clips."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A ChatGPT, Claude or Kimi plan can sign in here instead of a key. It covers chat and the screen, not pictures or clips."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un plan de ChatGPT, Claude o Kimi puede iniciar sesión aquí en lugar de una clave. Cubre el chat y la pantalla, no imágenes ni clips."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un abonnement ChatGPT, Claude ou Kimi peut se connecter ici à la place d’une clé. Il couvre la discussion et l’écran, pas les images ni les clips."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT、Claude、Kimi のプランはキーの代わりにここでサインインできます。チャットと画面に対応し、画像とクリップには対応しません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT, Claude, Kimi 요금제는 키 대신 여기서 로그인할 수 있습니다. 채팅과 화면을 지원하고, 그림과 클립은 지원하지 않습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подписка ChatGPT, Claude или Kimi может войти здесь вместо ключа. Она покрывает чат и экран, но не картинки и клипы."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT、Claude 或 Kimi 的订阅可以直接在这里登录，不用贴 key。它覆盖对话和屏幕，不含画图和短片。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT、Claude 或 Kimi 的訂閱可以直接在這裡登入，不用貼 key。它涵蓋對話和螢幕，不含畫圖和短片。"
+          }
+        }
+      }
+    },
+    "A key of your own" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein eigener Schlüssel"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A key of your own"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una clave propia"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une clé à vous"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自分のキー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "직접 추가한 키"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свой ключ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自己的密钥"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自己的金鑰"
+          }
+        }
+      }
+    },
     "A moment, then trying again" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1240,6 +1358,65 @@
         }
       }
     },
+    "A plan you already pay for" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Abo, das du schon bezahlst"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A plan you already pay for"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un plan que ya pagas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un abonnement que vous payez déjà"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すでに契約しているプラン"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미 결제 중인 요금제"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подписка, за которую вы уже платите"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已付费的订阅"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已付費的訂閱"
+          }
+        }
+      }
+    },
     "A proxy this app uses for providers: Settings → Network" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1295,6 +1472,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "讓這個應用程式透過代理存取提供方：設定 → 網路"
+          }
+        }
+      }
+    },
+    "A subscription you already pay for" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Abo, das du schon bezahlst"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A subscription you already pay for"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una suscripción que ya pagas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un abonnement que vous payez déjà"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すでに契約しているサブスクリプション"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미 결제 중인 구독"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подписка, за которую вы уже платите"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已付费的订阅"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已付費的訂閱"
           }
         }
       }
@@ -1558,6 +1794,124 @@
         }
       }
     },
+    "Address" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adresse"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Address"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dirección"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adresse"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アドレス"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "주소"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адрес"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地址"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "位址"
+          }
+        }
+      }
+    },
+    "Alibaba Cloud Bailian first: one key covers chat, the screen, pictures and clips, and it signs up accounts from mainland China. Each provider below says what it covers." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alibaba Cloud Bailian zuerst: ein Schlüssel deckt Chat, Bildschirm, Bilder und Clips ab, und es registriert Konten aus Festlandchina. Jeder Anbieter unten sagt, was er abdeckt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alibaba Cloud Bailian first: one key covers chat, the screen, pictures and clips, and it signs up accounts from mainland China. Each provider below says what it covers."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alibaba Cloud Bailian primero: una clave cubre el chat, la pantalla, imágenes y clips, y registra cuentas desde China continental. Cada proveedor de abajo dice qué cubre."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alibaba Cloud Bailian d’abord : une clé couvre la discussion, l’écran, les images et les clips, et il accepte les inscriptions depuis la Chine continentale. Chaque fournisseur ci-dessous dit ce qu’il couvre."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "まずは Alibaba Cloud Bailian：1 つのキーでチャット、画面、画像、クリップに対応し、中国本土からアカウントを作れます。以下の各プロバイダーには対応範囲を記載しています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "먼저 Alibaba Cloud Bailian: 키 하나로 채팅, 화면, 그림, 클립을 모두 쓸 수 있고 중국 본토에서 가입할 수 있습니다. 아래 각 제공자에 지원 범위가 적혀 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала Alibaba Cloud Bailian: один ключ покрывает чат, экран, картинки и клипы, и он регистрирует аккаунты из материкового Китая. У каждого провайдера ниже указано, что он покрывает."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "优先阿里云百炼：一个 key 覆盖对话、屏幕、画图和短片，中国大陆可以直接注册。下面每个服务商都写明了它覆盖什么。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "優先阿里雲百煉：一個 key 涵蓋對話、螢幕、畫圖和短片，中國大陸可以直接註冊。下面每個服務商都寫明了它涵蓋什麼。"
+          }
+        }
+      }
+    },
     "Almost there…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1786,6 +2140,65 @@
         }
       }
     },
+    "chat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "chat"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "chat"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "discussion"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チャット"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "채팅"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "чат"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "對話"
+          }
+        }
+      }
+    },
     "Chats exported" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2006,6 +2419,124 @@
         }
       }
     },
+    "clips" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clips"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "clips"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "clips"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "clips"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クリップ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "클립"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "клипы"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "短片"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "短片"
+          }
+        }
+      }
+    },
+    "Conversation sync is paused on this relay for now; what is stored is kept, and your devices keep working on their own." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Gesprächssynchronisierung ist auf diesem Relay vorerst ausgesetzt; Gespeichertes bleibt erhalten, und deine Geräte arbeiten für sich weiter."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation sync is paused on this relay for now; what is stored is kept, and your devices keep working on their own."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La sincronización de conversaciones está pausada en este relay por ahora; lo guardado se conserva y tus dispositivos siguen funcionando por su cuenta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La synchronisation des conversations est suspendue sur ce relais pour le moment ; ce qui est stocké est conservé, et vos appareils continuent de fonctionner chacun de leur côté."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリレーでは会話の同期を一時停止しています。保存済みの内容は残り、各デバイスは単独で動き続けます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴레이의 대화 동기화가 당분간 중지되었습니다. 저장된 내용은 보관되고, 기기들은 각자 계속 작동합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синхронизация разговоров на этом релее пока приостановлена; сохранённое остаётся, а устройства работают каждое само по себе."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台中转暂时停了对话同步，已存的内容保留，各设备可以各自继续用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這台中轉暫時停了對話同步，已存的內容保留，各裝置可以各自繼續用。"
+          }
+        }
+      }
+    },
     "Could not reach %@ through the proxy: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2061,6 +2592,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "透過代理連不上 %@：%@"
+          }
+        }
+      }
+    },
+    "Covers %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deckt ab: %@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Covers %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cubre: %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couvre : %@."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "対応範囲: %@。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지원 범위: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Покрывает: %@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "覆盖：%@。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "涵蓋：%@。"
           }
         }
       }
@@ -2812,6 +3402,65 @@
         }
       }
     },
+    "Fewer providers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weniger Anbieter"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fewer providers"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menos proveedores"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moins de fournisseurs"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プロバイダーを減らす"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제공자 접기"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Меньше провайдеров"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起服务商"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起服務商"
+          }
+        }
+      }
+    },
     "File contents" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3339,6 +3988,124 @@
         }
       }
     },
+    "Invite a friend: +¥%@ for you and +¥%@ for them, for each new person who signs up with your link." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade jemanden ein: +¥%@ für dich und +¥%@ für die Person, für jede neue Anmeldung über deinen Link."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite a friend: +¥%@ for you and +¥%@ for them, for each new person who signs up with your link."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invita a alguien: +¥%@ para ti y +¥%@ para esa persona, por cada persona nueva que se registre con tu enlace."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invitez quelqu’un : +¥%@ pour vous et +¥%@ pour la personne, pour chaque nouvelle inscription avec votre lien."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "友だちを招待：あなたのリンクから新しく登録した人ごとに、あなたに +¥%@、相手に +¥%@。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "친구 초대: 내 링크로 새로 가입하는 사람마다 나에게 +¥%@, 상대에게 +¥%@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пригласите друга: +¥%@ вам и +¥%@ ему за каждого нового человека, который зарегистрируется по вашей ссылке."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "邀请朋友：每有一位新用户通过你的链接注册，你 +¥%@，对方 +¥%@。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "邀請朋友：每有一位新用戶透過你的連結註冊，你 +¥%@，對方 +¥%@。"
+          }
+        }
+      }
+    },
+    "It resets tomorrow. The ways below work now — your sign-in and your devices keep working either way." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Morgen beginnt es neu. Die Wege unten funktionieren jetzt — deine Anmeldung und deine Geräte funktionieren so oder so."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It resets tomorrow. The ways below work now — your sign-in and your devices keep working either way."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se reinicia mañana. Las opciones de abajo funcionan ahora; tu sesión y tus dispositivos siguen funcionando en cualquier caso."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cela repart demain. Les options ci-dessous fonctionnent dès maintenant — votre connexion et vos appareils continuent de fonctionner dans tous les cas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明日リセットされます。下の方法は今すぐ使えます — どちらでもサインインとデバイスはそのまま使えます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내일 다시 채워집니다. 아래 방법은 지금 바로 쓸 수 있습니다 — 어느 쪽이든 로그인과 기기는 그대로 작동합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завтра он обновится. Способы ниже работают уже сейчас — ваш вход и ваши устройства работают в любом случае."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天会重置。下面的办法现在就能用——无论选哪个，登录和多设备功能都不受影响。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天會重置。下面的辦法現在就能用——無論選哪個，登入和多裝置功能都不受影響。"
+          }
+        }
+      }
+    },
     "Keep this account's chats on this device" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3652,6 +4419,301 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "nanoMuse 執行時可調用的模型"
+          }
+        }
+      }
+    },
+    "More providers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr Anbieter"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More providers"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más proveedores"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus de fournisseurs"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "その他のプロバイダー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제공자 더 보기"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Больше провайдеров"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多服务商"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多服務商"
+          }
+        }
+      }
+    },
+    "nanoMuse Cloud did not answer. Try again in a moment." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud hat nicht geantwortet. Versuche es gleich noch einmal."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud did not answer. Try again in a moment."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud no respondió. Inténtalo de nuevo en un momento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud n’a pas répondu. Réessayez dans un instant."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud から応答がありませんでした。少ししてからもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud가 응답하지 않았습니다. 잠시 후 다시 시도하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud не ответил. Повторите через минуту."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse 云没有响应，稍后再试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse 雲沒有回應，稍後再試。"
+          }
+        }
+      }
+    },
+    "nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud ist vom Betreiber vorerst angehalten; deine Anmeldung und deine Daten bleiben erhalten. Versuche es später noch einmal."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud está pausado por su operador por ahora; tu sesión y tus datos se conservan. Inténtalo más tarde."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud est mis en pause par son opérateur pour le moment ; votre connexion et vos données sont conservées. Réessayez plus tard."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud は運営者により一時停止中です。サインインとデータは保持されます。後でもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud가 운영자에 의해 당분간 중지되었습니다. 로그인과 데이터는 보관됩니다. 나중에 다시 시도하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud пока приостановлен оператором; ваш вход и данные сохранены. Повторите позже."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse 云被运营者暂停了，登录和数据都保留着。稍后再试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse 雲被營運者暫停了，登入和資料都保留著。稍後再試。"
+          }
+        }
+      }
+    },
+    "nanoMuse Cloud no longer offers that model. Pick another under Settings → nanoMuse Cloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud bietet dieses Modell nicht mehr an. Wähle unter Einstellungen → nanoMuse Cloud ein anderes."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud no longer offers that model. Pick another under Settings → nanoMuse Cloud."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud ya no ofrece ese modelo. Elige otro en Ajustes → nanoMuse Cloud."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud ne propose plus ce modèle. Choisissez-en un autre dans Réglages → nanoMuse Cloud."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud ではそのモデルの提供を終了しました。設定 → nanoMuse Cloud で別のモデルを選んでください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud에서 그 모델을 더 이상 제공하지 않습니다. 설정 → nanoMuse Cloud에서 다른 모델을 고르세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud больше не предлагает эту модель. Выберите другую в Настройки → nanoMuse Cloud."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse 云不再提供这个模型。到「设置 → nanoMuse 云」换一个。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse 雲不再提供這個模型。到「設定 → nanoMuse 雲」換一個。"
+          }
+        }
+      }
+    },
+    "Nearly used up: ¥%@ of ¥%@ of the free allowance left. A key of your own or a plan you already pay for keeps you going — Settings → nanoMuse Cloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fast aufgebraucht: ¥%@ von ¥%@ des kostenlosen Guthabens übrig. Ein eigener Schlüssel oder ein Abo, das du schon bezahlst, führt weiter — Einstellungen → nanoMuse Cloud."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nearly used up: ¥%@ of ¥%@ of the free allowance left. A key of your own or a plan you already pay for keeps you going — Settings → nanoMuse Cloud."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Casi agotado: quedan ¥%@ de ¥%@ del saldo gratuito. Una clave propia o un plan que ya pagas te permite seguir: Ajustes → nanoMuse Cloud."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Presque épuisé : ¥%@ sur ¥%@ du crédit gratuit restants. Une clé à vous ou un abonnement que vous payez déjà vous permet de continuer — Réglages → nanoMuse Cloud."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "残りわずか：無料枠は ¥%@ / ¥%@ です。自分のキーか、すでに契約しているプランで続けられます — 設定 → nanoMuse Cloud。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "거의 다 썼습니다: 무료 사용량 ¥%@ 중 ¥%@ 남았습니다. 직접 추가한 키나 이미 결제 중인 요금제로 계속 쓸 수 있습니다 — 설정 → nanoMuse Cloud."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Почти исчерпан: осталось ¥%@ из ¥%@ бесплатного лимита. Свой ключ или подписка, за которую вы уже платите, позволит продолжить — Настройки → nanoMuse Cloud."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快用完了：免费额度还剩 ¥%@（共 ¥%@）。自己的密钥或已付费的订阅都能接着用——设置 → nanoMuse 云。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快用完了：免費額度還剩 ¥%@（共 ¥%@）。自己的金鑰或已付費的訂閱都能接著用——設定 → nanoMuse 雲。"
           }
         }
       }
@@ -4059,6 +5121,65 @@
         }
       }
     },
+    "On a computer of your own" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf einem eigenen Computer"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On a computer of your own"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En un ordenador propio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur un ordinateur à vous"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自分のコンピューターで"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내 컴퓨터에서"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На своём компьютере"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在自己的电脑上"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在自己的電腦上"
+          }
+        }
+      }
+    },
     "Only the requests to the providers you added with your own key, and to the ChatGPT plan, go through it. nanoMuse Cloud, your computers and the local network never do. Kept on this phone only." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4383,6 +5504,65 @@
         }
       }
     },
+    "OpenAI's terms cover using a ChatGPT plan inside OpenAI's own Codex; other apps have had this access cut off before (OpenCode, January 2026). If it stops working, an API key does." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAIs Bedingungen decken die Nutzung eines ChatGPT-Abos in OpenAIs eigenem Codex ab; anderen Apps wurde dieser Zugang schon einmal gekappt (OpenCode, Januar 2026). Wenn es aufhört zu funktionieren, tut es ein API-Schlüssel."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI's terms cover using a ChatGPT plan inside OpenAI's own Codex; other apps have had this access cut off before (OpenCode, January 2026). If it stops working, an API key does."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los términos de OpenAI cubren usar un plan de ChatGPT dentro del propio Codex de OpenAI; a otras apps ya les han cortado este acceso antes (OpenCode, enero de 2026). Si deja de funcionar, una clave de API sí funciona."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les conditions d’OpenAI couvrent l’usage d’un abonnement ChatGPT dans le Codex d’OpenAI lui-même ; d’autres apps ont déjà vu cet accès coupé (OpenCode, janvier 2026). Si cela cesse de fonctionner, une clé API fonctionne."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI の規約は、ChatGPT プランを OpenAI 自身の Codex 内で使うことを認めています。他のアプリはこの経路を遮断されたことがあります（OpenCode、2026 年 1 月）。使えなくなった場合は API キーなら使えます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI 약관은 ChatGPT 요금제를 OpenAI 자체 Codex 안에서 쓰는 것을 허용합니다. 다른 앱은 이 경로가 끊긴 적이 있습니다(OpenCode, 2026년 1월). 안 되게 되면 API 키는 됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия OpenAI разрешают использовать подписку ChatGPT внутри собственного Codex OpenAI; другим приложениям этот доступ уже отключали (OpenCode, январь 2026). Если это перестанет работать, ключ API будет работать."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI 的条款只允许在它自己的 Codex 里使用 ChatGPT 订阅；其他应用的这条路曾被切断过（OpenCode，2026 年 1 月）。如果哪天不能用了，API key 还能用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI 的條款只允許在它自己的 Codex 裡使用 ChatGPT 訂閱；其他應用的這條路曾被切斷過（OpenCode，2026 年 1 月）。如果哪天不能用了，API key 還能用。"
+          }
+        }
+      }
+    },
     "Opening backup…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4414,6 +5594,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在打開備份…"
+          }
+        }
+      }
+    },
+    "OpenRouter or OpenAI first: one key, most models, pay as you go. Each provider below says what it covers." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter oder OpenAI zuerst: ein Schlüssel, die meisten Modelle, Bezahlung nach Verbrauch. Jeder Anbieter unten sagt, was er abdeckt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter or OpenAI first: one key, most models, pay as you go. Each provider below says what it covers."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter u OpenAI primero: una clave, la mayoría de los modelos, pago por uso. Cada proveedor de abajo dice qué cubre."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter ou OpenAI d’abord : une clé, la plupart des modèles, paiement à l’usage. Chaque fournisseur ci-dessous dit ce qu’il couvre."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "まずは OpenRouter か OpenAI：1 つのキーでほとんどのモデルが使え、使った分だけの支払いです。以下の各プロバイダーには対応範囲を記載しています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "먼저 OpenRouter 또는 OpenAI: 키 하나로 대부분의 모델을 쓴 만큼만 냅니다. 아래 각 제공자에 지원 범위가 적혀 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала OpenRouter или OpenAI: один ключ, большинство моделей, оплата по мере использования. У каждого провайдера ниже указано, что он покрывает."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "优先 OpenRouter 或 OpenAI：一个 key，大多数模型，按量付费。下面每个服务商都写明了它覆盖什么。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "優先 OpenRouter 或 OpenAI：一個 key，大多數模型，按量付費。下面每個服務商都寫明了它涵蓋什麼。"
           }
         }
       }
@@ -4473,6 +5712,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "密碼（可選）"
+          }
+        }
+      }
+    },
+    "Paste the API key (%@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API-Schlüssel einfügen (%@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste the API key (%@)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega la clave de API (%@)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collez la clé API (%@)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API キーを貼り付け（%@）"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 키 붙여넣기 (%@)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставьте ключ API (%@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "粘贴 API key（%@）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "貼上 API key（%@）"
           }
         }
       }
@@ -4543,6 +5841,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "其他來源"
+          }
+        }
+      }
+    },
+    "pictures" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilder"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pictures"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "imágenes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "images"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画像"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그림"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "картинки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画图"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "畫圖"
           }
         }
       }
@@ -5198,6 +6555,65 @@
         }
       }
     },
+    "screen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildschirm"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "screen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pantalla"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "écran"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "экран"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屏幕"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "螢幕"
+          }
+        }
+      }
+    },
     "Selected Backup" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5497,6 +6913,124 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重新登入"
+          }
+        }
+      }
+    },
+    "Sign in with %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit %@ anmelden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in with %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sesión con %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se connecter avec %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ でサインイン"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@(으)로 로그인"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войти через %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用 %@ 登录"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用 %@ 登入"
+          }
+        }
+      }
+    },
+    "Sign-ups are paused on this relay for now. An account that already exists can still sign in." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Konten sind auf diesem Relay vorerst ausgesetzt. Ein bestehendes Konto kann sich weiter anmelden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign-ups are paused on this relay for now. An account that already exists can still sign in."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los registros están pausados en este relay por ahora. Una cuenta que ya existe puede seguir iniciando sesión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les inscriptions sont suspendues sur ce relais pour le moment. Un compte déjà créé peut toujours se connecter."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリレーでは新規登録を一時停止しています。すでにあるアカウントはそのままサインインできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴레이는 당분간 가입을 받지 않습니다. 이미 있는 계정은 그대로 로그인할 수 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Регистрация на этом релее пока приостановлена. Уже существующий аккаунт может войти как прежде."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台中转暂时关闭了注册。已有的账号仍可登录。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這台中轉暫時關閉了註冊。已有的帳號仍可登入。"
           }
         }
       }
@@ -5956,6 +7490,124 @@
         }
       }
     },
+    "That is not an address the phone can reach." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist keine Adresse, die das Telefon erreichen kann."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That is not an address the phone can reach."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa no es una dirección a la que el teléfono pueda llegar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce n’est pas une adresse que le téléphone peut joindre."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この端末から届くアドレスではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "휴대전화가 연결할 수 있는 주소가 아닙니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не адрес, до которого телефон может добраться."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这不是手机能访问的地址。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這不是手機能連到的位址。"
+          }
+        }
+      }
+    },
+    "That message is too large for the model. Shorten it, leave out some attachments, or start a new chat." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Nachricht ist zu groß für das Modell. Kürze sie, lass einige Anhänge weg oder beginne einen neuen Chat."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That message is too large for the model. Shorten it, leave out some attachments, or start a new chat."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ese mensaje es demasiado grande para el modelo. Acórtalo, quita algunos adjuntos o empieza un chat nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce message est trop volumineux pour le modèle. Raccourcissez-le, retirez quelques pièces jointes ou commencez une nouvelle discussion."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このメッセージはモデルには大きすぎます。短くするか、添付をいくつか外すか、新しいチャットを始めてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 메시지는 모델이 받기엔 너무 큽니다. 줄이거나, 첨부 일부를 빼거나, 새 채팅을 시작하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это сообщение слишком велико для модели. Сократите его, уберите часть вложений или начните новый чат."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这条消息对模型来说太长了。缩短一些、去掉几个附件，或者新开一个对话。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這則訊息對模型來說太長了。縮短一些、去掉幾個附件，或者新開一個對話。"
+          }
+        }
+      }
+    },
     "The ChatGPT plan has nothing left for now" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6133,6 +7785,419 @@
         }
       }
     },
+    "The device hub is paused on this relay for now; each device keeps working on its own." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Geräteverbindung ist auf diesem Relay vorerst ausgesetzt; jedes Gerät arbeitet für sich weiter."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device hub is paused on this relay for now; each device keeps working on its own."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El enlace entre dispositivos está pausado en este relay por ahora; cada dispositivo sigue funcionando por su cuenta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La liaison entre appareils est suspendue sur ce relais pour le moment ; chaque appareil continue de fonctionner de son côté."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリレーではデバイス間の連携を一時停止しています。各デバイスは単独で動き続けます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴레이의 기기 연결이 당분간 중지되었습니다. 각 기기는 각자 계속 작동합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь между устройствами на этом релее пока приостановлена; каждое устройство работает само по себе."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台中转暂时停了设备互联，各设备可以各自继续用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這台中轉暫時停了裝置互聯，各裝置可以各自繼續用。"
+          }
+        }
+      }
+    },
+    "The free allowance is paused on this relay for now — not used up." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das kostenlose Guthaben ist auf diesem Relay vorerst ausgesetzt — nicht aufgebraucht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The free allowance is paused on this relay for now — not used up."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El saldo gratuito está pausado en este relay por ahora; no se ha agotado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le crédit gratuit est suspendu sur ce relais pour le moment — il n’est pas épuisé."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリレーでは無料枠を一時停止しています — 使い切ったわけではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴레이의 무료 사용량이 당분간 중지되었습니다 — 다 쓴 것이 아닙니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бесплатный лимит на этом релее пока приостановлен — не исчерпан."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台中转暂时停发了免费额度——不是用完了。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這台中轉暫時停發了免費額度——不是用完了。"
+          }
+        }
+      }
+    },
+    "The free allowance is paused on this relay for now — not used up. Add a key of your own or sign in with a plan you already pay for, under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das kostenlose Guthaben ist auf diesem Relay vorerst ausgesetzt — nicht aufgebraucht. Füge unter Einstellungen → nanoMuse Cloud einen eigenen Schlüssel hinzu oder melde dich mit einem Abo an, das du schon bezahlst. Deine Anmeldung, deine Geräte und der Rest bleiben, wie sie sind."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The free allowance is paused on this relay for now — not used up. Add a key of your own or sign in with a plan you already pay for, under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El saldo gratuito está pausado en este relay por ahora; no se ha agotado. Añade una clave propia o inicia sesión con un plan que ya pagas, en Ajustes → nanoMuse Cloud. Tu sesión, tus dispositivos y lo que queda siguen como están."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le crédit gratuit est suspendu sur ce relais pour le moment — il n’est pas épuisé. Ajoutez votre propre clé ou connectez-vous avec un abonnement que vous payez déjà, dans Réglages → nanoMuse Cloud. Votre connexion, vos appareils et le reste du crédit restent tels quels."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリレーでは無料枠を一時停止しています — 使い切ったわけではありません。設定 → nanoMuse Cloud で自分のキーを追加するか、すでに契約しているプランでサインインしてください。サインイン、デバイス、残りの枠はそのまま残ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴레이의 무료 사용량이 당분간 중지되었습니다 — 다 쓴 것이 아닙니다. 설정 → nanoMuse Cloud에서 직접 키를 추가하거나 이미 결제 중인 요금제로 로그인하세요. 로그인, 기기, 남은 사용량은 그대로 유지됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бесплатный лимит на этом релее пока приостановлен — не исчерпан. Добавьте свой ключ или войдите с подпиской, за которую уже платите, в Настройки → nanoMuse Cloud. Ваш вход, ваши устройства и остаток сохраняются как есть."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台中转暂时停发了免费额度——不是用完了。到「设置 → nanoMuse 云」添加自己的密钥，或用已付费的订阅登录。登录、多设备和剩余额度都原样保留。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這台中轉暫時停發了免費額度——不是用完了。到「設定 → nanoMuse 雲」加入自己的金鑰，或用已付費的訂閱登入。登入、多裝置和剩餘額度都原樣保留。"
+          }
+        }
+      }
+    },
+    "The free allowance is used up." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das kostenlose Guthaben ist aufgebraucht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The free allowance is used up."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El saldo gratuito se ha agotado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le crédit gratuit est épuisé."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無料枠を使い切りました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "무료 사용량을 다 썼습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бесплатный лимит исчерпан."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "免费额度已用完。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "免費額度已用完。"
+          }
+        }
+      }
+    },
+    "The key stays on this phone and is sent only to %@. Covers %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Schlüssel bleibt auf diesem Telefon und geht nur an %@. Deckt ab: %@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The key stays on this phone and is sent only to %@. Covers %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave se queda en este teléfono y solo se envía a %@. Cubre: %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé reste sur ce téléphone et n’est envoyée qu’à %@. Couvre : %@."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キーはこの端末に保存され、%@ にだけ送られます。対応範囲: %@。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "키는 이 휴대전화에만 보관되고 %@에만 전송됩니다. 지원 범위: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ остаётся на этом телефоне и отправляется только на %@. Покрывает: %@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "密钥只保存在这台手机上，只发给 %@。覆盖：%@。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "金鑰只保存在這台手機上，只傳給 %@。涵蓋：%@。"
+          }
+        }
+      }
+    },
+    "The model provider is busy right now. Try again in %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Modellanbieter ist gerade ausgelastet. Versuche es in %@ noch einmal."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The model provider is busy right now. Try again in %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El proveedor del modelo está ocupado ahora mismo. Inténtalo de nuevo en %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fournisseur du modèle est occupé en ce moment. Réessayez dans %@."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モデル提供元が混み合っています。%@ 後にもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델 제공자가 지금 바쁩니다. %@ 후에 다시 시도하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провайдер модели сейчас перегружен. Повторите через %@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型服务商现在很忙，请在 %@ 后再试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型服務商現在很忙，請在 %@ 後再試。"
+          }
+        }
+      }
+    },
+    "The model provider is busy right now. Try again in a moment." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Modellanbieter ist gerade ausgelastet. Versuche es gleich noch einmal."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The model provider is busy right now. Try again in a moment."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El proveedor del modelo está ocupado ahora mismo. Inténtalo de nuevo en un momento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fournisseur du modèle est occupé en ce moment. Réessayez dans un instant."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モデル提供元が混み合っています。少ししてからもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델 제공자가 지금 바쁩니다. 잠시 후 다시 시도하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провайдер модели сейчас перегружен. Повторите через минуту."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型服务商现在很忙，稍后再试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型服務商現在很忙，稍後再試。"
+          }
+        }
+      }
+    },
     "The nanoMuse Cloud provider and its models will be removed from this phone." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6192,6 +8257,124 @@
         }
       }
     },
+    "The phone must reach the computer: the same Wi-Fi, or a tunnel. Nothing leaves your network." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Telefon muss den Computer erreichen: dasselbe WLAN oder ein Tunnel. Nichts verlässt dein Netz."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The phone must reach the computer: the same Wi-Fi, or a tunnel. Nothing leaves your network."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El teléfono tiene que llegar al ordenador: la misma Wi-Fi o un túnel. Nada sale de tu red."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le téléphone doit joindre l’ordinateur : le même Wi-Fi, ou un tunnel. Rien ne sort de votre réseau."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "端末からそのコンピューターに届く必要があります：同じ Wi-Fi か、トンネル経由です。データはあなたのネットワークの外に出ません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "휴대전화가 그 컴퓨터에 닿아야 합니다: 같은 Wi-Fi이거나 터널을 통해서. 데이터는 내 네트워크 밖으로 나가지 않습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Телефон должен добраться до компьютера: та же сеть Wi-Fi или туннель. Ничего не покидает вашу сеть."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手机要能连到那台电脑：同一个 Wi-Fi，或者一条隧道。数据不会离开你的网络。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手機要能連到那台電腦：同一個 Wi-Fi，或者一條隧道。資料不會離開你的網路。"
+          }
+        }
+      }
+    },
+    "The relay says: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Relay sagt: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The relay says: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El relay dice: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le relais dit : %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リレーからの説明: %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "릴레이의 설명: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Релей сообщает: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中转说：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中轉說：%@"
+          }
+        }
+      }
+    },
     "This account was deleted. Sign in again to start a new one." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6247,6 +8430,419 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "這個帳號已刪除。重新登入會建立一個新帳號。"
+          }
+        }
+      }
+    },
+    "This relay is private; that address is not on its list." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Relay ist privat; diese Adresse steht nicht auf seiner Liste."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This relay is private; that address is not on its list."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este relay es privado; esa dirección no está en su lista."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce relais est privé ; cette adresse n’est pas sur sa liste."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリレーは非公開で、そのアドレスはリストにありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴레이는 비공개이며, 그 주소는 목록에 없습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот релей закрытый; этого адреса нет в его списке."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是一台私人中转，这个地址不在名单上。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這是一台私人中轉，這個地址不在名單上。"
+          }
+        }
+      }
+    },
+    "Today's share of the free allowance is used up." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der heutige Anteil des kostenlosen Guthabens ist aufgebraucht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today's share of the free allowance is used up."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La parte de hoy del saldo gratuito se ha agotado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La part du jour du crédit gratuit est épuisée."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日の無料枠を使い切りました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 몫의 무료 사용량을 다 썼습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сегодняшняя доля бесплатного лимита исчерпана."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天的免费额度已用完。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天的免費額度已用完。"
+          }
+        }
+      }
+    },
+    "Two ways on — your sign-in and your devices keep working either way." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwei Wege weiter — deine Anmeldung und deine Geräte funktionieren so oder so."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Two ways on — your sign-in and your devices keep working either way."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dos formas de seguir; tu sesión y tus dispositivos siguen funcionando en cualquier caso."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deux façons de continuer — votre connexion et vos appareils continuent de fonctionner dans tous les cas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "続ける方法は 2 つ — どちらでもサインインとデバイスはそのまま使えます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속하는 두 가지 방법 — 어느 쪽이든 로그인과 기기는 그대로 작동합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Два пути дальше — ваш вход и ваши устройства работают в любом случае."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "两个办法继续用——无论选哪个，登录和多设备功能都不受影响。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "兩個辦法繼續用——無論選哪個，登入和多裝置功能都不受影響。"
+          }
+        }
+      }
+    },
+    "Ways on" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wege weiter"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ways on"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formas de seguir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Façons de continuer"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "続ける方法"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속하는 방법"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пути дальше"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续用的办法"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繼續用的辦法"
+          }
+        }
+      }
+    },
+    "What is left stays as it is; the ways below work now." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Rest bleibt, wie er ist; die Wege unten funktionieren jetzt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is left stays as it is; the ways below work now."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lo que queda sigue como está; las opciones de abajo funcionan ahora."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le reste du crédit est conservé ; les options ci-dessous fonctionnent dès maintenant."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "残りの枠はそのまま残ります。下の方法は今すぐ使えます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "남은 사용량은 그대로 유지됩니다. 아래 방법은 지금 바로 쓸 수 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остаток сохраняется как есть; способы ниже работают уже сейчас."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剩余额度原样保留；下面的办法现在就能用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剩餘額度原樣保留；下面的辦法現在就能用。"
+          }
+        }
+      }
+    },
+    "Your code and link are under Settings → nanoMuse Cloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Code und dein Link stehen unter Einstellungen → nanoMuse Cloud."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your code and link are under Settings → nanoMuse Cloud."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu código y tu enlace están en Ajustes → nanoMuse Cloud."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre code et votre lien sont dans Réglages → nanoMuse Cloud."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コードとリンクは 設定 → nanoMuse Cloud にあります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내 코드와 링크는 설정 → nanoMuse Cloud에 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш код и ссылка — в Настройки → nanoMuse Cloud."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的邀请码和链接在「设置 → nanoMuse 云」。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的邀請碼和連結在「設定 → nanoMuse 雲」。"
+          }
+        }
+      }
+    },
+    "Your link is ready to share." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Link ist bereit zum Teilen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your link is ready to share."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu enlace está listo para compartir."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre lien est prêt à être partagé."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リンクを共有できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "링크를 공유할 수 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваша ссылка готова, можно делиться."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的链接可以分享了。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的連結可以分享了。"
           }
         }
       }

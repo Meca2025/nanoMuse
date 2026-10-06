@@ -708,6 +708,20 @@
     <string name="nm_cloud_err_password_required">Introdu mai întâi parola actuală.</string>
     <string name="nm_cloud_err_password_short">Parola are nevoie de cel puțin 8 caractere.</string>
     <string name="nm_cloud_err_password_weak">Parola e prea ușor de ghicit.</string>
+    <string name="nm_cloud_err_signup_closed">Înscrierile sunt oprite pe acest relay deocamdată. Un cont care există deja se poate conecta în continuare.</string>
+    <string name="nm_cloud_err_too_large">Mesajul acesta e prea mare pentru model. Scurtează-l, renunță la câteva atașamente sau începe o conversație nouă.</string>
+    <string name="nm_cloud_err_provider_busy">Furnizorul modelului e ocupat acum. Reîncearcă peste puțin timp.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Furnizorul modelului e ocupat acum. Reîncearcă peste %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud nu mai oferă acest model. Alege altul din Setări → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud nu a răspuns. Reîncearcă peste puțin timp.</string>
+    <string name="nm_cloud_err_allowance_paused">Creditul gratuit e oprit pe acest relay deocamdată — nu epuizat. Adaugă o cheie proprie sau conectează-te cu un abonament pe care îl plătești deja, din Setări → nanoMuse Cloud. Conectarea, dispozitivele și ce a rămas stau așa cum sunt.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud e oprit de operator deocamdată; conectarea și datele tale sunt păstrate. Reîncearcă mai târziu.</string>
+    <string name="nm_cloud_err_sync_paused">Sincronizarea conversațiilor e oprită pe acest relay deocamdată; ce e stocat se păstrează, iar dispozitivele tale merg mai departe pe cont propriu.</string>
+    <string name="nm_cloud_err_hub_paused">Legătura între dispozitive e oprită pe acest relay deocamdată; fiecare dispozitiv merge mai departe pe cont propriu.</string>
+    <string name="nm_refusal_relay_says">Relay-ul spune: %1$s</string>
+    <string name="nm_refusal_new_chat">Conversație nouă</string>
+    <string name="nm_refusal_sign_in">Conectează-te</string>
+    <string name="nm_refusal_open_settings">Deschide setările</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">din %1$s</string>
@@ -754,6 +768,8 @@
     <string name="nm_notice_issue">Raportează o eroare sau cere o funcție</string>
     <string name="nm_ways_title_out">Creditul gratuit s-a epuizat.</string>
     <string name="nm_ways_title_warn">Aproape epuizat: ¥%1$s din ¥%2$s rămași.</string>
+    <string name="nm_ways_title_paused">Creditul gratuit e oprit pe acest relay deocamdată — nu epuizat.</string>
+    <string name="nm_ways_paused_sub">Ce a rămas stă așa cum e; căile de mai jos merg acum.</string>
     <string name="nm_ways_sub">Două căi mai departe — conectarea și dispozitivele tale merg oricum.</string>
     <string name="nm_ways_key_title">Folosește propria cheie de model</string>
     <string name="nm_ways_key_guide">Ghid pas cu pas</string>

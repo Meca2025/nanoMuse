@@ -106,9 +106,15 @@ object ProviderCatalogue {
         }.map { parse(it) }.getOrDefault(emptyList()).also { cached = it }
     }
 
+    /**
+     * The vendor with this id: the bundled catalogue's entry, else the relay's own
+     * (`spend.guidance`, contract C11) — so a vendor the relay lists before the app is
+     * updated still opens a pre-filled form.
+     */
     fun byId(context: Context, id: String?): CatalogueProvider? {
         val key = id?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: return null
         return load(context).firstOrNull { it.id == key }
+            ?: NanoMuseCloud.guidance(context)?.let { g -> (g.providers + g.local).firstOrNull { it.id == key } }
     }
 
     /** The file's `providers[]`; a malformed entry is skipped rather than failing the whole list. */
