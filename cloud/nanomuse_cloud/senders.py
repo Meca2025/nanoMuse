@@ -66,19 +66,39 @@ class SmtpSender:
         if ident.channel != "email":
             raise SendError("this deployment sends codes by e-mail only")
         msg = compose_code_mail(self.s.smtp_from, ident.value, code, self.s.code_ttl_s // 60)
-        try:
-            if self.s.smtp_port == 465:
-                server = smtplib.SMTP_SSL(self.s.smtp_host, self.s.smtp_port, timeout=20)
-            else:
-                server = smtplib.SMTP(self.s.smtp_host, self.s.smtp_port, timeout=20)
-                server.starttls()
-            with server:
-                if self.s.smtp_user:
-                    server.login(self.s.smtp_user, self.s.smtp_password)
-                server.send_message(msg)
-        except (smtplib.SMTPException, OSError) as e:
-            log.error("smtp send failed: %s", e)
-            raise SendError("mail") from e
+        smtp_send(self.s, msg)
+
+
+def smtp_send(s: Settings, msg: EmailMessage) -> None:
+    """One message out through the relay's SMTP settings; SendError when it did not go."""
+    if not (s.smtp_host and s.smtp_from):
+        raise SendError("mail: SMTP_HOST and SMTP_FROM are not set")
+    try:
+        if s.smtp_port == 465:
+            server = smtplib.SMTP_SSL(s.smtp_host, s.smtp_port, timeout=20)
+        else:
+            server = smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=20)
+            server.starttls()
+        with server:
+            if s.smtp_user:
+                server.login(s.smtp_user, s.smtp_password)
+            server.send_message(msg)
+    except (smtplib.SMTPException, OSError) as e:
+        log.error("smtp send failed: %s", e)
+        raise SendError("mail") from e
+
+
+def compose_notice_mail(sender: str, to: str, subject: str, lines: list[str]) -> EmailMessage:
+    """A plain note to the operator (0.22: a threshold rule fired). Text only, both
+    languages' worth of facts in the lines the caller gives; nothing personal in it."""
+    msg = EmailMessage()
+    msg["From"] = sender if "<" in sender else f"nanoMuse <{sender}>"
+    msg["To"] = to
+    msg["Subject"] = f"nanoMuse Cloud · {subject}"
+    msg["Auto-Submitted"] = "auto-generated"
+    msg["X-Auto-Response-Suppress"] = "All"
+    msg.set_content("\n".join(lines) + "\n\nnanoMuse Cloud · automated, no reply / 自动发送，请勿回复\n")
+    return msg
 
 
 def compose_code_mail(sender: str, to: str, code: str, minutes: int) -> EmailMessage:

@@ -292,6 +292,39 @@ and none comes back after you have been to the page. The operator changes the
 policy on the admin page (*Settings › Star asks*) without an app update; every
 app keeps the same defaults built in for when the relay cannot be reached.
 
+## Controls
+
+The operator can pause parts of the relay without a restart or a deploy
+(relay 0.22, *Controls* on the admin console; `nanomuse-cloud admin controls
+…` on the command line — [`cloud/README.md`](../cloud/README.md#controls-022)).
+Five switches, each on by default, each kept in the database so a restart
+keeps it, each with a line in an audit log saying who flipped it, when and
+why. What an app sees when one is off:
+
+| switch | what the app gets while it is off |
+|---|---|
+| **Free allowance** | a limited account (no key of its own, not a member) asking a model gets **429 `allowance_exhausted`** with `paused: true` and `reason: "allowance_paused"` — the same shape as a spent pool, so every app shows its own-key card as it does today, with a message saying the allowance is paused for now rather than spent. Members, sign-in, devices and sync are unaffected |
+| **Sign-ups** | a phone number or an e-mail address that has no account yet gets **403 `signup_closed`** from `POST /v1/auth/code` and from `/v1/auth/verify`, before any code is sent; `signup_open` in `/v1/config` turns false. Every existing account signs in and works as before |
+| **Cloud service** | every API call answers **503 `service_paused`** with `paused: true`, except the health check, `/v1/config`, the admin console and `/v1/admin/*`; every hub socket is closed with `4003 hub_paused`. Nothing is deleted; a signed-in app keeps its key and signs back in when the switch returns |
+| **Conversation sync** | `/v1/sync/*` pushes and pulls answer **503 `sync_paused`**; `GET /v1/sync/state` still answers and says `paused: true`. What is stored stays; each device keeps working on its own |
+| **Device hub** | `WS /v1/hub` accepts and closes at once with **4003 `hub_paused`**, the open sockets are closed the same way, `GET /v1/devices` answers 503 `hub_paused`. Each device keeps working on its own |
+
+The switches that are off are listed under `paused` in `/healthz`,
+`/v1/config` (public, a minute's cache) and `/v1/me`, so a client can say why
+before it tries. The apps handle the codes as any refusal: the phones and the
+console show the relay's sentence; the `allowance_exhausted` shape is the one
+they already draw a card for.
+
+**Thresholds.** A rule says *when the account count reaches N, do one
+thing*: close sign-ups, pause the allowance, pause sync, or only notify. Rules
+are checked when an account is created and once a minute; a rule fires once
+(the count it fired at and the time are kept and shown), and *re-arm* or a
+changed threshold lets it fire again. Every firing writes an audit line and a
+line on the activity timeline; *notify* also sends an e-mail to the relay's
+`ADMIN_EMAIL` through the SMTP settings (counts and the relay's address only,
+nothing about any person). The state of the switches and the next threshold
+are the first line of the admin dashboard.
+
 ## Running your own
 
 Anyone can run a relay — for a family, a class, a company — and point the app
@@ -352,7 +385,12 @@ model with its `kind`, prices, `for` — the lane(s) a chat model is for, `chat`
 and / or `gui` — and `recommended_for`), `POST /v1/chat/completions`
 with streaming, `POST /v1/images/generations` and `/v1/images/edits`. Errors
 are `{"error": {"message", "type": "nanomuse_cloud", "code"}}` with a stable
-`code` the app turns into a sentence.
+`code` the app turns into a sentence. Relay 0.22 adds the codes of the
+operator's [switches](#controls): `403 signup_closed`, `503 service_paused`,
+`503 sync_paused`, `503 hub_paused` (and the hub's close code `4003
+hub_paused`), and `allowance_exhausted` with `paused: true` when the free
+allowance is paused rather than spent; `/healthz`, `/v1/config` and `/v1/me`
+list the switches that are off under `paused`.
 
 Devices: `GET /v1/devices` lists the account's devices (online or last seen),
 `DELETE /v1/devices/{id}` forgets an offline one, and `WS /v1/hub` is the hub
