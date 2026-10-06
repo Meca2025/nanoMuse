@@ -174,7 +174,7 @@ def _csv_cell(v: Any, kind: str) -> Any:
 
 def _accounts_daily(s: Stats, days: int) -> list[dict[str, Any]]:
     since, _today, window = s.window(days)
-    new = {int(r["day"]): int(r["n"]) for r in s.db.accounts_by_day(since, 0)}
+    new = {int(r["day"]): int(r["n"]) for r in s.db.accounts_by_day(since, 0, s.cloud.review_hashes)}
     active_model = {int(r["day"]): int(r["n"]) for r in s.db.active_by_day(since, 0)}
     active_any = {int(r["day"]): int(r["n"]) for r in s.db.daily_distinct("active", since)}
     events: dict[int, dict[str, int]] = {}
@@ -500,11 +500,11 @@ METRICS: list[Metric] = [
         "accounts_daily",
         "Accounts by day",
         "账号 · 每日",
-        "Per UTC day: total = accounts existing at the day's end (today's count minus those created later); new = accounts whose created_at falls in the day; "
+        "Per UTC day: total = accounts existing at the day's end (today's count minus those created later); new = accounts whose created_at falls in the day, the app store reviewer's (REVIEW_ADDRESSES) left out; "
         "active_any = distinct accounts that made at least one authenticated API call that day (counted in the `daily` table as requests pass); "
         "active_model = distinct accounts with at least one charged model request in the ledger; sign_ins = sign_in.code + sign_in.password events; "
         "sign_in_failures = sign_in.failed events.",
-        "按 UTC 日：total = 当天结束时存在的账号数（今天的总数减去之后创建的）；new = created_at 落在当天的账号；active_any = 当天至少发过一次带密钥 API 请求的账号数（请求经过时记入 daily 表）；"
+        "按 UTC 日：total = 当天结束时存在的账号数（今天的总数减去之后创建的）；new = created_at 落在当天的账号，不含应用商店审核员的账号（REVIEW_ADDRESSES）；active_any = 当天至少发过一次带密钥 API 请求的账号数（请求经过时记入 daily 表）；"
         "active_model = 账单里当天至少有一次计费模型请求的账号数；sign_ins = sign_in.code 与 sign_in.password 事件之和；sign_in_failures = sign_in.failed 事件。",
         "series",
         (

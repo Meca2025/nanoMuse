@@ -1245,9 +1245,19 @@ class Database:
             ).fetchone()
         return int(r[0])
 
-    def accounts_created_since(self, since: int) -> int:
+    @staticmethod
+    def _not_hashes(exclude_hashes: frozenset[str]) -> tuple[str, list[str]]:
+        """An `AND id_hash NOT IN (...)` clause and its parameters — empty for no set. The
+        reviewer's accounts (service.review_hashes) are left out of the sign-up counts."""
+        if not exclude_hashes:
+            return "", []
+        hashes = sorted(exclude_hashes)
+        return f" AND id_hash NOT IN ({','.join('?' * len(hashes))})", hashes
+
+    def accounts_created_since(self, since: int, exclude_hashes: frozenset[str] = frozenset()) -> int:
+        clause, params = self._not_hashes(exclude_hashes)
         with self._lock:
-            r = self._conn.execute("SELECT COUNT(*) FROM accounts WHERE created_at>=?", (since,)).fetchone()
+            r = self._conn.execute(f"SELECT COUNT(*) FROM accounts WHERE created_at>=?{clause}", [since, *params]).fetchone()
         return int(r[0])
 
     # -- the operator's time series ----------------------------------------------------
@@ -1262,11 +1272,12 @@ class Database:
                 (day_offset_s, day_offset_s, day_offset_s, since),
             ).fetchall()
 
-    def accounts_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+    def accounts_by_day(self, since: int, day_offset_s: int = 0, exclude_hashes: frozenset[str] = frozenset()) -> list[sqlite3.Row]:
+        clause, params = self._not_hashes(exclude_hashes)
         with self._lock:
             return self._conn.execute(
-                f"SELECT {self._DAY.replace('ts', 'created_at')} AS day, COUNT(*) AS n FROM accounts WHERE created_at>=? GROUP BY day",
-                (day_offset_s, day_offset_s, day_offset_s, since),
+                f"SELECT {self._DAY.replace('ts', 'created_at')} AS day, COUNT(*) AS n FROM accounts WHERE created_at>=?{clause} GROUP BY day",
+                [day_offset_s, day_offset_s, day_offset_s, since, *params],
             ).fetchall()
 
     def active_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
