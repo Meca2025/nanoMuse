@@ -6563,13 +6563,22 @@ class ChatViewModel(
     val nmAllowance: kotlinx.coroutines.flow.StateFlow<io.github.nanomuse.cloud.AllowanceSignal.Exhausted?> = _nmAllowance
 
     /**
-     * The error text to show for a failed turn — the allowance sentence when the relay said so,
-     * the reach card's canonical line when a provider's 401/403/429 was kept aside by
-     * `ReachSignal` (the chat renders it as a card), [fallback] otherwise.
+     * The error text to show for a failed turn — the allowance sentence when the relay said so
+     * (with the ways-on card under it), the relay's other refusals as a canonical line the chat
+     * renders as one sentence and a button (`RelayRefusal`: 413 → *New chat*, 401 → *Sign in*,
+     * busy → *Try again* …), the reach card's canonical line when a provider's 401/403/429 was
+     * kept aside by `ReachSignal`, [fallback] otherwise.
      */
     private fun nmAllowanceErrorText(fallback: String): String {
         val info = io.github.nanomuse.cloud.AllowanceSignal.takeFresh()
         if (info == null) {
+            io.github.nanomuse.cloud.AllowanceSignal.takeFreshRefusal()?.let { refusal ->
+                // a key the relay no longer takes: the account's state follows (contract C12)
+                if (refusal.kind == io.github.nanomuse.cloud.RelayRefusal.Kind.SIGNED_OUT) {
+                    viewModelScope.launch { runCatching { io.github.nanomuse.cloud.NanoMuseCloud.refresh(context) } }
+                }
+                return io.github.nanomuse.cloud.RelayRefusal.canonical(refusal)
+            }
             val reach = io.github.nanomuse.net.ReachSignal.takeFresh() ?: return fallback
             return io.github.nanomuse.net.ProviderReach.canonical(reach)
         }
@@ -6583,6 +6592,7 @@ class ChatViewModel(
         // the cached account shows the pool as spent until the next /v1/me
         viewModelScope.launch { runCatching { io.github.nanomuse.cloud.NanoMuseCloud.refresh(context) } }
         if (info.dailyCap) return context.getString(R.string.nm_ways_title_day)
+        if (info.paused) return context.getString(R.string.nm_cloud_err_allowance_paused)
         return io.github.nanomuse.cloud.NanoMuseCloud.allowanceSentence(context)
     }
 

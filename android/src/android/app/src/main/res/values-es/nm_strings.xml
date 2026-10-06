@@ -705,6 +705,20 @@
     <string name="nm_cloud_err_password_required">Escribe primero la contraseña actual.</string>
     <string name="nm_cloud_err_password_short">La contraseña necesita al menos 8 caracteres.</string>
     <string name="nm_cloud_err_password_weak">Esa contraseña es demasiado fácil de adivinar.</string>
+    <string name="nm_cloud_err_signup_closed">Los registros están pausados en este relay por ahora. Una cuenta que ya existe puede seguir iniciando sesión.</string>
+    <string name="nm_cloud_err_too_large">Ese mensaje es demasiado grande para el modelo. Acórtalo, quita algunos adjuntos o empieza un chat nuevo.</string>
+    <string name="nm_cloud_err_provider_busy">El proveedor del modelo está ocupado ahora mismo. Inténtalo de nuevo en un momento.</string>
+    <string name="nm_cloud_err_provider_busy_wait">El proveedor del modelo está ocupado ahora mismo. Inténtalo de nuevo en %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud ya no ofrece ese modelo. Elige otro en Ajustes → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud no respondió. Inténtalo de nuevo en un momento.</string>
+    <string name="nm_cloud_err_allowance_paused">El saldo gratuito está pausado en este relay por ahora; no se ha agotado. Añade una clave propia o inicia sesión con un plan que ya pagas, en Ajustes → nanoMuse Cloud. Tu sesión, tus dispositivos y lo que queda siguen como están.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud está pausado por su operador por ahora; tu sesión y tus datos se conservan. Inténtalo más tarde.</string>
+    <string name="nm_cloud_err_sync_paused">La sincronización de conversaciones está pausada en este relay por ahora; lo guardado se conserva y tus dispositivos siguen funcionando por su cuenta.</string>
+    <string name="nm_cloud_err_hub_paused">El enlace entre dispositivos está pausado en este relay por ahora; cada dispositivo sigue funcionando por su cuenta.</string>
+    <string name="nm_refusal_relay_says">El relay dice: %1$s</string>
+    <string name="nm_refusal_new_chat">Chat nuevo</string>
+    <string name="nm_refusal_sign_in">Iniciar sesión</string>
+    <string name="nm_refusal_open_settings">Abrir ajustes</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">desde %1$s</string>
@@ -751,6 +765,8 @@
     <string name="nm_notice_issue">Informar de un error o pedir una función</string>
     <string name="nm_ways_title_out">El saldo gratuito se ha agotado.</string>
     <string name="nm_ways_title_warn">Casi agotado: quedan ¥%1$s de ¥%2$s.</string>
+    <string name="nm_ways_title_paused">El saldo gratuito está pausado en este relay por ahora; no se ha agotado.</string>
+    <string name="nm_ways_paused_sub">Lo que queda sigue como está; las opciones de abajo funcionan ahora.</string>
     <string name="nm_ways_sub">Dos formas de seguir; tu sesión y tus dispositivos siguen funcionando en cualquier caso.</string>
     <string name="nm_ways_key_title">Usa tu propia clave de modelo</string>
     <string name="nm_ways_key_guide">Guía paso a paso</string>

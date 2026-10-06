@@ -68,6 +68,12 @@ const val NETWORK_DEEP_LINK = "minis://settings/network"
  */
 @Composable
 fun NmProviderErrorOrBanner(error: String, onRetry: () -> Unit, banner: @Composable () -> Unit) {
+    // the relay's refusals (413 too large, busy, the operator's switches …): one sentence and a button
+    val refusal = remember(error) { io.github.nanomuse.cloud.RelayRefusal.fromCanonical(error) }
+    if (refusal != null) {
+        RelayRefusalCard(refusal, onRetry)
+        return
+    }
     val reach = remember(error) { ProviderReach.classify(error) }
     if (reach == null) banner() else ProviderReachCard(reach, onRetry)
 }

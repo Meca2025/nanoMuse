@@ -72,6 +72,8 @@ object NanoMuseCloud {
     // 0.1.27: an invitation credits both sides (relay 0.9)
     private const val KEY_INVITEE_BONUS = "cloud.invitee_bonus_cny"
     private const val KEY_OWN_KEY_DOCS = "cloud.own_key_docs"
+    /** Relay 0.21, contract C11: the ways-on card as data (`spend.guidance`), kept as sent; the card reads it first. */
+    private const val KEY_GUIDANCE = "cloud.guidance_json"
     private const val KEY_ACCOUNT_ID = "cloud.account_id"
     private const val KEY_CREATED_AT = "cloud.created_at"
     private const val KEY_HAS_PASSWORD = "cloud.has_password"
@@ -108,7 +110,18 @@ object NanoMuseCloud {
     /** Where the privacy policy is when the relay did not name one. */
     const val PRIVACY_URL = "https://nanomuse.cn/privacy/"
 
-    class CloudException(val code: String, message: String, val status: Int = 0) : IOException(message)
+    /**
+     * A refusal of the relay's: its stable [code], its own sentence, the HTTP [status]; relay
+     * 0.22 adds [retryAfterS] (`provider_busy`, `too_many_in_flight`) and [paused] (the
+     * refusal comes from one of the operator's switches, not from use).
+     */
+    class CloudException(
+        val code: String,
+        message: String,
+        val status: Int = 0,
+        val retryAfterS: Int? = null,
+        val paused: Boolean = false,
+    ) : IOException(message)
 
     /** One line of the usage breakdown: a kind (chat, image, video, realtime) or a model. */
     data class UsageRow(
@@ -329,6 +342,14 @@ object NanoMuseCloud {
             privacyUrl = p.getString(KEY_PRIVACY_URL, "") ?: "",
         )
     }
+
+    /**
+     * The ways-on card as the relay last described it (`spend.guidance` of `/v1/me`, relay
+     * 0.21, contract C11): the region's providers in order, the plans, the local servers, the
+     * caveats. Null from a relay that sends none — the card falls back to the bundled catalogue.
+     */
+    fun guidance(context: Context): Guidance? =
+        prefs(context).getString(KEY_GUIDANCE, null)?.let { Guidance.parse(it) }
 
     /** Whether the last sign-in created the account (until [clearFreshAccount]). */
     fun freshAccount(context: Context): Boolean = prefs(context).getBoolean(KEY_FRESH, false)
@@ -652,7 +673,11 @@ object NanoMuseCloud {
         inviteBonusText(context),
     )
 
-    /** A sentence for the person, from the relay's stable error codes. */
+    /**
+     * A sentence for the person, from the relay's stable error codes — every code the relay
+     * sends today (docs/cloud.md; the desktop's `refusals.ts` and the runtime's `failures.py`
+     * say the same in their words), never a status code or the wire.
+     */
     fun describe(context: Context, e: Throwable): String = when (e) {
         is CloudException -> when (e.code) {
             "bad_identifier" -> context.getString(R.string.nm_cloud_err_bad_identifier)
@@ -660,6 +685,7 @@ object NanoMuseCloud {
             "code_expired" -> context.getString(R.string.nm_cloud_err_code_expired)
             "code_too_often" -> context.getString(R.string.nm_cloud_err_code_too_often)
             "not_invited" -> context.getString(R.string.nm_cloud_err_not_invited)
+            "signup_closed" -> context.getString(R.string.nm_cloud_err_signup_closed)
             "send_failed" -> context.getString(R.string.nm_cloud_err_send_failed)
             "phone_region" -> context.getString(R.string.nm_cloud_sms_region) // the same sentence the sign-in screen shows before asking
             "account_disabled" -> context.getString(R.string.nm_cloud_err_disabled)
@@ -667,8 +693,18 @@ object NanoMuseCloud {
             "account_deleted" -> context.getString(R.string.nm_cloud_err_account_deleted)
             "out_of_tokens" -> context.getString(R.string.nm_cloud_err_out_of_tokens)
             "daily_cap" -> context.getString(R.string.nm_cloud_err_daily_cap)
-            "allowance_exhausted" -> allowanceSentence(context)
-            "rate_limited" -> context.getString(R.string.nm_cloud_err_rate_limited)
+            // relay 0.22: the operator paused the free allowance — not used up, the same card, another lead
+            "allowance_exhausted" -> if (e.paused) context.getString(R.string.nm_cloud_err_allowance_paused) else allowanceSentence(context)
+            "rate_limited", "too_many_in_flight" -> context.getString(R.string.nm_cloud_err_rate_limited)
+            "provider_busy" -> e.retryAfterS?.takeIf { it > 0 }
+                ?.let { context.getString(R.string.nm_cloud_err_provider_busy_wait, io.github.nanomuse.ui.chat.duration(context, it)) }
+                ?: context.getString(R.string.nm_cloud_err_provider_busy)
+            "too_large" -> context.getString(R.string.nm_cloud_err_too_large)
+            "model_not_offered" -> context.getString(R.string.nm_cloud_err_model_not_offered)
+            "service_paused" -> context.getString(R.string.nm_cloud_err_service_paused)
+            "sync_paused" -> context.getString(R.string.nm_cloud_err_sync_paused)
+            "hub_paused" -> context.getString(R.string.nm_cloud_err_hub_paused)
+            "upstream" -> context.getString(R.string.nm_cloud_err_relay_down)
             "unreachable" -> context.getString(R.string.nm_cloud_err_unreachable)
             "bad_credentials" -> context.getString(R.string.nm_cloud_err_bad_credentials)
             "no_password" -> context.getString(R.string.nm_cloud_err_no_password)
@@ -677,7 +713,14 @@ object NanoMuseCloud {
             "password_required" -> context.getString(R.string.nm_cloud_err_password_required)
             "password_short" -> context.getString(R.string.nm_cloud_err_password_short)
             "password_weak", "password_long" -> context.getString(R.string.nm_cloud_err_password_weak)
-            else -> e.message ?: context.getString(R.string.nm_cloud_err_generic)
+            // no code of the relay's: the status says enough for a 413 (a proxy's plain
+            // "Request too large"), a 401 and a 5xx; anything else shows the relay's sentence
+            else -> when {
+                e.status == 413 -> context.getString(R.string.nm_cloud_err_too_large)
+                e.status == 401 -> context.getString(R.string.nm_cloud_err_bad_key)
+                e.status >= 500 -> context.getString(R.string.nm_cloud_err_relay_down)
+                else -> e.message?.takeIf { it.isNotBlank() && !it.startsWith("HTTP ") } ?: context.getString(R.string.nm_cloud_err_generic)
+            }
         }
         is IOException -> context.getString(R.string.nm_cloud_err_unreachable)
         else -> e.message ?: context.getString(R.string.nm_cloud_err_generic)
@@ -914,6 +957,8 @@ object NanoMuseCloud {
             .putFloat(KEY_ALLOWANCE, spend.optDouble("allowance_cny", 0.0).toFloat())
             .putFloat(KEY_INVITEE_BONUS, spend.optDouble("invitee_bonus_cny", reply.optJSONObject("invite")?.optDouble("invitee_bonus_cny", 0.0) ?: 0.0).toFloat())
             .putString(KEY_OWN_KEY_DOCS, spend.optString("own_key_docs", ""))
+            // relay 0.21: the card as data; an older relay sends none and the bundled catalogue is used
+            .putString(KEY_GUIDANCE, spend.optJSONObject("guidance")?.toString())
             .putFloat(KEY_USD_CNY, spend.optDouble("usd_cny", 0.0).toFloat())
             .putString(KEY_ACCOUNT_ID, account.optString("id"))
             .putLong(KEY_CREATED_AT, account.optLong("created_at", 0))
@@ -997,7 +1042,7 @@ object NanoMuseCloud {
             .remove(KEY_GRANTED).remove(KEY_USED).remove(KEY_USED_TODAY).remove(KEY_DAILY_CAP).remove(KEY_UNLIMITED).remove(KEY_CHECKED_AT)
             .remove(KEY_MEMBER).remove(KEY_SPENT_TODAY).remove(KEY_SPENT_TOTAL).remove(KEY_USD_CNY)
             .remove(KEY_GRANT).remove(KEY_LEFT).remove(KEY_WARN).remove(KEY_ALLOWANCE).remove(KEY_INVITEE_BONUS)
-            .remove(KEY_OWN_KEY_DOCS)
+            .remove(KEY_OWN_KEY_DOCS).remove(KEY_GUIDANCE)
             .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_REGION).remove(KEY_USAGE)
             .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
             .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_CONTRIBUTE_DEFAULT).remove(KEY_PRIVACY_URL).remove(KEY_FRESH).remove(KEY_WARNED_GRANT)
@@ -1030,6 +1075,9 @@ object NanoMuseCloud {
                 code = err?.optString("code")?.takeIf { it.isNotBlank() } ?: "http_${r.code}",
                 message = err?.optString("message")?.takeIf { it.isNotBlank() } ?: "HTTP ${r.code}",
                 status = r.code,
+                // relay 0.22: when to come back, and whether an operator's switch is the reason
+                retryAfterS = err?.optDouble("retry_after", 0.0)?.takeIf { it > 0 }?.let { kotlin.math.ceil(it).toInt() },
+                paused = err?.optBoolean("paused", false) == true,
             )
         }
     }

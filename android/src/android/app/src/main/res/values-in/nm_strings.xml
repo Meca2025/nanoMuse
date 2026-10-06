@@ -702,6 +702,20 @@
     <string name="nm_cloud_err_password_required">Masukkan kata sandi saat ini dulu.</string>
     <string name="nm_cloud_err_password_short">Kata sandi perlu minimal 8 karakter.</string>
     <string name="nm_cloud_err_password_weak">Kata sandi itu terlalu mudah ditebak.</string>
+    <string name="nm_cloud_err_signup_closed">Pendaftaran di relay ini dijeda untuk sementara. Akun yang sudah ada tetap bisa masuk.</string>
+    <string name="nm_cloud_err_too_large">Pesan itu terlalu besar untuk model. Persingkat, hilangkan beberapa lampiran, atau mulai obrolan baru.</string>
+    <string name="nm_cloud_err_provider_busy">Penyedia model sedang sibuk. Coba lagi sebentar lagi.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Penyedia model sedang sibuk. Coba lagi dalam %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud tidak lagi menyediakan model itu. Pilih yang lain di Pengaturan → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud tidak menjawab. Coba lagi sebentar lagi.</string>
+    <string name="nm_cloud_err_allowance_paused">Kuota gratis di relay ini dijeda untuk sementara — bukan habis. Tambahkan kunci sendiri atau masuk dengan paket yang sudah kamu bayar, di Pengaturan → nanoMuse Cloud. Login, perangkat, dan sisa kuotamu tetap seperti semula.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud dijeda oleh operatornya untuk sementara; login dan datamu tetap tersimpan. Coba lagi nanti.</string>
+    <string name="nm_cloud_err_sync_paused">Sinkronisasi percakapan di relay ini dijeda untuk sementara; yang tersimpan tetap ada, dan perangkatmu tetap bekerja sendiri-sendiri.</string>
+    <string name="nm_cloud_err_hub_paused">Hubungan antar perangkat di relay ini dijeda untuk sementara; setiap perangkat tetap bekerja sendiri.</string>
+    <string name="nm_refusal_relay_says">Kata relay: %1$s</string>
+    <string name="nm_refusal_new_chat">Obrolan baru</string>
+    <string name="nm_refusal_sign_in">Masuk</string>
+    <string name="nm_refusal_open_settings">Buka Pengaturan</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">sejak %1$s</string>
@@ -748,6 +762,8 @@
     <string name="nm_notice_issue">Laporkan bug atau minta fitur</string>
     <string name="nm_ways_title_out">Kuota gratis sudah habis.</string>
     <string name="nm_ways_title_warn">Hampir habis: tersisa ¥%1$s dari ¥%2$s.</string>
+    <string name="nm_ways_title_paused">Kuota gratis di relay ini dijeda untuk sementara — bukan habis.</string>
+    <string name="nm_ways_paused_sub">Sisa kuota tetap seperti semula; cara di bawah bisa dipakai sekarang.</string>
     <string name="nm_ways_sub">Dua cara untuk lanjut — login dan perangkatmu tetap berfungsi apa pun pilihannya.</string>
     <string name="nm_ways_key_title">Pakai kunci modelmu sendiri</string>
     <string name="nm_ways_key_guide">Panduan langkah demi langkah</string>

@@ -705,6 +705,20 @@
     <string name="nm_cloud_err_password_required">Önce mevcut parolayı gir.</string>
     <string name="nm_cloud_err_password_short">Parola en az 8 karakter olmalı.</string>
     <string name="nm_cloud_err_password_weak">Bu parolayı tahmin etmek çok kolay.</string>
+    <string name="nm_cloud_err_signup_closed">Bu relay’de kayıtlar şimdilik durduruldu. Zaten var olan bir hesap oturum açmaya devam edebilir.</string>
+    <string name="nm_cloud_err_too_large">Bu mesaj model için fazla büyük. Kısalt, bazı ekleri çıkar ya da yeni bir sohbet başlat.</string>
+    <string name="nm_cloud_err_provider_busy">Model sağlayıcısı şu anda yoğun. Birazdan yeniden dene.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Model sağlayıcısı şu anda yoğun. %1$s sonra yeniden dene.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud bu modeli artık sunmuyor. Ayarlar → nanoMuse Cloud altından başka bir model seç.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud yanıt vermedi. Birazdan yeniden dene.</string>
+    <string name="nm_cloud_err_allowance_paused">Bu relay’de ücretsiz kota şimdilik durduruldu — tükenmedi. Ayarlar → nanoMuse Cloud altından kendi anahtarını ekle ya da zaten ödediğin bir planla oturum aç. Oturumun, cihazların ve kalan kota olduğu gibi kalır.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud işletmecisi tarafından şimdilik durduruldu; oturumun ve verilerin saklanıyor. Daha sonra yeniden dene.</string>
+    <string name="nm_cloud_err_sync_paused">Bu relay’de konuşma eşitleme şimdilik durduruldu; kayıtlı olanlar saklanır ve cihazların kendi başına çalışmaya devam eder.</string>
+    <string name="nm_cloud_err_hub_paused">Bu relay’de cihaz bağlantısı şimdilik durduruldu; her cihaz kendi başına çalışmaya devam eder.</string>
+    <string name="nm_refusal_relay_says">Relay şunu diyor: %1$s</string>
+    <string name="nm_refusal_new_chat">Yeni sohbet</string>
+    <string name="nm_refusal_sign_in">Oturum aç</string>
+    <string name="nm_refusal_open_settings">Ayarları aç</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">%1$s tarihinden beri</string>
@@ -751,6 +765,8 @@
     <string name="nm_notice_issue">Hata bildir ya da özellik iste</string>
     <string name="nm_ways_title_out">Ücretsiz kota bitti.</string>
     <string name="nm_ways_title_warn">Bitmek üzere: ¥%2$s içinden ¥%1$s kaldı.</string>
+    <string name="nm_ways_title_paused">Bu relay’de ücretsiz kota şimdilik durduruldu — tükenmedi.</string>
+    <string name="nm_ways_paused_sub">Kalan kota olduğu gibi kalır; aşağıdaki yollar şimdi çalışır.</string>
     <string name="nm_ways_sub">Devam etmenin iki yolu var — oturumun ve cihazların her durumda çalışmaya devam eder.</string>
     <string name="nm_ways_key_title">Kendi model anahtarını kullan</string>
     <string name="nm_ways_key_guide">Adım adım kılavuz</string>

@@ -302,77 +302,54 @@ enum NanoMuseOwnKeyPreset: String, CaseIterable, Identifiable {
 
 // MARK: - "Use your own key" sheet
 
-/// Pick a vendor, paste the key (or sign in, for OpenRouter), done. Order follows the region.
+/// The catalogue, for the region (contract C11; docs/parity.md item 32): the vendors with a key
+/// — the region's first, each saying what it covers — the plans one already pays for (ChatGPT,
+/// Claude, Kimi, OpenRouter), the servers on a computer of one's own. A row opens
+/// `NanoMuseVendorSheet` on that vendor. The relay's `spend.guidance` is the list when it sent
+/// one; the bundled `providers.json` otherwise.
 struct NanoMuseOwnKeySheet: View {
     var onDone: (ProviderInstance?) -> Void
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
-    @State private var preset: NanoMuseOwnKeyPreset = .openrouter
-    @State private var key = ""
-    @State private var busy = false
-    @State private var message: String?
+    @State private var pick: NanoMuseVendorPick?
+
+    private var chinese: Bool { NanoMuseCatalogue.chinese }
+    private var ways: NanoMuseWays {
+        NanoMuseWays.resolve(guidance: NanoMuseAllowance.storedGuidance(), catalogue: NanoMuseCatalogue.bundled, mainland: NanoMuseRegion.isMainland, chinese: chinese)
+    }
 
     var body: some View {
         NavigationStack {
+            let ways = self.ways
             Form {
                 Section {
-                    ForEach(NanoMuseOwnKeyPreset.ordered) { p in
-                        Button {
-                            preset = p
-                            message = nil
-                        } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: preset == p ? "largecircle.fill.circle" : "circle")
-                                    .foregroundStyle(preset == p ? NanoMuseTones.action : Color.secondary)
-                                    .padding(.top, 2)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(p.label).font(.body.weight(.medium)).foregroundStyle(.primary)
-                                    Text(p.blurb).font(.footnote).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } footer: {
-                    Text(NanoMuseOwnKeyPreset.regionNote)
-                }
-                Section {
-                    if preset == .openrouter {
-                        Button {
-                            Task { await signIn() }
-                        } label: {
-                            HStack {
-                                Label(AppLocalized("Sign in with OpenRouter"), systemImage: "person.crop.circle.badge.checkmark")
-                                if busy { Spacer(); ProgressView() }
-                            }
-                        }
-                        .disabled(busy)
-                    }
-                    SecureField(AppLocalized("Paste the API key"), text: $key)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .disabled(busy)
-                    Button {
-                        Task { await save() }
-                    } label: {
-                        HStack {
-                            Text(AppLocalized("Use this key"))
-                            if busy { Spacer(); ProgressView() }
-                        }
-                    }
-                    .disabled(busy || key.trimmingCharacters(in: .whitespaces).isEmpty)
-                    Button {
-                        openURL(preset.keyURL)
-                    } label: {
-                        Label(AppLocalized("Get a key"), systemImage: "arrow.up.right.square")
+                    ForEach(ways.vendors) { v in
+                        Button { pick = NanoMuseVendorPick(vendor: v, auth: nil) } label: { row(v.displayName(chinese: chinese), NanoMuseCatalogue.covers(v.capabilities)) }
                     }
                 } header: {
-                    Text(preset.label)
+                    Text(AppLocalized("A key of your own"))
                 } footer: {
-                    if let message {
-                        Text(message).foregroundStyle(.red)
-                    } else {
-                        Text(String(format: AppLocalized("The key stays on this phone and is sent only to %@. Chat opens on %@; the hands use %@."), preset.label, preset.chatModel, preset.guiModel))
+                    Text(NanoMuseRegion.isMainland
+                         ? AppLocalized("Alibaba Cloud Bailian first: one key covers chat, the screen, pictures and clips, and it signs up accounts from mainland China. Each provider below says what it covers.")
+                         : AppLocalized("OpenRouter or OpenAI first: one key, most models, pay as you go. Each provider below says what it covers."))
+                }
+                if !ways.signIns.isEmpty {
+                    Section {
+                        ForEach(ways.signIns) { s in
+                            Button { pick = NanoMuseVendorPick(vendor: s.vendor, auth: s.auth) } label: { row(s.name, NanoMuseCatalogue.covers(s.covers)) }
+                        }
+                    } header: {
+                        Text(AppLocalized("A subscription you already pay for"))
+                    } footer: {
+                        Text(AppLocalized("A ChatGPT, Claude or Kimi plan can sign in here instead of a key. It covers chat and the screen, not pictures or clips."))
+                    }
+                }
+                if !ways.locals.isEmpty {
+                    Section {
+                        ForEach(ways.locals) { v in
+                            Button { pick = NanoMuseVendorPick(vendor: v, auth: nil) } label: { row(v.displayName(chinese: chinese), v.baseURL) }
+                        }
+                    } header: {
+                        Text(AppLocalized("On a computer of your own"))
                     }
                 }
             }
@@ -381,34 +358,22 @@ struct NanoMuseOwnKeySheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Cancel")) { dismiss() } }
             }
-            .onAppear {
-                // Bailian first in mainland China, OpenRouter first elsewhere (contract C5).
-                if let first = NanoMuseOwnKeyPreset.ordered.first { preset = first }
+            .sheet(item: $pick) { p in
+                NanoMuseVendorSheet(vendor: p.vendor, signIn: p.auth) { inst in
+                    if inst != nil { onDone(inst); dismiss() }
+                }
             }
         }
     }
 
-    private func save() async {
-        busy = true
-        defer { busy = false }
-        let inst = await preset.install(apiKey: key)
-        if inst == nil {
-            message = AppLocalized("Nothing to add")
-            return
-        }
-        onDone(inst)
-        dismiss()
-    }
-
-    private func signIn() async {
-        busy = true
-        defer { busy = false }
-        do {
-            let inst = try await preset.signInOpenRouter()
-            onDone(inst)
-            dismiss()
-        } catch {
-            message = error.localizedDescription
+    private func row(_ title: String, _ subtitle: String) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.body.weight(.medium)).foregroundStyle(.primary)
+                if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(.secondary) }
+            }
+            Spacer()
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
         }
     }
 }

@@ -702,6 +702,20 @@
     <string name="nm_cloud_err_password_required">まず現在のパスワードを入力してください。</string>
     <string name="nm_cloud_err_password_short">パスワードは 8 文字以上必要です。</string>
     <string name="nm_cloud_err_password_weak">そのパスワードは推測されやすすぎます。</string>
+    <string name="nm_cloud_err_signup_closed">このリレーでは新規登録を一時停止しています。すでにあるアカウントはそのままサインインできます。</string>
+    <string name="nm_cloud_err_too_large">このメッセージはモデルには大きすぎます。短くするか、添付をいくつか外すか、新しいチャットを始めてください。</string>
+    <string name="nm_cloud_err_provider_busy">モデル提供元が混み合っています。少ししてからもう一度お試しください。</string>
+    <string name="nm_cloud_err_provider_busy_wait">モデル提供元が混み合っています。%1$s 後にもう一度お試しください。</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud ではそのモデルの提供を終了しました。設定 → nanoMuse Cloud で別のモデルを選んでください。</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud から応答がありませんでした。少ししてからもう一度お試しください。</string>
+    <string name="nm_cloud_err_allowance_paused">このリレーでは無料枠を一時停止しています — 使い切ったわけではありません。設定 → nanoMuse Cloud で自分のキーを追加するか、すでに契約しているプランでサインインしてください。サインイン、デバイス、残りの枠はそのまま残ります。</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud は運営者により一時停止中です。サインインとデータは保持されます。後でもう一度お試しください。</string>
+    <string name="nm_cloud_err_sync_paused">このリレーでは会話の同期を一時停止しています。保存済みの内容は残り、各デバイスは単独で動き続けます。</string>
+    <string name="nm_cloud_err_hub_paused">このリレーではデバイス間の連携を一時停止しています。各デバイスは単独で動き続けます。</string>
+    <string name="nm_refusal_relay_says">リレーからの説明: %1$s</string>
+    <string name="nm_refusal_new_chat">新しいチャット</string>
+    <string name="nm_refusal_sign_in">サインイン</string>
+    <string name="nm_refusal_open_settings">設定を開く</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">%1$s から</string>
@@ -748,6 +762,8 @@
     <string name="nm_notice_issue">バグを報告する、または機能を要望する</string>
     <string name="nm_ways_title_out">無料枠を使い切りました。</string>
     <string name="nm_ways_title_warn">残りわずか: ¥%2$s 中 ¥%1$s。</string>
+    <string name="nm_ways_title_paused">このリレーでは無料枠を一時停止しています — 使い切ったわけではありません。</string>
+    <string name="nm_ways_paused_sub">残りの枠はそのまま残ります。下の方法は今すぐ使えます。</string>
     <string name="nm_ways_sub">続ける方法は 2 つ — どちらでもサインインとデバイスはそのまま使えます。</string>
     <string name="nm_ways_key_title">自分のモデルキーを使う</string>
     <string name="nm_ways_key_guide">手順ガイド</string>

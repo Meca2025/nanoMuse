@@ -18,7 +18,8 @@ struct NanoMuseAccountSections: View {
     @State private var starAsk = false
     /// The allowance is used up and the policy says this is a moment to ask: the star row under the ways on.
     @State private var exhaustedAsk = false
-    @State private var ownKey = false
+    /// The vendor (or plan) whose sheet is open, from the ways on.
+    @State private var pick: NanoMuseVendorPick?
 
     var body: some View {
         Group {
@@ -37,7 +38,7 @@ struct NanoMuseAccountSections: View {
             if !events.isEmpty { timelineSection }
         }
         .task { await load() }
-        .sheet(isPresented: $ownKey) { NanoMuseOwnKeySheet { _ in } }
+        .sheet(item: $pick) { p in NanoMuseVendorSheet(vendor: p.vendor, signIn: p.auth) }
     }
 
     // MARK: - Allowance
@@ -88,7 +89,9 @@ struct NanoMuseAccountSections: View {
         }
     }
 
-    /// When the pool is low or spent: your own key, an invitation, and — once — a star.
+    /// When the pool is low or spent: the ways on as the relay lists them for the region
+    /// (`spend.guidance`, contract C11; the bundled catalogue when it sent none) — your own
+    /// key, a plan you already pay for, an invitation — and, once, a star.
     @ViewBuilder
     private func waysOn(_ spend: NanoMuseSheet.Spend) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -97,29 +100,15 @@ struct NanoMuseAccountSections: View {
                 : AppLocalized("Most of the allowance is spent. Good time to set up a way on."))
                 .font(.subheadline)
             // Contract C5: mainland China hears about Alibaba Cloud Bailian first; everyone else about OpenRouter.
-            let mainland = NanoMuseRegion.isMainland
-            Label {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(AppLocalized("Use your own model key")).font(.subheadline.weight(.medium))
-                    Text(mainland
-                         ? AppLocalized("Alibaba Cloud Bailian (阿里云百炼) is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.")
-                         : NanoMuseOwnKeyPreset.regionNote)
-                        .font(.caption).foregroundStyle(.secondary)
-                    HStack(spacing: 14) {
-                        Button(mainland ? AppLocalized("Set it up") : AppLocalized("Sign in with OpenRouter")) { ownKey = true }
-                            .font(.caption.weight(.medium))
-                        Link(AppLocalized("Step-by-step guide"), destination: URL(string: spend.ownKeyDocs ?? "https://nanomuse.cn/own-key")!)
-                            .font(.caption)
-                    }
-                }
-            } icon: { Image(systemName: "key") }
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    let bonus = yuan(spend.inviteBonusCny ?? sheet?.invite?.bonusCny ?? 5)
-                    Text(String(format: AppLocalized("Invite a friend: %@ each"), bonus)).font(.subheadline.weight(.medium))
-                    Text(AppLocalized("Your code and link are just below.")).font(.caption).foregroundStyle(.secondary)
-                }
-            } icon: { Image(systemName: "gift") }
+            let ways = NanoMuseWays.resolve(guidance: spend.guidance ?? NanoMuseAllowance.storedGuidance(), catalogue: NanoMuseCatalogue.bundled, mainland: NanoMuseRegion.isMainland, chinese: NanoMuseCatalogue.chinese)
+            NanoMuseWaysList(
+                ways: ways,
+                inviteBonusCny: spend.inviteBonusCny ?? sheet?.invite?.bonusCny ?? 5,
+                inviteeBonusCny: spend.inviteeBonusCny,
+                inviteBelow: sheet?.invite != nil,
+                docs: spend.ownKeyDocs ?? (ways.docs.isEmpty ? "https://nanomuse.cn/own-key" : ways.docs),
+                compact: false
+            ) { pick = $0 }
             // nanoMuse: the policy's gate (NanoMuseStar / contract C1), not a bare "starred" check
             if spend.exhausted && exhaustedAsk {
                 Label {

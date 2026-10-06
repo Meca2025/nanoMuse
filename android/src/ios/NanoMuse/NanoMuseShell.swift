@@ -335,6 +335,7 @@ struct NanoMuseHomeView: View {
     @StateObject private var main = NanoMuseMainChat()
     @StateObject private var keyboard = NanoMuseKeyboardWatcher()
     @ObservedObject private var star = NanoMuseStar.shared
+    @ObservedObject private var allowance = NanoMuseAllowance.shared
     /// The composer's voice panel stands in for the keyboard: the bottom bar leaves the same way.
     @ObservedObject private var voiceMode = VoiceModePreference.shared
     /// "Rename chat" from the main chat's ••• menu.
@@ -585,6 +586,23 @@ struct NanoMuseHomeView: View {
                         .padding(.bottom, 6)
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
+                    // C11 / parity #33: a turn refused for the free allowance — the ways on, pinned like the star card.
+                    if let refused = allowance.pending {
+                        ScrollView(showsIndicators: false) {
+                            NanoMuseAllowanceCard(
+                                refused: refused,
+                                onTryAgain: { allowance.retry(session: main.liveId ?? main.chatId) },
+                                onDismiss: { allowance.dismiss() }
+                            )
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                        }
+                        .frame(maxHeight: 360)
+                        .background(NanoMuseTones.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 6)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
                 .background {
                     Rectangle()
@@ -597,6 +615,7 @@ struct NanoMuseHomeView: View {
             // The system bar stays out of the main chat; side chats pushed from here keep theirs.
             .toolbar(.hidden, for: .navigationBar)
             .animation(.easeInOut(duration: 0.25), value: star.pending)
+            .animation(.easeInOut(duration: 0.25), value: allowance.pending)
             .navigationDestination(for: String.self) { id in
                 let draft = id.hasPrefix(NanoMuseMainChat.draftPrefix)
                 AIChatView(sessionId: draft ? nil : id, draftId: draft ? id : nil)

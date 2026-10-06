@@ -705,6 +705,20 @@
     <string name="nm_cloud_err_password_required">Saisissez d’abord le mot de passe actuel.</string>
     <string name="nm_cloud_err_password_short">Le mot de passe doit faire au moins 8 caractères.</string>
     <string name="nm_cloud_err_password_weak">Ce mot de passe est trop facile à deviner.</string>
+    <string name="nm_cloud_err_signup_closed">Les inscriptions sont suspendues sur ce relais pour le moment. Un compte déjà créé peut toujours se connecter.</string>
+    <string name="nm_cloud_err_too_large">Ce message est trop volumineux pour le modèle. Raccourcissez-le, retirez quelques pièces jointes ou commencez une nouvelle discussion.</string>
+    <string name="nm_cloud_err_provider_busy">Le fournisseur du modèle est occupé en ce moment. Réessayez dans un instant.</string>
+    <string name="nm_cloud_err_provider_busy_wait">Le fournisseur du modèle est occupé en ce moment. Réessayez dans %1$s.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud ne propose plus ce modèle. Choisissez-en un autre dans Réglages → nanoMuse Cloud.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud n’a pas répondu. Réessayez dans un instant.</string>
+    <string name="nm_cloud_err_allowance_paused">Le crédit gratuit est suspendu sur ce relais pour le moment — il n’est pas épuisé. Ajoutez votre propre clé ou connectez-vous avec un abonnement que vous payez déjà, dans Réglages → nanoMuse Cloud. Votre connexion, vos appareils et le reste du crédit restent tels quels.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud est mis en pause par son opérateur pour le moment ; votre connexion et vos données sont conservées. Réessayez plus tard.</string>
+    <string name="nm_cloud_err_sync_paused">La synchronisation des conversations est suspendue sur ce relais pour le moment ; ce qui est stocké est conservé, et vos appareils continuent de fonctionner chacun de leur côté.</string>
+    <string name="nm_cloud_err_hub_paused">La liaison entre appareils est suspendue sur ce relais pour le moment ; chaque appareil continue de fonctionner de son côté.</string>
+    <string name="nm_refusal_relay_says">Le relais dit : %1$s</string>
+    <string name="nm_refusal_new_chat">Nouvelle discussion</string>
+    <string name="nm_refusal_sign_in">Se connecter</string>
+    <string name="nm_refusal_open_settings">Ouvrir les réglages</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">depuis %1$s</string>
@@ -751,6 +765,8 @@
     <string name="nm_notice_issue">Signaler un bug ou demander une fonction</string>
     <string name="nm_ways_title_out">Le crédit gratuit est épuisé.</string>
     <string name="nm_ways_title_warn">Presque épuisé : ¥%1$s sur ¥%2$s restants.</string>
+    <string name="nm_ways_title_paused">Le crédit gratuit est suspendu sur ce relais pour le moment — il n’est pas épuisé.</string>
+    <string name="nm_ways_paused_sub">Le reste du crédit est conservé ; les options ci-dessous fonctionnent dès maintenant.</string>
     <string name="nm_ways_sub">Deux façons de continuer — votre connexion et vos appareils continuent de fonctionner dans tous les cas.</string>
     <string name="nm_ways_key_title">Utiliser votre propre clé de modèle</string>
     <string name="nm_ways_key_guide">Guide pas à pas</string>

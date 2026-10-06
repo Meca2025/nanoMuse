@@ -702,6 +702,20 @@
     <string name="nm_cloud_err_password_required">먼저 현재 비밀번호를 입력하세요.</string>
     <string name="nm_cloud_err_password_short">비밀번호는 8자 이상이어야 합니다.</string>
     <string name="nm_cloud_err_password_weak">그 비밀번호는 추측하기 너무 쉽습니다.</string>
+    <string name="nm_cloud_err_signup_closed">이 릴레이는 당분간 가입을 받지 않습니다. 이미 있는 계정은 그대로 로그인할 수 있습니다.</string>
+    <string name="nm_cloud_err_too_large">이 메시지는 모델이 받기엔 너무 큽니다. 줄이거나, 첨부 일부를 빼거나, 새 채팅을 시작하세요.</string>
+    <string name="nm_cloud_err_provider_busy">모델 제공자가 지금 바쁩니다. 잠시 후 다시 시도하세요.</string>
+    <string name="nm_cloud_err_provider_busy_wait">모델 제공자가 지금 바쁩니다. %1$s 후에 다시 시도하세요.</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud에서 그 모델을 더 이상 제공하지 않습니다. 설정 → nanoMuse Cloud에서 다른 모델을 고르세요.</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud가 응답하지 않았습니다. 잠시 후 다시 시도하세요.</string>
+    <string name="nm_cloud_err_allowance_paused">이 릴레이의 무료 사용량이 당분간 중지되었습니다 — 다 쓴 것이 아닙니다. 설정 → nanoMuse Cloud에서 직접 키를 추가하거나 이미 결제 중인 요금제로 로그인하세요. 로그인, 기기, 남은 사용량은 그대로 유지됩니다.</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud가 운영자에 의해 당분간 중지되었습니다. 로그인과 데이터는 보관됩니다. 나중에 다시 시도하세요.</string>
+    <string name="nm_cloud_err_sync_paused">이 릴레이의 대화 동기화가 당분간 중지되었습니다. 저장된 내용은 보관되고, 기기들은 각자 계속 작동합니다.</string>
+    <string name="nm_cloud_err_hub_paused">이 릴레이의 기기 연결이 당분간 중지되었습니다. 각 기기는 각자 계속 작동합니다.</string>
+    <string name="nm_refusal_relay_says">릴레이의 설명: %1$s</string>
+    <string name="nm_refusal_new_chat">새 채팅</string>
+    <string name="nm_refusal_sign_in">로그인</string>
+    <string name="nm_refusal_open_settings">설정 열기</string>
 
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">%1$s부터</string>
@@ -748,6 +762,8 @@
     <string name="nm_notice_issue">버그 신고 또는 기능 요청</string>
     <string name="nm_ways_title_out">무료 사용량을 다 썼습니다.</string>
     <string name="nm_ways_title_warn">거의 다 썼습니다: ¥%2$s 중 ¥%1$s 남음.</string>
+    <string name="nm_ways_title_paused">이 릴레이의 무료 사용량이 당분간 중지되었습니다 — 다 쓴 것이 아닙니다.</string>
+    <string name="nm_ways_paused_sub">남은 사용량은 그대로 유지됩니다. 아래 방법은 지금 바로 쓸 수 있습니다.</string>
     <string name="nm_ways_sub">계속하는 두 가지 방법 — 어느 쪽이든 로그인과 기기는 그대로 작동합니다.</string>
     <string name="nm_ways_key_title">내 모델 키 사용</string>
     <string name="nm_ways_key_guide">단계별 안내</string>

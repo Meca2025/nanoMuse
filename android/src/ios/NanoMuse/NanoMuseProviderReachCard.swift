@@ -24,6 +24,15 @@ struct NanoMuseProviderReachCard: View {
     private var plan: Bool { reach.isChatGPTPlan }
 
     var body: some View {
+        if reach.kind == .relay, let refusal = NanoMuseRelayRefusal.fromCanonical(reach.detail) {
+            // nanoMuse Cloud refused the turn: its own card (one sentence, the right button)
+            NanoMuseRelayRefusalCard(refusal: refusal, onRetry: onRetry)
+        } else {
+            card
+        }
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: icon)
@@ -90,6 +99,7 @@ struct NanoMuseProviderReachCard: View {
         case .regionBlocked: return "globe"
         case .signedOut: return "key"
         case .quota, .rateLimited: return "hourglass"
+        case .relay: return "cloud"
         }
     }
 
@@ -98,6 +108,7 @@ struct NanoMuseProviderReachCard: View {
         case .unreachable, .regionBlocked: return Color(red: 0.88, green: 0.47, blue: 0.17)
         case .signedOut: return NanoMuseTones.action
         case .quota, .rateLimited: return Color(red: 0.49, green: 0.36, blue: 1.0)
+        case .relay: return NanoMuseTones.action
         }
     }
 
@@ -108,6 +119,7 @@ struct NanoMuseProviderReachCard: View {
         case .signedOut: return plan ? AppLocalized("The ChatGPT sign-in is no longer valid") : String(format: AppLocalized("%@ refused this key"), host)
         case .quota: return plan ? AppLocalized("The ChatGPT plan has nothing left for now") : String(format: AppLocalized("%@ has no quota left for this key"), host)
         case .rateLimited: return AppLocalized("Too many requests at once")
+        case .relay: return ""
         }
     }
 
@@ -118,6 +130,7 @@ struct NanoMuseProviderReachCard: View {
         case .signedOut: return plan ? AppLocalized("The token this phone kept has expired or was revoked. Sign in again to go on with the plan.") : AppLocalized("The provider answered that the key is not valid any more. Check it in the provider's settings.")
         case .quota: return plan ? AppLocalized("OpenAI counts the plan's use in windows of a few hours and of a week; this window is used up.") : AppLocalized("The provider answered that this key's quota is used up.")
         case .rateLimited: return AppLocalized("The provider asked to slow down for a moment.")
+        case .relay: return ""
         }
     }
 
@@ -131,7 +144,7 @@ struct NanoMuseProviderReachCard: View {
             ]
         case .quota: return [AppLocalized("Waiting for the window to pass"), AppLocalized("Another provider, with a key of your own")]
         case .rateLimited: return [AppLocalized("A moment, then trying again")]
-        case .signedOut: return []
+        case .signedOut, .relay: return []
         }
     }
 

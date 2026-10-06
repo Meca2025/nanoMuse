@@ -685,6 +685,20 @@
     <string name="nm_cloud_err_password_required">请先输入当前密码。</string>
     <string name="nm_cloud_err_password_short">密码至少 8 位。</string>
     <string name="nm_cloud_err_password_weak">这个密码太好猜了。</string>
+    <string name="nm_cloud_err_signup_closed">这台中转暂时关闭了注册。已有的账号仍可登录。</string>
+    <string name="nm_cloud_err_too_large">这条消息对模型来说太长了。缩短一些、去掉几个附件，或者新开一个对话。</string>
+    <string name="nm_cloud_err_provider_busy">模型服务商现在很忙，稍后再试。</string>
+    <string name="nm_cloud_err_provider_busy_wait">模型服务商现在很忙，请在 %1$s 后再试。</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse 云不再提供这个模型。到「设置 → nanoMuse 云」换一个。</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse 云没有响应，稍后再试。</string>
+    <string name="nm_cloud_err_allowance_paused">这台中转暂时停发了免费额度——不是用完了。到「设置 → nanoMuse 云」添加自己的密钥，或用已付费的订阅登录。登录、多设备和剩余额度都原样保留。</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse 云被运营者暂停了，登录和数据都保留着。稍后再试。</string>
+    <string name="nm_cloud_err_sync_paused">这台中转暂时停了对话同步，已存的内容保留，各设备可以各自继续用。</string>
+    <string name="nm_cloud_err_hub_paused">这台中转暂时停了设备互联，各设备可以各自继续用。</string>
+    <string name="nm_refusal_relay_says">中转说：%1$s</string>
+    <string name="nm_refusal_new_chat">新对话</string>
+    <string name="nm_refusal_sign_in">登录</string>
+    <string name="nm_refusal_open_settings">打开设置</string>
     <!-- 0.1.20: the account page -->
     <string name="nm_cloud_since">%1$s 加入</string>
     <string name="nm_cloud_account_id">账号 %1$s…</string>
@@ -730,6 +744,8 @@
     <string name="nm_notice_issue">反馈问题 / 提需求</string>
     <string name="nm_ways_title_out">免费额度已用完。</string>
     <string name="nm_ways_title_warn">额度快用完了：还剩 ¥%1$s（共 ¥%2$s）。</string>
+    <string name="nm_ways_title_paused">这台中转暂时停发了免费额度——不是用完了。</string>
+    <string name="nm_ways_paused_sub">剩余额度原样保留；下面的办法现在就能用。</string>
     <string name="nm_ways_sub">两个办法继续用——无论选哪个，登录和多设备功能都不受影响。</string>
     <string name="nm_ways_key_title">换成自己的 key</string>
     <string name="nm_ways_key_guide">图文教程</string>
