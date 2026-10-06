@@ -89,4 +89,5 @@ Every version is a GitHub release built from its tag, titled `nanoMuse <version>
 | 0.1.31 Locks | | The audit's open points closed: no token in any URL, remote control by consent |
 | 0.1.32 – 0.1.35 | Union … Accord | The iPhone and the desktop catch up with the phone, screen for screen |
 | 0.1.36 – 0.1.38 | Thread · Weave · Loom | One conversation across the devices, the main one first; the desktop's hands ported from UI-TARS-desktop, with a helper app for the Mac's permissions; a docs site and self-hosting in one command |
+| 0.1.39 | Keys | One provider catalogue with what each key covers, on every client and the relay; a ChatGPT plan as a sign-in; each account sees its own conversations on a shared device; the hands' clicks land on Ubuntu, the Mac helper keeps its grants, the iPhone no longer crashes after onboarding; every language complete; the Terminal edition dropped |
 | 0.2.0 | Beta | The first beta, when the list under *Now* is short |

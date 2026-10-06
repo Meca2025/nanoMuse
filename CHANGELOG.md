@@ -4,6 +4,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [0.1.39] - 2026-10-06 · Keys
+
 Keys: the allowance is a start, your own key or a plan you already pay for is the way on, and every client now says what each gives you — one provider catalogue with capabilities on the phones, the desktop, the web console and the relay, a ChatGPT sign-in that covers chat and the hands and says so, one sentence where a picture or a clip cannot be drawn. A device shows and syncs the conversations of the account that is signed in and nothing of an earlier one's. On Ubuntu the hands' clicks land, on a Mac the Computer Use helper keeps its grants, on the iPhone the crash after onboarding is gone, and the fourteen Android and six iOS languages beyond English and Chinese are complete. The Terminal edition is dropped.
 
 ### Cloud (relay 0.21)
