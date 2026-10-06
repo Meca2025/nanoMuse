@@ -318,8 +318,7 @@ struct AIChatView: View {
     }
 
     @State private var floatingBarHeight: CGFloat = 0
-    @State private var nmCardsHeight: CGFloat = 0 // nanoMuse: the cards above the composer (avatar takes, name chooser)
-    @StateObject private var nmComposer = NanoMuseComposerWatch() // nanoMuse: rebuilds the composer host when it stops laying out (the "lost keyboard")
+    @StateObject private var nmComposer = NanoMuseComposerWatch() // nanoMuse: rebuilds the composer column when it stops laying out (the "lost keyboard"), and keeps the evidence for the check page
     @State private var showFileBrowser = false
     // [T-browser-download-ux-v2] Downloads panel + "Show in Files" locate target.
     @State private var showDownloadsPanel = false
@@ -523,11 +522,13 @@ struct AIChatView: View {
                             }
                     }
                 }
-                // nanoMuse: upstream's `.overlay(alignment: .bottom) { ZStack … }` and the fail-safe's
-                // `.safeAreaInset(edge: .bottom)` are one link of the chain now, NanoMuseComposerHost
-                // (NanoMuseChatModifiers.swift): build 9 overflowed the stack in this body's getter, and
-                // every link counts. The layout notes below are upstream's and still describe the stack.
-                .modifier(NanoMuseComposerHost(failSafe: nmComposer.failSafe, stack: nmComposerStack)) // nanoMuse: was `.overlay(alignment: .bottom) {`
+                // nanoMuse: upstream's `.overlay(alignment: .bottom) { ZStack … }` is one link of the chain,
+                // NanoMuseComposerHost (NanoMuseChatModifiers.swift), and since 0.1.40 that host is a VStack:
+                // the composer column is a row under the list, the popup layer an overlay of the list.
+                // Build 9 overflowed the stack in this body's getter, so every link counts. The layout
+                // notes below are upstream's: the popup's anchoring they describe still holds (its bottom
+                // edge is the column's top edge, by layout), the "overlay on top of the message list" does not.
+                .modifier(NanoMuseComposerHost(stack: nmComposerStack, popup: nmComposerPopup)) // nanoMuse: was `.overlay(alignment: .bottom) {`
                     // Tool preview + input bar stacked at the bottom.
                     // Both overlay on top of the message list for immersive scrolling.
                     //
@@ -577,10 +578,9 @@ struct AIChatView: View {
                     //      top edge. inputBarHeight here is just the input
                     //      bar (NOT including toolbar) so popup covers
                     //      toolbar when both visible.
-                    // nanoMuse: the ZStack is `nmComposerStack`; NanoMuseComposerHost shows it here as the
-                    // overlay, or — the composer's fail-safe (NanoMuseComposerWatch.failSafe): a second
-                    // after the chat appeared or a message went out with no composer height reported —
-                    // as a bottom safe-area inset, the list's own bottom inset then 0 (nmListInset).
+                    // nanoMuse: the VStack of that ZStack is `nmComposerColumn`, the popup and its catcher
+                    // `nmComposerPopup`; NanoMuseComposerHost lays the column out under the list and the
+                    // popup over the list's bottom edge. The list's own bottom inset for the composer is 0.
                 // Collapse the expanded speech player on a tap anywhere in the chat
                 // area. Attached as a SIMULTANEOUS TapGesture directly on the content
                 // (no full-screen hit-test overlay, which blocked scrolling) so a tap
@@ -1196,7 +1196,7 @@ struct AIChatView: View {
             inputBarHeightDebounce = nil
             AppLogger(category: "InputBarLayout").info("inputBarHeight re-arm seed on appear (was \(inputBarHeight))")
             nmComposer.visible = true // nanoMuse: the composer watch only acts while the chat is on screen
-            if !isReadOnly { nmComposer.expect("the chat appeared") } // nanoMuse: a composer must report a height within a second, or the fail-safe shows it
+            if !isReadOnly { nmComposer.expect("the chat appeared") } // nanoMuse: a composer must report a height within a second, or the column is rebuilt
             vm.sessionId = sessionId
             vm.draftId = draftId
             vm.remoteDeviceId = remoteDeviceId
@@ -2665,8 +2665,8 @@ struct AIChatView: View {
                     screenshotPreview = ChatScreenshotPreview(image: image)
                 },
                 maxContentWidth: maxContentWidth ?? 0,
-                floatingBarHeight: nmListFloating, // nanoMuse: the cards above the composer count too; 0 on the fail-safe path
-                inputBarHeight: nmListInset // nanoMuse: 0 on the fail-safe path (the composer is a safe-area inset then)
+                floatingBarHeight: 0, // nanoMuse: the tool strip is in the composer column under the list (NanoMuseComposerHost), nothing lies over the list
+                inputBarHeight: 0 // nanoMuse: the list ends where the composer column begins; its 8 pt base pad is all the room it needs
             )
             // Empty/loading overlay for tap-to-dismiss-keyboard.
             // Placed BEFORE the directory timeline in the ZStack so the
@@ -2732,7 +2732,7 @@ struct AIChatView: View {
                 .padding(.trailing, 4)
                 .frame(maxWidth: maxContentWidth ?? .infinity, alignment: .trailing)
                 .padding(.horizontal, 12)
-                .padding(.bottom, nmListInset + (hasFloatingPreview ? 80 : 12)) // nanoMuse: nmListInset — 0 on the fail-safe path
+                .padding(.bottom, 12) // nanoMuse: was inputBarHeight + (hasFloatingPreview ? 80 : 12); the list ends at the composer column's top edge now
                 .animation(.easeInOut(duration: 0.2), value: vm.isNearBottom)
                 .animation(.easeInOut(duration: 0.2), value: vm.isAtFirstTurn)
                 .animation(.easeInOut(duration: 0.2), value: hasFloatingPreview)
@@ -2752,7 +2752,7 @@ struct AIChatView: View {
             .padding(.trailing, 4)
             .frame(maxWidth: maxContentWidth ?? .infinity, alignment: .trailing)
             .padding(.horizontal, 12)
-            .padding(.bottom, nmListInset + (hasFloatingPreview ? 80 : 12) + 92) // nanoMuse: nmListInset
+            .padding(.bottom, 12 + 92) // nanoMuse: was inputBarHeight + (hasFloatingPreview ? 80 : 12) + 92; the list ends at the composer column's top edge now
             .animation(.easeInOut(duration: 0.2), value: hasFloatingPreview)
             .capsuleProtectedFrame("downloadButton")
         }
@@ -3486,21 +3486,49 @@ struct AIChatView: View {
     // nanoMuse: whether the composer is Muse's pill (the shell on) or the OpenMinis bar.
     private var nmPill: Bool { NanoMuseShellPrefs.shell } // nanoMuse:
 
-    // nanoMuse: the message list's bottom room for the composer. On the fail-safe path the stack is
-    // a safe-area inset and the list is already short by its height, so the extra inset is 0.
-    private var nmListInset: CGFloat { nmComposer.failSafe ? 0 : inputBarHeight } // nanoMuse:
-    private var nmListFloating: CGFloat { nmComposer.failSafe ? 0 : floatingBarHeight + nmCardsHeight } // nanoMuse:
-
-    // nanoMuse: the composer stack — the cards, the tool strip, the input bar, the `/` and `@` popup —
-    // upstream's ZStack from the message list's `.overlay(alignment: .bottom)`, in one place so the
-    // fail-safe can host the same view as a safe-area inset. The comments on its layout stay at the overlay.
-    // An AnyView on purpose: this is the heaviest subtree of the chat's body, and boxed it is one
-    // pointer in the body's value and one leaf in its type (NanoMuseChatModifiers.swift says why).
+    // nanoMuse: the composer column — the cards, the tool strip, the input bar — the VStack of
+    // upstream's ZStack from the message list's `.overlay(alignment: .bottom)`, hosted by
+    // NanoMuseComposerHost as a row under the list since 0.1.40. The comments on its layout stay
+    // at the host's link in `body`. An AnyView on purpose: this is the heaviest subtree of the
+    // chat's body, and boxed it is one pointer in the body's value and one leaf in its type
+    // (NanoMuseChatModifiers.swift says why).
     private var nmComposerStack: AnyView { // nanoMuse:
-        AnyView(nmComposerTree) // nanoMuse:
+        AnyView(nmComposerColumn) // nanoMuse:
     } // nanoMuse:
 
-    @ViewBuilder private var nmComposerTree: some View { // nanoMuse:
+    // nanoMuse: the `/` and `@` popup with its tap-outside catcher — the rest of that ZStack —
+    // which the host lays over the list's bottom edge, so the popup stands on the column's top.
+    private var nmComposerPopup: AnyView { // nanoMuse:
+        AnyView(nmPopupLayer) // nanoMuse:
+    } // nanoMuse:
+
+    @ViewBuilder private var nmComposerColumn: some View { // nanoMuse:
+        VStack(spacing: 0) {
+            // nanoMuse: virtual cards for this chat (avatar price/takes/share, the name chooser).
+            NanoMuseChatCardsHost(vm: vm)
+                .frame(maxWidth: maxContentWidth)
+            floatingToolPreview
+                .shadow(color: Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0, alpha: 0.25) : UIColor(white: 0, alpha: 0) }), radius: 6, x: 0, y: 4)
+            #if DEBUG
+            if isReadOnly {
+                forkBanner
+            } else {
+                inputBar
+            }
+            #else
+            inputBar
+            #endif
+        }
+        // nanoMuse: the probe tells the watch whether this column is really in a window and how
+        // tall it is; a tick on `.id` rebuilds the whole column when it is not (NanoMuseComposerWatch).
+        .background(NanoMuseComposerProbe(watch: nmComposer)) // nanoMuse:
+        .id(nmComposer.rebuildTick) // nanoMuse:
+        // Register the composer (tool preview + input bar) as a
+        // region the global speech capsule must not cover.
+        .capsuleProtectedFrame("inputBar")
+    } // nanoMuse:
+
+    @ViewBuilder private var nmPopupLayer: some View { // nanoMuse:
         ZStack(alignment: .bottom) {
             // Tap-outside catcher placed UNDER the popup (declared
             // first → lower z-order). When the popup is visible,
@@ -3516,36 +3544,7 @@ struct AIChatView: View {
                         else if vm.showMentionMenu { vm.dismissMentionMenu() }
                     }
             }
-            VStack(spacing: 0) {
-                // nanoMuse: virtual cards for this chat (avatar price/takes/share, the name chooser).
-                NanoMuseChatCardsHost(vm: vm)
-                    .frame(maxWidth: maxContentWidth)
-                    .onGeometryChange(for: CGFloat.self) { proxy in
-                        proxy.size.height
-                    } action: { newH in
-                        nmCardsHeight = newH
-                    }
-                floatingToolPreview
-                    .shadow(color: Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0, alpha: 0.25) : UIColor(white: 0, alpha: 0) }), radius: 6, x: 0, y: 4)
-                #if DEBUG
-                if isReadOnly {
-                    forkBanner
-                } else {
-                    inputBar
-                }
-                #else
-                inputBar
-                #endif
-            }
-            // nanoMuse: the probe tells the watch whether this stack is really in a window and how
-            // tall it is; a tick on `.id` rebuilds the whole host when it is not (NanoMuseComposerWatch).
-            .background(NanoMuseComposerProbe(watch: nmComposer)) // nanoMuse:
-            .id(nmComposer.rebuildTick) // nanoMuse:
-            // Register the composer (tool preview + input bar) as a
-            // region the global speech capsule must not cover.
-            .capsuleProtectedFrame("inputBar")
-            inputPopupOverlay
-                .padding(.bottom, inputBarHeight)
+            inputPopupOverlay // nanoMuse: no bottom padding — the layer's bottom edge is the column's top edge
         }
     } // nanoMuse:
 

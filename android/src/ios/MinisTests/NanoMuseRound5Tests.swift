@@ -32,13 +32,13 @@ final class NanoMuseRound5Tests: XCTestCase {
         XCTAssertTrue(NanoMuseComposerField.overflows(String(repeating: "word ", count: 80), lines: 6), "a long paragraph wraps past the cap")
     }
 
-    // MARK: - Composer fail-safe
+    // MARK: - Composer watch
 
-    func testFailSafeWhenNothingIsAttachedOrNothingHasHeight() {
-        XCTAssertTrue(NanoMuseComposerWatch.needsFailSafe(attached: 0, hostHeight: 80, frameHeight: 80), "no probe in a window")
-        XCTAssertTrue(NanoMuseComposerWatch.needsFailSafe(attached: 1, hostHeight: 0, frameHeight: 80), "the host collapsed")
-        XCTAssertTrue(NanoMuseComposerWatch.needsFailSafe(attached: 1, hostHeight: 80, frameHeight: 0), "the bar reports no height")
-        XCTAssertFalse(NanoMuseComposerWatch.needsFailSafe(attached: 1, hostHeight: 80, frameHeight: 64))
+    func testComposerIsMissingWhenNothingIsAttachedOrNothingHasHeight() {
+        XCTAssertTrue(NanoMuseComposerWatch.isMissing(attached: 0, hostHeight: 80, frameHeight: 80), "no probe in a window")
+        XCTAssertTrue(NanoMuseComposerWatch.isMissing(attached: 1, hostHeight: 0, frameHeight: 80), "the column collapsed")
+        XCTAssertTrue(NanoMuseComposerWatch.isMissing(attached: 1, hostHeight: 80, frameHeight: 0), "the bar reports no height")
+        XCTAssertFalse(NanoMuseComposerWatch.isMissing(attached: 1, hostHeight: 80, frameHeight: 64))
     }
 
     // MARK: - C9: scope, tail, the switch

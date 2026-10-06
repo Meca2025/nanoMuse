@@ -4,6 +4,11 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### iOS
+
+- **The composer is a row under the message list.** Four releases reported a chat with no input field, the last of them on the iPad the moment the main chat opened, and every fix so far was written against screenshots. The composer column (the cards, the tool strip, the input bar) now sits under the list inside the safe area — a plain `VStack`, no overlay of the UIKit list, no second host to switch to — the list is given no bottom inset for it, and the `/` and `@` popup stands on the column's top edge by layout. The watch stays as the last net and rebuilds a column that detaches or measures 0 at most twice per appearance.
+- **Settings → Appearance → Composer check.** For a chat whose input field does not show: a switch draws a red frame around the composer column so a screenshot shows where the app laid it out, and a report says the same in numbers — the window and its safe area, the column's frame, every UIKit ancestor with its frame, hidden flag and alpha, the text fields and collection views in the window, the watch's events — with *Copy* for a bug report. The view hierarchy a device can give without a Mac; in nine languages.
+
 ## [0.1.39] - 2026-10-06 · Keys
 
 Keys: the allowance is a start, your own key or a plan you already pay for is the way on, and every client now says what each gives you — one provider catalogue with capabilities on the phones, the desktop, the web console and the relay, a ChatGPT sign-in that covers chat and the hands and says so, one sentence where a picture or a clip cannot be drawn. A device shows and syncs the conversations of the account that is signed in and nothing of an earlier one's. On Ubuntu the hands' clicks land, on a Mac the Computer Use helper keeps its grants, on the iPhone the crash after onboarding is gone, and the fourteen Android and six iOS languages beyond English and Chinese are complete. The Terminal edition is dropped.
