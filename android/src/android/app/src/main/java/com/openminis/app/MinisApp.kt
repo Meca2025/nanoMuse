@@ -658,6 +658,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         io.github.nanomuse.feed.FeedFlow.init(this) // nanoMuse
         io.github.nanomuse.avatar.AvatarStore.init(this) // nanoMuse: the user's own face, if any
         io.github.nanomuse.cloud.ProfileSync.init(this) // nanoMuse: the name and face the account's devices share
+        io.github.nanomuse.account.AccountData.init(this) // nanoMuse: whose chat is whose (contract C12)
         io.github.nanomuse.sync.ConversationSync.init(this) // nanoMuse: the conversations, the same on every device
         io.github.nanomuse.avatar.AvatarStudio.init(this) // nanoMuse: the feed's files and its built-in routine
         val nmRiskNotifier = io.github.nanomuse.guard.RiskApprovalNotifier(this, ::isAppForeground)

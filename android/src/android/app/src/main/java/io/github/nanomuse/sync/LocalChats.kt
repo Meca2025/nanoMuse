@@ -57,8 +57,12 @@ class RoomChats(private val context: Context, private val repo: ChatRepository) 
 
     // The person's own chats. What the phone started on its own — routines, goals, the feed, work for
     // another device, all `source = "scheduled"` — stays here, as on the iPhone and the desktop.
-    override suspend fun sessions(): List<LocalSession> =
-        dao.listSessions().filter { it.source != "scheduled" }.map { it.local() }
+    // Contract C12: a chat another account owns, or one made while signed out, is not this account's to push.
+    override suspend fun sessions(): List<LocalSession> {
+        val account = io.github.nanomuse.account.AccountData.key(context)
+        val others = SyncDatabase.get(context).dao().owners().filter { it.owner != account }.map { it.sessionId }.toSet()
+        return dao.listSessions().filter { it.source != "scheduled" && it.id !in others }.map { it.local() }
+    }
 
     override suspend fun session(id: String): LocalSession? = dao.getSession(id)?.local()
 
@@ -88,6 +92,7 @@ class RoomChats(private val context: Context, private val repo: ChatRepository) 
             source = "sync",
         )
         dao.insertSession(session)
+        io.github.nanomuse.account.AccountData.claimNow(context, session.id) // C12: the account's, from its first row
         if (main) MainChat.set(context, session.id)
         return session.id
     }

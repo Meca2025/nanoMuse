@@ -39,6 +39,20 @@ The allowance belongs to the address: signing in again, on
 this phone or another, gives a new key for the same account and does not grant
 a second allowance.
 
+**What a sign-out leaves on the phone** (0.1.40, contract C12). A sign-out —
+on this device, everywhere, or to use a different server — asks one question,
+*Keep this account's chats on this device*, off by default. Off, the account's
+chats, memory, feed, goals, routines and face are removed from the phone (with
+sync on, the relay still has the chats for the next sign-in); on, they are put
+aside and come back when the account signs in again. Signing in as another
+account goes through the same sign-out. *Delete the account* removes the account
+at the relay and everything of it on the phone, no question asked; the next
+sign-in with the same address is a new account that starts empty. A key the
+relay refuses (*Sign out everywhere* from another device) is a sign-out nobody
+could answer: the account's data is removed. Every piece of state, where it
+lives and what happens to it on each event is the table in [sync.md](sync.md).
+The wire does not change: the sorting happens on the device.
+
 Signing in a second provider next to it — your own Model Studio key, DeepSeek,
 a local server — works as always; the relay's models can be mixed with yours
 in a model group.
@@ -83,7 +97,11 @@ Images and tool results are never stored, and message content only as the
 is forwarded to the upstream model (Alibaba Cloud Model Studio) and the reply
 is streamed back. Every response carries an `X-Nanomuse-Request` id so a problem report
 can be matched to a ledger row without any content being logged. Deleting the
-account (`POST /v1/auth/delete` with the account's key) removes all of it. See
+account (`POST /v1/auth/delete` with the account's key) removes all of it — the
+account, keys, devices, profile, ledger, events, kept conversations, video
+tasks, the synced conversations and cursors, the hub connections and the live
+*working* notes; the relay's tests check every table for the account afterwards,
+and that the same address signing up again is a new, empty account. See
 [privacy.md](privacy.md).
 
 ## Allowance

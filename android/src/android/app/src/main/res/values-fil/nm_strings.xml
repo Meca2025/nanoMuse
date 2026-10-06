@@ -678,7 +678,7 @@
     <string name="nm_cloud_open_provider">Mga setting ng provider</string>
     <string name="nm_cloud_sign_out">Mag-sign out</string>
     <string name="nm_cloud_sign_out_sub">Babawiin ang key ng teleponong ito at aalisin ang Cloud provider; mananatili ang allowance sa account mo.</string>
-    <string name="nm_cloud_sign_out_confirm">Aalisin sa teleponong ito ang nanoMuse Cloud provider at ang mga modelo nito. Mananatili ang mga chat.</string>
+    <string name="nm_cloud_sign_out_confirm">Aalisin sa teleponong ito ang nanoMuse Cloud provider at ang mga modelo nito.</string>
     <string name="nm_cloud_row_remaining">%1$s ang natitira</string>
     <string name="nm_cloud_row_sign_in">Mag-sign in</string>
     <string name="nm_cloud_err_bad_identifier">Hindi mukhang e-mail address iyan.</string>
@@ -831,7 +831,9 @@
     <string name="nm_cloud_sign_out_everywhere">Mag-sign out sa lahat ng device</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Mawawala ang key ng bawat device na naka-sign in sa account na ito, kasama ang teleponong ito. Mananatili ang account; mag-sign in ulit anumang oras.</string>
     <string name="nm_cloud_delete_account">Burahin ang account</string>
-    <string name="nm_cloud_delete_account_confirm">Buburahin sa relay ang account, ang mga sign-in, paggamit at history nito. Hindi na ito maibabalik. Mananatili ang mga chat sa teleponong ito.</string>
+    <string name="nm_cloud_delete_account_confirm">Buburahin sa relay ang account, ang mga sign-in, paggamit at history nito, at aalisin sa teleponong ito ang mga chat, memorya, feed, layunin at mukha ng account na ito. Hindi na ito maibabalik.</string>
+    <string name="nm_cloud_keep_chats">Panatilihin sa device na ito ang mga chat ng account na ito</string>
+    <string name="nm_cloud_keep_chats_sub">Naka-off: aalisin sa teleponong ito ang mga chat, memorya, feed, layunin at mukha ng account na ito. Kung naka-on ang sync, nasa relay pa rin ang mga chat para sa susunod na pag-sign in.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Mga coding agent</string>

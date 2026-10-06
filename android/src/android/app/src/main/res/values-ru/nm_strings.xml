@@ -684,7 +684,7 @@
     <string name="nm_cloud_open_provider">Настройки провайдера</string>
     <string name="nm_cloud_sign_out">Выйти</string>
     <string name="nm_cloud_sign_out_sub">Ключ этого телефона отзывается, провайдер Cloud удаляется; лимит остаётся на вашем аккаунте.</string>
-    <string name="nm_cloud_sign_out_confirm">Провайдер nanoMuse Cloud и его модели будут удалены с этого телефона. Чаты останутся.</string>
+    <string name="nm_cloud_sign_out_confirm">Провайдер nanoMuse Cloud и его модели будут удалены с этого телефона.</string>
     <string name="nm_cloud_row_remaining">Осталось %1$s</string>
     <string name="nm_cloud_row_sign_in">Войти</string>
     <string name="nm_cloud_err_bad_identifier">Это не похоже на адрес электронной почты.</string>
@@ -837,7 +837,9 @@
     <string name="nm_cloud_sign_out_everywhere">Выйти везде</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Каждое устройство, вошедшее в этот аккаунт, теряет свой ключ, включая этот телефон. Аккаунт остаётся; войти снова можно в любой момент.</string>
     <string name="nm_cloud_delete_account">Удалить аккаунт</string>
-    <string name="nm_cloud_delete_account_confirm">Аккаунт, его входы, использование и история удаляются на релее. Это нельзя отменить. Чаты на этом телефоне остаются.</string>
+    <string name="nm_cloud_delete_account_confirm">Аккаунт, его входы, использование и история удаляются на релее, а чаты, память, лента, цели и лицо этого аккаунта удаляются с этого телефона. Это нельзя отменить.</string>
+    <string name="nm_cloud_keep_chats">Оставить чаты этого аккаунта на этом устройстве</string>
+    <string name="nm_cloud_keep_chats_sub">Выключено: чаты, память, лента, цели и лицо этого аккаунта удаляются с этого телефона. Если синхронизация включена, чаты остаются на релее до следующего входа.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Агенты для кода</string>

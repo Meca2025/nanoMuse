@@ -260,9 +260,27 @@ final class NanoMuseSync: ObservableObject {
         return nil
     }
 
-    /// Whether the lists show this session right now (`visible(owner:current:)` for it).
+    /// Whether the lists show this session right now: C10 (`visible(owner:current:)` over the
+    /// sync tables) and C12 (the owner row, `NanoMuseAccountData.shows`) both agree.
     func shows(_ sessionId: String) -> Bool {
-        Self.visible(owner: owner(of: sessionId), current: accountKey)
+        Self.visible(owner: owner(of: sessionId), current: accountKey) && NanoMuseAccountData.shared.shows(sessionId)
+    }
+
+    /// C12: the account's table goes with its chats (a sign-out without *Keep*, *Delete
+    /// account*): a later sign-in starts a fresh table rather than reading the missing
+    /// sessions as deletions and tombstoning them on the account's other devices.
+    func dropTable(for account: String) {
+        load()
+        guard !account.isEmpty else { return }
+        tables.stores.removeValue(forKey: account)
+        if store.account == account {
+            store = Store(account: account)
+            workingToSend = [:]
+            pushDebounce?.cancel()
+        }
+        guard let data = try? JSONEncoder().encode(tables) else { return }
+        try? data.write(to: Self.tablesURL, options: [.atomic, .completeFileProtection])
+        revision += 1
     }
 
     /// The sessions the lists show: `shows` over a list.
@@ -579,9 +597,10 @@ final class NanoMuseSync: ObservableObject {
         // or the shell's main when it has no entry yet. The side chats stay this phone's.
         // C10, rule 3: another account's conversations never go up under this one — only the
         // current account's and the unowned (which become this account's with this push).
+        // C12: nor the chats another account, or nobody, owns on this phone.
         let sideChats = sideChats
         let sessions = every.filter { session in
-            guard Self.visible(owner: owner(of: session.id), current: store.account) else { return false }
+            guard Self.visible(owner: owner(of: session.id), current: store.account), NanoMuseAccountData.shared.shows(session.id) else { return false }
             return sideChats || session.id == mainId || store.entries[session.id]?.kind == "main"
         }
 
@@ -1000,7 +1019,7 @@ final class NanoMuseSync: ObservableObject {
     /// current account's; nil while another account's conversation is still pinned there.
     private func ownMainSessionId() -> String? {
         guard let id = Self.localMainSessionId() else { return nil }
-        return Self.visible(owner: owner(of: id), current: store.account) ? id : nil
+        return Self.visible(owner: owner(of: id), current: store.account) && NanoMuseAccountData.shared.shows(id) ? id : nil
     }
 
     private static func defaultModelId() -> String {

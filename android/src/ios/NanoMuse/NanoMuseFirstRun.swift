@@ -550,7 +550,7 @@ final class NanoMuseFirstConversation: ObservableObject {
     /// Put the opening in the chat when this is where the first conversation starts (or where it already is).
     func seedIfNeeded(vm: AIChatViewModel) async {
         let key = vm.nmSessionKey
-        let hasSessions = !(await ChatStore.shared.listSessions()).isEmpty
+        let hasSessions = !NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()).isEmpty // C12: a new account meets the muse afresh
         guard shouldShowIntro(current: key, hasOtherSessions: hasSessions) else { return }
         start(current: key)
         let present = vm.messages.contains { introIds.contains($0.id) }

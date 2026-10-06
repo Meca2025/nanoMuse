@@ -241,6 +241,19 @@ Ours, in `NanoMuse/`:
   first account brings its conversations and its main chat back. Signed out, everything on the
   phone shows and nothing moves. The agent's name and look already follow the account; the local
   memory files do not yet.
+- **Nothing of one account for the next (0.1.40, Contract C12)** (`NanoMuseAccountData.swift`,
+  `NanoMuseSignOutSheet.swift`): every chat has an owner row (`nanomuse-owners.json`), synced or
+  not, and the lists, the Chat tab, the Library, *Today's chats*, the Siri shortcuts and the
+  push show the signed-in owner's only; signed out, only the chats made while signed out. A
+  sign-out — here, everywhere, *Use a different server* — is a sheet with one switch, *Keep this
+  account's chats on this device*, off by default: off, the account's chats, memory, feed, goals,
+  routines and face leave the phone (its sync table too, so a later sign-in never tombstones
+  them on its other devices); on, they are put aside under `MinisConfig/nanomuse/accounts/<hash>/`
+  and come back with the account. Signing in as another account goes through the same path.
+  *Delete the account* removes all of it with no question. The relay's key is saved on this
+  device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, never iCloud Keychain); a
+  fresh install with no marker, no provider and no chat sweeps the device-only Keychain items a
+  previous install left. The full table is [sync.md](sync.md).
 
 ## Building on a Mac
 

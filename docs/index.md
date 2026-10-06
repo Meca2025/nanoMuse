@@ -30,4 +30,4 @@ hero:
 
 Every download is on the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest); the same files are at [nanomuse.cn/dl](https://nanomuse.cn/dl/) when GitHub is slow where you are.
 
-[What changed in 0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39) · [Where to start contributing](/roadmap) · [What the relay keeps](/privacy)
+[What changed in 0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39) · [Where to start contributing](/roadmap) · [What the relay keeps](/privacy) · [What stays on a phone, and whose it is](/sync)

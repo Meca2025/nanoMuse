@@ -658,7 +658,7 @@
     <string name="nm_cloud_open_provider">服务商设置</string>
     <string name="nm_cloud_sign_out">退出登录</string>
     <string name="nm_cloud_sign_out_sub">作废这台手机的 key 并移除这个服务商；额度跟着账号，下次登录还在。</string>
-    <string name="nm_cloud_sign_out_confirm">会从这台手机上移除 nanoMuse 云这个服务商和它的模型。聊天记录会保留。</string>
+    <string name="nm_cloud_sign_out_confirm">会从这台手机上移除 nanoMuse 云这个服务商和它的模型。</string>
     <string name="nm_cloud_row_remaining">剩余 %1$s</string>
     <string name="nm_cloud_row_sign_in">登录</string>
     <string name="nm_cloud_err_bad_identifier">这看起来不是邮箱地址。</string>
@@ -791,7 +791,9 @@
     <string name="nm_cloud_sign_out_everywhere">所有设备退出登录</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">所有登录了这个账号的设备都会失效，包括这台手机。账号本身保留，随时可以再登录。</string>
     <string name="nm_cloud_delete_account">删除账号</string>
-    <string name="nm_cloud_delete_account_confirm">账号、登录记录、用量和动态都会从服务器删除，无法恢复。手机上的聊天记录会保留。</string>
+    <string name="nm_cloud_delete_account_confirm">账号、登录记录、用量和动态都会从服务器删除，这个账号在这台手机上的聊天、记忆、动态、目标和头像也会一并清除。无法恢复。</string>
+    <string name="nm_cloud_keep_chats">把这个账号的聊天留在这台设备上</string>
+    <string name="nm_cloud_keep_chats_sub">关闭时：这个账号的聊天、记忆、动态、目标和头像会从这台手机上清除。开着同步的话，服务器上仍有聊天记录，下次登录会取回。</string>
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">编程助手</string>
     <string name="nm_coding_intro">你电脑上的 Cursor、Codex、Claude Code：在这里看它们的会话和最近的回复，直接给任何一个发消息。它们的内容不会复制到手机上。</string>

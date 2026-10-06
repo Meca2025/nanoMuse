@@ -95,6 +95,7 @@ const understandIt: DefaultTheme.SidebarItem[] = [
   { text: 'Architecture', link: '/architecture' },
   { text: 'Sentinel', link: '/sentinel' },
   { text: 'Privacy', link: '/privacy' },
+  { text: 'What stays on a phone, and whose it is', link: '/sync' },
   { text: 'The hub', link: '/hub' },
   { text: 'What nanoMuse takes from Muse', link: '/design' },
   { text: 'nanoMuse on DeepSeek Harness', link: '/harness' },

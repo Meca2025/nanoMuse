@@ -681,7 +681,7 @@
     <string name="nm_cloud_open_provider">Setările furnizorului</string>
     <string name="nm_cloud_sign_out">Deconectează-te</string>
     <string name="nm_cloud_sign_out_sub">Cheia acestui telefon e revocată și furnizorul Cloud e eliminat; creditul rămâne la contul tău.</string>
-    <string name="nm_cloud_sign_out_confirm">Furnizorul nanoMuse Cloud și modelele lui vor fi eliminate de pe acest telefon. Conversațiile rămân.</string>
+    <string name="nm_cloud_sign_out_confirm">Furnizorul nanoMuse Cloud și modelele lui vor fi eliminate de pe acest telefon.</string>
     <string name="nm_cloud_row_remaining">%1$s rămase</string>
     <string name="nm_cloud_row_sign_in">Conectează-te</string>
     <string name="nm_cloud_err_bad_identifier">Nu pare o adresă de e-mail.</string>
@@ -834,7 +834,9 @@
     <string name="nm_cloud_sign_out_everywhere">Deconectează-te de peste tot</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Fiecare dispozitiv conectat la acest cont își pierde cheia, inclusiv acest telefon. Contul rămâne; te poți conecta din nou oricând.</string>
     <string name="nm_cloud_delete_account">Șterge contul</string>
-    <string name="nm_cloud_delete_account_confirm">Contul, conectările, utilizarea și istoricul lui sunt șterse de pe relay. Nu se poate anula. Conversațiile de pe acest telefon rămân.</string>
+    <string name="nm_cloud_delete_account_confirm">Contul, conectările, utilizarea și istoricul lui sunt șterse de pe relay, iar conversațiile, memoria, fluxul, obiectivele și chipul acestui cont sunt eliminate de pe acest telefon. Nu se poate anula.</string>
+    <string name="nm_cloud_keep_chats">Păstrează conversațiile acestui cont pe acest dispozitiv</string>
+    <string name="nm_cloud_keep_chats_sub">Oprit: conversațiile, memoria, fluxul, obiectivele și chipul acestui cont sunt eliminate de pe acest telefon. Cu sincronizarea pornită, relay-ul păstrează conversațiile pentru următoarea conectare.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agenți de programare</string>

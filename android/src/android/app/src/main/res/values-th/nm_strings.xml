@@ -675,7 +675,7 @@
     <string name="nm_cloud_open_provider">การตั้งค่าผู้ให้บริการ</string>
     <string name="nm_cloud_sign_out">ออกจากระบบ</string>
     <string name="nm_cloud_sign_out_sub">คีย์ของโทรศัพท์เครื่องนี้จะถูกเพิกถอนและผู้ให้บริการ Cloud จะถูกลบออก โควตายังอยู่กับบัญชีของคุณ</string>
-    <string name="nm_cloud_sign_out_confirm">ผู้ให้บริการ nanoMuse Cloud และโมเดลของมันจะถูกลบออกจากโทรศัพท์เครื่องนี้ แชทยังอยู่</string>
+    <string name="nm_cloud_sign_out_confirm">ผู้ให้บริการ nanoMuse Cloud และโมเดลของมันจะถูกลบออกจากโทรศัพท์เครื่องนี้</string>
     <string name="nm_cloud_row_remaining">เหลือ %1$s</string>
     <string name="nm_cloud_row_sign_in">ลงชื่อเข้าใช้</string>
     <string name="nm_cloud_err_bad_identifier">ดูเหมือนจะไม่ใช่ที่อยู่อีเมล</string>
@@ -828,7 +828,9 @@
     <string name="nm_cloud_sign_out_everywhere">ออกจากระบบทุกอุปกรณ์</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">ทุกอุปกรณ์ที่ลงชื่อเข้าใช้บัญชีนี้จะเสียคีย์ รวมถึงโทรศัพท์เครื่องนี้ บัญชียังอยู่ ลงชื่อเข้าใช้อีกครั้งได้ทุกเมื่อ</string>
     <string name="nm_cloud_delete_account">ลบบัญชี</string>
-    <string name="nm_cloud_delete_account_confirm">บัญชี การลงชื่อเข้าใช้ การใช้งาน และประวัติจะถูกลบที่รีเลย์ ย้อนกลับไม่ได้ แชทบนโทรศัพท์เครื่องนี้ยังอยู่</string>
+    <string name="nm_cloud_delete_account_confirm">บัญชี การลงชื่อเข้าใช้ การใช้งาน และประวัติจะถูกลบที่รีเลย์ และแชท ความทรงจำ ฟีด เป้าหมาย และใบหน้าของบัญชีนี้จะถูกลบออกจากโทรศัพท์เครื่องนี้ ย้อนกลับไม่ได้</string>
+    <string name="nm_cloud_keep_chats">เก็บแชทของบัญชีนี้ไว้บนอุปกรณ์เครื่องนี้</string>
+    <string name="nm_cloud_keep_chats_sub">ปิด: แชท ความทรงจำ ฟีด เป้าหมาย และใบหน้าของบัญชีนี้จะถูกลบออกจากโทรศัพท์เครื่องนี้ ถ้าเปิดซิงค์ไว้ รีเลย์ยังมีแชทอยู่สำหรับการลงชื่อเข้าใช้ครั้งถัดไป</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">เอเจนต์เขียนโค้ด</string>

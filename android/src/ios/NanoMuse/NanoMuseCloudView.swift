@@ -87,8 +87,8 @@ struct NanoMuseCloudView: View {
             }
             .disabled(busy)
             // The relay this sign-in belongs to; changing it signs out first.
-            NanoMuseRelayRow(busy: busy) {
-                Task { await changeRelay() }
+            NanoMuseRelayRow(busy: busy) { keep in
+                Task { await changeRelay(keep: keep) }
             }
         } footer: {
             if let message {
@@ -155,18 +155,22 @@ struct NanoMuseCloudView: View {
             Text(AppLocalized("This phone's key is revoked and the Cloud provider removed; the allowance stays with your account."))
         }
         .disabled(busy)
+        // Delete: one confirmation. A sign-out: the sheet with its one question (C12).
         .confirmationDialog(
             confirmTitle,
-            isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
+            isPresented: Binding(get: { confirm == .delete }, set: { if !$0 { confirm = nil } }),
             titleVisibility: .visible
         ) {
-            if let way = confirm {
-                Button(way == .delete ? AppLocalized("Delete the account") : AppLocalized("Sign out"), role: .destructive) {
-                    Task { await leave(way) }
-                }
+            Button(AppLocalized("Delete the account"), role: .destructive) {
+                Task { await leave(.delete, keep: false) }
             }
         } message: {
             Text(confirmMessage)
+        }
+        .sheet(item: Binding(get: { confirm.flatMap { $0 == .delete ? nil : $0 } }, set: { if $0 == nil { confirm = nil } })) { way in
+            NanoMuseSignOutSheet(title: confirmTitle, message: confirmMessage, action: AppLocalized("Sign out")) { keep in
+                Task { await leave(way, keep: keep) }
+            }
         }
     }
 
@@ -181,8 +185,8 @@ struct NanoMuseCloudView: View {
     private var confirmMessage: String {
         switch confirm {
         case .everywhere: return AppLocalized("Every device signed in to this account loses its key, this phone included. The account stays; sign in again any time.")
-        case .delete: return AppLocalized("The account, its sign-ins, usage and history are deleted at the relay. This cannot be undone. Chats on this phone stay.")
-        case .here, .none: return AppLocalized("The nanoMuse Cloud provider and its models will be removed from this phone. Chats stay.")
+        case .delete: return AppLocalized("The account, its sign-ins, usage and history are deleted at the relay, and this account's chats, memory, feed, goals and face are removed from this phone. This cannot be undone.")
+        case .here, .none: return AppLocalized("The nanoMuse Cloud provider and its models will be removed from this phone.")
         }
     }
 
@@ -333,11 +337,11 @@ struct NanoMuseCloudView: View {
 
     // MARK: - Actions
 
-    /// Settings → Account → Change: sign out on this phone, then the picker.
-    private func changeRelay() async {
+    /// Settings → Account → Change: sign out on this phone (a sign-out like any other, C12), then the picker.
+    private func changeRelay(keep: Bool) async {
         busy = true
         defer { busy = false }
-        await NanoMuseCloud.signOut()
+        await NanoMuseCloud.signOut(keep: keep)
         account = nil
         message = nil
         failed = false
@@ -415,14 +419,15 @@ struct NanoMuseCloudView: View {
         }
     }
 
-    /// One of the ways out; the sign-in form comes back when it worked.
-    private func leave(_ way: WayOut) async {
+    /// One of the ways out; the sign-in form comes back when it worked. `keep` is the sheet's
+    /// answer (C12) — the account's data stays on the phone only when asked.
+    private func leave(_ way: WayOut, keep: Bool) async {
         busy = true
         defer { busy = false }
         do {
             switch way {
-            case .here: await NanoMuseCloud.signOut()
-            case .everywhere: try await NanoMuseCloud.signOutEverywhere()
+            case .here: await NanoMuseCloud.signOut(keep: keep)
+            case .everywhere: try await NanoMuseCloud.signOutEverywhere(keep: keep)
             case .delete: try await NanoMuseCloud.deleteAccount()
             }
             account = nil

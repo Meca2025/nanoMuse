@@ -5698,7 +5698,7 @@ private struct MoveToSessionSheet: View {
             }
         }
         .task {
-            sessions = ChatStore.shared.listSessions()
+            sessions = NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()) // nanoMuse: C12 — another account's chats stay hidden
         }
     }
 

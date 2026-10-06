@@ -678,7 +678,7 @@
     <string name="nm_cloud_open_provider">Sağlayıcı ayarları</string>
     <string name="nm_cloud_sign_out">Oturumu kapat</string>
     <string name="nm_cloud_sign_out_sub">Bu telefonun anahtarı iptal edilir ve Cloud sağlayıcısı kaldırılır; kota hesabında kalır.</string>
-    <string name="nm_cloud_sign_out_confirm">nanoMuse Cloud sağlayıcısı ve modelleri bu telefondan kaldırılacak. Sohbetler kalır.</string>
+    <string name="nm_cloud_sign_out_confirm">nanoMuse Cloud sağlayıcısı ve modelleri bu telefondan kaldırılacak.</string>
     <string name="nm_cloud_row_remaining">%1$s kaldı</string>
     <string name="nm_cloud_row_sign_in">Oturum aç</string>
     <string name="nm_cloud_err_bad_identifier">Bu bir e-posta adresine benzemiyor.</string>
@@ -831,7 +831,9 @@
     <string name="nm_cloud_sign_out_everywhere">Her yerde oturumu kapat</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Bu hesapta oturum açmış her cihaz, bu telefon dahil, anahtarını kaybeder. Hesap kalır; istediğin zaman yeniden oturum aç.</string>
     <string name="nm_cloud_delete_account">Hesabı sil</string>
-    <string name="nm_cloud_delete_account_confirm">Hesap, oturumları, kullanımı ve geçmişi relay’de silinir. Bu geri alınamaz. Bu telefondaki sohbetler kalır.</string>
+    <string name="nm_cloud_delete_account_confirm">Hesap, oturumları, kullanımı ve geçmişi relay’de silinir; bu hesabın sohbetleri, hafızası, akışı, hedefleri ve yüzü bu telefondan kaldırılır. Bu geri alınamaz.</string>
+    <string name="nm_cloud_keep_chats">Bu hesabın sohbetlerini bu cihazda tut</string>
+    <string name="nm_cloud_keep_chats_sub">Kapalı: bu hesabın sohbetleri, hafızası, akışı, hedefleri ve yüzü bu telefondan kaldırılır. Eşitleme açıksa relay sohbetleri bir sonraki oturum açma için saklar.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Kodlama ajanları</string>

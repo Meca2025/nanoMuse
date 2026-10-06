@@ -541,3 +541,53 @@ async def test_a_body_over_the_limit_names_both_sizes():
     from nanomuse_cloud.config import Settings as RelaySettings
 
     assert RelaySettings(database=":memory:", secret="s").max_request_bytes == 16 * 1024 * 1024
+
+
+async def test_deleting_the_account_purges_everything_and_the_next_sign_in_starts_empty():
+    """The phone's "Delete account": nothing of the account stays on the relay — not its
+    synced conversations, not its cursor, not its devices or profile, not the presence kept
+    in memory — and the same identifier signing up again is a new account with an empty store."""
+    app, client, sender, up, cloud, settings = make()
+    first = await sign_up(client, sender, "13800138000", "pixel")
+    key, account_id = first["api_key"], first["account"]["id"]
+    cid, mid = uid(), uid()
+    r = await client.post(
+        "/v1/sync/changes",
+        json={"device": "phone-1", "conversations": [conv(cid, "main", title="Mine")], "messages": [msg(mid, cid)]},
+        headers=auth(key),
+    )
+    assert r.status_code == 200 and r.json()["accepted"] == 2
+    assert (await client.put("/v1/me/profile", json={"device": "phone-1", "name": "kwai", "avatar": "dragon"}, headers=auth(key))).status_code == 200
+    assert (await client.post("/v1/sync/working", json={"cid": cid, "working": True, "device": "phone-1"}, headers=auth(key))).status_code == 204
+    assert app.state.sync.presence.working(account_id)
+
+    assert (await client.post("/v1/auth/delete", headers=auth(key))).status_code == 204
+    assert (await client.get("/v1/sync/state", headers=auth(key))).status_code == 401
+
+    # every table that names the account is empty of it
+    for table, column in (
+        ("accounts", "id"),
+        ("api_keys", "account_id"),
+        ("ledger", "account_id"),
+        ("events", "account_id"),
+        ("devices", "account_id"),
+        ("profiles", "account_id"),
+        ("sync_conversations", "account_id"),
+        ("sync_messages", "account_id"),
+        ("sync_cursors", "account_id"),
+        ("samples", "account_id"),
+        ("video_tasks", "account_id"),
+    ):
+        n = cloud.db._conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {column}=?", (account_id,)).fetchone()[0]
+        assert n == 0, f"{table} still holds {n} row(s) of the deleted account"
+    assert app.state.sync.presence.working(account_id) == []
+
+    # the same number again: a new account, a new id, nothing to pull
+    again = await sign_up(client, sender, "13800138000", "pixel")
+    assert again["created"] is True and again["account"]["id"] != account_id
+    r = await client.get("/v1/sync/changes?since=0&tail=300", headers=auth(again["api_key"]))
+    assert r.status_code == 200
+    assert r.json()["conversations"] == [] and r.json()["messages"] == [] and r.json()["cursor"] == 0
+    state = (await client.get("/v1/sync/state", headers=auth(again["api_key"]))).json()
+    assert state["counts"] == {"conversations": 0, "messages": 0} and state["working"] == []
+    assert (await client.get("/v1/me/profile", headers=auth(again["api_key"]))).json().get("rev", 0) == 0

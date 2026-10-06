@@ -8,7 +8,7 @@ struct ListSessionsIntent: AppIntent {
     static var openAppWhenRun = false
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        let sessions = await ChatStore.shared.listSessions()
+        let sessions = await NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()) // nanoMuse: C12 — another account's chats stay hidden
 
         if sessions.isEmpty {
             return .result(value: "No sessions found.")

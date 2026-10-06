@@ -2277,6 +2277,65 @@
         }
       }
     },
+    "Keep this account's chats on this device" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Chats dieses Kontos auf diesem Gerät behalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep this account's chats on this device"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservar los chats de esta cuenta en este dispositivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder les discussions de ce compte sur cet appareil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアカウントのチャットをこの端末に残す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 계정의 채팅을 이 기기에 남기기"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить чаты этого аккаунта на этом устройстве"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把这个账号的聊天留在这台设备上"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把這個帳號的聊天留在這台裝置上"
+          }
+        }
+      }
+    },
     "Local copy kept — not every destination was verified" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2757,6 +2816,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此處為空。"
+          }
+        }
+      }
+    },
+    "Off: this account's chats, memory, feed, goals and face are removed from this phone. With sync on, the relay still has the chats for your next sign-in." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus: Chats, Gedächtnis, Feed, Ziele und Gesicht dieses Kontos werden von diesem Telefon entfernt. Ist die Synchronisierung an, hat das Relay die Chats noch für die nächste Anmeldung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off: this account's chats, memory, feed, goals and face are removed from this phone. With sync on, the relay still has the chats for your next sign-in."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivado: los chats, la memoria, el feed, las metas y la cara de esta cuenta se eliminan de este teléfono. Con la sincronización activada, el relay conserva los chats para el próximo inicio de sesión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé : les discussions, la mémoire, le fil, les objectifs et le visage de ce compte sont retirés de ce téléphone. Si la synchronisation est active, le relais garde les discussions pour la prochaine connexion."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オフ：このアカウントのチャット、記憶、フィード、目標、顔がこの端末から削除されます。同期がオンなら、次のサインインのためにリレーにチャットが残ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "꺼짐: 이 계정의 채팅, 기억, 피드, 목표, 얼굴이 이 휴대전화에서 제거됩니다. 동기화가 켜져 있으면 릴레이에 채팅이 남아 다음 로그인 때 돌아옵니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключено: чаты, память, лента, цели и лицо этого аккаунта удаляются с этого телефона. Если синхронизация включена, чаты остаются на релее до следующего входа."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭时：这个账号的聊天、记忆、动态、目标和头像会从这台手机上清除。开着同步的话，服务器上仍有聊天记录，下次登录会取回。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉時：這個帳號的聊天、記憶、動態、目標和頭像會從這台手機上清除。開著同步的話，伺服器上仍有聊天記錄，下次登入會取回。"
           }
         }
       }
@@ -136498,61 +136616,61 @@
         }
       }
     },
-    "The account, its sign-ins, usage and history are deleted at the relay. This cannot be undone. Chats on this phone stay." : {
+    "The account, its sign-ins, usage and history are deleted at the relay, and this account's chats, memory, feed, goals and face are removed from this phone. This cannot be undone." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Konto, seine Anmeldungen, Nutzung und Historie werden beim Relay gelöscht. Das lässt sich nicht rückgängig machen. Chats auf diesem Telefon bleiben."
+            "value" : "Das Konto, seine Anmeldungen, Nutzung und Historie werden beim Relay gelöscht, und die Chats, das Gedächtnis, der Feed, die Ziele und das Gesicht dieses Kontos werden von diesem Telefon entfernt. Das lässt sich nicht rückgängig machen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The account, its sign-ins, usage and history are deleted at the relay. This cannot be undone. Chats on this phone stay."
+            "value" : "The account, its sign-ins, usage and history are deleted at the relay, and this account's chats, memory, feed, goals and face are removed from this phone. This cannot be undone."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La cuenta, sus inicios de sesión, su uso y su historial se eliminan en el relay. Esto no se puede deshacer. Los chats de este teléfono se quedan."
+            "value" : "La cuenta, sus inicios de sesión, su uso y su historial se eliminan en el relay, y los chats, la memoria, el feed, las metas y la cara de esta cuenta se eliminan de este teléfono. Esto no se puede deshacer."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le compte, ses connexions, son utilisation et son historique sont supprimés du relais. C’est irréversible. Les discussions sur ce téléphone restent."
+            "value" : "Le compte, ses connexions, son utilisation et son historique sont supprimés du relais, et les discussions, la mémoire, le fil, les objectifs et le visage de ce compte sont retirés de ce téléphone. C’est irréversible."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アカウント、そのサインイン、使用状況、履歴がリレーから削除されます。元に戻せません。この端末のチャットは残ります。"
+            "value" : "アカウント、そのサインイン、使用状況、履歴がリレーから削除され、このアカウントのチャット、記憶、フィード、目標、顔もこの端末から削除されます。元に戻せません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "계정과 그 로그인, 사용량, 기록이 릴레이에서 삭제됩니다. 되돌릴 수 없습니다. 이 휴대전화의 채팅은 남습니다."
+            "value" : "계정과 그 로그인, 사용량, 기록이 릴레이에서 삭제되고, 이 계정의 채팅, 기억, 피드, 목표, 얼굴이 이 휴대전화에서 제거됩니다. 되돌릴 수 없습니다."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Аккаунт, его входы, использование и история удаляются на релее. Это нельзя отменить. Чаты на этом телефоне остаются."
+            "value" : "Аккаунт, его входы, использование и история удаляются на релее, а чаты, память, лента, цели и лицо этого аккаунта удаляются с этого телефона. Это нельзя отменить."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "账号、登录记录、用量和动态都会从服务器删除，无法恢复。手机上的聊天记录会保留。"
+            "value" : "账号、登录记录、用量和动态都会从服务器删除，这个账号在这台手机上的聊天、记忆、动态、目标和头像也会一并清除。无法恢复。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "帳號、登入記錄、用量和動態都會從伺服器刪除，無法復原。手機上的聊天記錄會保留。"
+            "value" : "帳號、登入記錄、用量和動態都會從伺服器刪除，這個帳號在這台手機上的聊天、記憶、動態、目標和頭像也會一併清除。無法復原。"
           }
         }
       }
@@ -136675,61 +136793,61 @@
         }
       }
     },
-    "The nanoMuse Cloud provider and its models will be removed from this phone. Chats stay." : {
+    "The nanoMuse Cloud provider and its models will be removed from this phone." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Anbieter nanoMuse Cloud und seine Modelle werden von diesem Telefon entfernt. Chats bleiben."
+            "value" : "Der Anbieter nanoMuse Cloud und seine Modelle werden von diesem Telefon entfernt."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The nanoMuse Cloud provider and its models will be removed from this phone. Chats stay."
+            "value" : "The nanoMuse Cloud provider and its models will be removed from this phone."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El proveedor nanoMuse Cloud y sus modelos se eliminarán de este teléfono. Los chats se quedan."
+            "value" : "El proveedor nanoMuse Cloud y sus modelos se eliminarán de este teléfono."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le fournisseur nanoMuse Cloud et ses modèles seront retirés de ce téléphone. Les discussions restent."
+            "value" : "Le fournisseur nanoMuse Cloud et ses modèles seront retirés de ce téléphone."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nanoMuse Cloud プロバイダとそのモデルがこの端末から削除されます。チャットは残ります。"
+            "value" : "nanoMuse Cloud プロバイダとそのモデルがこの端末から削除されます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nanoMuse Cloud 제공자와 그 모델이 이 휴대전화에서 제거됩니다. 채팅은 남습니다."
+            "value" : "nanoMuse Cloud 제공자와 그 모델이 이 휴대전화에서 제거됩니다."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Провайдер nanoMuse Cloud и его модели будут удалены с этого телефона. Чаты останутся."
+            "value" : "Провайдер nanoMuse Cloud и его модели будут удалены с этого телефона."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "会从这台手机上移除 nanoMuse 云这个服务商和它的模型。聊天记录会保留。"
+            "value" : "会从这台手机上移除 nanoMuse 云这个服务商和它的模型。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "會從這台手機上移除 nanoMuse 雲這個服務商和它的模型。聊天記錄會保留。"
+            "value" : "會從這台手機上移除 nanoMuse 雲這個服務商和它的模型。"
           }
         }
       }

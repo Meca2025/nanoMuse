@@ -60,6 +60,12 @@ object FeedFlow {
         scope.launch { runCatching { ensureRoutine(context) }.onFailure { AppLogger.warning(TAG, "ensure failed: ${it.message}") } }
     }
 
+    /** Another account's preferences and routine are in place (contract C12): read them again. */
+    fun refresh(context: Context) {
+        _introAcknowledged.value = prefs(context).getBoolean(KEY_INTRO_ACK, false)
+        scope.launch { runCatching { ensureRoutine(context) }.onFailure { AppLogger.warning(TAG, "ensure failed: ${it.message}") } }
+    }
+
     fun acknowledgeIntro(context: Context) {
         prefs(context).edit().putBoolean(KEY_INTRO_ACK, true).apply()
         _introAcknowledged.value = true

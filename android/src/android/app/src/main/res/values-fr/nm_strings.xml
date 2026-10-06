@@ -678,7 +678,7 @@
     <string name="nm_cloud_open_provider">Réglages du fournisseur</string>
     <string name="nm_cloud_sign_out">Se déconnecter</string>
     <string name="nm_cloud_sign_out_sub">La clé de ce téléphone est révoquée et le fournisseur Cloud retiré ; le crédit reste sur votre compte.</string>
-    <string name="nm_cloud_sign_out_confirm">Le fournisseur nanoMuse Cloud et ses modèles seront retirés de ce téléphone. Les discussions restent.</string>
+    <string name="nm_cloud_sign_out_confirm">Le fournisseur nanoMuse Cloud et ses modèles seront retirés de ce téléphone.</string>
     <string name="nm_cloud_row_remaining">%1$s restants</string>
     <string name="nm_cloud_row_sign_in">Se connecter</string>
     <string name="nm_cloud_err_bad_identifier">Cela ne ressemble pas à une adresse e-mail.</string>
@@ -831,7 +831,9 @@
     <string name="nm_cloud_sign_out_everywhere">Se déconnecter partout</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Chaque appareil connecté à ce compte perd sa clé, ce téléphone compris. Le compte reste ; reconnectez-vous quand vous voulez.</string>
     <string name="nm_cloud_delete_account">Supprimer le compte</string>
-    <string name="nm_cloud_delete_account_confirm">Le compte, ses connexions, son utilisation et son historique sont supprimés du relais. C’est irréversible. Les discussions sur ce téléphone restent.</string>
+    <string name="nm_cloud_delete_account_confirm">Le compte, ses connexions, son utilisation et son historique sont supprimés du relais, et les discussions, la mémoire, le fil, les objectifs et le visage de ce compte sont retirés de ce téléphone. C’est irréversible.</string>
+    <string name="nm_cloud_keep_chats">Garder les discussions de ce compte sur cet appareil</string>
+    <string name="nm_cloud_keep_chats_sub">Désactivé : les discussions, la mémoire, le fil, les objectifs et le visage de ce compte sont retirés de ce téléphone. Si la synchronisation est active, le relais garde les discussions pour la prochaine connexion.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agents de code</string>
