@@ -60,7 +60,7 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
   `nanomuse/rooms.json` and written by the agent in hidden chats (feed and ideas) or
   chats of their own (goals, with the harness's schedule plugin for their automations;
   Library creations under `~/nanoMuse/Library`), plus memory — what it remembers about
-  you, read into every chat ([desktop-muse.md](desktop-muse.md#the-rails-other-rooms--feed-ideas-goals-library));
+  you, read into every chat ([desktop-muse.md](desktop-muse.md#rail-rooms));
 - **Reach**: this computer on the account's device list over the [hub](hub.md); the
   tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`,
   `device_notify` and `delegate` for the phone and the other computers; the phone's
@@ -206,9 +206,15 @@ helper, on the pre-0.1.38 path.
   HiDPI desktop that is the logical size × the scale factor (a 1920×1080 scale-2 display is
   3840×2160 to the hands), and the picture the model sees is that root scaled down to at
   most 1600 wide and 2 Mpx. The frame the app draws around the screen while the hands work
-  (the glow) is click-through; a window manager is needed for a sensible picture (without
-  one Electron's capturer can return a black frame — the runtime then falls back to its own
-  capture). Steps that act on your behalf (Enter, a submit, heavy shortcuts, clicks on words
+  (the glow) takes no clicks: it steps aside for every pointer action — hidden before the
+  pointer moves, back right after with the marker where the click landed, so it blinks for
+  about 150 ms per click — and its X11 input region, which Chromium clears whenever the
+  window's bounds change, is set again after every such change; should a click ever reach
+  the glow anyway, the app sets the region again on the spot and writes one line to the
+  log (`glow: the pointer reached the glow …`). Typing and keys do not move the pointer,
+  so the glow stays up for them and focus is untouched. A window manager is needed for a
+  sensible picture (without one Electron's capturer can return a black frame — the runtime
+  then falls back to its own capture). Steps that act on your behalf (Enter, a submit, heavy shortcuts, clicks on words
   from the sensitive list) wait for the card in the chat or on the live stage; *Allow once*
   runs the step, *Always allow in <app>* keeps the hands going in that app until you revoke
   it under Settings → Permissions. Text outside ASCII is typed through the clipboard
@@ -216,46 +222,3 @@ helper, on the pre-0.1.38 path.
   clipboard content is put back afterwards.
 - The log is `~/.nanomuse/desktop/desktop.log` (each operator action is a line, `operator:
   click at 1249,1096`); the launcher's side is in `journalctl --user -n 200`.
-
-## The terminal binary
-
-A second shape for machines where a window is in the way: `nanomuse-desktop-terminal`, a
-terminal chat with hands on this machine — shell, files, browser, a look at the screen —
-and, through the hub, on every other device of the account. One binary per platform,
-standard-library Python inside, no runtime to install. Install and commands:
-[`desktop/README.md`](../desktop/README.md). Packages come out of
-`scripts/build-desktop.py` and the `desktop` workflow, named
-`nanomuse-desktop-terminal-<version>-…`: `…-windows-x64-setup.exe`,
-`…-macos-arm64.pkg` / `…-macos-x64.pkg`, `…-linux-x64.deb`, plus archives with the bare
-binary.
-
-It signs in to the same account as the phone and the desktop, thinks with the relay's
-models, and works with the same tool vocabulary the hub speaks: `shell`, `files`,
-`file.get`, `file.put`, `open`, `screen`, `notify`, `task`. Its guard (`guard.py`) is
-the phone's ShellGuard ladder in Python: reads and builds run quietly; deleting, sending,
-paying and system commands ask first, with the risk named. From the terminal, to the
-phone: `device_shell`, `device_files`, `device_get`, `device_put`, `device_open`,
-`device_screen`, `device_notify` and `delegate`. From the phone to this computer: incoming
-`shell` commands go through the guard and, when they ask, the question is sent back to
-whoever asked; incoming `task`s run the agent in a conversation of their own. `serve`
-keeps it connected in the background without a terminal chat.
-
-`~/.nanomuse/desktop.json` (`$NANOMUSE_HOME` moves it) holds its cloud server, key, device
-id and name, model, language and downloads folder; files received land in
-`~/Downloads/nanoMuse`. Screenshots use `mss` + Pillow when bundled, else the platform's
-own tool (`screencapture`, PowerShell, `gnome-screenshot` / `grim` / `import`).
-
-```
-pip install pyinstaller pillow mss
-python3 scripts/build-desktop.py          # desktop/dist/
-python -m pytest desktop/tests
-```
-
-The macOS `.pkg` installs `/usr/local/bin/nanomuse-desktop` and a small "nanoMuse
-Desktop.app" that opens it in Terminal; the Windows setup adds the folder to `PATH` and
-a Start-menu entry; the `.deb` (package `nanomuse-desktop-terminal`) installs
-`/usr/bin/nanomuse-desktop-terminal`, a desktop entry "nanoMuse Desktop (terminal)" with its
-own icon, and registers the command as a lower-priority alternative for `nanomuse-desktop`,
-so it installs next to the desktop app's `.deb` and the plain name keeps working when the app
-is not there. Nothing is signed — macOS asks for right-click → Open once, Windows for "Run
-anyway".

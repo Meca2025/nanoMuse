@@ -4,8 +4,9 @@
  * three feature rows, the free/open-source notice, "Sign in — free"); the sign-in itself
  * (a phone number or an e-mail, the six boxes of the code, or the password); a password
  * page for an account that was just created; "Which model answers?" (the Cloud model, or
- * a key of one's own → the harness's model settings); the models page for one's own key;
- * the two permissions the hands need (macOS only — elsewhere the page is skipped); and
+ * a key of one's own); the own-key step (C11: the region's providers from the catalogue, a
+ * key taken inline, the ChatGPT sign-in, *More ways*; Continue once one is in, Skip for now
+ * until then); the two permissions the hands need (macOS only — elsewhere the page is skipped); and
  * "Meet <name>" with Start, which opens the main chat as the first conversation, where
  * the app speaks first (`FirstRun.tsx`).
  *
@@ -30,6 +31,7 @@ import { BlackScreenNotice, HandsTryRows } from './HandsCheck.tsx'
 import { IconCheck, IconHand, IconMessage, IconMonitor, IconSettings, IconUsers } from './icons.tsx'
 import { useLive } from './live.ts'
 import { setMainChatId } from './MuseChats.tsx'
+import { OwnKeyStep } from './OwnKey.tsx'
 import { REPO_URL } from './panels.ts'
 import { nav, roomsCall, useRooms } from './rooms.ts'
 
@@ -172,12 +174,7 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
           permissionsSeen: rooms.firstRun.permissionsSeen,
         })
       : null
-    // the models page waits for a key added in the model settings dialog beside it
-    useEffect(() => {
-      if (stage !== 'models') return
-      const timer = window.setInterval(() => { call<CloudStatus>('status').then((next) => setStatus(next)).catch(() => undefined) }, 3000)
-      return () => window.clearInterval(timer)
-    }, [stage])
+    // the own-key step stays until Continue or Skip: a key saved there does not flip the page by itself
 
     const finish = useCallback(() => {
       setFading(true)
@@ -266,7 +263,14 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
     }
     const choose = (source: 'cloud' | 'own') => {
       void roomsCall('firstrun/set', { sourceChosen: source }).catch(() => undefined)
-      if (source === 'own') openSection('models')
+    }
+    // the own-key step (C11): done once a key is saved or the ChatGPT sign-in finished; Continue then, Skip for now until then
+    const [ownDone, setOwnDone] = useState(false)
+    const onOwnDone = useCallback((done: boolean) => setOwnDone(done), [])
+    const leaveOwnKeyStep = () => {
+      setModelsSkipped(true)
+      // the host's `ready` follows the key just saved: read it again so the later pages and the completion rule see it
+      call<CloudStatus>('status').then((next) => setStatus(next)).catch(() => undefined)
     }
     const permissionsDone = () => { void roomsCall('firstrun/set', { permissionsSeen: true }).catch(() => undefined) }
 
@@ -356,14 +360,17 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
           h(ChoiceRow, { title: t('frSourceCloud'), sub: t('frSourceCloudSub'), disabled: !status.signedIn, onClick: () => choose('cloud') }),
           h(ChoiceRow, { title: t('frOwnKey'), sub: t('frSourceOwnSub'), onClick: () => choose('own') })))
     } else if (stage === 'models') {
+      // the own-key step (C11): the region's first group with the ChatGPT row, more ways behind a link;
+      // a saved key or a finished sign-in turns Skip for now into Continue
       body = h(Page, {
         title: t('frModelsTitle'),
-        sub: t('frModelsSub'),
-        primary: { label: t('frModelsOpen'), onClick: () => openSection('models') },
-        secondary: { label: t('frSkipModels'), onClick: () => setModelsSkipped(true) },
+        sub: t('ownKeyStepSub'),
+        primary: ownDone ? { label: t('ownKeyStepDone'), onClick: leaveOwnKeyStep } : undefined,
+        secondary: ownDone ? undefined : { label: t('frSkipModels'), onClick: leaveOwnKeyStep },
         fine: t('frModelsFine'),
         t,
-      })
+      },
+        h(OwnKeyStep, { t, onDone: onOwnDone }))
     } else if (stage === 'permissions') {
       body = h(PermissionsPage, { t, name, onDone: permissionsDone })
     } else {

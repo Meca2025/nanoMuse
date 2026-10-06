@@ -1,5 +1,6 @@
 // The preload of the two overlay windows (resources/glow.html, resources/capsule.html):
-// state in from the shell, the capsule's answers and its height out. Nothing else.
+// state in from the shell, the capsule's answers and its height out, and — on Linux — the
+// glow's word that the pointer reached it, which a click-through window never sees (glow.ts).
 import { contextBridge, ipcRenderer } from "electron";
 
 type Listener = (state: unknown) => void;
@@ -11,7 +12,11 @@ function onState(listener: Listener): () => void {
   return () => ipcRenderer.off("nanomuse:overlay:state", handler);
 }
 
-contextBridge.exposeInMainWorld("nanomuseGlow", { onState });
+contextBridge.exposeInMainWorld("nanomuseGlow", {
+  onState,
+  platform: process.platform,
+  leak: (x: number, y: number, type: string) => ipcRenderer.send("nanomuse:overlay:leak", { x, y, type }),
+});
 contextBridge.exposeInMainWorld("nanomuseCapsule", {
   onState,
   act: (card: string, action: string) => ipcRenderer.send("nanomuse:overlay:act", { card, action }),

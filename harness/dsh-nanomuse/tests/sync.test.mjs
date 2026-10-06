@@ -150,8 +150,10 @@ function fakeSessions() {
     rename: async (id, title) => { s.renamed.push([id, title]); if (s.rows.has(id)) s.rows.get(id).title = title },
     keep: async (id, line) => { s.appended.push([id, line]) },
     forget: async (id, mid) => { s.forgotten.push([id, mid]) },
+    forgetAll: async () => { s.forgotAll += 1 },
     inject: async (id, text) => { s.injected.push([id, text]) },
   }
+  s.forgotAll = 0
   /** What one session shows from elsewhere, in the order it was kept. */
   s.remote = (id) => s.appended.filter(([sid]) => sid === id).map(([, line]) => line)
   return s
@@ -390,13 +392,17 @@ test('the hub frame pulls, our own echo does not; the switch and the refusals', 
   assert.equal(e.view().paused, true)
   await e.accountChanged('acct-1')
   assert.equal(await e.active(), true)
-  // a different account starts from zero
+  // a different account starts from zero; the mapping stays, owned by the last account (C10)
   e.state.cursor = 9
   e.state.cids.x = 'y'
+  e.state.owners.x = 'acct-1'
+  e.state.conversations.y = { kind: 'side', title: 't', device: 'd', deviceName: 'D', createdAt: 1, updatedAt: 1 }
   await e.accountChanged('acct-2')
   assert.equal(e.state.cursor, 0)
-  assert.deepEqual(e.state.cids, {})
+  assert.equal(e.state.cids.x, 'y')
+  assert.deepEqual(e.state.conversations, {})
   assert.equal(e.state.accountId, 'acct-2')
+  assert.ok(e.view().foreign.includes('x'))
   e.stop()
 })
 
@@ -689,4 +695,136 @@ test('SyncRelay: the query carries scope and tail only when asked; working posts
     '/v1/sync/working',
   ])
   assert.deepEqual(JSON.parse(urls[3][2]), { cid: 'c1', working: true, device: 'pc-1' })
+})
+
+// ---- contract C10: a device shows and syncs the current account's conversations only ---------
+
+test('C10: a session joins the account on its first push or pull; another account hides it, never pushes it, pulls afresh; switching back shows it again', async () => {
+  const relay = fakeRelay()
+  const relayB = fakeRelay()
+  // the same engine; the relay underneath swaps with the key, as a new account's key points it at another store
+  const relays = { current: relay }
+  const sessions = fakeSessions()
+  sessions.add('s-a', 'A’s chat', [{ id: 'ua1', role: 'user', text: 'from a', at: 1738000000000 }], 1738000000000)
+  sessions.add('s-local', 'Never synced', [{ id: 'ul1', role: 'user', text: 'offline words', at: 1738000001000 }], 1738000001000)
+  sessions.add('task-1', 'Task', [{ id: 'ut1', role: 'user', text: 'x', at: 1 }], 1)
+  const { engine: e, changes } = engine({ fetch: (url, init) => relays.current.fetch(url, init) }, sessions)
+  // signed out (never signed in): everything shows, nothing is owned, nothing moves
+  assert.deepEqual(e.view().foreign, [])
+  assert.equal(e.owns('s-a'), true)
+  // A signs in: the main chat is pushed and becomes A's; the side chat that never synced has no owner yet
+  await e.setMain('s-a')
+  await e.accountChanged('acct-a')
+  await until(() => [...relay.msgs.values()].some((m) => m.text === 'from a'))
+  await until(() => e.state.cursor === relay.seq)
+  assert.equal(e.state.owners['s-a'], 'acct-a')
+  await tick(30)
+  // s-local is a side chat and side chats sync here (the test engine's default), so it went up too and is A's
+  assert.equal(e.state.owners['s-local'], 'acct-a')
+  // a conversation pulled from A's relay is a session here, owned by A
+  relay.add('c-a', 'side', 'Pulled for A', 'phone-1', 'Pixel 8')
+  relay.say('c-a', 'user', 'hello from the phone')
+  await e.pull()
+  const pulledSid = Object.keys(e.state.cids).find((sid) => e.state.cids[sid] === 'c-a')
+  assert.ok(pulledSid)
+  assert.equal(e.state.owners[pulledSid], 'acct-a')
+  assert.deepEqual(e.view().foreign, [])
+  assert.deepEqual(new Set(e.view().sessions), new Set(['s-a', 's-local', pulledSid]))
+  const aCids = { ...e.state.cids }
+  const aMids = { ...e.state.mids }
+  // the phone works on A's conversation: a working line
+  e.onWorking({ cid: 'c-a', from: 'phone-1', device_name: 'Pixel 8', working: true, at: Math.floor(Date.now() / 1000) })
+  assert.ok(e.workingOf(pulledSid))
+
+  // A signs out, B signs in on the same computer: a different account.id
+  e.signedOut()
+  assert.deepEqual(e.view().foreign, [])
+  const before = changes()
+  relays.current = relayB
+  await e.accountChanged('acct-b')
+  assert.ok(changes() > before)
+  // the account-scoped state started over: cursor 0, no relay rows, nothing pulled, presence gone, the kept turns dropped once
+  assert.equal(e.state.accountId, 'acct-b')
+  assert.equal(e.state.cursor, 0)
+  assert.deepEqual(e.state.conversations, {})
+  assert.deepEqual(e.state.pulled, {})
+  assert.equal(sessions.forgotAll, 1)
+  assert.equal(e.workingOf(pulledSid), null)
+  // A's mapping is kept, so switching back works; A's main chat is no longer the main chat here
+  assert.deepEqual(e.state.cids, aCids)
+  assert.deepEqual(e.state.mids, aMids)
+  assert.equal(e.state.mainSession, '')
+  // A's sessions are hidden, not deleted; B owns nothing yet
+  assert.deepEqual(new Set(e.view().foreign), new Set(['s-a', 's-local', pulledSid]))
+  assert.deepEqual(e.view().sessions, [])
+  assert.equal(e.owns('s-a'), false)
+  assert.equal(await e.setMain('s-a'), '')
+  // nothing of A's goes to B: a turn in A's chat pushes nothing
+  await until(() => e.state.cursor === relayB.seq)
+  sessions.lines.get('s-a').push({ id: 'aa2', role: 'assistant', text: 'a’s answer', at: 1738000005000 })
+  e.turnEnded('s-a')
+  e.messageSent('s-a')
+  await tick(40)
+  assert.equal(relayB.pushes.length, 0)
+  assert.ok(![...relayB.msgs.values()].some((m) => m.text === 'from a' || m.text === 'offline words'))
+  // a chat written now, before B ever synced it, has no owner: it is listed and goes up to B, and becomes B's
+  sessions.add('s-b', 'B’s chat', [{ id: 'ub1', role: 'user', text: 'from b', at: 1738000010000 }], 1738000010000)
+  assert.equal(e.owns('s-b'), true)
+  await e.setMain('s-b')
+  e.messageSent('s-b')
+  await until(() => [...relayB.msgs.values()].some((m) => m.text === 'from b'))
+  assert.equal(e.state.owners['s-b'], 'acct-b')
+  assert.ok(relayB.pushes.every((p) => p.messages.every((m) => m.text === 'from b')))
+  // signed out again: every local chat shows, A's and B's alike, and nothing moves
+  e.signedOut()
+  assert.deepEqual(e.view().foreign, [])
+  assert.equal(e.owns('s-a'), true)
+  // A back: A's chats return, B's hide; the pull starts over for A
+  relays.current = relay
+  const keptBefore = sessions.remote(pulledSid).filter((l) => l.text === 'hello from the phone').length
+  await e.accountChanged('acct-a')
+  assert.equal(e.state.cursor, 0)
+  assert.deepEqual(e.view().foreign, ['s-b'])
+  assert.ok(e.owns('s-a') && e.owns(pulledSid))
+  assert.equal(sessions.forgotAll, 2)
+  // A's rows come back on the fresh pull and are kept again (the kept store was emptied with the switch)
+  await until(() => e.state.cursor === relay.seq)
+  assert.ok(sessions.remote(pulledSid).filter((l) => l.text === 'hello from the phone').length > keptBefore)
+  e.stop()
+})
+
+test('C10: the same account again changes nothing; a 0.1.38 state gives its mapping to the account it synced with; the switch on again re-sends only this account’s chats', async () => {
+  // the same account signing in again: the cursor and the rows stay
+  const relay = fakeRelay()
+  const sessions = fakeSessions()
+  sessions.add('s1', 'One', [{ id: 'u1', role: 'user', text: 'a', at: 1 }], 1)
+  const { engine: e } = engine(relay, sessions)
+  await e.accountChanged('acct-1')
+  await until(() => relay.msgs.size === 1)
+  await until(() => e.state.cursor === relay.seq)
+  const cursor = e.state.cursor
+  await e.accountChanged('acct-1')
+  assert.equal(e.state.cursor, cursor)
+  assert.equal(sessions.forgotAll, 0)
+  // a 0.1.38 state: no owners; every mapped session belongs to the account it was synced with
+  const old = migrate({ accountId: 'acct-old', cursor: 5, enabled: true, mainSession: 's1', sideChats: true, cids: { s1: 'c1', s2: 'c2' }, mids: {}, titles: {}, conversations: {}, pulled: {}, hidden: [], toArchive: [] })
+  assert.deepEqual(old.owners, { s1: 'acct-old', s2: 'acct-old' })
+  assert.equal(old.cursor, 5)
+  // a state that never signed in has no owners to give
+  assert.deepEqual(migrate({ ...emptyState(), cids: { s1: 'c1' } }).owners, {})
+  // the switch off and on again as B: A's lines keep their pushed ids, B's and the ownerless are re-sent
+  sessions.add('s-a', 'A’s', [{ id: 'ua', role: 'user', text: 'a-words', at: 2 }], 2)
+  e.state.owners['s-a'] = 'acct-other'
+  e.state.cids['s-a'] = 'c-other'
+  e.state.mids.ua = 'pushed-under-a'
+  e.state.titles['s-a'] = 'A’s'
+  await e.setEnabled(false)
+  await e.setEnabled(true)
+  assert.equal(e.state.mids.ua, 'pushed-under-a')
+  assert.equal(e.state.titles['s-a'], 'A’s')
+  assert.equal(e.state.mids.u1, undefined)
+  await until(() => relay.msgs.size === 1)
+  await tick(30)
+  assert.ok(![...relay.msgs.values()].some((m) => m.text === 'a-words'))
+  e.stop()
 })

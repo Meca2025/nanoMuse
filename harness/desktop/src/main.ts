@@ -6,6 +6,7 @@ import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlin
 import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { GLOW_HIDE_MS, GLOW_SETTLE_MS, type Leak, LeakLog, leakIsEvidence, leakIsReal, pointerAction, REARM_DELAYS_MS, staleInstance } from "./glow";
 import { defaultHelperPath, HELPER_NAME, MacHelper } from "./mac-helper";
 import * as macPermissions from "./mac-permissions";
 import { Operator, SCREEN_PERMISSION_TEXT, type Marker } from "./operator";
@@ -356,8 +357,10 @@ function startHost(): Promise<string> {
         });
         proc.stderr?.setEncoding("utf8");
         proc.stderr?.on("data", (chunk: string) => {
-          hostStderr = (hostStderr + chunk).slice(-65_536);
-          for (const line of chunk.split("\n")) if (line.trim()) log(`dsh! ${line}`);
+          const lines = chunk.split("\n").filter((line) => line.trim());
+          const kept = process.platform === "linux" ? lines.filter((line) => !glibCritical(line)) : lines;
+          if (kept.length) hostStderr = (hostStderr + kept.join("\n") + "\n").slice(-65_536);
+          for (const line of kept) log(`dsh! ${line}`);
         });
         proc.on("error", (exc) => {
           if (settled) return;
@@ -366,7 +369,8 @@ function startHost(): Promise<string> {
           reject(exc);
         });
         proc.on("exit", (code, signal) => {
-          log(`host exited: code=${code} signal=${signal}`);
+          log(`host exited: code=${code} signal=${signal}${glibCriticals ? ` (${glibCriticals} GLib-GObject-CRITICAL lines from sharp's libvips not logged)` : ""}`);
+          glibCriticals = 0;
           child = null;
           if (!settled) {
             settled = true;
@@ -379,6 +383,25 @@ function startHost(): Promise<string> {
       })
       .catch(reject);
   });
+}
+
+/** How many `GLib-GObject-CRITICAL` lines the Host's stderr carried this launch (Linux; see glibCritical). */
+let glibCriticals = 0;
+const GLIB_CRITICAL = /GLib-GObject-CRITICAL \*\*: .*g_object_(un)?ref: assertion 'G_IS_OBJECT \(object\)' failed/;
+
+/**
+ * Linux: whether a Host stderr line is the GLib assertion that sharp's libvips raises on
+ * every picture it touches inside Electron — the harness resizes the hands' screenshots
+ * with sharp, whose prebuilt libvips carries its own GLib, while Electron's binary links
+ * the system's and leaks its symbols into the process (electron/electron#46323; sharp's
+ * install notes, "Electron and Linux"). Harmless to the picture, 65 000 lines a session
+ * in the log. The first one is logged with this explanation; the rest are counted.
+ */
+function glibCritical(line: string): boolean {
+  if (!GLIB_CRITICAL.test(line)) return false;
+  glibCriticals += 1;
+  if (glibCriticals === 1) log(`dsh! ${line.trim()} — sharp's libvips and Electron's GLib in one process (electron/electron#46323); further lines of this kind are counted, not logged`);
+  return true;
 }
 
 function stopHost(): Promise<void> {
@@ -865,32 +888,91 @@ let overlayMarker: (Marker & { at: number }) | null = null;
 let markerTimer: NodeJS.Timeout | null = null;
 /** How long a marker stays after its action; the glow stays up with it even before the web client has caught up. */
 const MARKER_MS = 2200;
-/** True between the operator's "before" and "after" capture hooks (Linux): the glow must not come back into the picture. */
-let capturing = false;
 /**
- * Settles once the glow, last shown, is click-through again. On X11 Electron's input shape
- * (setIgnoreMouseEvents) is forgotten whenever the window maps, and the full-screen glow
- * then swallows every click of the hands — so it is set again a moment after each showing,
- * and the operator waits for that before it moves the pointer (operator.ts, onAction).
+ * Linux: why the glow is off the screen for a moment — `capture` between the operator's
+ * "before" and "after" hooks (it must not be in the picture), `action` while a pointer
+ * action runs (an unmapped window takes no input, whatever its X11 input shape — see
+ * src/glow.ts for what goes wrong with the shape). applyOverlay does not bring it back
+ * meanwhile.
+ */
+let glowAside: "" | "capture" | "action" = "";
+/**
+ * Settles once the glow, last shown, is click-through again: on X11 Chromium clears the
+ * input shape Electron's setIgnoreMouseEvents set on every bounds change (creation, first
+ * map, setBounds — src/glow.ts), so it is set again after each of those, and the operator
+ * waits for the settled one before it moves the pointer with the glow up (operator.ts,
+ * onAction).
  */
 let glowClickThrough: Promise<void> = Promise.resolve();
-/** How long after `showInactive()` the X server has the glow mapped, so the shape set then sticks (100 ms is enough; 50 is not). */
-const GLOW_SHAPE_MS = 150;
+let glowRearmTimers: NodeJS.Timeout[] = [];
+/** The watchdog's count of repairs (Linux): the glow's page saw the pointer, which a click-through window never does. */
+const glowLeaks = new LeakLog();
+/** Linux: when the glow was last shown, resized or moved — Chromium makes up an enter and a move right after (glow.ts, LEAK_GRACE_MS). */
+let glowShownAt = 0;
+/** Linux: when this process last set the glow's bounds itself, so a resize of the window manager's doing is told apart in the log. */
+let glowOwnBoundsAt = 0;
+
+/** Linux: the glow's input shape, set now (one X request; a no-op elsewhere). */
+function setGlowClickThrough(): void {
+  const win = glowWindow;
+  if (!win || win.isDestroyed() || process.platform !== "linux") return;
+  win.setIgnoreMouseEvents(true, { forward: true });
+}
 
 /**
- * Linux: sets the glow's input shape again in a moment. Needed after it maps, and also
- * after the X window is configured (the shape was seen full again after a focus change
- * with the glow up — and a click into it then went nowhere), so every action arms this.
+ * Linux: sets the glow's input shape again at REARM_DELAYS_MS — right after the native
+ * call that cleared it (setImmediate), when the X server's ConfigureNotify for it has been
+ * handled, and once more late. Every show, resize and move of the glow arms this, and so
+ * does every action with the glow up. The promise settles with the GLOW_SETTLE_MS one.
  */
 function armGlowClickThrough(): void {
   const win = glowWindow;
   if (!win || win.isDestroyed() || process.platform !== "linux") return;
-  glowClickThrough = new Promise<void>((resolve) =>
-    setTimeout(() => {
-      if (!win.isDestroyed()) win.setIgnoreMouseEvents(true, { forward: true });
-      resolve();
-    }, GLOW_SHAPE_MS),
-  );
+  glowShownAt = Date.now();
+  for (const timer of glowRearmTimers) clearTimeout(timer);
+  glowRearmTimers = [];
+  setImmediate(setGlowClickThrough);
+  glowClickThrough = new Promise<void>((resolve) => {
+    for (const delay of REARM_DELAYS_MS) {
+      if (delay <= 0) continue;
+      glowRearmTimers.push(
+        setTimeout(() => {
+          setGlowClickThrough();
+          if (delay === GLOW_SETTLE_MS) resolve();
+        }, delay),
+      );
+    }
+  });
+}
+
+/**
+ * Linux: the glow's page reported a pointer event. A click-through glow gets none (its
+ * input shape is one pixel at (0,0)), so this is the X server telling us the shape is
+ * gone — set it again at once, and say so in the log once per episode, so a log someone
+ * sends in shows when and where it happened. The enter and move Chromium makes up right
+ * after a show are not evidence and are let pass (glow.ts, leakIsEvidence).
+ */
+function repairGlowShape(leak: Leak): void {
+  const now = Date.now();
+  if (!leakIsEvidence(leak, now - glowShownAt)) return;
+  setGlowClickThrough();
+  armGlowClickThrough();
+  if (glowLeaks.record(now)) log(`glow: the pointer reached the glow (${leak.type} at ${Math.round(leak.x)},${Math.round(leak.y)}) — its X11 input shape was lost; set again (repair ${glowLeaks.repairs})`);
+}
+
+/**
+ * Linux: the glow's X window was resized or moved. Chromium has just cleared its input
+ * shape for that (glow.ts), so it is set again; when the change was not this process's
+ * own `setBounds`, the log says who-knows-what did it, once per such change.
+ */
+function glowReBounded(what: "resize" | "move"): void {
+  const win = glowWindow;
+  if (!win || win.isDestroyed()) return;
+  if (Date.now() - glowOwnBoundsAt > 1000) {
+    const b = win.getBounds();
+    log(`glow: ${what}d from outside to ${b.width}×${b.height} at ${b.x},${b.y}; its X11 input shape is set again`);
+  }
+  armGlowClickThrough();
 }
 
 /** Shows the glow (never taking focus) and, on Linux, makes it click-through again once it is up. */
@@ -899,6 +981,38 @@ function showGlow(): void {
   if (!win || win.isDestroyed()) return;
   win.showInactive();
   armGlowClickThrough();
+}
+
+/**
+ * Linux: the glow steps aside for a pointer action — hidden before the pointer moves,
+ * back right after the action with the marker fresh, so the ring and the action's name
+ * appear where the click just landed. Resolves once the X server has the window unmapped.
+ */
+async function glowStepAside(): Promise<void> {
+  const win = glowWindow;
+  if (!win || win.isDestroyed() || !win.isVisible()) return;
+  glowAside = "action";
+  win.hide();
+  await new Promise((r) => setTimeout(r, GLOW_HIDE_MS));
+}
+
+/** The operator's last action becomes the marker, shown for MARKER_MS; the glow follows it (applyOverlay). */
+function setMarker(marker: Marker): void {
+  overlayMarker = { ...marker, at: Date.now() };
+  if (markerTimer) clearTimeout(markerTimer);
+  markerTimer = setTimeout(() => {
+    markerTimer = null;
+    applyOverlay();
+  }, MARKER_MS + 50);
+  applyOverlay();
+}
+
+/** Linux: after the action — the glow comes back (if it is still wanted) with the marker drawn anew, timed from now. */
+function glowStepBack(): void {
+  if (glowAside !== "action") return;
+  glowAside = "";
+  if (overlayMarker) setMarker(overlayMarker);
+  else applyOverlay();
 }
 
 // ---- the operator: the hands of this computer, run by this process -------------------------
@@ -917,29 +1031,36 @@ function ensureOperator(): Promise<OperatorServer | null> {
     // macOS: "nanoMuse Computer Use" takes the screenshots and moves the mouse when it is there (src/mac-helper.ts)
     helper: helper() ?? undefined,
     onAction: (marker) => {
-      overlayMarker = { ...marker, at: Date.now() };
-      if (markerTimer) clearTimeout(markerTimer);
-      markerTimer = setTimeout(() => {
-        markerTimer = null;
-        applyOverlay();
-      }, MARKER_MS + 50);
-      applyOverlay();
-      // Linux: the glow (just shown for this marker, or up from the last one) must be
-      // click-through before the pointer moves; the operator awaits this
+      setMarker(marker);
+      if (process.platform !== "linux") return;
+      // Linux: a pointer action must not land on the glow. It steps aside (unmapped, so it
+      // takes no input whatever its X11 shape) and comes back in onActed; for the other
+      // actions the glow stays up and is made click-through again before the operator goes on.
+      if (pointerAction(marker.kind)) return glowStepAside();
       if (glowWindow && !glowWindow.isDestroyed() && glowWindow.isVisible()) armGlowClickThrough();
       return glowClickThrough;
     },
+    onActed: process.platform === "linux" ? () => glowStepBack() : undefined,
     // Linux has no content protection: the glow would be in the picture, so it steps out of
     // the way for the capture (one frame) and comes back; macOS and Windows exclude it anyway.
     onCapture:
       process.platform === "linux"
         ? async (phase) => {
-            capturing = phase === "before";
-            if (!glowWindow || glowWindow.isDestroyed()) return;
-            if (phase === "before" && glowWindow.isVisible()) {
-              glowWindow.hide();
-              await new Promise((r) => setTimeout(r, 70));
-            } else if (phase === "after" && overlayUp()) showGlow();
+            if (!glowWindow || glowWindow.isDestroyed()) {
+              glowAside = phase === "before" ? "capture" : "";
+              return;
+            }
+            if (phase === "before") {
+              if (glowAside === "action") return; // already off the screen for the action
+              glowAside = "capture";
+              if (glowWindow.isVisible()) {
+                glowWindow.hide();
+                await new Promise((r) => setTimeout(r, 70));
+              }
+            } else if (glowAside === "capture") {
+              glowAside = "";
+              if (overlayUp()) showGlow();
+            }
           }
         : undefined,
   });
@@ -1028,6 +1149,21 @@ function overlayWindow(kind: "glow" | "capsule"): BrowserWindow {
   win.setAlwaysOnTop(true, "screen-saver");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   if (glow) win.setIgnoreMouseEvents(true, { forward: true });
+  if (glow && process.platform === "linux") {
+    // Chromium clamps a new window to the work area (under GNOME Shell: the display less
+    // its dock and top bar), so the glow would stop short of two edges; the display's
+    // bounds, asked for again, take. Every bounds change — this one, the first map, a
+    // later setBounds — costs the window its input shape (src/glow.ts): set it again.
+    const b = win.getBounds();
+    glowOwnBoundsAt = Date.now();
+    if (b.width !== display.bounds.width || b.height !== display.bounds.height || b.x !== display.bounds.x || b.y !== display.bounds.y) {
+      log(`glow: made ${b.width}×${b.height} at ${b.x},${b.y} (the work area); set to the display's ${display.bounds.width}×${display.bounds.height}`);
+      win.setBounds(display.bounds);
+    }
+    win.on("show", () => armGlowClickThrough());
+    win.on("resize", () => glowReBounded("resize"));
+    win.on("move", () => glowReBounded("move"));
+  }
   win.on("page-title-updated", (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   void win.loadFile(join(ownResources(), `${kind}.html`));
@@ -1069,9 +1205,10 @@ function applyOverlay(): void {
     // only when the display changed: on X11 every configure of the window costs it its input shape
     if (bounds !== glowBounds) {
       glowBounds = bounds;
+      glowOwnBoundsAt = Date.now();
       glowWindow.setBounds(display.bounds);
     }
-    if (!glowWindow.isVisible() && !capturing) showGlow();
+    if (!glowWindow.isVisible() && !glowAside) showGlow();
     sendOverlay(glowWindow, glowState());
   } else if (glowWindow && !glowWindow.isDestroyed() && glowWindow.isVisible()) {
     sendOverlay(glowWindow, { active: false });
@@ -1126,6 +1263,11 @@ function registerOverlays(): void {
   ipcMain.on("nanomuse:overlay:act", (e, payload: { card?: string; action?: string }) => {
     if (e.sender !== capsuleWindow?.webContents || !payload) return;
     mainWindow?.webContents.send("nanomuse:overlay:action", { card: String(payload.card ?? ""), action: String(payload.action ?? "") });
+  });
+  ipcMain.on("nanomuse:overlay:leak", (e, leak: unknown) => {
+    // Linux: the glow's page saw the pointer — only possible when its input shape is gone
+    if (process.platform !== "linux" || e.sender !== glowWindow?.webContents || !leakIsReal(leak)) return;
+    repairGlowShape(leak);
   });
   ipcMain.on("nanomuse:overlay:resize", (e, height: number) => {
     if (e.sender !== capsuleWindow?.webContents || typeof height !== "number") return;
@@ -1503,12 +1645,20 @@ function buildMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-if (!app.requestSingleInstanceLock()) {
+if (!app.requestSingleInstanceLock({ version: app.getVersion() })) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_e, _argv, _cwd, data) => {
     // the launcher clicked while this instance runs — with its window closed, too (the
     // tray case): showWindow() makes the window again when it is gone
+    if (process.platform === "linux" && staleInstance(app.getVersion(), data)) {
+      // Linux: a package upgrade (.deb) leaves the old copy running in the tray; the
+      // launcher then starts the new binary, which only wakes the old one. Hand over.
+      log(`second instance is ${(data as { version: string }).version}, this is ${app.getVersion()}: relaunching into the installed version`);
+      app.relaunch();
+      app.quit();
+      return;
+    }
     log(`second instance: ${mainWindow ? "focusing the window" : hostUrl ? "opening the window again" : "still starting"}`);
     showWindow();
   });

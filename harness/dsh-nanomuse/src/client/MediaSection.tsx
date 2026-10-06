@@ -14,9 +14,12 @@ import { call, errorStyle, type Translate } from './api.ts'
 import { motionStatus } from './Avatar.tsx'
 import { IconCheck, IconImage, IconVideo } from './icons.tsx'
 import { useLive, type LiveMotion, type MotionMood } from './live.ts'
+import { UnavailableLine, useProviders } from './OwnKey.tsx'
 
 export interface MediaView {
   imageModel: string
+  /** Pictures (C11): the account, an own row with image models, or nowhere (`reason` `no_image`). Absent on an older host. */
+  image?: { source: 'cloud' | 'provider' | 'none'; label: string; model: string; reason: string }
   video: { source: 'cloud' | 'provider' | 'none'; label: string; model: string; models: { id: string; name: string }[]; off: boolean; reason: string }
   animate: boolean
   motion: LiveMotion
@@ -37,6 +40,7 @@ function sizeOf(bytes: number): string {
 export function makeMediaSection(t: Translate) {
   return function MediaSection(): ReactNode {
     const live = useLive()
+    const providers = useProviders(t)
     const [view, setView] = useState<MediaView | null>(null)
     const [busy, setBusy] = useState<'model' | 'animate' | 'clips' | 'check' | null>(null)
     const [error, setError] = useState('')
@@ -47,8 +51,9 @@ export function makeMediaSection(t: Translate) {
         .catch((err: unknown) => setError((err as Error).message))
     }, [])
     useEffect(() => reload(), [reload])
-    // the model list and the source follow the account: re-read when sign-in or the face changes
-    useEffect(() => reload(), [live.cloud.signedIn, live.profile.faceId, reload])
+    // the model list and the source follow the account and the own keys: re-read when sign-in, a key row or the face changes
+    const ownCount = live.ownKeys?.count ?? 0
+    useEffect(() => reload(), [live.cloud.signedIn, live.profile.faceId, ownCount, reload])
 
     const motion = live.motion
     const progress = motion.progress
@@ -93,6 +98,17 @@ export function makeMediaSection(t: Translate) {
 
     const video = view.video
     const videoOn = !video.off && video.source !== 'none'
+    // the gate's sentences (C11): nothing configured has image / video models → who could, where the person is
+    const gate = providers.view
+    const noImage = gate && !gate.capabilities.includes('image') && !view.imageModel && view.image?.source !== 'provider'
+    const noVideo = gate && !gate.capabilities.includes('video') && video.source === 'none'
+    const imageSub = view.imageModel
+      ? `${t('mdImageModelSub')} · ${view.imageModel}`
+      : view.image?.source === 'provider'
+        ? `${t('mdImageModelSub')} · ${view.image.label}${view.image.model ? ` · ${view.image.model}` : ''}`
+        : noImage
+          ? h(UnavailableLine, { t, view: gate, capability: 'image', link: true, className: 'nm-wrap', tag: 'span' })
+          : t('mdImageNone')
     const videoSelect =
       video.source === 'none'
         ? null
@@ -109,7 +125,9 @@ export function makeMediaSection(t: Translate) {
             !video.off && !video.models.some((m) => m.id === video.model) && video.model ? h('option', { value: video.model }, video.model) : null,
             video.models.map((m) => h('option', { key: m.id, value: m.id }, m.name)),
           )
-    const videoSub = video.source === 'none' ? t('mdVideoNone') : video.off ? t('mdVideoModelSub') : video.reason === 'unchecked' ? t('mdVideoUnchecked') : `${t('mdVideoModelSub')} · ${video.label}`
+    const videoSub: ReactNode = video.source === 'none'
+      ? (noVideo ? h(UnavailableLine, { t, view: gate, capability: 'video', link: true, className: 'nm-wrap', tag: 'span' }) : t('mdVideoNone'))
+      : video.off ? t('mdVideoModelSub') : video.reason === 'unchecked' ? t('mdVideoUnchecked') : `${t('mdVideoModelSub')} · ${video.label}`
 
     const stage = progress?.stage
     const stageText = !stage ? '' : stage.kind === 'uploading' ? t('moStageUploading') : stage.kind === 'submitted' ? t('moStageSubmitted') : stage.kind === 'running' ? t('moStageRunning', { s: stage.elapsedSec ?? 0 }) : t('moStageDownloading')
@@ -126,7 +144,7 @@ export function makeMediaSection(t: Translate) {
           'div',
           { className: 'nm-row' },
           h('span', { className: 'nm-row-icon' }, h(IconImage, { size: 18 })),
-          h('div', { className: 'nm-row-main' }, h('span', { className: 'nm-row-title' }, t('mdImageModel')), h('span', { className: 'nm-row-sub nm-wrap' }, view.imageModel ? `${t('mdImageModelSub')} · ${view.imageModel}` : t('mdImageNone'))),
+          h('div', { className: 'nm-row-main' }, h('span', { className: 'nm-row-title' }, t('mdImageModel')), h('span', { className: 'nm-row-sub nm-wrap' }, imageSub)),
         ),
         h(
           'div',

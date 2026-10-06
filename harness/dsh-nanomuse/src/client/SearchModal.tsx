@@ -7,7 +7,7 @@
 import { createElement as h, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconChat, IconSearch } from './icons.tsx'
-import type { ChatActions, UseSessionList } from './MuseChats.tsx'
+import { useSyncList, type ChatActions, type UseSessionList } from './MuseChats.tsx'
 import { useRooms } from './rooms.ts'
 import { ago } from './ui.tsx'
 import { useWin, win } from './win.ts'
@@ -37,11 +37,14 @@ function Modal({ t, useSessions, actions }: SearchModalProps): ReactNode {
   const [index, setIndex] = useState(0)
   const field = useRef<HTMLInputElement>(null)
   const list = useRef<HTMLDivElement>(null)
+  // another account's chats are not searched either (C10)
+  const sync = useSyncList()
   const chats = typeof useSessions === 'function'
     ? useSessions((s) => s.ids.map((id) => s.byId[id]).filter((c) => c !== undefined && c.origin !== 'subagent' && !c.blank).map((c) => ({ id: c!.id, title: c!.displayTitle, at: c!.updatedAt })))
     : []
   const hits = useMemo<Hit[]>(() => {
     const rows = chats
+      .filter((c) => !sync.foreign.has(c.id))
       .map((c) => {
         const record = rooms.activity.find((r) => r.sessionId === c.id)
         return { id: c.id, title: c.title, preview: record?.words || record?.request || '', at: Math.max(c.at, record?.updatedAt ?? 0) }
@@ -49,7 +52,7 @@ function Modal({ t, useSessions, actions }: SearchModalProps): ReactNode {
       .sort((a, b) => b.at - a.at)
     const q = query.trim().toLowerCase()
     return (q ? rows.filter((r) => r.title.toLowerCase().includes(q) || r.preview.toLowerCase().includes(q)) : rows).slice(0, 12)
-  }, [chats, rooms.activity, query])
+  }, [chats, rooms.activity, query, sync.foreign])
 
   useEffect(() => { field.current?.focus() }, [])
   useEffect(() => { setIndex(0) }, [query])

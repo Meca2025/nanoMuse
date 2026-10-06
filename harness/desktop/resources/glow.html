@@ -53,9 +53,15 @@
   .trail.fade { opacity: 0; transition: opacity 600ms ease; }
   .trail line { stroke: #ff3b30; stroke-width: 3; stroke-dasharray: 10 8; stroke-linecap: round; }
   .trail circle { fill: none; stroke: #ff3b30; stroke-width: 2; }
+  /* Linux (X11) only: the one element that takes pointer events. A click-through window never
+     gets any, so one arriving here means the window's X11 input shape is gone and the shell
+     must set it again (src/glow.ts). Invisible, under everything else. */
+  .witness { position: fixed; inset: 0; pointer-events: none; background: transparent; z-index: -1; }
+  .x11 .witness { pointer-events: auto; }
 </style>
 </head>
 <body>
+  <div class="witness" id="witness"></div>
   <div class="glow"></div>
   <div class="edge"></div>
   <svg class="trail" id="trail"><line id="trailLine" x1="0" y1="0" x2="0" y2="0" /><circle id="trailFrom" r="6" cx="0" cy="0" /></svg>
@@ -109,6 +115,18 @@
       } else trail.classList.remove('shown')
       clearTimeout(markerTimer)
       markerTimer = setTimeout(() => { marker.classList.add('fade'); trail.classList.add('fade'); cursor.classList.remove('beside') }, MARKER_MS)
+    }
+    if (window.nanomuseGlow?.platform === 'linux') {
+      root.classList.add('x11')
+      let lastLeak = 0
+      const leak = (e) => {
+        // moves are thinned to one per 100 ms; a press or a wheel always goes through (never made up by Chromium)
+        const now = Date.now()
+        if (e.type !== 'pointerdown' && e.type !== 'wheel' && now - lastLeak < 100) return
+        lastLeak = now
+        window.nanomuseGlow.leak(e.clientX, e.clientY, e.type)
+      }
+      for (const type of ['pointerenter', 'pointermove', 'pointerdown', 'wheel']) document.getElementById('witness').addEventListener(type, leak, { passive: true })
     }
     window.nanomuseGlow?.onState((s) => {
       root.classList.toggle('on', Boolean(s.active))

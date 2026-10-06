@@ -13,6 +13,7 @@ import { createElement as h, Fragment, useEffect, useRef, useState, type FormEve
 import { StarNudgeOnce } from './AccountPage.tsx'
 import { call, errorCode, type Translate } from './api.ts'
 import type { Words } from './locales.ts'
+import { UnavailableLine, useProviders } from './OwnKey.tsx'
 import { useRooms } from './rooms.ts'
 import { Sheet } from './ui.tsx'
 
@@ -126,6 +127,8 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
   const [busy, setBusy] = useState(false)
   const alive = useRef(true)
   const round = useRef(0)
+  // what is configured and what it covers (C11): decides whether a failed estimate is "nobody draws pictures here"
+  const providers = useProviders(t)
   useEffect(() => () => { alive.current = false }, [])
   useEffect(() => {
     call<Estimate>('studio/estimate').then((e) => { if (alive.current) setEstimate(e) }).catch((err: unknown) => { if (alive.current) setEstimateError(errorCode(err) === 'signed_out' ? t('stSignedOut') : (err as Error).message) })
@@ -202,13 +205,17 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
   let footer: ReactNode
   if (stage === 'describe') {
     const cannot = estimate && !estimate.affordable
+    const noImage = Boolean(estimateError) && providers.view !== undefined && !providers.view.capabilities.includes('image')
     body = h('form', { id: 'nm-studio', className: 'nm-sheet-form', onSubmit: (e: FormEvent) => { e.preventDefault(); draw() } },
       h('p', { className: 'nm-sheet-lead' }, t('stLead')),
       h('textarea', { className: 'nm-textarea', rows: 3, value: text, placeholder: t('stPlaceholder'), maxLength: 200, onChange: (e: FormEvent<HTMLTextAreaElement>) => setText(e.currentTarget.value), 'data-modal-autofocus': true }),
       h('div', { className: 'nm-st-label' }, t('stStyle')),
       styleChips,
+      // nothing configured draws pictures (C11): the gate's one sentence naming who could, never the host's error
+      noImage ? h(UnavailableLine, { t, view: providers.view!, capability: 'image', link: true, className: 'nm-fine nm-wrap' }) : null,
       h('p', { className: 'nm-fine' },
-        estimateError ? t('stNoModel', { message: estimateError })
+        noImage ? null
+          : estimateError ? t('stNoModel', { message: estimateError })
           : !estimate ? t('stEstimating')
           : estimate.unlimited ? (estimate.clips ? t('stCostUnlimitedClips', { n: 8, clips: estimate.clips }) : t('stCostUnlimited', { n: 8 }))
           : cannot ? t('stCannotAfford', { cost: estimate.cny.toFixed(2), left: estimate.leftCny.toFixed(2) })

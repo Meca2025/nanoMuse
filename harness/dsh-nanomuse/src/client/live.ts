@@ -135,8 +135,18 @@ export interface Live {
   blackScreenAt: number
   /** Conversation sync (C8): `rev` moves with every change; the session that is the account's main conversation. Absent on an older host. */
   sync?: { rev: number; mainSession: string } | undefined
+  /** Own keys and the ChatGPT sign-in (C11): how many rows, what everything configured can do, where the sign-in stands. Absent on an older host. */
+  ownKeys?: LiveOwnKeys | undefined
   /** Whether the stream is open; false before the first snapshot and while reconnecting. */
   streaming: boolean
+}
+
+export type Capability = 'chat' | 'vision' | 'image' | 'video'
+
+export interface LiveOwnKeys {
+  count: number
+  capabilities: Capability[]
+  chatgpt: { signedIn: boolean; label: string; proxy: boolean; login: { status: 'idle' | 'waiting' | 'done' | 'error'; url: string; label: string; error: string } }
 }
 
 export type MotionMood = 'idle' | 'working' | 'waiting' | 'happy'

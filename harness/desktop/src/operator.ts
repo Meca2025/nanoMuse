@@ -116,6 +116,8 @@ export interface OperatorOptions {
    * click-through again (main.ts), and a click that lands on the glow lands nowhere.
    */
   onAction?: (marker: Marker) => void | Promise<void>;
+  /** After each executed action, done or failed: on Linux the glow that stepped aside for the pointer comes back (main.ts). */
+  onActed?: () => void | Promise<void>;
   /** Around the capture: `before` hides what must not be in the picture, `after` shows it again. */
   onCapture?: (phase: "before" | "after") => void | Promise<void>;
   /** macOS: the permissions the hands need, as the app's own probes see them. */
@@ -369,7 +371,11 @@ export class Operator {
   /** One action, in the operator's pixels. Actions run one after another. */
   execute(action: OperatorAction): Promise<{ ok: true; note: string }> {
     const run = this.busy.then(() => this.run(action));
-    this.busy = run.catch(() => undefined);
+    const acted = run.then(
+      () => this.options.onActed?.(),
+      () => this.options.onActed?.(),
+    );
+    this.busy = acted.catch(() => undefined);
     return run;
   }
 
@@ -402,8 +408,8 @@ export class Operator {
       return start;
     };
     const fraction = (p: { x: number; y: number } | null) => (p ? { fx: Math.min(1, Math.max(0, (p.x - space.originX) / space.width)), fy: Math.min(1, Math.max(0, (p.y - space.originY) / space.height)) } : null);
-    // the marker goes out before the pointer moves and is awaited: the glow it brings up must
-    // be click-through before the click (X11 forgets the input shape on map — main.ts)
+    // the marker goes out before the pointer moves and is awaited: on X11 the glow steps
+    // aside for a pointer action and must be click-through for any other (main.ts, glow.ts)
     const mark = async (text: string, p: { x: number; y: number } | null = start, p2: { x: number; y: number } | null = null) => {
       const f = fraction(p) ?? this.lastMarker ?? { fx: -1, fy: -1 };
       if (fraction(p)) this.lastMarker = f;
