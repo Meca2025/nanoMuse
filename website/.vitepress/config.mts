@@ -124,10 +124,15 @@ export default defineConfig({
   srcExclude: ['tasks/**', 'archive/**', 'traces/**', 'briefs/**', 'releases/**', 'readme/**', ...notPages],
   cleanUrls: true,
   lastUpdated: false,
-  // Vite's root is srcDir, which has no node_modules above it; point `vue` at ours.
-  vite: { resolve: { alias: [{ find: /^vue(\/.*)?$/, replacement: `${fileURLToPath(new URL('../node_modules/vue', import.meta.url))}$1` }] } },
+  // Vite's root is srcDir, which has no node_modules above it; point `vue` at ours. The
+  // public dir is website/public (the icon, copied from assets/brand/), so nothing on the
+  // site is fetched from a host a reader in China cannot reach.
+  vite: {
+    publicDir: fileURLToPath(new URL('../public', import.meta.url)),
+    resolve: { alias: [{ find: /^vue(\/.*)?$/, replacement: `${fileURLToPath(new URL('../node_modules/vue', import.meta.url))}$1` }] },
+  },
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${REPO.replace('github.com', 'raw.githubusercontent.com')}/main/assets/brand/nanomuse-icon.svg` }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}nanomuse-icon.svg` }],
   ],
   // Internal links are checked at build time. The link_open rule below turns every link that
   // leaves docs/ into a GitHub URL, so nothing should remain here; add a pattern only for a
@@ -173,13 +178,15 @@ export default defineConfig({
     },
   },
   themeConfig: {
-    logo: `${REPO.replace('github.com', 'raw.githubusercontent.com')}/main/assets/brand/nanomuse-icon.svg`,
+    logo: '/nanomuse-icon.svg',
     siteTitle: 'nanoMuse docs',
+    // Home and Try it are the project site and the demo, the same two the homepage's bar has.
     nav: [
+      { text: 'Home', link: 'https://nanomuse.cn/' },
+      { text: 'Try it', link: 'https://demo.nanomuse.dev/' },
       { text: 'Get started', link: '/android' },
       { text: 'Run it yourself', link: '/self-hosting' },
       { text: 'Roadmap', link: '/roadmap' },
-      { text: 'nanomuse.cn', link: 'https://nanomuse.cn/' },
     ],
     sidebar: [
       { text: 'Get started', items: getStarted },
