@@ -16,7 +16,7 @@ import org.json.JSONObject
 
 object OpenAIModelsApi {
     private const val TAG = "OpenAIModelsApi"
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder().proxyAuthenticator(io.github.nanomuse.net.OwnProviderProxy.authenticator).build() // nanoMuse: Settings → Network, a proxy with a password
     private val cache = ProviderModelsCache("openai")
 
     /**

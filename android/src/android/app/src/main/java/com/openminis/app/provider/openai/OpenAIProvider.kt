@@ -445,6 +445,7 @@ class OpenAIProvider private constructor(
         // a local proxy got reused on every retry (silent infinite hang).
         .connectionPool(com.openminis.app.network.NetworkMonitor.sharedLLMConnectionPool)
         .eventListenerFactory { OkHttpNetTraceListener() }
+        .proxyAuthenticator(io.github.nanomuse.net.OwnProviderProxy.authenticator) // nanoMuse: Settings → Network, a proxy with a password
         .build()
 
     /** Detect OpenRouter base URL. */
@@ -3428,10 +3429,16 @@ class OpenAIProvider private constructor(
     }
 
     private fun mapHttpError(statusCode: Int, body: String): LLMError {
-        if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
-        // nanoMuse: the relay's "allowance used up" is a 429 with a structured body; keep it
-        // for the chat's card before the generic mapping drops the body.
+        // nanoMuse: the relay's "allowance used up" is a 429 with a structured body, and the
+        // ChatGPT plan's "region not supported" / "sign-in expired" / "nothing left" are a 403,
+        // a 401 and a 429 whose bodies the mapping below drops; keep them for the chat's cards.
         io.github.nanomuse.cloud.AllowanceSignal.noteHttpError(statusCode, body)
+        io.github.nanomuse.net.ReachSignal.noteHttpError(
+            statusCode, body,
+            host = if (isOAuth && !forceChatCompletions) "chatgpt.com" else io.github.nanomuse.net.OwnProviderProxy.hostOf(basePath),
+            oauth = isOAuth,
+        )
+        if (statusCode == 401 || statusCode == 403) return LLMError.InvalidApiKey()
         if (statusCode == 429) return LLMError.RateLimited()
 
         val message = try {

@@ -21,6 +21,8 @@ object AllowanceSignal {
         val inviteBonusCny: Double,
         val inviteeBonusCny: Double,
         val ownKeyDocs: String,
+        /** True for the relay's `daily_cap`: today's share is spent, the pool is not; it comes back with the day. */
+        val dailyCap: Boolean = false,
         val at: Long = System.currentTimeMillis(),
     )
 
@@ -28,10 +30,13 @@ object AllowanceSignal {
 
     /** Call for every failed HTTP reply of a model request; only the relay's 429 is kept. */
     fun noteHttpError(status: Int, body: String?) {
-        if (status != 429 || body.isNullOrBlank() || !body.contains("allowance_exhausted")) return
+        if (status != 429 || body.isNullOrBlank()) return
+        if (!body.contains("allowance_exhausted") && !body.contains("daily_cap")) return
         val err = runCatching { JSONObject(body).optJSONObject("error") }.getOrNull() ?: return
-        if (err.optString("code") != "allowance_exhausted") return
+        val code = err.optString("code")
+        if (code != "allowance_exhausted" && code != "daily_cap") return
         last = Exhausted(
+            dailyCap = code == "daily_cap",
             leftCny = err.optDouble("left", 0.0),
             grantCny = err.optDouble("grant", 0.0),
             inviteUrl = err.optString("invite_url", ""),

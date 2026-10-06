@@ -26,7 +26,8 @@
     PUT  /api/connections/llm|embeddings|email|browser|calendar   POST /api/connections/llm|embeddings|email|calendar/test
     POST /api/llm/models                 the models an endpoint offers (live /models, else the catalogue)
     GET  /api/providers (?lang=en|zh&region=cn|global)  the provider catalogue, which slots use which, what that covers
-    POST /api/chatgpt/login  GET /api/chatgpt/status  POST /api/chatgpt/callback {url}  POST /api/chatgpt/logout
+    POST /api/chatgpt/login  GET /api/chatgpt/status  GET /api/chatgpt/usage
+    POST /api/chatgpt/callback {url}  POST /api/chatgpt/logout
     POST /api/connections/calendar/feeds {name,url}  DELETE /api/connections/calendar/feeds/{name}
     PUT  /api/connections/contacts {enabled}  POST /api/connections/contacts/sources {name,url}
     POST /api/connections/contacts/import?name= (body: the .vcf text)  DELETE /api/connections/contacts/sources/{name}
@@ -900,6 +901,12 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         """The token store without the tokens; ``pending`` and ``url`` while a sign-in waits;
         ``error`` after one failed, until the next login."""
         return svc.chatgpt.status()
+
+    @app.get("/api/chatgpt/usage", dependencies=dep)
+    async def chatgpt_usage() -> dict[str, Any]:
+        """What is left of the plan's usage windows, as OpenAI reports it (one request to
+        chatgpt.com at most once a minute; ``limits`` null when it reports nothing)."""
+        return await svc.chatgpt.usage()
 
     @app.post("/api/chatgpt/callback", dependencies=dep)
     async def chatgpt_callback(body: ChatGptCallbackBody) -> dict[str, Any]:

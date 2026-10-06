@@ -304,6 +304,7 @@ class OpenAIOAuthManager(context: Context, instanceId: String) : OAuthManager(co
                 )
                 chain.proceed(req)
             }
+            .proxyAuthenticator(io.github.nanomuse.net.OwnProviderProxy.authenticator) // nanoMuse: Settings → Network, a proxy with a password
             .build()
     }
 

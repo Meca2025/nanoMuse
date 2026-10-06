@@ -85,6 +85,57 @@ hears `not_allowed` when the card expires. `info` and `notify` never ask; a
 caller as before. A device may `approve` only cards of its own runs that were
 sent to it — never the card asking whether it may run something.
 
+### Proposed: `proxy_fetch` — the phone uses the computer's connection
+
+Not built yet; written down here so the three implementations agree before
+anyone starts. The case: the phone's network does not reach `chatgpt.com` or a
+provider's host (the card in [own-key.md](own-key.md#when-the-provider-cannot-be-reached)),
+the person's computer does. The computer's runtime would relay the provider
+call — only that — the way a proxy would, over the hub.
+
+```
+→ call   {id, to, action:"proxy_fetch",
+          args:{method, url, headers:{…}, body?, stream?}}     body base64; stream: want SSE chunks as events
+← event  {id, from, body:{stage:"headers", status, headers:{…}}}
+← event  {id, from, body:{stage:"chunk", data}}                data base64; one per SSE chunk when stream is true
+← result {id, ok:true, body:{status, headers:{…}, data?}}      data base64 when stream was false
+← result {id, ok:false, error:"not_allowed" | "host_refused" | "too_large" | "upstream", message}
+```
+
+The rules that make it acceptable, each one a line of code on the serving
+side:
+
+- **Opt-in on the computer.** The desktop plugin announces `proxy_fetch` in its
+  `hello` only while *Let my phone use this computer's connection for
+  providers* is on (*Settings → Devices*); off, the action is `unknown_call`.
+  Same trust as `device_shell`: the device's *Remote control* must be on, and
+  the first call from a device raises the usual card — *once* or *always for
+  this device* (a `remote_control:<device id>` grant).
+- **Hosts, not the open internet.** The computer forwards only to hosts of the
+  provider catalogue (`providers.json`), `chatgpt.com` and `auth.openai.com`,
+  and to the custom base URLs of its own configured providers; anything else
+  is `host_refused`. Never the relay, never a LAN address, never `file:`.
+- **Headers pass, secrets do not stay.** The phone sends its own
+  `Authorization` (the plan's token, its own key); the computer forwards it and
+  logs the host, the status and the size — never a header or a body.
+- **Bounded.** Request bodies over 8 MB and responses over `HUB_FRAME_LIMIT`
+  per frame are `too_large`; a stream is cut at ten minutes; one call at a time
+  per asking device.
+- **The phone chooses.** The reach card offers *Use my computer's connection*
+  only when a computer that announces `proxy_fetch` is online; the choice is
+  kept per provider instance and shows on the instance as a line, so nobody
+  forgets that their key travels through the computer.
+
+Why it is a design and not code in this change: the hub frame itself is small,
+but the serving side is a new trust surface on the computer (a forwarder that
+carries the person's provider tokens) and the phone's two HTTP stacks would
+each need a transport that turns a request into frames and frames back into a
+response — three implementations and a fourth place that must agree on the
+host list, which this round's budget did not cover honestly. The proxy setting
+([own-key.md](own-key.md#when-the-provider-cannot-be-reached)) covers the
+common case meanwhile: a proxy on the computer (Clash, a `ssh -D`) with the
+phone pointed at it.
+
 ## Frames
 
 JSON text frames over `WS /v1/hub`, `Authorization: Bearer nm_…` (browsers put

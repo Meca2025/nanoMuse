@@ -101,6 +101,32 @@ models' word, as before. When no configured provider has a capability, the page 
 sentence — *Pictures need a provider with image models — Bailian, OpenAI, Gemini or
 OpenRouter.* — instead of failing.
 
+**When the provider cannot be reached** (`net/ProviderReach.kt`, `ui/chat/ProviderReachCard.kt`).
+A failed turn whose error is the transport's — OkHttp's *failed to connect to chatgpt.com/… (port
+443)*, *Unable to resolve host*, a TLS or timeout line — or OpenAI's *region not supported* is
+shown as a card instead of the red banner: what happened, what helps (a VPN on this phone, the
+proxy under *Settings → Network*, another provider with a key of your own), *Try again*, and the
+raw line behind *Details*. The 401/403/429 whose bodies upstream's `mapHttpError` drops are
+kept for a few seconds by `ReachSignal` (one `// nanoMuse:` spot in `OpenAIProvider`) and
+written into the message as a canonical `nm_reach:` line, so an expired ChatGPT sign-in reads
+*Sign in again* and a spent plan window reads *The ChatGPT plan has nothing left for now* with
+OpenAI's own sentence and the reset time; a plain *Invalid API key* on a key provider stays
+upstream's. The relay's `daily_cap` 429 is now read like `allowance_exhausted` and the card
+says today's share is spent and comes back with the day. The allowance card also lists a model
+of your own (Ollama, LM Studio, vLLM on a computer you own) and, for a signed-in account, your
+computer — *@* and its name in the chat runs the turn there.
+
+**Settings → Network** (`net/OwnProviderProxy.kt`, `ui/net/NetworkScreen.kt`,
+`minis://settings/network`). The HTTP proxy for own providers: host, port, optional user name
+and password, off by default, in `SharedPreferences` on this phone only. It is installed in
+`MinisApp.onCreate` as the process's default `ProxySelector`, so every OkHttp client asks it per
+request; it answers the proxy for the catalogue's hosts, `chatgpt.com`, `auth.openai.com` and
+the custom base URLs of the provider instances (never the relay's, never a LAN address), and the
+system's answer for every other host — the hub, the relay, the sandbox mirrors are untouched.
+Provider clients carry `OwnProviderProxy.authenticator` for a proxy that asks for a password.
+*Test* fetches `https://chatgpt.com/` through the proxy as entered and reports the status and the
+milliseconds. Unit tests: `ProviderReachTest`, `OwnProviderProxyTest`.
+
 ## Privacy and permissions
 
 The relay keeps an account id, a masked identifier, usage counts and the agent's name and
