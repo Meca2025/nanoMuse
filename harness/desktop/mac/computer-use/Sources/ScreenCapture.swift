@@ -15,8 +15,9 @@
 // still fail. Errors are reported with SCK's own code name, so the log says `userDeclined`
 // or `noDisplay…` rather than `noImage`.
 //
-// The deployment target stays macOS 12 (build.sh): every SCK use is behind
-// `#available(macOS 14.0, *)`, and the pre-14 branch keeps the CoreGraphics calls.
+// The deployment target is macOS 12.3 (build.sh), the first release with the framework:
+// every SCK use is behind `#available(macOS 14.0, *)`, and the pre-14 branch keeps the
+// CoreGraphics calls.
 
 import AppKit
 import CoreGraphics
@@ -112,7 +113,7 @@ enum ScreenCapture {
                 )
             }
         }
-        return legacyWindows()
+        return try legacyWindows()
     }
 
     /// One window's own pixels (no shadow) and its frame in screen points.
