@@ -18,6 +18,9 @@ logs/
 __pycache__/
 *.py[cod]
 *.egg-info/
+
+# typescript incremental build state (web/, harness/)
+*.tsbuildinfo
 .eggs/
 build/
 dist/

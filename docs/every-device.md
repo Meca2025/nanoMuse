@@ -183,6 +183,39 @@ is offered as a target all the same on the web and the desktop and answers
 `device_offline`; the web console is never one. The session a device runs for
 another is kept on that device and is not synced.
 
+## Whose conversations a device shows
+
+A device can be signed in as one account today and another tomorrow — a
+family's tablet, a work laptop with a personal account on it, a phone handed
+on. Since 0.1.39 every conversation on a device remembers **whose** it is: the
+account that was signed in when it first went up to the relay or first arrived
+from it. The rule is then the same on the phone, the computer, the desktop app
+and the web console:
+
+- **Signed in as B, you see B's conversations** — and the ones that belong to
+  nobody: chats made while signed out, before anyone had signed in on this
+  device. A's chats are not in the list.
+- **A's chats are hidden, not deleted.** They stay on the device, with their
+  files and images, and are back the moment A signs in again. Signing out on
+  its own hides nothing; deleting a chat still deletes it.
+- **Nothing crosses accounts.** A conversation of A's is never sent up to B's
+  account, and B's conversations never land in A's — not by sync, not by a
+  turn run on this device for another device of the account.
+- **A different account starts fresh.** When the signed-in account changes, the
+  device forgets where it was in the other account's sync (the next pull is
+  the newest 300 lines, as on a first sign-in), clears what it kept of the
+  other devices' bubbles and presence, and reads the new account's device
+  list anew. Switching back to A picks up A's chats and A's place in the sync.
+- **The relay is not involved.** It keeps each account's store apart as it
+  always did; the sorting is done on the device, so an older relay behaves the
+  same.
+
+The muse's name and look follow the account as before; what the muse remembers
+about you (the memory files) is per device and not sorted by account in 0.1.39.
+Code: the runtime's `nanomuse/sync/engine.py` and the session list in
+`nanomuse/server/api.py`, the desktop's `harness/dsh-nanomuse/src/{sync,cloud}.ts`,
+Android's `io.github.nanomuse.sync.*`, the iPhone's `NanoMuse/NanoMuseSync.swift`.
+
 ## The computer: nanoMuse Desktop
 
 The desktop is the Python runtime (`nanomuse serve`) with three front doors on
@@ -360,7 +393,7 @@ the hands elsewhere — the hub is already enough for them.
 
 Released with 0.1.19: the APK, the desktop installers (`nanoMuse-Desktop-…`,
 [`.github/workflows/desktop-app.yml`](../.github/workflows/desktop-app.yml)),
-the terminal binary, and nanoMuse Web at nanomuse.cn/web (the demo on a
+the terminal binary (dropped in 0.1.39), and nanoMuse Web at nanomuse.cn/web (the demo on a
 simulated phone since 0.1.26).
 
 ## Debugging it all on one machine

@@ -121,7 +121,7 @@ Installed from PyPI and npm, not vendored; each carries its own license: openai,
 ## Learned from, no code taken
 
 - **Meta Muse** — the product shape: one agent with a name and a face, a feed, goals, "asks before anything you could not undo". nanoMuse is an independent project, not affiliated with or endorsed by Meta Platforms, Inc.; nothing of the Muse app was decompiled or copied.
-- **[PhoneHarness](https://github.com/lsdefine/PhoneHarness)** — deterministic-first routing (a tool that does the thing exactly beats the GUI) and a JSONL trace per run rendered to HTML. Ideas only: the repository carries no license.
+- **[PhoneHarness](https://github.com/PhoneHarness/PhoneHarness)** — deterministic-first routing (a tool that does the thing exactly beats the GUI) and a JSONL trace per run rendered to HTML. Ideas only: the repository carries no license.
 - **[CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse)** (MIT) — product designs we follow rather than code: durable tasks with a take-control hand-off, watches, ideas with evidence, a follow-up queue, "content is evidence, not permission", background-update preferences.
-- **[Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM)** (Apache-2.0) and **[ClawGUI](https://github.com/ClawGUI/ClawGUI-APP)** (Apache-2.0) — reference points for operating a phone through its screen (package tables, Shizuku, a built-in IME, a floating bar). When code from either lands, it will be listed above.
+- **[Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM)** (Apache-2.0) and **[ClawGUI](https://github.com/ZJU-REAL/ClawGUI)** (Apache-2.0) — reference points for operating a phone through its screen (package tables, Shizuku, a built-in IME, a floating bar). When code from either lands, it will be listed above.
 - **[browser-use](https://github.com/browser-use/browser-use)** (MIT) — the element-annotation idea behind the browser tool.

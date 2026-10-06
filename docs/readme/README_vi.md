@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="Tài liệu"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
+  <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 **nanoMuse là một trợ lý cá nhân mã nguồn mở cho mọi thiết bị của bạn.** Một trợ lý duy nhất có tên và hình dáng riêng, cùng loại với [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) của Meta: nó làm việc thay vì chỉ trả lời câu hỏi, tiếp tục làm khi ứng dụng đã đóng, nhớ bạn, và dừng lại hỏi trước bất cứ việc gì bạn không thể hoàn tác.
@@ -42,31 +43,38 @@
 | **macOS** 12 trở lên | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-x64.dmg) — chưa được công chứng: lần đầu nhấp chuột phải → *Mở* |
 | **Windows** 10 trở lên | [nanoMuse-Desktop-0.1.38-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-win-x64.exe) — bấm *Vẫn chạy* một lần |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.tar.gz) |
-| **Terminal** | `pipx install "git+https://github.com/nano-muse/nanoMuse"` với Python 3.11 trở lên, hoặc tệp thực thi `nanomuse-desktop-terminal` từ [bản phát hành mới nhất](https://github.com/nano-muse/nanoMuse/releases/latest) |
 | **Docker** | `bash scripts/self-host.sh --local` để có relay của riêng bạn; `docker compose up -d app` để chạy ứng dụng web trên máy chủ của bạn — [tự lưu trữ](../self-hosting.md) |
 
 Mọi bản tải đều từ [bản phát hành mới nhất trên GitHub](https://github.com/nano-muse/nanoMuse/releases/latest); cùng các tệp đó có tại [nanomuse.cn/dl](https://nanomuse.cn/dl/) nếu GitHub chậm ở chỗ bạn. Mở ứng dụng, đăng nhập bằng e-mail hoặc số điện thoại Trung Quốc đại lục, và trợ lý đã có một mô hình để suy nghĩ. Điện thoại, máy tính và web dùng chung một tài khoản và hiển thị cùng những cuộc trò chuyện.
 
 ## Nó làm được gì
 
-- **Làm việc.** Shell Linux, trình duyệt, máy chủ MCP và kỹ năng — và khi bật *Hands*, cả ứng dụng trên điện thoại lẫn cửa sổ trên máy tính qua màn hình của chúng, cho những thứ chưa bao giờ có API.
-- **Hỏi trước.** Dừng lại trước khi xóa, gửi hay thanh toán, và nhớ lựa chọn cho một lần, cuộc trò chuyện này hoặc mãi mãi; mật khẩu và mã xác minh do bạn tự gõ. Gặp đăng nhập hay CAPTCHA, nó trao lại cho bạn; bấm *Xong* là tiếp tục.
-- **Với tới các thiết bị khác của bạn.** Nói trên điện thoại, chạy trên PC; `@Mac …` ở đầu tin nhắn gửi việc sang máy đó. Các phê duyệt quay về thiết bị bạn đang cầm.
-- **Không ngừng lại.** Mục tiêu được kiểm tra theo lịch, thói quen chạy khi ứng dụng đã đóng, mỗi sáng có một bảng tin viết cho bạn.
-- **Nhớ bạn.** Nó là ai, biết gì về bạn và khi nào thức dậy là những tệp Markdown bạn đọc và sửa được.
-- **Sống trong ứng dụng chat của bạn.** Trả lời trong 飞书, 钉钉, 企业微信 và Telegram.
-- **Có dáng vẻ riêng.** Mô tả một dáng vẻ, mô hình ảnh của bạn vẽ ra, mô hình video làm nó chuyển động. Mặc định là một chú rồng nhỏ.
-- **Mô hình nào cũng được.** Mô hình của relay, một khóa Bailian hay OpenRouter, hoặc bất kỳ endpoint tương thích OpenAI nào.
+<table>
+  <tr>
+    <td width="50%" valign="top"><b>Làm việc.</b><br>Shell Linux, trình duyệt, máy chủ MCP và kỹ năng — và khi bật <i>Hands</i>, cả ứng dụng trên điện thoại lẫn cửa sổ trên máy tính qua màn hình của chúng, cho những thứ chưa bao giờ có API.</td>
+    <td width="50%" valign="top"><b>Hỏi trước.</b><br>Dừng lại trước khi xóa, gửi hay thanh toán, và nhớ lựa chọn cho một lần, cuộc trò chuyện này hoặc mãi mãi; mật khẩu và mã xác minh do bạn tự gõ. Gặp đăng nhập hay CAPTCHA, nó trao lại cho bạn; bấm <i>Xong</i> là tiếp tục.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Với tới các thiết bị khác của bạn.</b><br>Nói trên điện thoại, chạy trên PC; <code>@Mac …</code> ở đầu tin nhắn gửi việc sang máy đó. Các phê duyệt quay về thiết bị bạn đang cầm.</td>
+    <td width="50%" valign="top"><b>Không ngừng lại.</b><br>Mục tiêu được kiểm tra theo lịch, thói quen chạy khi ứng dụng đã đóng, mỗi sáng có một bảng tin viết cho bạn.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Nhớ bạn.</b><br>Nó là ai, biết gì về bạn và khi nào thức dậy là những tệp Markdown bạn đọc và sửa được.</td>
+    <td width="50%" valign="top"><b>Sống trong ứng dụng chat của bạn.</b><br>Trả lời trong 飞书, 钉钉, 企业微信 và Telegram.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Có dáng vẻ riêng.</b><br>Mô tả một dáng vẻ, mô hình ảnh của bạn vẽ ra, mô hình video làm nó chuyển động. Mặc định là một chú rồng nhỏ.</td>
+    <td width="50%" valign="top"><b>Mô hình nào cũng được.</b><br>Hạn mức của relay, khóa của riêng bạn ở một trong mười tám nhà cung cấp (Bailian, OpenRouter, OpenAI, Gemini, DeepSeek và hơn nữa), hoặc gói bạn đã trả tiền: ChatGPT, Claude, Kimi. Nhà cung cấp không có mô hình ảnh hay video thì hai tính năng đó tắt, và ứng dụng nói rõ điều đó.</td>
+  </tr>
+</table>
 
 ## Cách hoạt động
 
 Mỗi thiết bị chạy trợ lý của riêng mình — điện thoại trong APK (Alpine Linux dưới proot, shell, trình duyệt, MCP), máy tính trong nanoMuse Desktop (DeepSeek Harness cùng runtime Python cho đôi tay). Đăng nhập xong, chúng gặp nhau trên relay và có thể nhờ vả nhau; văn bản trò chuyện đi qua relay, còn tệp và ảnh chụp màn hình ở lại nơi chúng được tạo ra.
 
-```
-điện thoại ──┐                         ┌── máy tính (nanoMuse Desktop)
-             ├──▶  nanoMuse Cloud  ◀───┤        relay: đăng nhập, mô hình,
-web  ────────┘        /v1/hub          └── điện thoại / máy tính khác    hub, đồng bộ trò chuyện
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/devices-loop.png" alt="Android, máy tính (Mac, Windows, Linux), iPhone và iPad, và ứng dụng web quanh một tài khoản: relay đăng nhập các thiết bị và chuyển cuộc trò chuyện giữa chúng" width="92%">
+</p>
 
 [docs/every-device.md](../every-device.md) nói về các thiết bị, [docs/hub.md](../hub.md) về khung tin, [docs/cloud.md](../cloud.md) về relay, [docs/privacy.md](../privacy.md) về những gì nó lưu.
 
@@ -90,7 +98,7 @@ Một VPS, một giờ: [docs/self-hosting.md](../self-hosting.md). Ba con đư�
 
 ## Đóng góp
 
-Dùng nó cho một việc thật, kể lại chỗ nào hỏng, rồi chọn một việc nhỏ và cụ thể: [CONTRIBUTING.md](../../CONTRIBUTING.md) có phần thiết lập và quy ước, [AGENTS.md](../../AGENTS.md) là các quy tắc một trợ lý lập trình tuân theo trong cây mã này, và [lộ trình](../roadmap.md) chỉ chỗ bắt đầu. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions).
+Dùng nó cho một việc thật, kể lại chỗ nào hỏng, rồi chọn một việc nhỏ và cụ thể: [CONTRIBUTING.md](../../CONTRIBUTING.md) có phần thiết lập và quy ước, [AGENTS.md](../../AGENTS.md) là các quy tắc một trợ lý lập trình tuân theo trong cây mã này, và [lộ trình](../roadmap.md) chỉ chỗ bắt đầu. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
 
 ## Ghi nhận
 
@@ -99,7 +107,7 @@ nanoMuse đứng trên công sức của người khác; điều khoản ở [TH
 - [OpenMinis](https://github.com/OpenMinis/OpenMinis) — trợ lý chạy trên thiết bị mà ứng dụng điện thoại được xây dựng từ đó, với [proot](https://github.com/nano-muse/proot) và [Alpine Linux](https://alpinelinux.org/) làm hộp cát.
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — harness trợ lý mà ứng dụng máy tính là một plugin của nó.
 - [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance) — bộ điều khiển đôi tay trên máy tính được chuyển từ mã của họ, và các điểm đánh dấu trên sân khấu theo ScreenMarker của họ.
-- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/lsdefine/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ClawGUI/ClawGUI-APP) — bộ điều khiển điện thoại, dấu vết và ý tưởng sản phẩm.
+- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/PhoneHarness/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ZJU-REAL/ClawGUI) — bộ điều khiển điện thoại, dấu vết và ý tưởng sản phẩm.
 
 ## Tuyên bố
 
