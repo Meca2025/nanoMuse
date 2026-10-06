@@ -22,6 +22,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Project
 
+- **nanomuse.cn has a 404 page** of its own, with the site's bar and theme.
+- **The showcase has an embed mode** (`https://demo.nanomuse.dev/?embed=1`), for the frame on the homepage: no header of its own, the phone waits for the visitor's tap instead of turning itself on, the site's language and theme are followed, and links leave the frame.
+- **The docs site looks like the homepage:** Home and Try it in the nav, the brand colour and system type, the logo served with the site rather than from GitHub.
+
 ## [0.1.40] - 2026-10-06 · Clear
 
 Clear: the iPhone's input field is in the clear again — it sat behind the bottom bar, a safe-area inset the chat stopped keeping clear of once the keyboard had come and gone; the bar and the composer are plain rows now, and a page in Settings shows where the app laid them out. Every chat on a phone belongs to the account that made it, so a shared device keeps accounts' chats clearly apart, and signing out asks one question. Every refusal from the relay is one clear sentence, or a card, on every client, and the operator of a relay can close the door with a switch on a *Controls* page, with *Stats* and *Site* beside it. The Mac takes a true picture of the screen with ScreenCaptureKit or says why it cannot, Windows starts again after the update that moved the app, and the desktop's lights, glow and capsule move as the phone's do.
