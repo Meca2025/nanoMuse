@@ -265,7 +265,7 @@ enum NanoMuseProxy {
         func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
             let space = challenge.protectionSpace
             if space.authenticationMethod == NSURLAuthenticationMethodHTTPBasic || space.authenticationMethod == NSURLAuthenticationMethodHTTPDigest,
-               space.isProxy, config.hasCredentials, challenge.previousFailureCount == 0 {
+               space.isProxy(), config.hasCredentials, challenge.previousFailureCount == 0 {
                 return (.useCredential, URLCredential(user: config.user, password: config.password, persistence: .forSession))
             }
             return (.performDefaultHandling, nil)
