@@ -205,7 +205,10 @@ class HubService:
         logger.info("cloud account seeded from the environment")
 
     async def stop(self) -> None:
+        """Leave the hub, end the profile's pending push or pull, then close the HTTP client —
+        in that order, so that nothing is still talking to the relay when its client goes."""
         await self.leave()
+        await self.profile.stop()
         await self.cloud.close()
 
     async def join(self) -> None:
@@ -235,8 +238,13 @@ class HubService:
         client, self.client = self.client, None
         if client is not None:
             await client.stop()
-        for t in list(self._tasks):
+        tasks = [t for t in self._tasks if not t.done()]
+        for t in tasks:
             t.cancel()
+        if tasks:
+            # the models refresh, the runs other devices asked for: ended, not left to finish
+            # (and to reach for the relay) after this returns
+            await asyncio.wait(tasks)
         self._sync_tools(False)
         self.publish()
 

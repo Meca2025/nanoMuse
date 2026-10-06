@@ -11,6 +11,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 ### Runtime
 
 - **The sync push delay is read when a push is scheduled.** `ConversationSync.push_soon()` took the two-second default at import time, so a shorter delay set on the module (the tests do this) did not reach the pushes after a sign-in or the switch; it does now. Nothing changes for a person: the delay is still two seconds.
+- **Stopping ends every request to the relay before the connection to it closes.** The presence note a turn sends once its push is through (`working`) survived being cancelled and went out while the runtime was shutting down, racing the cloud client's close; the hub's background tasks were cancelled but not waited for. Stopping now cancels and waits for the sync engine's, the hub's and the profile's tasks, then closes the HTTP client, and a task that would start on the way out is refused. Nothing changes for a person; the tests' fake relay no longer waits on a half-open connection when it stops.
 
 ### Web
 

@@ -59,7 +59,6 @@ relay flips the local switch, ``bad_key`` pauses until the next sign-in."""
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
 import time
 import uuid
@@ -133,6 +132,8 @@ class ConversationSync:
         self._timer: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
         self._tasks: set[asyncio.Task[Any]] = set()
+        # set by stop(): nothing of this engine talks to the relay after that
+        self._stopped = False
         # presence (C9): cid → {thread, device, device_name, at} for the other devices' turns
         # under way; a frame says so, a reply or ten minutes clears it
         self.working: dict[str, dict[str, Any]] = {}
@@ -276,6 +277,7 @@ class ConversationSync:
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> None:
         """After the hub is up: a first pull, a push of what is new, and the minute timer."""
+        self._stopped = False
         if self._timer is None or self._timer.done():
             self._timer = asyncio.create_task(self._tick(), name="sync-timer")
         if self.active:
@@ -283,11 +285,20 @@ class ConversationSync:
             self.push_soon(delay=PUSH_DELAY_S)
 
     async def stop(self) -> None:
-        for t in (self._timer, self._push_task, self._pull_task):
-            if t is not None and not t.done():
-                t.cancel()
-                with contextlib.suppress(asyncio.CancelledError, Exception):
-                    await t
+        """Cancel every task of the engine — the timer, the push and the pull, and the one-off
+        presence and delete requests — and wait until each has ended, so that no request to
+        the relay is still open (or about to open) when the cloud client closes after this.
+        A task created on the way out (a turn ending as the server stops) is refused."""
+        self._stopped = True
+        tasks = [
+            t
+            for t in (self._timer, self._push_task, self._pull_task, *self._tasks)
+            if t is not None and not t.done()
+        ]
+        for t in tasks:
+            t.cancel()
+        if tasks:
+            await asyncio.wait(tasks)
 
     async def _tick(self) -> None:
         while True:
@@ -460,6 +471,8 @@ class ConversationSync:
         """Presence to the relay once the push it belongs to is through — so the
         conversation exists there and carries the id it ended up with. Off the turn's path,
         never retried, errors at debug."""
+        if self._stopped:
+            return
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -471,10 +484,13 @@ class ConversationSync:
             push = self._push_task
             if push is None or push.done():
                 break
-            with contextlib.suppress(asyncio.CancelledError, Exception):
-                await push
+            # wait for the push without taking on its fate: a cancelled push (rescheduled, or
+            # stop() on the way) must not read as this task being cancelled — and when this
+            # task is the one cancelled, that ends it here rather than letting it go on to
+            # open a connection to the relay while the engine is stopping
+            await asyncio.wait({push})
         cid = self.cid_of(thread.id)
-        if not cid or not self.active:
+        if not cid or not self.active or self._stopped:
             return
         self.client.cloud.api_key = self.svc.hub._key()
         try:
@@ -500,6 +516,7 @@ class ConversationSync:
         if (
             cid
             and self.active
+            and not self._stopped
             and not self._applying
             and (self.side_chats or thread_id == MAIN_THREAD)
         ):
@@ -580,7 +597,7 @@ class ConversationSync:
         the push is scheduled so a test can shorten it)."""
         if delay is None:
             delay = PUSH_DELAY_S
-        if not self.active:
+        if not self.active or self._stopped:
             return
         try:
             loop = asyncio.get_running_loop()
@@ -614,7 +631,7 @@ class ConversationSync:
             delay, self._push_again = self._push_again, None
 
     def pull_soon(self) -> None:
-        if not self.active:
+        if not self.active or self._stopped:
             return
         if self._pull_task is not None and not self._pull_task.done():
             return
