@@ -281,7 +281,7 @@ enum NanoMuseActivity {
     static func load() async -> [NanoMuseActivityEntry] {
         let startOfToday = Calendar.current.startOfDay(for: Date())
         let since = startOfToday.addingTimeInterval(-24 * 3600)
-        let sessions = NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()) // C12: this account's chats only
+        let sessions = await NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()) // C12: this account's chats only
             .filter { $0.updatedAt >= since && $0.remoteDeviceId == nil }
             .sorted { $0.updatedAt > $1.updatedAt }
             .prefix(12)
