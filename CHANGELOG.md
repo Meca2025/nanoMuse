@@ -4,6 +4,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Desktop
+
+- **macOS: the hands work through the helper.** 0.1.38's *nanoMuse Computer Use* ran from a translocated copy — the quarantine flag of the download stayed on the nested helper, so LaunchServices started it from a random read-only path and tccd never showed its row in the Screen Recording pane; on a clean Mac Gatekeeper's *could not verify* dialog came up for it too. The app now removes the flag from the bundled helper before the first launch (the log says so), so the helper starts in place, both panes list *nanoMuse Computer Use*, and a granted Screen Recording gives a real picture (verified on macOS 27.0.1, Retina at scale 2). An app run from the disk image or Downloads is refused with *move it to the Applications folder* instead of half working. Fixed with it: a restart asked for while the helper was between processes relaunched the whole app — twice when clicked twice, which left a second copy failing on the host's port and a *bearer token is required* helper; the helper's `/status` reported a scale of 1 on Retina displays; `press`/`release` hold keys down in the helper (shift-click, cmd-click); the helper activates itself before asking for Screen Recording so the request registers from the background. `docs/desktop.md` → *macOS permissions* describes the flow as it really is.
+
 ### iOS
 
 - **No crash on launch after onboarding.** Build 9 (0.1.38) died on an iPad every time the chat appeared, with a stack overflow in the chat screen's body: the body is one chain of some sixty modifiers and 0.1.38 added four (the composer's fail-safe host and the presence hooks), enough for the getter's stack frame and the runtime's type instantiation to overrun the main thread's 1 MB. The four are one link each now (`NanoMuseComposerHost`, `NanoMuseChatHooks`) and the composer stack is boxed, so the body is smaller than 0.1.37's; a test keeps its size and depth under a ceiling.

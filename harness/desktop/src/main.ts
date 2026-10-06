@@ -767,8 +767,10 @@ async function reportBug(): Promise<{ screenshot: string; url: string }> {
 function registerBridge(): void {
   ipcMain.handle("nanomuse:info", () => ({ version: app.getVersion(), platform: process.platform, arch: process.arch }));
   ipcMain.handle("nanomuse:permissions", async () => {
-    // the helper's grants, fresh, when it runs; `helper` tells the page which rows to name
-    if (macHelper?.running()) await macHelper.status().catch(() => undefined);
+    // the helper's grants, fresh, when it runs — started again when it went away (the
+    // "Quit & Reopen" the Screen Recording switch offers ends it); `helper` tells the page
+    // which rows to name
+    if (macHelper?.present() && (await helperReady())) await macHelper.status().catch(() => undefined);
     return {
       accessibility: permissionState("accessibility"),
       screen: permissionState("screen"),
@@ -946,8 +948,14 @@ function ensureOperator(): Promise<OperatorServer | null> {
   operatorStarting = startOperatorServer(operator, log)
     .then((server) => {
       operatorServer = server;
-      const info = operator?.info();
-      log(`operator: ${info?.available ? "available" : `not available (${info?.reason ?? "?"})`} · display ${info?.display.width}×${info?.display.height} (scale ${info?.display.scaleFactor})`);
+      const status = () => {
+        const info = operator?.info();
+        log(`operator: ${info?.available ? "available" : `not available (${info?.reason ?? "?"})`} · display ${info?.display.width}×${info?.display.height} (scale ${info?.display.scaleFactor})`);
+      };
+      // macOS: the line is about the helper's grants once it runs — written after it is up
+      // (or has failed), not before, when it would name nanoMuse Desktop's own rows
+      if (process.platform === "darwin" && helper()?.present()) void helperReady().then(status, status);
+      else status();
       return server;
     })
     .catch((exc: unknown) => {
@@ -1243,6 +1251,9 @@ async function ensureMacPermissionsAtLaunch(): Promise<void> {
   if (accessibility !== "granted") requestAccessibility(false);
 }
 
+/** `app.relaunch()` asked for once; a second call before the quit would start two copies (0.1.38 did). */
+let relaunching = false;
+
 /**
  * Start the process that takes the screenshots again, so a Screen Recording grant takes
  * effect. With the helper in use that is the helper alone — `/quit` and a fresh `open`, the
@@ -1252,11 +1263,16 @@ async function ensureMacPermissionsAtLaunch(): Promise<void> {
  * does not outlive the relaunch.
  */
 function relaunchNow(): void {
-  if (macPermissions.helperInUse()) {
+  // with a helper bundle the helper is what restarts — also while it is between two processes
+  // or failed to start (then this is the retry); in 0.1.38 a restart that found the helper
+  // "not running" fell through here and relaunched the whole app, twice when clicked twice
+  if (helper()?.present()) {
     log("permissions: restarting the helper for the new grant");
     void macHelper?.restart();
     return;
   }
+  if (relaunching) return;
+  relaunching = true;
   app.relaunch();
   app.quit();
 }
@@ -1274,6 +1290,8 @@ function watchScreenGrant(): void {
   if (permissionState("screen") === "granted") return;
   const started = Date.now();
   screenGrantWatch = setInterval(() => {
+    // the helper gone meanwhile (the switch's "Quit & Reopen" ends it): back, so its grant is what is read
+    if (macHelper?.present() && !macHelper.running() && !macHelper.busy()) void macHelper.ready();
     if (permissionState("screen") !== "granted") {
       if (Date.now() - started > 5 * 60_000 && screenGrantWatch) {
         clearInterval(screenGrantWatch);

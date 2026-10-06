@@ -37,14 +37,18 @@ export function useHelper(next: MacHelper | null): void {
   helper = next;
 }
 
-/** Whether a running helper is the one holding the grants right now. */
+/**
+ * Whether the helper is the one holding the grants right now — running, or between two
+ * processes (a restart for a fresh grant, the first start): in that moment it is still the
+ * thing whose rows the panes name, not the app.
+ */
 export function helperInUse(): boolean {
-  return helper?.running() === true;
+  return helper?.running() === true || helper?.busy() === true;
 }
 
-/** The helper's last status as TCC words, or null when it is not running. */
+/** The helper's last status as TCC words (the last one it ever gave while it restarts), or null when it is not in use. */
 function helperStatus(kind: MacPermissionKind): AuthStatus | null {
-  const status = helper?.cachedStatus();
+  const status = helper?.cachedStatus() ?? (helper?.busy() ? helper.lastKnownStatus() : null);
   if (!status) return null;
   if (kind === "accessibility") return status.accessibility ? "authorized" : "denied";
   return status.screen === "granted" ? "authorized" : status.screen === "denied" ? "denied" : "not determined";

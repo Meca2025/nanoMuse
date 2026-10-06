@@ -42,7 +42,8 @@ final class Service {
         case ("POST", "/execute"):
             return execute(body)
         case ("POST", "/quit"):
-            // the answer goes out first; then the run loop ends
+            // the answer goes out first; then the run loop ends — with nothing left held down
+            Keyboard.releaseAll()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 exit(0)
             }
@@ -55,7 +56,9 @@ final class Service {
     private func status() -> [String: Any] {
         let mainDisplay = CGMainDisplayID()
         let bounds = CGDisplayBounds(mainDisplay)
-        let pixelsWide = CGDisplayPixelsWide(mainDisplay)
+        // the mode's pixel width is the physical one; CGDisplayPixelsWide is in points on a
+        // Retina display (1728 for a 3456-pixel panel), which read as a scale of 1 in 0.1.38
+        let pixelsWide = CGDisplayCopyDisplayMode(mainDisplay)?.pixelWidth ?? CGDisplayPixelsWide(mainDisplay)
         let scale = bounds.width > 0 ? Double(pixelsWide) / Double(bounds.width) : 1
         let display: [String: Any] = ["width": Int(bounds.width), "height": Int(bounds.height), "scale": scale]
         return [

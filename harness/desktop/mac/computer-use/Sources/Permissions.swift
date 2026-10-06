@@ -21,6 +21,11 @@ enum Permissions {
     static func request(_ what: String) {
         DispatchQueue.main.sync {
             if what == "screen" {
+                // Active first: tccd has been seen to show the Screen Recording dialog for a
+                // request from a backgrounded process and still leave the process off the
+                // pane's list (Omi's PERM-02). This app is started with `open -g`, so it is in
+                // the background until it asks; an accessory app is active without a window.
+                NSApp.activate(ignoringOtherApps: true)
                 // the result is the current grant, which /status reports — the call is for the prompt
                 _ = CGRequestScreenCaptureAccess()
             } else {

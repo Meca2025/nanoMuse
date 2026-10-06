@@ -549,7 +549,7 @@ export class Operator {
     const end = point("x2", "y2");
     const pointed = new Set(["move", "hover", "click", "left_click", "double_click", "left_double", "right_click", "right_single", "middle_click", "drag", "left_click_drag"]);
     if (pointed.has(kind) && !start) throw new OperatorError(`${kind} needs x and y`);
-    // press / release (hold a key): the helper has no hold yet — refused in its own words rather than silently dropped
+    // press / release (a key held across the actions that follow): the helper keeps it down until released
     if ((kind === "press" || kind === "release") && !(Array.isArray(action.keys) && action.keys.length)) throw new OperatorError(`${kind} needs keys`);
     if ((kind === "drag" || kind === "left_click_drag") && !end) throw new OperatorError("drag needs x2 and y2");
     if ((kind === "type" && !String(action.text ?? "")) || ((kind === "key" || kind === "hotkey") && !(Array.isArray(action.keys) && action.keys.length))) throw new OperatorError(kind === "type" ? "type needs text" : "key needs keys");
