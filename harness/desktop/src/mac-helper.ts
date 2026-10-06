@@ -19,9 +19,12 @@ import { join } from "node:path";
  *
  * What that buys: the panes list *nanoMuse Computer Use*, granted and revoked on its own;
  * Screen Recording — which reaches freshly started processes only — takes effect after the
- * helper restarts, not the whole app; the picture comes from CGDisplayCreateImage and the
- * input from CGEvent, not from Chromium's desktopCapturer and libnut (the black and absent
- * screenshots of 0.1.36 were the Chromium path).
+ * helper restarts, not the whole app; the picture comes from ScreenCaptureKit on macOS 14+
+ * (CGDisplayCreateImage before — on macOS 26/27 that call returns nil even with the grant,
+ * which was 0.1.39's "no screenshot: noImage") and the input from CGEvent, not from
+ * Chromium's desktopCapturer and libnut (the black and absent screenshots of 0.1.36 were the
+ * Chromium path). When the helper is there and its picture fails, the operator reports the
+ * helper's own error and never falls back to desktopCapturer (operator.ts).
  *
  * One thing has to happen before the first launch of an installed copy: the quarantine flag
  * the download left on the helper comes off (`clearQuarantine`), or LaunchServices starts
@@ -31,9 +34,11 @@ import { join } from "node:path";
  * Protocol (one JSON object each way, a bearer token the shell writes to a 0600 file before
  * the launch, the port written back by the helper):
  *
- *   GET  /status      → { screen: "granted"|"denied"|"unknown", accessibility, pid, version, display }
+ *   GET  /status      → { screen: "granted"|"denied"|"unknown", screen_detail, capture, accessibility, pid, version, display }
  *   POST /request     { what: "screen"|"accessibility", pane? }   → the status afterwards
  *   POST /screenshot  { width?, height?, max_pixels?, format?, quality? } → { base64, mime, width, height, screen, scale }
+ *   GET  /windows     → { windows: [{ id, pid, app, bundle_id, title, bounds, layer, on_screen }] }
+ *   POST /window      { id, max_pixels?, format?, quality? }      → { base64, mime, width, height, window: { id, x, y, width, height }, scale }
  *   POST /execute     { action, … }                                → { ok: true, note }
  *   POST /quit        → { ok: true }
  *
@@ -49,10 +54,44 @@ export type HelperScreenState = "granted" | "denied" | "unknown";
 
 export interface HelperStatus {
   screen: HelperScreenState;
+  /** Why the screen is `unknown` or `denied` beyond the preflight (ScreenCaptureKit's words), "" otherwise. */
+  screenDetail?: string;
+  /** What takes the picture in this helper: "ScreenCaptureKit" (macOS 14+) or "CoreGraphics". */
+  capture?: string;
   accessibility: boolean;
   pid?: number;
   version?: string;
   display?: { width: number; height: number; scale: number };
+}
+
+/** One window on screen as the helper lists it (`GET /windows`); the runtime's window mode reads this shape. */
+export interface HelperWindow {
+  id: number;
+  pid: number;
+  app: string;
+  bundle_id: string;
+  title: string;
+  /** Points, top-left origin: x, y, width, height. */
+  bounds: [number, number, number, number];
+  layer: number;
+  on_screen: boolean;
+}
+
+export interface HelperWindowRequest {
+  id: number;
+  max_pixels?: number;
+  format?: "png" | "jpeg";
+  quality?: number;
+}
+
+export interface HelperWindowShot {
+  base64: string;
+  mime: "image/png" | "image/jpeg";
+  width: number;
+  height: number;
+  /** The window's frame in points, so a pixel of the picture maps to a point on the screen. */
+  window: { id: number; x: number; y: number; width: number; height: number };
+  scale: number;
 }
 
 export interface HelperScreenshotRequest {
@@ -245,6 +284,11 @@ export class MacHelper {
     return this.base ? "" : this.lastFailure || (this.present() ? "not started" : "no helper bundle");
   }
 
+  /** A start was tried and failed, and nothing has succeeded since (the operator refuses with `failure()` meanwhile). */
+  failedToStart(): boolean {
+    return this.base === null && this.lastFailureAt > 0;
+  }
+
   /** The last `/status` the helper gave (for callers that cannot wait); null before the first. */
   cachedStatus(): HelperStatus | null {
     return this.base ? this.lastStatus : null;
@@ -258,7 +302,8 @@ export class MacHelper {
   /**
    * Running, or started now. False when there is no bundle, or when it failed to start — in
    * which case the next try waits `retryAfterMs`, so a broken helper does not stall every
-   * screenshot. Callers fall back to the Electron path on false.
+   * screenshot. With a bundle present the operator refuses on false, with `failure()` as the
+   * reason; only without a bundle at all does it use the Electron path.
    */
   ready(): Promise<boolean> {
     if (this.base) return Promise.resolve(true);
@@ -305,7 +350,7 @@ export class MacHelper {
       // the token file stays (0600, in the app's own data dir) until stop(): a shell that
       // dies without /quit leaves it for the next launch's quitStale()
       const status = await this.status();
-      this.log(`${HELPER_NAME} ${status.version ?? "?"} (pid ${status.pid ?? "?"}) at ${this.base} — screen ${status.screen}, accessibility ${status.accessibility}`);
+      this.log(`${HELPER_NAME} ${status.version ?? "?"} (pid ${status.pid ?? "?"}) at ${this.base} — screen ${status.screen}${status.screenDetail ? ` (${status.screenDetail})` : ""}, accessibility ${status.accessibility}, capture ${status.capture ?? "?"}`);
       this.lastFailure = "";
       this.lastFailureAt = 0;
       this.watchStatus();
@@ -316,7 +361,7 @@ export class MacHelper {
       this.lastStatus = null;
       this.lastFailure = String((exc as Error).message ?? exc);
       this.lastFailureAt = Date.now();
-      this.log(`${HELPER_NAME} did not start (${this.lastFailure}) — the hands use the Electron path`);
+      this.log(`${HELPER_NAME} did not start (${this.lastFailure}) — screenshots and actions are refused with this reason until it does`);
       return false;
     }
   }
@@ -389,6 +434,8 @@ export class MacHelper {
     const display = raw.display && typeof raw.display === "object" ? (raw.display as HelperStatus["display"]) : undefined;
     const status: HelperStatus = {
       screen,
+      ...(typeof raw.screen_detail === "string" && raw.screen_detail ? { screenDetail: raw.screen_detail } : {}),
+      ...(typeof raw.capture === "string" ? { capture: raw.capture } : {}),
       accessibility: raw.accessibility === true,
       ...(typeof raw.pid === "number" ? { pid: raw.pid } : {}),
       ...(typeof raw.version === "string" ? { version: raw.version } : {}),
@@ -411,6 +458,17 @@ export class MacHelper {
 
   screenshot(req: HelperScreenshotRequest = {}): Promise<HelperScreenshot> {
     return this.call<HelperScreenshot>("POST", "/screenshot", req, 20_000);
+  }
+
+  /** The windows on screen, front to back (for the runtime's window mode). */
+  async windows(): Promise<HelperWindow[]> {
+    const raw = await this.call<{ windows?: unknown }>("GET", "/windows", undefined, 20_000);
+    return Array.isArray(raw.windows) ? (raw.windows as HelperWindow[]) : [];
+  }
+
+  /** One window's own pixels and its frame (`POST /window`); 404 `no_window` when it is gone. */
+  window(req: HelperWindowRequest): Promise<HelperWindowShot> {
+    return this.call<HelperWindowShot>("POST", "/window", req, 20_000);
   }
 
   execute(action: Record<string, unknown> & { action: string }): Promise<{ ok: true; note: string }> {

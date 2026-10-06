@@ -20,8 +20,9 @@ takes the screenshot and does the moving; otherwise the Python backends do.
 
 Two modes (``[hands] mode``). *Screen*: the whole screen through ``mss`` and the system
 mouse. *Window* (macOS, :mod:`nanomuse.computer.mac_window`): one application's window —
-the picture the model sees is that window, events go to that process, the person keeps the
-cursor. ``auto`` is window mode on macOS as soon as a target application is set
+the picture the model sees is that window (taken by the desktop app's helper when the app
+is around, by the runtime's own Quartz call otherwise), events go to that process, the
+person keeps the cursor. ``auto`` is window mode on macOS as soon as a target application is set
 (``set_target``, the ``computer_target`` action or ``app`` on ``computer_act``), screen
 everywhere else. A window that cannot be found or captured drops back to the screen with a
 note in the observation, never an error that ends the task.
@@ -192,8 +193,21 @@ class ComputerLink:
         return mac_window.available()
 
     def _window_hands(self) -> mac_window.MacWindowHands:
+        """The window hands, made on first use: under the desktop app with its helper
+        bundle, the windows and their pictures come through the operator (the helper holds
+        Screen Recording and captures with ScreenCaptureKit); otherwise the runtime's own
+        Quartz path, which says so in the log."""
         if self._window is None:
-            self._window = mac_window.MacWindowHands(mac_window.QuartzAdapter())
+            operator = self._operator()
+            adapter: mac_window.MacAdapter
+            if operator is not None and operator.helper_present:
+                logger.info(
+                    "window mode: windows are listed and captured through the desktop app's helper"
+                )
+                adapter = mac_window.OperatorWindowAdapter(operator.client)
+            else:
+                adapter = mac_window.QuartzAdapter()
+            self._window = mac_window.MacWindowHands(adapter)
         return self._window
 
     def set_target(self, app: str, title: str = "") -> None:

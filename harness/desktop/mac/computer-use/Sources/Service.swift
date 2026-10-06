@@ -1,4 +1,5 @@
-// The routes: the bearer token first, then status, request, screenshot, execute, quit.
+// The routes: the bearer token first, then status, request, screenshot, windows, window,
+// execute, quit.
 
 import CoreGraphics
 import Foundation
@@ -39,6 +40,10 @@ final class Service {
             return HTTPResponse(status: 200, body: status())
         case ("POST", "/screenshot"):
             return screenshot(body)
+        case ("GET", "/windows"):
+            return windows()
+        case ("POST", "/window"):
+            return window(body)
         case ("POST", "/execute"):
             return execute(body)
         case ("POST", "/quit"):
@@ -62,12 +67,21 @@ final class Service {
         let scale = bounds.width > 0 ? Double(pixelsWide) / Double(bounds.width) : 1
         let display: [String: Any] = ["width": Int(bounds.width), "height": Int(bounds.height), "scale": scale]
         return [
-            "screen": Permissions.screenGranted() ? "granted" : "denied",
+            // granted / denied / unknown — the capture layer's word on macOS 14+, not the preflight's alone
+            "screen": Permissions.screenState().rawValue,
+            "screen_detail": Permissions.screenDetail(),
+            "capture": ScreenCapture.source,
             "accessibility": Permissions.accessibilityGranted(),
             "pid": Int(getpid()),
             "version": version,
             "display": display,
         ]
+    }
+
+    /// The refusal for a missing Screen Recording grant, with the capture layer's reason when it had one.
+    private static func screenDenied(_ detail: String) -> HTTPResponse {
+        let base = "Screen Recording is off for nanoMuse Computer Use"
+        return Service.failure(403, "screen_denied", detail.isEmpty ? base : "\(base) (\(detail))")
     }
 
     /// A JSON number as a whole number within bounds (nil when absent or not a number).
@@ -77,8 +91,10 @@ final class Service {
     }
 
     private func screenshot(_ body: [String: Any]) -> HTTPResponse {
-        guard Permissions.screenGranted() else {
-            return Service.failure(403, "screen_denied", "Screen Recording is off for nanoMuse Computer Use")
+        // `denied` is refused here; `unknown` (an SCK error that is not a refusal) lets the
+        // capture try and report the real error, rather than guessing at the permission
+        if Permissions.screenState() == .denied {
+            return Service.screenDenied(Permissions.screenDetail())
         }
         let format = body["format"] as? String == "png" ? "png" : "jpeg"
         let quality = min(1, max(0.3, (Service.number(body["quality"]) ?? 80) / 100))
@@ -95,12 +111,67 @@ final class Service {
                 "height": shot.height,
                 "screen": screen,
                 "scale": shot.scale,
+                "capture": ScreenCapture.source,
             ])
         } catch Screenshot.Failure.black {
             return Service.failure(403, "screen_denied", "the picture is black — Screen Recording is off for nanoMuse Computer Use")
         } catch {
-            return Service.failure(500, "screenshot_failed", "no screenshot: \(error)")
+            return Service.captureFailure(error)
         }
+    }
+
+    /// `GET /windows`: the windows on screen, for the runtime's window mode (front to back).
+    private func windows() -> HTTPResponse {
+        if Permissions.screenState() == .denied {
+            return Service.screenDenied(Permissions.screenDetail())
+        }
+        do {
+            let list = try ScreenCapture.windows()
+            return HTTPResponse(status: 200, body: ["windows": list.map { $0.json }, "capture": ScreenCapture.source])
+        } catch {
+            return Service.captureFailure(error)
+        }
+    }
+
+    /// `POST /window { id, max_pixels?, format?, quality? }`: one window's own pixels and its frame.
+    private func window(_ body: [String: Any]) -> HTTPResponse {
+        guard let id = Service.integer(body["id"], min: 1, max: Double(UInt32.max)) else {
+            return Service.failure(400, "bad_request", "`id` must be a window id from /windows")
+        }
+        if Permissions.screenState() == .denied {
+            return Service.screenDenied(Permissions.screenDetail())
+        }
+        let format = body["format"] as? String == "jpeg" ? "jpeg" : "png"
+        let quality = min(1, max(0.3, (Service.number(body["quality"]) ?? 80) / 100))
+        let maxPixels = Service.integer(body["max_pixels"], min: 0, max: 50_000_000) ?? 0
+        do {
+            let shot = try Screenshot.window(id: UInt32(id), maxPixels: maxPixels, format: format, quality: quality)
+            let frame: [String: Any] = ["id": id, "x": shot.originX, "y": shot.originY, "width": shot.screenWidth, "height": shot.screenHeight]
+            return HTTPResponse(status: 200, body: [
+                "base64": shot.data.base64EncodedString(),
+                "mime": shot.mime,
+                "width": shot.width,
+                "height": shot.height,
+                "window": frame,
+                "scale": shot.scale,
+                "capture": ScreenCapture.source,
+            ])
+        } catch Screenshot.Failure.noWindow(let missing) {
+            return Service.failure(404, "no_window", "no window with id \(missing) is on screen")
+        } catch {
+            return Service.captureFailure(error)
+        }
+    }
+
+    /// A capture that failed: a refusal from the capture layer is 403 with its words; anything
+    /// else is 500 with the error named (`ScreenCaptureKit userDeclined (-3801): …`, `no image
+    /// came back from the capture`), which the shell's log and the runtime's error carry on.
+    static func captureFailure(_ error: Error) -> HTTPResponse {
+        if ScreenCapture.isDenied(error) {
+            Permissions.forgetProbe()
+            return Service.screenDenied(ScreenCapture.describe(error))
+        }
+        return Service.failure(500, "screenshot_failed", "no screenshot: \(ScreenCapture.describe(error))")
     }
 
     private func execute(_ body: [String: Any]) -> HTTPResponse {

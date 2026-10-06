@@ -1,19 +1,69 @@
 // The helper client (src/mac-helper.ts) against a fake "nanoMuse Computer Use" — an HTTP
 // server in this process that behaves like the Swift one: reads the token file the client
-// wrote, writes the port file, checks the bearer token, answers the five routes. Run after
-// `tsc -p tsconfig.json` (npm test does both). No Mac, no Electron needed.
+// wrote, writes the port file, checks the bearer token, answers the seven routes. Then the
+// operator (src/operator.ts) on top of it, with a fake `electron` module in place of the
+// real one, pinned to darwin: a helper whose picture fails is reported, never papered over
+// with desktopCapturer. Run after `tsc -p tsconfig.json` (npm test does both). No Mac, no
+// Electron needed.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import Module, { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
-import { MacHelper, MacHelperError, HELPER_NAME, QUARANTINE_KEPT_TEXT, clearQuarantine, defaultHelperPath, describeAction, translocated } from "../out/mac-helper.js";
+import { MacHelper, MacHelperError, HELPER_NAME, HELPER_SCREEN_PERMISSION_TEXT, QUARANTINE_KEPT_TEXT, clearQuarantine, defaultHelperPath, describeAction, translocated } from "../out/mac-helper.js";
 
 const roots = [];
 after(() => {
   for (const dir of roots) rmSync(dir, { recursive: true, force: true });
 });
+
+// ---- a stand-in for Electron, so src/operator.ts loads under plain Node ---------------------
+// `require("electron")` inside the compiled operator resolves to this object: a primary display
+// of 1440×900 points at scale 2 (a Retina Mac, where the operator's space is points), a
+// desktopCapturer that counts its calls and answers a grey 1440×900 frame, a nativeImage good
+// enough for the black check. The operator never reaches desktopCapturer when a helper bundle
+// is there — that is what the tests below show.
+const electronFake = {
+  captures: 0,
+  clipboard: { readText: async () => "", writeText: async () => undefined },
+  screen: { getPrimaryDisplay: () => ({ id: 7, size: { width: 1440, height: 900 }, scaleFactor: 2, bounds: { x: 0, y: 0, width: 1440, height: 900 } }) },
+  desktopCapturer: {
+    getSources: async () => {
+      electronFake.captures += 1;
+      return [{ display_id: "7", thumbnail: fakeImage(1440, 900) }];
+    },
+  },
+  nativeImage: { createFromBitmap: (buffer, { width, height }) => fakeImage(width, height) },
+};
+function fakeImage(width, height) {
+  return {
+    getSize: () => ({ width, height }),
+    isEmpty: () => false,
+    toBitmap: () => Buffer.alloc(width * height * 4, 0x80),
+    resize: ({ width: w, height: h }) => fakeImage(w, h),
+    toPNG: () => Buffer.from("png-from-electron"),
+    toJPEG: () => Buffer.from("jpeg-from-electron"),
+  };
+}
+const realLoad = Module._load;
+Module._load = function (request, ...rest) {
+  if (request === "electron") return electronFake;
+  return realLoad.call(this, request, ...rest);
+};
+const require = createRequire(import.meta.url);
+const { Operator, OperatorError } = require("../out/operator.js");
+const realPlatform = Object.getOwnPropertyDescriptor(process, "platform");
+/** Run `fn` as if on a Mac (the operator reads `process.platform` on every call). */
+async function onDarwin(fn) {
+  Object.defineProperty(process, "platform", { value: "darwin", configurable: true });
+  try {
+    return await fn();
+  } finally {
+    Object.defineProperty(process, "platform", realPlatform);
+  }
+}
 
 function scratch() {
   const dir = mkdtempSync(join(tmpdir(), "nm-mac-helper-"));
@@ -28,13 +78,21 @@ function fakeBundle(dir) {
   return app;
 }
 
+/** What the Swift helper says when ScreenCaptureKit refuses: the code by name, then the system's text. */
+const SCK_FAILURE = "no screenshot: ScreenCaptureKit userDeclined (-3801): The user declined TCCs for application, window, display capture";
+
 /**
  * The fake helper: `launch` starts it the way `open` would start the real one, with the same
- * arguments. `mode` picks the behaviour: "ok", "denied" (no Screen Recording), "no-port"
+ * arguments. `mode` picks the behaviour: "ok", "denied" (no Screen Recording), "fails" (the
+ * grant is there but ScreenCaptureKit's capture fails — a 500 with its words), "no-port"
  * (never writes the port file), "dies" (answers once, then closes).
  */
 function fakeHelper(mode = "ok") {
   const state = { token: "", requests: [], servers: [], quit: 0, pid: 4242 };
+  const windows = [
+    { id: 41, pid: 500, app: "Safari", bundle_id: "com.apple.Safari", title: "Apple", bounds: [100, 50, 800, 600], layer: 0, on_screen: true },
+    { id: 43, pid: 600, app: "Notes", bundle_id: "com.apple.Notes", title: "Shopping", bounds: [0, 0, 500, 400], layer: 0, on_screen: true },
+  ];
   const launch = async (appPath, args) => {
     state.appPath = appPath;
     state.args = args;
@@ -53,7 +111,7 @@ function fakeHelper(mode = "ok") {
         if (req.headers.authorization !== `Bearer ${state.token}`) return send(401, { error: "unauthorized", message: "a bearer token is required" });
         const json = body ? JSON.parse(body) : {};
         state.requests.push({ method: req.method, path: req.url, body: json });
-        const status = { screen: mode === "denied" ? "denied" : "granted", accessibility: mode !== "denied", pid: state.pid, version: "0.1.38", display: { width: 1440, height: 900, scale: 2 } };
+        const status = { screen: mode === "denied" ? "denied" : "granted", screen_detail: "", capture: "ScreenCaptureKit", accessibility: mode !== "denied", pid: state.pid, version: "0.1.38", display: { width: 1440, height: 900, scale: 2 } };
         if (req.method === "GET" && req.url === "/status") {
           send(200, status);
           if (mode === "dies") server.close();
@@ -62,7 +120,19 @@ function fakeHelper(mode = "ok") {
         if (req.method === "POST" && req.url === "/request") return send(200, status);
         if (req.method === "POST" && req.url === "/screenshot") {
           if (mode === "denied") return send(403, { error: "screen_denied", message: "Screen Recording is off for nanoMuse Computer Use" });
-          return send(200, { base64: Buffer.from("png").toString("base64"), mime: json.format === "png" ? "image/png" : "image/jpeg", width: json.width ?? 1440, height: json.height ?? 900, screen: { width: 1440, height: 900 }, scale: 2 });
+          if (mode === "fails") return send(500, { error: "screenshot_failed", message: SCK_FAILURE });
+          return send(200, { base64: Buffer.from("png").toString("base64"), mime: json.format === "png" ? "image/png" : "image/jpeg", width: json.width ?? 1440, height: json.height ?? 900, screen: { width: 1440, height: 900 }, scale: 2, capture: "ScreenCaptureKit" });
+        }
+        if (req.method === "GET" && req.url === "/windows") {
+          if (mode === "denied") return send(403, { error: "screen_denied", message: "Screen Recording is off for nanoMuse Computer Use" });
+          return send(200, { windows, capture: "ScreenCaptureKit" });
+        }
+        if (req.method === "POST" && req.url === "/window") {
+          if (mode === "denied") return send(403, { error: "screen_denied", message: "Screen Recording is off for nanoMuse Computer Use" });
+          const found = windows.find((w) => w.id === json.id);
+          if (!found) return send(404, { error: "no_window", message: `no window with id ${json.id} is on screen` });
+          const [x, y, w, h] = found.bounds;
+          return send(200, { base64: Buffer.from("window-png").toString("base64"), mime: json.format === "jpeg" ? "image/jpeg" : "image/png", width: w * 2, height: h * 2, window: { id: found.id, x, y, width: w, height: h }, scale: 2, capture: "ScreenCaptureKit" });
         }
         if (req.method === "POST" && req.url === "/execute") {
           if (!json.action) return send(400, { error: "bad_action", message: "unknown action ''" });
@@ -160,6 +230,27 @@ test("the endpoints map one to one: status, request, screenshot, execute", async
   await helper.stop();
 });
 
+test("the window routes: /windows lists, /window captures one by id, 404 when it is gone; status carries the capture source", async () => {
+  const dir = scratch();
+  const fake = fakeHelper();
+  const helper = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data"), launch: fake.launch });
+  assert.equal(await helper.ready(), true);
+  assert.equal(helper.cachedStatus().capture, "ScreenCaptureKit");
+  assert.equal(helper.cachedStatus().screenDetail, undefined);
+  const list = await helper.windows();
+  assert.equal(list.length, 2);
+  assert.deepEqual(list[0], { id: 41, pid: 500, app: "Safari", bundle_id: "com.apple.Safari", title: "Apple", bounds: [100, 50, 800, 600], layer: 0, on_screen: true });
+  const shot = await helper.window({ id: 41, max_pixels: 0, format: "png" });
+  assert.equal(shot.mime, "image/png");
+  assert.deepEqual([shot.width, shot.height], [1600, 1200]);
+  assert.deepEqual(shot.window, { id: 41, x: 100, y: 50, width: 800, height: 600 });
+  assert.equal(shot.scale, 2);
+  assert.equal(Buffer.from(shot.base64, "base64").toString(), "window-png");
+  assert.deepEqual(fake.requests.at(-1).body, { id: 41, max_pixels: 0, format: "png" });
+  await assert.rejects(helper.window({ id: 99 }), (exc) => exc instanceof MacHelperError && exc.status === 404 && exc.code === "no_window" && /99/.test(exc.message));
+  await helper.stop();
+});
+
 test("denied: /screenshot's 403 comes through with its code; status says denied", async () => {
   const dir = scratch();
   const fake = fakeHelper("denied");
@@ -176,14 +267,149 @@ test("a helper that never writes its port: ready() is false, and not retried for
   const fake = fakeHelper("no-port");
   const lines = [];
   const helper = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data"), launch: fake.launch, startTimeoutMs: 250, retryAfterMs: 60_000, log: (l) => lines.push(l) });
+  assert.equal(helper.failedToStart(), false);
   assert.equal(await helper.ready(), false);
+  assert.equal(helper.failedToStart(), true);
   assert.match(helper.failure(), /no port after/);
-  assert.ok(lines.some((l) => /did not start/.test(l) && /Electron path/.test(l)));
+  assert.ok(lines.some((l) => /did not start/.test(l) && /refused with this reason/.test(l)));
   assert.equal(await helper.ready(), false);
   assert.equal(fake.args !== undefined, true);
 });
 
-test("a helper that dies: the next call fails as not_running and ready() launches it again", async () => {
+// ---- the operator on a Mac with the helper: its picture, or its reason — never desktopCapturer's ----
+
+/** An operator over `fake`, on a Mac, with the helper's own permission probe (as main.ts wires it). */
+function macOperator(dir, fake, extra = {}) {
+  const lines = [];
+  const helper = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data"), launch: fake.launch, log: (l) => lines.push(l), ...extra });
+  const operator = new Operator({
+    helper,
+    log: (l) => lines.push(l),
+    permissions: () => {
+      const s = helper.cachedStatus();
+      return s ? { accessibility: s.accessibility, screen: s.screen === "granted" } : { accessibility: true, screen: true };
+    },
+  });
+  return { operator, helper, lines };
+}
+
+test("operator: the helper's picture comes through at the asked size; /info names the helper and its capture source", async (t) => {
+  const dir = scratch();
+  const fake = fakeHelper();
+  const { operator, helper } = macOperator(dir, fake);
+  t.after(() => helper.stop());
+  await onDarwin(async () => {
+    electronFake.captures = 0;
+    const shot = await operator.screenshot({ width: 640, height: 400, format: "png" });
+    assert.equal(shot.mime, "image/png");
+    assert.deepEqual([shot.width, shot.height], [640, 400]);
+    assert.deepEqual(shot.screen, { width: 1440, height: 900 });
+    assert.equal(shot.scaleFactor, 1); // points on a Mac
+    assert.equal(Buffer.from(shot.base64, "base64").toString(), "png");
+    assert.deepEqual(fake.requests.at(-1).body, { width: 640, height: 400, format: "png", quality: 80 });
+    assert.equal(electronFake.captures, 0);
+    const info = operator.info();
+    assert.equal(info.available, true);
+    assert.equal(info.helper.present, true);
+    assert.equal(info.helper.running, true);
+    assert.equal(info.helper.capture, "ScreenCaptureKit");
+    assert.equal(info.helper.pid, 4242);
+  });
+});
+
+test("operator: a helper whose capture fails is reported with its own words — no desktopCapturer", async (t) => {
+  const dir = scratch();
+  const fake = fakeHelper("fails");
+  const { operator, helper, lines } = macOperator(dir, fake);
+  t.after(() => helper.stop());
+  await onDarwin(async () => {
+    electronFake.captures = 0;
+    await assert.rejects(operator.screenshot({ width: 640, height: 400 }), (exc) => {
+      assert.ok(exc instanceof OperatorError);
+      assert.equal(exc.status, 500);
+      assert.match(exc.message, /^no screenshot: nanoMuse Computer Use could not take the picture — /);
+      assert.ok(exc.message.includes("ScreenCaptureKit userDeclined (-3801)"), exc.message);
+      return true;
+    });
+    assert.equal(electronFake.captures, 0, "desktopCapturer was used behind the helper's back");
+    assert.ok(lines.some((l) => l.includes("helper screenshot failed (") && l.includes("not falling back to desktopCapturer")), lines.join("\n"));
+    assert.ok(!lines.some((l) => /Electron path/.test(l)));
+  });
+});
+
+test("operator: without the helper's Screen Recording grant the refusal names the helper's row", async (t) => {
+  const dir = scratch();
+  const fake = fakeHelper("denied");
+  const { operator, helper } = macOperator(dir, fake);
+  t.after(() => helper.stop());
+  await onDarwin(async () => {
+    electronFake.captures = 0;
+    await assert.rejects(operator.screenshot(), (exc) => exc instanceof OperatorError && exc.status === 403 && exc.message === `no screenshot: ${HELPER_SCREEN_PERMISSION_TEXT}`);
+    assert.equal(electronFake.captures, 0);
+    assert.equal(operator.info().available, false);
+    assert.match(operator.info().reason, /nanoMuse Computer Use/);
+  });
+});
+
+test("operator: a helper bundle that did not start is the reason — for the picture, an action and /info; still no desktopCapturer", async (t) => {
+  const dir = scratch();
+  const fake = fakeHelper("no-port");
+  const { operator, helper } = macOperator(dir, fake, { startTimeoutMs: 200, retryAfterMs: 60_000 });
+  await onDarwin(async () => {
+    electronFake.captures = 0;
+    await assert.rejects(operator.screenshot(), (exc) => exc instanceof OperatorError && exc.status === 503 && /^no screenshot: nanoMuse Computer Use did not start \(no port after/.test(exc.message));
+    await assert.rejects(operator.execute({ action: "click", x: 10, y: 10 }), (exc) => exc instanceof OperatorError && exc.status === 503 && /did not start/.test(exc.message));
+    assert.equal(electronFake.captures, 0);
+    const info = operator.info();
+    assert.equal(info.available, false);
+    assert.match(info.reason, /^nanoMuse Computer Use did not start \(no port after/);
+    assert.equal(info.helper.running, false);
+  });
+  assert.equal(helper.running(), false);
+});
+
+test("operator: with no helper bundle at all the Electron path takes the picture (a build without the helper)", async () => {
+  const dir = scratch();
+  const lines = [];
+  const helper = new MacHelper({ appPath: join(dir, "nowhere.app"), dataDir: join(dir, "data") });
+  const operator = new Operator({ helper, log: (l) => lines.push(l) });
+  await onDarwin(async () => {
+    electronFake.captures = 0;
+    const shot = await operator.screenshot({ width: 320, height: 200, format: "jpeg" });
+    assert.equal(electronFake.captures, 1);
+    assert.equal(Buffer.from(shot.base64, "base64").toString(), "jpeg-from-electron");
+    assert.deepEqual([shot.width, shot.height], [320, 200]);
+    assert.equal(operator.info().helper.reason, "no helper bundle");
+    assert.equal(operator.info().helper.present, false);
+    // window mode needs the helper
+    await assert.rejects(operator.windows(), (exc) => exc instanceof OperatorError && exc.status === 503 && /window mode needs nanoMuse Computer Use/.test(exc.message));
+  });
+});
+
+test("operator: the window routes go through the helper; its refusals and a gone window come back as the operator's errors", async (t) => {
+  const dir = scratch();
+  const fake = fakeHelper();
+  const { operator, helper } = macOperator(dir, fake);
+  t.after(() => helper.stop());
+  await onDarwin(async () => {
+    const list = await operator.windows();
+    assert.equal(list.length, 2);
+    assert.equal(list[1].app, "Notes");
+    const shot = await operator.windowShot({ id: 43, max_pixels: 2_000_000, format: "png" });
+    assert.deepEqual(shot.window, { id: 43, x: 0, y: 0, width: 500, height: 400 });
+    assert.deepEqual(fake.requests.at(-1).body, { id: 43, max_pixels: 2000000, format: "png" });
+    await assert.rejects(operator.windowShot({ id: 99 }), (exc) => exc instanceof OperatorError && exc.status === 404 && /window 99 could not be captured: no window with id 99/.test(exc.message));
+    await assert.rejects(operator.windowShot({ id: 0 }), (exc) => exc instanceof OperatorError && exc.status === 400);
+  });
+  const refused = fakeHelper("denied");
+  const second = macOperator(scratch(), refused);
+  t.after(() => second.helper.stop());
+  await onDarwin(async () => {
+    await assert.rejects(second.operator.windows(), (exc) => exc instanceof OperatorError && exc.status === 403 && exc.message.endsWith(HELPER_SCREEN_PERMISSION_TEXT));
+  });
+});
+
+test("a helper that dies: the next call fails as not_running and ready() launches it again", async (t) => {
   const dir = scratch();
   const fake = fakeHelper("dies");
   const helper = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data"), launch: fake.launch });
@@ -197,7 +423,7 @@ test("a helper that dies: the next call fails as not_running and ready() launche
   fake.closeAll();
 });
 
-test("restart: /quit to the old one, then a fresh launch with a new token", async () => {
+test("restart: /quit to the old one, then a fresh launch with a new token", async (t) => {
   const dir = scratch();
   const fake = fakeHelper();
   const helper = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data"), launch: fake.launch });
@@ -211,7 +437,7 @@ test("restart: /quit to the old one, then a fresh launch with a new token", asyn
   await helper.stop();
 });
 
-test("restart: two at once are one — a single /quit, a single fresh launch; busy() and the last known status meanwhile", async () => {
+test("restart: two at once are one — a single /quit, a single fresh launch; busy() and the last known status meanwhile", async (t) => {
   const dir = scratch();
   const fake = fakeHelper();
   const helper = new MacHelper({ appPath: fakeBundle(dir), dataDir: join(dir, "data"), launch: fake.launch });

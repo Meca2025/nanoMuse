@@ -104,13 +104,18 @@ Process* walks through the attribution; Codex's *Codex Computer Use.app* is the 
 arrangement). The helper is a few hundred lines of Swift (`harness/desktop/mac/computer-use/`)
 on a loopback HTTP server with a per-launch token: it reports its two grants, asks for them
 with the system's own dialogs (`CGRequestScreenCaptureAccess`,
-`AXIsProcessTrustedWithOptions`), takes the picture with `CGDisplayCreateImage` — not
-Chromium's `desktopCapturer`, whose black and absent frames were the 0.1.36 trouble — and
-moves the mouse and types with `CGEvent` (text of any script goes in as the characters
-themselves, so 中文 types without the clipboard). The app starts it at launch — to read the
-grants and to ask for the missing ones — and quits it when it quits; the helper also leaves
-on its own when the app is gone. It has no window and no Dock icon; Activity Monitor lists it
-as *nanoMuse Computer Use*.
+`AXIsProcessTrustedWithOptions`), takes the picture — with **ScreenCaptureKit** on macOS 14
+and later (`SCShareableContent` → the main display → `SCContentFilter` →
+`SCScreenshotManager.captureImage`, at the display's pixel size with the cursor in it), with
+`CGDisplayCreateImage` on 12 and 13 — not Chromium's `desktopCapturer`, whose black and
+absent frames were the 0.1.36 trouble — and moves the mouse and types with `CGEvent` (text
+of any script goes in as the characters themselves, so 中文 types without the clipboard).
+Why ScreenCaptureKit: on macOS 26 and 27 `CGDisplayCreateImage` returns nothing even with
+Screen Recording granted, which 0.1.39 logged as `helper screenshot failed (no screenshot:
+noImage)` and then covered with a `desktopCapturer` frame that was black or stale. The app
+starts the helper at launch — to read the grants and to ask for the missing ones — and
+quits it when it quits; the helper also leaves on its own when the app is gone. It has no
+window and no Dock icon; Activity Monitor lists it as *nanoMuse Computer Use*.
 
 What you do, once, on a Mac that has not granted anything yet (checked on macOS 27.0.1,
 Apple silicon):
@@ -135,6 +140,48 @@ the pane and the hands say so on their next step: *macOS: switch on nanoMuse Com
 under System Settings → Privacy & Security → Screen Recording. The helper restarts by itself;
 the app does not need to.* (`403` from the operator; the runtime never falls back to `mss` or
 `screencapture`).
+
+**How the Screen Recording check works.** The helper's `/status` says `granted`, `denied` or
+`unknown`. `CGPreflightScreenCaptureAccess` is asked first — TCC's own answer, no prompt —
+and a *no* is `denied`. On macOS 14 and later a *yes* is confirmed with ScreenCaptureKit
+(`SCShareableContent`): when that throws `userDeclined` or `noDisplayList` the grant is not
+really there and the status is `denied` with the reason; another error is `unknown` with the
+reason, and the next screenshot tries anyway and reports what ScreenCaptureKit said. So
+`granted` means a picture will come back, not just that a switch is on. Requesting stays the
+system's own dialog (`CGRequestScreenCaptureAccess`) plus the deep link to the pane.
+
+**When the picture fails, you are told.** With the helper bundle in the app, the operator
+never takes a `desktopCapturer` frame in the helper's place — a black or stale picture would
+reach the model as if it were the screen. What the chat and `computer_screen` say instead:
+
+- Screen Recording missing for the helper: *macOS: switch on nanoMuse Computer Use under
+  System Settings → Privacy & Security → Screen Recording. The helper restarts by itself; the
+  app does not need to.* (the `403`; Settings → Computer use says the same).
+- ScreenCaptureKit failed with the grant in place: *no screenshot: nanoMuse Computer Use
+  could not take the picture — no screenshot: ScreenCaptureKit userDeclined (-3801): …* — the
+  SCK error by name and code, followed by the system's text (`noDisplayList`,
+  `failedToStart`, `internalError`, … — a reader can look the code up).
+- The helper did not start (quarantine kept, no port, App Translocation): *no screenshot:
+  nanoMuse Computer Use did not start (…)* with the reason the `helper:` log lines give;
+  Settings → Computer use shows the same reason as *not available*.
+
+The pre-0.1.38 `desktopCapturer` path remains only for a build without the helper bundle
+(below).
+
+**Checking it on a Mac.** `~/.nanomuse/desktop/desktop.log` has the chain:
+
+- `helper: nanoMuse Computer Use <version> (pid …) at http://127.0.0.1:… — screen granted,
+  accessibility true, capture ScreenCaptureKit` — the helper is up and, on macOS 14+, says
+  which path takes the picture (`CoreGraphics` on 12 and 13).
+- `permissions: accessibility=granted screen=granted (nanoMuse Computer Use <version>,
+  capture ScreenCaptureKit)` — the grants as the app read them at launch; a `screen=denied`
+  here with the switch on in the pane carries ScreenCaptureKit's reason after the version.
+- `operator: helper screenshot failed (…) — not falling back to desktopCapturer` — the
+  picture failed, the line says why, and the chat got the same words. There is no `using the
+  Electron path` any more.
+
+Then Settings → Computer use → *Try it*: the test screenshot is the helper's picture, or the
+error above.
 
 **The quarantine flag.** The disk image you download carries macOS's quarantine flag, and so
 does every file copied out of it, the helper included. Opening nanoMuse settles the flag for
@@ -162,10 +209,16 @@ More to know:
 - The picture is the main display, at most 2 Mpx (a 3456×2234 Retina panel comes down to
   1758×1137), coordinates in points. Only the main display is captured and driven. Holding a
   key across actions (`press` / `release`, UI-TARS's names) works since 0.1.39.
-- *Window mode* — the hands working inside one application's window — is the runtime's own
-  Quartz code and is attributed to **nanoMuse** itself, not the helper: it needs the
-  *nanoMuse* rows in both panes on top of the helper's, and falls back to the whole screen
-  with a notice when they are missing. Settings → Computer use says whether it is available.
+- *Window mode* — the hands working inside one application's window — lists the windows
+  and takes the window's picture through the helper too (`GET /windows`, `POST /window`;
+  ScreenCaptureKit's `SCContentFilter(desktopIndependentWindow:)` on macOS 14+), so the
+  helper's Screen Recording row covers it. The events are still posted from the runtime
+  (`CGEventPostToPid`), which macOS attributes to **nanoMuse** itself: window mode needs
+  the *nanoMuse* row in the Accessibility pane on top of the helper's two, and falls back to
+  the whole screen with a notice when it is missing. Without the helper bundle the runtime
+  captures windows itself (`CGWindowListCreateImage`; the runtime's log says `window mode:
+  the runtime captures windows itself …`) and needs the *nanoMuse* Screen Recording row as
+  well. Settings → Computer use says whether window mode is available.
 - macOS 15 and later asks again from time to time whether an app that captures the screen
   without the system's picker may go on; answer *Allow* for nanoMuse Computer Use.
 - To start the permission flow over: `tccutil reset ScreenCapture
@@ -174,12 +227,15 @@ More to know:
   A grant left on *nanoMuse Desktop* / *nanoMuse* from an earlier version is used by window
   mode only (above) and can otherwise be switched off.
 
-Without the helper — a build without it, or one whose helper did not start (the log's
-`helper:` lines say why) — the app works as before 0.1.38: the grants are nanoMuse Desktop's
-own (`io.github.nanomuse.desktop`), read through `@computer-use/node-mac-permissions` and
+Without the helper bundle — a build without it, a development run before `build.sh` — the
+app works as before 0.1.38: the grants are nanoMuse Desktop's own
+(`io.github.nanomuse.desktop`), read through `@computer-use/node-mac-permissions` and
 `@computer-use/mac-screen-capture-permissions`, the picture comes from `desktopCapturer`
 and the input from `@computer-use/nut-js`, and a Screen Recording grant needs the app
-restarted (*Restart now*). The Permissions page names whichever is in use.
+restarted (*Restart now*). A bundle that is there but did not start (the log's `helper:`
+lines say why) is not that case: the hands refuse with the reason until it starts, rather
+than moving to the app's own grants that nobody switched on. The Permissions page names
+whichever is in use.
 
 The honest caveat: macOS keys a grant to the app's code signature. With a Developer ID
 signature the helper's *designated requirement* (identifier + team) is the same from build
@@ -204,7 +260,8 @@ the App Store Connect key is the `.p8`'s text.
 
 The helper, *nanoMuse Computer Use.app*, is built on the macOS runner by
 `harness/desktop/mac/computer-use/build.sh` (plain `swiftc`, arm64 and x86_64 joined with
-`lipo`, deployment target macOS 12) before electron-builder copies it into
+`lipo`, deployment target macOS 12.3 — the first with ScreenCaptureKit, which the binary
+links; the SCK capture runs on 14+, CoreGraphics before) before electron-builder copies it into
 `Contents/Helpers` (`mac.extraFiles` in `electron-builder.yml`). `package-mac.sh` signs it
 first, as a bundle of its own — same identity, hardened runtime, its own identifier
 `io.github.nanomuse.desktop.computer-use`, none of the app's entitlements — and then the
