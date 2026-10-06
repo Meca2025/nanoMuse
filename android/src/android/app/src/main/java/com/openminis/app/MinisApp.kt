@@ -423,6 +423,9 @@ class MinisApp : Application(), ImageLoaderFactory {
         database = AppDatabase.getInstance(this)
         chatRepository = ChatRepository(database.chatDao())
         providerRepository = ProviderRepository(this)
+        // nanoMuse: Settings → Network — the proxy for own providers and the ChatGPT plan is
+        // the process's proxy selector, so it must be in place before the first OkHttp client.
+        io.github.nanomuse.net.OwnProviderProxy.install(this, providerRepository.config)
         envVarRepository = EnvVarRepository(this)
         // [T-android-safemode-lateinit-crash-147] SkillRepository parses
         // third-party content (skills imported from external hubs), which

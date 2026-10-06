@@ -678,6 +678,10 @@ fun AppNavigation(
                 onSignIn = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
             )
         }
+        // nanoMuse: Settings → Network — the HTTP proxy for own providers and the ChatGPT plan.
+        composable(io.github.nanomuse.ui.net.ROUTE_NETWORK) {
+            io.github.nanomuse.ui.net.NetworkScreen(onBack = { navController.safePopBackStack() })
+        }
         // nanoMuse: the phone's screen as a hand — the switch, what it needs, the screen model.
         composable(io.github.nanomuse.ui.hands.ROUTE_HANDS) {
             io.github.nanomuse.ui.hands.HandsScreen(
@@ -789,6 +793,7 @@ fun AppNavigation(
                 onCloudClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) }, // nanoMuse
                 onHandsClick = { navController.safeNavigate(io.github.nanomuse.ui.hands.ROUTE_HANDS) }, // nanoMuse
                 onDataControlsClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_DATA_CONTROLS) }, // nanoMuse
+                onNetworkClick = { navController.safeNavigate(io.github.nanomuse.ui.net.ROUTE_NETWORK) }, // nanoMuse
                 onComputersClick = { navController.safeNavigate(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) }, // nanoMuse
                 onCodingClick = { navController.safeNavigate(io.github.nanomuse.ui.coding.ROUTE_CODING) }, // nanoMuse
                 onConnectorsClick = { navController.safeNavigate(io.github.nanomuse.ui.connectors.ROUTE_CONNECTORS) }, // nanoMuse

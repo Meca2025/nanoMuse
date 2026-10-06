@@ -204,6 +204,51 @@ CREATE TABLE IF NOT EXISTS sync_cursors (
     account_id    TEXT PRIMARY KEY REFERENCES accounts(id),
     seq           INTEGER NOT NULL DEFAULT 0  -- one counter per account; cursor = its value
 );
+-- 0.22: one number per UTC day, metric and key — the GitHub snapshots the collector takes
+-- (stars, forks, watchers, downloads per asset), the relay's own daily counters (API calls
+-- by group, accounts active by any call, errors by code, sync volume). Counters survive a
+-- restart because they live here and nowhere else (stats.py, github_stats.py).
+CREATE TABLE IF NOT EXISTS daily (
+    day           INTEGER NOT NULL,           -- the UNIX time the UTC day starts
+    metric        TEXT NOT NULL,              -- gh.stars | gh.downloads | api | active | error | sync …
+    key           TEXT NOT NULL DEFAULT '',   -- an asset name, a route group, an account id, an error code
+    value         INTEGER NOT NULL DEFAULT 0,
+    updated_at    INTEGER NOT NULL,
+    PRIMARY KEY (day, metric, key)
+);
+CREATE INDEX IF NOT EXISTS daily_metric_day ON daily(metric, day);
+-- 0.22: the operator's switches (controls.py): free allowance, sign-ups, the service, sync,
+-- the hub. A row is written when a switch is flipped; no row = on. Read into memory at
+-- start; every change goes through the API so the running relay applies it at once.
+CREATE TABLE IF NOT EXISTS controls (
+    key           TEXT PRIMARY KEY,
+    enabled       INTEGER NOT NULL DEFAULT 1,
+    updated_at    INTEGER NOT NULL,
+    actor         TEXT NOT NULL DEFAULT '',   -- console | cli | rule:<id> | …
+    note          TEXT NOT NULL DEFAULT ''
+);
+-- 0.22: "when the number of accounts reaches N, do X" — several rules, each fires once
+-- (last_fired_at set) until the operator re-arms it.
+CREATE TABLE IF NOT EXISTS control_rules (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    threshold     INTEGER NOT NULL,
+    action        TEXT NOT NULL,              -- close_signups | pause_allowance | pause_sync | notify
+    enabled       INTEGER NOT NULL DEFAULT 1,
+    note          TEXT NOT NULL DEFAULT '',
+    created_at    INTEGER NOT NULL,
+    last_fired_at INTEGER,
+    fired_accounts INTEGER                    -- the count that tripped it
+);
+-- 0.22: who flipped what, when — the controls page shows it. Never an identifier.
+CREATE TABLE IF NOT EXISTS control_audit (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts            INTEGER NOT NULL,
+    actor         TEXT NOT NULL DEFAULT '',
+    ip            TEXT NOT NULL DEFAULT '',
+    action        TEXT NOT NULL,              -- switch | rule.add | rule.update | rule.delete | rule.fired | notify
+    target        TEXT NOT NULL DEFAULT '',   -- the switch's key or the rule's id
+    detail        TEXT NOT NULL DEFAULT ''
+);
 -- 0.1.40: the hashes of the keys a deleted account had, for DELETED_KEYS_TTL_S, so a device
 -- that still holds one hears `account_deleted` rather than `bad_key` and knows there is
 -- nothing to come back to. A hash of a dead key names nobody; no account id is kept with it.
@@ -216,6 +261,11 @@ CREATE TABLE IF NOT EXISTS deleted_keys (
 # How long a deleted account's key hashes are remembered. Long enough for every device of the
 # account to come back online and hear the answer; short enough that a deletion is a deletion.
 DELETED_KEYS_TTL_S = 90 * 24 * 3600
+
+
+def utc_day(ts: int) -> int:
+    """The UNIX time the UTC day of `ts` starts — the key of the `daily` table."""
+    return ts - ts % 86400
 
 
 def now() -> int:
@@ -359,6 +409,113 @@ class Database:
                     "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
                     (key, json.dumps(value), now()),
                 )
+
+    # -- 0.22: one number per UTC day, metric and key (stats.py, github_stats.py) ---------------
+
+    def daily_add(self, metric: str, key: str, n: int = 1, ts: int | None = None) -> None:
+        """Add `n` to the day's counter — an API call, an error, a sync push."""
+        t = now() if ts is None else ts
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO daily(day, metric, key, value, updated_at) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(day, metric, key) DO UPDATE SET value=value+excluded.value, updated_at=excluded.updated_at",
+                (utc_day(t), metric, key or "", int(n), t),
+            )
+
+    def daily_set(self, day: int, metric: str, key: str, value: int, ts: int | None = None) -> None:
+        """Set the day's figure — a snapshot (stars as of today), replacing an earlier one."""
+        t = now() if ts is None else ts
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO daily(day, metric, key, value, updated_at) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(day, metric, key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+                (utc_day(day), metric, key or "", int(value), t),
+            )
+
+    def daily_rows(self, metric: str, since: int = 0, key: str | None = None) -> list[sqlite3.Row]:
+        """Every (day, key, value) of one metric since `since`, oldest first."""
+        with self._lock:
+            if key is None:
+                return self._conn.execute(
+                    "SELECT day, key, value, updated_at FROM daily WHERE metric=? AND day>=? ORDER BY day, key", (metric, since)
+                ).fetchall()
+            return self._conn.execute(
+                "SELECT day, key, value, updated_at FROM daily WHERE metric=? AND key=? AND day>=? ORDER BY day", (metric, key, since)
+            ).fetchall()
+
+    def daily_distinct(self, metric: str, since: int = 0) -> list[sqlite3.Row]:
+        """How many distinct keys the metric saw per day (accounts active by any call)."""
+        with self._lock:
+            return self._conn.execute(
+                "SELECT day, COUNT(*) AS n, SUM(value) AS total FROM daily WHERE metric=? AND day>=? GROUP BY day ORDER BY day",
+                (metric, since),
+            ).fetchall()
+
+    def daily_latest(self, metric: str) -> list[sqlite3.Row]:
+        """The newest day's rows of one metric (every key), or nothing."""
+        with self._lock:
+            return self._conn.execute(
+                "SELECT day, key, value, updated_at FROM daily WHERE metric=? AND day=(SELECT MAX(day) FROM daily WHERE metric=?) ORDER BY key",
+                (metric, metric),
+            ).fetchall()
+
+    # -- 0.22: the operator's switches, rules and their audit (controls.py) --------------------
+
+    def controls_all(self) -> dict[str, sqlite3.Row]:
+        with self._lock:
+            return {str(r["key"]): r for r in self._conn.execute("SELECT * FROM controls").fetchall()}
+
+    def control_put(self, key: str, enabled: bool, actor: str, note: str = "") -> None:
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO controls(key, enabled, updated_at, actor, note) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(key) DO UPDATE SET enabled=excluded.enabled, updated_at=excluded.updated_at, actor=excluded.actor, note=excluded.note",
+                (key, 1 if enabled else 0, now(), actor[:80], note[:200]),
+            )
+
+    def rules_all(self) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute("SELECT * FROM control_rules ORDER BY threshold, id").fetchall()
+
+    def rule(self, rule_id: int) -> sqlite3.Row | None:
+        with self._lock:
+            return self._conn.execute("SELECT * FROM control_rules WHERE id=?", (rule_id,)).fetchone()
+
+    def rule_add(self, threshold: int, action: str, enabled: bool, note: str) -> int:
+        with self.tx() as c:
+            cur = c.execute(
+                "INSERT INTO control_rules(threshold, action, enabled, note, created_at) VALUES (?,?,?,?,?)",
+                (int(threshold), action, 1 if enabled else 0, note[:200], now()),
+            )
+            return int(cur.lastrowid or 0)
+
+    def rule_update(self, rule_id: int, **fields: Any) -> bool:
+        allowed = {"threshold", "action", "enabled", "note", "last_fired_at", "fired_accounts"}
+        sets = {k: v for k, v in fields.items() if k in allowed}
+        if not sets:
+            return False
+        with self.tx() as c:
+            cur = c.execute(
+                f"UPDATE control_rules SET {', '.join(f'{k}=?' for k in sets)} WHERE id=?",
+                (*sets.values(), rule_id),
+            )
+            return cur.rowcount > 0
+
+    def rule_delete(self, rule_id: int) -> bool:
+        with self.tx() as c:
+            return c.execute("DELETE FROM control_rules WHERE id=?", (rule_id,)).rowcount > 0
+
+    def audit_add(self, actor: str, action: str, target: str = "", detail: str = "") -> None:
+        who = _client.current()
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO control_audit(ts, actor, ip, action, target, detail) VALUES (?,?,?,?,?,?)",
+                (now(), actor[:80], who.ip, action, target[:80], (detail or "")[:300]),
+            )
+
+    def audit_recent(self, limit: int = 200) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute("SELECT * FROM control_audit ORDER BY id DESC LIMIT ?", (max(1, min(limit, 1000)),)).fetchall()
 
     def seed_allowances(self, allowance_uy: int) -> int:
         """Accounts from before the allowance_uy column: the allowance of the day is what
@@ -854,6 +1011,34 @@ class Database:
                           SUM(charged) AS charged, SUM(cost_uy) AS cost_uy
                    FROM ledger WHERE ts>=? AND charged>0 GROUP BY day, kind ORDER BY day DESC""",
                 (day_offset_s, day_offset_s, day_offset_s, since),
+            ).fetchall()
+
+    def usage_tokens_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
+        """0.22: requests, tokens in and out and money per day and kind (stats.py; offset 0 = UTC days)."""
+        with self._lock:
+            return self._conn.execute(
+                f"""SELECT {self._DAY} AS day, kind, COUNT(*) AS requests, SUM(prompt_tokens) AS prompt_tokens,
+                           SUM(completion_tokens) AS completion_tokens, SUM(charged) AS charged, SUM(cost_uy) AS cost_uy
+                    FROM ledger WHERE ts>=? AND charged>=0 AND kind IN ('chat','image','video','realtime')
+                    GROUP BY day, kind ORDER BY day""",
+                (day_offset_s, day_offset_s, day_offset_s, since),
+            ).fetchall()
+
+    def devices_per_account(self) -> list[sqlite3.Row]:
+        """0.22: how many devices each account remembers — for the distribution (stats.py)."""
+        with self._lock:
+            return self._conn.execute(
+                """SELECT n, COUNT(*) AS accounts FROM (
+                       SELECT a.id, (SELECT COUNT(*) FROM devices d WHERE d.account_id=a.id) AS n FROM accounts a
+                   ) GROUP BY n ORDER BY n"""
+            ).fetchall()
+
+    def accounts_by_channel(self) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._conn.execute(
+                """SELECT channel, COUNT(*) AS accounts, SUM(CASE WHEN password_hash<>'' THEN 1 ELSE 0 END) AS with_password,
+                          SUM(unlimited) AS members, SUM(disabled) AS disabled, SUM(contribute) AS contribute, SUM(sync_enabled) AS sync_on
+                   FROM accounts GROUP BY channel ORDER BY accounts DESC"""
             ).fetchall()
 
     # -- keys ----------------------------------------------------------------

@@ -26,6 +26,7 @@ from typing import Any
 from . import __version__
 from .client import client_version, platform_of
 from .config import ModelSpec, Settings, menu_warnings
+from .controls import Controls
 from .crypto import IdentifierCrypto
 from .db import Database, now
 from .geo import Place
@@ -351,6 +352,8 @@ class Cloud:
         self.in_flight = InFlight(settings.max_in_flight, ttl_s=settings.upstream_timeout_s + 120)
         self.sender = sender or make_sender(settings)
         self.crypto = IdentifierCrypto(settings.identifier_key)
+        # 0.22: the operator's switches and thresholds (settings table, applied at once)
+        self.controls = Controls(self.db, settings)
         self._login_failures: dict[str, list[int]] = {}
         if settings.dev_mode:
             log.warning("CLOUD_SECRET is not set: development mode, identifiers hashed with a fixed key")
@@ -567,7 +570,9 @@ class Cloud:
         once and no app carries a number of its own. Nothing here is a secret."""
         return {
             "version": __version__,
-            "signup_open": self.s.signup_open,
+            "signup_open": self.s.signup_open and self.controls.on("signups"),
+            # 0.22: which of the operator's switches are off, so a sign-in page can say so
+            "paused": [k for k, v in self.controls.paused().items() if v],
             "allowance_cny": self.s.allowance_cny,
             "allowance_usd": self.s.cny_to_usd(self.s.allowance_cny),
             "invite_bonus_cny": self.s.invite_bonus_cny,
@@ -602,6 +607,17 @@ class Cloud:
         """May this identifier sign in? Anyone when sign-up is open; else members only."""
         return self.s.signup_open or self.listed(ident)
 
+    def _refuse_if_signups_closed(self, ident: Identifier) -> None:
+        """0.22: the *Sign-ups* switch is off — an identifier without an account is turned
+        away (`signup_closed`); everyone who already has one carries on."""
+        if self.controls.on("signups") or self.db.account_by_hash(ident.hash(self.s.hmac_key)) is not None:
+            return
+        raise CloudError(
+            403,
+            "signup_closed",
+            "New sign-ups are paused on this relay for now; existing accounts keep working. Try again later.",
+        )
+
     def request_code(self, ident: Identifier, ip: str) -> None:
         if not self.sender.accepts(ident):
             # the honest answer up front: a Hong Kong or overseas number gets no SMS from
@@ -619,6 +635,7 @@ class Cloud:
             )
         if not self.allowed(ident):
             raise CloudError(403, "not_invited", "This relay is private; that address is not on its list")
+        self._refuse_if_signups_closed(ident)
         t = now()
         if self.db.codes_recent_for(ident.hash(self.s.hmac_key), t - 600) >= self.s.code_per_identifier_10m:
             raise CloudError(429, "code_too_often", "Too many codes for this address; wait a few minutes")
@@ -659,6 +676,7 @@ class Cloud:
         account = self.db.account_by_hash(id_hash)
         created = account is None
         if account is None:
+            self._refuse_if_signups_closed(ident)
             account_id = self.db.new_account_id()
             enc = self.crypto.encrypt(account_id, ident.value)
             account = self.db.create_account(
@@ -676,7 +694,19 @@ class Cloud:
 
         key, caller = self._issue_key(account["id"], device, via=via)
         self.db.add_event(account["id"], f"sign_in.{via}", device)
+        if created:
+            self.evaluate_thresholds()
         return key, caller, created
+
+    def evaluate_thresholds(self) -> list[dict[str, Any]]:
+        """0.22: the operator's "when accounts reach N" rules, against the count right now.
+        Called after an account is made and once a minute from the server; a failure here
+        must not break a sign-in."""
+        try:
+            return self.controls.evaluate(self.db.account_counts()["total"])
+        except Exception as e:  # noqa: BLE001 — a rule misfiring must not cost a sign-in
+            log.warning("thresholds: could not evaluate: %s", e)
+            return []
 
     # -- invitations ------------------------------------------------------------------
 
@@ -906,6 +936,8 @@ class Cloud:
                 raise CloudError(401, "account_deleted", "This account was deleted; sign in again to start a new one")
             raise CloudError(401, "bad_key", "This key is no longer valid; sign in again in the app")
         self.db.touch_key(caller.key_hash, caller.account_id)
+        # 0.22: "active today" = any authenticated call; one row per account and UTC day
+        self.db.daily_add("active", caller.account_id)
         return caller
 
     def sign_out(self, caller: Caller) -> None:
@@ -1082,6 +1114,18 @@ class Cloud:
             },
         )
 
+    def _paused_allowance(self, caller: Caller, a: dict, region: str = "unknown") -> CloudError:
+        """0.22: the *Free allowance* switch is off. Built on `_exhausted` so the extra keys
+        (ways, guidance, invite link) are the same ones; only the words and two flags differ."""
+        err = self._exhausted(caller, a, region)
+        key = exhausted_key_line(region)
+        err.message = (
+            f"The free allowance is paused on this relay for now, so the shared models are not answering. "
+            f"To keep going: {key}. Your sign-in, your devices and anything you have left stay as they are."
+        )
+        err.extra = {**err.extra, "paused": True, "reason": "allowance_paused"}
+        return err
+
     def me(self, caller: Caller, place: Place | None = None) -> dict:
         t = now()
         day_start = self.s.day_start(t)
@@ -1095,6 +1139,9 @@ class Cloud:
             # 0.17: where the person seems to be — the apps order the "ways on" by it
             # (REGIONS: cn | intl | unknown) when the allowance runs low or out
             "region": region,
+            # 0.22: the operator's switches that are off right now, by name — an app may say
+            # so on the account page before a request is refused
+            "paused": [k for k, v in self.controls.paused().items() if v],
             "account": {
                 # an opaque id (not the identifier): what nanoMuse Web keys a person's kept
                 # Muse to, so a sign-in from another browser lands in the same one
@@ -1326,11 +1373,17 @@ class Cloud:
         if self.s.daily_cap_tokens > 0 and self.db.used_since(caller.account_id, self.s.day_start(t)) >= self.s.daily_cap_tokens:
             raise CloudError(429, "daily_cap", "Today's share of the grant is used up; it resets at midnight")
         if self.limited(caller):
+            a = self.allowance(caller)
+            if not self.controls.on("free_allowance"):
+                # 0.22: the operator paused the free allowance. The same shape as "used up"
+                # (code `allowance_exhausted`, the ways on, the invite link) so every app of
+                # today shows its usual screen; `paused: true` and `reason` tell a newer one
+                # the difference, and the message says it in words.
+                raise self._paused_allowance(caller, a, self.region(caller, place))
             # the one pool: what the ledger has, plus what the requests under way and the
             # clips still being made are expected to cost. A chat (priced after the fact)
             # starts while anything is left beyond that; a picture or a clip only when its
             # known price fits on top of it.
-            a = self.allowance(caller)
             spent, grant = a["spent_uy"], a["grant_uy"]
             held = self.in_flight.reserved(caller.account_id) + self.db.pending_video_cost(caller.account_id)
             if spent + held >= grant or (cost_uy > 0 and spent + held + cost_uy > grant):
@@ -1895,7 +1948,7 @@ class Cloud:
         whether the account escapes the daily cap, and why."""
         t = now()
         out = []
-        for r in self.db.admin_accounts(self.s.day_start(t)):
+        for r in self.db.admin_accounts(self.s.day_start(t), limit=100_000):
             d = dict(r)
             d["identifier"] = self.crypto.decrypt(d["id"], d.pop("identifier_enc", "")) or ""
             id_hash = d.pop("id_hash", None)
@@ -1954,8 +2007,8 @@ class Cloud:
     def admin_overview(self, days: int = 30) -> dict:
         """The operator's dashboard in one call: how many people, how active,
         what it costs — today, this week, over `days` — split by kind and by
-        model, plus the last sign-ins and refusals. Identifiers appear only as
-        the masked hint; the detail endpoint decrypts one account at a time."""
+        model, plus the last sign-ins and refusals. Since 0.22 the identifier comes in
+        full beside the masked hint (the console is the operator's; logs and mail keep the hint)."""
         t = now()
         day_start = self.s.day_start(t)
         week_start = day_start - 6 * 86400
@@ -1975,13 +2028,18 @@ class Cloud:
             }
 
         counts = self.db.event_counts(day_start)
-        hints = {r["id"]: r["hint"] for r in self.db.list_accounts(limit=5000)}
+        rows = self.db.list_accounts(limit=100_000)
+        hints = {r["id"]: r["hint"] for r in rows}
+        # 0.22: the console shows accounts in full (decrypted for the admin token only);
+        # the hint stays beside it for anything that leaves the console
+        idents = {r["id"]: (self.crypto.decrypt(r["id"], r["identifier_enc"] or "") or "") for r in rows}
         top = []
-        for r in self.db.top_accounts_since(since):
+        for r in self.db.top_accounts_since(since, limit=20):
             top.append(
                 {
                     "account_id": r["account_id"],
                     "hint": hints.get(r["account_id"], "?"),
+                    "identifier": idents.get(r["account_id"], ""),
                     "requests": int(r["requests"] or 0),
                     "charged": int(r["charged"] or 0),
                     "cost_cny": self.s.uy_to_cny(int(r["cost_uy"] or 0)),
@@ -1991,6 +2049,7 @@ class Cloud:
         for r in self.db.events_recent(60):
             d = dict(r)
             d["hint"] = hints.get(d["account_id"], "") if d["account_id"] else ""
+            d["identifier"] = idents.get(d["account_id"], "") if d["account_id"] else ""
             events.append(d)
         return {
             "generated_at": t,
@@ -2262,6 +2321,9 @@ class Cloud:
         return {
             # 0.15: what the page may change, with the environment's figure beside each
             "runtime": self.runtime_settings(),
+            # 0.22: the switches (the Controls page has the rules and the audit log)
+            "controls": self.controls.state(),
+            "paused": [k for k, v in self.controls.paused().items() if v],
             "repo_url": self.s.repo_url,
             "unlimited": self.s.unlimited,
             "signup_tokens": self.s.signup_tokens,

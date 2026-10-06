@@ -66,7 +66,45 @@ _RELAY: dict[str, tuple[str, str]] = {
         "model",
         "That model is not offered by nanoMuse Cloud; pick another under Connections.",
     ),
+    # 413: the request body passed the relay's cap or the model's window
+    "too_large": (
+        "too_long",
+        "That message is too large for the model's window. Shorten it, leave out some attachments, or start a new chat.",
+    ),
+    "not_invited": (
+        "account",
+        "This relay takes new accounts by invitation only; sign in with an invite code under Account.",
+    ),
+    "too_many_in_flight": (
+        "busy",
+        "Too many turns are running on this account at once; wait for one to finish and try again.",
+    ),
+    "provider_busy": ("busy", "The model provider is busy; try again in a moment."),
+    # relay 0.22: the operator's switches (docs/cloud.md, Controls)
+    "signup_closed": (
+        "account",
+        "New sign-ups are paused on this relay for now; existing accounts keep working. Try again later.",
+    ),
+    "service_paused": (
+        "relay",
+        "nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later.",
+    ),
+    "sync_paused": (
+        "relay",
+        "Conversation sync is paused on this relay for now; what is stored is kept and your devices keep working on their own.",
+    ),
+    "hub_paused": (
+        "relay",
+        "The device hub is paused on this relay for now; each device keeps working on its own.",
+    ),
 }
+
+# relay 0.22: ``allowance_exhausted`` with ``paused: true`` — the free allowance switched off
+# by the operator, not spent; the same shape, so the apps draw the same card, other words.
+_ALLOWANCE_PAUSED = (
+    "allowance",
+    "The free allowance is paused on this relay for now, not used up. Your own model key under Connections keeps you going; your sign-in, your devices and what is left stay as they are.",
+)
 
 
 def _first_line(exc: BaseException) -> str:
@@ -106,6 +144,7 @@ _ALLOWANCE_FIELDS = (
     "contribute_bonus_available",
     "contribute_bonus_cny",
     "own_key_docs",
+    "paused",  # relay 0.22: the allowance switched off by the operator, not spent
 )
 
 
@@ -120,6 +159,8 @@ def allowance_detail(exc: BaseException) -> dict[str, Any] | None:
 def describe_failure(exc: BaseException) -> tuple[str, str]:
     """``(code, sentence)`` for a run that ended in ``exc``."""
     code = _relay_code(exc)
+    if code == "allowance_exhausted" and _relay_error(exc).get("paused") is True:
+        return _ALLOWANCE_PAUSED
     if code in _RELAY:
         return _RELAY[code]
     if isinstance(code, str) and code.startswith("upstream"):

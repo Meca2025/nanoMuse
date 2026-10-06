@@ -16,18 +16,8 @@ export interface Prefs {
   showSteps: boolean
   /** Answers given on approval cards, newest first — the drawer's Approvals tab. */
   approvals: ApprovalRecord[]
-  /** Where the Live stage (the picture-in-picture of the hands) was last put and how wide; unset = bottom right, default width. */
-  stage?: StagePlace | undefined
   /** The Feed's "About the feed" card was read ("Got it"); it stays away after. */
   feedIntroSeen: boolean
-}
-
-export interface StagePlace {
-  /** Distance from the window's right and bottom edges, in px. */
-  right: number
-  bottom: number
-  /** The frame's width, in px. */
-  width: number
 }
 
 export interface ApprovalRecord {
@@ -54,19 +44,12 @@ function read(): Prefs {
       keepAwake: parsed.keepAwake !== false,
       showSteps: parsed.showSteps !== false,
       approvals: Array.isArray(parsed.approvals) ? parsed.approvals.slice(0, MAX_APPROVALS) : [],
-      stage: readStage(parsed.stage),
+      // a `stage` place written before 0.1.40 (the picture-in-picture) is read no more and dropped on the next write
       feedIntroSeen: parsed.feedIntroSeen === true,
     }
   } catch {
     return DEFAULTS
   }
-}
-
-function readStage(raw: unknown): StagePlace | undefined {
-  if (!raw || typeof raw !== 'object') return undefined
-  const { right, bottom, width } = raw as Partial<StagePlace>
-  if (![right, bottom, width].every((n) => typeof n === 'number' && Number.isFinite(n))) return undefined
-  return { right: right as number, bottom: bottom as number, width: width as number }
 }
 
 export function getPrefs(): Prefs {

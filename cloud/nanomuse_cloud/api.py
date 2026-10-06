@@ -95,10 +95,13 @@ from . import __version__
 from . import client as client_info
 from .catalog import Catalog
 from .config import ModelSpec, Settings
+from .controls import ControlError
 from .geo import Geo, collect_ips, group_places
+from .github_stats import GitHubCollector
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
 from .service import Caller, Cloud, CloudError, dumps, estimate_tokens, prompt_chars, usage_from_json
+from .stats import Stats, api_group
 from .sync import DEFAULT_PAGE, SyncStore
 
 log = logging.getLogger("nanomuse_cloud.api")
@@ -239,7 +242,10 @@ def _provider_url_ok(url: object, own_hosts: tuple[str, ...] = ()) -> bool:
 
 
 def create_app(
-    settings: Settings | None = None, cloud: Cloud | None = None, upstream_transport: httpx.AsyncBaseTransport | None = None
+    settings: Settings | None = None,
+    cloud: Cloud | None = None,
+    upstream_transport: httpx.AsyncBaseTransport | None = None,
+    github_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     cloud = cloud or Cloud(settings)
@@ -253,12 +259,26 @@ def create_app(
     # where an address is (geo.py) — the file is fetched in the background on start
     geo = Geo(settings.geoip_path, settings.geoip_url, settings.geoip_v6_url, enabled=settings.geoip_enabled)
 
+    # 0.22: the GitHub collector (stars, forks, release downloads once a day) and the
+    # operator's threshold rules, both run from the server's own loop
+    collector = GitHubCollector(cloud.db, settings.github_repo_path, settings.github_token, settings.github_api, transport=github_transport)
+
+    async def _rules_loop() -> None:
+        while True:
+            await asyncio.sleep(60)
+            cloud.evaluate_thresholds()
+
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         geo.ensure()
+        if settings.github_collect:
+            collector.start()
+        rules_task = asyncio.create_task(_rules_loop(), name="control-rules")
         try:
             yield
         finally:
+            rules_task.cancel()
+            await collector.stop()
             await http.aclose()
 
     app = FastAPI(title="nanoMuse Cloud", version=__version__, docs_url=None, redoc_url=None, lifespan=lifespan)
@@ -266,6 +286,7 @@ def create_app(
     app.state.settings = settings
     app.state.http = http
     app.state.geo = geo
+    app.state.collector = collector
 
     def with_places(out: dict) -> dict:
         """The admin page's answers carry addresses; this adds ``places`` — ``{ip: place}``
@@ -275,8 +296,19 @@ def create_app(
         return out
 
     @app.exception_handler(CloudError)
-    async def _cloud_error(_: Request, e: CloudError) -> JSONResponse:
+    async def _cloud_error(request: Request, e: CloudError) -> JSONResponse:
+        request.state.error_code = e.code  # the middleware counts it under that name
         return error_response(e.status, e.code, e.message, e.extra)
+
+    @app.exception_handler(ControlError)
+    async def _control_error(request: Request, e: ControlError) -> JSONResponse:
+        request.state.error_code = "bad_request"
+        return error_response(400, "bad_request", str(e))
+
+    # what still answers while the *Cloud service* switch is off: the health check, the
+    # console and its API, and the public figures (which say the service is paused)
+    OPEN_WHILE_PAUSED = ("/healthz", "/app", "/v1/admin/", "/v1/config")
+    SERVICE_PAUSED_MESSAGE = "nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later."
 
     def client_ip(request: Request) -> str:
         fwd = request.headers.get("x-forwarded-for")
@@ -294,8 +326,24 @@ def create_app(
         # the address and the client software behind this request, for the rows the
         # database writes while it is handled (client.py)
         token = client_info.set_current(client_info.from_headers(request.headers, request.client.host if request.client else None))
+        path = request.url.path
+        request.state.error_code = ""
         try:
-            return await call_next(request)
+            if not cloud.controls.on("cloud_service") and not path.startswith(OPEN_WHILE_PAUSED):
+                # 0.22: the operator switched the service off — a plain 503 for every API
+                # call; the console, the health check and /v1/config keep answering
+                response: Response = error_response(503, "service_paused", SERVICE_PAUSED_MESSAGE, {"paused": True})
+                request.state.error_code = "service_paused"
+            else:
+                response = await call_next(request)
+            # 0.22: the daily counters behind the console's statistics (stats.py) — the
+            # call by route group, and an error by its code — written as the answer leaves
+            if not path.startswith("/app"):  # the console's own files are not API calls
+                code = getattr(request.state, "error_code", "")
+                if code or response.status_code >= 400:
+                    cloud.db.daily_add("error", code or f"http_{response.status_code}")
+                cloud.db.daily_add("api", api_group(path))
+            return response
         finally:
             client_info.reset(token)
 
@@ -314,7 +362,13 @@ def create_app(
 
     @app.get("/healthz")
     async def healthz() -> dict:
-        return {"ok": True, "version": __version__, "models": [m.id for m in settings.models]}
+        # `paused` (0.22): the operator's switches that are off — the process is fine either way
+        return {
+            "ok": True,
+            "version": __version__,
+            "models": [m.id for m in settings.models],
+            "paused": [k for k, v in cloud.controls.paused().items() if v],
+        }
 
     @app.get("/v1/config")
     async def public_config() -> Response:
@@ -504,12 +558,26 @@ def create_app(
     sync_store = SyncStore(cloud.db)
     app.state.sync = sync_store
 
+    def sync_dep(caller: Caller = Depends(caller_dep)) -> Caller:
+        """0.22: every sync call but reading the state is refused with 503 `sync_paused`
+        while the operator's *Conversation sync* switch is off; the stored texts stay."""
+        if not cloud.controls.on("sync"):
+            raise CloudError(
+                503,
+                "sync_paused",
+                "Conversation sync is paused on this relay for now; what is stored is kept and your devices keep working on their own.",
+                {"paused": True},
+            )
+        return caller
+
     @app.get("/v1/sync/state")
     async def sync_state(caller: Caller = Depends(caller_dep)) -> dict:
-        return sync_store.state(caller.account_id)
+        out = sync_store.state(caller.account_id)
+        out["paused"] = not cloud.controls.on("sync")
+        return out
 
     @app.put("/v1/sync/state")
-    async def sync_set_state(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+    async def sync_set_state(request: Request, caller: Caller = Depends(sync_dep)) -> dict:
         """{"enabled": false} turns sync off and deletes everything stored; true turns it on
         again with an empty store. The account's timeline notes the switch, never a text."""
         body = await _json(request)
@@ -524,14 +592,15 @@ def create_app(
 
     @app.get("/v1/sync/changes")
     async def sync_changes(
-        since: int = 0, limit: int = DEFAULT_PAGE, scope: str = "all", tail: int = 0, caller: Caller = Depends(caller_dep)
+        since: int = 0, limit: int = DEFAULT_PAGE, scope: str = "all", tail: int = 0, caller: Caller = Depends(sync_dep)
     ) -> dict:
         """0.20: `scope=main` for the main conversation only; `tail=K` with `since=0` for the
         newest K messages and their conversations (a fresh device's first pull)."""
+        cloud.db.daily_add("sync", "pulls")
         return sync_store.changes(caller.account_id, since, limit, scope=scope, tail=tail)
 
     @app.post("/v1/sync/working", status_code=204)
-    async def sync_working(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
+    async def sync_working(request: Request, caller: Caller = Depends(sync_dep)) -> Response:
         """0.20: {cid, working, device?} — a turn started or ended on that conversation on the
         calling device (`device` as `push` carries it, else `X-Nanomuse-Device`). The
         account's other sockets hear a hub `working` frame; the relay remembers a `true` for
@@ -548,23 +617,29 @@ def create_app(
         return Response(status_code=204)
 
     @app.post("/v1/sync/changes")
-    async def sync_push(request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+    async def sync_push(request: Request, caller: Caller = Depends(sync_dep)) -> dict:
         body = await _json(request)
         device = str(body.get("device") or "")[:80]
-        out = sync_store.push(caller.account_id, device, body.get("conversations") or [], body.get("messages") or [])
+        messages = body.get("messages") or []
+        out = sync_store.push(caller.account_id, device, body.get("conversations") or [], messages)
+        # 0.22: the day's sync volume for the console — counts, never a text
+        cloud.db.daily_add("sync", "pushes")
+        cloud.db.daily_add("sync", "messages_in", len(messages) if isinstance(messages, list) else 0)
+        cloud.db.daily_add("sync", "accepted", int(out.get("accepted") or 0))
+        cloud.db.daily_add("sync", "rejected", len(out.get("rejected") or []))
         hub = getattr(app.state, "hub", None)
         if hub is not None and out["accepted"]:
             await hub.notify_sync(caller.account_id, int(out["cursor"]), device)
         return out
 
     @app.delete("/v1/sync/changes")
-    async def sync_wipe(caller: Caller = Depends(caller_dep)) -> dict:
+    async def sync_wipe(caller: Caller = Depends(sync_dep)) -> dict:
         out = sync_store.wipe(caller.account_id)
         cloud.note(caller.account_id, "sync.deleted")
         return out
 
     @app.delete("/v1/sync/conversations/{cid}")
-    async def sync_delete_conversation(cid: str, request: Request, caller: Caller = Depends(caller_dep)) -> dict:
+    async def sync_delete_conversation(cid: str, request: Request, caller: Caller = Depends(sync_dep)) -> dict:
         out = sync_store.delete_conversation(caller.account_id, cid)
         hub = getattr(app.state, "hub", None)
         if hub is not None:
@@ -667,7 +742,7 @@ def create_app(
                     raise CloudError(502, "upstream", "The model provider did not answer") from e
                 if r.status_code >= 400:
                     cloud.note(caller.account_id, "upstream.error", upstream_detail("chat", r.status_code, spec.id, r.content))
-                    return _relay_error(r)
+                    return _relay_error(r, request)
                 try:
                     obj = r.json()
                 except ValueError as e:
@@ -700,6 +775,7 @@ def create_app(
                         cloud.note(caller.account_id, "upstream.error", upstream_detail("chat", r.status_code, spec.id, raw))
                         failed = True
                         err = relay_error_body(r.status_code, raw)
+                        cloud.db.daily_add("error", str(err["error"]["code"]))  # the 200 has left; count it here
                         yield f"data: {dumps(err)}\n\n".encode()
                         yield b"data: [DONE]\n\n"
                         return
@@ -1005,6 +1081,12 @@ def create_app(
             # the socket's address and client, for the device rows written while it is open
             token = client_info.set_current(client_info.from_headers(ws.headers, ws.client.host if ws.client else None))
             try:
+                if not (cloud.controls.on("hub") and cloud.controls.on("cloud_service")):
+                    # 0.22: the operator's *Hub* (or *Cloud service*) switch is off — accept
+                    # so the close code reaches the app, then 4003 `hub_paused` (docs/hub.md)
+                    await ws.accept()
+                    await ws.close(code=4003, reason="hub_paused")
+                    return
                 # Header auth for apps; browsers authenticate in the hello frame instead.
                 caller: Caller | None = None
                 auth = ws.headers.get("authorization")
@@ -1018,12 +1100,19 @@ def create_app(
             finally:
                 client_info.reset(token)
 
+        def hub_dep(caller: Caller = Depends(caller_dep)) -> Caller:
+            if not cloud.controls.on("hub"):
+                raise CloudError(
+                    503, "hub_paused", "The device hub is paused on this relay for now; each device keeps working on its own.", {"paused": True}
+                )
+            return caller
+
         @app.get("/v1/devices")
-        async def devices(caller: Caller = Depends(caller_dep)) -> dict:
+        async def devices(caller: Caller = Depends(hub_dep)) -> dict:
             return {"devices": hub.devices(caller.account_id)}
 
         @app.delete("/v1/devices/{device_id}", status_code=204)
-        async def forget_device(device_id: str, caller: Caller = Depends(caller_dep)) -> Response:
+        async def forget_device(device_id: str, caller: Caller = Depends(hub_dep)) -> Response:
             hub.forget(caller.account_id, device_id)
             await hub.broadcast_devices(caller.account_id)
             return Response(status_code=204)
@@ -1312,6 +1401,115 @@ def create_app(
         the environment (null). In force at once, kept across restarts."""
         return cloud.admin_update_settings(await _json(request))
 
+    # -- 0.22: the Controls page — switches, thresholds, the audit log -------------------------
+
+    def _actor(request: Request) -> str:
+        """Who flipped it, for the audit line: the page sends `actor` (a name typed once), the
+        CLI its user, else the word console."""
+        return str(request.headers.get("x-admin-actor") or "console")[:80]
+
+    @app.get("/v1/admin/controls", dependencies=[Depends(admin_dep)])
+    async def admin_controls() -> dict:
+        """Every switch with who set it and when, every threshold rule with when it last fired,
+        the account count the rules are measured against, the last audit lines."""
+        return cloud.controls.view(cloud.db.account_counts()["total"])
+
+    @app.get("/v1/admin/controls/rules", dependencies=[Depends(admin_dep)])
+    async def admin_rules() -> dict:
+        return {"rules": cloud.controls.rules(), "accounts_total": cloud.db.account_counts()["total"]}
+
+    @app.post("/v1/admin/controls/rules", dependencies=[Depends(admin_dep)])
+    async def admin_rule_add(request: Request) -> dict:
+        """{threshold: N, action: close_signups|pause_allowance|pause_sync|notify, enabled?, note?}.
+        A rule fires once, when the account count reaches N (checked as an account is made and
+        once a minute); `rearm` on PUT lets it fire again."""
+        body = await _json(request)
+        return cloud.controls.add_rule(body, str(body.get("actor") or _actor(request))[:80])
+
+    @app.put("/v1/admin/controls/rules/{rule_id}", dependencies=[Depends(admin_dep)])
+    async def admin_rule_update(rule_id: int, request: Request) -> dict:
+        body = await _json(request)
+        if cloud.db.rule(rule_id) is None:
+            raise CloudError(404, "not_found", "No such rule")
+        return cloud.controls.update_rule(rule_id, body, str(body.get("actor") or _actor(request))[:80])
+
+    @app.delete("/v1/admin/controls/rules/{rule_id}", status_code=204, dependencies=[Depends(admin_dep)])
+    async def admin_rule_delete(rule_id: int, request: Request) -> Response:
+        if cloud.db.rule(rule_id) is None:
+            raise CloudError(404, "not_found", "No such rule")
+        cloud.controls.delete_rule(rule_id, _actor(request))
+        return Response(status_code=204)
+
+    @app.post("/v1/admin/controls/evaluate", dependencies=[Depends(admin_dep)])
+    async def admin_rules_evaluate() -> dict:
+        """Check the rules against the account count now (what the minute timer does)."""
+        return {"fired": cloud.evaluate_thresholds(), "accounts_total": cloud.db.account_counts()["total"]}
+
+    @app.post("/v1/admin/controls/notify-test", dependencies=[Depends(admin_dep)])
+    async def admin_notify_test(request: Request) -> dict:
+        """Send a test notice to ADMIN_EMAIL the way a *notify* rule would."""
+        ok = cloud.controls.notify(
+            "test notice", ["This is a test from the console's Controls page.", "这是控制台「控制」页发出的测试邮件。"], _actor(request)
+        )
+        return {"sent": ok, "configured": cloud.controls.can_notify}
+
+    @app.get("/v1/admin/controls/audit", dependencies=[Depends(admin_dep)])
+    async def admin_controls_audit(limit: int = 200) -> dict:
+        return {"audit": cloud.controls.audit(max(1, min(limit, 1000)))}
+
+    @app.post("/v1/admin/controls/{key}", dependencies=[Depends(admin_dep)])
+    async def admin_control_set(key: str, request: Request) -> dict:
+        """{enabled: bool, actor?, note?}: flip one switch — free_allowance, signups,
+        cloud_service, sync or hub. In force at once, kept across restarts, written to the
+        audit log. Turning the hub or the service off closes every hub socket (4003)."""
+        body = await _json(request)
+        if "enabled" not in body:
+            raise CloudError(400, "bad_request", "Say enabled: true or false")
+        cloud.controls.set(key, bool(body["enabled"]), str(body.get("actor") or _actor(request))[:80], str(body.get("note") or "")[:200])
+        hub = getattr(app.state, "hub", None)
+        closed = 0
+        if hub is not None and key in ("hub", "cloud_service") and not body["enabled"]:
+            closed = await hub.drop_all("hub_paused")
+        return {**cloud.controls.view(cloud.db.account_counts()["total"]), "sockets_closed": closed}
+
+    # -- 0.22: GitHub and the statistics -----------------------------------------------------------
+
+    stats = Stats(cloud, sync_store, collector, lambda: getattr(app.state, "hub", None))
+    app.state.stats = stats
+
+    @app.get("/v1/admin/github", dependencies=[Depends(admin_dep)])
+    async def admin_github(days: int = 30) -> dict:
+        """Stars, forks, watchers and release downloads per UTC day with what each day added,
+        the latest figures per platform and per asset, and how the collector's last run went."""
+        return collector.series(max(1, min(days, 365)))
+
+    @app.post("/v1/admin/github/refresh", dependencies=[Depends(admin_dep)])
+    async def admin_github_refresh() -> dict:
+        """Read GitHub now and write today's snapshot (what the daily task does)."""
+        out = await collector.collect()
+        return {**out, "status": collector.status()}
+
+    @app.get("/v1/admin/stats", dependencies=[Depends(admin_dep)])
+    async def admin_stats(days: int = 30) -> dict:
+        """Every metric of stats.py with its rows for the last `days` UTC days (1–365), its
+        columns and how it is computed."""
+        return stats.all(max(1, min(days, 365)))
+
+    @app.get("/v1/admin/stats/{metric_id}.csv", dependencies=[Depends(admin_dep)])
+    async def admin_stat_csv(metric_id: str, days: int = 30) -> Response:
+        m = stats.metric(metric_id)
+        if m is None:
+            raise CloudError(404, "not_found", "No such metric")
+        text = stats.csv(m, max(1, min(days, 365)))
+        return Response(text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{m.id}.csv"'})
+
+    @app.get("/v1/admin/stats/{metric_id}", dependencies=[Depends(admin_dep)])
+    async def admin_stat(metric_id: str, days: int = 30) -> dict:
+        m = stats.metric(metric_id)
+        if m is None:
+            raise CloudError(404, "not_found", "No such metric")
+        return stats.build(m, max(1, min(days, 365)))
+
     @app.get("/v1/admin/nudges", dependencies=[Depends(admin_dep)])
     async def admin_nudges_get() -> dict:
         """The nudges policy (0.18): what is served, the defaults beside it, whether the page
@@ -1394,12 +1592,15 @@ def create_app(
                     text += msg["content"]
         return text
 
-    def _relay_error(r: httpx.Response) -> JSONResponse:
+    def _relay_error(r: httpx.Response, request: Request | None = None) -> JSONResponse:
         # The provider's own status codes would confuse the app (its 401 is not
         # the user's 401), so everything from upstream comes back as 502 except
         # 400s about the request itself, which are the caller's to see.
         status = 400 if r.status_code == 400 else 502
         log.warning("upstream HTTP %s: %s", r.status_code, r.text[:300])
-        return JSONResponse(status_code=status, content=relay_error_body(r.status_code, r.content))
+        body = relay_error_body(r.status_code, r.content)
+        if request is not None:
+            request.state.error_code = str(body["error"]["code"])
+        return JSONResponse(status_code=status, content=body)
 
     return app

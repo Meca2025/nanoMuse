@@ -2,39 +2,54 @@
 of the screen — and the person's cursor — alone.
 
 Screen mode (:mod:`nanomuse.computer.hands`) drives the system mouse: while the operator
-clicks, the person cannot. macOS lets a program do better. Quartz lists the windows on
-screen (``CGWindowListCopyWindowInfo``), captures one of them by id
-(``CGWindowListCreateImage``) and delivers mouse and keyboard events straight to a process
-(``CGEventPostToPid``) — the pointer on the desk does not move, the keyboard focus of the
-person's own window is not stolen. Typing goes in as unicode keyboard events, so 中文 and
-emoji arrive as they are. When Accessibility is granted, a button under the point can be
-pressed through the accessibility tree (``AXPress``) instead of a synthetic click.
+clicks, the person cannot. macOS lets a program do better. The window server lists the
+windows on screen, one of them can be captured by id, and mouse and keyboard events can be
+delivered straight to a process (``CGEventPostToPid``) — the pointer on the desk does not
+move, the keyboard focus of the person's own window is not stolen. Typing goes in as unicode
+keyboard events, so 中文 and emoji arrive as they are. When Accessibility is granted, a
+button under the point can be pressed through the accessibility tree (``AXPress``) instead
+of a synthetic click.
 
-Everything that talks to pyobjc is behind :class:`MacAdapter`, a thin protocol with one
-real implementation (:class:`QuartzAdapter`, imported lazily — this module imports on any
-platform). The logic above it — choosing a window, mapping the model's coordinates
-(pixels of the window picture) to screen points, sequencing the events of a click, a drag,
-a scroll, a typed string, a key combination — is :class:`MacWindowHands`, and runs against
-a fake adapter in the tests on Linux.
+Everything that talks to the system is behind :class:`MacAdapter`, a thin protocol with two
+real implementations, both imported lazily so this module imports on any platform:
 
-What the person grants once: *Screen Recording* for the capture (without it the window
-comes back empty or black), *Accessibility* for the events (``CGEventPostToPid`` needs the
-process to be trusted). macOS attributes both to the *responsible* application — the desktop
-app that spawned this runtime — so the one entry to switch on is **nanoMuse Desktop**; the
-runtime binary does not appear separately (a runtime started from a terminal is attributed
-to that terminal). The settings page says which is missing. Everything here fails soft: a
-window that cannot be found, captured or driven raises :class:`WindowUnavailable` with the
-reason (:class:`WindowLayerBroken` when the Quartz layer itself failed), and
-:class:`~nanomuse.computer.link.ComputerLink` falls back to the shared screen with a notice.
+* :class:`OperatorWindowAdapter` — under nanoMuse Desktop, the usual case. The list of
+  windows and the picture of one come from the app's helper *nanoMuse Computer Use*
+  (``GET /windows``, ``POST /window`` of :mod:`nanomuse.computer.operator`), which holds
+  the Screen Recording grant and takes the picture with ScreenCaptureKit on macOS 14 and
+  later; the runtime never captures the screen itself there. The events still go out from
+  this process through pyobjc (``CGEventPostToPid`` posts to a pid; the helper's own
+  ``/execute`` drives the system pointer, which window mode must not touch).
+* :class:`QuartzAdapter` — the runtime on its own (no helper bundle, a run outside the
+  app): ``CGWindowListCopyWindowInfo`` and ``CGWindowListCreateImage`` through pyobjc,
+  announced in the log (``window mode: the runtime captures windows itself …``).
+
+The logic above the adapter — choosing a window, mapping the model's coordinates (pixels
+of the window picture) to screen points, sequencing the events of a click, a drag, a
+scroll, a typed string, a key combination — is :class:`MacWindowHands`, and runs against a
+fake adapter in the tests on Linux.
+
+What the person grants once: *Screen Recording* for the capture — the helper's row,
+**nanoMuse Computer Use**, under the app; *Accessibility* for the events (``CGEventPostToPid``
+needs the posting process to be trusted), which macOS attributes to the *responsible*
+application — the desktop app that spawned this runtime — so that row is **nanoMuse** (a
+runtime started from a terminal is attributed to that terminal). Without the helper the
+capture needs the app's own Screen Recording row as well. The settings page says which is
+missing. Everything here fails soft: a window that cannot be found, captured or driven
+raises :class:`WindowUnavailable` with the reason (:class:`WindowLayerBroken` when the
+layer itself failed), and :class:`~nanomuse.computer.link.ComputerLink` falls back to the
+shared screen with a notice.
 """
 
 from __future__ import annotations
 
+import base64
 import sys
 import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from nanomuse.computer.operator import OperatorClient, OperatorError
 from nanomuse.logger import logger
 
 # how many characters one unicode keyboard event carries (CGEvent takes ≤ 20 UTF-16 units)
@@ -328,6 +343,8 @@ class MacWindowHands:
     def find(self, app: str, title: str = "") -> WindowInfo:
         try:
             windows = self.adapter.windows()
+        except WindowUnavailable:
+            raise  # the adapter's own words (the helper's grant is off)
         except Exception as exc:  # noqa: BLE001 — pyobjc raises many kinds
             raise WindowLayerBroken(f"the windows on screen could not be listed: {exc}") from exc
         window = choose_window(windows, app, title)
@@ -340,6 +357,8 @@ class MacWindowHands:
         window = self.find(app, title)
         try:
             png = self.adapter.capture(window.id)
+        except WindowUnavailable:
+            raise  # the adapter's own words (a grant to switch on, a window that is gone)
         except Exception as exc:  # noqa: BLE001
             raise WindowLayerBroken(
                 f"the window of {window.owner} could not be captured: {exc}"
@@ -479,6 +498,7 @@ class QuartzAdapter:
 
         self.q = Quartz
         self._bundle_ids: dict[int, str] = {}
+        self._announced = False
 
     # -- windows
     def windows(self) -> list[WindowInfo]:
@@ -527,6 +547,14 @@ class QuartzAdapter:
 
     def capture(self, window_id: int) -> bytes | None:
         q = self.q
+        if not self._announced:
+            # under the app the helper does this (OperatorWindowAdapter); here the runtime is
+            # on its own and the capture is attributed to whatever started it
+            logger.info(
+                "window mode: the runtime captures windows itself with CGWindowListCreateImage "
+                "(no nanoMuse Computer Use helper) — Screen Recording must be on for this process"
+            )
+            self._announced = True
         image = q.CGWindowListCreateImage(
             q.CGRectNull,
             q.kCGWindowListOptionIncludingWindow,
@@ -613,6 +641,84 @@ class QuartzAdapter:
             return False
 
 
+# ---------------------------------------------------------------------- through the helper
+class OperatorWindowAdapter:
+    """Window mode under nanoMuse Desktop: the windows and their pictures come from the
+    app's helper through the operator (``/windows``, ``/window``), the events go out through
+    ``events`` — a :class:`QuartzAdapter` by default, a fake in the tests.
+
+    The operator's refusals come back in its words: a 403 (the helper's Screen Recording
+    row is off) and a 404 (the window is gone) are :class:`WindowUnavailable`, retried on
+    the next look; anything else (the helper did not start, the app's server is gone)
+    is raised as is and read as the layer failing (:class:`WindowLayerBroken`)."""
+
+    def __init__(self, client: OperatorClient, events: MacAdapter | None = None) -> None:
+        self.client = client
+        self.events: MacAdapter = events if events is not None else QuartzAdapter()
+
+    # -- windows (the helper's)
+    def windows(self) -> list[WindowInfo]:
+        try:
+            listed = self.client.windows()
+        except OperatorError as exc:
+            if exc.status == 403:
+                raise WindowUnavailable(str(exc)) from exc
+            raise
+        out: list[WindowInfo] = []
+        for raw in listed:
+            bounds = raw.get("bounds") or [0, 0, 0, 0]
+            if not isinstance(bounds, list) or len(bounds) != 4:
+                bounds = [0, 0, 0, 0]
+            try:
+                out.append(
+                    WindowInfo(
+                        id=int(raw.get("id") or 0),
+                        pid=int(raw.get("pid") or 0),
+                        owner=str(raw.get("app") or ""),
+                        title=str(raw.get("title") or ""),
+                        x=float(bounds[0] or 0),
+                        y=float(bounds[1] or 0),
+                        width=float(bounds[2] or 0),
+                        height=float(bounds[3] or 0),
+                        layer=int(raw.get("layer") or 0),
+                        on_screen=bool(raw.get("on_screen", True)),
+                        bundle_id=str(raw.get("bundle_id") or ""),
+                    )
+                )
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    def capture(self, window_id: int) -> bytes | None:
+        try:
+            shot = self.client.window(window_id)
+        except OperatorError as exc:
+            if exc.status in (403, 404):
+                raise WindowUnavailable(str(exc)) from exc
+            raise
+        data = str(shot.get("base64") or "")
+        return base64.b64decode(data) if data else None
+
+    # -- events (this process's, through pyobjc)
+    def post_mouse(self, pid: int, event: MouseEvent) -> None:
+        self.events.post_mouse(pid, event)
+
+    def post_key(self, pid: int, event: KeyEvent) -> None:
+        self.events.post_key(pid, event)
+
+    def post_text(self, pid: int, text: str) -> None:
+        self.events.post_text(pid, text)
+
+    def post_scroll(self, pid: int, x: float, y: float, dy: float, dx: float = 0.0) -> None:
+        self.events.post_scroll(pid, x, y, dy, dx)
+
+    def ax_press(self, x: float, y: float) -> bool:
+        return self.events.ax_press(x, y)
+
+    def trusted(self) -> bool:
+        return self.events.trusted()
+
+
 __all__ = [
     "KEY_ALIASES",
     "MODIFIERS",
@@ -622,6 +728,7 @@ __all__ = [
     "MacAdapter",
     "MacWindowHands",
     "MouseEvent",
+    "OperatorWindowAdapter",
     "QuartzAdapter",
     "WindowFrame",
     "WindowInfo",

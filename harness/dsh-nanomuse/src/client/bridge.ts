@@ -22,6 +22,24 @@ export interface DesktopPrefs {
   supports: { openAtLogin: boolean; menuBar: boolean; quickChat: boolean }
 }
 
+/** What the shell's glow and capsule show of the hands (0.1.40 adds the step, the title and the two buttons' words). */
+export interface OverlayHands {
+  active: boolean
+  held: boolean
+  /** The last action's point as fractions of the frame; -1 when none. */
+  x: number
+  y: number
+  kind: string
+  step: number
+  /** "Step 3" / "Your turn" and what is being done, in the person's language. */
+  title: string
+  text: string
+  face: string
+  /** The buttons' words; '' hides the button. */
+  stop: string
+  take: string
+}
+
 export interface HarnessBridge {
   platform: string
   info(): Promise<{ version: string; platform: string; arch: string }>
@@ -44,7 +62,7 @@ export interface HarnessBridge {
   // since 0.1.34
   guidePermissions?(): Promise<Record<PermissionKind, PermissionState>>
   setContentProtection?(on: boolean): Promise<void>
-  setOverlay?(state: { hands: { active: boolean; held: boolean; x: number; y: number; kind: string; text: string; face: string } | null; cards: { id: string; kind: 'approval' | 'hold'; title: string; text: string; actions: { id: string; label: string; tone?: 'on' | 'no' }[] }[] }): void
+  setOverlay?(state: { hands: OverlayHands | null; cards: { id: string; kind: 'approval' | 'hold'; title: string; text: string; actions: { id: string; label: string; tone?: 'on' | 'no' }[] }[] }): void
   onOverlayAction?(listener: (card: string, action: string) => void): () => void
 }
 

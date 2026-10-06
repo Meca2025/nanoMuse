@@ -859,12 +859,18 @@ function registerBridge(): void {
 // ---- the overlays while the hands work (0.1.34) ---------------------------------------------
 //
 // Two windows the web client drives over IPC, both with content protection on so neither is
-// ever in a screenshot the hands take (UI-TARS does the same with its ScreenMarker):
-//   • the glow — transparent, click-through, always on top, over the whole display: an
-//     animated border says "the agent has the hands", the agent's face follows the pointer;
-//   • the capsule — a small always-on-top card with the question the agent asked before a
-//     step (Allow once / Deny) or the hold ("Your turn — Done"), shown when the main window
-//     is not the one in front, so the person can answer from wherever they are.
+// ever in a screenshot the hands take (UI-TARS does the same with its ScreenMarker). They are
+// the phone's HandsStage and HandsCapsule, drawn for a desktop (resources/glow.html,
+// resources/capsule.html):
+//   • the glow — transparent, click-through, always on top, over the whole display: a light
+//     breathing along the four edges says "the agent has the hands" (blue; amber while they
+//     wait for the person), and at the point of each action the marker — ring, arc, dot, the
+//     action's name — locks on and ripples; a drag draws its path;
+//   • the capsule — a small always-on-top pill at the top of the screen with the agent's face,
+//     "Step N" and what the hands are doing, Stop and "I'll take it", and under it the
+//     question the agent asked before a step (Allow once / Deny) or the hold ("Your turn —
+//     Done"); shown when the main window is not the one in front, so the person can see and
+//     answer from wherever they are. It moves out of the way when the hands act under it.
 
 interface OverlayCard {
   id: string;
@@ -874,8 +880,25 @@ interface OverlayCard {
   actions: { id: string; label: string; tone?: "on" | "no" }[];
 }
 
+interface OverlayHands {
+  active: boolean;
+  held: boolean;
+  x: number;
+  y: number;
+  kind: string;
+  /** The step the hands are on, from 1; 0 before the first. */
+  step: number;
+  /** The capsule's first line ("Step 3", "Your turn") and its second (what the hands do, the hold's reason). */
+  title: string;
+  text: string;
+  face: string;
+  /** The capsule's buttons, in the client's words; empty when not offered. */
+  stop: string;
+  take: string;
+}
+
 interface OverlayState {
-  hands: { active: boolean; held: boolean; x: number; y: number; kind: string; text: string; face: string } | null;
+  hands: OverlayHands | null;
   cards: OverlayCard[];
 }
 
@@ -883,6 +906,18 @@ let glowWindow: BrowserWindow | null = null;
 let capsuleWindow: BrowserWindow | null = null;
 let overlayState: OverlayState = { hands: null, cards: [] };
 let glowHideTimer: NodeJS.Timeout | null = null;
+let capsuleHideTimer: NodeJS.Timeout | null = null;
+/** The capsule's width and its margin from the top of the work area; it sits top-centre like the phone's, and at the bottom when it has dodged. */
+const CAPSULE_WIDTH = 420;
+const CAPSULE_MARGIN = 12;
+/** Whether the capsule has moved to the bottom of the work area to get out from under the hands. */
+let capsuleDodged = false;
+/** How far from the capsule a pointer action is still "under" it. */
+const CAPSULE_DODGE_PX = 8;
+/** How long the capsule is given to be out of the way before the pointer moves. */
+const CAPSULE_DODGE_MS = 120;
+/** Linux: the capsule is off the screen for a capture (no content protection there). */
+let capsuleAside = false;
 /** The display bounds the glow was last given (JSON), so applyOverlay does not set them again and again. */
 let glowBounds = "";
 /** The last action the operator carried out, for the glow's marker (UI-TARS's prediction marker): fractions of the display, the words, when. */
@@ -1032,8 +1067,9 @@ function ensureOperator(): Promise<OperatorServer | null> {
     permissions: () => ({ accessibility: permissionState("accessibility") !== "denied", screen: permissionState("screen") === "granted" || permissionState("screen") === "not-needed" }),
     // macOS: "nanoMuse Computer Use" takes the screenshots and moves the mouse when it is there (src/mac-helper.ts)
     helper: helper() ?? undefined,
-    onAction: (marker) => {
+    onAction: async (marker) => {
       setMarker(marker);
+      await capsuleDodge(marker);
       if (process.platform !== "linux") return;
       // Linux: a pointer action must not land on the glow. It steps aside (unmapped, so it
       // takes no input whatever its X11 shape) and comes back in onActed; for the other
@@ -1050,18 +1086,33 @@ function ensureOperator(): Promise<OperatorServer | null> {
         ? async (phase) => {
             if (!glowWindow || glowWindow.isDestroyed()) {
               glowAside = phase === "before" ? "capture" : "";
+              capsuleAside = phase === "before";
+              if (capsuleAside && capsuleWindow && !capsuleWindow.isDestroyed() && capsuleWindow.isVisible()) {
+                capsuleWindow.hide();
+                await new Promise((r) => setTimeout(r, 70));
+              } else if (!capsuleAside) applyOverlay();
               return;
             }
             if (phase === "before") {
-              if (glowAside === "action") return; // already off the screen for the action
+              capsuleAside = true;
+              const capsuleWasUp = Boolean(capsuleWindow && !capsuleWindow.isDestroyed() && capsuleWindow.isVisible());
+              if (capsuleWasUp) capsuleWindow?.hide();
+              if (glowAside === "action") {
+                if (capsuleWasUp) await new Promise((r) => setTimeout(r, 70));
+                return; // the glow is already off the screen for the action
+              }
               glowAside = "capture";
-              if (glowWindow.isVisible()) {
+              if (glowWindow.isVisible() || capsuleWasUp) {
                 glowWindow.hide();
                 await new Promise((r) => setTimeout(r, 70));
               }
-            } else if (glowAside === "capture") {
-              glowAside = "";
-              if (overlayUp()) showGlow();
+            } else {
+              capsuleAside = false;
+              if (glowAside === "capture") {
+                glowAside = "";
+                if (overlayUp()) showGlow();
+              }
+              applyOverlay();
             }
           }
         : undefined,
@@ -1149,7 +1200,7 @@ function overlayWindow(kind: "glow" | "capsule"): BrowserWindow {
     skipTaskbar: true,
     focusable: false,
     alwaysOnTop: true,
-    ...(glow ? { x: display.bounds.x, y: display.bounds.y, width: display.bounds.width, height: display.bounds.height } : { width: 360, height: 120, x: display.workArea.x + display.workArea.width - 376, y: display.workArea.y + 16 }),
+    ...(glow ? { x: display.bounds.x, y: display.bounds.y, width: display.bounds.width, height: display.bounds.height } : { ...capsulePlace(60), width: CAPSULE_WIDTH + 16, height: 60 }),
     webPreferences: OVERLAY_PREFS,
   });
   // Never in a screenshot: the hands must not see our own marks on the screen.
@@ -1178,6 +1229,36 @@ function overlayWindow(kind: "glow" | "capsule"): BrowserWindow {
   return win;
 }
 
+/** Where the capsule sits: top-centre of the primary display's work area, or bottom-centre once it has dodged the hands. */
+function capsulePlace(height: number): { x: number; y: number } {
+  const area = screen.getPrimaryDisplay().workArea;
+  const x = Math.round(area.x + (area.width - (CAPSULE_WIDTH + 16)) / 2);
+  const y = capsuleDodged ? area.y + area.height - height - CAPSULE_MARGIN : area.y + CAPSULE_MARGIN;
+  return { x, y };
+}
+
+/**
+ * The hands are about to act at the marker's point (fractions of the display): when that is
+ * under the capsule, the capsule moves to the other edge of the work area first and the
+ * operator waits CAPSULE_DODGE_MS so the pointer never lands on it. The phone's capsule dodges
+ * the finger the same way.
+ */
+async function capsuleDodge(marker: Marker): Promise<void> {
+  const win = capsuleWindow;
+  if (!win || win.isDestroyed() || !win.isVisible() || !pointerAction(marker.kind)) return;
+  const display = screen.getPrimaryDisplay();
+  const b = win.getBounds();
+  const under = (fx: number, fy: number) => {
+    const px = display.bounds.x + fx * display.bounds.width;
+    const py = display.bounds.y + fy * display.bounds.height;
+    return px >= b.x - CAPSULE_DODGE_PX && px <= b.x + b.width + CAPSULE_DODGE_PX && py >= b.y - CAPSULE_DODGE_PX && py <= b.y + b.height + CAPSULE_DODGE_PX;
+  };
+  if (!under(marker.fx, marker.fy) && !(marker.fx2 !== undefined && marker.fy2 !== undefined && under(marker.fx2, marker.fy2))) return;
+  capsuleDodged = !capsuleDodged;
+  win.setBounds({ ...b, ...capsulePlace(b.height) });
+  await new Promise((r) => setTimeout(r, CAPSULE_DODGE_MS));
+}
+
 function sendOverlay(win: BrowserWindow | null, state: unknown): void {
   if (win && !win.isDestroyed()) win.webContents.send("nanomuse:overlay:state", state);
 }
@@ -1193,9 +1274,12 @@ function overlayUp(): boolean {
   return Boolean((hands && (hands.active || hands.held)) || freshMarker());
 }
 
-/** What the glow draws: the web client's state (face, caption) and the operator's marker (the exact point of the last action). */
+/** Nothing on the hands yet: the shape the pages expect. */
+const NO_HANDS: OverlayHands = { active: false, held: false, x: -1, y: -1, kind: "", step: 0, title: "", text: "", face: "", stop: "", take: "" };
+
+/** What the glow draws: the web client's state (the hands' own point, the action's kind) and the operator's marker (the exact point of the last action). */
 function glowState(): Record<string, unknown> {
-  const hands = overlayState.hands ?? { active: false, held: false, x: -1, y: -1, kind: "", text: "", face: "" };
+  const hands = overlayState.hands ?? NO_HANDS;
   const marker = freshMarker();
   return { ...hands, active: true, marker: marker ? { x: marker.fx, y: marker.fy, x2: marker.fx2 ?? -1, y2: marker.fy2 ?? -1, kind: marker.kind, text: marker.text, at: marker.at } : null };
 }
@@ -1222,17 +1306,38 @@ function applyOverlay(): void {
     sendOverlay(glowWindow, { active: false });
     if (!glowHideTimer) glowHideTimer = setTimeout(() => { glowHideTimer = null; glowWindow?.hide(); }, 400);
   }
-  // the capsule: the cards, but only when the main window is not in front (the page shows them itself then)
+  // the capsule: the hands' pill and the cards, but only when the main window is not in front
+  // (the chat shows the run and the cards itself then), and never while a capture is on (Linux)
   const mainInFront = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused() && mainWindow.isVisible());
+  const hands = overlayState.hands && (overlayState.hands.active || overlayState.hands.held) ? overlayState.hands : null;
   const cards = mainInFront ? [] : overlayState.cards;
-  if (cards.length) {
-    if (!capsuleWindow || capsuleWindow.isDestroyed()) capsuleWindow = overlayWindow("capsule");
+  const capsuleUp = !mainInFront && !capsuleAside && (Boolean(hands) || cards.length > 0);
+  if (capsuleUp) {
+    if (capsuleHideTimer) { clearTimeout(capsuleHideTimer); capsuleHideTimer = null; }
+    if (!capsuleWindow || capsuleWindow.isDestroyed()) {
+      capsuleDodged = false;
+      capsuleWindow = overlayWindow("capsule");
+    }
     capsuleWindow.setFocusable(true);
-    if (!capsuleWindow.isVisible()) capsuleWindow.showInactive();
-    sendOverlay(capsuleWindow, { cards });
+    if (!capsuleWindow.isVisible()) {
+      capsuleDodged = false;
+      capsuleWindow.setBounds({ ...capsuleWindow.getBounds(), ...capsulePlace(capsuleWindow.getBounds().height) });
+      capsuleWindow.showInactive();
+    }
+    sendOverlay(capsuleWindow, { hands, cards });
   } else if (capsuleWindow && !capsuleWindow.isDestroyed() && capsuleWindow.isVisible()) {
-    sendOverlay(capsuleWindow, { cards: [] });
-    capsuleWindow.hide();
+    if (capsuleAside) {
+      capsuleWindow.hide();
+      return;
+    }
+    // a moment, so a step's end and the next step's start do not blink the capsule
+    if (!capsuleHideTimer) {
+      capsuleHideTimer = setTimeout(() => {
+        capsuleHideTimer = null;
+        sendOverlay(capsuleWindow, { hands: null, cards: [] });
+        capsuleWindow?.hide();
+      }, 220);
+    }
   }
 }
 
@@ -1248,8 +1353,12 @@ function registerOverlays(): void {
             x: typeof hands.x === "number" ? hands.x : -1,
             y: typeof hands.y === "number" ? hands.y : -1,
             kind: String(hands.kind ?? "").slice(0, 32),
-            text: String(hands.text ?? "").slice(0, 120),
+            step: typeof hands.step === "number" && hands.step > 0 ? Math.min(9999, Math.floor(hands.step)) : 0,
+            title: String(hands.title ?? "").slice(0, 60),
+            text: String(hands.text ?? "").slice(0, 160),
             face: typeof hands.face === "string" && /^(data:image\/[a-z+]+;base64,|https?:\/\/127\.0\.0\.1|https?:\/\/localhost)/.test(hands.face) ? hands.face.slice(0, 400_000) : "",
+            stop: String(hands.stop ?? "").slice(0, 40),
+            take: String(hands.take ?? "").slice(0, 40),
           }
         : null,
       cards: Array.isArray(state.cards)
@@ -1266,7 +1375,7 @@ function registerOverlays(): void {
   });
   ipcMain.on("nanomuse:overlay:ready", (e) => {
     if (e.sender === glowWindow?.webContents) sendOverlay(glowWindow, overlayState.hands ? { ...overlayState.hands } : { active: false });
-    if (e.sender === capsuleWindow?.webContents) sendOverlay(capsuleWindow, { cards: overlayState.cards });
+    if (e.sender === capsuleWindow?.webContents) sendOverlay(capsuleWindow, { hands: overlayState.hands && (overlayState.hands.active || overlayState.hands.held) ? overlayState.hands : null, cards: overlayState.cards });
   });
   ipcMain.on("nanomuse:overlay:act", (e, payload: { card?: string; action?: string }) => {
     if (e.sender !== capsuleWindow?.webContents || !payload) return;
@@ -1279,9 +1388,9 @@ function registerOverlays(): void {
   });
   ipcMain.on("nanomuse:overlay:resize", (e, height: number) => {
     if (e.sender !== capsuleWindow?.webContents || typeof height !== "number") return;
-    const h = Math.max(60, Math.min(480, Math.round(height)));
+    const h = Math.max(48, Math.min(480, Math.round(height)));
     const b = capsuleWindow.getBounds();
-    if (b.height !== h) capsuleWindow.setBounds({ ...b, height: h });
+    if (b.height !== h) capsuleWindow.setBounds({ ...b, height: h, ...capsulePlace(h) });
   });
   app.on("browser-window-focus", applyOverlay);
   app.on("browser-window-blur", applyOverlay);
@@ -1386,7 +1495,9 @@ async function ensureMacPermissionsAtLaunch(): Promise<void> {
   await helperReady();
   const accessibility = permissionState("accessibility");
   const screen = permissionState("screen");
-  const source = macPermissions.helperInUse() ? `${HELPER_NAME} ${macHelper?.cachedStatus()?.version ?? ""}`.trim() : macPermissions.loaded() ? "native" : `systemPreferences — ${macPermissions.loadError()}`;
+  const status = macHelper?.cachedStatus();
+  // the helper's word on the screen (ScreenCaptureKit on macOS 14+) goes next to the TCC state: `screen=granted (capture ScreenCaptureKit)` is the line to look for when a screenshot is in doubt
+  const source = macPermissions.helperInUse() ? `${HELPER_NAME} ${status?.version ?? ""}${status?.capture ? `, capture ${status.capture}` : ""}${status?.screenDetail ? `, ${status.screenDetail}` : ""}`.trim() : macPermissions.loaded() ? "native" : `systemPreferences — ${macPermissions.loadError()}`;
   log(`permissions: accessibility=${accessibility} screen=${screen} (${source}${!macPermissions.helperInUse() && macHelper ? `; helper: ${macHelper.failure()}` : ""})`);
   if (accessibility === "granted" && screen === "granted") return;
   if (screen !== "granted") void requestScreenRecording(true);

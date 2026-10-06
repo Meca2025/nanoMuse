@@ -78,6 +78,81 @@ def test_an_exhausted_allowance_carries_the_ways_on():
     assert "allowance" not in failure_notice(other, "t1")
 
 
+def test_the_remaining_relay_refusals_are_sentences():
+    """413 and the 429s beside the allowance (parity item 35) are named, never
+    ``The model provider answered with an error: …`` with the body behind it."""
+    exc = _status_error(
+        openai.APIStatusError, 413, {"code": "too_large", "message": '{"error": {"big": 1}}'}
+    )
+    code, text = describe_failure(exc)
+    assert code == "too_long" and "new chat" in text and "{" not in text and "413" not in text
+
+    exc = _status_error(
+        openai.RateLimitError, 429, {"code": "too_many_in_flight", "message": "in flight"}
+    )
+    code, text = describe_failure(exc)
+    assert code == "busy" and "at once" in text and "in flight" not in text
+
+    exc = _status_error(openai.RateLimitError, 429, {"code": "provider_busy", "message": "x"})
+    assert describe_failure(exc) == ("busy", "The model provider is busy; try again in a moment.")
+
+    exc = _status_error(openai.PermissionDeniedError, 403, {"code": "not_invited", "message": "x"})
+    code, text = describe_failure(exc)
+    assert code == "account" and "invite code" in text
+
+
+def test_the_operators_switches_say_paused_not_broken():
+    """relay 0.22: the five switches (docs/cloud.md, Controls) — each one plain sentence that
+    says *paused for now* and that nothing is lost; ``allowance_exhausted`` with ``paused``
+    keeps the allowance code (the apps draw the same card) but says paused, not used up."""
+    exc = _status_error(
+        openai.InternalServerError,
+        503,
+        {"code": "service_paused", "message": "down", "paused": True},
+    )
+    code, text = describe_failure(exc)
+    assert code == "relay" and "paused" in text and "kept" in text and "down" not in text
+
+    exc = _status_error(
+        openai.InternalServerError, 503, {"code": "sync_paused", "message": "x", "paused": True}
+    )
+    code, text = describe_failure(exc)
+    assert code == "relay" and text.startswith("Conversation sync is paused")
+
+    exc = _status_error(
+        openai.InternalServerError, 503, {"code": "hub_paused", "message": "x", "paused": True}
+    )
+    code, text = describe_failure(exc)
+    assert code == "relay" and text.startswith("The device hub is paused")
+
+    exc = _status_error(
+        openai.PermissionDeniedError, 403, {"code": "signup_closed", "message": "x"}
+    )
+    code, text = describe_failure(exc)
+    assert code == "account" and "sign-ups are paused" in text and "existing accounts" in text
+
+    body = {
+        "code": "allowance_exhausted",
+        "message": "The free allowance is paused on this relay for now …",
+        "paused": True,
+        "reason": "allowance_paused",
+        "left": 7,
+        "grant": 10,
+        "invite_url": "https://nanomuse.cn/web/?invite=ABCD2345",
+        "invite_bonus_cny": 5,
+    }
+    exc = _status_error(openai.RateLimitError, 429, body)
+    code, text = describe_failure(exc)
+    assert code == "allowance" and "paused" in text and "not used up" in text
+    assert not text.startswith("The free allowance is used up.")
+    notice = failure_notice(exc, "t1")
+    assert notice["allowance"]["paused"] is True and notice["allowance"]["left"] == 7
+    # without the flag the spent-pool sentence is unchanged
+    spent = _status_error(openai.RateLimitError, 429, {**body, "paused": False})
+    assert describe_failure(spent)[1].startswith("The free allowance is used up.")
+    assert "paused" in failure_notice(spent, "t1")["allowance"]
+
+
 def test_own_key_failures():
     exc = _status_error(openai.AuthenticationError, 401, {"message": "Incorrect API key provided"})
     code, text = describe_failure(exc)

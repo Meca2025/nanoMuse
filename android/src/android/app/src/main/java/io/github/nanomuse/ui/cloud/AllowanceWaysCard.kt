@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAdd
@@ -117,6 +119,8 @@ fun AllowanceWaysCard(
     val chinese = remember { ProviderCatalogue.chinese(context) }
     val vendors = remember(mainland) { ProviderCatalogue.ordered(ProviderCatalogue.load(context), mainland) }
     val signIns = remember(mainland) { ProviderCatalogue.signIns(ProviderCatalogue.load(context), mainland) }
+    val locals = remember { ProviderCatalogue.load(context).filter { it.local } }
+    val signedIn = remember { NanoMuseCloud.isSignedIn(context) }
     var more by remember { mutableStateOf(false) }
 
     Surface(
@@ -127,14 +131,17 @@ fun AllowanceWaysCard(
     ) {
         Column(Modifier.padding(14.dp)) {
             Text(
-                text = if (exhausted) stringResource(R.string.nm_ways_title_out)
-                else stringResource(R.string.nm_ways_title_warn, money(info.leftCny), money(info.grantCny)),
+                text = when {
+                    info.dailyCap -> stringResource(R.string.nm_ways_title_day)
+                    exhausted -> stringResource(R.string.nm_ways_title_out)
+                    else -> stringResource(R.string.nm_ways_title_warn, money(info.leftCny), money(info.grantCny))
+                },
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(R.string.nm_ways_sub),
+                text = stringResource(if (info.dailyCap) R.string.nm_ways_day_sub else R.string.nm_ways_sub),
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -193,7 +200,32 @@ fun AllowanceWaysCard(
                 }
             }
 
-            // ③ an invitation: both sides gain
+            // ③ a model of one's own — the catalogue's local servers, on a computer the person owns
+            if (locals.isNotEmpty()) {
+                Way(
+                    Icons.Outlined.Computer,
+                    Color(0xFF5B8DEF),
+                    stringResource(R.string.nm_ways_local_title),
+                    stringResource(R.string.nm_ways_local_body, locals.joinToString(", ") { it.displayName(chinese) }),
+                ) {
+                    locals.forEach { v ->
+                        TextButton(onClick = { openPreset(context, v.id) }, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
+                            Text(stringResource(R.string.nm_ways_add_named, v.displayName(chinese)), fontSize = 13.sp, color = MuseTones.action)
+                        }
+                    }
+                }
+            }
+
+            // ④ the person's computer, when the account has one: the turn runs there
+            if (signedIn) {
+                Way(Icons.Outlined.Devices, Color(0xFF2E9E6B), stringResource(R.string.nm_ways_computer_title), stringResource(R.string.nm_ways_computer_body)) {
+                    TextButton(onClick = { com.openminis.app.ui.chat.ChatLinkResolver.dispatchDeepLink(context, "minis://settings/devices") }) {
+                        Text(stringResource(R.string.nm_ways_devices), fontSize = 13.sp, color = MuseTones.action)
+                    }
+                }
+            }
+
+            // ⑤ an invitation: both sides gain
             Way(Icons.Outlined.PersonAdd, Color(0xFF7C5CFF), stringResource(R.string.nm_ways_invite_title, money(inviteBonus), money(inviteeBonus)), null) {
                 TextButton(onClick = {
                     val text = context.getString(R.string.nm_cloud_invite_share_text, account?.inviteCode.orEmpty(), link)
@@ -213,7 +245,7 @@ fun AllowanceWaysCard(
                 }
             }
 
-            // ④ a star — asked only when the pool is spent, and only until the person went
+            // ⑥ a star — asked only when the pool is spent, and only until the person went
             if (starAsk && !starred) {
                 Way(Icons.Outlined.StarOutline, Color(0xFFF5A623), stringResource(R.string.nm_star_exhausted), null) {
                     TextButton(onClick = { io.github.nanomuse.community.StarPrompt.open(context); starred = true }) {

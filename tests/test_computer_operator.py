@@ -29,7 +29,13 @@ class FakeOperator:
     """What harness/desktop/src/operator-server.ts answers, on a thread."""
 
     def __init__(
-        self, width: int = 3840, height: int = 2160, available: bool = True, reason: str = ""
+        self,
+        width: int = 3840,
+        height: int = 2160,
+        available: bool = True,
+        reason: str = "",
+        helper: dict[str, Any] | None = None,
+        windows: list[dict[str, Any]] | None = None,
     ) -> None:
         self.width, self.height = width, height
         self.available, self.reason = available, reason
@@ -39,6 +45,12 @@ class FakeOperator:
         # (status, error) the next /screenshot answers with — the operator's 403 on a Mac
         # without Screen Recording (harness/desktop/src/operator.ts capture())
         self.refuse_shot: tuple[int, str] | None = None
+        # macOS: the app's helper as /info describes it ({present, running, ...}), and the
+        # windows it lists for /windows; /window captures one of them at twice its points
+        self.helper = helper
+        self.windows = list(windows or [])
+        self.window_shots: list[dict[str, Any]] = []
+        self.refuse_window: tuple[int, str] | None = None
         fake = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -62,6 +74,13 @@ class FakeOperator:
             def do_GET(self) -> None:  # noqa: N802 — http.server's name
                 if not self._authed():
                     return
+                if self.path == "/windows":
+                    if fake.helper is None:
+                        return self._send(503, {"error": "window mode needs nanoMuse Computer Use"})
+                    if fake.refuse_window is not None and fake.refuse_window[0] != 404:
+                        code, why = fake.refuse_window  # a 404 is one window's, not the list's
+                        return self._send(code, {"error": why})
+                    return self._send(200, {"windows": fake.windows})
                 if self.path != "/info":
                     return self._send(404, {"error": "no such route"})
                 self._send(
@@ -71,6 +90,7 @@ class FakeOperator:
                         "reason": fake.reason,
                         "platform": "linux",
                         "display": {"width": fake.width, "height": fake.height, "scaleFactor": 2},
+                        **({"helper": fake.helper} if fake.helper is not None else {}),
                     },
                 )
 
@@ -114,6 +134,38 @@ class FakeOperator:
                         return self._send(400, {"error": why})
                     fake.executed.append(body)
                     return self._send(200, {"ok": True, "note": ""})
+                if self.path == "/window":
+                    fake.window_shots.append(body)
+                    if fake.refuse_window is not None:
+                        code, why = fake.refuse_window
+                        return self._send(code, {"error": why})
+                    found = [w for w in fake.windows if w["id"] == body.get("id")]
+                    if not found:
+                        return self._send(
+                            404,
+                            {
+                                "error": f"window {body.get('id')} could not be captured: "
+                                f"no window with id {body.get('id')} is on screen"
+                            },
+                        )
+                    x, y, w, h = found[0]["bounds"]
+                    return self._send(
+                        200,
+                        {
+                            "base64": png(int(w) * 2, int(h) * 2),
+                            "mime": "image/png",
+                            "width": int(w) * 2,
+                            "height": int(h) * 2,
+                            "window": {
+                                "id": found[0]["id"],
+                                "x": x,
+                                "y": y,
+                                "width": w,
+                                "height": h,
+                            },
+                            "scale": 2,
+                        },
+                    )
                 self._send(404, {"error": "no such route"})
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -163,6 +215,11 @@ def test_operator_hands_speak_the_contract(operator: FakeOperator) -> None:
     operator.fail_next = "no such key: hyperspace"
     with pytest.raises(RuntimeError, match="hyperspace"):
         hands.key(["hyperspace"])
+    # the window routes are the helper's: without it the operator says so, with the status
+    assert hands.helper_present is False
+    with pytest.raises(op.OperatorError, match="window mode needs nanoMuse Computer Use") as exc:
+        hands.client.windows()
+    assert exc.value.status == 503
     # the picture: the size the runtime asks for, the screen's size next to it
     raw = op.operator_capture(hands.client, 1600)
     assert raw is not None

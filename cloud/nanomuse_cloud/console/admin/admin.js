@@ -37,7 +37,7 @@
     all: "全部", signIns: "登录", refusals: "超额", errors: "错误", calls: "通话", passwords: "密码",
     eventName: {
       "account.created": "注册", "sign_in.code": "验证码登录", "sign_in.password": "密码登录", "sign_in.session": "换会话密钥", "sign_in.failed": "登录失败", "password.set": "设置密码", "password.changed": "修改密码",
-      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "pool.set": "额度调整", "pool.set.many": "批量额度调整", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "开启「帮助改进」", "contribute.default": "新账号默认开启「帮助改进」", "contribute.bonus": "早期共创奖励 +¥10", "contribute.off": "关闭「帮助改进」", "contribute.deleted": "删除保存的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励", "profile.put": "更新资料", "profile.clear": "清空资料", "profile.connectors": "更新连接列表", "settings.changed": "修改配置", "nudges.changed": "修改 star 提示规则",
+      "password.cleared": "移除密码", "sign_out": "退出", "sign_out.all": "全部退出", "pool.set": "额度调整", "pool.set.many": "批量额度调整", "budget.refused": "超出额度被拒", "upstream.error": "上游出错", "call.ended": "通话结束", "contribute.on": "开启「帮助改进」", "contribute.default": "新账号默认开启「帮助改进」", "contribute.bonus": "早期共创奖励 +¥10", "contribute.off": "关闭「帮助改进」", "contribute.deleted": "删除保存的对话", "invite.accepted": "邀请成功", "invite.used": "通过邀请注册", "invite.unknown": "无效邀请码", "credit.granted": "获得额度奖励", "profile.put": "更新资料", "profile.clear": "清空资料", "profile.connectors": "更新连接列表", "settings.changed": "修改配置", "nudges.changed": "修改 star 提示规则", "control.switch": "开关切换", "control.rule": "阈值规则触发",
     },
     // drawer
     spendToday: "今天", spendTotal: "累计", requests: "请求", cap: "总额度", noCap: "无上限", left: "剩余", usageToday: "今天", usagePeriod: (d) => `最近 ${d} 天`, usageTotal: "累计",
@@ -94,7 +94,40 @@
     catalog: "模型目录", catalogNote: "key 下能用的模型（菜单之外）：relay 向每个模型各问一句话、再给一张品红色小图，确认它能回答、能不能看图；答案保存 7 天。客户端拿到的「能看图」就是这里的结果。", catalogOff: "模型目录未开启（CLOUD_CATALOG=0）。", catalogNames: "按名字推断，未逐个验证（CLOUD_CATALOG_PROBE=0）。", catalogProbing: "正在验证…", catalogPending: (n) => `${fmt(n)} 个待验证`, catalogFetched: (t) => `列表更新于 ${t}`, catalogError: (e) => `读取列表失败：${e}`,
     cModel: "模型", cKind: "类型", cSees: "看图", cVerified: "已验证", cYes: "是", cNo: "否", cUnusable: "服务商拒绝的模型（不出现在客户端）", cNoUnusable: "没有被拒绝的模型。", cCount: (n, v) => `${fmt(n)} 个对话模型 · ${fmt(v)} 个能看图`,
     // 0.14: the page in pages
-    nav: { overview: "总览", people: "用户", places: "地区", money: "花费", activity: "动态", demo: "在线体验", data: "数据控制", site: "官网", models: "模型", health: "服务状态", settings: "配置" },
+    nav: { overview: "总览", people: "用户", places: "地区", money: "花费", activity: "动态", demo: "在线体验", data: "数据控制", site: "官网", models: "模型", health: "服务状态", stats: "统计", controls: "控制", settings: "配置" },
+    // 0.22: the Controls page, the Stats page, the GitHub series
+    ctl: {
+      title: "控制", note: "每个开关立刻生效、重启后保持；谁在何时改了什么记在下面的日志里。关闭前会先说明确切后果。",
+      names: { free_allowance: "免费额度", signups: "开放注册", cloud_service: "云服务", sync: "对话同步", hub: "设备通道" },
+      what: {
+        free_allowance: "关闭后：没有自己模型 key 的受限账号请求模型会被拒——HTTP 429，code allowance_exhausted，附 paused: true，提示语说明额度已暂停；成员不受影响；登录、设备、同步照常。",
+        signups: "关闭后：还没有账号的手机号 / 邮箱申请验证码或登录会被拒——HTTP 403，code signup_closed；已有账号照常登录和使用。",
+        cloud_service: "关闭后：除健康检查、/v1/config 和这个控制台以外的所有 API 返回 HTTP 503（code service_paused），设备通道的连接全部断开（4003 hub_paused）；数据原样保留。",
+        sync: "关闭后：对话同步的推送和拉取返回 HTTP 503（code sync_paused）；已存的内容保留，设备各自继续工作。",
+        hub: "关闭后：设备通道拒绝新连接并断开现有连接（4003 hub_paused），/v1/devices 返回 503；设备各自继续工作。",
+      },
+      confirm: (name, on, what) => `${on ? "打开" : "关闭"}「${name}」？\n\n${on ? "打开后恢复正常。" : what}`,
+      actor: "操作人", actorHint: "你的名字，记入日志", why: "原因（可选）", byLine: (who, t) => `${who} · ${t}`,
+      rules: "阈值规则", rulesNote: "当账号总数达到 N 时自动做一件事。每条规则只触发一次（新账号创建时和每分钟各检查一次）；「重置」后可再次触发。",
+      rThreshold: "账号数达到", rAction: "动作", rEnabled: "启用", rLastFired: "上次触发", rNote: "备注", rAdd: "添加规则", rRearm: "重置", rDelete: "删除", rNever: "未触发", rFiredAt: (n, t) => `${t} · 当时 ${fmt(n)} 个账号`,
+      rDeleteConfirm: "删除这条规则？", rNow: (n) => `现在 ${fmt(n)} 个账号`, rNext: (n) => `下一道阈值 ${fmt(n)}`, rNone: "还没有规则", rCheck: "现在检查",
+      actions: { close_signups: "关闭注册", pause_allowance: "暂停免费额度", pause_sync: "暂停对话同步", notify: "邮件通知管理员" },
+      notifyOk: "通知邮件已配置（ADMIN_EMAIL + SMTP）", notifyNo: "通知邮件未配置：在环境里设 ADMIN_EMAIL 以及 SMTP_HOST / SMTP_FROM", notifyTest: "发测试邮件", notifySent: "已发送", notifyFailed: "没发出去（看日志）",
+      audit: "操作日志", aWhen: "时间", aWho: "谁", aWhat: "做了什么", aTarget: "对象", aDetail: "详情", aNone: "还没有记录",
+      strip: (off) => (off.length ? `已关闭：${off.join("、")}` : "开关全部开启"), stripNext: (n, total) => `账号 ${fmt(total)} · 下一道阈值 ${fmt(n)}`,
+      saved: "已保存", failed: (e) => `没成功：${e}`, closed: (n) => `断开了 ${fmt(n)} 个连接`, turnOn: "打开", turnOff: "关闭",
+    },
+    st: {
+      title: "统计", note: "每个数字都写明怎么算的（悬停 ⓘ）。日期按 UTC 划分，表格里并列你本地时区的日期。每张图都有表格和 CSV。",
+      csv: "下载 CSV", how: "怎么算的", rows: (n) => `${fmt(n)} 行`, none: "还没有数据", utc: "UTC", local: "本地", localTz: () => Intl.DateTimeFormat().resolvedOptions().timeZone || "本地",
+      showTable: "表格", hideTable: "收起表格", generated: (t) => `生成于 ${t}`,
+    },
+    gh: {
+      title: "GitHub", refresh: "立即刷新", refreshing: "读取中…", lastOk: (t) => `上次成功 ${t}`, never: "还没采集过", error: (e) => `上次失败：${e}`, off: "未配置仓库：在环境里设 GITHUB_REPO（owner/name）或 REPO_URL",
+      stars: "Stars", forks: "Forks", watchers: "Watchers", issues: "打开的 issue", downloads: "下载", newStars: "新增 stars", newDownloads: "新增下载", assets: "各文件的下载", platforms: "按平台", releases: "按版本", token: "带 GITHUB_TOKEN", noToken: "未带 token（每小时 60 次限额，足够）",
+      note: "每天采集一次（服务进程启动时和之后每 6 小时各读一次，当天最后一次为准），数据存在中继的数据库里；GitHub 连不上时保留上一份快照。「新增」= 当天数值减去上一份快照。",
+      refreshed: (s, d) => `已刷新：${fmt(s)} stars · ${fmt(d)} 次下载`,
+    },
     seeAll: "查看全部", loadFailed: (e) => `没加载出来：${e}`, retry: "重试",
     fRegion: "地区", fProvince: "省 / 州", fCity: "城市", fChannel: "渠道", fStatus: "状态", fActivity: "活跃", fSpend: "花费", fClient: "客户端", fSort: "排序", fClear: "清除筛选", fAny: "不限", fCount: (n, t) => (n === t ? `共 ${fmt(t)} 个账号` : `筛出 ${fmt(n)} / ${fmt(t)} 个账号`),
     stat: { member: "成员", disabled: "已停用", locked: "已锁定", password: "设了密码", nopassword: "未设密码", contributes: "开启「帮助改进」", exhausted: "额度用光", online: "有设备在线", new: "本期新注册" },
@@ -102,7 +135,7 @@
     bucket: { 0: "¥0", lt1: "<¥1", "1to5": "¥1–5", "5to10": "¥5–10", ge10: "≥¥10" },
     sortBy: { active: "最近活跃", joined: "注册时间", spent: "累计花费", today: "今天花费", tokens: "tokens", requests: "请求数", left: "剩余额度", region: "地区" },
     cSignups: "注册", cRegions: "地区分布", cRegionsIn: (c) => `${c} · 分布`, cSpend: "花费分布", cActivity: "活跃度", cChannel: "渠道", cClients: "客户端", cClickNote: "图上的每一块都是筛选条件：点一下只看它，再点一下取消。", up: "上一级",
-    thRegion: "地区", moreRows: (n) => `再显示 ${fmt(n)} 个`, exportCsv: "导出 CSV", csvNote: "导出的是当前筛选结果，只含打码后的提示，不含手机号 / 邮箱。",
+    thRegion: "地区", moreRows: (n) => `再显示 ${fmt(n)} 个`, exportCsv: "导出 CSV", csvNote: "导出的是当前筛选结果，和表格一样含完整的手机号 / 邮箱——文件只留在你手里。",
     byDayLabel: "按天", byWeekLabel: "按周",
     pMetric: "按什么计", pTopCountries: "国家 / 地区", pTopProvinces: "省 / 州", pRowHint: "点一行，到「用户」里只看这个地区的账号。",
     kindAll: "全部类型", mShare: "花费构成", mTop: "花费最多的账号", mPrices: "单价",
@@ -128,7 +161,7 @@
     all: "All", signIns: "Sign-ins", refusals: "Refusals", errors: "Errors", calls: "Calls", passwords: "Passwords",
     eventName: {
       "account.created": "Joined", "sign_in.code": "Signed in with a code", "sign_in.password": "Signed in with the password", "sign_in.session": "Took a session key", "sign_in.failed": "Failed sign-in", "password.set": "Password set", "password.changed": "Password changed",
-      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "pool.set": "Pool set", "pool.set.many": "Pools set", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "“Help improve” on", "contribute.default": "New account: “help improve” on by default", "contribute.bonus": "Early co-creation bonus +¥10", "contribute.off": "“Help improve” off", "contribute.deleted": "Kept turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted", "profile.put": "Profile updated", "profile.clear": "Profile cleared", "profile.connectors": "Connectors updated", "settings.changed": "Settings changed", "nudges.changed": "Star asks policy changed",
+      "password.cleared": "Password removed", "sign_out": "Signed out", "sign_out.all": "Signed out everywhere", "pool.set": "Pool set", "pool.set.many": "Pools set", "budget.refused": "Refused: over budget", "upstream.error": "Upstream error", "call.ended": "Call ended", "contribute.on": "“Help improve” on", "contribute.default": "New account: “help improve” on by default", "contribute.bonus": "Early co-creation bonus +¥10", "contribute.off": "“Help improve” off", "contribute.deleted": "Kept turns deleted", "invite.accepted": "Invited a friend", "invite.used": "Signed up via invite", "invite.unknown": "Unknown invite code", "credit.granted": "Credit granted", "profile.put": "Profile updated", "profile.clear": "Profile cleared", "profile.connectors": "Connectors updated", "settings.changed": "Settings changed", "nudges.changed": "Star asks policy changed", "control.switch": "Switch flipped", "control.rule": "Threshold rule fired",
     },
     spendToday: "Today", spendTotal: "All time", requests: "Requests", cap: "Pool", noCap: "no cap", left: "left", usageToday: "Today", usagePeriod: (d) => `Last ${d} days`, usageTotal: "All time",
     sessions: "Sign-ins (incl. revoked)", revoked: "revoked", via: { code: "code", password: "password", session: "session key" }, lastUsed: "last used", devices: "Devices", firstSeen: "first", lastSeen: "last",
@@ -177,7 +210,39 @@
     pCountry: "Country / region", pProvince: "Province / state", pAccounts: "Accounts", pNew: "New", pSignins: "Sign-ins", pRequests: "Requests", pDemo: "Demo visitors", pUnknown: "unknown", pLocal: "local network", pNone: "No visits recorded yet.", pAccountsNote: "accounts by their latest address",
     catalog: "Model catalog", catalogNote: "The models under the key beyond the menu: the relay asks each one a one-word question and then shows it a small magenta picture, to learn whether it answers and whether it sees; the answers stand for seven days. The “sees pictures” the apps show is what is here.", catalogOff: "The catalog is off (CLOUD_CATALOG=0).", catalogNames: "Guessed from names, not checked one by one (CLOUD_CATALOG_PROBE=0).", catalogProbing: "Checking…", catalogPending: (n) => `${fmt(n)} to check`, catalogFetched: (t) => `list read ${t}`, catalogError: (e) => `The list could not be read: ${e}`,
     cModel: "Model", cKind: "Kind", cSees: "Sees pictures", cVerified: "Checked", cYes: "yes", cNo: "no", cUnusable: "Models the provider refuses (not offered to the apps)", cNoUnusable: "None refused.", cCount: (n, v) => `${fmt(n)} chat models · ${fmt(v)} see pictures`,
-    nav: { overview: "Overview", people: "People", places: "Places", money: "Spend", activity: "Activity", demo: "Demo", data: "Data", site: "Site", models: "Models", health: "Health", settings: "Settings" },
+    nav: { overview: "Overview", people: "People", places: "Places", money: "Spend", activity: "Activity", demo: "Demo", data: "Data", site: "Site", models: "Models", health: "Health", stats: "Stats", controls: "Controls", settings: "Settings" },
+    ctl: {
+      title: "Controls", note: "Each switch applies at once and survives a restart; who changed what, and when, is in the log below. A switch says exactly what turning it off does before it flips.",
+      names: { free_allowance: "Free allowance", signups: "Sign-ups", cloud_service: "Cloud service", sync: "Conversation sync", hub: "Device hub" },
+      what: {
+        free_allowance: "Off: a limited account without a model key of its own is refused the models — HTTP 429, code allowance_exhausted with paused: true, and a message saying the allowance is paused. Members are unaffected; sign-in, devices and sync keep working.",
+        signups: "Off: a phone number or e-mail address without an account is refused a code and a sign-in — HTTP 403, code signup_closed. Existing accounts sign in and work as before.",
+        cloud_service: "Off: every API call but the health check, /v1/config and this console answers HTTP 503 (code service_paused); every hub socket is closed (4003 hub_paused). Nothing is deleted.",
+        sync: "Off: conversation sync pushes and pulls answer HTTP 503 (code sync_paused); what is stored stays, each device keeps working on its own.",
+        hub: "Off: the device hub refuses new sockets and closes the open ones (4003 hub_paused); /v1/devices answers 503. Each device keeps working on its own.",
+      },
+      confirm: (name, on, what) => `Turn ${name} ${on ? "on" : "off"}?\n\n${on ? "Everything it governs works again." : what}`,
+      actor: "Your name", actorHint: "for the audit log", why: "Why (optional)", byLine: (who, t) => `${who} · ${t}`,
+      rules: "Thresholds", rulesNote: "When the account count reaches N, do one thing. A rule fires once (checked as an account is made and once a minute); “re-arm” lets it fire again.",
+      rThreshold: "Accounts reach", rAction: "Action", rEnabled: "Enabled", rLastFired: "Last fired", rNote: "Note", rAdd: "Add rule", rRearm: "Re-arm", rDelete: "Delete", rNever: "not yet", rFiredAt: (n, t) => `${t} · ${fmt(n)} accounts then`,
+      rDeleteConfirm: "Delete this rule?", rNow: (n) => `${fmt(n)} accounts now`, rNext: (n) => `next threshold ${fmt(n)}`, rNone: "No rules yet", rCheck: "Check now",
+      actions: { close_signups: "Close sign-ups", pause_allowance: "Pause the free allowance", pause_sync: "Pause conversation sync", notify: "E-mail the admin" },
+      notifyOk: "Notices are configured (ADMIN_EMAIL + SMTP)", notifyNo: "Notices are not configured: set ADMIN_EMAIL and SMTP_HOST / SMTP_FROM in the environment", notifyTest: "Send a test", notifySent: "sent", notifyFailed: "not sent (see the log)",
+      audit: "Audit log", aWhen: "When", aWho: "Who", aWhat: "What", aTarget: "Target", aDetail: "Detail", aNone: "Nothing yet",
+      strip: (off) => (off.length ? `Off: ${off.join(", ")}` : "Every switch is on"), stripNext: (n, total) => `${fmt(total)} accounts · next threshold ${fmt(n)}`,
+      saved: "Saved", failed: (e) => `Did not work: ${e}`, closed: (n) => `${fmt(n)} sockets closed`, turnOn: "Turn on", turnOff: "Turn off",
+    },
+    st: {
+      title: "Stats", note: "Every figure says how it is computed (hover ⓘ). Days are UTC; the table shows your local date beside each. Every chart has a table and a CSV.",
+      csv: "Download CSV", how: "How it is computed", rows: (n) => `${fmt(n)} rows`, none: "Nothing yet", utc: "UTC", local: "local", localTz: () => Intl.DateTimeFormat().resolvedOptions().timeZone || "local",
+      showTable: "Table", hideTable: "Hide table", generated: (t) => `generated ${t}`,
+    },
+    gh: {
+      title: "GitHub", refresh: "Refresh now", refreshing: "Reading…", lastOk: (t) => `last read ${t}`, never: "not read yet", error: (e) => `last attempt failed: ${e}`, off: "No repository configured: set GITHUB_REPO (owner/name) or REPO_URL in the environment",
+      stars: "Stars", forks: "Forks", watchers: "Watchers", issues: "Open issues", downloads: "Downloads", newStars: "New stars", newDownloads: "New downloads", assets: "Downloads by file", platforms: "By platform", releases: "By release", token: "with GITHUB_TOKEN", noToken: "no token (60 requests an hour, plenty)",
+      note: "Read once a day (at start and every 6 hours after; the day's last read stands) into the relay's database; when GitHub cannot be reached the last snapshot stays. “New” is the day's figure minus the previous snapshot's.",
+      refreshed: (s, d) => `Refreshed: ${fmt(s)} stars · ${fmt(d)} downloads`,
+    },
     seeAll: "See all", loadFailed: (e) => `Could not load: ${e}`, retry: "Try again",
     fRegion: "Region", fProvince: "Province / state", fCity: "City", fChannel: "Channel", fStatus: "Status", fActivity: "Activity", fSpend: "Spend", fClient: "Client", fSort: "Sort", fClear: "Clear filters", fAny: "Any", fCount: (n, t) => (n === t ? `${fmt(t)} accounts` : `${fmt(n)} of ${fmt(t)} accounts`),
     stat: { member: "members", disabled: "disabled", locked: "locked", password: "with a password", nopassword: "without a password", contributes: "“help improve” on", exhausted: "allowance used up", online: "a device online", new: "new this period" },
@@ -185,7 +250,7 @@
     bucket: { 0: "¥0", lt1: "<¥1", "1to5": "¥1–5", "5to10": "¥5–10", ge10: "≥¥10" },
     sortBy: { active: "last active", joined: "joined", spent: "spent", today: "spent today", tokens: "tokens", requests: "requests", left: "left", region: "region" },
     cSignups: "Sign-ups", cRegions: "By region", cRegionsIn: (c) => `${c} · by region`, cSpend: "By spend", cActivity: "By activity", cChannel: "By channel", cClients: "By client", cClickNote: "Every piece of a chart is a filter: click it to see only that, click again to let go.", up: "Up a level",
-    thRegion: "Region", moreRows: (n) => `Show ${fmt(n)} more`, exportCsv: "Export CSV", csvNote: "The current selection, with masked hints only — no phone numbers or addresses.",
+    thRegion: "Region", moreRows: (n) => `Show ${fmt(n)} more`, exportCsv: "Export CSV", csvNote: "The current selection as the table shows it, phone numbers and addresses included — keep the file to yourself.",
     byDayLabel: "by day", byWeekLabel: "by week",
     pMetric: "Count", pTopCountries: "Countries / regions", pTopProvinces: "Provinces / states", pRowHint: "Click a row to see only that region's accounts under People.",
     kindAll: "All kinds", mShare: "Where the money went", mTop: "Top accounts", mPrices: "Prices",
@@ -239,6 +304,8 @@
     data: svg('<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'),
     site: ICON.web,
     models: svg('<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>'),
+    stats: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+    controls: svg('<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/>'),
     health: svg('<path d="M20.8 9.5c0 5-8.8 10.5-8.8 10.5S3.2 14.5 3.2 9.5A4.6 4.6 0 0 1 12 6.9a4.6 4.6 0 0 1 8.8 2.6z"/>'),
     settings: svg('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
   };
@@ -246,9 +313,10 @@
     "account.created": ["ok", ICON.person], "sign_in.code": ["", ICON.in], "sign_in.password": ["", ICON.in], "sign_in.session": ["", ICON.key], "sign_in.failed": ["warn", ICON.warn],
     "password.set": ["violet", ICON.key], "password.changed": ["violet", ICON.key], "password.cleared": ["violet", ICON.key], "sign_out": ["grey", ICON.out], "sign_out.all": ["grey", ICON.out],
     "budget.refused": ["bad", ICON.warn], "upstream.error": ["bad", ICON.warn], "call.ended": ["ok", ICON.realtime],
+    "control.switch": ["warn", ICON.warn], "control.rule": ["warn", ICON.warn],
   };
   const FILTERS = [["", "all"], ["sign_in.code,sign_in.password,sign_in.session,sign_in.failed,account.created", "signIns"], ["budget.refused", "refusals"], ["upstream.error", "errors"], ["call.ended", "calls"], ["password.set,password.changed,password.cleared", "passwords"]];
-  const VIEWS = ["overview", "people", "places", "money", "activity", "demo", "data", "site", "models", "health", "settings"];
+  const VIEWS = ["overview", "people", "places", "money", "activity", "demo", "data", "site", "models", "health", "stats", "controls", "settings"];
   const PAGE = 50;
 
   // ── state ──────────────────────────────────────────────────────
@@ -275,9 +343,12 @@
     return el;
   };
 
+  const CTL_ACTOR_KEY = "nm.admin.actor";
+  const actorName = () => SS.getItem(CTL_ACTOR_KEY) || "";
   async function api(method, path, body) {
     const r = await fetch(path, {
-      method, headers: { "X-Admin-Token": token, ...(body ? { "Content-Type": "application/json" } : {}) },
+      // X-Admin-Actor (0.22): the name typed on the Controls page, for the audit log
+      method, headers: { "X-Admin-Token": token, ...(actorName() ? { "X-Admin-Actor": actorName() } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     }).catch(() => { throw new Error(T.offline); });
     if (r.status === 401) { token = ""; SS.removeItem("nm.admin"); err = T.wrong; draw(); throw new Error("admin"); }
@@ -315,8 +386,12 @@
     health: () => "/v1/admin/health",
     nudges: () => "/v1/admin/nudges",
     sync: () => "/v1/admin/sync",
+    // 0.22
+    controls: () => "/v1/admin/controls",
+    stats: (d) => `/v1/admin/stats?days=${d}`,
+    github: (d) => `/v1/admin/github?days=${d}`,
   };
-  const TIMELESS = new Set(["catalog", "health", "nudges", "sync"]);
+  const TIMELESS = new Set(["catalog", "health", "nudges", "sync", "controls"]);
   const CACHE = new Map();
   const cacheKey = (key) => `${key}:${TIMELESS.has(key) ? 0 : days}`;
   /** The view's data, or null while it is on its way (the view draws again when it lands);
@@ -335,6 +410,8 @@
   async function load() {
     try {
       [ov, accounts] = await Promise.all([api("GET", `/v1/admin/overview?days=${days}`), api("GET", "/v1/admin/accounts")]);
+      IDENT.clear();
+      for (const a of (accounts && accounts.accounts) || []) if (a.identifier) IDENT.set(a.id, a.identifier);
       err = "";
     } catch (e) {
       if (e.message !== "admin") err = e.message;
@@ -369,6 +446,10 @@
 
   // ── pieces ─────────────────────────────────────────────────────
   const who = (a) => a.identifier || a.hint || (a.id || "").slice(0, 8);
+  // 0.22: the console shows accounts in full — rows from endpoints that only carry the
+  // masked hint (events, samples, demo visits) look the identifier up in the loaded list
+  const IDENT = new Map();
+  const identOf = (id, hint) => (id && IDENT.get(id)) || hint || "";
   const initial = (a) => ((a.hint || a.identifier || "?").replace(/[^0-9a-z]/gi, "").slice(0, 1).toUpperCase() || "?");
   const settings = () => (ov && ov.settings) || {};
   const kindAmount = (r) => {
@@ -498,7 +579,7 @@
     const recent = (dv.recent || []).map((smp) => sampleRow(smp, { who: true }));
     const byAccount = dv.by_account || [];
     const accountRows = byAccount.map((x) => h("tr", { onclick: () => openAccount(x.account_id) },
-      h("td", {}, h("div", { class: "who" }, h("div", { class: "disc" }, initial(x)), h("div", { style: "min-width:0" }, h("div", { class: "n" }, x.hint || x.account_id.slice(0, 8)), h("div", { class: "tags" }, h("span", { class: "pill" }, x.channel === "phone" ? T.phone : T.email), h("span", { class: "pill " + (x.contribute ? "cyan" : "") }, x.contribute ? T.bOn : T.bOff))))),
+      h("td", {}, h("div", { class: "who" }, h("div", { class: "disc" }, initial(x)), h("div", { style: "min-width:0" }, h("div", { class: "n" }, identOf(x.account_id, x.hint) || x.account_id.slice(0, 8)), h("div", { class: "tags" }, h("span", { class: "pill" }, x.channel === "phone" ? T.phone : T.email), h("span", { class: "pill " + (x.contribute ? "cyan" : "") }, x.contribute ? T.bOn : T.bOff))))),
       h("td", { class: "num" }, fmt(x.samples)),
       h("td", { class: "num hide-sm" }, `${fmt(x.prompt_tokens)} / ${fmt(x.completion_tokens)}`),
       h("td", { class: "hide-sm" }, when(x.first_ts)), h("td", {}, when(x.last_ts)),
@@ -527,7 +608,7 @@
     const length = (v.ended || Date.now() / 1000) - v.started;
     return h("div", { class: "row" + (withWho && v.visitor ? " tap" : ""), onclick: withWho && v.visitor ? () => openAccount(v.visitor) : null },
       h("span", { class: "tile " + (running ? "ok" : "grey"), html: ICON.web }),
-      h("div", { class: "txt" }, h("div", { class: "t" }, when(v.started), withWho ? [" · ", v.hint ? h("span", { style: "color:var(--ink-2);font-weight:400" }, v.hint) : h("span", { class: "pill" }, T.dtAnon)] : null,
+      h("div", { class: "txt" }, h("div", { class: "t" }, when(v.started), withWho ? [" · ", v.hint ? h("span", { style: "color:var(--ink-2);font-weight:400" }, identOf(v.account_id, v.hint)) : h("span", { class: "pill" }, T.dtAnon)] : null,
         running ? [" ", h("span", { class: "pill ok" }, T.dtRunning)] : null, v.byok ? [" ", h("span", { class: "pill violet" }, T.dtByok)] : null),
         h("div", { class: "s" }, [`${T.dtLength} ${T.dur(length)}`, T.usedLine(v), v.reason ? `${T.dtWhy} ${v.reason}` : "", v.ua ? (platformOf(v.ua) === "browser" ? browserOf(v.ua) : clientLine(v.ua)) : ""].filter(Boolean).join(" · "), v.ip ? [" · ", ipChip(v.ip, v.visitor)] : null)),
       h("code", { class: "fine" }, v.id));
@@ -593,7 +674,7 @@
         : [messageBlock({ role: "user", content: msgText(lastUser) }), messageBlock({ role: "assistant", content: String(smp.response || "") })]));
     };
     paint();
-    const head = h("div", { class: "s" }, when(smp.ts), opts.who && smp.hint ? [" · ", h("span", { class: "tap", onclick: (e) => { e.stopPropagation(); openAccount(smp.account_id); } }, smp.hint)] : null,
+    const head = h("div", { class: "s" }, when(smp.ts), opts.who && smp.hint ? [" · ", h("span", { class: "tap", onclick: (e) => { e.stopPropagation(); openAccount(smp.account_id); } }, identOf(smp.account_id, smp.hint))] : null,
       " · ", h("code", {}, smp.model || ""), ` · ${T.inOut(smp.prompt_tokens, smp.completion_tokens)}`, meta.ua ? ` · ${clientLine(meta.ua) || String(meta.ua).split(" ")[0]}` : "", meta.lang ? ` · ${meta.lang}` : "", meta.ip ? [" · ", ipChip(meta.ip, smp.account_id)] : null, smp.cut ? ` · ${zh ? "已截断" : "cut"}` : "");
     return h("div", { class: "row sample", style: "align-items:flex-start" }, h("div", { class: "txt", style: "white-space:pre-wrap;word-break:break-word;min-width:0" }, head, body, toggle));
   }
@@ -619,7 +700,7 @@
     const [tone, icon] = EVENT_STYLE[e.kind] || ["grey", ICON.person];
     return h("div", { class: "row" + (withWho && e.account_id ? " tap" : ""), onclick: withWho && e.account_id ? () => openAccount(e.account_id) : null },
       h("span", { class: "tile " + tone, html: icon }),
-      h("div", { class: "txt" }, h("div", { class: "t" }, T.eventName[e.kind] || e.kind, withWho && e.hint ? [" · ", h("span", { style: "color:var(--ink-2);font-weight:400" }, e.hint)] : null),
+      h("div", { class: "txt" }, h("div", { class: "t" }, T.eventName[e.kind] || e.kind, withWho && (e.hint || e.identifier) ? [" · ", h("span", { style: "color:var(--ink-2);font-weight:400" }, e.identifier || identOf(e.account_id, e.hint))] : null),
         h("div", { class: "s" }, [when(e.ts), e.detail, e.ua ? clientLine(e.ua) : ""].filter(Boolean).join(" · "), e.ip ? [" · ", ipChip(e.ip, accountId || e.account_id)] : null)));
   }
   const deviceIcon = (k) => (k === "phone" ? ICON.phone : k === "web" ? ICON.web : ICON.computer);
@@ -746,7 +827,7 @@
       detailErr ? h("div", { class: "hint bad" }, detailErr) : null,
       h("div", { class: "card" }, list.length ? list.map((x) => h("div", { class: "row tap", onclick: () => openAccount(x.id) },
         h("span", { class: "tile" + (x.id === address.from ? "" : " grey"), html: ICON.person }),
-        h("div", { class: "txt" }, h("div", { class: "t" }, x.hint || x.id.slice(0, 8), " ", h("span", { class: "pill" }, x.channel === "phone" ? T.phone : T.email)),
+        h("div", { class: "txt" }, h("div", { class: "t" }, identOf(x.id, x.hint) || x.id.slice(0, 8), " ", h("span", { class: "pill" }, x.channel === "phone" ? T.phone : T.email)),
           h("div", { class: "s" }, `${T.times(x.n)} · ${T.lastSeen} ${ago(x.last_seen)} · ${T.thJoined} ${dateOf(x.created_at)}`)),
         h("code", { class: "fine" }, x.id.slice(0, 8)))) : h("div", { class: "empty" }, T.none)),
       h("div", { class: "fine", style: "padding:10px 16px" }, T.addrNote)].filter(Boolean));
@@ -1000,7 +1081,7 @@
       const p = placeOfAccount(a), cap = a.member ? 0 : Number(a.grant_cny || 0), frac = cap > 0 ? Math.min(1, Number(a.spent_cny || 0) / cap) : 0;
       return h("tr", { onclick: () => openAccount(a.id) },
         h("td", {}, h("div", { class: "who" }, h("div", { class: "disc" }, initial(a)),
-          h("div", { style: "min-width:0" }, h("div", { class: "n" }, a.hint),
+          h("div", { style: "min-width:0" }, h("div", { class: "n", title: a.hint }, who(a)),
             h("div", { class: "tags" },
               h("span", { class: "pill" }, a.channel === "phone" ? T.phone : T.email),
               a.member ? h("span", { class: "pill ok" }, a.listed ? T.listed : T.member) : null,
@@ -1024,9 +1105,9 @@
     return [h("div", { class: "panel" }, h("h2", {}, T.nav.people, h("span", { class: "pill" }, fmt(shown.length)), h("span", { class: "sp" }), h("span", { class: "fine" }, T.cClickNote)), toolbar, charts),
       h("div", { class: "panel" }, table, shown.length > page.length ? h("div", { class: "more" }, h("button", { class: "btn quiet sm", onclick: () => setPeople({ n: f.n + PAGE }) }, T.moreRows(Math.min(PAGE, shown.length - page.length))), h("span", { class: "fine" }, T.shown(page.length, shown.length))) : null)];
   }
-  /** The selection as a file: masked hints and figures, never the identifier. */
+  /** The selection as a file: the identifiers as the table shows them (0.22), the masked hint beside each, and the figures. */
   function exportCsv(rows) {
-    const cols = [["hint", (a) => a.hint], ["id", (a) => a.id], ["channel", (a) => a.channel], ["joined", (a) => iso(a.created_at)], ["region", (a) => placeText(placeOfAccount(a))],
+    const cols = [["identifier", (a) => a.identifier || ""], ["hint", (a) => a.hint], ["id", (a) => a.id], ["channel", (a) => a.channel], ["joined", (a) => iso(a.created_at)], ["region", (a) => placeText(placeOfAccount(a))],
       ["spent_cny", (a) => moneyN(a.spent_cny)], ["spent_today_cny", (a) => moneyN(a.spent_today_cny)], ["left_cny", (a) => (a.left_cny === null || a.left_cny === undefined ? "" : moneyN(a.left_cny))],
       ["tokens", (a) => a.used || 0], ["requests", (a) => a.requests || 0], ["last_active", (a) => iso(a.last_active_at)], ["member", (a) => (a.member ? 1 : 0)], ["disabled", (a) => (a.disabled ? 1 : 0)],
       ["password", (a) => (a.has_password ? 1 : 0)], ["client", (a) => a.last_platform || ""], ["devices", (a) => (a.devices || []).length]];
@@ -1095,6 +1176,7 @@
     const topRegions = !pv ? h("div", { class: "empty" }, T.loading) : pv._error || !(pv.geo || {}).ready ? h("div", { class: "empty" }, pv._error ? T.loadFailed(pv._error) : T.placesOff)
       : hranks(placeTree(pv).sort((a, b) => (b.n.accounts || 0) - (a.n.accounts || 0)).slice(0, 6).map((e) => ({ name: placeName(e), value: e.n.accounts || 0, onclick: () => go("people", { country: placeName(e) }) })));
     return [
+      controlsStrip(),
       healthStrip,
       h("div", { class: "kpis" },
         kpi(T.kAccounts, fmt(c.total), T.kAccountsSub(c)),
@@ -1107,7 +1189,7 @@
       h("div", { class: "grid2" },
         h("div", { class: "panel" }, h("h2", {}, T.nav.places, h("span", { class: "sp" }), seeAll("places")), h("div", { class: "pad" }, topRegions)),
         h("div", { class: "panel" }, h("h2", {}, T.top(days), h("span", { class: "sp" }), seeAll("money")), (ov.top_accounts || []).length ? (ov.top_accounts || []).slice(0, 6).map((t) => h("div", { class: "row tap", onclick: () => openAccount(t.account_id) },
-          h("span", { class: "tile grey", html: ICON.person }), h("div", { class: "txt" }, h("div", { class: "t" }, t.hint), h("div", { class: "s" }, `${T.reqs(t.requests)} · ${T.tokens(t.charged)}`)),
+          h("span", { class: "tile grey", html: ICON.person }), h("div", { class: "txt" }, h("div", { class: "t" }, t.identifier || t.hint), h("div", { class: "s" }, `${T.reqs(t.requests)} · ${T.tokens(t.charged)}`)),
           h("span", { class: "v" }, h("b", {}, money(t.cost_cny))))) : h("div", { class: "empty" }, T.none)),
         h("div", { class: "panel feed" }, h("h2", {}, T.events, h("span", { class: "sp" }), seeAll("activity")), h("div", { class: "list" }, ...(ov.events || []).slice(0, 10).map((e) => eventRow(e, true)), !(ov.events || []).length ? h("div", { class: "empty" }, T.none) : null)),
         h("div", { class: "panel" }, h("h2", {}, `${T.byKind} · ${T.today}`), kindRows(today.by_kind, rate), h("h2", {}, `${T.byKind} · ${T.period(days)}`), kindRows(period.by_kind, rate))),
@@ -1122,7 +1204,7 @@
     const tones = { chat: "blue", image: "violet", video: "cyan", realtime: "ok" };
     const share = (period.by_kind || []).map((r) => ({ label: T.kinds[r.kind] || r.kind, value: Number(r.cost_cny || 0), tone: tones[r.kind] || "grey", on: kind === r.kind, onclick: () => setParams({ k: kind === r.kind ? "" : r.kind }) }));
     const models = (period.by_model || []).filter((r) => !kind || (kinds[r.model] || r.kind || "chat") === kind);
-    const top = (ov.top_accounts || []).map((t) => ({ name: t.hint, value: Number(t.cost_cny || 0), title: `${T.reqs(t.requests)} · ${T.tokens(t.charged)}`, onclick: () => openAccount(t.account_id) }));
+    const top = (ov.top_accounts || []).map((t) => ({ name: t.identifier || t.hint, value: Number(t.cost_cny || 0), title: `${T.reqs(t.requests)} · ${T.tokens(t.charged)}`, onclick: () => openAccount(t.account_id) }));
     return [
       h("div", { class: "kpis" }, spendKpi(T.today, today), spendKpi(T.week, week), spendKpi(T.period(days), period)),
       h("div", { class: "panel" }, h("h2", {}, T.byDay(Math.min(days, 90))), usage ? (usage._error ? h("div", { class: "empty" }, T.loadFailed(usage._error)) : dayBars(usage.days, Math.min(days, 90), s.day_offset_h, rate)) : h("div", { class: "empty" }, T.loading)),
@@ -1140,7 +1222,7 @@
   function activityView() {
     const sr = need("series");
     const q = (params.get("q") || "").trim().toLowerCase();
-    const events = ((filter ? filtered : ov.events) || []).filter((e) => !q || (e.hint || "").toLowerCase().includes(q) || (e.detail || "").toLowerCase().includes(q) || (T.eventName[e.kind] || e.kind).toLowerCase().includes(q));
+    const events = ((filter ? filtered : ov.events) || []).filter((e) => !q || (e.hint || "").toLowerCase().includes(q) || (e.identifier || identOf(e.account_id, "")).toLowerCase().includes(q) || (e.detail || "").toLowerCase().includes(q) || (T.eventName[e.kind] || e.kind).toLowerCase().includes(q));
     return [
       sr ? (sr._error ? failedPanel(T.trends(days), "series", sr._error) : trendsPanel(sr)) : loadingPanel(T.trends(days)),
       h("div", { class: "panel feed" }, h("h2", {}, T.events, h("span", { class: "pill" }, fmt(events.length)), h("span", { class: "sp" }),
@@ -1169,7 +1251,7 @@
     const places = !pv ? h("div", { class: "empty sm" }, T.loading) : pv._error || !pv.demo_visitors ? h("div", { class: "empty sm" }, T.none)
       : hranks(pv.demo_visitors.slice(0, 8).map((r) => ({ name: [r.country === "本地网络" ? T.pLocal : r.country || T.pUnknown, r.province].filter(Boolean).join(" · "), value: r.n, tone: "cyan" })));
     const rows = visitors.map((v) => h("tr", { onclick: () => openAccount(v.id) },
-      h("td", {}, h("div", { class: "who" }, h("div", { class: "disc" }, initial(v)), h("div", { style: "min-width:0" }, h("div", { class: "n" }, v.hint || v.id.slice(0, 8)), h("div", { class: "tags" }, h("span", { class: "pill" }, v.channel === "sms" || v.channel === "phone" ? T.phone : T.email), v.created ? h("span", { class: "pill cyan" }, T.demoCreated) : null)))),
+      h("td", {}, h("div", { class: "who" }, h("div", { class: "disc" }, initial(v)), h("div", { style: "min-width:0" }, h("div", { class: "n" }, identOf(v.id, v.hint) || v.id.slice(0, 8)), h("div", { class: "tags" }, h("span", { class: "pill" }, v.channel === "sms" || v.channel === "phone" ? T.phone : T.email), v.created ? h("span", { class: "pill cyan" }, T.demoCreated) : null)))),
       h("td", { class: "num" }, fmt(v.signins)), h("td", { class: "num" }, fmt(v.sessions)),
       h("td", { class: "hide-sm" }, when(v.first_seen)), h("td", {}, ago(v.last_seen)),
       h("td", { class: "hide-sm" }, v.last_ua ? h("div", {}, browserOf(v.last_ua)) : null, v.last_ip ? h("div", {}, ipChip(v.last_ip, v.id), v.first_ip && v.first_ip !== v.last_ip ? [" ", h("span", { class: "fine" }, `(${T.firstIp} `, ipChip(v.first_ip, v.id), ")")] : null) : null)));
@@ -1199,7 +1281,7 @@
       h("div", { class: "fine", style: "padding:0 16px 12px" }, T.syNote));
   }
   function dataView() { const dv = need("data"); return [!dv ? loadingPanel(T.data(days)) : dv._error ? failedPanel(T.data(days), "data", dv._error) : dataPanel(dv), syncPanel()]; }
-  function siteView() { const tr = need("traffic"); return !tr ? loadingPanel(T.site(days)) : tr._error ? failedPanel(T.site(days), "traffic", tr._error) : sitePanel(tr); }
+  function siteView() { const tr = need("traffic"); return [githubPanel(), !tr ? loadingPanel(T.site(days)) : tr._error ? failedPanel(T.site(days), "traffic", tr._error) : sitePanel(tr)]; }
   function modelsView() { const cv = need("catalog"); return !cv ? loadingPanel(T.catalog) : cv._error ? failedPanel(T.catalog, "catalog", cv._error) : catalogPanel(cv); }
   function healthView() {
     const hv = need("health");
@@ -1357,7 +1439,192 @@
       h("p", { class: "foot" }, T.foot),
     ];
   }
-  const RENDER = { overview: overviewView, people: peopleView, places: placesView, money: moneyView, activity: activityView, demo: demoView, data: dataView, site: siteView, models: modelsView, health: healthView, settings: settingsView };
+
+  // ── 0.22: switches, thresholds, the audit log ──────────────────
+  let ctlMsg = "", ctlBusy = false;
+  const RULE_DRAFT = { threshold: "", action: "close_signups", note: "" };
+  async function ctlCall(method, path, body) {
+    ctlBusy = true; ctlMsg = ""; draw();
+    try {
+      const out = await api(method, path, body);
+      ctlMsg = T.ctl.saved + (out && out.sockets_closed ? ` · ${T.ctl.closed(out.sockets_closed)}` : "");
+      forget("controls"); forget("health");
+      await load();
+      return out || {};
+    } catch (e) {
+      if (e.message !== "admin") ctlMsg = T.ctl.failed(e.message);
+      return null;
+    } finally { ctlBusy = false; draw(); }
+  }
+  async function flipSwitch(key, enabled) {
+    if (!confirm(T.ctl.confirm(T.ctl.names[key], enabled, T.ctl.what[key]))) return;
+    const note = enabled ? "" : prompt(T.ctl.why, "");
+    if (note === null) return;
+    await ctlCall("POST", `/v1/admin/controls/${key}`, { enabled, note: note || "" });
+  }
+  async function notifyTest() {
+    ctlBusy = true; draw();
+    try { const out = await api("POST", "/v1/admin/controls/notify-test"); ctlMsg = out.sent ? T.ctl.notifySent : T.ctl.notifyFailed; forget("controls"); }
+    catch (e) { if (e.message !== "admin") ctlMsg = T.ctl.failed(e.message); }
+    ctlBusy = false; draw();
+  }
+  function switchRow(key, st) {
+    const on = !!st.enabled;
+    return h("div", { class: "ctl-row" + (on ? "" : " off") },
+      h("div", { class: "txt" },
+        h("div", { class: "t" }, T.ctl.names[key], h("span", { class: "pill " + (on ? "ok" : "bad") }, on ? T.on : T.off)),
+        h("div", { class: "s" }, T.ctl.what[key]),
+        st.updated_at ? h("div", { class: "fine" }, T.ctl.byLine(st.actor || "—", when(st.updated_at)) + (st.note ? ` · ${st.note}` : "")) : null),
+      h("button", { class: "btn sm " + (on ? "danger" : ""), disabled: ctlBusy ? "" : null, onclick: () => flipSwitch(key, !on) }, on ? T.ctl.turnOff : T.ctl.turnOn));
+  }
+  function rulesPanel(cv) {
+    const rules = cv.rules || [];
+    const rows = rules.map((r) => h("tr", {},
+      h("td", { class: "num" }, fmt(r.threshold)),
+      h("td", {}, T.ctl.actions[r.action] || r.action),
+      h("td", {}, h("label", { class: "sw" }, h("input", { type: "checkbox", checked: r.enabled ? "" : null, disabled: ctlBusy ? "" : null, onchange: (e) => ctlCall("PUT", `/v1/admin/controls/rules/${r.id}`, { enabled: e.target.checked }) }), " ", r.enabled ? T.on : T.off)),
+      h("td", {}, r.last_fired_at ? h("span", { class: "pill warn" }, T.ctl.rFiredAt(r.fired_accounts || 0, when(r.last_fired_at))) : h("span", { class: "fine" }, T.ctl.rNever)),
+      h("td", { class: "wrap" }, r.note || ""),
+      h("td", { class: "num nowrap" },
+        r.last_fired_at ? h("button", { class: "btn quiet sm", disabled: ctlBusy ? "" : null, onclick: () => ctlCall("PUT", `/v1/admin/controls/rules/${r.id}`, { rearm: true }) }, T.ctl.rRearm) : null, " ",
+        h("button", { class: "btn quiet sm", disabled: ctlBusy ? "" : null, onclick: () => { if (confirm(T.ctl.rDeleteConfirm)) ctlCall("DELETE", `/v1/admin/controls/rules/${r.id}`); } }, T.ctl.rDelete))));
+    const addRule = async () => {
+      const n = parseInt(String(RULE_DRAFT.threshold).replace(/[\s,_]/g, ""), 10);
+      if (!Number.isFinite(n) || n <= 0) return;
+      const out = await ctlCall("POST", "/v1/admin/controls/rules", { threshold: n, action: RULE_DRAFT.action, note: RULE_DRAFT.note });
+      if (out) { RULE_DRAFT.threshold = ""; RULE_DRAFT.note = ""; draw(); }
+    };
+    const add = h("div", { class: "toolbar" },
+      h("span", { class: "lbl" }, T.ctl.rThreshold), h("input", { class: "num-in", type: "number", min: "1", "data-focus": "rule-n", value: RULE_DRAFT.threshold, oninput: (e) => { RULE_DRAFT.threshold = e.target.value; } }),
+      select(T.ctl.rAction, RULE_DRAFT.action, Object.entries(T.ctl.actions), (v) => { RULE_DRAFT.action = v; }),
+      h("input", { class: "txt-in", type: "text", placeholder: T.ctl.rNote, "data-focus": "rule-note", value: RULE_DRAFT.note, oninput: (e) => { RULE_DRAFT.note = e.target.value; } }),
+      h("button", { class: "btn sm", disabled: ctlBusy ? "" : null, onclick: addRule }, T.ctl.rAdd),
+      h("span", { class: "cnt" }, T.ctl.rNow(cv.accounts_total || 0) + (cv.next_threshold ? ` · ${T.ctl.rNext(cv.next_threshold)}` : "")),
+      h("button", { class: "btn quiet sm", disabled: ctlBusy ? "" : null, onclick: () => ctlCall("POST", "/v1/admin/controls/evaluate") }, T.ctl.rCheck));
+    return h("div", { class: "panel" },
+      h("h2", {}, T.ctl.rules, h("span", { class: "sp" }), h("span", { class: "fine" }, cv.notify_configured ? T.ctl.notifyOk : T.ctl.notifyNo),
+        cv.admin_email_set ? h("button", { class: "btn quiet sm", disabled: ctlBusy ? "" : null, onclick: notifyTest }, T.ctl.notifyTest) : null),
+      h("div", { class: "fine", style: "padding:12px 16px 0" }, T.ctl.rulesNote),
+      add,
+      rules.length ? h("table", { class: "plain" }, h("thead", {}, h("tr", {}, h("th", { class: "num" }, T.ctl.rThreshold), h("th", {}, T.ctl.rAction), h("th", {}, T.ctl.rEnabled), h("th", {}, T.ctl.rLastFired), h("th", {}, T.ctl.rNote), h("th", {}))), h("tbody", {}, ...rows)) : h("div", { class: "empty" }, T.ctl.rNone));
+  }
+  function auditPanel(cv) {
+    const rows = cv.audit || [];
+    return h("div", { class: "panel" }, h("h2", {}, T.ctl.audit, h("span", { class: "pill" }, fmt(rows.length))),
+      rows.length ? h("table", { class: "plain" }, h("thead", {}, h("tr", {}, h("th", {}, T.ctl.aWhen), h("th", {}, T.ctl.aWho), h("th", {}, T.ctl.aWhat), h("th", {}, T.ctl.aTarget), h("th", {}, T.ctl.aDetail))),
+        h("tbody", {}, ...rows.map((r) => h("tr", {}, h("td", { class: "nowrap" }, when(r.ts), r.ip ? h("span", { class: "sub" }, r.ip) : null), h("td", {}, r.actor), h("td", {}, h("code", {}, r.action)), h("td", {}, r.target ? T.ctl.names[r.target] || r.target : ""), h("td", { class: "wrap" }, r.detail))))) : h("div", { class: "empty" }, T.ctl.aNone));
+  }
+  function controlsView() {
+    const cv = need("controls");
+    if (!cv) return loadingPanel(T.ctl.title);
+    if (cv._error) return failedPanel(T.ctl.title, "controls", cv._error);
+    const sw = cv.switches || {};
+    const actorBox = h("span", { class: "search" }, h("input", { type: "text", placeholder: T.ctl.actorHint, title: T.ctl.actor, "data-focus": "ctl-actor", value: actorName(), oninput: (e) => SS.setItem(CTL_ACTOR_KEY, e.target.value.trim()) }));
+    return [
+      h("div", { class: "panel" },
+        h("h2", {}, T.ctl.title, h("span", { class: "sp" }), ctlMsg ? h("span", { class: "fine" }, ctlMsg) : null, h("span", { class: "fine" }, T.ctl.actor), actorBox),
+        h("div", { class: "fine", style: "padding:12px 16px 0" }, T.ctl.note),
+        h("div", { class: "ctl-list" }, ...Object.keys(T.ctl.names).map((k) => switchRow(k, sw[k] || { enabled: true })))),
+      rulesPanel(cv),
+      auditPanel(cv),
+    ];
+  }
+  /** The dashboard's first line: which switches are off, the next threshold. */
+  function controlsStrip() {
+    const cv = need("controls");
+    if (!cv || cv._error) return null;
+    const off = Object.entries(cv.switches || {}).filter(([, st]) => !st.enabled).map(([k]) => T.ctl.names[k] || k);
+    return h("a", { class: "strip " + (off.length ? "bad" : "ok"), href: "#controls" }, h("span", { class: "tile " + (off.length ? "bad" : "ok"), html: off.length ? ICON.warn : ICON.ok }),
+      h("span", { class: "txt" }, h("b", {}, T.ctl.strip(off)), cv.next_threshold ? ` · ${T.ctl.stripNext(cv.next_threshold, cv.accounts_total || 0)}` : ""), h("span", { class: "fine" }, `${T.seeAll} →`));
+  }
+
+  // ── 0.22: the statistics — every metric from stats.py, with its table and CSV ──
+  const ST_OPEN = new Set(JSON.parse(SS.getItem("nm.admin.st") || "[]"));
+  const dayUtc = (ts) => new Date(ts * 1000).toISOString().slice(0, 10);
+  const dayLocal = (ts) => new Date(ts * 1000).toLocaleDateString(zh ? "zh-CN" : undefined, { month: "numeric", day: "numeric" });
+  const colLabel = (c) => (zh ? c.label_zh : c.label) || c.key;
+  const numKind = (c) => c.kind === "int" || c.kind === "cny";
+  function cell(v, kind) {
+    if (v === null || v === undefined) return h("span", { class: "fine" }, "—");
+    if (kind === "day") return [dayUtc(v), h("span", { class: "sub" }, `${T.st.local} ${dayLocal(v)}`)];
+    if (kind === "ts") return `${iso(v).slice(0, 16).replace("T", " ")} UTC`;
+    if (kind === "cny") return money(v);
+    if (kind === "bool") return v ? "✓" : "";
+    if (kind === "int") return fmt(v);
+    return String(v);
+  }
+  async function statCsv(id) {
+    const r = await fetch(`/v1/admin/stats/${id}.csv?days=${days}`, { headers: { "X-Admin-Token": token } }).catch(() => null);
+    if (!r || !r.ok) { alert(T.loadFailed(r ? r.statusText : T.offline)); return; }
+    download(new Blob(["\ufeff" + await r.text()], { type: "text/csv;charset=utf-8" }), `nanomuse-${id}-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
+  function statPanel(m) {
+    const title = zh ? m.title_zh : m.title, how = zh ? m.how_zh : m.how;
+    const cols = m.columns || [], rows = m.rows || [];
+    const open = m.shape !== "series" || ST_OPEN.has(m.id);
+    let body = null;
+    if (m.shape === "series" && rows.length) {
+      const keys = (m.chart && m.chart.length ? m.chart : cols.filter((c) => c.kind === "int" && c.key !== "day").map((c) => c.key)).slice(0, 3);
+      const tones = ["blue", "cyan", "violet"];
+      const dayOf = (r) => `${dayUtc(r.day)} (${T.st.local} ${dayLocal(r.day)})`;
+      body = h("div", { class: "sparks" }, ...keys.map((k, i) => { const c = cols.find((x) => x.key === k); return sparkRow(c ? colLabel(c) : k, rows, k, tones[i % 3], dayOf); }));
+    } else if (m.shape === "table" && rows.length) {
+      const num = cols.find(numKind), names = cols.filter((c) => c.kind === "str");
+      if (num && names.length) body = h("div", { class: "pad" }, hranks(rows.slice(0, 12).map((r) => ({ name: names.map((c) => r[c.key]).filter(Boolean).join(" · "), value: Number(r[num.key] || 0) })), { format: num.kind === "cny" ? money : fmt }));
+    }
+    const table = !rows.length ? h("div", { class: "empty" }, T.st.none) : !open ? null : h("div", { class: "tbl" }, h("table", { class: "plain" },
+      h("thead", {}, h("tr", {}, ...cols.map((c) => h("th", { class: numKind(c) ? "num" : "" }, colLabel(c))))),
+      h("tbody", {}, ...rows.map((r) => h("tr", {}, ...cols.map((c) => h("td", { class: numKind(c) ? "num" : c.kind === "day" ? "nowrap" : "" }, cell(r[c.key], c.kind))))))));
+    const toggleTable = () => { if (ST_OPEN.has(m.id)) ST_OPEN.delete(m.id); else ST_OPEN.add(m.id); SS.setItem("nm.admin.st", JSON.stringify([...ST_OPEN])); draw(); };
+    return h("div", { class: "panel stat" },
+      h("h2", {}, title, h("span", { class: "tt", title: how, "aria-label": how }, "ⓘ"), h("span", { class: "fine" }, T.st.rows(rows.length)), h("span", { class: "sp" }),
+        m.shape === "series" && rows.length ? h("button", { class: "btn quiet sm", onclick: toggleTable }, open ? T.st.hideTable : T.st.showTable) : null,
+        rows.length ? h("button", { class: "btn quiet sm", onclick: () => statCsv(m.id) }, T.st.csv) : null),
+      h("div", { class: "how" }, how),
+      body, table);
+  }
+  function statsView() {
+    const sv = need("stats");
+    if (!sv) return loadingPanel(T.st.title);
+    if (sv._error) return failedPanel(T.st.title, "stats", sv._error);
+    return [h("div", { class: "panel" }, h("h2", {}, T.st.title, h("span", { class: "sp" }), h("span", { class: "fine" }, `${T.st.utc} · ${T.st.local}: ${T.st.localTz()} · ${T.st.generated(when(sv.generated_at))}`)), h("div", { class: "fine", style: "padding:12px 16px" }, T.st.note)),
+      ...(sv.metrics || []).map(statPanel)];
+  }
+
+  // ── 0.22: GitHub — the collector's series, on the Site page ────
+  let ghBusy = false, ghMsg = "";
+  async function ghRefresh() {
+    ghBusy = true; ghMsg = T.gh.refreshing; draw();
+    try { const out = await api("POST", "/v1/admin/github/refresh"); ghMsg = out.ok ? T.gh.refreshed(out.stars, out.downloads) : T.gh.error(out.error || "?"); }
+    catch (e) { if (e.message !== "admin") ghMsg = T.gh.error(e.message); }
+    ghBusy = false; forget("github"); forget("stats"); draw();
+  }
+  function githubPanel() {
+    const gv = need("github");
+    if (!gv) return loadingPanel(T.gh.title);
+    if (gv._error) return failedPanel(T.gh.title, "github", gv._error);
+    const st = gv.status || {}, latest = gv.latest || {}, rows = gv.days || [];
+    if (!st.enabled) return panel(T.gh.title, h("div", { class: "empty" }, T.gh.off));
+    const sum = (k) => rows.reduce((a, r) => a + Number(r[k] || 0), 0);
+    const dayOf = (r) => `${dayUtc(r.day)} (${T.st.local} ${dayLocal(r.day)})`;
+    const platforms = Object.entries(latest.platforms || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, value: v }));
+    return h("div", { class: "panel" },
+      h("h2", {}, T.gh.title, h("code", {}, st.repo), h("span", { class: "sp" }),
+        h("span", { class: "fine" }, ghMsg || (st.error ? T.gh.error(st.error) : st.last_ok ? T.gh.lastOk(when(st.last_ok)) : T.gh.never), ` · ${st.token ? T.gh.token : T.gh.noToken}`),
+        h("button", { class: "btn quiet sm", disabled: ghBusy ? "" : null, onclick: ghRefresh }, T.gh.refresh),
+        h("button", { class: "btn quiet sm", onclick: () => statCsv("github_daily") }, T.st.csv)),
+      h("div", { class: "kpis in-panel" },
+        flatKpi(T.gh.stars, fmt(latest.stars || 0), T.sDelta(sum("new_stars"))), flatKpi(T.gh.forks, fmt(latest.forks || 0), T.sDelta(sum("new_forks"))),
+        flatKpi(T.gh.watchers, fmt(latest.watchers || 0), T.sDelta(sum("new_watchers"))), flatKpi(T.gh.issues, fmt(latest.issues || 0), ""),
+        flatKpi(T.gh.downloads, fmt(latest.downloads || 0), T.sDelta(sum("new_downloads")))),
+      rows.some((r) => r.snapshot) ? h("div", { class: "sparks" }, sparkRow(T.gh.newStars, rows, "new_stars", "blue", dayOf), sparkRow(T.gh.newDownloads, rows, "new_downloads", "violet", dayOf)) : h("div", { class: "empty" }, T.sNone),
+      h("div", { class: "cols3" },
+        h("div", {}, h("h3", {}, T.gh.assets), rankRows((latest.assets || []).map((a) => ({ name: a.name, hits: a.downloads })))),
+        h("div", {}, h("h3", {}, T.gh.platforms), hranks(platforms, { mono: true })),
+        h("div", {}, h("h3", {}, T.gh.releases), rankRows((latest.releases || []).map((r) => ({ name: r.tag, hits: r.downloads }))))),
+      h("div", { class: "fine", style: "padding:0 16px 12px" }, T.gh.note));
+  }
+  const RENDER = { overview: overviewView, people: peopleView, places: placesView, money: moneyView, activity: activityView, demo: demoView, data: dataView, site: siteView, models: modelsView, health: healthView, stats: statsView, controls: controlsView, settings: settingsView };
 
   // ── the shell: bar, nav, one view ──────────────────────────────
   function drawMain() {

@@ -53,7 +53,14 @@ async def test_state_is_on_by_default_and_round_trips_changes():
     key = await signed_in(client, sender)
     r = await client.get("/v1/sync/state", headers=auth(key))
     assert r.status_code == 200
-    assert r.json() == {"enabled": True, "cursor": 0, "counts": {"conversations": 0, "messages": 0}, "limits": LIMITS, "working": []}
+    assert r.json() == {
+        "enabled": True,
+        "cursor": 0,
+        "counts": {"conversations": 0, "messages": 0},
+        "limits": LIMITS,
+        "working": [],
+        "paused": False,  # 0.22: the operator's sync switch
+    }
 
     cid = uid()
     m1, m2 = uid(), uid()

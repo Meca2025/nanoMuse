@@ -1,5 +1,5 @@
-// The Live stage's reading of the hands: a `computer_act` call as the caption and
-// cursor marker need it, and the first line of what `computer_screen` says.
+// The host's reading of the hands: a `computer_act` call as the capsule's words and the
+// trajectory's marks need it, and the first line of what `computer_screen` says.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { AskDesk, screenHead, stageAction } from '../lib/cloud.js'

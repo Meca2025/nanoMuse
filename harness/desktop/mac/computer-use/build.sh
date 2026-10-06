@@ -5,7 +5,8 @@
 #   harness/desktop/mac/computer-use/build.sh            → build/nanoMuse Computer Use.app
 #
 # Plain swiftc, no Xcode project: one binary per architecture (arm64 and x86_64, or ARCHS
-# to pick), joined with lipo; Info.plist from the template with the desktop's version; the
+# to pick), joined with lipo; the frameworks (AppKit, Network, CoreGraphics, ScreenCaptureKit)
+# come in through the imports; Info.plist from the template with the desktop's version; the
 # app icon from resources/app-icon.png when iconutil is there (the panes show it); an ad-hoc
 # signature so the bundle runs at all — scripts/desktop-app/package-mac.sh signs it again
 # with the release identity before the outer app. electron-builder copies the result into
@@ -13,7 +14,11 @@
 #
 #   VERSION                     the bundle's version (default: harness/desktop/package.json)
 #   ARCHS                       "arm64 x86_64" (default) — one of them for a quicker local build
-#   MACOSX_DEPLOYMENT_TARGET    12.0 by default; CGDisplayCreateImage's deprecation (15) stays quiet below that
+#   MACOSX_DEPLOYMENT_TARGET    12.3 by default — the first macOS with ScreenCaptureKit, which the
+#                               binary links; the SCK capture itself runs on 14+ (availability-guarded,
+#                               Sources/ScreenCapture.swift), CoreGraphics before that, and the
+#                               deprecations of CGDisplayCreateImage (15) / CGWindowListCreateImage (14)
+#                               stay quiet below 14
 #   OUT_DIR                     where build/ goes
 #
 # Warnings: the compiler's output is kept and any `warning:` line is surfaced as a GitHub
@@ -25,7 +30,7 @@ desktop="$(cd "$here/../.." && pwd)"
 out="${OUT_DIR:-$here/build}"
 name="nanoMuse Computer Use"
 app="$out/$name.app"
-min="${MACOSX_DEPLOYMENT_TARGET:-12.0}"
+min="${MACOSX_DEPLOYMENT_TARGET:-12.3}"
 archs="${ARCHS:-arm64 x86_64}"
 version="${VERSION:-$(node -p "require('$desktop/package.json').version" 2>/dev/null || echo 0.0.0)}"
 

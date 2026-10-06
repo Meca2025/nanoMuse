@@ -4541,13 +4541,23 @@ fun ChatScreen(
                                 }
                             }
                             is FlatChatItem.AssistantTyping -> TypingIndicator()
-                            is FlatChatItem.AssistantError -> InlineErrorBanner(
+                            // nanoMuse: a provider that could not be reached (or refused the
+                            // region, or whose sign-in ran out) is a card, not the socket's text
+                            is FlatChatItem.AssistantError -> io.github.nanomuse.ui.chat.NmProviderErrorOrBanner(
                                 error = item.error,
                                 onRetry = {
                                     coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
                                     safeMutate { viewModel.retryLast() }
                                 },
-                            )
+                            ) {
+                                InlineErrorBanner(
+                                    error = item.error,
+                                    onRetry = {
+                                        coroutineScope.launch { tracedScrollToItem("INLINE-RETRY-LAST", 0, 0) }
+                                        safeMutate { viewModel.retryLast() }
+                                    },
+                                )
+                            }
                             is FlatChatItem.AssistantLegacyContent -> BoundsTrackedBlock(
                                 messageId = item.messageId,
                                 slotKey = "legacy",

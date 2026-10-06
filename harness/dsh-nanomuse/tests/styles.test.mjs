@@ -44,3 +44,28 @@ test('the desk-a additions sit at the end of the sheet, under their marker', () 
   assert.ok(marker > 0)
   assert.ok(css.indexOf('.nm-rail-face, button:has(> .nm-rail-face)') > marker)
 })
+
+test('the lights breathe: nothing runs round, sweeps across or flows in the stylesheet', () => {
+  // the phone's rhythm — 2.4 s in, 2.4 s out — on every light that says "working"
+  for (const sel of ['.nm-chat-dot.nm-live', '.nm-status-dot.nm-live', '.nm-traj-live', '.nm-mic.nm-live', '.nm-remote-working::before']) {
+    const r = rule(sel)
+    assert.match(r, /animation:\s*nm-(pulse 2\.4s|breathe-light 4\.8s|mic-pulse 4\.8s) ease-in-out infinite/, sel)
+  }
+  assert.match(rule('html[data-nm-muse] [data-chat-running]::after'), /nm-breathe-light 4\.8s ease-in-out infinite/)
+  // no marquee, no shimmer, no running border, no flowing gradient
+  assert.doesNotMatch(css, /conic-gradient/)
+  assert.doesNotMatch(css, /background-position/)
+  assert.doesNotMatch(css, /@keyframes nm-(dots|ripple|stage-pulse|flow|sweep|shimmer|marquee)\b/)
+  assert.doesNotMatch(css, /\.nm-stage/)
+  // the breathing keyframes go between a dim and a full light, no travel
+  assert.match(css, /@keyframes nm-breathe-light \{ 0%, 100% \{ opacity: 0\.3; \} 50% \{ opacity: 1; \} \}/)
+})
+
+test('under prefers-reduced-motion every breathing light is steady', () => {
+  const reduced = css.split('\n').filter((l) => l.startsWith('@media (prefers-reduced-motion: reduce)'))
+  assert.ok(reduced.length >= 2)
+  const steady = reduced.find((l) => l.includes('.nm-traj-live'))
+  assert.ok(steady, 'the trajectory light is covered')
+  for (const sel of ['.nm-chat-dot.nm-live', '.nm-status-dot.nm-live', '.nm-remote-working::before', '.nm-mic.nm-live', 'html[data-nm-muse] [data-chat-running]::after']) assert.ok(steady.includes(sel), sel)
+  assert.match(steady, /animation: none; opacity: 1;/)
+})

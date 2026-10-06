@@ -10,20 +10,29 @@
 // What it does: a loopback HTTP server the Electron shell talks to (src/mac-helper.ts), with
 // a token read from a file the shell writes, the bound port written back to a file:
 //
-//   GET  /status       → { screen: "granted"|"denied", accessibility: bool, pid, version, display }
+//   GET  /status       → { screen: "granted"|"denied"|"unknown", screen_detail, capture, accessibility: bool,
+//                          pid, version, display } — `capture` is "ScreenCaptureKit" (macOS 14+) or "CoreGraphics"
 //   POST /request      { what: "screen"|"accessibility", pane?: bool } → the system's dialog, the pane
 //   POST /screenshot   { width?, height?, max_pixels?, format?: "png"|"jpeg", quality? }
-//                      → { base64, mime, width, height, screen: { width, height }, scale }
+//                      → { base64, mime, width, height, screen: { width, height }, scale, capture }
+//   GET  /windows      → { windows: [{ id, pid, app, bundle_id, title, bounds: [x, y, w, h], layer, on_screen }] }
+//                      the windows on screen, front to back — the runtime's window mode lists them here
+//   POST /window       { id, max_pixels?, format?: "png"|"jpeg", quality? }
+//                      → { base64, mime, width, height, window: { id, x, y, width, height }, scale, capture }
+//                      one window's own pixels (no shadow) and its frame in points; 404 when it is gone
 //   POST /execute      { action, x?, y?, x2?, y2?, dy?, text?, submit?, clear?, keys?, seconds? }
 //                      → { ok: true, note } — the operator's vocabulary, coordinates in points;
 //                      `press` holds keys down across the actions that follow, `release` lets go
 //   POST /quit         → { ok: true }, then the process ends
 //
-// Errors are 4xx/5xx with { error, message }. The process ends by itself when the parent
-// (--parent-pid) is gone, so a crashed shell leaves nothing behind.
+// Errors are 4xx/5xx with { error, message }: 403 `screen_denied` / `accessibility_denied`
+// when a grant is missing, 500 `screenshot_failed` with the capture layer's own words
+// (ScreenCapture.swift) when the picture could not be taken. The process ends by itself when
+// the parent (--parent-pid) is gone, so a crashed shell leaves nothing behind.
 //
 // Arguments: --token-file <path>  --port-file <path>  --parent-pid <pid>  [--version]
-// Built by build.sh with plain swiftc: Foundation, Network, CoreGraphics, AppKit; no packages.
+// Built by build.sh with plain swiftc: Foundation, Network, CoreGraphics, AppKit,
+// ScreenCaptureKit; no packages.
 
 import AppKit
 import Foundation

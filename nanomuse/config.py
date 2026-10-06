@@ -112,6 +112,12 @@ class LLMSettings(BaseModel):
     # lives when it is not at the chat model's host — a relaying host, such as the showcase
     # gateway, tells its runtimes this way. Empty: the chat host's root, on hosts that have it.
     video_base_url: str = ""
+    # An HTTP(S) or SOCKS proxy for this slot's requests only (`http://host:port`,
+    # `http://user:pass@host:port`, `socks5://host:port`), for a provider that this machine's
+    # network cannot reach directly. Empty: the environment's HTTPS_PROXY / NO_PROXY apply as
+    # usual. Honoured by the ChatGPT sign-in (`provider = "chatgpt"`): the Codex endpoint, the
+    # token refresh and the usage check all go through it; never nanoMuse Cloud.
+    proxy: str = ""
     extra_headers: dict[str, str] = Field(default_factory=dict)
     extra_body: dict[str, Any] = Field(default_factory=dict)
 

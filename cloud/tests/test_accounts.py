@@ -198,9 +198,11 @@ async def test_admin_overview_and_account_detail():
     assert models == {"qwen3.8-27b", "qwen3.8-flash", "qwen-image-3.0"}
     assert ov["signals_today"]["sign_ins"] == 2 and ov["signals_today"]["sign_in_failures"] == 1
     assert ov["top_accounts"][0]["hint"] == "de***@example.com" and ov["top_accounts"][0]["requests"] == 2
-    # The overview never carries identifiers in clear — only the masked hints.
-    assert "13800138000" not in r.text and "dev-a@example.com" not in r.text
+    # 0.22: the console shows accounts in full — the identifier rides beside the masked hint
+    # (the hint stays for logs, mail and anything that leaves the console)
+    assert ov["top_accounts"][0]["identifier"] == "dev-a@example.com"
     assert ov["events"][0]["kind"] == "sign_in.failed" and ov["events"][0]["hint"] == "de***@example.com"
+    assert ov["events"][0]["identifier"] == "dev-a@example.com"
 
     r = await client.get(f"/v1/admin/accounts/{b['account']['id']}", headers=admin)
     assert r.status_code == 200, r.text

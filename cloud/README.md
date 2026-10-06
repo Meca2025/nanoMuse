@@ -76,6 +76,11 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 400 | `upstream_400` | any other refusal of the request itself; the provider's message passed through |
 | 502 | `upstream` / `upstream_auth` / `upstream_model` / `upstream_busy` / `upstream_<status>` | the provider failed; a plain sentence, the provider's line under `upstream` |
 | 503 | `upstream_unconfigured` | `UPSTREAM_KEY` missing |
+| 403 | `signup_closed` | the operator closed sign-ups (0.22, *Controls*); an identifier without an account gets this before any code is sent, existing accounts sign in as before |
+| 429 | `allowance_exhausted` + `paused: true`, `reason: "allowance_paused"` | the *Free allowance* switch is off (0.22): the same body as a spent pool, with a message that says paused rather than spent; members are unaffected |
+| 503 | `service_paused` | the *Cloud service* switch is off (0.22): every call but `/healthz`, `/v1/config`, `/app` and `/v1/admin/*`; `paused: true` in the body |
+| 503 | `sync_paused` | the *Conversation sync* switch is off (0.22): `/v1/sync/*` except `GET /v1/sync/state`, which answers with `paused: true` |
+| 503 | `hub_paused` | the *Device hub* switch is off (0.22): `GET /v1/devices`; the hub socket itself closes with `4003 hub_paused` |
 
 ## Run it
 
@@ -159,6 +164,11 @@ for the full list. The ones that matter:
 | `HUB_ENABLED` | `true` | the devices hub at `/v1/hub` and the web console at `/app` ([docs/hub.md](../docs/hub.md)) |
 | `HUB_FRAME_LIMIT` | 16 MB | largest hub frame (files and screenshots travel inside frames); one socket may also send at most 60 frames and 8 MB a second sustained (twice that in a burst) — over it frames are dropped with one `rate_limited` error a second, and a socket that keeps flooding is closed with 4008 (0.13) |
 | `MAX_REQUEST_BYTES` | 16 MB (0.20; was 6) | largest REST request body — a chat request with a few screenshots, a sync push of 200 messages; over it the answer is 413 `too_large`, *Request body is N MB; this relay accepts up to M MB* |
+| `GITHUB_REPO` | read off `REPO_URL` (`nano-muse/nanoMuse`) | the repository whose stars, forks, watchers, open issues and release downloads the relay reads (0.22, *Site* on the operator's page) — `owner/name` |
+| `GITHUB_TOKEN` | empty | optional; without one GitHub allows 60 requests an hour, the collector uses two every six hours. Set it only if the relay shares its address with something else that polls GitHub (a `403` from GitHub shows on the page and says so) |
+| `GITHUB_COLLECT` | `1` | `0` turns the collector off (a relay without a way out, tests) |
+| `GITHUB_API` | `https://api.github.com` | where the collector reads; a mirror for a relay that cannot reach GitHub |
+| `ADMIN_EMAIL` | empty | where a threshold rule's *notify* goes (0.22, *Controls*), through the `SMTP_*` settings; empty = the rule writes its audit line and the log says there was nobody to tell |
 
 The default menu (0.17): `deepseek-v4.1-flash` (the chat model — text and
 images in, ¥2 / ¥8 per million tokens, charged at 0.7×; it thinks before it
@@ -239,6 +249,49 @@ which are overridden, and the count below the allowance; `GET /v1/config`
 (no key) returns `version`, `signup_open`, `allowance_cny` / `allowance_usd`,
 `invite_bonus_cny`, `invitee_bonus_cny`, `usd_cny`, `invite_url`,
 `own_key_docs`, `privacy_url`, `repo_url` and `improve_default`.
+
+### Controls (0.22)
+
+Five switches the operator flips without a restart or a deploy, from the
+*Controls* page of the console, the command line or `POST
+/v1/admin/controls/{key}`: `free_allowance`, `signups`, `cloud_service`,
+`sync`, `hub`. Each is on by default, kept in the `controls` table so a
+restart keeps it, and applies to the next request. What each one refuses when
+off is in the error table above and, from the app's side, in
+[docs/cloud.md › Controls](../docs/cloud.md#controls); the console says the
+same thing in the row and again in the confirmation before it flips. Turning
+`cloud_service` or `hub` off closes every open hub socket (`4003 hub_paused`)
+and the answer says how many. The switches that are off are listed under
+`paused` in `/healthz`, `/v1/config`, `/v1/me` and `GET /v1/admin/settings`.
+
+Every change is a row in `control_audit` — who (`X-Admin-Actor` from the
+console's *Your name* field or the CLI's `--actor`, else `console` / `cli:<user>`
+/ `rule:<id>`), when, which switch or rule, the new state and the note — and
+a `control.switch` / `control.rule` line on the activity timeline.
+
+**Thresholds** (`control_rules`): *when the account count reaches N, do one
+action* — `close_signups`, `pause_allowance`, `pause_sync` or `notify`. Rules
+are evaluated when an account is created and once a minute by a background
+task; a rule fires once and remembers the count and time it fired at
+(`last_fired_at`, `fired_accounts`); *re-arm* on the page (`PUT …/rules/{id}`
+with `{"rearm": true}`) or a changed threshold lets it fire again; `enabled:
+false` keeps the rule without evaluating it. Firing writes the audit line and
+the timeline line; `notify` also sends an e-mail to `ADMIN_EMAIL` through the
+`SMTP_*` settings — counts and the relay's own address only, nothing about any
+person — and the audit says whether it went. *Send a test notice* on the page
+(`POST /v1/admin/controls/notify-test`) checks the mail settings.
+
+```
+GET    /v1/admin/controls                       → {switches: {key: {enabled, updated_at, actor, note}}, rules, accounts_total, next_threshold, notify_configured, admin_email_set, audit}
+POST   /v1/admin/controls/{key}                 {enabled, actor?, note?}  → the same, plus sockets_closed
+GET    /v1/admin/controls/rules                 → {rules: [{id, threshold, action, enabled, note, created_at, last_fired_at, fired_accounts}]}
+POST   /v1/admin/controls/rules                 {threshold, action, note?, enabled?}  → the rule
+PUT    /v1/admin/controls/rules/{id}            {threshold?, action?, enabled?, note?, rearm?}  → the rule
+DELETE /v1/admin/controls/rules/{id}            → 204
+POST   /v1/admin/controls/evaluate              → {fired: [...], accounts_total}   check the rules now
+POST   /v1/admin/controls/notify-test           → {sent, configured}
+GET    /v1/admin/controls/audit?limit=200       → {audit: [{id, ts, actor, ip, action, target, detail}]}
+```
 
 ### Star asks (0.18)
 
@@ -395,9 +448,9 @@ what it cost today / this week / over 7, 30 or 90 days split by kind (chat,
 pictures, video) and by model, spend by day as stacked bars, the top
 spenders, today's signals (sign-ins, failures, budget refusals, upstream
 errors) and the timeline across accounts with a kind filter. The
-accounts table shows the masked hint; opening one account
-(`/v1/admin/accounts/{id}`) decrypts its phone number or address for that
-view only and shows its spend by kind / model / day, sign-ins (device names,
+accounts table showed the masked hint until 0.22 and now the number or
+address itself (below); opening one account (`/v1/admin/accounts/{id}`)
+shows its spend by kind / model / day, sign-ins (device names,
 revoked ones too), remembered devices with presence, every request and its
 whole timeline — page by page to the first line
 (`/v1/admin/accounts/{id}/ledger` and `/events`, `?before=&limit=`) — with
@@ -468,7 +521,8 @@ charts above the table are the same filters drawn: sign-ups by day, where
 they are (click a country to see its provinces, a province its cities),
 spend buckets, activity, channel and client, each bar a filter that one
 click applies and a second removes. The table sorts by any column and
-exports the current selection as CSV (hints masked, nothing decrypted).
+exports the current selection as CSV (with the identifiers since 0.22, as
+the table shows them).
 *Places* ranks countries and provinces by accounts, new accounts,
 sign-ins, requests or demo visitors, and a row opens *People* with that
 region chosen. *Money* has the kind chips (chat, pictures, video, calls) and
@@ -478,6 +532,37 @@ charts demos a day, why they ended and where visitors came from; *Models*
 searches the catalog; *Health* is `/v1/admin/health` on the page (in-flight
 requests, hub connections, the last hour, the database, the upstream key),
 refreshed every 30 s.
+
+From 0.22 the console shows accounts in full: the phone number or e-mail
+address stands beside the hint in the *People* table, the top spenders, the
+latest events and the account drawer (`/v1/admin/overview` and
+`/v1/admin/accounts` decrypt them for the console's answer; the People CSV
+carries them too — the file is the operator's). Everything that leaves the
+console — the server log, the e-mails, `/v1/admin/health`, the public pages —
+still carries the masked hint only. Two pages are new: *Controls* (the five
+switches, the threshold rules and the audit log — [above](#controls-022); the
+first line of *Overview* says which switches are off and the next threshold)
+and *Stats*, from `GET /v1/admin/stats?days=` — one registry in
+`nanomuse_cloud/stats.py` defines every figure once, with a sentence saying how
+it is computed (the ⓘ on each panel) in English and Chinese: accounts per UTC
+day (total, new, active by any call and by model call, sign-ins, failures,
+deletions), by sign-in method and by origin (country code or e-mail domain),
+devices per account and by platform, model calls and tokens per day, by model
+and the top 20 accounts, how far the limited accounts' pools are used, sync
+pushes / pulls / messages per day, errors per day by code, API calls per day
+by group, the GitHub series, and the relay itself (version, started at,
+uptime, database size, hub sockets, what is paused). Every panel has a table
+and a CSV (`GET /v1/admin/stats/{id}.csv?days=`); days are UTC with the
+operator's local date beside each. The counters behind the per-day figures
+(active accounts, API calls, errors, sync traffic) live in the `daily` table,
+so a restart loses nothing. *Site* opens with the GitHub panel from `GET
+/v1/admin/github?days=`: stars, forks, watchers, open issues and release
+downloads, what each day added, downloads by platform and by asset, and
+*Refresh now* (`POST /v1/admin/github/refresh`); the collector
+(`nanomuse_cloud/github_stats.py`) reads `GET /repos/{owner}/{name}` and
+`/releases` every six hours and keeps one row per UTC day — a failed read
+leaves the previous row and shows on the page, the relay runs on without
+GitHub.
 
 ### Web console
 
@@ -540,7 +625,7 @@ tokens, the newest turns, and the export.
 # hour's requests / upstream errors / refusals / sign-ins, the database, `problems` —
 # what deploy/nanomuse-hk/selfcheck.sh reads every ten minutes
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/health
-# who signed up (hints only, never the identifiers)
+# who signed up (with the phone numbers and addresses since 0.22 — the console's answer)
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/accounts
 # top up someone by phone/e-mail or by account id
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
@@ -569,7 +654,31 @@ curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' 
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/nudges
 curl -X PUT -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"star":{"moments":{"tasks":[5,20]},"cooldown_days":14}}' https://$CLOUD_DOMAIN/v1/admin/nudges
+# the switches (0.22): what is on, flip one with a note for the audit log, read the log —
+# from the relay's own shell (the CLI reads CLOUD_ADMIN_TOKEN and PUBLIC_BASE from the
+# environment, or --token / --base; --actor names you in the log, else cli:<user>)
+nanomuse-cloud admin controls list
+nanomuse-cloud admin controls set free_allowance off --note "upstream bill" --actor lgy
+nanomuse-cloud admin controls set free_allowance on
+nanomuse-cloud admin controls audit --limit 50
+# … or the same over HTTP from anywhere
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/controls
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H "X-Admin-Actor: lgy" -H 'Content-Type: application/json' \
+  -d '{"enabled":false,"note":"upstream bill"}' https://$CLOUD_DOMAIN/v1/admin/controls/free_allowance
+# a threshold rule: at 1,000 accounts, close sign-ups
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"threshold":1000,"action":"close_signups","note":"beta cap"}' https://$CLOUD_DOMAIN/v1/admin/controls/rules
+# the figures as CSV (every id of GET /v1/admin/stats)
+curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" "https://$CLOUD_DOMAIN/v1/admin/stats/accounts_daily.csv?days=90" -o accounts.csv
 ```
+
+In Docker the CLI is `docker compose exec relay nanomuse-cloud admin controls
+list --base http://127.0.0.1:8787` (the container has `CLOUD_ADMIN_TOKEN` in
+its environment; `--base` keeps the call inside the container instead of going
+out through Caddy).
+The tables behind all of this (`daily`, `controls`, `control_rules`,
+`control_audit`) are created on the first start of 0.22 — `CREATE TABLE IF NOT
+EXISTS` — so a deploy is the usual image swap, no migration step.
 
 Every response carries `X-Nanomuse-Charged` and `X-Nanomuse-Request` so a user
 report can be matched to a ledger row without any content being logged.
