@@ -575,7 +575,11 @@ class ConversationSync:
                 self._note_error(exc)
 
     # ------------------------------------------------------------------ scheduling
-    def push_soon(self, delay: float = PUSH_DELAY_S) -> None:
+    def push_soon(self, delay: float | None = None) -> None:
+        """Schedule a push ``delay`` seconds from now (``PUSH_DELAY_S`` by default, read when
+        the push is scheduled so a test can shorten it)."""
+        if delay is None:
+            delay = PUSH_DELAY_S
         if not self.active:
             return
         try:

@@ -10,6 +10,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Runtime
 
+- **The sync push delay is read when a push is scheduled.** `ConversationSync.push_soon()` took the two-second default at import time, so a shorter delay set on the module (the tests do this) did not reach the pushes after a sign-in or the switch; it does now. Nothing changes for a person: the delay is still two seconds.
+
 ### Web
 
 ### Desktop
