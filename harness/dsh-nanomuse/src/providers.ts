@@ -204,9 +204,10 @@ export async function listModels(protocol: Protocol, baseURL: string, apiKey: st
   const base = baseURL.replace(/\/+$/, '')
   const signal = AbortSignal.timeout(timeoutMs)
   let timer: ReturnType<typeof setTimeout> | undefined
+  // the timer stays referenced: it is cleared in `finally`, and an unreferenced one lets Node 22
+  // drain the event loop before it fires when nothing else is pending (the tests' hang case)
   const late = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error('timeout')), timeoutMs)
-    timer.unref?.()
   })
   try {
     let request: Promise<Response>
