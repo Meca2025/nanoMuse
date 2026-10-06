@@ -85,6 +85,14 @@ person picked in Settings → nanoMuse Cloud — provider, model, base URL and t
 and removed on sign-out; `nanomuse/rooms.json` keeps the rooms (feed, goals with their
 steps and progress, which ideas were tried, the library index, memory).
 
+The profile's `node_modules/dsh-nanomuse` is a link (a junction on Windows) to the plugin
+inside the installed app, rewritten at every launch whose install folder differs from the
+link's target — an update that moved the app, say from `Programs\nanoMuse\nanomuse-desktop`
+to `Programs\nanomuse-desktop`, leaves a link pointing nowhere, and 0.1.39 could not start
+over it (`EEXIST: file already exists, symlink …` in `desktop.log`). Since 0.1.40 the stale
+link is removed as a link and remade; should that still fail, the message names the path to
+remove by hand.
+
 ## macOS permissions
 
 The hands need two things from macOS: *Screen Recording* for the screenshots and

@@ -2,7 +2,7 @@ import { pathToFileURL } from "node:url";
 import { app, BrowserWindow, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, powerSaveBlocker, screen, shell, systemPreferences, Tray } from "electron";
 import { randomBytes } from "node:crypto";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +11,7 @@ import { defaultHelperPath, HELPER_NAME, MacHelper } from "./mac-helper";
 import * as macPermissions from "./mac-permissions";
 import { Operator, SCREEN_PERMISSION_TEXT, type Marker } from "./operator";
 import { startOperatorServer, type OperatorServer } from "./operator-server";
+import { relink } from "./profile-link";
 
 /**
  * nanoMuse Desktop — the nanoMuse desktop, built on DeepSeek Harness.
@@ -206,18 +207,7 @@ function ensureProfile(dshDir: string): string {
   }
   const link = join(dir, "node_modules", BUNDLE);
   const target = join(dshDir, "node_modules", BUNDLE);
-  let current: string | undefined;
-  try {
-    current = lstatSync(link).isSymbolicLink() ? readlinkSync(link) : "(not a link)";
-  } catch {
-    current = undefined;
-  }
-  if (current !== target) {
-    rmSync(link, { recursive: true, force: true });
-    // a junction on Windows: no privilege needed, and it points at a directory
-    symlinkSync(target, link, process.platform === "win32" ? "junction" : "dir");
-    log(`profile: ${BUNDLE} → ${target}`);
-  }
+  if (relink(link, target)) log(`profile: ${BUNDLE} → ${target}`);
   return dir;
 }
 
