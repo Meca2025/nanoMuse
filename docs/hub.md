@@ -108,7 +108,10 @@ the key in `hello` instead).
 ```
 
 Close codes: `4000` hello expected, `4001` bad key, `4002` bad device,
-`4003` replaced by a newer connection of the same device id.
+`4003` replaced by a newer connection of the same device id — or, with the
+reason `hub_paused` (relay 0.22), the operator switched the hub or the whole
+service off: a client waits and reconnects later instead of retrying at once
+([cloud.md › Controls](cloud.md#controls)).
 
 Device ids are per installation (`phone-…`, `pc-…`); names are for people and
 can be changed on the device. A `web` device is never a target and is not

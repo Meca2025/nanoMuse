@@ -264,6 +264,21 @@ class Hub:
             except Exception as e:  # already gone
                 log.debug("close %s: %s", c.device_id, e)
 
+    async def drop_all(self, reason: str = "hub_paused") -> int:
+        """0.22: the operator turned the hub (or the whole service) off — every socket is
+        closed with 4003 and the reason; the apps reconnect with backoff and are refused
+        with the same code until it is on again. Returns how many were closed."""
+        n = 0
+        for conns in list(self.online.values()):
+            for c in list(conns.values()):
+                c.closed = True
+                n += 1
+                try:
+                    await c.ws.close(code=4003, reason=reason)
+                except Exception as e:  # already gone
+                    log.debug("close %s: %s", c.device_id, e)
+        return n
+
     # -- one socket ------------------------------------------------------------------
 
     async def serve(self, ws: WebSocket, caller: Caller | None) -> None:
