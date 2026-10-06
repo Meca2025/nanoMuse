@@ -1386,7 +1386,9 @@ async function ensureMacPermissionsAtLaunch(): Promise<void> {
   await helperReady();
   const accessibility = permissionState("accessibility");
   const screen = permissionState("screen");
-  const source = macPermissions.helperInUse() ? `${HELPER_NAME} ${macHelper?.cachedStatus()?.version ?? ""}`.trim() : macPermissions.loaded() ? "native" : `systemPreferences — ${macPermissions.loadError()}`;
+  const status = macHelper?.cachedStatus();
+  // the helper's word on the screen (ScreenCaptureKit on macOS 14+) goes next to the TCC state: `screen=granted (capture ScreenCaptureKit)` is the line to look for when a screenshot is in doubt
+  const source = macPermissions.helperInUse() ? `${HELPER_NAME} ${status?.version ?? ""}${status?.capture ? `, capture ${status.capture}` : ""}${status?.screenDetail ? `, ${status.screenDetail}` : ""}`.trim() : macPermissions.loaded() ? "native" : `systemPreferences — ${macPermissions.loadError()}`;
   log(`permissions: accessibility=${accessibility} screen=${screen} (${source}${!macPermissions.helperInUse() && macHelper ? `; helper: ${macHelper.failure()}` : ""})`);
   if (accessibility === "granted" && screen === "granted") return;
   if (screen !== "granted") void requestScreenRecording(true);

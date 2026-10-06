@@ -242,7 +242,9 @@ mouse; *Done* resumes. Questions keep *Open*. Stop (the square) still cancels th
 
 **The operator.** The hands themselves are the shell's (`src/operator.ts`, a port of
 UI-TARS-desktop's `NutJSOperator` on `@computer-use/nut-js`): the screenshot through
-Electron's `desktopCapturer` at the display's size, the pointer moved straight to the
+Electron's `desktopCapturer` at the display's size (on a Mac, through the helper
+*nanoMuse Computer Use* and ScreenCaptureKit instead — [desktop.md](desktop.md#macos-permissions)),
+the pointer moved straight to the
 point and left there 100 ms before the click, drags, scrolls, typing through the
 clipboard for anything beyond ASCII, the hotkey table (`ctrl` is ⌘ on a Mac). The
 runtime's `nanomuse mcp` reaches them over a loopback HTTP server the shell starts per

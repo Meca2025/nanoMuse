@@ -6,7 +6,7 @@
 // `setOfMarks` (the point, the action's name beside it).
 import { clipboard, desktopCapturer, nativeImage, screen as electronScreen } from "electron";
 import type * as Nut from "@computer-use/nut-js";
-import { describeAction, HELPER_SCREEN_PERMISSION_TEXT, MacHelperError, type MacHelper } from "./mac-helper";
+import { describeAction, HELPER_NAME, HELPER_SCREEN_PERMISSION_TEXT, MacHelperError, type HelperWindow, type HelperWindowShot, type MacHelper } from "./mac-helper";
 
 /**
  * The hands of nanoMuse Desktop: the mouse, the keyboard and the screenshot, done by this
@@ -44,8 +44,13 @@ export interface OperatorInfo {
   reason: string;
   platform: NodeJS.Platform;
   display: { width: number; height: number; scaleFactor: number; logical: { width: number; height: number } };
-  /** macOS only: whether "nanoMuse Computer Use" is doing the capture and the input, or why not. */
-  helper?: { running: boolean; pid?: number; version?: string; reason: string };
+  /**
+   * macOS only: whether "nanoMuse Computer Use" is doing the capture and the input, or why
+   * not. `present` is the bundle being there at all (the runtime's window mode lists and
+   * captures windows through `/windows` and `/window` when it is); `capture` is the helper's
+   * source ("ScreenCaptureKit" on macOS 14+).
+   */
+  helper?: { present: boolean; running: boolean; pid?: number; version?: string; capture?: string; reason: string };
 }
 
 export interface ScreenshotRequest {
@@ -124,8 +129,10 @@ export interface OperatorOptions {
   permissions?: () => { accessibility: boolean; screen: boolean };
   /**
    * macOS: "nanoMuse Computer Use", the helper app that holds the grants and does the capture
-   * and the input (mac-helper.ts). When it is there and starts, every screenshot and action
-   * goes through it; when it is absent or down, the paths below run as before.
+   * and the input (mac-helper.ts). When its bundle is there, every screenshot and action goes
+   * through it — or fails with the helper's own reason (it did not start, its capture failed);
+   * nothing falls through to desktopCapturer or libnut behind its back. Only without a bundle
+   * at all (a build without it, another platform) do the paths below run.
    */
   helper?: MacHelper;
   log?: (line: string) => void;
@@ -235,6 +242,11 @@ export class Operator {
 
   availability(): { available: boolean; reason: string } {
     if (process.platform === "linux" && isWaylandSession()) return { available: false, reason: WAYLAND_TEXT };
+    // macOS with a helper bundle that was tried and did not start: that is the reason, not the
+    // app's own grants (which nobody switched on — the panes name the helper)
+    if (process.platform === "darwin" && this.options.helper?.present() && this.options.helper.failedToStart() && !this.options.helper.busy()) {
+      return { available: false, reason: `${HELPER_NAME} did not start (${this.options.helper.failure()})` };
+    }
     if (process.platform === "darwin" && this.options.permissions) {
       const p = this.options.permissions();
       const missing = [...(p.accessibility ? [] : ["Accessibility"]), ...(p.screen ? [] : ["Screen Recording"])];
@@ -265,7 +277,7 @@ export class Operator {
       ...this.availability(),
       platform: process.platform,
       display: { width: space.width, height: space.height, scaleFactor: space.scaleFactor, logical: space.logical },
-      ...(process.platform === "darwin" && helper ? { helper: { running: helper.running(), ...(helperStatus?.pid !== undefined ? { pid: helperStatus.pid } : {}), ...(helperStatus?.version ? { version: helperStatus.version } : {}), reason: helper.failure() } } : {}),
+      ...(process.platform === "darwin" && helper ? { helper: { present: helper.present(), running: helper.running(), ...(helperStatus?.pid !== undefined ? { pid: helperStatus.pid } : {}), ...(helperStatus?.version ? { version: helperStatus.version } : {}), ...(helperStatus?.capture ? { capture: helperStatus.capture } : {}), reason: helper.failure() } } : {}),
     };
   }
 
@@ -280,10 +292,11 @@ export class Operator {
     const want = isNum(req.width) && isNum(req.height) && req.width > 0 && req.height > 0 ? { width: Math.round(req.width), height: Math.round(req.height) } : fitPixels(space.width, space.height, maxPixels);
     const format = req.format === "png" ? "png" : "jpeg";
     const quality = isNum(req.quality) ? Math.max(30, Math.min(100, Math.round(req.quality))) : 80;
-    // macOS with the helper: its picture, already at the asked size and format (mac-helper.ts)
-    if (process.platform === "darwin" && this.options.helper && (await this.options.helper.ready())) {
-      const shot = await this.helperScreenshot(space, want, format, quality);
-      if (shot) return shot;
+    // macOS with the helper bundle: its picture, already at the asked size and format
+    // (mac-helper.ts) — or its reason, never desktopCapturer's picture in its place
+    if (process.platform === "darwin" && this.options.helper?.present()) {
+      if (!(await this.options.helper.ready())) throw new OperatorError(`no screenshot: ${HELPER_NAME} did not start (${this.options.helper.failure()})`, 503);
+      return this.helperScreenshot(space, want, format, quality);
     }
     await this.options.onCapture?.("before");
     let image: Electron.NativeImage;
@@ -308,13 +321,16 @@ export class Operator {
 
   /**
    * The helper's screenshot, shaped like ours. Its 403 (Screen Recording off for the helper)
-   * is the one error that comes through — with the helper's text, since the helper's row is
-   * the switch to flip and the helper restarts by itself. Anything else (it died, it timed
-   * out) is logged and answered with null: the Electron path below takes over for this call.
+   * comes through with the helper's text, since the helper's row is the switch to flip and
+   * the helper restarts by itself. Anything else — ScreenCaptureKit refused (`userDeclined`,
+   * `noDisplayList`…), no image, the helper died or timed out — is logged and thrown with the
+   * helper's own words, so the runtime's `computer_screen` says exactly what went wrong.
+   * Until 0.1.39 this fell through to desktopCapturer, whose black or stale frame then
+   * reached the model as if it were the screen, and nobody saw the real error.
    */
-  private async helperScreenshot(space: ScreenSpace, want: { width: number; height: number }, format: "png" | "jpeg", quality: number): Promise<Screenshot | null> {
+  private async helperScreenshot(space: ScreenSpace, want: { width: number; height: number }, format: "png" | "jpeg", quality: number): Promise<Screenshot> {
     const helper = this.options.helper;
-    if (!helper) return null;
+    if (!helper) throw new OperatorError("no screenshot: no helper", 500);
     try {
       const shot = await helper.screenshot({ width: want.width, height: want.height, format, quality });
       if (typeof shot.base64 !== "string" || !shot.base64) throw new MacHelperError("the helper's picture is empty", 500, "empty");
@@ -329,13 +345,62 @@ export class Operator {
       };
     } catch (exc) {
       if (exc instanceof MacHelperError && exc.status === 403) throw new OperatorError(`no screenshot: ${HELPER_SCREEN_PERMISSION_TEXT}`, 403);
-      this.log(`helper screenshot failed (${String((exc as Error).message ?? exc)}) — using the Electron path for this one`);
-      return null;
+      const why = String((exc as Error).message ?? exc);
+      this.log(`helper screenshot failed (${why}) — not falling back to desktopCapturer`);
+      // 503 when the helper itself is gone (the next call starts it again), 500 when it answered that the capture failed
+      throw new OperatorError(`no screenshot: ${HELPER_NAME} could not take the picture — ${why}`, exc instanceof MacHelperError && exc.code === "not_running" ? 503 : 500);
     }
   }
 
   /**
-   * The picture of the primary display. On macOS a process without Screen Recording gets no
+   * The windows on screen, for the runtime's window mode — through the helper, whose grant
+   * the listing needs (titles come only with Screen Recording). Off macOS, or without the
+   * helper bundle, there is no window mode and the call says so (503).
+   */
+  async windows(): Promise<HelperWindow[]> {
+    const helper = await this.helperForWindows("the windows on screen cannot be listed");
+    try {
+      return await helper.windows();
+    } catch (exc) {
+      throw this.windowError(exc, "the windows on screen could not be listed");
+    }
+  }
+
+  /** One window's own pixels and its frame, through the helper (`POST /window`). */
+  async windowShot(req: { id: number; max_pixels?: number; format?: "png" | "jpeg"; quality?: number }): Promise<HelperWindowShot> {
+    if (!isNum(req.id) || req.id <= 0) throw new OperatorError("`id` must be a window id from /windows");
+    const helper = await this.helperForWindows("a window cannot be captured");
+    try {
+      const shot = await helper.window({ id: Math.round(req.id), ...(isNum(req.max_pixels) ? { max_pixels: Math.max(0, Math.round(req.max_pixels)) } : {}), ...(req.format === "jpeg" ? { format: "jpeg" as const } : { format: "png" as const }), ...(isNum(req.quality) ? { quality: Math.max(30, Math.min(100, Math.round(req.quality))) } : {}) });
+      if (typeof shot.base64 !== "string" || !shot.base64) throw new MacHelperError("the helper's picture is empty", 500, "empty");
+      return shot;
+    } catch (exc) {
+      throw this.windowError(exc, `window ${req.id} could not be captured`);
+    }
+  }
+
+  private async helperForWindows(what: string): Promise<MacHelper> {
+    const helper = this.options.helper;
+    if (process.platform !== "darwin" || !helper?.present()) throw new OperatorError(`${what}: window mode needs ${HELPER_NAME}, which this build does not have`, 503);
+    if (!(await helper.ready())) throw new OperatorError(`${what}: ${HELPER_NAME} did not start (${helper.failure()})`, 503);
+    return helper;
+  }
+
+  private windowError(exc: unknown, what: string): OperatorError {
+    if (exc instanceof OperatorError) return exc;
+    if (exc instanceof MacHelperError) {
+      if (exc.status === 403) return new OperatorError(`${what}: ${HELPER_SCREEN_PERMISSION_TEXT}`, 403);
+      if (exc.status === 404) return new OperatorError(`${what}: ${exc.message}`, 404);
+      this.log(`helper window capture failed (${exc.message})`);
+      return new OperatorError(`${what}: ${HELPER_NAME} — ${exc.message}`, exc.code === "not_running" ? 503 : exc.status);
+    }
+    return new OperatorError(`${what}: ${String((exc as Error).message ?? exc)}`, 500);
+  }
+
+  /**
+   * The picture of the primary display through Electron — Linux, Windows, and a macOS build
+   * without the helper bundle (never a Mac whose helper is there: `screenshot` above throws
+   * the helper's reason instead). On macOS a process without Screen Recording gets no
    * picture, only a black one — and it gets it two ways: Electron ≥ 32 rejects
    * `getSources` outright (`TryPromptUserForScreenCapture` → `HandleFailure`), and libnut's
    * grab comes back all black. Either is answered with 403 and the permission text, never
@@ -380,8 +445,12 @@ export class Operator {
   }
 
   private async run(action: OperatorAction): Promise<{ ok: true; note: string }> {
-    // macOS with the helper: CGEvent in the helper's process; this one clamps and marks (mac-helper.ts)
-    if (process.platform === "darwin" && this.options.helper && (await this.options.helper.ready())) return this.runWithHelper(this.options.helper, action);
+    // macOS with the helper bundle: CGEvent in the helper's process; this one clamps and marks
+    // (mac-helper.ts). A helper that did not start is the reason, not a libnut move in its place.
+    if (process.platform === "darwin" && this.options.helper?.present()) {
+      if (!(await this.options.helper.ready())) throw new OperatorError(`the hands are not available: ${HELPER_NAME} did not start (${this.options.helper.failure()})`, 503);
+      return this.runWithHelper(this.options.helper, action);
+    }
     const nut = this.load();
     if (!nut) throw new OperatorError(`the hands are not available: ${this.loadError}`, 503);
     const { mouse, keyboard, Button, Key, Point, straightTo } = nut;
