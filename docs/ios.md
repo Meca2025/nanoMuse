@@ -67,7 +67,8 @@ Ours, in `NanoMuse/`:
   e-mail address, a code, and the relay ([cloud.md](cloud.md)) is an ordinary OpenAI-compatible
   provider in the app, with a model group of its own that becomes the default when there is none.
   Same wire format and the same rules as the Android client (`io.github.nanomuse.cloud`): one
-  instance per relay, nothing of the user's own replaced, a 401 on refresh removes the provider.
+  instance per relay, nothing of the user's own replaced, a 401 on refresh removes the provider
+  (and keeps the account's data aside — Contract C12 below).
   Any build can point at another relay (*Use a different server*, below). Since 0.1.32 the page is the whole account — the
   password as the other way in, a friend's invite code, the pool in yuan with the ways on when it
   runs low (your own key, an invitation, a star once), usage by kind and by model, the devices
@@ -263,6 +264,24 @@ Ours, in `NanoMuse/`:
   first account brings its conversations and its main chat back. Signed out, everything on the
   phone shows and nothing moves. The agent's name and look already follow the account; the local
   memory files do not yet.
+- **Nothing of one account for the next (0.1.40, Contract C12)** (`NanoMuseAccountData.swift`,
+  `NanoMuseSignOutSheet.swift`): every chat has an owner row (`nanomuse-owners.json`), synced or
+  not, and the lists, the Chat tab, the Library, *Today's chats*, the Siri shortcuts and the
+  push show the signed-in owner's only; signed out, only the chats made while signed out. A
+  sign-out — here, everywhere, *Use a different server* — is a sheet with one switch, *Keep this
+  account's chats on this device*, off by default: off, the account's chats, memory, feed, goals,
+  routines and face leave the phone (its sync table too, so a later sign-in never tombstones
+  them on its other devices); on, they are put aside under `MinisConfig/nanomuse/accounts/<hash>/`
+  and come back with the account. Signing in as another account goes through the same path.
+  *Delete the account* removes all of it with no question. A key the relay refuses on a refresh
+  (`401 bad_key` — revoked from another device, a relay reset) takes the *keep* path instead:
+  the data goes aside, the key goes, and the sign-in form says *Your sign-in on this phone was
+  ended — sign in again to continue; your chats are kept on this device until then* until the
+  next sign-in (`NanoMuseCloud.signInEnded`); only `401 account_deleted` deletes
+  (`NanoMuseAccountData.keepOnRefusedKey`, tested in `NanoMuseAccountsTests`). The relay's key is saved on this
+  device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, never iCloud Keychain); a
+  fresh install with no marker, no provider and no chat sweeps the device-only Keychain items a
+  previous install left. The full table is [sync.md](sync.md).
 
 ## Building on a Mac
 

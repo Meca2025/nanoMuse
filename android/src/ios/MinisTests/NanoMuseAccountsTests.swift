@@ -45,4 +45,17 @@ final class NanoMuseAccountsTests: XCTestCase {
         XCTAssertEqual(decoded.id, "")
         XCTAssertEqual(decoded.hint, "138****1234")
     }
+
+    // MARK: - C12 (0.1.40): a key the relay refuses
+
+    func testARefusedKeyKeepsTheAccountsDataAside() {
+        XCTAssertTrue(NanoMuseAccountData.keepOnRefusedKey(code: "bad_key"), "revoked elsewhere, or by the person's own Sign out everywhere")
+        XCTAssertTrue(NanoMuseAccountData.keepOnRefusedKey(code: nil), "a relay reset or a relay bug answers like a revoked key")
+        XCTAssertTrue(NanoMuseAccountData.keepOnRefusedKey(code: "http_401"), "an older relay, or a code the phone does not know")
+    }
+
+    func testOnlyADeletedAccountLeavesNothingToComeBackTo() {
+        XCTAssertFalse(NanoMuseAccountData.keepOnRefusedKey(code: NanoMuseAccountData.accountDeleted))
+        XCTAssertEqual(NanoMuseAccountData.accountDeleted, "account_deleted", "the relay's code, as documented")
+    }
 }

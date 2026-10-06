@@ -146,6 +146,14 @@ final class NanoMuseScheduler: ObservableObject {
         routines = (try? decoder.decode([NanoMuseRoutine].self, from: data)) ?? []
     }
 
+    /// C12: the file changed under the store — another account's routines are in place (or
+    /// none). The list and the notifications follow.
+    func reload() {
+        routines = []
+        load()
+        refreshNotifications()
+    }
+
     private func save() {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

@@ -39,6 +39,28 @@ The allowance belongs to the address: signing in again, on
 this phone or another, gives a new key for the same account and does not grant
 a second allowance.
 
+**What a sign-out leaves on the phone** (0.1.40, contract C12). A sign-out —
+on this device, everywhere, or to use a different server — asks one question,
+*Keep this account's chats on this device*, off by default. Off, the account's
+chats, memory, feed, goals, routines and face are removed from the phone (with
+sync on, the relay still has the chats for the next sign-in); on, they are put
+aside and come back when the account signs in again. Signing in as another
+account goes through the same sign-out. *Delete the account* removes the account
+at the relay and everything of it on the phone, no question asked; the next
+sign-in with the same address is a new account that starts empty. A key the
+relay refuses — `401 bad_key`: *Sign out everywhere* from another device, a
+relay reset, a relay bug — is a sign-out nobody on the phone could answer, so
+the phone keeps the account's data aside as *Keep* would, removes the key, and
+the sign-in page says *Your sign-in on this phone was ended — sign in again to
+continue; your chats are kept on this device until then*; the next sign-in as
+the same account restores it, another account sees nothing of it. Only
+`401 account_deleted` — the relay's answer, from 0.1.40, to a key whose account
+was deleted — lets the phone remove the data, since there is nothing to come
+back to. Every piece of state, where it lives and what happens to it on each
+event is the table in [sync.md](sync.md). The one addition to the wire is that
+error code; an older relay answers `bad_key` for both and the phone keeps the
+data.
+
 Signing in a second provider next to it — your own Model Studio key, DeepSeek,
 a local server — works as always; the relay's models can be mixed with yours
 in a model group.
@@ -83,7 +105,11 @@ Images and tool results are never stored, and message content only as the
 is forwarded to the upstream model (Alibaba Cloud Model Studio) and the reply
 is streamed back. Every response carries an `X-Nanomuse-Request` id so a problem report
 can be matched to a ledger row without any content being logged. Deleting the
-account (`POST /v1/auth/delete` with the account's key) removes all of it. See
+account (`POST /v1/auth/delete` with the account's key) removes all of it — the
+account, keys, devices, profile, ledger, events, kept conversations, video
+tasks, the synced conversations and cursors, the hub connections and the live
+*working* notes; the relay's tests check every table for the account afterwards,
+and that the same address signing up again is a new, empty account. See
 [privacy.md](privacy.md).
 
 ## Allowance
@@ -391,6 +417,17 @@ operator's [switches](#controls): `403 signup_closed`, `503 service_paused`,
 hub_paused`), and `allowance_exhausted` with `paused: true` when the free
 allowance is paused rather than spent; `/healthz`, `/v1/config` and `/v1/me`
 list the switches that are off under `paused`.
+
+A key the relay does not know answers
+`401 bad_key`; from 0.1.40, a key whose account was deleted answers
+`401 account_deleted` instead, on every call that takes a key (`/v1/me`,
+`/v1/models`, `/v1/chat/completions`, the sync and hub calls), for 90 days
+after the deletion — the relay keeps the hashes of a deleted account's keys that
+long, and nothing else. A client that does not know the code sees the same
+`401` as before; a client that does (the phones) removes the account's local
+data on `account_deleted` and keeps it aside on anything else
+([sync.md](sync.md)). The full table of codes is in
+[`cloud/README.md`](../cloud/README.md).
 
 Devices: `GET /v1/devices` lists the account's devices (online or last seen),
 `DELETE /v1/devices/{id}` forgets an offline one, and `WS /v1/hub` is the hub

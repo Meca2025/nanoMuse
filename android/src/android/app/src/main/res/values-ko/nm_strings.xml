@@ -675,7 +675,7 @@
     <string name="nm_cloud_open_provider">제공자 설정</string>
     <string name="nm_cloud_sign_out">로그아웃</string>
     <string name="nm_cloud_sign_out_sub">이 휴대전화의 키가 취소되고 Cloud 제공자가 제거됩니다. 사용량은 계정에 남습니다.</string>
-    <string name="nm_cloud_sign_out_confirm">nanoMuse Cloud 제공자와 그 모델이 이 휴대전화에서 제거됩니다. 채팅은 남습니다.</string>
+    <string name="nm_cloud_sign_out_confirm">nanoMuse Cloud 제공자와 그 모델이 이 휴대전화에서 제거됩니다.</string>
     <string name="nm_cloud_row_remaining">%1$s 남음</string>
     <string name="nm_cloud_row_sign_in">로그인</string>
     <string name="nm_cloud_err_bad_identifier">이메일 주소로 보이지 않습니다.</string>
@@ -686,6 +686,7 @@
     <string name="nm_cloud_err_send_failed">코드를 보내지 못했습니다. 잠시 후 다시 시도하세요.</string>
     <string name="nm_cloud_err_disabled">이 계정은 비활성화되었습니다.</string>
     <string name="nm_cloud_err_bad_key">릴레이가 더 이상 이 휴대전화를 알아보지 못합니다. 다시 로그인하세요.</string>
+    <string name="nm_cloud_err_account_deleted">이 계정은 삭제되었습니다. 다시 로그인하면 새 계정이 만들어집니다.</string>
     <string name="nm_cloud_err_out_of_tokens">사용량을 다 썼습니다.</string>
     <string name="nm_cloud_err_daily_cap">오늘의 토큰 한도를 다 썼습니다. 내일 다시 돌아옵니다.</string>
     <string name="nm_cloud_err_allowance">무료 사용량을 다 썼습니다. 친구를 초대하거나(각자 +¥%1$s) 설정 → 제공자에서 내 키를 추가하세요 — Alibaba Cloud 바이롄(Bailian)이 빠른 길입니다.</string>
@@ -828,7 +829,10 @@
     <string name="nm_cloud_sign_out_everywhere">모든 기기에서 로그아웃</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">이 계정으로 로그인한 모든 기기가 키를 잃습니다. 이 휴대전화도 포함됩니다. 계정은 남으며 언제든 다시 로그인할 수 있습니다.</string>
     <string name="nm_cloud_delete_account">계정 삭제</string>
-    <string name="nm_cloud_delete_account_confirm">계정과 그 로그인, 사용량, 기록이 릴레이에서 삭제됩니다. 되돌릴 수 없습니다. 이 휴대전화의 채팅은 남습니다.</string>
+    <string name="nm_cloud_delete_account_confirm">계정과 그 로그인, 사용량, 기록이 릴레이에서 삭제되고, 이 계정의 채팅, 기억, 피드, 목표, 얼굴이 이 휴대전화에서 제거됩니다. 되돌릴 수 없습니다.</string>
+    <string name="nm_cloud_keep_chats">이 계정의 채팅을 이 기기에 남기기</string>
+    <string name="nm_cloud_keep_chats_sub">꺼짐: 이 계정의 채팅, 기억, 피드, 목표, 얼굴이 이 휴대전화에서 제거됩니다. 동기화가 켜져 있으면 릴레이에 채팅이 남아 다음 로그인 때 돌아옵니다.</string>
+    <string name="nm_cloud_sign_in_ended">이 휴대전화의 로그인이 끝났습니다. 계속하려면 다시 로그인하세요. 그때까지 채팅은 이 기기에 남아 있습니다.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">코딩 에이전트</string>

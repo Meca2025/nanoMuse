@@ -662,7 +662,7 @@
     <string name="nm_cloud_open_provider">Provider settings</string>
     <string name="nm_cloud_sign_out">Sign out</string>
     <string name="nm_cloud_sign_out_sub">This phone\'s key is revoked and the Cloud provider removed; the allowance stays with your account.</string>
-    <string name="nm_cloud_sign_out_confirm">The nanoMuse Cloud provider and its models will be removed from this phone. Chats stay.</string>
+    <string name="nm_cloud_sign_out_confirm">The nanoMuse Cloud provider and its models will be removed from this phone.</string>
     <string name="nm_cloud_row_remaining">%1$s left</string>
     <string name="nm_cloud_row_sign_in">Sign in</string>
     <string name="nm_cloud_err_bad_identifier">That doesn\'t look like an e-mail address.</string>
@@ -673,6 +673,7 @@
     <string name="nm_cloud_err_send_failed">The code could not be sent. Try again in a moment.</string>
     <string name="nm_cloud_err_disabled">This account has been disabled.</string>
     <string name="nm_cloud_err_bad_key">The relay no longer recognises this phone. Sign in again.</string>
+    <string name="nm_cloud_err_account_deleted">This account was deleted. Sign in again to start a new one.</string>
     <string name="nm_cloud_err_out_of_tokens">The allowance is used up.</string>
     <string name="nm_cloud_err_daily_cap">Today\'s token quota is used up; it comes back tomorrow.</string>
     <string name="nm_cloud_err_allowance">The free allowance is used up. Invite a friend (+¥%1$s for each of you) or add your own key under Settings → Providers — Alibaba Cloud Bailian is the quick one.</string>
@@ -814,7 +815,10 @@
     <string name="nm_cloud_sign_out_everywhere">Sign out everywhere</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Every device signed in to this account loses its key, this phone included. The account stays; sign in again any time.</string>
     <string name="nm_cloud_delete_account">Delete the account</string>
-    <string name="nm_cloud_delete_account_confirm">The account, its sign-ins, usage and history are deleted at the relay. This cannot be undone. Chats on this phone stay.</string>
+    <string name="nm_cloud_delete_account_confirm">The account, its sign-ins, usage and history are deleted at the relay, and this account\'s chats, memory, feed, goals and face are removed from this phone. This cannot be undone.</string>
+    <string name="nm_cloud_keep_chats">Keep this account\'s chats on this device</string>
+    <string name="nm_cloud_keep_chats_sub">Off: this account\'s chats, memory, feed, goals and face are removed from this phone. With sync on, the relay still has the chats for your next sign-in.</string>
+    <string name="nm_cloud_sign_in_ended">Your sign-in on this phone was ended — sign in again to continue; your chats are kept on this device until then.</string>
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Coding agents</string>
     <string name="nm_coding_intro">Cursor, Codex and Claude Code on your computers: their sessions, their last reply, and a message to any of them — from here. Nothing of theirs is copied to the phone.</string>

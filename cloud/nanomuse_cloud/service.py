@@ -926,8 +926,14 @@ class Cloud:
     def authenticate(self, bearer: str | None) -> Caller:
         if not bearer or not bearer.startswith(KEY_PREFIX):
             raise CloudError(401, "bad_key", "Sign in again in the app")
-        caller = self._caller(_sha256(bearer))
+        key_hash = _sha256(bearer)
+        caller = self._caller(key_hash)
         if caller is None:
+            # 0.1.40: a key of an account that no longer exists is told apart from one that
+            # was merely revoked or reset — the device keeps the account's data on `bad_key`
+            # (contract C12) and may delete it only on `account_deleted`
+            if self.db.key_deleted(key_hash):
+                raise CloudError(401, "account_deleted", "This account was deleted; sign in again to start a new one")
             raise CloudError(401, "bad_key", "This key is no longer valid; sign in again in the app")
         self.db.touch_key(caller.key_hash, caller.account_id)
         # 0.22: "active today" = any authenticated call; one row per account and UTC day

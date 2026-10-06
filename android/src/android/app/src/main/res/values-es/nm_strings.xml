@@ -678,7 +678,7 @@
     <string name="nm_cloud_open_provider">Ajustes del proveedor</string>
     <string name="nm_cloud_sign_out">Cerrar sesión</string>
     <string name="nm_cloud_sign_out_sub">La clave de este teléfono se revoca y el proveedor Cloud se elimina; el saldo se queda con tu cuenta.</string>
-    <string name="nm_cloud_sign_out_confirm">El proveedor nanoMuse Cloud y sus modelos se eliminarán de este teléfono. Los chats se quedan.</string>
+    <string name="nm_cloud_sign_out_confirm">El proveedor nanoMuse Cloud y sus modelos se eliminarán de este teléfono.</string>
     <string name="nm_cloud_row_remaining">%1$s restantes</string>
     <string name="nm_cloud_row_sign_in">Iniciar sesión</string>
     <string name="nm_cloud_err_bad_identifier">Eso no parece una dirección de correo.</string>
@@ -689,6 +689,7 @@
     <string name="nm_cloud_err_send_failed">No se pudo enviar el código. Inténtalo de nuevo en un momento.</string>
     <string name="nm_cloud_err_disabled">Esta cuenta ha sido desactivada.</string>
     <string name="nm_cloud_err_bad_key">El relay ya no reconoce este teléfono. Inicia sesión de nuevo.</string>
+    <string name="nm_cloud_err_account_deleted">Esta cuenta fue eliminada. Inicia sesión de nuevo para empezar una nueva.</string>
     <string name="nm_cloud_err_out_of_tokens">El saldo se ha agotado.</string>
     <string name="nm_cloud_err_daily_cap">La cuota de tokens de hoy se ha agotado; vuelve mañana.</string>
     <string name="nm_cloud_err_allowance">El saldo gratuito se ha agotado. Invita a un amigo (+¥%1$s para cada uno) o añade tu propia clave en Ajustes → Proveedores; Alibaba Cloud Bailian es la opción rápida.</string>
@@ -831,7 +832,10 @@
     <string name="nm_cloud_sign_out_everywhere">Cerrar sesión en todas partes</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Todos los dispositivos con sesión en esta cuenta pierden su clave, este teléfono incluido. La cuenta se conserva; inicia sesión de nuevo cuando quieras.</string>
     <string name="nm_cloud_delete_account">Eliminar la cuenta</string>
-    <string name="nm_cloud_delete_account_confirm">La cuenta, sus inicios de sesión, su uso y su historial se eliminan en el relay. Esto no se puede deshacer. Los chats de este teléfono se quedan.</string>
+    <string name="nm_cloud_delete_account_confirm">La cuenta, sus inicios de sesión, su uso y su historial se eliminan en el relay, y los chats, la memoria, el feed, las metas y la cara de esta cuenta se eliminan de este teléfono. Esto no se puede deshacer.</string>
+    <string name="nm_cloud_keep_chats">Conservar los chats de esta cuenta en este dispositivo</string>
+    <string name="nm_cloud_keep_chats_sub">Desactivado: los chats, la memoria, el feed, las metas y la cara de esta cuenta se eliminan de este teléfono. Con la sincronización activada, el relay conserva los chats para el próximo inicio de sesión.</string>
+    <string name="nm_cloud_sign_in_ended">Tu sesión en este teléfono se cerró — inicia sesión de nuevo para continuar; hasta entonces tus chats se conservan en este dispositivo.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agentes de código</string>

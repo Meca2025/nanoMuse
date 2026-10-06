@@ -158,6 +158,12 @@ final class NanoMuseGoalStore: ObservableObject {
         goals = (try? decoder.decode([NanoMuseGoal].self, from: data)) ?? []
     }
 
+    /// C12: the file changed under the store — another account's goals are in place (or none).
+    func reload() {
+        goals = []
+        load()
+    }
+
     private func save() {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

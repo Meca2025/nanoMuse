@@ -210,8 +210,14 @@ and the web console:
   always did; the sorting is done on the device, so an older relay behaves the
   same.
 
-The muse's name and look follow the account as before; what the muse remembers
-about you (the memory files) is per device and not sorted by account in 0.1.39.
+The muse's name and look follow the account as before. Since 0.1.40 the phones
+go further (contract C12): every chat has an owner — a chat that was never
+synced included — and a sign-out takes the account's chats, memory, feed, goals,
+routines and face off the phone unless *Keep this account's chats on this
+device* is turned on; deleting the account removes all of it; a key the relay
+refuses keeps it aside for the account's return. The table of every piece of
+state is [sync.md](sync.md). On the desktop and the web console
+the 0.1.39 rule above still holds, and the memory files are per device.
 Code: the runtime's `nanomuse/sync/engine.py` and the session list in
 `nanomuse/server/api.py`, the desktop's `harness/dsh-nanomuse/src/{sync,cloud}.ts`,
 Android's `io.github.nanomuse.sync.*`, the iPhone's `NanoMuse/NanoMuseSync.swift`.

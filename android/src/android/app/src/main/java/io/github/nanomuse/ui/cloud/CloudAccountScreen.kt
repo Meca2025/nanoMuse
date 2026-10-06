@@ -50,6 +50,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -120,6 +121,8 @@ fun CloudAccountScreen(
     var passwordDialog by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var changeServer by remember { mutableStateOf(false) }
+    // the sign-out sheet's question, off every time it opens (contract C12)
+    var keep by remember(confirm, changeServer) { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -182,6 +185,15 @@ fun CloudAccountScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp),
                         )
+                        if (NanoMuseCloud.signInEnded(context)) {
+                            // the relay refused the key; the account's data waits for its return (contract C12)
+                            Text(
+                                stringResource(R.string.nm_cloud_sign_in_ended),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
                     }
                     MuseRowDivider(inset = 16.dp)
                     MuseRow(title = stringResource(R.string.nm_cloud_sign_in), onClick = onSignIn, titleColor = MuseTones.action)
@@ -689,15 +701,19 @@ fun CloudAccountScreen(
                 )
             },
             text = {
-                Text(
-                    stringResource(
-                        when (which) {
-                            Confirm.SIGN_OUT -> R.string.nm_cloud_sign_out_confirm
-                            Confirm.SIGN_OUT_ALL -> R.string.nm_cloud_sign_out_everywhere_confirm
-                            Confirm.DELETE -> R.string.nm_cloud_delete_account_confirm
-                        },
-                    ),
-                )
+                Column {
+                    Text(
+                        stringResource(
+                            when (which) {
+                                Confirm.SIGN_OUT -> R.string.nm_cloud_sign_out_confirm
+                                Confirm.SIGN_OUT_ALL -> R.string.nm_cloud_sign_out_everywhere_confirm
+                                Confirm.DELETE -> R.string.nm_cloud_delete_account_confirm
+                            },
+                        ),
+                    )
+                    // contract C12: a sign-out takes the account's data off the phone unless asked not to
+                    if (which != Confirm.DELETE) KeepChatsRow(keep) { keep = it }
+                }
             },
             confirmButton = {
                 TextButton(
@@ -707,8 +723,8 @@ fun CloudAccountScreen(
                         scope.launch {
                             try {
                                 when (which) {
-                                    Confirm.SIGN_OUT -> { NanoMuseCloud.signOut(context); leave() }
-                                    Confirm.SIGN_OUT_ALL -> { NanoMuseCloud.signOutEverywhere(context, includingThis = true); leave() }
+                                    Confirm.SIGN_OUT -> { NanoMuseCloud.signOut(context, keep); leave() }
+                                    Confirm.SIGN_OUT_ALL -> { NanoMuseCloud.signOutEverywhere(context, includingThis = true, keep = keep); leave() }
                                     Confirm.DELETE -> { NanoMuseCloud.deleteAccount(context); leave() }
                                 }
                             } catch (e: Exception) {
@@ -736,7 +752,12 @@ fun CloudAccountScreen(
         AlertDialog(
             onDismissRequest = { changeServer = false },
             title = { Text(stringResource(R.string.nm_cloud_server_change)) },
-            text = { Text(stringResource(R.string.nm_cloud_server_change_confirm)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.nm_cloud_server_change_confirm))
+                    KeepChatsRow(keep) { keep = it } // a sign-out like any other (C12)
+                }
+            },
             confirmButton = {
                 TextButton(
                     enabled = !busy,
@@ -744,7 +765,7 @@ fun CloudAccountScreen(
                         busy = true
                         scope.launch {
                             try {
-                                NanoMuseCloud.signOut(context)
+                                NanoMuseCloud.signOut(context, keep)
                                 leave()
                                 changeServer = false
                                 onSignIn()
@@ -778,6 +799,30 @@ fun CloudAccountScreen(
 }
 
 private enum class Confirm { SIGN_OUT, SIGN_OUT_ALL, DELETE }
+
+/**
+ * *Keep this account's chats on this device* — the one question a sign-out asks (contract C12).
+ * Off by default: the account's chats, memory, feed, goals and face leave the phone with it.
+ */
+@Composable
+private fun KeepChatsRow(keep: Boolean, onChange: (Boolean) -> Unit) {
+    Spacer(Modifier.height(16.dp))
+    Row(
+        Modifier.fillMaxWidth().clickable { onChange(!keep) },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.nm_cloud_keep_chats), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                stringResource(R.string.nm_cloud_keep_chats_sub),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = keep, onCheckedChange = onChange)
+    }
+}
 
 /** Set, change or remove the password; the relay decides whether the current one is needed. */
 @Composable

@@ -653,7 +653,7 @@
     <string name="nm_cloud_open_provider">服務商設定</string>
     <string name="nm_cloud_sign_out">登出</string>
     <string name="nm_cloud_sign_out_sub">作廢這台手機的 key 並移除這個服務商；額度跟著帳號，下次登入還在。</string>
-    <string name="nm_cloud_sign_out_confirm">會從這台手機上移除 nanoMuse 雲這個服務商和它的模型。聊天記錄會保留。</string>
+    <string name="nm_cloud_sign_out_confirm">會從這台手機上移除 nanoMuse 雲這個服務商和它的模型。</string>
     <string name="nm_cloud_row_remaining">剩餘 %1$s</string>
     <string name="nm_cloud_row_sign_in">登入</string>
     <string name="nm_cloud_err_bad_identifier">這看起來不是信箱地址。</string>
@@ -664,6 +664,7 @@
     <string name="nm_cloud_err_send_failed">驗證碼沒發出去，請稍後再試。</string>
     <string name="nm_cloud_err_disabled">這個帳號已停用。</string>
     <string name="nm_cloud_err_bad_key">伺服器已不認識這台手機，請重新登入。</string>
+    <string name="nm_cloud_err_account_deleted">這個帳號已刪除。重新登入會建立一個新帳號。</string>
     <string name="nm_cloud_err_out_of_tokens">額度用完了。</string>
     <string name="nm_cloud_err_daily_cap">今天的 token 配額用完了，明天恢復。</string>
     <string name="nm_cloud_err_allowance">免費額度已用完。邀請一位新用戶（你和對方各 +¥%1$s），或在 設定 → 服務商 裡新增自己的 key，推薦阿里雲百煉。</string>
@@ -805,7 +806,10 @@
     <string name="nm_cloud_sign_out_everywhere">所有裝置登出</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">所有登入了這個帳號的裝置都會失效，包括這台手機。帳號本身保留，隨時可以再登入。</string>
     <string name="nm_cloud_delete_account">刪除帳號</string>
-    <string name="nm_cloud_delete_account_confirm">帳號、登入記錄、用量和動態都會從伺服器刪除，無法復原。手機上的聊天記錄會保留。</string>
+    <string name="nm_cloud_delete_account_confirm">帳號、登入記錄、用量和動態都會從伺服器刪除，這個帳號在這台手機上的聊天、記憶、動態、目標和頭像也會一併清除。無法復原。</string>
+    <string name="nm_cloud_keep_chats">把這個帳號的聊天留在這台裝置上</string>
+    <string name="nm_cloud_keep_chats_sub">關閉時：這個帳號的聊天、記憶、動態、目標和頭像會從這台手機上清除。開著同步的話，伺服器上仍有聊天記錄，下次登入會取回。</string>
+    <string name="nm_cloud_sign_in_ended">這台手機上的登入已結束——重新登入即可繼續；在那之前，你的聊天會留在這台裝置上。</string>
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">程式助手</string>
     <string name="nm_coding_intro">你電腦上的 Cursor、Codex、Claude Code：在這裡看它們的會話和最近的回覆，直接給任何一個發訊息。它們的內容不會複製到手機上。</string>

@@ -450,7 +450,7 @@ struct NanoMuseLibraryRoom: View {
     private func refresh() {
         loading = true
         Task {
-            let sessions = await ChatStore.shared.listSessions()
+            let sessions = NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()) // C12: this account's chats only
             var titles: [String: String] = [:]
             for s in sessions { titles[s.id] = s.title ?? "" }
             let found = await Task.detached(priority: .utility) { NanoMuseLibraryIndex.scan(titles: titles) }.value

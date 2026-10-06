@@ -7,6 +7,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.openminis.app.BuildConfig
 import com.openminis.app.MinisApp
 import com.openminis.app.logging.AppLogger
+import io.github.nanomuse.account.AccountData
 import io.github.nanomuse.cloud.NanoMuseCloud
 import io.github.nanomuse.hub.Hub
 import kotlinx.coroutines.CoroutineScope
@@ -91,11 +92,12 @@ object ConversationSync {
 
     private val _hidden = MutableStateFlow<Set<String>>(emptySet())
     /**
-     * Local chat ids synced under an account other than the signed-in one (contract C10): on the
-     * phone, kept, but not in the list, not pushed, not the home. Empty while signed out — the
-     * device is the person's, everything on it shows — and the moment the account signs back in.
-     * `ChatRepository.observeSessions()` leaves these out, so the drawer, the search and the
-     * "working" line follow.
+     * Local chat ids that are not the signed-in account's: synced under another account
+     * (contract C10) or owned by another account or by nobody (contract C12,
+     * [io.github.nanomuse.account.AccountData]) — on the phone, kept, but not in the list, not
+     * pushed, not the home. Signed out, the chats made while signed out show and every
+     * account's are hidden. `ChatRepository.observeSessions()` leaves these out, so the drawer,
+     * the search and the "working" line follow.
      */
     val hidden: StateFlow<Set<String>> = _hidden.asStateFlow()
 
@@ -132,7 +134,7 @@ object ConversationSync {
                 runCatching {
                     val store = RoomSyncStore(ctx)
                     val account = accountKey(ctx)
-                    _hidden.value = SyncEngine.hidden(store, account)
+                    _hidden.value = SyncEngine.hidden(store, account) + AccountData.reconcile(ctx)
                     _captions.value = SyncEngine.captions(store, Hub.deviceId(ctx), account)
                     _remoteRows.value = SyncEngine.remoteRows(store, Hub.deviceId(ctx), account)
                 }
@@ -142,11 +144,26 @@ object ConversationSync {
 
     /**
      * The account the ids are scoped to: the relay's id for it (`/v1/me` → `account.id`), or the
-     * key itself on a relay that gives none; null while signed out.
+     * key itself on a relay that gives none ([AccountData.key]); null while signed out.
      */
-    private fun accountKey(ctx: Context): String? {
-        val token = NanoMuseCloud.apiKey(ctx) ?: return null
-        return NanoMuseCloud.account(ctx)?.accountId?.takeIf { it.isNotBlank() } ?: token.hashCode().toString()
+    private fun accountKey(ctx: Context): String? = AccountData.key(ctx).takeIf { it.isNotEmpty() }
+
+    /**
+     * Runs [block] while no push or pull can: the place to take an account's chats out of the
+     * database (contract C12), so the engine never reads the gap as a deletion.
+     */
+    suspend fun <T> exclusive(block: suspend () -> T): T {
+        pushJob?.cancel()
+        return lock.withLock { block() }
+    }
+
+    /** Every chat has an owner and the hidden set is current (C12); after a sign-in, a sign-out, a restore. */
+    suspend fun reconcileOwners(context: Context) {
+        val ctx = context.applicationContext
+        runCatching {
+            val store = RoomSyncStore(ctx)
+            _hidden.value = SyncEngine.hidden(store, accountKey(ctx)) + AccountData.reconcile(ctx)
+        }.onFailure { AppLogger.warning(TAG, "owners: ${it.message}") }
     }
 
     /** The signed-in account is not the one the last sync ran for (C10): nothing of the old one is shown as the new one's. */
@@ -297,7 +314,7 @@ object ConversationSync {
                 // C10: the list is this account's from the first frame — another account's chats
                 // go out of sight before anything is pulled, and the home follows
                 it.accountSignedIn()
-                _hidden.value = it.hidden()
+                _hidden.value = it.hidden() + AccountData.reconcile(ctx)
                 val state = runCatching { it.state() }.getOrNull()
                 if (state != null) setLocalEnabled(ctx, state.enabled)
                 if (_enabled.value) {
@@ -310,9 +327,11 @@ object ConversationSync {
     }
 
     /**
-     * Signed out: the switch on, side chats off, nothing shown as anyone's. The ids, the cursor
-     * and whose chat is whose stay (C10): the same account signing in again goes on where it
-     * was, another one starts its own cursor and sees only its own and the unsynced.
+     * Signed out: the switch on, side chats off, nothing shown as anyone's. The ids and the
+     * cursor stay for an account that was kept (C10, C12): the same account signing in again
+     * goes on where it was, another one starts its own cursor and sees only its own. The
+     * hidden set becomes the signed-out one — every account's chats out of sight, the phone's
+     * own in.
      */
     fun forget(context: Context) {
         val ctx = context.applicationContext
@@ -324,8 +343,8 @@ object ConversationSync {
         _captions.value = emptyMap()
         _remoteRows.value = emptyMap()
         _working.value = emptyMap()
-        _hidden.value = emptySet()
         workingSent.clear()
+        scope.launch { lock.withLock { reconcileOwners(ctx) } }
     }
 
     private fun startTicker(ctx: Context) {
@@ -434,7 +453,7 @@ object ConversationSync {
                 AppLogger.warning(TAG, "sync: ${x.message}")
             }
             runCatching {
-                _hidden.value = e.hidden()
+                _hidden.value = e.hidden() + AccountData.reconcile(ctx)
                 _captions.value = e.captions()
                 _remoteRows.value = e.remoteRows()
             }

@@ -37,6 +37,7 @@ class ChatRepository(internal val dao: ChatDao) {
             memoryEnabled = if (memoryEnabled) 1 else 0,
         )
         dao.insertSession(session)
+        io.github.nanomuse.account.AccountData.claim(session.id) // nanoMuse: the chat belongs to whoever is signed in now (contract C12)
         return session
     }
 

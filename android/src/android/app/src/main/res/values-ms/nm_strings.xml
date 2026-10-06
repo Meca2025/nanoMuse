@@ -675,7 +675,7 @@
     <string name="nm_cloud_open_provider">Tetapan penyedia</string>
     <string name="nm_cloud_sign_out">Log keluar</string>
     <string name="nm_cloud_sign_out_sub">Kunci telefon ini dibatalkan dan penyedia Cloud dibuang; peruntukan kekal dengan akaun anda.</string>
-    <string name="nm_cloud_sign_out_confirm">Penyedia nanoMuse Cloud dan modelnya akan dibuang dari telefon ini. Sembang kekal.</string>
+    <string name="nm_cloud_sign_out_confirm">Penyedia nanoMuse Cloud dan modelnya akan dibuang dari telefon ini.</string>
     <string name="nm_cloud_row_remaining">%1$s berbaki</string>
     <string name="nm_cloud_row_sign_in">Log masuk</string>
     <string name="nm_cloud_err_bad_identifier">Itu tidak kelihatan seperti alamat e-mel.</string>
@@ -686,6 +686,7 @@
     <string name="nm_cloud_err_send_failed">Kod tidak dapat dihantar. Cuba lagi sebentar nanti.</string>
     <string name="nm_cloud_err_disabled">Akaun ini telah dinyahaktifkan.</string>
     <string name="nm_cloud_err_bad_key">Relay tidak lagi mengenali telefon ini. Log masuk semula.</string>
+    <string name="nm_cloud_err_account_deleted">Akaun ini telah dipadam. Log masuk semula untuk memulakan yang baharu.</string>
     <string name="nm_cloud_err_out_of_tokens">Peruntukan sudah habis.</string>
     <string name="nm_cloud_err_daily_cap">Kuota token hari ini sudah habis; ia kembali esok.</string>
     <string name="nm_cloud_err_allowance">Peruntukan percuma sudah habis. Jemput rakan (+¥%1$s untuk setiap seorang daripada anda) atau tambah kunci anda sendiri di bawah Tetapan → Penyedia — Alibaba Cloud Bailian yang paling cepat.</string>
@@ -828,7 +829,10 @@
     <string name="nm_cloud_sign_out_everywhere">Log keluar di semua tempat</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Setiap peranti yang log masuk ke akaun ini kehilangan kuncinya, termasuk telefon ini. Akaun kekal; log masuk semula bila-bila masa.</string>
     <string name="nm_cloud_delete_account">Padam akaun</string>
-    <string name="nm_cloud_delete_account_confirm">Akaun, log masuknya, penggunaan dan sejarahnya dipadam di relay. Ini tidak boleh dibuat asal. Sembang di telefon ini kekal.</string>
+    <string name="nm_cloud_delete_account_confirm">Akaun, log masuknya, penggunaan dan sejarahnya dipadam di relay, dan sembang, ingatan, suapan, matlamat dan wajah akaun ini dibuang dari telefon ini. Ini tidak boleh dibuat asal.</string>
+    <string name="nm_cloud_keep_chats">Simpan sembang akaun ini pada peranti ini</string>
+    <string name="nm_cloud_keep_chats_sub">Mati: sembang, ingatan, suapan, matlamat dan wajah akaun ini dibuang dari telefon ini. Jika penyegerakan dihidupkan, relay masih menyimpan sembang untuk log masuk seterusnya.</string>
+    <string name="nm_cloud_sign_in_ended">Log masuk anda pada telefon ini telah tamat — log masuk semula untuk meneruskan; sehingga itu sembang anda kekal pada peranti ini.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Ejen pengekodan</string>

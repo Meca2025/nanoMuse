@@ -675,7 +675,7 @@
     <string name="nm_cloud_open_provider">Pengaturan penyedia</string>
     <string name="nm_cloud_sign_out">Keluar</string>
     <string name="nm_cloud_sign_out_sub">Kunci ponsel ini dicabut dan penyedia Cloud dihapus; kuota tetap di akunmu.</string>
-    <string name="nm_cloud_sign_out_confirm">Penyedia nanoMuse Cloud dan modelnya akan dihapus dari ponsel ini. Obrolan tetap ada.</string>
+    <string name="nm_cloud_sign_out_confirm">Penyedia nanoMuse Cloud dan modelnya akan dihapus dari ponsel ini.</string>
     <string name="nm_cloud_row_remaining">%1$s tersisa</string>
     <string name="nm_cloud_row_sign_in">Masuk</string>
     <string name="nm_cloud_err_bad_identifier">Itu tidak tampak seperti alamat e-mail.</string>
@@ -686,6 +686,7 @@
     <string name="nm_cloud_err_send_failed">Kode tidak bisa dikirim. Coba lagi sebentar lagi.</string>
     <string name="nm_cloud_err_disabled">Akun ini telah dinonaktifkan.</string>
     <string name="nm_cloud_err_bad_key">Relay tidak lagi mengenali ponsel ini. Masuk lagi.</string>
+    <string name="nm_cloud_err_account_deleted">Akun ini telah dihapus. Masuk lagi untuk memulai akun baru.</string>
     <string name="nm_cloud_err_out_of_tokens">Kuota sudah habis.</string>
     <string name="nm_cloud_err_daily_cap">Jatah token hari ini sudah habis; kembali lagi besok.</string>
     <string name="nm_cloud_err_allowance">Kuota gratis sudah habis. Undang teman (+¥%1$s untuk kalian masing-masing) atau tambahkan kuncimu sendiri di Pengaturan → Penyedia — Alibaba Cloud Bailian yang paling cepat.</string>
@@ -828,7 +829,10 @@
     <string name="nm_cloud_sign_out_everywhere">Keluar di semua perangkat</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Setiap perangkat yang masuk ke akun ini kehilangan kuncinya, termasuk ponsel ini. Akun tetap ada; masuk lagi kapan saja.</string>
     <string name="nm_cloud_delete_account">Hapus akun</string>
-    <string name="nm_cloud_delete_account_confirm">Akun, riwayat masuk, pemakaian dan riwayatnya dihapus di relay. Ini tidak bisa dibatalkan. Obrolan di ponsel ini tetap ada.</string>
+    <string name="nm_cloud_delete_account_confirm">Akun, riwayat masuk, pemakaian dan riwayatnya dihapus di relay, dan obrolan, memori, feed, tujuan dan wajah akun ini dihapus dari ponsel ini. Ini tidak bisa dibatalkan.</string>
+    <string name="nm_cloud_keep_chats">Simpan obrolan akun ini di perangkat ini</string>
+    <string name="nm_cloud_keep_chats_sub">Mati: obrolan, memori, feed, tujuan dan wajah akun ini dihapus dari ponsel ini. Jika sinkronisasi aktif, relay masih menyimpan obrolan untuk masuk berikutnya.</string>
+    <string name="nm_cloud_sign_in_ended">Sesi masuk di ponsel ini telah berakhir — masuk lagi untuk melanjutkan; sampai saat itu obrolanmu tetap ada di perangkat ini.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agen coding</string>

@@ -178,6 +178,20 @@ fun NanoMuseHome(
     val providerConfig by providerRepository.config.collectAsState()
     val configLoaded by providerRepository.configLoaded.collectAsState()
     val sessions by chatRepository.observeSessions().collectAsState(initial = null)
+    // contract C12: the account left and took the open chat with it (or the chat was deleted
+    // under the home) — the home shows this account's main chat, resolved afresh if need be
+    LaunchedEffect(sessions, mainSessionId) {
+        val shown = chatSessionId ?: return@LaunchedEffect
+        val list = sessions ?: return@LaunchedEffect
+        if (MainChat.isDraftId(shown) || list.any { it.id == shown }) return@LaunchedEffect
+        val main = mainSessionId
+        chatSessionId = if (main != null && main != shown && (MainChat.isDraftId(main) || list.any { it.id == main })) {
+            main
+        } else {
+            MainChat.reset()
+            MainChat.resolve(context, chatRepository)
+        }
+    }
     var setupDone by remember { mutableStateOf(FirstRunSetup.isDone(context)) }
     val hasProviders = providerConfig.instances.isNotEmpty()
     val hasGroups = providerConfig.modelGroups.isNotEmpty()

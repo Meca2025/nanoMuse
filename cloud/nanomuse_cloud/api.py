@@ -545,6 +545,11 @@ def create_app(
         hub = getattr(app.state, "hub", None)
         if hub is not None:
             await hub.drop_account(caller.account_id)
+        # the live "working" notes of the account go with it — they are memory, not rows,
+        # and `delete_account` below cannot reach them
+        sync = getattr(app.state, "sync", None)
+        if sync is not None:
+            sync.presence.forget(caller.account_id)
         cloud.delete_account(caller)
         return Response(status_code=204)
 

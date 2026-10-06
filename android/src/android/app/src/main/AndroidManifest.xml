@@ -171,9 +171,13 @@
          uses for its list<->detail back transition. Required on Android 13-15;
          16+ enables it by default, so this is the compatibility switch rather
          than a new behaviour. -->
+    <!-- nanoMuse: allowBackup="false" — chats, memory and the account's data stay on this phone and
+         never go to Google's device backup; a reinstall starts empty and the account's chats come
+         back through sync at sign-in (docs/sync.md). The two rule files below are kept for the day
+         the switch is turned on again. -->
     <application
         android:name=".MinisApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:fullBackupContent="@xml/nanomuse_backup_rules"
         android:dataExtractionRules="@xml/nanomuse_data_extraction_rules"
         android:largeHeap="true"

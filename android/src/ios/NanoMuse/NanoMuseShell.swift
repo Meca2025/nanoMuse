@@ -126,6 +126,7 @@ struct NanoMuseRoot: View {
         }
         .onAppear {
             NanoMuseProfileSync.shared.start()
+            NanoMuseAccountData.shared.start() // C12: whose chat is whose; the reinstall sweep
             NanoMuseSync.shared.start() // C7: conversations between the account's devices
             NanoMuseStarWatch.shared.start()
             NanoMuseStar.shared.dayOpened()
@@ -137,7 +138,7 @@ struct NanoMuseRoot: View {
             NanoMuseUpdateCheck.shared.checkIfStale()
         }
         .task {
-            hasSessions = !(await ChatStore.shared.listSessions()).isEmpty
+            hasSessions = !NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()).isEmpty // C12: another account's chats do not count
             // The feed's daily routine exists from the start, as on Android (a no-op without a model).
             if !needsSetup { await NanoMuseFeedFlow.ensureRoutine() }
         }

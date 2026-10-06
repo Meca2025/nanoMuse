@@ -678,7 +678,7 @@
     <string name="nm_cloud_open_provider">Anbieter-Einstellungen</string>
     <string name="nm_cloud_sign_out">Abmelden</string>
     <string name="nm_cloud_sign_out_sub">Der Schlüssel dieses Telefons wird widerrufen und der Cloud-Anbieter entfernt; das Guthaben bleibt bei deinem Konto.</string>
-    <string name="nm_cloud_sign_out_confirm">Der Anbieter nanoMuse Cloud und seine Modelle werden von diesem Telefon entfernt. Chats bleiben.</string>
+    <string name="nm_cloud_sign_out_confirm">Der Anbieter nanoMuse Cloud und seine Modelle werden von diesem Telefon entfernt.</string>
     <string name="nm_cloud_row_remaining">%1$s übrig</string>
     <string name="nm_cloud_row_sign_in">Anmelden</string>
     <string name="nm_cloud_err_bad_identifier">Das sieht nicht nach einer E-Mail-Adresse aus.</string>
@@ -689,6 +689,7 @@
     <string name="nm_cloud_err_send_failed">Der Code konnte nicht gesendet werden. Versuche es gleich noch einmal.</string>
     <string name="nm_cloud_err_disabled">Dieses Konto wurde deaktiviert.</string>
     <string name="nm_cloud_err_bad_key">Das Relay erkennt dieses Telefon nicht mehr. Melde dich erneut an.</string>
+    <string name="nm_cloud_err_account_deleted">Dieses Konto wurde gelöscht. Melde dich erneut an, um ein neues zu beginnen.</string>
     <string name="nm_cloud_err_out_of_tokens">Das Guthaben ist aufgebraucht.</string>
     <string name="nm_cloud_err_daily_cap">Das Token-Kontingent für heute ist aufgebraucht; morgen gibt es wieder welches.</string>
     <string name="nm_cloud_err_allowance">Das kostenlose Guthaben ist aufgebraucht. Lade jemanden ein (+¥%1$s für euch beide) oder füge unter Einstellungen → Anbieter deinen eigenen Schlüssel hinzu — Alibaba Cloud Bailian geht am schnellsten.</string>
@@ -831,7 +832,10 @@
     <string name="nm_cloud_sign_out_everywhere">Überall abmelden</string>
     <string name="nm_cloud_sign_out_everywhere_confirm">Jedes bei diesem Konto angemeldete Gerät verliert seinen Schlüssel, dieses Telefon eingeschlossen. Das Konto bleibt; melde dich jederzeit wieder an.</string>
     <string name="nm_cloud_delete_account">Konto löschen</string>
-    <string name="nm_cloud_delete_account_confirm">Das Konto, seine Anmeldungen, Nutzung und Historie werden beim Relay gelöscht. Das lässt sich nicht rückgängig machen. Chats auf diesem Telefon bleiben.</string>
+    <string name="nm_cloud_delete_account_confirm">Das Konto, seine Anmeldungen, Nutzung und Historie werden beim Relay gelöscht, und die Chats, das Gedächtnis, der Feed, die Ziele und das Gesicht dieses Kontos werden von diesem Telefon entfernt. Das lässt sich nicht rückgängig machen.</string>
+    <string name="nm_cloud_keep_chats">Die Chats dieses Kontos auf diesem Gerät behalten</string>
+    <string name="nm_cloud_keep_chats_sub">Aus: Chats, Gedächtnis, Feed, Ziele und Gesicht dieses Kontos werden von diesem Telefon entfernt. Ist die Synchronisierung an, hat das Relay die Chats noch für die nächste Anmeldung.</string>
+    <string name="nm_cloud_sign_in_ended">Die Anmeldung auf diesem Telefon wurde beendet — melde dich erneut an, um weiterzumachen; bis dahin bleiben deine Chats auf diesem Gerät.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Coding-Agenten</string>

@@ -68,6 +68,17 @@ object MainChat {
         _sessionId.value = d
     }
 
+    /**
+     * The account changed (contract C12): whatever was resolved is forgotten and the next
+     * [resolve] starts from the preferences as they are now — the returning account's own main
+     * chat if it was kept, else the newest of its chats, else a draft.
+     */
+    fun reset() {
+        draft = null
+        promotedDraft = null
+        _sessionId.value = null
+    }
+
     /** Called by ChatViewModel.ensureSession when a draft gets its database row. */
     fun onPromoted(context: Context, draftId: String, realId: String) {
         if (draftId != draft && draftId != _sessionId.value) return
