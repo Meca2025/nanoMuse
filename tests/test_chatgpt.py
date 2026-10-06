@@ -21,11 +21,16 @@ from typer.testing import CliRunner
 
 from nanomuse.config import LLMSettings
 from nanomuse.llm.chatgpt import (
+    REGION_CODE,
     Auth,
     ChatGPTError,
+    Limits,
     Token,
     TokenStore,
     account_from,
+    classify_http,
+    classify_transport,
+    failure_line,
     plan_label,
 )
 from nanomuse.llm.codex import CodexClient, CodexLLM, StreamState, sse_events, to_codex
@@ -378,9 +383,213 @@ async def test_a_second_401_is_an_error_and_keeps_the_store(tmp_path: Path):
             Auth(store, http=http, token_url=TOKEN_URL), http=http, url=RESPONSES_URL
         )
         llm = CodexLLM(LLMSettings(provider="chatgpt"), client=client)
-        with pytest.raises(RuntimeError, match="ChatGPT: still no"):
+        with pytest.raises(RuntimeError, match="ChatGPT: The ChatGPT sign-in is no longer valid"):
             await llm.ask([Message.user("hi")])
     assert store.load() is not None
+
+
+# ----------------------------------------------------------------------------- failures
+def test_the_failures_are_classified_into_plain_sentences():
+    # OpenAI refuses the region: the code in the body
+    err = classify_http(403, json.dumps({"error": {"code": REGION_CODE, "message": "no"}}))
+    assert err.code == "region_blocked" and "region" in err.message and err.status == 403
+    # an HTML page where JSON was due (an interception page) is "unreachable", not a 403 to read
+    assert classify_http(403, "<!DOCTYPE html><html>blocked</html>").code == "region_blocked"
+    assert classify_http(503, "<html><body>captive portal</body></html>").code == "unreachable"
+    # the plan has nothing left: OpenAI's own words are kept after ours
+    quota = classify_http(
+        429,
+        json.dumps({"error": {"code": "usage_limit_reached", "message": "Resets in 3 hours."}}),
+        {"retry-after": "7200"},
+    )
+    assert quota.code == "quota" and quota.retry_after == 7200
+    assert quota.message.startswith("The ChatGPT plan has nothing left")
+    assert "Resets in 3 hours." in quota.message
+    # a burst limit is not a spent plan
+    burst = classify_http(429, json.dumps({"error": {"type": "rate_limit_exceeded"}}))
+    assert burst.code == "rate_limited" and burst.retry_after is None
+    assert classify_http(401, "").code == "not_signed_in"
+    other = classify_http(500, json.dumps({"error": {"message": "server fell over"}}))
+    assert other.code == "upstream" and other.message == "server fell over" and other.status == 500
+    assert classify_http(502, "").message == "the Codex endpoint answered HTTP 502"
+    # the transport: no answer at all → one sentence that names the host, never the socket text
+    unreachable = classify_transport(httpx.ConnectError("[Errno 111] Connection refused"))
+    assert (
+        unreachable.code == "unreachable" and "chatgpt.com cannot be reached" in unreachable.message
+    )
+    assert "Errno" not in unreachable.message
+    assert classify_transport(httpx.ReadTimeout("slow")).message.endswith("(timed out)")
+    assert failure_line("unreachable", chinese=True).startswith("这个网络连不上")
+    assert failure_line("nothing") == ""
+    assert unreachable.public() == {"code": "unreachable", "message": unreachable.message}
+    assert quota.public()["retry_after"] == 7200 and quota.public()["status"] == 429
+
+
+def test_the_plan_usage_windows_from_headers_and_from_the_usage_endpoint():
+    assert Limits.from_headers({"content-type": "text/event-stream"}) is None
+    limits = Limits.from_headers(
+        {
+            "x-codex-primary-used-percent": "40",
+            "x-codex-primary-window-minutes": "300",
+            "x-codex-primary-reset-after-seconds": "3600",
+            "x-codex-secondary-used-percent": "12.5",
+            "x-codex-secondary-window-minutes": "10080",
+            "x-codex-secondary-reset-after-seconds": "90000",
+        }
+    )
+    assert limits is not None and limits.primary is not None and limits.secondary is not None
+    assert limits.primary.used_percent == 40 and limits.primary.window_minutes == 300
+    assert limits.secondary.used_percent == 12 and limits.left_percent == 60
+    usage = Limits.from_usage(
+        {
+            "plan_type": "Plus",
+            "rate_limit": {
+                "limit_reached": False,
+                "primary_window": {
+                    "used_percent": 90,
+                    "limit_window_seconds": 18000,
+                    "reset_after_seconds": 1200,
+                },
+            },
+        }
+    )
+    assert usage.plan == "plus" and usage.primary is not None and usage.secondary is None
+    assert usage.primary.window_minutes == 300 and usage.left_percent == 10
+    assert usage.public()["primary"]["resets_in_s"] == 1200
+    assert Limits.from_usage("nonsense").empty and Limits().left_percent is None
+
+
+@pytest.mark.asyncio
+async def test_an_unreachable_host_is_one_sentence_and_the_headers_carry_the_windows(
+    tmp_path: Path,
+):
+    store = TokenStore.in_dir(tmp_path)
+    store.save(token())
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise httpx.ConnectError(
+                "failed to connect to chatgpt.com/203.0.113.5 (port 443) after 30000ms"
+            )
+        return httpx.Response(
+            200,
+            headers={
+                "content-type": "text/event-stream",
+                "x-codex-primary-used-percent": "25",
+                "x-codex-primary-window-minutes": "300",
+                "x-codex-primary-reset-after-seconds": "600",
+            },
+            content=sse(
+                [
+                    {"type": "response.output_text.delta", "delta": "OK"},
+                    {"type": "response.completed", "response": {"usage": {}}},
+                ]
+            ),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        client = CodexClient(
+            Auth(store, http=http, token_url=TOKEN_URL), http=http, url=RESPONSES_URL
+        )
+        llm = CodexLLM(LLMSettings(provider="chatgpt"), client=client)
+        with pytest.raises(RuntimeError) as info:
+            await llm.ask([Message.user("hi")])
+        assert "chatgpt.com cannot be reached from this network" in str(info.value)
+        assert "203.0.113.5" not in str(info.value) and "port 443" not in str(info.value)
+        assert client.limits is None
+        reply = await llm.ask([Message.user("hi")])
+    assert reply.content == "OK"
+    assert client.limits is not None and client.limits.primary is not None
+    assert client.limits.primary.used_percent == 25 and client.limits.left_percent == 75
+
+
+def test_the_request_carries_the_codex_shape_and_the_proxy_setting():
+    body = to_codex({"model": "gpt-5.4", "messages": [{"role": "user", "content": "hi"}]})
+    assert body["text"] == {"verbosity": "medium"} and "prompt_cache_key" not in body
+    cached = to_codex({"messages": [], "prompt_cache_key": "conv-1"})
+    assert cached["prompt_cache_key"] == "conv-1"
+    # `[llm] proxy` reaches the client that talks to chatgpt.com, and the token refresh
+    llm = CodexLLM(
+        LLMSettings(provider="chatgpt", proxy="http://127.0.0.1:7890"),
+        data_dir=Path("/nonexistent"),
+    )
+    assert llm.client.proxy == "http://127.0.0.1:7890"
+    assert llm.client.auth.proxy == "http://127.0.0.1:7890"
+    plain = CodexLLM(LLMSettings(provider="chatgpt"), data_dir=Path("/nonexistent"))
+    assert plain.client.proxy is None
+
+
+@pytest.mark.asyncio
+async def test_the_proxy_app_reports_the_usage_and_the_failure_codes(tmp_path: Path):
+    from httpx import ASGITransport
+
+    from nanomuse.llm.chatgpt_proxy import make_app
+
+    store = TokenStore.in_dir(tmp_path)
+    store.save(token())
+    usage_url = "https://codex.test/usage"
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == usage_url:
+            assert request.headers["chatgpt-account-id"] == "acct-1"
+            return httpx.Response(
+                200,
+                json={
+                    "plan_type": "plus",
+                    "rate_limit": {
+                        "primary_window": {
+                            "used_percent": 70,
+                            "limit_window_seconds": 18000,
+                            "reset_after_seconds": 100,
+                        }
+                    },
+                },
+            )
+        return httpx.Response(
+            429,
+            json={"error": {"code": "usage_limit_reached", "message": "Try again in 2 hours."}},
+            headers={"retry-after": "7200"},
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(upstream)) as http:
+        app = make_app(
+            store,
+            "local-token",
+            http=http,
+            responses_url=RESPONSES_URL,
+            usage_url=usage_url,
+            token_url=TOKEN_URL,
+        )
+        async with httpx.AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://proxy",
+            headers={"Authorization": "Bearer local-token"},
+        ) as local:
+            usage = (await local.get("/v1/usage")).json()
+            assert usage["signed_in"] is True and usage["label"] == "ChatGPT Plus"
+            assert usage["limits"]["left_percent"] == 30 and usage["limits"]["plan"] == "plus"
+            r = await local.post(
+                "/v1/chat/completions",
+                json={"model": "gpt-5.4", "messages": [{"role": "user", "content": "hi"}]},
+            )
+            assert r.status_code == 429 and r.headers["retry-after"] == "7200"
+            err = r.json()["error"]
+            assert err["code"] == "quota" and "nothing left" in err["message"]
+            assert "Try again in 2 hours." in err["message"]
+            assert (
+                await local.get("/v1/usage", headers={"Authorization": "Bearer x"})
+            ).status_code == 401
+
+
+def test_the_cli_usage_refuses_when_signed_out(cli_home: Path):
+    from nanomuse.cli import app
+
+    out = CliRunner().invoke(app, ["chatgpt", "usage", "--json"])
+    assert out.exit_code == 1
+    assert json.loads(out.stdout.strip())["code"] == "not_signed_in"
 
 
 # ----------------------------------------------------------------------------- the CLI

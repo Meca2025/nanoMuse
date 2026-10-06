@@ -217,22 +217,19 @@ extension NanoMuseCloud {
         _ = try await call("POST", "/v1/auth/password", body: body, token: key())
     }
 
-    /// Every device's key, this phone's included; then the provider leaves the app.
-    static func signOutEverywhere() async throws {
+    /// Every device's key, this phone's included; then the provider leaves the app, and this
+    /// phone's copy of the account's data stays only with `keep` (contract C12).
+    static func signOutEverywhere(keep: Bool = false) async throws {
         _ = try await call("POST", "/v1/auth/sign-out-all", body: ["all": true], token: key())
-        await forgetLocally()
+        await forgetLocally(keep: keep)
     }
 
-    /// The account, its keys, ledger and devices — gone for good; then the provider leaves the app.
+    /// The account, its keys, ledger, devices and synced conversations — gone for good at the
+    /// relay; and everything of it on this phone — chats, memory, feed, goals, face, the key —
+    /// goes too (contract C12). The next sign-in with the same address is a new account.
     static func deleteAccount() async throws {
         _ = try await call("POST", "/v1/auth/delete", body: nil, token: key())
-        await forgetLocally()
-    }
-
-    private static func forgetLocally() async {
-        await MainActor.run { NanoMuseHub.shared.stop() }
-        if let inst = instance { ProviderConfigStore.shared.removeInstance(inst.id) }
-        clear()
+        await forgetLocally(keep: false)
     }
 }
 

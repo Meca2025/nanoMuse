@@ -101,6 +101,12 @@ ChatGPT 登录走的是 OpenAI 自家 Codex 的授权流程（网页版 / 桌面
 
 **一句老实话。** OpenAI 的条款只允许在它自家的 Codex 里使用 ChatGPT 套餐；其他应用曾被切断过这条路（OpenCode，2026 年 1 月）。哪天它不能用了，API key 仍然可以。
 
+### 服务商连不上的时候
+
+有些网络到不了 `chatgpt.com`（DNS 不解析、连接超时、TLS 失败、返回的是一张 HTML 拦截页），有些地区 OpenAI 直接拒绝（HTTP 403 `unsupported_country_region_territory`）。这时手机上的对话不再显示 socket 原文，而是一张卡片：发生了什么（「这个网络连不上 chatgpt.com」或「OpenAI 不向这个地区提供服务」）、能帮上忙的（这台手机上的 VPN；应用自己的代理，设置 → 网络；换一个服务商、用自己的 key）、一个「重试」按钮，原始错误收在「详情」里供提 issue 用。登录失效（401）显示「ChatGPT 登录已失效」和「重新登录」；套餐这几个小时的余量用完（429 且写明 usage limit）显示「ChatGPT 套餐暂时没有余量了」、OpenAI 自己的那句话和多久后恢复；其他 429 是「同时发出的请求太多」。自己的 key 遇到同样的网络问题，卡片一样出现，只是主机名换成那家服务商的。
+
+**设置 → 网络 → 自有服务商的 HTTP 代理**（Android 和 iPhone 都有）：主机、端口、可选的用户名和密码，默认关闭，只存在这台手机上。只有发往你用自己 key 添加的服务商和 ChatGPT 套餐的请求走它；nanoMuse Cloud、你的电脑和局域网从不经过它。页面上有一行「测试」，通过这个代理抓一次 `https://chatgpt.com/`，告诉你通没通、多少毫秒。桌面版和运行时的对应项是 `config.toml` 里的 `[llm] proxy`（[configuration.md](configuration.md#llm)）。
+
 ### 本机模型
 
 Ollama、LM Studio、vLLM 跑在自己电脑上的模型也能用：在「连接」里选对应的预设，地址默认是本机端口（`http://127.0.0.1:11434/v1`、`:1234`、`:8000`），不需要 key。它们算「对话」；手的模型要能看图，本机跑一个多模态模型（例如 Ollama 的 `qwen3-vl`）再在「手的模型」里手填 id 即可。画图和视频需要上面表里的一家。
@@ -232,6 +238,32 @@ address the browser ends on and give it to the CLI's prompt or to
 **One honest line.** OpenAI's terms cover using a ChatGPT plan inside OpenAI's
 own Codex; other apps have had this access cut off before (OpenCode, January
 2026). If it stops working, an API key does.
+
+### When the provider cannot be reached
+
+Some networks do not get to `chatgpt.com` at all (the name does not resolve,
+the connection times out, TLS fails, an HTML interception page comes back
+where JSON was due), and in some regions OpenAI refuses outright (HTTP 403
+`unsupported_country_region_territory`). The chat on the phone then shows a
+card, not the socket's words: what happened (*chatgpt.com cannot be reached
+from this network* or *OpenAI does not serve this region*), what helps (a VPN
+on this phone; the app's own proxy under *Settings → Network*; another
+provider with a key of your own), a *Try again* button, and the raw line
+behind *Details* for a bug report. An expired sign-in (401) reads *The ChatGPT
+sign-in is no longer valid* with *Sign in again*; a plan whose window is spent
+(a 429 that names a usage limit) reads *The ChatGPT plan has nothing left for
+now* with OpenAI's own sentence and when it resets; any other 429 is *Too many
+requests at once*. A key of your own that meets the same network trouble gets
+the same card with that provider's host in it.
+
+**Settings → Network → HTTP proxy for own providers** (Android and iPhone):
+host, port, an optional user name and password; off by default, kept on this
+phone only. Only the requests to the providers you added with your own key and
+to the ChatGPT plan go through it; nanoMuse Cloud, your computers and the local
+network never do. A *Test* row fetches `https://chatgpt.com/` through the proxy
+as entered and says whether it got through and in how many milliseconds. On
+the desktop and the runtime the same switch is `[llm] proxy` in `config.toml`
+([configuration.md](configuration.md#llm)).
 
 ### Local models
 

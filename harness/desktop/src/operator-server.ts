@@ -8,13 +8,19 @@ import { Operator, OperatorError, type OperatorAction, type ScreenshotRequest } 
  * next to NANOMUSE_OPERATOR_URL), a random port on 127.0.0.1, bodies capped at 2 MB. Three
  * routes, and nothing a browser could use by accident (no CORS, no GET with effects):
  *
- *   GET  /info        → { available, reason, platform, display: { width, height, scaleFactor, logical } }
+ *   GET  /info        → { available, reason, platform, display: { width, height, scaleFactor, logical }, helper? }
+ *                     helper (macOS): { present, running, pid?, version?, capture?, reason } — "nanoMuse Computer Use"
  *   POST /screenshot  { width?, height?, format?: "png"|"jpeg", quality?, max_pixels? }
  *                     → { base64, mime, width, height, screen: { width, height }, scaleFactor, display: { id, bounds } }
  *                     width×height is the picture asked for; without them the screen's size, capped at
  *                     max_pixels (default 2 Mpx, 0 = uncapped) with the aspect kept
  *   POST /execute     { action, x?, y?, x2?, y2?, dy?, text?, submit?, clear?, keys?, seconds? }
  *                     → { ok: true, note } — coordinates in the operator's screen pixels
+ *   GET  /windows     → { windows: [{ id, pid, app, bundle_id, title, bounds: [x, y, w, h], layer, on_screen }] }
+ *                     macOS with the helper only: the windows on screen for the runtime's window mode (503 elsewhere)
+ *   POST /window      { id, max_pixels?, format?, quality? }
+ *                     → { base64, mime, width, height, window: { id, x, y, width, height }, scale }
+ *                     one window's own pixels and its frame in points; 404 when the window is gone
  *
  * Errors are 4xx/5xx with { error }. The contract is mirrored in nanomuse/computer/operator.py.
  */
@@ -82,6 +88,12 @@ export function startOperatorServer(operator: Operator, log: (line: string) => v
       const availability = operator.availability();
       if (!availability.available) throw new OperatorError(availability.reason, 503);
       return send(res, 200, await operator.execute(body as unknown as OperatorAction));
+    }
+    if (req.method === "GET" && path === "/windows") return send(res, 200, { windows: await operator.windows() });
+    if (req.method === "POST" && path === "/window") {
+      const body = await readJson(req);
+      if (typeof body.id !== "number") throw new OperatorError("`id` is required (a window id from /windows)");
+      return send(res, 200, await operator.windowShot(body as { id: number; max_pixels?: number; format?: "png" | "jpeg"; quality?: number }));
     }
     send(res, 404, { error: `no route ${req.method ?? ""} ${path}` });
   };

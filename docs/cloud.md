@@ -39,6 +39,28 @@ The allowance belongs to the address: signing in again, on
 this phone or another, gives a new key for the same account and does not grant
 a second allowance.
 
+**What a sign-out leaves on the phone** (0.1.40, contract C12). A sign-out —
+on this device, everywhere, or to use a different server — asks one question,
+*Keep this account's chats on this device*, off by default. Off, the account's
+chats, memory, feed, goals, routines and face are removed from the phone (with
+sync on, the relay still has the chats for the next sign-in); on, they are put
+aside and come back when the account signs in again. Signing in as another
+account goes through the same sign-out. *Delete the account* removes the account
+at the relay and everything of it on the phone, no question asked; the next
+sign-in with the same address is a new account that starts empty. A key the
+relay refuses — `401 bad_key`: *Sign out everywhere* from another device, a
+relay reset, a relay bug — is a sign-out nobody on the phone could answer, so
+the phone keeps the account's data aside as *Keep* would, removes the key, and
+the sign-in page says *Your sign-in on this phone was ended — sign in again to
+continue; your chats are kept on this device until then*; the next sign-in as
+the same account restores it, another account sees nothing of it. Only
+`401 account_deleted` — the relay's answer, from 0.1.40, to a key whose account
+was deleted — lets the phone remove the data, since there is nothing to come
+back to. Every piece of state, where it lives and what happens to it on each
+event is the table in [sync.md](sync.md). The one addition to the wire is that
+error code; an older relay answers `bad_key` for both and the phone keeps the
+data.
+
 Signing in a second provider next to it — your own Model Studio key, DeepSeek,
 a local server — works as always; the relay's models can be mixed with yours
 in a model group.
@@ -83,7 +105,11 @@ Images and tool results are never stored, and message content only as the
 is forwarded to the upstream model (Alibaba Cloud Model Studio) and the reply
 is streamed back. Every response carries an `X-Nanomuse-Request` id so a problem report
 can be matched to a ledger row without any content being logged. Deleting the
-account (`POST /v1/auth/delete` with the account's key) removes all of it. See
+account (`POST /v1/auth/delete` with the account's key) removes all of it — the
+account, keys, devices, profile, ledger, events, kept conversations, video
+tasks, the synced conversations and cursors, the hub connections and the live
+*working* notes; the relay's tests check every table for the account afterwards,
+and that the same address signing up again is a new, empty account. See
 [privacy.md](privacy.md).
 
 ## Allowance
@@ -292,6 +318,39 @@ and none comes back after you have been to the page. The operator changes the
 policy on the admin page (*Settings › Star asks*) without an app update; every
 app keeps the same defaults built in for when the relay cannot be reached.
 
+## Controls
+
+The operator can pause parts of the relay without a restart or a deploy
+(relay 0.22, *Controls* on the admin console; `nanomuse-cloud admin controls
+…` on the command line — [`cloud/README.md`](../cloud/README.md#controls-022)).
+Five switches, each on by default, each kept in the database so a restart
+keeps it, each with a line in an audit log saying who flipped it, when and
+why. What an app sees when one is off:
+
+| switch | what the app gets while it is off |
+|---|---|
+| **Free allowance** | a limited account (no key of its own, not a member) asking a model gets **429 `allowance_exhausted`** with `paused: true` and `reason: "allowance_paused"` — the same shape as a spent pool, so every app shows its own-key card as it does today, with a message saying the allowance is paused for now rather than spent. Members, sign-in, devices and sync are unaffected |
+| **Sign-ups** | a phone number or an e-mail address that has no account yet gets **403 `signup_closed`** from `POST /v1/auth/code` and from `/v1/auth/verify`, before any code is sent; `signup_open` in `/v1/config` turns false. Every existing account signs in and works as before |
+| **Cloud service** | every API call answers **503 `service_paused`** with `paused: true`, except the health check, `/v1/config`, the admin console and `/v1/admin/*`; every hub socket is closed with `4003 hub_paused`. Nothing is deleted; a signed-in app keeps its key and signs back in when the switch returns |
+| **Conversation sync** | `/v1/sync/*` pushes and pulls answer **503 `sync_paused`**; `GET /v1/sync/state` still answers and says `paused: true`. What is stored stays; each device keeps working on its own |
+| **Device hub** | `WS /v1/hub` accepts and closes at once with **4003 `hub_paused`**, the open sockets are closed the same way, `GET /v1/devices` answers 503 `hub_paused`. Each device keeps working on its own |
+
+The switches that are off are listed under `paused` in `/healthz`,
+`/v1/config` (public, a minute's cache) and `/v1/me`, so a client can say why
+before it tries. The apps handle the codes as any refusal: the phones and the
+console show the relay's sentence; the `allowance_exhausted` shape is the one
+they already draw a card for.
+
+**Thresholds.** A rule says *when the account count reaches N, do one
+thing*: close sign-ups, pause the allowance, pause sync, or only notify. Rules
+are checked when an account is created and once a minute; a rule fires once
+(the count it fired at and the time are kept and shown), and *re-arm* or a
+changed threshold lets it fire again. Every firing writes an audit line and a
+line on the activity timeline; *notify* also sends an e-mail to the relay's
+`ADMIN_EMAIL` through the SMTP settings (counts and the relay's address only,
+nothing about any person). The state of the switches and the next threshold
+are the first line of the admin dashboard.
+
 ## Running your own
 
 Anyone can run a relay — for a family, a class, a company — and point the app
@@ -352,7 +411,23 @@ model with its `kind`, prices, `for` — the lane(s) a chat model is for, `chat`
 and / or `gui` — and `recommended_for`), `POST /v1/chat/completions`
 with streaming, `POST /v1/images/generations` and `/v1/images/edits`. Errors
 are `{"error": {"message", "type": "nanomuse_cloud", "code"}}` with a stable
-`code` the app turns into a sentence.
+`code` the app turns into a sentence. Relay 0.22 adds the codes of the
+operator's [switches](#controls): `403 signup_closed`, `503 service_paused`,
+`503 sync_paused`, `503 hub_paused` (and the hub's close code `4003
+hub_paused`), and `allowance_exhausted` with `paused: true` when the free
+allowance is paused rather than spent; `/healthz`, `/v1/config` and `/v1/me`
+list the switches that are off under `paused`.
+
+A key the relay does not know answers
+`401 bad_key`; from 0.1.40, a key whose account was deleted answers
+`401 account_deleted` instead, on every call that takes a key (`/v1/me`,
+`/v1/models`, `/v1/chat/completions`, the sync and hub calls), for 90 days
+after the deletion — the relay keeps the hashes of a deleted account's keys that
+long, and nothing else. A client that does not know the code sees the same
+`401` as before; a client that does (the phones) removes the account's local
+data on `account_deleted` and keeps it aside on anything else
+([sync.md](sync.md)). The full table of codes is in
+[`cloud/README.md`](../cloud/README.md).
 
 Devices: `GET /v1/devices` lists the account's devices (online or last seen),
 `DELETE /v1/devices/{id}` forgets an offline one, and `WS /v1/hub` is the hub

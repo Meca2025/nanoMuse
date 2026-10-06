@@ -57,7 +57,7 @@ usage, the model menu) goes to that address.
 | **Reach** (`reach/`) | Your computers, from the phone: "say it on the phone, it gets done there" — a shell command, a file, the computer's screen, or a whole task for the nanoMuse running there. The way in is the hub (next row): install nanoMuse Desktop on the computer and sign in with the same account, and it is under *Account → Devices* within seconds, on any network — the only way since 0.1.24 (the local-network host script is gone). *Settings → Computers* lists the account's computers and says which account the phone uses, since a missing computer has nearly always signed in with another one. Approvals are decided on the phone before anything is sent. [every-device.md](every-device.md). |
 | **The hub** (`hub/`) | Every signed-in device of the account meets on the relay's hub: the phone sees your computers, asks them to do things, gets their approvals as cards, and can be asked by them. A foreground service keeps it reachable in the background (Android 13+ asks for the notification permission for that). [hub.md](hub.md). |
 | **Coding agents** (`ui/coding/`) | The Cursor, Codex and Claude Code sessions on your computers, seen and steered from the phone. [coding-agents.md](coding-agents.md). |
-| **Account** (`ui/cloud/`) | Who is signed in, the password, every device holding a key, usage by kind and by model, the ways out. When the free pool is spent or past 80 %, the account page and the refused turn show the ways on: your own key — the providers of the catalogue, the region's first (Alibaba Cloud Bailian for people in mainland China: the UI in simplified Chinese, a phone-number sign-in, or the relay saying so; OpenRouter and OpenAI everywhere else), each saying what it covers — a subscription you already pay for (ChatGPT, Claude, Kimi, OpenRouter sign in instead of a key), and an invitation. See [Your own key](#your-own-key) below. A phone shows and syncs the signed-in account's conversations only: a chat synced under another account stays on the phone, out of the list and never pushed, until that account signs in again; signed out, everything on the phone shows ([every-device.md](every-device.md#whose-conversations-a-device-shows)). |
+| **Account** (`ui/cloud/`) | Who is signed in, the password, every device holding a key, usage by kind and by model, the ways out. When the free pool is spent or past 80 %, the account page and the refused turn show the ways on: your own key — the providers of the catalogue, the region's first (Alibaba Cloud Bailian for people in mainland China: the UI in simplified Chinese, a phone-number sign-in, or the relay saying so; OpenRouter and OpenAI everywhere else), each saying what it covers — a subscription you already pay for (ChatGPT, Claude, Kimi, OpenRouter sign in instead of a key), and an invitation. See [Your own key](#your-own-key) below. A phone shows and syncs the signed-in account's conversations only — since 0.1.40 every chat has an owner, synced or not, and a sign-out asks *Keep this account's chats on this device* (off by default: the account's chats, memory, feed, goals, routines and face leave the phone; on: put aside until it returns); deleting the account removes all of it; a key the relay refuses (`401 bad_key`) puts the account's data aside as *Keep* would and the sign-in page says so until the next sign-in — only `401 account_deleted` removes it; signed out, only the chats made while signed out show ([sync.md](sync.md)). |
 | **The browser handed over** (`browser/`) | A page that needs you — a login, a verification code, a payment, a CAPTCHA — is handed over instead of described: `browser_use`'s `hand_over` action opens the agent's own tab (same WebView, same session) in the browser sheet with the agent's hold released, a **Your turn** card above the composer says what the page asks of you with *Open the page* and *Done, continue*, the sheet carries the same line and button, and the tool call waits for *Done* (fifteen minutes at most) before the agent goes on from the page as it is. `io.github.nanomuse.browser.BrowserHandOver`. |
 | **Connectors** (`connectors/`, `ui/connectors/`) | The services the agent can be let into — the desktop's catalogue of 75 remote MCP servers (Notion, Linear, GitHub, GitLab, Slack, Stripe, Miro, …), shipped as `assets/nanomuse/connectors.json`. The only Settings row for all of this is *Connectors*; the upstream MCP editor (by address, by command, imported JSON) is *Your own servers* at the end of the page. Open servers add with a tap; a key service takes the key; an OAuth service runs the MCP authorization flow (discovery, dynamic client registration, PKCE in a Custom Tab) and the token goes into the entry's `Authorization` header for the in-guest MCP client, refreshed at app start; a service whose authorization server registers no clients (`clientIdRequired` — GitHub, Slack, Discord, HubSpot, Render, Bitrise, PagerDuty, Box) asks for an OAuth client id and secret made at the vendor's developer page with the app's callback address, which the sheet shows and copies. A connected service is an MCP server entry under the same id — *Your own servers* manages it too. What is connected is shared with the account's other devices through the relay profile — the entries (id, label, address, kind of auth, which device, when), never a token — so the page also lists *On your other devices*: a service connected on the desktop shows as *Connected on <device> — sign in here to use it on this phone*, one tap into the same sheet. |
 | **The chat, plain** | While the agent works, the line under its avatar names the step under way — *nanoMuse is using Shell*, *Writing the reply*, *On it: book the table* — never a state of mind. The tool pills, the Computer sheet and the floating step bar are **off by default**; *Settings → Appearance → Show the agent's steps* turns them on. With them on, a finished step reads *nanoMuse used Shell · Done*, and its sheet closes on ×, swipe or Back. |
@@ -101,13 +101,40 @@ models' word, as before. When no configured provider has a capability, the page 
 sentence — *Pictures need a provider with image models — Bailian, OpenAI, Gemini or
 OpenRouter.* — instead of failing.
 
+**When the provider cannot be reached** (`net/ProviderReach.kt`, `ui/chat/ProviderReachCard.kt`).
+A failed turn whose error is the transport's — OkHttp's *failed to connect to chatgpt.com/… (port
+443)*, *Unable to resolve host*, a TLS or timeout line — or OpenAI's *region not supported* is
+shown as a card instead of the red banner: what happened, what helps (a VPN on this phone, the
+proxy under *Settings → Network*, another provider with a key of your own), *Try again*, and the
+raw line behind *Details*. The 401/403/429 whose bodies upstream's `mapHttpError` drops are
+kept for a few seconds by `ReachSignal` (one `// nanoMuse:` spot in `OpenAIProvider`) and
+written into the message as a canonical `nm_reach:` line, so an expired ChatGPT sign-in reads
+*Sign in again* and a spent plan window reads *The ChatGPT plan has nothing left for now* with
+OpenAI's own sentence and the reset time; a plain *Invalid API key* on a key provider stays
+upstream's. The relay's `daily_cap` 429 is now read like `allowance_exhausted` and the card
+says today's share is spent and comes back with the day. The allowance card also lists a model
+of your own (Ollama, LM Studio, vLLM on a computer you own) and, for a signed-in account, your
+computer — *@* and its name in the chat runs the turn there.
+
+**Settings → Network** (`net/OwnProviderProxy.kt`, `ui/net/NetworkScreen.kt`,
+`minis://settings/network`). The HTTP proxy for own providers: host, port, optional user name
+and password, off by default, in `SharedPreferences` on this phone only. It is installed in
+`MinisApp.onCreate` as the process's default `ProxySelector`, so every OkHttp client asks it per
+request; it answers the proxy for the catalogue's hosts, `chatgpt.com`, `auth.openai.com` and
+the custom base URLs of the provider instances (never the relay's, never a LAN address), and the
+system's answer for every other host — the hub, the relay, the sandbox mirrors are untouched.
+Provider clients carry `OwnProviderProxy.authenticator` for a proxy that asks for a password.
+*Test* fetches `https://chatgpt.com/` through the proxy as entered and reports the status and the
+milliseconds. Unit tests: `ProviderReachTest`, `OwnProviderProxyTest`.
+
 ## Privacy and permissions
 
 The relay keeps an account id, a masked identifier, usage counts and the agent's name and
 look (so your devices match) — never message content ([privacy.md](privacy.md)). On the phone, API keys, the account key and Reach
-pairing tokens are in `EncryptedSharedPreferences`; the backup rules
-(`res/xml/nanomuse_backup_rules.xml`, `nanomuse_data_extraction_rules.xml`) keep every
-secret store out of device backups and transfers. Hands needs the accessibility service
+pairing tokens are in `EncryptedSharedPreferences`; since 0.1.40 the app takes no part in
+the device backup at all (`allowBackup="false"` — chats, memory and keys never go to Google,
+a reinstall starts empty and the account's chats come back through sync; the two rule files
+under `res/xml/` are kept for the day the switch is turned on again). Hands needs the accessibility service
 and the overlay permission, both optional and both revocable from the same screen; a
 step that sends something — a tap on *Send*, or Enter in a message field of a messenger —
 is approved one at a time, and *for this chat* answers stay bound to the app or address
@@ -162,7 +189,8 @@ like the Python package's version does.
 | --- | --- |
 | `cloud/NanoMuseCloud.kt` | The account: sign-in with a code or a password, the key in the encrypted store, `/v1/me`, usage, sessions, the localized error sentences; the relay's menu and its two defaults (`for: chat` / `for: gui`) |
 | `cloud/Region.kt`, `cloud/ProviderCatalogue.kt`, `cloud/Capabilities.kt`, `cloud/OwnKeyPresets.kt`, `cloud/ProfileSync.kt` | Which region's vendors come first (mainland → Bailian, else OpenRouter and OpenAI); the own-key catalogue read from `assets/nanomuse/providers.json` and which vendor a configured provider is; what a provider covers and the one-sentence "unavailable" lines; the pre-filled provider forms (`?preset=<id>[:oauth]`); the relay profile (name, look, connectors) pulled and pushed |
-| `sync/` | Conversation sync (contracts C7–C10): `SyncEngine` (what goes up and comes down; `owner` per mapping, the account's only), `ConversationSync` (when; `hidden` — the chats of another account, left out of `ChatRepository.observeSessions()`), `LocalChats`, the Room store `nanomuse_sync.db` |
+| `sync/` | Conversation sync (contracts C7–C10): `SyncEngine` (what goes up and comes down; `owner` per mapping, the account's only), `ConversationSync` (when; `hidden` — the chats of another account, left out of `ChatRepository.observeSessions()`), `LocalChats`, the Room store `nanomuse_sync.db` (with the `session_owners` table of C12) |
+| `account/` | Contract C12 (0.1.40, [sync.md](sync.md)): `AccountScope` (the rules — whose chat a session is, the account's key, what the lists leave out, what a refused key keeps (`keepOnRefusedKey`: everything, unless the relay says `account_deleted`); unit-tested), `AccountData` (applies them: every chat an owner row, `leave` puts the account's chats, memory, feed, goals, routines, face and preferences aside or deletes them, `enter` brings an account's back) |
 | `hub/` | `Hub` (state, device identity, settings), `HubClient` (the socket with backoff; stops when the relay refuses the key), `HubService` (the foreground service), `HubActions` (what other devices may ask this phone), `HubErrors` (failures in words) |
 | `reach/` | `Computers` (paired computers, tokens in the encrypted store), the offload handler that sends work to a computer |
 | `hands/` | The accessibility service as the hand, the stage and the capsule, the screen reader; `Hands.screenModel` picks the Hands model (chosen → the Cloud's `qwen3.8-27b` → the same under your own key → a chat model that sees → the Vision Group) |

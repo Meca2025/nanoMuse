@@ -140,6 +140,15 @@ final class NanoMuseFaceStore: ObservableObject {
         custom[mood] = squared
     }
 
+    /// C12: the folder changed under the store — another account's face is in place (or none).
+    /// The motion clips are per face and go; NanoMuseAvatarMotion draws new ones when enabled.
+    func reload() {
+        NanoMuseAvatarMotion.shared.clear()
+        custom = [:]
+        meta = Meta()
+        load()
+    }
+
     /// Back to the dragon.
     func reset(sync: Bool = true) {
         NanoMuseAvatarMotion.shared.clear()

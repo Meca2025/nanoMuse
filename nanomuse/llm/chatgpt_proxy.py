@@ -27,9 +27,14 @@ from nanomuse.llm.chatgpt import (
     ORIGINATOR,
     RESPONSES_URL,
     TOKEN_URL,
+    USAGE_URL,
     Auth,
     ChatGPTError,
+    Limits,
     TokenStore,
+    fetch_usage,
+    http_client,
+    plan_label,
 )
 from nanomuse.llm.codex import CodexClient, StreamState, UpstreamError, to_codex
 
@@ -47,13 +52,76 @@ def _error(status: int, message: str, kind: str = "upstream", code: str | None =
     return JSONResponse(body, status_code=status)
 
 
+USAGE_CACHE_S = 60
+
+
+class Usage:
+    """The plan's usage windows: ``GET …/wham/usage`` at most once a minute, else what the
+    last Codex answer's headers said (``client.limits``), else nothing."""
+
+    def __init__(
+        self,
+        auth: Auth,
+        client: CodexClient,
+        http: httpx.AsyncClient | None = None,
+        url: str = USAGE_URL,
+    ):
+        self.auth = auth
+        self.client = client
+        self.url = url
+        self._http = http
+        self._cached: Limits | None = None
+        self._at = 0.0
+        self._error: str = ""
+
+    async def view(self) -> dict[str, Any]:
+        """``{signed_in, plan, label, limits, error}`` — never raises."""
+        token = self.auth.store.load()
+        if token is None:
+            return {"signed_in": False, "plan": "", "label": "", "limits": None, "error": ""}
+        if self._cached is None or time.monotonic() - self._at >= USAGE_CACHE_S:
+            await self._fetch()
+        limits = self._cached or self.client.limits
+        return {
+            "signed_in": True,
+            "plan": token.plan,
+            "label": token.label or plan_label(token.plan),
+            "limits": limits.public() if limits is not None and not limits.empty else None,
+            "error": self._error if limits is None else "",
+        }
+
+    async def _fetch(self) -> None:
+        try:
+            token = await self.auth.token()
+        except ChatGPTError as exc:
+            self._error = exc.message
+            return
+        http = self._http or http_client(httpx.Timeout(10.0, connect=8.0), self.client.proxy)
+        try:
+            self._cached = await fetch_usage(token, http, self.url)
+            self._at = time.monotonic()
+            self._error = ""
+        except ChatGPTError as exc:
+            self._error = exc.message
+        finally:
+            if self._http is None:
+                await http.aclose()
+
+
 class ModelList:
     """The Codex models list, from upstream when it answers in time, else built in; cached."""
 
-    def __init__(self, auth: Auth, http: httpx.AsyncClient | None = None, url: str = MODELS_URL):
+    def __init__(
+        self,
+        auth: Auth,
+        http: httpx.AsyncClient | None = None,
+        url: str = MODELS_URL,
+        proxy: str | None = None,
+    ):
         self.auth = auth
         self.url = url
         self._http = http
+        self.proxy = proxy or None
         self._cached: list[str] = []
         self._at = 0.0
 
@@ -77,7 +145,7 @@ class ModelList:
             "originator": ORIGINATOR,
             "accept": "application/json",
         }
-        http = self._http or httpx.AsyncClient()
+        http = self._http or http_client(httpx.Timeout(MODELS_TIMEOUT_S), self.proxy)
         try:
             r = await http.get(
                 self.url,
@@ -109,10 +177,12 @@ def build_router(
     client: CodexClient,
     models: ModelList,
     check: Check | None = None,
+    usage: Usage | None = None,
 ) -> APIRouter:
     """The proxy's routes. ``check`` guards every route but ``/healthz``; None = open (the
     runtime server adds its own dependency instead)."""
     router = APIRouter()
+    usage = usage or Usage(auth, client, http=client._http)
 
     async def guard(request: Request) -> None:
         if check is not None:
@@ -131,6 +201,12 @@ def build_router(
                 {"id": m, "object": "model", "owned_by": "openai"} for m in await models.ids()
             ],
         }
+
+    @router.get("/v1/usage")
+    async def plan_usage(request: Request) -> dict[str, Any]:
+        """What is left of the plan's windows, when OpenAI reports it (never an error)."""
+        await guard(request)
+        return await usage.view()
 
     @router.post("/v1/chat/completions")
     async def chat_completions(request: Request) -> Any:
@@ -152,27 +228,19 @@ def build_router(
         except UpstreamError as exc:
             headers = {"Retry-After": exc.retry_after} if exc.retry_after else {}
             if exc.status == 401:
-                return JSONResponse(
-                    {
-                        "error": {
-                            "message": "ChatGPT sign-in no longer valid; run nanomuse chatgpt login",
-                            "type": "auth",
-                            "code": "not_signed_in",
-                        }
-                    },
-                    status_code=401,
-                )
+                return _error(401, exc.message, "auth", "not_signed_in")
             return JSONResponse(
-                {"error": {"message": exc.message, "type": "upstream"}},
+                {"error": {"message": exc.message, "type": "upstream", "code": exc.code}},
                 status_code=exc.status if 400 <= exc.status < 600 else 502,
                 headers=headers,
             )
         except ChatGPTError as exc:
-            return _error(
-                401 if exc.code == "not_signed_in" else 502, exc.message, "auth", exc.code
-            )
+            # `unreachable` (the network), `not_signed_in` (the store): a code the client draws
+            status = 401 if exc.code == "not_signed_in" else 502
+            kind = "auth" if exc.code == "not_signed_in" else "network"
+            return _error(status, exc.message, kind, exc.code)
         except httpx.HTTPError as exc:
-            return _error(502, f"could not reach the Codex endpoint: {exc}")
+            return _error(502, f"could not reach the Codex endpoint: {exc}", "network")
 
         async def all_events() -> AsyncIterator[dict[str, Any]]:
             if first is not None:
@@ -244,14 +312,18 @@ def make_app(
     responses_url: str | None = None,
     models_url: str | None = None,
     token_url: str | None = None,
+    usage_url: str | None = None,
+    proxy: str | None = None,
 ) -> FastAPI:
-    """The stand-alone proxy app (``nanomuse chatgpt proxy``)."""
+    """The stand-alone proxy app (``nanomuse chatgpt proxy``). ``proxy`` is an HTTP(S) or
+    SOCKS proxy for the plan's hosts (``[llm] proxy`` in the config, ``--proxy`` on the CLI)."""
     store = store if isinstance(store, TokenStore) else TokenStore(store)
-    auth = Auth(store, http=http, token_url=token_url or TOKEN_URL)
-    client = CodexClient(auth, http=http, url=responses_url or RESPONSES_URL)
-    models = ModelList(auth, http=http, url=models_url or MODELS_URL)
+    auth = Auth(store, http=http, token_url=token_url or TOKEN_URL, proxy=proxy)
+    client = CodexClient(auth, http=http, url=responses_url or RESPONSES_URL, proxy=proxy)
+    models = ModelList(auth, http=http, url=models_url or MODELS_URL, proxy=proxy)
+    usage = Usage(auth, client, http=http, url=usage_url or USAGE_URL)
     app = FastAPI(title="nanoMuse ChatGPT proxy", docs_url=None, redoc_url=None, openapi_url=None)
-    app.include_router(build_router(auth, client, models, bearer_check(token)))
+    app.include_router(build_router(auth, client, models, bearer_check(token), usage))
 
     @app.exception_handler(HTTPException)
     async def _http_error(request: Request, exc: HTTPException) -> JSONResponse:
@@ -268,4 +340,4 @@ def make_app(
     return app
 
 
-__all__ = ["ModelList", "UNAVAILABLE", "bearer_check", "build_router", "make_app"]
+__all__ = ["ModelList", "UNAVAILABLE", "Usage", "bearer_check", "build_router", "make_app"]

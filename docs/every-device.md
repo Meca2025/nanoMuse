@@ -210,8 +210,14 @@ and the web console:
   always did; the sorting is done on the device, so an older relay behaves the
   same.
 
-The muse's name and look follow the account as before; what the muse remembers
-about you (the memory files) is per device and not sorted by account in 0.1.39.
+The muse's name and look follow the account as before. Since 0.1.40 the phones
+go further (contract C12): every chat has an owner — a chat that was never
+synced included — and a sign-out takes the account's chats, memory, feed, goals,
+routines and face off the phone unless *Keep this account's chats on this
+device* is turned on; deleting the account removes all of it; a key the relay
+refuses keeps it aside for the account's return. The table of every piece of
+state is [sync.md](sync.md). On the desktop and the web console
+the 0.1.39 rule above still holds, and the memory files are per device.
 Code: the runtime's `nanomuse/sync/engine.py` and the session list in
 `nanomuse/server/api.py`, the desktop's `harness/dsh-nanomuse/src/{sync,cloud}.ts`,
 Android's `io.github.nanomuse.sync.*`, the iPhone's `NanoMuse/NanoMuseSync.swift`.
@@ -280,8 +286,10 @@ report, the same Stop. What differs is the dialect and the device:
   `GetForegroundWindow`) so the card and the log say *in Firefox*, not *on the
   screen*.
 - **Permissions.** macOS asks for Screen Recording and Accessibility once;
-  Settings → Hands says so and opens the panes. They are granted to the
-  runtime binary the desktop app bundles, so a reinstall may ask again. Linux
+  Settings → Hands says so and opens the panes. Under the desktop app both
+  belong to its helper *nanoMuse Computer Use*
+  ([desktop.md](desktop.md#macos-permissions)); a runtime run on its own is
+  attributed to whatever started it (the terminal, say). Linux
   needs X11 (Wayland has no portable way to move the pointer yet; the page
   says so). Windows needs nothing.
 - **Per app.** The first action in an application in a conversation asks:
@@ -299,9 +307,12 @@ On a Mac the hands can work in **one application's window** instead of the
 whole screen (`[hands] mode`, and *Where* on the Hands card: *Auto* / *One
 window* / *Whole screen*; `nanomuse/computer/mac_window.py`):
 
-- the picture the model sees is that window only (`CGWindowListCreateImage`
-  by window id), scaled for the model; coordinates are pixels of that picture
-  and are mapped back to the window's place on the screen;
+- the picture the model sees is that window only — taken by the desktop app's
+  helper *nanoMuse Computer Use* with ScreenCaptureKit on macOS 14 and later
+  (`POST /window` of the operator, [gui.md](gui.md#hands-on-the-computer-the-picture-is-the-unit));
+  by the runtime's own `CGWindowListCreateImage` when there is no helper —
+  scaled for the model; coordinates are pixels of that picture and are mapped
+  back to the window's place on the screen;
 - clicks, drags, scrolls and keys are delivered to the application's process
   (`CGEventPostToPid`), not to the system cursor — the person keeps the mouse
   and can work in another window meanwhile; text goes in as unicode keyboard
@@ -316,10 +327,10 @@ window* / *Whole screen*; `nanomuse/computer/mac_window.py`):
 What the person sees: the Hands card says *Working in Safari's window; the
 mouse stays yours*, the desktop stage draws the cursor where the click lands
 (the hands' events carry `x`/`y` in screen pixels), and the approval cards
-name the application. A window that cannot be found, captured (no Screen
-Recording — the capture comes back empty) or driven drops back to the whole
-screen with a note in the observation; nothing stops. When the Quartz layer
-itself fails (pyobjc, the window server) *Auto* parks the hands on the whole
+name the application. A window that cannot be found, captured (the helper's
+Screen Recording row off — the operator's `403`, in its words) or driven drops
+back to the whole screen with a note in the observation; nothing stops. When
+the layer itself fails (the helper not there, pyobjc, the window server) *Auto* parks the hands on the whole
 screen for the rest of that target, says so once, and tries the window again
 when the next application is named; *One window* keeps trying, as asked —
 the Hands card's *Where* line shows the reason either way. Linux and Windows stay

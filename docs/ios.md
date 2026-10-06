@@ -67,7 +67,8 @@ Ours, in `NanoMuse/`:
   e-mail address, a code, and the relay ([cloud.md](cloud.md)) is an ordinary OpenAI-compatible
   provider in the app, with a model group of its own that becomes the default when there is none.
   Same wire format and the same rules as the Android client (`io.github.nanomuse.cloud`): one
-  instance per relay, nothing of the user's own replaced, a 401 on refresh removes the provider.
+  instance per relay, nothing of the user's own replaced, a 401 on refresh removes the provider
+  (and keeps the account's data aside — Contract C12 below).
   Any build can point at another relay (*Use a different server*, below). Since 0.1.32 the page is the whole account — the
   password as the other way in, a friend's invite code, the pool in yuan with the ways on when it
   runs low (your own key, an invitation, a star once), usage by kind and by model, the devices
@@ -153,6 +154,28 @@ Ours, in `NanoMuse/`:
 - **Data controls** (`NanoMuseDataControls.swift`): the relay's switch, the kept-turns count, the
   privacy page, deletion with a confirmation. **Reach** (`NanoMuseReach.swift`): a sheet per device
   of the account — open a link, send a note, a shell line, a screenshot — over the hub.
+- **When the provider cannot be reached** (`NanoMuseProviderReach.swift`,
+  `NanoMuseProviderReachCard.swift`): a failed turn whose error is the transport's — *Could not
+  connect to the server*, *A server with the specified hostname could not be found*, a TLS or
+  timeout line — or OpenAI's *region not supported* shows a card instead of the red banner: what
+  happened, what helps (a VPN, the proxy under *Settings → Network*, another provider with a key
+  of your own), *Try again*, the raw line behind *Details*. `LLMError` appends the failing host
+  as `[host: …]` to a network error so the card can name it; the 401/403/429 whose bodies
+  `mapHTTPError` drops are kept for a few seconds by `NanoMuseReachSignal` and written into the
+  message as a canonical `nm_reach:` line by `friendlyErrorMessage` — an expired ChatGPT
+  sign-in reads *Sign in again*, a spent plan window *The ChatGPT plan has nothing left for now*
+  with OpenAI's sentence and the reset time. The same kinds, lines and rules as Android's
+  `ProviderReach`.
+- **Network** (`NanoMuseProxy.swift`, `NanoMuseNetworkView.swift`, *Settings → nanoMuse →
+  Network*): the HTTP proxy for own providers — host, port, optional user name and password, off
+  by default, in `UserDefaults` on this phone only. `URLSession` has no per-host proxy switch, so
+  the proxy reaches a session as a proxy auto-configuration script in
+  `connectionProxyDictionary` that answers the proxy for the catalogue's hosts, `chatgpt.com`,
+  `auth.openai.com` and the provider instances' custom hosts (never the relay's, never a LAN
+  address) and `DIRECT` for the rest; `NanoMuseProxy.apply(to:)` is one line in each of upstream's
+  provider sessions, `NanoMuseProxy.session` stands in for `URLSession.shared` on the Codex
+  sign-in and the model list. The credentials go to the shared `URLCredentialStorage` for the
+  proxy's protection space. *Test* fetches `https://chatgpt.com/` through the proxy as entered.
 - **The phone's chrome (0.1.35)** (`NanoMuseChrome.swift`, `NanoMuseAppearance.swift`, Android
   `ui/chat/MuseHeader.kt` and `ui/settings`): the Muse header — the face disc, the name pill with
   the live status line under it, round drawer and ••• buttons — on the chat and on Feed, Ideas,
@@ -255,6 +278,24 @@ Ours, in `NanoMuse/`:
   first account brings its conversations and its main chat back. Signed out, everything on the
   phone shows and nothing moves. The agent's name and look already follow the account; the local
   memory files do not yet.
+- **Nothing of one account for the next (0.1.40, Contract C12)** (`NanoMuseAccountData.swift`,
+  `NanoMuseSignOutSheet.swift`): every chat has an owner row (`nanomuse-owners.json`), synced or
+  not, and the lists, the Chat tab, the Library, *Today's chats*, the Siri shortcuts and the
+  push show the signed-in owner's only; signed out, only the chats made while signed out. A
+  sign-out — here, everywhere, *Use a different server* — is a sheet with one switch, *Keep this
+  account's chats on this device*, off by default: off, the account's chats, memory, feed, goals,
+  routines and face leave the phone (its sync table too, so a later sign-in never tombstones
+  them on its other devices); on, they are put aside under `MinisConfig/nanomuse/accounts/<hash>/`
+  and come back with the account. Signing in as another account goes through the same path.
+  *Delete the account* removes all of it with no question. A key the relay refuses on a refresh
+  (`401 bad_key` — revoked from another device, a relay reset) takes the *keep* path instead:
+  the data goes aside, the key goes, and the sign-in form says *Your sign-in on this phone was
+  ended — sign in again to continue; your chats are kept on this device until then* until the
+  next sign-in (`NanoMuseCloud.signInEnded`); only `401 account_deleted` deletes
+  (`NanoMuseAccountData.keepOnRefusedKey`, tested in `NanoMuseAccountsTests`). The relay's key is saved on this
+  device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, never iCloud Keychain); a
+  fresh install with no marker, no provider and no chat sweeps the device-only Keychain items a
+  previous install left. The full table is [sync.md](sync.md).
 
 ## Building on a Mac
 

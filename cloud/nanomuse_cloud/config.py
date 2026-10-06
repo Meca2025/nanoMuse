@@ -482,6 +482,26 @@ class Settings:
         )
     )
     geoip_v6_url: str = field(default_factory=lambda: _env("CLOUD_GEOIP_V6_URL"))
+    # 0.22: the GitHub collector (github_stats.py) — a reading every six hours (the UTC day's
+    # row keeps the latest), and on demand from the operator's page: stars, forks, watchers
+    # and every release asset's download count. GITHUB_REPO names the repository (owner/name; derived from REPO_URL when
+    # empty); GITHUB_TOKEN is optional (60 requests an hour without one, which is plenty);
+    # GITHUB_COLLECT=0 turns the collector off (tests, a relay with no network).
+    github_repo: str = field(default_factory=lambda: _env("GITHUB_REPO"))
+    github_token: str = field(default_factory=lambda: _env("GITHUB_TOKEN"))
+    github_collect: bool = field(default_factory=lambda: _env("GITHUB_COLLECT", "1") not in ("0", "false", "no"))
+    github_api: str = field(default_factory=lambda: _env("GITHUB_API", "https://api.github.com"))
+    # 0.22: where a threshold rule's *notify* goes (controls.py), through the SMTP settings
+    # above; empty = the rule writes its audit line and the log says there was nobody to tell.
+    admin_email: str = field(default_factory=lambda: _env("ADMIN_EMAIL"))
+
+    @property
+    def github_repo_path(self) -> str:
+        """`owner/name`: GITHUB_REPO, else read off REPO_URL (https://github.com/owner/name)."""
+        if self.github_repo:
+            return self.github_repo.strip().strip("/")
+        m = re.match(r"^https?://github\.com/([^/\s]+)/([^/\s#?]+)", self.repo_url.strip())
+        return f"{m.group(1)}/{m.group(2).removesuffix('.git')}" if m else ""
 
     @property
     def geoip_path(self) -> str:

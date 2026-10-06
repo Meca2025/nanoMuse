@@ -28,8 +28,9 @@ A dsh Host started by the shell as a child process, showing the harness's web ap
 window of ours: the rail (Chats, Search, Feed, Ideas, Goals, Library, Devices, the
 hamburger), the chats column with the main chat and the side chats, the face and name
 pinned over the conversation with a live status line and *Stop*, Muse's permission card
-over the harness's approvals, the live stage (the screen the agent is working on,
-picture-in-picture, with a caption and *Take over*), the profile panel with memory,
+over the harness's approvals, the trajectory of a hands run in the chat (each step's
+screenshot with the action drawn on it and the agent's words, to look back at during
+and after the run), the profile panel with memory,
 Muse's Settings pages (Connectors, Computer use, File system access, Dictation,
 Permissions, Data controls with export and reset), the full-window first run. The agent
 is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-agents, MCP
@@ -66,6 +67,57 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
   `device_notify` and `delegate` for the phone and the other computers; the phone's
   `delegate` landing here as a dsh session "From <device>" with its approvals relayed
   back; remote control (`shell`, `files`, `open`, `screen`) behind a switch.
+
+## When the allowance is used up, and the relay's other answers
+
+The account's free allowance gates the model, not the sign-in: when the relay answers a
+turn with `allowance_exhausted`, the desktop shows the card the phones and the web app
+show, under the turn that did not run, in the chat:
+
+- one sentence — *The free allowance is used up.* — and that your sign-in and your devices
+  keep working whichever way you pick;
+- **your own model key**: the provider rows for where you are (the same rows as Settings →
+  nanoMuse Cloud, with *Add key* and *Get a key* inline), *Other providers and what each key
+  covers* folded under them — the list the relay sends with the refusal and with `/v1/me`
+  (`spend.guidance`, [cloud.md](cloud.md#allowance)), not one written into the app — and
+  the *Step-by-step guide* ([own-key.md](own-key.md));
+- **a plan you already pay for**: the ChatGPT sign-in, right there, with the relay's caveat
+  about it;
+- **invite a friend**: the bonus for each of you and *Copy the link*;
+- a star on GitHub, once, when the nudge policy allows it;
+- *Open Settings → nanoMuse Cloud* and *Try again* (the same words are sent again once a
+  way on is set up).
+
+The relay's other refusals are one plain sentence each, in the app's language, never the
+status code or the JSON body:
+
+| The relay said | The card says | Button |
+| --- | --- | --- |
+| `413` (the request is too big for the relay or the model's window) | *That message is too large for the model's window. Shorten it, leave out some attachments, or start a new chat.* | *New chat* |
+| `401` (the key was retired elsewhere — a sign-out of every device, a deleted account) | *This sign-in is no longer valid. Sign in again under Settings → nanoMuse Cloud.* The desktop signs itself out at the same time, as it does when `/v1/me` answers 401. | *Sign in* |
+| `403` (the account is disabled, or the relay does not take it) | *This account cannot use nanoMuse Cloud right now.*, with the relay's own words under it | *Open Settings → nanoMuse Cloud* |
+| `429` without the allowance code (too many requests at once, the provider busy) | *Too many requests at once. Wait a moment and try again.* — with the relay's `retry_after` when it sent one | *Try again* |
+| `429 daily_cap` (a relay that sets a daily share) | *Today's share of the allowance is used up. It resets tomorrow.* | *Try again* |
+| `404 model_not_offered` | *nanoMuse Cloud does not offer that model any more.* | *Open Settings → nanoMuse Cloud* |
+| `5xx`, or no answer at all (connection refused, timeout) | *nanoMuse Cloud did not answer.* / *Could not reach nanoMuse Cloud. Check the connection and try again.* | *Try again* |
+| `429 allowance_exhausted` with `paused: true` (relay 0.22: the operator paused the free allowance, [cloud.md](cloud.md#controls)) | the same allowance card, led by *The free allowance is paused on this relay for now, not used up. Your sign-in, your devices and what is left stay as they are.* | the ways on, *Try again* |
+| `503 service_paused` | *nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later.* | *Try again* |
+| `503 sync_paused` | *Conversation sync is paused on this relay for now; what is stored is kept and your devices keep working on their own.* | *Try again* |
+| `503 hub_paused` | *The device hub is paused on this relay for now; each device keeps working on its own.* | *Try again* |
+| `403 signup_closed` (at sign-in only) | the relay's own sentence — *New sign-ups are paused on this relay for now; existing accounts keep working.* | *Open Settings → nanoMuse Cloud* |
+
+A refusal is not retried: before 0.1.40 the harness took the relay's `429` for a rate
+limit and tried five more times (about twenty seconds) before the raw reply appeared; now
+the card is there at once. A turn on your own key that a provider refused gets the same
+shape — one sentence by the kind of failure, what came back folded under *What came back*.
+The pieces are `src/refusals.ts` (the host reads the relay's reply on the `llm/stream`
+waterfall and rewrites the failure to `nanomuse/<kind>`) and the chat's `turn-error` seat in
+`src/client/RefusalCard.tsx`.
+
+**The 80 % heads-up.** After a turn on the account's model the host re-reads the account
+(once a minute at most); when the relay says the pool is at 80 %, one dismissible line
+shows above the composer — what is left, the invite bonus, *See the ways* — once per pool
+size, as the phones show it in the chat and the web app above its composer.
 
 ## Config and data
 
@@ -111,13 +163,18 @@ Process* walks through the attribution; Codex's *Codex Computer Use.app* is the 
 arrangement). The helper is a few hundred lines of Swift (`harness/desktop/mac/computer-use/`)
 on a loopback HTTP server with a per-launch token: it reports its two grants, asks for them
 with the system's own dialogs (`CGRequestScreenCaptureAccess`,
-`AXIsProcessTrustedWithOptions`), takes the picture with `CGDisplayCreateImage` — not
-Chromium's `desktopCapturer`, whose black and absent frames were the 0.1.36 trouble — and
-moves the mouse and types with `CGEvent` (text of any script goes in as the characters
-themselves, so 中文 types without the clipboard). The app starts it at launch — to read the
-grants and to ask for the missing ones — and quits it when it quits; the helper also leaves
-on its own when the app is gone. It has no window and no Dock icon; Activity Monitor lists it
-as *nanoMuse Computer Use*.
+`AXIsProcessTrustedWithOptions`), takes the picture — with **ScreenCaptureKit** on macOS 14
+and later (`SCShareableContent` → the main display → `SCContentFilter` →
+`SCScreenshotManager.captureImage`, at the display's pixel size with the cursor in it), with
+`CGDisplayCreateImage` on 12 and 13 — not Chromium's `desktopCapturer`, whose black and
+absent frames were the 0.1.36 trouble — and moves the mouse and types with `CGEvent` (text
+of any script goes in as the characters themselves, so 中文 types without the clipboard).
+Why ScreenCaptureKit: on macOS 26 and 27 `CGDisplayCreateImage` returns nothing even with
+Screen Recording granted, which 0.1.39 logged as `helper screenshot failed (no screenshot:
+noImage)` and then covered with a `desktopCapturer` frame that was black or stale. The app
+starts the helper at launch — to read the grants and to ask for the missing ones — and
+quits it when it quits; the helper also leaves on its own when the app is gone. It has no
+window and no Dock icon; Activity Monitor lists it as *nanoMuse Computer Use*.
 
 What you do, once, on a Mac that has not granted anything yet (checked on macOS 27.0.1,
 Apple silicon):
@@ -142,6 +199,48 @@ the pane and the hands say so on their next step: *macOS: switch on nanoMuse Com
 under System Settings → Privacy & Security → Screen Recording. The helper restarts by itself;
 the app does not need to.* (`403` from the operator; the runtime never falls back to `mss` or
 `screencapture`).
+
+**How the Screen Recording check works.** The helper's `/status` says `granted`, `denied` or
+`unknown`. `CGPreflightScreenCaptureAccess` is asked first — TCC's own answer, no prompt —
+and a *no* is `denied`. On macOS 14 and later a *yes* is confirmed with ScreenCaptureKit
+(`SCShareableContent`): when that throws `userDeclined` or `noDisplayList` the grant is not
+really there and the status is `denied` with the reason; another error is `unknown` with the
+reason, and the next screenshot tries anyway and reports what ScreenCaptureKit said. So
+`granted` means a picture will come back, not just that a switch is on. Requesting stays the
+system's own dialog (`CGRequestScreenCaptureAccess`) plus the deep link to the pane.
+
+**When the picture fails, you are told.** With the helper bundle in the app, the operator
+never takes a `desktopCapturer` frame in the helper's place — a black or stale picture would
+reach the model as if it were the screen. What the chat and `computer_screen` say instead:
+
+- Screen Recording missing for the helper: *macOS: switch on nanoMuse Computer Use under
+  System Settings → Privacy & Security → Screen Recording. The helper restarts by itself; the
+  app does not need to.* (the `403`; Settings → Computer use says the same).
+- ScreenCaptureKit failed with the grant in place: *no screenshot: nanoMuse Computer Use
+  could not take the picture — no screenshot: ScreenCaptureKit userDeclined (-3801): …* — the
+  SCK error by name and code, followed by the system's text (`noDisplayList`,
+  `failedToStart`, `internalError`, … — a reader can look the code up).
+- The helper did not start (quarantine kept, no port, App Translocation): *no screenshot:
+  nanoMuse Computer Use did not start (…)* with the reason the `helper:` log lines give;
+  Settings → Computer use shows the same reason as *not available*.
+
+The pre-0.1.38 `desktopCapturer` path remains only for a build without the helper bundle
+(below).
+
+**Checking it on a Mac.** `~/.nanomuse/desktop/desktop.log` has the chain:
+
+- `helper: nanoMuse Computer Use <version> (pid …) at http://127.0.0.1:… — screen granted,
+  accessibility true, capture ScreenCaptureKit` — the helper is up and, on macOS 14+, says
+  which path takes the picture (`CoreGraphics` on 12 and 13).
+- `permissions: accessibility=granted screen=granted (nanoMuse Computer Use <version>,
+  capture ScreenCaptureKit)` — the grants as the app read them at launch; a `screen=denied`
+  here with the switch on in the pane carries ScreenCaptureKit's reason after the version.
+- `operator: helper screenshot failed (…) — not falling back to desktopCapturer` — the
+  picture failed, the line says why, and the chat got the same words. There is no `using the
+  Electron path` any more.
+
+Then Settings → Computer use → *Try it*: the test screenshot is the helper's picture, or the
+error above.
 
 **The quarantine flag.** The disk image you download carries macOS's quarantine flag, and so
 does every file copied out of it, the helper included. Opening nanoMuse settles the flag for
@@ -169,10 +268,16 @@ More to know:
 - The picture is the main display, at most 2 Mpx (a 3456×2234 Retina panel comes down to
   1758×1137), coordinates in points. Only the main display is captured and driven. Holding a
   key across actions (`press` / `release`, UI-TARS's names) works since 0.1.39.
-- *Window mode* — the hands working inside one application's window — is the runtime's own
-  Quartz code and is attributed to **nanoMuse** itself, not the helper: it needs the
-  *nanoMuse* rows in both panes on top of the helper's, and falls back to the whole screen
-  with a notice when they are missing. Settings → Computer use says whether it is available.
+- *Window mode* — the hands working inside one application's window — lists the windows
+  and takes the window's picture through the helper too (`GET /windows`, `POST /window`;
+  ScreenCaptureKit's `SCContentFilter(desktopIndependentWindow:)` on macOS 14+), so the
+  helper's Screen Recording row covers it. The events are still posted from the runtime
+  (`CGEventPostToPid`), which macOS attributes to **nanoMuse** itself: window mode needs
+  the *nanoMuse* row in the Accessibility pane on top of the helper's two, and falls back to
+  the whole screen with a notice when it is missing. Without the helper bundle the runtime
+  captures windows itself (`CGWindowListCreateImage`; the runtime's log says `window mode:
+  the runtime captures windows itself …`) and needs the *nanoMuse* Screen Recording row as
+  well. Settings → Computer use says whether window mode is available.
 - macOS 15 and later asks again from time to time whether an app that captures the screen
   without the system's picker may go on; answer *Allow* for nanoMuse Computer Use.
 - To start the permission flow over: `tccutil reset ScreenCapture
@@ -181,12 +286,15 @@ More to know:
   A grant left on *nanoMuse Desktop* / *nanoMuse* from an earlier version is used by window
   mode only (above) and can otherwise be switched off.
 
-Without the helper — a build without it, or one whose helper did not start (the log's
-`helper:` lines say why) — the app works as before 0.1.38: the grants are nanoMuse Desktop's
-own (`io.github.nanomuse.desktop`), read through `@computer-use/node-mac-permissions` and
+Without the helper bundle — a build without it, a development run before `build.sh` — the
+app works as before 0.1.38: the grants are nanoMuse Desktop's own
+(`io.github.nanomuse.desktop`), read through `@computer-use/node-mac-permissions` and
 `@computer-use/mac-screen-capture-permissions`, the picture comes from `desktopCapturer`
 and the input from `@computer-use/nut-js`, and a Screen Recording grant needs the app
-restarted (*Restart now*). The Permissions page names whichever is in use.
+restarted (*Restart now*). A bundle that is there but did not start (the log's `helper:`
+lines say why) is not that case: the hands refuse with the reason until it starts, rather
+than moving to the app's own grants that nobody switched on. The Permissions page names
+whichever is in use.
 
 The honest caveat: macOS keys a grant to the app's code signature. With a Developer ID
 signature the helper's *designated requirement* (identifier + team) is the same from build
@@ -211,7 +319,8 @@ the App Store Connect key is the `.p8`'s text.
 
 The helper, *nanoMuse Computer Use.app*, is built on the macOS runner by
 `harness/desktop/mac/computer-use/build.sh` (plain `swiftc`, arm64 and x86_64 joined with
-`lipo`, deployment target macOS 12) before electron-builder copies it into
+`lipo`, deployment target macOS 12.3 — the first with ScreenCaptureKit, which the binary
+links; the SCK capture runs on 14+, CoreGraphics before) before electron-builder copies it into
 `Contents/Helpers` (`mac.extraFiles` in `electron-builder.yml`). `package-mac.sh` signs it
 first, as a bundle of its own — same identity, hardened runtime, its own identifier
 `io.github.nanomuse.desktop.computer-use`, none of the app's entitlements — and then the
@@ -261,7 +370,7 @@ helper, on the pre-0.1.38 path.
   HiDPI desktop that is the logical size × the scale factor (a 1920×1080 scale-2 display is
   3840×2160 to the hands), and the picture the model sees is that root scaled down to at
   most 1600 wide and 2 Mpx. The frame the app draws around the screen while the hands work
-  (the glow) takes no clicks: it steps aside for every pointer action — hidden before the
+  (the glow, a light breathing along the four edges) takes no clicks: it steps aside for every pointer action — hidden before the
   pointer moves, back right after with the marker where the click landed, so it blinks for
   about 150 ms per click — and its X11 input region, which Chromium clears whenever the
   window's bounds change, is set again after every such change; should a click ever reach
@@ -270,7 +379,7 @@ helper, on the pre-0.1.38 path.
   so the glow stays up for them and focus is untouched. A window manager is needed for a
   sensible picture (without one Electron's capturer can return a black frame — the runtime
   then falls back to its own capture). Steps that act on your behalf (Enter, a submit, heavy shortcuts, clicks on words
-  from the sensitive list) wait for the card in the chat or on the live stage; *Allow once*
+  from the sensitive list) wait for the card in the chat or on the capsule; *Allow once*
   runs the step, *Always allow in <app>* keeps the hands going in that app until you revoke
   it under Settings → Permissions. Text outside ASCII is typed through the clipboard
   (`xclip`/`xsel` are not needed — Electron's clipboard is used) and Ctrl+V; the previous

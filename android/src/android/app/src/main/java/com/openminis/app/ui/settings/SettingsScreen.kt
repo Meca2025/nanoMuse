@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.CloudQueue // nanoMuse: nanoMuse
 import androidx.compose.material.icons.outlined.Computer // nanoMuse: Computers row
 import androidx.compose.material.icons.outlined.TouchApp // nanoMuse: Hands row
 import androidx.compose.material.icons.outlined.Storage // nanoMuse: Data controls row
+import androidx.compose.material.icons.outlined.Language // nanoMuse: Network row
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.BugReport
@@ -103,6 +104,7 @@ fun SettingsScreen(
     onCloudClick: () -> Unit = {}, // nanoMuse: Settings → nanoMuse Cloud (the starter allowance)
     onHandsClick: () -> Unit = {}, // nanoMuse: Settings → Hands (the screen as a hand)
     onDataControlsClick: () -> Unit = {}, // nanoMuse: Settings → Data controls (what nanoMuse Cloud keeps)
+    onNetworkClick: () -> Unit = {}, // nanoMuse: Settings → Network (the proxy for own providers)
     onComputersClick: () -> Unit = {}, // nanoMuse: Settings → Computers (the phone drives a PC)
     onCodingClick: () -> Unit = {}, // nanoMuse: Settings → Coding agents (Cursor/Codex/Claude Code on the account's computers)
     onConnectorsClick: () -> Unit = {}, // nanoMuse: Settings → Connectors (the services the agent can be let into)
@@ -306,6 +308,9 @@ fun SettingsScreen(
                 io.github.nanomuse.ui.muse.MuseRowDivider()
                 // nanoMuse: data controls — the one switch over what nanoMuse Cloud keeps of the chats.
                 io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.nm_data_title), icon = Icons.Outlined.Storage, onClick = onDataControlsClick)
+                io.github.nanomuse.ui.muse.MuseRowDivider()
+                // nanoMuse: network — the HTTP proxy for own providers and the ChatGPT plan.
+                io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.nm_network_title), icon = Icons.Outlined.Language, onClick = onNetworkClick)
                 io.github.nanomuse.ui.muse.MuseRowDivider()
                 io.github.nanomuse.ui.muse.MuseRow(title = stringResource(R.string.settings_section_logs), icon = Icons.Outlined.Description, onClick = onLogsClick)
             }

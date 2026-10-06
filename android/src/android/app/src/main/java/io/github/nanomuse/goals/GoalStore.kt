@@ -18,6 +18,12 @@ class GoalStore private constructor(context: Context) {
 
     fun all(): List<Goal> = _goals.value
 
+    /** The file changed under the store — another account's set is in place (contract C12). */
+    @Synchronized
+    fun reload() {
+        _goals.value = load()
+    }
+
     fun get(id: String): Goal? = _goals.value.firstOrNull { it.id == id }
 
     fun forSession(sessionId: String): Goal? = _goals.value.firstOrNull { it.sessionId == sessionId }

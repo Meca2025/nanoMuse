@@ -84,10 +84,16 @@ enum NanoMuseCloud {
         static let instance = "nanomuse.cloud.instance_id"
         static let account = "nanomuse.cloud.account"
         static let fresh = "nanomuse.cloud.fresh_account"
+        /// The relay refused the key and the account's data was kept aside (C12); the sign-in page says so until the next sign-in.
+        static let ended = "nanomuse.cloud.sign_in_ended"
     }
 
     /// True after a sign-in that created the account, until the first run's password page was answered.
     static var freshAccount: Bool { UserDefaults.standard.bool(forKey: Keys.fresh) }
+
+    /// True after the relay refused the phone's key and the account's data was put aside (C12)
+    /// — the sign-in page tells the person so — until the next sign-in.
+    static var signInEnded: Bool { UserDefaults.standard.bool(forKey: Keys.ended) }
     static func clearFreshAccount() { UserDefaults.standard.removeObject(forKey: Keys.fresh) }
 
     typealias Account = NanoMuseCloudAccount
@@ -282,6 +288,10 @@ enum NanoMuseCloud {
         // its public address (`base_url`) is informational.
         let base = baseURL
         let store = ProviderConfigStore.shared
+        // C12: who was here before the key is written — the phone's own set (signed out), or
+        // an account a sign-in reached without a sign-out (nothing of it is deleted without
+        // the sheet's question: it is put aside, as *Keep* would)
+        let before = NanoMuseAccountData.shared.current
 
         // One instance per relay: signing in again on the same phone refreshes the key and
         // keeps the entries and groups that already point at it.
@@ -307,6 +317,7 @@ enum NanoMuseCloud {
             inst = fresh
         }
         UserDefaults.standard.set(inst.id, forKey: Keys.instance)
+        UserDefaults.standard.removeObject(forKey: Keys.ended) // a sign-in answers the sentence (C12)
         // A sign-in that created the account owes the first run a password page (NanoMuseFirstRun).
         if (reply["created"] as? Bool) == true { UserDefaults.standard.set(true, forKey: Keys.fresh) }
         if let region = reply["region"] as? String, !region.isEmpty { UserDefaults.standard.set(region, forKey: "nanomuse.relay.region") }
@@ -318,7 +329,15 @@ enum NanoMuseCloud {
 
         let parsed = parseAccount(reply)
         account = parsed
+        // C12: the relay's key is this phone's alone — never in iCloud Keychain
+        NanoMuseAccountData.saveRelayKey(apiKey, instanceId: inst.id)
         NanoMuseNudges.shared.absorb(me: reply) // nanoMuse: contract C1 — the star policy rides along
+        // C12: whoever was here is put aside, and this account's own set comes back (or starts empty)
+        let after = NanoMuseAccountData.shared.current
+        if after != before {
+            await NanoMuseAccountData.shared.leave(account: before, keep: true)
+            await NanoMuseAccountData.shared.enter(account: after)
+        }
         await MainActor.run { NanoMuseHub.shared.restart() } // the new key joins the hub
         NanoMuseSync.shared.accountChanged() // C10: another account's conversations are not this one's to show or push
         return parsed
@@ -337,23 +356,40 @@ enum NanoMuseCloud {
             return parsed
         } catch let error as CloudError where error.status == 401 {
             // Revoked elsewhere, or the relay was reset: the provider cannot answer any more.
-            ProviderConfigStore.shared.removeInstance(inst.id)
-            clear()
+            // Nobody on this phone asked, so the account's data is put aside as *Keep* would
+            // and comes back with the next sign-in as the same account (C12). Only
+            // `account_deleted` — the account itself is gone at the relay — leaves nothing to
+            // come back to, and the data goes.
+            let keep = NanoMuseAccountData.keepOnRefusedKey(code: error.code)
+            await forgetLocally(keep: keep)
+            if keep { UserDefaults.standard.set(true, forKey: Keys.ended) }
             return nil
         }
     }
 
-    /// Revoke this phone's key at the relay and take the provider out of the app.
-    static func signOut() async {
-        await MainActor.run { NanoMuseHub.shared.stop() }
-        let store = ProviderConfigStore.shared
-        if let inst = instance {
-            if let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty {
-                _ = try? await call("POST", "/v1/auth/sign-out", body: nil, token: key)
-            }
-            store.removeInstance(inst.id)
+    /// Revoke this phone's key at the relay and take the provider out of the app. The account's
+    /// chats, memory, feed, goals and face stay on the phone — put aside for its return — only
+    /// with `keep` (the sign-out sheet's switch, off by default; contract C12).
+    static func signOut(keep: Bool = false) async {
+        NanoMuseHub.shared.stop()
+        if let inst = instance, let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty {
+            _ = try? await call("POST", "/v1/auth/sign-out", body: nil, token: key)
         }
+        await forgetLocally(keep: keep)
+    }
+
+    /// The phone forgets the account: the account's data leaves the fixed paths (C12,
+    /// `NanoMuseAccountData.leave` — put aside with `keep`, deleted without), the provider and
+    /// the key go, and the phone's own set comes back. The account's data moves while the
+    /// account is still the signed-in key; the phone's set returns only once the key is gone,
+    /// so nothing made in the gap is filed under the account that left.
+    static func forgetLocally(keep: Bool) async {
+        NanoMuseHub.shared.stop()
+        let account = NanoMuseAccountData.shared.current
+        if !account.isEmpty { await NanoMuseAccountData.shared.leave(account: account, keep: keep) }
+        if let inst = instance { ProviderConfigStore.shared.removeInstance(inst.id) }
         clear()
+        if !account.isEmpty { await NanoMuseAccountData.shared.enter(account: NanoMuseAccountData.local) }
     }
 
     /// A sentence for the person, from the relay's stable error codes.
@@ -381,6 +417,8 @@ enum NanoMuseCloud {
             return AppLocalized("This account has been disabled.")
         case "bad_key":
             return AppLocalized("This sign-in is no longer valid. Sign in again.")
+        case "account_deleted":
+            return AppLocalized("This account was deleted. Sign in again to start a new one.")
         case "out_of_tokens":
             return AppLocalized("The starter allowance is used up. Add a provider of your own to keep going.")
         case "allowance_exhausted":

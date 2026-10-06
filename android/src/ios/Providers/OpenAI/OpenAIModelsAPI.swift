@@ -46,7 +46,7 @@ enum OpenAIModelsAPI {
     }
 
     private static func performFetch(_ request: URLRequest, filterOpenAIOnly: Bool = true) async throws -> [LLMModel] {
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await NanoMuseProxy.session.data(for: request) // nanoMuse: Settings → Network
         let http = response as? HTTPURLResponse
         let statusCode = http?.statusCode ?? -1
 

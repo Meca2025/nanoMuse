@@ -90,6 +90,8 @@ object NanoMuseCloud {
     private const val KEY_PRIVACY_URL = "cloud.privacy_url"
     /** The code sign-in created the account: the first-run setup owes the password step. */
     private const val KEY_FRESH = "cloud.fresh_account"
+    /** The relay refused the key and the phone kept the account's data aside (contract C12); the sign-in page says so until the next sign-in. */
+    private const val KEY_ENDED = "cloud.sign_in_ended"
     private const val KEY_WARNED_GRANT = "cloud.warned_grant"
     private const val KEY_SAMPLES = "cloud.samples"
     /** The relay's menu and what lies beyond it, so the picker and the hands can tell them apart. */
@@ -333,6 +335,12 @@ object NanoMuseCloud {
     fun clearFreshAccount(context: Context) { prefs(context).edit().remove(KEY_FRESH).apply() }
 
     /**
+     * True after the relay refused the phone's key and the account's data was put aside
+     * (contract C12) — the sign-in page tells the person so — until the next sign-in.
+     */
+    fun signInEnded(context: Context): Boolean = prefs(context).getBoolean(KEY_ENDED, false)
+
+    /**
      * The 80 % heads-up is said once per pool size: true the first time it is asked for a
      * pool of [grantCny] (and records it), false afterwards — until the pool grows.
      */
@@ -489,27 +497,48 @@ object NanoMuseCloud {
         }
     }
 
-    /** Every other device loses its key; with [includingThis] this phone signs out too. */
-    suspend fun signOutEverywhere(context: Context, includingThis: Boolean) = withContext(Dispatchers.IO) {
+    /**
+     * Every other device loses its key; with [includingThis] this phone signs out too, and
+     * its copy of the account's data stays only with [keep] (contract C12).
+     */
+    suspend fun signOutEverywhere(context: Context, includingThis: Boolean, keep: Boolean = false) = withContext(Dispatchers.IO) {
         val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
         call(context, "POST", "/v1/auth/sign-out-all", JSONObject().put("all", includingThis), token = key)
-        if (includingThis) forgetLocally(context)
+        if (includingThis) forgetLocally(context, keep)
         Unit
     }
 
-    /** The person's own request: the account and everything about it goes at the relay. */
+    /**
+     * The person's own request: the account and everything about it goes at the relay, and
+     * everything of it on this phone — chats, memory, feed, goals, face, the key — goes too
+     * (contract C12). The next sign-in with the same address is a new account and starts empty.
+     */
     suspend fun deleteAccount(context: Context) = withContext(Dispatchers.IO) {
         val key = apiKey(context) ?: throw CloudException("bad_key", "Not signed in")
         call(context, "POST", "/v1/auth/delete", null, token = key)
-        forgetLocally(context)
+        forgetLocally(context, keep = false)
     }
 
     private fun deviceName(): String = "${Build.MANUFACTURER} ${Build.MODEL}".trim().take(80)
 
-    private fun forgetLocally(context: Context) {
-        io.github.nanomuse.hub.Hub.stop(context)
-        instance(context)?.let { repo(context)?.removeInstance(it.id) }
-        clear(context)
+    /**
+     * The phone forgets the account: the hub stops, the account's data leaves the fixed paths
+     * (contract C12, [io.github.nanomuse.account.AccountData.leave] — put aside with [keep],
+     * deleted without), the provider and the key go, and the phone's own set comes back.
+     * The account's data moves while the account is still the signed-in key; the phone's set
+     * returns only once the key is gone, so nothing made in the gap is filed under the account
+     * that left. All of it inside the sync lock, so no push reads the gap as deletions.
+     */
+    private suspend fun forgetLocally(context: Context, keep: Boolean) {
+        val ctx = context.applicationContext
+        io.github.nanomuse.hub.Hub.stop(ctx)
+        val account = io.github.nanomuse.account.AccountData.key(ctx)
+        io.github.nanomuse.sync.ConversationSync.exclusive {
+            if (account.isNotEmpty()) io.github.nanomuse.account.AccountData.leave(ctx, account, keep)
+            instance(ctx)?.let { repo(ctx)?.removeInstance(it.id) }
+            clear(ctx)
+            if (account.isNotEmpty()) io.github.nanomuse.account.AccountData.enter(ctx, io.github.nanomuse.account.AccountScope.LOCAL)
+        }
     }
 
     /**
@@ -521,6 +550,10 @@ object NanoMuseCloud {
         val repo = repo(context) ?: throw CloudException("no_repository", "Provider storage is not ready")
         val apiKey = reply.optString("api_key").takeIf { it.isNotBlank() }
             ?: throw CloudException("bad_reply", "The relay sent no key")
+        // contract C12: who was here before the key is written — the phone's own set (signed
+        // out), or an account a sign-in reached without a sign-out (nothing of it is deleted
+        // without the sheet's question: it is put aside, as *Keep* would)
+        val before = io.github.nanomuse.account.AccountData.key(context)
         // The host the code was sent to is the host the key is for; the relay's own idea of
         // its public address (`base_url`) is informational.
         val base = baseUrl(context)
@@ -539,7 +572,7 @@ object NanoMuseCloud {
             appendV1Suffix = true,
         ).also { repo.addInstance(it) }
         repo.saveApiKey(inst.id, apiKey)
-        prefs(context).edit().putString(KEY_INSTANCE, inst.id).apply()
+        prefs(context).edit().putString(KEY_INSTANCE, inst.id).remove(KEY_ENDED).apply()
 
         // The models the relay serves — same `/v1/models` call every provider gets; the relay
         // includes modalities so the picture model is recognised as one.
@@ -551,6 +584,13 @@ object NanoMuseCloud {
 
         saveAccount(context, reply)
         if (reply.optBoolean("created", false)) prefs(context).edit().putBoolean(KEY_FRESH, true).apply()
+        val after = io.github.nanomuse.account.AccountData.key(context)
+        if (after != before) {
+            io.github.nanomuse.sync.ConversationSync.exclusive {
+                io.github.nanomuse.account.AccountData.leave(context, before, keep = true)
+                io.github.nanomuse.account.AccountData.enter(context, after)
+            }
+        }
         _signedIn.value = true
         io.github.nanomuse.hub.Hub.restart(context) // the new key joins the hub
         ProfileSync.pullSoon(context) // the name and look the account's other devices wear
@@ -572,10 +612,14 @@ object NanoMuseCloud {
             account(context)
         } catch (e: CloudException) {
             if (e.status == 401) {
-                // Revoked elsewhere, or the relay was reset: the provider cannot answer any more.
-                io.github.nanomuse.hub.Hub.stop(context)
-                repo(context)?.removeInstance(inst.id)
-                clear(context)
+                // Revoked elsewhere, or the relay was reset: the provider cannot answer any
+                // more. Nobody on this phone asked, so the account's data is put aside as
+                // *Keep* would and comes back with the next sign-in as the same account
+                // (contract C12). Only `account_deleted` — the account itself is gone at the
+                // relay — leaves nothing to come back to, and the data goes.
+                val keep = io.github.nanomuse.account.AccountScope.keepOnRefusedKey(e.code)
+                forgetLocally(context, keep)
+                if (keep) prefs(context).edit().putBoolean(KEY_ENDED, true).apply()
                 null
             } else {
                 account(context)
@@ -583,17 +627,19 @@ object NanoMuseCloud {
         }
     }
 
-    /** Revoke this phone's key at the relay and take the provider out of the app. */
-    suspend fun signOut(context: Context) = withContext(Dispatchers.IO) {
+    /**
+     * Revoke this phone's key at the relay and take the provider out of the app. The account's
+     * chats, memory, feed, goals and face stay on the phone — put aside for its return — only
+     * with [keep] (the sign-out sheet's switch, off by default; contract C12).
+     */
+    suspend fun signOut(context: Context, keep: Boolean = false) = withContext(Dispatchers.IO) {
         val repo = repo(context)
         val inst = instance(context)
         val key = inst?.let { repo?.loadApiKey(it.id) }
         if (inst != null && key != null) {
             runCatching { call(context, "POST", "/v1/auth/sign-out", null, token = key) }
         }
-        io.github.nanomuse.hub.Hub.stop(context)
-        if (inst != null) repo?.removeInstance(inst.id)
-        clear(context)
+        forgetLocally(context, keep)
     }
 
     /**
@@ -618,6 +664,7 @@ object NanoMuseCloud {
             "phone_region" -> context.getString(R.string.nm_cloud_sms_region) // the same sentence the sign-in screen shows before asking
             "account_disabled" -> context.getString(R.string.nm_cloud_err_disabled)
             "bad_key" -> context.getString(R.string.nm_cloud_err_bad_key)
+            "account_deleted" -> context.getString(R.string.nm_cloud_err_account_deleted)
             "out_of_tokens" -> context.getString(R.string.nm_cloud_err_out_of_tokens)
             "daily_cap" -> context.getString(R.string.nm_cloud_err_daily_cap)
             "allowance_exhausted" -> allowanceSentence(context)

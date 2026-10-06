@@ -84,7 +84,7 @@ struct UserMessageEntityQuery: EntityQuery {
         }
 
         // Fallback (no session selected): recent sessions' messages
-        let sessions = await ChatStore.shared.listSessions()
+        let sessions = await NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()) // nanoMuse: C12 — another account's chats stay hidden
         var entities: [UserMessageEntity] = []
         for session in sessions.prefix(10) {
             let msgs = await UserMessageEntity.loadFromDB(

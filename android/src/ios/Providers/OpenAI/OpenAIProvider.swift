@@ -39,6 +39,7 @@ private func resolvedAPIBase(_ base: String, appendV1: Bool) -> String {
 private let streamingSession: URLSession = {
     let config = URLSessionConfiguration.default
     config.timeoutIntervalForRequest = 600  // 10 minutes
+    NanoMuseProxy.apply(to: config) // nanoMuse: Settings → Network, the proxy for own providers
     let session = URLSession(configuration: config)
     // Evict this session's pooled (possibly stale) connections on network
     // transitions — see LLMSessionRegistry / Android #740.
@@ -80,6 +81,7 @@ private func makeStreamingSession() -> URLSession {
     config.timeoutIntervalForRequest = 600  // 10 minutes — matches the shared session
     // One stream per session, so there is no second connection to pool.
     config.httpMaximumConnectionsPerHost = 1
+    NanoMuseProxy.apply(to: config) // nanoMuse: Settings → Network, the proxy for own providers
     return URLSession(configuration: config)
 }
 
@@ -2064,6 +2066,9 @@ final class OpenAIProvider: LLMProvider {
     }
 
     func mapHTTPError(statusCode: Int, body: String) -> LLMError {
+        // nanoMuse: the plan's "region not supported" / "sign-in expired" / "nothing left" are a
+        // 403, a 401 and a 429 whose bodies the mapping below drops; keep them for the chat's card.
+        NanoMuseReachSignal.shared.noteHTTPError(status: statusCode, body: body, host: isOAuth ? "chatgpt.com" : (NanoMuseProxy.hostOf(customBaseURL ?? "") ?? "api.openai.com"), oauth: isOAuth)
         if statusCode == 401 || statusCode == 403 { return .invalidAPIKey(detail: "HTTP \(statusCode): \(String(body.prefix(200)))") }
         if statusCode == 429 { return .rateLimited }
 

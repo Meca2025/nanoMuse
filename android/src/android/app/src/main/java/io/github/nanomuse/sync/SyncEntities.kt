@@ -60,6 +60,15 @@ data class SyncMessage(
 @Entity(tableName = "sync_meta")
 data class SyncMeta(@PrimaryKey val key: String, val value: String)
 
+/**
+ * Whose chat a local session is (0.1.40, contract C12): the account key of
+ * [io.github.nanomuse.account.AccountData] — the relay's account id — or `""` for a chat made
+ * while nobody was signed in. Every session gets a row the first time it is seen; the lists
+ * show the signed-in account's rows only, and a sign-out without *Keep* deletes them.
+ */
+@Entity(tableName = "session_owners", indices = [Index(value = ["owner"])])
+data class SessionOwner(@PrimaryKey val sessionId: String, val owner: String)
+
 /** The mapping store, as the engine sees it; [RoomSyncStore] on the phone, a map in tests. */
 interface SyncStore {
     suspend fun meta(key: String): String?
@@ -144,9 +153,29 @@ interface SyncDao {
 
     @Query("DELETE FROM sync_meta")
     suspend fun clearMeta()
+
+    // -- whose chat is whose (C12) --
+
+    @Query("SELECT * FROM session_owners")
+    suspend fun owners(): List<SessionOwner>
+
+    @Query("SELECT sessionId FROM session_owners WHERE owner = :owner")
+    suspend fun sessionsOf(owner: String): List<String>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putOwners(list: List<SessionOwner>)
+
+    @Query("DELETE FROM session_owners WHERE sessionId IN (:ids)")
+    suspend fun removeOwners(ids: List<String>)
+
+    @Query("DELETE FROM sync_conversations WHERE sessionId IN (:ids)")
+    suspend fun removeConversations(ids: List<String>)
+
+    @Query("DELETE FROM sync_messages WHERE sessionId IN (:ids)")
+    suspend fun removeMessagesOfAll(ids: List<String>)
 }
 
-@Database(entities = [SyncConversation::class, SyncMessage::class, SyncMeta::class], version = 3, exportSchema = false)
+@Database(entities = [SyncConversation::class, SyncMessage::class, SyncMeta::class, SessionOwner::class], version = 4, exportSchema = false)
 abstract class SyncDatabase : RoomDatabase() {
     abstract fun dao(): SyncDao
 
@@ -173,9 +202,17 @@ abstract class SyncDatabase : RoomDatabase() {
             }
         }
 
+        /** 0.1.40 (contract C12): whose chat every local session is; filled by [io.github.nanomuse.account.AccountData.reconcile] at the first start. */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS session_owners (sessionId TEXT NOT NULL PRIMARY KEY, owner TEXT NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_session_owners_owner ON session_owners(owner)")
+            }
+        }
+
         fun get(context: Context): SyncDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, SyncDatabase::class.java, "nanomuse_sync.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration()
                 .build()
                 .also { instance = it }

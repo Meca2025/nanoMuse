@@ -166,7 +166,7 @@ function KeyForm({ t, entry, region, configured, onSaved, onCancel }: { t: Trans
 }
 
 /** The ChatGPT sign-in: the row under OpenAI (or on its own in the sign-in group), with the honesty line. */
-function ChatGptRow({ t, view, onChanged }: { t: Translate; view: ProvidersView; onChanged(said?: string): void }): ReactNode {
+export function ChatGptRow({ t, view, onChanged }: { t: Translate; view: ProvidersView; onChanged(said?: string): void }): ReactNode {
   const live = useLive()
   const cg = live.ownKeys?.chatgpt ?? view.chatgpt
   const [busy, setBusy] = useState(false)
@@ -214,7 +214,7 @@ function ChatGptRow({ t, view, onChanged }: { t: Translate; view: ProvidersView;
             : h('button', { type: 'button', className: 'nm-pill nm-pill-sm', disabled: busy || !view.chatgpt.runtime, onClick: signIn }, t('ownKeySignIn')))))
 }
 
-function ProviderRow({ t, entry, view, onChanged }: { t: Translate; entry: ProviderEntry; view: ProvidersView; onChanged(said?: string): void }): ReactNode {
+export function ProviderRow({ t, entry, view, onChanged }: { t: Translate; entry: ProviderEntry; view: ProvidersView; onChanged(said?: string): void }): ReactNode {
   const configured = view.configured.find((p) => p.provider === entry.id)
   const [open, setOpen] = useState(false)
   const [said, setSaid] = useState<string | undefined>()
@@ -262,12 +262,12 @@ function AccountRow({ t, view }: { t: Translate; view: ProvidersView }): ReactNo
  * account's row first while signed in; the own-key step shows the region's first group and the
  * sign-in row, the rest behind *More ways*.
  */
-export function WaysOnRows({ t, view, groups = ALL_GROUPS, onChanged }: { t: Translate; view: ProvidersView; groups?: Group[]; onChanged(said?: string): void }): ReactNode {
+export function WaysOnRows({ t, view, groups = ALL_GROUPS, signInRow = true, headings = true, onChanged }: { t: Translate; view: ProvidersView; groups?: Group[]; /** false leaves the ChatGPT sign-in row out (the allowance card draws it under its own heading) */ signInRow?: boolean; headings?: boolean; onChanged(said?: string): void }): ReactNode {
   const g = useMemo(() => groupsOf(view.catalogue, view.region), [view.catalogue, view.region])
   const rowOf = (entry: ProviderEntry) => h(ProviderRow, { key: entry.id, t, entry, view, onChanged })
-  const heading = (text: string) => h('div', { className: 'nm-ways-lead', style: { marginTop: 6 } }, text)
+  const heading = (text: string) => (headings ? h('div', { className: 'nm-ways-lead', style: { marginTop: 6 } }, text) : null)
   // the ChatGPT sign-in sits with OpenAI: under it when OpenAI is in the first group, else in the sign-in group
-  const chatgptEntry = view.catalogue.find((p) => p.auth.includes('oauth-chatgpt'))
+  const chatgptEntry = signInRow ? view.catalogue.find((p) => p.auth.includes('oauth-chatgpt')) : undefined
   const chatgptInFirst = Boolean(chatgptEntry && g.first.some((p) => p.id === chatgptEntry.id))
   const out: ReactNode[] = []
   if (groups.includes('account') && view.cloud.signedIn) {

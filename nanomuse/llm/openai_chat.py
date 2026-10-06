@@ -25,6 +25,7 @@ from nanomuse.llm.base import (
     DeltaCallback,
     ThinkStreamFilter,
     ToolsUnsupported,
+    proxied_http,
     says_no_tools,
     split_think,
 )
@@ -52,6 +53,8 @@ class OpenAIChatLLM(BaseLLM):
             timeout=settings.timeout,
             max_retries=0,  # we retry ourselves so streaming failures are covered too
             default_headers=settings.extra_headers or None,
+            # `[llm] proxy`: this slot's requests through one proxy, the environment's ignored
+            http_client=proxied_http(settings.proxy, settings.timeout),
         )
         # what the id says about pictures, so a text-only model is never sent one (and never
         # has to refuse a request first); "on" and "off" are the user's word and stand

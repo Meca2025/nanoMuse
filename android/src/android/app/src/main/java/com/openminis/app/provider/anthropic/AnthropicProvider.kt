@@ -80,6 +80,7 @@ class AnthropicProvider(
         // [T-android-stale-conn-retry-hang] Shared pool — see NetworkMonitor.
         // Network-transition eviction must reach provider connections.
         .connectionPool(com.openminis.app.network.NetworkMonitor.sharedLLMConnectionPool)
+        .proxyAuthenticator(io.github.nanomuse.net.OwnProviderProxy.authenticator) // nanoMuse: Settings → Network, a proxy with a password
         .build()
 
     override suspend fun sendMessageClamped(

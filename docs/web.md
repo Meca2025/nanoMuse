@@ -83,6 +83,29 @@ capability (four at most, in the catalogue's order):
 A *How* link beside each goes to [own-key.md](own-key.md). The provider names
 come from the catalogue in the console's language (`name` / `name_zh`).
 
+**A turn the relay refused** is one sentence too, by the relay's `code`
+(`nanomuse/server/failures.py`; the sentence is the key in `web/src/i18n/zh-CN.ts`,
+so the Chinese is looked up from the English): the allowance used up (with the
+ways card under it), the daily cap, a rate limit, a bad key, a disabled account,
+a model the relay does not offer, the provider behind the relay in trouble —
+and since 0.1.40 the four that fell through to *The model provider answered
+with an error: …* and the five the operator's switches send
+([cloud.md](cloud.md#controls)):
+
+| The relay said | The chat says |
+|---|---|
+| `413 too_large` | That message is too large for the model's window. Shorten it, leave out some attachments, or start a new chat. |
+| `403 not_invited` | This relay takes new accounts by invitation only; sign in with an invite code under Account. |
+| `429 too_many_in_flight` | Too many turns are running on this account at once; wait for one to finish and try again. |
+| `429 provider_busy` | The model provider is busy; try again in a moment. |
+| `429 allowance_exhausted` with `paused: true` | The free allowance is paused on this relay for now, not used up. Your own model key under Connections keeps you going; your sign-in, your devices and what is left stay as they are. — the same ways card as a spent pool, the notice carries `paused` |
+| `403 signup_closed` | New sign-ups are paused on this relay for now; existing accounts keep working. Try again later. |
+| `503 service_paused` | nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later. |
+| `503 sync_paused` | Conversation sync is paused on this relay for now; what is stored is kept and your devices keep working on their own. |
+| `503 hub_paused` | The device hub is paused on this relay for now; each device keeps working on its own. |
+
+The raw reply stays under *Details* for a bug report, never as the only thing shown.
+
 ## Checks
 
 ```sh

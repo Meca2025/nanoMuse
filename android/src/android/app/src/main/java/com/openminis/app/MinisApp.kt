@@ -423,6 +423,9 @@ class MinisApp : Application(), ImageLoaderFactory {
         database = AppDatabase.getInstance(this)
         chatRepository = ChatRepository(database.chatDao())
         providerRepository = ProviderRepository(this)
+        // nanoMuse: Settings → Network — the proxy for own providers and the ChatGPT plan is
+        // the process's proxy selector, so it must be in place before the first OkHttp client.
+        io.github.nanomuse.net.OwnProviderProxy.install(this, providerRepository.config)
         envVarRepository = EnvVarRepository(this)
         // [T-android-safemode-lateinit-crash-147] SkillRepository parses
         // third-party content (skills imported from external hubs), which
@@ -658,6 +661,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         io.github.nanomuse.feed.FeedFlow.init(this) // nanoMuse
         io.github.nanomuse.avatar.AvatarStore.init(this) // nanoMuse: the user's own face, if any
         io.github.nanomuse.cloud.ProfileSync.init(this) // nanoMuse: the name and face the account's devices share
+        io.github.nanomuse.account.AccountData.init(this) // nanoMuse: whose chat is whose (contract C12)
         io.github.nanomuse.sync.ConversationSync.init(this) // nanoMuse: the conversations, the same on every device
         io.github.nanomuse.avatar.AvatarStudio.init(this) // nanoMuse: the feed's files and its built-in routine
         val nmRiskNotifier = io.github.nanomuse.guard.RiskApprovalNotifier(this, ::isAppForeground)

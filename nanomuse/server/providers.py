@@ -29,6 +29,7 @@ from nanomuse.llm.chatgpt import (
     LOGIN_TIMEOUT_S,
     REDIRECT_PORT,
     TOKEN_URL,
+    Auth,
     ChatGPTError,
     LoginFlow,
     TokenStore,
@@ -36,6 +37,8 @@ from nanomuse.llm.chatgpt import (
 from nanomuse.llm.chatgpt import (
     CAPABILITIES as CHATGPT_CAPABILITIES,
 )
+from nanomuse.llm.chatgpt_proxy import Usage
+from nanomuse.llm.codex import CodexClient
 from nanomuse.logger import logger
 from nanomuse.server.events import keep_task
 
@@ -278,6 +281,7 @@ class ChatGPTSignIn:
         self._error: str = ""
         self._error_code: str = ""
         self._starting: asyncio.Lock | None = None
+        self._usage: Usage | None = None
 
     @property
     def pending(self) -> bool:
@@ -399,9 +403,22 @@ class ChatGPTSignIn:
             view["error_code"] = self._error_code
         return view
 
+    async def usage(self) -> dict[str, Any]:
+        """What is left of the plan's windows, as OpenAI reports it; at most one request a
+        minute. ``{signed_in, plan, label, limits | null, error}`` — never raises."""
+        if self._usage is None:
+            proxy = self.svc.settings.llm.proxy.strip() or None
+            auth = Auth(self.store, http=self.http, token_url=self.token_url, proxy=proxy)
+            self._usage = Usage(
+                auth, CodexClient(auth, http=self.http, proxy=proxy), http=self.http
+            )
+        return await self._usage.view()
+
     async def logout(self) -> dict[str, Any]:
         await self.cancel()
         was = self.store.clear()
+        if self._usage is not None:
+            self._usage = None
         self._error = self._error_code = ""
         self.svc.bus.publish({"kind": "chatgpt", "chatgpt": self.status()})
         return {"ok": True, "was_signed_in": was}

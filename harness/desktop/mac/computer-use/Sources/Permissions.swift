@@ -7,9 +7,58 @@ import CoreGraphics
 import Foundation
 
 enum Permissions {
-    /// The live grant (`CGPreflightScreenCaptureAccess`), no prompt.
-    static func screenGranted() -> Bool {
-        CGPreflightScreenCaptureAccess()
+    enum ScreenState: String {
+        case granted
+        case denied
+        case unknown
+    }
+
+    /// The capture layer's verdict is kept this long: `/status` is read every two seconds
+    /// and a ScreenCaptureKit listing is a round trip to the window server.
+    private static let probeKeep: TimeInterval = 3
+    private static var probedAt: Date = .distantPast
+    private static var probed: (ScreenState, String) = (.unknown, "")
+    private static let lock = NSLock()
+
+    /// Screen Recording, truthfully: `CGPreflightScreenCaptureAccess` first (TCC's own
+    /// answer, no prompt) — a `false` is `denied`. A `true` is confirmed with the capture
+    /// layer on macOS 14 and later (ScreenCapture.probe: `SCShareableContent` throwing
+    /// `userDeclined` means the grant is not there, whatever the preflight said), so
+    /// `granted` means a screenshot will come back; an SCK error that is not a refusal is
+    /// `unknown`, with the reason in `screenDetail`.
+    static func screenState() -> ScreenState {
+        screenStateAndDetail().0
+    }
+
+    /// The last reason behind an `unknown` or an SCK `denied` ("" when granted outright).
+    static func screenDetail() -> String {
+        screenStateAndDetail().1
+    }
+
+    private static func screenStateAndDetail() -> (ScreenState, String) {
+        guard CGPreflightScreenCaptureAccess() else { return (.denied, "") }
+        lock.lock()
+        defer { lock.unlock() }
+        if Date().timeIntervalSince(probedAt) < probeKeep {
+            return probed
+        }
+        switch ScreenCapture.probe() {
+        case .granted:
+            probed = (.granted, "")
+        case .denied(let text):
+            probed = (.denied, text)
+        case .unknown(let text):
+            probed = (.unknown, text)
+        }
+        probedAt = Date()
+        return probed
+    }
+
+    /// Forget the cached verdict (after a `/request`, so the next `/status` reads it afresh).
+    static func forgetProbe() {
+        lock.lock()
+        probedAt = .distantPast
+        lock.unlock()
     }
 
     static func accessibilityGranted() -> Bool {
@@ -33,6 +82,7 @@ enum Permissions {
                 _ = AXIsProcessTrustedWithOptions(options)
             }
         }
+        forgetProbe()
     }
 
     /// System Settings → Privacy & Security, at the pane where the switch is.

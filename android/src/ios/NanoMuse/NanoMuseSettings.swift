@@ -164,6 +164,8 @@ struct NanoMuseSettingsHomeView: View {
             NanoMuseRowDivider()
             NanoMuseLinkRow(title: AppLocalized("Data controls")) { NanoMuseDataControlsView() }
             NanoMuseRowDivider()
+            NanoMuseLinkRow(title: AppLocalized("Network")) { NanoMuseNetworkView() }
+            NanoMuseRowDivider()
             NanoMuseLinkRow(title: AppLocalized("Logs")) { LogManagementView() }
         }
     }

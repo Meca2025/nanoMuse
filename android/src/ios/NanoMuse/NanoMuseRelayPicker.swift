@@ -114,7 +114,8 @@ struct NanoMuseRelayPickerSheet: View {
 /// signs out and opens the picker (`onConfirmed`): the row itself leaves the tree with the sign-out.
 struct NanoMuseRelayRow: View {
     var busy: Bool
-    var onConfirmed: () -> Void
+    /// The sheet's answer rides along: whether the account's chats stay on this phone (C12).
+    var onConfirmed: (_ keep: Bool) -> Void
     @State private var confirming = false
 
     var body: some View {
@@ -126,11 +127,13 @@ struct NanoMuseRelayRow: View {
             Button(AppLocalized("Change")) { confirming = true }
                 .disabled(busy)
         }
-        .confirmationDialog(AppLocalized("Use a different server"), isPresented: $confirming, titleVisibility: .visible) {
-            Button(AppLocalized("Sign out and change"), action: onConfirmed)
-            Button(AppLocalized("Cancel"), role: .cancel) {}
-        } message: {
-            Text(AppLocalized("A sign-in belongs to the server that issued it. This phone signs out first; sign in again on the new server."))
+        .sheet(isPresented: $confirming) {
+            NanoMuseSignOutSheet(
+                title: AppLocalized("Use a different server"),
+                message: AppLocalized("A sign-in belongs to the server that issued it. This phone signs out first; sign in again on the new server."),
+                action: AppLocalized("Sign out and change"),
+                onConfirm: onConfirmed
+            )
         }
     }
 }

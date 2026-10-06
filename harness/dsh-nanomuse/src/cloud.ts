@@ -36,7 +36,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
 import type { ToolDispatchExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
-import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type ContentBlock, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionCreateRequest } from '@deepseek-ai/dsh-api-session-controller/types'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
@@ -46,8 +46,10 @@ import { mountGuarded } from './admit.ts'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
 import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
+import { relayFailure, type RelayRefusal } from './refusals.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner, textOf } from './task.ts'
+import { Trajectory, type StepAction, type TrajectoryView } from './trajectory.ts'
 import { RemoteStore, SyncEngine, SyncRelay, type RemoteLine, type SessionInfo, type SessionLine, type SyncState } from './sync.ts'
 import { AvatarMotion, ANIMATED, type MotionMood, type MotionView } from './motion.ts'
 import { DEFAULT_VIDEO_MODEL, hostOf, KNOWN_DASHSCOPE_MODELS, looksLikeVideoModel, probe as probeVideoModel, speaksDashScope, type VideoEndpoint } from './video.ts'
@@ -213,17 +215,8 @@ export interface Notice {
   at: number
 }
 
-/** The last thing the hands did, for the stage's caption and cursor marker. */
-export interface StageAction {
-  /** `click`, `type`, `key`, `scroll`, `drag`, `open_app`, `wait`, `look`… */
-  kind: string
-  label: string
-  text: string
-  /** Pixels of the frame the action was aimed at; -1 when it had no point. */
-  x: number
-  y: number
-  at: number
-}
+/** The last thing the hands did, for the stage's caption and marker; since 0.1.40 also a drag's far end (`x2`, `y2`) and a scroll's `dy`. */
+export type StageAction = StepAction
 
 /**
  * The Live stage: the latest screenshot the agent took while using a screen —
@@ -273,6 +266,10 @@ export interface LiveState {
   sync: { rev: number; mainSession: string }
   /** Own keys and the ChatGPT sign-in (C11): how many rows, what the sign-in is doing, whether its proxy is up. */
   ownKeys: { count: number; capabilities: Capability[]; chatgpt: { signedIn: boolean; label: string; proxy: boolean; login: LoginView } }
+  /** The hands' trajectory (0.1.40): `rev` moves with every step; the sessions that have a run to look back at. The runs themselves are `GET /trajectory?session=`. */
+  trajectory: { rev: number; sessions: string[] }
+  /** The 80 % heads-up (C12), while it is due: what is left of the pool and what an invitation adds, in yuan; null otherwise. */
+  headsUp: { left: number; grant: number; bonus: number } | null
 }
 
 /** What Settings → Account's "ways on", the own-key step and the pickers read (`GET /providers`). */
@@ -332,7 +329,12 @@ interface State {
   providers?: Record<string, OwnProvider>
   /** The ChatGPT sign-in (C11): a subscription signed in through the runtime's `nanomuse chatgpt` flow. */
   chatgpt?: ChatGptState
+  /** The pool size (yuan) the 80 % heads-up was shown for; it comes back only once the pool has grown. */
+  warnedGrant?: number
 }
+
+/** How often, at most, the account is re-read after a turn for the heads-up. */
+const ALLOWANCE_CHECK_EVERY_MS = 60_000
 
 /** The Media settings as stored. `videoModel` empty means the endpoint's default; `off` means no clips. */
 export interface MediaState {
@@ -475,9 +477,12 @@ export default class NanomuseCloud extends Service {
   private readonly asks = new AskDesk(() => this.broadcast())
   private noticeSeq = 0
   private stage: StageState = NO_STAGE
-  private frame: { seq: number; bytes: Buffer; mime: string } | undefined
+  /** The hands' runs, step by step, with their pictures (0.1.40). */
+  private readonly trajectory = new Trajectory()
   private stageTimer: NodeJS.Timeout | undefined
   private signedInCache = false
+  /** When the account was last re-read for the allowance (after a turn, after a refusal). */
+  private lastAllowanceCheck = 0
   /** Tasks from other devices, once the session API is up. */
   private tasks: TaskRunner | undefined
   /** Conversations synced between the account's devices (contract C7), once the session API is up. */
@@ -714,7 +719,7 @@ export default class NanomuseCloud extends Service {
         if (exec.name === 'mcp__nanomuse__computer_act' && handOverOf(exec.arguments)) {
           const reason = handOverOf(exec.arguments) ?? ''
           this.began(exec.callId, exec.name, exec.arguments, sessionId)
-          this.acted({ kind: 'hold', label: reason, text: reason, x: -1, y: -1, at: Date.now() }, sessionId)
+          this.acted({ kind: 'hold', label: reason, text: reason, x: -1, y: -1, x2: -1, y2: -1, dy: 0, at: Date.now() }, sessionId, exec.callId)
           try {
             const hold = this.holdDesk.begin(sessionId, 'computer', 'agent', reason)
             const how = await this.holdDesk.wait(sessionId)
@@ -728,21 +733,43 @@ export default class NanomuseCloud extends Service {
         // While the person has the screen, the hands wait rather than fail.
         if (this.holdDesk.on(sessionId)) await this.holdDesk.wait(sessionId)
         this.began(exec.callId, exec.name, exec.arguments, sessionId)
-        if (exec.name === 'mcp__nanomuse__computer_act') this.acted(stageAction(exec.arguments), sessionId)
-        else if (exec.name === 'mcp__nanomuse__computer_screen') this.acted({ kind: 'look', label: '', text: '', x: -1, y: -1, at: Date.now() }, sessionId)
+        if (exec.name === 'mcp__nanomuse__computer_act') this.acted(stageAction(exec.arguments), sessionId, exec.callId)
+        else if (exec.name === 'mcp__nanomuse__computer_screen') this.acted({ kind: 'look', label: '', text: '', x: -1, y: -1, x2: -1, y2: -1, dy: 0, at: Date.now() }, sessionId, exec.callId)
         try {
           let result = await next()
           if (exec.name === 'mcp__nanomuse__computer_act' && result.isError) {
             const refused = refusalOf(result)
             if (refused) result = await this.confirmStep(ctx, exec, refused, next)
           }
-          if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId)
+          if (exec.name.startsWith('mcp__nanomuse__computer_') && !result.isError) this.frameFromMcp(result.value, sessionId, exec.callId)
           // A black capture (macOS: Screen Recording missing for the app, or granted after it started) puts a relaunch notice up.
           if (exec.name.startsWith('mcp__nanomuse__computer_') && result.isError && isBlack(errorText(result))) this.sawBlackScreen()
           return result
         } finally {
           this.ended(exec.callId)
         }
+      })
+    })
+    // The trajectory (0.1.40): the model's words before a step, and the turn's end closing the run.
+    this.ctx.effect(
+      () =>
+        this.ctx.on('session/event', (session: Session, event: SessionEvent) => {
+          const id = String(session.id)
+          if (event.type === 'assistant/message') this.trajectory.said(id, textOf(event.data.message.content))
+          else if (event.type === 'turn/end' && this.trajectory.running(id)) {
+            this.trajectory.turnEnded(id)
+            this.broadcast()
+          }
+        }),
+      'nanomuse cloud: trajectory',
+    )
+    // The relay's refusals, read on their way back (C12): a spent allowance, a request too large,
+    // a retired key, a relay that did not answer — as a card in the chat, not the wire's text,
+    // and not retried as if they were rate limits.
+    this.ctx.inject(['llm'], (ctx) => {
+      ctx.on('llm/stream', (options, next) => {
+        if (options.provider !== PROVIDER_ID) return next()
+        return this.watchRelayStream(next())
       })
     })
     this.ctx.effect(() => () => {
@@ -793,6 +820,83 @@ export default class NanomuseCloud extends Service {
         this.updateCheck = undefined
       })
     return this.updateCheck
+  }
+
+  // ---- the relay's refusals in the chat (C12) ---------------------------------------
+
+  /**
+   * The account's stream, watched: a finish that is a refusal of the relay's is rewritten
+   * (`src/refusals.ts`) so the chat draws the card and the retry plugin lets it be; a spent
+   * allowance has the account re-read, so Settings and the heads-up agree with it; a 401 has
+   * the sign-in forgotten here, as a `/me` 401 does. A turn that ended well counts for the
+   * 80 % heads-up.
+   */
+  private async *watchRelayStream(stream: AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk> {
+    for await (const chunk of stream) {
+      if (chunk.type !== 'finish') {
+        yield chunk
+        continue
+      }
+      if (chunk.reason.kind !== 'error') {
+        if (chunk.reason.kind !== 'aborted') this.afterRelayTurn()
+        yield chunk
+        continue
+      }
+      const seen = relayFailure(chunk.reason.failure)
+      if (!seen) {
+        yield chunk
+        continue
+      }
+      this.ctx.logger.info('nanomuse cloud: the relay refused (%s %s): %s', seen.refusal.status, seen.refusal.code, seen.refusal.message || '—')
+      this.refused(seen.refusal)
+      yield { ...chunk, reason: { kind: 'error', failure: { ...chunk.reason.failure, ...seen.failure } } }
+    }
+  }
+
+  /** What a refusal changes here, besides the card: the account re-read, or forgotten. */
+  private refused(refusal: RelayRefusal): void {
+    if (refusal.kind === 'exhausted' || refusal.kind === 'allowance_paused' || refusal.kind === 'daily_cap') {
+      this.lastAllowanceCheck = Date.now()
+      void this.refresh().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: account not re-read after the refusal: %s', message(error)))
+    } else if (refusal.kind === 'signed_out') {
+      void this.serialize(() => this.forget()).then(() => this.broadcast()).catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: sign-in not forgotten after a 401: %s', message(error)))
+    }
+  }
+
+  /**
+   * After a turn on the account's model: once a minute at most, re-read the account, and when
+   * the relay says `warn` (80 % of the pool spent) show the heads-up strip — once per pool size
+   * (the phones' `nmAllowanceHeadsUp`, the web app's `AllowanceHeadsUp`).
+   */
+  private afterRelayTurn(): void {
+    if (!this.state.account || Date.now() - this.lastAllowanceCheck < ALLOWANCE_CHECK_EVERY_MS) return
+    this.lastAllowanceCheck = Date.now()
+    void this.serialize(async () => {
+      const token = await this.token()
+      if (!token || !this.state.account) return
+      const account = await this.relay.me(token)
+      this.state = { ...this.state, account }
+      await this.writeState()
+    }).then(() => this.broadcast()).catch((error: unknown) => this.ctx.logger.debug('nanomuse cloud: allowance not re-read: %s', message(error)))
+  }
+
+  /** The 80 % heads-up, when it is due: what is left, the pool, and what an invitation adds. */
+  private headsUp(): LiveState['headsUp'] {
+    const spend = this.state.account?.spend
+    if (!spend || spend.unlimited || !spend.warn) return null
+    const left = spend.left ?? 0
+    const grant = spend.grant ?? 0
+    if (left <= 0 || grant <= 0 || this.state.warnedGrant === grant) return null
+    return { left, grant, bonus: spend.inviteBonusCny ?? 5 }
+  }
+
+  /** The person saw the heads-up (or followed it): not again for this pool size. */
+  async headsUpSeen(): Promise<void> {
+    const grant = this.state.account?.spend?.grant ?? 0
+    if (grant <= 0 || this.state.warnedGrant === grant) return
+    this.state = { ...this.state, warnedGrant: grant }
+    await this.writeState()
+    this.broadcast()
   }
 
   // ---- approvals and holds on the stage (C1, C2) -----------------------------------
@@ -1251,7 +1355,14 @@ export default class NanomuseCloud extends Service {
         capabilities: this.capabilities(),
         chatgpt: { signedIn: Boolean(this.state.chatgpt), label: this.state.chatgpt?.label ?? '', proxy: Boolean(this.chatgpt.ready), login: this.chatgpt.login },
       },
+      trajectory: { rev: this.trajectory.view().rev, sessions: [...new Set(this.trajectory.view().runs.map((r) => r.sessionId))] },
+      headsUp: this.headsUp(),
     }
+  }
+
+  /** The hands' runs of a session (or all), without pictures: `GET /trajectory?session=`. */
+  trajectoryView(sessionId?: string): TrajectoryView {
+    return this.trajectory.view(sessionId)
   }
 
   /** The session that holds the account's main conversation (C8), '' before one is known. */
@@ -1895,6 +2006,7 @@ export default class NanomuseCloud extends Service {
     this.lastCallAt = now
     this.steps += 1
     this.calls.set(callId, { id: callId, name, args: pickArgs(args), sessionId, since: now })
+    this.trajectory.began(sessionId, callId)
     this.broadcast()
   }
 
@@ -1915,10 +2027,9 @@ export default class NanomuseCloud extends Service {
   // -- the Live stage -------------------------------------------------------------------
 
   /** A frame of a screen the agent is working on; `meta.device` names another device, else it is this computer's. */
-  stageFrame(bytes: Buffer, mime: string, meta: { device?: string; width?: number; height?: number; title?: string; mode?: 'screen' | 'window'; sessionId: string }): void {
+  stageFrame(bytes: Buffer, mime: string, meta: { device?: string; width?: number; height?: number; title?: string; mode?: 'screen' | 'window'; sessionId: string; callId?: string }): void {
     if (bytes.length === 0 || bytes.length > 12 * 1024 * 1024) return
-    const seq = (this.frame?.seq ?? 0) + 1
-    this.frame = { seq, bytes, mime }
+    const seq = this.trajectory.frame(bytes, mime, meta)
     const sameScreen = this.stage.source === (meta.device ? 'device' : 'computer') && this.stage.device === (meta.device ?? '')
     this.stage = {
       seq,
@@ -1936,9 +2047,10 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
-  /** What the hands are about to do on this computer's screen. */
-  private acted(action: StageAction, sessionId: string): void {
+  /** What the hands are about to do on this computer's screen: the stage's marker, and a step of the trajectory. */
+  private acted(action: StageAction, sessionId: string, callId: string): void {
     this.stage = { ...this.stage, action, sessionId: sessionId || this.stage.sessionId }
+    this.trajectory.acted(sessionId, callId, action)
     this.broadcast()
   }
 
@@ -1984,7 +2096,7 @@ export default class NanomuseCloud extends Service {
   }
 
   /** The screenshot and the words that came back from `computer_screen` / `computer_act` (an MCP result). */
-  private frameFromMcp(value: unknown, sessionId: string): void {
+  private frameFromMcp(value: unknown, sessionId: string, callId: string): void {
     const content = (value as { content?: unknown[] } | undefined)?.content
     if (!Array.isArray(content)) return
     let image: { data: string; mime: string } | undefined
@@ -1997,14 +2109,13 @@ export default class NanomuseCloud extends Service {
     }
     if (!image) return
     const head = screenHead(text)
-    this.stageFrame(Buffer.from(image.data, 'base64'), image.mime, { ...head, sessionId })
+    this.stageFrame(Buffer.from(image.data, 'base64'), image.mime, { ...head, sessionId, callId })
   }
 
-  /** The agent has stopped using that screen for a while: the stage can go. */
+  /** The agent has stopped using that screen for a while: the stage can go (the trajectory stays, for looking back). */
   private clearStage(): void {
     if (this.stage.seq === 0) return
     this.stage = NO_STAGE
-    this.frame = undefined
     this.broadcast()
   }
 
@@ -2255,14 +2366,18 @@ export default class NanomuseCloud extends Service {
       if (req.method === 'GET' && route === '/events') return this.stream(req, res)
       if (req.method === 'GET' && route === '/live') return send(res, 200, this.live())
       if (req.method === 'GET' && route === '/stage/frame') {
-        const frame = this.frame
+        // `seq` names a step's picture (0.1.40); without it, the newest
+        const frame = this.trajectory.frameOf(Number(url.searchParams.get('seq') ?? 0) || 0)
         if (!frame) return send(res, 404, { error: { code: 'no_frame', message: 'Nothing on the stage' } })
-        res.writeHead(200, { 'content-type': frame.mime, 'content-length': frame.bytes.length, 'cache-control': 'private, max-age=600' })
+        res.writeHead(200, { 'content-type': frame.mime, 'content-length': frame.bytes.length, 'cache-control': 'private, max-age=3600, immutable' })
         res.end(frame.bytes)
         return
       }
+      if (req.method === 'GET' && route === '/trajectory') return send(res, 200, this.trajectoryView(url.searchParams.get('session') ?? undefined))
       if (req.method === 'POST' && route === '/stage/clear') {
         this.clearStage()
+        this.trajectory.clear()
+        this.broadcast()
         return send(res, 204)
       }
       if (req.method === 'POST' && route === '/code') {
@@ -2312,6 +2427,10 @@ export default class NanomuseCloud extends Service {
         return send(res, 200, await this.writeProfile(patch))
       }
       if (req.method === 'POST' && route === '/refresh') return send(res, 200, await this.refresh())
+      if (req.method === 'POST' && route === '/allowance/seen') {
+        await this.headsUpSeen()
+        return send(res, 200, { ok: true })
+      }
       if (req.method === 'GET' && route === '/studio/estimate') return send(res, 200, await this.studioEstimate())
       if (req.method === 'POST' && route === '/studio/draw') {
         const body = await json(req)
@@ -2561,16 +2680,26 @@ export function stageAction(args: unknown): StageAction {
   const kind = typeof a.action === 'string' ? a.action : 'act'
   const keys = Array.isArray(a.keys) ? a.keys.filter((k): k is string => typeof k === 'string').join('+') : ''
   const text = kind === 'key' ? keys : kind === 'open_app' ? String(a.app ?? '') : typeof a.text === 'string' ? a.text : ''
-  // `box: [x1, y1, x2, y2]` stands in for x, y when the model gave a box (computer_act): its centre
-  const box = Array.isArray(a.box) && a.box.length === 4 ? a.box.map(num) : []
-  const [bx1 = -1, by1 = -1, bx2 = -1, by2 = -1] = box
-  const boxed = box.length === 4 && box.every((v) => v >= 0)
+  // `box: [x1, y1, x2, y2]` stands in for x, y when the model gave a box (computer_act): its centre; `box2` the same for a drag's end
+  const centre = (raw: unknown, x: unknown, y: unknown): [number, number] => {
+    const box = Array.isArray(raw) && raw.length === 4 ? raw.map(num) : []
+    const [bx1 = -1, by1 = -1, bx2 = -1, by2 = -1] = box
+    const boxed = box.length === 4 && box.every((v) => v >= 0)
+    return [boxed && x === undefined ? (bx1 + bx2) / 2 : num(x), boxed && y === undefined ? (by1 + by2) / 2 : num(y)]
+  }
+  const [x, y] = centre(a.box, a.x, a.y)
+  const [x2, y2] = kind === 'drag' ? centre(a.box2, a.x2, a.y2) : [-1, -1]
+  // the runtime scrolls 300 px down when the model names no amount
+  const dy = kind === 'scroll' ? (a.dy === undefined ? 300 : num(a.dy)) : 0
   return {
     kind,
     label: typeof a.label === 'string' ? a.label.replace(/\s+/g, ' ').trim().slice(0, 80) : '',
     text: text.replace(/\s+/g, ' ').trim().slice(0, 80),
-    x: boxed && a.x === undefined ? (bx1 + bx2) / 2 : num(a.x),
-    y: boxed && a.y === undefined ? (by1 + by2) / 2 : num(a.y),
+    x,
+    y,
+    x2,
+    y2,
+    dy,
     at: Date.now(),
   }
 }

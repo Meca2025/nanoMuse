@@ -165,11 +165,24 @@ class ThinkStreamFilter:
         return text or None
 
 
+def proxied_http(proxy: str, timeout: float) -> Any:
+    """The HTTP client for an OpenAI SDK client when ``[llm] proxy`` is set: every request
+    through that proxy, the environment's ``HTTPS_PROXY`` ignored. None (the SDK's own
+    client, which honours the environment) when it is not. Built from the SDK's own class,
+    since the SDK may ship its own copy of httpx."""
+    if not proxy:
+        return None
+    from openai import DefaultAsyncHttpxClient
+
+    return DefaultAsyncHttpxClient(proxy=proxy, trust_env=False, timeout=timeout)
+
+
 __all__ = [
     "BaseLLM",
     "DeltaCallback",
     "ThinkStreamFilter",
     "ToolsUnsupported",
+    "proxied_http",
     "says_no_tools",
     "split_think",
 ]

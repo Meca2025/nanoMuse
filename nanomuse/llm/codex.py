@@ -30,8 +30,12 @@ from nanomuse.llm.chatgpt import (
     RESPONSES_URL,
     Auth,
     ChatGPTError,
+    Limits,
     Token,
     TokenStore,
+    classify_http,
+    classify_transport,
+    http_client,
 )
 from nanomuse.llm.vision import content_parts, has_images, without_images
 from nanomuse.schema import Function, LLMResponse, Message, ToolCall
@@ -148,6 +152,8 @@ def to_codex(body: dict[str, Any]) -> dict[str, Any]:
         "stream": True,
         "instructions": "\n\n".join(instructions),
         "input": items,
+        # the shape Codex itself sends for the gpt-5 family (nanobot does the same)
+        "text": {"verbosity": "medium"},
         "tool_choice": _tool_choice(body.get("tool_choice")),
         "parallel_tool_calls": True,
         "include": ["reasoning.encrypted_content"],
@@ -155,6 +161,9 @@ def to_codex(body: dict[str, Any]) -> dict[str, Any]:
     }
     if effort := body.get("reasoning_effort"):
         out["reasoning"]["effort"] = str(effort)
+    if cache_key := body.get("prompt_cache_key"):
+        # one conversation keeps hitting the same cache; the proxy's clients may pass it
+        out["prompt_cache_key"] = str(cache_key)
     tools = [_tool(t) for t in body.get("tools") or [] if isinstance(t, dict)]
     if tools:
         out["tools"] = [t for t in tools if t]
@@ -434,19 +443,35 @@ async def sse_events(lines: AsyncIterator[str]) -> AsyncIterator[dict[str, Any]]
 
 
 class UpstreamError(Exception):
-    """The Codex endpoint answered with an HTTP error before any event."""
+    """The Codex endpoint answered with an HTTP error before any event. ``code`` is the
+    classified kind (``quota``, ``rate_limited``, ``region_blocked``, ``upstream``, …)."""
 
-    def __init__(self, status: int, message: str, retry_after: str | None = None):
+    def __init__(
+        self,
+        status: int,
+        message: str,
+        retry_after: str | None = None,
+        code: str = "upstream",
+    ):
         super().__init__(message)
         self.status = status
         self.message = message
         self.retry_after = retry_after
+        self.code = code
+
+    @classmethod
+    def from_error(cls, err: ChatGPTError) -> UpstreamError:
+        after = str(err.retry_after) if err.retry_after is not None else None
+        return cls(err.status or 502, err.message, after, err.code)
 
 
 class CodexClient:
     """Sends a Codex Responses body with the sign-in's token and yields the SSE events.
 
-    A 401 refreshes the token once and sends again; the second 401 is the caller's."""
+    A 401 refreshes the token once and sends again; the second 401 is the caller's. The
+    ``x-codex-*`` headers of every answer are kept in :attr:`limits` (what is left of the
+    plan's windows); a request that never gets an answer is a :class:`ChatGPTError`
+    ``unreachable``, never the socket's text."""
 
     def __init__(
         self,
@@ -454,17 +479,21 @@ class CodexClient:
         http: httpx.AsyncClient | None = None,
         url: str = RESPONSES_URL,
         timeout: float = 180.0,
+        proxy: str | None = None,
     ):
         self.auth = auth
         self.url = url
         self._http = http
         self._own = http is None
         self.timeout = timeout
+        self.proxy = proxy or None
+        #: the plan's usage windows from the last answer that carried them
+        self.limits: Limits | None = None
 
     @property
     def http(self) -> httpx.AsyncClient:
         if self._http is None:
-            self._http = httpx.AsyncClient(timeout=httpx.Timeout(self.timeout, connect=20.0))
+            self._http = http_client(httpx.Timeout(self.timeout, connect=20.0), self.proxy)
         return self._http
 
     async def close(self) -> None:
@@ -478,7 +507,13 @@ class CodexClient:
             req = self.http.build_request(
                 "POST", self.url, json=body, headers=headers_for(token), timeout=self.timeout
             )
-            response = await self.http.send(req, stream=True)
+            try:
+                response = await self.http.send(req, stream=True)
+            except httpx.HTTPError as exc:
+                raise classify_transport(exc) from exc
+            limits = Limits.from_headers(response.headers)
+            if limits is not None:
+                self.limits = limits
             if response.status_code == 401 and attempt == 1:
                 await response.aclose()
                 logger.info("Codex answered 401; refreshing the ChatGPT token once")
@@ -487,34 +522,17 @@ class CodexClient:
             if response.status_code != 200:
                 text = (await response.aread()).decode("utf-8", "replace")
                 await response.aclose()
-                raise UpstreamError(
-                    response.status_code,
-                    _upstream_message(response.status_code, text),
-                    response.headers.get("retry-after"),
+                raise UpstreamError.from_error(
+                    classify_http(response.status_code, text, response.headers)
                 )
             try:
                 async for event in sse_events(response.aiter_lines()):
                     yield event
+            except httpx.HTTPError as exc:
+                raise classify_transport(exc) from exc
             finally:
                 await response.aclose()
             return
-
-
-def _upstream_message(status: int, text: str) -> str:
-    try:
-        data = json.loads(text)
-        err = data.get("error") if isinstance(data, dict) else None
-        if isinstance(err, dict) and err.get("message"):
-            return str(err["message"])[:500]
-        if isinstance(data, dict) and data.get("detail"):
-            return str(data["detail"])[:500]
-    except (json.JSONDecodeError, AttributeError):
-        pass
-    if status == 401:
-        return "ChatGPT sign-in no longer valid; run nanomuse chatgpt login"
-    if status == 429:
-        return "the ChatGPT plan's limit was reached; try again later"
-    return f"the Codex endpoint answered HTTP {status}"
 
 
 # --------------------------------------------------------------------------- the backend
@@ -543,7 +561,8 @@ class CodexLLM(BaseLLM):
             self.vision_available = False
         if client is None:
             store = TokenStore.in_dir(data_dir or DEFAULT_DATA_DIR)
-            client = CodexClient(Auth(store), timeout=settings.timeout)
+            proxy = settings.proxy or None
+            client = CodexClient(Auth(store, proxy=proxy), timeout=settings.timeout, proxy=proxy)
         self.client = client
         self.model = settings.model or DEFAULT_MODEL
 
