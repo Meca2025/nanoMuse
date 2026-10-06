@@ -4,11 +4,14 @@ title: nanoMuse docs
 hero:
   name: nanoMuse
   text: An open-source personal agent for every device you own.
-  tagline: One agent with a name and a face. It does things, keeps going when the app is closed, remembers you, and asks before anything you could not undo. The whole set — phone, desktop, web, relay — is in one repository, and the same code runs on a server of yours.
+  tagline: One agent on your phone, your computer and the web, one account across them. It does things instead of answering questions, keeps going when the app is closed, remembers you in files you can read, and asks before anything you could not undo. The whole set is one repository under GPL-3.0-or-later, and the same relay runs on a server of yours.
   actions:
     - theme: brand
       text: Install
       link: /android
+    - theme: alt
+      text: Try it in the browser
+      link: https://demo.nanomuse.dev/
     - theme: alt
       text: Run it yourself
       link: /self-hosting
