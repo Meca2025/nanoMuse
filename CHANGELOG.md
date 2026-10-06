@@ -6,6 +6,24 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Cloud
 
+### Runtime
+
+### Web
+
+### Desktop
+
+### Android
+
+### iOS
+
+### Project
+
+## [0.1.40] - 2026-10-06 · Clear
+
+Clear: the iPhone's input field is in the clear again — it sat behind the bottom bar, a safe-area inset the chat stopped keeping clear of once the keyboard had come and gone; the bar and the composer are plain rows now, and a page in Settings shows where the app laid them out. Every chat on a phone belongs to the account that made it, so a shared device keeps accounts' chats clearly apart, and signing out asks one question. Every refusal from the relay is one clear sentence, or a card, on every client, and the operator of a relay can close the door with a switch on a *Controls* page, with *Stats* and *Site* beside it. The Mac takes a true picture of the screen with ScreenCaptureKit or says why it cannot, Windows starts again after the update that moved the app, and the desktop's lights, glow and capsule move as the phone's do.
+
+### Cloud (relay 0.22)
+
 - **A *Controls* page in the admin console.** Switches for the free allowance, sign-ups, the cloud service, conversation sync and the device hub, applied at once and kept across restarts, each saying what turning it off does; threshold rules that close sign-ups, pause the allowance or sync, or send a notice when the account count reaches a number; and an audit log of who changed what and when. Apps see `403 signup_closed`, `503 service_paused`, `503 sync_paused`, `503 hub_paused` or `allowance_exhausted` with `paused: true`, and `paused` in `/v1/config` and `/v1/me`. `nanomuse-cloud admin controls list|set|audit` flips a switch from the relay's shell.
 - **The repository's numbers on the *Site* page.** Stars, forks, watchers, open issues and release downloads per day, read from GitHub every six hours or on demand, with table and CSV (`GITHUB_REPO`, `GITHUB_TOKEN`, `GITHUB_COLLECT`).
 - **A *Stats* page.** Accounts, devices, model calls and tokens, allowance use, sync volume, errors and API calls per UTC day and by category, each with a note on how it is computed, a table and a CSV; the counters behind it survive a restart.

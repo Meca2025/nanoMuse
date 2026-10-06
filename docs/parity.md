@@ -19,7 +19,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Invite code at sign-in | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
 | Amounts from the relay (`/v1/config`) before sign-in | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
 | Allowance in yuan on the account page, the bar turning at 80 % | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
-| 80 % heads-up in the chat: one line above the composer, once per pool size, *See the ways* | ✓ | ✓ next release *(33)* | ✓ 0.1.40 | ✓ |
+| 80 % heads-up in the chat: one line above the composer, once per pool size, *See the ways* | ✓ | ✓ 0.1.40 *(33)* | ✓ 0.1.40 | ✓ |
 | "Ways on" when the pool is spent (own key · invite · star) | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
 | Invite code and link, earnings | ✓ | ✓ 0.1.32 | ✓ | ✓ |
 | Usage by kind and by model, today / all time | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
@@ -31,13 +31,13 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Own-key presets (Bailian · OpenRouter, by region) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
 | Chat model and Hands model as two settings (`deepseek-v4.1-flash` / `qwen3.8-27b`, the relay's `for`) | ✓ 0.1.34 | ✓ 0.1.34 *(chat; no hands)* | ✓ 0.1.34 | ✓ 0.1.34 |
 | "Ways on" ordered by region (Bailian first on the mainland, OpenRouter first elsewhere) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
-| Own-key catalogue (`providers.json`: 18 providers, what each covers — chat · screen · pictures · clips — key pages, regions; one file, generated for every client) | ✓ 0.1.39 | ✓ next release `NanoMuseCatalogue` *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
-| "Ways on" from the catalogue: the region's lead first, *more providers*, the plans one can sign in with, the key taken inline | ✓ 0.1.39 | ✓ next release the pinned card, Settings → nanoMuse Cloud and the own-key sheet, one list (`NanoMuseWaysList`) *(32)* | ✓ 0.1.39 Settings → Account, the own-key first-run step | ✓ 0.1.39 |
-| The ways read from the relay's `spend.guidance` (providers for the region, plans, caveats, docs) rather than a list in the app; the bundled catalogue only when the relay sends none | ✓ next release `guidance` first, the catalogue when none *(34)* | ✓ next release the same (`NanoMuseWays`) *(32)* | ✓ 0.1.40 the chat card and Settings → nanoMuse Cloud, one component | ✓ 0.1.39 |
-| A refused turn (`429 allowance_exhausted`) is a card under it in the chat: one sentence, the three ways on, *Open Settings*, *Try again* — never the relay's reply as text | ✓ 0.1.39 `AllowanceWaysCard` | ✓ next release pinned under the header like the star card (`NanoMuseAllowanceCard`) *(33)* | ✓ 0.1.40 *(before: the JSON, after five retries as a rate limit)* | ✓ 0.1.39 notice with the ways |
-| The relay's other refusals as one sentence and a button: 413 *too large* → *New chat*, 401 → *Sign in*, 403, 429 busy (with the wait), the daily cap, 404 model, 5xx / no answer → *Try again*; never a status code or JSON | ✓ next release `RelayRefusal` + `RelayRefusalCard`, 17 locales *(35)* | ✓ next release `NanoMuseRelayRefusal` + `NanoMuseRelayRefusalCard`, 9 locales; a refused chat turn goes through `describe` *(35)* | ✓ 0.1.40 | ✓ 0.1.40 `failures.py` (413, `not_invited`, `too_many_in_flight`, `provider_busy` added) |
-| The operator's switches (relay 0.22, [cloud.md](cloud.md#controls)) as plain sentences: the allowance *paused, not used up* (the same card), `service_paused`, `sync_paused`, `hub_paused`, `signup_closed` at sign-in | ✓ next release *(35)* | ✓ next release *(35)* | ✓ 0.1.40 | ✓ 0.1.40 |
-| Sign in with a ChatGPT plan — chat and the hands' screen reading only, with the line about OpenAI's terms | ✓ 0.1.39 upstream's sign-ins (also Claude, Kimi, OpenRouter) | ✓ next release upstream's Codex OAuth from the ways on (also Claude, Kimi, OpenRouter) *(32)* | ✓ 0.1.39 through the bundled runtime | ✓ 0.1.39 the runtime's `nanomuse chatgpt login` |
+| Own-key catalogue (`providers.json`: 18 providers, what each covers — chat · screen · pictures · clips — key pages, regions; one file, generated for every client) | ✓ 0.1.39 | ✓ 0.1.40 `NanoMuseCatalogue` *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
+| "Ways on" from the catalogue: the region's lead first, *more providers*, the plans one can sign in with, the key taken inline | ✓ 0.1.39 | ✓ 0.1.40 the pinned card, Settings → nanoMuse Cloud and the own-key sheet, one list (`NanoMuseWaysList`) *(32)* | ✓ 0.1.39 Settings → Account, the own-key first-run step | ✓ 0.1.39 |
+| The ways read from the relay's `spend.guidance` (providers for the region, plans, caveats, docs) rather than a list in the app; the bundled catalogue only when the relay sends none | ✓ 0.1.40 `guidance` first, the catalogue when none *(34)* | ✓ 0.1.40 the same (`NanoMuseWays`) *(32)* | ✓ 0.1.40 the chat card and Settings → nanoMuse Cloud, one component | ✓ 0.1.39 |
+| A refused turn (`429 allowance_exhausted`) is a card under it in the chat: one sentence, the three ways on, *Open Settings*, *Try again* — never the relay's reply as text | ✓ 0.1.39 `AllowanceWaysCard` | ✓ 0.1.40 pinned under the header like the star card (`NanoMuseAllowanceCard`) *(33)* | ✓ 0.1.40 *(before: the JSON, after five retries as a rate limit)* | ✓ 0.1.39 notice with the ways |
+| The relay's other refusals as one sentence and a button: 413 *too large* → *New chat*, 401 → *Sign in*, 403, 429 busy (with the wait), the daily cap, 404 model, 5xx / no answer → *Try again*; never a status code or JSON | ✓ 0.1.40 `RelayRefusal` + `RelayRefusalCard`, 17 locales *(35)* | ✓ 0.1.40 `NanoMuseRelayRefusal` + `NanoMuseRelayRefusalCard`, 9 locales; a refused chat turn goes through `describe` *(35)* | ✓ 0.1.40 | ✓ 0.1.40 `failures.py` (413, `not_invited`, `too_many_in_flight`, `provider_busy` added) |
+| The operator's switches (relay 0.22, [cloud.md](cloud.md#controls)) as plain sentences: the allowance *paused, not used up* (the same card), `service_paused`, `sync_paused`, `hub_paused`, `signup_closed` at sign-in | ✓ 0.1.40 *(35)* | ✓ 0.1.40 *(35)* | ✓ 0.1.40 | ✓ 0.1.40 |
+| Sign in with a ChatGPT plan — chat and the hands' screen reading only, with the line about OpenAI's terms | ✓ 0.1.39 upstream's sign-ins (also Claude, Kimi, OpenRouter) | ✓ 0.1.40 upstream's Codex OAuth from the ways on (also Claude, Kimi, OpenRouter) *(32)* | ✓ 0.1.39 through the bundled runtime | ✓ 0.1.39 the runtime's `nanomuse chatgpt login` |
 | A capability nobody configured has is one sentence naming who could (pictures, clips, the screen), never a raw error | ✓ 0.1.39 | ◐ each row says what it covers; the empty-picker sentence is still to come *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
 | Conversations belong to the account that synced them: another account's stay on the device, hidden, never pushed under the new key; a switch restarts the pull (contract C10) | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 the runtime's lists |
 
@@ -272,7 +272,7 @@ notes above; a settled item keeps its number and says how it went.
     conversations (contract C10, `NanoMuseSync`) and the bundled `providers.json`, but the
     allowance card still offers the 0.1.34 presets and has no plan sign-in; the Android
     `AllowanceWaysCard` is the model (the region's lead, *more providers*, the plans, the
-    one-sentence unavailable lines where a picker is empty). *Settled for the next release:*
+    one-sentence unavailable lines where a picker is empty). *Settled in 0.1.40:*
     `NanoMuseCatalogue` reads the bundled `providers.json` (or the relay's guidance),
     `NanoMuseWaysList` is the one list on the pinned card, the account page and the own-key
     sheet, and `NanoMuseVendorSheet` takes the key or runs the plan sign-in (ChatGPT through
@@ -283,14 +283,14 @@ notes above; a settled item keeps its number and says how it went.
     only, and `spend.warn` colours the bar there without a line in the chat. *Proposal:* a card
     pinned under the header the way the star card is (3) when the stream ends with that code,
     drawing the ways from `spend.guidance` (with 32); one line above the composer at 80 %, once per
-    pool size, as the other three clients show it. *Settled for the next release:* `NanoMuseAllowance`
+    pool size, as the other three clients show it. *Settled in 0.1.40:* `NanoMuseAllowance`
     holds both; the shell pins `NanoMuseAllowanceCard` (with *Try again*), `NanoMuseChatCardsHost`
     shows the heads-up; no new link on `AIChatView.body`.
 34. **Android · the ways from the relay's guidance.** `AllowanceWaysCard` reads the bundled
     `providers.json`; `/v1/me` carries `spend.guidance` (the region's providers, the plans, the
     caveats) and the card ignores it. *Proposal:* prefer `guidance` when the relay sends it, fall
     back to the catalogue — the web and the desktop already do; a few dozen lines in
-    `AllowanceWaysCard.kt` and `NanoMuseCloud.kt`. *Settled for the next release:* `Guidance.kt`
+    `AllowanceWaysCard.kt` and `NanoMuseCloud.kt`. *Settled in 0.1.40:* `Guidance.kt`
     parses it, `Ways.resolve` prefers it, the card and Settings → nanoMuse Cloud read it.
 35. **Phones · 413, the remaining refusals and the operator's switches.** The phones' `describe`
     knows the allowance, the daily cap, the rate limit, a bad key, a disabled account and the
@@ -302,7 +302,7 @@ notes above; a settled item keeps its number and says how it went.
     `harness/dsh-nanomuse/src/refusals.ts` — the reference sentences, en and zh). *Proposal:* the
     nine codes in both `describe`s with those sentences, the 413 one pointing at *New chat*, the
     paused allowance as a different lead on the same card; on iOS route a refused chat turn
-    through `describe` too. Strings per locale on the phones. *Settled for the next release* on both
+    through `describe` too. Strings per locale on the phones. *Settled in 0.1.40* on both
     phones: `RelayRefusal` / `NanoMuseRelayRefusal` classify the reply, `describe` has every code,
     the card in the chat carries the button (*New chat* · *Sign in* · *Open Settings* · *Try again*).
 36. **Voice on the desktop and the web.** Dictation leans on the Web Speech API, which the
