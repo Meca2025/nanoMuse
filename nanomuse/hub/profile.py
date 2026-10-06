@@ -96,6 +96,15 @@ class ProfileSync:
         self.hub.data["cloud"] = cloud
         self.hub._save()
 
+    async def stop(self) -> None:
+        """The runtime is stopping: a push waiting out its delay or a pull on the wire is
+        cancelled and waited for, so the relay's HTTP client can close behind it."""
+        tasks = [t for t in (self._push_task, self._pull_task) if t is not None and not t.done()]
+        for t in tasks:
+            t.cancel()
+        if tasks:
+            await asyncio.wait(tasks)
+
     def forget(self) -> None:
         """Signed out: the next account starts from its own profile."""
         cloud = self._cloud
