@@ -44,6 +44,8 @@ export interface Account {
   spend?: Spend
   /** The star-nudge policy (C1), when the relay sends it with the account; the rooms read it. */
   nudges?: unknown
+  /** The relay's word on where the person is (`cn`, `intl`, `unknown`; relay 0.1.34+), which orders the own-key "ways on" (C11). */
+  region?: string
 }
 
 /** `GET /v1/me` → `spend`, trimmed: the lifetime pool in yuan, as the apps show it. */
@@ -218,6 +220,7 @@ function toAccount(me: Record<string, unknown>): Account {
     ...(contribute ? { contribute } : {}),
     ...(spend ? { spend } : {}),
     ...(me.nudges && typeof me.nudges === 'object' ? { nudges: me.nudges } : {}),
+    ...(typeof me.region === 'string' && me.region && me.region !== 'unknown' ? { region: me.region } : {}),
   }
 }
 

@@ -18,6 +18,7 @@ from rich.table import Table
 
 from nanomuse import __version__
 from nanomuse.channels.cli import channels_app
+from nanomuse.chatgpt_cli import chatgpt_app
 from nanomuse.config import DEFAULT_DATA_DIR, Settings, find_config_file, load_settings
 
 app = typer.Typer(
@@ -59,6 +60,7 @@ app.add_typer(vault_app, name="vault")
 app.add_typer(config_app, name="config")
 app.add_typer(phone_app, name="phone")
 app.add_typer(channels_app, name="channels")
+app.add_typer(chatgpt_app, name="chatgpt")
 
 console = Console()
 

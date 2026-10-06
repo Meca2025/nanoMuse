@@ -40,7 +40,11 @@ stylesheet over the harness's stable DOM hooks (`data-composer-card`,
   main chat* — and **Side chats** with a *+*: every other session, pinned first, each
   with a *···* for *Make main chat*, *Pin*, *Rename* (inline), *Archive*. A blank
   session reads *New chat*; a dot marks a running one, a mark one that waits for you.
-  It collapses to the rail alone.
+  It collapses to the rail alone. The column shows the account that is signed in: a
+  synced conversation remembers the account it came from, so another account's
+  conversations stay on this computer, hidden from the column and the search until that
+  account signs in again, and are never pushed under a different account; a change of
+  account starts the pull over from the beginning. Signed out, everything local is shown.
 - Above the conversation, in the harness's `conversation.header.leading` seat, the face
   and name are pinned at the top centre with the status chip: *connected* / *not signed
   in* / *thinking…* / *Hands · step N · what it is doing* / *Reach · step N · on Laptop
@@ -91,8 +95,19 @@ on a fresh install and never shown twice:
    `/v1/auth/login`).
 2. **Set a password** (a fresh account only; *Later* skips it).
 3. **Which model answers** — the Cloud account's models, or your own key.
-4. **Choose models** (own key only) — opens Settings → Models beside the page and waits
-   for a key; *Skip for now*.
+4. **Choose models** (own key only) — the providers of the catalogue
+   (`assets/providers.json`, the same list as the phones' and the web app's), the ones for
+   where you are first — Alibaba Cloud Bailian in mainland China, one key for chat, the
+   hands, pictures and clips; OpenRouter and then OpenAI elsewhere — each row saying what it
+   covers (*chat · screen operation · pictures · clips*), with *Get a key* opening the vendor's
+   key page and *Add key* taking the key right there (it goes to the credential store under
+   `NANOMUSE_KEY_<PROVIDER>`; `cloud.json` keeps the name only). Under OpenAI, **Sign in with
+   ChatGPT**: a Plus, Pro or Team plan signed in through OpenAI's page, which covers chat and
+   the hands only — no pictures, no clips — with the one honest line that OpenAI's terms
+   cover using a ChatGPT plan inside OpenAI's own Codex and other apps have had this access
+   cut off before. *More ways* folds out the rest of the catalogue, the servers on this
+   computer (Ollama, LM Studio, vLLM) and any OpenAI-compatible endpoint by hand. *Skip for
+   now* until a key is saved or a sign-in finished; *Continue* then.
 5. **Allow nanoMuse to use your computer?** (macOS only) — *Accessibility* and *Screen
    Recording* rows, each with *Allow* that asks the system through the desktop shell and
    turns into a green check as the system grants it (polled, and again when the window gets
@@ -302,10 +317,36 @@ stock General plugin switched off in the bundle layer:
   chats column). The harness's other rows (permission presets, font size, link opening,
   Enter to send, performance, session log) live under *Advanced → Harness*.
 - **Account** (under *Advanced*) — the nanoMuse account: sign in or the masked
-  identifier, the allowance, the look, the models, *Open Devices*.
-- **Media** — the models that draw the face and its clips (the relay's, or your own
-  Bailian key), *Animate the avatar after a change*, *Make / Redo clips* with the state
-  of each of the four, and the cost note.
+  identifier, the allowance, the look, *Open Devices*, and two blocks the own keys share
+  with the account:
+  - **Chat and hands models** — one chooser for each: the account's models while signed in
+    and every own row's, grouped by where they come from. The hands list carries only
+    sighted models (the ones that read a screenshot); a row with none says *No sighted model
+    yet*. A chat model takes effect for new chats; the hands model when nanoMuse next starts.
+    Under the pickers, one sentence for what nothing configured covers — *Pictures need a
+    provider with image models — Alibaba Cloud Bailian, Zhipu GLM, SiliconFlow, …* — and
+    nothing when something does.
+  - **Ways on** — your account's row first while signed in (what it covers right now, from
+    the relay's model list), then the catalogue in the first run's groups: the region's
+    providers, the ChatGPT sign-in, the rest ordered by how much they cover, the local
+    servers, a custom endpoint. Each row says what it covers, takes or changes a key inline,
+    links to the vendor's key page and has *Remove*; removing a row drops its credential and
+    any chat or hands choice that pointed at it. The ChatGPT row runs the bundled runtime's
+    sign-in: *Sign in* opens OpenAI's page, the row waits with *Cancel* (and *Open the
+    sign-in page* again), then reads *Signed in as ChatGPT Plus* and offers *Sign out*; the
+    sign-in covers chat and the hands only, not pictures or clips, and the line about
+    OpenAI's terms sits under it. Without the runtime the row says so and stays disabled. A
+    sign-in on file comes back after a restart, with its local bridge. Signed out of the
+    account, the same two blocks are under the sign-in form, so a key can be changed without
+    an account.
+- **Media** — the models that draw the face and its clips. The image row names the
+  account's model, or an own row with image models; the video row the account's or a
+  Bailian key's. When nothing configured covers pictures or clips the row says who could,
+  where you are, with the way to Settings → Account — the same sentence the avatar studio
+  shows in place of the estimate — and with only the ChatGPT sign-in, that pictures and
+  clips are not covered by it.
+  Below: *Animate the avatar after a change*, *Make / Redo clips* with the state of each
+  of the four, and the cost note.
 - **Models**, **Agents** — the harness's pages, unchanged, under *Advanced*.
 - **Connectors** — Muse's catalogue shape: a search field, category chips (*All*,
   *Built in*, *Work*, *Talk*, *Files*, *Developer*, *Data*, *Design*, *Money*,
@@ -410,6 +451,8 @@ Wallet, secure storage and message channels are not there: the Cloud has no wall
 members have an allowance ([cloud.md](cloud.md#allowance)) — nanoMuse keeps no
 passwords for the agent, and messages reach you through the phone app's notifications
 rather than a messenger.
+
+<a id="rail-rooms"></a>
 
 ## The rail's other rooms — Feed, Ideas, Goals, Library
 

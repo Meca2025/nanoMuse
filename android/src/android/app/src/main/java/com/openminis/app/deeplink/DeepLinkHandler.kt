@@ -14,7 +14,7 @@ import com.openminis.app.ui.navigation.Routes
  *   minis://settings                            → Settings home
  *   minis://settings/providers                  → Provider list
  *   minis://settings/providers/<instanceId>     → Provider detail
- *   minis://settings/providers/add[?preset=bailian|openrouter] → Add a provider (nanoMuse: pre-filled)
+ *   minis://settings/providers/add[?preset=<catalogue id>[:oauth]] → Add a provider (nanoMuse: pre-filled for a vendor of assets/nanomuse/providers.json; `:oauth` opens on its sign-in)
  *   minis://settings/model-groups               → Model Groups (incl. Agent Loop section)
  *   minis://settings/model-groups/<groupId>     → Model Group detail
  *   minis://settings/usage                      → Token usage

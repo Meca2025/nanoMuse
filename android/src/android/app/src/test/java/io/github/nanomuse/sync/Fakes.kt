@@ -101,6 +101,9 @@ class MemoryChats : LocalChats {
     override suspend fun session(id: String) = sessions[id]?.let { LocalSession(it.id, it.title?.takeIf { t -> t.isNotBlank() }, it.createdAt, it.updatedAt) }
     override suspend fun messages(sessionId: String) = rows[sessionId]?.sortedBy { it.createdAt }?.toList() ?: emptyList()
     override suspend fun mainSessionId() = main?.takeIf { it in sessions }
+    override suspend fun setMainSession(id: String?) {
+        main = id
+    }
     override suspend fun createSession(title: String?, createdAt: Long, updatedAt: Long, main: Boolean): String {
         val id = "local-${++seq}"
         sessions[id] = Session(id, title, createdAt, updatedAt)

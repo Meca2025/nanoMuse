@@ -58,9 +58,15 @@ object MediaModels {
         val cloudId = NanoMuseCloud.instance(context)?.id
         return repo.config.value.instances.filter { inst ->
             inst.isEnabled && inst.credentialType == ProviderCredential.apiKey &&
-                (VideoGen.speaksDashScope(ImageGen.baseUrlOf(inst)) || inst.id == cloudId)
+                (VideoGen.speaksDashScope(ImageGen.baseUrlOf(inst)) || inst.id == cloudId) &&
+                // C11: the catalogue's word on the vendor (Bailian has video models; a gateway on the same host is not gated)
+                io.github.nanomuse.cloud.Capabilities.allows(context, inst, io.github.nanomuse.cloud.ProviderCatalogue.VIDEO)
         }
     }
+
+    /** No configured provider can make clips: the one sentence that says so (C11), or null when one can. */
+    fun videoUnavailableLine(context: Context): String? =
+        if (eligibleVideoInstances(context).isEmpty()) io.github.nanomuse.cloud.Capabilities.unavailableLine(context, io.github.nanomuse.cloud.ProviderCatalogue.VIDEO) else null
 
     /** Stored instance id meaning "the user switched the video model off". */
     private const val VIDEO_OFF = ""
@@ -150,11 +156,13 @@ object MediaModels {
 
     // ── what the agent is told ────────────────────────────────────────────
 
-    /** One line per model, for the settings page and the prompt. */
+    /** One line per model, for the settings page and the prompt: the model, "not set", or — when no provider can (C11) — the one sentence that says so. */
     fun imageLine(context: Context): String = imageEndpoint(context)?.let { "${it.model} · ${it.label}" }
+        ?: ImageGen.unavailableLine(context)
         ?: context.getString(R.string.nm_media_not_set)
 
     fun videoLine(context: Context): String = videoEndpoint(context)?.let { "${it.model} · ${it.label}" }
+        ?: videoUnavailableLine(context)
         ?: context.getString(R.string.nm_media_not_set)
 
     /**
@@ -174,13 +182,13 @@ object MediaModels {
             append("Both print JSON with a `markdown` field — put that line in your reply so the file shows inline. `nanomuse-media status` prints what is configured.\n")
             append("- Avatar changes are handled by the app itself when the user writes \"change your avatar to ...\"; you only need to explain when it cannot work.\n")
             if (image == null) {
-                append("- No image model is set: if the user asks to change your avatar or for a picture, say plainly that this needs an image model on one of their providers ")
-                append("(Alibaba Cloud Model Studio: qwen-image-3.0-pro; any OpenAI-compatible provider with an images endpoint), and give the link [Image & video models](")
+                append("- No image model is set: if the user asks to change your avatar or for a picture, say plainly that pictures need a provider with image models ")
+                append("(Alibaba Cloud Bailian, OpenAI with an API key, Gemini or OpenRouter; a ChatGPT plan signed in through Codex, DeepSeek, Claude, Kimi and Groq have none), and give the link [Image & video models](")
                 append(DEEP_LINK).append(") — it opens the setting. Never pretend to have drawn something.\n")
             }
             if (video == null) {
-                append("- No video model is set: the avatar stays as still pictures, and clips cannot be made. If asked, explain that a video model is needed ")
-                append("(Alibaba Cloud Model Studio: a Wan video model such as wan2.2-i2v-flash, or MiniMax/MiniMax-H3, picked in the setting) and give the link [Image & video models](").append(DEEP_LINK).append(").")
+                append("- No video model is set: the avatar stays as still pictures, and clips cannot be made. If asked, explain that clips need a provider with video models ")
+                append("(Alibaba Cloud Bailian: a Wan video model such as wan2.2-i2v-flash, picked in the setting) and give the link [Image & video models](").append(DEEP_LINK).append(").")
             }
         }.trimEnd()
     }
@@ -188,8 +196,8 @@ object MediaModels {
     /** The one-turn addendum when an avatar change was asked for but cannot be drawn. */
     fun missingImageAddendum(): String =
         "The user just asked you to change your avatar, but no image model is configured, so the app could not start the change. " +
-            "Answer in the user's language: say that changing your look needs an image model on one of their providers " +
-            "(for example qwen-image-3.0-pro on Alibaba Cloud Model Studio, or any OpenAI-compatible provider with an images endpoint), " +
+            "Answer in the user's language: say that changing your look needs a provider with image models " +
+            "(Alibaba Cloud Bailian, OpenAI with an API key, Gemini or OpenRouter — not a ChatGPT plan signed in through Codex, nor DeepSeek, Claude, Kimi or Groq), " +
             "that unlike Muse this is something they set up themselves, and give the link [Image & video models]($DEEP_LINK) to open the setting. " +
             "Keep it to a few sentences and do not describe or invent a new look."
 }

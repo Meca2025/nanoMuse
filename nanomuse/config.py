@@ -34,8 +34,51 @@ _ENV_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
 
 
 # ----------------------------------------------------------------------------- models
+#: the wire protocols the runtime speaks, as ``provider`` values; besides these, ``provider``
+#: may name a catalogue entry (``nanomuse/llm/providers.json``: ``bailian``, ``openai``,
+#: ``openrouter``, …), which fills in the protocol and the endpoint, or ``chatgpt`` — the
+#: ChatGPT sign-in (``nanomuse chatgpt login``), which needs no key and no URL
+PROTOCOLS: tuple[str, ...] = ("openai", "openai_responses")
+CHATGPT_PROVIDER = "chatgpt"
+
+
+def check_provider(value: str) -> str:
+    from nanomuse.llm import catalogue
+
+    v = str(value or "").strip()
+    if not v:
+        return "openai"
+    if v in PROTOCOLS or v == CHATGPT_PROVIDER:
+        return v
+    entry = catalogue.load().get(v)
+    if entry is None:
+        choices = ", ".join((*PROTOCOLS, CHATGPT_PROVIDER, *catalogue.load().ids()))
+        raise ValueError(f"unknown provider {v!r}; one of: {choices}")
+    if catalogue.protocol_provider(entry.protocol) is None:
+        raise ValueError(
+            f"provider {v!r} speaks {entry.protocol}, which the runtime does not; "
+            "OpenRouter carries the same models in the OpenAI shape"
+        )
+    return v
+
+
+def resolve_provider(provider: str, base_url: str | None) -> tuple[str, str | None]:
+    """What a ``provider`` setting means on the wire: the protocol (``openai`` /
+    ``openai_responses`` / ``chatgpt``) and the base URL — the catalogue's when the slot
+    names an entry and leaves ``base_url`` empty."""
+    if provider in PROTOCOLS or provider == CHATGPT_PROVIDER:
+        return provider, base_url
+    from nanomuse.llm import catalogue
+
+    entry = catalogue.load().get(provider)
+    if entry is None:
+        return "openai", base_url
+    protocol = catalogue.protocol_provider(entry.protocol) or "openai"
+    return protocol, (base_url or entry.base_url or None)
+
+
 class LLMSettings(BaseModel):
-    provider: Literal["openai", "openai_responses"] = "openai"
+    provider: str = "openai"
     model: str = "deepseek-flash"
     base_url: str | None = "https://api.deepseek.com"
     api_key: str = ""
@@ -72,10 +115,83 @@ class LLMSettings(BaseModel):
     extra_headers: dict[str, str] = Field(default_factory=dict)
     extra_body: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("provider")
+    @classmethod
+    def _known_provider(cls, v: str) -> str:
+        return check_provider(v)
+
     @field_validator("base_url")
     @classmethod
     def _strip_slash(cls, v: str | None) -> str | None:
         return v.rstrip("/") if v else v
+
+    @model_validator(mode="after")
+    def _provider_defaults(self) -> LLMSettings:
+        """The DeepSeek defaults for ``model`` and ``base_url`` belong to the plain
+        ``openai`` protocol; a slot that names the ChatGPT sign-in or a catalogue entry and
+        leaves them out gets that provider's own."""
+        if self.provider in PROTOCOLS:
+            return self
+        if "base_url" not in self.model_fields_set:
+            self.base_url = None
+        if "model" not in self.model_fields_set:
+            if self.provider == CHATGPT_PROVIDER:
+                self.model = ""
+            else:
+                from nanomuse.llm import catalogue
+
+                entry = catalogue.load().get(self.provider)
+                self.model = (entry.defaults.get("chat") if entry else "") or ""
+        return self
+
+    @property
+    def protocol(self) -> str:
+        """``openai`` / ``openai_responses`` / ``chatgpt`` — what ``provider`` speaks."""
+        return resolve_provider(self.provider, self.base_url)[0]
+
+    @property
+    def endpoint(self) -> str | None:
+        """``base_url``, or the catalogue entry's when ``provider`` names one."""
+        return resolve_provider(self.provider, self.base_url)[1]
+
+
+class MediaSettings(BaseModel):
+    """One of the ``[image]`` / ``[video]`` slots: where pictures or clips come from when it
+    is not the chat model's host. ``provider`` is a catalogue id (``bailian``, ``openai``,
+    ``gemini``, …) or empty; ``base_url`` fills in from the catalogue when empty; ``api_key``
+    falls back to the chat model's key when the host is the same. All empty (the default):
+    pictures and clips come from the chat model's host as before — the account's model, or
+    Alibaba Cloud Model Studio's — and ``[llm] image_model`` / ``video_model`` still work."""
+
+    provider: str = ""
+    model: str = ""
+    base_url: str | None = None
+    api_key: str = ""
+
+    @field_validator("provider")
+    @classmethod
+    def _known_provider(cls, v: str) -> str:
+        return check_provider(v) if str(v or "").strip() else ""
+
+    @field_validator("base_url")
+    @classmethod
+    def _strip_slash(cls, v: str | None) -> str | None:
+        return v.rstrip("/") if v else v
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.provider or self.model or self.base_url)
+
+    @property
+    def endpoint(self) -> str | None:
+        """``base_url``; or the catalogue's for ``provider`` (the plain protocol names
+        ``openai`` / ``openai_responses`` mean OpenAI's own endpoint here)."""
+        if self.base_url or not self.provider:
+            return self.base_url
+        from nanomuse.llm import catalogue
+
+        entry = catalogue.load().get("openai" if self.provider in PROTOCOLS else self.provider)
+        return (entry.base_url or None) if entry else None
 
 
 class AgentSettings(BaseModel):
@@ -298,10 +414,24 @@ class GUISettings(BaseModel):
     """
 
     enabled: bool = False
-    provider: Literal["openai", "openai_responses"] = "openai"
+    provider: str = "openai"
     model: str = ""
     base_url: str | None = None
     api_key: str = ""
+
+    @field_validator("provider")
+    @classmethod
+    def _known_provider(cls, v: str) -> str:
+        return check_provider(v)
+
+    @property
+    def endpoint(self) -> str | None:
+        """``base_url``, or the catalogue entry's when ``provider`` names one and ``model``
+        is set (an unset model means the main model's settings do the hands)."""
+        if not self.model:
+            return self.base_url
+        return resolve_provider(self.provider, self.base_url)[1]
+
     # Steps one ``phone_task`` may take on the screen before it has to report back;
     # 0 (the default) is no cap — the task ends when it is done, asks, or is stopped.
     max_steps: int = 0
@@ -480,6 +610,8 @@ class Settings(BaseModel):
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
     browser: BrowserSettings = Field(default_factory=BrowserSettings)
     gui: GUISettings = Field(default_factory=GUISettings)
+    image: MediaSettings = Field(default_factory=MediaSettings)
+    video: MediaSettings = Field(default_factory=MediaSettings)
     hands: HandsSettings = Field(default_factory=HandsSettings)
     cloud: CloudSettings = Field(default_factory=CloudSettings)
     sync: SyncSettings = Field(default_factory=SyncSettings)
@@ -675,6 +807,11 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
     ):
         if (val := os.environ.get(env)) not in (None, ""):
             gui[key] = val
+    # the picture and clip slots (docs/configuration.md)
+    for slot in ("image", "video"):
+        for key in ("provider", "model", "base_url", "api_key"):
+            if (val := os.environ.get(f"NANOMUSE_{slot.upper()}_{key.upper()}")) not in (None, ""):
+                raw.setdefault(slot, {})[key] = val
 
 
 APP_SETTINGS_FILE = "app-settings.json"
@@ -712,7 +849,21 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
     if llm := data.get("llm"):
         for key in ("provider", "model", "base_url", "api_key", "tool_mode", "vision"):
             if key in llm and llm[key] not in (None, ""):
+                if key == "provider":
+                    try:
+                        settings.llm.provider = check_provider(str(llm[key]))
+                    except ValueError:
+                        pass
+                    continue
                 setattr(settings.llm, key, llm[key])
+        if settings.llm.provider == CHATGPT_PROVIDER:
+            # the sign-in has no endpoint of its own; an empty model there means Codex's default
+            if not llm.get("base_url"):
+                settings.llm.base_url = None
+            if "model" in llm and not llm.get("model"):
+                from nanomuse.llm.chatgpt import DEFAULT_MODEL
+
+                settings.llm.model = DEFAULT_MODEL
         for key in ("image_model", "video_model"):
             # "" is meaningful here: back to the automatic choice
             if key in llm and llm[key] is not None:
@@ -778,13 +929,29 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
     if gui := data.get("gui"):
         if "enabled" in gui:
             settings.gui.enabled = bool(gui["enabled"])
-        if gui.get("provider") in ("openai", "openai_responses"):
-            settings.gui.provider = gui["provider"]
+        if gui.get("provider"):
+            try:
+                settings.gui.provider = check_provider(str(gui["provider"]))
+            except ValueError:
+                pass
         for key in ("model", "base_url", "api_key"):
             # "" is meaningful: back to the main model's endpoint and key
             if key in gui and gui[key] is not None:
                 value = str(gui[key]).strip().rstrip("/")
                 setattr(settings.gui, key, value if value or key != "base_url" else None)
+    for slot in ("image", "video"):
+        if media := data.get(slot):
+            target: MediaSettings = getattr(settings, slot)
+            for key in ("provider", "model", "base_url", "api_key"):
+                # "" is meaningful: back to the chat model's host
+                if key in media and media[key] is not None:
+                    value = str(media[key]).strip().rstrip("/")
+                    if key == "provider" and value:
+                        try:
+                            value = check_provider(value)
+                        except ValueError:
+                            continue
+                    setattr(target, key, value if value or key != "base_url" else None)
     if hands := data.get("hands"):
         if "enabled" in hands:
             settings.hands.enabled = bool(hands["enabled"])

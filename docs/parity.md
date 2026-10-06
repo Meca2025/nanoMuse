@@ -30,6 +30,11 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Own-key presets (Bailian · OpenRouter, by region) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
 | Chat model and Hands model as two settings (`deepseek-v4.1-flash` / `qwen3.8-27b`, the relay's `for`) | ✓ 0.1.34 | ✓ 0.1.34 *(chat; no hands)* | ✓ 0.1.34 | ✓ 0.1.34 |
 | "Ways on" ordered by region (Bailian first on the mainland, OpenRouter first elsewhere) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
+| Own-key catalogue (`providers.json`: 18 providers, what each covers — chat · screen · pictures · clips — key pages, regions; one file, generated for every client) | ✓ 0.1.39 | ◐ 0.1.39 *(the file ships with the app; the ways card still reads the 0.1.34 presets)* *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
+| "Ways on" from the catalogue: the region's lead first, *more providers*, the plans one can sign in with, the key taken inline | ✓ 0.1.39 | — *(32)* | ✓ 0.1.39 Settings → Account, the own-key first-run step | ✓ 0.1.39 |
+| Sign in with a ChatGPT plan — chat and the hands' screen reading only, with the line about OpenAI's terms | ✓ 0.1.39 upstream's sign-ins (also Claude, Kimi, OpenRouter) | — *(32)* | ✓ 0.1.39 through the bundled runtime | ✓ 0.1.39 the runtime's `nanomuse chatgpt login` |
+| A capability nobody configured has is one sentence naming who could (pictures, clips, the screen), never a raw error | ✓ 0.1.39 | — *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
+| Conversations belong to the account that synced them: another account's stay on the device, hidden, never pushed under the new key; a switch restarts the pull (contract C10) | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 the runtime's lists |
 
 ## The agent in the chat
 
@@ -251,12 +256,20 @@ notes above; a settled item keeps its number and says how it went.
     Linux X11; the native addon, the coordinate space (points on a Mac, physical pixels on
     Windows), scroll units, ⌘ for `ctrl`, content protection of the glow are on the Mac task
     sheet (`docs/tasks/mac-check-0.1.36.md`, F). Wayland stays item 21.
+32. **iOS · the ways card on the catalogue.** 0.1.39 gave the iPhone its account-scoped
+    conversations (contract C10, `NanoMuseSync`) and the bundled `providers.json`, but the
+    allowance card still offers the 0.1.34 presets and has no plan sign-in; the Android
+    `AllowanceWaysCard` is the model (the region's lead, *more providers*, the plans, the
+    one-sentence unavailable lines where a picker is empty). On the Mac side's sheet for 0.1.40.
 
 ## Keeping this true
 
 - The desktop's connectors catalogue is the source (`harness/dsh-nanomuse/src/connectors-catalogue.ts`);
   `node scripts/connectors-json.mjs` writes the Android asset and the iPhone's bundled copy,
   `--check` (in the harness workflow) fails when either is stale.
+- The own-key provider catalogue is `nanomuse/llm/providers.json`; `node scripts/providers-json.mjs`
+  writes the desktop's, the relay's and the phones' copies and `--check` fails when one is stale.
+  A new provider, a changed endpoint or a capability lands there and nowhere else.
 - Relay-facing code mirrors the same wire format on every client: `nanomuse/cloud.py` (runtime),
   `harness/dsh-nanomuse/src/relay.ts` (desktop), `io.github.nanomuse.cloud.NanoMuseCloud` (Android),
   `NanoMuse/NanoMuseCloud.swift` + `NanoMuseAccount.swift` (iOS). A new relay field lands in all four.

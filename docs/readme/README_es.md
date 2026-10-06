@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="Documentación"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
+  <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 **nanoMuse es un agente personal de código abierto para todos tus dispositivos.** Un solo agente con nombre y aspecto propios, al estilo del [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) de Meta: hace cosas en vez de responder preguntas, sigue trabajando con la app cerrada, se acuerda de ti y se detiene a preguntar antes de cualquier cosa que no podrías deshacer.
@@ -42,31 +43,38 @@
 | **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-x64.dmg) — sin notarizar: la primera vez, clic derecho → *Abrir* |
 | **Windows** 10+ | [nanoMuse-Desktop-0.1.38-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-win-x64.exe) — pulsa *Ejecutar de todos modos* una vez |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.tar.gz) |
-| **Terminal** | `pipx install "git+https://github.com/nano-muse/nanoMuse"` con Python 3.11+, o el binario `nanomuse-desktop-terminal` de la [última versión](https://github.com/nano-muse/nanoMuse/releases/latest) |
 | **Docker** | `bash scripts/self-host.sh --local` para tu propio relay; `docker compose up -d app` para la app web en un servidor tuyo — [autoalojamiento](../self-hosting.md) |
 
 Todas las descargas vienen de la [última versión](https://github.com/nano-muse/nanoMuse/releases/latest); los mismos archivos están en [nanomuse.cn/dl](https://nanomuse.cn/dl/) si GitHub va lento donde estás. Abre la app, inicia sesión con un correo o un número de teléfono de China continental, y ya tiene un modelo con el que pensar. El teléfono, el escritorio y la web comparten una cuenta y muestran las mismas conversaciones.
 
 ## Qué hace
 
-- **Hace cosas.** Una shell de Linux, un navegador, servidores MCP y habilidades — y, con *Manos* activado, las apps de tu teléfono y las ventanas de tu ordenador a través de su pantalla, para todo lo que nunca tuvo API.
-- **Pregunta primero.** Una parada antes de borrar, enviar o pagar, recordada para una vez, este chat o siempre; las contraseñas y los códigos los escribes tú. Un inicio de sesión o un CAPTCHA te lo cede; *Listo* reanuda.
-- **Llega a tus otros dispositivos.** Dilo en el teléfono y se ejecuta en tu PC; `@Mac …` al principio de un mensaje envía la tarea allí. Las aprobaciones vuelven al dispositivo que tienes en la mano.
-- **Sigue adelante.** Metas revisadas según un horario, rutinas que corren con la app cerrada, un feed escrito para ti cada mañana.
-- **Se acuerda de ti.** Qué es, qué sabe de ti y cuándo despierta son archivos Markdown que puedes leer y editar.
-- **Vive en tus apps de chat.** Responde en 飞书, 钉钉, 企业微信 y Telegram.
-- **Un aspecto propio.** Descríbelo, tu modelo de imagen lo dibuja, un modelo de vídeo lo hace moverse. Un dragoncito por defecto.
-- **Cualquier modelo.** Los del relay, una clave de Bailian o de OpenRouter, o cualquier endpoint compatible con OpenAI.
+<table>
+  <tr>
+    <td width="50%" valign="top"><b>Hace cosas.</b><br>Una shell de Linux, un navegador, servidores MCP y habilidades — y, con <i>Manos</i> activado, las apps de tu teléfono y las ventanas de tu ordenador a través de su pantalla, para todo lo que nunca tuvo API.</td>
+    <td width="50%" valign="top"><b>Pregunta primero.</b><br>Una parada antes de borrar, enviar o pagar, recordada para una vez, este chat o siempre; las contraseñas y los códigos los escribes tú. Un inicio de sesión o un CAPTCHA te lo cede; <i>Listo</i> reanuda.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Llega a tus otros dispositivos.</b><br>Dilo en el teléfono y se ejecuta en tu PC; <code>@Mac …</code> al principio de un mensaje envía la tarea allí. Las aprobaciones vuelven al dispositivo que tienes en la mano.</td>
+    <td width="50%" valign="top"><b>Sigue adelante.</b><br>Metas revisadas según un horario, rutinas que corren con la app cerrada, un feed escrito para ti cada mañana.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Se acuerda de ti.</b><br>Qué es, qué sabe de ti y cuándo despierta son archivos Markdown que puedes leer y editar.</td>
+    <td width="50%" valign="top"><b>Vive en tus apps de chat.</b><br>Responde en 飞书, 钉钉, 企业微信 y Telegram.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Un aspecto propio.</b><br>Descríbelo, tu modelo de imagen lo dibuja, un modelo de vídeo lo hace moverse. Un dragoncito por defecto.</td>
+    <td width="50%" valign="top"><b>Cualquier modelo.</b><br>La cuota del relay, tu propia clave en uno de dieciocho proveedores (Bailian, OpenRouter, OpenAI, Gemini, DeepSeek y más), o un plan que ya pagas: ChatGPT, Claude, Kimi. Si un proveedor no tiene modelos de imagen o vídeo, esas dos funciones quedan apagadas y la app lo dice.</td>
+  </tr>
+</table>
 
 ## Cómo funciona
 
 Cada dispositivo ejecuta su propio agente — el teléfono dentro del APK (Alpine Linux bajo proot, una shell, un navegador, MCP), el ordenador dentro de nanoMuse Desktop (DeepSeek Harness con el runtime Python para las manos). Con la sesión iniciada se encuentran en el relay y pueden pedirse cosas; el texto de las conversaciones viaja por él, los archivos y las capturas se quedan donde se hicieron.
 
-```
-teléfono ──┐                         ┌── ordenador (nanoMuse Desktop)
-           ├──▶  nanoMuse Cloud  ◀───┤        el relay: sesión, modelos,
-web  ──────┘        /v1/hub          └── otro teléfono / ordenador    hub, sincronización
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/devices-loop.png" alt="Android, el escritorio (Mac, Windows, Linux), iPhone y iPad y la aplicación web alrededor de una misma cuenta: el relé inicia sesión en los dispositivos y lleva la conversación entre ellos" width="92%">
+</p>
 
 [docs/every-device.md](../every-device.md) explica los dispositivos, [docs/hub.md](../hub.md) los frames, [docs/cloud.md](../cloud.md) el relay, [docs/privacy.md](../privacy.md) qué guarda.
 
@@ -90,7 +98,7 @@ Un VPS, una hora: [docs/self-hosting.md](../self-hosting.md). Tres caminos — s
 
 ## Contribuir
 
-Úsalo para una tarea real, cuenta qué se rompió y luego elige algo concreto: [CONTRIBUTING.md](../../CONTRIBUTING.md) tiene la configuración y las convenciones, [AGENTS.md](../../AGENTS.md) las reglas que sigue un agente de programación en este árbol, y la [hoja de ruta](../roadmap.md) dice por dónde empezar. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions).
+Úsalo para una tarea real, cuenta qué se rompió y luego elige algo concreto: [CONTRIBUTING.md](../../CONTRIBUTING.md) tiene la configuración y las convenciones, [AGENTS.md](../../AGENTS.md) las reglas que sigue un agente de programación en este árbol, y la [hoja de ruta](../roadmap.md) dice por dónde empezar. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
 
 ## Agradecimientos
 
@@ -99,7 +107,7 @@ nanoMuse se apoya en el trabajo de otros; [THIRD_PARTY_NOTICES.md](../../THIRD_P
 - [OpenMinis](https://github.com/OpenMinis/OpenMinis) — el agente en el dispositivo sobre el que está construida la app del teléfono, con [proot](https://github.com/nano-muse/proot) y [Alpine Linux](https://alpinelinux.org/) para el sandbox.
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — el harness de agentes del que la app de escritorio es un plugin.
 - [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance) — el operador de las manos del escritorio es una adaptación del suyo, y los marcadores del escenario siguen su ScreenMarker.
-- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/lsdefine/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ClawGUI/ClawGUI-APP) — el operador del teléfono, las trazas y las ideas de producto.
+- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/PhoneHarness/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ZJU-REAL/ClawGUI) — el operador del teléfono, las trazas y las ideas de producto.
 
 ## Aviso
 

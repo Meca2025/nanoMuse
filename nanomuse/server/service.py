@@ -43,6 +43,7 @@ from nanomuse.sentinel.grants import normalize_scope
 from nanomuse.server.connections import Connections
 from nanomuse.server.events import MAIN_THREAD, EventBus, Timeline, new_id, now_iso
 from nanomuse.server.failures import failure_notice
+from nanomuse.server.providers import ChatGPTSignIn, Providers
 from nanomuse.server.push import PushService
 from nanomuse.server.webui import WebUI, current_thread
 from nanomuse.sync import ConversationSync, parse_mention, system_note
@@ -318,6 +319,9 @@ class Thread:
     # it, for the "From Pixel 8" badge; "" for chats started here
     origin_device: str = ""
     origin_device_name: str = ""
+    # the main chat of another account of this device (contract C10): kept while someone
+    # else is signed in, hidden from them, back as `main` when that account returns
+    main_of: str = ""
 
     def meta(self) -> dict[str, Any]:
         meta: dict[str, Any] = {
@@ -337,6 +341,8 @@ class Thread:
         if self.origin_device:
             meta["origin_device"] = self.origin_device
             meta["origin_device_name"] = self.origin_device_name
+        if self.main_of:
+            meta["main_of"] = self.main_of
         return meta
 
 
@@ -407,6 +413,10 @@ class MuseService:
         self.nudges = NudgesPolicy(self.data_dir, settings.cloud.base_url)
         # a new face from a description, drawn on the chat model's host (docs/avatar.md)
         self.avatar = AvatarStudio(self)
+        # the catalogue with what is configured and what that covers (contract C11), and the
+        # ChatGPT sign-in run from the app (GET /api/providers, /api/chatgpt/*)
+        self.providers = Providers(self)
+        self.chatgpt = ChatGPTSignIn(self)
         self.coding = CodingService(self)
         self.app.tools.add(CodingAgents(coding=self.coding))
         self.token = self._load_token()
@@ -484,6 +494,7 @@ class MuseService:
         await asyncio.sleep(0)
         for t in self.threads.values():
             t.timeline.flush()
+        await self.chatgpt.close()
         if self._started:
             await self.sync.stop()
             await self.coding.close()
@@ -614,6 +625,8 @@ class MuseService:
             if m.get("origin_device"):
                 thread.origin_device = str(m["origin_device"])
                 thread.origin_device_name = str(m.get("origin_device_name") or "")
+            if m.get("main_of"):
+                thread.main_of = str(m["main_of"])
         self._save_index()
 
     def _save_index(self) -> None:
@@ -633,6 +646,8 @@ class MuseService:
             if t.origin_device:
                 m["origin_device"] = t.origin_device
                 m["origin_device_name"] = t.origin_device_name
+            if t.main_of:
+                m["main_of"] = t.main_of
             metas.append(m)
         (self.threads_dir / "index.json").write_text(
             json.dumps(metas, ensure_ascii=False, indent=1), "utf-8"
@@ -714,6 +729,97 @@ class MuseService:
         self.bus.publish({"kind": "thread", "thread": thread.meta()})
         self.sync.thread_changed(thread)
         return thread
+
+    def ui_language(self) -> str:
+        """``zh`` when the agent is told to answer in Chinese, else ``en`` — the two languages
+        the runtime's own sentences come in."""
+        language = str(self.settings.agent.language or "").lower()
+        return "zh" if language.startswith(("中文", "zh", "chinese", "简体", "繁體")) else "en"
+
+    def visible_threads(self) -> list[Thread]:
+        """The conversation list (contract C10): signed in, the account's conversations and
+        the ones no account has; signed out, every local one. Hidden ones stay on disk."""
+        return [t for t in self.threads.values() if self.sync.visible(t)]
+
+    def rehome_main(self, owner: str, restore: str | None, keep: bool = True) -> Thread | None:
+        """A different account signed in (C10): the main chat so far is put aside under a new
+        id, marked as ``owner``'s (``keep``; dropped when it is empty and nobody's), and
+        ``restore`` — the thread holding the new account's main chat, when it has one — takes
+        the ``main`` id back; otherwise a fresh main chat begins. Returns the thread the old
+        main chat became, or None when it was dropped."""
+        main = self.threads.get(MAIN_THREAD)
+        if main is None:
+            return None
+        if main.busy:
+            self.stop_thread(MAIN_THREAD)
+        archived = self._move_thread(main, "t_" + uuid.uuid4().hex[:8]) if keep else None
+        if archived is not None:
+            archived.main_of = owner
+        else:
+            self._drop_thread(main)
+        if restore and restore in self.threads:
+            kept = self.threads[restore]
+            fresh = self._move_thread(kept, MAIN_THREAD)
+            fresh.main_of = ""
+            self.bus.publish({"kind": "thread_deleted", "thread": restore})
+        else:
+            fresh = self._make_thread(MAIN_THREAD, "Main chat")
+        self._save_index()
+        # the list changed shape: the apps reload it from the snapshot
+        if archived is not None:
+            self.bus.publish({"kind": "thread", "thread": archived.meta()})
+        self.bus.publish({"kind": "thread_cleared", "thread": MAIN_THREAD})
+        self.bus.publish({"kind": "thread", "thread": fresh.meta()})
+        return archived
+
+    def _drop_thread(self, thread: Thread) -> None:
+        """Forget a thread and its files without the sync tombstone (the main chat put aside)."""
+        self.threads.pop(thread.id, None)
+        if thread.worker:
+            thread.worker.cancel()
+        for p in (thread.timeline.path, thread.agent.session_file):
+            if p and Path(p).exists():
+                Path(p).unlink()
+        self.app.holds.clear_thread(thread.id)
+        self.app.sentinel.end_conversation(thread.id)
+
+    def _move_thread(self, thread: Thread, new_id: str) -> Thread:
+        """The same conversation under another id: its timeline and the agent's transcript
+        move file by file and the thread is rebuilt from them (the events say the new id)."""
+        self.threads.pop(thread.id, None)
+        if thread.worker:
+            thread.worker.cancel()
+        for ev in thread.timeline.events:
+            ev["thread"] = new_id
+        thread.timeline.save()
+        thread.timeline.flush()
+        thread.agent._save_session()
+        self.app.holds.clear_thread(thread.id)
+        self.app.sentinel.end_conversation(thread.id)
+        pairs = (
+            (thread.timeline.path, self.threads_dir / f"{new_id}.json"),
+            (thread.agent.session_file, self.threads_dir / f"{new_id}.session.json"),
+        )
+        # a write still on its way to disk lands under the new id, not the old one
+        thread.timeline.path = pairs[0][1]
+        for src, dst in pairs:
+            if src is None:
+                continue
+            src_path = Path(src)
+            if dst.exists():
+                dst.unlink()
+            if src_path.exists():
+                src_path.replace(dst)
+        moved = self._make_thread(new_id, thread.title, thread.created_at, thread.updated_at)
+        moved.device, moved.device_name = thread.device, thread.device_name
+        moved.remote_from = thread.remote_from
+        moved.origin_device, moved.origin_device_name = (
+            thread.origin_device,
+            thread.origin_device_name,
+        )
+        moved.main_of = thread.main_of
+        self.ui.last_assistant_text.pop(thread.id, None)
+        return moved
 
     def rename_thread(self, thread_id: str, title: str) -> Thread | None:
         thread = self.threads.get(thread_id)
@@ -2245,10 +2351,11 @@ class MuseService:
             "version": __version__,
             "profile": self.profile.to_dict(),
             "status": self.ui.overall_status(),
-            "threads": [t.meta() for t in self.threads.values()],
+            # the signed-in account's conversations and the ownerless ones (C10)
+            "threads": [t.meta() for t in self.visible_threads()],
             "pending_approvals": [
                 ev
-                for t in self.threads.values()
+                for t in self.visible_threads()
                 for ev in t.timeline.events
                 if ev.get("type") == "approval" and ev.get("status") == "pending"
             ],

@@ -106,7 +106,11 @@ fun HandsScreen(onBack: () -> Unit, onOpenProviders: () -> Unit) {
         }
 
         // ── what it needs ──
-        SettingsSection(header = stringResource(R.string.nm_hands_section_needs), footer = stringResource(R.string.nm_hands_needs_footer)) {
+        // C11: with no provider that has a model that sees, the footer is the one sentence that says which would
+        SettingsSection(
+            header = stringResource(R.string.nm_hands_section_needs),
+            footer = if (visionEntries.isEmpty()) stringResource(R.string.nm_cap_hands_unavailable) else stringResource(R.string.nm_hands_needs_footer),
+        ) {
             NeedRow(
                 icon = Icons.Outlined.Accessibility,
                 title = stringResource(R.string.nm_hands_need_a11y),

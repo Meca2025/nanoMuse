@@ -167,9 +167,6 @@ computer's own hands — is in [every-device.md](every-device.md).
   others, including `task` through the headless chat runner), `HubService`
   (foreground, `remoteMessaging`). `nanomuse-pc` (`io.github.nanomuse.reach`)
   reaches the hub devices from the phone's sandbox shell.
-- Desktop binary: [`desktop/nanomuse_desktop/hub.py`](../desktop/nanomuse_desktop/hub.py),
-  `app.py` (incoming calls, approvals), `agent.py` (the `device_*` and
-  `delegate` tools).
 - Runtime (the windowed desktop, `nanomuse serve`): [`nanomuse/cloud.py`](../nanomuse/cloud.py)
   (the account), [`nanomuse/hub/client.py`](../nanomuse/hub/client.py) (the
   socket, reconnect), [`nanomuse/hub/actions.py`](../nanomuse/hub/actions.py)

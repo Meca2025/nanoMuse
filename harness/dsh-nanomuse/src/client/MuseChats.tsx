@@ -33,9 +33,11 @@ interface SyncList {
   enabled: boolean
   mainSession: string
   sessions: Set<string>
+  /** Sessions of another account than the one signed in (C10): not listed, not searched; empty when signed out. */
+  foreign: Set<string>
   toArchive: string[]
 }
-const NO_SYNC: SyncList = { enabled: true, mainSession: '', sessions: new Set(), toArchive: [] }
+const NO_SYNC: SyncList = { enabled: true, mainSession: '', sessions: new Set(), foreign: new Set(), toArchive: [] }
 
 /** The host's sync view; read again whenever the host's sync revision moves. */
 export function useSyncList(): SyncList {
@@ -43,8 +45,8 @@ export function useSyncList(): SyncList {
   const [list, setList] = useState<SyncList>(NO_SYNC)
   useEffect(() => {
     let alive = true
-    call<{ enabled: boolean; mainSession?: string; sessions?: string[]; toArchive?: string[] }>('sync/state')
-      .then((v) => { if (alive) setList({ enabled: v.enabled, mainSession: v.mainSession ?? '', sessions: new Set(v.sessions ?? []), toArchive: v.toArchive ?? [] }) })
+    call<{ enabled: boolean; mainSession?: string; sessions?: string[]; foreign?: string[]; toArchive?: string[] }>('sync/state')
+      .then((v) => { if (alive) setList({ enabled: v.enabled, mainSession: v.mainSession ?? '', sessions: new Set(v.sessions ?? []), foreign: new Set(v.foreign ?? []), toArchive: v.toArchive ?? [] }) })
       .catch(() => undefined)
     return () => { alive = false }
   }, [rev])
@@ -220,9 +222,10 @@ export function MuseChats({ t, useSessions, useSessionStatus, useWorkspaces, act
   const archivedSet = new Set(archived)
   const pinnedSet = new Set(pinned)
   const sync = useSyncList()
+  // signed in, the column shows this account's chats and the ones never synced (C10); another account's stay, hidden
   const visible = state.ids
     .map((id) => state.byId[id])
-    .filter((s): s is ChatSummary => s !== undefined && s.origin !== 'subagent' && !s.parentId && !archivedSet.has(s.id))
+    .filter((s): s is ChatSummary => s !== undefined && s.origin !== 'subagent' && !s.parentId && !archivedSet.has(s.id) && !sync.foreign.has(s.id))
   const current = Object.values(state.byId).find((s) => (s.retainedBy.mainView ?? 0) > 0)?.id
 
   // The main chat: the one the account's main conversation lives in (C8) while it exists, else

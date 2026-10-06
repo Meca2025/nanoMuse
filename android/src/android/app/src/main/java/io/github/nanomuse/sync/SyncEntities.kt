@@ -37,6 +37,12 @@ data class SyncConversation(
     val pushed: Boolean,
     /** Deleted here; the tombstone still has to go out. */
     val deleted: Boolean = false,
+    /**
+     * The account (`/v1/me` → `account.id`) this conversation was first pushed to or pulled
+     * from (contract C10); null for a mapping from before 0.1.39 whose account is unknown.
+     * Signed in as another account the chat stays on the phone, unseen and unpushed.
+     */
+    val owner: String? = null,
 )
 
 /** A local message row ↔ a `mid`. Rows that are not part of the transcript have no entry. */
@@ -140,7 +146,7 @@ interface SyncDao {
     suspend fun clearMeta()
 }
 
-@Database(entities = [SyncConversation::class, SyncMessage::class, SyncMeta::class], version = 2, exportSchema = false)
+@Database(entities = [SyncConversation::class, SyncMessage::class, SyncMeta::class], version = 3, exportSchema = false)
 abstract class SyncDatabase : RoomDatabase() {
     abstract fun dao(): SyncDao
 
@@ -155,9 +161,21 @@ abstract class SyncDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * 0.1.39 (contract C10): whose conversation a mapping is. Every mapping that exists was
+         * minted for the account in `sync_meta.account` — until now a change of account wiped
+         * the store — so they all become that account's; a store with no account stays null.
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sync_conversations ADD COLUMN owner TEXT")
+                db.execSQL("UPDATE sync_conversations SET owner = (SELECT value FROM sync_meta WHERE `key` = 'account')")
+            }
+        }
+
         fun get(context: Context): SyncDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, SyncDatabase::class.java, "nanomuse_sync.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigration()
                 .build()
                 .also { instance = it }

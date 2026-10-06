@@ -22,6 +22,12 @@ interface LocalChats {
     suspend fun messages(sessionId: String): List<LocalMessage>
     /** The main chat's persisted id; null while the home is still an unsaved draft. */
     suspend fun mainSessionId(): String?
+    /**
+     * The home conversation changes (contract C10: it follows the account): [id] becomes the
+     * main chat; null leaves the home on an unsaved draft until the person writes. In tests,
+     * the field.
+     */
+    suspend fun setMainSession(id: String?)
     /** A chat that arrived from another device; with [main] it becomes the home conversation. Returns its id. */
     suspend fun createSession(title: String?, createdAt: Long, updatedAt: Long, main: Boolean): String
     suspend fun renameSession(id: String, title: String?, updatedAt: Long)
@@ -63,6 +69,10 @@ class RoomChats(private val context: Context, private val repo: ChatRepository) 
     }
 
     override suspend fun mainSessionId(): String? = MainChat.persisted(context)?.takeIf { dao.getSession(it) != null }
+
+    override suspend fun setMainSession(id: String?) {
+        if (id == null) MainChat.clear(context) else MainChat.set(context, id)
+    }
 
     override suspend fun createSession(title: String?, createdAt: Long, updatedAt: Long, main: Boolean): String {
         // a model for the row: the one the newest chat uses, else the first the person has

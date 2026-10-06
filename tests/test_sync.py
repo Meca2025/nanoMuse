@@ -84,6 +84,15 @@ class FakeSyncRelay:
         self.fail_working: CloudError | None = None
         self.names = {"phone-1": "Pixel 8", "pc-self": "Desk"}
 
+        self._stores: dict[str, tuple[int, dict[str, Any], dict[str, Any]]] = {}
+        self._account = ""
+
+    def switch_account(self, account: str) -> None:
+        """Another account's store (the relay keeps one per account; C10)."""
+        self._stores[self._account] = (self.seq, self.convs, self.msgs)
+        self.seq, self.convs, self.msgs = self._stores.get(account) or (0, {}, {})
+        self._account = account
+
     def _next(self) -> int:
         self.seq += 1
         return self.seq
@@ -501,13 +510,19 @@ def test_the_switch_and_the_relays_refusals(synced) -> None:
     assert service.sync.active is False and client.get("/api/sync/state").json()["paused"] is True
     client.portal.call(service.sync.account_changed, "acct-1")  # type: ignore[union-attr]
     assert service.sync.active is True
-    # a different account starts from zero: fresh ids, the main chat pushed anew
+    # the main chat joins the first account on its push (C10: owner = account.id)
+    wait_for(lambda: service.sync.owner_of(MAIN_THREAD) == "acct-1")
     old = service.sync.cid_of(MAIN_THREAD)
+    # a different account starts from zero: a fresh main chat, pushed anew under a new id
+    # (the first account's was empty, so there is nothing to keep aside)
     pushes = len(relay.pushes)
+    relay.switch_account("acct-2")
     client.portal.call(service.sync.account_changed, "acct-2")  # type: ignore[union-attr]
     assert service.sync.state["account_id"] == "acct-2"
+    wait_for(lambda: relay.pulls and relay.pulls[-1]["since"] == 0)  # the cursor started over
     wait_for(lambda: len(relay.pushes) > pushes)
-    assert service.sync.cid_of(MAIN_THREAD) not in (None, old)
+    wait_for(lambda: service.sync.cid_of(MAIN_THREAD) not in (None, old))
+    assert service.sync.state["mains"] == {} and service.sync.owner_of(MAIN_THREAD) == "acct-2"
 
 
 def test_signed_out_runtimes_do_not_sync(
@@ -941,3 +956,127 @@ def test_the_working_frame_reaches_the_web_app(main_only) -> None:
     with client.websocket_connect("/ws") as ws:
         ws.send_json({"kind": "auth", "token": "secret-token"})
         assert ws.receive_json()["state"]["working"][0]["device"] == "phone-1"
+
+
+# ----------------------------------------------------------------------------- C10: whose conversations
+def _titles(client: TestClient) -> set[str]:
+    return {t["title"] for t in client.get("/api/threads").json()}
+
+
+def test_a_device_shows_and_pushes_the_current_accounts_conversations_only(synced) -> None:
+    """Account A signs in and works; B signs in on the same device: B sees a fresh main chat
+    and nothing of A's, pushes nothing of A's; A back: everything of A's again, nothing of
+    B's. Signed out, every local conversation is shown."""
+    client, service, llm, relay = synced
+    client.portal.call(service.sync.account_changed, "acct-A")  # type: ignore[union-attr]
+    llm.script.append(LLMResponse(content="A's answer", finish_reason="stop"))
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "A's question"})
+    wait_for(lambda: any(m["text"] == "A's answer" for m in relay.msgs.values()))
+    a_side = client.post("/api/threads", json={"title": "A side"}).json()
+    wait_for(lambda: service.sync.owner_of(a_side["id"]) == "acct-A")
+    assert service.sync.owner_of(MAIN_THREAD) == "acct-A"
+    a_main_cid = relay_main(relay)
+    # a chat that never synced belongs to nobody (side chats of another device, say)
+    local = service.create_thread("Nobody's")
+    local.device = "phone-1"
+    service._save_index()
+    assert _titles(client) == {"Main chat", "A side", "Nobody's"}
+
+    # B signs in: cursor 0, presence gone, A's hidden, a fresh main chat
+    service.sync.working["x"] = {"thread": MAIN_THREAD, "cid": "x", "device": "d", "at": 1}
+    service.sync.state["cursor"] = 99
+    pushes = len(relay.pushes)
+    pulls = len(relay.pulls)
+    relay.switch_account("acct-B")
+    client.portal.call(service.sync.account_changed, "acct-B")  # type: ignore[union-attr]
+    assert service.sync.working == {}
+    assert _titles(client) == {"Main chat", "Nobody's"}
+    main_b = client.get(f"/api/threads/{MAIN_THREAD}/events").json()["events"]
+    assert main_b == []
+    archived_id = service.sync.state["mains"]["acct-A"]
+    archived = service.threads[archived_id]
+    assert archived.main_of == "acct-A" and service.sync.cid_of(archived_id) == a_main_cid
+    assert [e["text"] for e in archived.timeline.events if e["type"] == "user"] == ["A's question"]
+    assert all(e["thread"] == archived_id for e in archived.timeline.events)
+    # what B does goes up as B's; nothing of A's is pushed again
+    wait_for(lambda: len(relay.pulls) > pulls)
+    assert relay.pulls[pulls]["since"] == 0  # the cursor started over
+    llm.script.append(LLMResponse(content="B's answer", finish_reason="stop"))
+    client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "B's question"})
+    wait_for(lambda: any(m["text"] == "B's answer" for m in relay.msgs.values()))
+    b_side = client.post("/api/threads", json={"title": "B side"}).json()
+    wait_for(lambda: service.sync.owner_of(b_side["id"]) == "acct-B")
+    sent = {m["cid"] for p in relay.pushes[pushes:] for m in p["messages"]} | {
+        c["cid"] for p in relay.pushes[pushes:] for c in p["conversations"]
+    }
+    assert a_main_cid not in sent and service.sync.cid_of(a_side["id"]) not in sent
+    assert service.sync.owner_of(MAIN_THREAD) == "acct-B"
+    assert _titles(client) == {"Main chat", "Nobody's", "B side"}
+    # the ownerless chat joins B on its first push
+    local.device = None
+    client.patch(f"/api/threads/{local.id}", json={"title": "Now B's"})
+    wait_for(lambda: service.sync.owner_of(local.id) == "acct-B")
+
+    # A comes back: A's main chat and side chat, B's put aside
+    relay.switch_account("acct-A")
+    client.portal.call(service.sync.account_changed, "acct-A")  # type: ignore[union-attr]
+    assert _titles(client) == {"Main chat", "A side"}
+    texts = [e["text"] for e in _events(client, MAIN_THREAD) if e["type"] == "user"]
+    assert texts == ["A's question"]
+    assert service.sync.cid_of(MAIN_THREAD) == a_main_cid
+    assert service.sync.owner_of(MAIN_THREAD) == "acct-A"
+    assert archived_id not in service.threads and "acct-A" not in service.sync.state["mains"]
+    b_kept = service.threads[service.sync.state["mains"]["acct-B"]]
+    assert [e["text"] for e in b_kept.timeline.events if e["type"] == "user"] == ["B's question"]
+    # the snapshot the web app gets says the same
+    assert {t["title"] for t in service.state()["threads"]} == {"Main chat", "A side"}
+
+    # signed out: the device is the person's, everything local is shown
+    client.portal.call(service.hub._forget_key)  # type: ignore[union-attr]
+    assert not service.hub.signed_in
+    assert _titles(client) == {"Main chat", "A side", "B side", "Now B's"}
+    kept_meta = next(t for t in client.get("/api/threads").json() if t.get("main_of"))
+    assert kept_meta["main_of"] == "acct-B" and kept_meta["title"] == "Main chat"
+
+    # and all of it survives a restart
+    again = MuseService(settings=service.settings, llm=MockLLM([]))
+    assert again.sync.owner_of(MAIN_THREAD) == "acct-A"
+    assert again.sync.state["mains"]["acct-B"] == b_kept.id
+    assert again.threads[b_kept.id].main_of == "acct-B"
+
+
+def test_the_first_sign_in_keeps_the_main_chat_and_a_new_account_relogs_the_hub(
+    synced, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, service, llm, relay = synced
+    # text from before any sign-in is nobody's: the first account takes it (as before)
+    main = service.threads[MAIN_THREAD]
+    main.timeline.add({"type": "user", "text": "before sign-in"})
+    client.portal.call(service.sync.account_changed, "acct-A")  # type: ignore[union-attr]
+    assert "before sign-in" in [e["text"] for e in _events(client, MAIN_THREAD)]
+    wait_for(lambda: service.sync.owner_of(MAIN_THREAD) == "acct-A")
+
+    # sign-in through the hub service with another account: the socket and the account's
+    # model lists start over (the device list with them), the engine hears the new id
+    stopped: list[bool] = []
+
+    class FakeClient:
+        running = True
+        state = "online"
+        state_detail = ""
+        devices = [{"id": "x", "name": "Old phone"}]
+
+        async def stop(self) -> None:
+            stopped.append(True)
+
+    service.hub.client = FakeClient()  # type: ignore[assignment]
+    service.hub.chat_models = ["m"]
+    relay.switch_account("acct-B")
+    client.portal.call(  # type: ignore[union-attr]
+        service.hub._signed_in,
+        {"api_key": "key-b", "account": {"id": "acct-B", "hint": "", "channel": "email"}},
+    )
+    assert stopped == [True] and service.hub.client is None
+    assert service.hub.view()["devices"] == [] and service.hub.chat_models == []
+    assert service.sync.account_id == "acct-B"
+    assert "before sign-in" not in [e["text"] for e in _events(client, MAIN_THREAD)]

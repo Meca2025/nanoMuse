@@ -62,7 +62,12 @@ object ImageGen {
             .build()
     }
 
-    /** API-key providers that speak the OpenAI images API (OpenAI itself, xAI, OpenRouter, any custom base). */
+    /**
+     * API-key providers that speak the OpenAI images API (OpenAI itself, xAI, OpenRouter, any
+     * custom base) — and, of the vendors the catalogue knows, only those with image models
+     * (contract C11, [io.github.nanomuse.cloud.Capabilities]): a DeepSeek or Groq key draws
+     * nothing, and a ChatGPT plan signed in through the Codex OAuth is chat and vision only.
+     */
     fun eligibleInstances(context: Context): List<ProviderInstance> {
         val app = context.applicationContext as? MinisApp ?: return emptyList()
         val repo = app.providerRepositoryOrNull ?: return emptyList()
@@ -71,9 +76,13 @@ object ImageGen {
                 ProviderType.openAI, ProviderType.openAIResponses, ProviderType.openRouter, ProviderType.xAI -> true
                 ProviderType.anthropic, ProviderType.gemini, ProviderType.kimiCode, ProviderType.antigravity, ProviderType.unsupported -> false
                 else -> inst.customBaseURL != null
-            }
+            } && io.github.nanomuse.cloud.Capabilities.allows(context, inst, io.github.nanomuse.cloud.ProviderCatalogue.IMAGE)
         }
     }
+
+    /** No configured provider can draw: the one sentence that says so (C11), or null when one can. */
+    fun unavailableLine(context: Context): String? =
+        if (eligibleInstances(context).isEmpty()) io.github.nanomuse.cloud.Capabilities.unavailableLine(context, io.github.nanomuse.cloud.ProviderCatalogue.IMAGE) else null
 
     /**
      * Model entries of [instance] that draw: the catalogue says so (`image` among the output

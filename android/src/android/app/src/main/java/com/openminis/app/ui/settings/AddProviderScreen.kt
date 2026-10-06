@@ -94,17 +94,19 @@ fun AddProviderScreen(
     onSaved: () -> Unit,
     preset: String? = null, // nanoMuse: open straight on the form, pre-filled for a known vendor
 ) {
-    // nanoMuse: a preset (from "use your own key" — Alibaba Cloud Bailian, OpenRouter) skips the
+    // nanoMuse: a preset (from "use your own key" — a vendor of the own-key catalogue) skips the
     // type and credential steps; the form opens with the vendor's name and public endpoint —
-    // for OpenRouter on its sign-in (OpenRouterOAuthManager), a key with no paste.
-    val presetTemplate = remember(preset) { io.github.nanomuse.cloud.OwnKeyPresets.template(preset) }
+    // `<id>:oauth` on its sign-in (OpenAIOAuthManager for a ChatGPT plan, ClaudeOAuthManager,
+    // OpenRouterOAuthManager, Kimi's device code), a key with no paste.
+    val presetContext = LocalContext.current
+    val presetTemplate = remember(preset) { io.github.nanomuse.cloud.OwnKeyPresets.template(presetContext, preset) }
     var step by remember { mutableStateOf(if (presetTemplate != null) AddProviderStep.CONFIGURE else AddProviderStep.CHOOSE_TYPE) }
     var selectedType by remember { mutableStateOf<ProviderType?>(presetTemplate?.providerType) }
     var selectedCredential by remember {
         mutableStateOf<ProviderCredential?>(
-            when (presetTemplate?.id) {
-                null -> null
-                io.github.nanomuse.cloud.OwnKeyPresets.OPENROUTER -> ProviderCredential.oauth
+            when {
+                presetTemplate == null -> null
+                io.github.nanomuse.cloud.OwnKeyPresets.signIn(presetContext, preset) -> ProviderCredential.oauth
                 else -> ProviderCredential.apiKey
             },
         )

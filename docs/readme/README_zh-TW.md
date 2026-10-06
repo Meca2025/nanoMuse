@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/%E6%96%87%E4%BB%B6-nanomuse.cn%2Fdocs-0a66e4" alt="文件"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
+  <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 **nanoMuse 是一個開源的個人智慧體，面向你的每一台裝置。** 一個有名字、有自己形象的智慧體，和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 是同一類東西：不只回答問題，而是動手做事；App 關了也繼續做；記得你；遇到無法復原的操作會先停下來問你。
@@ -42,31 +43,38 @@
 | **macOS** 12 以上 | [Apple 晶片](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-x64.dmg)——未經公證：第一次右鍵 → 打開 |
 | **Windows** 10 以上 | [nanoMuse-Desktop-0.1.38-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-win-x64.exe)——點一次「仍要執行」 |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.tar.gz) |
-| **終端機** | Python 3.11 以上：`pipx install "git+https://github.com/nano-muse/nanoMuse"`；或者從[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下載 `nanomuse-desktop-terminal` 執行檔 |
 | **Docker** | `bash scripts/self-host.sh --local` 架自己的中繼；`docker compose up -d app` 在自己的伺服器上跑網頁版——見[自己部署](../self-hosting.md) |
 
 下載都來自 [GitHub 最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)；GitHub 下載不順時，同樣的檔案在 [nanomuse.cn/dl](https://nanomuse.cn/dl/)。打開 App，用電子郵件或中國大陸手機號登入，它就有模型可用。手機、桌面和網頁共用一個帳號，看到的是同樣的對話。
 
 ## 能做什麼
 
-- **動手做事。** Linux shell、瀏覽器、MCP 伺服器、技能；打開「手」之後，手機上的 App 和電腦上的視窗也能透過螢幕操作——給那些從來沒有 API 的東西。
-- **關鍵處先問。** 刪除、傳送、付款前先停下來問你，可以記住：只此一次、本次對話，或者一直允許；密碼和驗證碼永遠由你自己輸入。碰到登入或人機驗證就交給你，點「完成」接著做。
-- **搆得著別的裝置。** 手機上說一句，電腦上執行；訊息以 `@Mac …` 開頭，任務就去那台機器。審批回到你手上這台。
-- **一直在做。** 目標按時檢查，例行工作在 App 關著時照樣跑，每天早上有寫給你的動態。
-- **記得你。** 它是誰、了解你什麼、什麼時候醒來，都是你能看、能改的 Markdown 檔案。
-- **住在你的聊天軟體裡。** 飛書、釘釘、企業微信、Telegram 裡都能回覆你。
-- **有自己的形象。** 描述一句，你的圖像模型來畫，影片模型讓它動起來。預設是一隻小龍。
-- **任何模型。** 中繼的預設模型，一把百煉或 OpenRouter 的 key，或者任何 OpenAI 相容介面。
+<table>
+  <tr>
+    <td width="50%" valign="top"><b>動手做事。</b><br>Linux shell、瀏覽器、MCP 伺服器、技能；打開「手」之後，手機上的 App 和電腦上的視窗也能透過螢幕操作——給那些從來沒有 API 的東西。</td>
+    <td width="50%" valign="top"><b>關鍵處先問。</b><br>刪除、傳送、付款前先停下來問你，可以記住：只此一次、本次對話，或者一直允許；密碼和驗證碼永遠由你自己輸入。碰到登入或人機驗證就交給你，點「完成」接著做。</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>搆得著別的裝置。</b><br>手機上說一句，電腦上執行；訊息以 <code>@Mac …</code> 開頭，任務就去那台機器。審批回到你手上這台。</td>
+    <td width="50%" valign="top"><b>一直在做。</b><br>目標按時檢查，例行工作在 App 關著時照樣跑，每天早上有寫給你的動態。</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>記得你。</b><br>它是誰、了解你什麼、什麼時候醒來，都是你能看、能改的 Markdown 檔案。</td>
+    <td width="50%" valign="top"><b>住在你的聊天軟體裡。</b><br>飛書、釘釘、企業微信、Telegram 裡都能回覆你。</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>有自己的形象。</b><br>描述一句，你的圖像模型來畫，影片模型讓它動起來。預設是一隻小龍。</td>
+    <td width="50%" valign="top"><b>任何模型。</b><br>中繼的額度；自己在十八家服務商（百煉、OpenRouter、OpenAI、Gemini、DeepSeek 等）任一家的 key；或者你已經在付費的方案：ChatGPT、Claude、Kimi。服務商沒有圖片或影片模型，這兩項就不開，app 會直說。</td>
+  </tr>
+</table>
 
 ## 怎麼運作
 
 每台裝置上都跑著自己的智慧體——手機上在 APK 裡（proot 下的 Alpine Linux、shell、瀏覽器、MCP），電腦上在 nanoMuse Desktop 裡（DeepSeek Harness 加上負責「手」的 Python 執行環境）。登入後它們在中繼上相遇，可以互相拜託；對話的文字經中繼傳遞，檔案和截圖留在產生它們的裝置上。
 
-```
-手機 ──┐                          ┌── 電腦（nanoMuse Desktop）
-       ├──▶  nanoMuse Cloud  ◀───┤        中繼：登入、模型、
-網頁 ──┘        /v1/hub           └── 另一台手機 / 電腦          hub、對話同步
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/devices-loop.png" alt="Android、桌面端（Mac、Windows、Linux）、iPhone 和 iPad、網頁版圍繞同一個帳號：中繼負責登入，並在裝置之間同步對話" width="92%">
+</p>
 
 [docs/every-device.md](../every-device.md) 講裝置之間怎麼配合，[docs/hub.md](../hub.md) 講訊框格式，[docs/cloud.md](../cloud.md) 講中繼，[docs/privacy.md](../privacy.md) 講它保存什麼。
 
@@ -90,7 +98,7 @@
 
 ## 參與
 
-拿它做一件真事，回報哪裡壞了，然後挑一件小而具體的事做：[CONTRIBUTING.md](../../CONTRIBUTING.md) 有環境和約定，[AGENTS.md](../../AGENTS.md) 是程式智慧體在這棵樹裡要守的規矩，[路線圖](../roadmap.md)說從哪裡入手。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions)。
+拿它做一件真事，回報哪裡壞了，然後挑一件小而具體的事做：[CONTRIBUTING.md](../../CONTRIBUTING.md) 有環境和約定，[AGENTS.md](../../AGENTS.md) 是程式智慧體在這棵樹裡要守的規矩，[路線圖](../roadmap.md)說從哪裡入手。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X)。
 
 ## 致謝
 
@@ -99,7 +107,7 @@ nanoMuse 站在別人的工作之上；條款見 [THIRD_PARTY_NOTICES.md](../../
 - [OpenMinis](https://github.com/OpenMinis/OpenMinis)——手機 App 所基於的裝置端智慧體，沙箱來自 [proot](https://github.com/nano-muse/proot) 和 [Alpine Linux](https://alpinelinux.org/)。
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)——桌面 App 作為外掛程式運行在它上面。
 - [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop)（字節跳動）——桌面端「手」的操作器移植自它，舞台上的標記參考它的 ScreenMarker。
-- [MobileGym](https://github.com/Purewhiter/mobilegym)、[MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench)、[PhoneHarness](https://github.com/lsdefine/PhoneHarness)、[CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse)、[Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM)、[ClawGUI](https://github.com/ClawGUI/ClawGUI-APP)——手機操作器、軌跡和產品思路。
+- [MobileGym](https://github.com/Purewhiter/mobilegym)、[MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench)、[PhoneHarness](https://github.com/PhoneHarness/PhoneHarness)、[CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse)、[Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM)、[ClawGUI](https://github.com/ZJU-REAL/ClawGUI)——手機操作器、軌跡和產品思路。
 
 ## 聲明
 

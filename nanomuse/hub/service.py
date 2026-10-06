@@ -319,6 +319,14 @@ class HubService:
         self.last_me = {k: v for k, v in data.items() if k != "api_key"}
         self.svc.app.vault.set(CLOUD_KEY, key)
         account: dict[str, Any] = data["account"] if isinstance(data.get("account"), dict) else {}
+        previous = self.svc.sync.account_id or str(
+            (self.data.get("cloud") or {}).get("account_id") or ""
+        )
+        if previous and previous != str(account.get("id") or ""):
+            # a different account (contract C10): the socket to the relay, its device list
+            # and the account's models start over under the new key
+            await self.leave()
+            self.chat_models, self.gui_models, self.models = [], [], []
         self.data["cloud"] = {
             "base_url": self.cloud.base_url,
             "hint": str(account.get("hint") or ""),

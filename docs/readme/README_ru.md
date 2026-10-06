@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="Документация"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
+  <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 **nanoMuse — открытый персональный агент для всех ваших устройств.** Один агент со своим именем и обликом, того же рода, что [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) от Meta: он делает дела, а не отвечает на вопросы, продолжает работать при закрытом приложении, помнит вас и останавливается спросить перед тем, что нельзя отменить.
@@ -42,31 +43,38 @@
 | **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-mac-x64.dmg) — без нотаризации: в первый раз правый клик → «Открыть» |
 | **Windows** 10+ | [nanoMuse-Desktop-0.1.38-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-win-x64.exe) — один раз нажмите «Выполнить в любом случае» |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.38/nanoMuse-Desktop-0.1.38-linux-x64.tar.gz) |
-| **Терминал** | `pipx install "git+https://github.com/nano-muse/nanoMuse"` с Python 3.11+, или бинарник `nanomuse-desktop-terminal` из [последнего выпуска](https://github.com/nano-muse/nanoMuse/releases/latest) |
 | **Docker** | `bash scripts/self-host.sh --local` для своего реле; `docker compose up -d app` для веб-приложения на своём сервере — [самостоятельный хостинг](../self-hosting.md) |
 
 Все загрузки — из [последнего выпуска на GitHub](https://github.com/nano-muse/nanoMuse/releases/latest); те же файлы лежат на [nanomuse.cn/dl](https://nanomuse.cn/dl/), если GitHub у вас медленный. Откройте приложение, войдите по e-mail или по номеру телефона материкового Китая — и у агента есть модель, чтобы думать. Телефон, компьютер и веб делят один аккаунт и показывают одни и те же разговоры.
 
 ## Что он умеет
 
-- **Делает дела.** Linux-шелл, браузер, MCP-серверы и навыки — а с включёнными «руками» ещё и приложения на телефоне и окна на компьютере через их экран, для всего, у чего никогда не было API.
-- **Сначала спрашивает.** Остановка перед удалением, отправкой или оплатой, запоминается на один раз, на этот чат или навсегда; пароли и коды вводите вы. Вход или CAPTCHA он передаёт вам; «Готово» продолжает.
-- **Дотягивается до других устройств.** Скажите на телефоне — выполнится на ПК; `@Mac …` в начале сообщения отправляет задачу туда. Подтверждения возвращаются на устройство у вас в руках.
-- **Не останавливается.** Цели проверяются по расписанию, рутины работают при закрытом приложении, каждое утро — лента, написанная для вас.
-- **Помнит вас.** Кто он, что знает о вас и когда просыпается — это Markdown-файлы, которые можно читать и править.
-- **Живёт в ваших мессенджерах.** Отвечает в 飞书, 钉钉, 企业微信 и Telegram.
-- **Собственный облик.** Опишите его — модель изображений нарисует, видеомодель оживит. По умолчанию — маленький дракон.
-- **Любая модель.** Модели реле, ключ Bailian или OpenRouter, любой OpenAI-совместимый endpoint.
+<table>
+  <tr>
+    <td width="50%" valign="top"><b>Делает дела.</b><br>Linux-шелл, браузер, MCP-серверы и навыки — а с включёнными «руками» ещё и приложения на телефоне и окна на компьютере через их экран, для всего, у чего никогда не было API.</td>
+    <td width="50%" valign="top"><b>Сначала спрашивает.</b><br>Остановка перед удалением, отправкой или оплатой, запоминается на один раз, на этот чат или навсегда; пароли и коды вводите вы. Вход или CAPTCHA он передаёт вам; «Готово» продолжает.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Дотягивается до других устройств.</b><br>Скажите на телефоне — выполнится на ПК; <code>@Mac …</code> в начале сообщения отправляет задачу туда. Подтверждения возвращаются на устройство у вас в руках.</td>
+    <td width="50%" valign="top"><b>Не останавливается.</b><br>Цели проверяются по расписанию, рутины работают при закрытом приложении, каждое утро — лента, написанная для вас.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Помнит вас.</b><br>Кто он, что знает о вас и когда просыпается — это Markdown-файлы, которые можно читать и править.</td>
+    <td width="50%" valign="top"><b>Живёт в ваших мессенджерах.</b><br>Отвечает в 飞书, 钉钉, 企业微信 и Telegram.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><b>Собственный облик.</b><br>Опишите его — модель изображений нарисует, видеомодель оживит. По умолчанию — маленький дракон.</td>
+    <td width="50%" valign="top"><b>Любая модель.</b><br>Лимит реле, свой ключ у одного из восемнадцати провайдеров (Bailian, OpenRouter, OpenAI, Gemini, DeepSeek и другие) или подписка, за которую вы уже платите: ChatGPT, Claude, Kimi. У провайдера без моделей изображений или видео эти две функции выключены, и приложение так и говорит.</td>
+  </tr>
+</table>
 
 ## Как это устроено
 
 На каждом устройстве работает свой агент: на телефоне — внутри APK (Alpine Linux под proot, шелл, браузер, MCP), на компьютере — внутри nanoMuse Desktop (DeepSeek Harness плюс Python-рантайм для рук). После входа они встречаются на реле и могут просить друг друга о чём-то; текст разговоров идёт через реле, файлы и скриншоты остаются там, где были сделаны.
 
-```
-телефон ──┐                         ┌── компьютер (nanoMuse Desktop)
-          ├──▶  nanoMuse Cloud  ◀───┤        реле: вход, модели,
-веб  ─────┘        /v1/hub          └── другой телефон / компьютер    hub, синхронизация разговоров
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/devices-loop.png" alt="Android, компьютер (Mac, Windows, Linux), iPhone и iPad и веб-приложение вокруг одного аккаунта: ретранслятор выполняет вход устройств и переносит разговор между ними" width="92%">
+</p>
 
 Об устройствах — [docs/every-device.md](../every-device.md), о кадрах — [docs/hub.md](../hub.md), о реле — [docs/cloud.md](../cloud.md), о том, что оно хранит, — [docs/privacy.md](../privacy.md).
 
@@ -90,7 +98,7 @@
 
 ## Участие
 
-Поручите ему настоящее дело, расскажите, что сломалось, потом выберите что-то небольшое и конкретное: в [CONTRIBUTING.md](../../CONTRIBUTING.md) — настройка и соглашения, в [AGENTS.md](../../AGENTS.md) — правила для агента-программиста в этом дереве, в [дорожной карте](../roadmap.md) — с чего начать. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions).
+Поручите ему настоящее дело, расскажите, что сломалось, потом выберите что-то небольшое и конкретное: в [CONTRIBUTING.md](../../CONTRIBUTING.md) — настройка и соглашения, в [AGENTS.md](../../AGENTS.md) — правила для агента-программиста в этом дереве, в [дорожной карте](../roadmap.md) — с чего начать. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
 
 ## Благодарности
 
@@ -99,7 +107,7 @@ nanoMuse стоит на работе других; условия — в [THIRD
 - [OpenMinis](https://github.com/OpenMinis/OpenMinis) — агент на устройстве, на котором построено приложение для телефона, с [proot](https://github.com/nano-muse/proot) и [Alpine Linux](https://alpinelinux.org/) для песочницы.
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — агентный harness, плагином к которому является приложение для компьютера.
 - [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance) — оператор рук на компьютере портирован с их кода, а маркеры сцены следуют их ScreenMarker.
-- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/lsdefine/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ClawGUI/ClawGUI-APP) — оператор телефона, трассы и продуктовые идеи.
+- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/PhoneHarness/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ZJU-REAL/ClawGUI) — оператор телефона, трассы и продуктовые идеи.
 
 ## Отказ от ответственности
 

@@ -22,6 +22,25 @@ from nanomuse_cloud.service import Cloud, CloudError
 PNG_1PX = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
 
 
+# the catalogue's facts the two 0.17 key ways carry since 0.21 (providers.py; additive fields)
+WAY_FACTS = {
+    "bailian": {
+        "name": "Alibaba Cloud Bailian",
+        "name_zh": "阿里云百炼",
+        "key_url": "https://bailian.console.aliyun.com/?apiKey=1",
+        "covers": ["chat", "vision", "image", "video"],
+        "auth": ["key"],
+    },
+    "openrouter": {
+        "name": "OpenRouter",
+        "name_zh": "OpenRouter",
+        "key_url": "https://openrouter.ai/keys",
+        "covers": ["chat", "vision", "image"],
+        "auth": ["key", "oauth-openrouter"],
+    },
+}
+
+
 def fake_upstream() -> FastAPI:
     up = FastAPI()
     up.state.requests = []
@@ -604,12 +623,14 @@ async def test_open_signup_members_unlimited_everyone_else_has_one_allowance():
         "contribute_bonus_available": False,
         "own_key_docs": "https://nanomuse.cn/own-key",
         "openrouter_url": "https://openrouter.ai/keys",
-        # 0.17: a mainland phone account is pointed to Bailian first, then OpenRouter, then an invite
+        # 0.17: a mainland phone account is pointed to Bailian first, then OpenRouter, then an invite;
+        # 0.21 adds the catalogue's facts to the two key ways (additive) and the whole card as `guidance`
         "ways": [
-            {"id": "bailian", "url": "https://nanomuse.cn/own-key", "mainland_only": True},
-            {"id": "openrouter", "url": "https://openrouter.ai/keys", "mainland_only": False},
+            {"id": "bailian", "url": "https://nanomuse.cn/own-key", "mainland_only": True, **WAY_FACTS["bailian"]},
+            {"id": "openrouter", "url": "https://openrouter.ai/keys", "mainland_only": False, **WAY_FACTS["openrouter"]},
             {"id": "invite", "url": guest["invite"]["url"], "bonus_cny": 5},
         ],
+        "guidance": guest["spend"]["guidance"],
         # what a 0.4 app still reads: the pool as the "cap", no midnight
         "daily_cap": 0.002,
         "daily_cap_usd": 0.0003,
@@ -2129,8 +2150,8 @@ async def test_me_says_where_the_person_is_and_orders_the_ways_on_by_it(tmp_path
     # the ways on, in order: the mainland to Bailian, the rest to OpenRouter, the invitation last
     cn_ways = (await client.get("/v1/me", headers=auth(phone, "8.8.8.8"))).json()["spend"]["ways"]
     assert [w["id"] for w in cn_ways] == ["bailian", "openrouter", "invite"]
-    assert cn_ways[0] == {"id": "bailian", "url": "https://nanomuse.cn/own-key", "mainland_only": True}
-    assert cn_ways[1] == {"id": "openrouter", "url": "https://openrouter.ai/keys", "mainland_only": False}
+    assert cn_ways[0] == {"id": "bailian", "url": "https://nanomuse.cn/own-key", "mainland_only": True, **WAY_FACTS["bailian"]}
+    assert cn_ways[1] == {"id": "openrouter", "url": "https://openrouter.ai/keys", "mainland_only": False, **WAY_FACTS["openrouter"]}
     assert (
         cn_ways[2]["id"] == "invite" and cn_ways[2]["url"].startswith("https://nanomuse.cn/web/?invite=") and cn_ways[2]["bonus_cny"] == 5
     )
@@ -2151,14 +2172,19 @@ async def test_me_says_where_the_person_is_and_orders_the_ways_on_by_it(tmp_path
     err = await exhaust(phone, "8.8.8.8")
     assert err["region"] == "cn" and [w["id"] for w in err["ways"]] == ["bailian", "openrouter", "invite"]
     assert "阿里云百炼" in err["message"] and "free tier for mainland China" in err["message"] and "OpenRouter" not in err["message"]
+    assert "one key" in err["message"] and "a plan you already pay for (ChatGPT, Claude or Kimi" in err["message"]
+    assert err["guidance"]["region"] == "cn" and err["guidance"]["providers"][0]["id"] == "bailian"
     err = await exhaust(us, "8.8.8.8")
     assert err["region"] == "intl" and [w["id"] for w in err["ways"]] == ["openrouter", "bailian", "invite"]
-    assert "OpenRouter is the easy way outside mainland China: one account, one key, pay as you go" in err["message"]
-    assert "Alibaba Cloud Bailian only signs up accounts from the mainland" in err["message"]
+    assert "OpenRouter (one account, one key, pay as you go) or OpenAI first" in err["message"]
+    assert "Alibaba Cloud Bailian only signs up accounts from mainland China" in err["message"]
+    assert "a plan you already pay for (ChatGPT, Claude or Kimi" in err["message"]
     assert err["openrouter_url"] == "https://openrouter.ai/keys" and err["own_key_docs"] == "https://nanomuse.cn/own-key"
+    assert [p["id"] for p in err["guidance"]["providers"][:2]] == ["openrouter", "openai"]
     err = await exhaust(nowhere, "9.9.9.9")
-    assert err["region"] == "unknown" and "OpenRouter outside mainland China, Alibaba Cloud Bailian inside" in err["message"]
+    assert err["region"] == "unknown" and "OpenRouter or OpenAI outside mainland China, Alibaba Cloud Bailian inside" in err["message"]
     assert "invite a friend (+¥5 for each of you)" in err["message"] and "keep working" in err["message"]
+    assert [p["id"] for p in err["guidance"]["providers"][:2]] == ["openrouter", "bailian"]
     # a picture refused up front says the same
     r = await client.post("/v1/images/generations", headers=auth(us, "8.8.8.8"), json={"model": "qwen-image-3.0", "prompt": "a cat"})
     assert r.status_code == 429 and r.json()["error"]["region"] == "intl"

@@ -42,6 +42,16 @@ api_key = "${DEEPSEEK_API_KEY}"
 # api_key = "${GATEWAY_API_KEY}"
 # extra_headers = { "X-End-User-Id" = "nanomuse" }
 
+# --- A ChatGPT plan instead of a key (`nanomuse chatgpt login` first) ----------
+# Covers chat and the hands; not pictures or clips. No base_url, no api_key.
+# provider = "chatgpt"
+# model = ""                        # empty → gpt-5.6-sol
+
+# --- A catalogue id as the provider (nanomuse/llm/providers.json) --------------
+# The endpoint and the default model come from the catalogue; only the key is yours.
+# provider = "bailian"
+# api_key = "${DASHSCOPE_API_KEY}"
+
 max_tokens = 4096
 temperature = 0.3
 timeout = 180
@@ -216,6 +226,21 @@ model = ""               # empty → the main [llm] model operates the phone
 # api_key = "{{vault:GUI_API_KEY}}"
 max_steps = 30           # the most one phone task may take
 device_timeout_s = 20.0  # how long to wait for the phone to answer one request
+
+# ------------------------------------------------------------------------------
+# Pictures and clips — where the avatar studio draws when it is not the chat model's
+# host. All empty (the default): the chat model's host, as before. `provider` is a
+# catalogue id (nanomuse/llm/providers.json); base_url fills in from it.
+# ------------------------------------------------------------------------------
+# [image]
+# provider = "bailian"              # bailian | zhipu | siliconflow | volcengine | openai | gemini | openrouter | xai
+# model = ""                        # empty → the catalogue's default for the provider
+# api_key = "{{vault:IMAGE_API_KEY}}"   # empty → the chat model's key when the host is the same
+#
+# [video]
+# provider = "bailian"              # clips speak Bailian's video API this round
+# model = ""
+# api_key = "{{vault:VIDEO_API_KEY}}"
 
 # ------------------------------------------------------------------------------
 # MCP servers — reuse the ecosystem instead of writing connectors.

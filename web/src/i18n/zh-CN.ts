@@ -1113,12 +1113,48 @@ const zhCN: Record<string, string> = {
     "邀请一位新用户（你和对方各 +¥{invite}），或者换成自己的 key——无论哪种，登录都不受影响。",
   "See the ways": "看看怎么办",
   Dismiss: "关闭",
-  "Two ways on — your sign-in and your devices keep working either way.": "两个办法继续用——无论选哪个，登录和多设备功能都不受影响。",
+  "Three ways on — your sign-in and your devices keep working whichever you pick.": "三个办法继续用——无论选哪个，登录和多设备功能都不受影响。",
   "Use your own model key": "换成自己的 key",
-  "Alibaba Cloud Bailian is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.":
-    "推荐阿里云百炼：新用户有免费额度，开通约 2 分钟，一个 key 就能对话、画图、生成视频。",
-  "Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go.":
-    "海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费。",
+  "Alibaba Cloud Bailian is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, the hands, pictures and clips.":
+    "推荐阿里云百炼：新用户有免费额度，开通约 2 分钟，一个 key 就能对话、动手、画图、生成视频。",
+  "Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go — chat, the hands and pictures; clips need Bailian.":
+    "海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费——对话、动手、画图都行；生成视频需要百炼。",
+  "Other providers and what each key covers": "其他服务商，以及各自的 key 能做什么",
+  "Get a key": "去申请 key",
+  "covers {list}": "支持{list}",
+  ", ": "、",
+  " or ": "或",
+  "Sign in with a plan you already pay for": "用你已经在付费的套餐登录",
+  "{plans} — the plan's models answer here, no key to make. ChatGPT works on every device, the others on the phones. A ChatGPT sign-in covers chat and the hands; pictures and clips still want a key.":
+    "{plans}——套餐里的模型直接在这里回答，不用申请 key。ChatGPT 在每台设备上都可以，其他的在手机上。ChatGPT 登录只覆盖对话和动手；画图和生成视频仍需要一把 key。",
+  // the ChatGPT sign-in card
+  "Sign in with ChatGPT": "用 ChatGPT 登录",
+  "Or sign in with a ChatGPT plan": "或者用 ChatGPT 套餐登录",
+  "Covers chat and the hands. Pictures and clips are not part of it — those need a provider with image or video models.":
+    "覆盖对话和动手。画图和生成视频不在其中——那两项需要一个有图像或视频模型的服务商。",
+  "OpenAI's terms cover using a ChatGPT plan inside OpenAI's own Codex; other apps have had this access cut off before (OpenCode, January 2026). If it stops working, an API key does.":
+    "OpenAI 的条款只允许在它自家的 Codex 里使用 ChatGPT 套餐；其他应用曾被切断过这条路（OpenCode，2026 年 1 月）。哪天它不能用了，API key 仍然可以。",
+  "This nanoMuse has no sign-in route yet. In a terminal on this computer, run": "这个 nanoMuse 还没有登录接口。在这台电脑的终端里运行",
+  "and reload this page.": "然后刷新本页。",
+  "Signed in with {label}.": "已用 {label} 登录。",
+  "Use it for the chat": "让它来回答对话",
+  "Sign out of ChatGPT": "退出 ChatGPT",
+  "A page from OpenAI opened in a new tab. Sign in there; this card follows on its own.": "已在新标签页打开 OpenAI 的页面。在那里登录，这张卡片会自己跟上。",
+  "Open the page again": "再次打开页面",
+  "The sign-in did not finish in ten minutes. Try again.": "登录十分钟内没有完成。再试一次。",
+  "A page from OpenAI opened in a new tab. Sign in there; when the browser ends on an address that will not load, paste that address below.": "已在新标签页打开 OpenAI 的页面。在那里登录；浏览器最后停在一个打不开的地址时，把那个地址粘贴到下面。",
+  "The address the browser ended on": "浏览器最后停在的地址",
+  "Use this address": "用这个地址",
+  "This nanoMuse runs where the browser cannot reach port 1455, so it cannot pick the sign-in up by itself.": "这个 nanoMuse 运行的机器上，浏览器连不到 1455 端口，所以它没法自己接住登录结果。",
+  "That address belongs to another sign-in attempt. Open the page again and paste the address it ends on.": "这个地址属于另一次登录尝试。再次打开页面，粘贴它最后停在的地址。",
+  "ChatGPT answers the chat now.": "现在由 ChatGPT 回答对话。",
+  // the one sentence for a feature no configured provider covers (contract C11)
+  "Pictures need a provider with image models — {providers}.": "画图需要一个有图像模型的服务商——{providers}。",
+  "Clips need a provider with video models — {providers}.": "生成视频需要一个有视频模型的服务商——{providers}。",
+  "The hands need a model that sees pictures — {providers}.": "动手需要一个能看图的模型——{providers}。",
+  "Chat needs a model — {providers}.": "对话需要一个模型——{providers}。",
+  How: "怎么做",
+  "Automatic — {model}": "自动——{model}",
   "E-mail (or a mainland China phone number)": "邮箱（或中国大陆手机号）",
   "Text-message codes reach mainland-China numbers only. Use an e-mail address instead.": "短信验证码只能发到中国大陆手机号。其他地区请用邮箱登录。",
   "Step-by-step guide": "图文教程",
@@ -1238,14 +1274,19 @@ const zhCN: Record<string, string> = {
   "shell": "运行命令",
   "E-mail, calendar, browser, MCP servers": "邮件、日历、浏览器、MCP 服务器",
   "Rename this device": "给这台设备改名",
-  "Use my own API key": "用我自己的 API key",
-  "OpenAI, Bailian, DeepSeek…": "OpenAI、百炼、DeepSeek…",
+  "Use my own API key or a plan I pay for": "用我自己的 API key，或我在付费的套餐",
+  "{first} first — {others}": "首选 {first}——{others}",
+  "DeepSeek, Kimi, OpenAI, ChatGPT…": "DeepSeek、Kimi、OpenAI、ChatGPT…",
+  "OpenAI, ChatGPT, Gemini, DeepSeek…": "OpenAI、ChatGPT、Gemini、DeepSeek…",
   "Which model answers?": "让哪个模型来回答？",
   "Your account already brings one. You can add your own API key as well and switch at any time.": "你的账号已经自带了一个。也可以加上自己的 API key，随时切换。",
   "DeepSeek for the chat and Qwen for the hands, with a free allowance per account paid by the developer. Nothing to configure.": "对话用 DeepSeek，动手用 Qwen；每个账号都有一份由开发者承担的免费额度，不用配置。",
   "I have my own API key": "我有自己的 API key",
-  "Alibaba Cloud Bailian, DeepSeek, OpenAI, OpenRouter and other OpenAI-compatible endpoints. The key stays on this device.": "阿里云百炼、DeepSeek、OpenAI、OpenRouter 等兼容 OpenAI 接口的服务。key 只留在这台设备上。",
-  "OpenRouter (one account, one key, pay as you go), OpenAI, DeepSeek and other OpenAI-compatible endpoints. The key stays on this device.": "OpenRouter（一个账号一把 key，按量付费）、OpenAI、DeepSeek 等兼容 OpenAI 接口的服务。key 只留在这台设备上。",
+  "Alibaba Cloud Bailian first — one key covers chat, the hands, pictures and clips — then DeepSeek, Kimi, Zhipu, OpenAI, OpenRouter and any OpenAI-compatible endpoint. The key stays on this device.":
+    "首选阿里云百炼——一个 key 就能对话、动手、画图、生成视频——其次是 DeepSeek、Kimi、智谱、OpenAI、OpenRouter，以及任何兼容 OpenAI 接口的服务。key 只留在这台设备上。",
+  "OpenRouter first (one account, one key, pay as you go), then OpenAI, Anthropic, Gemini, DeepSeek and any OpenAI-compatible endpoint. The key stays on this device.":
+    "首选 OpenRouter（一个账号一把 key，按量付费），其次是 OpenAI、Anthropic、Gemini、DeepSeek，以及任何兼容 OpenAI 接口的服务。key 只留在这台设备上。",
+  "A ChatGPT plan signs in from Connections and answers the chat and the hands. Pictures and clips still want a key.": "ChatGPT 套餐可在「连接」里登录，回答对话并驱动双手。画图和生成视频仍需要一把 key。",
   "3D toy (Muse)": "3D 玩偶（Muse）",
   "Flat": "扁平",
   "3D clay": "3D 黏土",
@@ -1257,8 +1298,8 @@ const zhCN: Record<string, string> = {
   "Pictures and clips": "图片与短片",
   "Your phone can now operate this computer: run commands, fetch files, hand over whole tasks. Each risky step still asks here first.":
     "你的手机现在可以操作这台电脑了：跑命令、取文件、把整件事交给它。有风险的每一步仍会先在这里问你。",
-  "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, qwen-image on a Model Studio key. Without one, a new face is not offered.":
-    "形象工作室画图用的模型，和对话模型在同一个服务商。「自动」用服务商自己的：账号走中继的图片模型，百炼 key 走 qwen-image。没有可用的图片模型时，不会提供换形象。",
+  "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, the catalogue's default on a provider that has one. Without one, a new face is not offered.":
+    "形象工作室画图用的模型，和对话模型在同一个服务商。「自动」用服务商自己的：账号走中继的图片模型，有图像模型的服务商走目录里的默认值。没有可用的图片模型时，不会提供换形象。",
   "Picture model": "图片模型",
   "Clip model": "短片模型",
   "Other model…": "其他模型…",
@@ -1535,8 +1576,6 @@ const zhCN: Record<string, string> = {
   "Drawing…": "正在画…",
   "Draw four more": "再画四张",
   "Drawn by {provider} · {model}": "由 {provider} · {model} 绘制",
-  "Set an image model first: Connections → Image & video models. The account's model draws with qwen-image; Alibaba Cloud Bailian does too.":
-    "先设置图像模型：连接 → 图像与视频模型。账号自带的模型用 qwen-image 绘制，阿里云百炼也可以。",
   "Pick one": "挑一张",
   "Draw four more any time; the old ones stay until you do.": "随时可以再画四张；没重画之前旧的会留着。",
   "Use this one": "就用这个",

@@ -313,10 +313,11 @@ class StudioError(Exception):
     pass
 
 
+# Said when no configured provider has an image model (contract C11): the catalogue's
+# one-sentence line, with the providers named by region; this is the English fallback
 NO_IMAGE_MODEL = (
-    "No image model is set, so a new look cannot be drawn. Pick one under Connections → "
-    "Image & video models (the account's model draws with qwen-image; Alibaba Cloud Bailian "
-    "does too)."
+    "Pictures need a provider with image models — Alibaba Cloud Bailian, OpenAI, Google Gemini "
+    "or OpenRouter (how: docs/own-key.md)."
 )
 
 
@@ -398,39 +399,82 @@ class AvatarStudio:
         await self._http.aclose()
 
     # ------------------------------------------------------------------ the endpoint
+    def _key(self, raw: str) -> str:
+        vault = self.svc.app.vault
+        if vault.has_placeholders(raw):
+            raw = vault.resolve(raw, strict=False)
+            if vault.has_placeholders(raw):
+                return ""
+        return raw
+
+    def unavailable_message(self, lang: str = "en") -> str:
+        """The one sentence for "no provider draws pictures", providers named for the
+        account's region (contract C11)."""
+        from nanomuse.llm import catalogue
+
+        hub = getattr(self.svc, "hub", None)
+        region = str(hub.account_view().get("region") or "") if hub is not None else ""
+        return catalogue.load().unavailable_sentence("image", region, lang)
+
     def endpoint(self) -> Endpoint | None:
-        """The chat model's host and key with an image model, or None when there is none."""
-        llm = self.svc.settings.llm
-        base = (llm.base_url or "").rstrip("/")
+        """Where pictures come from: the ``[image]`` slot when it is set (its provider's
+        host, its key — the chat model's when the host is the same), else the chat model's
+        host and key with an image model there; None when nothing draws. Clips follow the
+        ``[video]`` slot the same way, else the picture host when it has the video API."""
+        s = self.svc.settings
+        llm, image, video = s.llm, s.image, s.video
+        chat_base = (llm.endpoint or "").rstrip("/")
+        chat_key = self._key(llm.api_key)
+        hub = getattr(self.svc, "hub", None)
+        relay = model_url(hub.cloud.base_url).rstrip("/") if hub is not None else ""
+        base, key = chat_base, chat_key
+        image_model = (llm.image_model or "").strip()
+        if image.configured:
+            base = (image.endpoint or chat_base).rstrip("/")
+            key = self._key(image.api_key) or (chat_key if base == chat_base else "")
+            image_model = (image.model or "").strip() or image_model
         if not base:
             return None
-        key = llm.api_key
-        vault = self.svc.app.vault
-        if vault.has_placeholders(key):
-            key = vault.resolve(key, strict=False)
-            if vault.has_placeholders(key):
-                key = ""
-        hub = getattr(self.svc, "hub", None)
-        cloud = bool(hub is not None and base == model_url(hub.cloud.base_url).rstrip("/"))
+        cloud = bool(relay and base == relay)
+        video_model = (llm.video_model or "").strip()
+        video_base_url = (llm.video_base_url or "").strip().rstrip("/")
+        if video.configured:
+            video_model = (video.model or "").strip() or video_model
+            video_host = (video.endpoint or "").rstrip("/")
+            if video_host and video_host != base:
+                video_base_url = re.split(r"/compatible-mode|/api/v1|/v1$", video_host, maxsplit=1)[
+                    0
+                ].rstrip("/")
         ep = Endpoint(
             base_url=base,
             api_key=key,
-            image_model=(llm.image_model or "").strip(),
+            image_model=image_model,
             cloud=cloud,
-            video_model=(llm.video_model or "").strip(),
-            video_base_url=(llm.video_base_url or "").strip().rstrip("/"),
+            video_model=video_model,
+            video_base_url=video_base_url,
         )
         if not ep.image_model:
             if cloud:
                 ep.image_model = self._cloud_model("image", "qwen-image-3.0")
             elif ep.dashscope:
                 ep.image_model = DASHSCOPE_IMAGE_MODEL
+            elif image.provider:
+                ep.image_model = self._catalogue_default(image.provider, "image")
         if not ep.video_model:
             if cloud:
                 ep.video_model = self._cloud_model("video", DASHSCOPE_VIDEO_MODEL)
+            elif video.provider:
+                ep.video_model = self._catalogue_default(video.provider, "video")
             elif ep.dashscope or ep.video_base_url:
                 ep.video_model = DASHSCOPE_VIDEO_MODEL
         return ep if ep.image_model else None
+
+    @staticmethod
+    def _catalogue_default(provider: str, kind: str) -> str:
+        from nanomuse.llm import catalogue
+
+        entry = catalogue.load().get(provider)
+        return str(entry.defaults.get(kind) or "") if entry else ""
 
     def _cloud_model(self, kind: str, default: str) -> str:
         """The relay's image or video model, from the list it sent when the account was checked."""
@@ -446,6 +490,8 @@ class AvatarStudio:
         ep = self.endpoint()
         return {
             "available": ep is not None,
+            "unavailable": "" if ep is not None else self.unavailable_message(),
+            "unavailable_zh": "" if ep is not None else self.unavailable_message("zh"),
             "image_model": ep.image_model if ep else "",
             "video_model": ep.video_model if ep and ep.clips else "",
             "cloud": bool(ep and ep.cloud),
@@ -515,18 +561,19 @@ class AvatarStudio:
         ui = self.svc.ui
         ep = self.endpoint()
         if ep is None:
+            message = self.unavailable_message(self.svc.ui_language())
             if thread:
                 ui.emit(
                     {
                         "type": "notice",
                         "level": "warn",
-                        "text": NO_IMAGE_MODEL,
+                        "text": message,
                         "code": "no_image_model",
                         "thread": thread,
                         "source": "studio",
                     }
                 )
-            return {"available": False, "message": NO_IMAGE_MODEL}
+            return {"available": False, "message": message}
         if self.current is not None and self.current.stage not in ("done", "cancelled", "failed"):
             self.cancel(self.current.id, quiet=True)
         sid = uuid.uuid4().hex[:10]

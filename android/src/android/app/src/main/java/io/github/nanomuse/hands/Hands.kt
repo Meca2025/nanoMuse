@@ -79,14 +79,26 @@ object Hands {
         val modelId: String get() = entry.model.id
     }
 
-    /** Every enabled model that declares image input, for the picker. */
+    /**
+     * Every enabled model that declares image input, for the picker — of providers whose
+     * vendor has vision models (contract C11, [io.github.nanomuse.cloud.Capabilities]; a
+     * provider the catalogue does not know is taken at its models' word).
+     */
     fun visionEntries(context: Context): List<Pair<ProviderInstance, ModelEntry>> {
         val repo = repo(context) ?: return emptyList()
         val cfg = repo.config.value
         return cfg.modelEntries.filter { !it.isHidden && it.model.hasImageInput }.mapNotNull { e ->
-            cfg.instances.firstOrNull { it.id == e.providerInstanceId && it.isEnabled }?.let { it to e }
+            cfg.instances.firstOrNull { it.id == e.providerInstanceId && it.isEnabled && sees(context, it) }?.let { it to e }
         }
     }
+
+    /** The vendor of [inst] has models that see (C11); true for an endpoint the catalogue does not know. */
+    fun sees(context: Context, inst: ProviderInstance): Boolean =
+        io.github.nanomuse.cloud.Capabilities.allows(context, inst, io.github.nanomuse.cloud.ProviderCatalogue.VISION)
+
+    /** No configured provider has a model that sees the screen: the one sentence that says so (C11), or null when one has. */
+    fun unavailableLine(context: Context): String? =
+        if (visionEntries(context).isEmpty()) io.github.nanomuse.cloud.Capabilities.unavailableLine(context, io.github.nanomuse.cloud.ProviderCatalogue.VISION) else null
 
     /**
      * The model that looks at the screen — the *hands model*, a setting of its own beside the
@@ -104,7 +116,7 @@ object Hands {
         val repo = repo(context) ?: return null
         val cfg = repo.config.value
         fun usable(inst: ProviderInstance?, entry: ModelEntry?, why: Why): ScreenModel? {
-            if (inst == null || entry == null || !inst.isEnabled || !entry.model.hasImageInput) return null
+            if (inst == null || entry == null || !inst.isEnabled || !entry.model.hasImageInput || !sees(context, inst)) return null
             val key = repo.usableApiKey(inst) ?: return null
             return ScreenModel(inst, entry, key, why)
         }

@@ -7,7 +7,7 @@ The contract (docs/hub.md) judges a command on the device that *asked*, before i
 — the phone's ShellGuard, another runtime's Sentinel — so nothing here asks again; the
 switch that decides whether this computer takes calls at all is ``[hub] remote_control``
 (:class:`nanomuse.hub.service.HubService`). Everything runs as the signed-in user. Ported
-from ``desktop/nanomuse_desktop/actions.py`` (the standard-library binary).
+from the terminal edition's actions module (dropped in 0.1.39).
 """
 
 from __future__ import annotations

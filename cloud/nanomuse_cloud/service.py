@@ -34,6 +34,8 @@ from .nudges import BadNudges
 from .nudges import defaults as nudges_defaults
 from .nudges import merge as nudges_merge
 from .nudges import validate as nudges_validate
+from .providers import exhausted_key_line, guidance
+from .providers import provider as catalogue_provider
 from .senders import CodeSender, SendError, make_sender
 
 log = logging.getLogger("nanomuse_cloud")
@@ -1014,9 +1016,13 @@ class Cloud:
         """Where to go when the allowance is out, in the order the apps should show them:
         the mainland to Bailian first, everyone else to OpenRouter first (Bailian only signs
         up mainland accounts), the invitation last. Each has an `id` the apps have copy for,
-        a `url`, and the figures that belong to it."""
-        bailian = {"id": "bailian", "url": self.s.own_key_docs, "mainland_only": True}
-        openrouter = {"id": "openrouter", "url": self.s.openrouter_url, "mainland_only": False}
+        a `url`, and the figures that belong to it. Since 0.21 the two key ways also carry
+        the catalogue's facts (`name`, `key_url`, `covers`, `auth`), and the fuller list —
+        every provider for the region, the plans an app can sign in with — is `guidance`
+        (contract C11; providers.py) next to this list, so a client from before keeps its
+        two rows and a new one draws the whole card."""
+        bailian = {"id": "bailian", "url": self.s.own_key_docs, "mainland_only": True, **self._way_facts("bailian")}
+        openrouter = {"id": "openrouter", "url": self.s.openrouter_url, "mainland_only": False, **self._way_facts("openrouter")}
         invite = {
             "id": "invite",
             "url": (self.s.invite_url + self.invite_code_for(caller)) if self.s.invite_url else "",
@@ -1025,18 +1031,24 @@ class Cloud:
         keys = [bailian, openrouter] if region == "cn" else [openrouter, bailian]
         return [*keys, invite]
 
+    @staticmethod
+    def _way_facts(pid: str) -> dict:
+        """The catalogue's facts for one of the two 0.17 ways: additive fields only."""
+        p = catalogue_provider(pid)
+        if p is None:
+            return {}
+        return {"name": p["name"], "name_zh": p["name_zh"], "key_url": p["key_url"], "covers": list(p["capabilities"]), "auth": list(p["auth"])}
+
+    def guidance(self, region: str) -> dict:
+        """The own-key guidance for this person (0.21, contract C11): the providers for the
+        region in order with what each covers, the plans an app can sign in with, the
+        local servers, the guide's URL and the ChatGPT caveat."""
+        return guidance(region, self.s.own_key_docs)
+
     def _exhausted(self, caller: Caller, a: dict, region: str = "unknown") -> CloudError:
         grant = f"¥{self.s.uy_to_cny(a['grant_uy']):g}"
         bonus = f"+¥{self.s.invite_bonus_cny:g} for each of you"
-        if region == "cn":
-            key = "add your own model key (Alibaba Cloud Bailian, 阿里云百炼, has a free tier for mainland China accounts)"
-        elif region == "intl":
-            key = (
-                "add your own model key — OpenRouter is the easy way outside mainland China: one account, one key, pay as you go "
-                "(Alibaba Cloud Bailian only signs up accounts from the mainland)"
-            )
-        else:
-            key = "add your own model key (OpenRouter outside mainland China, Alibaba Cloud Bailian inside)"
+        key = exhausted_key_line(region)
         message = (
             f"Your free allowance ({grant}) is used up. Two ways on: {key}, or invite a friend ({bonus}). "
             "Your sign-in and your devices keep working either way."
@@ -1050,6 +1062,9 @@ class Cloud:
                 "grant": self.s.uy_to_cny(a["grant_uy"]),
                 "region": region,
                 "ways": self.ways_on(caller, region),
+                # 0.21: every provider for the region with what each covers, the plans an
+                # app can sign in with (contract C11)
+                "guidance": self.guidance(region),
                 "invite_url": (self.s.invite_url + self.invite_code_for(caller)) if self.s.invite_url else "",
                 "invite_bonus_cny": self.s.invite_bonus_cny,
                 "invitee_bonus_cny": self.s.invite_bonus_cny,
@@ -1128,6 +1143,9 @@ class Cloud:
                 # 0.17: the ways on, in the order for this person (region above) — what the
                 # 80 % heads-up and the "used up" card list
                 "ways": self.ways_on(caller, region),
+                # 0.21: the whole own-key card — providers for the region with what each
+                # covers, the plans an app can sign in with, the ChatGPT caveat (C11)
+                "guidance": self.guidance(region),
                 # 0.4 names, one more version: apps from before 0.5 draw a "today / cap" bar;
                 # with the pool in `daily_cap` and the total in `today` that bar is the right
                 # one, and with no `resets_at` they print no midnight.

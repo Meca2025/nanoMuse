@@ -445,12 +445,10 @@
     <string name="nm_media_chat_footer">默认模型组。所有对话、动态和每日例程都跑在它上面。</string>
     <string name="nm_media_section_image">图像模型</string>
     <string name="nm_media_image_footer">用于更换形象（四张候选和各个姿势）以及你在对话里要的任何图片。列表是服务商报给这把 key 的模型，只留下能画图的。阿里云百炼：qwen-image-3.0（画图和摆姿势都用它，¥0.18 一张）或 Pro 版。OpenAI：gpt-image-1。任何提供 OpenAI images 接口的服务商都可以。</string>
-    <string name="nm_media_image_none">你的服务商里没有能画图的。添加一个 OpenAI 兼容的服务商（阿里云百炼、OpenAI、xAI、OpenRouter 或自定义地址）并填入 API key；形象是用你自己的 key 画的。</string>
     <string name="nm_media_image_off">设置之前无法更换形象，也画不了图。你问起时它会告诉你。</string>
     <string name="nm_media_need_model">在下方填写模型名</string>
     <string name="nm_media_section_video">视频模型</string>
     <string name="nm_media_video_footer">让形象动起来——每个状态一段循环短片——以及你要的任何短视频。阿里云百炼：wan2.2-i2v-flash（推荐，480P 每秒 ¥0.10）、其他通义万相模型或 MiniMax/MiniMax-H3；列表里是这把 key 能用的，每个模型需在百炼控制台的模型卡片上开通一次。按视频秒数计费；一套形象是四段几秒的短片。</string>
-    <string name="nm_media_video_none">还没有能出视频的服务商——nanoMuse 对接的是阿里云百炼的视频接口，nanoMuse 云也转发这套接口。登录 nanoMuse 云，或添加一个百炼的 key（可以和图像模型用同一把），形象就会动起来；之前保持静态图。</string>
     <string name="nm_media_video_off">可选。不设置的话形象保持静态，也做不了视频。</string>
     <string name="nm_media_video_off_option">不用视频模型</string>
     <string name="nm_media_not_set">未设置</string>
@@ -733,12 +731,6 @@
     <string name="nm_ways_title_warn">额度快用完了：还剩 ¥%1$s（共 ¥%2$s）。</string>
     <string name="nm_ways_sub">两个办法继续用——无论选哪个，登录和多设备功能都不受影响。</string>
     <string name="nm_ways_key_title">换成自己的 key</string>
-    <string name="nm_ways_key_body">推荐阿里云百炼：新用户有免费额度，开通约 2 分钟，一个 key 就能对话、画图、生成视频。</string>
-    <string name="nm_ways_key_body_abroad">海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费。</string>
-    <string name="nm_ways_key_action">去设置</string>
-    <string name="nm_ways_key_action_openrouter">用 OpenRouter 登录</string>
-    <string name="nm_ways_key_other_openrouter">改用 OpenRouter</string>
-    <string name="nm_ways_key_other_bailian">改用阿里云百炼</string>
     <string name="nm_ways_key_guide">图文教程</string>
     <string name="nm_ways_invite_title">邀请朋友：每有一位新用户通过你的链接注册，你 +¥%1$s，对方也 +¥%2$s。</string>
     <string name="nm_ways_invite_share">分享链接</string>
@@ -953,4 +945,25 @@
     <string name="nm_sync_working">%1$s 正在处理…</string>
     <string name="nm_devices_ask">交给这台设备</string>
     <string name="nm_devices_ask_hint">点一台在线的设备，就能在聊天里对它说话：消息以 @ 加设备名开头，由那台设备去做。</string>
+
+    <!-- 0.1.39: the ways card from the provider catalogue (C11) and capability lines -->
+    <string name="nm_ways_region_cn">先看阿里云百炼：一把 key 覆盖对话、屏幕、画图和视频，面向中国大陆身份注册。下面每一家都写明了能做什么。</string>
+    <string name="nm_ways_region_global">先看 OpenRouter 或 OpenAI：一把 key，模型最全，按量付费。下面每一家都写明了能做什么。</string>
+    <string name="nm_ways_add">添加</string>
+    <string name="nm_ways_add_named">添加 %1$s</string>
+    <string name="nm_ways_get_key">去拿 key</string>
+    <string name="nm_ways_sign_in">登录</string>
+    <string name="nm_ways_more">更多提供方</string>
+    <string name="nm_ways_less">收起</string>
+    <string name="nm_ways_sub_title">用你已经在付费的订阅</string>
+    <string name="nm_ways_sub_body">ChatGPT、Claude 或 Kimi 的订阅可以在这里直接登录，不用贴 key。覆盖对话和屏幕，不含画图和视频。</string>
+    <string name="nm_ways_chatgpt_note">OpenAI 的条款只允许在它自己的 Codex 里使用 ChatGPT 订阅；其他应用的这条路曾被切断过（OpenCode，2026 年 1 月）。如果哪天不能用了，API key 还能用。</string>
+    <string name="nm_cap_chat">对话</string>
+    <string name="nm_cap_screen">屏幕</string>
+    <string name="nm_cap_pictures">画图</string>
+    <string name="nm_cap_clips">视频</string>
+    <string name="nm_cap_pictures_unavailable">画图需要有图像模型的提供方——百炼、OpenAI、Gemini 或 OpenRouter。</string>
+    <string name="nm_cap_clips_unavailable">视频需要有视频模型的提供方——阿里云百炼。</string>
+    <string name="nm_cap_hands_unavailable">手需要能看屏幕的模型——百炼、OpenRouter、OpenAI、Anthropic、Gemini，或任何有视觉模型的提供方。</string>
+    <string name="nm_cap_chat_unavailable">对话需要有对话模型的提供方——添加一把 key，或登录。</string>
 </resources>
