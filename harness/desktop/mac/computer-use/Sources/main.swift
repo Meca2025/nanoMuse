@@ -15,7 +15,8 @@
 //   POST /screenshot   { width?, height?, max_pixels?, format?: "png"|"jpeg", quality? }
 //                      → { base64, mime, width, height, screen: { width, height }, scale }
 //   POST /execute      { action, x?, y?, x2?, y2?, dy?, text?, submit?, clear?, keys?, seconds? }
-//                      → { ok: true, note } — the operator's vocabulary, coordinates in points
+//                      → { ok: true, note } — the operator's vocabulary, coordinates in points;
+//                      `press` holds keys down across the actions that follow, `release` lets go
 //   POST /quit         → { ok: true }, then the process ends
 //
 // Errors are 4xx/5xx with { error, message }. The process ends by itself when the parent

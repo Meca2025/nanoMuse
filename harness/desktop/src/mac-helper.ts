@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -22,6 +22,11 @@ import { join } from "node:path";
  * helper restarts, not the whole app; the picture comes from CGDisplayCreateImage and the
  * input from CGEvent, not from Chromium's desktopCapturer and libnut (the black and absent
  * screenshots of 0.1.36 were the Chromium path).
+ *
+ * One thing has to happen before the first launch of an installed copy: the quarantine flag
+ * the download left on the helper comes off (`clearQuarantine`), or LaunchServices starts
+ * the helper from a translocated copy whose path changes every time — which is why 0.1.38's
+ * helper ran, held Accessibility and never appeared in the Screen Recording pane.
  *
  * Protocol (one JSON object each way, a bearer token the shell writes to a 0600 file before
  * the launch, the port written back by the helper):
@@ -75,11 +80,57 @@ export interface MacHelperOptions {
   log?: (line: string) => void;
   /** The launch; the default is `open -n -g -a <app> --args …`. Tests put a fake here. */
   launch?: (appPath: string, args: string[]) => Promise<void>;
+  /** The quarantine check before a launch (default `clearQuarantine`). Tests put a fake here. */
+  quarantine?: (appPath: string) => QuarantineOutcome;
   /** How long to wait for the port file (default 10 s). */
   startTimeoutMs?: number;
   /** How long after a failed start before another is tried (default 30 s). */
   retryAfterMs?: number;
   fetch?: typeof fetch;
+}
+
+/** What became of `com.apple.quarantine` on the helper bundle before a launch (`clearQuarantine`). */
+export interface QuarantineOutcome {
+  /** `none`: the bundle carried no flag; `removed`: it did, and does not now; `kept`: it does, and could not be changed. */
+  result: "none" | "removed" | "kept";
+  /** For `kept`: the first line of what `xattr` said. */
+  detail: string;
+}
+
+/** The text of a flag that could not be removed — the one case where the person has to act. */
+export const QUARANTINE_KEPT_TEXT = "the helper bundle carries macOS's quarantine flag and it could not be removed — move nanoMuse to the Applications folder and open it again";
+
+/** A path under Gatekeeper's App Translocation: a read-only copy with a random name, different on every launch. */
+export function translocated(path: string): boolean {
+  return path.includes("/AppTranslocation/");
+}
+
+/**
+ * The quarantine flag on the helper, removed before the first launch — from the helper alone.
+ *
+ * An app copied out of a downloaded disk image carries `com.apple.quarantine` on every file,
+ * the helper included. The person settles the app's own flag by opening it (Gatekeeper's
+ * dialog, *Open Anyway*); nothing settles the helper's, which LaunchServices starts as a
+ * bundle of its own. Quarantined and unapproved, it starts from a translocated copy
+ * (`/private/var/folders/…/AppTranslocation/<random>/d/…`): a path that is different each
+ * launch, which is how the 0.1.38 helper could run, hold Accessibility and still have no row
+ * in the Screen Recording pane — and on a fresh install Gatekeeper's own dialog comes up for
+ * the helper too, with the port file never written. `xattr -dr` on the bundle takes the flag
+ * off (the bundle is the person's copy in Applications, writable); a flag that stays — the app
+ * run from the disk image or from Downloads, a read-only install — is reported, and the
+ * caller says what to do.
+ */
+export function clearQuarantine(appPath: string, run: typeof spawnSync = spawnSync, platform: NodeJS.Platform = process.platform): QuarantineOutcome {
+  if (platform !== "darwin") return { result: "none", detail: "" };
+  const flagged = () => {
+    const probe = run("xattr", ["-p", "com.apple.quarantine", appPath], { encoding: "utf8" });
+    return !probe.error && probe.status === 0;
+  };
+  if (!flagged()) return { result: "none", detail: "" };
+  const strip = run("xattr", ["-dr", "com.apple.quarantine", appPath], { encoding: "utf8" });
+  if (!flagged()) return { result: "removed", detail: "" };
+  const said = (strip.error?.message ?? strip.stderr ?? "").toString().trim().split("\n")[0] ?? "";
+  return { result: "kept", detail: said };
 }
 
 export class MacHelperError extends Error {
@@ -156,7 +207,10 @@ export class MacHelper {
   private base: string | null = null;
   private token = "";
   private starting: Promise<boolean> | null = null;
+  private restarting: Promise<boolean> | null = null;
   private lastStatus: HelperStatus | null = null;
+  /** The last status of any process of the helper, kept across a restart (see `lastKnownStatus`). */
+  private knownStatus: HelperStatus | null = null;
   private lastFailure = "";
   private lastFailureAt = 0;
   private statusTimer: NodeJS.Timeout | null = null;
@@ -177,6 +231,15 @@ export class MacHelper {
     return this.base !== null;
   }
 
+  /**
+   * Between two processes: a start or a restart under way. Readers that would otherwise take
+   * "not running" for "the helper is not in use" (and name the app's own rows, or restart the
+   * whole app) wait this out instead.
+   */
+  busy(): boolean {
+    return this.starting !== null || this.restarting !== null;
+  }
+
   /** Why the helper is not in use ("" when it is). */
   failure(): string {
     return this.base ? "" : this.lastFailure || (this.present() ? "not started" : "no helper bundle");
@@ -185,6 +248,11 @@ export class MacHelper {
   /** The last `/status` the helper gave (for callers that cannot wait); null before the first. */
   cachedStatus(): HelperStatus | null {
     return this.base ? this.lastStatus : null;
+  }
+
+  /** The last status any process of the helper gave, restart or not; null before the first ever. */
+  lastKnownStatus(): HelperStatus | null {
+    return this.knownStatus;
   }
 
   /**
@@ -210,6 +278,13 @@ export class MacHelper {
     const tokenFile = join(dir, "token");
     const portFile = join(dir, "port");
     try {
+      // the app itself under App Translocation: the helper inside it is read-only and
+      // quarantined too, and would start translocated in turn — grants to a path that changes
+      // every launch are no grants; better the plain reason than a helper that half works
+      if (translocated(appPath)) throw new Error("nanoMuse is running from a temporary copy macOS made of it (App Translocation) — move it to the Applications folder and open it again");
+      const quarantine = (this.options.quarantine ?? clearQuarantine)(appPath);
+      if (quarantine.result === "removed") this.log("removed the quarantine flag from the bundled helper, so macOS starts it in place and the privacy panes list it");
+      else if (quarantine.result === "kept") throw new Error(`${QUARANTINE_KEPT_TEXT}${quarantine.detail ? ` (${quarantine.detail})` : ""}`);
       mkdirSync(dir, { recursive: true, mode: 0o700 });
       await this.quitStale(portFile, tokenFile);
       rmSync(portFile, { force: true });
@@ -320,6 +395,7 @@ export class MacHelper {
       ...(display ? { display } : {}),
     };
     this.lastStatus = status;
+    this.knownStatus = status;
     return status;
   }
 
@@ -329,6 +405,7 @@ export class MacHelper {
     const screen = raw.screen === "granted" || raw.screen === "denied" ? raw.screen : "unknown";
     const status: HelperStatus = { screen, accessibility: raw.accessibility === true };
     this.lastStatus = { ...(this.lastStatus ?? {}), ...status };
+    this.knownStatus = this.lastStatus;
     return status;
   }
 
@@ -340,12 +417,23 @@ export class MacHelper {
     return this.call<{ ok: true; note: string }>("POST", "/execute", action, 30_000);
   }
 
-  /** `/quit`, then a fresh launch: what a Screen Recording grant needs (it reaches new processes only). */
-  async restart(): Promise<boolean> {
-    this.log("restarting");
-    await this.stop();
-    this.lastFailureAt = 0;
-    return this.ready();
+  /**
+   * `/quit`, then a fresh launch: what a Screen Recording grant needs (it reaches new processes
+   * only). Two restarts asked for at once are one — the second caller gets the first's promise.
+   * In 0.1.38 a second click on the restart button landed while the helper was between
+   * processes, read as "not in use", and relaunched the whole app twice.
+   */
+  restart(): Promise<boolean> {
+    if (this.restarting) return this.restarting;
+    this.restarting = (async () => {
+      this.log("restarting");
+      await this.stop();
+      this.lastFailureAt = 0;
+      return this.ready();
+    })().finally(() => {
+      this.restarting = null;
+    });
+    return this.restarting;
   }
 
   /** `/quit`; quiet when it is already gone. */
