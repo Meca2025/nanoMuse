@@ -69,4 +69,12 @@ nanomuse.cn {
 	try_files @docs {path} {path}.html {path}/index.html
 
 	file_server
+
+	# an address that is not there: the site's own page (404.html in the repository), with
+	# the status kept
+	handle_errors 404 {
+		root * /srv/www/nanomuse.cn
+		rewrite * /404.html
+		file_server
+	}
 }
