@@ -117,8 +117,9 @@ def _settings(config: Path | None, auto: bool = False) -> Settings:
         settings.sentinel.mode = "auto"
     if not settings.llm.api_key and "localhost" not in (settings.llm.base_url or ""):
         console.print(
-            "[yellow]No API key configured.[/yellow] Set [bold]llm.api_key[/bold] in config.toml "
-            "(run `nanomuse config init`) or export DEEPSEEK_API_KEY / OPENAI_API_KEY."
+            "[yellow]No model yet.[/yellow] Sign in to nanoMuse Cloud in the app, set "
+            "[bold]llm.api_key[/bold] in config.toml (run `nanomuse config init`), "
+            "or export DEEPSEEK_API_KEY / OPENAI_API_KEY."
         )
     try:
         settings.ensure_dirs()  # the store commands open SQLite files under data_dir directly
@@ -1496,10 +1497,12 @@ def version() -> None:
 
 @app.command()
 def mcp(config: ConfigOpt = None) -> None:
-    """Serve this computer's screen and hands over MCP on stdio (for another host, e.g.
-    nanoMuse on DeepSeek Harness; see docs/harness.md), plus the connectors config.toml
-    turns on (mailbox, calendar, contacts). Nothing is printed on stdout but the protocol;
-    the config is read for [hands], [gui] and [connectors] when it exists."""
+    """Serve this computer's screen and hands over MCP on stdio (for the desktop app).
+
+    Another host, such as nanoMuse on DeepSeek Harness (docs/harness.md), connects here. The
+    connectors config.toml turns on (mailbox, calendar, contacts) are served too. Nothing is
+    printed on stdout but the protocol; the hands, gui and connectors sections of the config
+    are read when it exists."""
     import sys
 
     from nanomuse.bridge.mcp_server import connector_tools, hands_tools, serve

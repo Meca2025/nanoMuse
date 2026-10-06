@@ -149,8 +149,10 @@ def login(
     ] = REDIRECT_PORT,
     timeout: Annotated[float, typer.Option("--timeout", help="Seconds to wait.")] = LOGIN_TIMEOUT_S,
 ) -> None:
-    """Sign in with a ChatGPT plan. The browser opens OpenAI's sign-in page; when it comes
-    back, the tokens are stored under the data directory (mode 0600)."""
+    """Sign in with a ChatGPT plan.
+
+    The browser opens OpenAI's sign-in page; when it comes back, the tokens are stored under
+    the data directory (mode 0600)."""
     store = _store(config)
     err.print(f"[dim]{HONESTY_LINE}[/dim]")
 
@@ -237,8 +239,9 @@ def status(config: ConfigOpt = None, as_json: JsonOpt = False) -> None:
 # --------------------------------------------------------------------------- usage
 @chatgpt_app.command("usage")
 def usage(config: ConfigOpt = None, as_json: JsonOpt = False, proxy: ProxyOpt = None) -> None:
-    """What is left of the plan's usage windows, as OpenAI reports it (one request to
-    chatgpt.com; the token is refreshed first when it is about to expire)."""
+    """What is left of the plan's usage windows, as OpenAI reports it.
+
+    One request to chatgpt.com; the token is refreshed first when it is about to expire."""
     from nanomuse.llm.chatgpt import Auth, fetch_usage, http_client
 
     store = _store(config)
@@ -304,8 +307,9 @@ def proxy(
     token: Annotated[str | None, typer.Option("--token", help="The local bearer token.")] = None,
     proxy: ProxyOpt = None,
 ) -> None:
-    """An OpenAI-compatible server on the loopback interface that answers with the ChatGPT
-    sign-in: GET /v1/models, POST /v1/chat/completions. Every request wants
+    """An OpenAI-compatible server on the loopback interface, answering with the ChatGPT sign-in.
+
+    GET /v1/models, POST /v1/chat/completions. Every request wants
     `Authorization: Bearer <local token>`."""
     import uvicorn
 
