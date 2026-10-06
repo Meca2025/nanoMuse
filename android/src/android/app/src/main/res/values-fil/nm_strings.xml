@@ -42,7 +42,7 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Hi, ako si nanoMuse, ang assistant na nakatira sa telepono mo. Hayaan mong bawasan ko ang mga inaasikaso mo.</string>
-    <string name="nm_intro_how_i_work">Kaunti tungkol sa kung paano ako gumagana:\n\n- May sarili akong computer — isang Linux sandbox at isang browser — kaya kaya kong magpatakbo ng mga command, magbukas ng mga website at magpuno ng mga form.\n- Kaya kong basahin at ayusin ang mga file at larawang imo-mount mo para sa akin, at asikasuhin ang mga paalala at naka-iskedyul na gawain.\n- Bago ang anumang mahalagang hakbang, magtatanong muna ako sa iyo.\n- Lahat ay tumatakbo sa teleponong ito; ang mga mensahe mo ay napupunta lang sa modelong itinakda mo.</string>
+    <string name="nm_intro_how_i_work">Kaunti tungkol sa kung paano ako gumagana:\n\n- May sarili akong computer — isang Linux sandbox at isang browser — kaya kaya kong magpatakbo ng mga command, magbukas ng mga website at magpuno ng mga form.\n- Kaya kong basahin at ayusin ang mga file at larawang imo-mount mo para sa akin, at asikasuhin ang mga paalala at naka-iskedyul na gawain.\n- Bago ang anumang mahalagang hakbang, magtatanong muna ako sa iyo.\n- Lahat ay tumatakbo sa teleponong ito. Ang mga mensahe mo ay napupunta sa modelong itinakda mo; kapag naka-sign in sa nanoMuse Cloud, sumusunod din ang usapang ito sa iba mo pang device — maaari itong patayin sa Mga kontrol sa data.</string>
     <string name="nm_intro_ask_name">Bago tayo magsimula — ano ang itatawag ko sa iyo?</string>
 
     <!-- First conversation: the name chooser -->

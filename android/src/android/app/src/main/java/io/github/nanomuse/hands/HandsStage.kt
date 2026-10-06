@@ -7,9 +7,6 @@ import android.graphics.DashPathEffect
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.PathMeasure
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
 import android.graphics.PixelFormat
 import android.graphics.RadialGradient
 import android.graphics.RectF
@@ -36,8 +33,8 @@ import kotlin.math.sin
  * What the user sees while the hands work, drawn on one full-screen window that never takes a
  * touch (`FLAG_NOT_TOUCHABLE`, so neither a finger nor an injected gesture can land on it): a
  * glow breathing along the screen's edges for as long as the run is on — blue while the hands
- * work, amber while they wait for the user — with one light running round the rim, a bright
- * head and a long tail, like a marquee — and, at the point the model chose, a dashed ring
+ * work, amber while they wait for the user; nothing runs round the rim (#236.4.6: every working
+ * light breathes, 2.4 s in, 2.4 s out) — and, at the point the model chose, a dashed ring
  * turning once a second with a dot at its centre and the action's name beside it, a moment
  * before the finger lands so the eye gets there first, then a ripple as it lands. A long press
  * fills a second ring for as long as it is held; a swipe sends the ring along its path with a
@@ -46,8 +43,8 @@ import kotlin.math.sin
  *
  * The look is the desktop stage's (desktop/app/src/renderer/stage/), which grew out of
  * UI-TARS-desktop's ScreenMarker (bytedance/UI-TARS-desktop, `apps/ui-tars/src/main/window/
- * ScreenMarker.ts` and `main/shared/setOfMarks.ts`, Apache-2.0): the "water flow" breathing
- * around the screen (a 5 s cycle, scale 1 → 1.05 → 1) with a scan line sliding down it, and at
+ * ScreenMarker.ts` and `main/shared/setOfMarks.ts`, Apache-2.0): the breathing around the
+ * screen (a 4.8 s cycle, scale 1 → 1.05 → 1; UI-TARS's scan line is gone), and at
  * the point the model chose a halo, a ring in Muse's action blue with a cyan arc turning round
  * it, a pair of ripples as the finger lands, a comet along a swipe, and the action's name in a
  * dark pill with a cyan→blue bar. That code is Electron, CSS and canvas; this is the same
@@ -183,25 +180,6 @@ class HandsStage(private val context: Context) {
         private var glowColor = 0
         private var glowShaders: Array<Shader>? = null
         private val edgePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var scanShader: Shader? = null
-        private val scanPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-        // The running light: the rim as a path, the comet as the segment of it behind the head
-        // (PathMeasure cuts it out each frame), stroked three times — a wide faint glow, a
-        // narrower one, the hair-thin bright core — with one gradient running from nothing at
-        // the tail through the three hues (blue, violet, cyan) to a whitish head, the same
-        // gradient the desktop stage's rim shows; amber shades while the hands wait.
-        private val rimPath = Path()
-        private val rimMeasure = PathMeasure()
-        private var rimLen = 0f
-        private val cometPath = Path()
-        private val cometPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        }
-        private var coreFilter: PorterDuffColorFilter? = null
-        private val pos = FloatArray(2)
 
         // The ring and what goes with it.
         private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -328,24 +306,16 @@ class HandsStage(private val context: Context) {
                     LinearGradient(0f, 0f, 0f, mid, color, clear, Shader.TileMode.CLAMP),                   // top
                     LinearGradient(0f, h.toFloat(), 0f, h - mid, color, clear, Shader.TileMode.CLAMP),      // bottom
                 )
-                // the scan line: a soft horizontal band that slides down the screen
-                val scanH = dp(SCAN_DP)
-                val scanColor = (color and 0x00FFFFFF) or 0x38000000
-                scanShader = LinearGradient(0f, 0f, 0f, scanH, intArrayOf(clear, scanColor, clear), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
-                // the rim the light runs on, a hair inside the screen's edge, clockwise from the top left
-                val inset = dp(1.5f)
-                rimPath.reset()
-                rimPath.addRect(inset, inset, w - inset, h - inset, Path.Direction.CW)
-                rimMeasure.setPath(rimPath, true)
-                rimLen = rimMeasure.length
-                coreFilter = PorterDuffColorFilter(lighten(color or 0xFF000000.toInt()), PorterDuff.Mode.SRC_IN)
                 glowW = w; glowH = h; glowColor = color
             }
-            // UI-TARS: a 5 s cycle, scale 1 → 1.03 → 1.05 → 1.03 → 1 with the alpha easing down
-            // a little at the peak. Scaling about the centre pushes the bands outward, so the
-            // glow thins as it "exhales".
-            val t = ((now - born) % GLOW_CYCLE_MS) / GLOW_CYCLE_MS.toFloat()
-            val breathe = (1f - cos(2.0 * Math.PI * t).toFloat()) / 2f
+            // The breath — 2.4 s in, 2.4 s out, the rhythm every working light on every client
+            // keeps (desktop glow.html: scale 1 → 1.05, opacity 1 → 0.92). Scaling about the
+            // centre pushes the bands outward, so the glow thins as it "exhales". A steady light
+            // under the system's reduce-motion setting (animator scale 0).
+            val breathe = if (stillMotion) 0f else {
+                val t = ((now - born) % GLOW_CYCLE_MS) / GLOW_CYCLE_MS.toFloat()
+                (1f - cos(2.0 * Math.PI * t).toFloat()) / 2f
+            }
             val scale = 1f + 0.05f * breathe
             glowPaint.alpha = (255 * (1f - 0.08f * breathe)).toInt()
             val shaders = glowShaders ?: return
@@ -358,7 +328,10 @@ class HandsStage(private val context: Context) {
             glowPaint.shader = shaders[3]; canvas.drawRect(0f, h - band, w.toFloat(), h.toFloat(), glowPaint)
             canvas.restore()
             glowPaint.shader = null
-            // the edge line, a hair wide: the dim rim the light runs on
+            // the edge line, a hair wide, breathing with the glow (desktop: `.hair` 0.65 → 1).
+            // Nothing runs round the rim and nothing slides down the screen: every working
+            // light breathes (#236.4.6; the comet and the scan line went in round 9, as the
+            // desktop's did in 0.1.40).
             edgePaint.color = color or 0xFF000000.toInt()
             edgePaint.alpha = (70 + 40 * breathe).toInt()
             val e = dp(1.5f)
@@ -366,64 +339,11 @@ class HandsStage(private val context: Context) {
             canvas.drawRect(0f, h - e, w.toFloat(), h.toFloat(), edgePaint)
             canvas.drawRect(0f, 0f, e, h.toFloat(), edgePaint)
             canvas.drawRect(w - e, 0f, w.toFloat(), h.toFloat(), edgePaint)
-            // the running light: one lap of the rim every RIM_LAP_MS, the tail a share of it
-            if (rimLen > 0f) {
-                val lap = ((now - born) % RIM_LAP_MS) / RIM_LAP_MS.toFloat()
-                drawComet(canvas, lap * rimLen, rimLen * RIM_TAIL, color or 0xFF000000.toInt())
-            }
-            // the scan line, only while the hands work
-            if (mood == Mood.WORKING) {
-                val sh = scanShader ?: return
-                val cycle = ((now - born) % SCAN_CYCLE_MS) / SCAN_CYCLE_MS.toFloat()
-                val y = -dp(SCAN_DP) + (h + dp(SCAN_DP)) * cycle
-                canvas.save()
-                canvas.translate(0f, y)
-                scanPaint.shader = sh
-                canvas.drawRect(0f, 0f, w.toFloat(), dp(SCAN_DP), scanPaint)
-                canvas.restore()
-            }
         }
 
-        private fun drawComet(canvas: Canvas, head: Float, tail: Float, color: Int) {
-            val start = head - tail
-            cometPath.reset()
-            if (start < 0f) {
-                // the tail is still on the far side of the rim's seam (the top-left corner)
-                rimMeasure.getSegment(rimLen + start, rimLen, cometPath, true)
-                rimMeasure.getSegment(0f, head, cometPath, true)
-            } else {
-                rimMeasure.getSegment(start, head, cometPath, true)
-            }
-            rimMeasure.getPosTan(if (start < 0f) rimLen + start else start, pos, null)
-            val x0 = pos[0]; val y0 = pos[1]
-            rimMeasure.getPosTan(head, pos, null)
-            val x1 = pos[0]; val y1 = pos[1]
-            if (x0 == x1 && y0 == y1) return
-            // nothing at the tail, the three hues towards the head, along the straight line
-            // between them (round a corner the fade is a little uneven; the eye does not mind)
-            val hues = if (mood == Mood.WORKING) COMET_WORKING else COMET_WAITING
-            cometPaint.shader = LinearGradient(
-                x0, y0, x1, y1,
-                intArrayOf(hues[0] and 0x00FFFFFF, hues[0], hues[1], hues[2]),
-                floatArrayOf(0f, 0.5f, 0.8f, 1f),
-                Shader.TileMode.CLAMP,
-            )
-            cometPaint.colorFilter = null
-            cometPaint.strokeWidth = dp(22f); cometPaint.alpha = 0x27
-            canvas.drawPath(cometPath, cometPaint)
-            cometPaint.strokeWidth = dp(7f); cometPaint.alpha = 0x80
-            canvas.drawPath(cometPath, cometPaint)
-            cometPaint.colorFilter = coreFilter
-            cometPaint.strokeWidth = dp(2.5f); cometPaint.alpha = 0xFF
-            canvas.drawPath(cometPath, cometPaint)
-            cometPaint.shader = null
-            cometPaint.colorFilter = null
-        }
-
-        /** The colour most of the way to white — the comet's whitish head against its own glow. */
-        private fun lighten(color: Int): Int {
-            val r = Color.red(color); val g = Color.green(color); val b = Color.blue(color)
-            return Color.rgb(r + (255 - r) * 8 / 10, g + (255 - g) * 8 / 10, b + (255 - b) * 8 / 10)
+        /** The system's reduce-motion setting: animator scale 0 → every light holds still. */
+        private val stillMotion: Boolean by lazy {
+            android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
         }
 
         // ── the ring ──
@@ -458,8 +378,9 @@ class HandsStage(private val context: Context) {
             ringPaint.strokeWidth = dp(2.5f)
             ringPaint.alpha = alpha
             canvas.drawCircle(m.x, m.y, r, ringPaint)
-            // the turning arc, cyan, a little outside the ring — one turn in 520 ms
-            val from = (age % 520L) / 520f * 360f
+            // the turning arc, cyan, a little outside the ring — one turn in 520 ms (the pointer's
+            // own motion, kept on the desktop too); still under reduce-motion
+            val from = if (stillMotion) -45f else (age % 520L) / 520f * 360f
             val ar = r + dp(6f)
             ringPaint.color = CYAN
             ringPaint.alpha = (alpha * 0.95f).toInt()
@@ -635,24 +556,16 @@ class HandsStage(private val context: Context) {
         }
 
         companion object {
-            /** The desktop stage's accent (Muse's action blue), its violet and its cyan. */
+            /** The desktop stage's accent (Muse's action blue) and its cyan. */
             private const val ACCENT = 0xFF0A66E4.toInt()
-            private const val VIOLET = 0xFF7C5CFF.toInt()
             private const val CYAN = 0xFF06B6D4.toInt()
-            /** The comet's hues, tail to head: blue → violet → cyan while working, three ambers while waiting. */
-            private val COMET_WORKING = intArrayOf(ACCENT, VIOLET, CYAN)
-            private val COMET_WAITING = intArrayOf(0xFFD97706.toInt(), 0xFFF59E0B.toInt(), 0xFFFBBF24.toInt())
             /** The glow: the accent while the hands work, amber while they wait for the user (alpha 30 % down from 0.1.22). */
             private const val GLOW_WORKING = 0x550A66E4.toInt()
             private const val GLOW_WAITING = 0x60FFB000.toInt()
             /** Band width as a share of the shorter side; the colour is gone at half of it. */
             private const val GLOW_BAND = 0.14f
-            private const val GLOW_CYCLE_MS = 5000L
-            /** The running light: one lap of the rim, and the tail as a share of the rim. */
-            private const val RIM_LAP_MS = 8000L
-            private const val RIM_TAIL = 0.22f
-            private const val SCAN_DP = 120f
-            private const val SCAN_CYCLE_MS = 6500L
+            /** One breath: 2.4 s in, 2.4 s out — the rhythm of every working light on every client. */
+            private const val GLOW_CYCLE_MS = 4800L
             private const val RING_DP = 16f
             private const val HALO_DP = 44f
             private const val CHIP_BG = 0xFF111218.toInt()

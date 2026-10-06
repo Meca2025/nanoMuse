@@ -403,7 +403,7 @@ private fun HandsPage(onDone: () -> Unit) {
     val allSet = readiness.serviceOn && readiness.overlayOk
 
     Page(
-        hero = { HeroGlyph(Icons.Outlined.TouchApp) },
+        hero = { io.github.nanomuse.ui.muse.NmBrandMark(size = 104.dp) }, // the permission ask carries the app's mark, as the sign-in does (#224.6)
         title = stringResource(R.string.nm_welcome_hands_title),
         subtitle = stringResource(R.string.nm_welcome_hands_sub),
         primaryLabel = if (allSet) stringResource(R.string.nm_setup_continue) else stringResource(R.string.nm_welcome_hands_turn_on),

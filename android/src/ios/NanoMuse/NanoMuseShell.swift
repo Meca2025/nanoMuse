@@ -87,15 +87,24 @@ struct NanoMuseRoot: View {
     private var usesShell: Bool { shellEnabled }
 
     /// The setup in front of everything until the account and a model are in (see NanoMuseFirstRun.needed).
-    private var needsSetup: Bool {
-        guard let hasSessions else { return false }
+    /// `nil` while the answer still hangs on the session list, so a fresh install never shows the
+    /// shell for a frame before the welcome page.
+    private var needsSetup: Bool? {
         let providers = store.instances.contains { $0.isEnabled }
-        return NanoMuseFirstRun.needed(signedIn: NanoMuseCloud.isSignedIn, hasProviders: providers, hasSessions: hasSessions, done: setupDone)
+        if let hasSessions {
+            return NanoMuseFirstRun.needed(signedIn: NanoMuseCloud.isSignedIn, hasProviders: providers, hasSessions: hasSessions, done: setupDone)
+        }
+        // Without the sessions: an unsigned or model-less app needs the setup whatever the list
+        // says; a finished setup never does; the one case between waits.
+        if !NanoMuseCloud.isSignedIn || !providers { return true }
+        return setupDone ? false : nil
     }
 
     var body: some View {
         Group {
-            if needsSetup {
+            if needsSetup == nil {
+                Color.clear
+            } else if needsSetup == true {
                 NanoMuseFirstRunView(
                     onStart: { setupDone = true },
                     onSettings: { showSetupSettings = true }
@@ -140,7 +149,7 @@ struct NanoMuseRoot: View {
         .task {
             hasSessions = !NanoMuseSync.shared.visible(await ChatStore.shared.listSessions()).isEmpty // C12: another account's chats do not count
             // The feed's daily routine exists from the start, as on Android (a no-op without a model).
-            if !needsSetup { await NanoMuseFeedFlow.ensureRoutine() }
+            if needsSetup == false { await NanoMuseFeedFlow.ensureRoutine() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .sessionDidCreate)) { _ in
             hasSessions = true

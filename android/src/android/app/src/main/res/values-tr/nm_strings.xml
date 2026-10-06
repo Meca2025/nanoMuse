@@ -42,7 +42,7 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Merhaba, ben nanoMuse, telefonunda yaşayan asistan. Birkaç işi üzerinden alayım.</string>
-    <string name="nm_intro_how_i_work">Nasıl çalıştığım hakkında birkaç söz:\n\n- Kendi bilgisayarım var — bir Linux sandbox’ı ve bir tarayıcı — yani komut çalıştırabilir, web sitelerini açabilir ve formları doldurabilirim.\n- Benim için bağladığın dosyaları ve fotoğrafları okuyup düzenleyebilir, hatırlatıcılarla ve zamanlanmış görevlerle ilgilenebilirim.\n- Önemli her adımdan önce sana sorarım.\n- Her şey bu telefonda çalışır; mesajların yalnızca yapılandırdığın modele gider.</string>
+    <string name="nm_intro_how_i_work">Nasıl çalıştığım hakkında birkaç söz:\n\n- Kendi bilgisayarım var — bir Linux sandbox’ı ve bir tarayıcı — yani komut çalıştırabilir, web sitelerini açabilir ve formları doldurabilirim.\n- Benim için bağladığın dosyaları ve fotoğrafları okuyup düzenleyebilir, hatırlatıcılarla ve zamanlanmış görevlerle ilgilenebilirim.\n- Önemli her adımdan önce sana sorarım.\n- Her şey bu telefonda çalışır. Mesajların yapılandırdığın modele gider; nanoMuse Cloud ile bu konuşma diğer cihazlarına da seninle gelir — Veri denetimlerinden kapatılabilir.</string>
     <string name="nm_intro_ask_name">Başlamadan önce — sana nasıl hitap edeyim?</string>
 
     <!-- First conversation: the name chooser -->

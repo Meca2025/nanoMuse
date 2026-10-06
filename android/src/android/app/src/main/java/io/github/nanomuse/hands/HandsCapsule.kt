@@ -351,28 +351,31 @@ class HandsCapsule(private val context: Context) {
     }
 
     /**
-     * The ring round the face: the three hues of the stage's comet, turning while the hands
-     * work, a still pale ring while they wait. One small view, one sweep gradient rotated by
-     * an angle — nothing full-screen animates.
+     * The ring round the face: the stage's three hues, breathing while the hands work — one
+     * breath in 4.8 s, 1 → 1.06 in size and a shade brighter at the top, the desktop capsule's
+     * `.ring` (#236.4.6: every working light breathes, none runs) — a still pale ring while
+     * they wait. One small view, one sweep gradient — nothing full-screen animates, and
+     * nothing at all under the system's reduce-motion setting.
      */
     private class RingView(context: Context) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
         private val rect = RectF()
         private var shader: SweepGradient? = null
-        private var angle = 0f
-        private var turning = false
+        private var breath = 0f
+        private var working = false
         private var animator: ValueAnimator? = null
 
         fun turning(on: Boolean) {
-            if (turning == on && (animator != null) == on) return
-            turning = on
+            if (working == on && (animator != null) == (on && !stillMotion(context))) return
+            working = on
             animator?.cancel(); animator = null
-            if (on) {
-                animator = ValueAnimator.ofFloat(0f, 360f).apply {
-                    duration = 2400L
+            breath = if (stillMotion(context)) 0.5f else 0f
+            if (on && !stillMotion(context)) {
+                animator = ValueAnimator.ofFloat(0f, 1f).apply {
+                    duration = BREATH_MS
                     repeatCount = ValueAnimator.INFINITE
                     interpolator = null
-                    addUpdateListener { angle = it.animatedValue as Float; invalidate() }
+                    addUpdateListener { breath = breathe(it.animatedValue as Float); invalidate() }
                     start()
                 }
             }
@@ -392,11 +395,13 @@ class HandsCapsule(private val context: Context) {
         }
 
         override fun onDraw(canvas: Canvas) {
-            if (turning) {
+            if (working) {
                 paint.shader = shader
-                paint.alpha = 255
+                // brightness 0.9 → 1.1 on the desktop; on a canvas, the alpha 0.86 → 1
+                paint.alpha = (255 * (0.86f + 0.14f * breath)).toInt()
+                val scale = 1f + 0.06f * breath
                 canvas.save()
-                canvas.rotate(angle, width / 2f, height / 2f)
+                canvas.scale(scale, scale, width / 2f, height / 2f)
                 canvas.drawOval(rect, paint)
                 canvas.restore()
             } else {
@@ -407,16 +412,20 @@ class HandsCapsule(private val context: Context) {
         }
     }
 
-    /** Four thin bars rising and falling in turn — the desktop pill's sign that something is happening. */
+    /**
+     * Four thin bars breathing in turn — the desktop pill's sign that something is happening:
+     * each 35 % → 100 % tall and 0.6 → 1 opaque over the same 4.8 s breath, each 0.6 s behind
+     * the last. Still, full height, under reduce-motion.
+     */
     private class BarsView(context: Context) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         private var t = 0f
         private var animator: ValueAnimator? = null
 
         fun start() {
-            if (animator != null) return
+            if (animator != null || stillMotion(context)) { invalidate(); return }
             animator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 1000L
+                duration = BREATH_MS
                 repeatCount = ValueAnimator.INFINITE
                 interpolator = null
                 addUpdateListener { t = it.animatedValue as Float; invalidate() }
@@ -439,13 +448,15 @@ class HandsCapsule(private val context: Context) {
             val gap = 2.5f * d
             val total = 4 * barW + 3 * gap
             var x = (width - total) / 2f
+            val still = stillMotion(context)
             for (i in 0 until 4) {
-                // each bar a little behind the last, height easing 35 % → 100 % → 35 %
-                val phase = ((t - i * 0.15f) % 1f + 1f) % 1f
-                val eased = 0.5f - 0.5f * kotlin.math.cos(phase * 2f * Math.PI.toFloat())
+                // each bar 0.6 s behind the last (desktop: animation-delay 0.6 s · i)
+                val phase = ((t - i * BAR_LAG) % 1f + 1f) % 1f
+                val eased = if (still) 1f else breathe(phase)
                 val h = height * (0.35f + 0.65f * eased)
                 paint.shader = null
                 paint.color = if (i % 2 == 0) CYAN else ACCENT
+                paint.alpha = (255 * (0.6f + 0.4f * eased)).toInt()
                 canvas.drawRoundRect(x, height - h, x + barW, height.toFloat(), barW / 2f, barW / 2f, paint)
                 x += barW + gap
             }
@@ -483,5 +494,16 @@ class HandsCapsule(private val context: Context) {
         private const val EDGE = 0x1AFFFFFF
         /** Stop: a low-saturation red, not an alarm. */
         private const val STOP_RED = 0xFF9B3B3B.toInt()
+        /** One breath: 2.4 s in, 2.4 s out — the rhythm of every working light on every client. */
+        private const val BREATH_MS = 4800L
+        /** Each bar 0.6 s behind the last, as a share of the breath. */
+        private const val BAR_LAG = 600f / BREATH_MS
+
+        /** 0 → 1 → 0 over one cycle, eased at both ends (CSS ease-in-out, near enough). */
+        private fun breathe(phase: Float): Float = 0.5f - 0.5f * kotlin.math.cos(phase * 2f * Math.PI.toFloat())
+
+        /** The system's reduce-motion setting: animator scale 0 → every light holds still. */
+        private fun stillMotion(context: Context): Boolean =
+            android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     }
 }
