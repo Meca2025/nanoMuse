@@ -68,6 +68,52 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
   `delegate` landing here as a dsh session "From <device>" with its approvals relayed
   back; remote control (`shell`, `files`, `open`, `screen`) behind a switch.
 
+## When the allowance is used up, and the relay's other answers
+
+The account's free allowance gates the model, not the sign-in: when the relay answers a
+turn with `allowance_exhausted`, the desktop shows the card the phones and the web app
+show, under the turn that did not run, in the chat:
+
+- one sentence — *The free allowance is used up.* — and that your sign-in and your devices
+  keep working whichever way you pick;
+- **your own model key**: the provider rows for where you are (the same rows as Settings →
+  nanoMuse Cloud, with *Add key* and *Get a key* inline), *Other providers and what each key
+  covers* folded under them — the list the relay sends with the refusal and with `/v1/me`
+  (`spend.guidance`, [cloud.md](cloud.md#allowance)), not one written into the app — and
+  the *Step-by-step guide* ([own-key.md](own-key.md));
+- **a plan you already pay for**: the ChatGPT sign-in, right there, with the relay's caveat
+  about it;
+- **invite a friend**: the bonus for each of you and *Copy the link*;
+- a star on GitHub, once, when the nudge policy allows it;
+- *Open Settings → nanoMuse Cloud* and *Try again* (the same words are sent again once a
+  way on is set up).
+
+The relay's other refusals are one plain sentence each, in the app's language, never the
+status code or the JSON body:
+
+| The relay said | The card says | Button |
+| --- | --- | --- |
+| `413` (the request is too big for the relay or the model's window) | *That message is too large for the model's window. Shorten it, leave out some attachments, or start a new chat.* | *New chat* |
+| `401` (the key was retired elsewhere — a sign-out of every device, a deleted account) | *This sign-in is no longer valid. Sign in again under Settings → nanoMuse Cloud.* The desktop signs itself out at the same time, as it does when `/v1/me` answers 401. | *Sign in* |
+| `403` (the account is disabled, or the relay does not take it) | *This account cannot use nanoMuse Cloud right now.*, with the relay's own words under it | *Open Settings → nanoMuse Cloud* |
+| `429` without the allowance code (too many requests at once, the provider busy) | *Too many requests at once. Wait a moment and try again.* — with the relay's `retry_after` when it sent one | *Try again* |
+| `429 daily_cap` (a relay that sets a daily share) | *Today's share of the allowance is used up. It resets tomorrow.* | *Try again* |
+| `404 model_not_offered` | *nanoMuse Cloud does not offer that model any more.* | *Open Settings → nanoMuse Cloud* |
+| `5xx`, or no answer at all (connection refused, timeout) | *nanoMuse Cloud did not answer.* / *Could not reach nanoMuse Cloud. Check the connection and try again.* | *Try again* |
+
+A refusal is not retried: before 0.1.40 the harness took the relay's `429` for a rate
+limit and tried five more times (about twenty seconds) before the raw reply appeared; now
+the card is there at once. A turn on your own key that a provider refused gets the same
+shape — one sentence by the kind of failure, what came back folded under *What came back*.
+The pieces are `src/refusals.ts` (the host reads the relay's reply on the `llm/stream`
+waterfall and rewrites the failure to `nanomuse/<kind>`) and the chat's `turn-error` seat in
+`src/client/RefusalCard.tsx`.
+
+**The 80 % heads-up.** After a turn on the account's model the host re-reads the account
+(once a minute at most); when the relay says the pool is at 80 %, one dismissible line
+shows above the composer — what is left, the invite bonus, *See the ways* — once per pool
+size, as the phones show it in the chat and the web app above its composer.
+
 ## Config and data
 
 `~/.nanomuse/desktop` (`NANOMUSE_DESKTOP_HOME` moves it) is the app's dsh home: the

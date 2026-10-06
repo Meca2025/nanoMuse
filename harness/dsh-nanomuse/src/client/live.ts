@@ -144,6 +144,8 @@ export interface Live {
   ownKeys?: LiveOwnKeys | undefined
   /** The hands' trajectory (0.1.40): `rev` moves with every step; the sessions with a run to look back at. Absent on an older host. */
   trajectory?: { rev: number; sessions: string[] } | undefined
+  /** The 80 % heads-up (C12) while it is due: what is left of the pool, the pool, what an invitation adds (yuan). Null or absent otherwise. */
+  headsUp?: { left: number; grant: number; bonus: number } | null | undefined
   /** Whether the stream is open; false before the first snapshot and while reconnecting. */
   streaming: boolean
 }

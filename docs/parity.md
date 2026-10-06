@@ -18,7 +18,8 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Sign in with a password | ✓ | ✓ 0.1.32 | ✓ | ✓ |
 | Invite code at sign-in | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
 | Amounts from the relay (`/v1/config`) before sign-in | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
-| Allowance in yuan, 80 % heads-up | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
+| Allowance in yuan on the account page, the bar turning at 80 % | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
+| 80 % heads-up in the chat: one line above the composer, once per pool size, *See the ways* | ✓ | — account page only *(33)* | ✓ 0.1.40 | ✓ |
 | "Ways on" when the pool is spent (own key · invite · star) | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
 | Invite code and link, earnings | ✓ | ✓ 0.1.32 | ✓ | ✓ |
 | Usage by kind and by model, today / all time | ✓ | ✓ 0.1.32 | ✓ 0.1.32 | ✓ |
@@ -32,6 +33,9 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | "Ways on" ordered by region (Bailian first on the mainland, OpenRouter first elsewhere) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
 | Own-key catalogue (`providers.json`: 18 providers, what each covers — chat · screen · pictures · clips — key pages, regions; one file, generated for every client) | ✓ 0.1.39 | ◐ 0.1.39 *(the file ships with the app; the ways card still reads the 0.1.34 presets)* *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
 | "Ways on" from the catalogue: the region's lead first, *more providers*, the plans one can sign in with, the key taken inline | ✓ 0.1.39 | — *(32)* | ✓ 0.1.39 Settings → Account, the own-key first-run step | ✓ 0.1.39 |
+| The ways read from the relay's `spend.guidance` (providers for the region, plans, caveats, docs) rather than a list in the app; the bundled catalogue only when the relay sends none | ◐ 0.1.39 the bundled catalogue; `guidance` not read *(34)* | — *(32)* | ✓ 0.1.40 the chat card and Settings → nanoMuse Cloud, one component | ✓ 0.1.39 |
+| A refused turn (`429 allowance_exhausted`) is a card under it in the chat: one sentence, the three ways on, *Open Settings*, *Try again* — never the relay's reply as text | ✓ 0.1.39 `AllowanceWaysCard` | — upstream's error text *(33)* | ✓ 0.1.40 *(before: the JSON, after five retries as a rate limit)* | ✓ 0.1.39 notice with the ways |
+| The relay's other refusals as one sentence and a button: 413 *too large* → *New chat*, 401 → *Sign in*, 403, 429 busy (with the wait), the daily cap, 404 model, 5xx / no answer → *Try again*; never a status code or JSON | ◐ `describe`: bad key · daily cap · rate limit · unreachable · disabled; no 413 *(35)* | ◐ the same list, no 413; a refused chat turn shows upstream's text *(35)* | ✓ 0.1.40 | ◐ `failures.py`: allowance · daily cap · rate limit · bad key · disabled · model · upstream; 413 and the other 429s fall through to *The model provider answered with an error: …* *(35)* |
 | Sign in with a ChatGPT plan — chat and the hands' screen reading only, with the line about OpenAI's terms | ✓ 0.1.39 upstream's sign-ins (also Claude, Kimi, OpenRouter) | — *(32)* | ✓ 0.1.39 through the bundled runtime | ✓ 0.1.39 the runtime's `nanomuse chatgpt login` |
 | A capability nobody configured has is one sentence naming who could (pictures, clips, the screen), never a raw error | ✓ 0.1.39 | — *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
 | Conversations belong to the account that synced them: another account's stay on the device, hidden, never pushed under the new key; a switch restarts the pull (contract C10) | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 the runtime's lists |
@@ -64,7 +68,10 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Skills | ✓ upstream | ✓ upstream | — *(8)* | ✓ |
 | Coding agents (Cursor, Codex, Claude Code on the computers) | ✓ | ✓ 0.1.34 over the hub *(9)* | — *(8)* | ✓ |
 | Devices of the account, remote control, rename, forget | ✓ | ◐ list, Reach sheet 0.1.33 | ✓ | ✓ |
-| Hands — the device's own screen as a hand | ✓ | n/a *(10)* | ✓ the screen; on macOS one window while the person keeps the mouse, per-app grants, glow and capsule out of the shots *(19)* | n/a |
+| Hub, outbound: the model reaches the account's other devices (`devices`, `device_*`, `delegate`, `@<device>`) | ✓ *Computers*, the reach offload | ◐ the Reach sheet by hand and `@device` to the hub; no tool in the model's hands *(29)* | ✓ `reach.ts` | ✓ the runtime's `tools/devices.py` |
+| Hub, inbound: the device answers the others (shell · files · open · screen · notify · task) | ✓ `HubActions` | ◐ info · open · notify · task; shell, files and screen answer *not supported* *(10)* | ✓ `actions.ts` | ✓ the runtime; a browser tab is not a device |
+| Hands — the device's own screen as a hand | ✓ | n/a *(10)* | ✓ Linux X11 (Wayland *(21)*); macOS one window while the person keeps the mouse, per-app grants, glow and capsule out of the shots *(19)*; Windows to be tried *(31)* | n/a |
+| Report a problem: one tap opens a GitHub issue | ✓ Settings → Account | ✓ About → *Report an issue* | ✓ the corner menu; under the shell a screenshot goes to Downloads and the issue opens filled in | ✓ Settings → Feedback |
 | Installed and latest version, side by side (`nanomuse.cn/dl/index.json` first, GitHub second, a day's cache) | ✓ 0.1.35 Settings → Version | ✓ 0.1.35 Settings → Version | ✓ 0.1.35 About, Settings row | ✓ 0.1.35 Settings |
 | A black capture is an error with the fix (Screen Recording, Wayland), never a picture | n/a | n/a | ✓ 0.1.33 | n/a |
 | macOS permissions read back live; *Open System Settings* after an ask; Screen Recording relaunch notice | n/a | n/a | ✓ 0.1.33; 0.1.35: only *nanoMuse Desktop* has to be switched on, *Try it* rows, a restart dialog when Screen Recording flips on *(26)* | n/a |
@@ -90,6 +97,10 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Live stage / browser viewer while the hands work | ✓ stage | n/a *(10)* | ✓ live stage — movable, resizable, remembered 0.1.33; Allow/Deny, holds, glow 0.1.34 | ✓ browser viewer you can drive 0.1.34 |
 | Quick chat (global shortcut) | n/a | n/a | ✓ | n/a |
 | Widgets | ✓ upstream | ✓ upstream | n/a | n/a |
+| Voice in: dictate into the composer | ✓ upstream | ✓ upstream | ◐ Web Speech where the shell has it; otherwise the Dictation page says what to use *(36)* | ◐ the browser's Web Speech *(36)* |
+| Voice out: the reply read aloud | ✓ upstream TTS, sentence by sentence | ✓ upstream | — *(36)* | — *(36)* |
+| Export: the chats and the agent's data as a file; the face card shared | ✓ `ChatExporter`, the share sheet | ✓ backup export, the share sheet | ✓ *Download your agent data* on the Memory page (a zip in Downloads) | ◐ the face card; no data export *(37)* |
+| UI language | ✓ follows the system, 17 locales | ✓ follows the system, 9 locales | ◐ en · zh, the harness's General → Language row *(38)* | ✓ auto · en · zh-CN under Settings *(38)* |
 
 ## Open for a decision (the "next-next" list)
 
@@ -261,6 +272,40 @@ notes above; a settled item keeps its number and says how it went.
     allowance card still offers the 0.1.34 presets and has no plan sign-in; the Android
     `AllowanceWaysCard` is the model (the region's lead, *more providers*, the plans, the
     one-sentence unavailable lines where a picker is empty). On the Mac side's sheet for 0.1.40.
+33. **iOS · the allowance card and the heads-up in the chat.** A turn the relay refuses with
+    `allowance_exhausted` ends on iOS as upstream's error text; the ways live on the account page
+    only, and `spend.warn` colours the bar there without a line in the chat. *Proposal:* a card
+    pinned under the header the way the star card is (3) when the stream ends with that code,
+    drawing the ways from `spend.guidance` (with 32); one line above the composer at 80 %, once per
+    pool size, as the other three clients show it.
+34. **Android · the ways from the relay's guidance.** `AllowanceWaysCard` reads the bundled
+    `providers.json`; `/v1/me` carries `spend.guidance` (the region's providers, the plans, the
+    caveats) and the card ignores it. *Proposal:* prefer `guidance` when the relay sends it, fall
+    back to the catalogue — the web and the desktop already do; a few dozen lines in
+    `AllowanceWaysCard.kt` and `NanoMuseCloud.kt`.
+35. **Phones and web · 413 and the remaining refusals.** The phones' `describe` and the runtime's
+    `failures.py` know the allowance, the daily cap, the rate limit, a bad key, a disabled account
+    and the upstream's trouble, but not `too_large` (413), `not_invited`, `too_many_in_flight` or
+    `provider_busy` — those reach the person as upstream's text or *The model provider answered
+    with an error: …* followed by the body. *Proposal:* the four codes in all three places with the
+    desktop's sentences (`harness/dsh-nanomuse/src/refusals.ts` is the reference), the 413 sentence
+    pointing at *New chat*; on iOS route a refused chat turn through `describe` too. Strings per
+    locale on the phones.
+36. **Voice on the desktop and the web.** Dictation leans on the Web Speech API, which the
+    Electron shell does not ship (it is Google's service inside Chrome), so the desktop opens the
+    Dictation page and the web works only in browsers that have it; neither reads a reply aloud.
+    *Proposal:* speech in and out through the runtime (`/api/speech`), using a configured
+    provider's models (Bailian's `paraformer` / `cosyvoice`, OpenAI's `whisper` / `tts`) with the
+    person's own key or the relay — one implementation for both clients; the phones keep the
+    system's engines.
+37. **Web · data export.** The desktop's rooms host writes a zip of the agent's data
+    (`/data/export`) to Downloads; the web app shares the face card and has Data controls, but no
+    file. *Proposal:* `GET /api/data/export` in the runtime writing the same zip, a *Download your
+    agent data* row under Data controls.
+38. **UI language.** The phones follow the system (17 and 9 locales), the web has an in-app switch
+    (auto · en · zh-CN), the desktop has English and Chinese through the harness's language row.
+    *Proposal:* the desktop's `locales.ts` grows the phones' languages as people ask, de and ja
+    first; an in-app override on the phones is upstream's call.
 
 ## Keeping this true
 
@@ -273,6 +318,11 @@ notes above; a settled item keeps its number and says how it went.
 - Relay-facing code mirrors the same wire format on every client: `nanomuse/cloud.py` (runtime),
   `harness/dsh-nanomuse/src/relay.ts` (desktop), `io.github.nanomuse.cloud.NanoMuseCloud` (Android),
   `NanoMuse/NanoMuseCloud.swift` + `NanoMuseAccount.swift` (iOS). A new relay field lands in all four.
+- The relay's refusal codes (`docs/cloud.md`) become sentences in four places: `nanomuse/server/failures.py`
+  (runtime and web), `harness/dsh-nanomuse/src/refusals.ts` (desktop — the host rewrites the failure,
+  the client draws the card), `NanoMuseCloud.describe` on Android and on iOS. A new code lands in
+  all four, with the sentence in every locale the client has; the desktop's `tests/refusals.test.mjs`
+  and `tests/refusal-card.test.mjs` are the shape of the test to copy.
 - The star asks follow one policy everywhere — the relay's `/v1/nudges` (contract C1 in
   `docs/cloud.md`), with the same defaults built into every client: a *task* is a turn the person
   started that got a reply, never the first conversation, a routine, a feed post or a goal

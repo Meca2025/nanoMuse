@@ -23,6 +23,7 @@ import { syncOverlay } from './overlay.ts'
 import { renderFenceCards } from './FenceCards.ts'
 import { renderRemoteBubbles } from './RemoteBubbles.ts'
 import { makeFirstRunIntro } from './FirstRun.tsx'
+import { AllowanceHeadsUp } from './AllowanceWays.tsx'
 import { interceptComposer, makeAvatarChat } from './AvatarChat.tsx'
 import { makeCapsule } from './Capsule.tsx'
 import { prefillComposer } from './composer.ts'
@@ -43,6 +44,7 @@ import type { ChatActions } from './MuseChats.tsx'
 import { MuseHeader, type UseSessionStatus } from './MuseHeader.tsx'
 import { CONNECTORS_SECTION, makeConnectorsSection } from './Connectors.tsx'
 import { DICTATION_SECTION, FILES_SECTION, makeDictationSection, makeFilesSection, makePermissionsSection, PERMISSIONS_SECTION } from './Pages.tsx'
+import { makeTurnError } from './RefusalCard.tsx'
 import { CHANNELS_SECTION, COMPUTER_SECTION, createShellStore, DATA_SECTION, HARNESS_SECTION, HELP_SECTION, LEGAL_SECTION, makeGeneralSection, makeHarnessSection, MuseSettings, STORAGE_SECTION, WALLET_SECTION, type MuseSettingsProps, type OnboardingStep, type SectionRow } from './MuseSettings.tsx'
 import { MuseSidebar, type MuseSidebarProps, type PanelMeta } from './MuseSidebar.tsx'
 import { makeOnboarding, type OnboardingOwnerProps } from './Onboarding.tsx'
@@ -98,6 +100,8 @@ interface ShortcutsService {
 interface SessionFace {
   cancel(): Promise<unknown>
   rename(title: string): Promise<{ ok: boolean; error?: { message: string } }>
+  /** A prompt into the session, as the composer sends one. */
+  prompt(blocks: { type: 'text'; text: string }[], mode: 'queue' | 'steer'): Promise<{ ok: boolean; error?: { message: string } } | undefined>
 }
 interface SessionsService {
   using<T>(target: string, options: { source: string }, operation: (reference: { ready: Promise<unknown>; binding: { session: SessionFace } }) => Promise<T>): Promise<T>
@@ -397,6 +401,24 @@ export function apply(ctx: ClientContext): void {
   const QuoteAction = makeQuoteAction(t)
   slots.inject('conversation.chat.assistant-actions', () =>
     slots.register({ name: 'conversation.chat.assistant-actions', id: 'nanomuse.quote', order: -10, locale: 'nanomuse' }, QuoteAction))
+  // A turn the model did not finish, as a card (C12): the relay's refusals — the allowance used
+  // up, a message too large, a sign-in that expired — in our words, with the ways on; any other
+  // failure in one plain sentence. Shadows the harness's `turn-error` seat (the lowest priority renders).
+  const resend = async (sessionId: string, text: string): Promise<void> => {
+    const sessions = getService('sessions') as SessionsService | undefined
+    if (!sessions) throw new Error('no sessions service')
+    await sessions.using(sessionId, { source: 'controllerOperation' }, async (reference) => {
+      await reference.ready
+      const result = await reference.binding.session.prompt([{ type: 'text', text }], 'queue')
+      if (result && result.ok === false) throw new Error(result.error?.message ?? 'prompt refused')
+    })
+  }
+  const TurnError = makeTurnError(t, { retry: resend, newChat: () => { workspaces.startSession() } })
+  slots.inject('conversation.chat.node', () =>
+    slots.register({ name: 'conversation.chat.node', key: 'turn-error', priority: -1, locale: 'nanomuse' }, TurnError))
+  // The 80 % heads-up above the composer, once per pool size (the phones' one-line heads-up in the chat).
+  slots.inject('conversation.input.dock', () =>
+    slots.register({ name: 'conversation.input.dock', id: 'nanomuse.headsup', order: -10, locale: 'nanomuse' }, () => h(AllowanceHeadsUp, { t })))
   // The document editor (IDENTITY / SOUL / MEMORY and Library texts) and ⌘K search, over the frame.
   const DocEditor = makeDocEditor(t, () => { layout.toggleSidebar() })
   slots.inject('shell.overlay', () =>

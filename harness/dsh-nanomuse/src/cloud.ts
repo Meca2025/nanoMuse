@@ -36,7 +36,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
 import type { ToolDispatchExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
-import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type ContentBlock, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionCreateRequest } from '@deepseek-ai/dsh-api-session-controller/types'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
@@ -46,6 +46,7 @@ import { mountGuarded } from './admit.ts'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
 import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
+import { relayFailure, type RelayRefusal } from './refusals.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner, textOf } from './task.ts'
 import { Trajectory, type StepAction, type TrajectoryView } from './trajectory.ts'
@@ -267,6 +268,8 @@ export interface LiveState {
   ownKeys: { count: number; capabilities: Capability[]; chatgpt: { signedIn: boolean; label: string; proxy: boolean; login: LoginView } }
   /** The hands' trajectory (0.1.40): `rev` moves with every step; the sessions that have a run to look back at. The runs themselves are `GET /trajectory?session=`. */
   trajectory: { rev: number; sessions: string[] }
+  /** The 80 % heads-up (C12), while it is due: what is left of the pool and what an invitation adds, in yuan; null otherwise. */
+  headsUp: { left: number; grant: number; bonus: number } | null
 }
 
 /** What Settings → Account's "ways on", the own-key step and the pickers read (`GET /providers`). */
@@ -326,7 +329,12 @@ interface State {
   providers?: Record<string, OwnProvider>
   /** The ChatGPT sign-in (C11): a subscription signed in through the runtime's `nanomuse chatgpt` flow. */
   chatgpt?: ChatGptState
+  /** The pool size (yuan) the 80 % heads-up was shown for; it comes back only once the pool has grown. */
+  warnedGrant?: number
 }
+
+/** How often, at most, the account is re-read after a turn for the heads-up. */
+const ALLOWANCE_CHECK_EVERY_MS = 60_000
 
 /** The Media settings as stored. `videoModel` empty means the endpoint's default; `off` means no clips. */
 export interface MediaState {
@@ -473,6 +481,8 @@ export default class NanomuseCloud extends Service {
   private readonly trajectory = new Trajectory()
   private stageTimer: NodeJS.Timeout | undefined
   private signedInCache = false
+  /** When the account was last re-read for the allowance (after a turn, after a refusal). */
+  private lastAllowanceCheck = 0
   /** Tasks from other devices, once the session API is up. */
   private tasks: TaskRunner | undefined
   /** Conversations synced between the account's devices (contract C7), once the session API is up. */
@@ -753,6 +763,15 @@ export default class NanomuseCloud extends Service {
         }),
       'nanomuse cloud: trajectory',
     )
+    // The relay's refusals, read on their way back (C12): a spent allowance, a request too large,
+    // a retired key, a relay that did not answer — as a card in the chat, not the wire's text,
+    // and not retried as if they were rate limits.
+    this.ctx.inject(['llm'], (ctx) => {
+      ctx.on('llm/stream', (options, next) => {
+        if (options.provider !== PROVIDER_ID) return next()
+        return this.watchRelayStream(next())
+      })
+    })
     this.ctx.effect(() => () => {
       this.hub.stop('shutting down')
       this.chatgpt.stop()
@@ -801,6 +820,83 @@ export default class NanomuseCloud extends Service {
         this.updateCheck = undefined
       })
     return this.updateCheck
+  }
+
+  // ---- the relay's refusals in the chat (C12) ---------------------------------------
+
+  /**
+   * The account's stream, watched: a finish that is a refusal of the relay's is rewritten
+   * (`src/refusals.ts`) so the chat draws the card and the retry plugin lets it be; a spent
+   * allowance has the account re-read, so Settings and the heads-up agree with it; a 401 has
+   * the sign-in forgotten here, as a `/me` 401 does. A turn that ended well counts for the
+   * 80 % heads-up.
+   */
+  private async *watchRelayStream(stream: AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk> {
+    for await (const chunk of stream) {
+      if (chunk.type !== 'finish') {
+        yield chunk
+        continue
+      }
+      if (chunk.reason.kind !== 'error') {
+        if (chunk.reason.kind !== 'aborted') this.afterRelayTurn()
+        yield chunk
+        continue
+      }
+      const seen = relayFailure(chunk.reason.failure)
+      if (!seen) {
+        yield chunk
+        continue
+      }
+      this.ctx.logger.info('nanomuse cloud: the relay refused (%s %s): %s', seen.refusal.status, seen.refusal.code, seen.refusal.message || '—')
+      this.refused(seen.refusal)
+      yield { ...chunk, reason: { kind: 'error', failure: { ...chunk.reason.failure, ...seen.failure } } }
+    }
+  }
+
+  /** What a refusal changes here, besides the card: the account re-read, or forgotten. */
+  private refused(refusal: RelayRefusal): void {
+    if (refusal.kind === 'exhausted' || refusal.kind === 'daily_cap') {
+      this.lastAllowanceCheck = Date.now()
+      void this.refresh().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: account not re-read after the refusal: %s', message(error)))
+    } else if (refusal.kind === 'signed_out') {
+      void this.serialize(() => this.forget()).then(() => this.broadcast()).catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: sign-in not forgotten after a 401: %s', message(error)))
+    }
+  }
+
+  /**
+   * After a turn on the account's model: once a minute at most, re-read the account, and when
+   * the relay says `warn` (80 % of the pool spent) show the heads-up strip — once per pool size
+   * (the phones' `nmAllowanceHeadsUp`, the web app's `AllowanceHeadsUp`).
+   */
+  private afterRelayTurn(): void {
+    if (!this.state.account || Date.now() - this.lastAllowanceCheck < ALLOWANCE_CHECK_EVERY_MS) return
+    this.lastAllowanceCheck = Date.now()
+    void this.serialize(async () => {
+      const token = await this.token()
+      if (!token || !this.state.account) return
+      const account = await this.relay.me(token)
+      this.state = { ...this.state, account }
+      await this.writeState()
+    }).then(() => this.broadcast()).catch((error: unknown) => this.ctx.logger.debug('nanomuse cloud: allowance not re-read: %s', message(error)))
+  }
+
+  /** The 80 % heads-up, when it is due: what is left, the pool, and what an invitation adds. */
+  private headsUp(): LiveState['headsUp'] {
+    const spend = this.state.account?.spend
+    if (!spend || spend.unlimited || !spend.warn) return null
+    const left = spend.left ?? 0
+    const grant = spend.grant ?? 0
+    if (left <= 0 || grant <= 0 || this.state.warnedGrant === grant) return null
+    return { left, grant, bonus: spend.inviteBonusCny ?? 5 }
+  }
+
+  /** The person saw the heads-up (or followed it): not again for this pool size. */
+  async headsUpSeen(): Promise<void> {
+    const grant = this.state.account?.spend?.grant ?? 0
+    if (grant <= 0 || this.state.warnedGrant === grant) return
+    this.state = { ...this.state, warnedGrant: grant }
+    await this.writeState()
+    this.broadcast()
   }
 
   // ---- approvals and holds on the stage (C1, C2) -----------------------------------
@@ -1260,6 +1356,7 @@ export default class NanomuseCloud extends Service {
         chatgpt: { signedIn: Boolean(this.state.chatgpt), label: this.state.chatgpt?.label ?? '', proxy: Boolean(this.chatgpt.ready), login: this.chatgpt.login },
       },
       trajectory: { rev: this.trajectory.view().rev, sessions: [...new Set(this.trajectory.view().runs.map((r) => r.sessionId))] },
+      headsUp: this.headsUp(),
     }
   }
 
@@ -2330,6 +2427,10 @@ export default class NanomuseCloud extends Service {
         return send(res, 200, await this.writeProfile(patch))
       }
       if (req.method === 'POST' && route === '/refresh') return send(res, 200, await this.refresh())
+      if (req.method === 'POST' && route === '/allowance/seen') {
+        await this.headsUpSeen()
+        return send(res, 200, { ok: true })
+      }
       if (req.method === 'GET' && route === '/studio/estimate') return send(res, 200, await this.studioEstimate())
       if (req.method === 'POST' && route === '/studio/draw') {
         const body = await json(req)
