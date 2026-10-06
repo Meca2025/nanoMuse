@@ -523,7 +523,11 @@ struct AIChatView: View {
                             }
                     }
                 }
-                .overlay(alignment: .bottom) {
+                // nanoMuse: upstream's `.overlay(alignment: .bottom) { ZStack … }` and the fail-safe's
+                // `.safeAreaInset(edge: .bottom)` are one link of the chain now, NanoMuseComposerHost
+                // (NanoMuseChatModifiers.swift): build 9 overflowed the stack in this body's getter, and
+                // every link counts. The layout notes below are upstream's and still describe the stack.
+                .modifier(NanoMuseComposerHost(failSafe: nmComposer.failSafe, stack: nmComposerStack)) // nanoMuse: was `.overlay(alignment: .bottom) {`
                     // Tool preview + input bar stacked at the bottom.
                     // Both overlay on top of the message list for immersive scrolling.
                     //
@@ -573,22 +577,10 @@ struct AIChatView: View {
                     //      top edge. inputBarHeight here is just the input
                     //      bar (NOT including toolbar) so popup covers
                     //      toolbar when both visible.
-                    // nanoMuse: the ZStack moved to `nmComposerStack` so the fail-safe below can host
-                    // the same stack from another attachment point when this overlay shows nothing.
-                    if !nmComposer.failSafe { // nanoMuse:
-                        nmComposerStack // nanoMuse:
-                    } // nanoMuse:
-                }
-                // nanoMuse: the composer's fail-safe (NanoMuseComposerWatch.failSafe): a second after the
-                // chat appeared or a message went out with no composer height reported, the same stack
-                // is hosted here, as a bottom safe-area inset — a different host than the overlay's, so
-                // whatever left the overlay's host empty does not apply to it. The list's bottom inset
-                // is then 0 (nmListInset): the inset already keeps the composer's room.
-                .safeAreaInset(edge: .bottom, spacing: 0) { // nanoMuse:
-                    if nmComposer.failSafe { // nanoMuse:
-                        nmComposerStack // nanoMuse:
-                    } // nanoMuse:
-                } // nanoMuse:
+                    // nanoMuse: the ZStack is `nmComposerStack`; NanoMuseComposerHost shows it here as the
+                    // overlay, or — the composer's fail-safe (NanoMuseComposerWatch.failSafe): a second
+                    // after the chat appeared or a message went out with no composer height reported —
+                    // as a bottom safe-area inset, the list's own bottom inset then 0 (nmListInset).
                 // Collapse the expanded speech player on a tap anywhere in the chat
                 // area. Attached as a SIMULTANEOUS TapGesture directly on the content
                 // (no full-screen hit-test overlay, which blocked scrolling) so a tap
@@ -672,15 +664,9 @@ struct AIChatView: View {
             }
         }
         .environment(\.chatSessionId, vm.sessionId)
-        .onReceive(NotificationCenter.default.publisher(for: .nanoMuseChatAction)) { note in // nanoMuse: the Muse header's ••• menu drives this chat
-            guard let action = NanoMuseChatAction.from(note, for: vm.nmSessionKey) else { return } // nanoMuse:
-            nmPerform(action) // nanoMuse:
-        } // nanoMuse:
-        .nmOnChange(of: vm.isProcessing) { running in // nanoMuse: a message went out (any path: the pill, a card's pick, a flow) or a turn ended —
-            if !isReadOnly { nmComposer.expect(running ? "a message went out" : "the turn ended") } // nanoMuse: the composer must be there a second later
-        } // nanoMuse:
-        .onReceive(NanoMusePresence.shared.$revision) { _ in vm.nmApplyPresence() } // nanoMuse: C9 — "{device} is working…" under the last remote line
-        .onReceive(vm.$messages) { _ in vm.nmApplyPresence() } // nanoMuse: C9 — the reply arriving clears it
+        // nanoMuse: the Muse header's ••• menu, the composer's expectation around a turn and the C9
+        // presence line, as one link (NanoMuseChatHooks) — four links here overflowed the stack in 0.1.38
+        .modifier(NanoMuseChatHooks(vm: vm, processing: vm.isProcessing, composer: nmComposer, readOnly: isReadOnly, perform: { nmPerform($0) })) // nanoMuse:
         .modifier(NavBarStyleModifier(topSafeAreaInset: $topSafeAreaInset))
         .navigationBarTitleDisplayMode(.inline)
         // [T-ios-navbar-toolbar-host] The ENTIRE toolbar now lives inside an
@@ -3508,7 +3494,13 @@ struct AIChatView: View {
     // nanoMuse: the composer stack — the cards, the tool strip, the input bar, the `/` and `@` popup —
     // upstream's ZStack from the message list's `.overlay(alignment: .bottom)`, in one place so the
     // fail-safe can host the same view as a safe-area inset. The comments on its layout stay at the overlay.
-    private var nmComposerStack: some View { // nanoMuse:
+    // An AnyView on purpose: this is the heaviest subtree of the chat's body, and boxed it is one
+    // pointer in the body's value and one leaf in its type (NanoMuseChatModifiers.swift says why).
+    private var nmComposerStack: AnyView { // nanoMuse:
+        AnyView(nmComposerTree) // nanoMuse:
+    } // nanoMuse:
+
+    @ViewBuilder private var nmComposerTree: some View { // nanoMuse:
         ZStack(alignment: .bottom) {
             // Tap-outside catcher placed UNDER the popup (declared
             // first → lower z-order). When the popup is visible,

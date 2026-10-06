@@ -261,6 +261,17 @@ Pick the **Minis** scheme, set your team under *Signing & Capabilities* (the pro
 empty `DEVELOPMENT_TEAM`), build for a device: the native libraries are device-only, so the
 simulator does not link — see the troubleshooting section of BUILDING.md.
 
+One rule of the chat screen, learnt from build 9 of 0.1.38: **nothing new goes on the end of
+`AIChatView.body`'s modifier chain.** The body is one expression of some sixty chained
+modifiers; its getter keeps copies of the growing value on the stack, and the four links 0.1.38
+added were enough to overflow the main thread's 1 MB on an iPad the moment the chat appeared
+after onboarding — a crash on every launch, in `AIChatView.body.getter` →
+`__swift_instantiateConcreteTypeFromMangledNameV2`. Chat-wide behaviour of ours lives in
+`NanoMuse/NanoMuseChatModifiers.swift` (`NanoMuseChatHooks`, `NanoMuseComposerHost`): add to
+those, or add a third modifier — one link. The composer stack is an `AnyView` there on purpose.
+`MinisTests/NanoMuseRound6Tests.swift` measures the body's value size and type depth and fails
+when either grows past its ceiling.
+
 ## TestFlight
 
 Distribution is TestFlight, **internal testers**: the people you add as users of your App Store
