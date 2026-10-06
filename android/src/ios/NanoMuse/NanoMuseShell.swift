@@ -233,22 +233,43 @@ final class NanoMuseMainChat: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] note in self?.sessionCreated(note) }
             .store(in: &cancellables)
+        // C10: another account signed in — its own main chat, or a fresh draft; never the
+        // conversation the previous account left pinned here.
+        NotificationCenter.default.publisher(for: .nanoMuseAccountSwitched)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.accountSwitched() }
+            .store(in: &cancellables)
     }
 
     func resolve() {
         Task { @MainActor [self] in
             let remembered = UserDefaults.standard.string(forKey: Self.key)
-            if let remembered, await ChatStore.shared.sessionExists(id: remembered) {
+            // C10: a remembered chat of another account is not shown (NanoMuseSync.shows)
+            if let remembered, NanoMuseSync.shared.shows(remembered), await ChatStore.shared.sessionExists(id: remembered) {
                 set(remembered, draft: false)
                 return
             }
-            let sessions = await ChatStore.shared.listSessions()
+            let sessions = NanoMuseSync.shared.visible(await ChatStore.shared.listSessions())
             if let latest = sessions.filter({ !$0.isRemote }).max(by: { $0.updatedAt < $1.updatedAt }) {
                 UserDefaults.standard.set(latest.id, forKey: Self.key)
                 set(latest.id, draft: false)
                 return
             }
             set(Self.draftPrefix + UUID().uuidString, draft: true)
+        }
+    }
+
+    /// C10: the account changed under the tab. The chat it showed for the account that came
+    /// back is pinned again when it is still there; otherwise the tab resolves as on a first
+    /// launch — the account's own conversations, or a draft the account's synced main adopts.
+    private func accountSwitched() {
+        Task { @MainActor [self] in
+            if let remembered = NanoMuseSync.shared.rememberedMainSession, NanoMuseSync.shared.shows(remembered), await ChatStore.shared.sessionExists(id: remembered) {
+                pin(remembered)
+                return
+            }
+            UserDefaults.standard.removeObject(forKey: Self.key)
+            resolve()
         }
     }
 
@@ -1174,7 +1195,8 @@ struct NanoMuseDrawer: View {
 
     private func refresh() {
         Task { @MainActor [self] in
-            let list = await ChatStore.shared.listSessions()
+            // C10: the signed-in account's conversations and the unowned ones; another account's stay hidden
+            let list = NanoMuseSync.shared.visible(await ChatStore.shared.listSessions())
             sessions = list.sorted { $0.updatedAt > $1.updatedAt }
         }
     }

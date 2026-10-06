@@ -27,6 +27,9 @@ struct NanoMuseCloudAccount: Codable, Equatable, Sendable {
     var checkedAt: Date
     /// The relay runs without a ceiling: usage is shown, nothing is refused for lack of tokens.
     var unlimited: Bool = false
+    /// C10: the relay's opaque id of the account (`account.id` of `/v1/me`) — what the local
+    /// conversations are keyed to, never the identifier. Empty from a relay that sends none.
+    var id: String = ""
 
     var remaining: Int64 { max(granted - used, 0) }
     /// 0..1 of the grant still unspent.
@@ -35,7 +38,7 @@ struct NanoMuseCloudAccount: Codable, Equatable, Sendable {
         return min(max(Double(remaining) / Double(granted), 0), 1)
     }
 
-    init(channel: String, hint: String, granted: Int64, used: Int64, usedToday: Int64, dailyCap: Int64, checkedAt: Date, unlimited: Bool = false) {
+    init(channel: String, hint: String, granted: Int64, used: Int64, usedToday: Int64, dailyCap: Int64, checkedAt: Date, unlimited: Bool = false, id: String = "") {
         self.channel = channel
         self.hint = hint
         self.granted = granted
@@ -44,9 +47,10 @@ struct NanoMuseCloudAccount: Codable, Equatable, Sendable {
         self.dailyCap = dailyCap
         self.checkedAt = checkedAt
         self.unlimited = unlimited
+        self.id = id
     }
 
-    // `unlimited` came later; an account cached by an earlier build decodes without it.
+    // `unlimited` and `id` came later; an account cached by an earlier build decodes without them.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         channel = try c.decode(String.self, forKey: .channel)
@@ -57,6 +61,7 @@ struct NanoMuseCloudAccount: Codable, Equatable, Sendable {
         dailyCap = try c.decode(Int64.self, forKey: .dailyCap)
         checkedAt = try c.decode(Date.self, forKey: .checkedAt)
         unlimited = try c.decodeIfPresent(Bool.self, forKey: .unlimited) ?? false
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? ""
     }
 }
 
@@ -315,6 +320,7 @@ enum NanoMuseCloud {
         account = parsed
         NanoMuseNudges.shared.absorb(me: reply) // nanoMuse: contract C1 — the star policy rides along
         await MainActor.run { NanoMuseHub.shared.restart() } // the new key joins the hub
+        NanoMuseSync.shared.accountChanged() // C10: another account's conversations are not this one's to show or push
         return parsed
     }
 
@@ -456,7 +462,8 @@ enum NanoMuseCloud {
             usedToday: int64(tokens["used_today"]),
             dailyCap: int64(tokens["daily_cap"]),
             checkedAt: Date(),
-            unlimited: (tokens["unlimited"] as? Bool) ?? ((tokens["unlimited"] as? NSNumber)?.boolValue ?? false)
+            unlimited: (tokens["unlimited"] as? Bool) ?? ((tokens["unlimited"] as? NSNumber)?.boolValue ?? false),
+            id: account["id"] as? String ?? ""
         )
     }
 
@@ -466,6 +473,7 @@ enum NanoMuseCloud {
         UserDefaults.standard.removeObject(forKey: Keys.fresh)
         // another account's devices and their connections are not ours to list
         NanoMuseProfileSync.shared.forget()
+        NanoMuseSync.shared.accountChanged() // C10: signed out — the presence of the account that left goes too
     }
 
     private static func trimmed(_ s: String) -> String {

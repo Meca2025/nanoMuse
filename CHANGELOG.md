@@ -7,6 +7,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 ### iOS
 
 - **No crash on launch after onboarding.** Build 9 (0.1.38) died on an iPad every time the chat appeared, with a stack overflow in the chat screen's body: the body is one chain of some sixty modifiers and 0.1.38 added four (the composer's fail-safe host and the presence hooks), enough for the getter's stack frame and the runtime's type instantiation to overrun the main thread's 1 MB. The four are one link each now (`NanoMuseComposerHost`, `NanoMuseChatHooks`) and the composer stack is boxed, so the body is smaller than 0.1.37's; a test keeps its size and depth under a ceiling.
+- **Your conversations, not the last person's.** Signing in as another account on the same iPhone showed, and pushed to that account, the conversations of whoever had been signed in before. A conversation now belongs to the account that first synced it: the lists and the Chat tab show the signed-in account's own and the ones no account has synced yet, another account's stay on the phone hidden until that account is back (its main chat too), and nothing of theirs ever goes up under the wrong account. A different account than last time pulls afresh and forgets who was working where. Accounts are told apart by the relay's opaque id, never the phone number or e-mail (contract C10).
 
 ## [0.1.38] - 2026-10-05 · Loom
 

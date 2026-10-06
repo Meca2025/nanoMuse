@@ -86,6 +86,18 @@ final class NanoMusePresence: ObservableObject {
         return Self.isLive(at: entry.at, now: now) ? entry : nil
     }
 
+    /// C10: another account signed in (or this one signed out) — what the relay said about the
+    /// previous account's conversations is forgotten, lines included.
+    func reset() {
+        for holder in shown.values {
+            if let message = holder.message, message.nmWorkingDevice != nil { message.nmWorkingDevice = nil }
+        }
+        shown = [:]
+        guard !working.isEmpty else { return }
+        working = [:]
+        changed()
+    }
+
     /// Ask the relay once what it remembers (the hub just said welcome, or the chat came back).
     func refresh() {
         guard NanoMuseCloud.isSignedIn, let token = NanoMuseCloud.apiKey else { return }
