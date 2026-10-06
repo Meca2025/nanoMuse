@@ -26,9 +26,9 @@ Goals are checked on a schedule, routines run with the app closed, the feed is w
 
 ### The conversation
 
-The chat is where everything happens, and it still feels like a chat client. Presence — the face reacting while the agent works, the status line in words — is uneven between the clients; voice is input only since the calls were removed in 0.1.22 ([calls.md](calls.md)), and a voice that answers is an open question; the live stage (`harness/dsh-nanomuse/src/client/LiveStage.tsx`, Android `HandsStage.kt`) shows the hands but not yet what the agent is thinking in a way a person can follow.
+The chat is where everything happens, and it still feels like a chat client. Presence — the face reacting while the agent works, the status line in words — is uneven between the clients; voice is input only since the calls were removed in 0.1.22 ([calls.md](calls.md)), and a voice that answers is an open question; the hands' stage (desktop `harness/dsh-nanomuse/src/client/Trajectory.tsx` and the shell's `glow.html`, Android `HandsStage.kt`) shows the hands and, on the desktop, the agent's words before each step, but not yet across every client in a way a person can follow.
 
-- Module: `harness/dsh-nanomuse/src/client/` (`AvatarChat.tsx`, `LiveStage.tsx`, `Capsule.tsx`), Android `io.github.nanomuse.chat` and `hands`, iOS `NanoMuseChatCards.swift`, `NanoMuseComposer.swift`.
+- Module: `harness/dsh-nanomuse/src/client/` (`AvatarChat.tsx`, `Trajectory.tsx`, `Capsule.tsx`), Android `io.github.nanomuse.chat` and `hands`, iOS `NanoMuseChatCards.swift`, `NanoMuseComposer.swift`.
 - Read: [desktop-muse.md](desktop-muse.md), [parity.md](parity.md) — the open items between the clients.
 - First task: pick one row of `parity.md` that is open on a client you can run, and close it.
 
