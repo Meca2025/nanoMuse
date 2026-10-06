@@ -2068,7 +2068,7 @@ final class OpenAIProvider: LLMProvider {
     func mapHTTPError(statusCode: Int, body: String) -> LLMError {
         // nanoMuse: the plan's "region not supported" / "sign-in expired" / "nothing left" are a
         // 403, a 401 and a 429 whose bodies the mapping below drops; keep them for the chat's card.
-        NanoMuseReachSignal.shared.noteHTTPError(statusCode: statusCode, body: body, host: isOAuth ? "chatgpt.com" : (NanoMuseProxy.hostOf(customBaseURL ?? "") ?? "api.openai.com"), oauth: isOAuth)
+        NanoMuseReachSignal.shared.noteHTTPError(status: statusCode, body: body, host: isOAuth ? "chatgpt.com" : (NanoMuseProxy.hostOf(customBaseURL ?? "") ?? "api.openai.com"), oauth: isOAuth)
         if statusCode == 401 || statusCode == 403 { return .invalidAPIKey(detail: "HTTP \(statusCode): \(String(body.prefix(200)))") }
         if statusCode == 429 { return .rateLimited }
 
