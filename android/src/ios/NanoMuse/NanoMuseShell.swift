@@ -367,18 +367,28 @@ struct NanoMuseHomeView: View {
     }
 
     var body: some View {
-        ZStack {
-            chatLayer
-                .opacity(tab == .chat ? 1 : 0)
-                .allowsHitTesting(tab == .chat)
-                .accessibilityHidden(tab != .chat)
-            if tab != .chat {
-                roomLayer
-                    .transition(.opacity)
+        // The bottom bar is a row under the rooms, as on Android — not a `safeAreaInset`.
+        // 0.1.36–0.1.39 had it as one, and an inset on the NavigationStack's ancestor reaches
+        // the chat inside it through UIKit's safe area. What the device showed (iPad, 0.1.39;
+        // the maintainer's iPhone, 0.1.36–0.1.38): the chat respected the bar's 56 pt at
+        // launch, and once the bar had left for the keyboard and come back it no longer did —
+        // the chat ran under the bar and its composer, bottom-aligned, sat behind it ("the
+        // input field shows until I dismiss the keyboard, then never again"; the sliver of a
+        // composer's top edge above the bar in the 0.1.36 screenshot). A VStack row is plain
+        // layout: the stack above is as tall as what is left over the bar — and over the
+        // keyboard, which shortens the whole VStack — whether the bar is there or not.
+        VStack(spacing: 0) {
+            ZStack {
+                chatLayer
+                    .opacity(tab == .chat ? 1 : 0)
+                    .allowsHitTesting(tab == .chat)
+                    .accessibilityHidden(tab != .chat)
+                if tab != .chat {
+                    roomLayer
+                        .transition(.opacity)
+                }
             }
-        }
-        .animation(.easeInOut(duration: 0.15), value: tab)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+            .animation(.easeInOut(duration: 0.15), value: tab)
             if !bottomBarHidden {
                 NanoMuseBottomBar(selected: $tab) { picked in
                     if picked == tab, picked != .chat { return }

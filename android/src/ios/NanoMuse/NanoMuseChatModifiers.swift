@@ -35,6 +35,12 @@ import SwiftUI
 /// The list needs no bottom inset for the composer any more (0 is passed to it). The `/` and
 /// `@` popup and its tap-outside catcher stay an overlay of the list, so the popup's bottom
 /// edge is the column's top edge by layout, as upstream's note wanted.
+///
+/// The composer that could not be seen in 0.1.36–0.1.39 was not this host's doing: the chat
+/// as a whole ran under the shell's bottom bar once the keyboard had come and gone, and the
+/// column — wherever it was attached — sat behind the bar. That is fixed where it was, in
+/// `NanoMuseHomeView.body` (the bar is a row, not a safe-area inset); this host stays because
+/// a row is the simpler of the two layouts and the one the Android app has.
 struct NanoMuseComposerHost: ViewModifier {
     /// The column, type-erased: its tree (the cards, the tool strip, the input bar) is the
     /// heaviest part of the chat's body, and a box keeps it out of the body's value and type.

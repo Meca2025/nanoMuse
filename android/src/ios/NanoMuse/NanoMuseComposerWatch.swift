@@ -33,9 +33,12 @@
 //  0.1.37–0.1.39 switched to a second host (a bottom safe-area inset) when
 //  the overlay reported nothing one second after the chat appeared. Three
 //  TestFlight builds later the composer was still missing on the
-//  maintainer's iPad, and from the outside the switch could not be told
-//  apart from the fault. There is one host now, and the check page says
-//  what the device sees.
+//  maintainer's iPad — and the fault was never in the composer: the whole
+//  chat ran under the shell's bottom bar once the keyboard had come and
+//  gone (NanoMuseShell.swift, NanoMuseHomeView.body), so the column sat
+//  behind the bar, laid out and healthy by every measure the watch has.
+//  There is one host now, the bar is a row, and the check page says what
+//  the device sees.
 //
 
 import os
