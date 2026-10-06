@@ -43,6 +43,17 @@ def wait_for(pred: Callable[[], Any], timeout: float = 8.0, interval: float = 0.
     raise AssertionError("condition not met in time")
 
 
+def settled(service: MuseService) -> bool:
+    """No push or pull of the engine's is scheduled or on the wire. The engine writes its
+    state (a cid, an owner) *before* the request reaches the relay and marks the rows after,
+    so a test that reads that state — or swaps the relay's store — while a push is in flight
+    races the event loop; wait for this first. A push schedules the pull that follows it,
+    and a pull that applied rows the push after that, before it finishes, so the chain is
+    covered."""
+    sync = service.sync
+    return all(t is None or t.done() for t in (sync._push_task, sync._pull_task))
+
+
 # ----------------------------------------------------------------------------- the mention
 def test_mention_takes_a_device_name_off_the_front() -> None:
     m = parse_mention("@Pixel 8 open the calendar", DEVICES, "pc-self")
@@ -510,9 +521,11 @@ def test_the_switch_and_the_relays_refusals(synced) -> None:
     assert service.sync.active is False and client.get("/api/sync/state").json()["paused"] is True
     client.portal.call(service.sync.account_changed, "acct-1")  # type: ignore[union-attr]
     assert service.sync.active is True
-    # the main chat joins the first account on its push (C10: owner = account.id)
-    wait_for(lambda: service.sync.owner_of(MAIN_THREAD) == "acct-1")
+    # the main chat joins the first account on its push (C10: owner = account.id); the push
+    # must have landed before the relay's store is swapped under it
+    wait_for(lambda: settled(service) and service.sync.owner_of(MAIN_THREAD) == "acct-1")
     old = service.sync.cid_of(MAIN_THREAD)
+    assert old is not None and relay_main(relay) == old
     # a different account starts from zero: a fresh main chat, pushed anew under a new id
     # (the first account's was empty, so there is nothing to keep aside)
     pushes = len(relay.pushes)
@@ -521,7 +534,8 @@ def test_the_switch_and_the_relays_refusals(synced) -> None:
     assert service.sync.state["account_id"] == "acct-2"
     wait_for(lambda: relay.pulls and relay.pulls[-1]["since"] == 0)  # the cursor started over
     wait_for(lambda: len(relay.pushes) > pushes)
-    wait_for(lambda: service.sync.cid_of(MAIN_THREAD) not in (None, old))
+    wait_for(lambda: settled(service) and service.sync.cid_of(MAIN_THREAD) not in (None, old))
+    assert relay_main(relay) == service.sync.cid_of(MAIN_THREAD)
     assert service.sync.state["mains"] == {} and service.sync.owner_of(MAIN_THREAD) == "acct-2"
 
 
@@ -973,7 +987,7 @@ def test_a_device_shows_and_pushes_the_current_accounts_conversations_only(synce
     client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "A's question"})
     wait_for(lambda: any(m["text"] == "A's answer" for m in relay.msgs.values()))
     a_side = client.post("/api/threads", json={"title": "A side"}).json()
-    wait_for(lambda: service.sync.owner_of(a_side["id"]) == "acct-A")
+    wait_for(lambda: settled(service) and service.sync.owner_of(a_side["id"]) == "acct-A")
     assert service.sync.owner_of(MAIN_THREAD) == "acct-A"
     a_main_cid = relay_main(relay)
     # a chat that never synced belongs to nobody (side chats of another device, say)
@@ -1005,7 +1019,7 @@ def test_a_device_shows_and_pushes_the_current_accounts_conversations_only(synce
     client.post(f"/api/threads/{MAIN_THREAD}/send", json={"text": "B's question"})
     wait_for(lambda: any(m["text"] == "B's answer" for m in relay.msgs.values()))
     b_side = client.post("/api/threads", json={"title": "B side"}).json()
-    wait_for(lambda: service.sync.owner_of(b_side["id"]) == "acct-B")
+    wait_for(lambda: settled(service) and service.sync.owner_of(b_side["id"]) == "acct-B")
     sent = {m["cid"] for p in relay.pushes[pushes:] for m in p["messages"]} | {
         c["cid"] for p in relay.pushes[pushes:] for c in p["conversations"]
     }
@@ -1015,7 +1029,7 @@ def test_a_device_shows_and_pushes_the_current_accounts_conversations_only(synce
     # the ownerless chat joins B on its first push
     local.device = None
     client.patch(f"/api/threads/{local.id}", json={"title": "Now B's"})
-    wait_for(lambda: service.sync.owner_of(local.id) == "acct-B")
+    wait_for(lambda: settled(service) and service.sync.owner_of(local.id) == "acct-B")
 
     # A comes back: A's main chat and side chat, B's put aside
     relay.switch_account("acct-A")
@@ -1054,7 +1068,7 @@ def test_the_first_sign_in_keeps_the_main_chat_and_a_new_account_relogs_the_hub(
     main.timeline.add({"type": "user", "text": "before sign-in"})
     client.portal.call(service.sync.account_changed, "acct-A")  # type: ignore[union-attr]
     assert "before sign-in" in [e["text"] for e in _events(client, MAIN_THREAD)]
-    wait_for(lambda: service.sync.owner_of(MAIN_THREAD) == "acct-A")
+    wait_for(lambda: settled(service) and service.sync.owner_of(MAIN_THREAD) == "acct-A")
 
     # sign-in through the hub service with another account: the socket and the account's
     # model lists start over (the device list with them), the engine hears the new id
