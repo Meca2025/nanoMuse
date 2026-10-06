@@ -18,14 +18,15 @@
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="Звёзды GitHub"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="Загрузки"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="Документация"></a>
+  <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/%D0%9F%D0%BE%D0%BF%D1%80%D0%BE%D0%B1%D0%BE%D0%B2%D0%B0%D1%82%D1%8C-demo.nanomuse.dev-0a66e4" alt="Попробовать в браузере"></a>
+  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%D0%A1%D0%B0%D0%B9%D1%82-nanomuse.cn-0a66e4" alt="Сайт"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 **nanoMuse — открытый персональный агент для всех ваших устройств.** Один агент со своим именем и обликом, того же рода, что [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) от Meta: он делает дела, а не отвечает на вопросы, продолжает работать при закрытом приложении, помнит вас и останавливается спросить перед тем, что нельзя отменить.
 
-*nano* значит полный комплект, достаточно небольшой, чтобы вы запустили и развернули его сами: приложение для телефона, приложение для компьютера, веб-консоль и реле, которое их связывает, — всё в этом репозитории, под GPL-3.0-or-later. nanoMuse — некоммерческий проект. После входа вы получаете бесплатный лимит на модели через реле сообщества — его оплачивает разработчик; когда он кончится, [подключите свой ключ](../own-key.md). То же реле работает на вашем собственном сервере, и тогда ничего не покидает дом. Последняя версия: **0.1.40 Clear** — [заметки о выпуске](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [попробовать в браузере](https://nanomuse.cn/web/).
+*nano* значит полный комплект, достаточно небольшой, чтобы вы запустили и развернули его сами: приложение для телефона, приложение для компьютера, веб-консоль и реле, которое их связывает, — всё в этом репозитории, под GPL-3.0-or-later. **[Бесплатно, открыто, некоммерчески — давайте строить вместе.](../../CONTRIBUTING.md)** После входа вы получаете бесплатный лимит на модели через реле сообщества — его оплачивает разработчик; когда он кончится, [подключите свой ключ](../own-key.md). То же реле работает на вашем собственном сервере, и тогда ничего не покидает дом. Последняя версия: **0.1.40 Clear** — [заметки о выпуске](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [попробовать в браузере](https://demo.nanomuse.dev/).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Чат: перед удалением в рабочей папке агент останавливается и спрашивает — один раз, этот чат, всегда для рабочей папки, или отказать">
@@ -38,8 +39,9 @@
 
 | | |
 |---|---|
+| **Браузер** | [demo.nanomuse.dev](https://demo.nanomuse.dev/) — nanoMuse на симулированном телефоне, после входа. Это демо; настоящие приложения — ниже |
 | **Android** 8.0+, arm64 | [nanoMuse-0.1.40-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-0.1.40-arm64.apk) — все версии подписаны одним ключом и ставятся поверх предыдущей |
-| **iPhone / iPad** | TestFlight, пока только для внутренних тестировщиков <!-- coordinator: сюда публичную ссылку TestFlight, когда появится --> |
+| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc) — бета; ссылка выдаст сборку, как только она пройдёт бета-проверку Apple · [iOS](../ios.md) |
 | **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-x64.dmg) — без нотаризации: в первый раз правый клик → «Открыть» |
 | **Windows** 10+ | [nanoMuse-Desktop-0.1.40-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-win-x64.exe) — один раз нажмите «Выполнить в любом случае» |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.tar.gz) |
@@ -52,7 +54,7 @@
 <table>
   <tr>
     <td width="50%" valign="top"><b>Делает дела.</b><br>Linux-шелл, браузер, MCP-серверы и навыки — а с включёнными «руками» ещё и приложения на телефоне и окна на компьютере через их экран, для всего, у чего никогда не было API.</td>
-    <td width="50%" valign="top"><b>Сначала спрашивает.</b><br>Остановка перед удалением, отправкой или оплатой, запоминается на один раз, на этот чат или навсегда; пароли и коды вводите вы. Вход или CAPTCHA он передаёт вам; «Готово» продолжает.</td>
+    <td width="50%" valign="top"><b>Сначала спрашивает.</b><br>Он останавливается перед удалением, отправкой или оплатой и запоминает ответ на один раз, на этот чат или навсегда; пароли и коды вводите вы. Когда нужно войти или пройти CAPTCHA, он передаёт управление вам; «Готово» продолжает.</td>
   </tr>
   <tr>
     <td width="50%" valign="top"><b>Дотягивается до других устройств.</b><br>Скажите на телефоне — выполнится на ПК; <code>@Mac …</code> в начале сообщения отправляет задачу туда. Подтверждения возвращаются на устройство у вас в руках.</td>
@@ -73,7 +75,7 @@
 На каждом устройстве работает свой агент: на телефоне — внутри APK (Alpine Linux под proot, шелл, браузер, MCP), на компьютере — внутри nanoMuse Desktop (DeepSeek Harness плюс Python-рантайм для рук). После входа они встречаются на реле и могут просить друг друга о чём-то; текст разговоров идёт через реле, файлы и скриншоты остаются там, где были сделаны.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/devices-loop.png" alt="Android, компьютер (Mac, Windows, Linux), iPhone и iPad и веб-приложение вокруг одного аккаунта: ретранслятор выполняет вход устройств и переносит разговор между ними" width="92%">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/devices-loop.png" alt="Android, компьютер (Mac, Windows, Linux), iPhone и iPad и веб-приложение вокруг одного аккаунта: реле авторизует устройства в аккаунте и передаёт разговор между ними" width="92%">
 </p>
 
 Об устройствах — [docs/every-device.md](../every-device.md), о кадрах — [docs/hub.md](../hub.md), о реле — [docs/cloud.md](../cloud.md), о том, что оно хранит, — [docs/privacy.md](../privacy.md).
@@ -87,6 +89,14 @@
 | Другие устройства | Клиенты одной VM | Только тот, где установлен | Устройства просят друг друга через hub, подтверждения там, где вы |
 | Модели | Модели Meta | Свои | Бесплатный лимит реле или свои |
 | Лицензия | Закрытая | GPL-3.0 | GPL-3.0-or-later, на основе OpenMinis |
+
+## Новости
+
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — поле ввода на iPhone снова видно, каждый чат на телефоне принадлежит своему аккаунту, и каждый отказ реле — одна ясная фраза или карточка на любом клиенте. Mac делает настоящий снимок экрана или объясняет, почему не может, Windows снова запускается после обновления, которое переместило приложение, а в консоли реле появились страницы «Управление», «Статистика» и «Сайт».
+- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — свой ключ из каталога восемнадцати провайдеров, вход по подписке ChatGPT, и устройство показывает только разговоры вошедшего аккаунта.
+- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — побочные чаты остаются на устройстве, где их создали, вспомогательное приложение на Mac хранит разрешения рук, каждое приложение может указывать на ваше реле, а документация стала сайтом.
+
+Все версии: [releases](https://github.com/nano-muse/nanoMuse/releases).
 
 ## Документация
 
@@ -102,7 +112,7 @@
 
 ## Благодарности
 
-nanoMuse стоит на работе других; условия — в [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
+nanoMuse опирается на работу других людей; условия — в [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
 
 - [OpenMinis](https://github.com/OpenMinis/OpenMinis) — агент на устройстве, на котором построено приложение для телефона, с [proot](https://github.com/nano-muse/proot) и [Alpine Linux](https://alpinelinux.org/) для песочницы.
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — агентный harness, плагином к которому является приложение для компьютера.

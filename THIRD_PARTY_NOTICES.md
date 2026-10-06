@@ -1,6 +1,6 @@
 # Third-party notices
 
-nanoMuse is licensed under the GNU General Public License, version 3 or later ([LICENSE](LICENSE), [NOTICE](NOTICE)). It stands on other people's work; this file says whose, and on what terms. Three lists: what the Android app is built from, what the frozen Python line includes, and projects we learned from without taking code.
+nanoMuse is licensed under the GNU General Public License, version 3 or later ([LICENSE](LICENSE), [NOTICE](NOTICE)). It stands on other people's work; this file says whose, and on what terms. Three lists: what the Android app is built from, what our own runtime, relay and web code include, and projects we learned from without taking code.
 
 ## The Android app (`android/`)
 
@@ -47,9 +47,9 @@ Test-only: JUnit 4.13.2 (**EPL-1.0**), MockWebServer 4.12.0 (**Apache-2.0**), ko
 
 The name nanoMuse and the mark in `assets/brand/` are the project's own. Use them to refer to this project; do not use them to suggest that something else is nanoMuse or endorsed by it.
 
-## The Python line (`nanomuse/`, `web/`, `demo/`, `site/`)
+## The runtime, the relay, the web console and the showcase (`nanomuse/`, `cloud/`, `web/`, `demo/`)
 
-Frozen since the OpenMinis import (tag `pre-openminis`), kept as the base of the later web and desktop phases. Third-party code inside it keeps its own licence and notice.
+Our own code, GPL-3.0-or-later like the rest. Third-party code inside it keeps its own licence and notice; the ports named below say where they come from.
 
 ### MemGUI-Bench — MIT
 

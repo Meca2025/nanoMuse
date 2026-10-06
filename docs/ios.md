@@ -5,12 +5,14 @@ Mac runner and handed to TestFlight. This page says what is in the tree, how it 
 the TestFlight pipeline needs, and what is still to be ported from the Android app.
 
 **Status.** The tree, the branding, the nanoMuse Cloud sign-in, the hub client and the pipeline
-were written on a Linux machine. The app **builds, signs and is on TestFlight**: build 0.1.31 (2)
-went through the *iOS · TestFlight* workflow on 2026-10-03, was processed by App Store Connect
-and is with the internal testers (*Where it stands* below). It has not been run on an iPhone by
-the maintainers themselves, so the sign-in flow, the Devices section and notifications from other
-devices are untested at runtime until the first tester reports. The first archive taught the
-pipeline that automatic signing wants a registered device, which is why it signs manually now.
+were written on a Linux machine. The app **builds, signs and is on TestFlight**: the first build,
+0.1.31 (2), went through the *iOS · TestFlight* workflow on 2026-10-03; 0.1.40 is build 13, with
+the internal testers and submitted to Apple's beta review for the public link
+(`https://testflight.apple.com/join/ZHexbDqc`, which delivers the build once the review has
+passed — *Where it stands* below). The testers' reports have driven the fixes in the release
+notes (the composer, onboarding, sign-out); the Devices section and notifications from other
+devices still have the fewest hours on a real device. The first archive taught the pipeline
+that automatic signing wants a registered device, which is why it signs manually now.
 
 ## Where it lives
 
@@ -373,9 +375,9 @@ when either grows past its ceiling.
 
 Distribution is TestFlight, **internal testers**: the people you add as users of your App Store
 Connect team (up to 100), who get every build minutes after it is processed, with no App Review.
-An external group (public link, up to 10,000 testers) needs Apple's beta review once per version
-— that is the step we are not waiting for; it can be switched on later in App Store Connect without
-touching the pipeline.
+An external group (public link, up to 10,000 testers) needs Apple's beta review once per version;
+the group *nanoMuse Beta* and its public link exist, and each build is added to it and submitted
+for review after the internal testers have had it. The pipeline is the same either way.
 
 ### Where it stands
 
@@ -401,14 +403,14 @@ Set up on 2026-10-03, all of it under the account holder's developer account (te
   testing with the internal group — the first thing that can be installed from TestFlight;
 - the test information an external group needs, in English and Simplified Chinese: the beta app
   description, the feedback address, the marketing and privacy-policy links, and *What to Test*
-  on build 2 (none of it names other products); and the external group *nanoMuse Beta*, created
-  **without** a public link and without a build;
-- not done: the beta-review contact (name, phone) and the demo-account decision in *Beta App
-  Review Information*, which are the account holder's to fill, then adding build 2 to the external
-  group — that is the step that submits it to Apple's beta review; a public link once the review
-  has passed; and anything towards the App Store (the app is not going there). The app has not
-  run on a physical iPhone from the maintainers' side yet: the smoke test is the internal
-  testers' first job.
+  on each build (none of it names other products); the external group *nanoMuse Beta* with its
+  public link, `https://testflight.apple.com/join/ZHexbDqc`; the beta-review contact and a
+  review account on the relay in *Beta App Review Information*;
+- **build 13 (0.1.40)** is with the internal testers and was added to *nanoMuse Beta* and
+  submitted to Apple's beta review on 2026-10-06; the public link delivers a build only once a
+  review has passed, so until then it shows the TestFlight page without an app. Each later
+  version repeats the step (the review is per version). Nothing towards the App Store: the app
+  is not going there.
 
 ### Once, in App Store Connect
 

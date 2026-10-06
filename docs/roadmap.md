@@ -60,14 +60,17 @@ The apps are in English and Chinese; the Android app carries fifteen more locale
 
 - **An open evaluation suite.** The hands' failures above, turned into a fixed set of phone and computer tasks anyone can run, with the simulated phone from the showcase ([showcase.md](showcase.md), `demo/mobilegym/`) as the harness. A number per release, not an impression.
 - **A hands model of our own, on open data.** The traces people choose to contribute (*Data controls*, [privacy.md](privacy.md)) are the training set; the evaluation suite is the yardstick. Small, open weights, good at Chinese apps.
+- **Provenance on every line of memory.** Each fact the agent keeps should say which model wrote it, when, and how sure it was, so that a wrong memory can be traced and a doubtful one shown as doubtful.
 - **Shareable skills.** A skill is a folder today (`nanomuse/skills/`); it should be something you can hand to a friend, install from a link, and trust because its risk is declared.
 - **More devices as hands.** A browser extension so the agent can act in your signed-in browser; a watch for the shortest front door; the car and the home as places the agent can see and act. Each is a new client of the hub ([hub.md](hub.md)), not a new agent.
+- **A gadget as a device.** A small board over Bluetooth that speaks a few hub frames — a light to turn on, a sensor to read — as the first step towards the physical world below.
 
 ## Later — looking up
 
 - **The physical world.** The hub frames already carry *look*, *act* and *ask*; a robot arm or a camera is one more device. We do not know yet what a personal agent should be allowed to do with a body.
 - **An agent that lasts years.** Memory that grows for a decade without becoming noise; a face and a name that stay yours through model changes; an export you could move to another runtime.
 - **Legible personal data.** Everything the agent knows about you readable as plain files, understood by other programs too, so the agent is a view onto your data rather than the owner of it.
+- **Evaluating personal agents.** The suites above score tasks; a personal agent is also judged by whether it knows you and whether it asked at the right moments. We do not have a way to measure that yet.
 
 ## Where the code is
 

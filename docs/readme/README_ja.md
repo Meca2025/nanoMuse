@@ -18,14 +18,15 @@
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="GitHub スター"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="ダウンロード数"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="ドキュメント"></a>
+  <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/%E8%A9%A6%E3%81%97%E3%81%A6%E3%81%BF%E3%82%8B-demo.nanomuse.dev-0a66e4" alt="ブラウザで試す"></a>
+  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%E5%85%AC%E5%BC%8F%E3%82%B5%E3%82%A4%E3%83%88-nanomuse.cn-0a66e4" alt="公式サイト"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 **nanoMuse は、あなたのすべてのデバイスのためのオープンソースのパーソナルエージェントです。** 名前と姿を持つひとりのエージェント。Meta の [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) と同じ種類のもので、質問に答えるのではなく実際に手を動かし、アプリを閉じても働き続け、あなたのことを覚えていて、取り消せない操作の前には立ち止まって尋ねます。
 
-*nano* は、自分で動かして自分で配備できるくらい小さい、ひとそろいの完全なセットという意味です。スマホアプリ、デスクトップアプリ、ウェブコンソール、そしてそれらをつなぐリレーが、すべてこのリポジトリに GPL-3.0-or-later で入っています。nanoMuse は非営利です。サインインするとコミュニティのリレーでモデルを使える無料枠がもらえます。費用は開発者が負担しています。使い切ったら[自分のキーに切り替えて](../own-key.md)ください。同じリレーは自分のサーバーでも動くので、データを外に出さないこともできます。最新版は **0.1.40 Clear** — [リリースノート](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [ブラウザで試す](https://nanomuse.cn/web/)。
+*nano* は、自分で動かして自分でデプロイできるほど小さな、ひとそろいのセットという意味です。スマホアプリ、デスクトップアプリ、ウェブコンソール、そしてそれらをつなぐリレーが、すべてこのリポジトリに GPL-3.0-or-later で入っています。**[無料、オープンソース、非営利——いっしょに作っていきましょう。](../../CONTRIBUTING.md)** サインインするとコミュニティのリレーでモデルを使える無料枠がもらえます。費用は開発者が負担しています。使い切ったら[自分のキーに切り替えて](../own-key.md)ください。同じリレーは自分のサーバーでも動くので、データを外に出さないこともできます。最新版は **0.1.40 Clear** — [リリースノート](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [ブラウザで試す](https://demo.nanomuse.dev/)。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="チャット: ワークスペース内を削除する前にエージェントが立ち止まって尋ねる — 一度だけ、このチャット、ワークスペースでは常に許可、または拒否">
@@ -38,21 +39,22 @@
 
 | | |
 |---|---|
+| **ブラウザ** | [demo.nanomuse.dev](https://demo.nanomuse.dev/) — サインインすると、シミュレートしたスマホの上で nanoMuse が動きます。これはデモで、本物は下のアプリです |
 | **Android** 8.0 以上、arm64 | [nanoMuse-0.1.40-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-0.1.40-arm64.apk) — すべてのバージョンが同じ鍵で署名され、上書きインストールできます |
-| **iPhone / iPad** | TestFlight、現在は内部テスターのみ <!-- coordinator: 公開 TestFlight リンクができたらここに --> |
+| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc) — ベータ版。Apple のベータ審査が通り次第、このリンクからビルドが届きます · [iOS](../ios.md) |
 | **macOS** 12 以上 | [Apple シリコン](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-x64.dmg) — 公証なし。初回は右クリック → 「開く」 |
 | **Windows** 10 以上 | [nanoMuse-Desktop-0.1.40-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-win-x64.exe) — 一度だけ「実行」を押してください |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.tar.gz) |
 | **Docker** | `bash scripts/self-host.sh --local` で自分のリレーを、`docker compose up -d app` で自分のサーバーにウェブアプリを — [セルフホスティング](../self-hosting.md) |
 
-ダウンロードはすべて [GitHub の最新リリース](https://github.com/nano-muse/nanoMuse/releases/latest)から。GitHub が遅い地域では同じファイルが [nanomuse.cn/dl](https://nanomuse.cn/dl/) にあります。アプリを開き、メールアドレスか中国本土の携帯番号でサインインすれば、エージェントは考えるためのモデルを持ちます。スマホ、デスクトップ、ウェブはひとつのアカウントを共有し、同じ会話が見えます。
+ダウンロードはすべて [GitHub の最新リリース](https://github.com/nano-muse/nanoMuse/releases/latest)から。GitHub が遅い地域では同じファイルが [nanomuse.cn/dl](https://nanomuse.cn/dl/) にあります。アプリを開き、メールアドレスか中国本土の携帯番号でサインインすれば、エージェントが使うモデルが用意されます。スマホ、デスクトップ、ウェブはひとつのアカウントを共有し、同じ会話が見えます。
 
 ## できること
 
 <table>
   <tr>
-    <td width="50%" valign="top"><b>実際に手を動かす。</b><br>Linux シェル、ブラウザ、MCP サーバー、スキル。さらに <i>Hands</i> をオンにすれば、API が一度も存在しなかったものに向けて、スマホのアプリやパソコンのウィンドウを画面越しに操作します。</td>
-    <td width="50%" valign="top"><b>先に尋ねる。</b><br>削除、送信、支払いの前に一度止まり、「一度だけ / このチャット / 常に」として記憶します。パスワードや認証コードはあなたが入力します。ログインや CAPTCHA はあなたに引き渡され、「完了」で再開します。</td>
+    <td width="50%" valign="top"><b>実際に手を動かす。</b><br>Linux シェル、ブラウザ、MCP サーバー、スキル。さらに <i>Hands</i> をオンにすれば、API のないものでも、スマホのアプリやパソコンのウィンドウを画面越しに操作します。</td>
+    <td width="50%" valign="top"><b>先に尋ねる。</b><br>削除、送信、支払いの前に一度止まり、「一度だけ / このチャット / 常に」として記憶します。パスワードや認証コードはあなたが入力します。ログインや CAPTCHA はあなたに任せ、「完了」を押すと再開します。</td>
   </tr>
   <tr>
     <td width="50%" valign="top"><b>他のデバイスに届く。</b><br>スマホで言えば PC で実行されます。メッセージの先頭に <code>@Mac …</code> と書くとそのマシンへ送られます。承認は手元のデバイスに戻ってきます。</td>
@@ -60,7 +62,7 @@
   </tr>
   <tr>
     <td width="50%" valign="top"><b>あなたを覚えている。</b><br>自分が何者か、あなたについて何を知っているか、いつ起きるかは、読めて編集できる Markdown ファイルです。</td>
-    <td width="50%" valign="top"><b>チャットアプリの中に住む。</b><br>飞书、钉钉、企业微信、Telegram で返事をします。</td>
+    <td width="50%" valign="top"><b>チャットアプリの中にいる。</b><br>飞书、钉钉、企业微信、Telegram で返事をします。</td>
   </tr>
   <tr>
     <td width="50%" valign="top"><b>自分の姿。</b><br>言葉で描写すれば画像モデルが描き、動画モデルが動かします。デフォルトは小さなドラゴン。</td>
@@ -88,6 +90,14 @@
 | モデル | Meta のもの | 自分で用意 | リレーの無料枠、または自分のもの |
 | ライセンス | クローズド | GPL-3.0 | GPL-3.0-or-later、OpenMinis の上に構築 |
 
+## ニュース
+
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — iPhone の入力欄がまた見えるようになり、スマホ上の各チャットはそのアカウントのものになり、リレーからの拒否はどのクライアントでも分かりやすい一文かカードで表示されます。Mac は画面の実際の画像を撮るか、撮れない理由を伝えます。Windows はアプリの場所を移したアップデートの後も起動し、リレーのコンソールに「コントロール」「統計」「サイト」のページが加わりました。
+- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — 十八社のプロバイダーのカタログから自分のキーを設定、ChatGPT プランでサインイン、端末にはサインイン中のアカウントの会話だけが表示されます。
+- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — サイドチャットは作った端末に留まり、Mac では補助アプリが「手」の権限を持ち、どのアプリも自分のリレーを指せるようになり、ドキュメントがサイトになりました。
+
+すべてのバージョン: [releases](https://github.com/nano-muse/nanoMuse/releases)。
+
 ## ドキュメント
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/) — プラットフォーム別のインストール、すべてのデバイス、Hands、コネクタ、記憶、セルフホスティング、プロトコル。ソースは [docs/](../) に、各バージョンの変更点は [CHANGELOG](../../CHANGELOG.md) と [docs/releases/](../releases/) にあります。
@@ -102,7 +112,7 @@ VPS 1 台、1 時間: [docs/self-hosting.md](../self-hosting.md)。三つの道 
 
 ## 謝辞
 
-nanoMuse は他の人たちの仕事の上に立っています。条件は [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) に。
+nanoMuse は多くの人の成果の上に成り立っています。条件は [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) に。
 
 - [OpenMinis](https://github.com/OpenMinis/OpenMinis) — スマホアプリの土台となったオンデバイスのエージェント。サンドボックスは [proot](https://github.com/nano-muse/proot) と [Alpine Linux](https://alpinelinux.org/)。
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — デスクトップアプリがプラグインとして載っているエージェントハーネス。
