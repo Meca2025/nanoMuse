@@ -375,5 +375,6 @@ a community project with no affiliation — apply unchanged.
 
 The Electron shell around the Python runtime (`desktop/app`, 0.1.19–0.1.29) is gone; what
 it had that the harness does not — the stage, the tray, Quick Chat — comes back here, on
-dsh's seams, as phase 7 proceeds. The terminal binary in `desktop/` stays the
-zero-install fallback.
+dsh's seams, as phase 7 proceeds. The terminal edition that followed it (0.1.30–0.1.38)
+was dropped in 0.1.39: the desktop app is the one desktop shape, and the Python runtime
+stays for self-hosting and the web console.

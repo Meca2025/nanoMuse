@@ -42,8 +42,8 @@ done
 build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
 out="$NM_ROOT/dist/nanoMuse-$version-arm64.apk"
 
-# Every part of the release carries the same version: the runtime, the terminal binary, the
-# desktop app, the web app (the APK is checked by badging below). Packages are named after
+# Every part of the release carries the same version: the runtime, the desktop app, the web
+# app (the APK is checked by badging below). Packages are named after
 # these, so one left behind shows up as a wrong file name on the release.
 echo "== versions"
 versions_ok=1
@@ -52,7 +52,6 @@ check_version() { # file, what grep should find in it
 }
 check_version nanomuse/__init__.py "^__version__ = \"$version\""
 check_version pyproject.toml "^version = \"$version\""
-check_version desktop/nanomuse_desktop/__init__.py "^__version__ = \"$version\""
 check_version web/package.json "\"version\": \"$version\""
 check_version CITATION.cff "^version: $version$"
 check_version harness/dsh-nanomuse/package.json "\"version\": \"$version\""
