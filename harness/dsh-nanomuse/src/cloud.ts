@@ -855,7 +855,7 @@ export default class NanomuseCloud extends Service {
 
   /** What a refusal changes here, besides the card: the account re-read, or forgotten. */
   private refused(refusal: RelayRefusal): void {
-    if (refusal.kind === 'exhausted' || refusal.kind === 'daily_cap') {
+    if (refusal.kind === 'exhausted' || refusal.kind === 'allowance_paused' || refusal.kind === 'daily_cap') {
       this.lastAllowanceCheck = Date.now()
       void this.refresh().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: account not re-read after the refusal: %s', message(error)))
     } else if (refusal.kind === 'signed_out') {

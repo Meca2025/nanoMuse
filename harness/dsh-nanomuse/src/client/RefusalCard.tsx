@@ -7,6 +7,7 @@
  * code in the node, `nanomuse/<kind>`; this seat shadows the harness's and draws the card:
  *
  * - `exhausted`: the allowance card (`AllowanceWays`), with the figures from `/me`, and *Try again*;
+ *   `allowance_paused` (relay 0.22) the same card, saying the allowance is paused, not spent;
  * - `too_large`: one sentence and *New chat*;
  * - `signed_out`: one sentence and *Sign in*; the others one sentence and *Try again*.
  *
@@ -43,6 +44,8 @@ export function refusalText(t: Translate, kind: RefusalKind, message: string, re
   switch (kind) {
     case 'exhausted':
       return t('awExhausted')
+    case 'allowance_paused':
+      return t('rfAllowancePaused')
     case 'too_large':
       return t('rfTooLarge')
     case 'signed_out':
@@ -59,6 +62,12 @@ export function refusalText(t: Translate, kind: RefusalKind, message: string, re
       return t('rfRelayDown')
     case 'unreachable':
       return t('rfUnreachable')
+    case 'service_paused':
+      return t('rfServicePaused')
+    case 'sync_paused':
+      return t('rfSyncPaused')
+    case 'hub_paused':
+      return t('rfHubPaused')
     case 'other':
       return message || t('rfOther')
   }
@@ -137,9 +146,9 @@ export function makeTurnError(t: Translate, deps: RefusalDeps) {
         }
       })
 
-    if (kind === 'exhausted') {
+    if (kind === 'exhausted' || kind === 'allowance_paused') {
       return h('div', { ref, className: 'nm-refusal nm-card', role: 'note', 'data-testid': 'nm-refusal', 'data-kind': kind },
-        h(ExhaustedBody, { t }),
+        h(ExhaustedBody, { t, paused: kind === 'allowance_paused' }),
         h('div', { className: 'nm-refusal-actions', style: row }, actionsOf(refusalCard(kind).actions)))
     }
     if (kind) {
@@ -162,12 +171,12 @@ export function makeTurnError(t: Translate, deps: RefusalDeps) {
 }
 
 /** The allowance card in the chat: the figures from `/me` (the host re-read the account on the refusal), then the ways on. */
-function ExhaustedBody({ t }: { t: Translate }): ReactNode {
+function ExhaustedBody({ t, paused }: { t: Translate; paused: boolean }): ReactNode {
   const [sheet, setSheet] = useState<AccountSheet | undefined>()
   useEffect(() => {
     let alive = true
     call<AccountSheet>('me').then((me) => { if (alive) setSheet(me) }).catch(() => undefined)
     return () => { alive = false }
   }, [])
-  return h(Fragment, null, h(AllowanceWays, { t, info: allowanceInfo(sheet), exhausted: true, ...(sheet ? { sheet } : {}) }))
+  return h(Fragment, null, h(AllowanceWays, { t, info: allowanceInfo(sheet), exhausted: true, ...(paused ? { lead: t('rfAllowancePaused') } : {}), ...(sheet ? { sheet } : {}) }))
 }

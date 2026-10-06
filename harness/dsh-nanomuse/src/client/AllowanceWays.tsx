@@ -76,6 +76,8 @@ export interface AllowanceWaysProps {
   sheet?: AccountSheet
   /** true: the pool is spent (the card leads with that); false: the 80 % heads-up. */
   exhausted: boolean
+  /** The lead sentence instead of the one `exhausted` picks (relay 0.22: the allowance paused, not spent). */
+  lead?: string | undefined
   /** In Settings → nanoMuse Cloud the key rows and the sign-in are on the page already: the card points up instead of drawing them again. */
   inSettings?: boolean
   onChanged?(): void
@@ -101,7 +103,7 @@ export function AllowanceHeadsUp({ t }: { t: Translate }): ReactNode {
 }
 
 /** The three ways on, and the star once. */
-export function AllowanceWays({ t, info, sheet, exhausted, inSettings = false, onChanged }: AllowanceWaysProps): ReactNode {
+export function AllowanceWays({ t, info, sheet, exhausted, lead, inSettings = false, onChanged }: AllowanceWaysProps): ReactNode {
   const zh = t('langTag') === 'zh'
   const bonus = info.inviteBonusCny ?? 5
   const docs = info.ownKeyDocs || info.guidance?.docs || OWN_KEY_DOCS
@@ -147,7 +149,7 @@ export function AllowanceWays({ t, info, sheet, exhausted, inSettings = false, o
   const changed = () => onChanged?.()
 
   return h('div', { className: 'nm-ways nm-allowance', 'data-testid': 'nm-allowance-ways' },
-    h('div', { className: 'nm-ways-lead' }, exhausted ? t('awExhausted') : t('awNearlyOut', { left: (info.left ?? 0).toFixed(2), grant: (info.grant ?? 0).toFixed(0) })),
+    h('div', { className: 'nm-ways-lead' }, lead ?? (exhausted ? t('awExhausted') : t('awNearlyOut', { left: (info.left ?? 0).toFixed(2), grant: (info.grant ?? 0).toFixed(0) }))),
     h('div', { className: 'nm-way-sub nm-wrap', style: muted }, t('awThreeWays')),
     // 1. your own key
     h('div', { className: 'nm-way' },

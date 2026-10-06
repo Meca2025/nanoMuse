@@ -144,6 +144,32 @@ test('daily_cap and an account the relay disabled keep the relay’s own sentenc
   assert.match(disabled, />Open Settings → nanoMuse Cloud</)
 })
 
+test('relay 0.22: the allowance paused by the operator — the same card, saying paused rather than used up; service, sync and hub paused — one sentence and Try again', () => {
+  const paused = render('en', nodeFor(429, { ...EXHAUSTED, message: 'The free allowance is paused on this relay for now, so the shared models are not answering.', paused: true, reason: 'allowance_paused', left: 7.5 }, 'RATE_LIMIT'))
+  assert.match(paused, /data-kind="allowance_paused"/)
+  assert.match(paused, /The free allowance is paused on this relay for now, not used up\./)
+  assert.doesNotMatch(paused, /The free allowance is used up\./)
+  assert.match(paused, /Three ways on/)
+  assert.match(paused, /Use your own model key/)
+  assert.match(paused, />Try again</)
+  assert.doesNotMatch(paused, /429|allowance_exhausted|reason|[{}]/)
+  const pausedZh = render('zh', nodeFor(429, { ...EXHAUSTED, paused: true, reason: 'allowance_paused' }, 'RATE_LIMIT'))
+  assert.match(pausedZh, /暂时停发了免费额度，不是用完了/)
+  assert.doesNotMatch(pausedZh, /免费额度已用完。/)
+
+  const service = render('en', nodeFor(503, { message: 'nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later.', code: 'service_paused', paused: true }, 'SERVER'))
+  assert.match(service, /data-kind="service_paused"/)
+  assert.match(service, /nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept\./)
+  assert.match(service, />Try again</)
+  assert.doesNotMatch(service, /503|did not answer|The relay said/)
+  const sync = render('zh', nodeFor(503, { message: 'Conversation sync is paused …', code: 'sync_paused', paused: true }, 'SERVER'))
+  assert.match(sync, /暂时停止了对话同步/)
+  assert.match(sync, />再试一次</)
+  const hub = render('en', nodeFor(503, { message: 'The device hub is paused …', code: 'hub_paused', paused: true }, 'SERVER'))
+  assert.match(hub, /The device hub is paused on this relay for now; each device keeps working on its own\./)
+  assert.match(hub, />Try again</)
+})
+
 test('another provider’s failure (an own key): a plain sentence by the harness code, the raw text folded away', () => {
   const auth = render('en', { kind: 'turn-error', data: { message: '401: {"error":{"message":"Incorrect API key provided"}}', code: 'AUTH' } })
   assert.match(auth, /data-kind="provider-auth"/)

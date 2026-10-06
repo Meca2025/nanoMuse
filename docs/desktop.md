@@ -100,6 +100,11 @@ status code or the JSON body:
 | `429 daily_cap` (a relay that sets a daily share) | *Today's share of the allowance is used up. It resets tomorrow.* | *Try again* |
 | `404 model_not_offered` | *nanoMuse Cloud does not offer that model any more.* | *Open Settings → nanoMuse Cloud* |
 | `5xx`, or no answer at all (connection refused, timeout) | *nanoMuse Cloud did not answer.* / *Could not reach nanoMuse Cloud. Check the connection and try again.* | *Try again* |
+| `429 allowance_exhausted` with `paused: true` (relay 0.22: the operator paused the free allowance, [cloud.md](cloud.md#controls)) | the same allowance card, led by *The free allowance is paused on this relay for now, not used up. Your sign-in, your devices and what is left stay as they are.* | the ways on, *Try again* |
+| `503 service_paused` | *nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later.* | *Try again* |
+| `503 sync_paused` | *Conversation sync is paused on this relay for now; what is stored is kept and your devices keep working on their own.* | *Try again* |
+| `503 hub_paused` | *The device hub is paused on this relay for now; each device keeps working on its own.* | *Try again* |
+| `403 signup_closed` (at sign-in only) | the relay's own sentence — *New sign-ups are paused on this relay for now; existing accounts keep working.* | *Open Settings → nanoMuse Cloud* |
 
 A refusal is not retried: before 0.1.40 the harness took the relay's `429` for a rate
 limit and tried five more times (about twenty seconds) before the raw reply appeared; now

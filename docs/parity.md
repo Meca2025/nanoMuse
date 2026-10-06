@@ -35,7 +35,8 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | "Ways on" from the catalogue: the region's lead first, *more providers*, the plans one can sign in with, the key taken inline | ✓ 0.1.39 | — *(32)* | ✓ 0.1.39 Settings → Account, the own-key first-run step | ✓ 0.1.39 |
 | The ways read from the relay's `spend.guidance` (providers for the region, plans, caveats, docs) rather than a list in the app; the bundled catalogue only when the relay sends none | ◐ 0.1.39 the bundled catalogue; `guidance` not read *(34)* | — *(32)* | ✓ 0.1.40 the chat card and Settings → nanoMuse Cloud, one component | ✓ 0.1.39 |
 | A refused turn (`429 allowance_exhausted`) is a card under it in the chat: one sentence, the three ways on, *Open Settings*, *Try again* — never the relay's reply as text | ✓ 0.1.39 `AllowanceWaysCard` | — upstream's error text *(33)* | ✓ 0.1.40 *(before: the JSON, after five retries as a rate limit)* | ✓ 0.1.39 notice with the ways |
-| The relay's other refusals as one sentence and a button: 413 *too large* → *New chat*, 401 → *Sign in*, 403, 429 busy (with the wait), the daily cap, 404 model, 5xx / no answer → *Try again*; never a status code or JSON | ◐ `describe`: bad key · daily cap · rate limit · unreachable · disabled; no 413 *(35)* | ◐ the same list, no 413; a refused chat turn shows upstream's text *(35)* | ✓ 0.1.40 | ◐ `failures.py`: allowance · daily cap · rate limit · bad key · disabled · model · upstream; 413 and the other 429s fall through to *The model provider answered with an error: …* *(35)* |
+| The relay's other refusals as one sentence and a button: 413 *too large* → *New chat*, 401 → *Sign in*, 403, 429 busy (with the wait), the daily cap, 404 model, 5xx / no answer → *Try again*; never a status code or JSON | ◐ `describe`: bad key · daily cap · rate limit · unreachable · disabled; no 413, `not_invited`, `too_many_in_flight`, `provider_busy` *(35)* | ◐ the same list, no 413; a refused chat turn shows upstream's text *(35)* | ✓ 0.1.40 | ✓ 0.1.40 `failures.py` (413, `not_invited`, `too_many_in_flight`, `provider_busy` added) |
+| The operator's switches (relay 0.22, [cloud.md](cloud.md#controls)) as plain sentences: the allowance *paused, not used up* (the same card), `service_paused`, `sync_paused`, `hub_paused`, `signup_closed` at sign-in | ◐ the relay's own sentence shown; the allowance card says *used up* *(35)* | ◐ the same *(35)* | ✓ 0.1.40 | ✓ 0.1.40 |
 | Sign in with a ChatGPT plan — chat and the hands' screen reading only, with the line about OpenAI's terms | ✓ 0.1.39 upstream's sign-ins (also Claude, Kimi, OpenRouter) | — *(32)* | ✓ 0.1.39 through the bundled runtime | ✓ 0.1.39 the runtime's `nanomuse chatgpt login` |
 | A capability nobody configured has is one sentence naming who could (pictures, clips, the screen), never a raw error | ✓ 0.1.39 | — *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
 | Conversations belong to the account that synced them: another account's stay on the device, hidden, never pushed under the new key; a switch restarts the pull (contract C10) | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 the runtime's lists |
@@ -283,14 +284,17 @@ notes above; a settled item keeps its number and says how it went.
     caveats) and the card ignores it. *Proposal:* prefer `guidance` when the relay sends it, fall
     back to the catalogue — the web and the desktop already do; a few dozen lines in
     `AllowanceWaysCard.kt` and `NanoMuseCloud.kt`.
-35. **Phones and web · 413 and the remaining refusals.** The phones' `describe` and the runtime's
-    `failures.py` know the allowance, the daily cap, the rate limit, a bad key, a disabled account
-    and the upstream's trouble, but not `too_large` (413), `not_invited`, `too_many_in_flight` or
-    `provider_busy` — those reach the person as upstream's text or *The model provider answered
-    with an error: …* followed by the body. *Proposal:* the four codes in all three places with the
-    desktop's sentences (`harness/dsh-nanomuse/src/refusals.ts` is the reference), the 413 sentence
-    pointing at *New chat*; on iOS route a refused chat turn through `describe` too. Strings per
-    locale on the phones.
+35. **Phones · 413, the remaining refusals and the operator's switches.** The phones' `describe`
+    knows the allowance, the daily cap, the rate limit, a bad key, a disabled account and the
+    upstream's trouble, but not `too_large` (413), `not_invited`, `too_many_in_flight` or
+    `provider_busy`, nor relay 0.22's `service_paused`, `sync_paused`, `hub_paused`,
+    `signup_closed` and `allowance_exhausted` with `paused: true` (the allowance card says *used
+    up* where the relay says *paused*) — those reach the person as upstream's text or the relay's
+    English sentence. Settled for the web and the desktop in 0.1.40 (`nanomuse/server/failures.py`,
+    `harness/dsh-nanomuse/src/refusals.ts` — the reference sentences, en and zh). *Proposal:* the
+    nine codes in both `describe`s with those sentences, the 413 one pointing at *New chat*, the
+    paused allowance as a different lead on the same card; on iOS route a refused chat turn
+    through `describe` too. Strings per locale on the phones.
 36. **Voice on the desktop and the web.** Dictation leans on the Web Speech API, which the
     Electron shell does not ship (it is Google's service inside Chrome), so the desktop opens the
     Dictation page and the web works only in browsers that have it; neither reads a reply aloud.

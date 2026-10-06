@@ -17,6 +17,8 @@
 export type RefusalKind =
   /** 429 `allowance_exhausted`, 402 `out_of_tokens`: the pool is spent. */
   | 'exhausted'
+  /** 429 `allowance_exhausted` with `paused: true` (relay 0.22): the free allowance switched off by the operator, not spent — the same card, other words. */
+  | 'allowance_paused'
   /** 413 (the relay's `too_large`, or the proxy's plain `Request too large`); a 400 about the context window. */
   | 'too_large'
   /** 401: the key was retired elsewhere; sign in again. */
@@ -33,10 +35,19 @@ export type RefusalKind =
   | 'relay_down'
   /** No HTTP answer at all: connection refused, DNS, timeout. */
   | 'unreachable'
+  /** 503 `service_paused` (relay 0.22): the operator paused the relay; nothing is lost. */
+  | 'service_paused'
+  /** 503 `sync_paused` (relay 0.22): conversation sync is off for now; the devices work on their own. */
+  | 'sync_paused'
+  /** 503 `hub_paused` (relay 0.22): the device hub is off for now; each device works on its own. */
+  | 'hub_paused'
   /** Any other refusal: the relay's own sentence is shown. */
   | 'other'
 
-export const REFUSAL_KINDS: readonly RefusalKind[] = ['exhausted', 'too_large', 'signed_out', 'disabled', 'daily_cap', 'busy', 'model', 'relay_down', 'unreachable', 'other']
+export const REFUSAL_KINDS: readonly RefusalKind[] = ['exhausted', 'allowance_paused', 'too_large', 'signed_out', 'disabled', 'daily_cap', 'busy', 'model', 'relay_down', 'unreachable', 'service_paused', 'sync_paused', 'hub_paused', 'other']
+
+/** The operator's switches (relay 0.22, `docs/cloud.md` → Controls): the code is the kind. */
+const PAUSED_CODES: Record<string, RefusalKind> = { service_paused: 'service_paused', sync_paused: 'sync_paused', hub_paused: 'hub_paused' }
 
 /** One refusal, read from the adapter's failure line. */
 export interface RelayRefusal {
@@ -58,6 +69,8 @@ export interface RelayRefusal {
   guidance?: Record<string, unknown>
   /** `retry_after` in seconds, when the relay said when to come back. */
   retryAfterMs?: number
+  /** Relay 0.22: the refusal comes from one of the operator's switches, not from use (`paused: true`). */
+  paused?: boolean
 }
 
 /** The failure codes the host writes; the client reads the kind back out of them. */
@@ -101,8 +114,10 @@ function errorObject(json: string): Record<string, unknown> | undefined {
 }
 
 /** The kind for a status, a code and the relay's sentence. */
-export function classifyRefusal(status: number, code: string, message: string): RefusalKind {
+export function classifyRefusal(status: number, code: string, message: string, paused = false): RefusalKind {
+  if (code === 'allowance_exhausted' && paused) return 'allowance_paused'
   if (code === 'allowance_exhausted' || code === 'out_of_tokens') return 'exhausted'
+  if (PAUSED_CODES[code]) return PAUSED_CODES[code]
   if (status === 413 || code === 'too_large') return 'too_large'
   if (status === 400 && CONTEXT.test(message)) return 'too_large'
   if (status === 401) return 'signed_out'
@@ -136,7 +151,9 @@ export function parseRelayFailure(message: string, code?: string): RelayRefusal 
   const err = rest.startsWith('{') ? errorObject(rest) : undefined
   const relayCode = str(err?.code) || `http_${status}`
   const text = err ? str(err.message) : rest.replace(/^status code \(no body\)$/, '')
-  const refusal: RelayRefusal = { kind: classifyRefusal(status, relayCode, text), status, code: relayCode, message: text }
+  const paused = err?.paused === true
+  const refusal: RelayRefusal = { kind: classifyRefusal(status, relayCode, text, paused), status, code: relayCode, message: text }
+  if (paused) refusal.paused = true
   if (err) {
     const left = num(err.left)
     const grant = num(err.grant)
@@ -160,6 +177,8 @@ export function refusalSentence(refusal: RelayRefusal): string {
   switch (refusal.kind) {
     case 'exhausted':
       return 'The free allowance is used up. Add a key of your own, sign in with a plan you already pay for, or invite a friend — under Settings → nanoMuse Cloud. Your sign-in and your devices keep working.'
+    case 'allowance_paused':
+      return 'The free allowance is paused on this relay for now, not used up. Add a key of your own or sign in with a plan you already pay for — under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are.'
     case 'too_large':
       return 'That message is too large for the model. Shorten it, leave out some attachments, or start a new chat.'
     case 'signed_out':
@@ -176,6 +195,12 @@ export function refusalSentence(refusal: RelayRefusal): string {
       return 'nanoMuse Cloud did not answer. Try again in a moment.'
     case 'unreachable':
       return 'Could not reach nanoMuse Cloud. Check the connection and try again.'
+    case 'service_paused':
+      return 'nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later.'
+    case 'sync_paused':
+      return 'Conversation sync is paused on this relay for now; what is stored is kept and your devices keep working on their own.'
+    case 'hub_paused':
+      return 'The device hub is paused on this relay for now; each device keeps working on its own.'
     case 'other':
       return refusal.message || 'nanoMuse Cloud could not complete the request.'
   }
@@ -220,6 +245,7 @@ export type RefusalAction = 'ways' | 'sign-in' | 'retry' | 'new-chat' | 'setting
 export function refusalCard(kind: RefusalKind): { actions: RefusalAction[]; showRelayText: boolean } {
   switch (kind) {
     case 'exhausted':
+    case 'allowance_paused':
       return { actions: ['ways', 'retry'], showRelayText: false }
     case 'too_large':
       return { actions: ['new-chat'], showRelayText: false }
@@ -235,6 +261,9 @@ export function refusalCard(kind: RefusalKind): { actions: RefusalAction[]; show
       return { actions: ['settings'], showRelayText: false }
     case 'relay_down':
     case 'unreachable':
+    case 'service_paused':
+    case 'sync_paused':
+    case 'hub_paused':
       return { actions: ['retry'], showRelayText: false }
     case 'other':
       return { actions: ['retry', 'settings'], showRelayText: true }

@@ -4,7 +4,7 @@
 // and what is left alone (another provider's words, the codes the harness itself acts on).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyRefusal, parseRelayFailure, providerFailureKind, refusalCard, refusalCode, refusalKindOf, refusalSentence, relayFailure, REFUSAL_PREFIX } from '../lib/refusals.js'
+import { classifyRefusal, parseRelayFailure, providerFailureKind, refusalCard, refusalCode, refusalKindOf, refusalSentence, relayFailure, REFUSAL_KINDS, REFUSAL_PREFIX } from '../lib/refusals.js'
 
 /** The relay's `error_response(...)` body, as `pi-ai` prints it: `<status>: <inner error object>`. */
 function relayLine(status, inner) {
@@ -133,6 +133,48 @@ test('the rewritten failure: our code (never retried), our sentence, the relay�
   assert.equal(down?.failure.status, undefined)
 })
 
+test('relay 0.22: the operator’s switches — the allowance paused (not spent) keeps the card, says paused, is not retried; service, sync and hub paused are one sentence each', () => {
+  // the Free allowance switch: the exhausted shape plus two flags; what is left is not zero
+  const paused = parseRelayFailure(relayLine(429, { ...EXHAUSTED, message: 'The free allowance is paused on this relay for now, so the shared models are not answering. …', paused: true, reason: 'allowance_paused', left: 7.5 }), 'RATE_LIMIT')
+  assert.equal(paused.kind, 'allowance_paused')
+  assert.equal(paused.paused, true)
+  assert.equal(paused.left, 7.5)
+  assert.deepEqual(paused.guidance, GUIDANCE)
+  assert.match(refusalSentence(paused), /paused on this relay for now, not used up/)
+  assert.doesNotMatch(refusalSentence(paused), /^The free allowance is used up/)
+  assert.deepEqual(refusalCard('allowance_paused').actions, ['ways', 'retry'])
+  const seen = relayFailure({ message: relayLine(429, { ...EXHAUSTED, paused: true, reason: 'allowance_paused' }), code: 'RATE_LIMIT' })
+  assert.equal(seen.failure.code, 'nanomuse/allowance_paused')
+  assert.equal(refusalKindOf(seen.failure.code), 'allowance_paused')
+  // `paused: false` (or absent) is the spent pool as before
+  assert.equal(parseRelayFailure(relayLine(429, { ...EXHAUSTED, paused: false }), 'RATE_LIMIT').kind, 'exhausted')
+  assert.equal(classifyRefusal(429, 'allowance_exhausted', '', false), 'exhausted')
+
+  // the Cloud service, Conversation sync and Device hub switches: 503 with the code, not "relay down"
+  const service = parseRelayFailure(relayLine(503, { message: 'nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later.', code: 'service_paused', paused: true }), 'SERVER')
+  assert.equal(service.kind, 'service_paused')
+  assert.equal(service.paused, true)
+  assert.match(refusalSentence(service), /paused by its operator for now; your sign-in and your data are kept/)
+  const sync = parseRelayFailure(relayLine(503, { message: 'Conversation sync is paused on this relay for now; …', code: 'sync_paused', paused: true }), 'SERVER')
+  assert.equal(sync.kind, 'sync_paused')
+  assert.match(refusalSentence(sync), /^Conversation sync is paused on this relay for now/)
+  const hub = parseRelayFailure(relayLine(503, { message: 'The device hub is paused on this relay for now; each device keeps working on its own.', code: 'hub_paused', paused: true }), 'SERVER')
+  assert.equal(hub.kind, 'hub_paused')
+  assert.match(refusalSentence(hub), /^The device hub is paused on this relay for now/)
+  for (const kind of ['service_paused', 'sync_paused', 'hub_paused']) {
+    assert.deepEqual(refusalCard(kind), { actions: ['retry'], showRelayText: false }, kind)
+    const rewritten = relayFailure({ message: relayLine(503, { message: 'x', code: kind, paused: true }), code: 'SERVER' })
+    assert.equal(rewritten.failure.code, `nanomuse/${kind}`, kind) // not SERVER: the harness does not retry it
+    assert.equal(rewritten.failure.status, 503)
+  }
+  // a 503 without one of those codes is still "the relay did not answer"
+  assert.equal(parseRelayFailure(relayLine(503, { message: 'x', code: 'upstream_unconfigured' }), 'SERVER').kind, 'relay_down')
+  // sign-ups closed (403 at sign-in) is read as a 403 with the relay's own sentence shown
+  const closed = parseRelayFailure(relayLine(403, { message: 'New sign-ups are paused on this relay for now; existing accounts keep working. Try again later.', code: 'signup_closed' }), 'AUTH')
+  assert.equal(closed.kind, 'disabled')
+  assert.equal(refusalSentence(closed), 'New sign-ups are paused on this relay for now; existing accounts keep working. Try again later.')
+})
+
 test('the code round-trips to the kind for the client; anything else is not ours', () => {
   assert.equal(refusalKindOf('nanomuse/too_large'), 'too_large')
   assert.equal(refusalKindOf('nanomuse/nope'), undefined)
@@ -141,7 +183,7 @@ test('the code round-trips to the kind for the client; anything else is not ours
 })
 
 test('each kind has one plain sentence — no status, no JSON — and the relay’s own words where they add', () => {
-  for (const kind of ['exhausted', 'too_large', 'signed_out', 'disabled', 'daily_cap', 'busy', 'model', 'relay_down', 'unreachable', 'other']) {
+  for (const kind of REFUSAL_KINDS) {
     const text = refusalSentence({ kind, status: 429, code: 'x', message: '' })
     assert.ok(text.length > 10, kind)
     assert.doesNotMatch(text, /\b(?:401|413|429|5\d\d)\b|[{}]/, kind)
