@@ -164,6 +164,8 @@ def test_chat_request_becomes_a_card_and_the_agent_stays_out(studio_server) -> N
     client, service, fake = studio_server
     assert client.get("/api/avatar").json() == {
         "available": True,
+        "unavailable": "",
+        "unavailable_zh": "",
         "image_model": "draw-1",
         "video_model": "",
         "cloud": False,

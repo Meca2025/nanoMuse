@@ -187,7 +187,7 @@ class NanoMuseApp:
                 logger.warning("llm.api_key refers to a vault secret that is not set: {}", key)
                 key = ""
             llm_settings = llm_settings.model_copy(update={"api_key": key})
-        return create_llm(llm_settings)
+        return create_llm(llm_settings, data_dir=self.settings.data_dir)
 
     def llm_is_cloud(self) -> bool:
         """Whether the chat model is the account: the relay as the endpoint, or the Cloud
@@ -214,9 +214,10 @@ class NanoMuseApp:
         for the rest — so one provider and one key can serve both. With the account and no
         ``[gui]`` model, the relay's hands model is used, not the chat model."""
         gui, llm = self.settings.gui, self.settings.llm
-        key = gui.api_key or (
-            llm.api_key if not gui.base_url or gui.base_url == llm.base_url else ""
-        )
+        # `[gui] provider` may be a catalogue id, which brings its own endpoint
+        gui_base = gui.endpoint
+        own_host = bool(gui_base) and gui_base != llm.endpoint
+        key = gui.api_key or (llm.api_key if not own_host else "")
         if self.vault.has_placeholders(key):
             key = self.vault.resolve(key, strict=False)
             if self.vault.has_placeholders(key):
@@ -225,7 +226,7 @@ class NanoMuseApp:
         merged = LLMSettings(
             provider=gui.provider if gui.model else llm.provider,
             model=self.gui_model(),
-            base_url=gui.base_url or llm.base_url,
+            base_url=gui_base or llm.base_url,
             api_key=key,
             tool_mode="native",
             stream=False,
@@ -233,9 +234,9 @@ class NanoMuseApp:
             temperature=0.0,
             max_tokens=llm.max_tokens,
             timeout=llm.timeout,
-            extra_headers=dict(llm.extra_headers) if not gui.base_url else {},
+            extra_headers=dict(llm.extra_headers) if not own_host else {},
         )
-        return create_llm(merged)
+        return create_llm(merged, data_dir=self.settings.data_dir)
 
     # ------------------------------------------------------------------ tools
     def _build_tools(self) -> ToolCollection:

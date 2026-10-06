@@ -21,14 +21,17 @@ from nanomuse.cloud import DEFAULT_CHAT_MODEL as DEFAULT_CLOUD_MODEL
 from nanomuse.cloud import DEFAULT_GUI_MODEL as DEFAULT_CLOUD_GUI_MODEL
 from nanomuse.cloud import model_url
 from nanomuse.config import (
+    CHATGPT_PROVIDER,
     CalendarFeedSettings,
     ContactSourceSettings,
     MCPServerSettings,
     apply_app_settings,
+    check_provider,
     load_app_settings,
     save_app_settings,
 )
 from nanomuse.contacts import OWN
+from nanomuse.llm.chatgpt import DEFAULT_MODEL as CHATGPT_DEFAULT_MODEL
 from nanomuse.logger import logger
 from nanomuse.schema import Message
 from nanomuse.search import WebSearchProvider
@@ -477,8 +480,16 @@ class Connections:
                 llm[key] = str(body[key]).strip()
         if body.get("base_url") is not None:
             llm["base_url"] = normalize_base_url(llm["base_url"])
-        if llm.get("provider") not in (None, "openai", "openai_responses"):
-            raise ValueError("provider must be 'openai' or 'openai_responses'")
+        if llm.get("provider") not in (None, ""):
+            # a protocol, "chatgpt", or a catalogue id (nanomuse/llm/providers.json)
+            llm["provider"] = check_provider(str(llm["provider"]))
+        if llm.get("provider") == CHATGPT_PROVIDER:
+            # the sign-in has no endpoint and no key of its own; an empty model is Codex's default
+            if body.get("provider") is not None and not llm.get("model"):
+                llm["model"] = CHATGPT_DEFAULT_MODEL
+            if llm.get("base_url"):
+                logger.warning('provider = "chatgpt" ignores base_url; dropped from the slot')
+            llm["base_url"] = ""
         if llm.get("tool_mode") not in (None, "", "auto", "native", "prompt"):
             raise ValueError("tool_mode must be 'auto', 'native' or 'prompt'")
         api_key = body.get("api_key")
@@ -494,6 +505,8 @@ class Connections:
         apply_app_settings(self.settings, {"llm": llm})
         if llm.get("api_key") == "":
             self.settings.llm.api_key = ""
+        if llm.get("provider") == CHATGPT_PROVIDER:
+            self.settings.llm.base_url = None
         self._swap_llm()
         self._publish()
         return self.view()["llm"]

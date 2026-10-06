@@ -25,6 +25,8 @@
     GET  /api/connections                 model, email, browser, MCP servers, vault names
     PUT  /api/connections/llm|embeddings|email|browser|calendar   POST /api/connections/llm|embeddings|email|calendar/test
     POST /api/llm/models                 the models an endpoint offers (live /models, else the catalogue)
+    GET  /api/providers (?lang=en|zh&region=cn|global)  the provider catalogue, which slots use which, what that covers
+    POST /api/chatgpt/login  GET /api/chatgpt/status  POST /api/chatgpt/callback {url}  POST /api/chatgpt/logout
     POST /api/connections/calendar/feeds {name,url}  DELETE /api/connections/calendar/feeds/{name}
     PUT  /api/connections/contacts {enabled}  POST /api/connections/contacts/sources {name,url}
     POST /api/connections/contacts/import?name= (body: the .vcf text)  DELETE /api/connections/contacts/sources/{name}
@@ -75,6 +77,7 @@ from nanomuse.cloud import CloudError
 from nanomuse.coding.service import CodingError
 from nanomuse.config import Settings
 from nanomuse.hub.client import HubError
+from nanomuse.llm.chatgpt import ChatGPTError
 from nanomuse.logger import logger
 from nanomuse.server import tickets
 from nanomuse.server.channels_api import install_channels
@@ -184,6 +187,11 @@ class LLMModelsBody(BaseModel):
     preset: str = ""
     base_url: str = ""
     api_key: str = ""
+
+
+class ChatGptCallbackBody(BaseModel):
+    # the full address the browser landed on: http://localhost:1455/auth/callback?code=…&state=…
+    url: str = Field(min_length=1, max_length=4000)
 
 
 class EmbeddingsBody(BaseModel):
@@ -474,7 +482,9 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     # ------------------------------------------------------------------ threads & chat
     @app.get("/api/threads", dependencies=dep)
     async def list_threads() -> list[dict[str, Any]]:
-        return [t.meta() for t in svc.threads.values()]
+        """The current account's conversations and the ones no account has (contract C10);
+        every local one when signed out."""
+        return [t.meta() for t in svc.visible_threads()]
 
     @app.post("/api/threads", dependencies=dep)
     async def create_thread(body: ThreadBody) -> dict[str, Any]:
@@ -864,6 +874,46 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     async def llm_models(body: LLMModelsBody) -> dict[str, Any]:
         """The models an endpoint offers (its /models, else the preset's catalogue); saves nothing."""
         return await conn.llm_models(body.model_dump())
+
+    # ------------------------------------------------------------------ providers (contract C11)
+    @app.get("/api/providers", dependencies=dep)
+    async def providers(
+        lang: str = Query("", max_length=10), region: str = Query("", max_length=10)
+    ) -> dict[str, Any]:
+        """The catalogue with what each slot uses, the union of what that covers, and one
+        sentence per capability nothing covers (``lang``: en|zh; ``region``: cn|global)."""
+        return svc.providers.view(lang=lang.strip().lower(), region=region.strip().lower())
+
+    # ------------------------------------------------------------------ the ChatGPT sign-in
+    def _chatgpt_http(exc: ChatGPTError) -> HTTPException:
+        status = {"state_mismatch": 400, "bad_callback": 400, "no_login": 409}.get(exc.code, 502)
+        return HTTPException(status, f"{exc.message} ({exc.code})")
+
+    @app.post("/api/chatgpt/login", dependencies=dep)
+    async def chatgpt_login() -> dict[str, Any]:
+        """Start the Codex sign-in (the flow of ``nanomuse chatgpt login``) in the background:
+        the page to open, where the callback is expected; the one under way when there is."""
+        return await svc.chatgpt.login()
+
+    @app.get("/api/chatgpt/status", dependencies=dep)
+    async def chatgpt_status() -> dict[str, Any]:
+        """The token store without the tokens; ``pending`` and ``url`` while a sign-in waits;
+        ``error`` after one failed, until the next login."""
+        return svc.chatgpt.status()
+
+    @app.post("/api/chatgpt/callback", dependencies=dep)
+    async def chatgpt_callback(body: ChatGptCallbackBody) -> dict[str, Any]:
+        """The callback address pasted from the browser's address bar, for a runtime the
+        browser cannot reach on port 1455; a ``state`` that is not the pending login's is 400."""
+        try:
+            return svc.chatgpt.callback(body.url)
+        except ChatGPTError as exc:
+            raise _chatgpt_http(exc) from exc
+
+    @app.post("/api/chatgpt/logout", dependencies=dep)
+    async def chatgpt_logout() -> dict[str, Any]:
+        """Forget the sign-in (and stop one under way); nothing is revoked upstream."""
+        return await svc.chatgpt.logout()
 
     @app.put("/api/connections/embeddings", dependencies=dep)
     async def put_embeddings(body: EmbeddingsBody) -> dict[str, Any]:

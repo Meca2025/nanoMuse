@@ -41,6 +41,18 @@ devices land in a small map (:meth:`working_view`) the web app reads, and leave 
 reply arrives, when the device says done, or ten minutes after ``at``. Presence is best
 effort: never retried, never awaited on the turn's path, errors at debug.
 
+**Whose conversations** (C10). Every local conversation that was ever pushed to, or pulled
+from, an account carries that account's ``id`` (``GET /v1/me`` → ``account.id``) as its
+``owner`` in ``sync.json``; one created while signed out and never synced has none. Signed
+in as B, the list shows B's and the ownerless ones; A's stay on disk, hidden, and are never
+pushed into B's account — an ownerless one becomes B's on its first push. Signed out,
+everything local is shown. When the signed-in account changes, the account-scoped state
+starts over: the cursor goes to 0 (a fresh ``tail`` pull), the presence map and the hub's
+device list are cleared, and the main chat — one conversation per account on the relay — is
+re-homed: the old account's main chat is kept as a hidden thread (``main_of``) and the new
+account's own comes back when it has one, else a fresh one begins. Mappings are kept, so
+switching back shows everything again. Sign-out alone clears nothing but the key.
+
 Nothing here reaches the network when the account is signed out; ``sync_off`` from the
 relay flips the local switch, ``bad_key`` pauses until the next sign-in."""
 
@@ -108,6 +120,11 @@ class ConversationSync:
             "side_chats": bool(svc.settings.sync.side_chats),
             "cids": {},  # thread id → cid
             "titles": {},  # thread id → the title last pushed
+            # C10: thread id → the account (`account.id`) it was synced with; absent = none
+            "owners": {},
+            # C10: account id → the thread that holds that account's main chat while another
+            # account is signed in (hidden; restored as `main` when the account comes back)
+            "mains": {},
         }
         self._load()
         self.client = SyncClient(svc.hub.cloud)
@@ -142,7 +159,7 @@ class ConversationSync:
             for key in ("account_id", "cursor", "enabled", "side_chats"):
                 if key in data:
                     self.state[key] = data[key]
-            for key in ("cids", "titles"):
+            for key in ("cids", "titles", "owners", "mains"):
                 if isinstance(data.get(key), dict):
                     self.state[key] = {str(k): str(v) for k, v in data[key].items()}
 
@@ -183,10 +200,45 @@ class ConversationSync:
                 return self.svc.threads.get(tid)
         return None
 
+    # ------------------------------------------------------------------ whose (C10)
+    @property
+    def account_id(self) -> str:
+        """The account the last sign-in named (``account.id``); "" before any."""
+        return str(self.state.get("account_id") or "")
+
+    def owner_of(self, thread_id: str) -> str:
+        """The account a conversation was synced with, "" when none (never synced)."""
+        return str(self.state["owners"].get(thread_id) or "")
+
+    def visible(self, thread: Thread) -> bool:
+        """Shown in the list (C10): signed in, the current account's and the ownerless ones;
+        signed out, everything. Another account's main chat (``main_of``) is that account's."""
+        if not self.svc.hub.signed_in or not self.account_id:
+            return True
+        if thread.main_of:
+            return thread.main_of == self.account_id
+        owner = self.owner_of(thread.id)
+        return not owner or owner == self.account_id
+
+    def _mine(self, thread: Thread) -> bool:
+        """May move for the signed-in account: its own, or not yet anyone's (C10 rule 3)."""
+        if thread.main_of and thread.main_of != self.account_id:
+            return False
+        owner = self.owner_of(thread.id)
+        return not owner or not self.account_id or owner == self.account_id
+
+    def _adopt(self, thread_id: str) -> None:
+        """The conversation is the signed-in account's from now on (first push or pull)."""
+        if self.account_id and self.state["owners"].get(thread_id) != self.account_id:
+            self.state["owners"][thread_id] = self.account_id
+            self._save()
+
     def _eligible(self, thread: Thread) -> bool:
-        """Synced from here: not a chat for or from another device, and — with side chats
-        off (C9) — the main chat only."""
-        if thread.device or thread.remote_from:
+        """Synced from here: not a chat for or from another device, the signed-in account's
+        or nobody's yet (C10), and — with side chats off (C9) — the main chat only."""
+        if thread.device or thread.remote_from or thread.main_of:
+            return False
+        if not self._mine(thread):
             return False
         return self.side_chats or thread.id == MAIN_THREAD
 
@@ -196,6 +248,7 @@ class ConversationSync:
             cid = new_cid()
             self.state["cids"][thread.id] = cid
             self._save()
+        self._adopt(thread.id)
         return cid
 
     def view(self) -> dict[str, Any]:
@@ -243,16 +296,65 @@ class ConversationSync:
                 self.pull_soon()
 
     def account_changed(self, account_id: str) -> None:
-        """Signed in (again): a different account starts from cursor 0 with fresh cids."""
+        """Signed in (again). A different account (C10 rule 4) starts from cursor 0 — a fresh
+        tail pull — with the presence map and the hub's device list cleared and the main chat
+        re-homed; the mappings of the account that was here before are kept, so switching
+        back shows its conversations again."""
         self._paused = False
         self.last_error = ""
-        if account_id and account_id != str(self.state.get("account_id") or ""):
-            self.state.update(account_id=account_id, cursor=0, cids={}, titles={})
-            self._clear_marks()
+        previous = self.account_id
+        if account_id and account_id != previous:
+            self.state.update(account_id=account_id, cursor=0)
+            self.working.clear()
             self._save()
+            self._rehome_main(previous, account_id)
+            if previous:
+                logger.info("sync: a different account signed in; its conversations are shown")
         if self.active:
             self.pull_soon()
             self.push_soon()
+
+    def _rehome_main(self, previous: str, account_id: str) -> None:
+        """The main chat is one conversation per account (C8), so a new account cannot keep
+        the old one's: the old main chat becomes a hidden thread marked ``main_of`` and the
+        new account's own comes back when it has one, else a fresh one begins. A main chat
+        nobody has synced yet stays — it is nobody's and joins the account on its first push."""
+        main = self.svc.threads.get(MAIN_THREAD)
+        if main is None:
+            return
+        owner = self.owner_of(MAIN_THREAD)
+        restore = str(self.state["mains"].get(account_id) or "")
+        if restore not in self.svc.threads:
+            restore = ""
+        if not restore and (not owner or owner == account_id):
+            # the main chat is this account's, or nobody's yet (it joins on its first push)
+            return
+        if not owner:
+            # text written under the previous account and never synced: it stays with that
+            # account rather than landing in the new one's main chat
+            owner = previous
+        has_text = any(ev.get("type") in ("user", "assistant") for ev in main.timeline.events)
+        archived = self.svc.rehome_main(owner, restore or None, keep=bool(owner and has_text))
+        if archived is not None:
+            # the mappings follow the threads: the old main chat keeps its cid and owner
+            # under its new id, the restored one takes `main` back
+            for key in ("cids", "titles", "owners"):
+                value = self.state[key].pop(MAIN_THREAD, None)
+                if value is not None:
+                    self.state[key][archived.id] = value
+            self.state["owners"][archived.id] = owner
+            self.state["mains"][owner] = archived.id
+        else:
+            for key in ("cids", "titles", "owners"):
+                self.state[key].pop(MAIN_THREAD, None)
+        if restore:
+            self.state["mains"].pop(account_id, None)
+            for key in ("cids", "titles", "owners"):
+                value = self.state[key].pop(restore, None)
+                if value is not None:
+                    self.state[key][MAIN_THREAD] = value
+            self.state["owners"][MAIN_THREAD] = account_id
+        self._save()
 
     def signed_out(self) -> None:
         """The key is gone: nothing more until the next sign-in; what is local stays."""
@@ -263,9 +365,11 @@ class ConversationSync:
 
     def _clear_marks(self) -> None:
         """Every synced event is unsynced again: the next push sends it all (a new account, the
-        switch turned back on, the main chat re-homed)."""
+        switch turned back on, the main chat re-homed). Another account's rows are left as
+        they are (C10): they are not going anywhere from here."""
         for thread in self.svc.threads.values():
-            self._clear_thread_marks(thread)
+            if self._mine(thread):
+                self._clear_thread_marks(thread)
 
     @staticmethod
     def _clear_thread_marks(thread: Thread) -> None:
@@ -386,6 +490,9 @@ class ConversationSync:
     def thread_deleted(self, thread_id: str) -> None:
         cid = self.state["cids"].pop(thread_id, None)
         self.state["titles"].pop(thread_id, None)
+        owner = self.state["owners"].pop(thread_id, None)
+        if owner and self.state["mains"].get(owner) == thread_id:
+            del self.state["mains"][owner]
         self._save()
         for c in [c for c, w in self.working.items() if w.get("thread") == thread_id]:
             del self.working[c]
@@ -747,6 +854,9 @@ class ConversationSync:
             # older relay without `scope`) is left alone, as is a copy already here
             return
         thread = self.thread_of(cid)
+        if thread is not None and not self._mine(thread):
+            # another account's conversation happens to carry this id: not ours to touch
+            return
         if row.get("deleted"):
             if thread is None:
                 return
@@ -774,6 +884,7 @@ class ConversationSync:
                 self.state["titles"][MAIN_THREAD] = main.title
                 self._clear_thread_marks(main)
                 self._save()
+                self._adopt(MAIN_THREAD)
             return
         if thread is not None:
             if title and title != thread.title:
@@ -792,6 +903,7 @@ class ConversationSync:
         self.state["cids"][created.id] = cid
         self.state["titles"][created.id] = created.title
         self._save()
+        self._adopt(created.id)
         self.svc._save_index()
         self.svc.bus.publish({"kind": "thread", "thread": created.meta()})
 
