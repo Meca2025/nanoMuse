@@ -37,6 +37,16 @@ State Builder tab, so their script leaves it alone (`page.js` handles it, readin
 *Start over* — sits beside the phone; below 1280px their chrome folds under the phone and the
 column follows.
 
+**The frame on the project site.** [nanomuse.cn](https://nanomuse.cn/) opens on this page in an
+`<iframe>` of `https://demo.nanomuse.dev/?embed=1`. In that mode the page has no header of its
+own (the site's bar is above it), and the phone is not turned on until the visitor taps its
+screen — so opening the homepage starts nothing, on the server or in the visitor's memory. The
+site passes its language and theme on the first load (`&lang=zh`, `&theme=dark`) and afterwards
+over `postMessage` (`{type: "nanomuse:lang", lang}`, `{type: "nanomuse:theme", theme}`; only
+from the project site's origins), and links out of the page open in the top window, not inside
+the frame. Dark is the page's own surfaces in the site's dark tokens; MobileGym's keys, dock and
+drawer stay as they are.
+
 Nothing about the phone runs on the server. MobileGym is a React app: the whole simulated
 phone lives in the visitor's tab (~400 MB of *their* memory). The server runs three things:
 
