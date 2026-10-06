@@ -2,8 +2,12 @@
 
     nanomuse chatgpt login     sign in with a ChatGPT plan (the browser opens; PKCE)
     nanomuse chatgpt status    who is signed in, when the token expires
+    nanomuse chatgpt usage     what is left of the plan's windows, as OpenAI reports it
     nanomuse chatgpt logout    forget the sign-in
     nanomuse chatgpt proxy     a loopback OpenAI-compatible server over the sign-in
+
+``[llm] proxy`` in config.toml (or ``--proxy``) sends every request to chatgpt.com through an
+HTTP(S) or SOCKS proxy, for a machine whose network cannot reach it directly.
 
 With ``--json`` stdout carries one JSON object per line and nothing else; progress and the
 honesty line go to stderr. The shapes are in the runtime team's ``CONTRACT-chatgpt.md``.
@@ -66,6 +70,21 @@ def _settings(config: Path | None) -> Settings:
 
 def _store(config: Path | None) -> TokenStore:
     return TokenStore.in_dir(_settings(config).data_dir)
+
+
+def _proxy(config: Path | None, given: str | None) -> str | None:
+    """``--proxy`` when given, else the `[llm] proxy` of the config, else none."""
+    if given is not None:
+        return given.strip() or None
+    return _settings(config).llm.proxy.strip() or None
+
+
+ProxyOpt = Annotated[
+    str | None,
+    typer.Option(
+        "--proxy", help="An HTTP(S) or SOCKS proxy for chatgpt.com; default: [llm] proxy."
+    ),
+]
 
 
 def _emit(as_json: bool, event: dict[str, Any], text: str = "") -> None:
@@ -215,6 +234,58 @@ def status(config: ConfigOpt = None, as_json: JsonOpt = False) -> None:
     print(f"{token.label} · {when}\nstore: {store.path}")
 
 
+# --------------------------------------------------------------------------- usage
+@chatgpt_app.command("usage")
+def usage(config: ConfigOpt = None, as_json: JsonOpt = False, proxy: ProxyOpt = None) -> None:
+    """What is left of the plan's usage windows, as OpenAI reports it (one request to
+    chatgpt.com; the token is refreshed first when it is about to expire)."""
+    from nanomuse.llm.chatgpt import Auth, fetch_usage, http_client
+
+    store = _store(config)
+    if store.load() is None:
+        _fail(as_json, "not_signed_in", "not signed in; run `nanomuse chatgpt login`")
+        raise typer.Exit(1)
+    via = _proxy(config, proxy)
+
+    async def run() -> dict[str, Any]:
+        import httpx
+
+        auth = Auth(store, proxy=via)
+        http = http_client(httpx.Timeout(15.0, connect=10.0), via)
+        try:
+            token = await auth.token()
+            limits = await fetch_usage(token, http)
+        finally:
+            await http.aclose()
+            await auth.close()
+        return {"label": token.label, "plan": token.plan, "limits": limits.public()}
+
+    try:
+        view = asyncio.run(run())
+    except ChatGPTError as exc:
+        _fail(as_json, exc.code, exc.message)
+        if not as_json:
+            err.print(f"[red]{exc.message}[/red]")
+        raise typer.Exit(1) from None
+    if as_json:
+        _emit(True, view)
+        return
+    limits = view["limits"]
+    lines = [view["label"]]
+    for name, window in (
+        ("5-hour window", limits["primary"]),
+        ("weekly window", limits["secondary"]),
+    ):
+        if window:
+            hours, rest = divmod(int(window["resets_in_s"]), 3600)
+            lines.append(
+                f"{name}: {window['used_percent']}% used, resets in {hours} h {rest // 60} min"
+            )
+    if limits["primary"] is None and limits["secondary"] is None:
+        lines.append("OpenAI reported no usage windows for this plan")
+    print("\n".join(lines))
+
+
 # --------------------------------------------------------------------------- logout
 @chatgpt_app.command("logout")
 def logout(config: ConfigOpt = None, as_json: JsonOpt = False) -> None:
@@ -231,6 +302,7 @@ def proxy(
     port: Annotated[int, typer.Option("--port", help="0 = the OS picks one.")] = 0,
     host: Annotated[str, typer.Option("--host")] = "127.0.0.1",
     token: Annotated[str | None, typer.Option("--token", help="The local bearer token.")] = None,
+    proxy: ProxyOpt = None,
 ) -> None:
     """An OpenAI-compatible server on the loopback interface that answers with the ChatGPT
     sign-in: GET /v1/models, POST /v1/chat/completions. Every request wants
@@ -245,7 +317,7 @@ def proxy(
         _fail(as_json, "not_signed_in", "not signed in; run `nanomuse chatgpt login`")
         return
     local_token = token or secrets.token_urlsafe(24)
-    app = make_app(store, local_token)
+    app = make_app(store, local_token, proxy=_proxy(config, proxy))
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="warning"))
 
     async def run() -> None:

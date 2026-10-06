@@ -545,7 +545,12 @@ struct ChatMessageRow: View {
 
             // Inline error + retry
             if let error = message.error {
-                inlineError(error)
+                // nanoMuse: a provider that could not be reached (or refused the region, or whose sign-in ran out) is a card, not the transport's text
+                if let reach = NanoMuseProviderReach.classify(error) {
+                    NanoMuseProviderReachCard(reach: reach, onRetry: onRetry)
+                } else {
+                    inlineError(error)
+                }
             }
 
             // Resume banner for interrupted sessions

@@ -23,9 +23,9 @@ import os
 import secrets
 import sys
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import IO, Any
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -48,7 +48,11 @@ PLAN_CLAIM = "chatgpt_plan_type"
 
 RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
 MODELS_URL = "https://chatgpt.com/backend-api/codex/models"
+#: the plan's usage windows (what Codex's `/status` shows), when OpenAI answers it
+USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
 MODELS_CLIENT_VERSION = "99.99.99"
+#: the host the plan lives on — what a "cannot be reached" card names
+HOST = "chatgpt.com"
 
 DEFAULT_MODEL = "gpt-5.6-sol"
 BUILTIN_MODELS: tuple[str, ...] = ("gpt-5.6-sol", "gpt-5.4", "gpt-5.4-mini")
@@ -112,12 +116,299 @@ def account_from(access: str) -> tuple[str, str]:
 
 
 class ChatGPTError(Exception):
-    """A failure with a stable ``code`` (the CLI's ``error`` event carries it)."""
+    """A failure with a stable ``code`` (the CLI's ``error`` event carries it).
 
-    def __init__(self, code: str, message: str):
+    The codes a client may want to draw differently: ``not_signed_in`` (sign in again),
+    ``unreachable`` (chatgpt.com does not answer from this network — DNS, connect, TLS),
+    ``region_blocked`` (OpenAI refuses the region: 403 ``unsupported_country_region_territory``
+    or an HTML page where JSON was due), ``quota`` (the plan has nothing left for now;
+    ``retry_after`` when OpenAI said how long), ``rate_limited`` (too many requests at once),
+    ``upstream`` (any other HTTP failure, ``status`` set)."""
+
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        *,
+        status: int = 0,
+        retry_after: int | None = None,
+    ):
         super().__init__(message)
         self.code = code
         self.message = message
+        self.status = status
+        self.retry_after = retry_after
+
+    def public(self) -> dict[str, Any]:
+        """The error as an API body: the code, the sentence, the status, the wait."""
+        out: dict[str, Any] = {"code": self.code, "message": self.message}
+        if self.status:
+            out["status"] = self.status
+        if self.retry_after is not None:
+            out["retry_after"] = self.retry_after
+        return out
+
+
+# --------------------------------------------------------------------------- failures
+REGION_CODE = "unsupported_country_region_territory"
+#: the codes and words OpenAI uses for a plan with nothing left (not a burst limit)
+_QUOTA_MARKERS = (
+    "usage_limit_reached",
+    "usage_not_included",
+    "insufficient_quota",
+    "quota_exceeded",
+    "plan_limit",
+    "exceeded your current quota",
+    "reached your usage limit",
+    "usage limit",
+)
+
+#: what the person reads for each code, in English and in Chinese; the phones have their own
+FAILURE_LINES: dict[str, tuple[str, str]] = {
+    "unreachable": (
+        f"{HOST} cannot be reached from this network. A VPN on this device, a proxy in the "
+        "app's Network setting, or another network helps.",
+        f"这个网络连不上 {HOST}。在这台设备上开 VPN、在应用的「网络」里填代理，或者换个网络。",
+    ),
+    "region_blocked": (
+        "OpenAI does not serve the ChatGPT plan in this region. Connect from a region it "
+        "serves (a VPN or a proxy), or use an API key instead.",
+        "OpenAI 不在这个地区提供 ChatGPT 套餐。从它服务的地区连接（VPN 或代理），或者改用 API key。",
+    ),
+    "not_signed_in": (
+        "The ChatGPT sign-in is no longer valid. Sign in again.",
+        "ChatGPT 的登录已失效，请重新登录。",
+    ),
+    "quota": (
+        "The ChatGPT plan has nothing left for now. Wait for the window to reset, or use "
+        "another provider meanwhile.",
+        "ChatGPT 套餐这段时间的额度已用完。等窗口重置，或者先用别的服务商。",
+    ),
+    "rate_limited": (
+        "ChatGPT is taking too many requests at once. Try again in a moment.",
+        "ChatGPT 同时收到的请求太多了，稍后再试。",
+    ),
+}
+
+
+def failure_line(code: str, chinese: bool = False) -> str:
+    """The sentence for a classified failure, or empty for a code that has none."""
+    pair = FAILURE_LINES.get(code)
+    if pair is None:
+        return ""
+    return pair[1] if chinese else pair[0]
+
+
+def _error_fields(text: str) -> tuple[str, str, str]:
+    """``(code, type, message)`` from an OpenAI-shaped error body; empty when it is not one."""
+    try:
+        data = json.loads(text)
+    except (ValueError, TypeError):
+        return "", "", ""
+    if not isinstance(data, dict):
+        return "", "", ""
+    err = data.get("error")
+    err = err if isinstance(err, dict) else data
+    detail = data.get("detail")
+    message = err.get("message") or (detail if isinstance(detail, str) else "") or ""
+    return str(err.get("code") or ""), str(err.get("type") or ""), str(message)
+
+
+def looks_like_html(text: str) -> bool:
+    head = text.lstrip()[:64].lower()
+    return head.startswith("<!doctype html") or head.startswith("<html")
+
+
+def _retry_after(headers: Mapping[str, str] | None) -> int | None:
+    if not headers:
+        return None
+    raw = headers.get("retry-after") or headers.get("Retry-After")
+    if not raw:
+        return None
+    try:
+        return max(0, int(float(raw)))
+    except ValueError:
+        return None
+
+
+def classify_http(status: int, body: str, headers: Mapping[str, str] | None = None) -> ChatGPTError:
+    """The error for a non-200 answer of the Codex backend: a stable code, a plain sentence.
+
+    OpenAI's own message is kept where it says more than the code (a quota message names the
+    window); the socket-level texts are never shown."""
+    code, kind, message = _error_fields(body)
+    low = f"{code} {kind} {message} {body[:400]}".lower()
+    retry_after = _retry_after(headers)
+    if status == 401:
+        return ChatGPTError("not_signed_in", failure_line("not_signed_in"), status=status)
+    if status == 403 and (REGION_CODE in low or looks_like_html(body)):
+        return ChatGPTError("region_blocked", failure_line("region_blocked"), status=status)
+    if status in (403, 404, 503) and looks_like_html(body):
+        # an interception page (a captive portal, a firewall) where JSON was due
+        return ChatGPTError("unreachable", failure_line("unreachable"), status=status)
+    if status == 429:
+        if any(marker in low for marker in _QUOTA_MARKERS):
+            line = failure_line("quota")
+            if message and len(message) <= 300:
+                line = f"{line} OpenAI says: {message}"
+            return ChatGPTError("quota", line, status=status, retry_after=retry_after)
+        return ChatGPTError(
+            "rate_limited", failure_line("rate_limited"), status=status, retry_after=retry_after
+        )
+    if status == 403:
+        text = (
+            message[:300] if message else f"the Codex endpoint refused the request (HTTP {status})"
+        )
+        return ChatGPTError("upstream", text, status=status)
+    if message:
+        return ChatGPTError("upstream", message[:500], status=status, retry_after=retry_after)
+    return ChatGPTError(
+        "upstream",
+        f"the Codex endpoint answered HTTP {status}",
+        status=status,
+        retry_after=retry_after,
+    )
+
+
+def classify_transport(exc: Exception) -> ChatGPTError:
+    """The error for a request that never got an answer: DNS, connect, TLS, a timeout."""
+    if isinstance(exc, httpx.TimeoutException):
+        return ChatGPTError("unreachable", failure_line("unreachable") + " (timed out)")
+    if isinstance(exc, httpx.TransportError):
+        return ChatGPTError("unreachable", failure_line("unreachable"))
+    return ChatGPTError("network", f"could not reach {HOST}: {exc}")
+
+
+# --------------------------------------------------------------------------- usage
+@dataclass
+class Window:
+    """One of the plan's two usage windows (5 hours and a week, on OpenAI's side)."""
+
+    used_percent: int
+    window_minutes: int
+    resets_in_s: int
+
+    def public(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class Limits:
+    """What OpenAI reports about the plan's use: the response headers carry it after every
+    request (``x-codex-primary-used-percent``, …), ``GET …/wham/usage`` on demand."""
+
+    primary: Window | None = None
+    secondary: Window | None = None
+    plan: str = ""
+    limit_reached: bool = False
+    at: int = field(default_factory=lambda: int(time.time()))
+
+    @property
+    def empty(self) -> bool:
+        return self.primary is None and self.secondary is None
+
+    @property
+    def left_percent(self) -> int | None:
+        """What is left of the tighter window, 0–100, or None when nothing was reported."""
+        used = [w.used_percent for w in (self.primary, self.secondary) if w is not None]
+        return max(0, 100 - max(used)) if used else None
+
+    def public(self) -> dict[str, Any]:
+        return {
+            "primary": self.primary.public() if self.primary else None,
+            "secondary": self.secondary.public() if self.secondary else None,
+            "plan": self.plan,
+            "limit_reached": self.limit_reached,
+            "left_percent": self.left_percent,
+            "at": self.at,
+        }
+
+    @classmethod
+    def from_headers(cls, headers: Mapping[str, str]) -> Limits | None:
+        """The ``x-codex-*`` headers of a Codex answer; None when there are none."""
+
+        def window(name: str) -> Window | None:
+            used = headers.get(f"x-codex-{name}-used-percent")
+            if used is None:
+                return None
+            return Window(
+                used_percent=_int(used),
+                window_minutes=_int(headers.get(f"x-codex-{name}-window-minutes")),
+                resets_in_s=_int(headers.get(f"x-codex-{name}-reset-after-seconds")),
+            )
+
+        primary, secondary = window("primary"), window("secondary")
+        if primary is None and secondary is None:
+            return None
+        return cls(primary=primary, secondary=secondary)
+
+    @classmethod
+    def from_usage(cls, data: Any) -> Limits:
+        """The body of ``GET …/wham/usage``; a shape we do not know gives empty limits."""
+        if not isinstance(data, dict):
+            return cls()
+        rate = data.get("rate_limit") or data.get("rate_limits") or {}
+        rate = rate if isinstance(rate, dict) else {}
+
+        def window(obj: Any) -> Window | None:
+            if not isinstance(obj, dict):
+                return None
+            seconds = obj.get("limit_window_seconds")
+            minutes = obj.get("window_minutes")
+            return Window(
+                used_percent=_int(obj.get("used_percent")),
+                window_minutes=_int(minutes) if minutes is not None else _int(seconds) // 60,
+                resets_in_s=_int(obj.get("reset_after_seconds") or obj.get("resets_in_seconds")),
+            )
+
+        return cls(
+            primary=window(rate.get("primary_window") or rate.get("primary")),
+            secondary=window(rate.get("secondary_window") or rate.get("secondary")),
+            plan=str(data.get("plan_type") or "").lower(),
+            limit_reached=bool(rate.get("limit_reached")),
+        )
+
+
+def _int(value: Any) -> int:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return 0
+
+
+def http_client(timeout: httpx.Timeout, proxy: str | None = None) -> httpx.AsyncClient:
+    """An HTTP client for the plan's hosts. With ``proxy`` (``http://host:port``,
+    ``http://user:pass@host:port`` or ``socks5://…``) every request goes through it and the
+    environment's ``HTTPS_PROXY`` is ignored; without, the environment decides as usual."""
+    if proxy:
+        return httpx.AsyncClient(timeout=timeout, proxy=proxy, trust_env=False)
+    return httpx.AsyncClient(timeout=timeout)
+
+
+def usage_headers(token: Token) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {token.access}",
+        "chatgpt-account-id": token.account_id,
+        "originator": ORIGINATOR,
+        "accept": "application/json",
+    }
+
+
+async def fetch_usage(
+    token: Token, http: httpx.AsyncClient, url: str = USAGE_URL, timeout: float = 8.0
+) -> Limits:
+    """The plan's usage windows from OpenAI, or :class:`ChatGPTError` (classified)."""
+    try:
+        r = await http.get(url, headers=usage_headers(token), timeout=timeout)
+    except httpx.HTTPError as exc:
+        raise classify_transport(exc) from exc
+    if r.status_code != 200:
+        raise classify_http(r.status_code, r.text, r.headers)
+    try:
+        data = r.json()
+    except ValueError:
+        return Limits()
+    return Limits.from_usage(data)
 
 
 # --------------------------------------------------------------------------- the store
@@ -277,16 +568,18 @@ class Auth:
         http: httpx.AsyncClient | None = None,
         token_url: str = TOKEN_URL,
         margin_s: int = REFRESH_MARGIN_S,
+        proxy: str | None = None,
     ):
         self.store = store
         self._http = http
         self.token_url = token_url
         self.margin_s = margin_s
+        self.proxy = proxy or None
 
     @property
     def http(self) -> httpx.AsyncClient:
         if self._http is None:
-            self._http = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0))
+            self._http = http_client(httpx.Timeout(30.0, connect=10.0), self.proxy)
         return self._http
 
     async def close(self) -> None:
@@ -332,7 +625,7 @@ class Auth:
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
                 )
             except httpx.HTTPError as exc:
-                raise ChatGPTError("network", f"could not reach the token endpoint: {exc}") from exc
+                raise classify_transport(exc) from exc
             if r.status_code in (400, 401):
                 self.store.clear()
                 logger.warning("ChatGPT refresh refused ({}); signed out", r.status_code)
@@ -572,21 +865,33 @@ __all__ = [
     "CAPABILITIES",
     "CLIENT_ID",
     "DEFAULT_MODEL",
+    "FAILURE_LINES",
     "HONESTY_LINE",
     "HONESTY_LINE_ZH",
+    "HOST",
     "MODELS_URL",
     "REDIRECT_PORT",
     "REDIRECT_URI",
+    "REGION_CODE",
     "RESPONSES_URL",
     "STORE_FILE",
     "TOKEN_URL",
+    "USAGE_URL",
     "Auth",
     "CallbackResult",
     "ChatGPTError",
+    "Limits",
     "LoginFlow",
     "Token",
     "TokenStore",
+    "Window",
     "account_from",
     "claims",
+    "classify_http",
+    "classify_transport",
+    "failure_line",
+    "fetch_usage",
+    "http_client",
+    "looks_like_html",
     "plan_label",
 ]

@@ -26,6 +26,7 @@ from nanomuse.llm.base import (
     DeltaCallback,
     ThinkStreamFilter,
     ToolsUnsupported,
+    proxied_http,
     says_no_tools,
     split_think,
 )
@@ -107,6 +108,7 @@ class OpenAIResponsesLLM(BaseLLM):
             timeout=settings.timeout,
             max_retries=0,
             default_headers=settings.extra_headers or None,
+            http_client=proxied_http(settings.proxy, settings.timeout),
         )
         if settings.vision == "auto":
             self.vision_available = model_takes_images(settings.model)

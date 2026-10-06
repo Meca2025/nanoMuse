@@ -6562,9 +6562,17 @@ class ChatViewModel(
     private val _nmAllowance = kotlinx.coroutines.flow.MutableStateFlow<io.github.nanomuse.cloud.AllowanceSignal.Exhausted?>(null)
     val nmAllowance: kotlinx.coroutines.flow.StateFlow<io.github.nanomuse.cloud.AllowanceSignal.Exhausted?> = _nmAllowance
 
-    /** The error text to show for a failed turn — the allowance sentence when the relay said so, [fallback] otherwise. */
+    /**
+     * The error text to show for a failed turn — the allowance sentence when the relay said so,
+     * the reach card's canonical line when a provider's 401/403/429 was kept aside by
+     * `ReachSignal` (the chat renders it as a card), [fallback] otherwise.
+     */
     private fun nmAllowanceErrorText(fallback: String): String {
-        val info = io.github.nanomuse.cloud.AllowanceSignal.takeFresh() ?: return fallback
+        val info = io.github.nanomuse.cloud.AllowanceSignal.takeFresh()
+        if (info == null) {
+            val reach = io.github.nanomuse.net.ReachSignal.takeFresh() ?: return fallback
+            return io.github.nanomuse.net.ProviderReach.canonical(reach)
+        }
         _nmAllowance.value = info
         _messages.value = _messages.value.filterNot { it.id == nmAllowanceCardId } + ChatMessage(
             id = nmAllowanceCardId,
@@ -6574,6 +6582,7 @@ class ChatViewModel(
         )
         // the cached account shows the pool as spent until the next /v1/me
         viewModelScope.launch { runCatching { io.github.nanomuse.cloud.NanoMuseCloud.refresh(context) } }
+        if (info.dailyCap) return context.getString(R.string.nm_ways_title_day)
         return io.github.nanomuse.cloud.NanoMuseCloud.allowanceSentence(context)
     }
 

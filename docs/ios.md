@@ -153,6 +153,28 @@ Ours, in `NanoMuse/`:
 - **Data controls** (`NanoMuseDataControls.swift`): the relay's switch, the kept-turns count, the
   privacy page, deletion with a confirmation. **Reach** (`NanoMuseReach.swift`): a sheet per device
   of the account — open a link, send a note, a shell line, a screenshot — over the hub.
+- **When the provider cannot be reached** (`NanoMuseProviderReach.swift`,
+  `NanoMuseProviderReachCard.swift`): a failed turn whose error is the transport's — *Could not
+  connect to the server*, *A server with the specified hostname could not be found*, a TLS or
+  timeout line — or OpenAI's *region not supported* shows a card instead of the red banner: what
+  happened, what helps (a VPN, the proxy under *Settings → Network*, another provider with a key
+  of your own), *Try again*, the raw line behind *Details*. `LLMError` appends the failing host
+  as `[host: …]` to a network error so the card can name it; the 401/403/429 whose bodies
+  `mapHTTPError` drops are kept for a few seconds by `NanoMuseReachSignal` and written into the
+  message as a canonical `nm_reach:` line by `friendlyErrorMessage` — an expired ChatGPT
+  sign-in reads *Sign in again*, a spent plan window *The ChatGPT plan has nothing left for now*
+  with OpenAI's sentence and the reset time. The same kinds, lines and rules as Android's
+  `ProviderReach`.
+- **Network** (`NanoMuseProxy.swift`, `NanoMuseNetworkView.swift`, *Settings → nanoMuse →
+  Network*): the HTTP proxy for own providers — host, port, optional user name and password, off
+  by default, in `UserDefaults` on this phone only. `URLSession` has no per-host proxy switch, so
+  the proxy reaches a session as a proxy auto-configuration script in
+  `connectionProxyDictionary` that answers the proxy for the catalogue's hosts, `chatgpt.com`,
+  `auth.openai.com` and the provider instances' custom hosts (never the relay's, never a LAN
+  address) and `DIRECT` for the rest; `NanoMuseProxy.apply(to:)` is one line in each of upstream's
+  provider sessions, `NanoMuseProxy.session` stands in for `URLSession.shared` on the Codex
+  sign-in and the model list. The credentials go to the shared `URLCredentialStorage` for the
+  proxy's protection space. *Test* fetches `https://chatgpt.com/` through the proxy as entered.
 - **The phone's chrome (0.1.35)** (`NanoMuseChrome.swift`, `NanoMuseAppearance.swift`, Android
   `ui/chat/MuseHeader.kt` and `ui/settings`): the Muse header — the face disc, the name pill with
   the live status line under it, round drawer and ••• buttons — on the chat and on Feed, Ideas,
