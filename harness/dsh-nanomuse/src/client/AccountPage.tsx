@@ -8,10 +8,11 @@
  */
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { allowanceInfo, AllowanceWays, type Guidance } from './AllowanceWays.tsx'
 import { call, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
-import { IconCopy, IconGift, IconHeart, IconKey } from './icons.tsx'
+import { IconCopy, IconHeart } from './icons.tsx'
 import { REPO_URL } from './panels.ts'
 import { peekRooms, roomsCall, type NudgeAsk } from './rooms.ts'
 
@@ -20,7 +21,7 @@ export interface AccountSheet {
   account?: { id?: string; channel?: string; hint?: string; member?: boolean; has_password?: boolean; sessions?: number; signed_in_via?: string; created_at?: number; region?: string }
   /** Where the account is, as the relay sees it (0.1.34): `cn` or `intl`. */
   region?: string
-  spend?: { total?: number; grant?: number; left?: number | null; unlimited?: boolean; warn?: boolean; usd_cny?: number; invite_bonus_cny?: number; invitee_bonus_cny?: number; own_key_docs?: string }
+  spend?: { total?: number; grant?: number; left?: number | null; unlimited?: boolean; warn?: boolean; usd_cny?: number; invite_bonus_cny?: number; invitee_bonus_cny?: number; own_key_docs?: string; guidance?: Guidance }
   usage?: { today?: { by_kind?: UsageRow[] }; total?: { by_kind?: UsageRow[]; by_model?: UsageRow[] } }
   invite?: { code?: string; url?: string; invites?: number; bonus_cny?: number; invitee_bonus_cny?: number; earned_cny?: number }
 }
@@ -44,9 +45,6 @@ export function useCloudConfig(): CloudConfig {
   }, [])
   return config
 }
-
-/** Where the guide for one's own key is when the relay did not say. */
-const OWN_KEY_DOCS = 'https://nanomuse.cn/own-key'
 
 const yuan = (n: number | undefined | null): string => (n === undefined || n === null ? '—' : `¥${n.toFixed(n % 1 === 0 ? 0 : 2)}`)
 const when = (ts: number | null | undefined, locale: string): string => (ts ? new Date(ts * 1000).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) : '—')
@@ -189,7 +187,6 @@ function Allowance({ t, sheet, member }: { t: Translate; sheet: AccountSheet; me
     low ? h(WaysOn, { t, exhausted, sheet }) : null)
 }
 
-/** When the pool is low or spent: your own key, an invitation, and — once — a star. */
 /** Mainland China when the UI is Chinese, the account signed in with a phone, or the relay says `cn` (C5). */
 export function mainland(t: Translate, sheet: AccountSheet): boolean {
   const region = sheet.region ?? sheet.account?.region
@@ -198,64 +195,9 @@ export function mainland(t: Translate, sheet: AccountSheet): boolean {
   return t('langTag') === 'zh' || sheet.account?.channel === 'phone'
 }
 
-const BAILIAN_URL = 'https://bailian.console.aliyun.com/'
-const OPENROUTER_URL = 'https://openrouter.ai/keys'
-
+/** When the pool is low or spent: the ways on, from what the relay sends (C11), under the pool bar. */
 function WaysOn({ t, exhausted, sheet }: { t: Translate; exhausted: boolean; sheet: AccountSheet }): ReactNode {
-  const bonus = sheet.spend?.invite_bonus_cny ?? sheet.invite?.bonus_cny ?? 5
-  // the allowance used up: the host decides whether the star row is due (C1 `exhausted`)
-  const [star, setStar] = useState(false)
-  const asked = useRef(false)
-  useEffect(() => {
-    if (!exhausted || asked.current) return
-    asked.current = true
-    let alive = true
-    roomsCall<{ ask: NudgeAsk | null }>('nudges/ask', { moment: 'exhausted' })
-      .then((r) => { if (alive && r.ask) setStar(true) })
-      .catch(() => undefined)
-    return () => { alive = false }
-  }, [exhausted])
-  const cn = mainland(t, sheet)
-  // the provider that suits where the person is comes first; the other stays one line below
-  const bailian = h('div', { className: 'nm-way', key: 'bailian' },
-    h('span', { className: 'nm-way-icon' }, h(IconKey, { size: 15 })),
-    h('div', { className: 'nm-way-main' },
-      h('div', { className: 'nm-way-title' }, t('acWayBailian')),
-      h('div', { className: 'nm-way-sub' }, cn ? t('acWayBailianSub') : t('acWayBailianAbroad')),
-      h('div', { style: row },
-        h('button', { type: 'button', className: `nm-pill nm-pill-sm${cn ? '' : ' nm-pill-ghost'}`, onClick: () => { settingsBus.openSection?.('models') } }, t('acWayKeyGo')),
-        h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => openLink(BAILIAN_URL) }, t('acWayGetKey')))))
-  const openrouter = h('div', { className: 'nm-way', key: 'openrouter' },
-    h('span', { className: 'nm-way-icon' }, h(IconKey, { size: 15 })),
-    h('div', { className: 'nm-way-main' },
-      h('div', { className: 'nm-way-title' }, t('acWayOpenRouter')),
-      h('div', { className: 'nm-way-sub' }, cn ? t('acWayOpenRouterCn') : t('acWayOpenRouterSub')),
-      h('div', { style: row },
-        h('button', { type: 'button', className: `nm-pill nm-pill-sm${cn ? ' nm-pill-ghost' : ''}`, onClick: () => { settingsBus.openSection?.('models') } }, t('acWayKeyGo')),
-        h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => openLink(OPENROUTER_URL) }, t('acWayGetKey')))))
-  return h('div', { className: 'nm-ways' },
-    h('div', { className: 'nm-ways-lead' }, exhausted ? t('acExhausted') : t('acNearlyOut')),
-    cn ? bailian : openrouter,
-    cn ? openrouter : bailian,
-    h('div', { className: 'nm-way' },
-      h('span', { className: 'nm-way-icon' }, h(IconKey, { size: 15 })),
-      h('div', { className: 'nm-way-main' },
-        h('div', { className: 'nm-way-title' }, t('acWayKey')),
-        h('div', { className: 'nm-way-sub' }, t('acWayKeySub')),
-        h('div', { style: row },
-          h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => openLink(sheet.spend?.own_key_docs || OWN_KEY_DOCS) }, t('acWayKeyGuide'))))),
-    h('div', { className: 'nm-way' },
-      h('span', { className: 'nm-way-icon' }, h(IconGift, { size: 15 })),
-      h('div', { className: 'nm-way-main' },
-        h('div', { className: 'nm-way-title' }, t('acWayInvite', { bonus: bonus.toFixed(0) })),
-        h('div', { className: 'nm-way-sub' }, t('acWayInviteSub')))),
-    exhausted && star
-      ? h('div', { className: 'nm-way' },
-          h('span', { className: 'nm-way-icon' }, h(IconHeart, { size: 15 })),
-          h('div', { className: 'nm-way-main' },
-            h('div', { className: 'nm-way-title' }, t('acWayStar')),
-            h('div', { style: row }, h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => { openStar(); setStar(false) } }, t('starAction')))))
-      : null)
+  return h(AllowanceWays, { t, info: allowanceInfo(sheet), sheet, exhausted, inSettings: true })
 }
 
 // ---- the invite ----------------------------------------------------------------------------
