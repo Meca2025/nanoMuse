@@ -148,6 +148,7 @@ function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
     invite_bonus_cny: spend.invite_bonus_cny ?? me.invite?.bonus_cny,
     invitee_bonus_cny: spend.invitee_bonus_cny ?? me.invite?.invitee_bonus_cny,
     own_key_docs: spend.own_key_docs,
+    guidance: spend.guidance,
   };
   return (
     <Section title={t("Free allowance")}>

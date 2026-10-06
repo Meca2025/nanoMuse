@@ -2,6 +2,8 @@ import type {
   ActivityData,
   AttachmentInfo,
   CalendarData,
+  ChatGptLogin,
+  ChatGptStatus,
   CloudAccount,
   CloudEvent,
   CloudConfig,
@@ -23,6 +25,7 @@ import type {
   MemoryChange,
   MemoryItem,
   NudgesView,
+  ProvidersView,
   PushInfo,
   Reminder,
   ReminderKind,
@@ -307,6 +310,20 @@ export const api = {
     request<SettingsView>("/api/settings", { method: "PUT", body: JSON.stringify(body) }),
   // connections: secrets go into the vault on the server; only names ever come back
   connections: () => request<ConnectionsData>("/api/connections"),
+  /** the own-key catalogue with what is configured and what that covers (contract C11) */
+  providers: (region?: string) => request<ProvidersView>(`/api/providers${region ? `?region=${encodeURIComponent(region)}` : ""}`),
+  /**
+   * The ChatGPT sign-in through the runtime (the Codex OAuth): `login` starts the PKCE flow
+   * and returns the page to open; `status` is polled until it is done; `logout` deletes the
+   * token store. The routes follow the shared brief; the runtime's CONTRACT-chatgpt.md
+   * fixes the CLI and `/api/providers` — a runtime without these routes answers 404, and
+   * the card then names the CLI (`nanomuse chatgpt login`).
+   */
+  chatgptLogin: () => request<ChatGptLogin>("/api/chatgpt/login", json({})),
+  chatgptStatus: () => request<ChatGptStatus>("/api/chatgpt/status"),
+  /** The address the browser landed on, pasted by hand when the runtime could not take the callback itself. */
+  chatgptCallback: (url: string) => request<{ ok: boolean }>("/api/chatgpt/callback", json({ url })),
+  chatgptLogout: () => request<{ ok: boolean; was_signed_in?: boolean }>("/api/chatgpt/logout", json({})),
   setLLM: (body: Record<string, unknown>) =>
     request<ConnectionsData["llm"]>("/api/connections/llm", { method: "PUT", body: JSON.stringify(body) }),
   testLLM: () => request<TestResult>("/api/connections/llm/test", { method: "POST" }),

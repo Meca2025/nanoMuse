@@ -1,4 +1,4 @@
-import { ArrowRight, CloudCog, KeyRound, Loader2 } from "lucide-react";
+import { ArrowRight, CloudCog, KeyRound, Loader2, LogIn } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { api } from "../api";
 import { useT } from "../i18n";
@@ -171,9 +171,16 @@ export function FirstSignInSteps() {
                   <span className="font-medium">{t("I have my own API key")}</span>
                   <span className="block text-muted">
                     {way.preset === "qwen"
-                      ? t("Alibaba Cloud Bailian, DeepSeek, OpenAI, OpenRouter and other OpenAI-compatible endpoints. The key stays on this device.")
-                      : t("OpenRouter (one account, one key, pay as you go), OpenAI, DeepSeek and other OpenAI-compatible endpoints. The key stays on this device.")}
+                      ? t("Alibaba Cloud Bailian first — one key covers chat, the hands, pictures and clips — then DeepSeek, Kimi, Zhipu, OpenAI, OpenRouter and any OpenAI-compatible endpoint. The key stays on this device.")
+                      : t("OpenRouter first (one account, one key, pay as you go), then OpenAI, Anthropic, Gemini, DeepSeek and any OpenAI-compatible endpoint. The key stays on this device.")}
                   </span>
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5 rounded-2xl bg-surface-2 px-3 py-2.5">
+                <LogIn size={16} className="mt-0.5 shrink-0 text-accent" />
+                <span>
+                  <span className="font-medium">{t("Sign in with a plan you already pay for")}</span>
+                  <span className="block text-muted">{t("A ChatGPT plan signs in from Connections and answers the chat and the hands. Pictures and clips still want a key.")}</span>
                 </span>
               </li>
             </ul>

@@ -41,7 +41,9 @@ import { IdentityForm, identityBody, identityOf, type Identity } from "../compon
 import { PageBar } from "../components/BackBar";
 import { CommunityNotice } from "../components/CommunityNotice";
 import { DataControls, PRIVACY_URL } from "../components/DataControls";
-import { LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
+import { getLocale, LOCALES, setLocaleSetting, useLocaleSetting, useT } from "../i18n";
+import { has, regionOf, unavailableLine, useProviders } from "../providers";
+import { isMainland, ownKeyWay } from "../region";
 import { setThemeSetting, useThemeSetting } from "../theme";
 import { disablePush, enablePush, pushState, type PushState } from "../push";
 import { useStore } from "../store";
@@ -324,10 +326,10 @@ export function SettingsScreen() {
             </button>
           )}
           {s?.llm.cloud && (
-            <button type="button" onClick={() => openOwnKeySetup(setTab)} className="w-full text-[13.5px] flex items-center justify-between">
-              <span className="text-muted">{t("Use my own API key")}</span>
+            <button type="button" onClick={() => openOwnKeySetup(setTab, ownKeyWay(state.hub?.account).preset)} className="w-full text-[13.5px] flex items-center justify-between">
+              <span className="text-muted">{t("Use my own API key or a plan I pay for")}</span>
               <span className="text-[12.5px] text-muted flex items-center gap-1">
-                {t("OpenAI, Bailian, DeepSeek…")} <ChevronRight size={14} />
+                {t("{first} first — {others}", { first: ownKeyWay(state.hub?.account).label, others: isMainland(state.hub?.account) ? t("DeepSeek, Kimi, OpenAI, ChatGPT…") : t("OpenAI, ChatGPT, Gemini, DeepSeek…") })} <ChevronRight size={14} />
               </span>
             </button>
           )}
@@ -537,6 +539,8 @@ function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen:
   const t = useT();
   const s = state.settings;
   const hub = state.hub;
+  // what the configured providers cover (contract C11), from the runtime; null on an older one
+  const providers = useProviders();
   const name = state.profile?.name ?? "nanoMuse";
   const themeSetting = useThemeSetting();
   const others = hub?.devices.filter((d) => !d.this && d.kind !== "web") ?? [];
@@ -566,7 +570,18 @@ function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen:
           <MuseDivider />
           <MuseRow icon={<Cloud size={22} />} label="nanoMuse Cloud" value={hub?.account.signed_in ? hub.account.hint : t("Sign in")} onClick={() => setTab("account")} />
           <MuseDivider />
-          <MuseRow icon={<Clapperboard size={22} />} label={t("Image & video models")} onClick={() => setTab("connections")} />
+          <MuseRow
+            icon={<Clapperboard size={22} />}
+            label={t("Image & video models")}
+            value={
+              has(providers, "image") === false
+                ? unavailableLine(t, "image", regionOf(hub?.account), getLocale())
+                : has(providers, "video") === false
+                  ? unavailableLine(t, "video", regionOf(hub?.account), getLocale())
+                  : undefined
+            }
+            onClick={() => setTab("connections")}
+          />
           <MuseDivider />
           <MuseRow icon={<BarChart3 size={22} />} label={t("Usage")} onClick={() => setTab("account")} />
         </MuseCard>

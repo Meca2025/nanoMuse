@@ -126,6 +126,8 @@ export interface NoticeEvent extends BaseEvent {
     invite_bonus_cny?: number;
     invitee_bonus_cny?: number;
     own_key_docs?: string;
+    /** relay 0.21: the region's providers and what each covers */
+    guidance?: Guidance;
   };
 }
 
@@ -442,10 +444,14 @@ export interface CloudMe {
     /** relay 0.9: the friend who signs up with the code gets the same */
     invitee_bonus_cny?: number;
     own_key_docs?: string;
+    /** relay 0.21 (contract C11): the whole own-key card for this person's region */
+    guidance?: Guidance;
     daily_cap: number;
     credit_left?: number;
     left_today?: number | null;
   };
+  /** relay 0.17: where the relay places the person */
+  region?: "cn" | "intl" | "unknown" | string;
   /** Relay 0.4/0.5: the account's invite code and what came of it (`earned_cny` since 0.5). */
   invite?: { code: string; url: string; invites: number; bonus_cny: number; invitee_bonus_cny?: number; earned_cny?: number; friends: Array<{ hint: string; joined_at: number }> };
   /**
@@ -457,6 +463,104 @@ export interface CloudMe {
   /** Relay 0.4 counted clips; 0.5 no longer does (always unlimited here). */
   clips?: { unlimited: boolean; allowed: number | null; used: number; left: number | null; per_face: number };
   models?: Array<{ id: string; name?: string; nanomuse?: { kind?: string; recommended?: boolean } }>;
+}
+
+// ------------------------------------------------------------------ own-key providers (C11)
+
+export type Capability = "chat" | "vision" | "image" | "video";
+
+/** One entry of `nanomuse/llm/providers.json`, the own-key catalogue every client reads. */
+export interface CatalogueProvider {
+  id: string;
+  name: string;
+  name_zh: string;
+  protocol: "openai" | "openai-responses" | "anthropic" | "gemini" | string;
+  base_url: string;
+  base_url_global?: string;
+  key_url: string;
+  key_url_global?: string;
+  key_hint?: string;
+  auth: string[];
+  /** a sign-in that gives less than the key does (the ChatGPT one: chat and vision) */
+  auth_capabilities?: Record<string, Capability[]>;
+  regions: Array<"cn" | "global">;
+  capabilities: Capability[];
+  defaults: Partial<Record<"chat" | "hands" | "image" | "video", string>>;
+  /** "custom": the person says what the endpoint can do */
+  user_capabilities?: boolean;
+  note: string;
+  note_zh: string;
+  verified: string;
+  /** from the runtime: the slots using this provider today */
+  configured?: string[];
+  /** from the runtime: the ChatGPT store holds tokens (on `openai`) */
+  signed_in?: boolean;
+}
+
+/** `GET /api/providers` on the runtime (team Runtime's CONTRACT-chatgpt.md, §3). */
+export interface ProvidersView {
+  providers: CatalogueProvider[];
+  region: "cn" | "global" | "";
+  configured: Partial<Record<"chat" | "hands" | "image" | "video", { provider: string; model: string; protocol?: string; source?: string } | null>>;
+  capabilities: Capability[];
+  unavailable: Partial<Record<Capability, string>>;
+  chatgpt?: { signed_in: boolean; label?: string; capabilities?: Capability[] };
+}
+
+/** The relay's own-key guidance (relay 0.21, `spend.guidance` and the refusal's). */
+export interface Guidance {
+  version?: number;
+  region: "cn" | "intl" | "unknown" | string;
+  docs: string;
+  providers: Array<{
+    id: string;
+    name: string;
+    name_zh: string;
+    protocol?: string;
+    base_url?: string;
+    key_url: string;
+    auth: string[];
+    regions?: string[];
+    covers: Capability[];
+    defaults?: Record<string, string>;
+    one_key?: boolean;
+    note?: string;
+    note_zh?: string;
+  }>;
+  plans: Array<{ id: string; provider: string; name: string; auth: string; clients: string[]; covers: Capability[] }>;
+  local?: Array<{ id: string; name: string; name_zh: string }>;
+  caveats?: { chatgpt?: string; chatgpt_zh?: string };
+}
+
+/** `POST /api/chatgpt/login`: the page to open; the runtime waits for the callback. */
+export interface ChatGptLogin {
+  url: string;
+  callback?: string;
+  expires_in?: number;
+  /** false when the runtime could not listen on port 1455: the callback address has to be pasted (`POST /api/chatgpt/callback`) */
+  port_bound?: boolean;
+}
+
+/** `GET /api/chatgpt/status`: the token store, never the tokens. */
+export interface ChatGptStatus {
+  signed_in: boolean;
+  label?: string;
+  plan?: string;
+  account_id?: string;
+  expires_at?: number;
+  expires_in?: number;
+  /** a sign-in started and not finished yet */
+  pending?: boolean;
+  /** the page of a pending sign-in, for a second tab */
+  url?: string;
+  /** while pending: whether the runtime listens for the callback itself */
+  port_bound?: boolean;
+  /** while pending: seconds until the login is given up */
+  login_expires_in?: number;
+  error?: string;
+  /** `cancelled`, `timeout`, `state_mismatch`, `exchange_failed`, … */
+  error_code?: string;
+  models?: string[];
 }
 
 /** A coding agent on a computer: Cursor, Codex, Claude Code. */

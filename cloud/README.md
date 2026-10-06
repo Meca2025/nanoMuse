@@ -67,7 +67,7 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 404 | `model_not_offered` | not on the menu |
 | 400 | `no_secrets_in_profile` | a profile `connectors` entry carried a key named like a credential; nothing was stored |
 | 400 | `too_many_connectors` | the write would leave more than 64 connectors on the account |
-| 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `region`, `ways` (the ways on in order for that person), `invite_url`, `invite_bonus_cny`, `own_key_docs`, `openrouter_url` |
+| 429 | `allowance_exhausted` | the account's pool is spent; the body also carries `left`, `grant`, `region`, `ways` (the ways on in order for that person), `guidance` (0.21: every provider for the region with what each covers, the plans an app can sign in with), `invite_url`, `invite_bonus_cny`, `own_key_docs`, `openrouter_url` |
 | 429 | `code_too_often` / `rate_limited` / `daily_cap` | (`daily_cap` only with the legacy token cap on) |
 | 429 | `too_many_in_flight` | `MAX_IN_FLIGHT` requests of the account are already under way; `retry_after` in the body |
 | 429 | `provider_busy` | the image provider answered 429 even after the relay queued and retried (`IMAGE_CONCURRENCY`, `IMAGE_RETRIES`); `retry_after` seconds in the body |
@@ -132,7 +132,7 @@ for the full list. The ones that matter:
 | `IMPROVE_DEFAULT` | `0` | what *Help improve nanoMuse's AI models* (Data controls) starts as for accounts created from now on: `1` = on until the person turns it off, `0` = off until they turn it on; existing accounts keep their setting. State it in your privacy policy |
 | `PRIVACY_URL` | `https://nanomuse.cn/privacy/` | the policy the apps link from Data controls and the sign-in pages — the one that says what this relay keeps and its default |
 | `INVITE_URL` | `https://nanomuse.cn/web/?invite=` | the link the apps offer to share; the code is appended |
-| `OWN_KEY_DOCS` | `https://nanomuse.cn/own-key` | the guide the apps open for bringing one's own key (Alibaba Cloud Bailian, which signs up mainland China accounts only) |
+| `OWN_KEY_DOCS` | `https://nanomuse.cn/own-key` | the guide the apps open for bringing one's own key or signing in with a plan (every provider by region, what each covers) |
 | `OPENROUTER_URL` | `https://openrouter.ai/keys` | the page for a key from OpenRouter, the way on for people outside mainland China (0.17) — the apps order the two by the person's `region` |
 | `DAY_OFFSET_H` | 8 | the operator's reports group by local day, midnight UTC+8 (Beijing) |
 | `TRAFFIC_DB` | empty | the site's daily traffic counts (`demo/showcase/mirror/traffic.py`), mounted read-only, for the operator's page; empty = that panel says it is not connected |
@@ -346,6 +346,26 @@ free tier, everyone else told that Bailian only signs up mainland accounts and
 that OpenRouter is the easy way outside (one account, one key, pay as you go).
 Nothing is sent anywhere for this: the region is read from the number's
 country code and the local ip2region file.
+
+**What each provider covers (0.21, contract C11).** Next to `ways` — whose
+two key rows now also carry `name`, `name_zh`, `key_url`, `covers` and `auth`
+— `spend.guidance` (and the refusal's `guidance`) is the whole own-key card:
+`{version, updated, region, docs, providers[], plans[], local[], caveats}`.
+`providers` is every provider of the catalogue that signs people up where the
+person is, in order — the mainland leads with Bailian (one key for chat,
+hands, pictures and clips), everyone else with OpenRouter and OpenAI, the rest
+by how much the key covers — each as `{id, name, name_zh, protocol, base_url,
+key_url, auth[], regions[], covers[], defaults{}, one_key, note, note_zh}`
+(a two-edition provider such as Kimi or MiniMax names the region's base URL
+and key page). `plans` are the subscriptions an app can sign in with instead
+of pasting a key — `{id: chatgpt | claude | kimi | openrouter, provider, name,
+auth, clients[], covers[]}`; the ChatGPT one covers chat and hands only, and
+`caveats.chatgpt` (`_zh`) is the honest line about it. `local` lists Ollama,
+LM Studio and vLLM. The facts come from `nanomuse_cloud/providers.json`, a
+copy of the runtime's `nanomuse/llm/providers.json` written by
+`node scripts/providers-json.mjs` (CI checks it); the relay only orders it,
+and the apps keep the words. Nothing is renamed: a client from before reads
+`ways` as it always did.
 
 `SIGNUP_TOKENS=0` (the default) runs the relay without a token ceiling: usage
 is metered and shown, nothing is refused for lack of tokens (`/v1/me` says

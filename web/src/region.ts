@@ -1,14 +1,17 @@
 /**
- * Where the person is, for the "ways on" copy (contract C5): mainland China gets Alibaba
- * Cloud Bailian first (its console only signs up accounts from the mainland); everyone
- * else gets OpenRouter first — one account, one key, pay as you go.
+ * Where the person is, for the "ways on" copy (contracts C5 and C11): mainland China gets
+ * Alibaba Cloud Bailian first (its console only signs up accounts from the mainland);
+ * everyone else gets OpenRouter first — one account, one key, pay as you go. The facts
+ * about each (key page, endpoint, default models, what the key covers) come from the
+ * catalogue `nanomuse/llm/providers.json`, the one file every client reads.
  *
  * Mainland = the UI language is 简体中文, or the account was signed in with a phone
  * number (codes reach mainland numbers only), or the relay says `region: "cn"`. A relay
  * that does not say yet is fine: the other two signs still work.
  */
+import catalogue from "../../nanomuse/llm/providers.json";
 import { getLocale } from "./i18n";
-import type { CloudAccount, ProviderPreset } from "./types";
+import type { Capability, CatalogueProvider, CloudAccount, ProviderPreset } from "./types";
 
 export function isMainland(account?: Pick<CloudAccount, "channel" | "region" | "signed_in"> | null): boolean {
   if (account?.region) return account.region === "cn";
@@ -22,6 +25,8 @@ export function looksLikeForeignNumber(value: string): boolean {
 }
 
 export interface OwnKeyWay {
+  /** the catalogue id: "bailian" or "openrouter" */
+  id: "bailian" | "openrouter";
   /** the preset id in Connections: "qwen" (Bailian) or "openrouter" */
   preset: "qwen" | "openrouter";
   label: string;
@@ -29,25 +34,30 @@ export interface OwnKeyWay {
   baseUrl: string;
   chatModel: string;
   guiModel: string;
+  /** what one key there covers (contract C11) */
+  covers: Capability[];
 }
 
-const BAILIAN: OwnKeyWay = {
-  preset: "qwen",
-  label: "Alibaba Cloud Bailian",
-  keyUrl: "https://bailian.console.aliyun.com/?apiKey=1",
-  baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-  chatModel: "deepseek-v4.1-flash",
-  guiModel: "qwen3.8-27b",
-};
+const BY_ID = new Map((catalogue as { providers: CatalogueProvider[] }).providers.map((p) => [p.id, p]));
 
-const OPENROUTER: OwnKeyWay = {
-  preset: "openrouter",
-  label: "OpenRouter",
-  keyUrl: "https://openrouter.ai/keys",
-  baseUrl: "https://openrouter.ai/api/v1",
-  chatModel: "deepseek/deepseek-v4.1-flash",
-  guiModel: "qwen/qwen3.8-27b",
-};
+function wayFrom(id: "bailian" | "openrouter", preset: "qwen" | "openrouter"): OwnKeyWay {
+  const p = BY_ID.get(id);
+  if (!p) throw new Error(`providers.json has no ${id}`);
+  return {
+    id,
+    preset,
+    label: p.name,
+    keyUrl: p.key_url,
+    baseUrl: p.base_url,
+    chatModel: p.defaults.chat ?? "",
+    guiModel: p.defaults.hands ?? p.defaults.chat ?? "",
+    covers: p.capabilities,
+  };
+}
+
+/** The region's first pick, read from the catalogue: Bailian on the mainland, OpenRouter elsewhere. */
+const BAILIAN = wayFrom("bailian", "qwen");
+const OPENROUTER = wayFrom("openrouter", "openrouter");
 
 /** The own-key provider to lead with for this person. */
 export function ownKeyWay(account?: Pick<CloudAccount, "channel" | "region" | "signed_in"> | null): OwnKeyWay {
@@ -55,13 +65,14 @@ export function ownKeyWay(account?: Pick<CloudAccount, "channel" | "region" | "s
 }
 
 /**
- * The one sentence under "Use your own model key" (contract C5). English first, then
- * 简体中文 through the dictionary.
+ * The one sentence under "Use your own model key" (contracts C5 and C11): the region's
+ * first pick and what one key there covers. English first, then 简体中文 through the
+ * dictionary.
  */
 export function ownKeyLine(t: (s: string) => string, account?: Pick<CloudAccount, "channel" | "region" | "signed_in"> | null): string {
   return isMainland(account)
-    ? t("Alibaba Cloud Bailian is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, pictures and video.")
-    : t("Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go.");
+    ? t("Alibaba Cloud Bailian is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, the hands, pictures and clips.")
+    : t("Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go — chat, the hands and pictures; clips need Bailian.");
 }
 
 /** Whether a model id says it sees pictures (the runtime's rule, mirrored for the pickers). */

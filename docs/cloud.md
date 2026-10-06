@@ -235,7 +235,7 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 | sign-up | open to anyone with a mainland China mobile number or an e-mail address |
 | free allowance | **¥10 per account** at the time of writing, across chat, pictures and clips; it does not reset. The figure is the relay's to set (it can go up without an app update — the apps print what the relay says, `/v1/config`), and the account page always shows the current one |
 | invitations | each *new* person who signs up with your code adds **¥5** (again, the relay's figure) to your pool — and the same to theirs |
-| when it is gone | bring your own key — in mainland China, [Alibaba Cloud Bailian in about two minutes](own-key.md); elsewhere, [OpenRouter](https://openrouter.ai/keys) (Bailian only signs up accounts from mainland China; OpenRouter is one account, one key, pay as you go), or any OpenAI-compatible endpoint; sign-in and your devices are unaffected |
+| when it is gone | bring your own key or a plan you already pay for — in mainland China, [Alibaba Cloud Bailian](own-key.md) first (one key covers chat, the hands, pictures and clips); elsewhere, [OpenRouter](https://openrouter.ai/keys) or OpenAI first (Bailian only signs up accounts from mainland China); a ChatGPT, Claude or Kimi plan signs in where the client has the flow; any OpenAI-compatible endpoint works; sign-in and your devices are unaffected |
 | members | the developer and the people they list have no limit, and may set any model the provider has (a chat model for chat, an image one for pictures, a video one for clips): the apps' model picker lists them after the menu as *More models on your account* (relay 0.10 reads the provider's list under the Cloud key), and an id can still be typed — *Other model…* |
 | rate | 30 requests per minute |
 | tokens | no ceiling; usage is metered and shown |
@@ -254,13 +254,28 @@ shows the estimate and what is left before it draws.
 *Settings → nanoMuse Cloud* shows what was used of the pool in ¥ and $, what
 is left, and how the pool grows. At 80 % the app says so once; when the pool
 is spent the relay refuses with `allowance_exhausted` and the app shows the
-two ways on: your own key, or an invitation (+¥5 for each of you, or whatever
-the relay says that day). Which key page comes first follows where you are
-(0.1.34: the relay's `region`, read from the number's country code or from
-an offline copy of ip2region on its own disk — nothing is sent anywhere): a
-mainland China account is pointed to Alibaba Cloud Bailian — the provider form
-opens pre-filled, [guide](own-key.md) — and everyone else to OpenRouter, since
-Bailian only signs up accounts from the mainland. Other relays may set other rules
+ways on: your own key, a plan you already pay for, or an invitation (+¥5 for
+each of you, or whatever the relay says that day). Which provider comes first
+follows where you are (0.1.34: the relay's `region`, read from the number's
+country code or from an offline copy of ip2region on its own disk — nothing is
+sent anywhere): a mainland China account is pointed to Alibaba Cloud Bailian —
+the provider form opens pre-filled, [guide](own-key.md) — and everyone else to
+OpenRouter or OpenAI, since Bailian only signs up accounts from the mainland.
+
+Since relay 0.21 the refusal and `/v1/me` carry the whole card as data, not
+only two links (contract C11): `spend.guidance` — and `guidance` beside the
+`allowance_exhausted` error — lists the region's providers in order with what
+each one's key covers (`covers: chat | vision | image | video`, from the shared
+catalogue [`nanomuse/llm/providers.json`](../nanomuse/llm/providers.json), of
+which the relay ships its own copy), the plans a person may already pay for and
+which clients can sign in with them (`plans`: ChatGPT everywhere, Claude and
+Kimi on the phones, OpenRouter on the phones), the local servers (`local`), the
+docs link and the honest line about the ChatGPT sign-in (`caveats.chatgpt`,
+`caveats.chatgpt_zh`). The 0.17 `ways` rows are still sent, each now with the
+provider's `name`, `name_zh`, `key_url`, `covers` and `auth`, so a 0.1.38
+client draws the same two buttons it always did. The console at `/app` draws
+the card from `guidance` and falls back to the two links on an older relay.
+Other relays may set other rules
 (`ALLOWANCE_CNY`, `INVITE_BONUS_CNY`, `SIGNUP_OPEN`, `ALLOWED_IDENTIFIERS` —
 all three figures adjustable while the relay runs, relay 0.15; see
 [`cloud/README.md`](../cloud/README.md)).

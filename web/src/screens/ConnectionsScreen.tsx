@@ -3,6 +3,8 @@ import {
   BrainCircuit,
   CalendarDays,
   Check,
+  ChevronDown,
+  ChevronUp,
   Contact as ContactIcon,
   ExternalLink,
   Eye,
@@ -10,6 +12,7 @@ import {
   Globe,
   KeyRound,
   Loader2,
+  LogIn,
   Mail,
   Plug,
   Plus,
@@ -29,12 +32,14 @@ import {
 } from "react";
 import { accessibilityState, androidApp } from "../android";
 import { api } from "../api";
-import { takePresetHint } from "../components/AllowanceWays";
+import { OWN_KEY_DOCS, takePresetHint } from "../components/AllowanceWays";
 import { PageBar } from "../components/BackBar";
+import { ChatGptSignIn } from "../components/ChatGptSignIn";
 import { CloudCard } from "../components/CloudCard";
 import { Card, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
-import { useT } from "../i18n";
+import { getLocale, useT } from "../i18n";
 import { useStore } from "../store";
+import { CATALOGUE, catalogueIdFor, coversLine, invalidateProviders, providerName, regionOf, unavailableLine, type Capability } from "../providers";
 import { modelSees, orderPresets } from "../region";
 import type { Contact, ConnectionsData, SharedConnector, TestResult } from "../types";
 import { cx, relativeTime } from "../util";
@@ -136,6 +141,8 @@ export function ModelCard({
   const [baseUrl, setBaseUrl] = useState(data.llm.base_url);
   const [key, setKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  // the ChatGPT sign-in, folded under the provider tiles
+  const [chatgptOpen, setChatgptOpen] = useState(false);
   const [noKey, setNoKey] = useState(
     data.llm.key_source === "none" && !!presets[currentPreset]?.key_optional,
   );
@@ -347,6 +354,7 @@ export function ModelCard({
       // the hands model rides on the chat model's endpoint and key (contract C4)
       if (guiModel.trim() !== (data.gui?.model ?? "")) await api.setGui({ model: guiModel.trim() });
       setKey("");
+      invalidateProviders();
       toast(t("Model saved"));
       onChange();
       if (!compact) setOpen(false);
@@ -391,6 +399,12 @@ export function ModelCard({
     ]),
   ).filter((m) => m && m !== handsDefault);
   const willAppendV1 = needsUrl && /^https?:\/\/[^/]+\/?$/.test(baseUrl.trim());
+  // what the chosen provider covers, from the catalogue (contract C11); the account's model
+  // covers all four through the relay, "custom" is whatever the endpoint happens to serve
+  const catalogueEntry = p?.cloud ? null : CATALOGUE.find((c) => c.id === catalogueIdFor(preset)) ?? null;
+  const region = regionOf(state.hub?.account);
+  const locale = getLocale();
+  const lacks = (cap: Capability) => !!catalogueEntry && !catalogueEntry.user_capabilities && !catalogueEntry.capabilities.includes(cap);
 
   return (
     <Card
@@ -448,6 +462,28 @@ export function ModelCard({
                 </div>
               </div>
             ))}
+          {catalogueEntry && (
+            <p className="text-[12px] text-muted">
+              <span className="font-medium text-fg">{providerName(catalogueEntry, locale)}</span> — {coversLine(t, catalogueEntry.capabilities)}
+              {". "}
+              {locale === "zh-CN" ? catalogueEntry.note_zh : catalogueEntry.note}
+            </p>
+          )}
+          <div>
+            <button type="button" onClick={() => setChatgptOpen(!chatgptOpen)} className="inline-flex items-center gap-1.5 text-[12.5px] text-accent">
+              <LogIn size={13} /> {t("Or sign in with a ChatGPT plan")} {chatgptOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+            {chatgptOpen && (
+              <div className="mt-2">
+                <ChatGptSignIn
+                  compact
+                  onChanged={() => {
+                    onChange();
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </Field>
       {needsUrl && (
@@ -601,6 +637,11 @@ export function ModelCard({
             {t("{model} does not take pictures, so the hands would be blind with it. Pick a model that sees for them.", { model: model.trim() })}
           </div>
         )}
+        {lacks("vision") && (
+          <div className="mt-1.5 text-[12px] text-amber-700 dark:text-amber-300">
+            {unavailableLine(t, "vision", region, locale)} <OwnKeyHow />
+          </div>
+        )}
       </Field>
       {!p?.no_key && (
         <Field
@@ -693,26 +734,40 @@ export function ModelCard({
       <Field
         label={t("Pictures and clips")}
         hint={t(
-          "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, qwen-image on a Model Studio key. Without one, a new face is not offered.",
+          "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, the catalogue's default on a provider that has one. Without one, a new face is not offered.",
         )}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <StudioModelPick
-            label={t("Picture model")}
-            value={imageModel}
-            options={models.image.filter((m) => !models.imageCatalog.includes(m))}
-            more={models.imageCatalog}
-            onChange={setImageModel}
-            other={!p?.cloud || anyModel}
-          />
-          <StudioModelPick
-            label={t("Clip model")}
-            value={videoModel}
-            options={models.video.filter((m) => !models.videoCatalog.includes(m))}
-            more={models.videoCatalog}
-            onChange={setVideoModel}
-            other={!p?.cloud || anyModel}
-          />
+          {lacks("image") ? (
+            <div className="rounded-xl bg-surface-2 px-3 py-2 text-[12px] text-muted">
+              {unavailableLine(t, "image", region, locale)} <OwnKeyHow />
+            </div>
+          ) : (
+            <StudioModelPick
+              label={t("Picture model")}
+              value={imageModel}
+              options={models.image.filter((m) => !models.imageCatalog.includes(m))}
+              more={models.imageCatalog}
+              onChange={setImageModel}
+              other={!p?.cloud || anyModel}
+              placeholder={catalogueEntry?.defaults.image}
+            />
+          )}
+          {lacks("video") ? (
+            <div className="rounded-xl bg-surface-2 px-3 py-2 text-[12px] text-muted">
+              {unavailableLine(t, "video", region, locale)} <OwnKeyHow />
+            </div>
+          ) : (
+            <StudioModelPick
+              label={t("Clip model")}
+              value={videoModel}
+              options={models.video.filter((m) => !models.videoCatalog.includes(m))}
+              more={models.videoCatalog}
+              onChange={setVideoModel}
+              other={!p?.cloud || anyModel}
+              placeholder={catalogueEntry?.defaults.video}
+            />
+          )}
         </div>
       </Field>
       <div className="flex gap-2 pt-1">
@@ -2960,6 +3015,7 @@ function StudioModelPick({
   more = [],
   onChange,
   other = true,
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -2968,10 +3024,13 @@ function StudioModelPick({
   more?: string[];
   onChange: (v: string) => void;
   other?: boolean;
+  /** what "Automatic" means for this provider: the catalogue's default model */
+  placeholder?: string;
 }) {
   const t = useT();
   const listed = options.includes(value) || more.includes(value);
   const [typing, setTyping] = useState(false);
+  const automatic = placeholder ? t("Automatic — {model}", { model: placeholder }) : t("Automatic");
   return (
     <label className="block text-[12.5px] text-muted">
       <span className="block mb-1">{label}</span>
@@ -2988,7 +3047,7 @@ function StudioModelPick({
           }}
           className={cx(inputCls, "text-fg")}
         >
-          <option value="">{t("Automatic")}</option>
+          <option value="">{automatic}</option>
           {more.length ? (
             <optgroup label={t("Menu")}>
               {options.map((m) => (
@@ -3019,12 +3078,22 @@ function StudioModelPick({
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={t("Automatic")}
+          placeholder={automatic}
           className={cx(inputCls, "text-fg")}
           spellCheck={false}
         />
       )}
     </label>
+  );
+}
+
+/** The "(how)" at the end of an unavailable line: the guide to one's own key. */
+function OwnKeyHow() {
+  const t = useT();
+  return (
+    <a href={OWN_KEY_DOCS} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-accent">
+      {t("How")} <ExternalLink size={11} />
+    </a>
   );
 }
 

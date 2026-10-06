@@ -7,7 +7,8 @@ import { PageBar } from "../components/BackBar";
 import { MuseRoundButton } from "../components/MuseHeader";
 import { primaryBtn, secondaryBtn } from "../components/Form";
 import { StarNudgeOnce } from "../components/StarNudge";
-import { useT } from "../i18n";
+import { getLocale, useT } from "../i18n";
+import { regionOf, unavailableLine } from "../providers";
 import { useStore } from "../store";
 import type { StudioSession, StudioView } from "../types";
 import { cx } from "../util";
@@ -73,7 +74,8 @@ export function AvatarStudioScreen() {
     act("draw", async () => {
       const desc = description.trim() || DEFAULT_DESCRIPTION;
       const begun = await api.avatarBegin(desc, "", style);
-      if (begun.available === false) throw new Error(t(begun.message ?? "No image model is set."));
+      // no provider with image models: the one sentence (contract C11), never the runtime's raw reason
+      if (begun.available === false) throw new Error(unavailableLine(t, "image", regionOf(state.hub?.account), getLocale()));
       // the account's model is priced and confirmed first; a key of one's own is not asked
       if (begun.cost?.cloud === false && begun.session) await api.avatarStart(begun.session);
     });
@@ -240,7 +242,7 @@ export function AvatarStudioScreen() {
                 ? "…"
                 : view.available
                   ? t("Drawn by {provider} · {model}", { provider, model: view.image_model || "—" })
-                  : t("Set an image model first: Connections → Image & video models. The account's model draws with qwen-image; Alibaba Cloud Bailian does too.")}
+                  : unavailableLine(t, "image", regionOf(state.hub?.account), getLocale())}
             </span>
             <span className="shrink-0 font-medium text-accent">{t("Change model")}</span>
           </button>
@@ -364,6 +366,9 @@ function providerName(host: string, t: (s: string) => string): string {
   if (/bigmodel|zhipu/.test(host)) return t("Zhipu");
   if (/siliconflow/.test(host)) return "SiliconFlow";
   if (/volces|ark/.test(host)) return t("Volcano Ark");
+  if (/openrouter/.test(host)) return "OpenRouter";
+  if (/googleapis/.test(host)) return "Gemini";
+  if (/x\.ai/.test(host)) return "xAI";
   if (/^(127\.0\.0\.1|localhost)/.test(host)) return t("this computer");
   return host;
 }
