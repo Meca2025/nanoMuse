@@ -205,8 +205,8 @@ dsh-nanomuse/
     DevicesPanel.tsx    Settings → Devices and the rail's Devices page: this computer, the others, the switch
     Avatar.tsx          the face in five moods: dragon stills, emoji on a colour, drawn face from the host
     Onboarding.tsx      the first run, full-window: welcome → sign in → code → the permissions carousel → ready
-    SignIn.tsx          the two-step form (identifier → code), shared with Settings → Account
-    CloudSection.tsx    Settings → Account (the account, the look, the models, the relay, Open Devices) and Data controls
+    SignIn.tsx          the two-step form (identifier → code), shared with Settings → nanoMuse Cloud
+    CloudSection.tsx    Settings → nanoMuse Cloud (the account, the look, the models, the relay, Open Devices) and Data controls
     Capsule.tsx         the toasts (and the words for a Hands/Reach call, shared with the header)
     bridge.ts, prefs.ts the desktop shell's bridge (window.nanomuseHarness: permissions, links, keep awake, app behavior, bug report, quick chat) and the local preferences (Developer switch, keep awake, approvals)
     icons.tsx, keys.ts, bus.ts, panels.ts

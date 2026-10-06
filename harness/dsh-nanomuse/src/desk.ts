@@ -2,7 +2,7 @@
  * The desk behind the hands (0.1.34): the approvals and holds the chat's cards and
  * the capsule answer (shared contracts C1 and C2 of this release), what the account's
  * connectors look like to the other devices (C3), and the update check the
- * About row runs (GitHub releases first, nanomuse.cn/dl as the fallback).
+ * About row runs (nanomuse.cn/dl/index.json first, GitHub releases as the fallback).
  *
  * No Cordis here: `cloud.ts` owns the wiring, this file owns the shapes and
  * the decisions so the tests can drive them without a host.
