@@ -47,7 +47,7 @@ import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './ac
 import { CODING_ACTIONS, CodingService, codingBrief, GATED_CODING_ACTIONS } from './coding.ts'
 import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
-import { relayFailure, type RelayRefusal } from './refusals.ts'
+import { relayFailure, transportFailure, type RelayRefusal } from './refusals.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner, textOf } from './task.ts'
 import { Trajectory, type StepAction, type TrajectoryView } from './trajectory.ts'
@@ -3184,6 +3184,13 @@ export default class NanomuseCloud extends Service {
     } catch (error: unknown) {
       if (error instanceof RelayError) {
         return send(res, error.status >= 500 ? 502 : error.status, { error: { code: error.code, message: error.message } })
+      }
+      // the wire, not a refusal: a relay out of reach or past its deadline gets a code the
+      // browser half puts into words, instead of `fetch failed` shown as it came
+      const transport = transportFailure(error)
+      if (transport) {
+        this.ctx.logger.warn('nanomuse cloud: %s %s: %s (%s)', req.method, route, transport, message(error))
+        return send(res, transport === 'timeout' ? 504 : 503, { error: { code: transport, message: message(error) } })
       }
       this.ctx.logger.warn('nanomuse cloud: %s %s failed: %s', req.method, route, message(error))
       return send(res, 500, { error: { code: 'internal', message: message(error) } })

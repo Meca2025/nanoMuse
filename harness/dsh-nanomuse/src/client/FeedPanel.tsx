@@ -5,6 +5,7 @@
  * about it. The sliders at the top right hold the feed's instructions (what
  * the person wants to read here) and a "write a batch now".
  */
+import { failureText } from './api.ts'
 import { createElement as h, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconComment, IconFeed, IconHeart, IconRefresh, IconSliders } from './icons.tsx'
@@ -26,7 +27,7 @@ export function makeFeedPanel(t: Translate) {
     useEffect(() => { roomsCall('feed/open', {}).catch(() => undefined) }, [])
     const routine = rooms.feed.routine
 
-    const fail = (err: unknown) => setError(t('failed', { message: (err as Error).message }))
+    const fail = (err: unknown) => setError(failureText(t, err))
     const refresh = () => { setError(undefined); roomsCall('feed/refresh', {}).catch(fail) }
     const discuss = (post: FeedPost) => {
       setError(undefined)
@@ -108,7 +109,7 @@ function FeedSettings({ t, instructions, routine, busy, ready, onClose, onRefres
     Promise.all([
       roomsCall('feed/instructions', { text }),
       routineChanged ? roomsCall('feed/routine', { on, time }) : Promise.resolve(undefined),
-    ]).then(onClose).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setSaving(false))
+    ]).then(onClose).catch((err: unknown) => setError(failureText(t, err))).finally(() => setSaving(false))
   }
   return h(Sheet, { title: t('feedSettingsTitle'), closeLabel: t('close'), onClose,
     footer: h('div', { className: 'nm-sheet-actions' },

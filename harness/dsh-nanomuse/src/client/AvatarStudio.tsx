@@ -11,7 +11,7 @@
  */
 import { createElement as h, Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { StarNudgeOnce } from './AccountPage.tsx'
-import { call, errorCode, type Translate } from './api.ts'
+import { call, errorCode, type Translate, failureText } from './api.ts'
 import { useLive } from './live.ts'
 import type { Words } from './locales.ts'
 import { UnavailableLine, useProviders } from './OwnKey.tsx'
@@ -158,7 +158,7 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
         if (alive.current && round.current === mine) setCandidates((c) => c.map((v, i) => (i === index ? r.image : v)))
       } catch (err: unknown) {
         failures++
-        if (alive.current && round.current === mine) setError(t('failed', { message: (err as Error).message }))
+        if (alive.current && round.current === mine) setError(failureText(t, err))
       }
     }
     // two at a time, as the runtime does: the provider allows a couple of pictures in flight
@@ -198,7 +198,7 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
       if (alive.current) setStage('done')
     } catch (err: unknown) {
       if (alive.current) {
-        setError(t('failed', { message: (err as Error).message }))
+        setError(failureText(t, err))
         setStage('drawing')
       }
     } finally {

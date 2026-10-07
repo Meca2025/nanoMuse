@@ -7,7 +7,7 @@
  */
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useEffect, useState, type ReactNode } from 'react'
-import { call, type Translate } from './api.ts'
+import { call, type Translate, failureText } from './api.ts'
 import { IconCopy, IconGift } from './icons.tsx'
 import { useLive } from './live.ts'
 import { mainChatId } from './MuseChats.tsx'
@@ -57,7 +57,7 @@ function InviteDialog({ t, onClose }: { t: Translate; onClose(): void }): ReactN
     let alive = true
     call<Invite>('invite')
       .then((next) => { if (alive) setInvite(next) })
-      .catch((err: unknown) => { if (alive) setError(t('failed', { message: (err as Error).message })) })
+      .catch((err: unknown) => { if (alive) setError(failureText(t, err)) })
     return () => { alive = false }
   }, [t])
   const copy = (what: 'code' | 'link', text: string) => {

@@ -11,7 +11,7 @@
  */
 import { Button, Input, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useState, type FormEvent, type ReactNode } from 'react'
-import { call, errorStyle, type Translate } from './api.ts'
+import { call, errorStyle, type Translate, failureText } from './api.ts'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
 import { CODING_SECTION, codingNav } from './CodingPanel.tsx'
@@ -95,7 +95,7 @@ export function makeDevicesPanel(t: Translate) {
     const run = (work: () => Promise<unknown>) => {
       setBusy(true)
       setError(undefined)
-      work().catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
+      work().catch((err: unknown) => setError(failureText(t, err))).finally(() => setBusy(false))
     }
     const rename = (event: FormEvent) => {
       event.preventDefault()

@@ -20,7 +20,7 @@
  */
 import { createElement as h, Fragment, useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { baseUrlFor, isLocal, keyUrlFor, ownKeyStepDone, providersWith, unavailableKey, waysOn, type Capability, type ProviderEntry, type Region, type WaysOn } from '../catalogue.ts'
-import { call, errorStyle, muted, row, type Translate } from './api.ts'
+import { call, errorStyle, muted, row, type Translate, failureText } from './api.ts'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
 import { IconCheck, IconGlobe, IconKey } from './icons.tsx'
@@ -141,7 +141,7 @@ function KeyForm({ t, entry, region, configured, onSaved, onCancel }: { t: Trans
     if (entry.user_capabilities) { body.capabilities = caps; body.label = label }
     call<OwnProvider & { offer?: SlotOffer }>('providers/save', body)
       .then((saved) => onSaved(saved.models.length ? t('ownKeySaved', { n: saved.models.length }) : t('ownKeySavedNone'), { label: saved.label, offer: saved.offer ?? {} }))
-      .catch((err: unknown) => setError(t('failed', { message: (err as Error).message })))
+      .catch((err: unknown) => setError(failureText(t, err)))
       .finally(() => setBusy(false))
   }
   const capWord: Record<Capability, string> = { chat: t('ownKeyCovChat'), vision: t('ownKeyCovVision'), image: t('ownKeyCovImage'), video: t('ownKeyCovVideo') }
@@ -178,12 +178,12 @@ export function ChatGptRow({ t, view, onChanged }: { t: Translate; view: Provide
     call<{ url: string }>('chatgpt/login')
       .then((r) => { if (r.url) openLink(r.url) })
       // `no_runtime` reaches the row through the live state's `login.error` already
-      .catch((err: unknown) => { if ((err as Error).message !== 'no_runtime') setError(t('failed', { message: (err as Error).message })) })
+      .catch((err: unknown) => { if ((err as Error).message !== 'no_runtime') setError(failureText(t, err)) })
       .finally(() => setBusy(false))
   }
   const signOut = () => {
     setBusy(true)
-    call('chatgpt/logout').then(() => onChanged()).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
+    call('chatgpt/logout').then(() => onChanged()).catch((err: unknown) => setError(failureText(t, err))).finally(() => setBusy(false))
   }
   const cancel = () => { void call('chatgpt/cancel').catch(() => undefined) }
   const login = cg.login
@@ -239,7 +239,7 @@ export function UseItCard({ t, id, label, offer, signedIn, onDone }: { t: Transl
     setError(undefined)
     call<{ done: SlotOffer }>('providers/adopt', { id, slots: ticked })
       .then((r) => onDone(Object.keys(r.done).length ? t('useItDone', { label }) : undefined))
-      .catch((err: unknown) => setError(t('failed', { message: (err as Error).message })))
+      .catch((err: unknown) => setError(failureText(t, err)))
       .finally(() => setBusy(false))
   }
   if (!slots.length) return null
@@ -270,7 +270,7 @@ export function ProviderRow({ t, entry, view, onChanged }: { t: Translate; entry
   const remove = () => {
     setBusy(true)
     setError(undefined)
-    call('providers/remove', { id: entry.id }).then(() => { setSaid(undefined); setOffer(undefined); onChanged() }).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
+    call('providers/remove', { id: entry.id }).then(() => { setSaid(undefined); setOffer(undefined); onChanged() }).catch((err: unknown) => setError(failureText(t, err))).finally(() => setBusy(false))
   }
   return h('div', { className: 'nm-way' },
     h('span', { className: 'nm-way-icon' }, configured ? h(IconCheck, { size: 15 }) : h(IconKey, { size: 15 })),

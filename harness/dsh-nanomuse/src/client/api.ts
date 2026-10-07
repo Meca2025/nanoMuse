@@ -61,6 +61,26 @@ export function errorCode(err: unknown): string {
   return typeof err === 'object' && err !== null && 'code' in err && typeof (err as { code: unknown }).code === 'string' ? (err as { code: string }).code : ''
 }
 
+/**
+ * What a failed `call` says to the person: the wire's and the relay's common refusals as a
+ * plain sentence in the UI language (the relay out of reach, a deadline passed, too many
+ * requests, a sign-in no longer valid, the relay in trouble, this computer's host not
+ * answering), and otherwise `That did not work: <the message as it came>`.
+ */
+export function failureText(t: Translate, err: unknown): string {
+  const code = errorCode(err)
+  const text = typeof err === 'object' && err !== null && 'message' in err ? String((err as { message: unknown }).message ?? '') : String(err ?? '')
+  const status = Number(/^(?:http_)?(\d{3})$/.exec(code)?.[1] ?? 0)
+  // `fetch` itself failed: the host on loopback is gone (no status, no code)
+  if (!code && err instanceof TypeError && /fetch/i.test(text)) return t('errHostDown')
+  if (code === 'unreachable') return t('errUnreachable')
+  if (code === 'timeout' || code === 'http_504' || status === 504) return t('errTimeout')
+  if (code === 'rate_limited' || code === 'too_many_in_flight' || code === 'provider_busy' || status === 429) return t('errBusy')
+  if (code === 'signed_out' || code === 'bad_key' || status === 401) return t('errSignedOut')
+  if (status >= 500 && status !== 504) return t('errRelay', { status })
+  return t('failed', { message: text || code || '?' })
+}
+
 export const column: Record<string, string | number> = { display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 440 }
 export const row: Record<string, string | number> = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }
 export const muted: Record<string, string | number> = { color: 'var(--dsw-alias-label-secondary, #6b6b6b)', fontSize: 13, lineHeight: 1.5 }

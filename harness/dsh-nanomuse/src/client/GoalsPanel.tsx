@@ -6,6 +6,7 @@
  * chat, Done, Delete. Below the list, "Create a goal" by category opens a
  * sheet with examples; the goal then lives in a chat of its own.
  */
+import { failureText } from './api.ts'
 import { createElement as h, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconAlarm, IconBriefcase, IconCheck, IconCheckCircle, IconChevronRight, IconCircleDot, IconDollar, IconHeartLine, IconMonitor, IconPalette, IconSquare, IconTarget, IconUsers } from './icons.tsx'
@@ -37,7 +38,7 @@ export function makeGoalsPanel(t: Translate) {
     const tracking = rooms.goals.filter((g) => g.status !== 'done')
     const done = rooms.goals.filter((g) => g.status === 'done')
 
-    const fail = (err: unknown) => setError(t('failed', { message: (err as Error).message }))
+    const fail = (err: unknown) => setError(failureText(t, err))
     const setStatus = (goal: Goal, status: Goal['status']) => { roomsCall('goals/update', { id: goal.id, status }).catch(fail) }
     const remove = (goal: Goal) => {
       if (!window.confirm(t('goalDeleteConfirm', { title: goal.title }))) return
@@ -185,7 +186,7 @@ function CreateGoal({ t, category, onClose, onCreated }: { t: Translate; categor
     if (!text.trim()) return
     setBusy(true)
     setError(undefined)
-    roomsCall<Goal>('goals/create', { category, text: text.trim() }).then(onCreated).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
+    roomsCall<Goal>('goals/create', { category, text: text.trim() }).then(onCreated).catch((err: unknown) => setError(failureText(t, err))).finally(() => setBusy(false))
   }
   return h(Sheet, { title: `${t('goalsCreate')} · ${t(meta.label)}`, closeLabel: t('close'), onClose,
     footer: h('div', { className: 'nm-sheet-actions' },

@@ -4,7 +4,7 @@
 // and what is left alone (another provider's words, the codes the harness itself acts on).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyRefusal, parseRelayFailure, providerFailureKind, refusalCard, refusalCode, refusalKindOf, refusalSentence, relayFailure, REFUSAL_KINDS, REFUSAL_PREFIX } from '../lib/refusals.js'
+import { classifyRefusal, parseRelayFailure, providerFailureKind, refusalCard, refusalCode, refusalKindOf, refusalSentence, relayFailure, transportFailure, REFUSAL_KINDS, REFUSAL_PREFIX } from '../lib/refusals.js'
 
 /** The relay's `error_response(...)` body, as `pi-ai` prints it: `<status>: <inner error object>`. */
 function relayLine(status, inner) {
@@ -210,4 +210,19 @@ test('another provider’s failure (an own key): the harness’s routing code pi
   assert.equal(providerFailureKind('SERVER', ''), 'server')
   assert.equal(providerFailureKind('TIMEOUT', ''), 'unreachable')
   assert.equal(providerFailureKind('PI_AI_ERROR', 'something else'), 'other')
+})
+
+test('the wire, not a refusal: a deadline passed is a timeout, a connection that never came together is unreachable', () => {
+  const timeout = Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' })
+  assert.equal(transportFailure(timeout), 'timeout')
+  const refused = Object.assign(new TypeError('fetch failed'), { cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), { code: 'ECONNREFUSED' }) })
+  assert.equal(transportFailure(refused), 'unreachable')
+  const dns = Object.assign(new TypeError('fetch failed'), { cause: { code: 'ENOTFOUND' } })
+  assert.equal(transportFailure(dns), 'unreachable')
+  assert.equal(transportFailure(new Error('socket hang up')), 'unreachable')
+  assert.equal(transportFailure(new Error('request timed out after 30s')), 'timeout')
+  assert.equal(transportFailure(new Error('ENOENT: no such file')), undefined)
+  assert.equal(transportFailure(new Error('model not found')), undefined)
+  assert.equal(transportFailure(undefined), undefined)
+  assert.equal(transportFailure('fetch failed'), undefined)
 })

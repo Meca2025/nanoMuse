@@ -15,7 +15,7 @@ import { createElement as h, Fragment, useCallback, useEffect, useId, useRef, us
 import { createPortal } from 'react-dom'
 import { UpdateRow } from './About.tsx'
 import { openStar } from './AccountPage.tsx'
-import { call, type CloudStatus, type Translate } from './api.ts'
+import { call, type CloudStatus, type Translate, failureText } from './api.ts'
 import { Avatar } from './Avatar.tsx'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
@@ -148,7 +148,7 @@ function SettingsPanel({ t, rows, renderSlot, activeId, onSelect, onClose }: Pan
     setSignOutError(undefined)
     void call('sign-out', {})
       .then(() => onClose())
-      .catch((err: unknown) => setSignOutError(t('failed', { message: (err as Error).message })))
+      .catch((err: unknown) => setSignOutError(failureText(t, err)))
       .finally(() => setSigningOut(false))
   }
 

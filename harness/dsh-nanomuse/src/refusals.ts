@@ -88,6 +88,28 @@ export function refusalKindOf(code: string | undefined | null): RefusalKind | un
 }
 
 const TRANSPORT = /\b(?:timed?\s*out|timeout|connection error|fetch failed|network error|socket hang up|ECONN[A-Z]+|ENOTFOUND|EAI_AGAIN|other side closed|premature close|terminated)\b/i
+const TIMEOUT = /\b(?:timed?\s*out|timeout)\b/i
+
+/**
+ * What a thrown error says about the wire, when it is about the wire: `timeout` for a
+ * deadline that passed (`AbortSignal.timeout`'s TimeoutError, "timed out"), `unreachable`
+ * for a connection that never came together (Node's `fetch failed` with its `cause`,
+ * ECONNREFUSED, ENOTFOUND); undefined for anything else (the relay's own refusals, a bug).
+ * The host's routes turn these into codes the browser half can put into words.
+ */
+export function transportFailure(error: unknown): 'timeout' | 'unreachable' | undefined {
+  if (!error || typeof error !== 'object') return undefined
+  const e = error as { name?: unknown; message?: unknown; cause?: unknown; code?: unknown }
+  if (e.name === 'TimeoutError') return 'timeout'
+  const texts = [e.message, e.code, (e.cause as { message?: unknown; code?: unknown } | undefined)?.message, (e.cause as { code?: unknown } | undefined)?.code]
+    .filter((v): v is string => typeof v === 'string')
+    .join(' ')
+  if (!texts) return undefined
+  if (e.name === 'AbortError' && TIMEOUT.test(texts)) return 'timeout'
+  if (!TRANSPORT.test(texts)) return undefined
+  return TIMEOUT.test(texts) ? 'timeout' : 'unreachable'
+}
+
 const CONTEXT = /\b(?:context (?:length|window)|too many tokens|maximum context|prompt is too long|content is too long|exceeds the model|token limit)\b/i
 
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)

@@ -21,7 +21,7 @@ import { useModalLayer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { firstRunNeeded, stageOf, dotOf, type Stage } from '../firstrun.ts'
-import { call, type CloudStatus, type Translate } from './api.ts'
+import { call, type CloudStatus, type Translate, failureText } from './api.ts'
 import { useCloudConfig, type AccountSheet } from './AccountPage.tsx'
 import { Avatar } from './Avatar.tsx'
 import { BrandMark } from './BrandMark.tsx'
@@ -202,7 +202,7 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
       try {
         await work()
       } catch (err: unknown) {
-        setError(t('failed', { message: (err as Error).message }))
+        setError(failureText(t, err))
       } finally {
         setBusy(false)
       }
@@ -290,7 +290,7 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
         h('input', { className: 'nm-field', value: identifier, placeholder: t('obIdentifier'), autoComplete: 'username', autoFocus: true, 'aria-label': t('obIdentifier'), onChange: (e: FormEvent<HTMLInputElement>) => setIdentifier(e.currentTarget.value) }),
         // SMS codes reach mainland-China numbers only; everyone else gets an e-mail (the Settings sign-in says the same)
         h('p', { className: 'nm-ob-fine' }, t('identifierHint')),
-        h('p', { className: 'nm-ob-fine' }, t('obTermsLead'), ' ', link(PRIVACY_URL, t('obPrivacy')), t('obTermsEnd')),
+        h('p', { className: 'nm-ob-fine' }, t('obTermsLead'), link(PRIVACY_URL, t('obPrivacy')), t('obTermsEnd')),
         error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
         h(Pill, { type: 'submit', disabled: busy || identifier.trim().length < 3, className: 'nm-ob-wide' }, busy ? t('sending') : t('obContinue')),
         h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setSignIn(null) } }, t('obBack')))

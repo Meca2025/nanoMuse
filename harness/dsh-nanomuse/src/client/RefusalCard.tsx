@@ -20,7 +20,7 @@ import { createElement as h, Fragment, useEffect, useRef, useState, type ReactNo
 import { providerFailureKind, refusalCard, refusalKindOf, type RefusalKind } from '../refusals.ts'
 import { type AccountSheet } from './AccountPage.tsx'
 import { allowanceInfo, AllowanceWays } from './AllowanceWays.tsx'
-import { call, muted, row, type Translate } from './api.ts'
+import { call, muted, row, type Translate, failureText } from './api.ts'
 import { settingsBus } from './bus.ts'
 import { focusComposer } from './composer.ts'
 import { IconRefresh } from './icons.tsx'
@@ -143,7 +143,7 @@ export function makeTurnError(t: Translate, deps: RefusalDeps) {
       setCloudError(undefined)
       void call('retry-cloud', { sessionId })
         .then(() => deps.retry(sessionId, text))
-        .catch((err: unknown) => setCloudError(t('failed', { message: (err as Error).message })))
+        .catch((err: unknown) => setCloudError(failureText(t, err)))
         .finally(() => setBusy(false))
     }
     const openSettings = () => { settingsBus.openSection?.(ACCOUNT_SECTION) }

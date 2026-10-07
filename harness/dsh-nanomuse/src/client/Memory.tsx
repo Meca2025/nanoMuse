@@ -5,6 +5,7 @@
  * one line per memory; the Data controls page downloads everything as a zip or
  * resets the agent.
  */
+import { failureText } from './api.ts'
 import { createElement as h, Fragment, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconBrain, IconClose } from './icons.tsx'
@@ -55,7 +56,7 @@ export function ImportMemorySheet({ t, onClose }: { t: Translate; onClose(): voi
     if (!text.trim()) return
     setBusy(true)
     setError(undefined)
-    roomsCall<{ added: number }>('memory/import', { text }).then((r) => setDone(r.added)).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
+    roomsCall<{ added: number }>('memory/import', { text }).then((r) => setDone(r.added)).catch((err: unknown) => setError(failureText(t, err))).finally(() => setBusy(false))
   }
   return h(Sheet, { title: t('memImport'), closeLabel: t('close'), onClose,
     footer: h('div', { className: 'nm-sheet-actions' },
@@ -83,11 +84,11 @@ export function DataRows({ t }: { t: Translate }): ReactNode {
   const download = () => {
     setBusy(true)
     setNotice(undefined)
-    roomsCall<{ path: string }>('data/export').then((r) => setNotice(t('dataExported', { path: r.path }))).catch((err: unknown) => setNotice(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
+    roomsCall<{ path: string }>('data/export').then((r) => setNotice(t('dataExported', { path: r.path }))).catch((err: unknown) => setNotice(failureText(t, err))).finally(() => setBusy(false))
   }
   const reset = () => {
     setBusy(true)
-    roomsCall('data/reset').then(() => window.location.reload()).catch((err: unknown) => { setNotice(t('failed', { message: (err as Error).message })); setBusy(false) })
+    roomsCall('data/reset').then(() => window.location.reload()).catch((err: unknown) => { setNotice(failureText(t, err)); setBusy(false) })
   }
   return h(Fragment, null,
     h('div', { className: 'nm-card' },
