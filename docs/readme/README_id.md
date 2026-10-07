@@ -29,9 +29,8 @@
 
 *nano* berarti satu paket lengkap yang cukup kecil untuk kamu jalankan dan pasang sendiri: aplikasi ponsel, aplikasi desktop, konsol web, dan relay yang menghubungkan semuanya ada di repositori ini, di bawah GPL-3.0-or-later. **[Gratis, sumber terbuka, nirlaba — mari bangun bersama.](../../CONTRIBUTING.md)** Masuk dan kamu mendapat jatah gratis pemakaian model di relay komunitas — pengembang yang membayarnya; kalau habis, [pakai kunci sendiri](../own-key.md). Relay yang sama bisa berjalan di servermu, jadi tidak ada data yang harus keluar dari rumahmu. Versi terbaru: **0.1.40 Clear** — [catatan rilis](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [coba di browser](https://demo.nanomuse.dev/).
 
-<p align="center">
-  <a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-en.png" alt="The nanoMuse film, 74 seconds"></a>
-</p>
+https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
+
 <p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ Kabar

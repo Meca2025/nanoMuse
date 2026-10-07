@@ -29,9 +29,8 @@
 
 *nano* 的意思是完整的一套，小到你自己就能跑、能部署：手机 App、桌面 App、网页控制台，还有把它们连在一起的中继，都在这个仓库里，GPL-3.0-or-later。**[免费、开源、非营利——一起把它做好。](../../CONTRIBUTING.md)** 登录就有一份免费的模型额度，走社区中继，钱是开发者出的；用完可以[换自己的 key](../own-key.md)。同一套中继也能跑在你自己的服务器上，数据不用出门。最新版本：**0.1.40 Clear**——[发布说明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [在线体验](https://demo.nanomuse.dev/)。
 
-<p align="center">
-  <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-zh.png" alt="nanoMuse 宣传片，74 秒"></a>
-</p>
+https://github.com/user-attachments/assets/bf0ec2ae-59aa-4358-9dd0-c9d045ee7bee
+
 <p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ 动态
