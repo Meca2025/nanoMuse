@@ -151,14 +151,20 @@ class HubClient(
         ws = http.newWebSocket(req, listener)
     }
 
-    private fun scheduleReconnect(reason: String) {
+    /**
+     * Drops the socket and tries again after the backoff (1 s doubling to 30 s), or after
+     * [atLeastMs] when the relay said to wait: a paused hub, a replaced connection, a key it
+     * refused at the handshake.
+     */
+    private fun scheduleReconnect(reason: String, atLeastMs: Long = 0L) {
         connected = false
         ws = null
         failAll("disconnected", "the hub connection dropped")
         onState(false, reason)
         if (stopped) return
         retry?.cancel(false)
-        retry = timer.schedule({ connect() }, delayMs, TimeUnit.MILLISECONDS)
+        val wait = maxOf(delayMs, atLeastMs)
+        retry = timer.schedule({ connect() }, wait, TimeUnit.MILLISECONDS)
         delayMs = (delayMs * 2).coerceAtMost(30_000L)
     }
 
@@ -173,7 +179,9 @@ class HubClient(
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            webSocket.close(code, reason)
+            // Acknowledge with a normal close: echoing the relay's own code back (4003, say)
+            // means nothing to it, and OkHttp refuses codes outside the ranges it knows.
+            runCatching { webSocket.close(1000, null) }
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -187,11 +195,22 @@ class HubClient(
                 onState(false, if (code == 4001) "bad_key" else "bad_device")
                 return
             }
-            scheduleReconnect("closed $code $reason")
+            // 4003: replaced by a newer connection of this device, or the operator paused the
+            // hub (`hub_paused`); either way the relay asked us to wait, not to race back.
+            scheduleReconnect("closed $code $reason", atLeastMs = if (code == 4003) PAUSED_RETRY_MS else 0L)
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            AppLogger.info(TAG, "hub socket failed: ${t.message}")
+            val status = response?.code
+            AppLogger.info(TAG, "hub socket failed: ${t.message}" + (status?.let { " (HTTP $it)" } ?: ""))
+            if (status == 401 || status == 403) {
+                // The relay refused the key before the socket opened (it closes 4001 before
+                // accepting, which reaches us as a failed handshake). The same key will be
+                // refused again in a second; say so and try again slowly, a new sign-in makes
+                // a new client.
+                scheduleReconnect("bad_key", atLeastMs = REFUSED_RETRY_MS)
+                return
+            }
             scheduleReconnect(t.message ?: t.javaClass.simpleName)
         }
     }
@@ -310,5 +329,9 @@ class HubClient(
 
     companion object {
         private const val TAG = "HubClient"
+        /** After 4003 (replaced, or the hub paused): what the desktop waits too. */
+        private const val PAUSED_RETRY_MS = 30_000L
+        /** After the relay refused the key at the handshake: what the runtime waits too. */
+        private const val REFUSED_RETRY_MS = 60_000L
     }
 }

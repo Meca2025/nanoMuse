@@ -200,6 +200,9 @@ is approved one at a time, and *for this chat* answers stay bound to the app or 
 they were given for. Another device of your account that wants to run, read or write
 something on the phone (hub `shell`, `files`, `open`, `screen`…) is approved by the person
 holding the phone first — *once* or *always for that device*, revocable under Permissions.
+A path another device or the agent names (hub `files`, `nanomuse-media`, `nanomuse-pc put`)
+is resolved inside the sandbox only (`io.github.nanomuse.sandbox.SandboxPaths`): `..` and a
+symlink out of the rootfs lead nowhere, so the app's own private files stay out of reach.
 The app allows plain `http://` only for addresses on your own network (`10.x`,
 `172.16–31.x`, `192.168.x`, `.local` names) — a model server or a computer of your own —
 and refuses it at the provider URL field for anything else (`io.github.nanomuse.net.LanOnly`);
@@ -250,7 +253,7 @@ like the Python package's version does.
 | `cloud/Region.kt`, `cloud/ProviderCatalogue.kt`, `cloud/Capabilities.kt`, `cloud/OwnKeyPresets.kt`, `cloud/ProfileSync.kt` | Which region's vendors come first (mainland → Bailian, else OpenRouter and OpenAI); the own-key catalogue read from `assets/nanomuse/providers.json` and which vendor a configured provider is; what a provider covers and the one-sentence "unavailable" lines; the pre-filled provider forms (`?preset=<id>[:oauth]`); the relay profile (name, look, connectors) pulled and pushed |
 | `sync/` | Conversation sync (contracts C7–C10): `SyncEngine` (what goes up and comes down; `owner` per mapping, the account's only), `ConversationSync` (when; `hidden` — the chats of another account, left out of `ChatRepository.observeSessions()`), `LocalChats`, the Room store `nanomuse_sync.db` (with the `session_owners` table of C12) |
 | `account/` | Contract C12 (0.1.40, [sync.md](sync.md)): `AccountScope` (the rules — whose chat a session is, the account's key, what the lists leave out, what a refused key keeps (`keepOnRefusedKey`: everything, unless the relay says `account_deleted`); unit-tested), `AccountData` (applies them: every chat an owner row, `leave` puts the account's chats, memory, feed, goals, routines, face and preferences aside or deletes them, `enter` brings an account's back) |
-| `hub/` | `Hub` (state, device identity, settings), `HubClient` (the socket with backoff; stops when the relay refuses the key), `HubService` (the foreground service), `HubActions` (what other devices may ask this phone), `HubErrors` (failures in words) |
+| `hub/` | `Hub` (state, device identity, settings), `HubClient` (the socket with backoff; a refused key is retried once a minute and shown as such, a paused or replaced connection waits 30 s), `HubService` (the foreground service), `HubActions` (what other devices may ask this phone), `HubErrors` (failures in words) |
 | `reach/` | `Computers` (paired computers, tokens in the encrypted store), the offload handler that sends work to a computer |
 | `models/` | Settings → Models behind the screens: `ModelSlots` (the four slots, what each is set to and where that is kept, the groups a picker shows, `followPick` for the chat default, `applyProvider` for the *Use it for* card), `SlotOrder` (the resolution order and the catalogue default, pure Kotlin, unit-tested), `PickerList` (the picker's eight-row groups, their order and the search filter, pure Kotlin, unit-tested) |
 | `ui/models/` | The Models page, the picker behind each row, the *Use it for* card (`minis://settings/models`) |

@@ -162,7 +162,9 @@ base URL（从不包括中继的，从不包括局域网地址）它回答代理
 同一屏撤销（首次运行的「手」那一页在 App 标志下面请求这两项，和登录页一样）；会发送东西的步骤——点「发送」，或在聊天软件的消息框里按回车——一次一次地审批，
 「本次对话」的答复也只对当初授权的那个 App 或地址有效。账号下的另一台设备想在手机上运行、读取
 或写入什么（hub 的 `shell`、`files`、`open`、`screen`……），要先经拿着手机的人批准——「一次」或
-「对这台设备总是允许」，可在「权限」里撤销。App 只对你自己网络内的地址（`10.x`、`172.16–31.x`、
+「对这台设备总是允许」，可在「权限」里撤销。另一台设备或智能体说出的路径（hub 的 `files`、
+`nanomuse-media`、`nanomuse-pc put`）只在沙箱内解析（`io.github.nanomuse.sandbox.SandboxPaths`）：
+`..` 和指向 rootfs 之外的符号链接都无处可去，App 自己的私有文件始终够不着。App 只对你自己网络内的地址（`10.x`、`172.16–31.x`、
 `192.168.x`、`.local` 名字）——一台模型服务器或你自己的电脑——允许明文 `http://`，其他地址在
 服务商 URL 字段里一律拒绝（`io.github.nanomuse.net.LanOnly`）；中继和 hub 只走 TLS。App 内的
 web view 不对其他 App 导出。
@@ -208,7 +210,7 @@ keytool -genkeypair -keystore ~/.nanomuse-release/nanomuse.jks -alias nanomuse \
 | `cloud/Region.kt`、`cloud/ProviderCatalogue.kt`、`cloud/Capabilities.kt`、`cloud/OwnKeyPresets.kt`、`cloud/ProfileSync.kt` | 哪个地区的厂商排前面（大陆 → 百炼，否则 OpenRouter 和 OpenAI）；从 `assets/nanomuse/providers.json` 读出的自带 key 目录，以及某个已配置的服务商对应哪家厂商；一个服务商覆盖什么和那些一句话的「不可用」提示；预填的服务商表单（`?preset=<id>[:oauth]`）；拉取和推送的中继 profile（名字、外观、连接器） |
 | `sync/` | 对话同步（契约 C7–C10）：`SyncEngine`（什么上传、什么下载；每个映射带 `owner`，只有本账号的）、`ConversationSync`（何时同步；`hidden`——另一个账号的聊天，从 `ChatRepository.observeSessions()` 里排除）、`LocalChats`、Room 存储 `nanomuse_sync.db`（含 C12 的 `session_owners` 表） |
 | `account/` | 契约 C12（0.1.40，[sync.md](sync.md)）：`AccountScope`（规则——一个会话是谁的聊天、账号的 key、列表排除什么、被拒绝的 key 保留什么（`keepOnRefusedKey`：全部保留，除非中继说 `account_deleted`）；有单元测试）、`AccountData`（执行规则：每个聊天一行归属记录，`leave` 把账号的聊天、记忆、动态、目标、例程、形象和偏好收起来或删掉，`enter` 把一个账号的东西带回来） |
-| `hub/` | `Hub`（状态、设备身份、设置）、`HubClient`（带退避的 socket；中继拒绝 key 时停止）、`HubService`（前台服务）、`HubActions`（其他设备可以让这台手机做什么）、`HubErrors`（用文字描述的失败） |
+| `hub/` | `Hub`（状态、设备身份、设置）、`HubClient`（带退避的 socket；key 被拒绝时每分钟重试一次并如实显示，hub 暂停或连接被替换时等 30 秒）、`HubService`（前台服务）、`HubActions`（其他设备可以让这台手机做什么）、`HubErrors`（用文字描述的失败） |
 | `reach/` | `Computers`（已配对的电脑，令牌在加密存储里）、把工作转交给电脑的处理器 |
 | `models/` | 「设置 → 模型」背后的逻辑：`ModelSlots`（四个槽位、各自设成了什么、存在哪里、选择页列出的分组、对话默认的 `followPick`、「用它来做什么」卡片的 `applyProvider`），`SlotOrder`（解析顺序和目录默认，纯 Kotlin，有单元测试），`PickerList`（选择页每组 8 行的折叠、排序和搜索过滤，纯 Kotlin，有单元测试） |
 | `ui/models/` | 「模型」页、每一行背后的选择页、「用它来做什么」卡片（`minis://settings/models`） |
