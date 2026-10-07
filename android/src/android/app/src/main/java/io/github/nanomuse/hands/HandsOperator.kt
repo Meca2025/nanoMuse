@@ -579,7 +579,10 @@ class HandsOperator(private val context: Context) {
     private fun traceDir(sessionId: String?, runId: String): File? {
         val base = if (sessionId != null) File(context.filesDir, "minis-sessions/$sessionId/attachments")
         else PRootKernel.resolveHostPath("/var/minis/attachments")
-        return base?.let { File(it, "hands/$runId").apply { mkdirs() } }
+        val hands = base?.let { File(it, "hands") } ?: return null
+        // the person's screen is not kept without bound: older runs keep their trace and last screen
+        runCatching { HandsTraces.prune(hands) }
+        return File(hands, runId).apply { mkdirs() }
     }
 
     private fun save(dir: File?, step: Int, jpeg: Jpeg, runId: String): String? {
