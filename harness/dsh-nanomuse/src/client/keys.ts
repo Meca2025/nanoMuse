@@ -45,3 +45,12 @@ export function openShortcutsReference(): boolean {
 export function pressSettingsChord(): boolean {
   return press({ code: 'Comma', key: ',', primary: true, alt: true })
 }
+
+/**
+ * Whether a keydown came while an input method was composing (Chinese, Japanese, Korean):
+ * the Enter that picks a candidate must not send or confirm. Works on React's synthetic
+ * event (`nativeEvent`) and on a DOM event alike; keyCode 229 is what older engines report.
+ */
+export function composing(event: { nativeEvent?: { isComposing?: boolean }; isComposing?: boolean; keyCode?: number }): boolean {
+  return event.nativeEvent?.isComposing === true || event.isComposing === true || event.keyCode === 229
+}

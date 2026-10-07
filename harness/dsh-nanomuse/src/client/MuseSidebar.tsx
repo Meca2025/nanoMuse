@@ -299,9 +299,7 @@ function withKeys(label: string, keys: readonly string[] | undefined): string {
   const hint = keysHint(keys)
   return hint ? `${label} ${hint}` : label
 }
-/** The short tag under a recent document's glyph: "ID" for IDENTITY.md, "So" for SOUL.md, the first letters otherwise. */
+/** The short tag under a recent document's glyph: the stem's first two letters ("ID" for IDENTITY.md, "So" for SOUL.md). */
 function docTag(name: string): string {
-  const stem = name.replace(/\.[a-z0-9]+$/i, '')
-  if (/^[A-Z]+$/.test(stem)) return stem.slice(0, 2)
-  return stem.slice(0, 2)
+  return name.replace(/\.[a-z0-9]+$/i, '').slice(0, 2)
 }

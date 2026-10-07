@@ -90,7 +90,8 @@ on a fresh install and never shown twice:
 
 1. **Welcome** — the face, *Welcome to nanoMuse*, the three feature rows (chat, hands,
    reach), the community notice, one blue *Sign in* pill and *Use my own API key*. Sign-in
-   is the phone's: *Phone number or e-mail*, the code boxes that verify themselves on the
+   is the phone's: *Phone number or e-mail* with the line that a mainland China number
+   gets an SMS and anything else an e-mail, the code boxes that verify themselves on the
    sixth digit, *Try another way* for a password (`/v1/auth/code`, `/v1/auth/verify`,
    `/v1/auth/login`).
 2. **Set a password** (a fresh account only; *Later* skips it).
@@ -514,7 +515,8 @@ stock General plugin switched off in the bundle layer:
   look go, the account signs out; the chats stay).
 - **Help & support** — the docs, the site, discussions, report an issue, the version.
 - **Legal** — the licence, the Meta trademark notice, the acknowledgements (DeepSeek
-  Harness, OpenMinis), the privacy policy and the terms.
+  Harness, OpenMinis) and the privacy policy (`nanomuse.cn/privacy/`, the page every
+  client links).
 - **Advanced** — every page another plugin registers (the harness's plugin manager,
   archived sessions…), grouped at the bottom so they are there and out of the way.
 - **Sign out** at the foot while signed in. Signing out (or *Reset*) takes the window

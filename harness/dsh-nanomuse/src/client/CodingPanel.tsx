@@ -16,6 +16,7 @@ import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { call, errorStyle, type Translate } from './api.ts'
 import { IconArrowUp, IconChevronLeft, IconChevronRight, IconCpu, IconFolder, IconLaptop, IconPlus, IconRefresh, IconSquare } from './icons.tsx'
+import { composing } from './keys.ts'
 import { useLive, type LiveDevice } from './live.ts'
 import { ago, Markdown, Sheet } from './ui.tsx'
 
@@ -479,7 +480,7 @@ function SessionView({ t, device, deviceLabel, agent, id, agentLabel, onBack }: 
             'aria-label': t('cdTell', { agent: agentLabel }),
             onChange: (e: FormEvent<HTMLTextAreaElement>) => setText(e.currentTarget.value),
             onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !composing(e)) {
                 e.preventDefault()
                 void send()
               }
