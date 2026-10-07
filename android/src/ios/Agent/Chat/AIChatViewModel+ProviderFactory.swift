@@ -263,6 +263,7 @@ extension AIChatViewModel {
     private static let resolveNilSentinel = "\u{0}nil"
 
     func resolveCurrentEntry() -> ModelEntry? {
+        if let once = NanoMuseCloudOnce.entry() { return once } // nanoMuse: "Use nanoMuse Cloud this time" takes this one turn, the binding stays
         let store = ProviderConfigStore.shared
         let key = ResolveCacheKey(
             sessionId: sessionId ?? "",

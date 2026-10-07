@@ -139,6 +139,29 @@ Ours, in `NanoMuse/`:
   default); a pick made in the chat's picker moves to the front of the Cloud group so new chats
   follow it, as Android's `followPick`. DeepSeek ids are text-only unless they name `v4.1` or
   later, `vision` or `ocr` — a `// nanoMuse:` step at the top of `LLMModel.withInferredModality()`.
+- **Models as four slots (0.1.41)** (`NanoMuseModelSlots.swift`, `NanoMuseModelsView.swift`;
+  Android `ui/models/ModelsScreen.kt`): the first card of *Settings → nanoMuse* is *Models* and
+  opens four rows — *Chat*, *Operating the screen* (disabled on iPhone, *Not on iPhone*, *Your
+  computer uses its own setting.*), *Making pictures*, *Making clips* — each showing
+  `<provider> · <model>` and opening a picker grouped *nanoMuse Cloud* first (the relay's
+  recommended one marked *Recommended*) and then one group per provider of your own that can do
+  it; an empty row says what is missing and offers *Add a provider*, and so does the page's last
+  row. Picking a chat model sets the default group for new chats (a group of ours for that
+  provider, the pick first; a mixed group you made becomes the default as it is) and the page
+  says *Applies to new chats.*; a pick made in a chat's own picker sticks the same way, for any
+  provider, not only Cloud. Pictures and clips resolve in one order — your choice, else the chat
+  provider's own default when it is a Model Studio key that draws, else nanoMuse Cloud when
+  signed in, else the first key that can — so Cloud is no longer passed over for a Bailian key
+  you did not pick; the image and video models come from the catalogue's `defaults`, not from
+  names in the code. After a key is saved, `NanoMuseVendorSheet` shows *Use it for*: one switch
+  per slot the key covers (pictures and clips only on a DashScope host, the screen never on
+  iPhone), all on; *Use it* moves the ticked slots to the provider's defaults, *Not now* changes
+  nothing, and saving no longer switches anything by itself. When a model of your own fails, the
+  failure card (and upstream's plain error) gains *Use nanoMuse Cloud this time* while signed
+  in: the retry runs on the relay's chat model (`NanoMuseCloudOnce`, read at the top of
+  `resolveCurrentEntry()`), and no slot changes. The relay's menu is kept on the phone at sign-in
+  and refreshed when the page opens. *Image & video models* stays as a shortcut with the animate
+  toggle and the clip buttons.
 - **Connections across devices (0.1.34)** (`NanoMuseSharedConnectors` in
   `NanoMuseConnectors.swift`): the profile's `connectors` list says which device connected what
   (id, label, address without the query string, how it signs in, enabled, when, the device) and

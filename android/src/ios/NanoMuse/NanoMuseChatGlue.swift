@@ -62,6 +62,8 @@ extension AIChatViewModel {
         NanoMuseFirstConversation.shared.afterTurn(session: key, assistantText: reply, vm: self)
         NanoMuseSessionAddenda.onTurnFinished(session: key)
         NanoMuseSync.shared.turnFinished(session: key)
+        // "Use nanoMuse Cloud this time" covered this one turn; where the turn ran decides whether the next failure offers it
+        NanoMuseCloudOnce.turnEnded(onCloud: resolveCurrentEntry()?.providerInstanceId == NanoMuseCloud.instance?.id)
     }
 
     /// Appended to the system prompt of this session (empty when there is nothing to add).

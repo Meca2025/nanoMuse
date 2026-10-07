@@ -25,7 +25,11 @@ import SwiftUI
 // MARK: - Store
 
 enum NanoMuseMediaModels {
-    static let defaultVideoModel = "wan2.2-i2v-flash"
+    /// The video model a Model Studio key starts on: the catalogue's `defaults.video` for
+    /// Bailian (`providers.json`), the known Wan 2.2 Flash only if the catalogue is missing.
+    static var defaultVideoModel: String {
+        NanoMuseCatalogue.bundled.first { $0.id == NanoMuseCatalogue.bailian }?.defaults["video"] ?? NanoMuseVideoGen.knownDashScopeModels[0]
+    }
     /// Posted after a save here, so the face view and the studio re-read what is set.
     static let changed = Notification.Name("nanoMuse.mediaModelsChanged")
 
@@ -55,33 +59,59 @@ enum NanoMuseMediaModels {
         }
     }
 
-    /// The instance the video model is on, or nil: the saved one, else the image model's
-    /// provider when that one speaks the video API (one key covers all three).
-    @MainActor
-    static func videoInstance() -> ProviderInstance? {
-        let eligible = eligibleVideoInstances()
-        if let saved = UserDefaults.standard.string(forKey: Keys.videoInstance) {
-            if saved == videoOff { return nil }
-            return eligible.first { $0.id == saved }
-        }
-        switch NanoMuseImageGen.route() {
-        case .ownKey(let k): return eligible.first { $0.id == k.instanceId }
-        case .relay: return eligible.first { $0.id == NanoMuseCloud.instance?.id }
-        }
+    /// What the person set for clips: nothing yet, switched off, or a provider and a model.
+    enum VideoChoice: Equatable {
+        case unset
+        case off
+        case chosen(NanoMuseSlotChoice)
     }
 
-    /// The saved model name, or the recommended one.
+    static func videoChoice() -> VideoChoice {
+        guard let saved = UserDefaults.standard.string(forKey: Keys.videoInstance) else { return .unset }
+        if saved == videoOff { return .off }
+        let model = UserDefaults.standard.string(forKey: Keys.videoModel)?.trimmingCharacters(in: .whitespaces) ?? ""
+        return .chosen(NanoMuseSlotChoice(providerId: saved, model: model))
+    }
+
+    /// The instance the video model is on, or nil (0.1.41, the contract's section 3): the
+    /// saved one; without a choice, the chat provider's when it is a Model Studio key of the
+    /// person's own, else nanoMuse Cloud when signed in, else the first key that can.
+    @MainActor
+    static func videoInstance() -> ProviderInstance? {
+        guard let value = NanoMuseModelSlots.videoValue() else { return nil }
+        return eligibleVideoInstances().first { $0.id == value.providerId }
+    }
+
+    /// The video model in use: the one chosen or the provider's default; the recommended one when nothing is set.
+    @MainActor
     static var videoModel: String {
+        if let value = NanoMuseModelSlots.videoValue(), !value.model.isEmpty { return value.model }
         let saved = UserDefaults.standard.string(forKey: Keys.videoModel)?.trimmingCharacters(in: .whitespaces) ?? ""
         return saved.isEmpty ? defaultVideoModel : saved
+    }
+
+    /// The video models a Model Studio key may have before it was asked: the catalogue's
+    /// default for the vendor first, then the known Wan and MiniMax ids, then anything on the
+    /// key's own list that is named like a video model.
+    @MainActor
+    static func candidateVideoModels(for inst: ProviderInstance) -> [String] {
+        let listed = ProviderConfigStore.shared.entries(for: inst.id)
+            .filter { !$0.isHidden && NanoMuseVideoGen.looksLikeVideoModel($0.model.id) }
+            .map(\.model.id)
+        var out: [String] = []
+        let first = NanoMuseCatalogue.vendor(for: inst)?.defaults["video"] ?? defaultVideoModel
+        for id in [first] + NanoMuseVideoGen.knownDashScopeModels + listed where !id.isEmpty && !out.contains(id) { out.append(id) }
+        return out
     }
 
     /// The video model, or nil when there is none.
     @MainActor
     static func videoEndpoint() -> NanoMuseVideoGen.Endpoint? {
-        guard let inst = videoInstance(),
+        guard let value = NanoMuseModelSlots.videoValue(),
+              let inst = eligibleVideoInstances().first(where: { $0.id == value.providerId }),
               let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty else { return nil }
-        return NanoMuseVideoGen.Endpoint(instanceId: inst.id, label: inst.label, host: host(of: inst), apiKey: key, model: videoModel)
+        let model = value.model.isEmpty ? defaultVideoModel : value.model
+        return NanoMuseVideoGen.Endpoint(instanceId: inst.id, label: inst.label, host: host(of: inst), apiKey: key, model: model)
     }
 
     /// The Cloud instance's base is the relay's; a Bailian instance's is the compatible-mode URL.
@@ -269,7 +299,7 @@ struct NanoMuseMediaModelsView: View {
                 choiceRow(title: NanoMuseCloud.label, selected: imageInstanceId == nil) {
                     imageInstanceId = nil
                     imageModel = ""
-                    NanoMuseImageGen.preferRelay = true
+                    NanoMuseImageGen.useRelay()
                     NotificationCenter.default.post(name: NanoMuseMediaModels.changed, object: nil)
                 }
             }

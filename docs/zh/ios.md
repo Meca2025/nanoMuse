@@ -125,6 +125,24 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   选了哪个，哪个就挪到 Cloud 组的最前面，新聊天跟着它走，和 Android 的 `followPick` 一样。
   DeepSeek 的 id 一律视为纯文本，除非名字里有 `v4.1` 及以后、`vision` 或 `ocr`——这是
   `LLMModel.withInferredModality()` 顶上的一步 `// nanoMuse:`。
+- **模型分成四个位置（0.1.41）**（`NanoMuseModelSlots.swift`、`NanoMuseModelsView.swift`；
+  对应 Android `ui/models/ModelsScreen.kt`）：*设置 → nanoMuse* 的第一张卡片是 *模型*，打开
+  四行——*对话*、*操作屏幕*（iPhone 上禁用，显示 *不在 iPhone 上*，副标题 *电脑用它自己的
+  设置。*）、*生成图片*、*生成视频*——每行显示 `<服务商> · <模型>`，点进去是一个选择器：先是
+  *nanoMuse Cloud* 一组（中继推荐的那个标 *推荐*），然后每个能干这件事的自有服务商一组；
+  空着的行说明缺什么并给出 *添加服务商*，页面最后一行也是它。选了对话模型，就把新对话的
+  默认组换过去（给这个服务商建或复用一个我们的组，所选的排最前；你自己建的混合组则原样
+  设为默认），页面提示 *新对话起生效。*；在聊天自己的选择器里选的也同样生效，不再只限
+  Cloud。图片和视频按一个顺序决定——你的选择，否则对话服务商自己的默认（当它是能画图的
+  百炼 key 时），否则已登录的 nanoMuse Cloud，否则第一个能干的 key——所以 Cloud 不会再被
+  一把你没选的百炼 key 挤掉；图片和视频模型来自目录的 `defaults`，不再写在代码里。保存
+  一把 key 之后，`NanoMuseVendorSheet` 显示 *用它来做什么*：这把 key 能做的每件事一个开关
+  （图片和视频只在 DashScope 主机上出现，操作屏幕在 iPhone 上从不出现），默认全开；*就这样*
+  把勾选的位置换成这个服务商的默认模型，*暂不* 什么都不改，保存本身不再自动切换任何东西。
+  自己的模型出错时，失败卡片（以及上游的纯文本错误）在已登录时多一个 *这次改用 nanoMuse
+  Cloud*：重试走中继的对话模型（`NanoMuseCloudOnce`，在 `resolveCurrentEntry()` 顶上读），
+  任何位置都不变。中继的菜单在登录时存在手机上，页面打开时刷新。*图像与视频模型* 作为
+  快捷入口保留，里面有自动生成动态的开关和短视频按钮。
 - **跨设备的连接（0.1.34）**（`NanoMuseConnectors.swift` 里的 `NanoMuseSharedConnectors`）：
   个人资料里的 `connectors` 列表记录哪台设备连了什么（id、标签、去掉查询字符串的地址、登录
   方式、是否启用、时间、设备），从不记 token；这台手机写入自己的条目，读回其他设备的，

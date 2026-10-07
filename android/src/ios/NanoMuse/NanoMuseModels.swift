@@ -78,34 +78,35 @@ enum NanoMuseModelMenu {
             guard let sid = note.userInfo?["sessionId"] as? String else { return }
             Task { @MainActor in
                 guard let binding = ProviderConfigStore.shared.binding(for: sid) else { return }
-                let entryId: String
                 switch binding.primarySource {
-                case .group(_, let resolved): entryId = resolved
-                case .directEntry(let id, _): entryId = id
+                case .group(let groupId, let resolved): NanoMuseCloud.followPick(entryId: resolved, groupId: groupId)
+                case .directEntry(let id, _): NanoMuseCloud.followPick(entryId: id)
                 }
-                NanoMuseCloud.followPick(entryId: entryId)
             }
         }
     }
 }
 
 extension NanoMuseCloud {
-    /// The picker's binding is per chat and a new chat starts from the default group — ours,
-    /// with the recommended model first — so a choice made in the picker was undone by the
-    /// next "New chat". Moving the pick to the front of our group makes it stick; a group of
-    /// the person's own is never touched. True when new chats will follow the pick.
+    /// The picker's binding is per chat and a new chat starts from the default group, so a
+    /// choice made in the picker was undone by the next "New chat". Since 0.1.41 any pick
+    /// sticks, not only one in the Cloud group: a model of a provider of the person's own
+    /// becomes the chat slot (`NanoMuseModelSlots.useForChat`: a group of ours for that
+    /// provider, the pick first, that group the default); a group the person picked becomes
+    /// the default as it is, and is never edited when it mixes providers. A picture or video
+    /// model is left alone. True when new chats will follow the pick.
     @discardableResult
-    static func followPick(entryId: String) -> Bool {
+    static func followPick(entryId: String, groupId: String? = nil) -> Bool {
         let store = ProviderConfigStore.shared
-        guard let inst = instance, let entry = store.entry(for: entryId), entry.providerInstanceId == inst.id else { return false }
-        let modalities = entry.model.capabilities.supportedModalities
-        if !modalities.contains(.textOutput) && (modalities.contains(.imageOutput) || modalities.contains(.videoOutput)) { return false }
-        if NanoMuseImageGen.drawsNatively(entry.model.id) { return false }
-        guard let group = store.modelGroups.first(where: { $0.id == store.defaultPrimaryGroupId && $0.name == label }) else { return false }
-        if group.memberEntryIds.first == entryId { return true }
-        var g = group
-        g.memberEntryIds = [entryId] + group.memberEntryIds.filter { $0 != entryId }
-        store.updateGroup(g)
+        guard let entry = store.entry(for: entryId), NanoMuseModelSlots.chats(entry) else { return false }
+        if let groupId, let group = store.group(for: groupId) {
+            let ours = group.memberEntryIds.allSatisfy { store.entry(for: $0)?.providerInstanceId == entry.providerInstanceId }
+            if !ours {
+                if store.defaultPrimaryGroupId != groupId { store.defaultPrimaryGroupId = groupId }
+                return true
+            }
+        }
+        NanoMuseModelSlots.useForChat(entry)
         return true
     }
 }
