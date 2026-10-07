@@ -236,8 +236,20 @@ object StarPrompt {
 
     // ── copy ────────────────────────────────────────────────────────────────
 
-    /** The line for an ask, in the device language. */
-    fun text(context: Context, ask: Ask): String = when (ask.moment) {
+    /**
+     * The card's sentence for an ask: the one the operator set in the relay's console
+     * ([Nudges.Policy.sentence] — `text_zh` first in Chinese, then `text`), else the app's own
+     * line for the moment in the device language. The title and the buttons are always the app's.
+     */
+    fun text(context: Context, ask: Ask): String =
+        policy(context).sentence(language(context)) ?: builtInText(context, ask)
+
+    /** The UI language as the app's resources resolve it (the same reading as the ideas list). */
+    private fun language(context: Context): String? =
+        context.resources.configuration.locales[0]?.language ?: Locale.getDefault().language
+
+    /** The app's own line for an ask, in the device language. */
+    fun builtInText(context: Context, ask: Ask): String = when (ask.moment) {
         Moment.SIGNED_IN -> context.getString(R.string.nm_star_signed_in)
         Moment.TASKS -> context.resources.getQuantityString(R.plurals.nm_star_tasks, ask.n, ask.n)
         Moment.NEW_LOOK -> context.getString(R.string.nm_star_new_look)
