@@ -262,7 +262,7 @@ fun AllowanceWaysCard(
 
             // ⑥ a star — asked only when the pool is spent, and only until the person went
             if (starAsk && !starred) {
-                Way(Icons.Outlined.StarOutline, Color(0xFFF5A623), stringResource(R.string.nm_star_exhausted), null) {
+                Way(Icons.Outlined.StarOutline, Color(0xFFF5A623), remember { io.github.nanomuse.community.StarPrompt.text(context, io.github.nanomuse.community.StarPrompt.Ask(io.github.nanomuse.community.StarPrompt.Moment.EXHAUSTED)) }, null) {
                     TextButton(onClick = { io.github.nanomuse.community.StarPrompt.open(context); starred = true }) {
                         Icon(Icons.Outlined.StarOutline, contentDescription = null, modifier = Modifier.size(15.dp), tint = MuseTones.action)
                         Spacer(Modifier.width(5.dp))

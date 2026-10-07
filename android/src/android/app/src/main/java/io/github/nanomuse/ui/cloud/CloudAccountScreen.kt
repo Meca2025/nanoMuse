@@ -293,7 +293,7 @@ fun CloudAccountScreen(
                     LaunchedEffect(Unit) { io.github.nanomuse.community.StarPrompt.markShown(context, io.github.nanomuse.community.StarPrompt.Moment.SIGNED_IN) }
                     MuseGap()
                     io.github.nanomuse.community.StarNudgeCard(
-                        text = stringResource(R.string.nm_star_signed_in),
+                        text = remember { io.github.nanomuse.community.StarPrompt.text(context, io.github.nanomuse.community.StarPrompt.Ask(io.github.nanomuse.community.StarPrompt.Moment.SIGNED_IN)) },
                         modifier = Modifier.padding(horizontal = 16.dp),
                         onDone = { starAsk = false },
                     )

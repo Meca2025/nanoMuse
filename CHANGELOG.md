@@ -32,6 +32,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The lights while the hands work breathe instead of running:** the comet round the screen's edge and the scan line are gone, the glow breathes 2.4 s in and 2.4 s out, and the capsule's ring and bars breathe at the same pace; all of it holds still under the system's reduce-motion setting.
 - **The first run's Hands page shows the app's mark.**
 - **The first conversation says where your messages go with sync on:** to the model, and — signed in — to your other devices through nanoMuse Cloud, which Data controls switches off.
+- **The star card showed the sentence set in the relay's console** (`star.text`, `star.text_zh` for a Chinese UI) when the operator set one; without one, the app's own line for the moment as before. The title and the buttons stay the app's.
 
 ### iOS
 
@@ -39,6 +40,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **After you pick a new face with a video model set**, the agent says the four clips follow in the background.
 - **In the account's Devices list** an offline device shows when it was last seen, and a tap on an online one starts a message to it in the chat.
 - **A fresh install no longer shows the home screen for an instant** before the welcome page; the first conversation says where your messages go with sync on, as on Android.
+- **The star card showed the sentence set in the relay's console** (`star.text`, `star.text_zh` for a Chinese UI) when the operator set one, as on Android; the title and the buttons stay the app's.
 
 ### Project
 

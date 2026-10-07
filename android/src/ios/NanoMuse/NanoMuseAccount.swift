@@ -357,8 +357,15 @@ final class NanoMuseStar: ObservableObject {
 
     // MARK: Words
 
-    /// The words for a moment (the same meaning as every other client).
+    /// The card's sentence for a moment: the one the operator set in the relay's console
+    /// (`star.text_zh` first when the UI is Chinese, then `star.text`), else the app's own line.
+    /// The title and the buttons are always the app's.
     static func words(for moment: NanoMuseStarMoment) -> String {
+        NanoMuseNudges.shared.policy.sentence(chinese: NanoMuseLocale.isChinese) ?? builtInWords(for: moment)
+    }
+
+    /// The app's own line for a moment (the same meaning as every other client).
+    static func builtInWords(for moment: NanoMuseStarMoment) -> String {
         switch moment {
         case .signedIn:
             return AppLocalized("Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.")

@@ -53,7 +53,22 @@ object Nudges {
         val cooldownDays: Int = 7,
         /** Lifetime cap of asks on one device ("Not now" counts; a tap on the star ends them all anyway). */
         val maxAsks: Int = 4,
+        /** The card's sentence set by the operator, in English; empty = the app's own line for the moment. */
+        val text: String = "",
+        /** The same in 简体中文; empty = [text], then the app's own line. */
+        val textZh: String = "",
     ) {
+        /**
+         * The operator's sentence for the card's body, for a UI [language] (ISO 639-1, as
+         * `Locale.language` gives it): `text_zh` first when the language is Chinese, then
+         * `text`; null when neither is set, so the caller draws its own line. Only the body
+         * is ever replaced — the title and the buttons stay the app's.
+         */
+        fun sentence(language: String?): String? {
+            if (language?.lowercase()?.startsWith("zh") == true && textZh.isNotEmpty()) return textZh
+            return text.takeIf { it.isNotEmpty() }
+        }
+
         fun toJson(): JSONObject = JSONObject()
             .put("version", version)
             .put(
@@ -61,6 +76,8 @@ object Nudges {
                 JSONObject()
                     .put("enabled", enabled)
                     .put("url", url)
+                    .put("text", text)
+                    .put("text_zh", textZh)
                     .put(
                         "moments",
                         JSONObject()
@@ -78,6 +95,9 @@ object Nudges {
         companion object {
             /** What every client falls back to; identical to the relay's shipped default. */
             val DEFAULT = Policy()
+
+            /** The longest sentence the card takes (code points); the relay enforces the same. */
+            const val TEXT_MAX = 200
 
             /**
              * Reads a policy document. Missing keys keep the default; a document without a `star`
@@ -101,7 +121,20 @@ object Nudges {
                     ),
                     cooldownDays = star.optInt("cooldown_days", d.cooldownDays).coerceAtLeast(0),
                     maxAsks = star.optInt("max_asks", d.maxAsks).coerceAtLeast(0),
+                    text = textField(star, "text"),
+                    textZh = textField(star, "text_zh"),
                 )
+            }
+
+            /**
+             * One of the operator's sentences: trimmed, and empty when the key is absent, not a
+             * string, or longer than [TEXT_MAX] code points (a cached policy from before the
+             * fields has neither key and reads as empty).
+             */
+            private fun textField(star: JSONObject, key: String): String {
+                val raw = star.opt(key) as? String ?: return ""
+                val s = raw.trim()
+                return if (s.codePointCount(0, s.length) > TEXT_MAX) "" else s
             }
 
             fun parse(text: String?): Policy? {
