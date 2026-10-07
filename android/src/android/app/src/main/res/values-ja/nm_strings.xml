@@ -1093,5 +1093,6 @@
     <string name="nm_models_auto_currently">現在は %1$s</string>
     <string name="nm_models_show_more">さらに %1$d 件を表示</string>
     <string name="nm_models_search">モデルを検索</string>
+    <string name="nm_models_search_clear">検索をクリア</string>
     <string name="nm_models_no_match">一致するモデルはありません</string>
 </resources>

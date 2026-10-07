@@ -1097,5 +1097,6 @@
     <string name="nm_models_auto_currently">Actuellement %1$s</string>
     <string name="nm_models_show_more">Afficher %1$d de plus</string>
     <string name="nm_models_search">Rechercher des modèles</string>
+    <string name="nm_models_search_clear">Effacer la recherche</string>
     <string name="nm_models_no_match">Aucun modèle ne correspond</string>
 </resources>

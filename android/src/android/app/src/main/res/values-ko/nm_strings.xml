@@ -1093,5 +1093,6 @@
     <string name="nm_models_auto_currently">현재 %1$s</string>
     <string name="nm_models_show_more">%1$d개 더 보기</string>
     <string name="nm_models_search">모델 검색</string>
+    <string name="nm_models_search_clear">검색 지우기</string>
     <string name="nm_models_no_match">일치하는 모델이 없습니다</string>
 </resources>

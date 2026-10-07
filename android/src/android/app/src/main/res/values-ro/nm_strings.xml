@@ -1101,5 +1101,6 @@
     <string name="nm_models_auto_currently">În prezent %1$s</string>
     <string name="nm_models_show_more">Afișează încă %1$d</string>
     <string name="nm_models_search">Caută modele</string>
+    <string name="nm_models_search_clear">Șterge căutarea</string>
     <string name="nm_models_no_match">Niciun model nu se potrivește</string>
 </resources>

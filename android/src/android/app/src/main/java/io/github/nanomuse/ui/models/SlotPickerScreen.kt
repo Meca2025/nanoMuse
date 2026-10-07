@@ -2,7 +2,7 @@ package io.github.nanomuse.ui.models
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openminis.app.MinisApp
@@ -82,8 +84,9 @@ fun SlotPickerScreen(slot: Slot, onBack: () -> Unit, onAddProvider: () -> Unit) 
     val automatic = remember(config, tick) { if (slot == Slot.CHAT) null else ModelSlots.automatic(context, slot) }
     var checking by remember { mutableStateOf(false) }
     // the groups expanded past eight rows (by provider id), and the search field's text; both last as long as the picker is open
-    var expanded by remember { mutableStateOf(emptySet<String>()) }
-    var query by remember { mutableStateOf("") }
+    // kept across a rotation and a process restart on the way back from Add a provider
+    var expanded by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    var query by rememberSaveable { mutableStateOf("") }
 
     // Model Studio does not list video models: the known ones are probed once a day per key.
     if (slot == Slot.VIDEO) {
@@ -237,7 +240,7 @@ private fun SearchField(query: String, onChange: (String) -> Unit) {
         }
         if (query.isNotEmpty()) {
             IconButton(onClick = { onChange("") }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.nm_models_search_clear), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -255,7 +258,7 @@ private fun AutomaticRow(subtitle: String?, selected: Boolean, onSelect: () -> U
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 56.dp)
-                .clickable(onClick = onSelect)
+                .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
