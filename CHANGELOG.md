@@ -11,6 +11,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - Fixed a binary frame on the hub dropping the connection; it is answered with `bad_frame` and the socket stays open, as for an unknown frame type.
 - Moved the threshold rules' e-mail sending off the event loop so a slow mail server no longer stalls every request for up to 20 seconds.
 - Completed the hub protocol page: every error code, the close codes `4001 account_gone` and `4008`, the `actions` and `ip` fields of a device row, and what a client does on each close.
+- Fixed the training-set export (`GET /v1/admin/samples/export`) and the console's turn list skipping turns written in the same second as the last one of a page; both now page by time and id (`before_id`), so a busy second loses nothing.
+- Set the database to `synchronous=NORMAL` under WAL (one fsync per checkpoint instead of per commit) and added indexes for the console's timeline by kind and for the sync tombstone sweep that runs on every push.
 
 ### Runtime
 

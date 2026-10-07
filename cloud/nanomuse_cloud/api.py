@@ -58,7 +58,7 @@
     GET  /v1/admin/traffic    X-Admin-Token  ?days=30           → the site: pages, visitors, downloads per file, referrers, GitHub stars and release downloads (TRAFFIC_DB)
     GET  /v1/admin/demo       X-Admin-Token  ?days=30           → the phone in the browser: visitors with addresses and browsers, every demo and what it used (WEB_ADMIN_URL)
     GET  /v1/admin/data       X-Admin-Token  ?days=30           → Data controls: accounts with the switch on, kept turns by day / model / app / account, switches on and off, the newest turns
-    GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → kept turns (accounts with the switch on only)
+    GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before=&before_id= → kept turns (accounts with the switch on only)
     GET  /v1/admin/samples/export X-Admin-Token ?since=&account_id= → the same as JSON lines, without account ids or addresses
     GET  /v1/admin/sync       X-Admin-Token                     → conversation sync in aggregate: accounts on / off, conversations, messages, bytes (never a text)
 
@@ -1339,11 +1339,12 @@ def create_app(
         return with_places({"events": cloud.admin_events(limit, kinds)})
 
     @app.get("/v1/admin/samples", dependencies=[Depends(admin_dep)])
-    async def admin_samples(account_id: str = "", limit: int = 100, since: int = 0, before: int = 0) -> dict:
-        """Contributed chat turns — only from accounts that turned contribution on."""
+    async def admin_samples(account_id: str = "", limit: int = 100, since: int = 0, before: int = 0, before_id: str = "") -> dict:
+        """Contributed chat turns — only from accounts that turned contribution on. Pages
+        with `before` (the last row's ts) and `before_id` (its id), newest first."""
         return with_places(
             {
-                "samples": cloud.admin_samples(account_id or None, since, limit, before),
+                "samples": cloud.admin_samples(account_id or None, since, limit, before, before_id[:64]),
                 "total": cloud.db.sample_count(account_id or None),
             }
         )
