@@ -350,6 +350,11 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   空表开始并把空表写回去覆盖每个账号的记录。图片和视频生成和同一服务商的聊天一样走
   「网络」里的代理（`NanoMuseProxy.SessionSlot`），失败时是每种语言都有的整句——*服务商拒绝了
   这把密钥（HTTP 401）*、*视频超过 12 分钟仍未完成*——服务商自己的话跟在*服务商说：*后面。
+- **审计第三遍（第 11 轮）**（`NanoMuseHubTasks.swift`、`NanoMuseHub.swift`）：其他设备发来的
+  `stop` 既能按任务帧的 id 找到这次运行（`stop {call}`，桌面端发的就是这个），也能按会话找；
+  只有发起任务的设备能停它；停下之后任务按 [hub.md](hub.md) 的约定答 `cancelled`。socket
+  还开着时中继针对某一帧发来的 `error`（`too_large`、`rate_limited`、`bad_frame`）只记日志，
+  「设备」一行继续显示*已连接*，不再把中继的句子挂到下次重连为止。
 - **审计的文案与排版（第 10 轮）**（`NanoMuseChrome.swift`、`NanoMuseFirstRun.swift`、
   `NanoMuseProviderReachCard.swift`、`NanoMuseSystemFiles.swift`、`*.lproj/InfoPlist.strings`、
   `Localizable.xcstrings`）：`NanoMuseFlowLayout` 是一个会换行的横排（iOS 16 的 `Layout`），
