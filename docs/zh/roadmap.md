@@ -85,7 +85,7 @@ Meta 的 Muse 定下了这类智能体的样子；下面是我们还落后于它
 | 0.1.1 – 0.1.11 | Foundation … Hatch | OpenMinis 变成 nanoMuse：名字和形象、一条主对话、带范围的审批、记忆文件、动态、形象工作室、小龙 |
 | 0.1.12 Hands · 0.1.15 Stage | | 手机的屏幕当手，以及展示它干活的舞台 |
 | 0.1.13 Reach | | 手机驱动你的电脑（0.1.24 起由 hub 取代） |
-| 0.1.17 – 0.1.18 Doorstep · Open | | nanoMuse Cloud：不用 key 就能开始，注册向所有人开放 |
+| 0.1.18 Open | | nanoMuse Cloud：不用 key 就能开始，注册向所有人开放（包含起草了但从未发布的 0.1.17 Doorstep） |
 | 0.1.19 Ensemble | | 每一台设备：桌面 App、hub 上的运行时、nanoMuse Web |
 | 0.1.20 – 0.1.25 | Presence … Mirror | 账号优先、一个声音、邀请、手机号登录、每台设备上同一个形象 |
 | 0.1.26 – 0.1.30 | Window … Rooms | 展示站；桌面迁到 DeepSeek Harness，采用 Muse 的形态和房间 |

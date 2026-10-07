@@ -224,7 +224,8 @@ const zhCN: Record<string, string> = {
   "Files & tools": "文件与工具",
   "Just for you": "专属于你",
   Tracking: "追踪",
-  "Show {n} more": "再显示 {n} 项",
+  // the goals page's folded list and the model pickers share this one (the Models contract's wording)
+  "Show {n} more": "还有 {n} 个",
   Cancelled: "已取消",
   "Starter ideas — refresh once {name} knows you better.": "入门灵感——等 {name} 更了解你之后再刷新。",
   "Generated {when}": "生成于 {when}",
@@ -1218,6 +1219,8 @@ const zhCN: Record<string, string> = {
   "Clip model": "短片模型",
   "Other model…": "其他模型…",
   "More models on your account": "账号可用的更多模型",
+  "Search models": "搜索模型",
+  "No model matches": "没有匹配的模型",
   "reads pictures": "能看图",
   "Type a model id…": "手动输入模型 id…",
   "Pick from the list": "从列表里选",

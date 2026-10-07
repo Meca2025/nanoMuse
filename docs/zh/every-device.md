@@ -4,7 +4,7 @@
 
 ## 每台设备一个 Muse，同一个形状 {#one-muse-per-device-one-shape}
 
-每台设备跑着自己的 Muse——手机上是基于 OpenMinis 的智能体，电脑上是 Python 运行时——而每一台显示的都是同一个 App。Android 版是参照；其他版本跟的是它的形状，不是它的像素：
+每台设备跑着自己的 Muse——手机上是基于 OpenMinis 的智能体，电脑上是带着手的 Python 运行时的 nanoMuse 桌面版——而每一台显示的都是同一个 App。Android 版是参照；其他版本跟的是它的形状，不是它的像素：
 
 | 每台设备上都有 | Android 现状 | 电脑（这个阶段） |
 |---|---|---|
@@ -86,7 +86,7 @@ Muse 的名字和外观照旧跟着账号走。从 0.1.40 起，手机走得更�
 - **运行时**（`nanomuse/`）：`cloud.py` 用邮箱（或手机）验证码登录 nanoMuse Cloud，把 key 存进保险库，并且可以让中继当模型服务商——和手机上一样的「登录——免费」第一步。`hub/` 是桌面二进制里 hub 客户端的异步移植：保持一条连接，收到的动作由 `hub/actions.py` 回答，收到的 `task` 在一个看得见的旁聊里跑、审批转发出去，发出的调用藏在 `device_*` 和 `delegate` 工具后面。`computer/` 是这台机器上把屏幕当手的那部分。设置项：`[cloud]`、`[hub]`、`[hands]`；全都可以在 App 里切换。
 - **网页版**（`web/`）：设备页、发给某台设备的旁聊、审批卡片的层级和「记住」胶囊、带「停止」的「手」卡片、设置 → Hands、第一次打开时和「连接」下的 Cloud 登录、默认形象小龙。构建产物放进 `nanomuse/server/static/`。
 - **窗口**：从 0.1.30 起，窗口是跑在 DeepSeek Harness（`harness/`）上的 [nanoMuse 桌面版](desktop.md)：harness 的 Host 和网页版装在我们自己的 Electron 外壳里，nanoMuse 的账号、形象、Hands 和 Reach 作为插件，再捆上这个运行时给手用（`nanomuse mcp`，走 stdio）。原来包着这个运行时和网页版的 Electron 外壳（`desktop/app`，0.1.19–0.1.29）——托盘、画出手即将点击位置那个圈的透明舞台窗口、全局「停止」和快速唤起快捷键、「开机自动启动」——已经退役；这些会在 harness 的接缝上回来（[harness.md](harness.md)，第 7 阶段）。任何人在浏览器里打开 `nanomuse serve`，网页版在宽窗口上仍然按 Muse 的样子排布。
-- **标准库二进制**（`desktop/nanomuse_desktop`）保留，作为没有 Python 的机器上免安装的后备方案；它的 hub 代码是 `nanomuse/hub` 的源头。它的终端以后会和另外两扇门一样，变成这个服务的一个客户端。
+- **标准库二进制**（`desktop/nanomuse_desktop`）曾是没有 Python 的机器上免安装的后备方案，也是 `nanomuse/hub` 的源头；0.1.39 去掉了它，因为 nanoMuse 桌面版自带运行时。
 
 ### 这台电脑上的手 {#hands-on-this-computer}
 
@@ -110,7 +110,7 @@ Muse 的名字和外观照旧跟着账号走。从 0.1.40 起，手机走得更�
 
 ## 手机 {#the-phone}
 
-从 0.1.12/0.1.13/0.1.17 起就已经两个角色都有：本地的沙箱 shell 和「手」，向外的 `nanomuse-pc` 和 hub，向内的 `task` 走无头聊天运行器。留给这个阶段 Android 那一轮的，按顺序：hub 的 `approve` 要能到达 RiskGate 卡片（今天书桌电脑委托的任务只能在手机屏幕上审批），书桌电脑的「手」事件在它干活时要显示出来，抽屉里加一个「设备」入口。这些都不挡桌面端的工作。
+从 0.1.12/0.1.13/0.1.17 起就已经两个角色都有：本地的沙箱 shell 和「手」，向外的 `nanomuse-pc` 和 hub，向内的 `task` 走无头聊天运行器。这个阶段 Android 那一轮，按顺序：hub 的 `approve` 到达 RiskGate 卡片，抽屉里加一个「设备」入口（两件都在 0.1.19 做了，见[手机，在 0.1.19](#the-phone-in-0-1-19)），以及书桌电脑的「手」事件在它干活时显示出来。这些都不挡桌面端的工作。
 
 ## 浏览器：一台模拟手机上的演示 {#the-browser-a-demo-on-a-simulated-phone}
 
@@ -120,7 +120,7 @@ Muse 的名字和外观照旧跟着账号走。从 0.1.40 起，手机走得更�
 
 ## iOS、网页控制台、眼镜 {#ios-the-web-console-glasses}
 
-iOS 会说 hub 的话（`info`、`open`、`notify`），形状以后再跟上（[ios.md](ios.md)）。云端控制台（`/app/`）是一扇没有自己的手的门，以后也是。眼镜是一句话进、一句话出，手在别处——hub 对它们来说已经够用了。
+iOS 会说 hub 的话（`info`、`open`、`notify`、`task`），形状从 0.1.34 起就有了（[ios.md](ios.md)）。云端控制台（`/app/`）是一扇没有自己的手的门，以后也是。眼镜是一句话进、一句话出，手在别处——hub 对它们来说已经够用了。
 
 ## 复用了什么，从哪里来 {#what-is-reused-and-from-where}
 
@@ -137,8 +137,8 @@ iOS 会说 hub 的话（`info`、`open`、`notify`），形状以后再跟上（
 | 本地 shell / 文件 / 浏览器 | 有 | 有（运行时） | 有，在它的容器里 | 没有手 | 无 |
 | 把屏幕当手 | 「手」（0.1.12） | `computer_*`（0.1.19） | — | — | — |
 | 驱动其他设备 | `nanomuse-pc`、hub | `device_*`、`delegate`（0.1.19） | 同一个运行时 | 挑一台设备，发一个任务 | — |
-| 回应其他设备 | 会 | 在一个看得见的旁聊里（0.1.19） | 会 | — | info / open / notify |
-| Android 形状的界面 | 参照 | 网页版（宽屏用侧栏）+ 窗口（0.1.19） | 网页版 | 控制台 | 以后 |
+| 回应其他设备 | 会 | 在一个看得见的旁聊里（0.1.19） | 会 | — | info / open / notify / task |
+| Android 形状的界面 | 参照 | 网页版（宽屏用侧栏）+ 窗口（0.1.19） | 网页版 | 控制台 | 0.1.34 起 |
 | 手干活时的舞台 | `HandsStage` | 「手」卡片；窗口里的舞台悬浮层 | — | — | — |
 
 随 0.1.19 发布的：APK、桌面安装包（`nanoMuse-Desktop-…`，[`.github/workflows/desktop-app.yml`](../../.github/workflows/desktop-app.yml)）、终端二进制（0.1.39 已去掉），以及 nanomuse.cn/web 上的 nanoMuse Web（0.1.26 起是模拟手机上的演示）。

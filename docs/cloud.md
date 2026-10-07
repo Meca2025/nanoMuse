@@ -117,9 +117,7 @@ tasks, the synced conversations and cursors, the hub connections and the live
 and that the same address signing up again is a new, empty account. See
 [privacy.md](privacy.md).
 
-## Allowance
-
-### Data controls
+## Data controls
 
 *Settings → Data controls → Help improve nanoMuse's AI models* is a switch each
 person owns, the same on the phone, the web app, the desktop and the console.
@@ -152,7 +150,7 @@ where an address is — country, province, city — looked up in an offline copy
 of ip2region's database on the relay's own disk; no third party is asked, and
 nothing more is stored (the place is computed when the page is drawn).
 
-### Conversation sync
+## Conversation sync
 
 *Settings → Data controls → Sync conversations between my devices* (0.1.36,
 relay 0.19) is the other switch on that page, **on by default** for a signed-in
@@ -256,6 +254,8 @@ tombstone keeps its row for 30 days and is then swept. After an accepted push
 or a deletion the hub tells the account's other devices with a `sync` frame
 (`DELETE` from the console carries the deleting device in `X-Nanomuse-Device`
 so it can skip its own echo).
+
+## Allowance
 
 nanoMuse is a community project and charges nothing. The public relay at
 `cloud.nanomuse.cn` is paid for by the developer, so each account has a pool

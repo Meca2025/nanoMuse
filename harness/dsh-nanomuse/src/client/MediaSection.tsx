@@ -126,7 +126,7 @@ export function makeMediaSection(t: Translate) {
       video.source === 'none' && !slots?.video.options.length
         ? null
         : slots
-          ? h(SlotPicker, { t, slot: 'video', view: slots.video, disabled: busy !== null, onPick: setModel })
+          ? h(SlotPicker, { t, slot: 'video', view: slots.video, disabled: busy !== null, ...(gate ? { catalogue: gate.catalogue } : {}), onPick: setModel })
           : h(
               'select',
               {
@@ -140,7 +140,7 @@ export function makeMediaSection(t: Translate) {
               !video.off && !video.models.some((m) => m.id === video.model) && video.model ? h('option', { value: video.model }, video.model) : null,
               video.models.map((m) => h('option', { key: m.id, value: m.id }, m.name)),
             )
-    const imageSelect = slots && slots.image.options.length ? h(SlotPicker, { t, slot: 'image', view: slots.image, disabled: busy !== null, onPick: setImage }) : null
+    const imageSelect = slots && slots.image.options.length ? h(SlotPicker, { t, slot: 'image', view: slots.image, disabled: busy !== null, ...(gate ? { catalogue: gate.catalogue } : {}), onPick: setImage }) : null
     const videoSub: ReactNode = video.source === 'none'
       ? (noVideo ? h(UnavailableLine, { t, view: gate, capability: 'video', link: true, className: 'nm-wrap', tag: 'span' }) : t('mdVideoNone'))
       : video.off ? t('mdVideoModelSub') : video.reason === 'unchecked' ? t('mdVideoUnchecked') : `${t('mdVideoModelSub')} · ${video.label}`

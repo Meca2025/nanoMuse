@@ -85,7 +85,7 @@ Every version is a GitHub release built from its tag, titled `nanoMuse <version>
 | 0.1.1 – 0.1.11 | Foundation … Hatch | OpenMinis as nanoMuse: the name and face, one home conversation, approvals with scope, memory files, the feed, the avatar studio, the dragon |
 | 0.1.12 Hands · 0.1.15 Stage | | The phone's screen as a hand, and the stage that shows it working |
 | 0.1.13 Reach | | The phone drives your computer (replaced by the hub in 0.1.24) |
-| 0.1.17 – 0.1.18 Doorstep · Open | | nanoMuse Cloud: start without a key, sign-up open to everyone |
+| 0.1.18 Open | | nanoMuse Cloud: start without a key, sign-up open to everyone (carries 0.1.17 Doorstep, drafted and never released) |
 | 0.1.19 Ensemble | | Every device: the desktop app, the runtime on the hub, nanoMuse Web |
 | 0.1.20 – 0.1.25 | Presence … Mirror | The account first, a voice, invitations, phone-number sign-in, one look on every device |
 | 0.1.26 – 0.1.30 | Window … Rooms | The showcase; the desktop moves to DeepSeek Harness and takes Muse's shape and rooms |

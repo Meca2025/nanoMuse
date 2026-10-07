@@ -12,8 +12,11 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Web
 
+- **The model pickers fold long lists and can be searched.** The *Hands model*, *Picture model* and *Clip model* controls on the Connections page became one picker: a button reading `provider · model` opens a panel with *Automatic* first; a provider with a long list (OpenRouter, SiliconFlow) shows eight models at first, its catalogue default for the slot and your current choice first, with *Show {n} more* at the foot of the group; once the rows pass eight in all, a *Search models* field filters every group by model id or name as you type, and *No model matches* says when nothing does. Esc or a click outside closes it. What each control saves is unchanged.
+
 ### Desktop
 
+- **The model pickers fold long lists and can be searched.** The pickers of Settings → Models and Settings → Media became a button reading `provider · model` that opens a panel: *Automatic* (and *Off* for clips) first, then nanoMuse Cloud with its recommended model marked and first, then one group per provider; a provider with a long list (OpenRouter, SiliconFlow) shows eight models at first, its catalogue default for the row and your current choice first, with *Show {n} more* at the foot of the group; once the lists hold more than eight models in all, a *Search models* field filters every group by model id or name as you type, and *No model matches* says when nothing does. Esc or a click outside closes it. What each row saves, the *Currently* line and the hands' live update are unchanged.
 - **The installed release is no longer offered as an update.** The daily check compared the latest release with the bundle's labelled version string (`dsh-nanomuse 0.1.40`), which read as 0, so every release counted as newer: About said *0.1.40 is out* on a 0.1.40 install and *Update* downloaded the same build. The check compares the bare number now, and a labelled version is read as its number should one reach the comparison again.
 
 ### Android
@@ -26,6 +29,9 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **A swipe in from the left edge of the main chat opens the drawer** with the side chats, Devices and the settings, as on Android; the round button still does. A side chat pushed over the main one keeps the system's back swipe.
 
 ### Project
+
+- Rewrote the docs page *One account, all your devices* (`docs/trial.md`, 简体中文 twin too) from the private trial's runbook into a walkthrough of what ships: sign-in on the phone, nanoMuse Desktop, the web console, remote control and its approvals, what follows you, your own relay.
+- Brought the docs up to 0.1.41: the troubleshooting item for a desktop that does not start now describes nanoMuse Desktop and its `desktop.log`; `hub.md` names the desktop's and the iPhone's hub code and the *Remote control without asking* switch instead of the retired terminal commands; `every-device.md` says the iPhone answers `task` and has had the shape since 0.1.34; `cloud.md` gives *Data controls*, *Conversation sync* and *Allowance* their own sections; `ios.md` says build 14 is the one on TestFlight. The glossary in CONTRIBUTING gained the Models page's terms.
 
 ## [0.1.41] - 2026-10-07 · Choice
 

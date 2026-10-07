@@ -37,7 +37,8 @@ says so plainly instead of trying.
 Once the stills are on, the studio makes the four short clips the phone's does — idle,
 working, waiting, happy; the same fixed motions — from them, when the endpoint has a video
 model: the relay's (`wan2.2-i2v-flash`) or Wan on Model Studio, through the asynchronous
-video API (an upload, a task, polling, the MP4), `[llm] video_model` overriding the choice
+video API (an upload, a task, polling, the MP4), the `[video]` slot (or the older `[llm] video_model`,
+[configuration.md](configuration.md#image-and-video)) overriding the choice
 and `[llm] video_base_url` naming the host of that API when it is not the chat model's (a
 relaying host such as the showcase gateway sets it for its runtimes). They land in `avatar/<face>/<mood>.mp4`; the card shows the stage `animating` while they
 come, the cost card counts them, and a clip that fails leaves its still. An OpenAI-compatible
