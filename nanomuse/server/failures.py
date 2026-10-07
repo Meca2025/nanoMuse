@@ -33,7 +33,7 @@ _RELAY: dict[str, tuple[str, str]] = {
     ),
     "daily_cap": (
         "allowance",
-        "Today's share of the free allowance is used up; it comes back at midnight, Beijing time. Your own model key under Connections keeps you going now.",
+        "Today's share of the free allowance is used up; it comes back tomorrow. Your own model key under Connections keeps you going now.",
     ),
     "out_of_tokens": (
         "allowance",

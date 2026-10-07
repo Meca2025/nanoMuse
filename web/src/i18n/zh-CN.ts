@@ -1333,8 +1333,8 @@ const zhCN: Record<string, string> = {
   "{n} d ago": "{n} 天前",
   "Use the nanoMuse Cloud model": "使用 nanoMuse Cloud 模型",
   "Signed in as {hint}. A free allowance, nothing to paste. Recommended to start.": "已登录 {hint}。自带免费额度，无需粘贴任何 key，推荐先用它。",
-  "Your account brings a model with a free allowance, the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.":
-    "你的账号自带一个有免费额度的模型，起步最快。也可以粘贴自己的 key：它加密存在服务端的保险库里，不会给模型看到，你说的内容也不经过中继。",
+  "Your account brings a model with a free allowance, nothing to set up. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.":
+    "你的账号自带一个有免费额度的模型，不用再设置什么。也可以粘贴自己的 key：它加密存在服务端的保险库里，不会给模型看到，你说的内容也不经过中继。",
 
   // ── Voice input (the browser's own speech recognition) ───────────────────────────
   "Voice input": "语音输入",
@@ -1379,7 +1379,7 @@ const zhCN: Record<string, string> = {
   // -- what a failed run says (nanomuse/server/failures.py) --
   "Details": "详情",
   "Hide details": "收起详情",
-  "Today's share of the free allowance is used up; it comes back at midnight, Beijing time. Your own model key under Connections keeps you going now.": "今天的免费额度用完了，北京时间零点恢复。在「连接」里填上你自己的模型 key，现在就能继续。",
+  "Today's share of the free allowance is used up; it comes back tomorrow. Your own model key under Connections keeps you going now.": "今天的免费额度用完了，明天恢复。在「连接」里填上你自己的模型 key，现在就能继续。",
   "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key under Connections; your sign-in and your devices keep working either way.":
     "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者在「连接」里填上自己的模型 key；无论选哪个，登录和多设备功能都不受影响。",
   "The account's free allowance is used up. Add your own model key under Connections to keep going.": "这个账号的免费额度已经用完。在「连接」里填上你自己的模型 key 就能继续。",

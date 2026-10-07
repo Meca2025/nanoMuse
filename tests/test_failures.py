@@ -19,7 +19,7 @@ def test_relay_refusals_are_named_by_code():
         openai.RateLimitError, 429, {"code": "daily_cap", "message": "Today's share …"}
     )
     code, text = describe_failure(exc)
-    assert code == "allowance" and "Connections" in text and "midnight" in text
+    assert code == "allowance" and "Connections" in text and "tomorrow" in text
 
     exc = _status_error(
         openai.PermissionDeniedError, 402, {"code": "out_of_tokens", "message": "…"}

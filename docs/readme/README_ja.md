@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — あなたのすべてのデバイスのための、オープンソースのパーソナルエージェント">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse：あなたのすべてのデバイスのための、オープンソースのパーソナルエージェント">
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 
 **nanoMuse は、あなたのすべてのデバイスのためのオープンソースのパーソナルエージェントです。** 名前と姿を持つひとりのエージェント。Meta の [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) と同じ種類のもので、質問に答えるのではなく実際に手を動かし、アプリを閉じても働き続け、あなたのことを覚えていて、取り消せない操作の前には立ち止まって尋ねます。
 
-*nano* は、自分で動かして自分でデプロイできるほど小さな、ひとそろいのセットという意味です。スマホアプリ、デスクトップアプリ、ウェブコンソール、そしてそれらをつなぐリレーが、すべてこのリポジトリに GPL-3.0-or-later で入っています。**[無料、オープンソース、非営利——いっしょに作っていきましょう。](../../CONTRIBUTING.md)** サインインするとコミュニティのリレーでモデルを使える無料枠がもらえます。費用は開発者が負担しています。使い切ったら[自分のキーに切り替えて](../own-key.md)ください。同じリレーは自分のサーバーでも動くので、データを外に出さないこともできます。最新版は **0.1.41 Choice** — [リリースノート](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.41) · [ブラウザで試す](https://demo.nanomuse.dev/)。
+*nano* は、自分で動かして自分でデプロイできるほど小さな、ひとそろいのセットという意味です。スマホアプリ、デスクトップアプリ、ウェブコンソール、そしてそれらをつなぐリレーが、すべてこのリポジトリに GPL-3.0-or-later で入っています。**[無料、オープンソース、非営利。いっしょに作っていきましょう。](../../CONTRIBUTING.md)** サインインするとコミュニティのリレーでモデルを使える無料枠がもらえます。費用は開発者が負担しています。使い切ったら[自分のキーに切り替えて](../own-key.md)ください。同じリレーは自分のサーバーでも動くので、データを外に出さないこともできます。最新版は **0.1.41 Choice**、[リリースノート](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.41) · [ブラウザで試す](https://demo.nanomuse.dev/)。
 
 https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
 
@@ -45,13 +45,13 @@ https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
 
 | | |
 |---|---|
-| **ブラウザ** | [demo.nanomuse.dev](https://demo.nanomuse.dev/) — サインインすると、シミュレートしたスマホの上で nanoMuse が動きます。これはデモで、本物は下のアプリです |
-| **Android** 8.0 以上、arm64 | [nanoMuse-0.1.41-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-0.1.41-arm64.apk) — すべてのバージョンが同じ鍵で署名され、上書きインストールできます |
-| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc) — ベータ版。Apple のベータ審査が通り次第、このリンクからビルドが届きます · [iOS](../ios.md) |
-| **macOS** 12 以上 | [Apple シリコン](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-mac-x64.dmg) — 公証なし。初回は右クリック → 「開く」 |
-| **Windows** 10 以上 | [nanoMuse-Desktop-0.1.41-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-win-x64.exe) — 一度だけ「実行」を押してください |
+| **ブラウザ** | [demo.nanomuse.dev](https://demo.nanomuse.dev/)：サインインすると、シミュレートしたスマホの上で nanoMuse が動きます。これはデモで、本物は下のアプリです |
+| **Android** 8.0 以上、arm64 | [nanoMuse-0.1.41-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-0.1.41-arm64.apk)：すべてのバージョンが同じ鍵で署名され、上書きインストールできます |
+| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc)：ベータ版。Apple のベータ審査が通り次第、このリンクからビルドが届きます · [iOS](../ios.md) |
+| **macOS** 12 以上 | [Apple シリコン](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-mac-x64.dmg)：公証なし。初回は右クリック → 「開く」 |
+| **Windows** 10 以上 | [nanoMuse-Desktop-0.1.41-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-win-x64.exe)：一度だけ「実行」を押してください |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-linux-x64.tar.gz) |
-| **Docker** | `bash scripts/self-host.sh --local` で自分のリレーを、`docker compose up -d app` で自分のサーバーにウェブアプリを — [セルフホスティング](../self-hosting.md) |
+| **Docker** | `bash scripts/self-host.sh --local` で自分のリレーを、`docker compose up -d app` で自分のサーバーにウェブアプリを。[セルフホスティング](../self-hosting.md) |
 
 ダウンロードはすべて [GitHub の最新リリース](https://github.com/nano-muse/nanoMuse/releases/latest)から。GitHub が遅い地域では同じファイルが [nanomuse.cn/dl](https://nanomuse.cn/dl/) にあります。アプリを開き、メールアドレスか中国本土の携帯番号でサインインすれば、エージェントが使うモデルが用意されます。スマホ、デスクトップ、ウェブはひとつのアカウントを共有し、同じ会話が見えます。
 
@@ -90,19 +90,19 @@ https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
 
 | | Meta Muse | OpenMinis | nanoMuse |
 |---|---|---|---|
-| エージェントが動く場所 | ユーザーごとのクラウド VM | インストールしたスマホ | あなたのスマホ、パソコン、または自分のサーバー — ひとつのアカウントで |
-| API のないアプリ | 届かない。VM はデバイスに触れない | Android のアクセシビリティ CLI | スマホでもパソコンでも画面を手として使う。スクリーンショットを見て、API を先に試し、ログインはあなたが引き受ける。iOS では不可 — OS が許していない |
+| エージェントが動く場所 | ユーザーごとのクラウド VM | インストールしたスマホ | あなたのスマホ、パソコン、または自分のサーバー。ひとつのアカウントで |
+| API のないアプリ | 届かない。VM はデバイスに触れない | Android のアクセシビリティ CLI | スマホでもパソコンでも画面を手として使う。スクリーンショットを見て、API を先に試し、ログインはあなたが引き受ける。iOS では不可。OS が許していない |
 | 他のデバイス | ひとつの VM のクライアント | インストールした 1 台だけ | デバイス同士が hub 経由で頼み合い、承認はあなたのいる場所で |
 | モデル | Meta のもの | 自分で用意 | リレーの無料枠、または自分のもの |
 | ライセンス | クローズド | GPL-3.0 | GPL-3.0-or-later、OpenMinis の上に構築 |
 
 ## ドキュメント
 
-[nanomuse.cn/docs](https://nanomuse.cn/docs/) — プラットフォーム別のインストール、すべてのデバイス、Hands、コネクタ、記憶、セルフホスティング、プロトコル。ソースは [docs/](../) に、各バージョンの変更点は [CHANGELOG](../../CHANGELOG.md) と [docs/releases/](../releases/) にあります。
+[nanomuse.cn/docs](https://nanomuse.cn/docs/)：プラットフォーム別のインストール、すべてのデバイス、Hands、コネクタ、記憶、セルフホスティング、プロトコル。ソースは [docs/](../) に、各バージョンの変更点は [CHANGELOG](../../CHANGELOG.md) と [docs/releases/](../releases/) にあります。
 
 ## セルフホスティング
 
-VPS 1 台、1 時間：[docs/self-hosting.md](../self-hosting.md)。三つの道 — サーバーなしで自分のキーだけ、`scripts/self-host.sh` で自分のリレー、ウェブアプリ用に自分のランタイム。
+VPS 1 台、1 時間：[docs/self-hosting.md](../self-hosting.md)。三つの道：サーバーなしで自分のキーだけ、`scripts/self-host.sh` で自分のリレー、ウェブアプリ用に自分のランタイム。
 
 ## 貢献する
 
@@ -128,10 +128,10 @@ nanoMuse が役に立ったら、論文を引用してください。
 
 nanoMuse は多くの人の成果の上に成り立っています。条件は [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) に。
 
-- [OpenMinis](https://github.com/OpenMinis/OpenMinis) — スマホアプリの土台となったオンデバイスのエージェント。サンドボックスは [proot](https://github.com/nano-muse/proot) と [Alpine Linux](https://alpinelinux.org/)。
-- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — デスクトップアプリがプラグインとして載っているエージェントハーネス。
-- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop)(ByteDance)— デスクトップの手のオペレーターはその移植で、ステージのマーカーは ScreenMarker に倣っています。
-- [MobileGym](https://github.com/Purewhiter/mobilegym)、[MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench)、[PhoneHarness](https://github.com/PhoneHarness/PhoneHarness)、[CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse)、[Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM)、[ClawGUI](https://github.com/ZJU-REAL/ClawGUI) — スマホのオペレーター、トレース、製品の着想。
+- [OpenMinis](https://github.com/OpenMinis/OpenMinis)：スマホアプリの土台となったオンデバイスのエージェント。サンドボックスは [proot](https://github.com/nano-muse/proot) と [Alpine Linux](https://alpinelinux.org/)。
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)：デスクトップアプリがプラグインとして載っているエージェントハーネス。
+- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop)(ByteDance)：デスクトップの手のオペレーターはその移植で、ステージのマーカーは ScreenMarker に倣っています。
+- [MobileGym](https://github.com/Purewhiter/mobilegym)、[MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench)、[PhoneHarness](https://github.com/PhoneHarness/PhoneHarness)、[CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse)、[Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM)、[ClawGUI](https://github.com/ZJU-REAL/ClawGUI)：スマホのオペレーター、トレース、製品の着想。
 
 ## 免責事項
 
@@ -139,4 +139,4 @@ nanoMuse は独立したコミュニティプロジェクトで、Meta Platforms
 
 ## ライセンス
 
-[GPL-3.0-or-later](../../LICENSE)。スマホアプリは OpenMinis 1.13（GPL-3.0）をもとに 2026-09-24 以降改変しています — [NOTICE](../../NOTICE) を参照。それ以前の Python 系統のバージョンは MIT でした（タグ `pre-openminis`）。
+[GPL-3.0-or-later](../../LICENSE)。スマホアプリは OpenMinis 1.13（GPL-3.0）をもとに 2026-09-24 以降改変しています。[NOTICE](../../NOTICE) を参照。それ以前の Python 系統のバージョンは MIT でした（タグ `pre-openminis`）。
