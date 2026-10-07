@@ -941,6 +941,7 @@
     <string name="nm_hub_err_bad_key">Déconnecté du relais ; reconnectez-vous.</string>
     <string name="nm_hub_err_generic">L’ordinateur n’a pas pu le faire.</string>
     <string name="nm_devices_refused">Refusé par le relais ; reconnectez-vous</string>
+    <string name="nm_devices_paused">Mis en pause par le relais</string>
     <string name="nm_devices_notifications_hint">Autorisez les notifications pour que le téléphone reste joignable en arrière-plan.</string>
     <string name="nm_library_share_failed">Impossible de partager le fichier.</string>
 

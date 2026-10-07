@@ -108,6 +108,7 @@ fun DevicesSection(
                 !enabled -> stringResource(R.string.nm_devices_off)
                 connected -> stringResource(R.string.nm_devices_connected)
                 detail == "bad_key" || detail == "bad_device" -> stringResource(R.string.nm_devices_refused)
+                detail == "hub_paused" -> stringResource(R.string.nm_devices_paused)
                 else -> stringResource(R.string.nm_devices_connecting)
             },
             chevron = false,

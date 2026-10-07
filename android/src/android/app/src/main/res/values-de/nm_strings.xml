@@ -941,6 +941,7 @@
     <string name="nm_hub_err_bad_key">Beim Relay abgemeldet; melde dich erneut an.</string>
     <string name="nm_hub_err_generic">Der Computer konnte es nicht erledigen.</string>
     <string name="nm_devices_refused">Vom Relay abgelehnt; erneut anmelden</string>
+    <string name="nm_devices_paused">Vom Relay pausiert</string>
     <string name="nm_devices_notifications_hint">Erlaube Benachrichtigungen, damit das Telefon im Hintergrund erreichbar bleibt.</string>
     <string name="nm_library_share_failed">Die Datei konnte nicht geteilt werden.</string>
 

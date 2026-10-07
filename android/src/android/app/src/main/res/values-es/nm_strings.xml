@@ -941,6 +941,7 @@
     <string name="nm_hub_err_bad_key">Sesión cerrada en el relay; inicia sesión de nuevo.</string>
     <string name="nm_hub_err_generic">La computadora no pudo hacerlo.</string>
     <string name="nm_devices_refused">Rechazado por el relay; inicia sesión de nuevo</string>
+    <string name="nm_devices_paused">En pausa por el relay</string>
     <string name="nm_devices_notifications_hint">Permite las notificaciones para que el teléfono pueda seguir accesible en segundo plano.</string>
     <string name="nm_library_share_failed">No se pudo compartir el archivo.</string>
 

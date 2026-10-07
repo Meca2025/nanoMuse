@@ -949,6 +949,7 @@
     <string name="nm_hub_err_bad_key">Wylogowano na relayu; zaloguj się ponownie.</string>
     <string name="nm_hub_err_generic">Komputer nie mógł tego zrobić.</string>
     <string name="nm_devices_refused">Odrzucone przez relay; zaloguj się ponownie</string>
+    <string name="nm_devices_paused">Wstrzymane przez relay</string>
     <string name="nm_devices_notifications_hint">Zezwól na powiadomienia, aby telefon pozostawał dostępny w tle.</string>
     <string name="nm_library_share_failed">Nie udało się udostępnić pliku.</string>
 

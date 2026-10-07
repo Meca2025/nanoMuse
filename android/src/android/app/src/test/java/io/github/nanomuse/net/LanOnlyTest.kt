@@ -43,5 +43,12 @@ class LanOnlyTest {
         assertFalse(LanOnly.isLocal("example.com"))
         assertFalse(LanOnly.isLocal("192.168.0.300"))
         assertFalse(LanOnly.isLocal("1.1.1.1"))
+        // a public name that starts like a private address is a name, not an address
+        assertFalse(LanOnly.isLocal("10.foo.example.com"))
+        assertFalse(LanOnly.isLocal("127.example.org"))
+        // Tailscale's MagicDNS names, as the sign-in screen already allowed them
+        assertTrue(LanOnly.isLocal("box.tail1234.ts.net"))
+        assertFalse(LanOnly.isLocal("ts.net.example.org"))
+        assertNull(LanOnly.problem("http://box.tail1234.ts.net:11434/v1"))
     }
 }

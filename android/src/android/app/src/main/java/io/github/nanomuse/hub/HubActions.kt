@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.openminis.app.MinisApp
 import com.openminis.app.R
 import com.openminis.app.accessibility.MinisAccessibilityService
@@ -265,6 +266,15 @@ object HubActions {
             .setAutoCancel(true)
             .apply { if (open != null) setContentIntent(open) }
             .build()
+        // Android 13+ asks the person before an app may notify, and a channel can be silenced
+        // on its own; `notify` would then drop the notice without a word, and the caller would
+        // tell the person it was shown.
+        val blocked = !NotificationManagerCompat.from(context).areNotificationsEnabled() ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                nm.getNotificationChannel(CHANNEL)?.importance == NotificationManager.IMPORTANCE_NONE)
+        if (blocked) {
+            return JSONObject().put("ok", false).put("shown", false).put("message", "notifications are not allowed for nanoMuse on this phone")
+        }
         return try {
             nm.notify((System.currentTimeMillis() % 100_000).toInt() + 40_000, n)
             JSONObject().put("ok", true).put("shown", true)

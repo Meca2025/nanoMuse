@@ -921,6 +921,7 @@
     <string name="nm_hub_err_bad_key">Signed out on the relay; sign in again.</string>
     <string name="nm_hub_err_generic">The computer could not do it.</string>
     <string name="nm_devices_refused">Refused by the relay; sign in again</string>
+    <string name="nm_devices_paused">Paused by the relay</string>
     <string name="nm_devices_notifications_hint">Allow notifications so the phone can stay reachable in the background.</string>
     <string name="nm_library_share_failed">Could not share the file.</string>
     <!-- 0.1.32: Settings → Connectors: the services the agent can be let into (the desktop's catalogue) -->

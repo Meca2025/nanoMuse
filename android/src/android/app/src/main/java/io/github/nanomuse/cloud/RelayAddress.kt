@@ -1,5 +1,6 @@
 package io.github.nanomuse.cloud
 
+import io.github.nanomuse.net.LanOnly
 import java.io.IOException
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -56,20 +57,16 @@ object RelayAddress {
     }
 
     /**
-     * A host that is only reachable from one's own network, where http is the usual way: the
-     * RFC 1918 ranges, loopback, `.local` names, and Tailscale's `.ts.net`.
+     * A host that is only reachable from one's own network, where http is the usual way. The
+     * rule is [LanOnly.isLocal], the same one the provider screens apply to a model server: the
+     * private and carrier-grade ranges as parsed addresses (so `10.foo.example.com` is a public
+     * name, not a 10/8 address), loopback, link-local, IPv6 ULA, and the local name suffixes,
+     * Tailscale's `.ts.net` among them.
      */
     fun isPrivateHost(host: String): Boolean {
-        val h = host.trim().trimStart('[').trimEnd(']').lowercase()
+        val h = host.trim()
         if (h.isEmpty()) return false
-        if (h == "localhost" || h == "::1" || h.startsWith("127.")) return true
-        if (h.endsWith(".local") || h.endsWith(".ts.net")) return true
-        if (h.startsWith("10.") || h.startsWith("192.168.")) return true
-        if (h.startsWith("172.")) {
-            val second = h.split('.').getOrNull(1)?.toIntOrNull() ?: return false
-            return second in 16..31
-        }
-        return false
+        return LanOnly.isLocal(h)
     }
 
     /** `cloud.nanomuse.cn`, `relay.example.org:8790`, `192.168.1.20:8790` — the address as the account page shows it. */

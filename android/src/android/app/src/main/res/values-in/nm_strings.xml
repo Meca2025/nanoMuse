@@ -937,6 +937,7 @@
     <string name="nm_hub_err_bad_key">Sudah keluar di relay; masuk lagi.</string>
     <string name="nm_hub_err_generic">Komputer tidak bisa melakukannya.</string>
     <string name="nm_devices_refused">Ditolak relay; masuk lagi</string>
+    <string name="nm_devices_paused">Dijeda oleh relay</string>
     <string name="nm_devices_notifications_hint">Izinkan notifikasi supaya ponsel tetap bisa dijangkau di latar belakang.</string>
     <string name="nm_library_share_failed">Tidak bisa membagikan file.</string>
 

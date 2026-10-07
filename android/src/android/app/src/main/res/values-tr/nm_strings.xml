@@ -941,6 +941,7 @@
     <string name="nm_hub_err_bad_key">Relay’de oturum kapatılmış; yeniden oturum aç.</string>
     <string name="nm_hub_err_generic">Bilgisayar bunu yapamadı.</string>
     <string name="nm_devices_refused">Relay reddetti; yeniden oturum aç</string>
+    <string name="nm_devices_paused">Relay tarafından duraklatıldı</string>
     <string name="nm_devices_notifications_hint">Telefonun arka planda erişilebilir kalabilmesi için bildirimlere izin ver.</string>
     <string name="nm_library_share_failed">Dosya paylaşılamadı.</string>
 

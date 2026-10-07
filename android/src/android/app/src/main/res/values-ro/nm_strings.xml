@@ -945,6 +945,7 @@
     <string name="nm_hub_err_bad_key">Deconectat pe relay; conectează-te din nou.</string>
     <string name="nm_hub_err_generic">Computerul nu a putut face asta.</string>
     <string name="nm_devices_refused">Refuzat de relay; conectează-te din nou</string>
+    <string name="nm_devices_paused">Pus pe pauză de relay</string>
     <string name="nm_devices_notifications_hint">Permite notificările, ca telefonul să rămână accesibil în fundal.</string>
     <string name="nm_library_share_failed">Fișierul nu a putut fi partajat.</string>
 
