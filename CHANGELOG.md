@@ -7,25 +7,48 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 ### Cloud
 
 - **A sign-in for the app store's reviewer.** `REVIEW_ADDRESSES` (e-mail addresses) and `REVIEW_CODE` (six digits), both empty by default: a code request for one of those addresses sends nothing and answers as if it had, and `/v1/auth/verify` accepts exactly that code for it, under the same code lifetime, attempt and rate limits as anyone's. The account is an ordinary one; the admin console tags it *review* in the People table and on its page and leaves it out of the sign-up counts on the Overview and the Stats page. With either value empty nothing changes.
+- **The web console says why the relay refused**, in Chinese and English: sign-ups paused, service paused, sync paused, device hub paused, account deleted, too many requests under way, rate limited; a paused free allowance is told apart from a spent one; a deleted account signs the page out, and a paused hub is shown as such.
+- **The console's files are revalidated on every load**, so a deploy reaches the next reload; both console pages set the document language to the one they draw.
 
 ### Runtime
 
 - **The sync push delay is read when a push is scheduled.** `ConversationSync.push_soon()` took the two-second default at import time, so a shorter delay set on the module (the tests do this) did not reach the pushes after a sign-in or the switch; it does now. Nothing changes for a person: the delay is still two seconds.
 - **Stopping ends every request to the relay before the connection to it closes.** The presence note a turn sends once its push is through (`working`) survived being cancelled and went out while the runtime was shutting down, racing the cloud client's close; the hub's background tasks were cancelled but not waited for. Stopping now cancels and waits for the sync engine's, the hub's and the profile's tasks, then closes the HTTP client, and a task that would start on the way out is refused. Nothing changes for a person; the tests' fake relay no longer waits on a half-open connection when it stops.
+- **`nanomuse --help` rows are whole sentences again** (the `mcp` row had lost the words in brackets); `nanomuse serve` no longer prints "nanoMuse · nanoMuse is ready."; the no-key notice also mentions signing in to nanoMuse Cloud.
 
 ### Web
 
+- **The unit tests no longer depend on the developer machine's language.**
+
 ### Desktop
+
+- **The other device's name in "… is working"** under its prompt, instead of a fixed word.
+- **The Cloud page is called *nanoMuse Cloud* everywhere** — in the settings sidebar and in every sentence that points to it; the *Upgrade* link left the usage card (nothing is sold).
+- **Corrected sentences** about where chats live (sync is on by default), where the look is changed and which site the update check reads first; the UI-TARS-desktop operator is credited under Thanks. Chinese wording follows the phone (在线, 快捷聊天, 非营利, 形象工坊, 操作屏幕) and uses 「」 quotes.
 
 ### Android
 
+- **The lights while the hands work breathe instead of running:** the comet round the screen's edge and the scan line are gone, the glow breathes 2.4 s in and 2.4 s out, and the capsule's ring and bars breathe at the same pace; all of it holds still under the system's reduce-motion setting.
+- **The first run's Hands page shows the app's mark.**
+- **The first conversation says where your messages go with sync on:** to the model, and — signed in — to your other devices through nanoMuse Cloud, which Data controls switches off.
+
 ### iOS
+
+- **The sign-in sheet shows the app's mark**, asks for a mainland-China phone number or an e-mail, says so under the field as soon as a number from elsewhere is typed, and its footer tells what the relay keeps and links the privacy policy. The first run's Notifications page shows the mark too.
+- **After you pick a new face with a video model set**, the agent says the four clips follow in the background.
+- **In the account's Devices list** an offline device shows when it was last seen, and a tap on an online one starts a message to it in the chat.
+- **A fresh install no longer shows the home screen for an instant** before the welcome page; the first conversation says where your messages go with sync on, as on Android.
 
 ### Project
 
 - **nanomuse.cn has a 404 page** of its own, with the site's bar and theme.
 - **The showcase has an embed mode** (`https://demo.nanomuse.dev/?embed=1`), for the frame on the homepage: no header of its own, the phone waits for the visitor's tap instead of turning itself on, the site's language and theme are followed, and links leave the frame.
 - **The docs site looks like the homepage:** Home and Try it in the nav, the brand colour and system type, the logo served with the site rather than from GitHub.
+- **A 简体中文 edition of the docs site** under `/zh/` — every page translated, a language menu in the nav, Chinese sidebar, search and footer — with a *Translating the docs* section and a glossary in `CONTRIBUTING.md`; the nav shows the repository's star count. `calls.md` left the sidebars (its links open the file on GitHub). The Chinese pages follow the audit's changes to the English ones.
+- **The README has a *News* section**, the browser-demo and website badges and the public TestFlight link, in English and its nine translations, whose literal sentences were rewritten with native readers; the devices figure shows 0.1.40 (the hands' run kept as a trajectory in the chat).
+- **The maintainers' release recipe** in CONTRIBUTING.md was rewritten, with `scripts/release-bump.sh` and `scripts/release-docs.py`, so a release can be made from the repository alone.
+- **The privacy page** says that the operator's page shows an address's country, province and city from an offline copy of ip2region, computed when drawn and not stored; `docs/cloud.md` says the star policy sets when an ask may appear, not its words; docs/parity.md, docs/ios.md and docs/roadmap.md describe 0.1.40's behaviour and the paper's roadmap.
+- **CI runs the relay's `ruff check` and `pytest`** on every change under `cloud/`; it never had.
 
 ## [0.1.40] - 2026-10-06 · Clear
 
