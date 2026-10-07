@@ -96,7 +96,7 @@ struct NanoMuseAccountSections: View {
     private func waysOn(_ spend: NanoMuseSheet.Spend) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(spend.exhausted
-                ? AppLocalized("The allowance is used up. Two ways to keep going — and a third if you like the project.")
+                ? AppLocalized("The allowance is used up. Two ways to keep going, and a third if you like the project.")
                 : AppLocalized("Most of the allowance is spent. Good time to set up a way on."))
                 .font(.subheadline)
             // Contract C5: mainland China hears about Alibaba Cloud Bailian first; everyone else about OpenRouter.
@@ -147,7 +147,7 @@ struct NanoMuseAccountSections: View {
             let bonus = yuan(invite.bonusCny)
             let earned = yuan(invite.earnedCny)
             let invited = invite.invites.formatted()
-            Text(String(format: AppLocalized("A friend who signs up with your code gets %@ of credit — and so do you. %@ invited · %@ earned."), bonus, invited, earned))
+            Text(String(format: AppLocalized("A friend who signs up with your code gets %@ of credit, and so do you. %@ invited · %@ earned."), bonus, invited, earned))
         }
     }
 

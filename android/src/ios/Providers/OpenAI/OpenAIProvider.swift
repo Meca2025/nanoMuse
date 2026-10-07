@@ -510,7 +510,7 @@ final class OpenAIProvider: LLMProvider {
 
         guard (200..<300).contains(statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? ""
-            throw mapHTTPError(statusCode: statusCode, body: body)
+            throw mapHTTPError(statusCode: statusCode, body: body, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Retry-After")) // nanoMuse: the header rides along
         }
 
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
@@ -587,7 +587,7 @@ final class OpenAIProvider: LLMProvider {
             var body = ""
             for try await line in byteStream.lines { body += line }
             session.finishTasksAndInvalidate()
-            throw mapHTTPError(statusCode: statusCode, body: body)
+            throw mapHTTPError(statusCode: statusCode, body: body, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Retry-After")) // nanoMuse: the header rides along
         }
 
         return AsyncThrowingStream { continuation in
@@ -925,7 +925,7 @@ final class OpenAIProvider: LLMProvider {
             var body = ""
             for try await line in byteStream.lines { body += line }
             session.finishTasksAndInvalidate()
-            throw mapHTTPError(statusCode: statusCode, body: body)
+            throw mapHTTPError(statusCode: statusCode, body: body, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Retry-After")) // nanoMuse: the header rides along
         }
 
         let lineStream = AsyncThrowingStream<String, Error> { continuation in
@@ -1678,7 +1678,7 @@ final class OpenAIProvider: LLMProvider {
 
             guard (200..<300).contains(statusCode) else {
                 let responseBody = String(data: data, encoding: .utf8) ?? ""
-                throw mapHTTPError(statusCode: statusCode, body: responseBody)
+                throw mapHTTPError(statusCode: statusCode, body: responseBody, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Retry-After")) // nanoMuse: the header rides along
             }
 
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
@@ -1859,7 +1859,7 @@ final class OpenAIProvider: LLMProvider {
 
         guard (200..<300).contains(statusCode) else {
             let responseBody = String(data: data, encoding: .utf8) ?? ""
-            throw mapHTTPError(statusCode: statusCode, body: responseBody)
+            throw mapHTTPError(statusCode: statusCode, body: responseBody, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Retry-After")) // nanoMuse: the header rides along
         }
 
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
@@ -2065,10 +2065,10 @@ final class OpenAIProvider: LLMProvider {
         return .providerError(message: error.localizedDescription)
     }
 
-    func mapHTTPError(statusCode: Int, body: String) -> LLMError {
+    func mapHTTPError(statusCode: Int, body: String, retryAfter: String? = nil) -> LLMError { // nanoMuse: the Retry-After header, for the card's "Resets in"
         // nanoMuse: the plan's "region not supported" / "sign-in expired" / "nothing left" are a
         // 403, a 401 and a 429 whose bodies the mapping below drops; keep them for the chat's card.
-        NanoMuseReachSignal.shared.noteHTTPError(status: statusCode, body: body, host: isOAuth ? "chatgpt.com" : (NanoMuseProxy.hostOf(customBaseURL ?? "") ?? "api.openai.com"), oauth: isOAuth)
+        NanoMuseReachSignal.shared.noteHTTPError(status: statusCode, body: body, host: isOAuth ? "chatgpt.com" : (NanoMuseProxy.hostOf(customBaseURL ?? "") ?? "api.openai.com"), oauth: isOAuth, retryAfter: retryAfter)
         if statusCode == 401 || statusCode == 403 { return .invalidAPIKey(detail: "HTTP \(statusCode): \(String(body.prefix(200)))") }
         if statusCode == 429 { return .rateLimited }
 

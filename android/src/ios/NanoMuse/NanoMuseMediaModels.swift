@@ -344,7 +344,7 @@ struct NanoMuseMediaModelsView: View {
         } footer: {
             Text(imageInstances.isEmpty && !NanoMuseCloud.isSignedIn
                  ? AppLocalized("None of your providers can draw. Sign in to nanoMuse Cloud, or add an Alibaba Cloud Bailian provider with an API key; the avatar is drawn with one of the two.")
-                 : AppLocalized("Avatar changes — the four candidates and the poses. Alibaba Cloud Model Studio: qwen-image-3.0 (draws and poses; ¥0.18 a picture) or the Pro tier, drawn with your own key. nanoMuse Cloud draws from the account's allowance."))
+                 : AppLocalized("Avatar changes: the four candidates and the poses. Alibaba Cloud Model Studio: qwen-image-3.0 (draws and poses; ¥0.18 a picture) or the Pro tier, drawn with your own key. nanoMuse Cloud draws from the account's allowance."))
         }
     }
 
@@ -414,8 +414,8 @@ struct NanoMuseMediaModelsView: View {
             Text(AppLocalized("Video model"))
         } footer: {
             Text(videoInstances.isEmpty
-                 ? AppLocalized("No provider that can make video yet — nanoMuse speaks Alibaba Cloud Model Studio's video API, which nanoMuse Cloud relays too. Sign in to nanoMuse Cloud, or add a Model Studio key (it can be the same one as the image model uses), and the avatar starts moving; until then it stays as still pictures.")
-                 : AppLocalized("Makes the avatar move — a short looping clip for each state. Alibaba Cloud Model Studio: wan2.2-i2v-flash (recommended, ¥0.10 a second at 480P), another Wan model or MiniMax/MiniMax-H3; the list shows the ones this key can use, each activated once on the model's card in the Model Studio console. Billed per second of video; an avatar takes four clips of a few seconds."))
+                 ? AppLocalized("No provider that can make video yet. nanoMuse speaks Alibaba Cloud Model Studio's video API, which nanoMuse Cloud relays too. Sign in to nanoMuse Cloud, or add a Model Studio key (it can be the same one as the image model uses), and the avatar starts moving; until then it stays as still pictures.")
+                 : AppLocalized("Makes the avatar move: a short looping clip for each state. Alibaba Cloud Model Studio: wan2.2-i2v-flash (recommended, ¥0.10 a second at 480P), another Wan model or MiniMax/MiniMax-H3; the list shows the ones this key can use, each activated once on the model's card in the Model Studio console. Billed per second of video; an avatar takes four clips of a few seconds."))
         }
     }
 
@@ -450,7 +450,7 @@ struct NanoMuseMediaModelsView: View {
             NanoMuseFaceView(mood: mood, size: 28, showsRing: false)
             Text(Self.moodWord(mood))
             Spacer()
-            Text(motion.clips[mood].flatMap(Self.fileSize) ?? "—")
+            Text(motion.clips[mood].flatMap(Self.fileSize) ?? "…")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

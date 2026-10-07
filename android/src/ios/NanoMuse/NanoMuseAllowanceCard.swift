@@ -141,15 +141,15 @@ struct NanoMuseAllowanceCard: View {
     }
 
     private var title: String {
-        if refused.paused { return AppLocalized("The free allowance is paused on this relay for now — not used up.") }
+        if refused.paused { return AppLocalized("The free allowance is paused on this relay for now. It is not used up.") }
         if refused.dailyCap { return AppLocalized("Today's share of the free allowance is used up.") }
         return AppLocalized("The free allowance is used up.")
     }
 
     private var subtitle: String {
         if refused.paused { return AppLocalized("What is left stays as it is; the ways below work now.") }
-        if refused.dailyCap { return AppLocalized("It resets tomorrow. The ways below work now — your sign-in and your devices keep working either way.") }
-        return AppLocalized("Two ways on — your sign-in and your devices keep working either way.")
+        if refused.dailyCap { return AppLocalized("It resets tomorrow. The ways below work now; your sign-in and your devices keep working either way.") }
+        return AppLocalized("Two ways on; your sign-in and your devices keep working either way.")
     }
 
     var body: some View {

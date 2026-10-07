@@ -150,16 +150,16 @@ struct NanoMuseFirstRunView: View {
             hero: { NanoMuseBrandMark(size: 96) },
             title: AppLocalized("Welcome to nanoMuse"),
             subtitle: AppLocalized("An open-source personal agent for every device you own."),
-            primaryLabel: AppLocalized("Sign in — free"),
+            primaryLabel: AppLocalized("Sign in · free"),
             onPrimary: { showSignIn = true },
             finePrint: AppLocalized("One account keeps your devices together and carries the free model use; nothing is charged. Your own API key can be added right after."),
             learnMore: URL(string: "https://github.com/nano-muse/nanoMuse/blob/main/docs/cloud.md")
         ) {
-            NanoMuseFeatureRow(symbol: "bubble.left.and.bubble.right", title: AppLocalized("Chat, pictures, video"), subtitle: AppLocalized("A capable model, image and video generation, tools, skills and memory — on your phone"))
+            NanoMuseFeatureRow(symbol: "bubble.left.and.bubble.right", title: AppLocalized("Chat, pictures, video"), subtitle: AppLocalized("A capable model, image and video generation, tools, skills and memory, on your phone"))
             NanoMuseFeatureRow(symbol: "desktopcomputer", title: AppLocalized("Reach: your computers, from here"), subtitle: AppLocalized("Pair a Mac, Windows or Linux machine and give it work from the phone"))
             // Android's third row is Hands (it uses the phone); the iPhone has no such service, so: goals and the feed.
             NanoMuseFeatureRow(symbol: "calendar.badge.clock", title: AppLocalized("Goals and a daily feed"), subtitle: AppLocalized("It checks in on what you are working towards and writes you a short post every morning"))
-            NanoMuseNoticeCard(title: AppLocalized("Free, open source, non-profit"), body: AppLocalized("nanoMuse is a non-profit open-source community project — free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours."))
+            NanoMuseNoticeCard(title: AppLocalized("Free, open source, non-profit"), body: AppLocalized("nanoMuse is a non-profit open-source community project, free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours."))
                 .padding(.top, 8)
         }
     }
@@ -205,7 +205,7 @@ struct NanoMuseFirstRunView: View {
             subtitle: AppLocalized("A first conversation: it asks what to call you and picks its own name"),
             primaryLabel: AppLocalized("Start"),
             onPrimary: { NanoMuseFirstRun.markDone(); onStart() },
-            finePrint: AppLocalized("Before anything it cannot take back — deleting, sending, paying — it stops and asks you first.")
+            finePrint: AppLocalized("Before anything it cannot take back, such as deleting, sending or paying, it stops and asks you first.")
         ) {
             EmptyView()
         }
@@ -284,7 +284,7 @@ struct NanoMuseNotificationsPage: View {
             finePrint: AppLocalized("Everything else works without it. It lives under iOS Settings → nanoMuse whenever you want it."),
             busy: busy
         ) {
-            NanoMuseFeatureRow(symbol: "clock", title: AppLocalized("Routines"), subtitle: AppLocalized("A message the agent sends itself at a set time — the feed every morning, anything you schedule."))
+            NanoMuseFeatureRow(symbol: "clock", title: AppLocalized("Routines"), subtitle: AppLocalized("A message the agent sends itself at a set time: the feed every morning, anything you schedule."))
             NanoMuseFeatureRow(symbol: "target", title: AppLocalized("Goal check-ins"), subtitle: AppLocalized("It asks how a goal is going, when you said it should."))
         }
         .task { await refresh() }
@@ -546,8 +546,8 @@ final class NanoMuseFirstConversation: ObservableObject {
     func intro() -> [String] {
         [
             AppLocalized("Hi, I'm nanoMuse, the assistant that lives on your phone. Let me take a few things off your plate."),
-            AppLocalized("A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you share with me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone. Your messages go to the model you configured; signed in to nanoMuse Cloud, this conversation also follows you to your other devices — Data controls switches that off."),
-            AppLocalized("Before we start — what should I call you?"),
+            AppLocalized("A bit about how I work:\n\n- I have my own computer, a Linux sandbox and a browser, so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you share with me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone. Your messages go to the model you configured; signed in to nanoMuse Cloud, this conversation also follows you to your other devices. Data controls switches that off."),
+            AppLocalized("Before we start, what should I call you?"),
         ]
     }
 
@@ -645,14 +645,14 @@ final class NanoMuseFirstConversation: ObservableObject {
     func systemAddendum(session: String) -> String? {
         guard isBound(to: session) else { return nil }
         let address = UserDefaults.standard.string(forKey: Keys.address)
-        let addressLine = address.map { " The user goes by \"\($0)\" — address them that way." } ?? ""
+        let addressLine = address.map { " The user goes by \"\($0)\"; address them that way." } ?? ""
         let fence = "```nanomuse-" + Self.block
         switch phase {
         case .askUserName:
             var s = "First conversation. The app already showed the user this opening on your behalf:\n"
             for line in intro() { s += "  > " + line.replacingOccurrences(of: "\n", with: "\n  > ") + "\n" }
             s += "They are now replying to the last line (what should I call you?). Decide from their message what they meant:\n"
-            s += "(a) If it says how to address them — a name, a nickname, \"just call me boss\" — confirm it in one short sentence, "
+            s += "(a) If it says how to address them (a name, a nickname, \"just call me boss\"), confirm it in one short sentence, "
             s += "ask in one sentence what they would like to call you, and end the reply with exactly this fenced block:\n"
             s += fence + "\n{\"user_address\": \"<how to address them>\", \"suggest\": [\"<name 1>\", \"<name 2>\"]}\n```\n"
             s += "`suggest` holds two names for yourself the user could pick, in the language they write: two-character Chinese names "
@@ -660,7 +660,7 @@ final class NanoMuseFirstConversation: ObservableObject {
             s += "Never suggest the name of an existing assistant or product (\(Self.takenNames)), nor the user's own name. "
             s += "The app renders the block as a chooser under your reply, so do not list the names in your text.\n"
             s += "(b) If they say they would rather not be called anything in particular, do the same with \"user_address\": null.\n"
-            s += "(c) If the message is about something else — a question, a task, small talk — help with it first, in full, "
+            s += "(c) If the message is about something else (a question, a task, small talk), help with it first, in full, "
             s += "and end with one light sentence bringing the question back (what should I call you?). No block in that case; the app keeps waiting.\n"
             s += "Reply in the user's language; keep it short."
             return s
@@ -668,20 +668,20 @@ final class NanoMuseFirstConversation: ObservableObject {
             let chips = currentSuggestions()
             var s = "First conversation. You asked what the user would like to call you; the app is showing a chooser under that question with "
             s += chips.map { "\"\($0)\"" }.joined(separator: ", ") + " and \"something else\". Decide from their message:\n"
-            s += "(a) If it gives you a name — typed on its own, \"call you 豆丁\", \"the first one\" (meaning \"\(chips.first ?? "")\") — "
+            s += "(a) If it gives you a name, typed on its own, \"call you 豆丁\", \"the first one\" (meaning \"\(chips.first ?? "")\"): "
             s += "that is your name from now on. Reply as yourself: one short line about the name, then three bullets with the most useful things you can do "
             s += "for them right now on this phone (choose from: running commands in your Linux sandbox, browsing websites and filling forms, "
             s += "reading and organising files and photos they share, setting reminders and scheduled tasks, searching the web), one concrete line each, no emoji; "
             s += "end by asking what they want to try first. Then end the reply with exactly this fenced block:\n"
             s += fence + "\n{\"agent_name\": \"<the name>\"}\n```\n"
-            s += "The app saves the name to SOUL.md from the block — do not call minis-config for it.\n"
+            s += "The app saves the name to SOUL.md from the block; do not call minis-config for it.\n"
             s += "(b) If the message is about something else, help with it first, in full, and end with one light sentence bringing the naming back; "
             s += "no block, the chooser stays.\n"
             s += "Reply in the user's language." + addressLine
             return s
         case .named:
             let name = SoulStore.cachedMetadata.name
-            return "First conversation. The user just named you \"\(name)\" — the app already saved it to SOUL.md, so it is your name now; do not call minis-config for it. "
+            return "First conversation. The user just named you \"\(name)\"; the app already saved it to SOUL.md, so it is your name now; do not call minis-config for it. "
                 + "Reply in the user's language: one short line about the name, then three bullets with the most useful things you can do for them right now on this phone "
                 + "(choose from: running commands in your Linux sandbox, browsing websites and filling forms, reading and organising files and photos they share, "
                 + "setting reminders and scheduled tasks, searching the web). One concrete line each, no emoji. End by asking what they want to try first." + addressLine

@@ -162,8 +162,9 @@ enum NanoMuseProviderReach {
         return nil
     }
 
-    /// The `error.message` of an OpenAI-shaped body inside `t`, or empty.
-    private static func vendorMessage(_ t: String) -> String {
+    /// The `error.message` of an OpenAI-shaped body inside `t`, or empty. Also read by the
+    /// vendor sheet when a key is refused at save time.
+    static func vendorMessage(_ t: String) -> String {
         guard let start = t.firstIndex(of: "{"), let data = String(t[start...]).data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return "" }
         let err = json["error"] as? [String: Any] ?? json

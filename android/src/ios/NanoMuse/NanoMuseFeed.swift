@@ -372,12 +372,12 @@ enum NanoMuseFeedFlow {
         s += "> " + store.preferences.replacingOccurrences(of: "\n", with: "\n> ") + "\n\n"
         s += "What you know about them right now (from GLOBAL.md, the diary of the last seven days, USER.md and their goals):\n"
         let d = digest()
-        s += (d.isEmpty ? "(nothing recorded yet — write a gentle first day: what the feed is for, and three things you could start tracking or preparing if they tell you a little about themselves)" : d) + "\n\n"
+        s += (d.isEmpty ? "(nothing recorded yet; write a gentle first day: what the feed is for, and three things you could start tracking or preparing if they tell you a little about themselves)" : d) + "\n\n"
         s += "When a message asks you to write the feed: reply with one short line, then 3 to 6 posts, EACH as its own fenced code block tagged `nanomuse-feed` "
         s += "containing JSON {\"emoji\": \"one emoji\", \"title\": \"<= 30 characters\", \"type\": \"brief|reminder|idea|goal|memory|note\", "
         s += "\"body\": \"2 to 6 sentences or a short bullet list, Markdown allowed\", \"source\": [\"where it came from, e.g. GLOBAL.md, diary 2026-09-24, goal: <title>\"]}. "
         s += "Write in the user's language; be concrete and useful (today's follow-ups, things they said they would do, goal progress, something they would enjoy); no clickbait, no filler, nothing you already posted. "
-        s += "Use tools only if a post needs a live fact (weather, a price, a date) — at most two quick lookups. Say nothing after the last block.\n"
+        s += "Use tools only if a post needs a live fact (weather, a price, a date), at most two quick lookups. Say nothing after the last block.\n"
         if !recent.isEmpty { s += "Recent titles (do not repeat): \(recent.joined(separator: " · "))\n" }
         s += "In ordinary conversation here, answer normally; add a `nanomuse-feed` block only when the user asks to put something in the feed."
         return s
@@ -404,7 +404,7 @@ enum NanoMuseFeedFlow {
         if !goals.isEmpty {
             sb += "### Goals\n"
             for g in goals {
-                sb += "- \(g.title) — \(g.status.rawValue), \(g.progress)%" + (g.lastNote.map { "; last: \($0)" } ?? "") + "\n"
+                sb += "- \(g.title): \(g.status.rawValue), \(g.progress)%" + (g.lastNote.map { "; last: \($0)" } ?? "") + "\n"
             }
         }
         return String(sb.prefix(7000))
@@ -492,7 +492,7 @@ struct NanoMuseFeedRoom: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(AppLocalized("About the feed")).font(.headline)
-                Text(AppLocalized("Short posts your agent writes for you from what it remembers — your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time."))
+                Text(AppLocalized("Short posts your agent writes for you from what it remembers: your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time."))
                     .font(.footnote).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
@@ -535,7 +535,7 @@ struct NanoMuseFeedRoom: View {
     private var emptyState: some View {
         let time = NanoMuseDay.clock(hour: NanoMuseFeedFlow.routine?.hour ?? NanoMuseFeedFlow.defaultHour, minute: NanoMuseFeedFlow.routine?.minute ?? NanoMuseFeedFlow.defaultMinute)
         staticCard("🖼️", AppLocalized("Nothing in the feed yet"),
-                   String(format: AppLocalized("As we get to know each other, new posts will show up here. Every day at %@ I read what I remember about you — your memory files, the last week of diary, your goals — and write a few short posts."), time))
+                   String(format: AppLocalized("As we get to know each other, new posts will show up here. Every day at %@ I read what I remember about you, your memory files, the last week of diary and your goals, and write a few short posts."), time))
         staticCard("📝", AppLocalized("Steer it with one sentence"),
                    AppLocalized("Tap the sliders at the top right to tell me what you want more of, switch the daily routine off, or have me write the first day now."))
         VStack(spacing: 8) {
@@ -554,7 +554,7 @@ struct NanoMuseFeedRoom: View {
                         .buttonStyle(.plain)
                 }
             } else {
-                Text(AppLocalized("Add a model first — the feed is written by your agent."))
+                Text(AppLocalized("Add a model first; the feed is written by your agent."))
                     .font(.footnote).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
@@ -662,7 +662,8 @@ struct NanoMusePostDetail: View {
                     }
                     NanoMuseInlineMarkdown(text: post.body).font(.body)
                     Divider()
-                    Group {
+                    // A grid sizes the label column to the longest label ("Geschrieben", "Написано") instead of a fixed 72 pt.
+                    Grid(alignment: .topLeading, horizontalSpacing: 12, verticalSpacing: 8) {
                         row(AppLocalized("Type"), NanoMusePost.typeLabel(post.type))
                         row(AppLocalized("Written"), post.createdAt.formatted(date: .abbreviated, time: .shortened))
                         if !post.source.isEmpty { row(AppLocalized("From"), post.source.joined(separator: " · ")) }
@@ -683,9 +684,9 @@ struct NanoMusePostDetail: View {
     }
 
     private func row(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .top) {
-            Text(label).foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
-            Text(value).textSelection(.enabled)
+        GridRow {
+            Text(label).foregroundStyle(.secondary)
+            Text(value).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -725,7 +726,7 @@ struct NanoMuseFeedSettingsSheet: View {
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
                     } else {
-                        Text(AppLocalized("Add a model first — the feed is written by your agent."))
+                        Text(AppLocalized("Add a model first; the feed is written by your agent."))
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     Button {

@@ -195,7 +195,7 @@ struct NanoMuseCloudView: View {
         Section {
             VStack(alignment: .leading, spacing: 6) {
                 Text(AppLocalized("Free, open source, non-profit")).font(.subheadline.weight(.semibold))
-                Text(AppLocalized("nanoMuse is a non-profit open-source community project — free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours."))
+                Text(AppLocalized("nanoMuse is a non-profit open-source community project, free, forever. The model comes with a free allowance paid by the developer; after that, your own key. Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours."))
                     .font(.caption).foregroundStyle(.secondary)
                 Text(AppLocalized("Found a bug, want a feature, have a patch? The GitHub repository is the place."))
                     .font(.caption).foregroundStyle(.secondary)
@@ -216,10 +216,10 @@ struct NanoMuseCloudView: View {
             if NanoMuseCloud.signInEnded {
                 // the relay refused the phone's key: the account's chats wait here for the
                 // same account to sign in again (C12)
-                Label(AppLocalized("Your sign-in on this phone was ended — sign in again to continue; your chats are kept on this device until then."), systemImage: "person.crop.circle.badge.clock")
+                Label(AppLocalized("Your sign-in on this phone was ended. Sign in again to continue; your chats are kept on this device until then."), systemImage: "person.crop.circle.badge.clock")
                     .font(.subheadline)
             }
-            Text(AppLocalized("Sign in with a phone number or an e-mail address and start right away with a starter allowance — no key of your own needed. A provider of your own can be added at any time."))
+            Text(AppLocalized("Sign in with a phone number or an e-mail address and start right away with a starter allowance, no key of your own needed. A provider of your own can be added at any time."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             if let allowance = config.allowanceCny, allowance > 0 {

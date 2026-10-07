@@ -428,6 +428,22 @@ Ours, in `NanoMuse/`:
   HEARTBEAT.md renders each routine's cadence with the Routines list's words (*Daily · 08:00*,
   *Checks every 6 hours*) instead of English *daily*, *once*, *every 6 h*; the memory import
   prompt follows an in-app language change.
+- **The audit's follow-ups (round 11)** (`Localizable.xcstrings`, `NanoMuseVendorSheet.swift`,
+  `NanoMuseFeed.swift`, `NanoMuseAppearance.swift`, the `// nanoMuse:` spots of
+  `OpenAIProvider.swift`, `MinisTests/NanoMuseCopyTests.swift`): no sentence a person reads
+  carries a dash any more, in any of the nine languages: 73 keys were rewritten as two
+  sentences, a comma, a colon or a middle dot (*Before we start, what should I call you?*,
+  *Sign in · free*, *Done. My new look is on.*), the rows of HEARTBEAT.md and the diagnostics
+  report with them, and ten keys nothing referenced were dropped; upstream OpenMinis keys are
+  not ours and stay. 繁體中文 says *nanoMuse Cloud* as the other languages do, Russian says
+  *Эл. почта*. `NanoMuseCopyTests` reads the catalogue and the `NanoMuse/` sources on the Mac
+  and fails on a dash, an exclamation mark or a translated relay name in our keys. The vendor
+  sheet tries a pasted key against the provider's model list before keeping it: a 401 or 403
+  leaves the phone as it was and says so under the field, where before upstream's fallback
+  seeded a catalogue list and the sheet closed as if the key were right. `Retry-After` from a
+  plan's 429 reaches the reach card, so *Resets in …* shows for a ChatGPT or Claude plan. A
+  post's detail rows are a `Grid` whose label column takes the longest label; the avatar size
+  is a menu, not five segments.
 
 ## Building on a Mac
 

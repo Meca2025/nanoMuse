@@ -54,7 +54,7 @@ enum NanoMuseAvatarPrompts {
             "variation 1: the most typical, classic colouring",
             "variation 2: a different breed or colour pattern, lighter tones",
             "variation 3: a different breed or colour pattern, darker or warmer tones, a small accessory such as a scarf or glasses",
-            "variation 4: a playful take — unusual colouring or a tiny outfit, slight head tilt",
+            "variation 4: a playful take, unusual colouring or a tiny outfit, slight head tilt",
         ]
         var subject = description.trimmingCharacters(in: .whitespacesAndNewlines)
         while let last = subject.last, ".。!！,，".contains(last) { subject.removeLast() }
@@ -65,7 +65,7 @@ enum NanoMuseAvatarPrompts {
     }
 
     static func mood(_ mood: NanoMuseMood) -> String {
-        let keep = "Keep this exact character — same face, colours, outfit, art style, proportions, framing, "
+        let keep = "Keep this exact character: same face, colours, outfit, art style, proportions, framing, "
             + "camera angle and pure white background. Change only the pose and props described. "
         switch mood {
         case .working:
@@ -164,7 +164,7 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
     /// Whether a picture can be drawn at all right now; the reason when not.
     var cannotDrawReason: String? {
         if usesOwnKey || NanoMuseCloud.isSignedIn { return nil }
-        return AppLocalized("Sign in to nanoMuse Cloud, or add an Alibaba Cloud Bailian key under Providers — the pictures are drawn with one of the two.")
+        return AppLocalized("Sign in to nanoMuse Cloud, or add an Alibaba Cloud Bailian key under Providers; the pictures are drawn with one of the two.")
     }
 
     /// Files of the candidates on screen, in order ("" where one failed).
@@ -600,7 +600,7 @@ struct NanoMuseAvatarStudioView: View {
         } header: {
             Text(AppLocalized("Pick one"))
         } footer: {
-            Text(AppLocalized("The moods — working, waiting, done, oops — are drawn from the one you pick, in the background."))
+            Text(AppLocalized("The moods are drawn from the one you pick, in the background: working, waiting, done, oops."))
         }
     }
 }
@@ -625,7 +625,7 @@ struct NanoMuseFaceCostSheet: View {
                 if e.unlimited {
                     Text(what + ".")
                 } else {
-                    Text(String(format: AppLocalized("%@ — about ¥%@ from your allowance."), what, Self.money(e.cny)))
+                    Text(String(format: AppLocalized("%@: about ¥%@ from your allowance."), what, Self.money(e.cny)))
                     if let left = e.leftCny {
                         Text(String(format: AppLocalized("You have ¥%@ of the allowance left."), Self.money(left)))
                             .foregroundStyle(.secondary)
