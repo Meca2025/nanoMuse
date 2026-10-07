@@ -232,6 +232,8 @@ class FakeRelay:
         asyncio.run_coroutine_threadsafe(_close(), self.loop).result(5)
         self.loop.call_soon_threadsafe(self.loop.stop)
         self._thread.join(5)
+        if not self._thread.is_alive():
+            self.loop.close()
 
     def _run(self) -> None:
         asyncio.set_event_loop(self.loop)

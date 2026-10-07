@@ -232,4 +232,6 @@ say
 say "Point each app at $BASE: on Android and iPhone, tap \"Use a different server\" on the"
 say "sign-in screen; on the desktop, set the plugin's baseURL in cordis.patch.yml; for the"
 say "terminal runtime, export NANOMUSE_CLOUD_BASE_URL=$BASE. The exact steps: docs/self-hosting.md."
-[ "$LOCAL" = 1 ] && say "A phone on the same network needs --bind 0.0.0.0 and this machine's LAN address instead of 127.0.0.1."
+if [ "$LOCAL" = 1 ]; then
+  say "A phone on the same network needs --bind 0.0.0.0 and this machine's LAN address instead of 127.0.0.1."
+fi
