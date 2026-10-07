@@ -40,6 +40,8 @@ while [ $# -gt 0 ]; do
 done
 
 build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+# macOS has no sha256sum; shasum writes and checks the same lines
+command -v sha256sum >/dev/null 2>&1 || sha256sum() { shasum -a 256 "$@"; }
 out="$NM_ROOT/dist/nanoMuse-$version-arm64.apk"
 
 # Every part of the release carries the same version: the runtime, the desktop app, the web

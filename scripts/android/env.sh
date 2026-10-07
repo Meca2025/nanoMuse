@@ -12,7 +12,10 @@ _default() { # var path
 }
 
 _default JAVA_HOME "$HOME/.local/toolchains/jdk-21.0.12.1+1"
-_default ANDROID_HOME "${ANDROID_SDK_ROOT:-/ssd/software/android-studio/Android/SDK}"
+# the SDK where Android Studio puts it: ANDROID_SDK_ROOT when set, else its default on Linux,
+# then on macOS
+_default ANDROID_HOME "${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}"
+_default ANDROID_HOME "$HOME/Library/Android/sdk"
 _default ANDROID_NDK_HOME "$HOME/.local/toolchains/android-ndk-r27c"
 _default GOROOT "$HOME/.local/toolchains/go"
 _default GOPATH "$HOME/go"

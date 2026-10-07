@@ -59,14 +59,34 @@ def previous_tag(target: str) -> str:
 
 
 def merged_numbers(previous: str, target: str) -> list[int]:
-    """Pull request numbers from the merge commits between the two refs, oldest first."""
-    subjects = git("log", f"{previous}..{target}", "--merges", "--format=%s", "--reverse")
-    numbers: list[int] = []
-    for line in subjects.splitlines():
-        m = re.search(r"Merge pull request #(\d+)", line)
+    """Pull request numbers merged between the two refs, oldest first.
+
+    A pull request merged with a merge commit is read off the commit's subject (``Merge pull
+    request #n``); one merged by rebase leaves no such commit, so GitHub is asked which commit
+    it recorded as the merge and that commit is looked for in the range. Without ``gh`` the
+    merge commits alone are listed."""
+    log = git("log", f"{previous}..{target}", "--format=%H %s", "--reverse")
+    position: dict[str, int] = {}
+    found: dict[int, int] = {}
+    for index, line in enumerate(log.splitlines()):
+        sha, _, subject = line.partition(" ")
+        position[sha] = index
+        m = re.search(r"^Merge pull request #(\d+)", subject)
         if m:
-            numbers.append(int(m.group(1)))
-    return numbers
+            found.setdefault(int(m.group(1)), index)
+    try:
+        raw = run(
+            "gh", "pr", "list", "--repo", REPO, "--state", "merged", "--base", "main",
+            "--json", "number,mergeCommit", "--limit", "500",
+        )  # fmt: skip
+    except (OSError, subprocess.CalledProcessError) as exc:
+        print(f"gh pr list failed ({exc}); listing merge commits only", file=sys.stderr)
+        raw = "[]"
+    for item in json.loads(raw):
+        sha = str((item.get("mergeCommit") or {}).get("oid") or "")
+        if sha in position:
+            found.setdefault(int(item["number"]), position[sha])
+    return [number for number, _ in sorted(found.items(), key=lambda kv: (kv[1], kv[0]))]
 
 
 def pull_request(number: int) -> PullRequest:

@@ -17,18 +17,21 @@ set -euo pipefail
 old="$1"; new="$2"; oc="$3"; nc="$4"; rold="${5:-}"; rnew="${6:-}"
 [ -f pyproject.toml ] && [ -f scripts/rebrand.py ] || { echo "run from the repository root" >&2; exit 2; }
 
-sed -i "s/^VERSION_NAME = \"$old\"/VERSION_NAME = \"$new\"/; s/^VERSION_CODE = $oc\$/VERSION_CODE = $nc/" scripts/rebrand.py
-sed -i "s/^__version__ = \"$old\"/__version__ = \"$new\"/" nanomuse/__init__.py
-sed -i "s/^version = \"$old\"/version = \"$new\"/" pyproject.toml
-sed -i "s/^version: $old\$/version: $new/" CITATION.cff
-sed -i "s/^date-released: .*$/date-released: $(date +%F)/" CITATION.cff
-sed -i "s/const VERSION = \"$old\"/const VERSION = \"$new\"/" cloud/nanomuse_cloud/console/app.js
-sed -i "s/\"version\": \"$old\"/\"version\": \"$new\"/" \
+# in-place sed on GNU (Linux) and BSD (macOS) alike: BSD's -i wants a suffix argument
+if sed --version >/dev/null 2>&1; then sedi() { sed -i "$@"; }; else sedi() { sed -i '' "$@"; }; fi
+
+sedi "s/^VERSION_NAME = \"$old\"/VERSION_NAME = \"$new\"/; s/^VERSION_CODE = $oc\$/VERSION_CODE = $nc/" scripts/rebrand.py
+sedi "s/^__version__ = \"$old\"/__version__ = \"$new\"/" nanomuse/__init__.py
+sedi "s/^version = \"$old\"/version = \"$new\"/" pyproject.toml
+sedi "s/^version: $old\$/version: $new/" CITATION.cff
+sedi "s/^date-released: .*$/date-released: $(date +%F)/" CITATION.cff
+sedi "s/const VERSION = \"$old\"/const VERSION = \"$new\"/" cloud/nanomuse_cloud/console/app.js
+sedi "s/\"version\": \"$old\"/\"version\": \"$new\"/" \
   web/package.json web/package-lock.json \
   harness/dsh-nanomuse/package.json harness/desktop/package.json harness/desktop/package-lock.json
 if [ -n "$rold" ]; then
-  sed -i "s/^__version__ = \"$rold\"/__version__ = \"$rnew\"/" cloud/nanomuse_cloud/__init__.py
-  sed -i "s/^version = \"$rold\"/version = \"$rnew\"/" cloud/pyproject.toml
+  sedi "s/^__version__ = \"$rold\"/__version__ = \"$rnew\"/" cloud/nanomuse_cloud/__init__.py
+  sedi "s/^version = \"$rold\"/version = \"$rnew\"/" cloud/pyproject.toml
 fi
 
 # Each lock file names its own package twice (the root entry and ""); anything else means a
