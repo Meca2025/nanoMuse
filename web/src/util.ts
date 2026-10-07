@@ -57,6 +57,15 @@ export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }
 
+/** `decodeURIComponent` that gives the text back unchanged when it is not valid percent-encoding (a stray "%" in a link a model wrote). */
+export function safeDecodeURIComponent(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
 export function truncate(text: string, n: number): string {
   return text.length > n ? `${text.slice(0, n - 1)}…` : text;
 }

@@ -2,6 +2,7 @@ import { ChevronRight, FileCode2, Link2, Loader2, Pencil, Play, Plus, Trash2, Wa
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { PageBar } from "../components/BackBar";
+import { LoadError } from "../components/LoadError";
 import { MuseRoundButton } from "../components/MuseHeader";
 import { Markdown } from "../components/Markdown";
 import { useT } from "../i18n";
@@ -40,10 +41,18 @@ export function SkillsScreen() {
   const t = useT();
   const name = state.profile?.name ?? "nanoMuse";
   const [data, setData] = useState<SkillsData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
-  const load = () => api.skills().then(setData).catch((e: Error) => toast(e.message));
+  const load = () =>
+    api
+      .skills()
+      .then((d) => {
+        setData(d);
+        setLoadError(null);
+      })
+      .catch((e: Error) => (data === null ? setLoadError(e.message) : toast(e.message)));
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,7 +99,8 @@ export function SkillsScreen() {
       />
 
       <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-5">
-        {data === null && (
+        {data === null && loadError && <LoadError message={loadError} onRetry={() => void load()} />}
+        {data === null && !loadError && (
           <div className="py-10 flex justify-center text-muted">
             <Loader2 className="animate-spin" size={20} />
           </div>
@@ -174,7 +184,7 @@ function SkillList({ items, onOpen, onChange }: { items: SkillInfo[]; onOpen: (n
             type="button"
             role="switch"
             aria-checked={sk.enabled}
-            aria-label={t("On")}
+            aria-label={t("Use /{name}", { name: sk.name })}
             onClick={() => void toggle(sk, !sk.enabled)}
             className={cx("relative h-6 w-10 shrink-0 rounded-full transition", sk.enabled ? "bg-accent" : "bg-border")}
           >

@@ -25,6 +25,7 @@ import { api } from "../api";
 import { Avatar } from "../components/Avatar";
 import { AvatarShareSheet } from "../components/AvatarShareSheet";
 import { ApprovalCard, RiskBadge, grantSubject, scopeLabel, toolIcon } from "../components/Cards";
+import { LoadError } from "../components/LoadError";
 import { Sheet } from "../components/Sheet";
 import { intlLocale, useT } from "../i18n";
 import { useStore } from "../store";
@@ -280,11 +281,19 @@ function ApprovalsView({ onDone }: { onDone: () => void }) {
 function UpcomingView({ onSettings }: { onSettings: () => void }) {
   const { state, refreshSettings, toast } = useStore();
   const [data, setData] = useState<UpcomingData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const name = state.profile?.name ?? "nanoMuse";
   const t = useT();
 
-  const load = () => api.upcoming().then(setData).catch((e: Error) => toast(e.message));
+  const load = () =>
+    api
+      .upcoming()
+      .then((d) => {
+        setData(d);
+        setLoadError(null);
+      })
+      .catch((e: Error) => (data === null ? setLoadError(e.message) : toast(e.message)));
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -312,6 +321,7 @@ function UpcomingView({ onSettings }: { onSettings: () => void }) {
   };
 
   if (!data) {
+    if (loadError) return <LoadError message={loadError} onRetry={() => void load()} />;
     return (
       <div className="py-10 flex justify-center text-muted">
         <Loader2 className="animate-spin" size={20} />
@@ -880,13 +890,16 @@ function defaultAt(): string {
 }
 
 // ------------------------------------------------------------------ activity log
-function useActivity(open: boolean): [ActivityData | null, () => Promise<void>] {
+function useActivity(open: boolean): [ActivityData | null, () => Promise<void>, string | null] {
   const [data, setData] = useState<ActivityData | null>(null);
+  // the first failure is shown; later ones (the poll every four seconds) keep the last good list
+  const [error, setError] = useState<string | null>(null);
   const load = async () => {
     try {
       setData(await api.activity(150));
-    } catch {
-      /* offline */
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message || "Could not load.");
     }
   };
   useEffect(() => {
@@ -896,11 +909,11 @@ function useActivity(open: boolean): [ActivityData | null, () => Promise<void>] 
     return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-  return [data, load];
+  return [data, load, error];
 }
 
 function ActivityView({ open }: { open: boolean }) {
-  const [data] = useActivity(open);
+  const [data, load, error] = useActivity(open);
   const { state } = useStore();
   const t = useT();
   const name = state.profile?.name ?? "nanoMuse";
@@ -919,6 +932,12 @@ function ActivityView({ open }: { open: boolean }) {
             pct: String(Math.round((gui / entries.length) * 100)),
           })}
         </p>
+      )}
+      {!data && error && <LoadError message={error} onRetry={() => void load()} />}
+      {!data && !error && (
+        <div className="py-10 flex justify-center text-muted">
+          <Loader2 className="animate-spin" size={20} />
+        </div>
       )}
       {data && entries.length === 0 && (
         <div className="py-8 text-center text-muted text-[14px]">{t("Nothing yet today. What you ask for and what {name} does about it shows up here.", { name })}</div>

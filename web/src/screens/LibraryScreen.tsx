@@ -2,6 +2,7 @@ import { CalendarDays, Code2, FileImage, FileSpreadsheet, FileText, Globe, Libra
 import { useEffect, useMemo, useState } from "react";
 import { api, fileUrl } from "../api";
 import { TabHeader } from "../components/TabHeader";
+import { LoadError } from "../components/LoadError";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { FileInfo } from "../types";
@@ -20,8 +21,10 @@ function isMedia(name: string): boolean {
  * workspace, so files you drop there yourself show up too.
  */
 export function LibraryScreen() {
-  const { state, openFile, toast } = useStore();
+  const { state, openFile } = useStore();
   const [files, setFiles] = useState<FileInfo[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [segment, setSegment] = useState<0 | 1>(0);
   const [query, setQuery] = useState("");
   const t = useT();
@@ -31,13 +34,16 @@ export function LibraryScreen() {
   useEffect(() => {
     let alive = true;
     api.files(500)
-      .then((d) => alive && setFiles(d))
-      .catch((e: Error) => toast(e.message));
+      .then((d) => {
+        if (!alive) return;
+        setFiles(d);
+        setError(null);
+      })
+      .catch((e: Error) => alive && setError(e.message));
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, state.feedVersion]);
+  }, [version, state.feedVersion, attempt]);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -58,7 +64,8 @@ export function LibraryScreen() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-6">
-        {files === null && (
+        {files === null && error && <LoadError message={error} onRetry={() => setAttempt((n) => n + 1)} />}
+        {files === null && !error && (
           <div className="flex justify-center py-10 text-muted">
             <Loader2 className="animate-spin" size={20} />
           </div>

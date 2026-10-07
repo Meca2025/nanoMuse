@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { safeDecodeURIComponent } from "../util";
 
 /**
  * Which of the files the agent made does this text name?
@@ -113,7 +114,7 @@ export function Markdown({
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children, ...props }) => {
-            const path = href && !/^[a-z]+:/i.test(href) ? fileFor(decodeURIComponent(href)) : null;
+            const path = href && !/^[a-z]+:/i.test(href) ? fileFor(safeDecodeURIComponent(href)) : null;
             if (path) {
               return (
                 <button type="button" className="md-file" onClick={() => open(path)}>

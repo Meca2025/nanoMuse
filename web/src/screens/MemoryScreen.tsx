@@ -1,7 +1,8 @@
-import { Brain, Plus, Sparkles, Trash2, Undo2 } from "lucide-react";
+import { Brain, Loader2, Plus, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { PageBar } from "../components/BackBar";
+import { LoadError } from "../components/LoadError";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { MemoryChange, MemoryItem } from "../types";
@@ -12,7 +13,9 @@ const CATEGORIES = ["profile", "preference", "people", "routine", "constraint", 
 /** "Your Memory files, which you can read and edit directly." */
 export function MemoryScreen() {
   const { state, toast, openThread, setTab } = useStore();
-  const [items, setItems] = useState<MemoryItem[]>([]);
+  // null until the first answer: the empty state must not flash while the list is on its way
+  const [items, setItems] = useState<MemoryItem[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [changes, setChanges] = useState<MemoryChange[]>([]);
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("profile");
@@ -22,9 +25,9 @@ export function MemoryScreen() {
   const t = useT();
 
   const load = () =>
-    Promise.all([api.memory().then(setItems), api.memoryChanges().then(setChanges)]).catch((e: Error) =>
-      toast(e.message),
-    );
+    Promise.all([api.memory().then(setItems), api.memoryChanges().then(setChanges)])
+      .then(() => setLoadError(null))
+      .catch((e: Error) => (items === null ? setLoadError(e.message) : toast(e.message)));
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -32,7 +35,7 @@ export function MemoryScreen() {
 
   const grouped = useMemo(() => {
     const map = new Map<string, MemoryItem[]>();
-    for (const m of items) map.set(m.category, [...(map.get(m.category) ?? []), m]);
+    for (const m of items ?? []) map.set(m.category, [...(map.get(m.category) ?? []), m]);
     return [...map.entries()].sort((a, b) => b[1].length - a[1].length);
   }, [items]);
 
@@ -54,7 +57,7 @@ export function MemoryScreen() {
     if (!window.confirm(t("Forget “{text}”?", { text: m.content.slice(0, 60) }))) return;
     try {
       await api.forgetMemory(m.id);
-      setItems((prev) => prev.filter((x) => x.id !== m.id));
+      setItems((prev) => prev?.filter((x) => x.id !== m.id) ?? prev);
     } catch (e) {
       toast((e as Error).message);
     }
@@ -97,7 +100,7 @@ export function MemoryScreen() {
         title={t("Memory")}
         description={t("What {name} remembers about you. Read it, add to it, or make {name} forget; nothing here is hidden from you.", { name })}
         actions={
-          items.length >= 2 && (
+          (items?.length ?? 0) >= 2 && (
             <button
               type="button"
               disabled={tidying}
@@ -145,7 +148,13 @@ export function MemoryScreen() {
           </div>
         </div>
 
-        {items.length === 0 && (
+        {items === null && loadError && <LoadError message={loadError} onRetry={() => void load()} />}
+        {items === null && !loadError && (
+          <div className="flex justify-center py-10 text-muted">
+            <Loader2 className="animate-spin" size={20} />
+          </div>
+        )}
+        {items !== null && items.length === 0 && (
           <div className="rounded-3xl border border-dashed border-border p-6 text-center">
             <Brain className="mx-auto text-accent" />
             <div className="mt-2 font-semibold">{t("Nothing remembered yet")}</div>

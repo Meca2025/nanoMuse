@@ -138,7 +138,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   if (res.status === 401) throw new AuthError();
   if (!res.ok) {
-    let detail = res.statusText;
+    let detail = res.statusText || `HTTP ${res.status}`;
     try {
       const data = await res.json();
       detail = data.detail ?? JSON.stringify(data);
@@ -300,7 +300,7 @@ export const api = {
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const res = await fetch(`/api/files/${path.split("/").map(encodeURIComponent).join("/")}`, { headers });
     if (res.status === 401) throw new AuthError();
-    if (!res.ok) throw new Error(res.statusText);
+    if (!res.ok) throw new Error(res.statusText || `HTTP ${res.status}`);
     return res.text();
   },
   settings: () => request<SettingsView>("/api/settings"),

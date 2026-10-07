@@ -63,7 +63,7 @@ export function IdeasScreen() {
   const [selected, setSelected] = useState<{ idea: Idea; emoji: string } | null>(null);
   const sendIdea = (idea: Idea) => {
     setSelected(null);
-    void send("main", idea.prompt);
+    send("main", idea.prompt).catch((e: Error) => toast(e.message || t("Could not send")));
     openThread("main");
   };
   // A routine idea becomes a daily reminder that runs the prompt (the phone's "Create routine").
@@ -84,7 +84,7 @@ export function IdeasScreen() {
     const opener = t("I'd like to create a {category} goal. Ask me a few short questions, one at a time (what exactly I want, why and by when, how often to check in), then create it with concrete steps using the goals tool.", {
       category: t(category.label),
     });
-    void send("main", `${opener} ${idea.prompt}`);
+    send("main", `${opener} ${idea.prompt}`).catch((e: Error) => toast(e.message || t("Could not send")));
     openThread("main");
   };
   const kindOf = (idea: Idea) => (idea.kind === "routine" || idea.kind === "goal" ? idea.kind : "chat");

@@ -956,7 +956,6 @@ const zhCN: Record<string, string> = {
   "The Cloud model is in use.": "已切换到 Cloud 模型。",
   "Sign out": "退出登录",
   "Sign out of nanoMuse Cloud on this device? The hub and the Cloud model stop working here until you sign in again.": "在这台设备上退出 nanoMuse Cloud？重新登录之前，这里的中继和 Cloud 模型都会停用。",
-  "A code goes to your phone or inbox; the key stays in the vault on this machine.": "验证码发到你的手机或邮箱；密钥留在这台机器的保险库里。",
   "Mainland China phone number or e-mail": "中国大陆手机号或邮箱",
   "138 0000 0000 or you@example.com": "138 0000 0000 或 you@example.com",
   // -- the community notice and the gate (0.1.22) --
@@ -1444,6 +1443,8 @@ const zhCN: Record<string, string> = {
   "Could not reach your nanoMuse.": "连不上你的 nanoMuse。",
   "Connecting to your nanoMuse…": "正在连接你的 nanoMuse…",
   "Try again": "再试一次",
+  "Could not load.": "没能加载出来。",
+  "Use /{name}": "使用 /{name}",
   "Retry": "重试",
   "Could not load the conversation. Pull to retry.": "对话没能加载出来，下拉重试。",
   "Could not load the connections.": "连接信息没能加载出来。",

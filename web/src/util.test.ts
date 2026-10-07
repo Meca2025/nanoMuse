@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { intlLocale, setLocaleSetting } from "./i18n";
-import { cx, fileKind, relativeTime, timeShort, truncate } from "./util";
+import { cx, fileKind, relativeTime, safeDecodeURIComponent, timeShort, truncate } from "./util";
 
 describe("relativeTime", () => {
   beforeEach(() => {
@@ -79,5 +79,15 @@ describe("fileKind", () => {
     expect(fileKind("2026-09-24-1-1.ics")).toBe("event");
     expect(fileKind("archive.zip")).toBe("other");
     expect(fileKind("Makefile")).toBe("other");
+  });
+});
+
+describe("safeDecodeURIComponent", () => {
+  it("decodes a well-formed link and leaves a malformed one alone", () => {
+    expect(safeDecodeURIComponent("notes/%E4%BA%AC%E9%83%BD.md")).toBe("notes/京都.md");
+    expect(safeDecodeURIComponent("100%25")).toBe("100%");
+    // a stray "%" from a model's reply must not throw and take the bubble down with it
+    expect(safeDecodeURIComponent("save 100% of it")).toBe("save 100% of it");
+    expect(safeDecodeURIComponent("%E4%BA")).toBe("%E4%BA");
   });
 });

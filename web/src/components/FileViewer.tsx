@@ -1,9 +1,10 @@
 import { CalendarDays, CalendarPlus, Download, ExternalLink, Loader2, MapPin, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, fileUrl } from "../api";
 import { intlLocale, t, useT } from "../i18n";
 import { fileKind } from "../util";
 import { Markdown } from "./Markdown";
+import { useFocusTrap } from "./useFocusTrap";
 
 /**
  * In-app viewer for what the agent made: pages, images, documents, code, data.
@@ -14,6 +15,8 @@ import { Markdown } from "./Markdown";
  */
 export function FileViewer({ path, onClose }: { path: string | null; onClose: () => void }) {
   const t = useT();
+  const root = useRef<HTMLDivElement>(null);
+  useFocusTrap(root, !!path);
   useEffect(() => {
     if (!path) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -25,7 +28,7 @@ export function FileViewer({ path, onClose }: { path: string | null; onClose: ()
   const name = path.split("/").pop() ?? path;
   const kind = fileKind(name);
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-bg">
+    <div ref={root} role="dialog" aria-modal="true" aria-label={name} className="fixed inset-0 z-[60] flex flex-col bg-bg">
       <header className="safe-top shrink-0 flex items-center gap-2 border-b border-border bg-surface/90 px-3 py-2 backdrop-blur">
         <button type="button" onClick={onClose} aria-label={t("Close")} className="p-2 rounded-full text-muted hover:bg-surface-2">
           <X size={20} />
