@@ -138,14 +138,17 @@ the Cloudflare DNS module.
   `qwen3.8-27b` on 阿里云百炼 — and on any other provider the one model does both lanes (a
   text-only model there, DeepSeek's own API say, leaves the hands with nothing to look with).
 
-Two lanes, two models — the same two every nanoMuse client defaults to: `main` (the model that
-talks to the visitor) is 阿里云百炼's `deepseek-v4.1-flash`, which reads pictures as well;
-`gui` (the one that reads screens and taps; many small calls with a screenshot each) is
-`qwen3.8-27b` — one key, one host. `GUI_MODEL` is a fixed default, not derived from the chat
-model; set `GUI_*` to change it or to split the lanes across keys or providers. A chat model
-that takes no images (DeepSeek before V4.1: `deepseek-v4-pro`, `deepseek-v4-flash`) is kept
-away from screenshots (`NANOMUSE_LLM_VISION=off`); the operator lane still looks.
-`GET /api/demo/info` names both (`demo_model`, `gui_model`).
+Two lanes, two models, both set by the operator in the gateway's `.env` (`.env.example` lists
+the names; `docker-compose.yml` pins none): `main` (the model that talks to the visitor) is
+whatever `MAIN_MODEL` names on `MAIN_BASE_URL` with `MAIN_API_KEY`, and empty means the
+gateway's own default, the chat model every nanoMuse client starts with (`deepseek-v4.1-flash`
+on 阿里云百炼 at the time of writing); `gui` (the one that reads screens and taps; many small
+calls with a screenshot each) is `GUI_MODEL`, and empty means `qwen3.8-27b` on the main lane's
+host and key — a fixed default, not derived from the chat model; set `GUI_*` to change it or to
+split the lanes across keys or providers. A chat model that takes no images (DeepSeek before
+V4.1: `deepseek-v4-pro`, `deepseek-v4-flash`) is kept away from screenshots
+(`NANOMUSE_LLM_VISION=off`); the operator lane still looks. What a running showcase actually
+uses is what `GET /api/demo/info` says (`demo_model`, `gui_model`), not this page.
 
 **The capsule decides.** While the hands work on the simulated phone, an approval the run
 raises (a tap on *Pay*, *Send*, *Delete*…) is shown on the capsule over the operated app with

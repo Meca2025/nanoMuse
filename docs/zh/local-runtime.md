@@ -2,7 +2,9 @@
 
 > **Python 线的设计记录。** 现在的 Android App 通过 OpenMinis 自己的 Linux 沙箱在手机上
 > 运行智能体，不是通过这套 PRoot + Alpine + Python 的安排；你下载的 APK 里没有 `rootfs.yml`，
-> 没有 `local`/`connect` 变体，也没有 `nanomuse-device` CLI。见 [android.md](android.md)。
+> 没有 `local`/`connect` 变体，也没有 `nanomuse-device` CLI。见 [android.md](android.md)。这一页提到的
+> 文件（`scripts/rootfs/`、`android/native/`、`runtime/` 下的 Kotlin）已经不在源码树里，在历史中的
+> `pre-openminis` 标签处。
 
 
 Python 线的 Android App 有两个变体。**connect** 是你电脑上那个 `nanomuse serve` 的遥控器（[archive/android-python-line.md](../archive/android-python-line.md)）。**local** 是完整的一套：同一个 Python 服务器、它的工具和它的 Linux 沙箱，全在手机上运行，别的什么都不用装。这一页讲的是第二个。

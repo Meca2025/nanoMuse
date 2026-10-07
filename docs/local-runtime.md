@@ -3,7 +3,9 @@
 > **Design record of the Python line.** The current Android app runs its agent on the
 > phone through OpenMinis's own Linux sandbox, not through this PRoot + Alpine + Python
 > arrangement; there is no `rootfs.yml`, no `local`/`connect` flavour and no
-> `nanomuse-device` CLI in the APK you download. See [android.md](android.md).
+> `nanomuse-device` CLI in the APK you download. See [android.md](android.md). The files this
+> page names (`scripts/rootfs/`, `android/native/`, the Kotlin under `runtime/`) have left the
+> tree; they are in the history at the tag `pre-openminis`.
 
 
 The Python line's Android app came in two flavours. **connect** was the remote for a `nanomuse serve` on your computer ([archive/android-python-line.md](archive/android-python-line.md)). **local** was the whole thing: the same Python server, its tools and its Linux sandbox, running on the phone itself with nothing else to install. This page is about the second.
