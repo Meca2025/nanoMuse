@@ -19,11 +19,16 @@ runtime). After the code the app has:
 
 - a provider called **nanoMuse Cloud** under *Settings → Providers*, an
   ordinary OpenAI-compatible provider whose key is the token the relay issued;
-- a model group with the relay's menu: the recommended chat model set as the
-  default if you had none, and (0.1.34) the recommended hands model — the one
-  that reads screenshots and drives a phone or a computer — for the GUI picker;
-  each model on the menu says which of the two it is for;
-- the relay's picture model as the avatar's image model, if none was set.
+- the four rows of *Settings → Models* (web console: *Connections*) on the
+  account's models when you had chosen none: the recommended chat model, the
+  recommended hands model (the one that reads screenshots and drives a phone or
+  a computer; each model on the relay's menu says which of the two it is for),
+  the picture model and the clip model. A row you have not set follows one
+  order: the chat model's provider when it is a key of yours that can do the
+  job, else nanoMuse Cloud while signed in, else the first key of yours that
+  can; the *Automatic* entry of the row says what that gives right now, and a
+  key you add later asks *Use it for* before any row moves
+  ([own-key.md](own-key.md#which-model-does-what)).
 
 *Settings → nanoMuse Cloud* (the *Account* screen) shows who is signed in (a
 masked hint, never the number) and since when; sets, changes or removes the

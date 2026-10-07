@@ -30,6 +30,10 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Data controls (what the relay keeps of the chats) | ✓ | ✓ 0.1.33 | ✓ | ✓ |
 | Own-key presets (Bailian · OpenRouter, by region) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
 | Chat model and Hands model as two settings (`deepseek-v4.1-flash` / `qwen3.8-27b`, the relay's `for`) | ✓ 0.1.34 | ✓ 0.1.34 *(chat; no hands)* | ✓ 0.1.34 | ✓ 0.1.34 |
+| Models page, four slots (*Chat* · *Operating the screen* · *Making pictures* · *Making clips*): each row `provider · model`, a picker of nanoMuse Cloud's models (signed in, the recommended one marked) and of each own provider's models that fit; an empty row names who could and offers *Add a provider* | ✓ 0.1.41 *Settings → Models*, the card at the top of Settings opens it; *Settings → Hands* and *Image & video models* use the same choices | ✓ 0.1.41 the first card of Settings; the screen row disabled (*Not on iPhone*; the computer uses its own setting); the pictures and clips pickers list nanoMuse Cloud and own providers on a DashScope host only *(40)* | ✓ 0.1.41 right after General; the hands speak OpenAI's shape, so an Anthropic or native Gemini key is named under the row, not listed; pictures through an own provider go to it directly, nothing billed to the account | ✓ 0.1.41 *Connections*: the *Chat model* card, the *Hands model* select, the *Making pictures* and *Making clips* rows (`PUT /api/connections/image` · `/video`) |
+| *Automatic* on the screen, pictures and clips rows, saying what it gives right now; the order when nothing was chosen: the chat provider's own model when it is yours and can → nanoMuse Cloud when signed in → the first own provider that can; a choice always wins | ✓ 0.1.41 `SlotOrder` | ✓ 0.1.41 pictures and clips (the screen is n/a) | ✓ 0.1.41 `handsChoice`, `imageEndpoint`, `videoEndpoint`; a hands change takes effect at the hands' next step, no restart | ✓ 0.1.41 the runtime resolves it (`effective_*`); *Currently provider · model* under each control |
+| *Use it for* after a key is saved: one toggle per capability the provider has, all on; *Use it* moves those rows to the provider's catalogue defaults, *Not now* changes nothing; saving alone switches nothing | ✓ 0.1.41 | ✓ 0.1.41 (no screen toggle) | ✓ 0.1.41 | — the own-key form sets the chat provider; pictures and clips are set on their own rows *(40)* |
+| No silent fallback: a failed turn on an own model offers *Use nanoMuse Cloud this time* (signed in), that one turn on the account, no row changed | ✓ 0.1.41 `CloudRetry` | ✓ 0.1.41 `NanoMuseCloudOnce` | ✓ 0.1.41 also after a failed studio round and a failed set of clips | — the failure is shown; the rows stay as set *(40)* |
 | "Ways on" ordered by region (Bailian first on the mainland, OpenRouter first elsewhere) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
 | Own-key catalogue (`providers.json`: 18 providers, what each covers — chat · screen · pictures · clips — key pages, regions; one file, generated for every client) | ✓ 0.1.39 | ✓ 0.1.40 `NanoMuseCatalogue` *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
 | "Ways on" from the catalogue: the region's lead first, *more providers*, the plans one can sign in with, the key taken inline | ✓ 0.1.39 | ✓ 0.1.40 the pinned card, Settings → nanoMuse Cloud and the own-key sheet, one list (`NanoMuseWaysList`) *(32)* | ✓ 0.1.39 Settings → nanoMuse Cloud, the own-key first-run step | ✓ 0.1.39 |
@@ -38,7 +42,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | The relay's other refusals as one sentence and a button: 413 *too large* → *New chat*, 401 → *Sign in*, 403, 429 busy (with the wait), the daily cap, 404 model, 5xx / no answer → *Try again*; never a status code or JSON | ✓ 0.1.40 `RelayRefusal` + `RelayRefusalCard`, 17 locales *(35)* | ✓ 0.1.40 `NanoMuseRelayRefusal` + `NanoMuseRelayRefusalCard`, 9 locales; a refused chat turn goes through `describe` *(35)* | ✓ 0.1.40 | ✓ 0.1.40 `failures.py` (413, `not_invited`, `too_many_in_flight`, `provider_busy` added) |
 | The operator's switches (relay 0.22, [cloud.md](cloud.md#controls)) as plain sentences: the allowance *paused, not used up* (the same card), `service_paused`, `sync_paused`, `hub_paused`, `signup_closed` at sign-in | ✓ 0.1.40 *(35)* | ✓ 0.1.40 *(35)* | ✓ 0.1.40 | ✓ 0.1.40 |
 | Sign in with a ChatGPT plan — chat and the hands' screen reading only, with the line about OpenAI's terms | ✓ 0.1.39 upstream's sign-ins (also Claude, Kimi, OpenRouter) | ✓ 0.1.40 upstream's Codex OAuth from the ways on (also Claude, Kimi, OpenRouter) *(32)* | ✓ 0.1.39 through the bundled runtime | ✓ 0.1.39 the runtime's `nanomuse chatgpt login` |
-| A capability nobody configured has is one sentence naming who could (pictures, clips, the screen), never a raw error | ✓ 0.1.39 | ◐ each row says what it covers; the empty-picker sentence is still to come *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
+| A capability nobody configured has is one sentence naming who could (pictures, clips, the screen), never a raw error | ✓ 0.1.39 | ✓ 0.1.41 an empty Models row says what is missing and offers *Add a provider* *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
 | Conversations belong to the account that synced them: another account's stay on the device, hidden, never pushed under the new key; a switch restarts the pull (contract C10) | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 | ✓ 0.1.39 the runtime's lists |
 
 ## The agent in the chat
@@ -93,7 +97,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Feed opens on the intro card (*Write it now*), the first day is written after the first conversation, a daily routine at 08:00 | ✓ | ✓ 0.1.35 | ✓ 0.1.35 | ✓ 0.1.35 |
 | Ideas prefilled with the curated list (`ideas.{en,zh}.json`, byte for byte, with a test) | ✓ | ✓ | ✓ 0.1.34; empty-when-bundled bug fixed 0.1.35 | ✓ 0.1.35 |
 | Splash: wordmark and the person's own face, never the dragon | ✓ | ✓ system launch screen | ✓ 0.1.35 | n/a |
-| Settings as Muse cards in one order (Image & video models · Avatar · Computers · Appearance · … · Version) | ✓ | ✓ 0.1.35 | ✓ sections | ✓ sections |
+| Settings as Muse cards in one order (Models since 0.1.41 · Avatar · Computers · Appearance · … · Version; *Image & video models* kept as a shortcut) | ✓ | ✓ 0.1.35, Models first 0.1.41 | ✓ sections, Models right after General 0.1.41 | ✓ sections |
 | Memory as a room | — settings page *(14)* | — | ✓ | ✓ |
 | Stage / browser viewer while the hands work | ✓ stage | n/a *(10)* | ✓ the glow and the capsule while the hands work, the run's trajectory in the chat 0.1.40 (a live stage from 0.1.33 to 0.1.39); Allow/Deny, holds 0.1.34 | ✓ browser viewer you can drive 0.1.34 |
 | Every working light breathes (2.4 s in, 2.4 s out), none runs; steady under reduce-motion | ✓ round 9: the stage's comet and scan line gone, the capsule's ring and bars breathe | n/a *(10)* | ✓ 0.1.40 | ✓ 0.1.40 |
@@ -280,7 +284,8 @@ notes above; a settled item keeps its number and says how it went.
     `NanoMuseWaysList` is the one list on the pinned card, the account page and the own-key
     sheet, and `NanoMuseVendorSheet` takes the key or runs the plan sign-in (ChatGPT through
     upstream's Codex OAuth, Claude, OpenRouter, Kimi's device code) and a local server's
-    address. Left: the one-sentence line where a picker (pictures, clips) is empty.
+    address. The one-sentence line where a picker (pictures, clips) is empty came in 0.1.41 with
+    the Models page: an empty row says what is missing and offers *Add a provider*.
 33. **iOS · the allowance card and the heads-up in the chat.** A turn the relay refuses with
     `allowance_exhausted` ends on iOS as upstream's error text; the ways live on the account page
     only, and `spend.warn` colours the bar there without a line in the chat. *Proposal:* a card
@@ -333,6 +338,15 @@ notes above; a settled item keeps its number and says how it went.
     One addition to the contract: the runtime keeps the language *Start* was pressed in
     (`lang`), so the addendum quotes the opening in the words the person saw.
     [web.md](web.md#the-first-run-and-the-chats-opening) has the walk-through.
+40. **Models page, four slots (0.1.41).** Settled on Android, iOS and the desktop as one page
+    with the *Use it for* card after a key is saved and *Use nanoMuse Cloud this time* on a
+    failed own-key turn; the web console has the same four slots on *Connections* (the runtime's
+    `PUT /api/connections/gui`, `/image`, `/video` and *Automatic* on each), but no *Use it for*
+    card and no one-turn retry on the account: the own-key form sets the chat provider, and a
+    failed turn shows the failure. Left on iOS: the pictures and clips pickers list, besides
+    nanoMuse Cloud, only own providers on a DashScope host (Alibaba Cloud Bailian), since the
+    iPhone's image and clip code speaks DashScope's API only. *Proposal:* the card and the button
+    on the web, and the OpenAI image shape on the iPhone, when someone asks.
 
 ## Keeping this true
 

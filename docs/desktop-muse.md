@@ -59,9 +59,9 @@ stylesheet over the harness's stable DOM hooks (`data-composer-card`,
   bottom, as in Muse, with the workspace and preset row above it.
 - The composer is one pill: *+* (attach), *Message*, the send disc (the stop square
   while a turn runs). The harness's model picker, permission mode and plan toggle are
-  hidden from it — the model lives in Settings → nanoMuse Cloud (dsh's own Models page is under Advanced) and the default permission mode
-  in General, as in Muse — and come back with *Show DeepSeek Harness controls* under
-  General. The microphone appears when the harness's voice input is switched on in
+  hidden from it (the models live in Settings → Models, dsh's own Models page is under
+  Advanced, and the default permission mode in General, as in Muse) and come back with
+  *Show DeepSeek Harness controls* under General. The microphone appears when the harness's voice input is switched on in
   Plugins (Settings → Dictation says how).
 - Theme: the harness's light and dark palettes are overridden to Muse's tones (`#f9f9f9`
   surfaces, `#e3e4e6` agent bubbles in the light; `#171717` with `#242424` bubbles and

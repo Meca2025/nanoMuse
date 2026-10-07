@@ -29,10 +29,14 @@ OpenRouter account puts hundreds of models behind one key, pay as you go.
 Beyond the first pick, every provider below works on its own or beside another
 — DeepSeek for the chat and Zhipu for pictures, say.
 
-The chat model and the hands model are two settings: the chat model in the
-model picker, the hands model on the *Hands model* row (phone: *Settings →
-Hands*; web and desktop: *Connections*). The hands model has to see pictures;
-the app's hands picker lists only models that do.
+Four jobs, four settings, one page: **Settings › Models** on Android, the
+iPhone and the desktop, the *Connections* page in the web console. The rows are
+*Chat*, *Operating the screen*, *Making pictures* and *Making clips*; each shows
+`provider · model` and opens a picker that lists only the models that can do
+that job (the screen needs a model that sees images). On the iPhone the screen
+row is disabled (*Not on iPhone*): a phone cannot operate its own screen, and
+your computer uses its own setting. [Which model does what](#which-model-does-what)
+below has the details.
 
 ## What each provider covers
 
@@ -91,12 +95,62 @@ or paste it into a chat.**
 **Paste it into nanoMuse.**
 
 - Phone: *Set it up* on the allowance card opens the provider form pre-filled; or *Settings → Providers → Add*, pick the provider, paste the key, save.
-- Web / desktop: *Set it up* on the allowance card opens *Connections* with the provider chosen; or *Connections → Model*, click the provider, paste the key, save. The address is already filled in.
+- Desktop: *Set it up* on the allowance card opens *Settings → nanoMuse Cloud* at the provider's row; or paste the key on that provider's row under *Ways on* there. The address is already filled in.
+- Web console: *Set it up* on the allowance card opens *Connections* with the provider chosen; or *Connections → Chat model*, click the provider, paste the key, save.
 - A runtime of your own: `[llm] provider = "bailian"` (any id from the table) and `api_key` in `config.toml`; the address and the default model fill in from the catalogue. Pictures or clips from another provider are an `[image]` / `[video]` block ([configuration.md](configuration.md#image-and-video)).
 
-After saving, nanoMuse lists the models the key can use: pick one for chat and
-one that sees for the hands; for a new face, choose under *Connections → Image
-& video models*. Each provider's defaults are in the catalogue.
+**Use it for.** Once the key is saved, a card asks what this key should handle:
+one switch per job the provider can do (chat, operating the screen, making
+pictures, making clips), all on. *Use it* moves those rows to this provider, on
+the catalogue's default model for each job (or the first model of its list that
+fits); *Not now* changes nothing, and so does a switch you turned off. Signed
+in, the card says nanoMuse Cloud keeps the rest. Every row can be changed later
+under *Settings › Models* (web console: *Connections*).
+
+## Which model does what
+
+*Settings › Models* (Android: the card at the top of Settings; iPhone: the
+first card of Settings; desktop: right after General; web console: the *Chat
+model*, *Hands model*, *Making pictures* and *Making clips* cards on
+*Connections*) has one row per job:
+
+| Row | What it does | Who is listed |
+|---|---|---|
+| Chat | The model that talks with you. | nanoMuse Cloud's chat models while signed in, then every provider of yours with chat models |
+| Operating the screen | Looks at the screen and acts for you. Needs a model that can see images. | nanoMuse Cloud's hands model, then your providers' models that see images; disabled on the iPhone (*Not on iPhone*) |
+| Making pictures | Portraits of your Muse and the pictures you ask for. | nanoMuse Cloud, then your providers with image models |
+| Making clips | Short clips of your Muse. | nanoMuse Cloud, then your providers with video models (Bailian) |
+
+Each row shows `provider · model` and opens a picker: the *nanoMuse Cloud*
+group first while signed in, its recommended model marked, then one group per
+provider of yours holding only the models that fit. A provider without the
+capability does not appear in that row at all. A row nothing covers shows the
+one sentence naming who could, and *Add a provider*. A chat pick is the default
+for new chats (*Applies to new chats.*); a chat already open keeps its model.
+
+**Automatic.** The screen, pictures and clips rows open with an *Automatic*
+entry that says what it gives right now (*Currently nanoMuse Cloud ·
+qwen3.8-27b*, say). Pick it and the row forgets any choice made there and
+follows one order: the chat model's provider when it is one of yours and can do
+the job (its catalogue default), else nanoMuse Cloud while signed in, else the
+first provider of yours that can. A choice you made always wins; nanoMuse Cloud
+never steps in front of a provider you chose. Each device keeps its own choice,
+because keys never leave the device where they were entered.
+
+**No silent fallback.** When a model of your own fails under a turn, nothing
+switches by itself: the error card offers *Use nanoMuse Cloud this time*
+(signed in only), which runs that one turn on the account's model and changes
+no row. The desktop shows the same button after a failed studio round and a
+failed set of clips.
+
+**Known limits.** On the iPhone the pictures and clips rows list, besides
+nanoMuse Cloud, only your providers on a DashScope host (Alibaba Cloud Bailian).
+On the desktop the hands speak OpenAI's shape, so an Anthropic or native Gemini
+key is named under the screen row and not listed; a hands change takes effect
+at the hands' next step, no restart. Pictures through a Gemini key go through
+Google's OpenAI-compatible layer: `images/generations` accepts
+`gemini-2.5-flash-image`, but Google's page does not document `images/edits`
+there, so the pose pictures of the avatar studio may not work with a Gemini key.
 
 ## Sign in with a plan you already pay for
 
@@ -109,11 +163,11 @@ Some plans sign in directly, with no key to make:
 | **Kimi** | chat, the hands | Android, iPhone (device code) |
 | **OpenRouter** | chat, the hands, pictures | Android, iPhone (one tap; the key comes back to the app) |
 
-The ChatGPT sign-in uses the authorisation flow of OpenAI's own Codex (web and
-desktop: *Connections → Or sign in with a ChatGPT plan*; phone: *Settings →
-Providers → OpenAI → Sign in*). Signed in, it covers chat and the hands only —
-the Codex backend has no image or video endpoints — so pictures and clips
-still want a key.
+The ChatGPT sign-in uses the authorisation flow of OpenAI's own Codex (web
+console: *Connections → Or sign in with a ChatGPT plan*; desktop: the ChatGPT
+row under *Settings → nanoMuse Cloud*; phone: *Settings → Providers → OpenAI →
+Sign in*). Signed in, it covers chat and the hands only: the Codex backend has
+no image or video endpoints, so pictures and clips still want a key.
 
 From a terminal it is the same flow: `nanomuse chatgpt login` opens the page
 and waits for the browser to come back, `nanomuse chatgpt status` says who is
@@ -164,11 +218,13 @@ own-key form; the runtime has `[llm] proxy` in `config.toml`
 ## Local models
 
 Ollama, LM Studio and vLLM on your own computer work too: pick the preset
-under *Connections*; the address defaults to the local port
+(web console: *Connections*; desktop: *Settings → nanoMuse Cloud*; phone:
+*Settings → Providers*); the address defaults to the local port
 (`http://127.0.0.1:11434/v1`, `:1234`, `:8000`) and no key is needed. They
 count as *chat*; the hands need a model that sees, so run a multimodal one
-locally (Ollama's `qwen3-vl`, say) and type its id on the *Hands model* row.
-Pictures and clips need one of the providers in the table.
+locally (Ollama's `qwen3-vl`, say) and pick it under *Operating the screen*
+(web console: type its id on the *Hands model* row). Pictures and clips need
+one of the providers in the table.
 
 ## Any other OpenAI-compatible endpoint
 
