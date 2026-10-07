@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/%E8%A9%A6%E3%81%97%E3%81%A6%E3%81%BF%E3%82%8B-demo.nanomuse.dev-0a66e4" alt="ブラウザで試す"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%E5%85%AC%E5%BC%8F%E3%82%B5%E3%82%A4%E3%83%88-nanomuse.cn-0a66e4" alt="公式サイト"></a>
+  <a href="https://arxiv.org/abs/2610.08699"><img src="https://img.shields.io/badge/arXiv-2610.08699-b31b1b" alt="arXiv の論文"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
@@ -34,6 +35,14 @@
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="目標: スケジュールどおりに確認され、ルーティンもある">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="アバター: 姿を言葉で描写すると画像モデルが描き、気に入ったものを選ぶ">
 </p>
+
+## 🗞️ ニュース
+
+- **2026-10-07 · [論文](https://arxiv.org/abs/2610.08699)** — 私たちのレポート『nanoMuse: An Open-Source Personal Agent for Every Device You Own』が arXiv に公開されました。パーソナルエージェントとは何か、Muse はどう作られているか、nanoMuse はそれにオープンソースでどう応えるか。
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — 最新版：iPhone の入力欄がまた見えるようになり、スマホ上の各チャットはそのアカウントのものになり、リレーからの拒否はどのクライアントでも分かりやすい一文かカードで表示されます。Mac は画面の実際の画像を撮るか、撮れない理由を伝えます。Windows はアプリの場所を移したアップデートの後も起動し、リレーのコンソールに「コントロール」「統計」「サイト」のページが加わりました。
+- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse を公開。OpenMinis 1.13 を nanoMuse として、最初の公開版です。
+
+すべてのバージョン: [releases](https://github.com/nano-muse/nanoMuse/releases)。
 
 ## インストール
 
@@ -90,14 +99,6 @@
 | モデル | Meta のもの | 自分で用意 | リレーの無料枠、または自分のもの |
 | ライセンス | クローズド | GPL-3.0 | GPL-3.0-or-later、OpenMinis の上に構築 |
 
-## ニュース
-
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — iPhone の入力欄がまた見えるようになり、スマホ上の各チャットはそのアカウントのものになり、リレーからの拒否はどのクライアントでも分かりやすい一文かカードで表示されます。Mac は画面の実際の画像を撮るか、撮れない理由を伝えます。Windows はアプリの場所を移したアップデートの後も起動し、リレーのコンソールに「コントロール」「統計」「サイト」のページが加わりました。
-- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — 十八社のプロバイダーのカタログから自分のキーを設定、ChatGPT プランでサインイン、端末にはサインイン中のアカウントの会話だけが表示されます。
-- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — サイドチャットは作った端末に留まり、Mac では補助アプリが「手」の権限を持ち、どのアプリも自分のリレーを指せるようになり、ドキュメントがサイトになりました。
-
-すべてのバージョン: [releases](https://github.com/nano-muse/nanoMuse/releases)。
-
 ## ドキュメント
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/) — プラットフォーム別のインストール、すべてのデバイス、Hands、コネクタ、記憶、セルフホスティング、プロトコル。ソースは [docs/](../) に、各バージョンの変更点は [CHANGELOG](../../CHANGELOG.md) と [docs/releases/](../releases/) にあります。
@@ -109,6 +110,22 @@ VPS 1 台、1 時間: [docs/self-hosting.md](../self-hosting.md)。三つの道 
 ## 貢献する
 
 実際の用事に使い、壊れたところを報告し、それから小さく具体的なことをひとつ選んでください。[CONTRIBUTING.md](../../CONTRIBUTING.md) にセットアップと規約、[AGENTS.md](../../AGENTS.md) にこのツリーでコーディングエージェントが守るルール、[ロードマップ](../roadmap.md)にどこから始めるか。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X)。
+
+## ⭐️ 引用
+
+nanoMuse が役に立ったら、論文を引用してください。
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```
 
 ## 謝辞
 

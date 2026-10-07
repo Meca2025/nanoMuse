@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/%EC%8D%A8_%EB%B3%B4%EA%B8%B0-demo.nanomuse.dev-0a66e4" alt="브라우저에서 써 보기"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%EC%9B%B9%EC%82%AC%EC%9D%B4%ED%8A%B8-nanomuse.cn-0a66e4" alt="웹사이트"></a>
+  <a href="https://arxiv.org/abs/2610.08699"><img src="https://img.shields.io/badge/arXiv-2610.08699-b31b1b" alt="arXiv 논문"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
@@ -34,6 +35,14 @@
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="목표: 일정에 따라 확인하고, 루틴도 있다">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="아바타: 모습을 말로 묘사하면 이미지 모델이 그리고, 마음에 드는 것을 고른다">
 </p>
+
+## 🗞️ 소식
+
+- **2026-10-07 · [논문](https://arxiv.org/abs/2610.08699)** — 보고서 *nanoMuse: An Open-Source Personal Agent for Every Device You Own*이 arXiv에 올라왔습니다. 개인 에이전트란 무엇인지, Muse는 어떻게 만들어졌는지, nanoMuse는 그것에 오픈소스로 어떻게 답하는지.
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — 최신 버전: iPhone의 입력창이 다시 보이고, 휴대폰의 모든 대화는 각자의 계정에 속하며, 릴레이의 모든 거절은 어느 클라이언트에서든 분명한 한 문장이나 카드로 표시됩니다. Mac은 실제 화면을 찍거나 왜 못 찍는지 말해 주고, Windows는 앱 위치를 옮긴 업데이트 뒤에도 다시 실행되며, 릴레이 콘솔에 제어, 통계, 사이트 페이지가 생겼습니다.
+- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse 공개: OpenMinis 1.13을 nanoMuse로, 첫 공개 버전입니다.
+
+모든 버전: [releases](https://github.com/nano-muse/nanoMuse/releases).
 
 ## 설치
 
@@ -90,14 +99,6 @@
 | 모델 | Meta의 것 | 직접 가져옴 | 릴레이의 무료 사용량, 또는 자신의 것 |
 | 라이선스 | 비공개 | GPL-3.0 | GPL-3.0-or-later, OpenMinis 위에 구축 |
 
-## 소식
-
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — iPhone의 입력창이 다시 보이고, 휴대폰의 모든 대화는 각자의 계정에 속하며, 릴레이의 모든 거절은 어느 클라이언트에서든 분명한 한 문장이나 카드로 표시됩니다. Mac은 실제 화면을 찍거나 왜 못 찍는지 말해 주고, Windows는 앱 위치를 옮긴 업데이트 뒤에도 다시 실행되며, 릴레이 콘솔에 제어, 통계, 사이트 페이지가 생겼습니다.
-- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — 열여덟 곳의 제공자 카탈로그에서 자신의 키 설정, ChatGPT 요금제로 로그인, 기기에는 로그인한 계정의 대화만 표시됩니다.
-- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — 곁가지 대화는 만든 기기에 남고, Mac에서는 보조 앱이 손의 권한을 갖고, 모든 앱이 자신의 릴레이를 가리킬 수 있으며, 문서가 사이트가 되었습니다.
-
-모든 버전: [releases](https://github.com/nano-muse/nanoMuse/releases).
-
 ## 문서
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/) — 플랫폼별 설치, 모든 기기, Hands, 커넥터, 기억, 직접 호스팅, 프로토콜. 원본은 [docs/](../)에, 버전마다 바뀐 것은 [CHANGELOG](../../CHANGELOG.md)와 [docs/releases/](../releases/)에 있습니다.
@@ -109,6 +110,22 @@ VPS 한 대, 한 시간: [docs/self-hosting.md](../self-hosting.md). 세 가지 
 ## 기여하기
 
 실제 일에 써 보고, 어디가 고장 났는지 알리고, 그다음 작고 구체적인 것 하나를 고르세요. [CONTRIBUTING.md](../../CONTRIBUTING.md)에 설정과 규약이, [AGENTS.md](../../AGENTS.md)에 이 트리에서 코딩 에이전트가 따르는 규칙이, [로드맵](../roadmap.md)에 어디서 시작할지가 있습니다. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
+
+## ⭐️ 인용
+
+nanoMuse가 도움이 되었다면 논문을 인용해 주세요.
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```
 
 ## 감사의 말
 

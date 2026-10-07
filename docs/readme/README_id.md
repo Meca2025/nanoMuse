@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/Coba-demo.nanomuse.dev-0a66e4" alt="Coba di browser"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/Situs_web-nanomuse.cn-0a66e4" alt="Situs web"></a>
+  <a href="https://arxiv.org/abs/2610.08699"><img src="https://img.shields.io/badge/arXiv-2610.08699-b31b1b" alt="Makalah di arXiv"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
@@ -34,6 +35,14 @@
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Tujuan: dipantau sesuai jadwal, dengan rutinitas">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar: gambarkan rupanya, model gambarmu melukisnya, pilih yang kamu suka">
 </p>
+
+## 🗞️ Kabar
+
+- **2026-10-07 · [Makalah](https://arxiv.org/abs/2610.08699)** — laporan kami *nanoMuse: An Open-Source Personal Agent for Every Device You Own* sudah ada di arXiv: apa itu agen pribadi, bagaimana Muse dibangun, dan bagaimana nanoMuse menjawabnya secara terbuka.
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — versi terbaru: kolom input iPhone terlihat lagi, setiap obrolan di ponsel milik akunnya sendiri, dan setiap penolakan dari relay adalah satu kalimat jelas atau satu kartu di semua klien. Mac mengambil gambar layar yang sebenarnya atau menjelaskan kenapa tidak bisa, Windows bisa dibuka lagi setelah pembaruan yang memindahkan aplikasi, dan konsol relay punya halaman Kontrol, Statistik, dan Situs.
+- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse dirilis: OpenMinis 1.13 sebagai nanoMuse, versi publik pertama.
+
+Semua versi: [releases](https://github.com/nano-muse/nanoMuse/releases).
 
 ## Pemasangan
 
@@ -90,14 +99,6 @@ Setiap perangkat menjalankan agennya sendiri — ponsel di dalam APK (Alpine Lin
 | Model | Milik Meta | Bawa sendiri | Jatah gratis dari relay, atau milikmu |
 | Lisensi | Tertutup | GPL-3.0 | GPL-3.0-or-later, dibangun di atas OpenMinis |
 
-## Kabar
-
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — kolom input iPhone terlihat lagi, setiap obrolan di ponsel milik akunnya sendiri, dan setiap penolakan dari relay adalah satu kalimat jelas atau satu kartu di semua klien. Mac mengambil gambar layar yang sebenarnya atau menjelaskan kenapa tidak bisa, Windows bisa dibuka lagi setelah pembaruan yang memindahkan aplikasi, dan konsol relay punya halaman Kontrol, Statistik, dan Situs.
-- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — kunci sendiri dari katalog delapan belas penyedia, masuk dengan paket ChatGPT, dan satu perangkat hanya menampilkan percakapan akun yang sedang masuk.
-- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — obrolan sampingan tetap di perangkat yang membuatnya, aplikasi pembantu di Mac memegang izin tangan, setiap aplikasi bisa diarahkan ke relay milikmu, dan dokumentasi menjadi sebuah situs.
-
-Semua versi: [releases](https://github.com/nano-muse/nanoMuse/releases).
-
 ## Dokumentasi
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/) — pemasangan per platform, setiap perangkat, tangan, konektor, memori, self-hosting, protokol. Sumbernya ada di [docs/](../); apa yang berubah di tiap versi ada di [CHANGELOG](../../CHANGELOG.md) dan [docs/releases/](../releases/).
@@ -109,6 +110,22 @@ Satu VPS, satu jam: [docs/self-hosting.md](../self-hosting.md). Tiga jalan — t
 ## Berkontribusi
 
 Pakai untuk tugas nyata, laporkan apa yang rusak, lalu pilih sesuatu yang terfokus: [CONTRIBUTING.md](../../CONTRIBUTING.md) berisi penyiapan dan konvensinya, [AGENTS.md](../../AGENTS.md) aturan yang diikuti agen pemrograman di repositori ini, dan [peta jalan](../roadmap.md) menunjukkan dari mana memulai. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
+
+## ⭐️ Sitasi
+
+Jika nanoMuse bermanfaat bagi Anda, silakan kutip makalah ini.
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```
 
 ## Ucapan terima kasih
 

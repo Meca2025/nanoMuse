@@ -17,6 +17,9 @@ hero:
     - theme: alt
       text: GitHub
       link: https://github.com/nano-muse/nanoMuse
+    - theme: alt
+      text: Paper
+      link: https://arxiv.org/abs/2610.08699
 ---
 
 ## Install
@@ -34,3 +37,19 @@ hero:
 Every download is on the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest); the same files are at [nanomuse.cn/dl](https://nanomuse.cn/dl/) when GitHub is slow where you are.
 
 [What changed in 0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [What each client can do](/parity) · [Where to start contributing](/roadmap) · [What the relay keeps](/privacy) · [What stays on a phone, and whose it is](/sync)
+
+## Citation
+
+The report *nanoMuse: An Open-Source Personal Agent for Every Device You Own* is on arXiv as [2610.08699](https://arxiv.org/abs/2610.08699): what a personal agent is, how Muse is built, and how nanoMuse answers it in the open. If you find nanoMuse useful, please cite the paper.
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```
