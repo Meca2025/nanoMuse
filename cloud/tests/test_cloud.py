@@ -1900,8 +1900,10 @@ async def test_admin_health_is_aggregates_only(stack):
     assert health["last_hour"]["requests"] == 1 and health["last_hour"]["upstream_errors"] == 0
     assert health["last_hour"]["sign_ins"] == 1 and health["db"]["writable"] is True
     assert health["hub"]["online"] == 0 and health["hub"]["dropped_frames"] == 0
-    # nothing in it names an account
-    assert data["account"]["id"] not in r.text and "138" not in r.text
+    # nothing in it names an account (not the id, not the number, not its hint;
+    # a bare "138" would also match the epoch in "time" for part of each day)
+    assert data["account"]["id"] not in r.text
+    assert "13800138000" not in r.text and data["account"]["hint"] not in r.text
 
 
 async def test_session_keys_expire_on_their_own(stack):
