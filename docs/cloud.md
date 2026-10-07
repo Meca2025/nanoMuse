@@ -15,7 +15,11 @@ only (号码认证服务 sends nowhere else); a Hong Kong, Taiwan or overseas nu
 told so at once (`phone_region`) and signs in with an e-mail address instead.
 Signing out brings that screen back
 (self-hosters: `[cloud] required = false` or `NANOMUSE_CLOUD_REQUIRED=0` on the
-runtime). After the code the app has:
+runtime). The screen is a door, not a wall: *Use your own API key instead* steps
+past it into setup's own-key path, and with a key of your own the app works
+signed out (chat, hands, pictures, clips); the sign-in waits under
+*Connections* (phones: *Settings → nanoMuse Cloud*) for the Cloud models, sync
+and your devices. After the code the app has:
 
 - a provider called **nanoMuse Cloud** under *Settings → Providers*, an
   ordinary OpenAI-compatible provider whose key is the token the relay issued;

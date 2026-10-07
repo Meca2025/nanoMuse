@@ -346,3 +346,81 @@ def test_pictures_follow_the_chat_provider_then_the_account(
         assert ep is not None and not ep.video_cloud and ep.video_key == "sk-vid"
         assert ep.video_model == "wan2.2-i2v-flash"
         assert client.get("/api/providers").json()["configured"]["video"]["provider"] == "bailian"
+
+
+# ----------------------------------------------------------------------------- the switch
+def test_cloud_models_off_takes_the_account_out_of_every_automatic_rung(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """*Use nanoMuse Cloud models* off (``[cloud] models``): the hands, the pictures and
+    the clips no longer fall to the relay, the providers' listing and the chat picker leave
+    the account out, a sign-in changes no slot; the sign-in itself stays. On again, the
+    order is as before."""
+    settings.llm.base_url = "http://127.0.0.1:11434/v1"  # a local model that cannot see
+    settings.llm.model = "qwen3:8b"
+    settings.llm.api_key = ""
+    _sign_in(settings, monkeypatch)
+    client, service = _make(settings)
+    with client:
+        service.app.vault.set("NANOMUSE_CLOUD_KEY", "cloud-key")
+        service.app.cloud_gui_model = "qwen3.8-27b"
+        service.hub.models = list(RELAY_MODELS)
+        assert client.get("/api/cloud").json()["models"] is True
+        assert service.app.hands_choice() == ("cloud", "qwen3.8-27b")
+        assert service.avatar.endpoint() is not None
+        assert "nanomuse_cloud" in client.get("/api/connections").json()["providers"]
+
+        view = client.post("/api/cloud/models", json={"on": False}).json()
+        assert view["models"] is False and view["signed_in"] is True
+        assert _settings_file(settings)["cloud"]["models"] is False
+        assert service.app.cloud_signed_in() and not service.app.cloud_models_on()
+        # the hands: the chat model, as signed out; the studio: nothing draws
+        assert service.app.hands_choice() == ("chat", "qwen3:8b")
+        assert service.avatar.endpoint() is None
+        providers = client.get("/api/providers").json()
+        assert providers["configured"]["hands"]["provider"] != "nanomuse_cloud"
+        assert providers["configured"]["image"] is None
+        assert all(p["id"] != "nanomuse_cloud" for p in providers["providers"])
+        assert "nanomuse_cloud" not in client.get("/api/connections").json()["providers"]
+        # the account page still knows the account: the switch is not a sign-out
+        assert service.app.vault.get("NANOMUSE_CLOUD_KEY") == "cloud-key"
+
+        view = client.post("/api/cloud/models", json={"on": True}).json()
+        assert view["models"] is True
+        assert service.app.hands_choice() == ("cloud", "qwen3.8-27b")
+        assert service.avatar.endpoint() is not None
+
+
+def test_cloud_models_off_is_refused_while_the_chat_model_is_the_account(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The runtime holds one ``[llm]`` and no list of other keys, so the switch cannot move
+    the chat elsewhere by itself: it says so (``409 chat_on_cloud``) until another chat
+    model is picked. *Use as model* (the explicit ask) switches the models back on."""
+    _sign_in(settings, monkeypatch)
+    client, service = _make(settings)
+    with client:
+        service.app.vault.set("NANOMUSE_CLOUD_KEY", "cloud-key")
+        settings.llm.base_url = model_url(RELAY)
+        settings.llm.api_key = "{{vault:NANOMUSE_CLOUD_KEY}}"
+        res = client.post("/api/cloud/models", json={"on": False})
+        assert res.status_code == 409
+        assert res.headers["X-Nanomuse-Code"] == "chat_on_cloud"
+        assert settings.cloud.models is True
+        # another chat model first, then the switch takes
+        client.put(
+            "/api/connections/llm",
+            json={
+                "provider": "openai",
+                "base_url": "http://127.0.0.1:11434/v1",
+                "model": "qwen3:8b",
+                "api_key": "",
+            },
+        )
+        assert client.post("/api/cloud/models", json={"on": False}).json()["models"] is False
+        assert client.get("/api/connections").json()["llm"]["cloud"] is False
+        # the explicit ask: the account is the chat model again and its models are back on
+        llm = client.post("/api/cloud/use-as-model", json={}).json()
+        assert llm["cloud"] is True
+        assert settings.cloud.models is True
+        assert client.get("/api/cloud").json()["models"] is True

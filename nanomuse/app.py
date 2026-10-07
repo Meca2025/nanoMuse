@@ -204,6 +204,13 @@ class NanoMuseApp:
         whichever provider the chat model is."""
         return bool(self.vault.get(CLOUD_KEY))
 
+    def cloud_models_on(self) -> bool:
+        """Whether the account's models are a source: signed in and ``[cloud] models`` not
+        switched off (the apps' *Use nanoMuse Cloud models*). Every automatic rung that
+        would reach the relay (the hands, pictures, clips, the providers' listing) asks
+        this, not :meth:`cloud_signed_in`; the sign-in is a different question."""
+        return self.cloud_signed_in() and self.settings.cloud.models
+
     def chat_entry(self) -> Provider | None:
         """The catalogue entry the chat model is on: the one ``[llm] provider`` names, else
         the one whose host ``base_url`` is. None for the relay, the ChatGPT sign-in and a
@@ -221,8 +228,8 @@ class NanoMuseApp:
         contract (§3): ``("gui", m)`` for an explicit ``[gui] model``; else ``("chat", m)``
         — the chat provider's own hands model when it is an own provider with vision, the
         chat model itself on a host the catalogue does not know; else ``("cloud", m)`` —
-        the relay's hands model when the account is signed in; else the chat model.
-        ``default_only`` answers what it would be without ``[gui]``."""
+        the relay's hands model when the account is signed in and its models are on; else
+        the chat model. ``default_only`` answers what it would be without ``[gui]``."""
         gui, llm = self.settings.gui, self.settings.llm
         if gui.model and not default_only:
             return "gui", gui.model
@@ -234,8 +241,8 @@ class NanoMuseApp:
             # an own provider with vision: its hands model; the ChatGPT sign-in reads
             # pictures; a host the catalogue does not list is whatever the person installed
             return "chat", (entry.defaults.get("hands") if entry else "") or llm.model
-        if self.cloud_signed_in():
-            # a chat provider that cannot see, and an account that can
+        if self.cloud_models_on():
+            # a chat provider that cannot see, and an account that can (while its models are on)
             return "cloud", cloud_model
         return "chat", llm.model
 

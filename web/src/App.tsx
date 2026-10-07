@@ -11,6 +11,7 @@ import { Sidebar } from "./components/Sidebar";
 import { ChatScreen } from "./screens/ChatScreen";
 import { FeedScreen } from "./screens/FeedScreen";
 import { SignInGate } from "./screens/SignInGate";
+import { signInDoorNeeded } from "./gate";
 import { useStore, type Tab } from "./store";
 import { useT } from "./i18n";
 import { cx } from "./util";
@@ -98,8 +99,10 @@ export default function App() {
   if (state.authError) return <TokenGate />;
   // Nothing has arrived from the runtime yet: say so, instead of an empty chat.
   if (!state.loaded) return <Connecting error={state.error} />;
-  // The account comes first: this runtime asks for one (cloud.required) and none is signed in.
-  if (state.hub && state.hub.account.required && !state.hub.account.signed_in) {
+  // The account comes first when nothing else could answer: this runtime asks for one
+  // (cloud.required), none is signed in, no model of one's own is ready, and the person has not
+  // stepped past the door for a key of their own. The sign-in stays an invitation under Connections.
+  if (signInDoorNeeded(state.hub, state.settings, state.signInSkipped)) {
     return <SignInGate />;
   }
   // First run: the server has not seen setup finish and nothing has been said yet.

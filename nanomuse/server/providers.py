@@ -66,8 +66,9 @@ class Providers:
         return model_url(hub.cloud.base_url).rstrip("/") if hub is not None else ""
 
     def _cloud_signed_in(self) -> bool:
+        """The relay as a provider in the listing: signed in and its models switched on."""
         hub = getattr(self.svc, "hub", None)
-        return bool(hub is not None and hub.signed_in)
+        return bool(hub is not None and hub.signed_in and self.svc.settings.cloud.models)
 
     def account_region(self) -> str:
         hub = getattr(self.svc, "hub", None)

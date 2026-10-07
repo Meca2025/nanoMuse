@@ -362,6 +362,12 @@ class AvatarSessionBody(BaseModel):
     index: int | None = None
 
 
+class CloudModelsBody(BaseModel):
+    """``POST /api/cloud/models``: the account's models as a source, on or off."""
+
+    on: bool = True
+
+
 class CloudContributeBody(BaseModel):
     on: bool = False
 
@@ -1244,6 +1250,16 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     async def cloud_me() -> dict[str, Any]:
         try:
             return _with_nudges(await svc.hub.me())
+        except CloudError as exc:
+            raise _cloud_http(exc) from exc
+
+    @app.post("/api/cloud/models", dependencies=dep)
+    async def cloud_models(body: CloudModelsBody) -> dict[str, Any]:
+        """*Use nanoMuse Cloud models*: off, the account's models leave the automatic order
+        of the hands, pictures and clips and the providers' listing; the sign-in stays.
+        ``409 chat_on_cloud`` while the chat model is the account's."""
+        try:
+            return svc.hub.set_models(body.on)
         except CloudError as exc:
             raise _cloud_http(exc) from exc
 

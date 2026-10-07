@@ -11,14 +11,16 @@ import { useStore } from "../store";
  * The door: this runtime insists on a nanoMuse Cloud account (cloud.required, the default),
  * so before anything else the person signs in — a code the first time, the password once
  * one is set. What comes with it is said plainly; the choice between the Cloud model and
- * a key of their own follows in setup.
+ * a key of their own follows in setup. The door is not a wall: *Use your own API key
+ * instead* steps past it into the setup's own-key path, and the sign-in waits under
+ * Connections.
  *
  * On a phone it is one column; in a wide window (the desktop app, a browser from 1024px)
  * the words sit on the left and the form on the right, both centred — a landscape page
  * for a landscape window, not a phone page in the middle of it.
  */
 export function SignInGate() {
-  const { state, refreshSettings, refreshHub, toast } = useStore();
+  const { state, refreshSettings, refreshHub, toast, skipSignIn } = useStore();
   const t = useT();
   const name = state.profile?.name ?? "nanoMuse";
   const perks = (
@@ -57,6 +59,15 @@ export function SignInGate() {
                 }}
               />
             </div>
+            <button
+              type="button"
+              onClick={skipSignIn}
+              className="mt-4 w-full rounded-2xl border border-border/70 px-4 py-2.5 text-[13.5px] text-fg/80 hover:bg-surface-2"
+              data-testid="sign-in-skip"
+            >
+              {t("Use your own API key instead")}
+            </button>
+            <p className="mt-2 text-center text-[11.5px] leading-relaxed text-muted">{t("You can sign in later under Connections, for sync and your devices.")}</p>
             <div className="mt-6 wide:hidden">{perks}</div>
             <CommunityNotice compact className="mt-6 wide:hidden" />
             <p className="mt-4 text-center text-[11.5px] leading-relaxed text-muted wide:mt-5">

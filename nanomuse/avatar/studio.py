@@ -438,16 +438,19 @@ class AvatarStudio:
         ``[image]`` slot when it is set (its provider's host, its key — the chat model's
         when the host is the same); else the chat model's host and key when a picture model
         is there (the relay's, Model Studio's, the catalogue's default for that provider);
-        else the relay under the account key when the account is signed in; None when
-        nothing draws. Clips follow the ``[video]`` slot the same way, else the picture host
-        when it has the video API, else the relay when signed in."""
+        else the relay under the account key when the account is signed in and its models
+        are on; None when nothing draws. Clips follow the ``[video]`` slot the same way,
+        else the picture host when it has the video API, else the relay when signed in and
+        on."""
         s = self.svc.settings
         llm, image, video = s.llm, s.image, s.video
         chat_base = (llm.endpoint or "").rstrip("/")
         chat_key = self._key(llm.api_key)
         hub = getattr(self.svc, "hub", None)
         relay = model_url(hub.cloud.base_url).rstrip("/") if hub is not None else ""
-        signed_in = bool(hub is not None and hub.signed_in and relay)
+        # the account draws only while its models are on (``[cloud] models``); signed in alone
+        # is not enough, the switch is the person's word on where the allowance goes
+        signed_in = bool(hub is not None and hub.signed_in and relay and s.cloud.models)
         base, key = chat_base, chat_key
         image_model = (llm.image_model or "").strip()
         if image.configured:
