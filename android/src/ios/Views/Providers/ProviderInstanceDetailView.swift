@@ -366,9 +366,19 @@ struct ProviderInstanceDetailView: View {
             }
 
             // MARK: Danger Zone
-            Section {
-                Button("Delete Provider", role: .destructive) {
-                    showDeleteConfirm = true
+            // nanoMuse: the Cloud instance is the account; deleting it would sign the person out.
+            // The row offers the switch (Settings → Models) instead, and says so.
+            if NanoMuseCloud.instance?.id == instanceId {
+                Section {
+                    Text(AppLocalized("This provider is your nanoMuse Cloud account and cannot be deleted. To stop using its models, switch off Use nanoMuse Cloud models under Models; you stay signed in for sync."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Section {
+                    Button("Delete Provider", role: .destructive) {
+                        showDeleteConfirm = true
+                    }
                 }
             }
         }

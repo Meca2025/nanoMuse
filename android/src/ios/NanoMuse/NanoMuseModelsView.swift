@@ -20,6 +20,7 @@ struct NanoMuseModelsView: View {
     @State private var videoOff = false
     @State private var chatChanged = false
     @State private var adding = false
+    @State private var cloudOn = NanoMuseCloud.modelsOn
 
     var body: some View {
         NanoMusePage(title: AppLocalized("Models")) {
@@ -31,6 +32,23 @@ struct NanoMuseModelsView: View {
             }
             if chatChanged {
                 NanoMuseCaption(text: AppLocalized("Applies to the main chat and to new chats; a side chat keeps its model."))
+            }
+            // The account's models as a source. Off, nanoMuse Cloud leaves the pickers and the
+            // automatic order; the sign-in stays. Not a delete: the Cloud instance is the account.
+            if NanoMuseCloud.isSignedIn {
+                NanoMuseCard {
+                    NanoMuseToggleRow(title: AppLocalized("Use nanoMuse Cloud models"), isOn: Binding(
+                        get: { cloudOn },
+                        set: { on in
+                            cloudOn = on
+                            NanoMuseCloud.setModelsOn(on)
+                            reload()
+                        }
+                    ))
+                }
+                NanoMuseCaption(text: cloudOn
+                    ? AppLocalized("nanoMuse Cloud is one of the sources for the chat, pictures and clips; what runs on it comes off your allowance.")
+                    : AppLocalized("Off: nothing runs on nanoMuse Cloud unless you choose it yourself. You stay signed in for sync and your devices."))
             }
             NanoMuseCard {
                 NanoMuseActionRow(title: AppLocalized("Add a provider"), titleColor: NanoMuseTones.action, chevron: false) { adding = true }
@@ -72,6 +90,7 @@ struct NanoMuseModelsView: View {
     }
 
     private func reload() {
+        cloudOn = NanoMuseCloud.modelsOn
         let list = NanoMuseModelSlots.providers()
         providers = list
         var next: [NanoMuseSlot: String] = [:]
@@ -465,7 +484,7 @@ struct NanoMuseUseItForView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(NanoMuseCloud.isSignedIn
+                Text(NanoMuseCloud.modelsOn
                      ? AppLocalized("Pick what this key should handle. nanoMuse Cloud keeps the rest.")
                      : AppLocalized("Pick what this key should handle."))
                     .font(.body)

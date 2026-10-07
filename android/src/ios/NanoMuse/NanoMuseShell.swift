@@ -86,17 +86,18 @@ struct NanoMuseRoot: View {
     /// The Muse shell on iPhone and iPad alike; off → the upstream layout.
     private var usesShell: Bool { shellEnabled }
 
-    /// The setup in front of everything until the account and a model are in (see NanoMuseFirstRun.needed).
+    /// The setup in front of everything until the account or a model of one's own is in (see NanoMuseFirstRun.needed).
     /// `nil` while the answer still hangs on the session list, so a fresh install never shows the
     /// shell for a frame before the welcome page.
     private var needsSetup: Bool? {
-        let providers = store.instances.contains { $0.isEnabled }
+        let cloudId = NanoMuseCloud.instance?.id
+        let providers = store.instances.contains { $0.isEnabled && $0.hasAnyCredential && $0.id != cloudId }
         if let hasSessions {
             return NanoMuseFirstRun.needed(signedIn: NanoMuseCloud.isSignedIn, hasProviders: providers, hasSessions: hasSessions, done: setupDone)
         }
-        // Without the sessions: an unsigned or model-less app needs the setup whatever the list
-        // says; a finished setup never does; the one case between waits.
-        if !NanoMuseCloud.isSignedIn || !providers { return true }
+        // Without the sessions: an app with neither a sign-in nor a key of its own needs the setup
+        // whatever the list says; a finished setup never does; the one case between waits.
+        if !NanoMuseCloud.isSignedIn && !providers { return true }
         return setupDone ? false : nil
     }
 

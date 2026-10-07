@@ -36,23 +36,26 @@ enum NanoMuseFirstRun {
     static var notificationsSeen: Bool { UserDefaults.standard.bool(forKey: notificationsKey) }
     static func markNotificationsSeen() { UserDefaults.standard.set(true, forKey: notificationsKey) }
 
-    /// Whether the home shows the setup instead of the chat. The account is required — it is
-    /// what keeps a person's devices together and what the free model runs on — so without a
-    /// sign-in the setup comes back, as it does without any provider (the chat could not
-    /// answer). Otherwise it stays only for a brand-new install — no conversation yet — until
-    /// *Start* has been tapped, so the hand-off into the first conversation is deliberate.
+    /// Whether the home shows the setup instead of the chat. It comes back when nothing could
+    /// answer: neither a sign-in (the account's models) nor a provider of one's own with a key.
+    /// A phone with its own key works signed out; the sign-in waits under Settings for the Cloud
+    /// models, sync and the hub. Otherwise it stays only for a brand-new install, no conversation
+    /// yet, until *Start* has been tapped, so the hand-off into the first conversation is
+    /// deliberate.
     static func needed(signedIn: Bool, hasProviders: Bool, hasSessions: Bool, done: Bool) -> Bool {
-        !signedIn || !hasProviders || (!hasSessions && !done)
+        (!signedIn && !hasProviders) || (!hasSessions && !done)
     }
 
     enum Stage: Int { case welcome, password, source, models, notifications, meet }
 
     /// The page to show, from what the app has. Android has a Hands page where the iPhone
     /// has Notifications: routines and goal check-ins need the permission.
-    static func stage(signedIn: Bool, hasGroups: Bool, sourceChosen: Bool, modelsSkipped: Bool, fresh: Bool, passwordAnswered: Bool, notificationsSeen: Bool = true) -> Stage {
-        if !signedIn { return .welcome }
-        if fresh && !passwordAnswered { return .password }
-        if !sourceChosen { return .source }
+    /// Signed out with a provider of one's own (`hasProviders`), the account pages are skipped:
+    /// the password is the account's and the source question is answered by the key.
+    static func stage(signedIn: Bool, hasProviders: Bool = false, hasGroups: Bool, sourceChosen: Bool, modelsSkipped: Bool, fresh: Bool, passwordAnswered: Bool, notificationsSeen: Bool = true) -> Stage {
+        if !signedIn && !hasProviders { return .welcome }
+        if signedIn && fresh && !passwordAnswered { return .password }
+        if signedIn && !sourceChosen { return .source }
         if !hasGroups && !modelsSkipped { return .models }
         if !notificationsSeen { return .notifications }
         return .meet
@@ -93,6 +96,7 @@ struct NanoMuseFirstRunView: View {
     private var stage: NanoMuseFirstRun.Stage {
         NanoMuseFirstRun.stage(
             signedIn: signedIn,
+            hasProviders: store.instances.contains { $0.isEnabled && $0.hasAnyCredential && $0.id != NanoMuseCloud.instance?.id },
             hasGroups: store.modelGroups.contains { !$0.memberEntryIds.isEmpty },
             sourceChosen: sourceChosen,
             modelsSkipped: modelsSkipped,
@@ -144,7 +148,8 @@ struct NanoMuseFirstRunView: View {
     }
 
     // The first page: the app's tile (docs/brand.md: the sign-in page stands for the app, not the
-    // agent), one line on what it is, the notice, and the one door — the account.
+    // agent), one line on what it is, the notice, and the door, the account, with a way past it
+    // for a key of one's own.
     private var welcomePage: some View {
         NanoMuseSetupPage(
             hero: { NanoMuseBrandMark(size: 96) },
@@ -152,6 +157,8 @@ struct NanoMuseFirstRunView: View {
             subtitle: AppLocalized("An open-source personal agent for every device you own."),
             primaryLabel: AppLocalized("Sign in · free"),
             onPrimary: { showSignIn = true },
+            secondaryLabel: AppLocalized("Use your own API key instead"),
+            onSecondary: { NanoMuseFirstRun.markSourceChosen(); sourceChosen = true; showOwnKey = true },
             finePrint: AppLocalized("One account keeps your devices together and carries the free model use; nothing is charged. Your own API key can be added right after."),
             learnMore: URL(string: "https://github.com/nano-muse/nanoMuse/blob/main/docs/cloud.md")
         ) {

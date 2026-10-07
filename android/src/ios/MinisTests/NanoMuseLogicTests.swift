@@ -277,8 +277,11 @@ final class NanoMuseLogicTests: XCTestCase {
     // MARK: - First run
 
     func testFirstRunNeeded() {
-        XCTAssertTrue(NanoMuseFirstRun.needed(signedIn: false, hasProviders: true, hasSessions: true, done: true))
-        XCTAssertTrue(NanoMuseFirstRun.needed(signedIn: true, hasProviders: false, hasSessions: true, done: true))
+        // Neither a sign-in nor a key of one's own: nothing could answer, the setup comes back.
+        XCTAssertTrue(NanoMuseFirstRun.needed(signedIn: false, hasProviders: false, hasSessions: true, done: true))
+        // Signed out with a key of one's own, the chat stays; so does a signed-in phone whose Cloud models are off.
+        XCTAssertFalse(NanoMuseFirstRun.needed(signedIn: false, hasProviders: true, hasSessions: true, done: true))
+        XCTAssertFalse(NanoMuseFirstRun.needed(signedIn: true, hasProviders: false, hasSessions: true, done: true))
         XCTAssertTrue(NanoMuseFirstRun.needed(signedIn: true, hasProviders: true, hasSessions: false, done: false))
         XCTAssertFalse(NanoMuseFirstRun.needed(signedIn: true, hasProviders: true, hasSessions: false, done: true))
         XCTAssertFalse(NanoMuseFirstRun.needed(signedIn: true, hasProviders: true, hasSessions: true, done: false))
@@ -286,6 +289,9 @@ final class NanoMuseLogicTests: XCTestCase {
 
     func testFirstRunStages() {
         XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: false, hasGroups: false, sourceChosen: false, modelsSkipped: false, fresh: false, passwordAnswered: false), .welcome)
+        // Signed out with a key of one's own: past the welcome, and the account's pages (password, source) are skipped.
+        XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: false, hasProviders: true, hasGroups: false, sourceChosen: false, modelsSkipped: false, fresh: false, passwordAnswered: false), .models)
+        XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: false, hasProviders: true, hasGroups: true, sourceChosen: false, modelsSkipped: false, fresh: false, passwordAnswered: false), .meet)
         XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: true, hasGroups: false, sourceChosen: false, modelsSkipped: false, fresh: true, passwordAnswered: false), .password)
         XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: true, hasGroups: false, sourceChosen: false, modelsSkipped: false, fresh: true, passwordAnswered: true), .source)
         XCTAssertEqual(NanoMuseFirstRun.stage(signedIn: true, hasGroups: false, sourceChosen: true, modelsSkipped: false, fresh: false, passwordAnswered: false), .models)

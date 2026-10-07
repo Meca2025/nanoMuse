@@ -51,7 +51,7 @@ enum NanoMuseMediaModels {
     /// Studio itself, and nanoMuse Cloud, which relays those same paths under the account's token.
     @MainActor
     static func eligibleVideoInstances() -> [ProviderInstance] {
-        let cloudId = NanoMuseCloud.isSignedIn ? NanoMuseCloud.instance?.id : nil
+        let cloudId = NanoMuseCloud.modelsOn ? NanoMuseCloud.instance?.id : nil
         return ProviderConfigStore.shared.instances.filter { inst in
             guard inst.isEnabled, inst.credentialType == .apiKey else { return false }
             guard inst.id == cloudId || NanoMuseVideoGen.speaksDashScope(inst.customBaseURL ?? "") else { return false }
@@ -206,7 +206,7 @@ enum NanoMuseMediaModels {
     static func imageLine() -> String {
         switch NanoMuseImageGen.route() {
         case .ownKey(let k): return "\(k.model) · \(k.label)"
-        case .relay: return NanoMuseCloud.isSignedIn ? NanoMuseCloud.label : AppLocalized("Not set")
+        case .relay: return NanoMuseCloud.modelsOn ? NanoMuseCloud.label : AppLocalized("Not set")
         }
     }
 
@@ -297,14 +297,14 @@ struct NanoMuseMediaModelsView: View {
     @ViewBuilder
     private var imageSection: some View {
         Section {
-            let ready = imageInstance != nil || NanoMuseCloud.isSignedIn
+            let ready = imageInstance != nil || NanoMuseCloud.modelsOn
             statusRow(
                 icon: "photo",
                 ready: ready,
-                line: imageInstance != nil ? "\(imageModel) · \(imageInstance?.label ?? "")" : (NanoMuseCloud.isSignedIn ? NanoMuseCloud.label : AppLocalized("Not set")),
+                line: imageInstance != nil ? "\(imageModel) · \(imageInstance?.label ?? "")" : (NanoMuseCloud.modelsOn ? NanoMuseCloud.label : AppLocalized("Not set")),
                 offLine: AppLocalized("Until one is set, the avatar cannot be changed and no pictures can be drawn. The agent will say so if you ask.")
             )
-            if NanoMuseCloud.isSignedIn {
+            if NanoMuseCloud.modelsOn {
                 choiceRow(title: NanoMuseCloud.label, selected: imageInstanceId == nil) {
                     imageInstanceId = nil
                     imageModel = ""
@@ -336,13 +336,13 @@ struct NanoMuseMediaModelsView: View {
                     .autocorrectionDisabled()
                     .onSubmit { NanoMuseImageGen.save(instanceId: inst.id, model: imageModel) }
             }
-            if imageInstances.isEmpty && !NanoMuseCloud.isSignedIn {
+            if imageInstances.isEmpty && !NanoMuseCloud.modelsOn {
                 NavigationLink(AppLocalized("Add a provider")) { ProviderInstancesView() }
             }
         } header: {
             Text(AppLocalized("Image model"))
         } footer: {
-            Text(imageInstances.isEmpty && !NanoMuseCloud.isSignedIn
+            Text(imageInstances.isEmpty && !NanoMuseCloud.modelsOn
                  ? AppLocalized("None of your providers can draw. Sign in to nanoMuse Cloud, or add an Alibaba Cloud Bailian provider with an API key; the avatar is drawn with one of the two.")
                  : AppLocalized("Avatar changes: the four candidates and the poses. Alibaba Cloud Model Studio: qwen-image-3.0 (draws and poses; ¥0.18 a picture) or the Pro tier, drawn with your own key. nanoMuse Cloud draws from the account's allowance."))
         }

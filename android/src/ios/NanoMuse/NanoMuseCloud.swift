@@ -221,6 +221,24 @@ enum NanoMuseCloud {
         return !(ProviderKeychainHelper.loadAPIKey(instanceId: inst.id) ?? "").isEmpty
     }
 
+    /// *Use nanoMuse Cloud models*: the account's models as a source. Signed in and the Cloud
+    /// instance switched on. Off, the account leaves the pickers and the automatic order of
+    /// every slot while the sign-in stays for sync and the hub; the one thing that may still run
+    /// on it is the explicit *Use nanoMuse Cloud this time* (NanoMuseCloudOnce). The one decision
+    /// point: every slot, picker and side call asks this, not `isSignedIn`.
+    static var modelsOn: Bool {
+        guard let inst = instance, inst.isEnabled else { return false }
+        return isSignedIn
+    }
+
+    /// Flip the switch. Upstream's `isEnabled` on the Cloud instance is the stored bit, so a
+    /// chat pinned to a Cloud entry stops at it the same way as for any disabled provider.
+    static func setModelsOn(_ on: Bool) {
+        guard var inst = instance, inst.isEnabled != on else { return }
+        inst.isEnabled = on
+        ProviderConfigStore.shared.updateInstance(inst)
+    }
+
     static var account: Account? {
         get {
             guard let data = UserDefaults.standard.data(forKey: Keys.account) else { return nil }

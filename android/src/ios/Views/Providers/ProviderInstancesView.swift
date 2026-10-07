@@ -57,10 +57,13 @@ struct ProviderInstancesView: View {
                                 // position for Delete. `allowsFullSwipe: false`
                                 // so a long swipe cannot delete a provider (and
                                 // its keys) without the confirmation below.
-                                Button(role: .destructive) {
-                                    pendingDeleteInstance = instance
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                                // nanoMuse: not on the Cloud instance; it is the account (see ProviderInstanceDetailView).
+                                if instance.id != NanoMuseCloud.instance?.id {
+                                    Button(role: .destructive) {
+                                        pendingDeleteInstance = instance
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
                                 Button {
                                     editingInstanceId = instance.id
