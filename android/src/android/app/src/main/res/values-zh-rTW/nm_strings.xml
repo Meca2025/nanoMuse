@@ -911,6 +911,7 @@
     <string name="nm_hub_err_bad_key">中繼上已登出，請重新登入。</string>
     <string name="nm_hub_err_generic">電腦沒能完成。</string>
     <string name="nm_devices_refused">中繼拒絕了連線；重新登入一下</string>
+    <string name="nm_devices_paused">中繼已暫停</string>
     <string name="nm_devices_notifications_hint">允許通知，手機才能在背景保持可聯。</string>
     <string name="nm_library_share_failed">檔案沒能分享出去。</string>
     <!-- 0.1.32：設定 → 連接器：可以讓智慧體接入的服務（桌面端同一份目錄） -->

@@ -10,12 +10,14 @@ import java.net.URI
  * config cannot say "any private address", so the rule lives here: an `http://` endpoint is
  * accepted when its host is this phone, a private range (10/8, 172.16/12, 192.168/16, the
  * carrier-grade 100.64/10 that Tailscale and friends use, link-local, IPv6 ULA/link-local) or a
- * local name (no dot, or `.local`, `.lan`, `.home`, `.internal`, `.home.arpa`). Anything else
- * must be `https://`. A LAN LLM server or a runtime on your own computer keeps working; a key
- * sent in the clear across the Internet does not.
+ * local name (no dot, or `.local`, `.lan`, `.home`, `.internal`, `.home.arpa`, `.localdomain`,
+ * Tailscale's `.ts.net`). Anything else must be `https://`. The relay address on the sign-in
+ * screen is judged by the same rule ([io.github.nanomuse.cloud.RelayAddress.isPrivateHost]).
+ * A LAN LLM server or a runtime on your own computer keeps working; a key sent in the clear
+ * across the Internet does not.
  */
 object LanOnly {
-    private val localSuffixes = listOf(".local", ".lan", ".home", ".internal", ".home.arpa", ".localdomain")
+    private val localSuffixes = listOf(".local", ".lan", ".home", ".internal", ".home.arpa", ".localdomain", ".ts.net")
 
     /** Null when the endpoint is fine; otherwise a short reason it is refused (English, for logs). */
     fun problem(url: String): String? {

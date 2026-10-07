@@ -949,6 +949,7 @@
     <string name="nm_hub_err_bad_key">Выход выполнен на релее; войдите снова.</string>
     <string name="nm_hub_err_generic">Компьютер не смог это сделать.</string>
     <string name="nm_devices_refused">Релей отказал; войдите снова</string>
+    <string name="nm_devices_paused">Приостановлено релеем</string>
     <string name="nm_devices_notifications_hint">Разрешите уведомления, чтобы телефон оставался на связи в фоне.</string>
     <string name="nm_library_share_failed">Не удалось поделиться файлом.</string>
 

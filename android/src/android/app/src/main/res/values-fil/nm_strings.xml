@@ -941,6 +941,7 @@
     <string name="nm_hub_err_bad_key">Na-sign out sa relay; mag-sign in ulit.</string>
     <string name="nm_hub_err_generic">Hindi ito nagawa ng computer.</string>
     <string name="nm_devices_refused">Tinanggihan ng relay; mag-sign in ulit</string>
+    <string name="nm_devices_paused">Ipinahinto ng relay</string>
     <string name="nm_devices_notifications_hint">Payagan ang mga notification para manatiling maaabot ang telepono sa background.</string>
     <string name="nm_library_share_failed">Hindi maibahagi ang file.</string>
 

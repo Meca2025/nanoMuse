@@ -55,9 +55,29 @@ class RelayAddressTest {
         assertFalse(RelayAddress.isPrivateHost("172.15.0.1"))
         assertFalse(RelayAddress.isPrivateHost("172.32.0.1"))
         assertFalse(RelayAddress.isPrivateHost("192.169.0.1"))
-        assertFalse(RelayAddress.isPrivateHost("100.64.0.1"))
         assertFalse(RelayAddress.isPrivateHost("ts.net.example.org"))
         assertFalse(RelayAddress.isPrivateHost(""))
+    }
+
+    @Test fun `the relay address follows the same rule as a model server`() {
+        // one rule for both screens (LanOnly): parsed addresses, not string prefixes
+        assertFalse(RelayAddress.isPrivateHost("10.foo.example.com"))
+        assertFalse(RelayAddress.isPrivateHost("192.168.example.org"))
+        assertEquals(RelayAddress.Problem.HTTP_PUBLIC, RelayAddress.problem("http://10.foo.example.com"))
+        // the carrier-grade range Tailscale hands out, link-local and ULA are one's own network too
+        assertTrue(RelayAddress.isPrivateHost("100.64.0.1"))
+        assertTrue(RelayAddress.isPrivateHost("100.101.102.103"))
+        assertFalse(RelayAddress.isPrivateHost("100.128.0.1"))
+        assertTrue(RelayAddress.isPrivateHost("169.254.3.4"))
+        assertTrue(RelayAddress.isPrivateHost("[fd00::1]"))
+        assertTrue(RelayAddress.isPrivateHost("[fe80::1]"))
+        assertFalse(RelayAddress.isPrivateHost("[2001:db8::1]"))
+        assertNull(RelayAddress.problem("http://[fd00::1]:8790"))
+        // a name without a dot and the other local suffixes
+        assertTrue(RelayAddress.isPrivateHost("desktop"))
+        assertTrue(RelayAddress.isPrivateHost("nas.lan"))
+        assertTrue(RelayAddress.isPrivateHost("nas.home.arpa"))
+        assertNull(RelayAddress.problem("http://desktop:8790"))
     }
 
     @Test fun `the account page shows host and port`() {

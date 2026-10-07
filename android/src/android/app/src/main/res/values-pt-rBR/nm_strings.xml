@@ -941,6 +941,7 @@
     <string name="nm_hub_err_bad_key">Desconectado no relay; entre de novo.</string>
     <string name="nm_hub_err_generic">O computador não conseguiu fazer isso.</string>
     <string name="nm_devices_refused">Recusado pelo relay; entre de novo</string>
+    <string name="nm_devices_paused">Pausado pelo relay</string>
     <string name="nm_devices_notifications_hint">Permita notificações para que o celular continue acessível em segundo plano.</string>
     <string name="nm_library_share_failed">Não foi possível compartilhar o arquivo.</string>
 

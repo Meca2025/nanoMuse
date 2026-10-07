@@ -897,6 +897,7 @@
     <string name="nm_hub_err_bad_key">中继上已退出登录，请重新登录。</string>
     <string name="nm_hub_err_generic">电脑没能完成。</string>
     <string name="nm_devices_refused">中继拒绝了连接；重新登录一下</string>
+    <string name="nm_devices_paused">中继已暂停</string>
     <string name="nm_devices_notifications_hint">允许通知，手机才能在后台保持可联。</string>
     <string name="nm_library_share_failed">文件没能分享出去。</string>
     <!-- 0.1.32：设置 → 连接器：可以让智能体接入的服务（桌面端同一份目录） -->

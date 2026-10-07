@@ -937,6 +937,7 @@
     <string name="nm_hub_err_bad_key">ออกจากระบบบนรีเลย์แล้ว ลงชื่อเข้าใช้อีกครั้ง</string>
     <string name="nm_hub_err_generic">คอมพิวเตอร์ทำสิ่งนี้ไม่ได้</string>
     <string name="nm_devices_refused">รีเลย์ปฏิเสธ ลงชื่อเข้าใช้อีกครั้ง</string>
+    <string name="nm_devices_paused">รีเลย์หยุดชั่วคราว</string>
     <string name="nm_devices_notifications_hint">อนุญาตการแจ้งเตือนเพื่อให้โทรศัพท์ติดต่อได้ในเบื้องหลัง</string>
     <string name="nm_library_share_failed">แชร์ไฟล์ไม่ได้</string>
 

@@ -937,6 +937,7 @@
     <string name="nm_hub_err_bad_key">Log keluar di relay; log masuk semula.</string>
     <string name="nm_hub_err_generic">Komputer tidak dapat melakukannya.</string>
     <string name="nm_devices_refused">Ditolak oleh relay; log masuk semula</string>
+    <string name="nm_devices_paused">Dijeda oleh relay</string>
     <string name="nm_devices_notifications_hint">Benarkan pemberitahuan supaya telefon boleh kekal dicapai di latar belakang.</string>
     <string name="nm_library_share_failed">Tidak dapat berkongsi fail.</string>
 

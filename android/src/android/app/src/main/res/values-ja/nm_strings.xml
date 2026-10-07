@@ -937,6 +937,7 @@
     <string name="nm_hub_err_bad_key">リレーでサインアウトされました。もう一度サインインしてください。</string>
     <string name="nm_hub_err_generic">コンピューターで実行できませんでした。</string>
     <string name="nm_devices_refused">リレーに拒否されました。もう一度サインインしてください</string>
+    <string name="nm_devices_paused">リレー側で一時停止中</string>
     <string name="nm_devices_notifications_hint">バックグラウンドでも到達可能でいられるよう、通知を許可してください。</string>
     <string name="nm_library_share_failed">ファイルを共有できませんでした。</string>
 
