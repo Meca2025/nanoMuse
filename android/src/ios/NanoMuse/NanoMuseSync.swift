@@ -271,7 +271,7 @@ final class NanoMuseSync: ObservableObject {
     /// sessions as deletions and tombstoning them on the account's other devices.
     func dropTable(for account: String) {
         load()
-        guard !account.isEmpty else { return }
+        guard loaded, !account.isEmpty else { return }
         tables.stores.removeValue(forKey: account)
         if store.account == account {
             store = Store(account: account)
@@ -279,7 +279,7 @@ final class NanoMuseSync: ObservableObject {
             pushDebounce?.cancel()
         }
         guard let data = try? JSONEncoder().encode(tables) else { return }
-        try? data.write(to: Self.tablesURL, options: [.atomic, .completeFileProtection])
+        try? data.write(to: Self.tablesURL, options: .atomic)
         revision += 1
     }
 
@@ -1085,9 +1085,13 @@ final class NanoMuseSync: ObservableObject {
     private func load() {
         let account = accountKey
         if !loaded {
-            loaded = true
-            if let data = try? Data(contentsOf: Self.tablesURL), let saved = try? JSONDecoder().decode(Tables.self, from: data) {
-                tables = saved
+            if let data = try? Data(contentsOf: Self.tablesURL) {
+                tables = (try? JSONDecoder().decode(Tables.self, from: data)) ?? Tables()
+            } else if FileManager.default.fileExists(atPath: Self.tablesURL.path) {
+                // There but unreadable (the phone is locked, the app woke in the background):
+                // keep the file and read again on the next call; `save` stays off until then,
+                // so an empty table is never written over every account's history.
+                return
             } else if let data = try? Data(contentsOf: Self.fileURL), let saved = try? JSONDecoder().decode(Store.self, from: data), !saved.account.isEmpty {
                 // the 0.1.38 table, filed under the key it carried (the hint); `activate` re-keys
                 // it to the account's id the first time that account is seen signed in
@@ -1095,6 +1099,7 @@ final class NanoMuseSync: ObservableObject {
             } else {
                 tables = Tables()
             }
+            loaded = true
             store = tables.stores[tables.current] ?? Store(account: tables.current)
         }
         // Signed out: the tables wait for an account; what is on the phone is the person's to see.
@@ -1106,9 +1111,10 @@ final class NanoMuseSync: ObservableObject {
     }
 
     private func save() {
+        guard loaded else { return }
         if !store.account.isEmpty { tables.stores[store.account] = store }
         if tables.current.isEmpty { tables.current = store.account }
         guard let data = try? JSONEncoder().encode(tables) else { return }
-        try? data.write(to: Self.tablesURL, options: [.atomic, .completeFileProtection])
+        try? data.write(to: Self.tablesURL, options: .atomic)
     }
 }

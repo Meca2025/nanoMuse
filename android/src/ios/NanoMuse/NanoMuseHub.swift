@@ -55,9 +55,26 @@ final class NanoMuseHub: ObservableObject {
     static let actions = ["info", "open", "notify", "task", "stop"]
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
 
+    /// Where the connection stands, for the Devices page; `connected` is the short form.
+    enum State: Equatable {
+        case idle
+        case connecting
+        case connected
+        /// Dropped; trying again after a backoff.
+        case reconnecting
+        /// The operator paused the hub (`hub_paused`, docs/hub.md); trying again in a while.
+        case paused
+        /// Close 4003: a newer connection of this device id took the seat; trying again later.
+        case replaced
+        /// Close 4001 / 4002: the relay refused the key or the device; a new sign-in starts over.
+        case refused
+        /// The relay sent an `error` frame without a call id; its own sentence.
+        case error(String)
+    }
+
     @Published private(set) var connected = false
     @Published private(set) var devices: [HubDevice] = []
-    @Published private(set) var detail = ""
+    @Published private(set) var state: State = .idle
 
     private enum Keys {
         static let enabled = "nanomuse.hub.enabled"
@@ -111,12 +128,16 @@ final class NanoMuseHub: ObservableObject {
     private var generation = 0
     private var backoff: TimeInterval = 1
     private var stopping = false
+    /// Close 4001 / 4002: the relay would say the same next time, so `autoStart` waits for a
+    /// new sign-in or key (`restart`) instead of knocking again.
+    private var refused = false
+    private var reconnectTask: Task<Void, Never>?
     private var pending: [String: (Result<[String: Any], HubError>) -> Void] = [:]
     private var eventHandlers: [String: ([String: Any]) -> Void] = [:]
 
     /// Joins the hub when the account is signed in and the switch is on; a no-op otherwise.
     func autoStart() {
-        guard enabled, NanoMuseCloud.isSignedIn, task == nil else { return }
+        guard enabled, NanoMuseCloud.isSignedIn, task == nil, !refused else { return }
         start()
     }
 
@@ -127,6 +148,9 @@ final class NanoMuseHub: ObservableObject {
         if base.hasPrefix("https://") { base = "wss://" + base.dropFirst(8) } else if base.hasPrefix("http://") { base = "ws://" + base.dropFirst(7) }
         guard let url = URL(string: base + "/v1/hub") else { return }
         stopping = false
+        refused = false
+        reconnectTask?.cancel()
+        reconnectTask = nil
         var request = URLRequest(url: url)
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("nanoMuse-iOS/\(Self.version)", forHTTPHeaderField: "User-Agent")
@@ -134,7 +158,7 @@ final class NanoMuseHub: ObservableObject {
         task.maximumMessageSize = 16 * 1024 * 1024
         generation += 1
         self.task = task
-        detail = "connecting"
+        state = .connecting
         task.resume()
         send(hello())
         receive(generation)
@@ -143,11 +167,14 @@ final class NanoMuseHub: ObservableObject {
 
     func stop() {
         stopping = true
+        reconnectTask?.cancel()
+        reconnectTask = nil
         task?.cancel(with: .normalClosure, reason: nil)
         task = nil
         generation += 1
         connected = false
         devices = []
+        state = .idle
         failAll(HubError(code: "disconnected", message: "left the hub"))
     }
 
@@ -195,17 +222,38 @@ final class NanoMuseHub: ObservableObject {
         }
     }
 
+    /// The socket ended. The relay's close code says what to do next (docs/hub.md): 4001 and
+    /// 4002 are final until a new sign-in; 4003 means another connection of this device took
+    /// the seat, so wait a while; `hub_paused` means the operator switched the hub off, so
+    /// wait longer; anything else is the network, and the backoff doubles up to 30 s.
     private func dropped(_ why: String) {
+        let code = task?.closeCode.rawValue ?? 0
+        let reason = task?.closeReason.flatMap { String(data: $0, encoding: .utf8) } ?? ""
         connected = false
         task = nil
         generation += 1
         failAll(HubError(code: "disconnected", message: why))
         guard !stopping else { return }
-        detail = "reconnecting"
-        let delay = backoff
+        if code == 4001 || code == 4002 {
+            refused = true
+            state = .refused
+            return
+        }
+        var delay = backoff
         backoff = min(backoff * 2, 30)
-        Task { @MainActor [weak self] in
+        if reason == "hub_paused" {
+            state = .paused
+            delay = 120
+        } else if code == 4003 {
+            state = .replaced
+            delay = 30
+        } else {
+            state = .reconnecting
+        }
+        reconnectTask?.cancel()
+        reconnectTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
             self?.autoStart()
         }
     }
@@ -241,7 +289,7 @@ final class NanoMuseHub: ObservableObject {
         case "welcome":
             connected = true
             backoff = 1
-            detail = "connected"
+            state = .connected
             devices = (frame["devices"] as? [[String: Any]] ?? []).compactMap(HubDevice.init)
             // C9: what the relay remembers of who is working on what (frames missed while away).
             NanoMusePresence.shared.refresh()
@@ -275,7 +323,7 @@ final class NanoMuseHub: ObservableObject {
                 eventHandlers.removeValue(forKey: id)
                 done(.failure(HubError(code: frame["code"] as? String ?? "error", message: frame["message"] as? String ?? "error")))
             } else {
-                detail = frame["message"] as? String ?? ""
+                state = .error(frame["message"] as? String ?? "")
             }
         default:
             break
@@ -294,20 +342,23 @@ final class NanoMuseHub: ObservableObject {
     /// Asks another device for something; resolves with its `result` body. Progress arrives on `onEvent`.
     func call(to: String, action: String, args: [String: Any] = [:], timeout: TimeInterval = 120, onEvent: (([String: Any]) -> Void)? = nil) async throws -> [String: Any] {
         guard connected else { throw HubError(code: "disconnected", message: "this iPhone is not on the hub; sign in to nanoMuse Cloud and turn on Devices") }
-        let id = UUID().uuidString.lowercased().prefix(12)
+        let id = String(UUID().uuidString.lowercased().prefix(12))
         return try await withCheckedThrowingContinuation { cont in
             var finished = false
-            pending[String(id)] = { result in
+            var timer: Task<Void, Never>?
+            pending[id] = { result in
                 guard !finished else { return }
                 finished = true
+                timer?.cancel()
                 cont.resume(with: result.mapError { $0 as Error })
             }
-            if let onEvent { eventHandlers[String(id)] = onEvent }
-            send(["type": "call", "id": String(id), "to": to, "action": action, "args": args])
-            Task { @MainActor [weak self] in
+            if let onEvent { eventHandlers[id] = onEvent }
+            send(["type": "call", "id": id, "to": to, "action": action, "args": args])
+            // The timer ends with the answer, so a long timeout does not keep the hub alive for nothing.
+            timer = Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                guard let self, let done = self.pending.removeValue(forKey: String(id)) else { return }
-                self.eventHandlers.removeValue(forKey: String(id))
+                guard !Task.isCancelled, let self, let done = self.pending.removeValue(forKey: id) else { return }
+                self.eventHandlers.removeValue(forKey: id)
                 done(.failure(HubError(code: "timeout", message: "\(to) did not answer in time")))
             }
         }
@@ -342,6 +393,12 @@ final class NanoMuseHub: ObservableObject {
         switch action {
         case "open":
             guard let raw = (args["url"] as? String)?.trimmingCharacters(in: .whitespaces), let url = URL(string: raw) else { refuse(id, "usage", "a URL is required"); return }
+            // Web pages only: another device must not dial numbers, start FaceTime or drive
+            // other apps' URL schemes on this phone through the hub.
+            guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+                refuse(id, "usage", "only http and https links are opened on this iPhone")
+                return
+            }
             UIApplication.shared.open(url) { ok in
                 Task { @MainActor in
                     if ok {

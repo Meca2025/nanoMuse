@@ -124,20 +124,20 @@ enum NanoMuseVideoGen {
         let code = output["code"] as? String ?? ""
         let message = output["message"] as? String ?? ""
         if message.range(of: "not activated", options: .caseInsensitive) != nil {
-            return "The video model is not activated on this account — open the model's card in the Model Studio console and activate it"
+            return AppLocalized("The video model is not activated on this account. Open the model's card in the Model Studio console and activate it.")
         }
         if !message.isEmpty { return code.isEmpty ? message : "\(code): \(message)" }
         if !code.isEmpty { return code }
         let status = output["task_status"] as? String ?? ""
-        return "Video task \(status.isEmpty ? "failed" : status)"
+        return String(format: AppLocalized("The video task ended as %@."), status.isEmpty ? "FAILED" : status)
     }
 
-    /// DashScope puts the message at the top; the nanoMuse relay answers OpenAI-shaped (`error.message`, e.g. the clip allowance).
+    /// DashScope puts the message at the top; the nanoMuse relay answers OpenAI-shaped (`error.message`, e.g. the clip allowance). Empty when there is none.
     static func apiMessage(_ data: Data) -> String {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return "" }
         var message = json["message"] as? String ?? ""
         if message.isEmpty { message = (json["error"] as? [String: Any])?["message"] as? String ?? "" }
-        return message.isEmpty ? "" : ": \(message)"
+        return message
     }
 
     /// The API wants 256–5760 px on each side and an aspect within [0.4, 2.5]; a face is square, so
@@ -154,12 +154,9 @@ enum NanoMuseVideoGen {
 
     // MARK: HTTP
 
-    private static let session: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 120
-        config.timeoutIntervalForResource = 15 * 60
-        return URLSession(configuration: config)
-    }()
+    /// Follows the proxy setting (Settings → Network) like a chat turn on the same provider.
+    private static let sessionSlot = NanoMuseProxy.SessionSlot(requestTimeout: 120, resourceTimeout: 15 * 60)
+    private static var session: URLSession { sessionSlot.session }
 
     private static func request(_ method: String, _ url: URL, key: String?) -> URLRequest {
         var request = URLRequest(url: url)
@@ -208,7 +205,7 @@ enum NanoMuseVideoGen {
     ) async throws -> Data {
         onProgress(.uploading)
         let model = Self.model(for: ep.model, fromImage: true)
-        guard let png = fitFrame(image).pngData() else { throw Failure(message: "The picture could not be encoded") }
+        guard let png = fitFrame(image).pngData() else { throw Failure(message: AppLocalized("The picture could not be encoded.")) }
         var uploadEndpoint = ep
         uploadEndpoint.model = model
         let ossURL = try await uploadTemp(uploadEndpoint, bytes: png, name: "first-frame.png", mime: "image/png")
@@ -261,11 +258,11 @@ enum NanoMuseVideoGen {
     static func uploadTemp(_ ep: Endpoint, bytes: Data, name: String, mime: String) async throws -> String {
         let modelQuery = ep.model.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ep.model
         guard let policyURL = URL(string: ep.host + "/api/v1/uploads?action=getPolicy&model=" + modelQuery) else {
-            throw Failure(message: "Bad provider address")
+            throw Failure(message: AppLocalized("The provider's address is not valid."))
         }
         let (policyData, policyStatus) = try await send(request("GET", policyURL, key: ep.apiKey))
         guard (200..<300).contains(policyStatus) else {
-            throw Failure(message: "Upload policy failed (HTTP \(policyStatus))" + apiMessage(policyData))
+            throw Failure(message: NanoMuseMediaWords.refused(status: policyStatus, vendorMessage: apiMessage(policyData)))
         }
         guard let policyJSON = (try? JSONSerialization.jsonObject(with: policyData)) as? [String: Any],
               let policy = policyJSON["data"] as? [String: Any],
@@ -275,7 +272,7 @@ enum NanoMuseVideoGen {
               let signature = policy["signature"] as? String,
               let policyText = policy["policy"] as? String,
               let formURL = URL(string: uploadHost) else {
-            throw Failure(message: "Upload policy: no data")
+            throw Failure(message: AppLocalized("The provider's reply could not be read."))
         }
         let key = uploadDir + "/" + name
         let boundary = "nanomuse-" + UUID().uuidString
@@ -301,13 +298,13 @@ enum NanoMuseVideoGen {
         upload.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         upload.httpBody = form
         let (_, uploadStatus) = try await send(upload)
-        guard (200..<300).contains(uploadStatus) else { throw Failure(message: "Upload failed (HTTP \(uploadStatus))") }
+        guard (200..<300).contains(uploadStatus) else { throw Failure(message: String(format: AppLocalized("The picture could not be uploaded (HTTP %d)."), uploadStatus)) }
         return "oss://" + key
     }
 
     private static func createTask(_ ep: Endpoint, body: [String: Any], ossInput: Bool) async throws -> String {
         guard let url = URL(string: ep.host + "/api/v1/services/aigc/video-generation/video-synthesis") else {
-            throw Failure(message: "Bad provider address")
+            throw Failure(message: AppLocalized("The provider's address is not valid."))
         }
         var req = request("POST", url, key: ep.apiKey)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -315,31 +312,31 @@ enum NanoMuseVideoGen {
         if ossInput { req.setValue("enable", forHTTPHeaderField: "X-DashScope-OssResourceResolve") }
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, status) = try await send(req)
-        guard (200..<300).contains(status) else { throw Failure(message: "HTTP \(status)" + apiMessage(data)) }
+        guard (200..<300).contains(status) else { throw Failure(message: NanoMuseMediaWords.refused(status: status, vendorMessage: apiMessage(data))) }
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-            throw Failure(message: "Unreadable response")
+            throw Failure(message: AppLocalized("The provider's reply could not be read."))
         }
         if let taskId = (json["output"] as? [String: Any])?["task_id"] as? String, !taskId.isEmpty { return taskId }
         let message = json["message"] as? String ?? ""
-        throw Failure(message: message.isEmpty ? "No task id" : message)
+        throw Failure(message: message.isEmpty ? AppLocalized("The provider did not start the video task.") : message)
     }
 
     private static func poll(_ ep: Endpoint, taskId: String, onProgress: @escaping @Sendable (Progress) -> Void) async throws -> String {
-        guard let url = URL(string: ep.host + "/api/v1/tasks/" + taskId) else { throw Failure(message: "Bad provider address") }
+        guard let url = URL(string: ep.host + "/api/v1/tasks/" + taskId) else { throw Failure(message: AppLocalized("The provider's address is not valid.")) }
         let started = Date()
         while true {
             try await Task.sleep(nanoseconds: UInt64(pollSeconds * 1_000_000_000))
             try Task.checkCancellation()
             let (data, status) = try await send(request("GET", url, key: ep.apiKey))
-            guard (200..<300).contains(status) else { throw Failure(message: "Task query failed (HTTP \(status))" + apiMessage(data)) }
+            guard (200..<300).contains(status) else { throw Failure(message: NanoMuseMediaWords.refused(status: status, vendorMessage: apiMessage(data))) }
             guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-                throw Failure(message: "Unreadable task")
+                throw Failure(message: AppLocalized("The provider's reply could not be read."))
             }
             let out = json["output"] as? [String: Any] ?? [:]
             switch out["task_status"] as? String ?? "" {
             case "SUCCEEDED":
                 if let videoURL = out["video_url"] as? String, !videoURL.isEmpty { return videoURL }
-                throw Failure(message: "No video URL")
+                throw Failure(message: AppLocalized("The provider sent no video."))
             case "FAILED", "CANCELED", "UNKNOWN":
                 throw Failure(message: failureMessage(out))
             default:
@@ -347,15 +344,15 @@ enum NanoMuseVideoGen {
             }
             let elapsed = Int(Date().timeIntervalSince(started))
             onProgress(.running(elapsedSeconds: elapsed))
-            if Double(elapsed) > maxWaitSeconds { throw Failure(message: "Timed out after \(elapsed / 60) min") }
+            if Double(elapsed) > maxWaitSeconds { throw Failure(message: String(format: AppLocalized("The video took longer than %d minutes."), elapsed / 60)) }
         }
     }
 
     private static func download(_ urlString: String) async throws -> Data {
-        guard let url = URL(string: urlString) else { throw Failure(message: "Bad video URL") }
+        guard let url = URL(string: urlString) else { throw Failure(message: AppLocalized("The provider sent no video.")) }
         let (data, status) = try await send(request("GET", url, key: nil))
-        guard (200..<300).contains(status) else { throw Failure(message: "Video download failed (\(status))") }
-        guard !data.isEmpty else { throw Failure(message: "Empty video") }
+        guard (200..<300).contains(status) else { throw Failure(message: String(format: AppLocalized("The video could not be downloaded (HTTP %d)."), status)) }
+        guard !data.isEmpty else { throw Failure(message: AppLocalized("The provider sent no video.")) }
         return data
     }
 

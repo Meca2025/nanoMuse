@@ -243,7 +243,7 @@ final class NanoMuseAvatarFlow: ObservableObject {
         // With a video model set the clips follow in the background (NanoMuseAvatarMotion); say so,
         // as Android's `nm_avatar_clips_coming` does.
         if NanoMuseAvatarMotion.shared.enabled {
-            reply += " " + AppLocalized("I'll also make four short clips so I can move — a few minutes in the background, through your video model.")
+            reply += " " + AppLocalized("I'll also make four short clips so I can move. That takes a few minutes in the background, through your video model.")
         }
         vm?.nmLocalTurn(user: line, assistant: reply + "\n\n" + fence)
         appendMemory(desc)

@@ -106,7 +106,14 @@ struct NanoMuseDevicesSection: View {
 
     private var status: String {
         if !enabled { return AppLocalized("Off") }
-        return hub.connected ? AppLocalized("Connected") : AppLocalized("Connecting…")
+        switch hub.state {
+        case .connected: return AppLocalized("Connected")
+        case .idle, .connecting: return AppLocalized("Connecting…")
+        case .reconnecting, .replaced: return AppLocalized("Reconnecting…")
+        case .paused: return AppLocalized("Paused by the relay")
+        case .refused: return AppLocalized("Sign in again")
+        case .error(let message): return message.isEmpty ? AppLocalized("Connecting…") : message
+        }
     }
 
     /// "macOS · online", or "macOS · offline · 2 hours ago" (Android: `DateUtils.getRelativeTimeSpanString`).

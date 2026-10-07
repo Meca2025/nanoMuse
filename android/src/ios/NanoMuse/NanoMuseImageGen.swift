@@ -32,6 +32,26 @@ enum NanoMuseImageGen {
         var message: String
         var errorDescription: String? { message }
     }
+}
+
+/// The sentences for a provider's refusal of a picture or a clip, shared by the image and
+/// video generators: the status says what happened, the vendor's own words follow when it sent some.
+enum NanoMuseMediaWords {
+    static func refused(status: Int, vendorMessage: String?) -> String {
+        let head: String
+        switch status {
+        case 401, 403: head = AppLocalized("The provider refused this key (HTTP %d).")
+        case 429: head = AppLocalized("The provider asked to slow down (HTTP %d).")
+        case 500...599: head = AppLocalized("The provider did not answer properly (HTTP %d).")
+        default: head = AppLocalized("The provider answered HTTP %d.")
+        }
+        let line = String(format: head, status)
+        guard let m = vendorMessage?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty else { return line }
+        return line + " " + String(format: AppLocalized("The provider says: %@"), String(m.prefix(300)))
+    }
+}
+
+extension NanoMuseImageGen {
 
     static let defaultsModelKey = "nanomuse.avatar.model"
     static let defaultsInstanceKey = "nanomuse.avatar.instance"
@@ -70,12 +90,9 @@ enum NanoMuseImageGen {
         NanoMuseCatalogue.bundled.first { $0.id == NanoMuseCatalogue.bailian }?.defaults["image"] ?? "qwen-image-3.0"
     }
 
-    private static let session: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 180
-        config.timeoutIntervalForResource = 300
-        return URLSession(configuration: config)
-    }()
+    /// Follows the proxy setting (Settings → Network) like a chat turn on the same provider.
+    private static let sessionSlot = NanoMuseProxy.SessionSlot(requestTimeout: 180, resourceTimeout: 300)
+    private static var session: URLSession { sessionSlot.session }
 
     // MARK: Route (pure part tested)
 
@@ -207,7 +224,7 @@ enum NanoMuseImageGen {
                 ? ["size": "1024*1024", "prompt_extend": false, "watermark": false]
                 : ["n": 1, "watermark": false]
             guard let png = NanoMuseFaceStore.square(image, side: 768).pngData() else {
-                throw Failure(message: "The picture could not be encoded")
+                throw Failure(message: AppLocalized("The picture could not be encoded."))
             }
             let content: [[String: Any]] = [
                 ["image": "data:image/png;base64," + png.base64EncodedString()],
@@ -221,7 +238,7 @@ enum NanoMuseImageGen {
     private static func callDashScope(_ k: OwnKey, model: String, content: [[String: Any]], parameters: [String: Any], what: String) async throws -> UIImage {
         let host = dashScopeHost(k.baseURL)
         guard let url = URL(string: host + "/api/v1/services/aigc/multimodal-generation/generation") else {
-            throw Failure(message: "Bad provider address")
+            throw Failure(message: AppLocalized("The provider's address is not valid."))
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -238,19 +255,19 @@ enum NanoMuseImageGen {
         let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         guard (200..<300).contains(status) else {
             let msg = (json?["message"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            throw Failure(message: "HTTP \(status)" + (msg.map { ": \($0)" } ?? ""))
+            throw Failure(message: NanoMuseMediaWords.refused(status: status, vendorMessage: msg))
         }
-        guard let json else { throw Failure(message: "Unreadable \(what) response") }
+        guard let json else { throw Failure(message: AppLocalized("The provider's reply could not be read.")) }
         let choice = ((json["output"] as? [String: Any])?["choices"] as? [[String: Any]])?.first
         let parts = ((choice?["message"] as? [String: Any])?["content"] as? [[String: Any]]) ?? []
         guard let imageURLString = parts.compactMap({ $0["image"] as? String }).first(where: { !$0.isEmpty }),
               let imageURL = URL(string: imageURLString) else {
-            throw Failure(message: (json["message"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Empty \(what) response")
+            throw Failure(message: (json["message"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? AppLocalized("The provider sent no picture."))
         }
         let (bytes, imageResponse) = try await session.data(from: imageURL)
         let imageStatus = (imageResponse as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(imageStatus) else { throw Failure(message: "Image download failed (\(imageStatus))") }
-        guard let image = UIImage(data: bytes) else { throw Failure(message: "Undecodable image") }
+        guard (200..<300).contains(imageStatus) else { throw Failure(message: String(format: AppLocalized("The picture could not be downloaded (HTTP %d)."), imageStatus)) }
+        guard let image = UIImage(data: bytes) else { throw Failure(message: AppLocalized("The picture could not be decoded.")) }
         return image
     }
 }
