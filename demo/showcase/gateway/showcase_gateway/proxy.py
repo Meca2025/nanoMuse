@@ -38,7 +38,8 @@ async def proxy_http(request: Request, client: httpx.AsyncClient, base: str) -> 
         req = client.build_request(request.method, url, headers=headers, content=body)
         resp = await client.send(req, stream=True)
     except httpx.HTTPError as exc:
-        log.info("upstream %s: %s", url, exc)
+        # the path alone: a query string may carry what a log must not (an older ?token= link)
+        log.info("upstream %s%s: %s", base, request.url.path, exc)
         return Response("the session is not reachable", status_code=502)
     out = {k: v for k, v in resp.headers.items() if k.lower() not in _HOP}
     return StreamingResponse(
