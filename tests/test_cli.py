@@ -164,3 +164,32 @@ def test_phone_trace_commands(tmp_path, monkeypatch):
     assert runner.invoke(app, ["phone", "trace", "pt-1", "-o", str(page)]).exit_code == 0
     html = page.read_text(encoding="utf-8")
     assert "查明天的高铁" in html and "点击「上海」。" in html and "G1 06:30" in html
+
+
+def test_config_show_masks_every_credential(tmp_path, monkeypatch):
+    from nanomuse.cli import mask_secrets
+
+    monkeypatch.setenv("NANOMUSE_DATA_DIR", str(tmp_path / "data"))
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        '[llm]\napi_key = "sk-chat-0123456789"\n'
+        '[image]\napi_key = "sk-image-0123456789"\n'
+        '[connectors.email]\npassword = "hunter2-app-password"\n'
+        '[connectors.search]\nprovider = "brave"\napi_key = "brave-0123456789"\n'
+        '[gui]\napi_key = "{{vault:GUI_KEY}}"\n'
+    )
+    result = runner.invoke(app, ["config", "show", "--config", str(cfg)])
+    out = result.output
+    assert result.exit_code == 0, out
+    for secret in (
+        "sk-chat-0123456789",
+        "sk-image-0123456789",
+        "hunter2-app-password",
+        "brave-0123456789",
+    ):
+        assert secret not in out, secret
+    assert "sk-c…89" in out and "{{vault:GUI_KEY}}" in out  # a placeholder is not a secret
+    assert mask_secrets({"a": {"token": "short"}, "b": [{"client_secret": "x" * 20}]}) == {
+        "a": {"token": "***"},
+        "b": [{"client_secret": "xxxx…xx"}],
+    }

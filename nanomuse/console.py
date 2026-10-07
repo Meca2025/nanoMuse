@@ -24,11 +24,15 @@ class ConsoleUI:
         show_thinking: bool = False,
         quiet: bool = False,
         name: str = "nanoMuse",
+        unattended: bool = False,
     ):
         self.console = console or Console()
         self.show_thinking = show_thinking
         self.quiet = quiet
         self.name = name
+        # nobody is at the keyboard (`nanomuse daemon`): a step that needs a word from the
+        # person is declined with the reason instead of waiting on stdin
+        self.unattended = unattended
         self._streaming = False
         self._streamed_chars = 0
 
@@ -95,6 +99,16 @@ class ConsoleUI:
     # ------------------------------------------------------------------ input
     async def ask_approval(self, request: ApprovalRequest) -> ApprovalDecision:
         self._end_stream()
+        if self.unattended:
+            self.console.print(
+                Text(f"  ⛔ needs approval, nobody here to give it: {request.summary}", style="red")
+            )
+            for w in request.warnings:
+                self.console.print(Text(f"     ⚠ {w}", style="red"))
+            return ApprovalDecision(
+                approved=False,
+                reason="unattended run: this step needs the user's approval; leave it for them",
+            )
         body = Text()
         body.append(f"{request.summary}\n", style="bold")
         if request.purpose:
@@ -145,6 +159,8 @@ class ConsoleUI:
         self.console.print(
             Panel(Markdown(question), title=f"{self.name} asks", border_style="blue")
         )
+        if self.unattended:
+            return "(nobody is here to answer; leave this for the user and go on with what you can)"
         return await asyncio.to_thread(
             Prompt.ask, "[bold green]You[/bold green]", console=self.console
         )

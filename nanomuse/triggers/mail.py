@@ -63,13 +63,22 @@ class MailWatcher:
         newest UID in the inbox. Raises ``RuntimeError`` / ``OSError`` when IMAP fails.
         """
         # here, not at the top: nanomuse.tools imports the triggers tool, which imports us
-        from nanomuse.tools.email_tool import _body_of, _decode, scrub_email_secrets
+        from nanomuse.tools.email_tool import (
+            IMAP_TIMEOUT_S,
+            _body_of,
+            _decode,
+            scrub_email_secrets,
+        )
 
         address, password = self._creds()
         settings = self.settings
 
         def _look() -> tuple[list[NewMail], int]:
-            with imaplib.IMAP4_SSL(settings.imap_host, settings.imap_port) as imap:
+            # the timeout matters here more than anywhere: this runs from the poll loop,
+            # and a server that stops answering would otherwise hold it for good
+            with imaplib.IMAP4_SSL(
+                settings.imap_host, settings.imap_port, timeout=IMAP_TIMEOUT_S
+            ) as imap:
                 imap.login(address, password)
                 status, _ = imap.select("INBOX", readonly=True)
                 if status != "OK":

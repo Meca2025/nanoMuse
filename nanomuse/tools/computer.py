@@ -28,12 +28,13 @@ from pydantic import ConfigDict
 
 from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, took_over_note
 from nanomuse.computer.coords import box_centre, from_norm
+from nanomuse.computer.hands import looks_like_an_application
 from nanomuse.computer.link import ACTIONS, POINTED, ComputerLink
 from nanomuse.config import GUISettings
 from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped
 from nanomuse.phone.screen import Screen
 from nanomuse.schema import RiskLevel, ToolResult
-from nanomuse.tools.base import BaseTool, CallAssessment
+from nanomuse.tools.base import BaseTool, CallAssessment, number_arg
 
 # the actions of the tool that are not actions of the hands
 _TOOL_ONLY = ("hand_over", "computer_target")
@@ -279,6 +280,10 @@ class ComputerAct(BaseTool):
         if hit:
             risk = RiskLevel.SENSITIVE
             warnings.append(f"the words under the cursor say: {', '.join(hit)}")
+        wanted_app = str(args.get("app") or "").strip()
+        if action == "open_app" and wanted_app and not looks_like_an_application(wanted_app):
+            risk = RiskLevel.SENSITIVE
+            warnings.append(f"{wanted_app!r} is a command to the machine, not an application")
         return CallAssessment(
             risk=risk,
             reads_private_data=True,
@@ -375,7 +380,7 @@ class ComputerAct(BaseTool):
                 return ToolResult.fail("`open_app` needs `app`")
             params["app"] = app[:80]
         if action == "wait":
-            params["seconds"] = max(0.2, min(10.0, float(kwargs.get("seconds") or 1.0)))
+            params["seconds"] = number_arg(kwargs.get("seconds"), 1.0, 0.2, 10.0)
         try:
             raw = await self.link.act(
                 params, timeout=self.gui.device_timeout_s + params.get("seconds", 0)

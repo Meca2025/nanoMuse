@@ -926,17 +926,18 @@ class HubService:
     async def _forward_artifact(self, call: IncomingCall, rel: str) -> None:
         try:
             path = self.svc.resolve_workspace_path(rel)
-        except ValueError:
-            return
-        if not path.is_file() or path.stat().st_size > actions.FILE_LIMIT:
-            return
-        mime = _mime(path.name)
+            if not path.is_file() or path.stat().st_size > actions.FILE_LIMIT:
+                return
+            mime = _mime(path.name)
+            data = path.read_bytes() if mime.startswith("image/") else b""
+        except (ValueError, OSError):
+            return  # outside the workspace, unreadable, or gone between the event and now
         if mime.startswith("image/"):
             await call.event(
                 {
                     "stage": "image",
                     "mime": mime,
-                    "data": base64.b64encode(path.read_bytes()).decode(),
+                    "data": base64.b64encode(data).decode(),
                     "from": self.device_name,
                     "name": path.name,
                 }

@@ -26,6 +26,7 @@ from nanomuse import __version__, prompts
 from nanomuse.agent import Incoming, MuseAgent
 from nanomuse.app import NanoMuseApp
 from nanomuse.avatar import AvatarStudio
+from nanomuse.background import spawn
 from nanomuse.bridge.server import Bridge
 from nanomuse.cloud import model_url
 from nanomuse.coding.service import CodingService
@@ -33,6 +34,7 @@ from nanomuse.config import Settings
 from nanomuse.goals import Goal
 from nanomuse.hub.service import HubService
 from nanomuse.llm import BaseLLM
+from nanomuse.llm.factory import llm_ready
 from nanomuse.logger import logger
 from nanomuse.memory.consolidate import TidyReport, tidy
 from nanomuse.nudges import NudgesPolicy
@@ -970,7 +972,7 @@ class MuseService:
         The conversation stays; a pending approval or question closes unanswered."""
         thread = self.threads.get(thread_id)
         if thread is not None and thread.device and thread.busy:
-            asyncio.get_running_loop().create_task(self.hub.stop_remote(thread))
+            spawn(self.hub.stop_remote(thread), "stopping the remote run")
             return True
         if thread is None or not thread.busy or thread.worker is None or thread.worker.done():
             return False
@@ -1307,7 +1309,7 @@ class MuseService:
             # the model hears that the page was used, the way the phone's sheet reports it
             tool = self.browser
             if tool is not None and tool.open:
-                asyncio.get_running_loop().create_task(self._browser_handed_back(tool, hold.thread))
+                spawn(self._browser_handed_back(tool, hold.thread), "browser handed back")
         return hold.to_event()
 
     async def _browser_handed_back(self, tool: Browser, thread: str) -> None:
@@ -2090,7 +2092,7 @@ class MuseService:
                 logger.info("first feed day not written: {}", exc)
 
         try:
-            asyncio.get_running_loop().create_task(write())
+            spawn(write(), "first feed day")
         except RuntimeError:  # pragma: no cover - no loop (a direct call outside the server)
             return False
         return True
@@ -2450,12 +2452,7 @@ class MuseService:
             "data_dir": str(self.data_dir),
             "started_at": self.started_at,
             "onboarded": bool(self.connections.data.get("onboarded")),
-            "llm_ready": bool(s.llm.api_key and not self.app.vault.has_placeholders(s.llm.api_key))
-            or bool(
-                s.llm.base_url
-                and "127.0.0.1" in s.llm.base_url
-                or "localhost" in (s.llm.base_url or "")
-            ),
+            "llm_ready": llm_ready(s.llm, self.app.vault, self.data_dir),
         }
 
     def update_settings(self, data: dict[str, Any]) -> dict[str, Any]:

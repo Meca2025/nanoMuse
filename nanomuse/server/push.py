@@ -24,8 +24,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from nanomuse.background import keep_task
 from nanomuse.logger import logger
-from nanomuse.server.events import keep_task
 
 VAPID_FILE = "push-vapid.json"
 SUBSCRIPTIONS_FILE = "push-subscriptions.json"
@@ -62,16 +62,21 @@ class PushService:
                 data = json.loads(self._vapid.read_text())
                 self.private_key_pem = data["private_key_pem"]
                 self.public_key = data["public_key"]
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, TypeError, OSError):
                 logger.warning("push: unreadable {}; generating a new key pair", self._vapid)
         if not self.public_key and available():
             self._generate_keys()
         if self._subs_file.is_file():
             try:
                 self.subscriptions = [
-                    s for s in json.loads(self._subs_file.read_text()) if s.get("endpoint")
+                    s
+                    for s in json.loads(self._subs_file.read_text())
+                    if isinstance(s, dict) and s.get("endpoint")
                 ]
-            except ValueError:
+            except (ValueError, TypeError, OSError):
+                logger.warning(
+                    "push: unreadable {}; starting without subscriptions", self._subs_file
+                )
                 self.subscriptions = []
 
     def _generate_keys(self) -> None:

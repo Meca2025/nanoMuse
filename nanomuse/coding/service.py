@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 from nanomuse.coding import agents
 from nanomuse.coding.runner import Run, start_run
 from nanomuse.logger import logger
+from nanomuse.tools.base import int_arg
 
 if TYPE_CHECKING:
     from nanomuse.server.service import MuseService
@@ -301,7 +302,7 @@ class CodingService:
             return {
                 "sessions": self.sessions(
                     str(args.get("agent") or "") or None,
-                    int(args.get("limit") or 30),
+                    int_arg(args.get("limit"), 30, 1, 500),
                     str(args.get("workspace") or "") or None,
                 )
             }
@@ -310,7 +311,7 @@ class CodingService:
         if action == "coding.stop":
             return {"stopped": self.stop(str(args.get("run") or ""))}
         if action == "coding.runs":
-            return {"runs": self.list_runs(int(args.get("limit") or 20))}
+            return {"runs": self.list_runs(int_arg(args.get("limit"), 20, 1, 500))}
         raise CodingError("unknown_action", f"this computer does not do '{action}'")
 
     async def remote_send(self, device: str, args: dict[str, Any]) -> dict[str, Any]:

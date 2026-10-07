@@ -28,7 +28,14 @@ from typing import Any
 
 import httpx
 
-from nanomuse.channels.base import Channel, ChannelBus, Field, InboundFile, InboundMessage
+from nanomuse.channels.base import (
+    Channel,
+    ChannelBus,
+    Field,
+    InboundFile,
+    InboundMessage,
+    json_object,
+)
 from nanomuse.logger import logger
 
 API = "https://api.dingtalk.com"
@@ -179,7 +186,7 @@ class DingTalkChannel(Channel):
                 "appSecret": str(self.settings.get("client_secret") or ""),
             },
         )
-        data = response.json() if response.content else {}
+        data = json_object(response)
         if response.status_code >= 400 or not data.get("accessToken"):
             raise RuntimeError(
                 str(data.get("message") or data.get("code") or f"HTTP {response.status_code}")
@@ -210,9 +217,7 @@ class DingTalkChannel(Channel):
             }
         response = await self._http.post(url, json=payload, headers=headers)
         if response.status_code >= 400:
-            detail = ""
-            with suppress(ValueError):
-                detail = str(response.json().get("message") or "")
+            detail = str(json_object(response).get("message") or "")
             raise RuntimeError(detail or f"HTTP {response.status_code}")
 
     async def _upload(self, path: Path) -> tuple[str, str]:
@@ -228,7 +233,7 @@ class DingTalkChannel(Channel):
                 params={"access_token": token, "type": media_type},
                 files={"media": (path.name, fh, mime)},
             )
-        data = response.json() if response.content else {}
+        data = json_object(response)
         media_id = data.get("media_id") or data.get("mediaId")
         if response.status_code >= 400 or data.get("errcode") not in (0, None) or not media_id:
             raise RuntimeError(
@@ -339,7 +344,7 @@ class DingTalkChannel(Channel):
                 json={"downloadCode": code, "robotCode": self.client_id},
                 headers={"x-acs-dingtalk-access-token": token},
             )
-            url = response.json().get("downloadUrl") if response.status_code < 400 else None
+            url = json_object(response).get("downloadUrl") if response.status_code < 400 else None
             if not url:
                 return None
             got = await self._http.get(url, follow_redirects=True)

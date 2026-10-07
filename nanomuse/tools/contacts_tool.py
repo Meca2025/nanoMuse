@@ -47,7 +47,8 @@ class Contacts(BaseTool):
         action = args.get("action", "")
         what = args.get("query") or args.get("name") or args.get("contact_id") or ""
         return CallAssessment(
-            risk=RiskLevel.SAFE,
+            # forgetting a person is the one step here that cannot be read back
+            risk=RiskLevel.MODERATE if action == "remove" else RiskLevel.SAFE,
             reads_private_data=action in ("search", "get", "list"),
             summary=f"contacts {action}" + (f" {str(what)[:60]!r}" if what else ""),
         )

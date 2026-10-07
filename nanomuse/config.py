@@ -27,6 +27,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from nanomuse.logger import logger
 from nanomuse.schema import RiskLevel
 
 DEFAULT_DATA_DIR = Path.home() / ".nanomuse"
@@ -346,6 +347,8 @@ class SearchSettings(BaseModel):
     api_key: str = ""
     # SearXNG: your instance, e.g. "http://127.0.0.1:8080".
     base_url: str = ""
+    # False: a failed search fails, instead of going to DuckDuckGo's host as well.
+    fallback: bool = True
 
 
 class ConnectorSettings(BaseModel):
@@ -376,7 +379,7 @@ class SandboxSettings(BaseModel):
 
     # "auto": bubblewrap when it is installed and works here; "bwrap": insist (a startup
     # error otherwise); "off": commands run unboxed, with the scrubbed environment only.
-    mode: str = "auto"
+    mode: Literal["auto", "bwrap", "off"] = "auto"
     # Directories from outside the box that commands may use — the home directory as a
     # whole stays out. `share_read_only` for the programs (a CLI under ~/.nvm), `share`
     # for state a tool must also write (its login, a token it refreshes). Both are bound
@@ -403,9 +406,9 @@ class BrowserSettings(BaseModel):
     headless: bool = True
     timeout_ms: int = 30_000
     # "auto": Playwright when installed, else the phone's WebView; or "playwright" / "device"
-    backend: str = "auto"
+    backend: Literal["auto", "playwright", "device"] = "auto"
     # the starting user agent + viewport: "desktop", "mobile", or "" for the backend's own
-    profile: str = ""
+    profile: Literal["", "desktop", "mobile"] = ""
 
 
 class GUISettings(BaseModel):
@@ -521,7 +524,7 @@ class HandsSettings(BaseModel):
     enabled: bool = False
     # "auto": the desktop app's operator when it started this runtime, else pyautogui when
     # installed, else xdotool on X11; or "desktop" / "pyautogui" / "xdotool"
-    backend: str = "auto"
+    backend: Literal["auto", "desktop", "pyautogui", "xdotool"] = "auto"
     # How the model gives points: "pixels" of the picture it was shown (Qwen2.5-VL and the
     # computer_use dialect), or "norm1000" — a 0–1000 grid over the picture (Qwen3-VL's
     # default, UI-TARS). Boxes ([x1, y1, x2, y2]) are taken either way; their centre counts.
@@ -757,8 +760,14 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
         if (val := os.environ.get(env)) not in (None, ""):
             llm[key] = val
     if not llm.get("api_key"):
-        base_url = llm.get("base_url") or LLMSettings.model_fields["base_url"].default or ""
-        for env in _provider_key_vars(str(base_url)):
+        # the endpoint the slot will talk to: the catalogue's when `provider` names an entry
+        provider = str(llm.get("provider") or LLMSettings.model_fields["provider"].default)
+        base_url = llm.get("base_url") or None
+        if provider in PROTOCOLS:
+            base_url = base_url or LLMSettings.model_fields["base_url"].default
+        else:
+            base_url = resolve_provider(provider, base_url)[1]
+        for env in _provider_key_vars(str(base_url or "")):
             if val := os.environ.get(env):
                 llm["api_key"] = val
                 break
@@ -781,7 +790,10 @@ def _apply_env_overrides(raw: dict[str, Any]) -> None:
     if val := os.environ.get("NANOMUSE_SERVER_HOST"):
         server["host"] = val
     if val := os.environ.get("NANOMUSE_SERVER_PORT"):
-        server["port"] = int(val)
+        if val.strip().isdigit():
+            server["port"] = int(val)
+        else:
+            logger.warning("NANOMUSE_SERVER_PORT={!r} is not a port number; ignored", val)
     if val := os.environ.get("NANOMUSE_SERVER_TOKEN"):
         server["token"] = val
     # turns the browser tool on (the browser Docker image sets it); it never turns it off, so a
@@ -860,6 +872,10 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
                         settings.llm.provider = check_provider(str(llm[key]))
                     except ValueError:
                         pass
+                    continue
+                if key == "tool_mode" and llm[key] not in ("auto", "native", "prompt"):
+                    continue  # a value the app never writes; the config's stays
+                if key == "vision" and llm[key] not in ("auto", "on", "off"):
                     continue
                 setattr(settings.llm, key, llm[key])
         if settings.llm.provider == CHATGPT_PROVIDER:

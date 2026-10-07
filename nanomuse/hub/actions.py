@@ -18,7 +18,6 @@ import mimetypes
 import os
 import platform
 import shutil
-import signal
 import socket
 import subprocess
 import sys
@@ -29,7 +28,8 @@ from typing import Any
 
 from nanomuse import __version__
 from nanomuse.computer.screen import BlackScreen, take_screenshot
-from nanomuse.tools.shell import scrubbed_env
+from nanomuse.tools.base import number_arg
+from nanomuse.tools.shell import kill_tree, scrubbed_env
 
 OUTPUT_LIMIT = 200_000
 FILE_LIMIT = 8 * 1024 * 1024  # base64 inside one hub frame
@@ -80,25 +80,10 @@ def _text(b: bytes) -> str:
     return s
 
 
-def _kill_tree(proc: subprocess.Popen[bytes]) -> None:
-    """Stop the shell and everything it started, so a timed-out command cannot linger."""
-    if os.name == "nt":
-        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
-        return
-    try:
-        # POSIX only (the branch above handles Windows); looked up by name so mypy on
-        # Windows does not object to attributes that platform's os module lacks
-        killpg = getattr(os, "killpg")  # noqa: B009
-        sigkill = getattr(signal, "SIGKILL")  # noqa: B009
-        killpg(proc.pid, sigkill)
-    except (ProcessLookupError, PermissionError, AttributeError):
-        proc.kill()
-
-
-def shell(command: str, cwd: str | None = None, timeout: float = 120) -> dict[str, Any]:
+def shell(command: str, cwd: str | None = None, timeout: Any = 120) -> dict[str, Any]:
     if not command or not command.strip():
         raise ActionError("usage", "a command is required")
-    timeout = max(1.0, min(float(timeout or 120), SHELL_TIMEOUT_MAX))
+    timeout = number_arg(timeout, 120, 1.0, SHELL_TIMEOUT_MAX)
     started = time.monotonic()
     timed_out = False
     try:
@@ -125,7 +110,7 @@ def shell(command: str, cwd: str | None = None, timeout: float = 120) -> dict[st
         code = proc.returncode
     except subprocess.TimeoutExpired:
         timed_out = True
-        _kill_tree(proc)
+        kill_tree(proc)
         try:
             out, err = proc.communicate(timeout=5)
         except subprocess.TimeoutExpired:
@@ -298,9 +283,7 @@ def run(action: str, args: dict[str, Any]) -> dict[str, Any]:
     if action == "info":
         return info()
     if action == "shell":
-        return shell(
-            str(args.get("command", "")), args.get("cwd"), float(args.get("timeout") or 120)
-        )
+        return shell(str(args.get("command", "")), args.get("cwd"), args.get("timeout"))
     if action == "files":
         return files(args.get("path"))
     if action == "file.get":

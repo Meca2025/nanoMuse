@@ -60,6 +60,29 @@ def short_json(args: dict[str, Any], limit: int = 200) -> str:
     return text if len(text) <= limit else text[: limit - 3] + "..."
 
 
+def number_arg(value: Any, default: float, low: float, high: float) -> float:
+    """A number the model passed (``"30"``, ``30``, ``None``, ``"ten"``), clamped to
+    ``[low, high]``; anything that is not a number is the default. Models write numbers as
+    strings often enough that a raw ``float(value)`` is a crash waiting to happen."""
+    if value is None or isinstance(value, bool):
+        n = float(default)
+    elif isinstance(value, int | float):
+        n = float(value)
+    else:
+        try:
+            n = float(str(value).strip())
+        except ValueError:
+            n = float(default)
+    if n != n:  # NaN
+        n = float(default)
+    return max(low, min(n, high))
+
+
+def int_arg(value: Any, default: int, low: int, high: int) -> int:
+    """:func:`number_arg` for whole numbers."""
+    return int(number_arg(value, default, low, high))
+
+
 # The one argument every tool shares, for the person rather than the tool: see ``STEP_KEY``.
 STEP_PARAM: dict[str, Any] = {
     "type": "string",
@@ -131,7 +154,13 @@ async def safe_execute(tool: BaseTool, args: dict[str, Any] | None = None) -> To
     try:
         result = await tool.execute(**args)
     except TypeError as exc:
-        return ToolResult.fail(f"bad arguments for {tool.name}: {exc}")
+        # raised by the call itself (an unknown or missing argument): the traceback has
+        # this frame only; a TypeError from inside the tool is a crash like any other
+        tb = exc.__traceback__
+        if tb is not None and tb.tb_next is None:
+            return ToolResult.fail(f"bad arguments for {tool.name}: {exc}")
+        logger.exception("tool {} crashed", tool.name)
+        return ToolResult.fail(f"TypeError: {exc}")
     except Exception as exc:  # noqa: BLE001 – tools must never crash the loop
         logger.exception("tool {} crashed", tool.name)
         return ToolResult.fail(f"{type(exc).__name__}: {exc}")
@@ -196,6 +225,8 @@ __all__ = [
     "BaseTool",
     "CallAssessment",
     "ToolCollection",
+    "int_arg",
+    "number_arg",
     "safe_execute",
     "short_json",
     "with_step",

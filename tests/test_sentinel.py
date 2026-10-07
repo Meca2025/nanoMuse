@@ -371,6 +371,30 @@ async def test_gate_warnings_are_never_covered_by_grants(tmp_path: Path):
     assert asks(ui) == 2
 
 
+async def test_gate_auto_mode_still_asks_on_warnings(tmp_path: Path):
+    """Policy step 6 keeps a call with a warning an ASK in auto mode; the gate used to
+    turn every ASK into ALLOW there, so `rm -rf` ran unattended."""
+
+    class Risky(Echo):
+        def assess(self, args: dict[str, Any]) -> CallAssessment:
+            return CallAssessment(
+                risk=RiskLevel.SENSITIVE, summary="risky", warnings=["looks dangerous"]
+            )
+
+    ui = ScopedUI(scope="once")
+    gate = Sentinel(SentinelSettings(mode="auto"), AuditLog(tmp_path / "a.jsonl"), ui)
+    # a call without a warning runs without a question
+    await gate.guard(call("echo", text="plain"), Echo())
+    assert asks(ui) == 0
+    # a call with a warning asks, auto mode or not
+    result = await gate.guard(call("echo", text="rm -rf"), Risky())
+    assert asks(ui) == 1 and result.ok
+    # and a declined one does not run
+    ui.approve = False
+    result = await gate.guard(call("echo", text="rm -rf /"), Risky())
+    assert asks(ui) == 2 and not result.ok
+
+
 def test_grant_options_follow_muse_rules():
     sensitive_known = CallAssessment(risk=RiskLevel.SENSITIVE, egress=True, egress_target="x")
     assert Sentinel.grant_options(sensitive_known, "x") == [
@@ -426,6 +450,10 @@ def test_shell_programs_are_the_grant_target():
     assert programs_of("git status") == "git"
     assert programs_of("cd web && npm run build") == "npm"
     assert programs_of("FOO=1 env python3 x.py | grep y") == "grep,python3"
+    # what runs inside a substitution is bound too: a grant for `echo` is not one for `curl`
+    assert programs_of("echo $(curl -s https://example.com)") == "curl,echo"
+    assert programs_of("ls `date`") == "date,ls"
+    assert programs_of("diff <(sort a) <(sort b)") == "diff,sort"
     assert programs_of("/usr/bin/curl https://x") == "curl"
     assert programs_of("echo hi") == "echo"
     assert programs_of("cd /tmp") is None

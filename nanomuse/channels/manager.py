@@ -22,6 +22,7 @@ from collections.abc import Coroutine
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from nanomuse.background import keep_task
 from nanomuse.channels.base import Channel, ChannelBus, ChannelStatus, InboundMessage
 from nanomuse.channels.dingtalk import DingTalkChannel
 from nanomuse.channels.feishu import FeishuChannel
@@ -29,7 +30,7 @@ from nanomuse.channels.store import ChannelSettingsStore, PairingStore
 from nanomuse.channels.telegram import TelegramChannel
 from nanomuse.channels.wecom import WeComChannel
 from nanomuse.logger import logger
-from nanomuse.server.events import keep_task, new_id
+from nanomuse.server.events import new_id
 
 if TYPE_CHECKING:
     from nanomuse.server.service import MuseService

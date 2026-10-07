@@ -64,7 +64,7 @@ sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
 
 6. **警告**：带警告的调用（`rm -rf`、`sudo`、`curl | sh`、读环境变量或删文件的代码）绝不会被模式或 `always_allow_tools` 放行；它会问。只有一条明确的 `allow` 规则能覆盖这一点。
 
-`auto` 仍然遵守 `deny_tools`、deny 规则和第 6 步。`nanomuse daemon`、`--auto` 和 App 里的「放手」设置用的就是它——后台的目标检查也是，所以无人值守的运行里出现危险命令时，它变成动态里的一张卡片，而不是直接跑掉。
+`auto` 仍然遵守 `deny_tools`、deny 规则和第 6 步。`nanomuse daemon`、`--auto` 和 App 里的「放手」设置用的就是它——后台的目标检查也是，所以无人值守的运行里出现危险命令时，它变成动态里的一张卡片，而不是直接跑掉。`nanomuse daemon` 旁边没有人：仍需要审批的那一步会被拒绝并留下说明，模型继续做它能做的。
 
 ## 审批 {#approvals}
 

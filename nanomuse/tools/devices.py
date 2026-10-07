@@ -29,7 +29,7 @@ from pydantic import ConfigDict
 from nanomuse.hub import actions
 from nanomuse.hub.client import HubError
 from nanomuse.schema import RiskLevel, ToolResult
-from nanomuse.tools.base import BaseTool, CallAssessment
+from nanomuse.tools.base import BaseTool, CallAssessment, int_arg
 from nanomuse.tools.shell import _DANGEROUS, programs_of
 from nanomuse.ui import ApprovalRequest
 
@@ -161,7 +161,7 @@ class DeviceShell(_DeviceTool):
         if not command.strip():
             return ToolResult.fail("empty command")
         d = self._device(device)
-        secs = max(1, min(int(timeout or 120), 900))
+        secs = int_arg(timeout, 120, 1, 900)
         r = await self._call(
             d, "shell", {"command": command, "cwd": cwd, "timeout": secs}, timeout=secs + 30
         )

@@ -181,6 +181,7 @@ enabled = true
 provider = "duckduckgo"               # duckduckgo | brave | tavily | searxng
 # api_key = "{{vault:SEARCH_API_KEY}}"  # brave / tavily: nanomuse vault set SEARCH_API_KEY
 # base_url = "http://127.0.0.1:8080"    # searxng
+# fallback = false                      # a failed search fails instead of going to DuckDuckGo
 
 [skills]
 # How a job is done, written down once: folders with a SKILL.md (the Agent Skills format).
@@ -224,7 +225,7 @@ provider = "openai"      # openai | openai_responses, or a catalogue id (bailian
 model = ""               # empty → the chat provider's own hands model when it sees; else the account's; else the chat model
 # base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"   # e.g. 阿里云百炼 with model = "qwen3.8-27b"
 # api_key = "{{vault:GUI_API_KEY}}"
-max_steps = 30           # the most one phone task may take
+max_steps = 0            # the most one phone task may take; 0 = no cap
 device_timeout_s = 20.0  # how long to wait for the phone to answer one request
 reconnect_grace_s = 30.0  # how long a running task waits for a phone whose connection dropped to come back; 0 = give up at once
 

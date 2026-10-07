@@ -134,6 +134,11 @@ class _TinyImap(threading.Thread):
         self.port = self.sock.getsockname()[1]
         self.commands: list[str] = []
 
+    def close(self) -> None:
+        """Wait for the one conversation to end and close the listening socket."""
+        self.join(timeout=5)
+        self.sock.close()
+
     def run(self) -> None:
         conn, _ = self.sock.accept()
         f = conn.makefile("rwb")
@@ -176,6 +181,7 @@ class _TinyImap(threading.Thread):
                 break
             else:
                 send(f"{tag} BAD what")
+        f.close()
         conn.close()
 
 
@@ -201,7 +207,13 @@ async def test_mail_watcher_reads_new_messages_by_uid(monkeypatch: pytest.Monkey
     }
     server = _TinyImap(messages)
     server.start()
-    monkeypatch.setattr(imaplib, "IMAP4_SSL", lambda host, port: imaplib.IMAP4(host, port))
+    seen_timeouts: list[float | None] = []
+
+    def plain_imap(host: str, port: int, timeout: float | None = None) -> imaplib.IMAP4:
+        seen_timeouts.append(timeout)
+        return imaplib.IMAP4(host, port, timeout=timeout)
+
+    monkeypatch.setattr(imaplib, "IMAP4_SSL", plain_imap)
     settings = EmailSettings(
         enabled=True,
         imap_host="127.0.0.1",
@@ -217,11 +229,14 @@ async def test_mail_watcher_reads_new_messages_by_uid(monkeypatch: pytest.Monkey
     assert fresh == [] and mark == 42
     assert any(c.upper().endswith("EXAMINE INBOX") for c in server.commands)  # read-only
     assert not any("FETCH" in c.upper() for c in server.commands)
+    assert seen_timeouts == [30.0], "the poll loop never waits on a silent server for good"
+    server.close()
 
     server = _TinyImap(messages)
     server.start()
     settings.imap_port = server.port
     fresh, mark = await watcher.look(40)
+    server.close()
     assert mark == 42 and [m.uid for m in fresh] == [41, 42]
     landlord = fresh[0]
     assert (
@@ -238,6 +253,7 @@ async def test_mail_watcher_reads_new_messages_by_uid(monkeypatch: pytest.Monkey
     settings.address = "someone@else.example"
     with pytest.raises(RuntimeError, match="IMAP error"):
         await watcher.look(40)
+    server.close()
     # no credentials at all
     with pytest.raises(RuntimeError, match="not set"):
         await MailWatcher(

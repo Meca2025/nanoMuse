@@ -204,9 +204,25 @@ class MemoryStore:
         return cur.rowcount > 0
 
     def forget_matching(self, query: str) -> int:
-        cur = self._conn.execute("DELETE FROM memories WHERE content LIKE ?", (f"%{query}%",))
+        """Forget every memory whose text contains ``query`` (literally, case-insensitive).
+
+        An empty query forgets nothing: ``clear`` is the explicit way to drop everything.
+        The deletion is logged as one change, so ``restore`` brings the memories back.
+        """
+        query = query.strip()
+        if not query:
+            return 0
+        pattern = "%" + re.sub(r"([\\%_])", r"\\\1", query) + "%"
+        rows = self._conn.execute(
+            "SELECT * FROM memories WHERE content LIKE ? ESCAPE '\\'", (pattern,)
+        ).fetchall()
+        items = [self._row(r) for r in rows]
+        if not items:
+            return 0
+        self._conn.executemany("DELETE FROM memories WHERE id = ?", [(m.id,) for m in items])
+        self._log("forget", items, None, f"matched {query!r}")
         self._conn.commit()
-        return cur.rowcount
+        return len(items)
 
     def clear(self) -> int:
         cur = self._conn.execute("DELETE FROM memories")

@@ -646,7 +646,7 @@ def _claude_session(f: Path, full: bool) -> Session | None:
         agent="claude",
         id=sid,
         title=_title(first_user) or "Untitled session",
-        workspace=cwd or _slug_to_path(f.parent.name.lstrip("-").replace("-", "-")),
+        workspace=cwd or _slug_to_path(f.parent.name.lstrip("-")),
         path=str(f),
         created_at=created,
         updated_at=st.st_mtime,

@@ -273,6 +273,8 @@ async def test_fetch_skill_text(monkeypatch: pytest.MonkeyPatch):
             return httpx.Response(200, text=APPLE_STYLE)
         if request.url.path.endswith("page/SKILL.md"):
             return httpx.Response(200, text="<html>not a skill</html>")
+        if request.url.path.endswith("huge/SKILL.md"):
+            return httpx.Response(200, content=b"---\n" + b"x" * (70 * 1024))
         return httpx.Response(404)
 
     real = httpx.AsyncClient
@@ -290,6 +292,8 @@ async def test_fetch_skill_text(monkeypatch: pytest.MonkeyPatch):
         await fetch_skill_text("https://x.example/missing/SKILL.md")
     with pytest.raises(ValueError, match="https://"):
         await fetch_skill_text("http://x.example/good/SKILL.md")
+    with pytest.raises(ValueError, match="larger than a SKILL.md"):
+        await fetch_skill_text("https://x.example/huge/SKILL.md")
 
 
 # ----------------------------------------------------------------------------- the tool

@@ -115,20 +115,26 @@ class CloudClient:
             raise CloudError(0, "offline", f"Cannot reach {self.base_url}: {exc}") from None
         if response.status_code >= 400:
             try:
-                err = response.json().get("error", {})
+                body = response.json()
             except ValueError:
+                body = {}
+            err = body.get("error") if isinstance(body, dict) else None
+            if not isinstance(err, dict):
                 err = {}
             raise CloudError(
                 response.status_code,
                 str(err.get("code") or f"http_{response.status_code}"),
                 str(err.get("message") or response.text[:200]),
-                extra={k: v for k, v in err.items() if k not in ("code", "message", "type")}
-                if isinstance(err, dict)
-                else None,
+                extra={k: v for k, v in err.items() if k not in ("code", "message", "type")},
             )
         if not response.content.strip():
             return {}
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError:
+            raise CloudError(
+                response.status_code, "bad_response", f"{self.base_url} did not answer with JSON"
+            ) from None
         return data if isinstance(data, dict) else {"data": data}
 
     # ------------------------------------------------------------------ account

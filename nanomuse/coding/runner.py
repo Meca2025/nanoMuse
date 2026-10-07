@@ -27,7 +27,7 @@ from typing import Any
 
 from nanomuse.coding.agents import AGENTS, Session, read_session, which
 from nanomuse.logger import logger
-from nanomuse.tools.shell import scrubbed_env
+from nanomuse.tools.shell import kill_tree, scrubbed_env
 
 # What each CLI needs from the environment beyond the scrubbed defaults: its own account
 # or key variables, by prefix. Everything else that looks like a credential — our own
@@ -532,8 +532,8 @@ async def _wait_exit(proc: asyncio.subprocess.Process, grace_s: float) -> None:
     while proc.returncode is None and time.monotonic() < deadline:
         await asyncio.sleep(0.1)
     if proc.returncode is None:
-        with contextlib.suppress(ProcessLookupError):
-            proc.kill()
+        # the CLI and the helpers it forked (its own process group, see start_run)
+        kill_tree(proc)
         deadline = time.monotonic() + 5
         while proc.returncode is None and time.monotonic() < deadline:
             await asyncio.sleep(0.1)

@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from nanomuse.background import spawn
 from nanomuse.cloud import CLOUD_KEY, CloudError, model_url
 from nanomuse.logger import logger
 
@@ -579,21 +580,22 @@ class AvatarStudio:
         if not images and cur is not None and cur.thread == thread and cur.stage == "choose":
             choice = parse_choice(text)
             if choice == "regenerate":
-                asyncio.ensure_future(self.regenerate(cur.id))
+                spawn(self.regenerate(cur.id), "avatar studio: regenerate")
                 return True
             if choice == "cancel":
                 self.cancel(cur.id)
                 return True
             if isinstance(choice, int):
-                asyncio.ensure_future(self.choose(cur.id, choice))
+                spawn(self.choose(cur.id, choice), "avatar studio: choose")
                 return True
         if len(images) > 1:
             return False
         description = parse_request(text)
         if description is None:
             return False
-        asyncio.ensure_future(
-            self.begin(thread, description, reference=images[0] if images else "")
+        spawn(
+            self.begin(thread, description, reference=images[0] if images else ""),
+            "avatar studio: begin",
         )
         return True
 

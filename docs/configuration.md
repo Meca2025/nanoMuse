@@ -323,9 +323,10 @@ Who answers `web_search`. DuckDuckGo needs nothing and is the default, but it is
 provider = "duckduckgo"          # duckduckgo | brave | tavily | searxng
 api_key  = "{{vault:SEARCH_API_KEY}}"   # brave / tavily: nanomuse vault set SEARCH_API_KEY
 base_url = ""                    # searxng: your instance, e.g. "http://127.0.0.1:8080"
+fallback = true                  # false: a failed search fails instead of going to DuckDuckGo
 ```
 
-Whichever is picked, a search that fails — a lapsed key, a rate limit, an instance that is down — is answered by DuckDuckGo instead, once, with a note on top of the results saying so, so the task goes on; `nanomuse doctor` reports a provider that is missing what it needs. The `region` argument of the tool (`cn-zh`, `us-en`) is passed to every provider in its own terms. The provider's host is a destination you chose, so a search after private data was read does not need approval the way an unknown host would (see [taint tracking](sentinel.md#taint-tracking)); `web_fetch` of a result still does.
+Whichever is picked, a search that fails — a lapsed key, a rate limit, an instance that is down — is answered by DuckDuckGo instead, once, with a note on top of the results saying so, so the task goes on (the query then reaches DuckDuckGo's host as well as the one you chose; set `fallback = false` under `[connectors.search]` if that must not happen); `nanomuse doctor` reports a provider that is missing what it needs. The `region` argument of the tool (`cn-zh`, `us-en`) is passed to every provider in its own terms. The provider's host is a destination you chose, so a search after private data was read does not need approval the way an unknown host would (see [taint tracking](sentinel.md#taint-tracking)); `web_fetch` of a result still does.
 
 ## `[triggers]`
 
@@ -379,7 +380,7 @@ provider         = "openai"          # the operator's own model; openai | openai
 model            = ""                # empty: the main [llm] model does it — it must take images, the screen is a picture
 base_url         = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 api_key          = "{{vault:GUI_API_KEY}}"
-max_steps        = 30                # the most one phone_task may take
+max_steps        = 0                 # the most one phone_task may take; 0 = no cap
 device_timeout_s = 20.0              # how long to wait for the phone to answer
 reconnect_grace_s = 30.0             # how long a running task waits for a phone whose connection dropped; 0 = give up at once
 sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first

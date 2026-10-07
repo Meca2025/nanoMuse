@@ -7,9 +7,9 @@ a bare tool name means the whole tool.
 
 Scopes:
 
-* ``once``     – this one call; nothing is stored
-* ``task``     – until the current agent run finishes
-* ``session``  – until the process exits
+* ``once``         – this one call; nothing is stored
+* ``conversation`` – until that conversation is cleared (``task`` meant this up to 0.1.30)
+* ``session``      – until the process exits
 * ``24h``      – for a day (persisted)
 * ``always``   – until revoked (persisted)
 """

@@ -25,6 +25,7 @@ from pydantic import ValidationError
 from rich.console import Console
 from rich.table import Table
 
+from nanomuse.channels.base import json_object
 from nanomuse.config import Settings, find_config_file, load_settings
 
 channels_app = typer.Typer(
@@ -96,13 +97,14 @@ class _Server:
         if response.status_code == 401:
             raise RuntimeError("the server refused the token (server.token in config.toml?)")
         if response.status_code >= 400:
-            detail = ""
-            try:
-                detail = str(response.json().get("detail") or "")
-            except ValueError:
-                pass
+            detail = str(json_object(response).get("detail") or "")
             raise RuntimeError(detail or f"HTTP {response.status_code}")
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError:
+            raise RuntimeError(
+                f"HTTP {response.status_code}: the server did not answer with JSON"
+            ) from None
         return data if isinstance(data, dict) else {"result": data}
 
 
