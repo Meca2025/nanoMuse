@@ -12,7 +12,7 @@ leads to.
 
 The page (`site/page/`) is plain HTML and a little script, with MobileGym in a frame on the
 same origin as `/phone.html`; it talks to the nanoMuse app on the phone through
-`window.__NANOMUSE__` on that frame (open, draft, reset, state, subscribe — see
+`window.__NANOMUSE__` on that frame (open, draft, start, reset, state, subscribe; see
 `demo/mobilegym/README.md`) and the app passes drafts on to the web app over `postMessage`.
 On a hosted session the web app runs lite (`?ui=lite`): the phone layout at any width, drawn
 the way the Android app draws it — the face on its disc with the name tag under it, the round
@@ -37,15 +37,36 @@ State Builder tab, so their script leaves it alone (`page.js` handles it, readin
 *Start over* — sits beside the phone; below 1280px their chrome folds under the phone and the
 column follows.
 
+**The phone turns itself on, and the Muse starts when a person is looking.** On this page and
+in the frame alike the phone boots as soon as the page is there and nanoMuse comes to the
+front, so the first thing a visitor sees is the welcome page. Pressing *Start* is another
+matter: it starts a container on the server and takes a share of the day's model budget, so
+the page does not press it for every load. It presses it (`window.__NANOMUSE__.start()`, what
+the pill does) once the stage has been in view for six seconds with the tab in front, or at
+the first sign of a hand: a pointer moving over the page, a key, a touch, the wheel. It never
+presses it for a browser that says it is driven by a script (`navigator.webdriver`), nor past
+a sign-in the showcase asks for (the visitor signs in and the phone's *Start* is theirs), nor
+with a visitor's own key, nor after a try that failed (the phone shows why, with *Try again*).
+A line tapped in the column before the Muse exists presses *Start* too and waits in the chat.
+The thirty minutes and the budget are as before; what changes is who presses the pill. The
+phone's language (MobileGym's Settings, Chinese by default) follows the page's switch, and so
+does the Muse's: the page sets the hosted runtime's reply language (`PUT /api/settings`, what
+*Settings › Reply language* does) to the page's, so a chat read on a Chinese screen is
+reported in English on the English page and the capsule's sentences follow. The chat model
+still slips into Chinese now and then after Chinese screen text; the setting makes it the
+exception rather than the rule.
+
 **The frame on the project site.** [nanomuse.cn](https://nanomuse.cn/) opens on this page in an
 `<iframe>` of `https://demo.nanomuse.dev/?embed=1`. In that mode the page has no header of its
-own (the site's bar is above it), and the phone is not turned on until the visitor taps its
-screen — so opening the homepage starts nothing, on the server or in the visitor's memory. The
-site passes its language and theme on the first load (`&lang=zh`, `&theme=dark`) and afterwards
-over `postMessage` (`{type: "nanomuse:lang", lang}`, `{type: "nanomuse:theme", theme}`; only
-from the project site's origins), and links out of the page open in the top window, not inside
-the frame. Dark is the page's own surfaces in the site's dark tokens; MobileGym's keys, dock and
-drawer stay as they are.
+own (the site's bar is above it). The site passes its language and theme on the first load
+(`&lang=zh`, `&theme=dark`) and afterwards over `postMessage` (`{type: "nanomuse:lang", lang}`,
+`{type: "nanomuse:theme", theme}`; only from the project site's origins), and links out of the
+page open in the top window, not inside the frame. A wheel turned over a part of this page that
+has nothing to scroll under the pointer (the stage, the keys, the column at its end) is handed
+up to the site as `{type: "nanomuse:wheel", deltaX, deltaY}` (pixels), so the homepage scrolls
+with the pointer over the frame; over the phone's screen the phone keeps it. Dark is the page's
+own surfaces in the site's dark tokens, the stage and MobileGym's guide and dock cards going
+dark with them.
 
 Nothing about the phone runs on the server. MobileGym is a React app: the whole simulated
 phone lives in the visitor's tab (~400 MB of *their* memory). The server runs three things:

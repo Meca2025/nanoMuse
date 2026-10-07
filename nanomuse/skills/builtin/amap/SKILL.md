@@ -13,7 +13,7 @@ metadata:
 
 ## Is it there?
 
-Look for `amap__maps_geo` in your tools. If it is not there, say so in one line and give the user the four lines to add to `config.toml`, then stop:
+Look for `amap__maps_geo` in your tools. If it is not there, say so in one line and give the user the four lines to add to `config.toml`, then stop. Your tools list is the only place it can be: do not run shell commands or scripts to look for it, and when the user asked for an app on their phone and you have read it there, the answer is complete without this skill:
 
 ```toml
 [[mcp.servers]]

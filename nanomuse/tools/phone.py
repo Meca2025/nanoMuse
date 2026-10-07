@@ -25,6 +25,7 @@ from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, took_over_note
 from nanomuse.config import GUISettings
 from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped, PhoneLink
 from nanomuse.phone.screen import Screen
+from nanomuse.prompts import detect_language
 from nanomuse.schema import RiskLevel, ToolResult
 from nanomuse.tools.base import BaseTool, CallAssessment, number_arg
 
@@ -438,8 +439,16 @@ class PhoneTask(BaseTool):
             )
         operator: PhoneOperator = self.operator
         await _wait_hold(self.holds)
+        # the agent's `step` is written in the user's language (prompts.py); the goal is often
+        # in the app's (a skill's 微信 phrases), and the capsule should speak the user's. A
+        # call without a `step` falls back to the goal's language: a name is still better
+        # than "the language of the query", which the screen model read as English.
+        step = str(kwargs.get("step") or "").strip()
         outcome = await operator.run(
-            goal, context=str(kwargs.get("context") or ""), app=str(kwargs.get("app") or "")
+            goal,
+            context=str(kwargs.get("context") or ""),
+            app=str(kwargs.get("app") or ""),
+            language=detect_language(step or goal),
         )
         text = outcome.report()
         images = [outcome.last_image] if outcome.last_image else None

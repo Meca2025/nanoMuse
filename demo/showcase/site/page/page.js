@@ -13,13 +13,29 @@
   var status = document.getElementById("status");
   var lookGroup = document.getElementById("group-look");
   // ?embed=1 (the inline script in index.html sets data-embed): this page is the frame on the
-  // project site, nanomuse.cn. The site has the header, so ours is hidden (page.css); the phone
-  // is not turned on until the visitor taps it, so opening the homepage starts nothing; links
-  // out of the page open in the top window, not inside the frame; and the site tells us its
+  // project site, nanomuse.cn. The site has the header, so ours is hidden (page.css); links
+  // out of the page open in the top window, not inside the frame; the site tells us its
   // language and theme over postMessage ({type: "nanomuse:lang", lang} / {type: "nanomuse:theme",
-  // theme}), the first paint taking them from ?lang= and ?theme=.
+  // theme}), the first paint taking them from ?lang= and ?theme=; and a wheel turned over a
+  // part of this page that has nothing to scroll is handed up to the site
+  // ({type: "nanomuse:wheel", deltaX, deltaY}), so the homepage still scrolls with the pointer
+  // over the frame.
   var embed = root.getAttribute("data-embed") === "1";
   var EMBEDDERS = ["https://nanomuse.cn", "https://www.nanomuse.cn", "https://nano-muse.github.io"];
+  // the page that holds the frame, when it is one of ours (a local preview of the site counts
+  // while this page is served locally too)
+  var embedder = (function () {
+    var o = "";
+    try {
+      var anc = location.ancestorOrigins;
+      o = anc && anc.length ? anc[0] : document.referrer ? new URL(document.referrer).origin : "";
+    } catch (e) {
+      o = "";
+    }
+    if (EMBEDDERS.indexOf(o) >= 0) return o;
+    if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o) && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return o;
+    return "";
+  })();
 
   // ---- language -------------------------------------------------------------------------
   function lang() {
@@ -34,14 +50,32 @@
     } catch (e) {
       /* private mode */
     }
+    phoneLang();
     render();
+  }
+  // The phone has a language of its own (MobileGym's Settings; its default is Chinese) and
+  // nanoMuse's welcome page, the capsule and the notifications follow it. The switch up here is
+  // the one a visitor sees, so the phone follows it: on the first boot and on every change.
+  // The phone follows the page's language: its own strings, and the Muse's replies (the
+  // hosted runtime's reply language, so what it reads on a Chinese screen is told in the
+  // page's language).
+  function phoneLang() {
+    var w = phoneWindow();
+    var api = w && w.__OS__ && w.__OS__.locale;
+    try {
+      if (api && typeof api.setLocale === "function") api.setLocale(lang() === "zh" ? "zh-Hans" : "en");
+      var h = w && w.__NANOMUSE__;
+      if (h && typeof h.language === "function") h.language(lang());
+    } catch (e) {
+      /* a phone that is going away */
+    }
   }
   document.getElementById("lang").addEventListener("click", function () {
     setLang(lang() === "zh" ? "en" : "zh");
   });
   if (embed) {
     window.addEventListener("message", function (ev) {
-      if (EMBEDDERS.indexOf(ev.origin) < 0) return;
+      if (EMBEDDERS.indexOf(ev.origin) < 0 && ev.origin !== embedder) return;
       var d = ev.data;
       if (!d) return;
       if (d.type === "nanomuse:lang" && (d.lang === "zh" || d.lang === "en") && d.lang !== lang()) setLang(d.lang);
@@ -150,6 +184,7 @@
   function launch(w) {
     if (launched || !host || !w || !w.__OS__) return;
     launched = true;
+    phoneLang();
     setTimeout(function () {
       try {
         host.open();
@@ -263,6 +298,19 @@
   if (window.ResizeObserver && hero) new ResizeObserver(fitPhone).observe(hero);
   fitPhone();
 
+  // the column's lower edge fades while there is more of it below (page.css .side.more)
+  function sideMore() {
+    if (!side) return;
+    var more = side.scrollHeight > side.clientHeight + 4 && side.scrollTop + side.clientHeight < side.scrollHeight - 4;
+    side.classList.toggle("more", more);
+  }
+  if (side) {
+    side.addEventListener("scroll", sideMore, { passive: true });
+    window.addEventListener("resize", sideMore);
+    if (window.ResizeObserver) new ResizeObserver(sideMore).observe(side);
+    sideMore();
+  }
+
   // ---- the status line ------------------------------------------------------------------
   function minutesLeft() {
     if (!state || !state.demo) return null;
@@ -276,20 +324,25 @@
       text = flash;
       cls += " flash";
     } else if (!phoneWindow()) {
-      text = tr("The phone is off — Click to start.", "手机关着——点一下屏幕开机。");
+      text = tr("The phone is off. Tap the screen to turn it on.", "手机关着，点一下屏幕开机。");
     } else if (!host) {
       text = tr("Starting the phone…", "手机启动中…");
     } else if (!state.configured && info && info.signin_required && !state.signedIn) {
-      text = tr("Sign in on the phone — free — and it starts a Muse for you.", "在手机上登录（免费），它就为你启动一个 Muse。");
+      text = tr("Sign in on the phone (free) and it starts a Muse for you.", "在手机上登录（免费），它就为你启动一个 Muse。");
     } else if (!state || !state.configured) {
-      text = tr("Starting a Muse for you…", "正在为你启动一个 Muse…");
+      // signed in (or no sign-in asked for): the page presses Start once a person is looking
+      // (below); until then, or when it will not, the phone's page waits for the tap on Start
+      text =
+        state && state.startable && !autoStarted && !isBot()
+          ? tr("A Muse starts for you in a moment; or tap Start on the phone.", "马上为你启动一个 Muse，也可以在手机上点「开始」。")
+          : tr("Tap Start on the phone and it starts a Muse for you.", "在手机上点「开始」，它就为你启动一个 Muse。");
     } else if (state.demo && Date.now() / 1000 > state.demo.expiresAt) {
       text = renewing()
         ? tr("Starting a Muse for you…", "正在为你启动一个 Muse…")
-        : tr("This Muse's time is up — Start over for a new one.", "这个 Muse 的时间到了——点「重新开始」再来一个。");
+        : tr("This Muse's time is up. Start over for a new one.", "这个 Muse 的时间到了，点「重新开始」再来一个。");
       if (!renewing()) cls += " warn";
     } else if (state.link === "unauthorized") {
-      text = tr("The session has ended — Start over for a new one.", "会话已结束——点「重新开始」再来一个。");
+      text = tr("The session has ended. Start over for a new one.", "会话已结束，点「重新开始」再来一个。");
       cls += " warn";
     } else if (state.link === "unreachable") {
       text = tr("Cannot reach your Muse right now; retrying…", "暂时连不上你的 Muse，正在重试…");
@@ -336,12 +389,18 @@
         return;
       }
       if (state && !state.configured) {
-        say(
-          info && info.signin_required && !state.signedIn
-            ? tr("Sign in on the phone first; then try this.", "先在手机上登录，再试这句。")
-            : tr("Your Muse is still starting; one moment.", "你的 Muse 还在启动，稍等一下。"),
-        );
-        return;
+        if (info && info.signin_required && !state.signedIn) {
+          say(tr("Sign in on the phone first; then try this.", "先在手机上登录，再试这句。"));
+          return;
+        }
+        // the Start pill is on the screen: this tap presses it; the line waits for the chat
+        // (host.draft keeps it until the web app says it is ready)
+        if (state.startable && host.start) {
+          autoStarted = true;
+          Promise.resolve(host.start()).catch(function () {
+            /* the phone shows what happened */
+          });
+        }
       }
       try {
         host.draft(text);
@@ -355,7 +414,7 @@
       }, 1500);
       say(
         state && state.web === "ready"
-          ? tr("In the chat on the phone — tap send.", "已填进手机里的对话框，点发送就行。")
+          ? tr("In the chat on the phone. Tap send.", "已填进手机里的对话框，点发送就行。")
           : tr("Will be in the chat as soon as the Muse is up.", "等 Muse 启动好就会出现在对话框里。"),
       );
     });
@@ -378,7 +437,113 @@
   });
 
   render();
-  // the phone turns itself on; a beat after the page is there, so the switch-on is seen — unless
-  // this is the frame on the project site, where it waits for the visitor's tap
-  if (!embed) setTimeout(powerOn, 400);
+
+  // ---- the wheel over the frame, on the project site ----------------------------------------
+  // The homepage holds this page in a frame that fills the first screen, and a frame takes the
+  // wheel: with the pointer over it the homepage did not scroll. Where this page has nothing
+  // of its own to scroll under the pointer (the stage, the keys, the dock, a column already at
+  // its end) the wheel is handed up and the site scrolls by it; over the phone's screen the
+  // phone keeps it. Only on this page's own document: the phone is a frame of its own and
+  // its apps take the wheel as they do.
+  function scrollsBy(el, dx, dy) {
+    for (; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+      var cs = getComputedStyle(el);
+      if (dy && /auto|scroll/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) {
+        if (dy < 0 ? el.scrollTop > 0 : el.scrollTop + el.clientHeight < el.scrollHeight - 1) return true;
+      }
+      if (dx && /auto|scroll/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1) {
+        if (dx < 0 ? el.scrollLeft > 0 : el.scrollLeft + el.clientWidth < el.scrollWidth - 1) return true;
+      }
+    }
+    return false;
+  }
+  if (embed && embedder && window.parent !== window) {
+    document.addEventListener(
+      "wheel",
+      function (ev) {
+        if (ev.ctrlKey || scrollsBy(ev.target, ev.deltaX, ev.deltaY)) return;
+        // lines and pages become pixels, roughly, so the site scrolls as it would for its own wheel
+        var unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? window.innerHeight : 1;
+        try {
+          window.parent.postMessage({ type: "nanomuse:wheel", deltaX: ev.deltaX * unit, deltaY: ev.deltaY * unit }, embedder);
+        } catch (e) {
+          /* the site is not listening */
+        }
+      },
+      { passive: true },
+    );
+  }
+
+  // ---- the phone turns itself on, and the Muse starts once a person is looking --------------
+  // The phone is on as soon as the page is, the frame on the project site included, and
+  // nanoMuse comes to the front (launch, above): the visitor sees the welcome page, and a
+  // sign-in the showcase asks for is theirs to do. Pressing Start (a container on the server,
+  // a share of the day's model budget) is not done for every page load: it is pressed once
+  // this page has been in view for a few seconds with the tab in front, or at the first sign
+  // of a hand (a pointer moving over the page, a key, a touch, the wheel), and never for a
+  // browser that says it is driven by a script. A failed start is left as it is: the phone
+  // shows why, with Try again.
+  var AUTO_START_AFTER_MS = 6000;
+  var autoStarted = false;
+  var seen = false; // a person's hand on the page
+  var inView = false; // the stage within the viewport (the top window's, in a frame)
+  var viewSince = 0;
+  var autoTimer = null;
+  function isBot() {
+    return !!navigator.webdriver;
+  }
+  function tryAutoStart() {
+    if (autoStarted || isBot() || !host || !state || !state.startable) return;
+    if (document.visibilityState !== "visible") return;
+    if (!seen && !(inView && viewSince && Date.now() - viewSince >= AUTO_START_AFTER_MS)) return;
+    autoStarted = true;
+    say(tr("Starting a Muse for you…", "正在为你启动一个 Muse…"), 8000);
+    Promise.resolve(host.start()).catch(function () {
+      /* the phone shows what happened */
+    });
+  }
+  function armAutoStart() {
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = setTimeout(tryAutoStart, AUTO_START_AFTER_MS + 50);
+  }
+  function hand() {
+    if (seen) return;
+    seen = true;
+    tryAutoStart();
+  }
+  ["pointerdown", "pointermove", "keydown", "touchstart", "wheel"].forEach(function (type) {
+    window.addEventListener(type, hand, { passive: true, once: true });
+  });
+  if (window.IntersectionObserver && hero) {
+    new IntersectionObserver(
+      function (entries) {
+        var e = entries[entries.length - 1];
+        inView = !!e && e.isIntersecting;
+        viewSince = inView ? Date.now() : 0;
+        if (inView) armAutoStart();
+      },
+      { threshold: 0.5 },
+    ).observe(hero);
+  } else {
+    inView = true;
+    viewSince = Date.now();
+    armAutoStart();
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") {
+      if (inView) viewSince = Date.now();
+      armAutoStart();
+    }
+  });
+  // the host's state arrives after the phone has booted: try then too
+  var autoPoll = setInterval(function () {
+    if (autoStarted || (state && state.configured)) {
+      clearInterval(autoPoll);
+      return;
+    }
+    tryAutoStart();
+  }, 1000);
+
+  // a beat after the page is there, so the switch-on is seen
+  setTimeout(powerOn, 400);
 })();

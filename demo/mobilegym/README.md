@@ -118,8 +118,14 @@ checkout is edited. Run it again after pulling a newer nanoMuse.
   window only and puts the text in the composer (sending is still a tap); the web app says
   `{type: "nanomuse:ready", name}` when it is up.
 - **A guest of a page.** `host.ts` exposes `window.__NANOMUSE__` on the simulator's window —
-  `open()`, `draft(text)`, `reset()`, `state()`, `subscribe(fn)` — the way MobileGym exposes
-  `__OS__`. The showcase's page (`demo/showcase/site/page/`) puts the simulator in a frame on
+  `open()`, `draft(text)`, `start()`, `reset()`, `language(code)`, `state()`, `subscribe(fn)`,
+  the way MobileGym exposes `__OS__`. `start()` is what the welcome page's *Start* pill does,
+  for the page around the phone to press once it has reason to think a person is looking; it
+  does nothing past a sign-in the showcase asks for, with a visitor's own key, or once a Muse
+  is there (`state().startable` says whether it would). `language("en" | "zh")` is the page's
+  language: a hosted Muse gets it as its reply language (*Settings › Reply language*), now and
+  for the sessions that follow, so what it reads on a Chinese screen is told in the page's
+  language; a server of the person's own keeps its setting. The showcase's page (`demo/showcase/site/page/`) puts the simulator in a frame on
   the same origin and uses it for the lines to try beside the phone. On a hosted session the
   web app is opened with `?ui=lite`: the phone layout whatever the window's width, drawn the
   way the Android app draws it (the home chrome, the chats drawer, the five tabs and their

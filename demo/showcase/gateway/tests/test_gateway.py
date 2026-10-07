@@ -48,6 +48,31 @@ async def test_a_visitor_gets_a_private_muse(world):
         r = await c.get("/api/state?token=x", headers={"host": host})
         assert r.status_code == 200 and r.text == "container says /api/state"
         assert r.headers["x-upstream"] == "yes"
+        # the phone itself (the site's origin) decides approvals and holds on the session
+        # host: the browser's preflight is answered here, and the relayed answer is stamped
+        # for that origin alone
+        site = "http://localhost:8000"
+        r = await c.options(
+            "/api/approvals/ap_1",
+            headers={
+                "host": host,
+                "origin": site,
+                "access-control-request-method": "POST",
+                "access-control-request-headers": "authorization,content-type",
+            },
+        )
+        assert r.status_code == 204
+        assert r.headers["access-control-allow-origin"] == site
+        assert "authorization" in r.headers["access-control-allow-headers"].lower()
+        assert "POST" in r.headers["access-control-allow-methods"]
+        assert "PUT" in r.headers["access-control-allow-methods"]
+        r = await c.post("/api/approvals/ap_1", json={}, headers={"host": host, "origin": site})
+        assert r.status_code == 200 and r.headers["access-control-allow-origin"] == site
+        # any other origin gets the runtime's answer as it is, with no such header
+        r = await c.post(
+            "/api/approvals/ap_1", json={}, headers={"host": host, "origin": "https://evil.example"}
+        )
+        assert r.status_code == 200 and "access-control-allow-origin" not in r.headers
         # one at a time per visitor
         r = await c.post("/api/demo/session", json={}, headers={"x-forwarded-for": "1.2.3.4"})
         assert r.status_code == 429 and body(r)["error"] == "already_running"

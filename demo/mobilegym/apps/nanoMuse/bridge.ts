@@ -178,6 +178,9 @@ class MuseBridge {
   private lastThread = 'main';
   private lostTimer: ReturnType<typeof setTimeout> | null = null;
   private backTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Acts the agent made outside a task (`phone_act` straight from the chat: open an app, read
+   * it) since nanoMuse last came back; they too can leave another app in front. */
+  private loneActs = 0;
   /** The approval on the capsule, so a failed answer can put the card back as it was. */
   private approvalShown: { id: string; summary: string; purpose: string } | null = null;
   /** The phone's open holds, by id (contract C1), to tell a hold that ended from the rest. */
@@ -320,6 +323,7 @@ class MuseBridge {
    * app's `HandsCapsule.bringAppToFront` does once its hands are done.
    */
   private comeBack(): void {
+    this.loneActs = 0;
     if (this.backTimer) clearTimeout(this.backTimer);
     this.backTimer = setTimeout(() => {
       this.backTimer = null;
@@ -535,6 +539,7 @@ class MuseBridge {
       else if (msg.op === 'act') work = act(params as unknown as ActParams);
       else throw new Error(`unknown op '${msg.op}'`);
       const result = await Promise.race([work, halted]);
+      if (msg.op === 'act' && !stage.active) this.loneActs += 1;
       this.send({ kind: 'device_result', id: msg.id, ok: true, result });
     } catch (err) {
       this.send({ kind: 'device_result', id: msg.id, ok: false, error: err instanceof Error ? err.message : String(err) });
@@ -585,13 +590,19 @@ class MuseBridge {
           this.retract(ev.id);
           return;
         }
-      } else if (ev.type === 'assistant' && ev.final && ev.source !== 'background' && stage.active) {
-        // The chat run that was using the hands has said its last word, so the task is over
-        // whatever became of its `end` (a socket that blinked at that very moment, say). The
-        // capsule must not stay on "step 6, looking" over a conversation that has finished.
-        const wentSomewhere = stage.steps > 0;
-        stage.end();
-        if (wentSomewhere) this.comeBack();
+      } else if (ev.type === 'assistant' && ev.final && ev.source !== 'background') {
+        if (stage.active) {
+          // The chat run that was using the hands has said its last word, so the task is over
+          // whatever became of its `end` (a socket that blinked at that very moment, say). The
+          // capsule must not stay on "step 6, looking" over a conversation that has finished.
+          const wentSomewhere = stage.steps > 0;
+          stage.end();
+          if (wentSomewhere) this.comeBack();
+        } else if (this.loneActs > 0) {
+          // No task, but the agent opened or worked an app straight from the chat and has now
+          // answered: the answer is in nanoMuse, so nanoMuse comes to the front for it.
+          this.comeBack();
+        }
       }
     }
     if (!this.hooks.get().notify) return;

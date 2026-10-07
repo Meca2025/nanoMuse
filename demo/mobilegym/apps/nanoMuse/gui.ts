@@ -214,7 +214,14 @@ export async function screenshot(): Promise<string | null> {
     if (node.hasAttribute(OVERLAY_ATTR)) return false;
     if (node === root || node.tagName === 'HEAD' || node.tagName === 'STYLE') return true;
     const r = node.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) return true; // display:contents, inline wrappers, svg defs
+    if (r.width === 0 || r.height === 0) {
+      // display:contents, inline wrappers, svg defs and a zero-height anchor whose children
+      // overflow it (WeChat's tab bar hangs from one) have no area and must stay; a `display:
+      // none` subtree has none either and must go: the shell keeps every backgrounded app
+      // mounted that way, and cloning a hidden 12306 result list or a WeChat history on each
+      // capture is what froze the phone for minutes once a second app had been opened.
+      return getComputedStyle(node).display !== 'none';
+    }
     return r.right > rootRect.left && r.left < rootRect.right && r.bottom > rootRect.top && r.top < rootRect.bottom;
   };
   try {
