@@ -346,6 +346,8 @@ export interface CloudAccount {
   is_model: boolean;
   /** this runtime insists on an account (self-hosters may turn it off) */
   required?: boolean;
+  /** the account's models as a source (*Use nanoMuse Cloud models*); false leaves them out of the automatic order and the listings */
+  models?: boolean;
   has_password?: boolean;
   /** on the operator's list: no spend limit */
   member?: boolean;

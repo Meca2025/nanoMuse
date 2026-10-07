@@ -550,6 +550,11 @@ class CloudSettings(BaseModel):
     # an account (with it, the relay can be the model and the devices meet).
     # Self-hosters who run without a relay set this to false.
     required: bool = True
+    # The account's models as a source (the apps' *Use nanoMuse Cloud models* switch). Off,
+    # the relay leaves the automatic order of the hands, pictures and clips, and the hub's
+    # listing; the sign-in itself stays (sync, the devices). Only the explicit "use nanoMuse
+    # Cloud this time" button reaches it then.
+    models: bool = True
     # Conversations synced between the account's devices (docs/every-device.md): the text
     # of the chats on the relay, so every device shows the same ones. The person's switch
     # in Settings → Data controls is what counts once set; this is the default for it.
@@ -986,6 +991,8 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
             settings.cloud.base_url = str(cloud["base_url"]).strip().rstrip("/")
         if "required" in cloud and cloud["required"] is not None:
             settings.cloud.required = bool(cloud["required"])
+        if "models" in cloud and cloud["models"] is not None:
+            settings.cloud.models = bool(cloud["models"])
     if hub := data.get("hub"):
         for key in ("enabled", "remote_control"):
             if key in hub and hub[key] is not None:

@@ -1704,6 +1704,14 @@ const zhCN: Record<string, string> = {
   "In Telegram talk to @BotFather, send /newbot and copy the token.": "在 Telegram 里找 @BotFather，发送 /newbot，复制 token。",
   "Direct messages work at once. For a group, add the bot to it; with Group Privacy on it only hears @-mentions and replies.": "私聊立即可用。群聊需要先把机器人拉进群；开着 Group Privacy 时它只听 @ 和回复。",
   "If api.telegram.org is out of reach from this computer, set a proxy below.": "如果这台电脑连不上 api.telegram.org，在下面填一个代理。",
+
+  // ── nanoMuse Cloud as a model source ────────────────────────────────────────────
+  "Use nanoMuse Cloud models": "使用 nanoMuse Cloud 模型",
+  "nanoMuse Cloud is one of the sources for the chat, the hands, pictures and clips; what runs on it comes off your allowance.": "nanoMuse Cloud 是聊天、双手、图片和短片的来源之一；在它上面运行的内容会消耗你的额度。",
+  "Off: nothing runs on nanoMuse Cloud unless you choose it yourself. You stay signed in for sync and your devices.": "关闭后，除非你自己选择，否则不会有任何内容在 nanoMuse Cloud 上运行。账号保持登录，用于同步和你的设备。",
+  "The chat model is nanoMuse Cloud's. Pick another chat model first; then the account's models can be switched off.": "当前聊天模型是 nanoMuse Cloud 的。请先换一个聊天模型，然后才能关掉账号的模型。",
+  "Use your own API key instead": "改用自己的 API key",
+  "You can sign in later under Connections, for sync and your devices.": "之后可以在「连接」里登录，用于同步和你的设备。",
 };
 
 export default zhCN;

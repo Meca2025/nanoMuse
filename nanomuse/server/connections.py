@@ -356,7 +356,8 @@ class Connections:
         signed in: the account's chat models, no key to paste (the account key is the key),
         so the form says "nanoMuse Cloud" rather than a bare URL under "other endpoint"."""
         hub = getattr(self.svc, "hub", None)
-        if hub is None or not hub.signed_in:
+        if hub is None or not hub.signed_in or not self.settings.cloud.models:
+            # signed out, or the account's models switched off (``[cloud] models``)
             return PROVIDERS
         return {
             self.CLOUD_PRESET: {

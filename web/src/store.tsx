@@ -73,6 +73,8 @@ export interface CodingLive {
 }
 
 const FEED_SEEN_KEY = "nanomuse_feed_seen";
+/** The browser stepped past the sign-in door for a key of its own. */
+const SIGN_IN_SKIPPED_KEY = "nanomuse_sign_in_skipped";
 
 export interface Stream {
   id: string;
@@ -120,6 +122,8 @@ export interface AppState {
   skillsVersion: number;
   /** First-run setup dismissed for this session (the server remembers a finished one). */
   onboardingDismissed: boolean;
+  /** The sign-in door stepped past for a key of one's own (kept in storage): the sign-in stays an invitation under Connections. */
+  signInSkipped: boolean;
   tab: Tab;
   toast: string | null;
   /** The chats drawer (the phone's hamburger) is open. */
@@ -180,6 +184,7 @@ type Action =
   | { type: "draft"; text: string | null }
   | { type: "draftFiles"; files: AttachmentInfo[] | null }
   | { type: "onboardingDismissed" }
+  | { type: "signInSkipped" }
   | { type: "toast"; toast: string | null };
 
 const LITE_KEY = "nanomuse.ui.lite";
@@ -231,6 +236,7 @@ const initial: AppState = {
   connectionsVersion: 0,
   skillsVersion: 0,
   onboardingDismissed: false,
+  signInSkipped: readStorage(SIGN_IN_SKIPPED_KEY) === "1",
   tab: "chat",
   toast: null,
   drawer: false,
@@ -378,6 +384,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, draftFiles: action.files };
     case "onboardingDismissed":
       return { ...state, onboardingDismissed: true };
+    case "signInSkipped":
+      return { ...state, signInSkipped: true };
     case "toast":
       return { ...state, toast: action.toast };
     case "ws":
@@ -580,6 +588,8 @@ interface StoreValue {
   draft: (text: string | null) => void;
   draftFiles: (files: AttachmentInfo[] | null) => void;
   dismissOnboarding: () => void;
+  /** Past the sign-in door with a key of one's own; remembered by this browser. */
+  skipSignIn: () => void;
   /** A short message at the bottom of the page. */
   toast: (text: string) => void;
 }
@@ -803,6 +813,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (text !== null) dispatch({ type: "tab", tab: "chat" });
       },
       dismissOnboarding: () => dispatch({ type: "onboardingDismissed" }),
+      skipSignIn: () => {
+        writeStorage(SIGN_IN_SKIPPED_KEY, "1");
+        dispatch({ type: "signInSkipped" });
+      },
       toast: (text) => dispatch({ type: "toast", toast: t(text) }),
     }),
     [state, loadEvents, refreshGoals, refreshSettings, refreshHub],

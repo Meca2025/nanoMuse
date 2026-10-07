@@ -362,7 +362,10 @@ class HubService:
         # becomes the model, as it does for a hosted runtime.
         if self._llm_is_cloud():
             self.svc.connections._swap_llm()
-        elif not (self.settings.llm.api_key or (self.data.get("llm") or {}).get("api_key")):
+        elif self.settings.cloud.models and not (
+            self.settings.llm.api_key or (self.data.get("llm") or {}).get("api_key")
+        ):
+            # not while the person switched the account's models off: a sign-in changes no slot
             with contextlib.suppress(CloudError, Exception):
                 await self.use_as_model()
         if self.settings.hub.enabled:
@@ -530,6 +533,8 @@ class HubService:
             "base_url": self.cloud.base_url,
             "signed_in": self.signed_in,
             "required": self.settings.cloud.required,
+            # the apps' *Use nanoMuse Cloud models*: the account's models as a source
+            "models": self.settings.cloud.models,
             "hint": str(cloud.get("hint") or ""),
             "channel": str(cloud.get("channel") or ""),
             "signed_in_at": cloud.get("signed_in_at"),
@@ -543,11 +548,40 @@ class HubService:
             ),
         }
 
+    def set_models(self, on: bool) -> dict[str, Any]:
+        """Switch the account's models on or off as a source (``[cloud] models``, kept in
+        app-settings). Off, the relay leaves the automatic order of the hands, pictures and
+        clips and the providers' listing; the sign-in stays. The chat model is the one slot
+        this cannot move: the runtime holds a single ``[llm]`` and no list of other keys, so
+        while the chat model is the account's the switch is refused (``409 chat_on_cloud``)
+        and the person picks another chat model first."""
+        if not on and self._llm_is_cloud():
+            raise CloudError(
+                409,
+                "chat_on_cloud",
+                "The chat model is nanoMuse Cloud's. Pick another chat model first; then the "
+                "account's models can be switched off.",
+            )
+        cloud = dict(self.data.get("cloud") or {})
+        cloud["models"] = bool(on)
+        self.data["cloud"] = cloud
+        self.settings.cloud.models = bool(on)
+        self._save()
+        self.svc.connections._publish()
+        self.publish()
+        return self.account_view()
+
     async def use_as_model(self, model: str = "") -> dict[str, Any]:
         """Make the relay the model provider: the Cloud key from the vault, the recommended
-        chat model unless one is named."""
+        chat model unless one is named. The explicit ask of the Connections page, so it
+        switches the account's models back on when they were off."""
         if not self.signed_in:
             raise CloudError(401, "bad_key", "Sign in first.")
+        if not self.settings.cloud.models:
+            cloud = dict(self.data.get("cloud") or {})
+            cloud["models"] = True
+            self.data["cloud"] = cloud
+            self.settings.cloud.models = True
         self.cloud.api_key = self._key()
         if not model:
             try:
