@@ -147,13 +147,14 @@ the key in `hello` instead).
 ```
 → hello    {device:{id,name,kind,os,version,actions[]}}     kind: phone | computer | web
 ← welcome  {device_id, devices:[…], server:{version,frame_limit,time}}
-← devices  {devices:[{id,name,kind,os,version,online,last_seen,controllable}]}
+← devices  {devices:[{id,name,kind,os,version,actions[],online,last_seen,controllable,ip}]}
 
 → call     {id, to, action, args}
 ← call     {id, from:{id,name,kind}, action, args}          (delivered to the target)
 → event    {id, body}          ← event  {id, from, body}    progress, approvals, images
 → result   {id, ok, body | error, message}                  ← result (to the caller)
-← error    {code, message, id?}   device_offline · not_controllable · self_call · unknown_call · too_large · bad_frame
+← error    {code, message, id?}   device_offline · not_controllable · self_call · unknown_call · timeout
+                                  too_large · rate_limited · bad_frame · device_online · bad_key · bad_device
 
 → devices  {}        → rename {name}        → forget {device_id}        → ping  ← pong
 ← profile  {rev, device}       the account's name, look or connectors changed (PUT /v1/me/profile); fetch it
@@ -161,11 +162,31 @@ the key in `hello` instead).
 ← working  {cid, from, device_name, working, at}  another device started (true) or finished (false) a turn in that synced conversation
 ```
 
-Close codes: `4000` hello expected, `4001` bad key, `4002` bad device,
-`4003` replaced by a newer connection of the same device id — or, with the
-reason `hub_paused` (relay 0.22), the operator switched the hub or the whole
-service off: a client waits and reconnects later instead of retrying at once
-([cloud.md › Controls](cloud.md#controls)).
+Close codes: `4000` hello expected (no hello within 15 s, or a frame that is
+not a hello first — a binary frame counts), `4001` bad key (reason `bad_key`
+or `account_deleted`; `account_gone` when the account was deleted or disabled
+under a live socket), `4002` bad device, `4003` replaced
+by a newer connection of the same device id — or, with the reason
+`hub_paused` (relay 0.22), the operator switched the hub or the whole service
+off: a client waits and reconnects later instead of retrying at once
+([cloud.md › Controls](cloud.md#controls)) — and `4008` too many frames (the
+rate limit below was ignored).
+
+A key refused in the `Authorization` header is answered the same way as one
+refused in `hello`: the handshake completes, an `error` frame carries the
+code, then the close with `4001`. A client that sees `4001` or `4002` stops
+reconnecting and asks the person to sign in again; any other close is the
+network and is retried with backoff.
+
+Frames the relay does not know (`type` it has no handler for, a text frame
+that is not a JSON object, a binary frame) are answered with
+`error bad_frame` and the socket stays open, so a newer client talking to an
+older relay loses one frame, not the connection. Frames over `frame_limit`
+get `too_large`; more than 60 frames or 8 MB a second get `rate_limited`
+(one warning a second, the extra frames dropped) and, if that goes on,
+the close with `4008`. A `call` nobody answers within 15 minutes fails with
+`timeout` to its caller; `forget` of a device that is connected right now is
+refused with `device_online`.
 
 Device ids are per installation (`phone-…`, `pc-…`); names are for people and
 can be changed on the device. A `web` device is never a target and is not
