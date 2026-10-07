@@ -23,7 +23,7 @@ data class FeedPost(
     val liked: Boolean,
     val file: File,
 ) {
-    val id: String get() = "$day/${"%02d".format(index)}"
+    val id: String get() = "$day/${"%02d".format(Locale.ROOT, index)}"
 
     fun serialize(): String = buildString {
         appendLine("---")

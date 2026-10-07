@@ -9,6 +9,7 @@ import com.openminis.app.mcp.oauth.MCPOAuthStore
 import com.openminis.app.mcp.oauth.McpPkce
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -31,6 +32,8 @@ object Connectors {
     private const val TAG = "Connectors"
     private const val AUTH_HEADER = "Authorization"
     private const val REFRESH_AHEAD_MS = 2 * 60 * 1000L
+    /** One supervised scope for the background refresh passes; a failed pass does not take the next one down. */
+    private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     sealed class Outcome {
         object Connected : Outcome()
@@ -86,7 +89,7 @@ object Connectors {
     /** Refresh the tokens about to lapse and rewrite their headers; off the main thread, quiet. */
     fun refreshStaleAsync(context: Context) {
         val app = context.applicationContext
-        CoroutineScope(Dispatchers.IO).launch { runCatching { refreshStale(app) }.onFailure { AppLogger.warning(TAG, "refresh pass failed: ${it.message}") } }
+        refreshScope.launch { runCatching { refreshStale(app) }.onFailure { AppLogger.warning(TAG, "refresh pass failed: ${it.message}") } }
     }
 
     private fun withKey(repo: MCPRepository, connector: Connector, auth: ConnectorAuth.Key?, key: String): Outcome {

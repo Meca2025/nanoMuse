@@ -62,7 +62,7 @@ object ProfileSync {
 
     private val worker = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "nm-profile-sync").apply { isDaemon = true } }
     private var app: Context? = null
-    private var pending: ScheduledFuture<*>? = null
+    @Volatile private var pending: ScheduledFuture<*>? = null
     /** Set while a pulled profile is being worn, so the change does not push back. */
     @Volatile private var applying = false
 
@@ -181,7 +181,7 @@ object ProfileSync {
     }
 
     private fun sha1(bytes: ByteArray): String =
-        MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }.take(12)
+        MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(java.util.Locale.ROOT, it) }.take(12)
 
     private fun decode(b64: String): Bitmap? {
         val bytes = bytes(b64) ?: return null

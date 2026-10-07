@@ -44,10 +44,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
+import io.github.nanomuse.ui.muse.setPlainText
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,7 +94,7 @@ fun AllowanceWaysCard(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val account = remember { NanoMuseCloud.account(context) }
     val inviteBonus = info.inviteBonusCny.takeIf { it > 0 } ?: account?.inviteBonusCny?.takeIf { it > 0 } ?: 5.0
     val inviteeBonus = info.inviteeBonusCny.takeIf { it > 0 } ?: account?.inviteeBonusCny?.takeIf { it > 0 } ?: inviteBonus
@@ -253,7 +253,7 @@ fun AllowanceWaysCard(
                     Spacer(Modifier.width(5.dp))
                     Text(stringResource(R.string.nm_ways_invite_share), fontSize = 13.sp, color = MuseTones.action)
                 }
-                TextButton(onClick = { clipboard.setText(AnnotatedString(link)); copied = true }) {
+                TextButton(onClick = { clipboard.setPlainText("nanoMuse", link); copied = true }) {
                     Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(15.dp), tint = MuseTones.action)
                     Spacer(Modifier.width(5.dp))
                     Text(stringResource(if (copied) R.string.nm_cloud_invite_copied else R.string.nm_ways_invite_copy), fontSize = 13.sp, color = MuseTones.action)

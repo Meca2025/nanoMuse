@@ -43,10 +43,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
+import io.github.nanomuse.ui.muse.setPlainText
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -107,7 +107,7 @@ fun CloudThisTimeButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 fun ProviderReachCard(reach: ProviderReach.Reach, onRetry: () -> Unit, modifier: Modifier = Modifier, onRetryOnCloud: (() -> Unit)? = null) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     var details by remember { mutableStateOf(false) }
     val host = reach.host.ifBlank { stringResource(R.string.nm_reach_the_provider) }
     val plan = reach.isChatGptPlan
@@ -259,7 +259,7 @@ fun ProviderReachCard(reach: ProviderReach.Reach, onRetry: () -> Unit, modifier:
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .padding(top = 4.dp)
-                            .combinedClickable(onClick = {}, onLongClick = { clipboard.setText(AnnotatedString(reach.detail)) }),
+                            .combinedClickable(onClick = {}, onLongClick = { clipboard.setPlainText("nanoMuse", reach.detail) }),
                     )
                 }
             }

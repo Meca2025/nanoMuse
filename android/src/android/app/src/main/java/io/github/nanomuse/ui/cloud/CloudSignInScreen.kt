@@ -425,7 +425,7 @@ fun CloudSignInScreen(
                 color = muted,
                 textAlign = TextAlign.Center,
             )
-            TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CLOUD_DOC_URL))) }) {
+            TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CLOUD_DOC_URL))) } }) {
                 Text(stringResource(R.string.nm_setup_learn_more), color = MuseTones.action, fontSize = 12.sp)
             }
             // What signing in is, and is not: free, community, non-profit — said where the

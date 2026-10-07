@@ -59,10 +59,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
+import io.github.nanomuse.ui.muse.setPlainText
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -180,7 +180,7 @@ fun SystemFilesScreen(onBack: () -> Unit, onOpen: (SystemFiles) -> Unit, onImpor
 @Composable
 private fun FileRow(kind: SystemFiles, subtitle: String, onClick: () -> Unit, onCopied: () -> Unit) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     var menu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
@@ -205,7 +205,7 @@ private fun FileRow(kind: SystemFiles, subtitle: String, onClick: () -> Unit, on
                     text = { Text(stringResource(R.string.nm_sysfile_copy)) },
                     onClick = {
                         menu = false
-                        clipboard.setText(AnnotatedString(kind.read(context)))
+                        clipboard.setPlainText(kind.fileName, kind.read(context))
                         Toast.makeText(context, R.string.nm_sysfile_copied, Toast.LENGTH_SHORT).show()
                         onCopied()
                     },
@@ -219,7 +219,7 @@ private fun FileRow(kind: SystemFiles, subtitle: String, onClick: () -> Unit, on
                             putExtra(Intent.EXTRA_SUBJECT, kind.fileName)
                             putExtra(Intent.EXTRA_TEXT, kind.read(context))
                         }
-                        context.startActivity(Intent.createChooser(send, kind.fileName))
+                        runCatching { context.startActivity(Intent.createChooser(send, kind.fileName)) }
                     },
                 )
             }
@@ -245,7 +245,7 @@ private fun FileBadge(label: String) {
 @Composable
 fun SystemFileScreen(kind: SystemFiles, onBack: () -> Unit, onOpenMemory: () -> Unit, onOpenRoutines: () -> Unit) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     var content by remember(kind) { mutableStateOf(kind.read(context)) }
     var editing by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf("") }
@@ -282,7 +282,7 @@ fun SystemFileScreen(kind: SystemFiles, onBack: () -> Unit, onOpenMemory: () -> 
                                     text = { Text(stringResource(R.string.nm_sysfile_copy)) },
                                     onClick = {
                                         menu = false
-                                        clipboard.setText(AnnotatedString(content))
+                                        clipboard.setPlainText(kind.fileName, content)
                                         Toast.makeText(context, R.string.nm_sysfile_copied, Toast.LENGTH_SHORT).show()
                                     },
                                 )
@@ -396,7 +396,7 @@ private fun AboutQuote(text: String) {
     }
 }
 
-private fun buildAnnotatedAbout(lead: String, body: String): AnnotatedString = androidx.compose.ui.text.buildAnnotatedString {
+private fun buildAnnotatedAbout(lead: String, body: String): androidx.compose.ui.text.AnnotatedString = androidx.compose.ui.text.buildAnnotatedString {
     pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold))
     append(lead)
     pop()
@@ -409,7 +409,7 @@ private fun buildAnnotatedAbout(lead: String, body: String): AnnotatedString = a
 @Composable
 fun MemoryImportScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val prompt = stringResource(R.string.nm_import_prompt)
     var from by remember { mutableStateOf("") }
     var pasted by remember { mutableStateOf("") }
@@ -435,7 +435,7 @@ fun MemoryImportScreen(onBack: () -> Unit) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         Surface(
                             onClick = {
-                                clipboard.setText(AnnotatedString(prompt))
+                                clipboard.setPlainText("nanoMuse", prompt)
                                 Toast.makeText(context, R.string.nm_sysfile_copied, Toast.LENGTH_SHORT).show()
                             },
                             shape = CircleShape,

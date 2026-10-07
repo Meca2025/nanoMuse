@@ -82,6 +82,12 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **Chinese copy uses the product's own names.** 简体 and 繁體 strings say `nanoMuse Cloud` instead of 「nanoMuse 云」, 智能体 / 智慧體 instead of the English word "agent", and 中继 / 中繼 for the relay throughout.
 - **The provider URL field explains a refused `http://` address in the phone's language.** The footer under *Custom API base* that says plain `http://` works only on your own network used to be English in every locale.
 - **Dates follow the phone's locale.** The computers list, the profile's file cards and the chat drawer format their timestamps with the system's short date and time (the drawer said "now" in English and the computers list used `MM-dd HH:mm`).
+- **Feed file names, post ids, the profile hash and HEARTBEAT.md keep ASCII digits** whatever the phone's language; a phone set to Arabic or Hindi used to write localized digits into them.
+- **A large reference photo for the avatar is decoded at a reduced size** instead of in full and scaled down afterwards, so a 48-megapixel picture no longer risks running the app out of memory.
+- **Links and the share sheet no longer crash a phone without a browser or a sharing app**: the privacy notice on the welcome page, the Cloud help link and the system files' share button fail quietly.
+- **The connectors' background token refresh runs in one supervised scope**, and two cross-thread flags (the browser hand-over waiter, the profile sync timer) are marked volatile.
+- Copy buttons use the current Compose clipboard API and the open-in-new icon mirrors in right-to-left layouts; the Android build has no warnings in nanoMuse's code.
+- CI runs the Android unit tests (`io.github.nanomuse.*`) after building the debug APK.
 
 ### iOS
 

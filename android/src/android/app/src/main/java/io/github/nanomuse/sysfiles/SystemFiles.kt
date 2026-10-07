@@ -107,14 +107,14 @@ enum class SystemFiles(
                 checks.forEach { t ->
                     val g = goals.firstOrNull { it.id == t.goalId }
                     val cadence = t.intervalMinutes?.let { m -> if (m % 60 == 0) "every ${m / 60} h" else "every $m min" }
-                        ?: "daily %02d:%02d".format(t.timeOfDayHour, t.timeOfDayMinute)
+                        ?: "daily %02d:%02d".format(java.util.Locale.ROOT, t.timeOfDayHour, t.timeOfDayMinute)
                     appendLine("- ${if (t.enabled) "[x]" else "[ ]"} ${g?.title ?: t.label} · $cadence" + lastRun(context, t))
                 }
             }
         }
 
         private fun line(context: Context, t: ScheduledTask): String {
-            val time = "%02d:%02d".format(t.timeOfDayHour, t.timeOfDayMinute)
+            val time = "%02d:%02d".format(java.util.Locale.ROOT, t.timeOfDayHour, t.timeOfDayMinute)
             val repeat = when (t.repeatMode) {
                 com.openminis.app.scheduled.ScheduledRepeatMode.ONCE -> "once"
                 com.openminis.app.scheduled.ScheduledRepeatMode.DAILY -> "daily"
