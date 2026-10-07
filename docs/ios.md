@@ -155,7 +155,13 @@ Ours, in `NanoMuse/`:
   you did not pick; the image and video models come from the catalogue's `defaults`, not from
   names in the code. The pictures and clips pickers open with an *Automatic* entry (*Currently
   〈provider · model〉*) that forgets the stored choice and lets the slot follow that order
-  again; the clips picker keeps *Off* under it. After a key is saved, `NanoMuseVendorSheet` shows *Use it for*: one switch
+  again; the clips picker keeps *Off* under it. A group shows at most eight rows (the
+  provider's catalogue default for the slot first, then the chosen model, then the rest as
+  the list came) and ends in *Show n more* when it has more; once the groups together hold
+  more than eight, a *Search models* field under the Automatic row filters every group live
+  by model id or display name, every match shown, groups without one hidden, *No model
+  matches* when nothing fits (`NanoMusePickerList`, tested in `NanoMuseModelSlotsTests`).
+  After a key is saved, `NanoMuseVendorSheet` shows *Use it for*: one switch
   per slot the key covers (pictures and clips only on a DashScope host, the screen never on
   iPhone), all on; *Use it* moves the ticked slots to the provider's defaults, *Not now* changes
   nothing, and saving no longer switches anything by itself. When a model of your own fails, the
