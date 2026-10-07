@@ -2,7 +2,6 @@
 layout: home
 title: nanoMuse 文档
 hero:
-  name: nanoMuse
   text: 开源的个人智能体，面向你的每一台设备。
   tagline: 一个智能体，在你的手机、电脑和网页上，一个账号串起来。它动手做事而不只是回答，App 关了也继续干，把记得的东西写在你读得懂的文件里，遇到无法撤销的操作会先问你。整套东西在一个仓库里，GPL-3.0-or-later；同一套中继也能跑在你自己的服务器上。
   actions:
