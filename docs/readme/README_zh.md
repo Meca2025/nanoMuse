@@ -18,14 +18,15 @@
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="GitHub stars"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="下载量"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/%E6%96%87%E6%A1%A3-nanomuse.cn%2Fdocs-0a66e4" alt="文档"></a>
+  <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-demo.nanomuse.dev-0a66e4" alt="在线体验"></a>
+  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%E5%AE%98%E7%BD%91-nanomuse.cn-0a66e4" alt="官网"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 **nanoMuse 是一个开源的个人智能体，面向你的每一台设备。** 一个有名字、有自己形象的智能体，和 Meta 的 [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) 是同一类东西：不只回答问题，而是动手做事；App 关了也继续干；记得你；遇到无法撤销的操作会先停下来问你。
 
-*nano* 的意思是完整的一套，小到你自己就能跑、能部署：手机 App、桌面 App、网页控制台，还有把它们连在一起的中继，都在这个仓库里，GPL-3.0-or-later。nanoMuse 非盈利。登录就有一份免费的模型额度，走社区中继，钱是开发者出的；用完可以[换自己的 key](../own-key.md)。同一套中继也能跑在你自己的服务器上，数据不用出门。最新版本：**0.1.40 Clear**——[发布说明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [在线体验](https://nanomuse.cn/web/)。
+*nano* 的意思是完整的一套，小到你自己就能跑、能部署：手机 App、桌面 App、网页控制台，还有把它们连在一起的中继，都在这个仓库里，GPL-3.0-or-later。**[免费、开源、非盈利——一起把它做好。](../../CONTRIBUTING.md)** 登录就有一份免费的模型额度，走社区中继，钱是开发者出的；用完可以[换自己的 key](../own-key.md)。同一套中继也能跑在你自己的服务器上，数据不用出门。最新版本：**0.1.40 Clear**——[发布说明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [在线体验](https://demo.nanomuse.dev/)。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/chat-approval.png" width="23%" alt="对话：删工作区里的东西之前停下来问你——只此一次、本次对话、对工作区总是允许，或者拒绝">
@@ -38,8 +39,9 @@
 
 | | |
 |---|---|
+| **浏览器** | [demo.nanomuse.dev](https://demo.nanomuse.dev/)——一台模拟手机上的 nanoMuse，登录后体验。这是演示；下面的客户端才是正式的 |
 | **Android** 8.0 以上，arm64 | [nanoMuse-0.1.40-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-0.1.40-arm64.apk)——每个版本同一把签名，覆盖安装即可升级 |
-| **iPhone / iPad** | TestFlight，目前仅内部测试员 <!-- coordinator: 有公开的 TestFlight 链接后放在这里 --> |
+| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc)——测试版；Apple 的 beta 审核通过后，这个链接就能装到构建 · [iOS](../ios.md) |
 | **macOS** 12 以上 | [Apple 芯片](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-x64.dmg)——没有公证：第一次右键 → 打开 |
 | **Windows** 10 以上 | [nanoMuse-Desktop-0.1.40-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-win-x64.exe)——点一次「仍要运行」 |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.tar.gz) |
@@ -87,6 +89,14 @@
 | 其他设备 | 同一台 VM 的多个客户端 | 只有装了它的那一台 | 设备之间通过 hub 互相拜托，审批在你手里的那台 |
 | 模型 | Meta 的 | 自己带 | 中继的免费额度，或者自己的 |
 | 许可 | 闭源 | GPL-3.0 | GPL-3.0-or-later，基于 OpenMinis |
+
+## 动态
+
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)**——iPhone 的输入框重新露出来了，手机上每条聊天都归自己的账号，中继的每一次拒绝在每个客户端上都是一句直白的话或一张卡片。Mac 拍到的是屏幕的真实画面、拍不到就说明原因，Windows 在挪了安装位置的那次更新之后能再启动，中继的控制台多了「控制」「统计」「官网」三页。
+- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)**——从十八家服务商的目录里填自己的 key，用 ChatGPT 套餐登录，一台设备只显示当前登录账号的对话。
+- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)**——旁聊留在写它的设备上，Mac 上「手」有了自己的助手应用，每个应用都能指向你自己的中继，文档成了站点。
+
+全部版本：[releases](https://github.com/nano-muse/nanoMuse/releases)。
 
 ## 文档
 

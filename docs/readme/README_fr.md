@@ -18,14 +18,15 @@
   <a href="https://github.com/nano-muse/nanoMuse/stargazers"><img src="https://img.shields.io/github/stars/nano-muse/nanoMuse?style=flat&label=stars" alt="Étoiles GitHub"></a>
   <a href="https://github.com/nano-muse/nanoMuse/releases"><img src="https://img.shields.io/github/downloads/nano-muse/nanoMuse/total?label=downloads" alt="Téléchargements"></a>
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
-  <a href="https://nanomuse.cn/docs/"><img src="https://img.shields.io/badge/Docs-nanomuse.cn%2Fdocs-0a66e4" alt="Documentation"></a>
+  <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/Essayer-demo.nanomuse.dev-0a66e4" alt="Essayer dans le navigateur"></a>
+  <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/Site_web-nanomuse.cn-0a66e4" alt="Site web"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 **nanoMuse est un agent personnel open source pour chacun de vos appareils.** Un seul agent, avec un nom et une apparence à lui, dans l'esprit du [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) de Meta : il agit au lieu de répondre à des questions, continue de travailler quand l'app est fermée, se souvient de vous, et s'arrête pour demander avant tout ce que vous ne pourriez pas annuler.
 
-*nano* veut dire l'ensemble complet, assez petit pour que vous le fassiez tourner et le déployiez vous-même : l'app du téléphone, l'app de bureau, la console web et le relais qui les relie sont tous dans ce dépôt, sous GPL-3.0-or-later. nanoMuse est à but non lucratif. Connectez-vous et vous recevez un crédit gratuit d'utilisation des modèles sur le relais de la communauté — payé par le développeur ; quand il est épuisé, [utilisez votre propre clé](../own-key.md). Le même relais tourne sur un serveur à vous, et rien n'a besoin de sortir de chez vous. Dernière version : **0.1.40 Clear** — [notes de version](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [essayer dans le navigateur](https://nanomuse.cn/web/).
+*nano* veut dire l'ensemble complet, assez petit pour que vous le fassiez tourner et le déployiez vous-même : l'app du téléphone, l'app de bureau, la console web et le relais qui les relie sont tous dans ce dépôt, sous GPL-3.0-or-later. **[Gratuit, open source, à but non lucratif — construisons-le ensemble.](../../CONTRIBUTING.md)** Connectez-vous et vous recevez un crédit gratuit d'utilisation des modèles sur le relais de la communauté — payé par le développeur ; quand il est épuisé, [utilisez votre propre clé](../own-key.md). Le même relais tourne sur un serveur à vous, et rien n'a besoin de sortir de chez vous. Dernière version : **0.1.40 Clear** — [notes de version](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [essayer dans le navigateur](https://demo.nanomuse.dev/).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Chat : avant de supprimer dans l'espace de travail, l'agent s'arrête et demande — une fois, cette conversation, toujours pour l'espace de travail, ou refuser">
@@ -38,8 +39,9 @@
 
 | | |
 |---|---|
+| **Navigateur** | [demo.nanomuse.dev](https://demo.nanomuse.dev/) — un nanoMuse sur un téléphone simulé, après connexion. Une démo ; les apps ci-dessous sont les vraies |
 | **Android** 8.0+, arm64 | [nanoMuse-0.1.40-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-0.1.40-arm64.apk) — chaque version est signée avec la même clé et s'installe par-dessus la précédente |
-| **iPhone / iPad** | TestFlight, testeurs internes pour l'instant <!-- coordinator: lien TestFlight public quand il existera --> |
+| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc) — une bêta ; le lien fournit la build dès qu'Apple a validé la bêta · [iOS](../ios.md) |
 | **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-x64.dmg) — non notarisé : clic droit → *Ouvrir* la première fois |
 | **Windows** 10+ | [nanoMuse-Desktop-0.1.40-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-win-x64.exe) — cliquez une fois sur *Exécuter quand même* |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.tar.gz) |
@@ -52,10 +54,10 @@ Tous les téléchargements viennent de la [dernière version](https://github.com
 <table>
   <tr>
     <td width="50%" valign="top"><b>Il agit.</b><br>Un shell Linux, un navigateur, des serveurs MCP et des compétences — et, avec <i>Mains</i> activé, les apps de votre téléphone et les fenêtres de votre ordinateur à travers leur écran, pour tout ce qui n'a jamais eu d'API.</td>
-    <td width="50%" valign="top"><b>Il demande d'abord.</b><br>Un arrêt avant de supprimer, d'envoyer ou de payer, mémorisé pour une fois, cette conversation ou toujours ; les mots de passe et les codes, c'est vous qui les tapez. Une connexion ou un CAPTCHA vous est remis ; <i>Terminé</i> reprend.</td>
+    <td width="50%" valign="top"><b>Il demande d'abord.</b><br>Il s'arrête avant de supprimer, d'envoyer ou de payer, et retient votre réponse pour une fois, pour cette conversation ou pour toujours ; les mots de passe et les codes, c'est vous qui les tapez. Quand il faut se connecter ou résoudre un CAPTCHA, il vous passe la main ; <i>Terminé</i> reprend.</td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><b>Il atteint vos autres appareils.</b><br>Dites-le sur le téléphone, ça s'exécute sur votre PC ; <code>@Mac …</code> au début d'un message envoie la tâche là-bas. Les approbations reviennent sur l'appareil que vous tenez.</td>
+    <td width="50%" valign="top"><b>Il atteint vos autres appareils.</b><br>Dites-le sur le téléphone, ça s'exécute sur votre PC ; <code>@Mac …</code> au début d'un message envoie la tâche là-bas. Les approbations reviennent sur l'appareil que vous avez en main.</td>
     <td width="50%" valign="top"><b>Il continue.</b><br>Des objectifs vérifiés selon un planning, des routines qui tournent app fermée, un fil écrit pour vous chaque matin.</td>
   </tr>
   <tr>
@@ -88,6 +90,14 @@ Chaque appareil fait tourner son propre agent — le téléphone dans l'APK (Alp
 | Modèles | Ceux de Meta | Les vôtres | Le crédit gratuit du relais, ou les vôtres |
 | Licence | Fermée | GPL-3.0 | GPL-3.0-or-later, construit sur OpenMinis |
 
+## Actualités
+
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — le champ de saisie de l'iPhone est de nouveau visible, chaque conversation du téléphone appartient à son compte, et chaque refus du relais est une phrase claire ou une carte sur tous les clients. Le Mac capture la vraie image de l'écran ou dit pourquoi il ne peut pas, Windows redémarre après la mise à jour qui avait déplacé l'app, et la console du relais a les pages Contrôles, Statistiques et Site.
+- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — votre propre clé parmi un catalogue de dix-huit fournisseurs, connexion avec un abonnement ChatGPT, et un appareil n'affiche que les conversations du compte connecté.
+- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — les conversations secondaires restent sur l'appareil qui les a créées, une app auxiliaire sur Mac détient les permissions des mains, chaque app peut pointer vers un relais à vous, et la documentation est devenue un site.
+
+Toutes les versions : [releases](https://github.com/nano-muse/nanoMuse/releases).
+
 ## Documentation
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/) — l'installation par plateforme, tous les appareils, les mains, les connecteurs, la mémoire, l'auto-hébergement, les protocoles. Les sources sont dans [docs/](../) ; ce qui a changé à chaque version est dans le [CHANGELOG](../../CHANGELOG.md) et [docs/releases/](../releases/).
@@ -98,13 +108,13 @@ Un VPS, une heure : [docs/self-hosting.md](../self-hosting.md). Trois voies — 
 
 ## Contribuer
 
-Servez-vous-en pour une vraie tâche, signalez ce qui a cassé, puis choisissez quelque chose de précis : [CONTRIBUTING.md](../../CONTRIBUTING.md) a l'installation et les conventions, [AGENTS.md](../../AGENTS.md) les règles qu'un agent de programmation suit dans cet arbre, et la [feuille de route](../roadmap.md) dit par où commencer. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
+Servez-vous-en pour une vraie tâche, signalez ce qui a cassé, puis choisissez quelque chose de précis : [CONTRIBUTING.md](../../CONTRIBUTING.md) décrit l'installation et les conventions, [AGENTS.md](../../AGENTS.md) les règles qu'un agent de programmation suit dans ce dépôt, et la [feuille de route](../roadmap.md) dit par où commencer. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
 
 ## Remerciements
 
-nanoMuse s'appuie sur le travail d'autres ; [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) en donne les termes.
+nanoMuse s'appuie sur le travail d'autres personnes ; [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) en donne les termes.
 
-- [OpenMinis](https://github.com/OpenMinis/OpenMinis) — l'agent sur l'appareil sur lequel l'app du téléphone est construite, avec [proot](https://github.com/nano-muse/proot) et [Alpine Linux](https://alpinelinux.org/) pour le bac à sable.
+- [OpenMinis](https://github.com/OpenMinis/OpenMinis) — l'agent embarqué sur lequel est bâtie l'app du téléphone, avec [proot](https://github.com/nano-muse/proot) et [Alpine Linux](https://alpinelinux.org/) pour le bac à sable.
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — le harnais d'agents dont l'app de bureau est un plugin.
 - [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance) — l'opérateur des mains du bureau est un portage du leur, et les marqueurs de la scène suivent leur ScreenMarker.
 - [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/PhoneHarness/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ZJU-REAL/ClawGUI) — l'opérateur du téléphone, les traces et les idées de produit.

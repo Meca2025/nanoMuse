@@ -24,8 +24,9 @@ hero:
 
 | | |
 |---|---|
+| **Browser** | [demo.nanomuse.dev](https://demo.nanomuse.dev/) — a nanoMuse on a simulated phone, after a sign-in. A demo; the apps below are the real thing |
 | **Android** 8.0+, arm64 | [nanoMuse-0.1.40-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-0.1.40-arm64.apk) · [how to install](/android) |
-| **iPhone / iPad** | TestFlight, internal testers for now · [iOS](/ios) |
+| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc) — a beta; the link delivers the build once Apple's beta review has passed · [iOS](/ios) |
 | **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-mac-x64.dmg) · [the desktop app](/desktop) |
 | **Windows** 10+ | [nanoMuse-Desktop-0.1.40-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-win-x64.exe) |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.40/nanoMuse-Desktop-0.1.40-linux-x64.tar.gz) |

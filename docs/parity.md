@@ -95,7 +95,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Splash: wordmark and the person's own face, never the dragon | ✓ | ✓ system launch screen | ✓ 0.1.35 | n/a |
 | Settings as Muse cards in one order (Image & video models · Avatar · Computers · Appearance · … · Version) | ✓ | ✓ 0.1.35 | ✓ sections | ✓ sections |
 | Memory as a room | — settings page *(14)* | — | ✓ | ✓ |
-| Live stage / browser viewer while the hands work | ✓ stage | n/a *(10)* | ✓ live stage — movable, resizable, remembered 0.1.33; Allow/Deny, holds, glow 0.1.34 | ✓ browser viewer you can drive 0.1.34 |
+| Stage / browser viewer while the hands work | ✓ stage | n/a *(10)* | ✓ the glow and the capsule while the hands work, the run's trajectory in the chat 0.1.40 (a live stage from 0.1.33 to 0.1.39); Allow/Deny, holds 0.1.34 | ✓ browser viewer you can drive 0.1.34 |
 | Every working light breathes (2.4 s in, 2.4 s out), none runs; steady under reduce-motion | ✓ round 9: the stage's comet and scan line gone, the capsule's ring and bars breathe | n/a *(10)* | ✓ 0.1.40 | ✓ 0.1.40 |
 | Quick chat (global shortcut) | n/a | n/a | ✓ | n/a |
 | Widgets | ✓ upstream | ✓ upstream | n/a | n/a |
@@ -157,8 +157,8 @@ notes above; a settled item keeps its number and says how it went.
     the accent follows the avatar.
 14. **Android · Memory as a room.** It is a settings page on the phone, a room elsewhere. Design
     call.
-15. **Browser viewer on the desktop.** The live stage shows the hands; a page viewer like the web
-    app's is not there. Design call.
+15. **Browser viewer on the desktop.** The trajectory in the chat shows the hands; a page viewer
+    like the web app's is not there. Design call.
 16. **Hand-over on the desktop and the web** — settled in 0.1.34, both: *holds* in the runtime
     (`nanomuse/agent/holds.py`; `hand_over` on `browser`, `computer_act`, `phone_act`; `POST
     /api/holds`, `/done`; `hold` events; the agent waits up to ten minutes and looks again). The
