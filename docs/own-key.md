@@ -151,8 +151,14 @@ host, port, an optional user name and password; off by default, kept on this
 phone only. Only the requests to the providers you added with your own key and
 to the ChatGPT plan go through it; nanoMuse Cloud, your computers and the local
 network never do. A *Test* row fetches `https://chatgpt.com/` through the proxy
-as entered and says whether it got through and in how many milliseconds. On
-the desktop and the runtime the same switch is `[llm] proxy` in `config.toml`
+as entered and says whether it got through and in how many milliseconds. The
+same setting lives where each app keeps its keys: the phones have it in the
+provider form; the desktop under **Settings → nanoMuse Cloud → Network**, one
+address (`http://host:port` or `socks5://host:port`) that the app applies to its
+host process at the next start — *Restart now* is under the row — so every own
+key, the ChatGPT sign-in, the hands' runtime and whatever else the app sends out go
+through it, and nanoMuse Cloud never does ([desktop.md](desktop.md)); the web app has the *Proxy* field in the
+own-key form; the runtime has `[llm] proxy` in `config.toml`
 ([configuration.md](configuration.md#llm)).
 
 ## Local models

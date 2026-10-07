@@ -222,7 +222,10 @@ fun AvatarStudioScreen(onBack: () -> Unit, onOpenSoul: () -> Unit, onOpenMediaMo
                     }
                     if (starAsk) {
                         Spacer(Modifier.height(12.dp))
-                        io.github.nanomuse.community.StarNudgeCard(text = stringResource(R.string.nm_star_new_look), onDone = { starAsk = false })
+                        io.github.nanomuse.community.StarNudgeCard(
+                            text = remember { io.github.nanomuse.community.StarPrompt.text(context, io.github.nanomuse.community.StarPrompt.Ask(io.github.nanomuse.community.StarPrompt.Moment.NEW_LOOK)) },
+                            onDone = { starAsk = false },
+                        )
                     }
                 }
             }

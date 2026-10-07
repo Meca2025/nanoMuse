@@ -89,7 +89,7 @@ ChatGPT 登录走的是 OpenAI 自家 Codex 的授权流程（网页版 / 桌面
 
 有些网络到不了 `chatgpt.com`（DNS 不解析、连接超时、TLS 失败、返回的是一张 HTML 拦截页），有些地区 OpenAI 直接拒绝（HTTP 403 `unsupported_country_region_territory`）。这时手机上的对话不再显示 socket 原文，而是一张卡片：发生了什么（「这个网络连不上 chatgpt.com」或「OpenAI 不向这个地区提供服务」）、能帮上忙的（这台手机上的 VPN；应用自己的代理，设置 → 网络；换一个服务商、用自己的 key）、一个「重试」按钮，原始错误收在「详情」里供提 issue 用。登录失效（401）显示「ChatGPT 登录已失效」和「重新登录」；套餐这几个小时的余量用完（429 且写明 usage limit）显示「ChatGPT 套餐暂时没有余量了」、OpenAI 自己的那句话和多久后恢复；其他 429 是「同时发出的请求太多」。自己的 key 遇到同样的网络问题，卡片一样出现，只是主机名换成那家服务商的。
 
-**设置 → 网络 → 自有服务商的 HTTP 代理**（Android 和 iPhone 都有）：主机、端口、可选的用户名和密码，默认关闭，只存在这台手机上。只有发往你用自己 key 添加的服务商和 ChatGPT 套餐的请求走它；nanoMuse Cloud、你的电脑和局域网从不经过它。页面上有一行「测试」，通过这个代理抓一次 `https://chatgpt.com/`，告诉你通没通、多少毫秒。桌面版和运行时的对应项是 `config.toml` 里的 `[llm] proxy`（[configuration.md](configuration.md#llm)）。
+**设置 → 网络 → 自有服务商的 HTTP 代理**（Android 和 iPhone 都有）：主机、端口、可选的用户名和密码，默认关闭，只存在这台手机上。只有发往你用自己 key 添加的服务商和 ChatGPT 套餐的请求走它；nanoMuse Cloud、你的电脑和局域网从不经过它。页面上有一行「测试」，通过这个代理抓一次 `https://chatgpt.com/`，告诉你通没通、多少毫秒。同一个设置在每个应用里都放在存 key 的地方：手机在服务商表单里；桌面版在**设置 → nanoMuse Cloud → 网络**，一个地址（`http://host:port` 或 `socks5://host:port`），应用在下次启动时写进它的 Host 进程——这一行下面有「立即重启」——于是每把自己的 key、ChatGPT 登录、手的运行时和这个应用对外发出的其他请求都走它，nanoMuse 云端永远不走（[desktop.md](desktop.md)）；网页版在自有 key 表单里有「代理」一栏；运行时是 `config.toml` 里的 `[llm] proxy`（[configuration.md](configuration.md#llm)）。
 
 ## 本机模型 {#local-models}
 

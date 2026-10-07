@@ -534,6 +534,61 @@ final class NanoMuseLogicTests: XCTestCase {
         XCTAssertEqual(p.maxAsks, 2)
     }
 
+    func testNudgePolicyReadsTheOperatorsSentence() {
+        let d = NanoMuseNudgePolicy.defaults
+        XCTAssertEqual(d.text, "")
+        XCTAssertEqual(d.textZh, "")
+        XCTAssertNil(d.sentence(chinese: false), "without a sentence the app's own line stays")
+        XCTAssertNil(d.sentence(chinese: true))
+
+        // A cached copy from before the fields: neither key, both empty, the same policy.
+        var old: [String: Any] = d.json
+        var star: [String: Any] = old["star"] as? [String: Any] ?? [:]
+        star.removeValue(forKey: "text")
+        star.removeValue(forKey: "text_zh")
+        old["star"] = star
+        XCTAssertEqual(NanoMuseNudgePolicy.parse(old), d)
+
+        let p = NanoMuseNudgePolicy.parse([
+            "star": ["text": "  Stars help.  ", "text_zh": "\n点个 star。\t"] as [String: Any],
+        ])
+        XCTAssertEqual(p.text, "Stars help.", "trimmed")
+        XCTAssertEqual(p.textZh, "点个 star。")
+        XCTAssertEqual(NanoMuseNudgePolicy.parse(p.json), p, "round trip through the cache")
+
+        let odd = NanoMuseNudgePolicy.parse(["star": ["text": 42, "text_zh": ["x"]] as [String: Any]])
+        XCTAssertEqual(odd.text, "", "not a string: empty, never a crash")
+        XCTAssertEqual(odd.textZh, "")
+    }
+
+    func testNudgePolicyDropsASentenceOver200Characters() {
+        let ok = String(repeating: "a", count: 200)
+        let tooLong = String(repeating: "a", count: 201)
+        let p = NanoMuseNudgePolicy.parse(["star": ["text": ok, "text_zh": tooLong] as [String: Any]])
+        XCTAssertEqual(p.text, ok)
+        XCTAssertEqual(p.textZh, "")
+        let padded = String(repeating: " ", count: 10) + ok + String(repeating: " ", count: 10)
+        XCTAssertEqual(NanoMuseNudgePolicy.parse(["star": ["text": padded] as [String: Any]]).text, ok, "the limit applies after trimming")
+    }
+
+    func testNudgePolicySentenceFallsBackInOrder() {
+        var both = NanoMuseNudgePolicy.defaults
+        both.text = "English line"
+        both.textZh = "中文句子"
+        XCTAssertEqual(both.sentence(chinese: true), "中文句子")
+        XCTAssertEqual(both.sentence(chinese: false), "English line")
+
+        var englishOnly = NanoMuseNudgePolicy.defaults
+        englishOnly.text = "English line"
+        XCTAssertEqual(englishOnly.sentence(chinese: true), "English line", "Chinese without text_zh takes text")
+        XCTAssertEqual(englishOnly.sentence(chinese: false), "English line")
+
+        var chineseOnly = NanoMuseNudgePolicy.defaults
+        chineseOnly.textZh = "中文句子"
+        XCTAssertEqual(chineseOnly.sentence(chinese: true), "中文句子")
+        XCTAssertNil(chineseOnly.sentence(chinese: false), "another language never takes text_zh")
+    }
+
     func testStarGate() {
         let policy = NanoMuseNudgePolicy.defaults
         var ledger = NanoMuseStarLedger()

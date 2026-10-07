@@ -47,6 +47,20 @@ def test_normalize_keeps_the_defaults_where_the_relay_makes_no_sense():
     assert star["moments"]["days_used"] == [7, 30]  # a string is not a list: the default
     assert star["moments"]["goal_done"] is False and star["moments"]["signed_in"] is True
     assert "extra" not in star and "other" not in out
+    assert star["text"] == "" and star["text_zh"] == ""
+
+
+def test_normalize_keeps_the_star_cards_sentence_from_the_relay():
+    """``star.text`` / ``star.text_zh`` (relay, this round): trimmed, kept up to 200
+    characters, dropped beyond that or when they are not strings; empty by default."""
+    out = nudges.normalize(
+        {"star": {"text": "  A word from the relay.  ", "text_zh": "来自中继的一句话。"}}
+    )
+    assert out["star"]["text"] == "A word from the relay."
+    assert out["star"]["text_zh"] == "来自中继的一句话。"
+    long = nudges.normalize({"star": {"text": "x" * 201, "text_zh": ["no"]}})
+    assert long["star"]["text"] == "" and long["star"]["text_zh"] == ""
+    assert nudges.normalize({"star": {"text": "y" * 200}})["star"]["text"] == "y" * 200
 
 
 def _relay(handler) -> httpx.AsyncClient:  # noqa: ANN001

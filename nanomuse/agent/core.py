@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -75,6 +76,9 @@ class MuseAgent:
         # before the next model call instead of waiting for the current run to finish.
         self.inbox: asyncio.Queue[str | Incoming] | None = None
         self._told_no_vision = False
+        # Words for this conversation alone, read when the system prompt is built (the first
+        # conversation's phase, nanomuse/server/firstrun.py); None or "" adds nothing.
+        self.prompt_addendum: Callable[[], str] | None = None
 
     def _drain_inbox(self) -> int:
         if self.inbox is None:
@@ -298,6 +302,9 @@ class MuseAgent:
             if a.instructions.strip()
             else ""
         )
+        addendum = (self.prompt_addendum() if self.prompt_addendum is not None else "").strip()
+        if addendum:
+            extra += f"\n## This conversation\n{addendum}\n"
         return prompts.SYSTEM_PROMPT.format(
             name=a.name,
             language_rule=language_rule,

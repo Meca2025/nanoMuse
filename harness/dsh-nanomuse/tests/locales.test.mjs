@@ -30,6 +30,7 @@ const SAME_ON_PURPOSE = new Set([
   'ownKeyKeyField',
   'ownKeyChatGptRow',
   'ownKeyModelFrom',
+  'nwProxyPlaceholder',
 ])
 
 const holes = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',')

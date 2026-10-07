@@ -42,8 +42,14 @@ DEFAULT_NUDGES: dict[str, Any] = {
         },
         "cooldown_days": 7,
         "max_asks": 4,
+        # the star card's sentence from the relay (English, and Chinese for a Chinese UI);
+        # empty: each client's own sentence for the moment
+        "text": "",
+        "text_zh": "",
     },
 }
+# the card's sentence is at most this long; anything longer is dropped
+TEXT_MAX = 200
 
 REFRESH_S = 24 * 3600
 TIMEOUT_S = 6.0
@@ -100,6 +106,9 @@ def normalize(body: Any) -> dict[str, Any]:
         star["url"] = url
     star["cooldown_days"] = _as_int(star_in.get("cooldown_days"), 0, 365, star["cooldown_days"])
     star["max_asks"] = _as_int(star_in.get("max_asks"), 0, 50, star["max_asks"])
+    for name in ("text", "text_zh"):
+        text = star_in.get(name)
+        star[name] = text.strip() if isinstance(text, str) and len(text.strip()) <= TEXT_MAX else ""
     moments_in = star_in.get("moments")
     if isinstance(moments_in, dict):
         moments = star["moments"]
@@ -241,4 +250,4 @@ class NudgesPolicy:
         return self.view()
 
 
-__all__ = ["DEFAULT_NUDGES", "REFRESH_S", "NudgesPolicy", "defaults", "normalize"]
+__all__ = ["DEFAULT_NUDGES", "REFRESH_S", "TEXT_MAX", "NudgesPolicy", "defaults", "normalize"]

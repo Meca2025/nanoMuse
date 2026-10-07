@@ -60,6 +60,23 @@ harness 构建以 *nanoMuse Harness* 的名字另放在旁边；从 0.1.30 起�
   （从磁盘读取，发一条消息就启动助手自己的 CLI，运行连同它的工具一边跑一边显示，「停止」
   结束它），之后是账号下其他电脑的，走这台电脑同样声明的 `coding.*` hub 动作；设备卡片上的
   「编程助手」标签打开那台电脑的这一页（[coding-agents.md](coding-agents.md)）。
+- **网络**（设置 → nanoMuse Cloud → 网络）：给这个应用对外请求用的一个代理——`http://host:port`、
+  `https://`、`socks5://` 或 `socks5h://`，可以带 `user:pass@`，显示时会遮住。dsh Host 发出的请求
+  都经过它：你自己的 key、ChatGPT 登录的调用、「列出模型」、工具读取的网页、连接的服务、更新检查，
+  还有手的运行时（`nanomuse mcp` 继承同一组变量）。nanoMuse 云端——中继、hub 的 WebSocket、同步——和本机回环永远不经过。
+  外壳把它存在 `desktop.json` 里，和「登录时启动」放在一起，启动 dsh Host 时写进它的环境
+  （`HTTP_PROXY`、`HTTPS_PROXY`、SOCKS 时还有 `ALL_PROXY`，`NO_PROXY` 带着
+  `localhost,127.0.0.1,::1`、`cloud.nanomuse.cn` 和插件所连的中继，以及让 Node 的 fetch 读这些
+  变量的 `NODE_USE_ENV_PROXY=1`），所以重启后生效——这一行下面的「立即重启」会在窗口不关的
+  情况下重启 Host。手机上同样的设置在服务商表单里，网页版在自有 key 表单里，运行时是
+  `[llm] proxy`（[own-key.md](own-key.md#when-the-provider-cannot-be-reached)）；
+- **长期授权**（设置 → 权限）：这台电脑记住的所有授权列成一张表，按手机权限页的三档分组——
+  「不再询问」（远程控制开关：账号下的每台设备都可以在这里执行操作）、「卡片上记住的」
+  （在远程控制卡片上选了「始终」的设备；在权限卡片上选了「在 <应用> 里始终允许」的手）、
+  「先执行再告知」（桌面版目前没有东西落在这一档）。每一行写明允许了什么、给谁或在哪里、什么
+  时候，带一个「撤回」；空状态说明是卡片上的「始终」把一行放到这里来的。电脑操作页和个人资料
+  抽屉各自保留较短的列表；这一张是完整的。Host 用 `GET /nanomuse/cloud/grants` 回答这张表，
+  `POST /grants/revoke {id}` 撤回其中任何一行。
 
 ## 额度用完时，以及中继的其他回答 {#when-the-allowance-is-used-up-and-the-relay-s-other-answers}
 
@@ -73,7 +90,9 @@ harness 构建以 *nanoMuse Harness* 的名字另放在旁边；从 0.1.30 起�
   不是写死在应用里的——还有「图文教程」（[own-key.md](own-key.md)）；
 - **你已经在付费的套餐**：ChatGPT 登录就在这里，附上中继对它的提醒；
 - **邀请朋友**：你们各得的奖励，和「复制链接」；
-- 请你在 GitHub 上点一颗 star，只出现一次，且只在提示策略允许时；
+- 请你在 GitHub 上点一颗 star，只出现一次，且只在提示策略允许时——卡片的标题和按钮是应用
+  自己的；那句话也是应用自己的，除非中继的策略带了一句（`star.text`、`star.text_zh`，最多
+  200 个字符；中文界面取 `text_zh`，没有就取 `text`；[cloud.md](cloud.md)）；
 - 「打开“设置 → nanoMuse Cloud”」和「再试一次」（设好一条路之后，同样的话会再发一遍）。
 
 中继的其他拒绝，每一种都是一句平实的话，用应用的语言说，从不直接显示状态码或 JSON 正文：

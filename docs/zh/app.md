@@ -38,13 +38,13 @@ nanomuse serve --port 9000 --no-qr
   <img src="../screenshots/web/onboarding.png" width="24%" alt="第一次打开：认识你的 nanoMuse">
 </p>
 
-数据目录是全新的时候，应用打开的是设置流程，不是聊天。先用三句话说它是什么——替你做事；App 关了也继续干；要紧的地方先问你——然后是一张三项的清单，做完一项打一个勾：
+数据目录是全新的时候，应用打开的是设置流程，不是聊天。先用三句话说它是什么——替你做事；App 关了也继续干；要紧的地方先问你——再加一句：不用填表，有了模型之后它会在聊天里介绍自己，并问你希望怎么称呼你。然后是一张清单，做完一项打一个勾：
 
-1. **认识你的 nanoMuse**——先是名字（1–20 个字符；六个建议和一个「换一批」；留空就是 nanoMuse），然后是形象、一句话的标语，再是它怎么说话：*语气*（正式 / 随和 / 活泼 / 简洁）、*说多少*（简短 / 详细 / 要点列表）、其他想交代的用你自己的话写，还有它该怎么称呼你。
-2. **添加模型**——服务商按协议分组（OpenAI 兼容的 Chat Completions · Responses API · 本地或你自己的端点），每家带一行厂商小字：DeepSeek、Kimi、Qwen、GLM、豆包、MiniMax、OpenAI、OpenRouter、Ollama，或者任何 OpenAI 兼容端点。key 默认遮住，有个开关可以显示出来，每家厂商都有一个「去申请 key」的链接；key 进的是服务器上的保险库，模型永远看不到它。Base URL 没有路径时会补上 `/v1`；Ollama 和自定义端点可以没有 key。模型列表由端点自己的 `/models` 填上（连不上时用一份内置目录顶替）；你手动输入的模型永远不会被替换。
-3. **连接邮箱、日历、通讯录**——可选。
+1. **添加模型**——服务商按协议分组（OpenAI 兼容的 Chat Completions · Responses API · 本地或你自己的端点），每家带一行厂商小字：DeepSeek、Kimi、Qwen、GLM、豆包、MiniMax、OpenAI、OpenRouter、Ollama，或者任何 OpenAI 兼容端点。key 默认遮住，有个开关可以显示出来，每家厂商都有一个「去申请 key」的链接；key 进的是服务器上的保险库，模型永远看不到它。Base URL 没有路径时会补上 `/v1`；Ollama 和自定义端点可以没有 key。模型列表由端点自己的 `/models` 填上（连不上时用一份内置目录顶替）；你手动输入的模型永远不会被替换。
+2. **连接邮箱、日历、通讯录**——可选。
+3. **开始**——打开聊天，智能体先开口，问你的名字，再和你一起给自己起名：第一次对话（[web.md](web.md#the-first-run-and-the-chats-opening)）。
 
-「开始」在存下一个模型之前一直锁着；「跳过设置」始终都在。刷新页面不会丢掉已经打的勾。这里的每一项以后都能在形象下面改（「设置」里是同一张身份表单）。设置流程完成以后，或者已经有了对话以后，就不会再出现。如果完成时已经有模型，动态的第一天会在后台写好（`POST /api/onboarded`），这样第一次打开那个房间时不是空的；否则动态打开的是它的介绍卡片，告诉你它的每日例程什么时候跑。
+「开始」在存下一个模型之前一直锁着；「跳过设置」始终都在，它也跳过第一次对话。刷新页面不会丢掉已经打的勾。名字、形象、标语和语气以后都能在形象下面改（「设置」里有身份表单）。设置流程完成以后，或者已经有了对话以后，就不会再出现。「开始」把设置标记为完成（`POST /api/firstrun/start`，等同于 `POST /api/onboarded`）；那时已经有对话，或者第一次对话结束时，动态的第一天会在后台写好，这样第一次打开那个房间时不是空的；否则动态打开的是它的介绍卡片，告诉你它的每日例程什么时候跑。
 
 ## 屏幕上有什么 {#what-is-on-the-screen}
 
@@ -195,7 +195,11 @@ Meta 的 Muse「自己会做事，但不会做太多」。「设置」里的*主
 | POST | `/api/skills/import` `{url}` | 抓取一个 `SKILL.md`——原始链接，或者 GitHub 的文件夹页或文件页——然后保存 |
 | GET · PUT · DELETE | `/api/vault` · `/api/vault/{name}` `{value}` | 列出密钥名 / 存入 / 删除。值永远不会返回 |
 | POST | `/api/onboarded` `{done}` | 标记第一次打开的设置已完成；配好了模型的话，动态的第一天当时就在后台写好（`feed_started`） |
-| GET | `/api/nudges`（`?refresh=1`） | 应用什么时候可以请你在 GitHub 上点个 star：中继的策略（`/v1/nudges`，每天读一次，登录时也读）叠在内置默认值之上——`{star{enabled, url, moments{signed_in, tasks[], new_look, exhausted, days_used[], goal_done}, cooldown_days, max_asks}, version, source}` |
+| GET | `/api/firstrun`（`?lang=`） | 第一次对话（[web.md](web.md#the-first-run-and-the-chats-opening)）：`{phase (none · ask_user_name · ask_agent_name · named · done), session_id, user_address, suggestions, chips, chosen, lang, running, started_at, finished_at, intro[]}`——`chips` 是起名卡片提供的名字，`intro` 是用 `lang` 说的三句开场白 |
+| POST | `/api/firstrun/start` `{lang}` | 「开始」：把对话绑定到主聊天，标记设置已完成，`none → ask_user_name`；已经有对话时跳过这套开场（`done`）。返回带 `intro` 的视图 |
+| POST | `/api/firstrun/pick` `{name}` | 在 `ask_agent_name` 阶段点了一个名字：名字立刻存进资料，阶段变为 `named`；不该选的时候 409，名字为空 400 |
+| POST | `/api/firstrun/dismiss` | 撤掉起名卡片，开场结束（`done`） |
+| GET | `/api/nudges`（`?refresh=1`） | 应用什么时候可以请你在 GitHub 上点个 star：中继的策略（`/v1/nudges`，每天读一次，登录时也读）叠在内置默认值之上——`{star{enabled, url, moments{signed_in, tasks[], new_look, exhausted, days_used[], goal_done}, cooldown_days, max_asks, text, text_zh}, version, source}`；`text` / `text_zh` 是中继设置时 Star 卡片显示的那句话（最多 200 个字符，否则用应用自己的话） |
 | GET | `/api/update`（`?refresh=1`） | `{current, enabled, latest, newer, url, download_url, checked_at, source (nanomuse.cn · github), error}`——最新的发布，先查 `nanomuse.cn/dl/index.json`，再查 GitHub 的 `releases/latest`；缓存一天 |
 | GET / PUT | `/api/sync/state` · `{enabled}` | 账号各设备之间同步的对话（[every-device.md](every-device.md#the-same-conversations-everywhere)）：`{enabled, available, paused, cursor, last_pull_at, last_push_at, error, relay}`——`available` 是「已登录且设置允许」，`paused` 在收到 401 后置上，直到下一次登录，`relay` 是中继自己的 `{enabled, cursor, counts{conversations, messages}, limits}`，问不到时为 `null`。`PUT {enabled: false}` 在这里关掉同步，并删掉中继为这个账号保存的内容（其他设备的开关会在它们下一次推送或拉取时跟着关，中继会以 `sync_off` 拒绝）；`PUT {enabled: true}` 重新打开，并把这里的聊天推上去。中继的拒绝会以它的状态码和代码原样返回（`409 sync_off`）。从 0.1.38 起，状态里还带 `side_chats`（这台设备的*同时同步旁聊*，默认关闭：只推送和拉取主要聊天）和 `working`（`[{thread, cid, device, device_name, at}]`——此刻正在回答的其他设备，来自 hub 的 `working` 帧，每条十分钟后丢弃）；`PUT {side_chats: true}` 把这台设备的旁聊发上去，并从头把账号的旁聊拉一次，`false` 则从此留在本地 |
 | POST | `/api/sync/delete` | 删掉中继上每一段已同步的对话，开关保持原样；返回状态 |
@@ -220,6 +224,7 @@ Meta 的 Muse「自己会做事，但不会做太多」。「设置」里的*主
 | `stream_start` / `delta` / `stream_end` | 正在生成的助手回复；流出来的内容最后发现不是回复时（提示词模式的工具调用、安静的后台轮次），`stream_end` 带 `discard: true` |
 | `status` | idle / working / waiting，附一行简短说明 |
 | `thread`、`thread_cleared`、`thread_deleted` | 会话列表的变化 |
+| `firstrun` | `{firstrun}`——第一次对话往前走了一步（「开始」、模型的 `nanomuse-naming` 代码块、选了名字、撤掉卡片）：和 `GET /api/firstrun` 同样的视图，不带 `intro`；聊天据此重画起名卡片。`hello` 的状态在 `firstrun` 下带着它 |
 | `goals`、`memory`、`ideas`、`feed_posts`、`profile`、`settings`、`connections`、`skills`、`approvals_reset` | 给各标签页的刷新提示 |
 | `phone` | 一台手机连上或离开了：`/api/phone` 的视图 |
 | `schedule` | `next_wake_at` 变了（设了或触发了一条提醒、某个目标的节奏变了、免打扰时段结束了）：`{next_wake_at}`，没有到期事项时为 `null`。Android 运行时据此重设它的闹钟 |

@@ -15,6 +15,7 @@ import { settingsBus } from './bus.ts'
 import { IconCopy, IconHeart } from './icons.tsx'
 import { REPO_URL } from './panels.ts'
 import { peekRooms, roomsCall, type NudgeAsk } from './rooms.ts'
+import { starText } from '../nudges.ts'
 
 /** `GET /v1/me`, the parts this page reads (every field optional: an older relay sends fewer). */
 export interface AccountSheet {
@@ -60,8 +61,8 @@ const when = (ts: number | null | undefined, locale: string): string => (ts ? ne
  * thank-you, never a bill.
  */
 export type StarMoment = 'signed_in' | 'new_look' | 'exhausted' | 'goal_done'
-/** The words for an ask the host granted. */
-export function nudgeText(t: Translate, ask: NudgeAsk): string {
+/** The app's own words for an ask the host granted, by its moment. */
+function momentText(t: Translate, ask: NudgeAsk): string {
   switch (ask.moment) {
     case 'signed_in': return t('starSignedIn')
     case 'new_look': return t('starNewLook')
@@ -70,6 +71,14 @@ export function nudgeText(t: Translate, ask: NudgeAsk): string {
     case 'tasks': return ask.n === 1 ? t('ndTasksOne') : t('ndTasks', { n: ask.n ?? 0 })
     case 'days_used': return ask.n === 7 ? t('ndWeek') : ask.n === 30 ? t('ndMonth') : t('ndDays', { n: ask.n ?? 0 })
   }
+}
+/**
+ * The card's body sentence: the relay's, when its policy carries one (`star.text_zh` for a
+ * Chinese UI, else `star.text`), else the app's own for the moment. The title and the buttons
+ * are always the app's.
+ */
+export function nudgeText(t: Translate, ask: NudgeAsk): string {
+  return starText(peekRooms().nudges.policy, t('langTag') === 'zh', momentText(t, ask))
 }
 /** Off to GitHub (the policy's page), and no more asking anywhere. */
 export function openStar(url?: string): void {
@@ -108,7 +117,8 @@ export function StarNudgeOnce({ t, moment, text, due = true }: { t: Translate; m
     return () => { alive = false }
   }, [due, moment])
   if (!ask) return null
-  return h(StarNudge, { t, text: text ?? nudgeText(t, ask), onDone: () => setAsk(null) })
+  // the relay's sentence first, then the caller's, then the moment's own
+  return h(StarNudge, { t, text: starText(peekRooms().nudges.policy, t('langTag') === 'zh', text ?? momentText(t, ask)), onDone: () => setAsk(null) })
 }
 
 // ---- the page ------------------------------------------------------------------------------

@@ -6,10 +6,12 @@ import { AvatarOptionsCard } from "../components/AvatarOptionsCard";
 import { BrowserViewer } from "../components/BrowserViewer";
 import { MicButton, useDictation } from "../components/Dictation";
 import { ApprovalCard, ArtifactCard, BrowserCard, HandsCard, HoldCard, Notice, QuestionCard, ToolChip } from "../components/Cards";
+import { IntroLines, NamingCard } from "../components/FirstConversation";
 import { Markdown, splitBlocks } from "../components/Markdown";
 import { MuseHeader, MuseRoundButton } from "../components/MuseHeader";
 import { MoreMenu } from "../components/TabHeader";
-import { localLabel, useT } from "../i18n";
+import { stripNamingFence } from "../fences";
+import { localLabel, useLocale, useT } from "../i18n";
 import { mentionSuggestions, mentionTarget } from "../mention";
 import { WORKING_TTL_MS } from "../presence";
 import { useStore } from "../store";
@@ -42,22 +44,52 @@ export function ChatScreen() {
   const stickToBottom = useRef(true);
   const [showJump, setShowJump] = useState(false);
 
+  // The first conversation (contract C4), when it is bound to this chat: the runtime's state,
+  // the opening lines it speaks, the chooser. `fr` is null on an older runtime.
+  const fr = state.firstrun;
+  const bound = !!fr && fr.phase !== "none" && fr.session_id === activeThread;
+  const firstRunning = bound && fr.running;
+  const locale = useLocale();
+  const lang = locale === "zh-CN" ? "zh" : "en";
+  const [intro, setIntro] = useState<{ lang: string; lines: string[] } | null>(null);
+  useEffect(() => {
+    if (!bound || intro?.lang === lang) return;
+    let live = true;
+    api
+      .firstrun(lang)
+      .then((v) => live && v.intro && setIntro({ lang, lines: v.intro }))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [bound, lang, intro?.lang]);
+  const pickName = (picked: string) => {
+    api
+      .firstrunPick(picked)
+      .then(() => send(activeThread, picked))
+      .catch((e: Error) => toast(e.message || t("Could not send")));
+  };
+  const focusComposer = () => window.dispatchEvent(new Event("nanomuse:quick-chat"));
+
   // A task this browser saw through (contract C1): busy → idle, the turn started by the person
   // here (a `user` bubble, not a background notice or another device's ask) and ended with a
-  // reply. The first conversation never counts: tasks start once the first run is complete.
-  // The count reached is the moment for a word about a star when the policy names it.
+  // reply. The first conversation never counts: a turn that began while it was running is
+  // its, whatever the phase says by the time the reply lands. The count reached is the
+  // moment for a word about a star when the policy names it.
   const [taskCount, setTaskCount] = useState<number | null>(null);
   const onboarded = state.settings?.onboarded === true;
   const sawBusy = useRef(false);
+  const firstRunAtStart = useRef(false);
   useEffect(() => {
     if (thread?.busy) {
+      if (!sawBusy.current) firstRunAtStart.current = firstRunning;
       sawBusy.current = true;
       return;
     }
     if (!sawBusy.current) return;
     sawBusy.current = false;
-    if (onboarded && personStartedTurn(events)) setTaskCount(countTask());
-  }, [thread?.busy, events, onboarded]);
+    if (onboarded && !firstRunAtStart.current && !firstRunning && personStartedTurn(events)) setTaskCount(countTask());
+  }, [thread?.busy, events, onboarded, firstRunning]);
   // the app was opened today: the 7th and the 30th day are moments too
   const [dayCount, setDayCount] = useState<number | null>(null);
   useEffect(() => {
@@ -164,7 +196,9 @@ export function ChatScreen() {
             </button>
           </div>
         )}
-        {eventsLoaded && events.length === 0 && !stream && (
+        {/* The first conversation's opening, where the history begins: the app speaks first */}
+        {bound && eventsLoaded && !state.hasMore[activeThread] && intro && <IntroLines lines={intro.lines} />}
+        {eventsLoaded && events.length === 0 && !stream && !bound && (
           <EmptyChat
             name={name}
             device={thread?.device ? thread.device_name || thread.device : undefined}
@@ -190,6 +224,10 @@ export function ChatScreen() {
         )}
         {(thread?.busy || status.state !== "idle") && !stream?.text && status.state !== "waiting" && (
           <TypingIndicator label={thread?.queued ? t("{n} queued", { n: thread.queued }) : undefined} />
+        )}
+        {/* the chooser for the agent's name, under the latest reply, until a pick or a typed name */}
+        {bound && fr.phase === "ask_agent_name" && !thread?.busy && (
+          <NamingCard chips={fr.chips} chosen={fr.chosen} onPick={pickName} onElse={focusComposer} />
         )}
         {/* A message written on another device is never this device's unfinished turn (C9):
             nothing here ever offers to continue it. While that device works, this says so. */}
@@ -409,7 +447,10 @@ function AssistantBubble({
 }) {
   const [showReasoning, setShowReasoning] = useState(false);
   const t = useT();
-  const blocks = useMemo(() => splitBlocks(text), [text]);
+  // the model's block for the app (the first conversation's names) is never shown — not even
+  // the half of it a stream has delivered so far
+  const blocks = useMemo(() => splitBlocks(stripNamingFence(text, !!streaming)), [text, streaming]);
+  if (blocks.length === 0 && !streaming && !reasoning) return null;
   return (
     <div className={cx("rise flex items-end gap-2 pr-10", continued && "-mt-1")}>
       <div className="min-w-0 max-w-full">

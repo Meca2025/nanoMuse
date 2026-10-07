@@ -39,6 +39,54 @@ export function appOf(title: string): string {
   return title.split(/\s+[—–·|-]\s+/)[0]?.trim().slice(0, 60) ?? ''
 }
 
+// ---- standing grants, by risk tier (the Permissions page) ----------------------------
+
+/**
+ * The three tiers the phone's Permissions page groups remembered approvals under, in the
+ * Sentinel's words: `highest` is what would otherwise ask every time (sensitive) and now runs
+ * without asking; `confirm` is what was asked once on a card and remembered (moderate);
+ * `notice` is what never asks and is told afterwards (safe). The desktop keeps nothing under
+ * `notice` today; the tier is in the contract so a store that lands there has its place.
+ */
+export type GrantTier = 'highest' | 'confirm' | 'notice'
+
+export const GRANT_TIERS: readonly GrantTier[] = ['highest', 'confirm', 'notice']
+
+/**
+ * One remembered permission on this computer, whatever store it lives in:
+ * - `computer_app` — the hands in one app, from *Always in <app>* on a permission card (`Grant`);
+ * - `device` — one device of the account may run things here without asking, from *always*
+ *   on a remote-control card (the hub's trusted list);
+ * - `remote_control` — the switch: every device of the account may, no questions asked.
+ * `id` is what `POST /grants/revoke` takes for any of them.
+ */
+export interface StandingGrant {
+  id: string
+  kind: 'computer_app' | 'device' | 'remote_control'
+  tier: GrantTier
+  /** The app, the device's name, or '' for the switch. */
+  target: string
+  /** When it was given; 0 when the store does not say (the switch). */
+  at: number
+}
+
+export const REMOTE_CONTROL_GRANT_ID = 'remote-control'
+export const DEVICE_GRANT_PREFIX = 'device:'
+
+/** Every remembered permission as one list: the hands' grants, the trusted devices, the remote-control switch. */
+export function standingGrants(input: { grants?: readonly Grant[]; trusted?: readonly { id: string; name: string; at: number }[]; remoteControl?: boolean }): StandingGrant[] {
+  const out: StandingGrant[] = []
+  if (input.remoteControl === true) out.push({ id: REMOTE_CONTROL_GRANT_ID, kind: 'remote_control', tier: 'highest', target: '', at: 0 })
+  for (const d of input.trusted ?? []) out.push({ id: `${DEVICE_GRANT_PREFIX}${d.id}`, kind: 'device', tier: 'confirm', target: d.name || d.id, at: d.at })
+  for (const g of input.grants ?? []) out.push({ id: g.id, kind: 'computer_app', tier: 'confirm', target: g.target.replace(/^computer_app:/, ''), at: g.at })
+  return out
+}
+
+/** The list by tier, highest first, newest first inside a tier; tiers with nothing in them are left out. */
+export function groupGrants(list: readonly StandingGrant[]): { tier: GrantTier; grants: StandingGrant[] }[] {
+  return GRANT_TIERS.map((tier) => ({ tier, grants: list.filter((g) => g.tier === tier).sort((a, b) => b.at - a.at) })).filter((group) => group.grants.length > 0)
+}
+
 /**
  * Give the listeners after us (the card in the chat, bridged to the client with the
  * request's `signal`) a signal the stage can abort: the request object is the asker's own

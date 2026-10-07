@@ -29,6 +29,13 @@ struct NanoMuseNudgePolicy: Equatable, Sendable {
     var goalDone: Bool
     var cooldownDays: Int
     var maxAsks: Int
+    /// The card's sentence set by the operator, in English; empty = the app's own line for the moment.
+    var text: String
+    /// The same in 简体中文; empty = `text`, then the app's own line.
+    var textZh: String
+
+    /// The longest sentence the card takes (characters); the relay enforces the same.
+    static let textMax: Int = 200
 
     /// The built-in fallback — identical on Android, iOS, desktop and web.
     static let defaults = NanoMuseNudgePolicy(
@@ -41,8 +48,26 @@ struct NanoMuseNudgePolicy: Equatable, Sendable {
         daysUsed: [7, 30],
         goalDone: true,
         cooldownDays: 7,
-        maxAsks: 4
+        maxAsks: 4,
+        text: "",
+        textZh: ""
     )
+
+    /// The operator's sentence for the card's body: `text_zh` first when the UI is Chinese,
+    /// then `text`; nil when neither is set, so the caller draws its own line. Only the body
+    /// is ever replaced — the title and the buttons stay the app's.
+    func sentence(chinese: Bool) -> String? {
+        if chinese, !textZh.isEmpty { return textZh }
+        return text.isEmpty ? nil : text
+    }
+
+    /// One of the operator's sentences as the relay sent it: trimmed, and empty when it is not
+    /// a string or is longer than `textMax` (a cached policy from before the fields has neither key).
+    static func sentenceField(_ v: Any?) -> String {
+        guard let raw = v as? String else { return "" }
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return s.count > textMax ? "" : s
+    }
 
     /// A policy from the relay's JSON (`{"version":1,"star":{…}}`); missing fields keep the defaults.
     static func parse(_ json: [String: Any]) -> NanoMuseNudgePolicy {
@@ -76,7 +101,9 @@ struct NanoMuseNudgePolicy: Equatable, Sendable {
             daysUsed: ints(moments["days_used"], d.daysUsed),
             goalDone: bool(moments["goal_done"], d.goalDone),
             cooldownDays: max(int(star["cooldown_days"], d.cooldownDays), 0),
-            maxAsks: max(int(star["max_asks"], d.maxAsks), 0)
+            maxAsks: max(int(star["max_asks"], d.maxAsks), 0),
+            text: sentenceField(star["text"]),
+            textZh: sentenceField(star["text_zh"])
         )
     }
 
@@ -97,6 +124,8 @@ struct NanoMuseNudgePolicy: Equatable, Sendable {
                 ] as [String: Any],
                 "cooldown_days": cooldownDays,
                 "max_asks": maxAsks,
+                "text": text,
+                "text_zh": textZh,
             ] as [String: Any],
         ]
     }

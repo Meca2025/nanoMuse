@@ -160,7 +160,7 @@ export interface NudgeAsk {
   at: number
 }
 export interface Nudges {
-  policy: { version: number; star: { enabled: boolean; url: string; moments: { signed_in: boolean; tasks: number[]; new_look: boolean; exhausted: boolean; days_used: number[]; goal_done: boolean }; cooldown_days: number; max_asks: number } }
+  policy: { version: number; star: { enabled: boolean; url: string; moments: { signed_in: boolean; tasks: number[]; new_look: boolean; exhausted: boolean; days_used: number[]; goal_done: boolean }; cooldown_days: number; max_asks: number; text: string; text_zh: string } }
   tasks: number
   days: number
   asks: number
@@ -170,7 +170,7 @@ export interface Nudges {
 }
 
 export const NUDGES_INITIAL: Nudges = {
-  policy: { version: 1, star: { enabled: true, url: 'https://github.com/nano-muse/nanoMuse', moments: { signed_in: true, tasks: [3, 10, 30], new_look: true, exhausted: true, days_used: [7, 30], goal_done: true }, cooldown_days: 7, max_asks: 4 } },
+  policy: { version: 1, star: { enabled: true, url: 'https://github.com/nano-muse/nanoMuse', moments: { signed_in: true, tasks: [3, 10, 30], new_look: true, exhausted: true, days_used: [7, 30], goal_done: true }, cooldown_days: 7, max_asks: 4, text: '', text_zh: '' } },
   tasks: 0,
   days: 0,
   asks: 0,

@@ -9,15 +9,22 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **A sign-in for the app store's reviewer.** `REVIEW_ADDRESSES` (e-mail addresses) and `REVIEW_CODE` (six digits), both empty by default: a code request for one of those addresses sends nothing and answers as if it had, and `/v1/auth/verify` accepts exactly that code for it, under the same code lifetime, attempt and rate limits as anyone's. The account is an ordinary one; the admin console tags it *review* in the People table and on its page and leaves it out of the sign-up counts on the Overview and the Stats page. With either value empty nothing changes.
 - **The web console says why the relay refused**, in Chinese and English: sign-ups paused, service paused, sync paused, device hub paused, account deleted, too many requests under way, rate limited; a paused free allowance is told apart from a spent one; a deleted account signs the page out, and a paused hub is shown as such.
 - **The console's files are revalidated on every load**, so a deploy reaches the next reload; both console pages set the document language to the one they draw.
+- **The star card's sentence can be set from the console.** The nudges policy gained `star.text` (English) and `star.text_zh` (简体中文), each at most 200 characters, empty by default; *Settings › Star asks* has the two inputs with a remaining-character count. An app in Chinese shows `text_zh`, else `text`, else its own sentence; other languages show `text`, else their own; only the sentence changes, not the card's title or buttons. Apps built against relay 0.22 and earlier ignore the two fields.
 
 ### Runtime
 
 - **The sync push delay is read when a push is scheduled.** `ConversationSync.push_soon()` took the two-second default at import time, so a shorter delay set on the module (the tests do this) did not reach the pushes after a sign-in or the switch; it does now. Nothing changes for a person: the delay is still two seconds.
 - **Stopping ends every request to the relay before the connection to it closes.** The presence note a turn sends once its push is through (`working`) survived being cancelled and went out while the runtime was shutting down, racing the cloud client's close; the hub's background tasks were cancelled but not waited for. Stopping now cancels and waits for the sync engine's, the hub's and the profile's tasks, then closes the HTTP client, and a task that would start on the way out is refused. Nothing changes for a person; the tests' fake relay no longer waits on a half-open connection when it stops.
 - **`nanomuse --help` rows are whole sentences again** (the `mcp` row had lost the words in brackets); `nanomuse serve` no longer prints "nanoMuse · nanoMuse is ready."; the no-key notice also mentions signing in to nanoMuse Cloud.
+- **The runtime owns the first conversation** (contract C4, as on the phones and the desktop): `GET /api/firstrun`, `POST /api/firstrun/start` · `pick` · `dismiss`, the `firstrun` socket frame, the state in `firstrun.json`. It tells the model about the ritual only in the chat the conversation is bound to — never in a routine, a feed post or another chat — reads the model's `nanomuse-naming` block when a reply ends, writes what to call you to the profile and to memory (*Call them: …*) and the agent's name to the profile.
+- **`PUT /api/connections/llm` takes `proxy`** (`http://`, `https://`, `socks5://`, `socks5h://` host and port; `""` clears it) and writes `[llm] proxy`; the connections view shows it with any password as dots. A SOCKS address is refused with the package to install when `socksio` is missing.
+- **`/api/nudges` keeps the relay's `star.text` and `star.text_zh`** (200 characters at most) for the star card's sentence.
 
 ### Web
 
+- **The first conversation happens in the chat.** The first-run list is *Add a model → Connect (optional) → Start*; the *Meet your nanoMuse* page is gone (the identity form stays under Settings). *Start* opens the chat, where the agent speaks three opening lines in your language, asks what to call you, and a card under its reply offers two names for it — its own suggestions or two from the built-in pool — and *Something else*; the model's `nanomuse-naming` block is never shown, not even while streaming. Its turns do not count as tasks for the star asks.
+- **A *Proxy (optional)* field** on the own-key model form, for that provider's requests only; nanoMuse Cloud never goes through it.
+- **The star card's sentence can come from the relay** (`star.text`, `star.text_zh` for a Chinese UI); the title and buttons stay the app's.
 - **The unit tests no longer depend on the developer machine's language.**
 
 ### Desktop
@@ -26,12 +33,16 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The other device's name in "… is working"** under its prompt, instead of a fixed word.
 - **The Cloud page is called *nanoMuse Cloud* everywhere** — in the settings sidebar and in every sentence that points to it; the *Upgrade* link left the usage card (nothing is sold).
 - **Corrected sentences** about where chats live (sync is on by default), where the look is changed and which site the update check reads first; the UI-TARS-desktop operator is credited under Thanks. Chinese wording follows the phone (在线, 快捷聊天, 非营利, 形象工坊, 操作屏幕) and uses 「」 quotes.
+- **A proxy for the model providers.** Settings → nanoMuse Cloud → Network takes one address (`http://host:port`, `https://`, `socks5://`, `socks5h://`; a `user:pass@` is shown masked). The shell puts it on the host process's environment at the next start, so your own keys, the ChatGPT sign-in, *List models* and the hands' runtime go through it while nanoMuse Cloud and loopback never do; *Restart now* under the row restarts the host without closing the window.
+- **The Permissions page lists every standing grant by risk tier.** A *Standing grants* section groups what this computer remembers — the remote-control switch, the devices allowed without asking, the hands' per-app grants — under *Runs without asking*, *Remembered from the card* and *Runs, then tells you*, each row with what was allowed, for whom or where, when, and *Revoke*; one host route lists them and one revokes any of them.
+- **The star card's sentence may come from the relay.** When the nudge policy carries `star.text` / `star.text_zh` (up to 200 characters), the card and the header line show that sentence — `text_zh` in a Chinese UI, else `text` — and the app's own words otherwise; the title and the buttons stay the app's.
 
 ### Android
 
 - **The lights while the hands work breathe instead of running:** the comet round the screen's edge and the scan line are gone, the glow breathes 2.4 s in and 2.4 s out, and the capsule's ring and bars breathe at the same pace; all of it holds still under the system's reduce-motion setting.
 - **The first run's Hands page shows the app's mark.**
 - **The first conversation says where your messages go with sync on:** to the model, and — signed in — to your other devices through nanoMuse Cloud, which Data controls switches off.
+- **The star card showed the sentence set in the relay's console** (`star.text`, `star.text_zh` for a Chinese UI) when the operator set one; without one, the app's own line for the moment as before. The title and the buttons stay the app's.
 
 ### iOS
 
@@ -39,6 +50,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **After you pick a new face with a video model set**, the agent says the four clips follow in the background.
 - **In the account's Devices list** an offline device shows when it was last seen, and a tap on an online one starts a message to it in the chat.
 - **A fresh install no longer shows the home screen for an instant** before the welcome page; the first conversation says where your messages go with sync on, as on Android.
+- **The star card showed the sentence set in the relay's console** (`star.text`, `star.text_zh` for a Chinese UI) when the operator set one, as on Android; the title and the buttons stay the app's.
 
 ### Project
 

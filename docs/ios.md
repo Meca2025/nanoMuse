@@ -247,7 +247,9 @@ Ours, in `NanoMuse/`:
   leaving `activeSessions` without an error), the 7th / 30th day, a goal reached, a new look,
   sign-in, the allowance spent — seven days apart, four per phone — as a card pinned under the
   header (the message list is a UICollectionView, so nothing can be placed under the last
-  message). The Feed opens on the intro card, says when the daily routine runs while it is
+  message); the card's sentence is the one set in the relay's console (`star.text`, `star.text_zh`
+  for a Chinese UI) when there is one, else the app's own line for the moment — the title and the
+  buttons stay the app's. The Feed opens on the intro card, says when the daily routine runs while it is
   empty, and writes its first day after the first conversation; a Notifications page joined the
   first run.
 - **The composer (0.1.38, 0.1.40)** (`NanoMuseShell.swift` → `NanoMuseHomeView.body`,

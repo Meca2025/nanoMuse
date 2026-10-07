@@ -16,7 +16,7 @@ import secrets
 import time
 import uuid
 from collections.abc import Coroutine
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from datetime import time as time_of_day
 from pathlib import Path
@@ -40,6 +40,7 @@ from nanomuse.phone import PhoneLink
 from nanomuse.reminders import Reminder
 from nanomuse.schema import Attachment, Message, Role
 from nanomuse.sentinel.grants import normalize_scope
+from nanomuse.server import firstrun
 from nanomuse.server.connections import Connections
 from nanomuse.server.events import MAIN_THREAD, EventBus, Timeline, new_id, now_iso
 from nanomuse.server.failures import failure_notice
@@ -411,6 +412,9 @@ class MuseService:
         # when the app may ask for a star on GitHub: the relay's policy, a day at a time
         # (contract C1; GET /api/nudges hands it to the web app)
         self.nudges = NudgesPolicy(self.data_dir, settings.cloud.base_url)
+        # the first conversation (contract C4): bound to the main chat by Start, the model
+        # hears its phase there and nowhere else (docs/web.md)
+        self.firstrun = firstrun.FirstRunStore(self.data_dir)
         # a new face from a description, drawn on the chat model's host (docs/avatar.md)
         self.avatar = AvatarStudio(self)
         # the catalogue with what is configured and what that covers (contract C11), and the
@@ -601,6 +605,117 @@ class MuseService:
             # the account's other devices wear the same name and face
             self.hub.profile.changed()
         return self.profile
+
+    # ------------------------------------------------------------------ first conversation (C4)
+    def firstrun_lang(self, lang: str = "") -> str:
+        """The language of the opening: the one asked for, else the one Start was pressed in,
+        else the agent's reply language."""
+        return lang.strip() or self.firstrun.state.lang or self.ui_language()
+
+    def firstrun_view(self, lang: str = "", intro: bool = False) -> dict[str, Any]:
+        """``GET /api/firstrun`` and the ``firstrun`` frame: the state and the chips; with
+        ``intro``, the three lines the app speaks first, in ``lang``."""
+        view = self.firstrun.view(self.firstrun_lang(lang))
+        if intro:
+            view["intro"] = firstrun.intro_lines(self.firstrun_lang(lang))
+        return view
+
+    def _publish_firstrun(self) -> None:
+        self.bus.publish({"kind": "firstrun", "firstrun": self.firstrun_view()})
+
+    def _firstrun_addendum_for(self, thread_id: str):  # noqa: ANN202 - a closure for the agent
+        def addendum() -> str:
+            state = self.firstrun.state
+            if not firstrun.bound_to(state, thread_id):
+                return ""
+            return firstrun.prompt_addendum(state, self.firstrun_lang(), self.profile.name) or ""
+
+        return addendum
+
+    def start_first_conversation(self, lang: str = "") -> dict[str, Any]:
+        """Start was pressed: the main chat is bound as the first conversation and the
+        setup counts as finished (what ``POST /api/onboarded`` records). The app speaks
+        first there, from the browser, at no cost in tokens; the model only hears from the
+        person. A main chat that already holds a conversation (synced from another device
+        of the account, or an older install) is not begun again: no opening, no name to
+        choose — the thread simply continues."""
+        self.connections.set_onboarded(True)
+        state = self.firstrun.state
+        main = self.threads.get(MAIN_THREAD)
+        underway = main is not None and any(
+            e.get("type") in ("user", "assistant") for e in main.timeline.events
+        )
+        if state.phase != "done":
+            base = replace(state, phase="done" if underway else "none")
+        else:
+            base = state
+        lang = lang.strip().lower()
+        lang = "zh" if lang.startswith("zh") else ("en" if lang else "")
+        self.firstrun.save(firstrun.start_conversation(base, MAIN_THREAD, lang))
+        self._publish_firstrun()
+        if underway:
+            self.first_feed_day()
+        return self.firstrun_view(intro=True)
+
+    def pick_first_name(self, name: str) -> dict[str, Any]:
+        """A chip was picked on the chooser: the name is on the header before the model has
+        even replied; the web then sends the name as the person's message, and the ``named``
+        addendum tells the model what happened. :class:`LookupError` when no pick is due."""
+        nxt = firstrun.pick_name(self.firstrun.state, name)
+        if nxt is None:
+            raise LookupError("no name is being chosen right now")
+        self.firstrun.save(nxt)
+        self.update_profile({"name": name})
+        self._publish_firstrun()
+        return self.firstrun_view()
+
+    def dismiss_first_chooser(self) -> dict[str, Any]:
+        """The person moved on to something the app handles itself: the chooser goes."""
+        state = self.firstrun.state
+        nxt = firstrun.dismiss_chooser(state)
+        if nxt is not state:
+            self.firstrun.save(nxt)
+            self._publish_firstrun()
+            self.first_feed_day()
+        return self.firstrun_view()
+
+    def _firstrun_turn_ended(self, thread_id: str, final: str) -> None:
+        """The model's reply in the first conversation ended: read its block, move the
+        phase, keep what it said — the address on the profile and as the memory line the
+        phones write, the name on the profile."""
+        state = self.firstrun.state
+        if not firstrun.bound_to(state, thread_id) or not firstrun.running(state):
+            return
+        outcome = firstrun.after_turn(state, final)
+        if outcome.state is state:
+            return
+        self.firstrun.save(outcome.state)
+        if outcome.address_given:
+            self.update_profile({"user_name": outcome.address_given})
+            self._remember_address(outcome.address_given)
+        if outcome.named:
+            self.update_profile({"name": outcome.named})
+        self._publish_firstrun()
+        if firstrun.conversation_over(outcome.state):
+            # the feed's first day is written once the first conversation is over
+            self.first_feed_day()
+
+    def _remember_address(self, address: str) -> None:
+        """ "Call them: X" under what is known about the user: one memory, replaced when it
+        changes (the phones keep the line under ``## About the user``; the runtime keeps
+        memories as items, so the line is one item)."""
+        store = self.app.memory
+        if store is None:
+            return
+        line = firstrun.address_line(address)
+        try:
+            for item in store.all():
+                if item.content.lower().startswith(firstrun.ADDRESS_PREFIX.lower()):
+                    store.forget(item.id)
+            store.add(line, category="profile", source="agent")
+        except Exception as exc:  # noqa: BLE001 - the profile already holds the name
+            logger.warning("could not remember the address: {}", exc)
+        self.bus.publish({"kind": "memory"})
 
     # ------------------------------------------------------------------ threads
     def _load_threads(self) -> None:
@@ -959,6 +1074,9 @@ class MuseService:
                 and all(a.kind == "image" for a in attachments)
                 and self.avatar.intercept(thread_id, text, [a.path for a in attachments])
             ):
+                # the first conversation's "what should I call you?" is not answered by this
+                if firstrun.bound_to(self.firstrun.state, thread_id):
+                    self.dismiss_first_chooser()
                 return event
         else:
             event = self.ui.emit(
@@ -1031,6 +1149,11 @@ class MuseService:
                 self.ui.set_status("working", "", thread.id)
                 try:
                     purpose = thread.purposes.pop(text, None)
+                    # the first conversation speaks to the person's turns in its own chat;
+                    # a background run (a goal pass, a routine) never hears it
+                    thread.agent.prompt_addendum = (
+                        None if purpose else self._firstrun_addendum_for(thread.id)
+                    )
                     self.ui.begin_run(thread.id, background=purpose)
                     final = await thread.agent.run(text, purpose=purpose, files=incoming.files)
                     quiet, final = (
@@ -1080,6 +1203,8 @@ class MuseService:
             self._push_background(event)
         # the turn is done: its texts go to the account's other devices in a moment
         self.sync.turn_finished(thread)
+        if not purpose:
+            self._firstrun_turn_ended(thread.id, final)
 
     # ------------------------------------------------------------------ approvals
     def decide(
@@ -2372,6 +2497,8 @@ class MuseService:
             # the other devices' turns under way on synced chats (C9), for the line under
             # a message written elsewhere; `working` frames keep it current
             "working": self.sync.working_view(),
+            # the first conversation: where it is bound, which phase, the chips (C4)
+            "firstrun": self.firstrun_view(),
         }
 
 

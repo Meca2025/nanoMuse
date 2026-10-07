@@ -218,7 +218,9 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   里的 `nudges`，内置同样的默认值）：第一次对话里绝不出现，然后在第 3 / 10 / 30 个任务
   （`NanoMuseStarWatch`：一个由人发起、无错误地离开 `activeSessions` 的会话）、第 7 / 30 天、
   达成一个目标、换了新形象、登录、额度用完时——间隔七天，每台手机最多四次——以钉在标题下
-  的卡片出现（消息列表是一个 UICollectionView，所以没法在最后一条消息下面放东西）。动态
+  的卡片出现（消息列表是一个 UICollectionView，所以没法在最后一条消息下面放东西）；卡片
+  里那句话，运营者在中继控制台设了（`star.text`，中文界面优先取 `star.text_zh`）就用设的，
+  没设就用应用自己为那个时机写的——标题和按钮始终是应用的。动态
   打开时先是介绍卡片，空着的时候说明每日例程什么时候跑，第一次对话之后写下它的第一天；
   引导里加了一页通知。
 - **输入区（0.1.38、0.1.40）**（`NanoMuseShell.swift` → `NanoMuseHomeView.body`、

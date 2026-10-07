@@ -12,6 +12,7 @@ import * as macPermissions from "./mac-permissions";
 import { Operator, SCREEN_PERMISSION_TEXT, type Marker } from "./operator";
 import { startOperatorServer, type OperatorServer } from "./operator-server";
 import { relink } from "./profile-link";
+import { maskProxyUrl, proxyEnv, validProxyUrl } from "./proxy";
 
 /**
  * nanoMuse Desktop — the nanoMuse desktop, built on DeepSeek Harness.
@@ -96,6 +97,8 @@ let mainWindow: BrowserWindow | null = null;
 let hostUrl: string | null = null;
 let quitting = false;
 let restarts = 0;
+/** The proxy the running Host was started with ("" for none): the Network row offers a restart while it differs from the setting. */
+let hostProxy = "";
 
 /**
  * `~/.nanomuse/desktop`, the harness home of this app alone — the CLI's `~/.dsh` is left alone.
@@ -312,6 +315,13 @@ function startHost(): Promise<string> {
         }
         const shellPath = loginShellPath();
         if (shellPath) env.PATH = shellPath;
+        // The proxy for the model providers (the Cloud page's Network row): on the Host's
+        // environment, which Node's fetch reads with NODE_USE_ENV_PROXY and the runtime's
+        // httpx reads as it is; the relay and loopback are on NO_PROXY (src/proxy.ts).
+        const proxied = proxyEnv(prefs.proxy, prefs.relayHosts ?? []);
+        Object.assign(env, proxied);
+        hostProxy = proxied.HTTPS_PROXY ?? "";
+        if (hostProxy) log(`proxy: providers through ${maskProxyUrl(hostProxy)}; never for ${proxied.NO_PROXY}`);
         const runtime = bundledRuntime();
         if (!env.NANOMUSE_PY && runtime) env.NANOMUSE_PY = runtime;
         // Loud when the hands have nothing to run: a packaged build without its runtime, or
@@ -366,7 +376,7 @@ function startHost(): Promise<string> {
             settled = true;
             clearTimeout(timer);
             reject(new Error(`the host exited before it was ready (code ${code ?? signal})`));
-          } else if (!quitting) {
+          } else if (!quitting && !restartingHost) {
             void hostStopped();
           }
         });
@@ -411,6 +421,30 @@ function stopHost(): Promise<void> {
     }
     setTimeout(done, 5000).unref();
   });
+}
+
+/** A host restart the person asked for is under way: the exit handler must not treat it as a crash. */
+let restartingHost = false;
+
+/**
+ * Stop the Host and start it again, the window staying up: what *Restart now* under the
+ * Network row does, so a proxy just set reaches the provider calls without quitting the app.
+ * The operator server and the helper stay; the page reloads under the Host's new token.
+ */
+async function restartHost(): Promise<void> {
+  if (restartingHost || quitting || !hostUrl) return;
+  restartingHost = true;
+  log("host: restarting at the person's request");
+  try {
+    await stopHost();
+    restarts = 0;
+    await boot();
+  } catch (exc) {
+    log(`restart failed: ${String(exc)}`);
+    await reportStartupFailure(exc);
+  } finally {
+    restartingHost = false;
+  }
 }
 
 function details(message: string): string {
@@ -596,6 +630,10 @@ interface Prefs {
   quickChat: boolean;
   /** The person's own quick-chat combination (an Electron accelerator); absent means the platform's default. */
   quickChatKey?: string;
+  /** The proxy for the model providers (`http://host:port`, `socks5://host:port`); absent means none. */
+  proxy?: string;
+  /** The relay hosts the plugin reported (its `config.baseURL`), kept on NO_PROXY with the default relay. */
+  relayHosts?: string[];
 }
 const PREFS_DEFAULT: Prefs = { openAtLogin: false, menuBar: true, quickChat: true };
 /** ⌥ Space on macOS as in Muse; Ctrl+Alt+Space where Alt+Space is the window menu. */
@@ -731,9 +769,10 @@ function applyPrefs(): void {
   applyOpenAtLogin();
 }
 
-/** What the General page shows: the values, the key in force and the default, whether another app holds it, and which of the three this platform can do. */
-function prefsView(): Prefs & { quickChatKey: string; quickChatDefault: string; quickChatTaken: boolean; supports: { openAtLogin: boolean; menuBar: boolean; quickChat: boolean } } {
-  return { ...prefs, quickChatKey: quickChatKey(), quickChatDefault: QUICK_CHAT_DEFAULT, quickChatTaken, supports: { openAtLogin: process.platform !== "linux" || Boolean(process.env.APPIMAGE) || app.isPackaged, menuBar: true, quickChat: true } };
+/** What the General page shows: the values, the key in force and the default, whether another app holds it, and which of the three this platform can do; the Network row's proxy, as kept and as shown. */
+function prefsView(): Prefs & { quickChatKey: string; quickChatDefault: string; quickChatTaken: boolean; proxy: string; proxyMasked: string; proxyApplied: string; supports: { openAtLogin: boolean; menuBar: boolean; quickChat: boolean } } {
+  const proxy = validProxyUrl(prefs.proxy ?? "") ?? "";
+  return { ...prefs, quickChatKey: quickChatKey(), quickChatDefault: QUICK_CHAT_DEFAULT, quickChatTaken, proxy, proxyMasked: maskProxyUrl(proxy), proxyApplied: hostProxy, supports: { openAtLogin: process.platform !== "linux" || Boolean(process.env.APPIMAGE) || app.isPackaged, menuBar: true, quickChat: true } };
 }
 
 /**
@@ -830,11 +869,23 @@ function registerBridge(): void {
         const { quickChatKey: _drop, ...rest } = prefs;
         prefs = !key || key === QUICK_CHAT_DEFAULT ? rest : validAccelerator(key) ? { ...rest, quickChatKey: key } : prefs;
       }
+      if (typeof patch.proxy === "string") {
+        // the proxy for the providers: an empty string removes it; an address that is not one is ignored
+        const { proxy: _drop, ...rest } = prefs;
+        const url = validProxyUrl(patch.proxy);
+        prefs = !patch.proxy.trim() ? rest : url ? { ...rest, proxy: url } : prefs;
+      }
+      if (Array.isArray(patch.relayHosts)) {
+        // the relay the plugin talks to, so a self-hosted one is on NO_PROXY as well
+        prefs = { ...prefs, relayHosts: patch.relayHosts.filter((h): h is string => typeof h === "string" && h.trim() !== "").slice(0, 8) };
+      }
       writePrefs();
       applyPrefs();
     }
     return prefsView();
   });
+  // the Network row's *Restart now*: the Host again with the proxy just set, the window staying
+  ipcMain.handle("nanomuse:restart-host", () => restartHost());
   ipcMain.handle("nanomuse:report-bug", () => reportBug());
   ipcMain.handle("nanomuse:permissions:guide", () => guidePermissions());
   ipcMain.handle("nanomuse:content-protection", (e, on: boolean) => {
