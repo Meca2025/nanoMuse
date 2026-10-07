@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-demo.nanomuse.dev-0a66e4" alt="在线体验"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%E5%AE%98%E7%BD%91-nanomuse.cn-0a66e4" alt="官网"></a>
+  <a href="https://arxiv.org/abs/2610.08699"><img src="https://img.shields.io/badge/arXiv-2610.08699-b31b1b" alt="arXiv 上的论文"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
@@ -34,6 +35,14 @@
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/goals.png" width="23%" alt="目标：按时检查，还有例程">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/avatar.png" width="23%" alt="形象：描述一句，你的图像模型来画，你挑一张喜欢的">
 </p>
+
+## 🗞️ 动态
+
+- **2026-10-07 · [论文](https://arxiv.org/abs/2610.08699)**——我们的报告《nanoMuse: An Open-Source Personal Agent for Every Device You Own》上了 arXiv：什么是个人智能体，Muse 是怎么搭的，nanoMuse 又是怎样用开源的方式回应的。
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)**——最新版本：iPhone 的输入框重新露出来了，手机上每条聊天都归自己的账号，中继的每一次拒绝在每个客户端上都是一句直白的话或一张卡片。Mac 拍到的是屏幕的真实画面、拍不到就说明原因，Windows 在挪了安装位置的那次更新之后能再启动，中继的控制台多了「控制」「统计」「官网」三页。
+- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)**——nanoMuse 发布：把 OpenMinis 1.13 做成 nanoMuse，第一个公开版本。
+
+全部版本：[releases](https://github.com/nano-muse/nanoMuse/releases)。
 
 ## 安装
 
@@ -90,14 +99,6 @@
 | 模型 | Meta 的 | 自己带 | 中继的免费额度，或者自己的 |
 | 许可 | 闭源 | GPL-3.0 | GPL-3.0-or-later，基于 OpenMinis |
 
-## 动态
-
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)**——iPhone 的输入框重新露出来了，手机上每条聊天都归自己的账号，中继的每一次拒绝在每个客户端上都是一句直白的话或一张卡片。Mac 拍到的是屏幕的真实画面、拍不到就说明原因，Windows 在挪了安装位置的那次更新之后能再启动，中继的控制台多了「控制」「统计」「官网」三页。
-- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)**——从十八家服务商的目录里填自己的 key，用 ChatGPT 套餐登录，一台设备只显示当前登录账号的对话。
-- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)**——旁聊留在写它的设备上，Mac 上「手」有了自己的助手应用，每个应用都能指向你自己的中继，文档成了站点。
-
-全部版本：[releases](https://github.com/nano-muse/nanoMuse/releases)。
-
 ## 文档
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/)——各平台的安装、多端、「手」、连接器、记忆、自己部署、协议。源文件在 [docs/](../)；每个版本改了什么在 [CHANGELOG](../../CHANGELOG.md) 和 [docs/releases/](../releases/)。
@@ -109,6 +110,22 @@
 ## 参与
 
 拿它做一件真事，报告哪里坏了，然后挑一件小而具体的事做：[CONTRIBUTING.md](../../CONTRIBUTING.md) 有环境和约定，[AGENTS.md](../../AGENTS.md) 是编程智能体在这棵树里要守的规矩，[路线图](../roadmap.md)说从哪儿入手。[Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X)。
+
+## ⭐️ 引用
+
+如果 nanoMuse 对你有帮助，欢迎引用我们的论文。
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```
 
 ## 致谢
 

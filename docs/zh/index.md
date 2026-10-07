@@ -17,6 +17,9 @@ hero:
     - theme: alt
       text: GitHub
       link: https://github.com/nano-muse/nanoMuse
+    - theme: alt
+      text: 论文
+      link: https://arxiv.org/abs/2610.08699
 ---
 
 ## 安装
@@ -34,3 +37,19 @@ hero:
 所有下载都在 [最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)；GitHub 下不动的话，同样的文件在 [nanomuse.cn/dl](https://nanomuse.cn/dl/)。
 
 [0.1.40 Clear 改了什么](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [每个客户端能做什么](/zh/parity) · [从哪儿开始参与](/zh/roadmap) · [中继保存什么](/zh/privacy) · [什么留在手机上，归谁](/zh/sync)
+
+## 引用
+
+报告《nanoMuse: An Open-Source Personal Agent for Every Device You Own》在 arXiv 上，编号 [2610.08699](https://arxiv.org/abs/2610.08699)：什么是个人智能体，Muse 是怎么搭的，nanoMuse 又是怎样用开源的方式回应的。如果 nanoMuse 对你有帮助，欢迎引用我们的论文。
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```

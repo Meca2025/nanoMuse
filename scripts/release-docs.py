@@ -9,9 +9,10 @@
   …`` headings for the next version are put back by hand (see the previous release commit).
 - ``README.md``, ``docs/readme/README_*.md``, ``docs/index.md``: ``<old> <OldName>`` becomes
   ``<new> <NewName>``, every ``v<old>`` tag and ``nanoMuse-<old>`` asset name moves to the new
-  version; News lines (``- **<date> · [...``) are left alone, they name older releases on purpose.
-  The *News* lists themselves (the README family and the homepage's ``index.html``) are written
-  by hand: the new line first, the fourth dropped.
+  version; News lines (``- **<date> · [...``) are left alone, they name the milestones and the
+  version they were written for on purpose. The *News* lists themselves (the README family and
+  the homepage's ``index.html``) are edited by hand: the line that names the latest version is
+  replaced by the new one; the paper, the first release and the other milestones stay.
 - ``docs/release-notes-template.md``: the new codename joins the list.
 - ``docs/roadmap.md`` (the past-releases table) and ``docs/parity.md`` (cells that said "next
   release") are edited by hand.
@@ -50,8 +51,8 @@ def main(argv: list[str]) -> int:
         s.replace(marker, f"{marker}## [{new}] - {date} · {newname}\n\n", 1), encoding="utf-8"
     )
 
-    # A News line (`- **2026-10-06 · [0.1.40 Clear](…/tag/v0.1.40)** — …`) names an older
-    # release on purpose and keeps its tag; every other line moves to the new version.
+    # A News line (`- **2026-10-06 · [0.1.40 Clear](…/tag/v0.1.40)** — …`) names the version
+    # it was written for on purpose and keeps its tag; every other line moves to the new version.
     news_line = re.compile(r"^- \*\*\d{4}-\d{2}-\d{2} · ")
     pages = ["README.md", "docs/index.md", *sorted(glob.glob("docs/readme/README_*.md"))]
     for name in pages:

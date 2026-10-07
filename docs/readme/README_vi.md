@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/D%C3%B9ng_th%E1%BB%AD-demo.nanomuse.dev-0a66e4" alt="Dùng thử trên trình duyệt"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/Trang_web-nanomuse.cn-0a66e4" alt="Trang web"></a>
+  <a href="https://arxiv.org/abs/2610.08699"><img src="https://img.shields.io/badge/arXiv-2610.08699-b31b1b" alt="Bài báo trên arXiv"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
@@ -34,6 +35,14 @@
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Mục tiêu: được kiểm tra theo lịch, kèm các thói quen">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Hình đại diện: mô tả một dáng vẻ, mô hình ảnh của bạn vẽ ra, bạn chọn cái mình thích">
 </p>
+
+## 🗞️ Tin mới
+
+- **2026-10-07 · [Bài báo](https://arxiv.org/abs/2610.08699)** — báo cáo của chúng tôi *nanoMuse: An Open-Source Personal Agent for Every Device You Own* đã có trên arXiv: trợ lý cá nhân là gì, Muse được xây dựng ra sao, và nanoMuse trả lời điều đó một cách mở như thế nào.
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — phiên bản mới nhất: ô nhập của iPhone đã hiện trở lại, mỗi cuộc trò chuyện trên điện thoại thuộc về tài khoản của nó, và mỗi lần relay từ chối là một câu rõ ràng hoặc một thẻ trên mọi ứng dụng. Mac chụp đúng hình màn hình hoặc nói vì sao không chụp được, Windows khởi động lại được sau bản cập nhật đã dời ứng dụng, và bảng điều khiển của relay có thêm các trang Kiểm soát, Thống kê và Trang web.
+- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse ra mắt: OpenMinis 1.13 trở thành nanoMuse, phiên bản công khai đầu tiên.
+
+Mọi phiên bản: [releases](https://github.com/nano-muse/nanoMuse/releases).
 
 ## Cài đặt
 
@@ -90,14 +99,6 @@ Mỗi thiết bị chạy trợ lý của riêng mình — điện thoại trong
 | Mô hình | Của Meta | Tự mang | Khoản miễn phí của relay, hoặc của riêng bạn |
 | Giấy phép | Đóng | GPL-3.0 | GPL-3.0-or-later, xây trên OpenMinis |
 
-## Tin mới
-
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — ô nhập của iPhone đã hiện trở lại, mỗi cuộc trò chuyện trên điện thoại thuộc về tài khoản của nó, và mỗi lần relay từ chối là một câu rõ ràng hoặc một thẻ trên mọi ứng dụng. Mac chụp đúng hình màn hình hoặc nói vì sao không chụp được, Windows khởi động lại được sau bản cập nhật đã dời ứng dụng, và bảng điều khiển của relay có thêm các trang Kiểm soát, Thống kê và Trang web.
-- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — khóa của riêng bạn từ danh mục mười tám nhà cung cấp, đăng nhập bằng gói ChatGPT, và một thiết bị chỉ hiện các cuộc trò chuyện của tài khoản đang đăng nhập.
-- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — các cuộc trò chuyện phụ ở lại thiết bị đã tạo ra chúng, một ứng dụng phụ trợ trên Mac giữ quyền của bàn tay, mọi ứng dụng đều có thể trỏ tới relay của bạn, và tài liệu đã thành một trang web.
-
-Mọi phiên bản: [releases](https://github.com/nano-muse/nanoMuse/releases).
-
 ## Tài liệu
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/) — cài đặt theo từng nền tảng, mọi thiết bị, Hands, trình kết nối, bộ nhớ, tự lưu trữ, các giao thức. Nguồn ở [docs/](../); mỗi phiên bản thay đổi gì ở [CHANGELOG](../../CHANGELOG.md) và [docs/releases/](../releases/).
@@ -109,6 +110,22 @@ Một VPS, một giờ: [docs/self-hosting.md](../self-hosting.md). Ba con đư�
 ## Đóng góp
 
 Dùng nó cho một việc thật, kể lại chỗ nào hỏng, rồi chọn một việc nhỏ và cụ thể: [CONTRIBUTING.md](../../CONTRIBUTING.md) có phần thiết lập và quy ước, [AGENTS.md](../../AGENTS.md) là các quy tắc một trợ lý lập trình tuân theo trong kho mã này, và [lộ trình](../roadmap.md) chỉ chỗ bắt đầu. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
+
+## ⭐️ Trích dẫn
+
+Nếu nanoMuse hữu ích với bạn, hãy trích dẫn bài báo.
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```
 
 ## Ghi nhận
 

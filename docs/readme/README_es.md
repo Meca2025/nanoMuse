@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/Pru%C3%A9balo-demo.nanomuse.dev-0a66e4" alt="Pruébalo en el navegador"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/Sitio_web-nanomuse.cn-0a66e4" alt="Sitio web"></a>
+  <a href="https://arxiv.org/abs/2610.08699"><img src="https://img.shields.io/badge/arXiv-2610.08699-b31b1b" alt="Artículo en arXiv"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
@@ -34,6 +35,14 @@
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Metas: seguidas según un horario, con rutinas">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar: describe un aspecto, tu modelo de imagen lo dibuja, eliges el que te gusta">
 </p>
+
+## 🗞️ Novedades
+
+- **2026-10-07 · [Artículo](https://arxiv.org/abs/2610.08699)** — nuestro informe *nanoMuse: An Open-Source Personal Agent for Every Device You Own* está en arXiv: qué es un agente personal, cómo está construido Muse y cómo nanoMuse responde a ello en abierto.
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — la versión más reciente: el campo de texto del iPhone vuelve a verse, cada chat del teléfono pertenece a su cuenta y cada rechazo del relay es una frase clara o una tarjeta en todos los clientes. El Mac captura la pantalla real o dice por qué no puede, Windows vuelve a arrancar tras la actualización que movió la app y la consola del relay tiene las páginas Controles, Estadísticas y Sitio.
+- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse se publica: OpenMinis 1.13 convertido en nanoMuse, la primera versión pública.
+
+Todas las versiones: [releases](https://github.com/nano-muse/nanoMuse/releases).
 
 ## Instalación
 
@@ -90,14 +99,6 @@ Cada dispositivo ejecuta su propio agente — el teléfono dentro del APK (Alpin
 | Modelos | Los de Meta | Trae el tuyo | El crédito gratuito del relay, o los tuyos |
 | Licencia | Cerrada | GPL-3.0 | GPL-3.0-or-later, construido sobre OpenMinis |
 
-## Novedades
-
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — el campo de texto del iPhone vuelve a verse, cada chat del teléfono pertenece a su cuenta y cada rechazo del relay es una frase clara o una tarjeta en todos los clientes. El Mac captura la pantalla real o dice por qué no puede, Windows vuelve a arrancar tras la actualización que movió la app y la consola del relay tiene las páginas Controles, Estadísticas y Sitio.
-- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — tu propia clave desde un catálogo de dieciocho proveedores, inicio de sesión con un plan de ChatGPT, y un dispositivo muestra solo las conversaciones de la cuenta conectada.
-- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — los chats laterales se quedan en el dispositivo que los creó, una app auxiliar en el Mac guarda los permisos de las manos, cada app puede apuntar a un relay tuyo y la documentación pasó a ser un sitio.
-
-Todas las versiones: [releases](https://github.com/nano-muse/nanoMuse/releases).
-
 ## Documentación
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/) — instalación por plataforma, todos los dispositivos, las manos, conectores, memoria, autoalojamiento, los protocolos. Las fuentes están en [docs/](../); qué cambió en cada versión, en el [CHANGELOG](../../CHANGELOG.md) y en [docs/releases/](../releases/).
@@ -109,6 +110,22 @@ Un VPS, una hora: [docs/self-hosting.md](../self-hosting.md). Tres caminos — s
 ## Contribuir
 
 Úsalo para una tarea real, cuenta qué se rompió y luego elige algo concreto: [CONTRIBUTING.md](../../CONTRIBUTING.md) tiene la configuración y las convenciones, [AGENTS.md](../../AGENTS.md) las reglas que sigue un agente de programación en este repositorio, y la [hoja de ruta](../roadmap.md) dice por dónde empezar. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
+
+## ⭐️ Cita
+
+Si nanoMuse te resulta útil, te agradecemos que cites el artículo.
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```
 
 ## Agradecimientos
 

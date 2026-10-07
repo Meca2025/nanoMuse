@@ -20,6 +20,7 @@
   <a href="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml"><img src="https://github.com/nano-muse/nanoMuse/actions/workflows/ci.yml/badge.svg?branch=main" alt="Test Suite"></a>
   <a href="https://demo.nanomuse.dev/"><img src="https://img.shields.io/badge/%D0%9F%D0%BE%D0%BF%D1%80%D0%BE%D0%B1%D0%BE%D0%B2%D0%B0%D1%82%D1%8C-demo.nanomuse.dev-0a66e4" alt="Попробовать в браузере"></a>
   <a href="https://nanomuse.cn/"><img src="https://img.shields.io/badge/%D0%A1%D0%B0%D0%B9%D1%82-nanomuse.cn-0a66e4" alt="Сайт"></a>
+  <a href="https://arxiv.org/abs/2610.08699"><img src="https://img.shields.io/badge/arXiv-2610.08699-b31b1b" alt="Статья на arXiv"></a>
   <a href="https://github.com/nano-muse/nanoMuse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nano-muse/nanoMuse?label=license" alt="GPL-3.0-or-later"></a>
   <a href="https://discord.gg/bkTySmm28X"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
@@ -34,6 +35,14 @@
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Цели: проверяются по расписанию, с рутинами">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Облик: опишите его, ваша модель изображений нарисует, вы выберете понравившийся">
 </p>
+
+## 🗞️ Новости
+
+- **2026-10-07 · [Статья](https://arxiv.org/abs/2610.08699)** — наш отчёт *nanoMuse: An Open-Source Personal Agent for Every Device You Own* опубликован на arXiv: что такое персональный агент, как устроен Muse и как nanoMuse отвечает на это открыто.
+- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — последняя версия: поле ввода на iPhone снова видно, каждый чат на телефоне принадлежит своему аккаунту, и каждый отказ реле — одна ясная фраза или карточка на любом клиенте. Mac делает настоящий снимок экрана или объясняет, почему не может, Windows снова запускается после обновления, которое переместило приложение, а в консоли реле появились страницы «Управление», «Статистика» и «Сайт».
+- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse выпущен: OpenMinis 1.13 как nanoMuse, первая публичная версия.
+
+Все версии: [releases](https://github.com/nano-muse/nanoMuse/releases).
 
 ## Установка
 
@@ -90,14 +99,6 @@
 | Модели | Модели Meta | Свои | Бесплатный лимит реле или свои |
 | Лицензия | Закрытая | GPL-3.0 | GPL-3.0-or-later, на основе OpenMinis |
 
-## Новости
-
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — поле ввода на iPhone снова видно, каждый чат на телефоне принадлежит своему аккаунту, и каждый отказ реле — одна ясная фраза или карточка на любом клиенте. Mac делает настоящий снимок экрана или объясняет, почему не может, Windows снова запускается после обновления, которое переместило приложение, а в консоли реле появились страницы «Управление», «Статистика» и «Сайт».
-- **2026-10-06 · [0.1.39 Keys](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.39)** — свой ключ из каталога восемнадцати провайдеров, вход по подписке ChatGPT, и устройство показывает только разговоры вошедшего аккаунта.
-- **2026-10-05 · [0.1.38 Loom](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.38)** — побочные чаты остаются на устройстве, где их создали, вспомогательное приложение на Mac хранит разрешения рук, каждое приложение может указывать на ваше реле, а документация стала сайтом.
-
-Все версии: [releases](https://github.com/nano-muse/nanoMuse/releases).
-
 ## Документация
 
 [nanomuse.cn/docs](https://nanomuse.cn/docs/) — установка по платформам, все устройства, руки, коннекторы, память, самостоятельный хостинг, протоколы. Исходники — в [docs/](../); что менялось от версии к версии — в [CHANGELOG](../../CHANGELOG.md) и [docs/releases/](../releases/).
@@ -109,6 +110,22 @@
 ## Участие
 
 Поручите ему настоящее дело, расскажите, что сломалось, потом выберите что-то небольшое и конкретное: в [CONTRIBUTING.md](../../CONTRIBUTING.md) — настройка и соглашения, в [AGENTS.md](../../AGENTS.md) — правила для агента-программиста в этом дереве, в [дорожной карте](../roadmap.md) — с чего начать. [Issues](https://github.com/nano-muse/nanoMuse/issues) · [Discussions](https://github.com/nano-muse/nanoMuse/discussions) · [Discord](https://discord.gg/bkTySmm28X).
+
+## ⭐️ Цитирование
+
+Если nanoMuse вам пригодился, пожалуйста, сошлитесь на статью.
+
+```bibtex
+@misc{liu2026nanomuseopensourcepersonalagent,
+      title={nanoMuse: An Open-Source Personal Agent for Every Device You Own}, 
+      author={Guangyi Liu and Yong Liu and Jiangning Zhang},
+      year={2026},
+      eprint={2610.08699},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.08699}, 
+}
+```
 
 ## Благодарности
 
