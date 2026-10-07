@@ -1085,7 +1085,7 @@
     <string name="nm_models_image_sub">Portrete ale Muzei tale și imaginile pe care le ceri.</string>
     <string name="nm_models_video_title">Crearea de clipuri</string>
     <string name="nm_models_video_sub">Clipuri scurte cu Muza ta.</string>
-    <string name="nm_models_new_chats">Se aplică la chaturile noi.</string>
+    <string name="nm_models_chat_applies">Se aplică la chatul principal și la chaturile noi; un chat secundar își păstrează modelul.</string>
     <string name="nm_models_media_more">Mai multe opțiuni pentru imagini și clipuri</string>
     <string name="nm_models_media_more_sub">Scrie numele unui model, vezi ce se oprește fără fiecare model sau verifică din nou ce modele video poate folosi o cheie.</string>
     <string name="nm_models_cloud_switch">Folosește modelele nanoMuse Cloud</string>

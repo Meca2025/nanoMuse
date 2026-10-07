@@ -1081,7 +1081,7 @@
     <string name="nm_models_image_sub">Porträts deiner Muse und die Bilder, um die du bittest.</string>
     <string name="nm_models_video_title">Clips erzeugen</string>
     <string name="nm_models_video_sub">Kurze Clips deiner Muse.</string>
-    <string name="nm_models_new_chats">Gilt für neue Chats.</string>
+    <string name="nm_models_chat_applies">Gilt für den Hauptchat und für neue Chats; ein Nebenchat behält sein Modell.</string>
     <string name="nm_models_media_more">Weitere Optionen für Bilder und Clips</string>
     <string name="nm_models_media_more_sub">Einen Modellnamen eingeben, sehen, was ohne welches Modell nicht geht, oder erneut prüfen, welche Videomodelle ein Schlüssel nutzen kann.</string>
     <string name="nm_models_cloud_switch">nanoMuse-Cloud-Modelle verwenden</string>

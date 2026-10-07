@@ -1077,7 +1077,7 @@
     <string name="nm_models_image_sub">뮤즈의 초상과 내가 요청한 이미지.</string>
     <string name="nm_models_video_title">영상 만들기</string>
     <string name="nm_models_video_sub">뮤즈의 짧은 영상.</string>
-    <string name="nm_models_new_chats">새 채팅부터 적용됩니다.</string>
+    <string name="nm_models_chat_applies">메인 채팅과 새 채팅에 적용됩니다. 사이드 채팅은 각자의 모델을 유지합니다.</string>
     <string name="nm_models_media_more">이미지와 영상 옵션 더 보기</string>
     <string name="nm_models_media_more_sub">모델 이름을 직접 입력하거나, 각 모델이 없으면 무엇이 멈추는지 보거나, 키로 쓸 수 있는 영상 모델을 다시 확인합니다.</string>
     <string name="nm_models_cloud_switch">nanoMuse Cloud 모델 사용</string>

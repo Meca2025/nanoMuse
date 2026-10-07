@@ -126,11 +126,11 @@ group first while signed in, its recommended model marked, then one group per
 provider of yours holding only the models that fit. A provider without the
 capability does not appear in that row at all. A row nothing covers shows the
 one sentence naming who could, and *Add a provider*. A chat pick is the default
-for new chats (*Applies to new chats.*); a chat already open keeps its model. On
-the iPhone the main chat follows the chat pick as well (*Applies to the main chat
-and to new chats; a side chat keeps its model.*): it is the one conversation the
-Chat tab always shows and is never new, so it would otherwise stay on the provider
-it started with.
+for new chats and moves the main chat (*Applies to the main chat and to new
+chats; a side chat keeps its model.*): the main chat is the one conversation the
+Chat tab always shows and is never new, so it would otherwise stay on the
+provider it started with; a side chat already open keeps its model. The same
+on the phones and the desktop.
 
 **Automatic.** The screen, pictures and clips rows open with an *Automatic*
 entry that says what it gives right now (*Currently nanoMuse Cloud ·

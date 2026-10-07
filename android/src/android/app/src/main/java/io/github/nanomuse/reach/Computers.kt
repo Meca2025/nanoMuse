@@ -124,7 +124,21 @@ object Computers {
      */
     @Throws(IOException::class)
     fun task(context: Context, c: Computer, text: String, onEvent: (JSONObject) -> Unit): JSONObject =
-        hub(c, "task", JSONObject().put("text", text).put("from", Hub.name(context)), timeoutMs = 10 * 60_000L, onEvent = onEvent)
+        hub(
+            c,
+            "task",
+            JSONObject().put("text", text).put("from", Hub.name(context)).put("language", uiLanguage(context)),
+            timeoutMs = 10 * 60_000L,
+            onEvent = onEvent,
+        )
+
+    /**
+     * The language of this phone's screens as a BCP-47 tag (`zh-Hans-CN`, `en-US`): the hub's
+     * optional `language` on `task` (docs/hub.md), so the Muse on the other device answers in
+     * it instead of guessing from the text. Older runtimes ignore the field.
+     */
+    fun uiLanguage(context: Context): String =
+        (context.resources.configuration.locales[0] ?: java.util.Locale.getDefault()).toLanguageTag()
 
     fun approve(c: Computer, approvalId: String, allow: Boolean) {
         runCatching { hub(c, "approve", JSONObject().put("approval_id", approvalId).put("allow", allow), timeoutMs = 30_000L) }

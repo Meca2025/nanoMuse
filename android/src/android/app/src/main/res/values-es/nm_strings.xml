@@ -1081,7 +1081,7 @@
     <string name="nm_models_image_sub">Retratos de tu Musa y las imágenes que pidas.</string>
     <string name="nm_models_video_title">Crear clips</string>
     <string name="nm_models_video_sub">Clips cortos de tu Musa.</string>
-    <string name="nm_models_new_chats">Se aplica a los chats nuevos.</string>
+    <string name="nm_models_chat_applies">Se aplica al chat principal y a los chats nuevos; un chat secundario conserva su modelo.</string>
     <string name="nm_models_media_more">Más opciones de imágenes y clips</string>
     <string name="nm_models_media_more_sub">Escribe el nombre de un modelo, mira qué se detiene sin cada modelo o vuelve a comprobar qué modelos de vídeo puede usar una clave.</string>
     <string name="nm_models_cloud_switch">Usar modelos de nanoMuse Cloud</string>

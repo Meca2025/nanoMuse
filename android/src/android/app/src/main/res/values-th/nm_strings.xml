@@ -1077,7 +1077,7 @@
     <string name="nm_models_image_sub">ภาพบุคคลของมิวส์ของคุณ และภาพที่คุณขอ</string>
     <string name="nm_models_video_title">สร้างคลิป</string>
     <string name="nm_models_video_sub">คลิปสั้นของมิวส์ของคุณ</string>
-    <string name="nm_models_new_chats">มีผลกับแชทใหม่</string>
+    <string name="nm_models_chat_applies">มีผลกับแชทหลักและแชทใหม่ ส่วนแชทย่อยยังใช้โมเดลเดิมของตัวเอง</string>
     <string name="nm_models_media_more">ตัวเลือกภาพและคลิปเพิ่มเติม</string>
     <string name="nm_models_media_more_sub">พิมพ์ชื่อโมเดล ดูว่าหากไม่มีโมเดลใดสิ่งใดจะหยุด หรือตรวจอีกครั้งว่าคีย์ใช้โมเดลวิดีโอใดได้บ้าง</string>
     <string name="nm_models_cloud_switch">ใช้โมเดลของ nanoMuse Cloud</string>
