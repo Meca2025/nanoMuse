@@ -1001,7 +1001,7 @@ const zhCN: Record<string, string> = {
   "No limit on this account.": "这个账号不限额度。",
   "¥{allowance} to start, +¥{invite} for each friend you invite, and +¥{invite} for them; after that, your own key keeps the model going.": "起始 ¥{allowance}，每邀请一位朋友你 +¥{invite}、对方也 +¥{invite}；用完后换自己的 key 继续。",
   "The free allowance is used up.": "免费额度已用完。",
-  "The image provider is busy right now — try again in a minute.": "生图服务现在有点忙，请过一分钟再试。",
+  "The image provider is busy right now; try again in a minute.": "生图服务现在有点忙，请过一分钟再试。",
   "Nearly used up: ¥{left} of ¥{grant} left.": "额度快用完了：还剩 ¥{left}（共 ¥{grant}）。",
   "Invite a friend (+¥{invite} for each of you) or bring your own key; your sign-in keeps working either way.":
     "邀请一位新用户（你和对方各 +¥{invite}），或者换成自己的 key；无论哪种，登录都不受影响。",
@@ -1380,7 +1380,7 @@ const zhCN: Record<string, string> = {
   "Details": "详情",
   "Hide details": "收起详情",
   "Today's share of the free allowance is used up; it comes back at midnight, Beijing time. Your own model key under Connections keeps you going now.": "今天的免费额度用完了，北京时间零点恢复。在「连接」里填上你自己的模型 key，现在就能继续。",
-  "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key under Connections — your sign-in and your devices keep working either way.":
+  "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key under Connections; your sign-in and your devices keep working either way.":
     "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者在「连接」里填上自己的模型 key；无论选哪个，登录和多设备功能都不受影响。",
   "The account's free allowance is used up. Add your own model key under Connections to keep going.": "这个账号的免费额度已经用完。在「连接」里填上你自己的模型 key 就能继续。",
   "Too many requests at once; wait a moment and try again.": "请求太密集了，稍等一下再试。",
@@ -1423,7 +1423,7 @@ const zhCN: Record<string, string> = {
   "This account is disabled.": "这个账号已被停用。",
   "That model is not offered here.": "这里不提供这个模型。",
   "Too many requests; slow down a little.": "请求太频繁了，稍微慢一点。",
-  "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key — your sign-in and your devices keep working either way.":
+  "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key; your sign-in and your devices keep working either way.":
     "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者换成自己的 key；无论选哪个，登录和多设备功能都不受影响。",
   "Today's token quota is used up; it comes back tomorrow.": "今天的 token 配额用完了，明天恢复。",
   "The model provider did not answer.": "模型服务商没有响应。",
@@ -1575,7 +1575,7 @@ const zhCN: Record<string, string> = {
   "Tell me what's on your plate and I'll turn it into a realistic plan with the important things first.": "告诉我你手头有什么，我把它排成一份切实可行的计划，重要的事放前面。",
   "Help me plan my week. Ask me what I need to get done, then propose a schedule.": "帮我规划这一周。先问我有哪些事要做，然后给出一份日程安排。",
   "Research & compare options": "调研并比较选项",
-  "Laptops, flights, insurance, a new phone plan — I'll gather the facts and compare them for you.": "笔记本、机票、保险、新的手机套餐，我帮你收集事实并逐项比较。",
+  "Laptops, flights, insurance, a new phone plan: I'll gather the facts and compare them for you.": "笔记本、机票、保险、新的手机套餐，我帮你收集事实并逐项比较。",
   "I need to make a purchase decision. Ask me what I'm choosing between, then research and compare the options.": "我想买个东西，拿不定主意。先问我在哪几个里面挑，然后帮我查一查、比一比。",
   "Set up a long-term goal": "建立一个长期目标",
   "Share a goal (learn a language, run a 10k, save for a trip) and I'll break it into steps and keep track.": "说一个目标（学一门语言、跑完 10 公里、攒一次旅行的钱），我把它拆成步骤并持续跟进。",
@@ -1584,7 +1584,7 @@ const zhCN: Record<string, string> = {
   "The more I know about your preferences, routines and constraints, the more useful I get. I'll remember what matters.": "我越了解你的偏好、作息和限制，就越能帮上忙。重要的事我会记住。",
   "Ask me a few questions about myself so you can help me better, and remember the answers.": "问我几个关于我的问题，好更了解我，然后把答案记住。",
   "Build a quick tracker": "做一个简单的追踪表",
-  "Spending, habits, workouts, reading — I can write a small script or document to track it for you.": "开支、习惯、锻炼、阅读，我可以写一个小脚本或文档帮你记录。",
+  "Spending, habits, workouts, reading: I can write a small script or document to track it for you.": "开支、习惯、锻炼、阅读，我可以写一个小脚本或文档帮你记录。",
   "Build me a simple tracker. Ask me what I want to track and how, then create it in the workspace.": "帮我做一个简单的追踪表。先问我想记录什么、怎么记，然后在工作区里建好。",
 
   // Library, the phone's two-way split
