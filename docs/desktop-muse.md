@@ -382,7 +382,7 @@ stock General plugin switched off in the bundle layer:
   effect at the hands' next step (the plugin restarts `nanomuse mcp` with the new model,
   no cold restart). The hands speak OpenAI's shape only, so an Anthropic or native Gemini
   key is named in one sentence under the row and not listed. A row nothing can do shows
-  the gate's sentence — *Pictures need a provider with image models — Alibaba Cloud
+  the gate's sentence — *Pictures need a provider with image models: Alibaba Cloud
   Bailian, Zhipu GLM, SiliconFlow, …* — and *Add a provider*; the page ends with *Add a
   provider*, which opens the ways on under Account. When you have not chosen, a row
   follows the provider new chats answer through (its catalogue default for the job) when
