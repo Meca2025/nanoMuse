@@ -323,7 +323,12 @@ final class NanoMuseHub: ObservableObject {
             if let id = frame["id"] as? String, let done = pending.removeValue(forKey: id) {
                 eventHandlers.removeValue(forKey: id)
                 done(.failure(HubError(code: frame["code"] as? String ?? "error", message: frame["message"] as? String ?? "error")))
+            } else if connected {
+                // `too_large`, `rate_limited`, `bad_frame`: a word about one frame while the
+                // socket stays open (docs/hub.md); the Devices row keeps saying Connected.
+                AppLogger(category: "NanoMuseHub").info("relay error frame: \(frame["code"] as? String ?? "error")")
             } else {
+                // `bad_key` / `bad_device` ahead of the close: the row says so until 4001/4002 lands
                 state = .error(frame["message"] as? String ?? "")
             }
         default:
@@ -421,7 +426,7 @@ final class NanoMuseHub: ObservableObject {
             // "@iPhone …" from another device: this phone's Muse does it (NanoMuseHubTasks).
             let sender = frame["from"] as? [String: Any] ?? [:]
             Task { @MainActor [weak self] in
-                let outcome = await NanoMuseHubTasks.run(args: args, from: sender) { [weak self] body in
+                let outcome = await NanoMuseHubTasks.run(callId: id, args: args, from: sender) { [weak self] body in
                     self?.event(id, body: body)
                 }
                 switch outcome {

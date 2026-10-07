@@ -414,6 +414,13 @@ Ours, in `NanoMuse/`:
   turn on the same provider (`NanoMuseProxy.SessionSlot`), and their failures are sentences in
   every language — *The provider refused this key (HTTP 401)*, *The video took longer than 12
   minutes* — with the vendor's own words after *The provider says:* when it sent some.
+- **The audit's third pass (round 11)** (`NanoMuseHubTasks.swift`, `NanoMuseHub.swift`): a
+  `stop` from another device finds the run by the task frame's id (`stop {call}`, what the
+  desktop sends) as well as by conversation, only the device that asked may stop it, and the
+  task then answers `cancelled` as [hub.md](hub.md) says. A relay `error` frame about one frame
+  (`too_large`, `rate_limited`, `bad_frame`) while the socket stays open is logged and the
+  Devices row keeps saying *Connected* instead of showing the relay's sentence until the next
+  reconnect.
 - **The audit's strings and layout pass (round 10)** (`NanoMuseChrome.swift`,
   `NanoMuseFirstRun.swift`, `NanoMuseProviderReachCard.swift`, `NanoMuseSystemFiles.swift`,
   `*.lproj/InfoPlist.strings`, `Localizable.xcstrings`): `NanoMuseFlowLayout`, a wrapping row
