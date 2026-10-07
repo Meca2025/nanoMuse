@@ -25,6 +25,9 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The other device's name in "… is working"** under its prompt, instead of a fixed word.
 - **The Cloud page is called *nanoMuse Cloud* everywhere** — in the settings sidebar and in every sentence that points to it; the *Upgrade* link left the usage card (nothing is sold).
 - **Corrected sentences** about where chats live (sync is on by default), where the look is changed and which site the update check reads first; the UI-TARS-desktop operator is credited under Thanks. Chinese wording follows the phone (在线, 快捷聊天, 非营利, 形象工坊, 操作屏幕) and uses 「」 quotes.
+- **A proxy for the model providers.** Settings → nanoMuse Cloud → Network takes one address (`http://host:port`, `https://`, `socks5://`, `socks5h://`; a `user:pass@` is shown masked). The shell puts it on the host process's environment at the next start, so your own keys, the ChatGPT sign-in, *List models* and the hands' runtime go through it while nanoMuse Cloud and loopback never do; *Restart now* under the row restarts the host without closing the window.
+- **The Permissions page lists every standing grant by risk tier.** A *Standing grants* section groups what this computer remembers — the remote-control switch, the devices allowed without asking, the hands' per-app grants — under *Runs without asking*, *Remembered from the card* and *Runs, then tells you*, each row with what was allowed, for whom or where, when, and *Revoke*; one host route lists them and one revokes any of them.
+- **The star card's sentence may come from the relay.** When the nudge policy carries `star.text` / `star.text_zh` (up to 200 characters), the card and the header line show that sentence — `text_zh` in a Chinese UI, else `text` — and the app's own words otherwise; the title and the buttons stay the app's.
 
 ### Android
 

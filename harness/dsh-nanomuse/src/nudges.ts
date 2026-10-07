@@ -15,6 +15,10 @@
  *   allowance card.
  * - `cooldown_days` between any two asks; `max_asks` is a lifetime cap — showing a card is an
  *   ask, "Not now" included; going to GitHub from any card sets `starred` and ends them all.
+ * - `text` and `text_zh` (optional, ≤ 200 characters each, empty by default): the
+ *   card's body sentence, when the relay wants to say it in its own words. Trimmed; a value
+ *   over the cap is dropped. A Chinese UI takes `text_zh`, else `text`, else the app's own
+ *   sentence for the moment; the title and the buttons stay the app's (`starText`).
  */
 
 // ---- the policy ----------------------------------------------------------------------
@@ -36,6 +40,9 @@ export interface NudgesPolicy {
     moments: NudgeMoments
     cooldown_days: number
     max_asks: number
+    /** The card's body sentence in the relay's words; '' means the app's own. */
+    text: string
+    text_zh: string
   }
 }
 
@@ -47,7 +54,29 @@ export const DEFAULT_NUDGES: NudgesPolicy = {
     moments: { signed_in: true, tasks: [3, 10, 30], new_look: true, exhausted: true, days_used: [7, 30], goal_done: true },
     cooldown_days: 7,
     max_asks: 4,
+    text: '',
+    text_zh: '',
   },
+}
+
+/** The longest body sentence a relay may put on the card; anything longer is dropped, not cut. */
+export const STAR_TEXT_MAX = 200
+
+/** A relay's sentence as the card may show it: trimmed; '' when it is not a string, empty, or over STAR_TEXT_MAX. */
+export function starSentence(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const text = value.trim()
+  return text.length > 0 && text.length <= STAR_TEXT_MAX ? text : ''
+}
+
+/**
+ * The card's body: the relay's Chinese sentence for a Chinese UI, else its English one, else
+ * the app's own words for the moment (`fallback`). Only the body changes; the title and the
+ * buttons are always the app's.
+ */
+export function starText(policy: Pick<NudgesPolicy, 'star'>, zh: boolean, fallback: string): string {
+  const s = policy.star
+  return (zh && s.text_zh) || s.text || fallback
 }
 
 /** The policy is fetched at most this often. */
@@ -88,6 +117,8 @@ export function mergeNudges(raw: unknown): NudgesPolicy {
       },
       cooldown_days: typeof star.cooldown_days === 'number' && star.cooldown_days >= 0 ? star.cooldown_days : d.cooldown_days,
       max_asks: typeof star.max_asks === 'number' && star.max_asks >= 0 ? star.max_asks : d.max_asks,
+      text: starSentence(star.text),
+      text_zh: starSentence(star.text_zh),
     },
   }
 }

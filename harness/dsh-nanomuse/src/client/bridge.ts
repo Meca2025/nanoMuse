@@ -19,6 +19,15 @@ export interface DesktopPrefs {
   quickChatDefault?: string
   /** Another app holds the combination, so nanoMuse did not get it. */
   quickChatTaken?: boolean
+  // since 0.1.41 — the proxy for the model providers (the Cloud page's Network row); absent in older shells
+  /** The address as kept (`http://host:port`, `socks5://host:port`); '' for none. */
+  proxy?: string
+  /** The same with `user:pass@` hidden, for the screen. */
+  proxyMasked?: string
+  /** The proxy the running Host was started with; differs from `proxy` until a restart. */
+  proxyApplied?: string
+  /** The relay hosts the shell keeps off the proxy (the plugin's `config.baseURL`), besides the default relay and loopback. */
+  relayHosts?: string[]
   supports: { openAtLogin: boolean; menuBar: boolean; quickChat: boolean }
 }
 
@@ -53,7 +62,7 @@ export interface HarnessBridge {
   setTheme(theme: 'light' | 'dark'): Promise<void>
   // since 0.1.30 — absent in older shells
   prefs?(): Promise<DesktopPrefs>
-  setPrefs?(patch: Partial<Pick<DesktopPrefs, 'openAtLogin' | 'menuBar' | 'quickChat' | 'quickChatKey'>>): Promise<DesktopPrefs>
+  setPrefs?(patch: Partial<Pick<DesktopPrefs, 'openAtLogin' | 'menuBar' | 'quickChat' | 'quickChatKey' | 'proxy'> & { relayHosts: string[] }>): Promise<DesktopPrefs>
   reportBug?(): Promise<{ screenshot: string; url: string }>
   reveal?(path: string): Promise<void>
   onQuickChat?(listener: () => void): () => void
@@ -64,6 +73,8 @@ export interface HarnessBridge {
   setContentProtection?(on: boolean): Promise<void>
   setOverlay?(state: { hands: OverlayHands | null; cards: { id: string; kind: 'approval' | 'hold'; title: string; text: string; actions: { id: string; label: string; tone?: 'on' | 'no' }[] }[] }): void
   onOverlayAction?(listener: (card: string, action: string) => void): () => void
+  // since 0.1.41: the Host again with the window up, so a proxy just set applies
+  restartHost?(): Promise<void>
 }
 
 export function bridge(): HarnessBridge | undefined {

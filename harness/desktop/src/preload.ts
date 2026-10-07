@@ -38,7 +38,10 @@ const bridge = {
   /** App behaviour (open at login, menu bar icon, quick-chat key): the values, the key's name, what this platform can do. */
   prefs: (): Promise<DesktopPrefs> => ipcRenderer.invoke("nanomuse:prefs"),
   /** Change some of it; the shell applies it at once and answers with the whole. */
-  setPrefs: (patch: Partial<Pick<DesktopPrefs, "openAtLogin" | "menuBar" | "quickChat" | "quickChatKey">>): Promise<DesktopPrefs> => ipcRenderer.invoke("nanomuse:prefs:set", patch),
+  setPrefs: (patch: Partial<Pick<DesktopPrefs, "openAtLogin" | "menuBar" | "quickChat" | "quickChatKey" | "proxy" | "relayHosts">>): Promise<DesktopPrefs> => ipcRenderer.invoke("nanomuse:prefs:set", patch),
+  // since 0.1.41
+  /** Stop the Host and start it again with the window up: the Network row's *Restart now*, so a proxy just set applies. */
+  restartHost: (): Promise<void> => ipcRenderer.invoke("nanomuse:restart-host"),
   /** A screenshot of the window to Downloads and the issue page with the build's facts filled in. */
   reportBug: (): Promise<{ screenshot: string; url: string }> => ipcRenderer.invoke("nanomuse:report-bug"),
   /** Show a file in the system's file manager. */
@@ -73,6 +76,15 @@ export interface DesktopPrefs {
   quickChatDefault: string;
   /** Another app holds the combination, so nanoMuse did not get it. */
   quickChatTaken: boolean;
+  // since 0.1.41: the proxy for the model providers
+  /** The address as kept (`http://host:port`, `socks5://host:port`); "" for none. Set it to change, to "" to remove. */
+  proxy: string;
+  /** The same with `user:pass@` hidden, for the screen. */
+  proxyMasked: string;
+  /** The proxy the running Host was started with; differs from `proxy` until a restart. */
+  proxyApplied: string;
+  /** The relay hosts the plugin talks to (its `config.baseURL`): kept on NO_PROXY together with the default relay. */
+  relayHosts?: string[];
   supports: { openAtLogin: boolean; menuBar: boolean; quickChat: boolean };
 }
 
