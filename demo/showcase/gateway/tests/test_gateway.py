@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import logging
+
 import httpx
 import pytest
+from starlette.testclient import TestClient
+from uvicorn.protocols.utils import get_path_with_query_string
 
+from showcase_gateway import app as app_module
 from showcase_gateway.config import Lane, Settings, text_only
 from showcase_gateway.llm import extract_usage, pinned, prepare_body
+from showcase_gateway.logs import RedactTokens, redact
 from showcase_gateway.sessions import (
     Provider,
     Refused,
@@ -112,6 +118,84 @@ async def test_a_dead_container_is_logged_without_the_query(world, caplog):
         # the path is in the log; an older ?token= link's query is not
         lines = [rec.getMessage() for rec in caplog.records if "upstream" in rec.getMessage()]
         assert lines and all("/" in line and "secret-token" not in line for line in lines)
+
+
+def uvicorn_request_lines(app):
+    """``app`` behind the request lines uvicorn writes, formatted as uvicorn formats them
+    (``uvicorn.protocols.http.*`` and ``uvicorn.protocols.websockets.*``): the path with the
+    query string as it arrived, HTTP on ``uvicorn.access``, the upgrade on ``uvicorn.error``.
+    The test client does not run uvicorn, so this stands in for it."""
+
+    async def logged(scope, receive, send):
+        if scope["type"] == "websocket":
+            logging.getLogger("uvicorn.error").info(
+                '%s - "WebSocket %s" [accepted]', "1.2.3.4:50000", get_path_with_query_string(scope)
+            )
+        elif scope["type"] == "http":
+            logging.getLogger("uvicorn.access").info(
+                '%s - "%s %s HTTP/%s" %d',
+                "1.2.3.4:50000",
+                scope["method"],
+                get_path_with_query_string(scope),
+                scope["http_version"],
+                200,
+            )
+        await app(scope, receive, send)
+
+    return logged
+
+
+async def test_a_token_in_the_address_never_reaches_the_servers_log(world, monkeypatch, caplog):
+    settings, runner, upstream, clock, manager, app = world
+    relayed: list[str] = []
+
+    async def fake_proxy_ws(ws, url, touch, label="", first=None, accepted=False):
+        relayed.append(url)
+        if not accepted:
+            await ws.accept()
+        await ws.close(code=1000)
+
+    monkeypatch.setattr(app_module, "proxy_ws", fake_proxy_ws)
+    with TestClient(uvicorn_request_lines(app)) as tc:
+        sess = tc.post("/api/demo/session", json={}, headers={"x-forwarded-for": "1.2.3.4"}).json()
+        token = sess["token"]
+        host = sess["server_url"].split("//")[1]
+        with caplog.at_level("INFO"):
+            # an older page or app still sending the token the old way: the socket is served
+            # (the runtime behind it says what it thinks of the form), the page is served
+            with tc.websocket_connect(f"/ws?token={token}", headers={"host": host}) as ws:
+                closed = ws.receive()
+            assert closed["type"] == "websocket.close" and relayed
+            r = tc.get(f"/?token={token}&ui=lite", headers={"host": host})
+            assert r.status_code == 200
+    lines = [rec.getMessage() for rec in caplog.records]
+    assert any('"WebSocket /ws?token=[redacted]" [accepted]' in line for line in lines)
+    assert any('"GET /?token=[redacted]&ui=lite HTTP/1.1" 200' in line for line in lines)
+    # httpx names the whole URL of what the gateway relays to the container, at INFO
+    assert any("http://10.0.0.2:8787/?token=[redacted]&ui=lite" in line for line in lines)
+    # nothing anywhere, from any logger, carries the value
+    assert token not in "\n".join(lines)
+
+
+def test_the_filter_redacts_a_token_wherever_it_sits():
+    assert redact("GET /?token=abc.def-ghi&ui=lite") == "GET /?token=[redacted]&ui=lite"
+    assert redact('"WebSocket /ws?token=s3cret" [accepted]') == (
+        '"WebSocket /ws?token=[redacted]" [accepted]'
+    )
+    assert redact("Token=UPPER done") == "Token=[redacted] done"
+    assert redact("tokens=3 and a_token=x stay") == "tokens=3 and a_token=x stay"
+    record = logging.LogRecord(
+        "uvicorn.access", logging.INFO, __file__, 1, "%s %(path)s", None, None
+    )
+    record.args = {"path": "/ws?token=one"}
+    assert RedactTokens().filter(record) and record.args == {"path": "/ws?token=[redacted]"}
+    record.args = ("/ws?token=two", 200)
+    RedactTokens().filter(record)
+    assert record.args == ("/ws?token=[redacted]", 200)
+    # httpx logs the URL as an object, not a string
+    record.args = (httpx.URL("http://10.0.0.2:8787/?token=three&ui=lite"), 200)
+    RedactTokens().filter(record)
+    assert record.args == ("http://10.0.0.2:8787/?token=[redacted]&ui=lite", 200)
 
 
 async def test_the_showcase_is_full_and_the_daily_count(world):

@@ -89,7 +89,11 @@ visitor's browser ──HTTPS──▶ Caddy ── demo.nanomuse.dev ──▶ 
 A session is one hostname (`<id>.s.nanomuse.dev`) because the nanoMuse web app and the
 MobileGym module both take a server *origin*, and because the browser then keeps each session's
 token in its own `localStorage`. The wildcard certificate that needs is why Caddy is built with
-the Cloudflare DNS module.
+the Cloudflare DNS module. The token itself travels as the socket's first frame and in the
+fragment of the phone page's address, never in a query string; a page still on the older
+`?token=` form is served, but no log line of the gateway (its own, uvicorn's request lines,
+httpx's) carries the value: it is rewritten to `token=[redacted]` before it is written
+(`gateway/showcase_gateway/logs.py`). Caddy keeps no access log for these two names.
 
 ## What the gateway enforces
 
@@ -212,7 +216,7 @@ container: `nmw-<slug>` with three named volumes (`/data`, `/workspace`, `/home/
 `nanomuse-web` network (a way out, and the relay next to it), signed in from the environment
 (`NANOMUSE_CLOUD_KEY`, `NANOMUSE_CLOUD_BASE_URL=http://nanomuse-relay:8787`,
 `NANOMUSE_HUB_NAME=Web`, `NANOMUSE_ONBOARDED=1`; `nanomuse/hub/service.py`,
-`_seed_from_env`). The browser is sent to `https://<slug>.<SESSION_DOMAIN>/?token=…`, the same
+`_seed_from_env`). The browser is sent to `https://<slug>.<SESSION_DOMAIN>/#token=…`, the same
 door the phone's QR code opens, and the runtime there makes the Cloud its model on first
 start and takes its place on the hub as one of the account's devices — so the phone can ask
 it for things and it can ask the phone.
