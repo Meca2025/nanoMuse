@@ -41,7 +41,8 @@ enum NanoMuseSlot: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .chat: return AppLocalized("Chat")
+        // its own key: the slot is 对话 in Chinese, while the chat tab's "Chat" key stays 闲聊
+        case .chat: return AppLocalized("models.slot.chat")
         case .hands: return AppLocalized("Operating the screen")
         case .image: return AppLocalized("Making pictures")
         case .video: return AppLocalized("Making clips")
@@ -136,6 +137,11 @@ enum NanoMuseSlotResolver {
             return choice(chatProvider)
         }
         return choice(cloud) ?? choice(own.first)
+    }
+
+    /// What the slot follows when no choice is stored: the same order, without a choice.
+    static func automatic(slot: NanoMuseSlot, chatProviderId: String?, providers: [NanoMuseSlotProvider]) -> NanoMuseSlotChoice? {
+        resolve(slot: slot, chosen: nil, chatProviderId: chatProviderId, providers: providers)
     }
 }
 
@@ -402,6 +408,39 @@ enum NanoMuseModelSlots {
         }
     }
 
+    /// True when the person stored a choice for the slot (pictures or clips, on or off);
+    /// false when the slot follows the automatic order. Chat is the anchor and always counts
+    /// as chosen; the screen is not on iPhone.
+    static func hasChoice(_ slot: NanoMuseSlot) -> Bool {
+        switch slot {
+        case .chat: return true
+        case .hands: return false
+        case .image: return imageChoice() != nil
+        case .video: return NanoMuseMediaModels.videoChoice() != .unset
+        }
+    }
+
+    /// What the slot would follow with no choice stored, as `<provider> · <model>`; nil when nothing can.
+    static func automaticLine(_ slot: NanoMuseSlot, providers: [NanoMuseSlotProvider]? = nil) -> String? {
+        let list = providers ?? self.providers()
+        guard let choice = NanoMuseSlotResolver.automatic(slot: slot, chatProviderId: chatProviderId(), providers: list) else { return nil }
+        return line(for: choice, in: list)
+    }
+
+    /// Forget the stored choice for pictures or clips, so the slot follows the automatic
+    /// order again (the *Automatic* entry of the picker). Nothing else changes.
+    static func clear(_ slot: NanoMuseSlot) {
+        switch slot {
+        case .chat, .hands: return
+        case .image:
+            NanoMuseImageGen.clearChoice()
+            NotificationCenter.default.post(name: NanoMuseMediaModels.changed, object: nil)
+        case .video:
+            NanoMuseMediaModels.clearVideoChoice()
+        }
+        NotificationCenter.default.post(name: changed, object: nil)
+    }
+
     /// Set one slot to a provider and a model (the pickers and the "Use it for" card).
     static func use(_ slot: NanoMuseSlot, providerId: String, model: String) {
         let isCloud = providerId == NanoMuseCloud.instance?.id
@@ -434,6 +473,10 @@ enum NanoMuseModelSlots {
         case .video: choice = videoValue(providers: list)
         }
         guard let choice else { return nil }
+        return line(for: choice, in: list)
+    }
+
+    private static func line(for choice: NanoMuseSlotChoice, in list: [NanoMuseSlotProvider]) -> String {
         let label = list.first { $0.id == choice.providerId }?.label ?? ProviderConfigStore.shared.instance(for: choice.providerId)?.label ?? ""
         return label.isEmpty ? choice.model : "\(label) · \(choice.model)"
     }

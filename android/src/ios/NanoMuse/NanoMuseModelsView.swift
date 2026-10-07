@@ -50,7 +50,7 @@ struct NanoMuseModelsView: View {
     @ViewBuilder
     private func row(_ slot: NanoMuseSlot) -> some View {
         if slot == .hands {
-            NanoMuseSlotRow(slot: slot, value: AppLocalized("Not on iPhone"), chevron: false)
+            NanoMuseSlotRow(slot: slot, value: AppLocalized("models.hands.not_on_iphone"), chevron: false)
                 .opacity(0.55)
         } else {
             NavigationLink {
@@ -135,13 +135,31 @@ struct NanoMuseSlotPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var providers: [NanoMuseSlotProvider] = []
     @State private var current: NanoMuseSlotChoice?
+    /// False while the slot follows the automatic order (no choice stored).
+    @State private var chosen = true
+    @State private var videoOff = false
+    @State private var automaticLine: String?
     @State private var adding = false
 
     private var able: [NanoMuseSlotProvider] { providers.filter { $0.has(slot) } }
+    /// Pictures and clips can go back to the automatic order; chat is the anchor.
+    private var offersAutomatic: Bool { slot == .image || slot == .video }
 
     var body: some View {
         NanoMusePage(title: slot.title) {
-            if able.isEmpty {
+            if offersAutomatic {
+                NanoMuseCard {
+                    NanoMuseChoiceRow(
+                        title: AppLocalized("Automatic"),
+                        subtitle: automaticLine.map { String(format: AppLocalized("Currently %@"), $0) } ?? (able.isEmpty ? emptyLine : nil),
+                        selected: !chosen
+                    ) { pickAutomatic() }
+                    if slot == .video {
+                        NanoMuseRowDivider()
+                        NanoMuseChoiceRow(title: AppLocalized("Off"), subtitle: nil, selected: videoOff) { pickOff() }
+                    }
+                }
+            } else if able.isEmpty {
                 NanoMuseCaption(text: emptyLine)
             }
             ForEach(able, id: \.id) { provider in
@@ -150,7 +168,7 @@ struct NanoMuseSlotPickerView: View {
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 32)
-                    NanoMuseModelList(provider: provider, slot: slot, current: current) { model in
+                    NanoMuseModelList(provider: provider, slot: slot, current: chosen ? current : nil) { model in
                         pick(provider, model)
                     }
                 }
@@ -188,12 +206,29 @@ struct NanoMuseSlotPickerView: View {
     private func reload() {
         let list = NanoMuseModelSlots.providers()
         providers = list
+        chosen = NanoMuseModelSlots.hasChoice(slot)
+        videoOff = slot == .video && NanoMuseMediaModels.videoChoice() == .off
+        automaticLine = offersAutomatic ? NanoMuseModelSlots.automaticLine(slot, providers: list) : nil
         switch slot {
         case .chat: current = NanoMuseModelSlots.chatChoice()
         case .hands: current = nil
         case .image: current = NanoMuseModelSlots.imageValue(providers: list)
         case .video: current = NanoMuseModelSlots.videoValue(providers: list)
         }
+    }
+
+    /// Forget the stored choice: the slot follows the order again, nothing else changes.
+    private func pickAutomatic() {
+        NanoMuseModelSlots.clear(slot)
+        onPick()
+        dismiss()
+    }
+
+    /// No clips at all (video only); remembered, unlike "never chosen".
+    private func pickOff() {
+        NanoMuseMediaModels.saveVideo(instanceId: nil, model: "")
+        onPick()
+        dismiss()
     }
 
     private func pick(_ provider: NanoMuseSlotProvider, _ model: String) {
@@ -213,6 +248,42 @@ struct NanoMuseSlotPickerView: View {
         if slot != .chat { NanoMuseModelSlots.use(slot, providerId: provider.id, model: model) }
         onPick()
         dismiss()
+    }
+}
+
+/// A row of a picker that is not a model: a title, what it means right now, a tick when selected.
+private struct NanoMuseChoiceRow: View {
+    let title: String
+    let subtitle: String?
+    let selected: Bool
+    let onPick: () -> Void
+
+    var body: some View {
+        Button(action: onPick) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                    }
+                }
+                Spacer(minLength: 8)
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NanoMuseTones.action)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

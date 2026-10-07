@@ -158,6 +158,16 @@ enum NanoMuseImageGen {
         preferRelay = false // a key was chosen on purpose
     }
 
+    /// Back to the automatic order for pictures (the *Automatic* entry of the picker): no key
+    /// and no Cloud preference stored, so `route()` follows the chat provider, then Cloud, then
+    /// the first key that draws.
+    @MainActor
+    static func clearChoice() {
+        for key in [defaultsInstanceKey, defaultsModelKey, defaultsPreferRelayKey, defaultsRelayModelKey] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
     /// "Drawn by nanoMuse Cloud" / "Drawn by Bailian · qwen-image-3.0".
     @MainActor
     static func providerLine() -> String {
