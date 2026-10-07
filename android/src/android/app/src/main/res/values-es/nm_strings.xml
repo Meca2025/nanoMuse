@@ -42,7 +42,7 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Hola, soy nanoMuse, el asistente que vive en tu teléfono. Déjame quitarte algunas cosas de encima.</string>
-    <string name="nm_intro_how_i_work">Un poco sobre cómo trabajo:\n\n- Tengo mi propia computadora, un sandbox Linux y un navegador, así que puedo ejecutar comandos, abrir sitios web y completar formularios.\n- Puedo leer y organizar los archivos y fotos que montas para mí, y ocuparme de recordatorios y tareas programadas.\n- Antes de cualquier paso que importe, te pregunto primero.\n- Todo se ejecuta en este teléfono. Tus mensajes van al modelo que configuraste; con nanoMuse Cloud, esta conversación también te sigue a tus otros dispositivos — en Control de datos puedes desactivarlo.</string>
+    <string name="nm_intro_how_i_work">Un poco sobre cómo trabajo:\n\n- Tengo mi propia computadora, un sandbox Linux y un navegador, así que puedo ejecutar comandos, abrir sitios web y completar formularios.\n- Puedo leer y organizar los archivos y fotos que montas para mí, y ocuparme de recordatorios y tareas programadas.\n- Antes de cualquier paso que importe, te pregunto primero.\n- Todo se ejecuta en este teléfono. Tus mensajes van al modelo que configuraste; con nanoMuse Cloud, esta conversación también te sigue a tus otros dispositivos, en Control de datos puedes desactivarlo.</string>
     <string name="nm_intro_ask_name">Antes de empezar, ¿cómo quieres que te llame?</string>
 
     <!-- First conversation: the name chooser -->
@@ -602,7 +602,7 @@
 
     <!-- nanoMuse: the first-run pages -->
     <string name="nm_welcome_tagline">Un agente personal de código abierto para todos tus dispositivos.</string>
-    <string name="nm_welcome_email">Iniciar sesión, gratis</string>
+    <string name="nm_welcome_email">Iniciar sesión (gratis)</string>
     <string name="nm_welcome_fine_print">Una cuenta mantiene tus dispositivos juntos y trae el uso gratuito del modelo; no se cobra nada. Tu propia clave de API se puede añadir justo después.</string>
     <string name="nm_setup_source_title">¿Qué modelo responde?</string>
     <string name="nm_setup_source_sub">Tu cuenta ya trae uno. También puedes añadir tu propia clave de API y cambiar cuando quieras.</string>
@@ -652,6 +652,7 @@
     <string name="nm_cloud_server_ok">%1$s respondió: relay %2$s.</string>
     <string name="nm_cloud_server_bad_url">Escribe la dirección del relay, por ejemplo https://relay.example.org.</string>
     <string name="nm_cloud_server_https">Usa https para un servidor fuera de tu propia red. http sirve para una dirección privada (10.x, 192.168.x, 172.16–31.x, localhost, un nombre .local o .ts.net).</string>
+    <string name="nm_lan_only_https">http:// sin cifrar solo funciona con direcciones de tu propia red (10.x, 172.16–31.x, 192.168.x, nombres .local); usa https:// para %1$s.</string>
     <string name="nm_cloud_server_unreachable">Ningún relay respondió en %1$s. Revisa la dirección y que el relay esté en marcha.</string>
     <string name="nm_cloud_server_default">Volver a nanoMuse Cloud</string>
     <string name="nm_cloud_server_row">Servidor</string>
@@ -851,7 +852,7 @@
     <string name="nm_cloud_delete_account_confirm">La cuenta, sus inicios de sesión, su uso y su historial se eliminan en el relay, y los chats, la memoria, el feed, las metas y la cara de esta cuenta se eliminan de este teléfono. Esto no se puede deshacer.</string>
     <string name="nm_cloud_keep_chats">Conservar los chats de esta cuenta en este dispositivo</string>
     <string name="nm_cloud_keep_chats_sub">Desactivado: los chats, la memoria, el feed, las metas y la cara de esta cuenta se eliminan de este teléfono. Con la sincronización activada, el relay conserva los chats para el próximo inicio de sesión.</string>
-    <string name="nm_cloud_sign_in_ended">Tu sesión en este teléfono se cerró — inicia sesión de nuevo para continuar; hasta entonces tus chats se conservan en este dispositivo.</string>
+    <string name="nm_cloud_sign_in_ended">Tu sesión en este teléfono se cerró. Inicia sesión de nuevo para continuar; hasta entonces tus chats se conservan en este dispositivo.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agentes de código</string>
@@ -943,7 +944,7 @@
     <string name="nm_devices_notifications_hint">Permite las notificaciones para que el teléfono pueda seguir accesible en segundo plano.</string>
     <string name="nm_library_share_failed">No se pudo compartir el archivo.</string>
 
-    <!-- 0.1.32: Settings → Connectors — the services the agent can be let into (the desktop's catalogue) -->
+    <!-- 0.1.32: Settings → Connectors: the services the agent can be let into (the desktop's catalogue) -->
     <string name="nm_connectors_title">Conectores</string>
     <string name="nm_connectors_intro">Deja entrar al agente en los servicios que usas. Cada uno es el servidor MCP remoto del propio proveedor; la mayoría inician sesión con la cuenta que ya tienes, unos pocos piden una clave. Un servicio conectado es una entrada de servidor MCP que el agente puede usar en cualquier chat.</string>
     <string name="nm_connectors_connected_n">%1$d conectados</string>

@@ -15,13 +15,13 @@
     <string name="nm_status_replying">Scrie răspunsul</string>
     <string name="nm_status_on">Se ocupă: %1$s</string>
     <string name="nm_status_working">Se ocupă</string>
-    <string name="nm_home_not_ready">O clipă — chatul se încarcă încă.</string>
+    <string name="nm_home_not_ready">O clipă, chatul se încarcă încă.</string>
 
     <!-- The ask for a star: at the first sign-in, after the first task, when the allowance is used up -->
     <string name="nm_star_title">O stea pe GitHub ajută</string>
     <string name="nm_star_action">Dă o stea pe GitHub</string>
     <string name="nm_star_later">Nu acum</string>
-    <string name="nm_star_signed_in">Bine ai venit. nanoMuse este gratuit, open source și nonprofit — un agent personal pentru oricine îl rulează. Dacă asta înseamnă ceva pentru tine, o stea pe GitHub este felul în care următoarea persoană îl găsește.</string>
+    <string name="nm_star_signed_in">Bine ai venit. nanoMuse este gratuit, open source și nonprofit: un agent personal pentru oricine îl rulează. Dacă asta înseamnă ceva pentru tine, o stea pe GitHub este felul în care următoarea persoană îl găsește.</string>
     <plurals name="nm_star_tasks">
         <item quantity="one">O sarcină încheiată. Dacă nanoMuse a ajutat, o stea pe GitHub le spune celor care îl construiesc că a făcut-o.</item>
         <item quantity="few">%1$d sarcini încheiate. Dacă nanoMuse e util, o stea pe GitHub ajută următoarea persoană să-l găsească.</item>
@@ -36,7 +36,7 @@
     </plurals>
     <string name="nm_star_goal_done">Obiectiv atins. Dacă nanoMuse te-a ajutat să ajungi aici, o stea pe GitHub le spune celor care îl construiesc.</string>
     <string name="nm_star_new_look">O față nouă, desenată pentru tine. Dacă îți place direcția în care merge nanoMuse, o stea pe GitHub ajută mai mulți oameni să-l găsească.</string>
-    <string name="nm_star_exhausted">Creditul gratuit s-a epuizat — mulțumim că ai ajuns până aici. Dacă nanoMuse a meritat-o, o stea pe GitHub ține proiectul la vedere pentru următoarea persoană.</string>
+    <string name="nm_star_exhausted">Creditul gratuit s-a epuizat. Mulțumim că ai ajuns până aici. Dacă nanoMuse a meritat-o, o stea pe GitHub ține proiectul la vedere pentru următoarea persoană.</string>
     <string name="nm_chat_menu_rename">Redenumește chatul</string>
 
     <!-- Foreground-service notification title while no tool is running -->
@@ -44,8 +44,8 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Bună, sunt nanoMuse, asistentul care trăiește pe telefonul tău. Lasă-mă să-ți iau câteva lucruri de pe cap.</string>
-    <string name="nm_intro_how_i_work">Câteva lucruri despre cum lucrez:\n\n- Am propriul computer — un sandbox Linux și un browser — așa că pot rula comenzi, deschide site-uri și completa formulare.\n- Pot citi și organiza fișierele și fotografiile pe care mi le pui la dispoziție și pot avea grijă de mementouri și de sarcinile programate.\n- Înainte de orice pas care contează, te întreb mai întâi.\n- Totul rulează pe acest telefon. Mesajele tale ajung la modelul pe care l-ai configurat; cu nanoMuse Cloud, această conversație te urmează și pe celelalte dispozitive — se poate opri din Controlul datelor.</string>
-    <string name="nm_intro_ask_name">Înainte să începem — cum să-ți spun?</string>
+    <string name="nm_intro_how_i_work">Câteva lucruri despre cum lucrez:\n\n- Am propriul computer (un sandbox Linux și un browser), așa că pot rula comenzi, deschide site-uri și completa formulare.\n- Pot citi și organiza fișierele și fotografiile pe care mi le pui la dispoziție și pot avea grijă de mementouri și de sarcinile programate.\n- Înainte de orice pas care contează, te întreb mai întâi.\n- Totul rulează pe acest telefon. Mesajele tale ajung la modelul pe care l-ai configurat; cu nanoMuse Cloud, această conversație te urmează și pe celelalte dispozitive; se poate opri din Controlul datelor.</string>
+    <string name="nm_intro_ask_name">Înainte să începem, cum să-ți spun?</string>
 
     <!-- First conversation: the name chooser -->
     <string name="nm_naming_title">Dă-mi un nume</string>
@@ -141,7 +141,7 @@
     <string name="nm_idea_action_chat">Trimite în chat</string>
     <string name="nm_idea_action_routine">Creează rutina</string>
     <string name="nm_idea_action_goal">Începe obiectivul</string>
-    <string name="nm_idea_routine_created">Rutină creată — stabilește ora și detaliile.</string>
+    <string name="nm_idea_routine_created">Rutină creată. Stabilește ora și detaliile.</string>
 
     <!-- Library tab -->
     <string name="nm_library_artifacts">Artefacte</string>
@@ -218,14 +218,14 @@
     <string name="nm_feed_prompt">Scrie fluxul de azi.</string>
     <string name="nm_feed_default_preferences">Construiește-mi un flux despre ce mă interesează. Scurt și direct, ușor de parcurs, fără clickbait.</string>
     <string name="nm_feed_intro_title">Despre flux</string>
-    <string name="nm_feed_intro_desc">Postări scurte pe care agentul tău le scrie pentru tine din ce își amintește — fișierele de memorie, jurnalul ultimei săptămâni, obiectivele tale. Propoziția de mai jos ghidează fiecare postare de acum înainte; o poți edita oricând.</string>
+    <string name="nm_feed_intro_desc">Postări scurte pe care agentul tău le scrie pentru tine din ce își amintește: fișierele de memorie, jurnalul ultimei săptămâni, obiectivele tale. Propoziția de mai jos ghidează fiecare postare de acum înainte; o poți edita oricând.</string>
     <string name="nm_feed_edit">Editează</string>
     <string name="nm_feed_got_it">Am înțeles</string>
     <string name="nm_feed_save">Salvează</string>
     <string name="nm_feed_settings_title">Flux</string>
     <string name="nm_feed_routine_switch">Scrie-l în fiecare zi</string>
     <string name="nm_feed_routine_time">Zilnic la %1$s · atinge pentru a schimba</string>
-    <string name="nm_feed_routine_needs_model">Adaugă mai întâi un model — fluxul e scris de agentul tău.</string>
+    <string name="nm_feed_routine_needs_model">Adaugă mai întâi un model; fluxul e scris de agentul tău.</string>
     <string name="nm_feed_write_now">Scrie-l acum</string>
     <string name="nm_feed_generating">Se scrie…</string>
     <string name="nm_feed_discuss">Discută</string>
@@ -242,7 +242,7 @@
     <string name="nm_feed_type_memory">Amintire</string>
     <string name="nm_feed_type_note">Notă</string>
     <string name="nm_feed_empty_title">Nimic în flux încă</string>
-    <string name="nm_feed_empty_body">Pe măsură ce ne cunoaștem, aici vor apărea postări noi. În fiecare zi la %1$s citesc ce îmi amintesc despre tine — fișierele de memorie, jurnalul ultimei săptămâni, obiectivele tale — și scriu câteva postări scurte.</string>
+    <string name="nm_feed_empty_body">Pe măsură ce ne cunoaștem, aici vor apărea postări noi. În fiecare zi la %1$s citesc ce îmi amintesc despre tine (fișierele de memorie, jurnalul ultimei săptămâni, obiectivele tale) și scriu câteva postări scurte.</string>
     <string name="nm_feed_empty_how_title">Ghidează-l cu o propoziție</string>
     <string name="nm_feed_empty_how_body">Atinge butonul de reglaje din dreapta sus ca să-mi spui ce vrei mai mult, să oprești rutina zilnică sau să mă pui să scriu prima zi acum.</string>
     <string name="nm_feed_card_posted">Adăugat în fluxul tău</string>
@@ -273,13 +273,13 @@
     <string name="nm_sysfiles_sort_recent">Modificate recent</string>
     <string name="nm_sysfiles_sort_toggle">Schimbă ordinea</string>
     <string name="nm_sysfiles_open_memory">Deschide memoria</string>
-    <string name="nm_sysfiles_footer">Aceste fișiere sunt ale agentului: cine este, ce știe despre tine, ce își amintește, ce scrie pentru tine și când se trezește. Stau în memoria telefonului — agentul le citește și le editează din shell-ul lui sub /var/minis/memory, iar tu poți edita orice aici.</string>
+    <string name="nm_sysfiles_footer">Aceste fișiere sunt ale agentului: cine este, ce știe despre tine, ce își amintește, ce scrie pentru tine și când se trezește. Stau în memoria telefonului; agentul le citește și le editează din shell-ul lui sub /var/minis/memory, iar tu poți edita orice aici.</string>
     <string name="nm_sysfile_about_lead">Despre acest fișier.</string>
     <string name="nm_sysfile_about_soul">Aceasta este persona agentului: valorile și obiceiurile pe care încearcă să le respecte în fiecare conversație, numele lui și stilul în care răspunde. Pornește de la un șablon livrat cu nanoMuse; agentul îl poate rafina în timp și îți spune când o face. Îl poți edita oricând. Această notă nu face parte din fișier.</string>
     <string name="nm_sysfile_about_user">Agentul ține acest fișier ca notițe de lucru despre tine: numele tău, cum vrei să ți se adreseze, fusul tău orar și contextul de care are nevoie ca să fie util, de exemplu la ce lucrezi. Îl completează în timp din conversațiile voastre și îl citește la începutul fiecăreia. Reflectă înțelegerea actuală a agentului, așa că poate fi incomplet sau depășit. Poți edita orice aici, iar agentul va urma ce scrii. Această notă nu face parte din fișier.</string>
-    <string name="nm_sysfile_about_memory">Notițe durabile pe care agentul le păstrează de la o conversație la alta — lucrurile care merită reținute, cu cuvintele lui, plus tot ce ai importat de la alt asistent. Jurnalul zi cu zi stă alături, în dosarul de memorie. Citit la începutul fiecărei conversații când memoria e pornită. Această notă nu face parte din fișier.</string>
+    <string name="nm_sysfile_about_memory">Notițe durabile pe care agentul le păstrează de la o conversație la alta: lucrurile care merită reținute, cu cuvintele lui, plus tot ce ai importat de la alt asistent. Jurnalul zi cu zi stă alături, în dosarul de memorie. Citit la începutul fiecărei conversații când memoria e pornită. Această notă nu face parte din fișier.</string>
     <string name="nm_sysfile_about_feed">Un paragraf care ghidează fluxul: ce vrei mai mult, ce să sară, cât de lungi să fie postările. Rutina zilnică a fluxului îl citește înainte de a scrie. Această notă nu face parte din fișier.</string>
-    <string name="nm_sysfile_about_heartbeat">Când se trezește agentul de unul singur: fiecare rutină și fiecare verificare de obiectiv, cu programul ei și cum a mers ultima rulare. Generat din rutine, deci aici e doar pentru citire — schimbă-le din Obiective → Rutine. Această notă nu face parte din fișier.</string>
+    <string name="nm_sysfile_about_heartbeat">Când se trezește agentul de unul singur: fiecare rutină și fiecare verificare de obiectiv, cu programul ei și cum a mers ultima rulare. Generat din rutine, deci aici e doar pentru citire; schimbă-le din Obiective → Rutine. Această notă nu face parte din fișier.</string>
     <string name="nm_sysfile_edit">Editează</string>
     <string name="nm_sysfile_copy">Copiază conținutul</string>
     <string name="nm_sysfile_share">Partajează</string>
@@ -297,12 +297,12 @@
 
     <!-- 0.1.5: memory import -->
     <string name="nm_import_title">Importă memoria</string>
-    <string name="nm_import_intro">Adu ce știe deja alt asistent despre tine. Cere-i cu promptul de mai jos, lipește răspunsul lui aici, iar el se adaugă în GLOBAL.md sub „Importat” — de unde agentul tău îl citește la începutul fiecărei conversații.</string>
+    <string name="nm_import_intro">Adu ce știe deja alt asistent despre tine. Cere-i cu promptul de mai jos, lipește răspunsul lui aici, iar el se adaugă în GLOBAL.md sub „Importat”, de unde agentul tău îl citește la începutul fiecărei conversații.</string>
     <string name="nm_import_step1">Întreabă-ți celălalt asistent</string>
     <string name="nm_import_step2">Lipește răspunsul lui</string>
     <string name="nm_import_prompt">Te rog adună tot ce îți amintești despre mine într-o listă concisă de puncte: cine sunt, cum vreau să mi te adresezi, unde locuiesc și fusul meu orar, ce fac, la ce lucrez acum, preferințele și obiceiurile mele și orice ți s-a spus să faci întotdeauna sau niciodată. Text simplu, fără titluri, fără secrete sau parole.</string>
     <string name="nm_import_copy_prompt">Copiază promptul</string>
-    <string name="nm_import_from_hint">De la (opțional) — de ex. ChatGPT, Claude</string>
+    <string name="nm_import_from_hint">De la (opțional), de ex. ChatGPT, Claude</string>
     <string name="nm_import_paste_hint">Lipește lista aici</string>
     <string name="nm_import_heading">Importat</string>
     <string name="nm_import_append">Adaugă în memorie</string>
@@ -351,7 +351,7 @@
     <string name="nm_avatar_pick_title">Alege una</string>
     <string name="nm_avatar_pick_body">Poți desena încă patru oricând; cele vechi se păstrează până atunci.</string>
     <string name="nm_avatar_use_this">Folosește-o pe aceasta</string>
-    <string name="nm_avatar_use_this_hint">Stările — lucrează, așteaptă, gata, ups — se desenează din ea în continuare, în fundal.</string>
+    <string name="nm_avatar_use_this_hint">Stările (lucrează, așteaptă, gata, ups) se desenează din ea în continuare, în fundal.</string>
     <string name="nm_avatar_footer">Imaginile sunt stocate pe acest telefon sub minis-global/nanomuse/avatar. Fiecare față costă cinci imagini de la furnizorul tău: una aleasă de tine plus patru stări.</string>
 
     <!-- First run (Muse-style welcome; the steps are OpenMinis' provider and model screens) -->
@@ -374,20 +374,20 @@
     <string name="nm_settings_version">nanoMuse %1$s (%2$d)</string>
     <string name="nm_version_title">Versiune</string>
     <string name="nm_version_checking">Se caută cea mai nouă versiune…</string>
-    <string name="nm_version_have">Cea mai nouă e %1$s — o ai deja</string>
+    <string name="nm_version_have">Cea mai nouă e %1$s, o ai deja</string>
     <string name="nm_version_out">A apărut %1$s</string>
-    <string name="nm_version_out_update">A apărut %1$s — atinge pentru a actualiza</string>
+    <string name="nm_version_out_update">A apărut %1$s, atinge pentru a actualiza</string>
     <string name="nm_version_update">Actualizează</string>
-    <string name="nm_version_failed">Nu s-a putut verifica — atinge pentru a reîncerca</string>
+    <string name="nm_version_failed">Nu s-a putut verifica, atinge pentru a reîncerca</string>
     <string name="nm_appearance_section_home">Acasă</string>
     <string name="nm_appearance_header_model_title">Arată modelul sub nume</string>
     <string name="nm_appearance_header_model_footer">Muse arată doar numele. Pornește asta ca să vezi grupul de modele și furnizor · model dedesubt; atinge-le pentru a comuta. Oprit, modelul e sub ••• → Model și în Setări.</string>
     <string name="nm_appearance_section_chat">Conversație</string>
     <string name="nm_appearance_steps_title">Arată pașii agentului</string>
-    <string name="nm_appearance_steps_footer">Oprit, chatul păstrează doar răspunsurile, iar rândul de sub față spune ce face agentul chiar acum. Pornit, fiecare pas apare în chat — fiecare unealtă folosită, raționamentul lui și o bară deasupra câmpului de scris care deschide detaliile pasului.</string>
+    <string name="nm_appearance_steps_footer">Oprit, chatul păstrează doar răspunsurile, iar rândul de sub față spune ce face agentul chiar acum. Pornit, fiecare pas apare în chat: fiecare unealtă folosită, raționamentul lui și o bară deasupra câmpului de scris care deschide detaliile pasului.</string>
     <string name="nm_chat_menu_model">Model</string>
     <string name="nm_model_switched">S-a trecut la %1$s pentru această conversație</string>
-    <string name="nm_model_switched_sticky">S-a trecut la %1$s — îl folosesc și conversațiile noi</string>
+    <string name="nm_model_switched_sticky">S-a trecut la %1$s; îl folosesc și conversațiile noi</string>
     <string name="nm_picker_more_models">Mai multe modele pe contul tău</string>
     <string name="nm_picker_more_models_note">Nu sunt în meniu, dar le poți folosi cu contul tău; facturate ca modelul cel mai apropiat din meniu. Ecranul e citit cu unul dintre ele doar când îl alegi.</string>
     <string name="nm_attach_commands">Comenzi</string>
@@ -431,27 +431,27 @@
     <string name="nm_avatar_status_options">Se generează variante</string>
     <string name="nm_avatar_status_finalizing">Se finalizează avatarul</string>
     <string name="nm_avatar_options_drawing">Se desenează patru variante pentru „%1$s”…</string>
-    <string name="nm_avatar_options_pick_hint">Atinge-o pe cea care îți place sau spune-mi — „a doua”.</string>
+    <string name="nm_avatar_options_pick_hint">Atinge-o pe cea care îți place sau spune-mi: „a doua”.</string>
     <string name="nm_avatar_options_failed">Imaginile nu au ajuns. Verifică modelul de imagine sub ••• → Studioul de avatar și încearcă din nou.</string>
-    <string name="nm_avatar_provider_busy">Furnizorul de imagini e ocupat acum — încearcă din nou peste un minut.</string>
+    <string name="nm_avatar_provider_busy">Furnizorul de imagini e ocupat acum; încearcă din nou peste un minut.</string>
     <string name="nm_avatar_options_again">Din nou</string>
     <string name="nm_avatar_options_keep">Păstrează actualul</string>
     <string name="nm_avatar_option_n">Varianta %1$d</string>
     <string name="nm_avatar_option_retry">Reîncearcă</string>
-    <string name="nm_avatar_options_ready">Iată câteva variante pentru „%1$s” — alege-o pe cea care îți place cel mai mult.</string>
-    <string name="nm_avatar_drawing_now">Desenez acum câteva variante pentru „%1$s”. Imaginile durează puțin — îți spun când sunt gata.</string>
-    <string name="nm_avatar_drawing_again">Încă o rundă — dă-mi o clipă.</string>
-    <string name="nm_avatar_adopted">Gata — noul meu aspect e activ. Acum sunt %1$s.</string>
+    <string name="nm_avatar_options_ready">Iată câteva variante pentru „%1$s”: alege-o pe cea care îți place cel mai mult.</string>
+    <string name="nm_avatar_drawing_now">Desenez acum câteva variante pentru „%1$s”. Imaginile durează puțin; îți spun când sunt gata.</string>
+    <string name="nm_avatar_drawing_again">Încă o rundă, dă-mi o clipă.</string>
+    <string name="nm_avatar_adopted">Gata, noul meu aspect e activ. Acum sunt %1$s.</string>
     <string name="nm_avatar_pick_line">Varianta %1$d</string>
     <string name="nm_avatar_cannot_start">Nu pot desena încă un aspect nou: %1$s</string>
     <string name="nm_avatar_memory_line">- %1$s: utilizatorul mi-a schimbat avatarul în „%2$s”.</string>
-    <string name="nm_avatar_share_text">Noul meu aspect — %1$s. Aruncă o privire.</string>
+    <string name="nm_avatar_share_text">Noul meu aspect: %1$s. Aruncă o privire.</string>
     <string name="nm_avatar_share_button">Partajează avatarul</string>
     <string name="nm_avatar_share_later">Mai târziu</string>
     <string name="nm_avatar_share_title">Partajează avatarul meu</string>
     <string name="nm_avatar_share_subtitle">Alege un card. Pleacă prin fereastra de partajare a sistemului.</string>
     <string name="nm_avatar_share_system">Partajează</string>
-    <string name="nm_avatar_share_bubble">Bună, sunt %1$s, un agent AI personal. Fă cunoștință cu nanoMuse — open source, rulează pe telefonul tău.</string>
+    <string name="nm_avatar_share_bubble">Bună, sunt %1$s, un agent AI personal. Fă cunoștință cu nanoMuse: open source, rulează pe telefonul tău.</string>
     <string name="nm_avatar_share_tagline">Agentul tău AI personal, open source · github.com/nano-muse/nanoMuse</string>
 
     <!-- 0.1.10 · Motion -->
@@ -464,7 +464,7 @@
     <string name="nm_media_image_off">Până e setat unul, avatarul nu poate fi schimbat și nu se pot desena imagini. Agentul îți va spune dacă ceri.</string>
     <string name="nm_media_need_model">Scrie un nume de model mai jos</string>
     <string name="nm_media_section_video">Model video</string>
-    <string name="nm_media_video_footer">Pune avatarul în mișcare — un clip scurt în buclă pentru fiecare stare — și face orice clip ceri. Alibaba Cloud Model Studio: wan2.2-i2v-flash (recomandat, ¥0.10 pe secundă la 480P), alt model Wan sau MiniMax/MiniMax-H3; lista arată modelele pe care le poate folosi această cheie, fiecare activat o dată pe fișa modelului din consola Model Studio. Facturat pe secundă de video; un avatar înseamnă patru clipuri de câteva secunde.</string>
+    <string name="nm_media_video_footer">Pune avatarul în mișcare (un clip scurt în buclă pentru fiecare stare) și face orice clip ceri. Alibaba Cloud Model Studio: wan2.2-i2v-flash (recomandat, ¥0.10 pe secundă la 480P), alt model Wan sau MiniMax/MiniMax-H3; lista arată modelele pe care le poate folosi această cheie, fiecare activat o dată pe fișa modelului din consola Model Studio. Facturat pe secundă de video; un avatar înseamnă patru clipuri de câteva secunde.</string>
     <string name="nm_media_video_off">Opțional. Fără unul, avatarul stă nemișcat și nu se pot face clipuri.</string>
     <string name="nm_media_video_off_option">Fără model video</string>
     <string name="nm_media_not_set">Nesetat</string>
@@ -485,7 +485,7 @@
     <string name="nm_media_video_none_found">Niciun model video nu a răspuns pentru această cheie. Scrie unul mai jos sau verifică din nou.</string>
     <string name="nm_media_other_model">Alt nume de model</string>
     <string name="nm_avatar_status_animating">Se animează %1$d/%2$d…</string>
-    <string name="nm_avatar_clips_coming">Fac și patru clipuri scurte ca să mă pot mișca — câteva minute în fundal, prin modelul tău video.</string>
+    <string name="nm_avatar_clips_coming">Fac și patru clipuri scurte ca să mă pot mișca: câteva minute în fundal, prin modelul tău video.</string>
 
     <!-- Hands (0.1.12): the phone's screen as a hand -->
     <string name="nm_hands_title">Mâini</string>
@@ -495,7 +495,7 @@
     <string name="nm_hands_intro">Pentru aplicațiile fără API, folosește telefonul așa cum o faci tu: o captură de ecran, apoi atingeri, tastare și glisări. Abilitățile, comenzile și browserul vin primele; ecranul e ultima soluție. Oprit până îl pornești.</string>
     <string name="nm_hands_switch">Lasă agentul să folosească ecranul</string>
     <string name="nm_hands_switch_footer">Cât lucrează, o capsulă în partea de sus a ecranului arată fiecare pas și un buton Stop. Autentificările, parolele și codurile îți rămân întotdeauna ție.</string>
-    <string name="nm_hands_status_off">Oprit — agentul îți va spune când o sarcină are nevoie de ecran</string>
+    <string name="nm_hands_status_off">Oprit; agentul îți va spune când o sarcină are nevoie de ecran</string>
     <string name="nm_hands_status_ready">Gata</string>
     <string name="nm_hands_status_missing">Pornit, dar ceva de mai jos lipsește încă</string>
     <string name="nm_hands_status_working">Lucrează pe ecran acum</string>
@@ -515,7 +515,7 @@
     <string name="nm_hands_need_ok">Gata</string>
     <string name="nm_hands_need_set_up">Configurează</string>
     <string name="nm_hands_section_model">Modelul mâinilor</string>
-    <string name="nm_hands_model_auto">Automat — qwen3.8-27b (al nanoMuse Cloud sau sub propria ta cheie), altfel modelul de chat ales de tine dacă poate vedea, altfel Grupul de viziune</string>
+    <string name="nm_hands_model_auto">Automat: qwen3.8-27b (al nanoMuse Cloud sau sub propria ta cheie), altfel modelul de chat ales de tine dacă poate vedea, altfel Grupul de viziune</string>
     <string name="nm_hands_model_footer">Fiecare pas trimite o captură de ecran acestui model; e o setare separată de modelul de chat. Modelele de viziune mai mici sunt potrivite aici și costă mai puțin. Un model din catalogul extins al Cloud-ului e folosit doar când îl alegi.</string>
     <string name="nm_hands_why_chosen">ales aici</string>
     <string name="nm_hands_why_default">implicitul mâinilor sub propria ta cheie</string>
@@ -526,7 +526,7 @@
     <string name="nm_hands_why_any">singurul model activat care poate vedea</string>
     <string name="nm_hands_section_rules">Cum se comportă</string>
     <string name="nm_hands_rule_ladder">Ecranul vine ultimul: mai întâi o abilitate, o comandă sau browserul.</string>
-    <string name="nm_hands_rule_secrets">Nu tastează niciodată parole, coduri sau numere de card — îți dă telefonul ție.</string>
+    <string name="nm_hands_rule_secrets">Nu tastează niciodată parole, coduri sau numere de card; îți dă telefonul ție.</string>
     <string name="nm_hands_rule_approvals">Plata, trimiterea, postarea sau ștergerea așteaptă aprobarea ta, ca în shell și în browser.</string>
     <string name="nm_hands_rule_stop">Stop e mereu pe ecran; nimic nu continuă după el.</string>
     <string name="nm_hands_rule_screenshots">Captura fiecărui pas se păstrează cu conversația și e trimisă doar modelului tău.</string>
@@ -540,9 +540,9 @@
     <string name="nm_hands_your_turn">Rândul tău</string>
     <string name="nm_hands_your_turn_detail">Fă tu această parte, apoi atinge Continuă.</string>
     <string name="nm_hands_protected_screen">Acest ecran e protejat și nu poate fi citit. Termină tu această parte, apoi atinge Continuă.</string>
-    <string name="nm_hands_secret_field">Un câmp de parolă sau de cod — te rog completează-l tu, apoi atinge Continuă.</string>
+    <string name="nm_hands_secret_field">Un câmp de parolă sau de cod: te rog completează-l tu, apoi atinge Continuă.</string>
     <string name="nm_hands_approval_title">Așteaptă aprobarea ta</string>
-    <string name="nm_hands_approval_detail">Atinge „%1$s” — confirmă în nanoMuse (cere blocarea ecranului).</string>
+    <string name="nm_hands_approval_detail">Atinge „%1$s”: confirmă în nanoMuse (cere blocarea ecranului).</string>
     <string name="nm_hands_approval_here">Atingi „%1$s”?</string>
     <string name="nm_hands_allow_once">Permite</string>
     <string name="nm_hands_deny">Refuză</string>
@@ -581,15 +581,15 @@
     <string name="nm_pc_section_paired">Computere pe acest cont</string>
     <string name="nm_pc_none">Niciun computer încă</string>
     <string name="nm_pc_none_footer">Până când un computer se conectează cu acest cont, agentul îți va spune când o sarcină ține de computerul tău.</string>
-    <string name="nm_pc_paired_footer">Atinge un computer ca să verifici dacă răspunde. Un computer care lipsește aici s-a conectat cel mai adesea cu alt cont — indicația de mai sus e cea de folosit.</string>
+    <string name="nm_pc_paired_footer">Atinge un computer ca să verifici dacă răspunde. Un computer care lipsește aici s-a conectat cel mai adesea cu alt cont; indicația de mai sus e cea de folosit.</string>
     <string name="nm_pc_last_seen">văzut %1$s</string>
     <string name="nm_pc_offline">offline</string>
     <string name="nm_pc_online">online</string>
     <string name="nm_pc_account_none">Acest telefon nu e conectat încă la nanoMuse Cloud; conectează-te mai întâi, apoi computerul cu același cont.</string>
-    <string name="nm_pc_account_hint">Acest telefon e conectat ca %1$s — computerul trebuie să se conecteze cu același cont.</string>
+    <string name="nm_pc_account_hint">Acest telefon e conectat ca %1$s; computerul trebuie să se conecteze cu același cont.</string>
     <string name="nm_pc_checking">Se verifică…</string>
     <string name="nm_pc_answering">%1$s răspunde</string>
-    <string name="nm_pc_not_answering">%1$s nu răspunde — mai rulează nanoMuse Desktop acolo?</string>
+    <string name="nm_pc_not_answering">%1$s nu răspunde. Mai rulează nanoMuse Desktop acolo?</string>
 
     <!-- the approval card -->
     <string name="nm_risk_desc_on_computer">Pe computerul „%1$s”, nu pe acest telefon.</string>
@@ -605,7 +605,7 @@
 
     <!-- nanoMuse: the first-run pages -->
     <string name="nm_welcome_tagline">Un agent personal open source pentru fiecare dispozitiv pe care îl ai.</string>
-    <string name="nm_welcome_email">Conectează-te — gratuit</string>
+    <string name="nm_welcome_email">Conectează-te (gratuit)</string>
     <string name="nm_welcome_fine_print">Un singur cont îți ține dispozitivele împreună și poartă utilizarea gratuită a modelului; nu se percepe nimic. Propria cheie API poate fi adăugată imediat după.</string>
     <string name="nm_setup_source_title">Care model răspunde?</string>
     <string name="nm_setup_source_sub">Contul tău aduce deja unul. Poți adăuga și propria cheie API și poți comuta oricând.</string>
@@ -618,21 +618,21 @@
     <string name="nm_setup_password_set">Setează parola</string>
     <string name="nm_setup_password_fine_print">Opțional. O poți seta sau schimba mai târziu sub Cont.</string>
     <string name="nm_welcome_feat_chat">Chat, imagini, video</string>
-    <string name="nm_welcome_feat_chat_sub">Un model capabil, generare de imagini și video, unelte, abilități și memorie — pe telefonul tău</string>
+    <string name="nm_welcome_feat_chat_sub">Un model capabil, generare de imagini și video, unelte, abilități și memorie, pe telefonul tău</string>
     <string name="nm_welcome_feat_hands">Mâini: îți folosește telefonul</string>
-    <string name="nm_welcome_feat_hands_sub">Rezervă trenul, comandă masa, caută ceva într-o aplicație — tu privești și îl poți opri oricând</string>
+    <string name="nm_welcome_feat_hands_sub">Rezervă trenul, comandă masa, caută ceva într-o aplicație; tu privești și îl poți opri oricând</string>
     <string name="nm_welcome_feat_reach">Acces: computerele tale, de aici</string>
     <string name="nm_welcome_feat_reach_sub">Împerechează un Mac, un Windows sau un Linux și dă-i de lucru de pe telefon</string>
-    <string name="nm_welcome_notice">nanoMuse este un proiect comunitar open source, nonprofit — gratuit, pentru totdeauna. Modelul vine cu un credit gratuit plătit de dezvoltator; după aceea, propria ta cheie. Nimic nu se vinde; ce păstrează relay-ul e în politica de confidențialitate, iar Setări → Controlul datelor e al tău.</string>
+    <string name="nm_welcome_notice">nanoMuse este un proiect comunitar open source, nonprofit: gratuit, pentru totdeauna. Modelul vine cu un credit gratuit plătit de dezvoltator; după aceea, propria ta cheie. Nimic nu se vinde; ce păstrează relay-ul e în politica de confidențialitate, iar Setări → Controlul datelor e al tău.</string>
     <string name="nm_welcome_hands_title">Lasă-l să-ți folosească telefonul</string>
     <string name="nm_welcome_hands_sub">Cu două permisiuni poate deschide aplicații, atinge și tasta pentru tine. O capsulă cu fiecare pas și un buton Stop rămâne pe ecran; autentificările, parolele și codurile sunt întotdeauna ale tale.</string>
     <string name="nm_welcome_hands_turn_on">Pornește</string>
     <string name="nm_welcome_skip">Sari peste deocamdată</string>
     <string name="nm_welcome_hands_fine_print">Tot restul merge și fără ele. Le găsești sub Setări → Mâini oricând le vrei.</string>
-    <string name="nm_welcome_meet_fine_print">Înainte de orice nu poate fi anulat — ștergere, trimitere, plată — se oprește și te întreabă mai întâi.</string>
+    <string name="nm_welcome_meet_fine_print">Înainte de orice nu poate fi anulat (ștergere, trimitere, plată) se oprește și te întreabă mai întâi.</string>
     <string name="nm_cloud_title">nanoMuse Cloud</string>
     <string name="nm_cloud_signin_title">Începe cu nanoMuse Cloud</string>
-    <string name="nm_cloud_signin_subtitle">Un cod pe telefon sau în inbox — sau parola ta, odată ce ai setat una.</string>
+    <string name="nm_cloud_signin_subtitle">Un cod pe telefon sau în inbox, sau parola ta, odată ce ai setat una.</string>
     <string name="nm_cloud_mode_code">Cu un cod</string>
     <string name="nm_cloud_mode_password">Cu o parolă</string>
     <string name="nm_cloud_password">Parolă</string>
@@ -655,6 +655,7 @@
     <string name="nm_cloud_server_ok">%1$s a răspuns: relay %2$s.</string>
     <string name="nm_cloud_server_bad_url">Introdu adresa relay-ului, de exemplu https://relay.example.org.</string>
     <string name="nm_cloud_server_https">Folosește https pentru un server din afara propriei rețele. http e în regulă pentru o adresă privată (10.x, 192.168.x, 172.16–31.x, localhost, un nume .local sau .ts.net).</string>
+    <string name="nm_lan_only_https">http:// necriptat funcționează doar pentru adrese din propria rețea (10.x, 172.16–31.x, 192.168.x, nume .local); folosește https:// pentru %1$s.</string>
     <string name="nm_cloud_server_unreachable">Niciun relay nu a răspuns la %1$s. Verifică adresa și dacă relay-ul rulează.</string>
     <string name="nm_cloud_server_default">Înapoi la nanoMuse Cloud</string>
     <string name="nm_cloud_server_row">Server</string>
@@ -686,7 +687,7 @@
     <string name="nm_cloud_row_sign_in">Conectează-te</string>
     <string name="nm_cloud_err_bad_identifier">Nu pare o adresă de e-mail.</string>
     <string name="nm_cloud_err_code_wrong">Cod greșit.</string>
-    <string name="nm_cloud_err_code_expired">Codul a expirat — trimite unul nou.</string>
+    <string name="nm_cloud_err_code_expired">Codul a expirat; trimite unul nou.</string>
     <string name="nm_cloud_err_code_too_often">Prea multe coduri la rând. Așteaptă câteva minute.</string>
     <string name="nm_cloud_err_not_invited">Acest relay e privat; adresa nu e pe lista lui.</string>
     <string name="nm_cloud_err_send_failed">Codul nu a putut fi trimis. Încearcă din nou peste puțin.</string>
@@ -695,9 +696,9 @@
     <string name="nm_cloud_err_account_deleted">Acest cont a fost șters. Conectează-te din nou ca să începi unul nou.</string>
     <string name="nm_cloud_err_out_of_tokens">Creditul s-a epuizat.</string>
     <string name="nm_cloud_err_daily_cap">Cota de tokenuri de azi s-a epuizat; revine mâine.</string>
-    <string name="nm_cloud_err_allowance">Creditul gratuit s-a epuizat. Invită un prieten (+¥%1$s pentru fiecare dintre voi) sau adaugă propria cheie sub Setări → Furnizori — Alibaba Cloud Bailian e varianta rapidă.</string>
-    <string name="nm_cloud_err_allowance_abroad">Creditul gratuit s-a epuizat. Invită un prieten (+¥%1$s pentru fiecare dintre voi) sau adaugă propria cheie sub Setări → Furnizori — OpenRouter e varianta rapidă: un cont, o cheie, plată după consum.</string>
-    <string name="nm_cloud_warn_line">Creditul gratuit e aproape epuizat: ¥%1$s din ¥%2$s rămași. Invită un prieten (+¥%3$s pentru fiecare dintre voi) sau adaugă propria cheie — ambele sub Cont.</string>
+    <string name="nm_cloud_err_allowance">Creditul gratuit s-a epuizat. Invită un prieten (+¥%1$s pentru fiecare dintre voi) sau adaugă propria cheie sub Setări → Furnizori; Alibaba Cloud Bailian e varianta rapidă.</string>
+    <string name="nm_cloud_err_allowance_abroad">Creditul gratuit s-a epuizat. Invită un prieten (+¥%1$s pentru fiecare dintre voi) sau adaugă propria cheie sub Setări → Furnizori; OpenRouter e varianta rapidă: un cont, o cheie, plată după consum.</string>
+    <string name="nm_cloud_warn_line">Creditul gratuit e aproape epuizat: ¥%1$s din ¥%2$s rămași. Invită un prieten (+¥%3$s pentru fiecare dintre voi) sau adaugă propria cheie, ambele sub Cont.</string>
     <string name="nm_cloud_err_rate_limited">Prea multe cereri deodată. O clipă, te rog.</string>
     <string name="nm_cloud_err_unreachable">Nu s-a putut contacta nanoMuse Cloud. Verifică conexiunea.</string>
     <string name="nm_cloud_err_generic">Ceva n-a mers.</string>
@@ -714,7 +715,7 @@
     <string name="nm_cloud_err_provider_busy_wait">Furnizorul modelului e ocupat acum. Reîncearcă peste %1$s.</string>
     <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud nu mai oferă acest model. Alege altul din Setări → nanoMuse Cloud.</string>
     <string name="nm_cloud_err_relay_down">nanoMuse Cloud nu a răspuns. Reîncearcă peste puțin timp.</string>
-    <string name="nm_cloud_err_allowance_paused">Creditul gratuit e oprit pe acest relay deocamdată — nu epuizat. Adaugă o cheie proprie sau conectează-te cu un abonament pe care îl plătești deja, din Setări → nanoMuse Cloud. Conectarea, dispozitivele și ce a rămas stau așa cum sunt.</string>
+    <string name="nm_cloud_err_allowance_paused">Creditul gratuit e oprit pe acest relay deocamdată, nu epuizat. Adaugă o cheie proprie sau conectează-te cu un abonament pe care îl plătești deja, din Setări → nanoMuse Cloud. Conectarea, dispozitivele și ce a rămas stau așa cum sunt.</string>
     <string name="nm_cloud_err_service_paused">nanoMuse Cloud e oprit de operator deocamdată; conectarea și datele tale sunt păstrate. Reîncearcă mai târziu.</string>
     <string name="nm_cloud_err_sync_paused">Sincronizarea conversațiilor e oprită pe acest relay deocamdată; ce e stocat se păstrează, iar dispozitivele tale merg mai departe pe cont propriu.</string>
     <string name="nm_cloud_err_hub_paused">Legătura între dispozitive e oprită pe acest relay deocamdată; fiecare dispozitiv merge mai departe pe cont propriu.</string>
@@ -745,21 +746,21 @@
     <string name="nm_face_cost_checking">Se verifică creditul de azi…</string>
     <string name="nm_face_cost_what">O față nouă înseamnă %1$d imagini</string>
     <string name="nm_face_cost_what_clips">O față nouă înseamnă %1$d imagini și %2$d clipuri scurte</string>
-    <string name="nm_face_cost_about">%1$s — aproximativ ¥%2$s din creditul tău.</string>
+    <string name="nm_face_cost_about">%1$s: aproximativ ¥%2$s din creditul tău.</string>
     <string name="nm_face_cost_left">Mai ai ¥%1$s din credit.</string>
     <string name="nm_face_cost_short">E mai mult decât a rămas. Invită un prieten (+¥%1$s pentru fiecare dintre voi) sau adaugă propria cheie sub Setări → Furnizori.</string>
     <string name="nm_face_cost_unknown">%1$s. Creditul de azi nu a putut fi verificat acum.</string>
     <string name="nm_face_cost_go">Desenează</string>
     <string name="nm_face_cost_anyway">Încearcă oricum</string>
     <string name="nm_face_cost_not_now">Nu acum</string>
-    <string name="nm_face_cost_declined">În regulă — fața rămâne așa cum e.</string>
+    <string name="nm_face_cost_declined">În regulă, fața rămâne așa cum e.</string>
     <string name="nm_cloud_invite_title">Invită un prieten</string>
-    <string name="nm_cloud_invite_why">Fiecare persoană nouă care se înscrie cu codul tău adaugă ¥%1$s la creditul tău — și ¥%1$s la al ei. Nu expiră niciodată.</string>
+    <string name="nm_cloud_invite_why">Fiecare persoană nouă care se înscrie cu codul tău adaugă ¥%1$s la creditul tău, și ¥%1$s la al ei. Nu expiră niciodată.</string>
     <string name="nm_cloud_invite_code">Codul tău</string>
     <string name="nm_cloud_invite_share">Partajează linkul</string>
     <string name="nm_cloud_invite_copy">Copiază</string>
     <string name="nm_cloud_invite_copied">Copiat</string>
-    <string name="nm_cloud_invite_share_text">Încearcă nanoMuse împreună cu mine — un agent personal complet open source, gratuit. Înscrie-te cu codul meu %1$s: %2$s</string>
+    <string name="nm_cloud_invite_share_text">Încearcă nanoMuse împreună cu mine: un agent personal complet open source, gratuit. Înscrie-te cu codul meu %1$s: %2$s</string>
     <string name="nm_cloud_invite_count">%1$d prieteni s-au alăturat</string>
     <string name="nm_cloud_invite_earned">¥%1$s adăugați prin invitații</string>
     <string name="nm_cloud_invite_have">Ai un cod de invitație?</string>
@@ -768,9 +769,9 @@
     <string name="nm_notice_issue">Raportează o eroare sau cere o funcție</string>
     <string name="nm_ways_title_out">Creditul gratuit s-a epuizat.</string>
     <string name="nm_ways_title_warn">Aproape epuizat: ¥%1$s din ¥%2$s rămași.</string>
-    <string name="nm_ways_title_paused">Creditul gratuit e oprit pe acest relay deocamdată — nu epuizat.</string>
+    <string name="nm_ways_title_paused">Creditul gratuit e oprit pe acest relay deocamdată, nu epuizat.</string>
     <string name="nm_ways_paused_sub">Ce a rămas stă așa cum e; căile de mai jos merg acum.</string>
-    <string name="nm_ways_sub">Două căi mai departe — conectarea și dispozitivele tale merg oricum.</string>
+    <string name="nm_ways_sub">Două căi mai departe; conectarea și dispozitivele tale merg oricum.</string>
     <string name="nm_ways_key_title">Folosește propria cheie de model</string>
     <string name="nm_ways_key_guide">Ghid pas cu pas</string>
     <string name="nm_ways_region_cn">Întâi Alibaba Cloud Bailian: o cheie acoperă chatul, ecranul, imaginile și clipurile și înregistrează conturi din China continentală. Fiecare furnizor de mai jos spune ce acoperă.</string>
@@ -788,10 +789,10 @@
     <string name="nm_cap_screen">ecran</string>
     <string name="nm_cap_pictures">imagini</string>
     <string name="nm_cap_clips">clipuri</string>
-    <string name="nm_cap_pictures_unavailable">Imaginile au nevoie de un furnizor cu modele de imagine — Bailian, OpenAI, Gemini sau OpenRouter.</string>
-    <string name="nm_cap_clips_unavailable">Clipurile au nevoie de un furnizor cu modele video — Alibaba Cloud Bailian.</string>
-    <string name="nm_cap_hands_unavailable">Mâinile au nevoie de un model care vede ecranul — Bailian, OpenRouter, OpenAI, Anthropic, Gemini sau orice furnizor cu modele de viziune.</string>
-    <string name="nm_cap_chat_unavailable">Chatul are nevoie de un furnizor cu modele de chat — adaugă o cheie sau conectează-te.</string>
+    <string name="nm_cap_pictures_unavailable">Imaginile au nevoie de un furnizor cu modele de imagine: Bailian, OpenAI, Gemini sau OpenRouter.</string>
+    <string name="nm_cap_clips_unavailable">Clipurile au nevoie de un furnizor cu modele video: Alibaba Cloud Bailian.</string>
+    <string name="nm_cap_hands_unavailable">Mâinile au nevoie de un model care vede ecranul: Bailian, OpenRouter, OpenAI, Anthropic, Gemini sau orice furnizor cu modele de viziune.</string>
+    <string name="nm_cap_chat_unavailable">Chatul are nevoie de un furnizor cu modele de chat: adaugă o cheie sau conectează-te.</string>
     <string name="nm_ways_invite_title">Invită un prieten: +¥%1$s pentru tine și +¥%2$s pentru el, pentru fiecare persoană nouă care se înscrie cu linkul tău.</string>
     <string name="nm_ways_invite_share">Partajează linkul</string>
     <string name="nm_ways_invite_copy">Copiază linkul</string>
@@ -801,7 +802,7 @@
     <string name="nm_cloud_ev_contribute_default">Controlul datelor: pornit pentru conturile noi</string>
     <string name="nm_data_title">Controlul datelor</string>
     <string name="nm_data_improve">Ajută la îmbunătățirea modelelor AI nanoMuse</string>
-    <string name="nm_data_why">Cât e pornit, textul conversațiilor tale cu modelele nanoMuse Cloud — ce ai scris, ce a răspuns și uneltele pe care a ales să le apeleze — e păstrat pe relay pentru a antrena modelul deschis al comunității. Nu memoria sau SOUL (promptul de sistem), nu ce au returnat uneltele, nu imaginile, și niciodată alături de cine ești. Propria ta cheie API nu trece niciodată prin relay.</string>
+    <string name="nm_data_why">Cât e pornit, textul conversațiilor tale cu modelele nanoMuse Cloud (ce ai scris, ce a răspuns și uneltele pe care a ales să le apeleze) e păstrat pe relay pentru a antrena modelul deschis al comunității. Nu memoria sau SOUL (promptul de sistem), nu ce au returnat uneltele, nu imaginile, și niciodată alături de cine ești. Propria ta cheie API nu trece niciodată prin relay.</string>
     <string name="nm_data_default_on">Conturile noi pornesc cu el activat.</string>
     <string name="nm_data_default_off">Conturile noi pornesc cu el dezactivat.</string>
     <string name="nm_data_kept">%1$d schimburi păstrate până acum.</string>
@@ -845,7 +846,7 @@
     <string name="nm_cloud_ev_password_cleared">Parolă eliminată</string>
     <string name="nm_cloud_ev_sign_out">Deconectat</string>
     <string name="nm_cloud_ev_sign_out_all">Deconectat de peste tot</string>
-    <string name="nm_cloud_ev_budget_refused">Cerere refuzată — credit epuizat</string>
+    <string name="nm_cloud_ev_budget_refused">Cerere refuzată: credit epuizat</string>
     <string name="nm_cloud_ev_upstream_error">Furnizorul modelului a returnat o eroare</string>
     <string name="nm_cloud_sign_out_here">Deconectează-te pe acest telefon</string>
     <string name="nm_cloud_sign_out_everywhere">Deconectează-te de peste tot</string>
@@ -854,13 +855,13 @@
     <string name="nm_cloud_delete_account_confirm">Contul, conectările, utilizarea și istoricul lui sunt șterse de pe relay, iar conversațiile, memoria, fluxul, obiectivele și chipul acestui cont sunt eliminate de pe acest telefon. Nu se poate anula.</string>
     <string name="nm_cloud_keep_chats">Păstrează conversațiile acestui cont pe acest dispozitiv</string>
     <string name="nm_cloud_keep_chats_sub">Oprit: conversațiile, memoria, fluxul, obiectivele și chipul acestui cont sunt eliminate de pe acest telefon. Cu sincronizarea pornită, relay-ul păstrează conversațiile pentru următoarea conectare.</string>
-    <string name="nm_cloud_sign_in_ended">Conectarea ta pe acest telefon s-a încheiat — conectează-te din nou ca să continui; până atunci conversațiile tale rămân pe acest dispozitiv.</string>
+    <string name="nm_cloud_sign_in_ended">Conectarea ta pe acest telefon s-a încheiat. Conectează-te din nou ca să continui; până atunci conversațiile tale rămân pe acest dispozitiv.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agenți de programare</string>
-    <string name="nm_coding_intro">Cursor, Codex și Claude Code de pe computerele tale: sesiunile lor, ultimul lor răspuns și un mesaj către oricare dintre ei — de aici. Nimic de-al lor nu e copiat pe telefon.</string>
+    <string name="nm_coding_intro">Cursor, Codex și Claude Code de pe computerele tale: sesiunile lor, ultimul lor răspuns și un mesaj către oricare dintre ei, de aici. Nimic de-al lor nu e copiat pe telefon.</string>
     <string name="nm_coding_no_computer">Niciun computer cu un agent de programare nu e online. Rulează nanoMuse pe computerul unde e instalat Cursor, Codex sau Claude Code, conectat cu acest cont.</string>
-    <string name="nm_coding_account_hint">Acest telefon e conectat ca %1$s — computerul trebuie să folosească același cont.</string>
+    <string name="nm_coding_account_hint">Acest telefon e conectat ca %1$s; computerul trebuie să folosească același cont.</string>
     <string name="nm_coding_refresh">Reîmprospătează</string>
     <string name="nm_coding_all">Toate</string>
     <string name="nm_coding_new">Începe ceva nou</string>
@@ -889,11 +890,11 @@
     <string name="nm_cloud_allowance_used">Folosit ¥%1$s · $%2$s</string>
     <string name="nm_cloud_allowance_of">din ¥%1$s · $%2$s, fără expirare</string>
     <string name="nm_cloud_allowance_left">¥%1$s · $%2$s rămași</string>
-    <string name="nm_cloud_allowance_why">¥%1$s la început, +¥%2$s pentru fiecare prieten invitat — și +¥%2$s pentru el; după aceea, propria ta cheie ține modelul în funcțiune.</string>
+    <string name="nm_cloud_allowance_why">¥%1$s la început, +¥%2$s pentru fiecare prieten invitat, și +¥%2$s pentru el; după aceea, propria ta cheie ține modelul în funcțiune.</string>
     <string name="nm_cloud_tokens_line">%1$s tokenuri în total · %2$s azi</string>
     <string name="nm_cloud_notice_title">Gratuit, open source, nonprofit</string>
     <string name="nm_cloud_notice_closing">Ai găsit o eroare, vrei o funcție, ai un patch? Depozitul GitHub e locul potrivit.</string>
-    <string name="nm_cloud_notice">nanoMuse este un proiect comunitar open source, nonprofit — gratuit, pentru totdeauna. Modelul vine cu un credit gratuit plătit de dezvoltator; după aceea, propria ta cheie. Nimic nu se vinde; ce păstrează relay-ul e în politica de confidențialitate, iar Setări → Controlul datelor e al tău. Șterge contul oricând vrei.</string>
+    <string name="nm_cloud_notice">nanoMuse este un proiect comunitar open source, nonprofit: gratuit, pentru totdeauna. Modelul vine cu un credit gratuit plătit de dezvoltator; după aceea, propria ta cheie. Nimic nu se vinde; ce păstrează relay-ul e în politica de confidențialitate, iar Setări → Controlul datelor e al tău. Șterge contul oricând vrei.</string>
 
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">Mesaje de la dispozitivele tale</string>
@@ -912,7 +913,7 @@
     <string name="nm_hub_session_title">De la %1$s</string>
     <string name="nm_hub_service_alone_short">Doar acesta</string>
     <string name="nm_devices_title">Dispozitive</string>
-    <string name="nm_devices_intro">Fiecare dispozitiv conectat la acest cont — acest telefon, computerele tale, consola web — le poate cere celorlalte lucruri, din orice rețea.</string>
+    <string name="nm_devices_intro">Fiecare dispozitiv conectat la acest cont (acest telefon, computerele tale, consola web) le poate cere celorlalte lucruri, din orice rețea.</string>
     <string name="nm_devices_join">Accesibil de pe dispozitivele tale</string>
     <string name="nm_devices_join_sub">Ține acest telefon conectat, ca celelalte dispozitive ale tale să-i poată cere lucruri. Cât e pornit, apare o notificare discretă.</string>
     <string name="nm_devices_remote_control">Lasă alte dispozitive să opereze acest telefon</string>
@@ -943,11 +944,11 @@
     <string name="nm_hub_err_unknown_action">Computerul rulează un nanoMuse mai vechi, care nu cunoaște această acțiune.</string>
     <string name="nm_hub_err_bad_key">Deconectat pe relay; conectează-te din nou.</string>
     <string name="nm_hub_err_generic">Computerul nu a putut face asta.</string>
-    <string name="nm_devices_refused">Refuzat de relay — conectează-te din nou</string>
+    <string name="nm_devices_refused">Refuzat de relay; conectează-te din nou</string>
     <string name="nm_devices_notifications_hint">Permite notificările, ca telefonul să rămână accesibil în fundal.</string>
     <string name="nm_library_share_failed">Fișierul nu a putut fi partajat.</string>
 
-    <!-- 0.1.32: Settings → Connectors — the services the agent can be let into (the desktop's catalogue) -->
+    <!-- 0.1.32: Settings → Connectors: the services the agent can be let into (the desktop's catalogue) -->
     <string name="nm_connectors_title">Conectori</string>
     <string name="nm_connectors_intro">Lasă agentul în serviciile pe care le folosești. Fiecare e serverul MCP la distanță al furnizorului însuși; cele mai multe se conectează cu contul pe care îl ai deja, câteva cer o cheie. Un serviciu conectat e o intrare de server MCP pe care agentul o poate folosi în orice conversație.</string>
     <string name="nm_connectors_connected_n">%1$d conectate</string>
@@ -960,12 +961,12 @@
     <string name="nm_connectors_docs">Pagina furnizorului despre acest server</string>
     <string name="nm_connectors_how_oauth">Se conectează cu contul tău %1$s în browser; nanoMuse se înregistrează singur la serviciu, așa că nu e nimic de tastat. Tokenul rămâne pe acest telefon.</string>
     <string name="nm_connectors_how_key">Are nevoie de o cheie de la serviciu: %1$s. E păstrată doar în intrarea MCP de pe acest telefon.</string>
-    <string name="nm_connectors_how_none">Deschis tuturor — nu e nevoie de conectare.</string>
+    <string name="nm_connectors_how_none">Deschis tuturor; nu e nevoie de conectare.</string>
     <string name="nm_connectors_how_auto">Verifică mai întâi de ce are nevoie serverul: nimic, o conectare sau o cheie.</string>
     <string name="nm_connectors_key_placeholder">Lipește cheia</string>
     <string name="nm_handover_title">Rândul tău</string>
-    <string name="nm_handover_body">Pagina are nevoie de tine: %1$s. Fă asta în browserul de aici — aceeași pagină, aceeași sesiune — apoi atinge Gata și agentul continuă de unde ai rămas.</string>
-    <string name="nm_handover_body_generic">Pagina are nevoie de tine — o conectare sau un cod. Fă asta în browserul de aici, apoi atinge Gata și agentul continuă de unde ai rămas.</string>
+    <string name="nm_handover_body">Pagina are nevoie de tine: %1$s. Fă asta în browserul de aici (aceeași pagină, aceeași sesiune), apoi atinge Gata și agentul continuă de unde ai rămas.</string>
+    <string name="nm_handover_body_generic">Pagina are nevoie de tine: o conectare sau un cod. Fă asta în browserul de aici, apoi atinge Gata și agentul continuă de unde ai rămas.</string>
     <string name="nm_handover_open">Deschide pagina</string>
     <string name="nm_handover_done">Gata, continuă</string>
     <string name="nm_handover_banner">Rândul tău: %1$s. Atinge Gata când pagina e pregătită.</string>
@@ -976,13 +977,13 @@
 
     <!-- Connections the account's other devices hold (the relay profile carries which device connected what; credentials stay where they were made) -->
     <string name="nm_connectors_elsewhere_title">Pe celelalte dispozitive ale tale</string>
-    <string name="nm_connectors_elsewhere_sign_in">Conectat pe %1$s — conectează-te aici ca să-l folosești pe acest telefon.</string>
+    <string name="nm_connectors_elsewhere_sign_in">Conectat pe %1$s; conectează-te aici ca să-l folosești pe acest telefon.</string>
     <string name="nm_connectors_elsewhere_only">Conectat pe %1$s. Nu e în catalogul acestui telefon; adaugă-l sub Serverele tale dacă ai nevoie de el aici.</string>
     <string name="nm_connectors_elsewhere_device">alt dispozitiv</string>
     <string name="nm_connectors_own_n">%1$d ale tale · adaugă după adresă, comandă sau JSON</string>
     <string name="nm_connectors_how_client">%1$s nu înregistrează aplicații de unul singur, așa că asta cere un minut de configurare, o singură dată: creează o aplicație OAuth proprie în setările lui pentru dezvoltatori, dă-i adresa de callback de mai jos și lipește aici ID-ul de client al aplicației (și secretul, dacă există). Ambele rămân pe acest telefon.</string>
     <string name="nm_connectors_client_developer">Deschide setările pentru dezvoltatori %1$s</string>
-    <string name="nm_connectors_client_redirect">Adresa de callback (redirect) pentru aplicație — atinge pentru a copia:</string>
+    <string name="nm_connectors_client_redirect">Adresa de callback (redirect) pentru aplicație, atinge pentru a copia:</string>
     <string name="nm_connectors_client_copy">Copiază</string>
     <string name="nm_connectors_client_id">ID client OAuth</string>
     <string name="nm_connectors_client_secret">Secret client OAuth (dacă există)</string>
@@ -1009,7 +1010,7 @@
     <string name="nm_sync_delete_confirm">Conversațiile păstrate pe nanoMuse Cloud sunt eliminate. Conversațiile de pe dispozitivele tale rămân așa cum sunt.</string>
     <string name="nm_sync_deleted">Conversațiile sincronizate au fost șterse.</string>
     <string name="nm_sync_from">De la %1$s</string>
-    <string name="nm_sync_attachment_note">[Atașament %1$s — rămâne pe dispozitivul pe care a fost creat]</string>
+    <string name="nm_sync_attachment_note">[Atașament %1$s, rămâne pe dispozitivul pe care a fost creat]</string>
 
     <!-- Contract C9 (0.1.38): side chats stay local unless asked for; the device working on a line -->
     <string name="nm_sync_side_title">Sincronizează și conversațiile secundare</string>

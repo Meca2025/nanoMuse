@@ -26,6 +26,16 @@ class LanOnlyTest {
         assertEquals(true, LanOnly.problem("http://api.example.com")!!.contains("https://"))
     }
 
+    @Test fun `the refused host is handed to the screens for the localized footer`() {
+        assertEquals("api.example.com", LanOnly.refusedHost("http://API.example.com/v1"))
+        assertEquals("8.8.8.8", LanOnly.refusedHost("http://8.8.8.8:80"))
+        assertEquals("2001:db8::1", LanOnly.refusedHost("http://[2001:db8::1]"))
+        assertEquals("", LanOnly.refusedHost("http:/v1"))
+        assertNull(LanOnly.refusedHost("http://192.168.1.20:1234/v1"))
+        assertNull(LanOnly.refusedHost("https://api.example.com/v1"))
+        assertNull(LanOnly.refusedHost("   "))
+    }
+
     @Test fun `the host test on its own`() {
         assertTrue(LanOnly.isLocal("192.168.0.1"))
         assertTrue(LanOnly.isLocal("printer"))

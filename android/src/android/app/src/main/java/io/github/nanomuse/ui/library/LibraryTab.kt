@@ -237,7 +237,7 @@ private fun LibraryRow(entry: LibraryEntry, onClick: () -> Unit, onOpenSession: 
                 )
                 Text(
                     listOfNotNull(
-                        relativeDay(item.modifiedMs),
+                        relativeDay(context, item.modifiedMs),
                         android.text.format.Formatter.formatShortFileSize(LocalContext.current, item.size),
                         entry.sessionTitle ?: if (entry.sessionId == null) stringResource(R.string.nm_library_from_shared) else null,
                     ).joinToString(" · "),

@@ -77,10 +77,8 @@ import io.github.nanomuse.ui.home.MuseTones
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
-import java.util.Locale
 
 const val ROUTE_AGENT_PROFILE = "nanomuse/profile"
 
@@ -518,7 +516,7 @@ private fun SoulPane(name: String, onEditName: () -> Unit, onOpenSystemFile: (Sy
     }
     Spacer(Modifier.height(16.dp))
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        val fmt = remember { SimpleDateFormat("M/d/yy", Locale.getDefault()) }
+        val fmt = remember { DateFormat.getDateInstance(DateFormat.SHORT) }
         FileCard(
             title = stringResource(R.string.nm_profile_card_soul),
             date = SystemFiles.SOUL.lastModified(context)?.let { fmt.format(Date(it)) } ?: "",

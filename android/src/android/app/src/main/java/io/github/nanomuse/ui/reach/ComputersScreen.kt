@@ -42,9 +42,8 @@ import io.github.nanomuse.ui.home.MuseTones
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 
 const val ROUTE_COMPUTERS = "nanomuse/computers"
 const val DESKTOP_DOWNLOAD_URL = "https://nanomuse.cn/#download"
@@ -126,7 +125,7 @@ fun ComputersScreen(onBack: () -> Unit, onOpenAccount: () -> Unit = {}) {
                 SettingsRow(title = stringResource(R.string.nm_pc_none), showDivider = false)
             }
             computers.forEachIndexed { i, d ->
-                val seen = if (d.lastSeen > 0) SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(d.lastSeen)) else "—"
+                val seen = if (d.lastSeen > 0) DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(d.lastSeen)) else "·"
                 val state = stringResource(if (d.online) R.string.nm_pc_online else R.string.nm_pc_offline)
                 SettingsRow(
                     title = d.name,

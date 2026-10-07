@@ -18,6 +18,8 @@ class NmStringsParityTest {
     private val stringRx = Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
     private val placeholderRx = Regex("""%\d\$[sd]|%[sd]""")
 
+    private val File.locale: String get() = parentFile?.name ?: path
+
     private fun names(f: File): Set<String> = nameRx.findAll(f.readText()).map { it.groupValues[1] + ":" + it.groupValues[2] }.toSet()
 
     private fun placeholders(f: File): Map<String, List<String>> =
@@ -36,8 +38,8 @@ class NmStringsParityTest {
             val keys = names(f)
             val missing = en - keys
             val extra = keys - en
-            assertEquals("${f.parentFile.name} lacks ${missing.size} key(s): ${missing.sorted().take(8)}", emptySet<String>(), missing)
-            assertEquals("${f.parentFile.name} has ${extra.size} key(s) English does not: ${extra.sorted().take(8)}", emptySet<String>(), extra)
+            assertEquals("${f.locale} lacks ${missing.size} key(s): ${missing.sorted().take(8)}", emptySet<String>(), missing)
+            assertEquals("${f.locale} has ${extra.size} key(s) English does not: ${extra.sorted().take(8)}", emptySet<String>(), extra)
         }
     }
 
@@ -46,14 +48,26 @@ class NmStringsParityTest {
         for (f in localeFiles()) {
             val theirs = placeholders(f)
             val wrong = en.filter { (k, v) -> theirs[k] != null && theirs[k] != v }.keys
-            assertEquals("${f.parentFile.name}: placeholders differ from English in ${wrong.sorted().take(8)}", emptySet<String>(), wrong)
+            assertEquals("${f.locale}: placeholders differ from English in ${wrong.sorted().take(8)}", emptySet<String>(), wrong)
         }
     }
 
     @Test fun `no exclamation marks in the strings`() {
         for (f in localeFiles() + File(res, "values/nm_strings.xml")) {
             val shouting = stringRx.findAll(f.readText()).filter { '!' in it.groupValues[2] || '！' in it.groupValues[2] }.map { it.groupValues[1] }.toList()
-            assertEquals("${f.parentFile.name}: ${shouting.take(8)}", emptyList<String>(), shouting)
+            assertEquals("${f.locale}: ${shouting.take(8)}", emptyList<String>(), shouting)
+        }
+    }
+
+    /** The house style: no em dashes in copy; a comma, colon or full stop instead. 非营利 is the word, not 非盈利. */
+    @Test fun `no em dashes and no 非盈利 in the strings`() {
+        val commentRx = Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL)
+        for (f in localeFiles() + File(res, "values/nm_strings.xml")) {
+            val body = f.readText().replace(commentRx, "")
+            val dashed = Regex("""name="([^"]+)"[^<]*—""").findAll(body).map { it.groupValues[1] }.toList()
+            assertEquals("${f.locale}: em dash in ${dashed.take(8)}", emptyList<String>(), dashed)
+            assertTrue("${f.locale}: em dash in a plural or array item", '—' !in body)
+            assertTrue("${f.locale}: 非盈利 should be 非营利 / 非營利", "非盈利" !in body)
         }
     }
 }
