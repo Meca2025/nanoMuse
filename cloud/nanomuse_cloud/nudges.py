@@ -16,6 +16,11 @@ What the fields mean (the same on every platform):
 * ``signed_in`` / ``new_look`` / ``exhausted`` / ``goal_done`` — the moments by name.
 * ``star.cooldown_days`` — at least that many days between two asks of any kind.
 * ``star.max_asks`` — lifetime cap of asks per device ("Not now" counts; starring ends them).
+* ``star.text`` / ``star.text_zh`` — the sentence on the card, English and 简体中文, at most
+  :data:`TEXT_MAX` code points each, empty by default. A Chinese UI takes ``text_zh`` when it
+  is set, else ``text``; any other UI takes ``text``; an empty value means the app's own
+  sentence. Only the body changes — title and buttons stay the app's. Apps built against
+  relay 0.22 and earlier ignore both.
 """
 
 from __future__ import annotations
@@ -38,12 +43,16 @@ DEFAULT_NUDGES: dict[str, Any] = {
         },
         "cooldown_days": 7,
         "max_asks": 4,
+        "text": "",
+        "text_zh": "",
     },
 }
 
 _BOOL_MOMENTS = ("signed_in", "new_look", "exhausted", "goal_done")
 _LIST_MOMENTS = ("tasks", "days_used")
+_TEXTS = ("text", "text_zh")
 URL_MAX = 200
+TEXT_MAX = 200
 COOLDOWN_MAX = 365
 MAX_ASKS_MAX = 50
 
@@ -103,6 +112,19 @@ def _url(value: Any) -> str:
     return url
 
 
+def _text(value: Any, name: str) -> str:
+    """The card's sentence: trimmed, at most :data:`TEXT_MAX` code points (``len`` of a Python
+    string counts code points, so CJK is counted the same as Latin); ``null`` is empty."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise BadNudges(f"{name} is a sentence of at most {TEXT_MAX} characters")
+    text = value.strip()
+    if len(text) > TEXT_MAX:
+        raise BadNudges(f"{name} is a sentence of at most {TEXT_MAX} characters")
+    return text
+
+
 def validate(body: Any) -> dict[str, Any]:
     """The body as a policy: unknown keys dropped, every value checked, what is missing taken
     from the defaults. ``version`` is accepted and kept (the server bumps it on a PUT)."""
@@ -125,6 +147,9 @@ def validate(body: Any) -> dict[str, Any]:
         star["cooldown_days"] = _int(star_in["cooldown_days"], "star.cooldown_days", 0, COOLDOWN_MAX)
     if "max_asks" in star_in:
         star["max_asks"] = _int(star_in["max_asks"], "star.max_asks", 0, MAX_ASKS_MAX)
+    for name in _TEXTS:
+        if name in star_in:
+            star[name] = _text(star_in[name], f"star.{name}")
     moments_in = star_in.get("moments", {})
     if moments_in is None:
         moments_in = {}

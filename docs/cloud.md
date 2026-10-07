@@ -317,8 +317,14 @@ four per device. Each ask is a card where it happens; "Not now" counts as one,
 and none comes back after you have been to the page. The operator changes the
 policy on the admin page (*Settings › Star asks*) without an app update; every
 app keeps the same defaults built in for when the relay cannot be reached. The
-policy says *when*, not *what*: the words on the card are each app's own, in
-its language, and change with an app release.
+policy says *when* and, if the operator wants, *what*: the words on the card
+are each app's own, in its language, unless the policy carries a sentence —
+`star.text` (English) and `star.text_zh` (简体中文), each at most 200
+characters, empty by default. An app in Chinese shows `text_zh` when it is
+set, else `text` when it is set, else its own sentence; an app in any other
+language shows `text` when it is set, else its own. Only the sentence on the
+card changes; its title and buttons stay the app's. Apps built against relay
+0.22 and earlier ignore the two fields.
 
 ## Controls
 
@@ -403,7 +409,7 @@ POST /v1/auth/verify        {identifier, code, device}        → {api_key, base
 POST /v1/auth/login         {identifier, password, device}    → the same; 401 bad_credentials, 429 locked, 400 no_password
 POST /v1/auth/password      Bearer  {password, current?}      → 204; "" with current removes it
 GET  /v1/me                 Bearer                            → {region: cn | intl | unknown, account{…, has_password, sessions, signed_in_via}, usage{today, total by kind / model}, tokens, spend{…, ways}, models, recent, nudges}
-GET  /v1/nudges                                               → {version, star{enabled, url, moments{signed_in, tasks[], new_look, exhausted, days_used[], goal_done}, cooldown_days, max_asks}}; no key, cached an hour
+GET  /v1/nudges                                               → {version, star{enabled, url, moments{signed_in, tasks[], new_look, exhausted, days_used[], goal_done}, cooldown_days, max_asks, text, text_zh}}; no key, cached an hour
 GET  /v1/me/profile         Bearer  ?face=false               → {rev, device, name, avatar, …, face?, connectors: [{id, label, url, auth, device, device_id, enabled, at}]}
 PUT  /v1/me/profile         Bearer  {device, name?, avatar?, …, connectors?}  → {rev, device}; a device's connectors replace only its own; 400 no_secrets_in_profile, too_many_connectors
 DELETE /v1/me/profile       Bearer                            → 204

@@ -50,3 +50,17 @@ def test_web_console_translates_every_refusal_in_both_languages():
     assert zh.count("e.paused") == 1 and en.count("e.paused") == 1
     # no exclamation marks in what a person reads
     assert "!" not in re.sub(r"[!=]==?|!\w", "", zh + en) and "！" not in zh
+
+
+def test_admin_console_names_the_star_card_text_in_both_languages():
+    """The star asks card (after relay 0.22) has the two text inputs and their hint, in the
+    简体中文 table and in the English one, and the panel draws them."""
+    source = (CONSOLE / "admin" / "admin.js").read_text(encoding="utf-8")
+    for key in ("ndTextEn", "ndTextZh", "ndTextHint", "ndTextLeft"):
+        assert source.count(f"{key}:") == 2, f"{key} is in one table only"
+    assert 'ndTextEn: "卡片文字（英文）"' in source and 'ndTextEn: "Card text (English)"' in source
+    assert 'ndTextZh: "卡片文字（中文）"' in source and 'ndTextZh: "Card text (中文)"' in source
+    assert "留空时各端显示自己的句子。最多 200 字。" in source
+    assert "Empty: each app shows its own sentence. At most 200 characters." in source
+    panel = source[source.index("function nudgesPanel()") : source.index("function settingsView()")]
+    assert 'cardText("text")' in panel and 'cardText("text_zh"' in panel
