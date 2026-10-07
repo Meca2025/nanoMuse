@@ -5,9 +5,10 @@ any device of your account — the phone on the way home, the browser, another
 computer — and from the Muse itself.
 
 Nothing is installed into the agents and nothing is proxied through anyone's
-server. The runtime on the computer reads what the agents leave on disk, starts
-their own command-line interface for a new message, and streams what comes back.
-Another device asks over the hub; the hub only carries the frames.
+server. The runtime or the desktop app on the computer reads what the agents
+leave on disk, starts their own command-line interface for a new message, and
+streams what comes back. Another device asks over the hub; the hub only carries
+the frames.
 
 ## In the apps
 
@@ -15,15 +16,22 @@ Another device asks over the hub; the hub only carries the frames.
   `nanomuse://coding` link). Pick a computer, an agent, a session; read the
   transcript; type a message and watch the run — the text as it streams, the
   tools as they are called — and stop it if it goes wrong.
-- **Web and desktop**: the *Coding* screen. This computer's agents at the top,
-  the account's other computers after them.
+- **Web**: the *Coding* screen. This computer's agents at the top, the
+  account's other computers after them.
+- **Desktop**: *Settings → Coding agents*, also opened by the *Coding agents*
+  chip on a device card under *Settings → Devices*. This computer first — each
+  agent with its version, how many of its processes run right now and its
+  chats — then the account's other computers; an agent's chats, a chat's
+  transcript, a composer, the run as it streams (text and tools) and a *Stop*
+  button. A computer with none of the three installed says so.
 - **The Muse**: ask it — "what did I ask Cursor to do last?", "tell Codex in the
   api repo to add a test for the parser" — and it uses the `coding_agents` tool
   with the same read-only readers and the same runner, on this computer or,
   with `device`, on another one.
 
-Only computers whose runtime is on the hub and announces the `coding.*` actions
-appear; a phone never does.
+Only computers that announce the `coding.*` actions on the hub appear — one
+running the runtime, or one with the desktop app, which announces them too; a
+phone never does.
 
 ## What is read
 
@@ -62,7 +70,11 @@ Every agent runs with the permissions it has on that computer — Codex in
 edits files there. Sending a message is therefore treated like running a
 command on that computer: the request travels only between devices of one
 account, over the account's own hub session, and the computer can refuse remote
-control altogether (*Remote control* off keeps `coding.*` local).
+control altogether (*Remote control* off keeps `coding.*` local). On the desktop
+app `coding.send` and `coding.stop` pass the same gate as `shell` and `files`:
+with *Remote control* off, a device that is not yet trusted raises a card on the
+screen, and the answer (once, always, no, or none in time) decides; the
+read-only actions are answered without asking.
 
 The agents' own API keys and sign-ins are theirs; nanoMuse never sees them. The
 transcripts are read from disk and shown to you; they are not sent anywhere but
@@ -90,6 +102,12 @@ id, …}` events every open app follows live: `started {session_id, model}`, `te
 {text, partial}` (Cursor sends deltas, then the whole message; the apps replace
 the streamed text with the final one), `tool {text, phase}`, `done`, `error`.
 
+The desktop app serves the same shapes to its own window under
+`nanomuse/cloud/coding` (the page's loopback API): `GET` (agents and runs),
+`GET /sessions`, `GET /sessions/{agent}/{id}`, `POST /send`, `POST /stop`, and
+`GET /events`, a server-sent stream of the run events above. Its `runs.json`
+lives in the plugin's data directory under `coding/`.
+
 ## Over the hub
 
 `device` names another computer; the same request travels as hub actions
@@ -100,4 +118,6 @@ whose body carries the run id, so the caller can `coding.stop` it; the `result`
 frame is the finished run.
 
 The tests are `tests/test_coding.py` (the readers on fixture transcripts, the
-stream normaliser, a fake CLI, the API) and the hub path in `tests/test_hub.py`.
+stream normaliser, a fake CLI, the API) and the hub path in `tests/test_hub.py`;
+the desktop's port is tested the same way in
+`harness/dsh-nanomuse/tests/coding.test.mjs`.

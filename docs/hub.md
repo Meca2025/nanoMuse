@@ -66,11 +66,12 @@ Two kinds of request travel over the hub:
 - **Coding agents** — `coding.agents`, `coding.sessions`, `coding.session`,
   `coding.send`, `coding.stop`, `coding.runs`: the Cursor / Codex / Claude Code
   sessions on a computer, read from disk and steered through the agents' own
-  CLIs by the runtime there. `coding.send {agent, text, session_id?, workspace?,
-  wait}` streams the run back as `event` frames (`started`, `text`, `tool`,
-  `done`, `error`, each with the run id so the caller can `coding.stop`) and
-  answers with the finished run. Only a runtime that has the module announces
-  these actions. [coding-agents.md](coding-agents.md).
+  CLIs by the runtime or the desktop app there. `coding.send {agent, text,
+  session_id?, workspace?, wait}` streams the run back as `event` frames
+  (`started`, `text`, `tool`, `done`, `error`, each with the run id so the
+  caller can `coding.stop`) and answers with the finished run. Only a computer
+  announces these actions: a runtime that has the module, or the desktop app.
+  [coding-agents.md](coding-agents.md).
 
 Each device decides what it lets others do. **Remote control** off (phone:
 *Settings → nanoMuse Cloud → Devices*; desktop: `set remote_control off`) makes

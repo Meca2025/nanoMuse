@@ -112,6 +112,10 @@ export function askKey(action: string): Words {
       return 'askScreen'
     case 'task':
       return 'askTask'
+    case 'coding.send':
+      return 'cdAskSend'
+    case 'coding.stop':
+      return 'cdAskStop'
     default:
       return 'askOther'
   }

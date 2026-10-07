@@ -33,7 +33,7 @@ hub 上传递两类请求：
 
   任务运行期间，目标设备发送 `event` 帧，`body.stage` 告诉发起方该画什么，于是这次运行在发起方的聊天里读起来和在目标设备自己那里一样：工具开始时是 `tool {id, name, summary}`，结束时是 `tool_result {id, name, ok, summary}`（同一个 `id`）；`approval {approval_id, preview, risk, reason, device, timeout}`，以及任一方作出决定后的 `approval_result {approval_id, status}`；`text {text, interim}` 是 Muse 一路上说的话；`image` 和 `file` 是它做出来的东西；`error`。`result` 帧带着最终答案。
 
-- **编程助手**——`coding.agents`、`coding.sessions`、`coding.session`、`coding.send`、`coding.stop`、`coding.runs`：电脑上的 Cursor / Codex / Claude Code 会话，由那里的运行时从磁盘读取，并通过这些助手自己的 CLI 来驱动。`coding.send {agent, text, session_id?, workspace?, wait}` 以 `event` 帧把运行过程流式传回（`started`、`text`、`tool`、`done`、`error`，每个都带运行 id，发起方据此可以 `coding.stop`），最后以完成的运行作答。只有装了这个模块的运行时才会宣告这些动作。[coding-agents.md](coding-agents.md)。
+- **编程助手**——`coding.agents`、`coding.sessions`、`coding.session`、`coding.send`、`coding.stop`、`coding.runs`：电脑上的 Cursor / Codex / Claude Code 会话，由那里的运行时或桌面版从磁盘读取，并通过这些助手自己的 CLI 来驱动。`coding.send {agent, text, session_id?, workspace?, wait}` 以 `event` 帧把运行过程流式传回（`started`、`text`、`tool`、`done`、`error`，每个都带运行 id，发起方据此可以 `coding.stop`），最后以完成的运行作答。只有电脑会宣告这些动作：装了这个模块的运行时，或者桌面版。[coding-agents.md](coding-agents.md)。
 
 每台设备自己决定允许别人做什么。**远程控制**关着时（手机：*设置 → nanoMuse Cloud → 设备*；桌面：`set remote_control off`），这台设备只回答 `info`，别的一概不答——它仍然能看见并操纵其他设备。开着时，任何*对*这台设备做事的原始动作（`shell`、`files`、`file.get`、`file.put`、`open`、`screen`、`coding.send`、`coding.stop`）都要先经这台设备旁的人同意：惯常的审批卡片，「允许一次」或「对这台设备总是允许」——后一种长期有效的回答是「权限」下的一条授权（`remote_control:<device id>`）。旁边没人，卡片过期后发起方听到的是 `not_allowed`。`info` 和 `notify` 从不询问；`task` 在设备自己的哨兵（Sentinel）之下运行，它的卡片照旧传回发起方。一台设备只能 `approve` 发给它的、属于它自己发起的运行的卡片——绝不能回答「是否允许它运行某事」的那张卡片。
 
