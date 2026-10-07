@@ -3253,7 +3253,7 @@ function StudioModelPick({
   const t = useT();
   const listed = options.includes(value) || more.includes(value);
   const [typing, setTyping] = useState(false);
-  const automatic = placeholder ? t("Automatic — {model}", { model: placeholder }) : t("Automatic");
+  const automatic = placeholder ? t("Automatic · {model}", { model: placeholder }) : t("Automatic");
   return (
     <label className="block text-[12.5px] text-muted">
       <span className="block mb-1">{label}</span>

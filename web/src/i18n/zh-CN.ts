@@ -1065,7 +1065,7 @@ const zhCN: Record<string, string> = {
   "The hands need a model that sees pictures — {providers}.": "动手需要一个能看图的模型——{providers}。",
   "Chat needs a model — {providers}.": "对话需要一个模型——{providers}。",
   How: "怎么做",
-  "Automatic — {model}": "自动——{model}",
+  "Automatic · {model}": "自动 · {model}",
   "E-mail (or a mainland China phone number)": "邮箱（或中国大陆手机号）",
   "Text-message codes reach mainland-China numbers only. Use an e-mail address instead.": "短信验证码只能发到中国大陆手机号。其他地区请用邮箱登录。",
   "Step-by-step guide": "图文教程",
