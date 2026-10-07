@@ -56,10 +56,10 @@ harness 构建以 *nanoMuse Harness* 的名字另放在旁边；从 0.1.30 起�
   `device_screen`、`device_shell`、`device_files`、`device_open`、`device_notify` 和 `delegate`
   这些工具面向手机和其他电脑；手机发来的 `delegate` 在这里落成一段「来自 <device>」的 dsh
   会话，它的审批被转回手机；远程控制（`shell`、`files`、`open`、`screen`）在一个开关后面；
-- **网络**（设置 → nanoMuse Cloud → 网络）：给模型服务商用的一个代理——`http://host:port`、
-  `https://`、`socks5://` 或 `socks5h://`，可以带 `user:pass@`，显示时会遮住。只有发往服务商的
-  请求经过它：你自己的 key、ChatGPT 登录的调用、「列出模型」，还有手的运行时（`nanomuse mcp`
-  继承同一组变量）。nanoMuse 云端——中继、hub 的 WebSocket、同步——和本机回环永远不经过。
+- **网络**（设置 → nanoMuse Cloud → 网络）：给这个应用对外请求用的一个代理——`http://host:port`、
+  `https://`、`socks5://` 或 `socks5h://`，可以带 `user:pass@`，显示时会遮住。dsh Host 发出的请求
+  都经过它：你自己的 key、ChatGPT 登录的调用、「列出模型」、工具读取的网页、连接的服务、更新检查，
+  还有手的运行时（`nanomuse mcp` 继承同一组变量）。nanoMuse 云端——中继、hub 的 WebSocket、同步——和本机回环永远不经过。
   外壳把它存在 `desktop.json` 里，和「登录时启动」放在一起，启动 dsh Host 时写进它的环境
   （`HTTP_PROXY`、`HTTPS_PROXY`、SOCKS 时还有 `ALL_PROXY`，`NO_PROXY` 带着
   `localhost,127.0.0.1,::1`、`cloud.nanomuse.cn` 和插件所连的中继，以及让 Node 的 fetch 读这些

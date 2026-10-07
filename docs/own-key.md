@@ -156,8 +156,8 @@ same setting lives where each app keeps its keys: the phones have it in the
 provider form; the desktop under **Settings → nanoMuse Cloud → Network**, one
 address (`http://host:port` or `socks5://host:port`) that the app applies to its
 host process at the next start — *Restart now* is under the row — so every own
-key, the ChatGPT sign-in and the hands' runtime go through it and nanoMuse Cloud
-never does ([desktop.md](desktop.md)); the web app has the *Proxy* field in the
+key, the ChatGPT sign-in, the hands' runtime and whatever else the app sends out go
+through it, and nanoMuse Cloud never does ([desktop.md](desktop.md)); the web app has the *Proxy* field in the
 own-key form; the runtime has `[llm] proxy` in `config.toml`
 ([configuration.md](configuration.md#llm)).
 

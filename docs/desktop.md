@@ -67,11 +67,11 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
   `device_notify` and `delegate` for the phone and the other computers; the phone's
   `delegate` landing here as a dsh session "From <device>" with its approvals relayed
   back; remote control (`shell`, `files`, `open`, `screen`) behind a switch;
-- **Network** (Settings → nanoMuse Cloud → Network): one proxy for the model providers —
+- **Network** (Settings → nanoMuse Cloud → Network): one proxy for what the app sends out —
   `http://host:port`, `https://`, `socks5://` or `socks5h://`, a `user:pass@` allowed and
-  shown masked. Only requests to the providers go through it: your own keys, the ChatGPT
-  sign-in's calls, *List models*, and the hands' runtime (`nanomuse mcp` inherits the same
-  variables). nanoMuse Cloud — the relay, the hub's WebSocket, the sync — and loopback never
+  shown masked. Everything the dsh Host sends goes through it: your own keys, the ChatGPT
+  sign-in's calls, *List models*, the pages the tools read, connectors, the update check,
+  and the hands' runtime (`nanomuse mcp` inherits the same variables). nanoMuse Cloud — the relay, the hub's WebSocket, the sync — and loopback never
   do. The shell keeps it in `desktop.json` next to *open at login* and puts it on the dsh
   Host's environment at start (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` for SOCKS, `NO_PROXY`
   with `localhost,127.0.0.1,::1`, `cloud.nanomuse.cn` and the relay the plugin talks to, and
