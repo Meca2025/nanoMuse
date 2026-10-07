@@ -162,13 +162,15 @@ def _training_view(messages: list) -> list:
 
 def _fit_messages(messages: list, max_chars: int) -> tuple[str, bool]:
     """The messages as JSON within ``max_chars`` — whole messages dropped from the middle
-    (the system prompt and the last exchange kept), then the longest text cut — so that what
-    is stored always parses. Returns the JSON and whether anything was left out."""
+    (the first message and the last exchange kept), then the longest text cut — so that what
+    is stored always parses. Returns the JSON and whether anything was left out. The caller
+    passes the training view (``_training_view``), so the first message is the person's
+    opening turn, not a system prompt."""
     text = json.dumps(messages, ensure_ascii=False)
     if len(text) <= max_chars:
         return text, False
     msgs = [dict(m) for m in messages if isinstance(m, dict)]
-    # 1. drop from the middle, oldest first, keeping the first (system) and the last two
+    # 1. drop from the middle, oldest first, keeping the first message and the last two
     while len(text) > max_chars and len(msgs) > 3:
         del msgs[1]
         text = json.dumps(msgs, ensure_ascii=False)
@@ -1890,9 +1892,11 @@ class Cloud:
             json.dumps(meta, ensure_ascii=False),
         )
 
-    def admin_samples(self, account_id: str | None = None, since: int = 0, limit: int = 100, before: int = 0) -> list[dict]:
+    def admin_samples(
+        self, account_id: str | None = None, since: int = 0, limit: int = 100, before: int = 0, before_id: str = ""
+    ) -> list[dict]:
         out = []
-        for r in self.db.samples(account_id, since, limit, before):
+        for r in self.db.samples(account_id, since, limit, before, before_id):
             d = dict(r)
             d["request"], cut = _load_messages(d["request"])
             d["meta"] = _load_meta(d["meta"])
@@ -1906,9 +1910,10 @@ class Cloud:
         """Every contributed conversation as JSON lines, without the account id: the
         training set is about what was said, not who said it. With ``account_id``, one
         account's turns only (the operator reading one person's data in full)."""
-        before = 0
+        before, before_id = 0, ""
         while True:
-            rows = self.db.samples(account_id, since, 1000, before)
+            # keyset paging on (ts, id): a page ending inside a busy second continues there
+            rows = self.db.samples(account_id, since, 1000, before, before_id)
             if not rows:
                 return
             for r in rows:
@@ -1928,7 +1933,7 @@ class Cloud:
                     "meta": meta,
                 }
                 yield json.dumps(d, ensure_ascii=False) + "\n"
-            before = int(rows[-1]["ts"])
+            before, before_id = int(rows[-1]["ts"]), str(rows[-1]["id"])
             if len(rows) < 1000:
                 return
 

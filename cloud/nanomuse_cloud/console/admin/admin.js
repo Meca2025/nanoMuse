@@ -953,7 +953,7 @@
   /** Every turn one account kept, newest first, page by page to the first; each row is the whole turn (sampleRow). */
   function samplesBox(accountId) {
     const box = h("div", {}, h("div", { class: "empty" }, T.loading));
-    let before = 0, shown = 0, total = 0;
+    let before = 0, beforeId = "", shown = 0, total = 0;
     const list = h("div", {});
     const foot = h("div", { class: "pager fine" });
     const paint = () => {
@@ -962,13 +962,16 @@
     };
     const load = async () => {
       try {
-        const r = await api("GET", `/v1/admin/samples?account_id=${encodeURIComponent(accountId)}&limit=20${before ? `&before=${before}` : ""}`);
+        // keyset paging on (ts, id): several turns in one second are not skipped
+        const page = before ? `&before=${before}&before_id=${encodeURIComponent(beforeId)}` : "";
+        const r = await api("GET", `/v1/admin/samples?account_id=${encodeURIComponent(accountId)}&limit=20${page}`);
         const items = r.samples || [];
         total = r.total || 0;
         if (shown === 0) box.replaceChildren(...[items.length ? list : h("div", { class: "empty" }, T.noSamples), total ? foot : null].filter(Boolean));
         list.append(...items.map((smp) => sampleRow(smp)));
         shown += items.length;
         before = items.length ? items[items.length - 1].ts : 0;
+        beforeId = items.length ? items[items.length - 1].id : "";
         if (!items.length) total = shown;
         paint();
       } catch (e) { box.replaceChildren(h("div", { class: "hint bad" }, e.message)); }
