@@ -36,7 +36,6 @@ jobs:
               - "tests/**"
               - "scripts/**"
               - "pyproject.toml"
-              - "uv.lock"
               - "Dockerfile"
               - ".dockerignore"
               - ".github/workflows/ci.yml"
