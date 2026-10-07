@@ -49,7 +49,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Status line = the step's own words (`step`: *打开携程网站*), never the raw command | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 |
 | "Show the agent's steps", on by default since 0.1.37 (a stored off stays off) | ✓ 0.1.37 (`nm.show_steps`) | ✓ 0.1.37 (`nanomuse.show_steps`) *(2)* | ✓ 0.1.37 | ✓ 0.1.37 |
 | Star asks at the relay's moments (`/v1/nudges`: sign-in · 3rd / 10th / 30th task · 7th / 30th day · a goal reached · a new look · allowance spent; 7 days apart, 4 per device; never in the first conversation) | ✓ 0.1.35 | ✓ 0.1.35 *(3)* | ✓ 0.1.35 | ✓ 0.1.35 |
-| First conversation: the app speaks first, asks what to call you, the model's `nanomuse-naming` fence becomes the naming card | ✓ | ✓ 0.1.34 | ✓ 0.1.35 *(25)* | ◐ *(39)* |
+| First conversation: the app speaks first, asks what to call you, the model's `nanomuse-naming` fence becomes the naming card | ✓ | ✓ 0.1.34 | ✓ 0.1.35 *(25)* | ✓ *(39)* |
 | First run: "Sign in — free" before anything else | ✓ | ✓ 0.1.32 *(4)* | ✓ | ✓ |
 | Approval cards, three tiers, remembered grants; a Permissions page listing the remembered grants by risk tier, with Revoke | ✓ | upstream's | ✓ Settings → Permissions → *Standing grants*: the remote-control switch, the trusted devices and the hands' per-app grants under the phone's three tiers | ✓ |
 | Approvals answered outside the app while the hands work | ✓ 0.1.33 capsule *Allow / Deny* | n/a *(10)* | ✓ 0.1.34 stage *Allow once / Always in app / Deny*, capsule when the window is behind *(17)* | n/a |
@@ -321,12 +321,16 @@ notes above; a settled item keeps its number and says how it went.
     (auto · en · zh-CN), the desktop has English and Chinese through the harness's language row.
     *Proposal:* the desktop's `locales.ts` grows the phones' languages as people ask, de and ja
     first; an in-app override on the phones is upstream's call.
-39. **Web · the first conversation.** The web app greets ("Hi, I'm {name}") and the first-run
-    list has a *Meet your nanoMuse* page, but the name comes from a form (`IdentityForm`), not
-    from the conversation: the runtime has no `nanomuse-naming` fence, so the model never asks
-    what to call you and there is no naming card. Doing it the phones' way means a fence in the
-    runtime's prompt (`nanomuse/llm/prompt_tools.py`), a card in `ChatScreen.tsx`, and the
-    first-run list without the naming page — about two days. Until then the form stays.
+39. **Web · the first conversation.** Done the phones' way, with the runtime owning the state:
+    the phase machine, the prompt addendum and the saving are `nanomuse/server/firstrun.py`
+    (state in `firstrun.json` beside the profile), the fence helpers `nanomuse/fences.py`, the
+    routes `/api/firstrun*`, the `firstrun` socket frame; the chat speaks the three lines and
+    draws the chooser (`web/src/components/FirstConversation.tsx`), and the first-run list lost
+    its *Meet your nanoMuse* page. The address goes to the profile and to memory as *Call them:
+    …* (the runtime has no USER.md). The identity form stays under Settings for later changes.
+    One addition to the contract: the runtime keeps the language *Start* was pressed in
+    (`lang`), so the addendum quotes the opening in the words the person saw.
+    [web.md](web.md#the-first-run-and-the-chats-opening) has the walk-through.
 
 ## Keeping this true
 

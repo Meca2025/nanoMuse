@@ -24,6 +24,9 @@ export interface StarPolicy {
   };
   cooldown_days: number;
   max_asks: number;
+  /** the card's sentence from the relay, English and Chinese; "" = the app's own words */
+  text: string;
+  text_zh: string;
 }
 
 export interface NudgesPolicy {
@@ -39,10 +42,34 @@ export const DEFAULT_POLICY: NudgesPolicy = {
     moments: { signed_in: true, tasks: [3, 10, 30], new_look: true, exhausted: true, days_used: [7, 30], goal_done: true },
     cooldown_days: 7,
     max_asks: 4,
+    text: "",
+    text_zh: "",
   },
 };
 
 const DAY_MS = 24 * 3600 * 1000;
+
+/** The longest sentence the relay may put on the card. */
+export const TEXT_MAX = 200;
+
+/** A relay sentence: trimmed, kept up to `TEXT_MAX` characters, otherwise "". */
+function sentence(v: unknown): string {
+  if (typeof v !== "string") return "";
+  const s = v.trim();
+  return s.length <= TEXT_MAX ? s : "";
+}
+
+/**
+ * The sentence the star card shows: in a Chinese UI the relay's `text_zh`, else its `text`,
+ * else `own` — the app's built-in words. Only the body sentence changes; the card's title
+ * and buttons stay the app's.
+ */
+export function starSentence(policy: NudgesPolicy, zh: boolean, own: string): string {
+  const { text, text_zh } = policy.star;
+  if (zh && text_zh) return text_zh;
+  if (text) return text;
+  return own;
+}
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const bool = (v: unknown, fallback: boolean) => (typeof v === "boolean" ? v : fallback);
@@ -81,6 +108,8 @@ export function normalizePolicy(body: unknown): NudgesPolicy {
       },
       cooldown_days: int(s.cooldown_days, 0, 365, d.cooldown_days),
       max_asks: int(s.max_asks, 0, 50, d.max_asks),
+      text: sentence(s.text),
+      text_zh: sentence(s.text_zh),
     },
   };
 }

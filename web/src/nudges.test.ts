@@ -13,6 +13,7 @@ import {
   recordDay,
   recordStarred,
   recordTask,
+  starSentence,
 } from "./nudges";
 
 const DAY = 24 * 3600 * 1000;
@@ -44,6 +45,35 @@ describe("normalizePolicy", () => {
     expect(p.star.moments.days_used).toEqual([7, 30]);
     expect(p.star.moments.goal_done).toBe(false);
     expect(p.star.moments.signed_in).toBe(true);
+    expect(p.star.text).toBe("");
+    expect(p.star.text_zh).toBe("");
+  });
+
+  it("keeps the relay's sentence for the card: trimmed, up to 200 characters", () => {
+    const p = normalizePolicy({ star: { text: "  Liked it? A star helps.  ", text_zh: "喜欢的话，点个星。" } });
+    expect(p.star.text).toBe("Liked it? A star helps.");
+    expect(p.star.text_zh).toBe("喜欢的话，点个星。");
+    expect(normalizePolicy({ star: { text: "x".repeat(200) } }).star.text).toBe("x".repeat(200));
+    expect(normalizePolicy({ star: { text: "x".repeat(201) } }).star.text).toBe("");
+    expect(normalizePolicy({ star: { text: 7, text_zh: ["no"] } }).star).toMatchObject({ text: "", text_zh: "" });
+    expect(normalizePolicy({ star: { text: "   " } }).star.text).toBe("");
+  });
+});
+
+describe("starSentence", () => {
+  const own = "the app's own words";
+  it("falls back in order: text_zh for a Chinese UI, text, then the app's own", () => {
+    const both = normalizePolicy({ star: { text: "EN", text_zh: "中文" } });
+    expect(starSentence(both, true, own)).toBe("中文");
+    expect(starSentence(both, false, own)).toBe("EN");
+    const enOnly = normalizePolicy({ star: { text: "EN" } });
+    expect(starSentence(enOnly, true, own)).toBe("EN");
+    expect(starSentence(enOnly, false, own)).toBe("EN");
+    const zhOnly = normalizePolicy({ star: { text_zh: "中文" } });
+    expect(starSentence(zhOnly, true, own)).toBe("中文");
+    expect(starSentence(zhOnly, false, own)).toBe(own);
+    expect(starSentence(DEFAULT_POLICY, true, own)).toBe(own);
+    expect(starSentence(DEFAULT_POLICY, false, own)).toBe(own);
   });
 });
 

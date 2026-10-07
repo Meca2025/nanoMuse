@@ -37,6 +37,8 @@
     POST /api/connections/mcp  DELETE /api/connections/mcp/{name}
     GET  /api/vault  PUT|DELETE /api/vault/{name}   (names only ever come back)
     POST /api/onboarded
+    GET  /api/firstrun (?lang=en|zh)      the first conversation: phase, chips, the three opening lines
+    POST /api/firstrun/start {lang}  POST /api/firstrun/pick {name}  POST /api/firstrun/dismiss
     GET  /api/nudges (?refresh=1)         when the app may ask for a star: the relay's policy, read once a day
     GET|PUT /api/sync/state {enabled}     conversations synced between the account's devices: the switch, the cursor, the relay's counts
     POST /api/sync/delete                 delete what the relay stores for the account (the switch stays)
@@ -77,6 +79,7 @@ from nanomuse.bridge.server import BridgeError
 from nanomuse.cloud import CloudError
 from nanomuse.coding.service import CodingError
 from nanomuse.config import Settings
+from nanomuse.fences import MAX_NAME
 from nanomuse.hub.client import HubError
 from nanomuse.llm.chatgpt import ChatGPTError
 from nanomuse.logger import logger
@@ -182,6 +185,8 @@ class LLMBody(BaseModel):
     tool_mode: str | None = None
     # a new key goes straight into the vault; "" removes the key; None keeps it
     api_key: str | None = None
+    # `[llm] proxy`: http(s):// or socks5(h):// for this slot's requests only; "" clears it
+    proxy: str | None = None
 
 
 class LLMModelsBody(BaseModel):
@@ -273,6 +278,15 @@ class SecretBody(BaseModel):
 
 class OnboardedBody(BaseModel):
     done: bool = True
+
+
+class FirstRunStartBody(BaseModel):
+    # the language the opening is shown in ("en" or "zh"); the agent's reply language when empty
+    lang: str = Field("", max_length=10)
+
+
+class FirstRunPickBody(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
 
 
 class BrowserControlBody(BaseModel):
@@ -1573,6 +1587,37 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         conn.set_onboarded(body.done)
         started = svc.first_feed_day() if body.done else False
         return {"onboarded": body.done, "feed_started": started}
+
+    # ------------------------------------------------------------------ the first conversation (C4)
+    @app.get("/api/firstrun", dependencies=dep)
+    async def firstrun_state(lang: str = Query("", max_length=10)) -> dict[str, Any]:
+        """Where the first conversation stands, the chips for the chooser, and the three
+        lines the app speaks first in ``lang`` (``en`` or ``zh``; the opening's own language
+        when empty)."""
+        return svc.firstrun_view(lang, intro=True)
+
+    @app.post("/api/firstrun/start", dependencies=dep)
+    async def firstrun_start(body: FirstRunStartBody) -> dict[str, Any]:
+        """Start was pressed: the main chat is bound as the first conversation and the
+        setup counts as finished (as ``POST /api/onboarded`` does)."""
+        return svc.start_first_conversation(body.lang)
+
+    @app.post("/api/firstrun/pick", dependencies=dep)
+    async def firstrun_pick(body: FirstRunPickBody) -> dict[str, Any]:
+        """A chip was picked: the name is saved now; the web sends it as the person's
+        message next, and the model's reply is its first as itself."""
+        name = " ".join(body.name.split())[:MAX_NAME].strip()
+        if not name:
+            raise HTTPException(400, "name is required")
+        try:
+            return svc.pick_first_name(name)
+        except LookupError as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+    @app.post("/api/firstrun/dismiss", dependencies=dep)
+    async def firstrun_dismiss() -> dict[str, Any]:
+        """The person moved on: the chooser goes, the first conversation counts as over."""
+        return svc.dismiss_first_chooser()
 
     # ------------------------------------------------------------------ browser view
     @app.get("/api/browser/{thread_id}/frames/{frame_id}.jpg", dependencies=dep_or_signed)

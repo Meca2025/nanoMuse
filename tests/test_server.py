@@ -929,6 +929,40 @@ def test_connections_model_key_goes_to_the_vault(server, settings: Settings):
     assert client.put("/api/connections/llm", json={"tool_mode": "bogus"}).status_code == 400
 
 
+def test_connections_model_proxy_is_written_masked_and_cleared(server, settings: Settings):
+    """`[llm] proxy` from the app: http(s) or socks5(h) only, credentials never come back
+    whole, "" clears it, and the model client is rebuilt with it."""
+    client, service, _ = server
+    assert client.get("/api/connections").json()["llm"]["proxy"] == ""
+    r = client.put("/api/connections/llm", json={"proxy": " http://127.0.0.1:7890/ "})
+    assert r.status_code == 200 and r.json()["proxy"] == "http://127.0.0.1:7890"
+    assert settings.llm.proxy == "http://127.0.0.1:7890"
+    assert json.loads((settings.data_dir / "app-settings.json").read_text())["llm"]["proxy"] == (
+        "http://127.0.0.1:7890"
+    )
+    # a SOCKS proxy is taken when httpx can speak it, refused with the package's name when not
+    socks = client.put("/api/connections/llm", json={"proxy": "socks5h://127.0.0.1:1080"})
+    try:
+        import socksio  # noqa: F401
+    except ImportError:
+        assert socks.status_code == 400 and "socksio" in socks.json()["detail"]
+    else:
+        assert socks.status_code == 200 and settings.llm.proxy == "socks5h://127.0.0.1:1080"
+    # credentials stay on the server; the view shows the user and dots
+    r = client.put("/api/connections/llm", json={"proxy": "http://me:hunter2@proxy.local:3128"})
+    assert r.json()["proxy"] == "http://me:••••@proxy.local:3128"
+    assert "hunter2" not in json.dumps(client.get("/api/connections").json())
+    assert settings.llm.proxy == "http://me:hunter2@proxy.local:3128"
+    # another slot's write leaves the proxy alone; "" clears it
+    client.put("/api/connections/llm", json={"model": "deepseek-chat"})
+    assert settings.llm.proxy == "http://me:hunter2@proxy.local:3128"
+    assert client.put("/api/connections/llm", json={"proxy": ""}).json()["proxy"] == ""
+    assert settings.llm.proxy == ""
+    for bad in ("ftp://x:1", "proxy.local:3128", "http://", "http://h:1/path"):
+        assert client.put("/api/connections/llm", json={"proxy": bad}).status_code == 400, bad
+    assert settings.llm.proxy == ""
+
+
 def test_connections_email_and_browser(server, settings: Settings):
     client, service, _ = server
     email = client.put(

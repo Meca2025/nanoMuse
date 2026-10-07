@@ -978,6 +978,8 @@ export interface ConnectionsData {
     image_model?: string;
     /** the clip model at the same host; "" = the runtime's pick */
     video_model?: string;
+    /** `[llm] proxy` for this slot's requests; credentials masked; "" = none (older runtimes: absent) */
+    proxy?: string;
   };
   providers: Record<string, ProviderPreset>;
   /** Recall by meaning: memories embedded through an OpenAI-compatible /embeddings endpoint. */
@@ -1190,6 +1192,32 @@ export interface StateSnapshot {
   holds?: HoldEvent[];
   /** the other devices' turns under way on synced chats (contract C9) */
   working?: WorkingPresence[];
+  /** the first conversation (contract C4); absent on an older runtime */
+  firstrun?: FirstRunView;
+}
+
+/** The first conversation's phases: `none → ask_user_name → ask_agent_name → named → done`. */
+export type FirstRunPhase = "none" | "ask_user_name" | "ask_agent_name" | "named" | "done";
+
+/** `GET /api/firstrun` and the `firstrun` frame: where the first conversation stands (contract C4). */
+export interface FirstRunView {
+  phase: FirstRunPhase;
+  /** the thread it is bound to; null until Start */
+  session_id: string | null;
+  user_address: string | null;
+  /** the model's name suggestions for itself, when it gave some */
+  suggestions: string[];
+  /** what the chooser offers: the suggestions, or two from the built-in pool */
+  chips: string[];
+  chosen: string | null;
+  /** the language the opening was shown in: "en", "zh", or "" */
+  lang: string;
+  /** started and not over: its turns are never tasks */
+  running: boolean;
+  started_at: number;
+  finished_at: number;
+  /** the three lines the app speaks first, in the language asked for (GET only) */
+  intro?: string[];
 }
 
 export interface AuditEntry {
@@ -1358,6 +1386,8 @@ export type WsMessage =
   /** the avatar studio's session, every time it changes (the studio screen watches this; the chat has its card) */
   | { kind: "studio"; current: StudioSession | null }
   | { kind: "connections"; connections: ConnectionsData }
+  /** the first conversation moved on (Start, the model's block, a pick) */
+  | { kind: "firstrun"; firstrun: FirstRunView }
   | { kind: "skills"; skills: SkillsData }
   | { kind: "approvals_reset" }
   | { kind: "coding"; event: CodingEvent; agent: string; session_id: string; device?: string; run: CodingRun | null }

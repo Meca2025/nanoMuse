@@ -16,9 +16,15 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The sync push delay is read when a push is scheduled.** `ConversationSync.push_soon()` took the two-second default at import time, so a shorter delay set on the module (the tests do this) did not reach the pushes after a sign-in or the switch; it does now. Nothing changes for a person: the delay is still two seconds.
 - **Stopping ends every request to the relay before the connection to it closes.** The presence note a turn sends once its push is through (`working`) survived being cancelled and went out while the runtime was shutting down, racing the cloud client's close; the hub's background tasks were cancelled but not waited for. Stopping now cancels and waits for the sync engine's, the hub's and the profile's tasks, then closes the HTTP client, and a task that would start on the way out is refused. Nothing changes for a person; the tests' fake relay no longer waits on a half-open connection when it stops.
 - **`nanomuse --help` rows are whole sentences again** (the `mcp` row had lost the words in brackets); `nanomuse serve` no longer prints "nanoMuse · nanoMuse is ready."; the no-key notice also mentions signing in to nanoMuse Cloud.
+- **The runtime owns the first conversation** (contract C4, as on the phones and the desktop): `GET /api/firstrun`, `POST /api/firstrun/start` · `pick` · `dismiss`, the `firstrun` socket frame, the state in `firstrun.json`. It tells the model about the ritual only in the chat the conversation is bound to — never in a routine, a feed post or another chat — reads the model's `nanomuse-naming` block when a reply ends, writes what to call you to the profile and to memory (*Call them: …*) and the agent's name to the profile.
+- **`PUT /api/connections/llm` takes `proxy`** (`http://`, `https://`, `socks5://`, `socks5h://` host and port; `""` clears it) and writes `[llm] proxy`; the connections view shows it with any password as dots. A SOCKS address is refused with the package to install when `socksio` is missing.
+- **`/api/nudges` keeps the relay's `star.text` and `star.text_zh`** (200 characters at most) for the star card's sentence.
 
 ### Web
 
+- **The first conversation happens in the chat.** The first-run list is *Add a model → Connect (optional) → Start*; the *Meet your nanoMuse* page is gone (the identity form stays under Settings). *Start* opens the chat, where the agent speaks three opening lines in your language, asks what to call you, and a card under its reply offers two names for it — its own suggestions or two from the built-in pool — and *Something else*; the model's `nanomuse-naming` block is never shown, not even while streaming. Its turns do not count as tasks for the star asks.
+- **A *Proxy (optional)* field** on the own-key model form, for that provider's requests only; nanoMuse Cloud never goes through it.
+- **The star card's sentence can come from the relay** (`star.text`, `star.text_zh` for a Chinese UI); the title and buttons stay the app's.
 - **The unit tests no longer depend on the developer machine's language.**
 
 ### Desktop
