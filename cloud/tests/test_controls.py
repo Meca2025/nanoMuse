@@ -3,6 +3,8 @@ threshold rules (a rule fires once, re-arms, notifies) and the audit log behind 
 
 from __future__ import annotations
 
+import asyncio
+import threading
 import time
 
 import pytest
@@ -265,6 +267,57 @@ async def test_rules_through_the_api_fire_on_sign_up():
     assert (await client.delete(f"/v1/admin/controls/rules/{rule_id}", headers=ADMIN)).status_code == 404
     r = await client.post("/v1/admin/controls/rules", json={"threshold": -1, "action": "notify"}, headers=ADMIN)
     assert r.status_code == 400 and r.json()["error"]["code"] == "bad_request"
+
+
+async def test_a_notify_rule_crossed_by_a_sign_in_mails_off_the_request_path():
+    """The sign-in that reaches the line gets its key back without waiting on SMTP: the
+    switch work happens in the request, the e-mail on a thread of its own (or, failing
+    that, on the minute timer's next tick)."""
+    app, client, sender, up, cloud, settings = make(admin_email="ops@example.com", smtp_from="relay@example.com")
+    sent: list = []
+    gate = threading.Event()
+
+    def slow_mailer(msg):
+        gate.wait(5)  # the mail server is slow; the sign-in must not be
+        sent.append(msg)
+
+    cloud.controls._mailer = slow_mailer
+    r = await client.post("/v1/admin/controls/rules", json={"threshold": 1, "action": "notify"}, headers=ADMIN)
+    assert r.status_code == 200, r.text
+    t0 = time.monotonic()
+    await sign_up(client, sender, "13800138000", "pixel")
+    assert time.monotonic() - t0 < 2.0, "the sign-in waited on the mail server"
+    view = (await client.get("/v1/admin/controls", headers=ADMIN)).json()
+    assert view["rules"][0]["last_fired_at"], "the rule fired inside the request"
+    assert sent == []
+    gate.set()
+    for _ in range(50):
+        if sent:
+            break
+        await asyncio.sleep(0.05)
+    assert len(sent) == 1 and sent[0]["To"] == "ops@example.com"
+    audit = (await client.get("/v1/admin/controls/audit", headers=ADMIN)).json()["audit"]
+    assert any(a["action"] == "notify" and "sent" in a["detail"] for a in audit)
+    # the minute timer's safety net: nothing left to send, and it says so
+    assert cloud.controls.flush_notices() == 0 and cloud.rules_tick() == []
+
+
+def test_deferred_notices_are_queued_then_flushed_in_order():
+    sent: list = []
+    settings = Settings(database=":memory:", secret="test-secret", admin_email="ops@example.com", smtp_from="relay@example.com")
+    db = Database(":memory:")
+    ctl = Controls(db, settings, mailer=sent.append)
+    ctl.add_rule({"threshold": 2, "action": "notify"}, actor="ops")
+    ctl.add_rule({"threshold": 3, "action": "notify"}, actor="ops")
+    assert len(ctl.evaluate(3, defer_mail=True)) == 2 and sent == []
+    assert ctl.flush_notices_later() is True
+    for _ in range(100):
+        if len(sent) == 2:
+            break
+        time.sleep(0.02)
+    assert [m["Subject"].endswith(f"3 accounts: rule #{i} fired") for i, m in enumerate(sent, 1)] == [True, True]
+    assert ctl.flush_notices() == 0 and ctl.flush_notices_later() is False
+    db.close()
 
 
 async def test_notify_test_answers_honestly_without_an_address():

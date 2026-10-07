@@ -424,3 +424,50 @@ async def test_admin_series_and_traffic(tmp_path):
     assert tr["downloads"] == [{"name": "nanoMuse-0.1.22-arm64.apk", "hits": 1, "bytes": 1000}]
     assert tr["github"]["stars"] == 24 and tr["github"]["downloads"] == 188 and tr["github"]["days"][0]["stars"] == 24
     assert "203.0.113.7" not in r.text
+
+
+async def test_an_operator_zero_survives_a_restart_and_old_rows_still_get_seeded(tmp_path):
+    """seed_grants used to pick every account with grant_uy = 0, so an account the operator
+    had set to zero from the page got the allowance back at the next restart. Only rows no
+    0.15+ relay has seen (allowance_uy < 0) are seeded; the operator's zero stays."""
+    path = str(tmp_path / "relay.sqlite")
+    app, client, sender, up, cloud, settings = make(database=path, allowance_cny=0.6)
+    cloud.db.close()
+    cloud = Cloud(settings, Database(path), sender)
+    app = create_app(settings, cloud, upstream_transport=httpx.ASGITransport(app=up))
+    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://cloud.test")
+    a = await sign_up(client, sender, "dev-a@example.com", "pixel")
+    b = await sign_up(client, sender, "dev-b@example.com", "mac")
+    r = await client.post(
+        "/v1/admin/pool", headers={"X-Admin-Token": "admin"}, json={"account_id": a["account"]["id"], "grant_cny": 0, "note": "abuse"}
+    )
+    assert r.status_code == 200 and r.json()["grant_cny"] == 0
+    # a row from before 0.15 that never got its pool: the column default says so
+    with cloud.db.tx() as c:
+        c.execute("UPDATE accounts SET allowance_uy=-1, grant_uy=0 WHERE id=?", (b["account"]["id"],))
+    cloud.db.close()
+    again = Cloud(settings, Database(path), sender)
+    assert again.db.account(a["account"]["id"])["grant_uy"] == 0, "the operator's zero came back"
+    assert again.db.account(b["account"]["id"])["grant_uy"] == settings.allowance_uy
+    assert again.db.seed_grants(settings.allowance_uy) == 0  # idempotent
+    again.db.close()
+
+
+async def test_invite_earnings_are_what_the_ledger_says_not_todays_bonus_times_invites():
+    app, client, sender, up, cloud, settings = make(allowance_cny=0.6, invite_bonus_cny=3)
+    a = await sign_up(client, sender, "dev-a@example.com", "pixel")
+    code = (await client.get("/v1/me/invite", headers=auth(a["api_key"]))).json()["code"]
+
+    async def join(identifier: str) -> None:
+        await client.post("/v1/auth/code", json={"identifier": identifier})
+        _, c = sender.sent[-1]
+        r = await client.post("/v1/auth/verify", json={"identifier": identifier, "code": c, "device": "mac", "invite": code})
+        assert r.status_code == 200, r.text
+
+    await join("dev-b@example.com")
+    r = await client.post("/v1/admin/settings", headers={"X-Admin-Token": "admin"}, json={"invite_bonus_cny": 1})
+    assert r.status_code == 200, r.text
+    await join("dev-c@example.com")
+    inv = (await client.get("/v1/me/invite", headers=auth(a["api_key"]))).json()
+    assert inv["invites"] == 2 and inv["bonus_cny"] == 1
+    assert inv["earned_cny"] == 4, "3 for the first friend plus 1 for the second, as the ledger has it"

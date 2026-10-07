@@ -169,8 +169,10 @@ under a live socket), `4002` bad device, `4003` replaced
 by a newer connection of the same device id — or, with the reason
 `hub_paused` (relay 0.22), the operator switched the hub or the whole service
 off: a client waits and reconnects later instead of retrying at once
-([cloud.md › Controls](cloud.md#controls)) — and `4008` too many frames (the
-rate limit below was ignored).
+([cloud.md › Controls](cloud.md#controls)) — `4008` too many frames (the
+rate limit below was ignored) — and `4009` slow consumer (the relay had 512
+frames or 32 MB queued for a socket that was not reading them; the client
+reconnects with backoff like after any network close).
 
 A key refused in the `Authorization` header is answered the same way as one
 refused in `hello`: the handshake completes, an `error` frame carries the
@@ -184,8 +186,11 @@ that is not a JSON object, a binary frame) are answered with
 older relay loses one frame, not the connection. Frames over `frame_limit`
 get `too_large`; more than 60 frames or 8 MB a second get `rate_limited`
 (one warning a second, the extra frames dropped) and, if that goes on,
-the close with `4008`. A `call` nobody answers within 15 minutes fails with
-`timeout` to its caller; `forget` of a device that is connected right now is
+the close with `4008`. A send to a device never waits on that device: frames
+queue per connection and are written in order as the socket drains; a socket
+that stops reading is closed with `4009` once 512 frames or 32 MB are waiting,
+so one stalled phone cannot hold the computer calling it. A `call` nobody
+answers within 15 minutes fails with `timeout` to its caller; `forget` of a device that is connected right now is
 refused with `device_online`.
 
 Device ids are per installation (`phone-…`, `pc-…`); names are for people and

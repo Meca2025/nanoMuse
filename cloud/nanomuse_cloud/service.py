@@ -388,10 +388,10 @@ class Cloud:
         else:
             log.warning("SIGNUP_OPEN=0: private relay, only the %d listed identifier(s) may sign in", len(self.member_hashes))
         if settings.allowance_uy > 0:
-            # A database from before 0.5 (or from a spell with ALLOWANCE_CNY=0): every account
-            # without a pool starts the lifetime model with the allowance on top of what it has
-            # spent, plus any 0.4 credit an invite had earned it. Idempotent: an account with a
-            # pool is left alone, so a restart between the column and this line loses nothing.
+            # A database from before 0.5: every account without a pool that no 0.15+ relay has
+            # seen starts the lifetime model with the allowance on top of what it has spent,
+            # plus any 0.4 credit an invite had earned it. Idempotent, and it never touches an
+            # account the operator set to zero: that one keeps its zero across a restart.
             n = self.db.seed_grants(settings.allowance_uy)
             if n:
                 log.warning("0.5: %d account(s) moved to the lifetime allowance (¥%.2f + what was spent)", n, settings.allowance_cny)
@@ -743,18 +743,34 @@ class Cloud:
         key, caller = self._issue_key(account["id"], device, via=via)
         self.db.add_event(account["id"], f"sign_in.{via}", device)
         if created:
-            self.evaluate_thresholds()
+            # the switches flip now; a notify rule's e-mail goes on its own thread, so this
+            # sign-in does not wait on SMTP
+            self.evaluate_thresholds(defer_mail=True)
         return key, caller, created
 
-    def evaluate_thresholds(self) -> list[dict[str, Any]]:
+    def evaluate_thresholds(self, *, defer_mail: bool = False) -> list[dict[str, Any]]:
         """0.22: the operator's "when accounts reach N" rules, against the count right now.
-        Called after an account is made and once a minute from the server; a failure here
-        must not break a sign-in."""
+        Called after an account is made (``defer_mail``: the e-mail leaves on a thread of
+        its own) and once a minute from the server; a failure here must not break a
+        sign-in."""
         try:
-            return self.controls.evaluate(self.db.account_counts()["total"])
+            fired = self.controls.evaluate(self.db.account_counts()["total"], defer_mail=defer_mail)
+            if defer_mail:
+                self.controls.flush_notices_later()
+            return fired
         except Exception as e:  # noqa: BLE001 — a rule misfiring must not cost a sign-in
             log.warning("thresholds: could not evaluate: %s", e)
             return []
+
+    def rules_tick(self) -> list[dict[str, Any]]:
+        """The minute timer's call: evaluate, then send any notice a sign-in queued whose
+        thread did not get to it."""
+        fired = self.evaluate_thresholds()
+        try:
+            self.controls.flush_notices()
+        except Exception as e:  # noqa: BLE001
+            log.warning("thresholds: could not send a queued notice: %s", e)
+        return fired
 
     # -- invitations ------------------------------------------------------------------
 
@@ -795,7 +811,9 @@ class Cloud:
 
     def invite_view(self, caller: Caller) -> dict:
         code = self.invite_code_for(caller)
-        earned = self.s.uy_to_cny(caller.invites * self.s.cny_to_uy(self.s.invite_bonus_cny))
+        # from the ledger, not invites × today's bonus: the bonus may have been another
+        # figure when some of these friends signed up
+        earned = self.s.uy_to_cny(self.db.invite_earned_uy(caller.account_id))
         return {
             "code": code,
             "url": self.s.invite_url + code if self.s.invite_url else "",
@@ -831,7 +849,12 @@ class Cloud:
         """A key that stops working on its own after `ttl_s` (at most 90 days), for a place
         that should not hold a standing one — nanoMuse Web's container gets one at start and
         the gateway keeps nothing. Issued to the account of the key making the request; the
-        requesting key is untouched (the caller revokes it if it has no further use for it)."""
+        requesting key is untouched (the caller revokes it if it has no further use for it).
+        A session key cannot mint another: otherwise a key that lapses in an hour could
+        hand itself 90 more days, and a container that leaked one would hold the account
+        for as long as it liked."""
+        if caller.via == "session":
+            raise CloudError(403, "session_from_session", "A session key cannot issue another session key; use the device's own key")
         ttl = max(60, min(int(ttl_s), self.SESSION_KEY_MAX_S))
         expires_at = now() + ttl
         key, _ = self._issue_key(caller.account_id, device or "session", via="session", expires_at=expires_at)
