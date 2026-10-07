@@ -24,9 +24,22 @@ class FirstRunSetupTest {
     }
 
     @Test
-    fun `the account is required - signing out brings the setup back, whatever else is true`() {
-        assertTrue(FirstRunSetup.needed(signedIn = false, hasProviders = true, hasSessions = true, done = true))
-        assertTrue(FirstRunSetup.needed(signedIn = true, hasProviders = false, hasSessions = true, done = true))
+    fun `signed out with a key of one's own, the chat stays - the sign-in is an invitation`() {
+        assertFalse(FirstRunSetup.needed(signedIn = false, hasProviders = true, hasSessions = true, done = true))
+        // The account alone is enough too: the relay is a provider.
+        assertFalse(FirstRunSetup.needed(signedIn = true, hasProviders = false, hasSessions = true, done = true))
+        // Nothing that could answer: the setup comes back.
+        assertTrue(FirstRunSetup.needed(signedIn = false, hasProviders = false, hasSessions = true, done = true))
+    }
+
+    @Test
+    fun `signed out with a key of one's own, the account pages are skipped`() {
+        // The welcome stays only while there is nothing at all.
+        assertEquals(Stage.WELCOME, FirstRunSetup.stage(signedIn = false, hasGroups = false, sourceChosen = false, modelsSkipped = false, handsSeen = false, handsPossible = true, hasProviders = false))
+        // The key is there, its models are not grouped yet: straight to the models page, no password, no source question.
+        assertEquals(Stage.MODELS, FirstRunSetup.stage(signedIn = false, hasGroups = false, sourceChosen = false, modelsSkipped = false, handsSeen = false, handsPossible = true, fresh = true, passwordAnswered = false, hasProviders = true))
+        assertEquals(Stage.HANDS, FirstRunSetup.stage(signedIn = false, hasGroups = true, sourceChosen = false, modelsSkipped = false, handsSeen = false, handsPossible = true, hasProviders = true))
+        assertEquals(Stage.MEET, FirstRunSetup.stage(signedIn = false, hasGroups = true, sourceChosen = false, modelsSkipped = false, handsSeen = true, handsPossible = true, hasProviders = true))
     }
 
     @Test

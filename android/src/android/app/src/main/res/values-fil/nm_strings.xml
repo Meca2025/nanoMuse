@@ -1084,6 +1084,11 @@
     <string name="nm_models_new_chats">Para sa mga bagong chat.</string>
     <string name="nm_models_media_more">Higit pang opsyon sa larawan at clip</string>
     <string name="nm_models_media_more_sub">Mag-type ng pangalan ng modelo, tingnan kung ano ang hihinto kung wala ang bawat modelo, o suriin muli kung aling mga video model ang magagamit ng isang key.</string>
+    <string name="nm_models_cloud_switch">Gamitin ang mga modelo ng nanoMuse Cloud</string>
+    <string name="nm_models_cloud_on_sub">Isa ang nanoMuse Cloud sa mga pinagmumulan ng mga row sa ibaba; ang tumatakbo dito ay ibinabawas sa iyong allowance.</string>
+    <string name="nm_models_cloud_off_sub">Naka-off: walang tatakbo sa nanoMuse Cloud maliban kung i-tap mo ang \"Gamitin ang nanoMuse Cloud ngayon\". Mananatili kang naka-sign in para sa sync at sa iyong mga device.</string>
+    <string name="nm_cloud_provider_no_delete">Ang provider na ito ay ang iyong nanoMuse Cloud account. I-off ito sa itaas para hindi na gamitin ang mga modelo nito; para mag-sign out, buksan ang Mga Setting › nanoMuse Cloud.</string>
+    <string name="nm_welcome_own_key">Gamitin na lang ang sariling API key</string>
     <string name="nm_useit_title">Gamitin ito para sa</string>
     <string name="nm_useit_body">Piliin kung ano ang dapat asikasuhin ng key na ito. Ang iba ay nasa nanoMuse Cloud pa rin.</string>
     <string name="nm_useit_body_signed_out">Piliin kung ano ang dapat asikasuhin ng key na ito.</string>

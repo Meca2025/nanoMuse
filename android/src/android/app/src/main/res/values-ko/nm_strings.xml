@@ -1080,6 +1080,11 @@
     <string name="nm_models_new_chats">새 채팅부터 적용됩니다.</string>
     <string name="nm_models_media_more">이미지와 영상 옵션 더 보기</string>
     <string name="nm_models_media_more_sub">모델 이름을 직접 입력하거나, 각 모델이 없으면 무엇이 멈추는지 보거나, 키로 쓸 수 있는 영상 모델을 다시 확인합니다.</string>
+    <string name="nm_models_cloud_switch">nanoMuse Cloud 모델 사용</string>
+    <string name="nm_models_cloud_on_sub">nanoMuse Cloud는 아래 항목의 출처 중 하나이며, 여기서 실행된 내용은 사용량에서 차감됩니다.</string>
+    <string name="nm_models_cloud_off_sub">끄면 \"이번에는 nanoMuse Cloud 사용\"을 누르지 않는 한 nanoMuse Cloud에서 아무것도 실행되지 않습니다. 동기화와 기기를 위해 로그인은 유지됩니다.</string>
+    <string name="nm_cloud_provider_no_delete">이 제공자는 nanoMuse Cloud 계정 자체입니다. 모델 사용을 멈추려면 위 스위치를 끄고, 로그아웃하려면 설정 › nanoMuse Cloud를 여세요.</string>
+    <string name="nm_welcome_own_key">내 API 키 사용</string>
     <string name="nm_useit_title">어디에 쓸지</string>
     <string name="nm_useit_body">이 키가 맡을 일을 고르세요. 나머지는 nanoMuse Cloud가 계속 맡습니다.</string>
     <string name="nm_useit_body_signed_out">이 키가 맡을 일을 고르세요.</string>

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.TouchApp
@@ -32,7 +33,9 @@ import com.openminis.app.R
 import com.openminis.app.ui.settings.SettingsRow
 import com.openminis.app.ui.settings.SettingsScaffold
 import com.openminis.app.ui.settings.SettingsSection
+import com.openminis.app.ui.settings.SettingsSwitchRow
 import io.github.nanomuse.cloud.Capabilities
+import io.github.nanomuse.cloud.NanoMuseCloud
 import io.github.nanomuse.models.ModelSlots
 import io.github.nanomuse.models.ModelSlots.Slot
 import io.github.nanomuse.ui.home.MuseTones
@@ -101,6 +104,24 @@ fun ModelsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp).padding(top = 12.dp),
         )
+        // Signed in: the one switch for the Cloud as a model source. It is upstream's
+        // `isEnabled` on the Cloud provider instance, so the automatic order, the pickers, the
+        // hands and the side calls all read the same flag; the sign-in stays (sync, the hub).
+        val cloudId = remember(config) { NanoMuseCloud.instance(context)?.id }
+        val cloudInstance = config?.instances?.firstOrNull { it.id == cloudId }
+        if (cloudInstance != null && remember(config) { NanoMuseCloud.isSignedIn(context) }) {
+            val cloudOn = cloudInstance.isEnabled
+            SettingsSection(footer = stringResource(if (cloudOn) R.string.nm_models_cloud_on_sub else R.string.nm_models_cloud_off_sub)) {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.nm_models_cloud_switch),
+                    checked = cloudOn,
+                    onCheckedChange = { NanoMuseCloud.setModelsOn(context, it) },
+                    icon = Icons.Outlined.CloudQueue,
+                    iconColor = if (cloudOn) MuseTones.action else MaterialTheme.colorScheme.onSurfaceVariant,
+                    showDivider = false,
+                )
+            }
+        }
         Slot.values().forEach { slot ->
             val value = remember(config, tick, changed) { ModelSlots.current(context, slot) }
             val hasOptions = remember(config, tick) { ModelSlots.groups(context, slot).isNotEmpty() }

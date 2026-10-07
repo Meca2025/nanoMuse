@@ -725,6 +725,17 @@ fun ProviderDetailScreen(
             Text(stringResource(R.string.provider_detail_add_custom_model))
         }
 
+        // nanoMuse: the Cloud instance is the account itself (io.github.nanomuse.cloud.NanoMuseCloud);
+        // deleting it here signed the phone out. It is switched off above instead, and signed out
+        // under Settings › nanoMuse Cloud.
+        if (io.github.nanomuse.cloud.NanoMuseCloud.instance(exportContext)?.id == instanceId) {
+            Text(
+                text = stringResource(R.string.nm_cloud_provider_no_delete),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 20.dp),
+            )
+        } else
         // [T-android-delete-provider-button-height] The "Delete provider" button
         // uses the same default 48dp MinisButtonHeight as "Add custom model"
         // above it for visual consistency (no explicit .height override). The

@@ -1088,6 +1088,11 @@
     <string name="nm_models_new_chats">Se aplică la chaturile noi.</string>
     <string name="nm_models_media_more">Mai multe opțiuni pentru imagini și clipuri</string>
     <string name="nm_models_media_more_sub">Scrie numele unui model, vezi ce se oprește fără fiecare model sau verifică din nou ce modele video poate folosi o cheie.</string>
+    <string name="nm_models_cloud_switch">Folosește modelele nanoMuse Cloud</string>
+    <string name="nm_models_cloud_on_sub">nanoMuse Cloud este una dintre sursele rândurilor de mai jos; ce rulează pe el se scade din cota ta.</string>
+    <string name="nm_models_cloud_off_sub">Oprit: nimic nu rulează pe nanoMuse Cloud decât dacă atingi \"Folosește nanoMuse Cloud de data asta\". Rămâi conectat pentru sincronizare și dispozitivele tale.</string>
+    <string name="nm_cloud_provider_no_delete">Acest furnizor este contul tău nanoMuse Cloud. Oprește-l mai sus ca să nu-i mai folosești modelele; pentru deconectare, deschide Setări › nanoMuse Cloud.</string>
+    <string name="nm_welcome_own_key">Folosește propria cheie API</string>
     <string name="nm_useit_title">La ce să o folosești</string>
     <string name="nm_useit_body">Alege de ce să se ocupe această cheie. De restul se ocupă în continuare nanoMuse Cloud.</string>
     <string name="nm_useit_body_signed_out">Alege de ce să se ocupe această cheie.</string>

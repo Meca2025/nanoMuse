@@ -84,7 +84,8 @@ fun UseItForScreen(instanceId: String, onDone: () -> Unit) {
         LaunchedEffect(Unit) { onDone() }
         return
     }
-    val signedIn = remember { NanoMuseCloud.isSignedIn(context) }
+    // "nanoMuse Cloud keeps the rest" holds only while the Cloud is a model source
+    val signedIn = remember { NanoMuseCloud.modelsOn(context) }
     val ticked = remember { mutableStateOf(offered.toSet()) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()

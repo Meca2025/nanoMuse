@@ -199,7 +199,7 @@ object ModelSlots {
      * provider listed them, so a collapsed group shows the rows that matter.
      */
     fun groups(context: Context, slot: Slot): List<Group> {
-        val cloud = NanoMuseCloud.instance(context)?.takeIf { NanoMuseCloud.isSignedIn(context) && it.isEnabled }
+        val cloud = NanoMuseCloud.instance(context)?.takeIf { NanoMuseCloud.modelsOn(context) }
         val own = ownInstances(context)
         val now = if (isChosen(context, slot)) current(context, slot) else null
         fun ordered(opts: List<Option>): List<Option> = PickerList.order(

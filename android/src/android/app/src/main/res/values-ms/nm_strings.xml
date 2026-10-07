@@ -1080,6 +1080,11 @@
     <string name="nm_models_new_chats">Terpakai untuk sembang baharu.</string>
     <string name="nm_models_media_more">Pilihan gambar dan klip lain</string>
     <string name="nm_models_media_more_sub">Taip nama model, lihat apa yang terhenti tanpa setiap model, atau semak semula model video yang boleh digunakan oleh satu kunci.</string>
+    <string name="nm_models_cloud_switch">Gunakan model nanoMuse Cloud</string>
+    <string name="nm_models_cloud_on_sub">nanoMuse Cloud ialah salah satu sumber untuk baris di bawah; apa yang berjalan di situ ditolak daripada peruntukan anda.</string>
+    <string name="nm_models_cloud_off_sub">Dimatikan: tiada apa berjalan di nanoMuse Cloud melainkan anda ketik \"Guna nanoMuse Cloud kali ini\". Anda kekal log masuk untuk penyegerakan dan peranti anda.</string>
+    <string name="nm_cloud_provider_no_delete">Pembekal ini ialah akaun nanoMuse Cloud anda. Matikan di atas untuk berhenti menggunakan modelnya; untuk log keluar, buka Tetapan › nanoMuse Cloud.</string>
+    <string name="nm_welcome_own_key">Guna kunci API sendiri</string>
     <string name="nm_useit_title">Guna untuk</string>
     <string name="nm_useit_body">Pilih apa yang patut diuruskan kunci ini. Selebihnya kekal pada nanoMuse Cloud.</string>
     <string name="nm_useit_body_signed_out">Pilih apa yang patut diuruskan kunci ini.</string>
