@@ -127,7 +127,7 @@ status code or the JSON body:
 | `401` (the key was retired elsewhere — a sign-out of every device, a deleted account) | *This sign-in is no longer valid. Sign in again under Settings → nanoMuse Cloud.* The desktop signs itself out at the same time, as it does when `/v1/me` answers 401. | *Sign in* |
 | `403` (the account is disabled, or the relay does not take it) | *This account cannot use nanoMuse Cloud right now.*, with the relay's own words under it | *Open Settings → nanoMuse Cloud* |
 | `429` without the allowance code (too many requests at once, the provider busy) | *Too many requests at once. Wait a moment and try again.* — with the relay's `retry_after` when it sent one | *Try again* |
-| `429 daily_cap` (a relay that sets a daily share) | *Today's share of the allowance is used up. It resets tomorrow.* | *Try again* |
+| `429 daily_cap` (a relay that sets a daily share) | *Today's share of the allowance is used up. It resets tomorrow.*, with the relay's own words under it | *Try again* |
 | `404 model_not_offered` | *nanoMuse Cloud does not offer that model any more.* | *Open Settings → nanoMuse Cloud* |
 | `5xx`, or no answer at all (connection refused, timeout) | *nanoMuse Cloud did not answer.* / *Could not reach nanoMuse Cloud. Check the connection and try again.* | *Try again* |
 | `429 allowance_exhausted` with `paused: true` (relay 0.22: the operator paused the free allowance, [cloud.md](cloud.md#controls)) | the same allowance card, led by *The free allowance is paused on this relay for now, not used up. Your sign-in, your devices and what is left stay as they are.* | the ways on, *Try again* |

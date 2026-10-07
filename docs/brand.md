@@ -26,9 +26,9 @@ it is a gesture first and a letter second.
   the app is shown as an app.
 
 The icon is **not** the mascot. The default face is the bundled **dragon** (`web/public/avatars/`,
-the Android app's `avatar/`); the red panda (`web/src/components/redPandaShapes.ts`) is one of
-the optional avatars a user can pick. Never put the red panda (or the dragon) on the
-launcher icon, and never put the N mark in the chat as a face.
+the Android app's `avatar/`); the other choices are an emoji on a colour and a face made in
+the avatar studio. The red panda of the early releases retired in 0.1.23. Never put the dragon
+(or the old red panda) on the launcher icon, and never put the N mark in the chat as a face.
 
 ## Colour
 
