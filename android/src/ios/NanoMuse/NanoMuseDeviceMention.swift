@@ -60,7 +60,9 @@ enum NanoMuseDeviceMention {
                 let reply = try await NanoMuseHub.shared.call(
                     to: device.id,
                     action: "task",
-                    args: ["text": task, "from": NanoMuseHub.shared.name],
+                    // `language` (runtime 0.1.42, docs/hub.md): the Muse over there answers in
+                    // this phone's language instead of guessing from the text; older runtimes ignore it.
+                    args: ["text": task, "from": NanoMuseHub.shared.name, "language": NanoMuseLocale.tag],
                     timeout: 600
                 ) { body in
                     // That Muse asks whether it may do something risky. Nobody is there to say yes
