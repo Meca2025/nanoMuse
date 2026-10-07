@@ -343,6 +343,12 @@ def create_app(
                 if code or response.status_code >= 400:
                     cloud.db.daily_add("error", code or f"http_{response.status_code}")
                 cloud.db.daily_add("api", api_group(path))
+            elif "cache-control" not in response.headers:
+                # the console's script and page are revalidated on every load (an ETag answers
+                # 304 when nothing changed), so a deploy reaches the next reload instead of
+                # waiting out the browser's heuristic freshness — the likeliest way a fixed
+                # console still looks broken for a day after its deploy
+                response.headers["Cache-Control"] = "no-cache"
             return response
         finally:
             client_info.reset(token)

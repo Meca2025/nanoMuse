@@ -651,7 +651,8 @@ curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' 
 # the same for everyone limited (or account_ids:[...] for a chosen set)
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"all":true,"left_cny":5}' https://$CLOUD_DOMAIN/v1/admin/pool/batch
-# when the apps may ask for a star (0.18): the policy in force, and a new one
+# when the apps may ask for a star (0.18): the policy in force, and a new one — PUT takes
+# the whole policy; a key left out goes back to its default, not to what was stored
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/nudges
 curl -X PUT -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"star":{"moments":{"tasks":[5,20]},"cooldown_days":14}}' https://$CLOUD_DOMAIN/v1/admin/nudges
