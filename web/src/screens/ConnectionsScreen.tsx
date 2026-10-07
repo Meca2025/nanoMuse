@@ -5,11 +5,13 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Clapperboard,
   Contact as ContactIcon,
   ExternalLink,
   Eye,
   EyeOff,
   Globe,
+  Image as ImageIcon,
   KeyRound,
   Loader2,
   LogIn,
@@ -39,10 +41,14 @@ import { CloudCard } from "../components/CloudCard";
 import { Card, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { getLocale, useT } from "../i18n";
 import { useStore } from "../store";
-import { CATALOGUE, catalogueIdFor, coversLine, invalidateProviders, providerName, regionOf, unavailableLine, type Capability } from "../providers";
+import { CLOUD_ID, CLOUD_KEY_REF, CUSTOM_ID, currentChoice, mediaChoices, slotValue, type MediaChoice } from "../models";
+import { CATALOGUE, catalogueIdFor, coversLine, editionFor, invalidateProviders, presetFor, providerName, regionOf, unavailableLine, type Capability } from "../providers";
 import { modelSees, orderPresets } from "../region";
 import type { Contact, ConnectionsData, SharedConnector, TestResult } from "../types";
 import { cx, relativeTime } from "../util";
+
+/** the runtime's preset for the account's model, present in `providers` while signed in */
+const CLOUD_PRESET = "nanomuse_cloud";
 
 /**
  * Connections: the model, your mailbox, your calendar, a browser, MCP servers — plugged in and out from the
@@ -86,6 +92,8 @@ export function ConnectionsScreen() {
         {data && (
           <>
             <ModelCard data={data} onChange={load} />
+            {data.image && <MediaSlotCard slot="image" data={data} onChange={load} />}
+            {data.video && <MediaSlotCard slot="video" data={data} onChange={load} />}
             <CloudCard account={state.hub?.account ?? null} onChange={load} />
             {data.embeddings.memory_enabled && (
               <RecallCard data={data} onChange={load} />
@@ -147,9 +155,6 @@ export function ModelCard({
     data.llm.key_source === "none" && !!presets[currentPreset]?.key_optional,
   );
   const [toolMode, setToolMode] = useState(data.llm.tool_mode || "auto");
-  // the avatar studio's picture and clip models at the same host; "" lets the runtime pick
-  const [imageModel, setImageModel] = useState(data.llm.image_model ?? "");
-  const [videoModel, setVideoModel] = useState(data.llm.video_model ?? "");
   // `[llm] proxy` for this provider's requests; the runtime masks credentials in what it
   // shows, so the field is sent only once edited (typed = set, emptied = cleared)
   const [proxy, setProxy] = useState(data.llm.proxy ?? "");
@@ -195,8 +200,6 @@ export function ModelCard({
     setModel(data.llm.model);
     setBaseUrl(data.llm.base_url);
     setToolMode(data.llm.tool_mode || "auto");
-    setImageModel(data.llm.image_model ?? "");
-    setVideoModel(data.llm.video_model ?? "");
     setProxy(data.llm.proxy ?? "");
     setProxyTouched(false);
     setGuiModel(data.gui?.model ?? "");
@@ -295,8 +298,6 @@ export function ModelCard({
     // the preset's own hands model comes along, unless the person set one by hand
     if (!data.gui?.model || Object.values(presets).some((q) => q.gui_model === data.gui?.model)) setGuiModel(next.cloud ? "" : (next.gui_model ?? ""));
     setTypingModel(false);
-    setImageModel("");
-    setVideoModel("");
     setTyped(false);
     setNoKey(false);
   };
@@ -335,18 +336,9 @@ export function ModelCard({
     setSaving(true);
     setTest(null);
     try {
-      const studio = {
-        image_model: imageModel.trim(),
-        video_model: videoModel.trim(),
-      };
       if (p?.cloud) {
-        // the account's key stays the key; only the models are chosen here
+        // the account's key stays the key; only the model is chosen here
         await api.cloudUseAsModel(model.trim());
-        if (
-          studio.image_model !== (data.llm.image_model ?? "") ||
-          studio.video_model !== (data.llm.video_model ?? "")
-        )
-          await api.setLLM(studio);
       } else {
         await api.setLLM({
           provider: p?.provider ?? "openai",
@@ -354,7 +346,6 @@ export function ModelCard({
           base_url: effectiveUrl.trim(),
           tool_mode: toolMode,
           api_key: key ? key : keyless ? "" : null,
-          ...studio,
           // untouched: null leaves the runtime's value; "" clears it
           proxy: proxyTouched && data.llm.proxy !== undefined ? proxy.trim() : null,
         });
@@ -397,8 +388,24 @@ export function ModelCard({
   // the region's own-key provider first (contract C5): Bailian on the mainland, OpenRouter elsewhere
   for (const g of groups) g.ids = orderPresets(g.ids, presets, state.hub?.account);
   const needsUrl = preset === "custom" || !p?.base_url;
-  // the hands: what they would use with nothing set here
-  const handsDefault = p?.cloud ? (models.gui[0] ?? p.gui_model ?? "") : model.trim();
+  // what the chosen provider covers, from the catalogue (contract C11); the account's model
+  // covers all four through the relay, "custom" is whatever the endpoint happens to serve
+  const catalogueEntry = p?.cloud ? null : CATALOGUE.find((c) => c.id === catalogueIdFor(preset)) ?? null;
+  const region = regionOf(state.hub?.account);
+  const locale = getLocale();
+  const lacks = (cap: Capability) => !!catalogueEntry && !catalogueEntry.user_capabilities && !catalogueEntry.capabilities.includes(cap);
+  // the hands with nothing set here (the Models contract §3): the account's hands model
+  // on nanoMuse Cloud; an own provider's own hands model when it sees; the account's when
+  // it cannot and the account is signed in; else the chat model
+  const cloudPreset = presets[CLOUD_PRESET];
+  const handsDefault = p?.cloud
+    ? (models.gui[0] ?? p.gui_model ?? "")
+    : catalogueEntry && !catalogueEntry.user_capabilities
+      ? catalogueEntry.capabilities.includes("vision")
+        ? catalogueEntry.defaults.hands || model.trim()
+        : (cloudPreset?.gui_model ?? model.trim())
+      : model.trim();
+  const handsOnCloud = !p?.cloud && lacks("vision") && !!cloudPreset;
   const handsOptions = Array.from(
     new Set([
       ...(p?.cloud ? models.gui : []),
@@ -407,12 +414,6 @@ export function ModelCard({
     ]),
   ).filter((m) => m && m !== handsDefault);
   const willAppendV1 = needsUrl && /^https?:\/\/[^/]+\/?$/.test(baseUrl.trim());
-  // what the chosen provider covers, from the catalogue (contract C11); the account's model
-  // covers all four through the relay, "custom" is whatever the endpoint happens to serve
-  const catalogueEntry = p?.cloud ? null : CATALOGUE.find((c) => c.id === catalogueIdFor(preset)) ?? null;
-  const region = regionOf(state.hub?.account);
-  const locale = getLocale();
-  const lacks = (cap: Capability) => !!catalogueEntry && !catalogueEntry.user_capabilities && !catalogueEntry.capabilities.includes(cap);
 
   return (
     <Card
@@ -628,11 +629,13 @@ export function ModelCard({
         hint={
           p?.cloud
             ? t("The model that looks at screens when the hands run — the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.", { model: handsDefault || "—" })
-            : t("The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: the chat model above.")
+            : handsOnCloud
+              ? t("The model that looks at screens when the hands run. This provider has no model that sees, so the hands use your account's, {model}, unless you pick one here.", { model: handsDefault || "—" })
+              : t("The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: this provider's own hands model.")
         }
       >
         <select value={guiModel} onChange={(e) => setGuiModel(e.target.value)} className={cx(inputCls, "text-fg")}>
-          <option value="">{handsDefault ? t("Default — {model}", { model: handsDefault }) : t("Default — the chat model")}</option>
+          <option value="">{handsDefault ? (handsOnCloud ? t("Default — nanoMuse Cloud · {model}", { model: handsDefault }) : t("Default — {model}", { model: handsDefault })) : t("Default — the chat model")}</option>
           {handsOptions.map((m) => (
             <option key={m} value={m}>
               {m}
@@ -645,7 +648,7 @@ export function ModelCard({
             {t("{model} does not take pictures, so the hands would be blind with it. Pick a model that sees for them.", { model: model.trim() })}
           </div>
         )}
-        {lacks("vision") && (
+        {lacks("vision") && !handsOnCloud && (
           <div className="mt-1.5 text-[12px] text-amber-700 dark:text-amber-300">
             {unavailableLine(t, "vision", region, locale)} <OwnKeyHow />
           </div>
@@ -739,45 +742,6 @@ export function ModelCard({
           ))}
         </div>
       </Field>
-      <Field
-        label={t("Pictures and clips")}
-        hint={t(
-          "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, the catalogue's default on a provider that has one. Without one, a new face is not offered.",
-        )}
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {lacks("image") ? (
-            <div className="rounded-xl bg-surface-2 px-3 py-2 text-[12px] text-muted">
-              {unavailableLine(t, "image", region, locale)} <OwnKeyHow />
-            </div>
-          ) : (
-            <StudioModelPick
-              label={t("Picture model")}
-              value={imageModel}
-              options={models.image.filter((m) => !models.imageCatalog.includes(m))}
-              more={models.imageCatalog}
-              onChange={setImageModel}
-              other={!p?.cloud || anyModel}
-              placeholder={catalogueEntry?.defaults.image}
-            />
-          )}
-          {lacks("video") ? (
-            <div className="rounded-xl bg-surface-2 px-3 py-2 text-[12px] text-muted">
-              {unavailableLine(t, "video", region, locale)} <OwnKeyHow />
-            </div>
-          ) : (
-            <StudioModelPick
-              label={t("Clip model")}
-              value={videoModel}
-              options={models.video.filter((m) => !models.videoCatalog.includes(m))}
-              more={models.videoCatalog}
-              onChange={setVideoModel}
-              other={!p?.cloud || anyModel}
-              placeholder={catalogueEntry?.defaults.video}
-            />
-          )}
-        </div>
-      </Field>
       {!p?.cloud && data.llm.proxy !== undefined && (
         <Field
           label={t("Proxy (optional)")}
@@ -836,6 +800,235 @@ export function ModelCard({
           })}
         />
       )}
+    </Card>
+  );
+}
+
+// ------------------------------------------------------------------ pictures and clips
+/**
+ * One of the two media rows of the Models contract — *Making pictures* (`[image]`) and
+ * *Making clips* (`[video]`). The value is `<provider> · <model>` as the runtime resolves it:
+ * an explicit choice, else the chat provider's own model, else the account's. The picker
+ * offers nanoMuse Cloud when signed in, the chat model's provider when it has the capability,
+ * and every catalogue provider that has it (a key to add); nothing without it.
+ */
+export function MediaSlotCard({
+  slot,
+  data,
+  onChange,
+}: {
+  slot: "image" | "video";
+  data: ConnectionsData;
+  onChange: () => void;
+}) {
+  const { toast, state } = useStore();
+  const t = useT();
+  const info = data[slot]!;
+  const cap: Capability = slot;
+  const account = state.hub?.account ?? null;
+  const signedIn = !!account?.signed_in;
+  const region = regionOf(account);
+  const locale = getLocale();
+  const cloudBaseUrl = data.providers[CLOUD_PRESET]?.base_url ?? "";
+  const choices = mediaChoices(cap, {
+    signedIn,
+    chat: { provider: data.llm.provider, base_url: data.llm.base_url, cloud: !!data.llm.cloud },
+    region,
+    locale,
+  });
+  const current = currentChoice(info, cloudBaseUrl);
+  const [open, setOpen] = useState(false);
+  const [choice, setChoice] = useState(current);
+  const [model, setModel] = useState(info.model);
+  const [baseUrl, setBaseUrl] = useState(info.base_url);
+  const [key, setKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [models, setModels] = useState<{ list: string[]; more: string[]; source: "live" | "catalogue" | "loading" }>({ list: [], more: [], source: "catalogue" });
+
+  useEffect(() => {
+    setChoice(current);
+    setModel(info.model);
+    setBaseUrl(info.base_url);
+    setKey("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [info]);
+
+  const chosen = choices.find((c) => c.value === choice) ?? null;
+  const entry = chosen?.entry ?? null;
+  const edition = entry ? editionFor(entry, region) : null;
+  const endpointUrl = choice === CLOUD_ID ? cloudBaseUrl : choice === CUSTOM_ID ? baseUrl.trim() : (edition?.base_url ?? "");
+  // the key the slot would use: one typed here, the one saved for this very provider, the
+  // chat model's on its own host, the account's on nanoMuse Cloud
+  const keySaved = current === choice && current !== "" && (info.key_source === "vault" || info.key_source === "config");
+  const needsKey = !!chosen?.needsKey && !key && !keySaved;
+  const defaultModel = choice === CLOUD_ID ? (models.list[0] ?? "") : (entry?.defaults[slot] ?? "");
+
+  // the endpoint's picture or clip models, when it lists any
+  useEffect(() => {
+    if (!open || !choice || (choice !== CLOUD_ID && !endpointUrl)) {
+      setModels({ list: [], more: [], source: "catalogue" });
+      return;
+    }
+    let alive = true;
+    const handle = setTimeout(
+      () => {
+        setModels((m) => ({ ...m, source: "loading" }));
+        api
+          .llmModels(choice === CLOUD_ID ? { preset: CLOUD_PRESET } : { preset: entry ? presetFor(entry.id) : "", base_url: endpointUrl, api_key: key || undefined })
+          .then((r) => {
+            if (!alive) return;
+            const list = (slot === "image" ? r.image_models : r.video_models) ?? [];
+            const more = (slot === "image" ? r.image_catalog : r.video_catalog) ?? [];
+            setModels({ list: list.filter((m) => !more.includes(m)), more, source: r.source });
+          })
+          .catch(() => alive && setModels({ list: [], more: [], source: "catalogue" }));
+      },
+      key ? 600 : 150,
+    );
+    return () => {
+      alive = false;
+      clearTimeout(handle);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, choice, endpointUrl, key]);
+
+  const title = slot === "image" ? t("Making pictures") : t("Making clips");
+  const subtitle = slot === "image" ? t("Portraits of your Muse.") : t("Short clips of your Muse.");
+  const value = slotValue(info, locale);
+  const sentence = unavailableLine(t, cap, region, locale);
+  const status = !info.effective_provider
+    ? { text: t("Not set up"), tone: "warn" }
+    : info.effective_source === "cloud"
+      ? { text: t("Your account"), tone: "ok" }
+      : info.effective_source === "chat"
+        ? { text: t("The chat model's provider"), tone: "ok" }
+        : { text: t("Your key"), tone: "ok" };
+  // what "Automatic" means today, for the first option (unknown while a choice is in force)
+  const automaticValue = info.configured ? "" : value;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (!choice) {
+        await api.setMedia(slot, { provider: "", model: "", base_url: "", api_key: "" });
+      } else if (choice === CLOUD_ID) {
+        await api.setMedia(slot, { provider: "openai", base_url: cloudBaseUrl, model: model.trim(), api_key: CLOUD_KEY_REF });
+      } else if (choice === CUSTOM_ID) {
+        await api.setMedia(slot, { provider: "openai", base_url: baseUrl.trim(), model: model.trim(), api_key: key ? key : null });
+      } else {
+        // the chat provider's own slot rides on the chat key: an empty key here says so
+        await api.setMedia(slot, { provider: choice, base_url: "", model: model.trim(), api_key: key ? key : chosen?.group === "chat" ? "" : null });
+      }
+      setKey("");
+      invalidateProviders();
+      toast(t("Saved"));
+      onChange();
+      setOpen(false);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const groupTitle = (g: MediaChoice["group"]) => (g === "cloud" ? t("Your account") : g === "chat" ? t("The chat model's provider") : t("Add a provider"));
+  const groups = (["cloud", "chat", "add"] as const).map((g) => ({ g, items: choices.filter((c) => c.group === g) })).filter((x) => x.items.length);
+  const vaultName = slot === "image" ? "IMAGE_API_KEY" : "VIDEO_API_KEY";
+
+  return (
+    <Card
+      icon={slot === "image" ? <ImageIcon size={19} /> : <Clapperboard size={19} />}
+      title={title}
+      summary={value || sentence}
+      status={status}
+      open={open}
+      onToggle={() => setOpen(!open)}
+    >
+      <p className="text-[12.5px] text-muted">{subtitle}</p>
+      <Field label={t("Provider")} hint={!value && !choice ? sentence : undefined}>
+        <select
+          value={choice}
+          onChange={(e) => {
+            setChoice(e.target.value);
+            setModel("");
+            setKey("");
+          }}
+          className={cx(inputCls, "text-fg")}
+        >
+          <option value="">{automaticValue ? t("Automatic — {model}", { model: automaticValue }) : t("Automatic")}</option>
+          {groups.map(({ g, items }) => (
+            <optgroup key={g} label={groupTitle(g)}>
+              {items.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.value === CUSTOM_ID ? t("Other OpenAI-compatible endpoint") : c.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        {!value && !choice && (
+          <button type="button" className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] text-accent" onClick={() => setChoice(choices.find((c) => c.group === "add")?.value ?? "")}>
+            <Plus size={13} /> {t("Add a provider")}
+          </button>
+        )}
+        {entry && (
+          <p className="mt-1.5 text-[12px] text-muted">
+            <span className="font-medium text-fg">{providerName(entry, locale)}</span> — {coversLine(t, entry.capabilities)}
+            {". "}
+            {locale === "zh-CN" ? entry.note_zh : entry.note}
+          </p>
+        )}
+      </Field>
+      {choice === CUSTOM_ID && (
+        <Field label={t("Base URL")} hint={t("The endpoint that serves /images/generations, for example https://host/v1.")}>
+          <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className={inputCls} placeholder="https://host/v1" inputMode="url" autoCapitalize="off" />
+        </Field>
+      )}
+      {choice && (
+        <StudioModelPick
+          label={slot === "image" ? t("Picture model") : t("Clip model")}
+          value={model}
+          options={models.list}
+          more={models.more}
+          onChange={setModel}
+          other={choice !== CLOUD_ID || !!account?.any_model}
+          placeholder={defaultModel || undefined}
+        />
+      )}
+      {choice && choice !== CLOUD_ID && chosen?.group !== "chat" && (
+        <Field
+          label={t("API key")}
+          hint={keySaved ? t("A key is in the vault. Leave blank to keep it.") : t("Stored encrypted in the vault as {name}.", { name: vaultName })}
+        >
+          <div className="relative">
+            <input
+              type={showKey ? "text" : "password"}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              className={cx(inputCls, "pr-10")}
+              placeholder={keySaved ? "••••••••" : (entry?.key_hint || "sk-…")}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+            />
+            <button type="button" onClick={() => setShowKey(!showKey)} aria-label={showKey ? t("Hide key") : t("Show key")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted">
+              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          {edition?.key_url && (
+            <a href={edition.key_url} target="_blank" rel="noreferrer" className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-accent">
+              {t("Get a key from {vendor}", { vendor: entry ? providerName(entry, locale) : "" })} <ExternalLink size={12} />
+            </a>
+          )}
+        </Field>
+      )}
+      {chosen?.group === "chat" && <p className="text-[12px] text-muted">{t("Uses the chat model's key.")}</p>}
+      <div className="flex gap-2 pt-1">
+        <button type="button" disabled={saving || needsKey || (choice === CUSTOM_ID && !baseUrl.trim())} onClick={() => void save()} className={primaryBtn}>
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} {t("Save")}
+        </button>
+      </div>
     </Card>
   );
 }

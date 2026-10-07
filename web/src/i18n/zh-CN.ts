@@ -868,8 +868,11 @@ const zhCN: Record<string, string> = {
   "Default — the chat model": "默认——对话模型",
   "The model that looks at screens when the hands run — the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.":
     "动手时看屏幕的模型——手机、这台电脑、浏览器读不了的页面。你账号的动手模型是 {model}；上面的对话模型是另一项选择。",
-  "The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: the chat model above.":
-    "动手时看屏幕的模型：小而快、能看图，用同一个接口和 key。默认：上面的对话模型。",
+  "The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: this provider's own hands model.":
+    "动手时看屏幕的模型：小而快、能看图，用同一个接口和 key。默认：这个服务商自己的动手模型。",
+  "The model that looks at screens when the hands run. This provider has no model that sees, so the hands use your account's, {model}, unless you pick one here.":
+    "动手时看屏幕的模型。这个服务商没有能看图的模型，所以不在这里选的话，双手用你账号里的 {model}。",
+  "Default — nanoMuse Cloud · {model}": "默认——nanoMuse Cloud · {model}",
   "{model} does not take pictures, so the hands would be blind with it. Pick a model that sees for them.": "{model} 不能看图，动手时会是盲的。给它选一个能看图的模型。",
   "A key is in the vault; leave empty to keep it.": "保险库里已有密钥；留空则保留。",
   "Set in config.toml.": "在 config.toml 里设置。",
@@ -1199,11 +1202,20 @@ const zhCN: Record<string, string> = {
   "Line": "线条",
   "Sticker": "贴纸",
   Draw: "画",
-  "Pictures and clips": "图片与短片",
+  // the Models contract: the two media rows under Connections (0.1.41)
+  "Making pictures": "生成图片",
+  "Making clips": "生成视频",
+  "Portraits of your Muse.": "形象的肖像。",
+  "Short clips of your Muse.": "形象的短视频。",
+  "The chat model's provider": "对话模型的服务商",
+  "Your key": "你的 key",
+  "Add a provider": "添加服务商",
+  "Other OpenAI-compatible endpoint": "其他 OpenAI 兼容接口",
+  "The endpoint that serves /images/generations, for example https://host/v1.": "提供 /images/generations 的接口，例如 https://host/v1。",
+  "Stored encrypted in the vault as {name}.": "以 {name} 加密存储在保险库中。",
+  "Uses the chat model's key.": "用对话模型的 key。",
   "Your phone can now operate this computer: run commands, fetch files, hand over whole tasks. Each risky step still asks here first.":
     "你的手机现在可以操作这台电脑了：跑命令、取文件、把整件事交给它。有风险的每一步仍会先在这里问你。",
-  "The models the avatar studio draws with, at the same host as the chat model. Automatic takes the host's own: the relay's picture model on your account, the catalogue's default on a provider that has one. Without one, a new face is not offered.":
-    "形象工作室画图用的模型，和对话模型在同一个服务商。「自动」用服务商自己的：账号走中继的图片模型，有图像模型的服务商走目录里的默认值。没有可用的图片模型时，不会提供换形象。",
   "Picture model": "图片模型",
   "Clip model": "短片模型",
   "Other model…": "其他模型…",

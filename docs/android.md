@@ -29,14 +29,38 @@ update*) and offers the download.
    account — ¥10 at the time of writing — and more for each friend invited, and for them;
    the app prints the relay's current figures; then [your own key](own-key.md)). Then choose which model answers: the account's
    own, or a key of your own (any OpenAI-compatible endpoint, or the OAuth sign-ins the
-   app ships with). Two models are set, not one: the **chat model** (the account's menu
-   opens on `deepseek-v4.1-flash`; picking another in the Cloud group makes new chats follow
-   it) and the **Hands model** under *Settings → Hands*, the one that looks at the screen
-   (`qwen3.8-27b` — the account's, or the same model under your own key; you can pin any
-   model that sees). Running everything yourself with no account at all is the runtime's
-   `cloud.required = false`; the phone app asks for the account.
+   app ships with). Four models are set, not one, and they live on one page, **Settings →
+   Models** (the card at the top of Settings opens it): **Chat**, the model that talks with
+   you (the account's menu opens on `deepseek-v4.1-flash`); **Operating the screen**, the one
+   that looks at the screen (`qwen3.8-27b`, the account's or the same model under your own
+   key); **Making pictures** and **Making clips**. Each row shows `<provider> · <model>` and
+   opens a picker: the *nanoMuse Cloud* group first when signed in, the recommended model
+   first and marked, then one group per provider of your own with only the models that fit
+   the row. A chat pick there, or in the chat's own `•••` menu, is the default for new chats
+   (*Applies to new chats.*); a chat already open keeps its model. Running everything yourself
+   with no account at all is the runtime's `cloud.required = false`; the phone app asks for
+   the account.
 4. Optional: the two permissions that let the agent use your phone's apps (skippable and
-   revocable), and *Settings → Image & video models* for a look that can change and move.
+   revocable). *Settings → Hands* keeps its row for the screen model, which opens the same
+   picker; *More picture and clip options* at the foot of the Models page is the old *Image &
+   video models* page (typing a model name, what stops without each model, re-checking which
+   video models a key can use), also at `minis://settings/media`.
+
+**Use it for.** When a provider of your own is saved, a new one or a key added to one that
+had none, a card asks what this key should handle: one switch per capability the catalogue
+gives the vendor (chat, operating the screen, making pictures, making clips), all on. *Use
+it* switches the ticked rows to this provider, each on the catalogue's default for that job
+(`defaults.chat` and friends in `providers.json`), or on the first model of its list that
+fits when the default is not there; *Not now* changes nothing, and so does an unticked switch.
+Signed in, the body says nanoMuse Cloud keeps the rest. The page is the place to change it later.
+
+**When you have not chosen.** Chat is the relay's recommended model when signed in, else the
+first provider of your own. The screen, pictures and clips follow the chat provider when it is
+a provider of your own with that capability (its catalogue default); else the relay's model
+when signed in; else the first provider of your own that can. A choice always wins, and
+nanoMuse Cloud never steps in front of a provider you chose. When a model of your own fails,
+nothing falls back on its own: the error card gets *Use nanoMuse Cloud this time* (signed in
+only), which runs that one turn on the relay's chat model and changes no row.
 
 **Your own relay.** The sign-in screen talks to nanoMuse Cloud unless you tell it
 otherwise: *Use a different server* under the sign-in form takes the address of a relay
@@ -100,9 +124,9 @@ relay shows before the app is updated, and a provider the relay no longer lists 
 day. A `429 allowance_exhausted` carries the same block beside the figures.
 
 **What each covers.** The capabilities decide what the app offers (`cloud/Capabilities.kt`):
-pictures (Settings → Image & video models, the avatar studio, `nanomuse-media image`) pick a
+pictures (Settings → Models → Making pictures, the avatar studio, `nanomuse-media image`) pick a
 provider only among those whose vendor has `image`; clips among those with `video` that the
-app can drive (Bailian's video API); the hands' screen model and its picker list only models of
+app can drive (Bailian's video API); the screen's model and its picker list only models of
 vendors with `vision`. A ChatGPT plan signed in through Codex is chat and vision — the Codex
 backend has no image or video endpoints — so it is never offered for pictures. A vendor the
 catalogue does not know (a gateway, a relay of your own, nanoMuse Cloud) is taken at its
@@ -222,7 +246,10 @@ like the Python package's version does.
 | `account/` | Contract C12 (0.1.40, [sync.md](sync.md)): `AccountScope` (the rules — whose chat a session is, the account's key, what the lists leave out, what a refused key keeps (`keepOnRefusedKey`: everything, unless the relay says `account_deleted`); unit-tested), `AccountData` (applies them: every chat an owner row, `leave` puts the account's chats, memory, feed, goals, routines, face and preferences aside or deletes them, `enter` brings an account's back) |
 | `hub/` | `Hub` (state, device identity, settings), `HubClient` (the socket with backoff; stops when the relay refuses the key), `HubService` (the foreground service), `HubActions` (what other devices may ask this phone), `HubErrors` (failures in words) |
 | `reach/` | `Computers` (paired computers, tokens in the encrypted store), the offload handler that sends work to a computer |
-| `hands/` | The accessibility service as the hand, the stage and the capsule, the screen reader; `Hands.screenModel` picks the Hands model (chosen → the Cloud's `qwen3.8-27b` → the same under your own key → a chat model that sees → the Vision Group) |
+| `models/` | Settings → Models behind the screens: `ModelSlots` (the four slots, what each is set to and where that is kept, the groups a picker shows, `followPick` for the chat default, `applyProvider` for the *Use it for* card), `SlotOrder` (the resolution order and the catalogue default, pure Kotlin, unit-tested) |
+| `ui/models/` | The Models page, the picker behind each row, the *Use it for* card (`minis://settings/models`) |
+| `chat/CloudRetry.kt` | *Use nanoMuse Cloud this time*: whether the card offers it and the one-turn provider `ChatViewModel.retryLast` uses |
+| `hands/` | The accessibility service as the hand, the stage and the capsule, the screen reader; `Hands.screenModel` picks the screen's model (chosen → the chat provider's own default when it sees → the Cloud's `qwen3.8-27b` → the same under your own key → a chat model that sees → the Vision Group) |
 | `ui/coding/` | The coding agents of your computers |
 | `connectors/`, `ui/connectors/` | The connectors catalogue (`ConnectorsCatalogue` reads the asset), MCP authorization discovery + registration (`McpAuthDiscovery`), connecting and token refresh (`Connectors`), what this phone connected as published to the profile and what the other devices did (`SharedConnectors`), the Settings → Connectors page |
 | `ui/cloud/` | Sign-in, the Account screen, the Devices section |

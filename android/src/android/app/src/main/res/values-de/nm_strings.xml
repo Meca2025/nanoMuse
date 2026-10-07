@@ -1067,4 +1067,26 @@
     <string name="nm_ways_computer_title">Dein Computer</string>
     <string name="nm_ways_computer_body">Schreibe @ und den Namen des Computers in den Chat; der Zug läuft dort, mit den dort eingerichteten Anbietern.</string>
     <string name="nm_ways_devices">Geräte</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">Modelle</string>
+    <string name="nm_models_intro">Welches Modell was übernimmt. Jede Zeile öffnet eine Auswahl; dort erscheinen nanoMuse Cloud und die Anbieter, die du hinzugefügt hast, mit den passenden Modellen.</string>
+    <string name="nm_models_chat_title">Chat</string>
+    <string name="nm_models_chat_sub">Das Modell, das mit dir spricht.</string>
+    <string name="nm_models_hands_title">Den Bildschirm bedienen</string>
+    <string name="nm_models_hands_sub">Sieht sich den Bildschirm an und handelt für dich. Braucht ein Modell, das Bilder sehen kann.</string>
+    <string name="nm_models_image_title">Bilder erzeugen</string>
+    <string name="nm_models_image_sub">Porträts deiner Muse und die Bilder, um die du bittest.</string>
+    <string name="nm_models_video_title">Clips erzeugen</string>
+    <string name="nm_models_video_sub">Kurze Clips deiner Muse.</string>
+    <string name="nm_models_new_chats">Gilt für neue Chats.</string>
+    <string name="nm_models_media_more">Weitere Optionen für Bilder und Clips</string>
+    <string name="nm_models_media_more_sub">Einen Modellnamen eingeben, sehen, was ohne welches Modell nicht geht, oder erneut prüfen, welche Videomodelle ein Schlüssel nutzen kann.</string>
+    <string name="nm_useit_title">Wofür verwenden</string>
+    <string name="nm_useit_body">Wähle, was dieser Schlüssel übernehmen soll. Den Rest übernimmt weiterhin nanoMuse Cloud.</string>
+    <string name="nm_useit_body_signed_out">Wähle, was dieser Schlüssel übernehmen soll.</string>
+    <string name="nm_useit_use">Verwenden</string>
+    <string name="nm_useit_not_now">Jetzt nicht</string>
+    <string name="nm_useit_footnote">Das lässt sich jederzeit unter Einstellungen › Modelle ändern.</string>
+    <string name="nm_retry_on_cloud">Diesmal nanoMuse Cloud verwenden</string>
+    <string name="nm_hands_why_chat_provider">der Standard der Hände bei deinem Chat-Anbieter</string>
 </resources>

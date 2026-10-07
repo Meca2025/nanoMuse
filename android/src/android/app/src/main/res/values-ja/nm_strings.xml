@@ -1063,4 +1063,26 @@
     <string name="nm_ways_computer_title">あなたのコンピューター</string>
     <string name="nm_ways_computer_body">チャットに @ とコンピューターの名前を書くと、そのコンピューターで、そこに設定されたプロバイダーを使って実行されます。</string>
     <string name="nm_ways_devices">デバイス</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">モデル</string>
+    <string name="nm_models_intro">どのモデルが何を担当するか。各行を開くと選択画面になり、nanoMuse Cloud と追加したプロバイダーが、合うモデルとともに並びます。</string>
+    <string name="nm_models_chat_title">チャット</string>
+    <string name="nm_models_chat_sub">あなたと話すモデル。</string>
+    <string name="nm_models_hands_title">画面の操作</string>
+    <string name="nm_models_hands_sub">画面を見てあなたの代わりに操作します。画像を見られるモデルが必要です。</string>
+    <string name="nm_models_image_title">画像の生成</string>
+    <string name="nm_models_image_sub">ミューズの肖像と、あなたが頼んだ画像。</string>
+    <string name="nm_models_video_title">動画の生成</string>
+    <string name="nm_models_video_sub">ミューズの短い動画。</string>
+    <string name="nm_models_new_chats">新しいチャットから適用されます。</string>
+    <string name="nm_models_media_more">画像と動画のその他のオプション</string>
+    <string name="nm_models_media_more_sub">モデル名を入力する、各モデルがないと何が止まるかを見る、キーで使える動画モデルを再確認する。</string>
+    <string name="nm_useit_title">何に使うか</string>
+    <string name="nm_useit_body">このキーに任せることを選んでください。残りは引き続き nanoMuse Cloud が担当します。</string>
+    <string name="nm_useit_body_signed_out">このキーに任せることを選んでください。</string>
+    <string name="nm_useit_use">使う</string>
+    <string name="nm_useit_not_now">今はしない</string>
+    <string name="nm_useit_footnote">設定 › モデル からいつでも変更できます。</string>
+    <string name="nm_retry_on_cloud">今回は nanoMuse Cloud を使う</string>
+    <string name="nm_hands_why_chat_provider">チャットのプロバイダーでのハンズの既定</string>
 </resources>

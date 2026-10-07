@@ -1063,4 +1063,26 @@
     <string name="nm_ways_computer_title">Komputer anda</string>
     <string name="nm_ways_computer_body">Tulis @ dan nama komputer dalam sembang; giliran dijalankan di sana, dengan penyedia yang disediakan padanya.</string>
     <string name="nm_ways_devices">Peranti</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">Model</string>
+    <string name="nm_models_intro">Model mana buat apa. Setiap baris membuka pemilih; nanoMuse Cloud dan penyedia yang anda tambah muncul di situ bersama model yang sesuai.</string>
+    <string name="nm_models_chat_title">Sembang</string>
+    <string name="nm_models_chat_sub">Model yang bercakap dengan anda.</string>
+    <string name="nm_models_hands_title">Mengendalikan skrin</string>
+    <string name="nm_models_hands_sub">Melihat skrin dan bertindak bagi pihak anda. Perlukan model yang boleh melihat imej.</string>
+    <string name="nm_models_image_title">Membuat gambar</string>
+    <string name="nm_models_image_sub">Potret Muse anda dan gambar yang anda minta.</string>
+    <string name="nm_models_video_title">Membuat klip</string>
+    <string name="nm_models_video_sub">Klip pendek Muse anda.</string>
+    <string name="nm_models_new_chats">Terpakai untuk sembang baharu.</string>
+    <string name="nm_models_media_more">Pilihan gambar dan klip lain</string>
+    <string name="nm_models_media_more_sub">Taip nama model, lihat apa yang terhenti tanpa setiap model, atau semak semula model video yang boleh digunakan oleh satu kunci.</string>
+    <string name="nm_useit_title">Guna untuk</string>
+    <string name="nm_useit_body">Pilih apa yang patut diuruskan kunci ini. Selebihnya kekal pada nanoMuse Cloud.</string>
+    <string name="nm_useit_body_signed_out">Pilih apa yang patut diuruskan kunci ini.</string>
+    <string name="nm_useit_use">Guna</string>
+    <string name="nm_useit_not_now">Bukan sekarang</string>
+    <string name="nm_useit_footnote">Anda boleh mengubahnya bila-bila masa di Tetapan › Model.</string>
+    <string name="nm_retry_on_cloud">Guna nanoMuse Cloud kali ini</string>
+    <string name="nm_hands_why_chat_provider">lalai tangan daripada penyedia sembang anda</string>
 </resources>

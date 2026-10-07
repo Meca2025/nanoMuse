@@ -1063,4 +1063,26 @@
     <string name="nm_ways_computer_title">คอมพิวเตอร์ของคุณ</string>
     <string name="nm_ways_computer_body">พิมพ์ @ ตามด้วยชื่อคอมพิวเตอร์ในแชท รอบนี้จะทำงานที่นั่นด้วยผู้ให้บริการที่ตั้งค่าไว้บนเครื่องนั้น</string>
     <string name="nm_ways_devices">อุปกรณ์</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">โมเดล</string>
+    <string name="nm_models_intro">โมเดลไหนทำอะไร แต่ละแถวเปิดหน้าตัวเลือก ซึ่งจะมี nanoMuse Cloud และผู้ให้บริการที่คุณเพิ่มไว้ พร้อมโมเดลที่เหมาะกับงานนั้น</string>
+    <string name="nm_models_chat_title">แชท</string>
+    <string name="nm_models_chat_sub">โมเดลที่คุยกับคุณ</string>
+    <string name="nm_models_hands_title">ควบคุมหน้าจอ</string>
+    <string name="nm_models_hands_sub">ดูหน้าจอและทำแทนคุณ ต้องใช้โมเดลที่มองเห็นภาพได้</string>
+    <string name="nm_models_image_title">สร้างภาพ</string>
+    <string name="nm_models_image_sub">ภาพบุคคลของมิวส์ของคุณ และภาพที่คุณขอ</string>
+    <string name="nm_models_video_title">สร้างคลิป</string>
+    <string name="nm_models_video_sub">คลิปสั้นของมิวส์ของคุณ</string>
+    <string name="nm_models_new_chats">มีผลกับแชทใหม่</string>
+    <string name="nm_models_media_more">ตัวเลือกภาพและคลิปเพิ่มเติม</string>
+    <string name="nm_models_media_more_sub">พิมพ์ชื่อโมเดล ดูว่าหากไม่มีโมเดลใดสิ่งใดจะหยุด หรือตรวจอีกครั้งว่าคีย์ใช้โมเดลวิดีโอใดได้บ้าง</string>
+    <string name="nm_useit_title">ใช้ทำอะไร</string>
+    <string name="nm_useit_body">เลือกว่าคีย์นี้จะรับผิดชอบอะไร ส่วนที่เหลือ nanoMuse Cloud ยังคงดูแล</string>
+    <string name="nm_useit_body_signed_out">เลือกว่าคีย์นี้จะรับผิดชอบอะไร</string>
+    <string name="nm_useit_use">ใช้</string>
+    <string name="nm_useit_not_now">ไว้ก่อน</string>
+    <string name="nm_useit_footnote">เปลี่ยนได้ทุกเมื่อที่ การตั้งค่า › โมเดล</string>
+    <string name="nm_retry_on_cloud">ครั้งนี้ใช้ nanoMuse Cloud</string>
+    <string name="nm_hands_why_chat_provider">ค่าเริ่มต้นของมือจากผู้ให้บริการแชทของคุณ</string>
 </resources>

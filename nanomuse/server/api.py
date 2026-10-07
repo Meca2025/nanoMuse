@@ -24,6 +24,8 @@
     GET|PUT /api/settings
     GET  /api/connections                 model, email, browser, MCP servers, vault names
     PUT  /api/connections/llm|embeddings|email|browser|calendar   POST /api/connections/llm|embeddings|email|calendar/test
+    PUT  /api/connections/gui             the hands' model (a protocol or a catalogue id, as for llm)   POST /api/connections/gui/test
+    GET|PUT /api/connections/image|video  where pictures and clips come from: provider (a catalogue id), model, base_url, api_key
     POST /api/llm/models                 the models an endpoint offers (live /models, else the catalogue)
     GET  /api/providers (?lang=en|zh&region=cn|global)  the provider catalogue, which slots use which, what that covers
     POST /api/chatgpt/login  GET /api/chatgpt/status  GET /api/chatgpt/usage
@@ -187,6 +189,18 @@ class LLMBody(BaseModel):
     api_key: str | None = None
     # `[llm] proxy`: http(s):// or socks5(h):// for this slot's requests only; "" clears it
     proxy: str | None = None
+
+
+class MediaBody(BaseModel):
+    """One of the ``image`` / ``video`` slots. ``provider`` is a catalogue id, or ``openai``
+    / ``openai_responses`` with a ``base_url``; ``model`` empty means the catalogue's default;
+    ``api_key`` goes into the vault, "" removes it, None keeps it. All four "" clears the
+    slot: pictures (clips) come from the chat provider again, or the account."""
+
+    provider: str | None = None
+    model: str | None = None
+    base_url: str | None = None
+    api_key: str | None = None
 
 
 class LLMModelsBody(BaseModel):
@@ -980,6 +994,28 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     @app.post("/api/connections/gui/test", dependencies=dep)
     async def test_gui() -> dict[str, Any]:
         return await svc.connections.test_gui()
+
+    @app.get("/api/connections/image", dependencies=dep)
+    async def get_image() -> dict[str, Any]:
+        return conn.media_view("image")
+
+    @app.put("/api/connections/image", dependencies=dep)
+    async def put_image(body: MediaBody) -> dict[str, Any]:
+        try:
+            return conn.set_media("image", body.model_dump())
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.get("/api/connections/video", dependencies=dep)
+    async def get_video() -> dict[str, Any]:
+        return conn.media_view("video")
+
+    @app.put("/api/connections/video", dependencies=dep)
+    async def put_video(body: MediaBody) -> dict[str, Any]:
+        try:
+            return conn.set_media("video", body.model_dump())
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.get("/api/hands", dependencies=dep)
     async def hands_status() -> dict[str, Any]:

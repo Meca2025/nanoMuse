@@ -71,11 +71,19 @@ object MediaModels {
     /** Stored instance id meaning "the user switched the video model off". */
     private const val VIDEO_OFF = ""
 
+    /** True when the person switched the video model off (a choice, unlike "never chosen"). */
+    fun videoSwitchedOff(context: Context): Boolean = prefs(context).getString(KEY_VIDEO_INSTANCE, null) == VIDEO_OFF
+
+    /** The video model nanoMuse would pick for [inst]: the catalogue's `defaults.video` for its vendor, else Wan 2.2 Flash. */
+    fun defaultVideoModel(context: Context, inst: ProviderInstance): String =
+        io.github.nanomuse.models.ModelSlots.defaultOf(context, inst, io.github.nanomuse.models.ModelSlots.Slot.VIDEO) ?: DEFAULT_VIDEO_MODEL
+
     /**
-     * The video model, or null when there is none. Unset, it follows the image model's provider
-     * when that provider is Model Studio (one key covers all three), so a Model Studio user gets
-     * a moving avatar without a visit here; the user can still choose another Model Studio
-     * provider or switch it off.
+     * The video model, or null when there is none. The one chosen (Settings → Models, or →
+     * Image & video models); with nothing chosen, in the Models page's order (0.1.41,
+     * [io.github.nanomuse.models.SlotOrder]): the chat provider's own video model when the
+     * chat provider is the person's own and makes clips, else nanoMuse Cloud's when signed
+     * in, else the first own provider that can. Off stays off.
      */
     fun videoEndpoint(context: Context): VideoGen.Endpoint? {
         val app = context.applicationContext as? MinisApp ?: return null
@@ -83,12 +91,18 @@ object MediaModels {
         val p = prefs(context)
         val eligible = eligibleVideoInstances(context)
         val saved = p.getString(KEY_VIDEO_INSTANCE, null)
+        val cloudId = NanoMuseCloud.instance(context)?.id
         val inst = when (saved) {
             VIDEO_OFF -> return null
-            null -> ImageGen.endpoint(context)?.instanceId?.let { id -> eligible.firstOrNull { it.id == id } }
+            null -> io.github.nanomuse.models.SlotOrder.resolve(
+                chosen = null,
+                chatProvider = io.github.nanomuse.models.ModelSlots.ownChatInstance(context)?.takeIf { own -> eligible.any { it.id == own.id } },
+                cloud = eligible.firstOrNull { it.id == cloudId },
+                firstOwn = eligible.firstOrNull { it.id != cloudId },
+            )?.value
             else -> eligible.firstOrNull { it.id == saved }
         } ?: return null
-        val model = p.getString(KEY_VIDEO_MODEL, null)?.takeIf { it.isNotBlank() } ?: DEFAULT_VIDEO_MODEL
+        val model = p.getString(KEY_VIDEO_MODEL, null)?.takeIf { it.isNotBlank() && saved == inst.id } ?: defaultVideoModel(context, inst)
         val key = repo.usableApiKey(inst) ?: return null
         return VideoGen.Endpoint(inst, key, model)
     }
