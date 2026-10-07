@@ -382,6 +382,24 @@ enum NanoMuseModelSlots {
         return out
     }
 
+    /// The person's own providers that could serve `slot` by the catalogue's word (or that
+    /// leave it open, as a `custom` endpoint does) but that this app cannot drive for it:
+    /// pictures and clips go through Model Studio's native endpoints only, so an OpenRouter
+    /// or OpenAI key that draws on the desktop is not listed here. Their labels, in the order
+    /// the providers were added, for the sentence under the picker that says so; empty for
+    /// chat and hands, which every endpoint serves.
+    static func notDriven(for slot: NanoMuseSlot) -> [String] {
+        guard slot == .image || slot == .video else { return [] }
+        let cloudId = NanoMuseCloud.instance?.id
+        return ProviderConfigStore.shared.instances.sorted(by: { $0.createdAt < $1.createdAt }).compactMap { inst in
+            guard inst.isEnabled, inst.hasAnyCredential, inst.id != cloudId,
+                  !NanoMuseImageGen.speaksDashScope(inst.customBaseURL ?? ""),
+                  let vendor = NanoMuseCatalogue.vendor(for: inst) else { return nil }
+            let open = vendor.userCapabilities || vendor.id == NanoMuseCatalogue.custom
+            return open || vendor.capabilities.contains(slot.capability) ? inst.label : nil
+        }
+    }
+
     // MARK: Chat
 
     /// The entry new chats start on: the default group's first member that can answer.
@@ -428,7 +446,29 @@ enum NanoMuseModelSlots {
             groupId = g.id
         }
         if store.defaultPrimaryGroupId != groupId { store.defaultPrimaryGroupId = groupId }
+        mainChatFollows(groupId: groupId, entry: entry)
         NotificationCenter.default.post(name: changed, object: nil)
+    }
+
+    /// The main chat follows the chat slot. Every chat keeps the binding it was made with,
+    /// and the chat slot is the default for new ones; but the main chat is the one
+    /// conversation the Chat tab always shows and is never new, so on 0.1.41 the Models page
+    /// could not move it off the provider it started on: a tester who saved a key of their own
+    /// saw their side chats answer through it while the main chat kept reading nanoMuse Cloud
+    /// under the face. Now the main chat's binding moves with the slot (the same write as a
+    /// pick in the chat's own picker, SessionModelPicker); side chats are left as they are.
+    /// Nothing is written when the binding already says so, which also keeps the
+    /// `sessionModelBindingChanged` → `followPick` → `useForChat` round from going on.
+    static func mainChatFollows(groupId: String, entry: ModelEntry) {
+        guard let sid = UserDefaults.standard.string(forKey: NanoMuseMainChat.key), !sid.hasPrefix(NanoMuseMainChat.draftPrefix) else { return }
+        let store = ProviderConfigStore.shared
+        let source = SessionModelSource.group(groupId: groupId, resolvedEntryId: entry.id)
+        let existing = store.binding(for: sid)
+        if existing?.primarySource == source { return }
+        store.setBinding(SessionModelBinding(sessionId: sid, primarySource: source, subModelSource: existing?.subModelSource), for: sid)
+        NotificationCenter.default.post(name: .sessionModelBindingChanged, object: nil, userInfo: ["groupId": groupId, "sessionId": sid])
+        let model = entry.model.id
+        Task { await ChatStore.shared.updateSessionModelId(sid, modelId: model) }
     }
 
     /// The same, by provider instance and model id.

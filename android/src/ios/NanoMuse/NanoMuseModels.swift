@@ -103,6 +103,7 @@ extension NanoMuseCloud {
             let ours = group.memberEntryIds.allSatisfy { store.entry(for: $0)?.providerInstanceId == entry.providerInstanceId }
             if !ours {
                 if store.defaultPrimaryGroupId != groupId { store.defaultPrimaryGroupId = groupId }
+                NanoMuseModelSlots.mainChatFollows(groupId: groupId, entry: entry)
                 return true
             }
         }

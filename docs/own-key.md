@@ -126,7 +126,11 @@ group first while signed in, its recommended model marked, then one group per
 provider of yours holding only the models that fit. A provider without the
 capability does not appear in that row at all. A row nothing covers shows the
 one sentence naming who could, and *Add a provider*. A chat pick is the default
-for new chats (*Applies to new chats.*); a chat already open keeps its model.
+for new chats (*Applies to new chats.*); a chat already open keeps its model. On
+the iPhone the main chat follows the chat pick as well (*Applies to the main chat
+and to new chats; a side chat keeps its model.*): it is the one conversation the
+Chat tab always shows and is never new, so it would otherwise stay on the provider
+it started with.
 
 **Automatic.** The screen, pictures and clips rows open with an *Automatic*
 entry that says what it gives right now (*Currently nanoMuse Cloud ·
@@ -144,7 +148,10 @@ no row. The desktop shows the same button after a failed studio round and a
 failed set of clips.
 
 **Known limits.** On the iPhone the pictures and clips rows list, besides
-nanoMuse Cloud, only your providers on a DashScope host (Alibaba Cloud Bailian).
+nanoMuse Cloud, only your providers on a DashScope host (Alibaba Cloud Bailian);
+a key the catalogue says can draw (OpenRouter, OpenAI, Gemini, a custom
+endpoint) is named in one sentence under the picker, *Not offered here: …*,
+with where it does work, so you know the phone has not lost it.
 On the desktop the hands speak OpenAI's shape, so an Anthropic or native Gemini
 key is named under the screen row and not listed; a hands change takes effect
 at the hands' next step, no restart. Pictures through a Gemini key go through
