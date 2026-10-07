@@ -298,6 +298,39 @@ async def test_retention_drops_the_oldest_conversations_messages():
         sync_mod.LIMITS.update(saved)
 
 
+async def test_side_conversations_are_capped_per_account():
+    """0.23: messages were trimmed past their cap, conversations grew without end. A new
+    side conversation past the cap is refused by name; a main, a tombstone, an update and
+    a deletion of an existing one still go through, and a deletion frees a place."""
+    app, client, sender, up, cloud, settings = make()
+    key = await signed_in(client, sender)
+    store = app.state.sync
+    account_id = cloud.authenticate(key).account_id
+    import nanomuse_cloud.sync as sync_mod
+
+    saved = dict(LIMITS)
+    try:
+        sync_mod.LIMITS["conversations"] = 2
+        first, second, third, main = uid(), uid(), uid(), uid()
+        r = store.push(account_id, "a", [conv(first), conv(second)], [])
+        assert r["accepted"] == 2 and r["rejected"] == []
+        r = store.push(account_id, "a", [conv(third)], [msg(uid(), third)])
+        assert r["accepted"] == 0
+        assert r["rejected"] == [{"cid": third, "reason": "conversation_limit"}, {"mid": r["rejected"][1]["mid"], "reason": "unknown_cid"}]
+        assert store.state(account_id)["counts"]["conversations"] == 2
+        assert store.state(account_id)["limits"]["conversations"] == 2
+        # the main conversation is not a side one; an existing one takes its changes
+        assert store.push(account_id, "a", [conv(main, kind="main")], [])["accepted"] == 1
+        assert store.push(account_id, "a", [conv(first, title="Renamed", updated_at=1738000100)], [])["accepted"] == 1
+        # a tombstone for an unknown one is kept (it costs no place for long) and a deletion frees one
+        gone = uid()
+        assert store.push(account_id, "a", [conv(gone, deleted=True)], [])["accepted"] == 1
+        assert store.push(account_id, "a", [conv(second, deleted=True)], [])["accepted"] == 1
+        assert store.push(account_id, "a", [conv(third)], [])["accepted"] == 1
+    finally:
+        sync_mod.LIMITS.update(saved)
+
+
 async def test_tombstones_are_swept_after_thirty_days():
     app, client, sender, up, cloud, settings = make()
     key = await signed_in(client, sender)

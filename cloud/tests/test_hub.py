@@ -140,6 +140,40 @@ def test_target_leaving_fails_the_pending_call(client):
         assert {d["id"]: d["online"] for d in kinds["devices"]["devices"]} == {"phone-1": True, "pc-1": False}
 
 
+def test_a_lone_pending_call_times_out_on_the_callers_ping(client):
+    """The sweep ran only when another `call` arrived, so a caller with one call outstanding
+    and nothing more to ask never heard `timeout`; every client pings, so it sweeps too."""
+    from nanomuse_cloud import hub as hub_mod
+
+    key = sign_up(client, "someone@example.com")
+    with connect(client, key) as phone, connect(client, key) as pc:
+        phone.send_json(hello("phone", "phone-1", "Pixel"))
+        phone.receive_json()
+        phone.receive_json()
+        pc.send_json(hello("computer", "pc-1", "desk"))
+        pc.receive_json()
+        pc.receive_json()
+        phone.receive_json()  # devices: pc joined
+        phone.send_json({"type": "call", "id": "c1", "to": "pc-1", "action": "shell", "args": {"command": "sleep"}})
+        assert pc.receive_json()["action"] == "shell"
+        hub = client.app.state.hub
+        assert ("hub", "c1") not in hub.pending and len(hub.pending) == 1
+        # a ping while the call is young: a pong and nothing else
+        phone.send_json({"type": "ping"})
+        assert phone.receive_json()["type"] == "pong"
+        # the call ages past the limit; the next ping delivers the timeout
+        for p in hub.pending.values():
+            p.started -= hub_mod.CALL_TTL_S + 1
+        phone.send_json({"type": "ping"})
+        assert phone.receive_json()["type"] == "pong"
+        err = phone.receive_json()
+        assert err == {"type": "error", "id": "c1", "code": "timeout", "message": "the device did not answer in time"}
+        assert not hub.pending
+        # a late result from the target is an unknown call now
+        pc.send_json({"type": "result", "id": "c1", "ok": True, "body": {}})
+        assert pc.receive_json()["code"] == "unknown_call"
+
+
 def test_web_tab_authenticates_in_hello_and_cannot_be_called(client):
     key = sign_up(client, "13800138000")
     with connect(client, None) as web, connect(client, key) as pc:

@@ -42,12 +42,12 @@
 
 **主要聊天优先**（0.1.38，中继 0.20）。默认只有主要聊天在设备之间走：旁聊留在创建它的设备上，设备拉取时带 `scope=main`，别的设备的旁聊永远不会到来。「同时同步旁聊」（「数据控制」下的第二个开关，默认关，**按设备**——中继没有账号级的设置）把打开它的那台设备反过来：它的旁聊上传，其他设备的旁聊下载，切换后的第一次拉取从零重新开始。全新登录的第一次拉取请求的是**尾部**——最新的 300 条消息及其所属对话——这样很长的历史能立刻打开，不用从头翻页；跳过的更早消息留在中继上，不再拉取。一台设备正在回答时，其他设备在最后一条消息下面显示「kwai 正在处理…」：这是一条 `working` 提示，经过中继的内存和 hub，从不保存，设备一直不说完成的话，十分钟后就消失。
 
-中继每个账号最多保留 20 000 条消息（最老的对话的消息先删，标题保留），每条消息 16 384 字节（更长的文本被截断并标记 `truncated`）。在任何一台设备上关掉开关都会通知中继，中继删掉保存的全部内容，并用 `sync_off` 拒绝其他设备，直到开关再次打开——它们的开关跟着变。同一页上的「删除已同步的对话」清空存储，开关保持原样。除了账号的设备没人能读这个存储：运营者的管理页只显示数量——开着和关着的账号数、多少对话和消息、占多大——从不显示文本，也不显示是哪个账号（`GET /v1/admin/sync`）。拉取由 hub 的 `sync` 帧触发（[hub.md](hub.md#frames)），在启动时以及每分钟一次。
+中继每个账号最多保留 20 000 条消息（最老的对话的消息先删，标题保留）、2 000 个未删除的旁聊（中继 0.23：超出后新的旁聊被拒绝，原因 `conversation_limit`，留在设备上；删掉一个就腾出一个位置），每条消息 16 384 字节（更长的文本被截断并标记 `truncated`）。在任何一台设备上关掉开关都会通知中继，中继删掉保存的全部内容，并用 `sync_off` 拒绝其他设备，直到开关再次打开——它们的开关跟着变。同一页上的「删除已同步的对话」清空存储，开关保持原样。除了账号的设备没人能读这个存储：运营者的管理页只显示数量——开着和关着的账号数、多少对话和消息、占多大——从不显示文本，也不显示是哪个账号（`GET /v1/admin/sync`）。拉取由 hub 的 `sync` 帧触发（[hub.md](hub.md#frames)），在启动时以及每分钟一次。
 
 API，全部在账号的 key 之下（没有 key 是 401；开关关着时读写都是 409 `sync_off`）：
 
 ```
-GET    /v1/sync/state                   → {enabled, cursor, counts{conversations, messages}, limits{messages, text_bytes}, working[]}
+GET    /v1/sync/state                   → {enabled, cursor, counts{conversations, messages}, limits{messages, text_bytes, conversations}, working[]}
 PUT    /v1/sync/state   {enabled}       → the same; false deletes everything stored, the counter keeps counting
 GET    /v1/sync/changes ?since=0&limit=500&scope=all|main&tail=K   → {cursor, more, conversations[], messages[], skipped?}
 POST   /v1/sync/changes {device, conversations[], messages[]}   → {cursor, accepted, rejected[{cid | mid, reason, cid_main?}]}
@@ -58,7 +58,7 @@ DELETE /v1/sync/conversations/{cid}     → {cursor, deleted: true}      a tombs
 
 `scope`（中继 0.20）不写就是 `all`；`main` 只返回主要聊天及其消息，还没有主要聊天的账号得到一个空页，其 `cursor` 是账号的计数器。`tail=K`（K ≤ 500，只在 `since=0` 时生效）按 `seq` 顺序返回最新的 K 条消息、它们所属的对话、位于账号计数器的 `cursor`、`more: false`，以及 `skipped`——略过了多少条更早的消息。其他任何 `scope` 都是 400 `bad_scope`。`POST /v1/sync/working` 表示 `device`（或 `X-Nanomuse-Device`）里指名的设备正在 `cid` 里回答（`working: true`）或已经结束（`false`）；中继把活跃的那些在内存里保留十分钟——从不进数据库，所以重启就忘——在状态的 `working` 下列出（`[{cid, from, device_name, working, at}]`），并向账号的其他套接字发一个 `working` 帧（[hub.md](hub.md#frames)）。请求正文超过 `MAX_REQUEST_BYTES`（0.20 起默认 16 MiB）是 413 `too_large`，附一句「请求正文 N MB；这个中继最多接受 M MB」。
 
-一个对话是 `{cid, kind: main | side, title, device, device_name, created_at, updated_at, deleted, seq}`，一条消息是 `{mid, cid, seq, device, device_name, role: user | assistant, text, truncated, attachments[{name, mime, size}], created_at, deleted}`；`cid` 和 `mid` 是设备生成的 UUID（4–64 个字符，取自 `a-z 0-9 . _ : -`，折叠为小写），时间是 Unix 秒。每个被接受的变更拿到账号的下一个 `seq`；设备记住自己拉到过的最高 `cursor`，下次用 `since=` 它来请求。推送是幂等的——已知的 `mid` 原样不动，除非新行是墓碑记录；已知的 `cid` 取较新的标题——而且一次最多 200 条消息或对话（413 `too_many_messages`）。一页按 `seq` 顺序列出它的对话和消息，中继还会把页里每条消息所属的对话一并加上，即使那个对话自己的 `seq` 在更后面（重命名会把它挪后），所以客户端先应用页里的对话、再应用消息，永远不会拿到一个没有归属的孤儿。拒绝会指名那一行：第二个 `main` 被推上来时是 `main_exists` 加 `cid_main`——设备随后改用 `cid_main` 重发——还有 `unknown_cid`、`conversation_deleted`、`bad_cid`、`bad_mid`、`bad_kind`、`bad_role`。墓碑记录保留 30 天，然后清扫掉。推送被接受或删除之后，hub 用一个 `sync` 帧通知账号的其他设备（控制台发出的 `DELETE` 在 `X-Nanomuse-Device` 里带着执行删除的设备，好让它跳过自己的回声）。
+一个对话是 `{cid, kind: main | side, title, device, device_name, created_at, updated_at, deleted, seq}`，一条消息是 `{mid, cid, seq, device, device_name, role: user | assistant, text, truncated, attachments[{name, mime, size}], created_at, deleted}`；`cid` 和 `mid` 是设备生成的 UUID（4–64 个字符，取自 `a-z 0-9 . _ : -`，折叠为小写），时间是 Unix 秒。每个被接受的变更拿到账号的下一个 `seq`；设备记住自己拉到过的最高 `cursor`，下次用 `since=` 它来请求。推送是幂等的——已知的 `mid` 原样不动，除非新行是墓碑记录；已知的 `cid` 取较新的标题——而且一次最多 200 条消息或对话（413 `too_many_messages`）。一页按 `seq` 顺序列出它的对话和消息，中继还会把页里每条消息所属的对话一并加上，即使那个对话自己的 `seq` 在更后面（重命名会把它挪后），所以客户端先应用页里的对话、再应用消息，永远不会拿到一个没有归属的孤儿。拒绝会指名那一行：第二个 `main` 被推上来时是 `main_exists` 加 `cid_main`——设备随后改用 `cid_main` 重发——还有 `conversation_limit`（中继 0.23，账号的旁聊已到上限）、`unknown_cid`、`conversation_deleted`、`bad_cid`、`bad_mid`、`bad_kind`、`bad_role`。墓碑记录保留 30 天，然后清扫掉。推送被接受或删除之后，hub 用一个 `sync` 帧通知账号的其他设备（控制台发出的 `DELETE` 在 `X-Nanomuse-Device` 里带着执行删除的设备，好让它跳过自己的回声）。
 
 ## 额度 {#allowance}
 

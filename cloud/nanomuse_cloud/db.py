@@ -15,6 +15,7 @@ import sqlite3
 import threading
 import time
 import uuid
+from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -1019,22 +1020,59 @@ class Database:
         """The operator's view: each account with today's spend (tokens and
         money), when it was last seen, how many keys (sign-ins) are live and
         how many devices it remembers."""
+        # one pass over each table, grouped by account, instead of seven correlated
+        # subqueries per account row (the old form was seconds at ten thousand accounts)
         with self._lock:
             return self._conn.execute(
                 """SELECT a.*,
-                          (SELECT COALESCE(SUM(l.charged),0) FROM ledger l
-                             WHERE l.account_id=a.id AND l.ts>=? AND l.charged>0) AS used_today,
-                          (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l
-                             WHERE l.account_id=a.id AND l.ts>=? AND l.cost_uy>0) AS spent_today_uy,
-                          (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l
-                             WHERE l.account_id=a.id AND l.cost_uy>0) AS spent_uy,
-                          (SELECT COUNT(*) FROM ledger l
-                             WHERE l.account_id=a.id AND l.kind IN ('chat','image','video','realtime')) AS requests,
-                          (SELECT MAX(k.last_used_at) FROM api_keys k WHERE k.account_id=a.id) AS last_active_at,
-                          (SELECT COUNT(*) FROM api_keys k WHERE k.account_id=a.id AND k.revoked_at IS NULL) AS live_keys,
-                          (SELECT COUNT(*) FROM devices d WHERE d.account_id=a.id) AS device_count
-                   FROM accounts a ORDER BY a.created_at DESC LIMIT ?""",
+                          COALESCE(l.used_today, 0) AS used_today,
+                          COALESCE(l.spent_today_uy, 0) AS spent_today_uy,
+                          COALESCE(l.spent_uy, 0) AS spent_uy,
+                          COALESCE(l.requests, 0) AS requests,
+                          k.last_active_at,
+                          COALESCE(k.live_keys, 0) AS live_keys,
+                          COALESCE(d.device_count, 0) AS device_count
+                   FROM accounts a
+                   LEFT JOIN (SELECT account_id,
+                                     SUM(CASE WHEN ts>=? AND charged>0 THEN charged ELSE 0 END) AS used_today,
+                                     SUM(CASE WHEN ts>=? AND cost_uy>0 THEN cost_uy ELSE 0 END) AS spent_today_uy,
+                                     SUM(CASE WHEN cost_uy>0 THEN cost_uy ELSE 0 END) AS spent_uy,
+                                     SUM(CASE WHEN kind IN ('chat','image','video','realtime') THEN 1 ELSE 0 END) AS requests
+                              FROM ledger GROUP BY account_id) l ON l.account_id=a.id
+                   LEFT JOIN (SELECT account_id, MAX(last_used_at) AS last_active_at,
+                                     SUM(CASE WHEN revoked_at IS NULL THEN 1 ELSE 0 END) AS live_keys
+                              FROM api_keys GROUP BY account_id) k ON k.account_id=a.id
+                   LEFT JOIN (SELECT account_id, COUNT(*) AS device_count
+                              FROM devices GROUP BY account_id) d ON d.account_id=a.id
+                   ORDER BY a.created_at DESC LIMIT ?""",
                 (day_start, day_start, limit),
+            ).fetchall()
+
+    def accounts_brief(self, ids: Iterable[str]) -> list[sqlite3.Row]:
+        """`id`, `hint`, `identifier_enc` for exactly these accounts: the labels a page of
+        events or a top list needs, without reading (and decrypting) every account."""
+        wanted = sorted({str(i) for i in ids if i})
+        if not wanted:
+            return []
+        out: list[sqlite3.Row] = []
+        with self._lock:
+            for i in range(0, len(wanted), 500):
+                chunk = wanted[i : i + 500]
+                marks = ",".join("?" * len(chunk))
+                out.extend(
+                    self._conn.execute(f"SELECT id, hint, identifier_enc FROM accounts WHERE id IN ({marks})", chunk).fetchall()
+                )
+        return out
+
+    def allowance_rows(self) -> list[sqlite3.Row]:
+        """Per account, what the allowance distribution needs and nothing else: `id_hash`,
+        `unlimited`, `grant_uy` and the money spent at list prices (stats.py)."""
+        with self._lock:
+            return self._conn.execute(
+                """SELECT a.id_hash, a.unlimited, a.grant_uy, COALESCE(l.spent_uy, 0) AS spent_uy
+                   FROM accounts a
+                   LEFT JOIN (SELECT account_id, SUM(CASE WHEN cost_uy>0 THEN cost_uy ELSE 0 END) AS spent_uy
+                              FROM ledger GROUP BY account_id) l ON l.account_id=a.id"""
             ).fetchall()
 
     def usage_by_day(self, since: int, day_offset_s: int = 0) -> list[sqlite3.Row]:
