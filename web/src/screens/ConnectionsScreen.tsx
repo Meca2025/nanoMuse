@@ -482,7 +482,7 @@ export function ModelCard({
             ))}
           {catalogueEntry && (
             <p className="text-[12px] text-muted">
-              <span className="font-medium text-fg">{providerName(catalogueEntry, locale)}</span> — {coversLine(t, catalogueEntry.capabilities)}
+              <span className="font-medium text-fg">{providerName(catalogueEntry, locale)}</span> · {coversLine(t, catalogueEntry.capabilities)}
               {". "}
               {locale === "zh-CN" ? catalogueEntry.note_zh : catalogueEntry.note}
             </p>
@@ -535,7 +535,7 @@ export function ModelCard({
               )
             : p?.cloud && anyModel
             ? t(
-                "Your account may name any model the provider has, not only these: type its id — a chat model here, a picture or clip model below — and it goes through as typed.",
+                "Your account may name any model the provider has, not only these: type its id (a chat model here, a picture or clip model below) and it goes through as typed.",
               )
             : models.source === "live"
               ? t("{n} models from the endpoint", { n: models.list.length })
@@ -637,7 +637,7 @@ export function ModelCard({
         label={t("Hands model")}
         hint={
           p?.cloud
-            ? t("The model that looks at screens when the hands run — the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.", { model: handsDefault || "—" })
+            ? t("The model that looks at screens when the hands run: the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.", { model: handsDefault || "—" })
             : handsOnCloud
               ? t("The model that looks at screens when the hands run. This provider has no model that sees, so the hands use your account's, {model}, unless you pick one here.", { model: handsDefault || "—" })
               : t("The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: this provider's own hands model.")
@@ -983,7 +983,7 @@ export function MediaSlotCard({
         )}
         {entry && (
           <p className="mt-1.5 text-[12px] text-muted">
-            <span className="font-medium text-fg">{providerName(entry, locale)}</span> — {coversLine(t, entry.capabilities)}
+            <span className="font-medium text-fg">{providerName(entry, locale)}</span> · {coversLine(t, entry.capabilities)}
             {". "}
             {locale === "zh-CN" ? entry.note_zh : entry.note}
           </p>
@@ -1154,7 +1154,7 @@ export function RecallCard({
     >
       <p className="text-[12.5px] text-muted leading-snug">
         {t(
-          "Memories are embedded once and a message finds the ones that mean the same thing, in any language — “写邮件给房东” finds “the landlord is Bob Li”. Keyword recall stays; the two are fused.",
+          "Memories are embedded once and a message finds the ones that mean the same thing, in any language: “写邮件给房东” finds “the landlord is Bob Li”. Keyword recall stays; the two are fused.",
         )}
       </p>
       <Field
@@ -1186,7 +1186,7 @@ export function RecallCard({
                     "Any OpenAI-compatible /embeddings: Ollama with an embedding model pulled, OpenAI, a gateway.",
                   )
                 : t(
-                    "The model's endpoint and key. DeepSeek has no embeddings — pick another endpoint.",
+                    "The model's endpoint and key. DeepSeek has no embeddings; pick another endpoint.",
                   )
             }
           >
@@ -1345,7 +1345,7 @@ export function SearchCard({
           host: hostOf(s.base_url),
         })
       : (info?.label ?? s.provider)
-    : t("{provider} needs {what} — searches use DuckDuckGo until then", {
+    : t("{provider} needs {what}; searches use DuckDuckGo until then", {
         provider: info?.label ?? s.provider,
         what: info?.needs_key ? t("a key") : t("an instance URL"),
       });
@@ -1951,7 +1951,7 @@ export function CalendarCard({
     >
       <p className="text-[12.5px] text-muted -mt-1">
         {t(
-          "Reads your calendar from its private .ics link — the link stays in the vault. It never changes your calendar; an event it proposes comes as a file you add with a tap.",
+          "Reads your calendar from its private .ics link; the link stays in the vault. It never changes your calendar; an event it proposes comes as a file you add with a tap.",
         )}
       </p>
       {c.feeds.length > 0 && (
@@ -2019,7 +2019,7 @@ export function CalendarCard({
                       : "border-border text-muted",
                   )}
                 >
-                  {h.label}
+                  {t(h.label)}
                 </button>
               ))}
             </div>
@@ -2049,7 +2049,7 @@ export function CalendarCard({
                     .replace(/^_+|_+$/g, "") || "NAME",
               }) +
               " " +
-              t("nanoMuse fetches whatever address you put here, from this machine — only paste links you trust.")
+              t("nanoMuse fetches whatever address you put here, from this machine; only paste links you trust.")
             }
           >
             <input
@@ -2411,7 +2411,7 @@ export function ContactsCard({
                     .replace(/^_+|_+$/g, "") || "NAME",
               }) +
               " " +
-              t("nanoMuse fetches whatever address you put here, from this machine — only paste links you trust.")
+              t("nanoMuse fetches whatever address you put here, from this machine; only paste links you trust.")
             }
           >
             <input
@@ -2672,7 +2672,7 @@ function PhoneCard({
   const summary = phone.connected
     ? t("{name} is connected", { name: phone.device?.name ?? t("A phone") })
     : g.enabled
-      ? t("No phone connected — open the app on the phone")
+      ? t("No phone connected. Open the app on the phone")
       : t("Tap, type and swipe in the apps on your phone");
   return (
     <Card
@@ -2694,7 +2694,7 @@ function PhoneCard({
           <div className="font-medium">{t("Operate the phone")}</div>
           <div className="text-[12px] text-muted">
             {t(
-              "When on, the agent can read the screen and act in the apps on the connected phone — 12306, WeChat, Alipay… It asks before paying, sending or deleting.",
+              "When on, the agent can read the screen and act in the apps on the connected phone: 12306, WeChat, Alipay… It asks before paying, sending or deleting.",
             )}
           </div>
         </div>
@@ -2741,7 +2741,7 @@ function PhoneCard({
             <>
               <div className="text-muted">
                 {t(
-                  "Turn on the nanoMuse accessibility service — that is how it sees the screen and taps for you, only while a task runs, with a Stop button on screen.",
+                  "Turn on the nanoMuse accessibility service; that is how it sees the screen and taps for you, only while a task runs, with a Stop button on screen.",
                 )}
               </div>
               <div className="flex flex-wrap gap-2 pt-0.5">
@@ -2995,7 +2995,7 @@ function MCPCard({
               <div className="min-w-0 flex-1">
                 <div className="text-[13.5px] font-medium truncate">{c.label || c.id}</div>
                 <div className="text-[11.5px] text-muted truncate">
-                  {t("Connected on {device} — sign in here to use it on this device", { device: c.device || c.device_id })}
+                  {t("Connected on {device}; sign in here to use it on this device", { device: c.device || c.device_id })}
                   {c.url ? ` · ${c.url}` : ""}
                 </div>
               </div>

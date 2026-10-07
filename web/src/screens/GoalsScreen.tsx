@@ -193,7 +193,7 @@ export function GoalsScreen() {
     setSheetCategory(null);
     void send(
       "main",
-      t("I'd like to create a {category} goal. Ask me a few short questions, one at a time — what exactly I want, why and by when, how often to check in — then create it with concrete steps using the goals tool.", {
+      t("I'd like to create a {category} goal. Ask me a few short questions, one at a time (what exactly I want, why and by when, how often to check in), then create it with concrete steps using the goals tool.", {
         category: t(c.label),
       }),
     );
@@ -739,7 +739,7 @@ function NewGoalSheet({ open, onClose, onCreated }: { open: boolean; onClose: ()
       "main",
       t('Create a goal for me: "{title}"{description}{extras}. Break it into concrete steps with the goals tool, then tell me the plan.', {
         title: title.trim(),
-        description: description.trim() ? ` — ${description.trim()}` : "",
+        description: description.trim() ? ` (${description.trim()})` : "",
         extras: extras.length ? ` (${extras.join(", ")})` : "",
       }),
     );
@@ -779,7 +779,7 @@ function NewGoalSheet({ open, onClose, onCreated }: { open: boolean; onClose: ()
           <CadencePicker value={checkIn} onChange={setCheckIn} />
         </div>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("Why it matters, constraints (optional)")} rows={2} className="w-full rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-accent/40 resize-none" />
-        <textarea value={steps} onChange={(e) => setSteps(e.target.value)} placeholder={t("Steps, one per line (optional — or let {name} plan them)", { name })} rows={3} className="w-full rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-accent/40 resize-none" />
+        <textarea value={steps} onChange={(e) => setSteps(e.target.value)} placeholder={t("Steps, one per line (optional, or let {name} plan them)", { name })} rows={3} className="w-full rounded-2xl bg-surface-2 px-3.5 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-accent/40 resize-none" />
       </div>
     </Sheet>
   );

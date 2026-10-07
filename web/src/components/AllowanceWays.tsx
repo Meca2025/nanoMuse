@@ -108,7 +108,7 @@ export function AllowanceWays({
     }
   };
   const share = async () => {
-    const text = t("Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my link: {link}", { link });
+    const text = t("Try nanoMuse with me, a fully open-source personal agent, free to use. Sign up with my link: {link}", { link });
     const nav = navigator as Navigator & { share?: (data: { text: string }) => Promise<void> };
     if (nav.share) {
       try {
@@ -132,7 +132,7 @@ export function AllowanceWays({
     <div className={cx("space-y-2.5", !compact && "pt-1")}>
       <div>
         <div className={cx("font-semibold", compact ? "text-[13.5px]" : "text-[15px]")}>{lead}</div>
-        <div className="mt-0.5 text-[12.5px] text-muted">{t("Three ways on — your sign-in and your devices keep working whichever you pick.")}</div>
+        <div className="mt-0.5 text-[12.5px] text-muted">{t("Three ways on; your sign-in and your devices keep working whichever you pick.")}</div>
       </div>
 
       <Way icon={<KeyRound size={16} />} tone="bg-accent/12 text-accent" title={t("Use your own model key")}>
@@ -158,7 +158,7 @@ export function AllowanceWays({
                 {others.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-x-3">
                     <span>
-                      <span className="font-medium">{p.name}</span> <span className="text-muted">— {coversLine(t, p.covers)}</span>
+                      <span className="font-medium">{p.name}</span> <span className="text-muted">· {coversLine(t, p.covers)}</span>
                     </span>
                     <span className="flex gap-2">
                       <button type="button" onClick={() => openOwnKeySetup(setTab, presetFor(p.id))} className="text-accent">
@@ -178,7 +178,7 @@ export function AllowanceWays({
 
       <Way icon={<LogIn size={16} />} tone="bg-emerald-500/12 text-emerald-600 dark:text-emerald-300" title={t("Sign in with a plan you already pay for")}>
         <p className="text-[12.5px] text-muted">
-          {t("{plans} — the plan's models answer here, no key to make. ChatGPT works on every device, the others on the phones. A ChatGPT sign-in covers chat and the hands; pictures and clips still want a key.", { plans: planNames.join(t(", ")) })}
+          {t("{plans}: the plan's models answer here, no key to make. ChatGPT works on every device, the others on the phones. A ChatGPT sign-in covers chat and the hands; pictures and clips still want a key.", { plans: planNames.join(t(", ")) })}
         </p>
         {signIn ? (
           <ChatGptSignIn compact onChanged={() => setSignIn(false)} />
@@ -300,7 +300,7 @@ export function AllowanceHeadsUp() {
       <Sparkles size={14} className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         {t("Nearly used up: ¥{left} of ¥{grant} left.", { left: (info.left ?? 0).toFixed(2), grant: (info.grant ?? 0).toFixed(0) })}{" "}
-        {t("Invite a friend (+¥{invite} for each of you) or bring your own key — your sign-in keeps working either way.", {
+        {t("Invite a friend (+¥{invite} for each of you) or bring your own key; your sign-in keeps working either way.", {
           invite: (info.invite_bonus_cny ?? 5).toFixed(0),
         })}{" "}
         <button

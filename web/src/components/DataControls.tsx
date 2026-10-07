@@ -80,7 +80,7 @@ export function DataControls({ me: given, onChanged, flush = false }: { me?: Clo
       </MuseCard>
       <MuseCaption>
         {t(
-          "While this is on, the text of your chats with the nanoMuse Cloud models — what you wrote, what it answered and the tools it chose to call — is kept on the relay to train the community's own open model. Not your memory or SOUL (the system prompt), not what tools returned, not pictures, and never next to who you are. Your own API key never passes through the relay.",
+          "While this is on, the text of your chats with the nanoMuse Cloud models (what you wrote, what it answered and the tools it chose to call) is kept on the relay to train the community's own open model. Not your memory or SOUL (the system prompt), not what tools returned, not pictures, and never next to who you are. Your own API key never passes through the relay.",
         )}{" "}
         {!signedIn
           ? t("Sign in to nanoMuse Cloud to use it.")

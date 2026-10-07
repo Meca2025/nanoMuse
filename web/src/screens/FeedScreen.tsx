@@ -129,7 +129,7 @@ export function FeedScreen() {
                 <StaticCard
                   emoji="🖼️"
                   title={t("Nothing in the feed yet")}
-                  body={t("As we get to know each other, new posts will show up here. Every day at {time} I read what I remember about you — your memory files, the last week of diary, your goals — and write a few short posts.", {
+                  body={t("As we get to know each other, new posts will show up here. Every day at {time} I read what I remember about you (your memory files, the last week of diary, your goals) and write a few short posts.", {
                     time: posts?.time ?? "08:00",
                   })}
                 />
@@ -137,7 +137,7 @@ export function FeedScreen() {
                 {state.settings && !state.settings.llm_ready && (
                   <FeedCard>
                     <button type="button" onClick={() => setTab("you")} className="flex w-full items-center gap-2 p-4 text-left text-[14px] text-muted">
-                      <Info size={16} className="shrink-0 text-accent" /> {t("Add a model first — the feed is written by your agent.")}
+                      <Info size={16} className="shrink-0 text-accent" /> {t("Add a model first; the feed is written by your agent.")}
                     </button>
                   </FeedCard>
                 )}
@@ -367,7 +367,7 @@ function IntroCard({ instructions, onEdit, onAck }: { instructions: string; onEd
     <FeedCard>
       <div className="px-4 py-3.5">
         <div className="text-[17px] font-semibold">{t("About the feed")}</div>
-        <p className="mt-1 text-[13px] leading-[18px] text-muted">{t("Short posts your agent writes for you from what it remembers — your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time.")}</p>
+        <p className="mt-1 text-[13px] leading-[18px] text-muted">{t("Short posts your agent writes for you from what it remembers: your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time.")}</p>
       </div>
       <div className="border-t border-border/70 px-4 py-3.5">
         <p className="text-[15px] leading-[22px]">{instructions || t("Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.")}</p>
@@ -481,7 +481,7 @@ function FeedSettingsSheet({
               />
             </label>
           )}
-          {!llmReady && <div className="text-[12.5px] text-muted">{t("Add a model first — the feed is written by your agent.")}</div>}
+          {!llmReady && <div className="text-[12.5px] text-muted">{t("Add a model first; the feed is written by your agent.")}</div>}
         </div>
         <button
           type="button"
@@ -540,12 +540,12 @@ function NextUp({
           {data.busy
             ? t("Working now")
             : data.quiet_until
-              ? t("Quiet hours — after {time}", { time: timeShort(data.quiet_until) })
+              ? t("Quiet hours after {time}", { time: timeShort(data.quiet_until) })
               : data.next_pass_at
                 ? t("Around {time}", { time: timeShort(data.next_pass_at) })
                 : t("Soon")}
           : <span className="font-medium">{next.title}</span>
-          {next.next_step && <span className="text-muted"> — {next.next_step}</span>}
+          {next.next_step && <span className="text-muted"> · {next.next_step}</span>}
           {next.overdue && <span className="text-rose-500 font-medium"> · {t("overdue")}</span>}
           {data.queue.length > 1 && <span className="text-muted"> · {t("{n} more in line", { n: data.queue.length - 1 })}</span>}
         </div>
@@ -658,7 +658,7 @@ function FeedRow({ item, unseen, onOpen }: { item: FeedItem; unseen: boolean; on
       <button type="button" onClick={onOpen} className="w-full text-left px-2 py-1.5 flex items-center gap-2 text-[12.5px] text-muted">
         <Moon size={13} className="shrink-0" />
         <span className="truncate">
-          {t("{label} — nothing new", { label: localLabel(item.title.replace(/^Working on your goal: /, "")) })}{item.text ? `: ${item.text}` : ""}
+          {t("{label}: nothing new", { label: localLabel(item.title.replace(/^Working on your goal: /, "")) })}{item.text ? `: ${item.text}` : ""}
         </span>
         <span className="ml-auto shrink-0">{relativeTime(item.ts)}</span>
       </button>

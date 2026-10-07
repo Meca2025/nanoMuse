@@ -102,7 +102,7 @@ export function AvatarStudioScreen() {
     if (cost.unlimited) return t("About ¥{cny} for {what}; your account has no limit.", { cny: cost.cny.toFixed(2), what });
     const left = typeof cost.left_cny === "number" ? cost.left_cny.toFixed(2) : "?";
     return cost.affordable === false
-      ? t("About ¥{cny} for {what} — more than the ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), what, left })
+      ? t("About ¥{cny} for {what}, more than the ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), what, left })
       : t("About ¥{cny} for {what}; ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), what, left });
   })();
 
@@ -315,7 +315,7 @@ export function AvatarStudioScreen() {
                 <button type="button" disabled={busy !== null} onClick={() => void act("choose", () => api.avatarChoose(session.session, selected))} className={cx(primaryBtn, "w-full rounded-full py-3")}>
                   {busy === "choose" ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} {t("Use this one")}
                 </button>
-                <p className="text-center text-[12px] leading-snug text-muted">{t("Next, its poses are drawn from it in the background — working, waiting for you, done, something wrong.")}</p>
+                <p className="text-center text-[12px] leading-snug text-muted">{t("Next, its poses are drawn from it in the background: working, waiting for you, done, something wrong.")}</p>
               </div>
             )}
             {stage === "choose" && (
@@ -337,7 +337,7 @@ export function AvatarStudioScreen() {
         )}
 
         <p className="px-1 text-[12px] leading-snug text-muted">
-          {t("The pictures stay in this computer's workspace under avatar/. Each new look asks your provider for eight pictures — four to choose from and four poses — and four short clips where there is a video model.")}
+          {t("The pictures stay in this computer's workspace under avatar/. Each new look asks your provider for eight pictures (four to choose from and four poses) and four short clips where there is a video model.")}
         </p>
         <p className="px-1 text-[12px] leading-snug text-muted">
           <button

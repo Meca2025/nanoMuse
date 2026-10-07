@@ -79,7 +79,7 @@ export function CodingScreen() {
     <div className="flex h-full flex-col">
       <PageBar
         title={t("Coding agents")}
-        description={t("Cursor, Codex and Claude Code — see what they are doing, and tell them things from anywhere.")}
+        description={t("Cursor, Codex and Claude Code: see what they are doing, and tell them things from anywhere.")}
         actions={
           <MuseRoundButton small onClick={() => void load()} label={t("Refresh")}>
             <RefreshCw size={18} className={loading ? "animate-spin" : ""} />

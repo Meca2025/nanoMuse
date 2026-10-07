@@ -786,7 +786,7 @@ function TriggerForm({ available, onDone, onCancel }: { available: Record<Trigge
     return (
       <div className="mb-2 rounded-2xl border border-border p-3 space-y-2">
         <div className="text-[13.5px] font-medium">{t("Webhook ready")}</div>
-        <div className="text-[12.5px] text-muted">{t("POST anything to this URL and the work starts. The key is in the URL — share it only with the program that will call it.")}</div>
+        <div className="text-[12.5px] text-muted">{t("POST anything to this URL and the work starts. The key is in the URL; share it only with the program that will call it.")}</div>
         <code className="block break-all rounded-xl bg-surface-2 px-3 py-2 text-[12px]">{made.url}</code>
         <div className="flex justify-end gap-2 pt-0.5">
           <button
@@ -909,11 +909,11 @@ function ActivityView({ open }: { open: boolean }) {
   return (
     <div className="pb-2">
       <p className="text-[12.5px] text-muted mb-2">
-        {t("Every tool call goes through the Sentinel and is written to the audit log — including the ones it refused.")}
+        {t("Every tool call goes through the Sentinel and is written to the audit log, including the ones it refused.")}
       </p>
       {gui > 0 && (
         <p className="text-[12.5px] text-muted mb-2">
-          {t("On the phone's screen: {gui} of {total} steps ({pct}%). The screen is the last resort — a skill, a fetch or the browser comes first.", {
+          {t("On the phone's screen: {gui} of {total} steps ({pct}%). The screen is the last resort; a skill, a fetch or the browser comes first.", {
             gui: String(gui),
             total: String(entries.length),
             pct: String(Math.round((gui / entries.length) * 100)),

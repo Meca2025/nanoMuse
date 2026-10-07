@@ -101,7 +101,7 @@ way.
 
 **Avatar studio.** Without an image model the *Draw* button is off and the
 line under it is the one sentence — *Pictures need a provider with image
-models — Alibaba Cloud Bailian, Zhipu GLM, SiliconFlow or Volcengine Ark* on
+models: Alibaba Cloud Bailian, Zhipu GLM, SiliconFlow or Volcengine Ark* on
 the mainland, *OpenRouter, OpenAI, Google Gemini or xAI Grok* elsewhere — with
 *Change model* beside it. **Settings → Image & video models** shows the same
 sentence as its value when the runtime says pictures or clips are not covered.
@@ -152,10 +152,10 @@ capability (four at most, in the catalogue's order):
 
 | Capability | English | 中文 |
 |---|---|---|
-| `image` | Pictures need a provider with image models — {providers}. | 画图需要一个有图像模型的服务商——{providers}。 |
-| `video` | Clips need a provider with video models — {providers}. | 生成视频需要一个有视频模型的服务商——{providers}。 |
-| `vision` | The hands need a model that sees pictures — {providers}. | 动手需要一个能看图的模型——{providers}。 |
-| `chat` | Chat needs a model — {providers}. | 对话需要一个模型——{providers}。 |
+| `image` | Pictures need a provider with image models: {providers}. | 画图需要一个有图像模型的服务商：{providers}。 |
+| `video` | Clips need a provider with video models: {providers}. | 生成视频需要一个有视频模型的服务商：{providers}。 |
+| `vision` | The hands need a model that sees pictures: {providers}. | 动手需要一个能看图的模型：{providers}。 |
+| `chat` | Chat needs a model: {providers}. | 对话需要一个模型：{providers}。 |
 
 A *How* link beside each goes to [own-key.md](own-key.md). The provider names
 come from the catalogue in the console's language (`name` / `name_zh`).

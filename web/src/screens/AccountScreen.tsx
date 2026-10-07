@@ -183,7 +183,7 @@ function Allowance({ me, onChanged }: { me: CloudMe; onChanged: () => void }) {
       )}
       {limited && (
         <p className="text-[12.5px] text-muted">
-          {t("¥{allowance} to start, +¥{invite} for each friend you invite — and +¥{invite} for them; after that, your own key keeps the model going.", {
+          {t("¥{allowance} to start, +¥{invite} for each friend you invite, and +¥{invite} for them; after that, your own key keeps the model going.", {
             allowance: (spend.allowance_cny ?? 10).toFixed(0),
             invite: (info.invite_bonus_cny ?? 5).toFixed(0),
           })}{" "}
@@ -242,7 +242,7 @@ function Invite({ me }: { me: CloudMe }) {
     }
   };
   const share = async () => {
-    const text = t("Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my code {code}: {link}", { code: inv.code, link });
+    const text = t("Try nanoMuse with me, a fully open-source personal agent, free to use. Sign up with my code {code}: {link}", { code: inv.code, link });
     const nav = navigator as Navigator & { share?: (data: { text: string }) => Promise<void> };
     if (nav.share) {
       try {
@@ -257,7 +257,7 @@ function Invite({ me }: { me: CloudMe }) {
   return (
     <Section title={t("Invite a friend")}>
       <p className="text-[12.5px] text-muted">
-        {t("Each new person who signs up with your code adds ¥{bonus} to your allowance — and ¥{bonus} to theirs. It never expires.", { bonus: inv.bonus_cny.toFixed(0) })}
+        {t("Each new person who signs up with your code adds ¥{bonus} to your allowance, and ¥{bonus} to theirs. It never expires.", { bonus: inv.bonus_cny.toFixed(0) })}
       </p>
       <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2/70 px-3 py-2">
         <div>

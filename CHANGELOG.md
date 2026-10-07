@@ -39,11 +39,14 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 ### Web
 
 - **The model pickers fold long lists and can be searched.** The *Hands model*, *Picture model* and *Clip model* controls on the Connections page became one picker: a button reading `provider · model` opens a panel with *Automatic* first; a provider with a long list (OpenRouter, SiliconFlow) shows eight models at first, its catalogue default for the slot and your current choice first, with *Show {n} more* at the foot of the group; once the rows pass eight in all, a *Search models* field filters every group by model id or name as you type, and *No model matches* says when nothing does. Esc or a click outside closes it. What each control saves is unchanged.
+- **Every label in Chinese.** Translated the goal cadences *Once a week* and *Once a month* and the calendar's *.ics file* chip, which showed in English on a Chinese console; reworded three Chinese lines (the feed instruction, the goals intro, the provider row) and removed nineteen dictionary entries nothing uses any more.
+- **No em dashes in what the console says.** Replaced the em dashes in every sentence the console shows (about eighty strings and their Chinese twins, the provider sentences included) with a colon, a comma or a full stop; the sentences the runtime sends keep their English so the Chinese still matches.
 
 ### Desktop
 
 - **The model pickers fold long lists and can be searched.** The pickers of Settings → Models and Settings → Media became a button reading `provider · model` that opens a panel: *Automatic* (and *Off* for clips) first, then nanoMuse Cloud with its recommended model marked and first, then one group per provider; a provider with a long list (OpenRouter, SiliconFlow) shows eight models at first, its catalogue default for the row and your current choice first, with *Show {n} more* at the foot of the group; once the lists hold more than eight models in all, a *Search models* field filters every group by model id or name as you type, and *No model matches* says when nothing does. Esc or a click outside closes it. What each row saves, the *Currently* line and the hands' live update are unchanged.
 - **The installed release is no longer offered as an update.** The daily check compared the latest release with the bundle's labelled version string (`dsh-nanomuse 0.1.40`), which read as 0, so every release counted as newer: About said *0.1.40 is out* on a 0.1.40 install and *Update* downloaded the same build. The check compares the bare number now, and a labelled version is read as its number should one reach the comparison again.
+- **The ideas catalogue reads without em dashes**, the same file as the phones'.
 
 ### Android
 
@@ -54,6 +57,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **An approval card whose asker went away is withdrawn.** When the conversation that asked is stopped or closed, its card disappears and the next request in line comes up; before, the card stayed until the three-minute timeout.
 - **Two `nanomuse-hands run` arriving together cannot both start**; the second is told the hands are busy.
 - Reasons kept as grant labels (*taps "Pay": looks like a payment*) no longer carry a dash.
+- **The ideas catalogue reads without em dashes** (the same file the desktop and the web console carry).
 
 ### iOS
 
@@ -64,6 +68,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **Pictures and clips go through the Network proxy.** The image and video generators used sessions of their own that ignored *Settings › nanoMuse › Network*; a key of one's own now reaches Model Studio the way a chat turn on the same provider does. Their failures are sentences in every language (*The provider refused this key (HTTP 401)*, *The video took longer than 12 minutes*, *The provider sent no picture*), with the vendor's own words after *The provider says:* when it sent some, instead of English fragments like *HTTP 401: …* or *Timed out after 12 min*.
 - **Zero compiler warnings in the app's own files.** The scheduler's notification code used completion handlers that the iOS 26 toolchain flags under Swift 6 concurrency; it now uses the async notification-center API, and the background-task id is readable from the registration that runs before launch finishes. A sentence of the avatar flow (*I'll also make four short clips so I can move*) that was missing from the string catalogue is translated in every language.
 - **A swipe in from the left edge of the main chat opens the drawer** with the side chats, Devices and the settings, as on Android; the round button still does. A side chat pushed over the main one keeps the system's back swipe.
+- **The ideas catalogue reads without em dashes** (the same file the desktop and the web console carry).
 
 ### Project
 

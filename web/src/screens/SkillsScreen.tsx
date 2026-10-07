@@ -11,7 +11,7 @@ import { cx, relativeTime } from "../util";
 
 const TEMPLATE = (name: string) => `---
 name: ${name}
-description: What this does, and when to use it — the model picks the skill from this line.
+description: What this does, and when to use it; the model picks the skill from this line.
 ---
 
 # ${name.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase())}
@@ -81,7 +81,7 @@ export function SkillsScreen() {
     <div className="flex h-full flex-col">
       <PageBar
         title={t("Skills")}
-        description={t("How {name} does a job, written down once. Start one in chat with /name, or just ask — it picks the skill that fits.", { name })}
+        description={t("How {name} does a job, written down once. Start one in chat with /name, or just ask; it picks the skill that fits.", { name })}
         actions={
           <MuseRoundButton small onClick={() => setAdding(true)} label={t("New")}>
             <Plus size={20} />
@@ -106,7 +106,7 @@ export function SkillsScreen() {
                   <Wand2 className="mx-auto text-accent" />
                   <div className="mt-2 font-semibold">{t("Nothing of your own yet")}</div>
                   <p className="mt-1 text-[13.5px] text-muted">
-                    {t("After a job went well, tell {name} “save this as a skill” — it writes the steps down and asks you first. Or write one here, or paste a link to a SKILL.md.", { name })}
+                    {t("After a job went well, tell {name} “save this as a skill”; it writes the steps down and asks you first. Or write one here, or paste a link to a SKILL.md.", { name })}
                   </p>
                   <button type="button" onClick={() => setAdding(true)} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-[13.5px] font-semibold text-accent-fg">
                     <Plus size={15} /> {t("Write one")}
@@ -136,7 +136,7 @@ export function SkillsScreen() {
               </section>
             )}
             <p className="px-1 text-[12px] text-muted">
-              {t("Yours live in {dir}, one folder each with a SKILL.md — the Agent Skills format, so recipes written for other agents work here too.", { dir: data.dir })}
+              {t("Yours live in {dir}, one folder each with a SKILL.md, the Agent Skills format, so recipes written for other agents work here too.", { dir: data.dir })}
             </p>
           </>
         )}

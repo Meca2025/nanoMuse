@@ -18,7 +18,7 @@
 
 **额度卡片**（在「账号」里，以及聊天里出现 `allowance_exhausted` 时）给出三条路：「换成自己的 key」，带所在地区的首选、一个打开「连接」并定位到该服务商的「设置一下」、「到 … 获取密钥」、指南，以及「其他服务商，以及各自的 key 能做什么」下面地区列表里的其余服务商（中继发来 `guidance.providers` 时用中继的，中继 0.21；否则用目录的），每一个都带自己的覆盖说明、自己的「设置一下」和 key 链接；「用你已经在付费的套餐登录」，ChatGPT 卡片就嵌在里面；还有邀请。80 % 的提前提醒和第一次登录的面板指向同一个地方。
 
-**形象工作室。** 没有图像模型时，「画」按钮不可用，下面那一行就是那一句话——中国大陆是「画图需要一个有图像模型的服务商——阿里云百炼、智谱 GLM、硅基流动或火山方舟」，其他地方是「OpenRouter、OpenAI、Google Gemini 或 xAI Grok」——旁边是「更换」。**设置 → 图像与视频模型**在运行时说图片或短视频没有覆盖时，把同一句话显示为它的值。
+**形象工作室。** 没有图像模型时，「画」按钮不可用，下面那一行就是那一句话——中国大陆是「画图需要一个有图像模型的服务商：阿里云百炼、智谱 GLM、硅基流动或火山方舟」，其他地方是「OpenRouter、OpenAI、Google Gemini 或 xAI Grok」——旁边是「更换」。**设置 → 图像与视频模型**在运行时说图片或短视频没有覆盖时，把同一句话显示为它的值。
 
 ## 第一次打开与聊天的开场 {#the-first-run-and-the-chats-opening}
 
@@ -36,10 +36,10 @@
 
 | 能力 | English | 中文 |
 |---|---|---|
-| `image` | Pictures need a provider with image models — {providers}. | 画图需要一个有图像模型的服务商——{providers}。 |
-| `video` | Clips need a provider with video models — {providers}. | 生成视频需要一个有视频模型的服务商——{providers}。 |
-| `vision` | The hands need a model that sees pictures — {providers}. | 动手需要一个能看图的模型——{providers}。 |
-| `chat` | Chat needs a model — {providers}. | 对话需要一个模型——{providers}。 |
+| `image` | Pictures need a provider with image models: {providers}. | 画图需要一个有图像模型的服务商：{providers}。 |
+| `video` | Clips need a provider with video models: {providers}. | 生成视频需要一个有视频模型的服务商：{providers}。 |
+| `vision` | The hands need a model that sees pictures: {providers}. | 动手需要一个能看图的模型：{providers}。 |
+| `chat` | Chat needs a model: {providers}. | 对话需要一个模型：{providers}。 |
 
 每句旁边有一个「怎么做」链接，指向 [own-key.md](own-key.md)。服务商的名字按控制台的语言取自目录（`name` / `name_zh`）。
 

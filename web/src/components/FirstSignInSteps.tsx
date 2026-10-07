@@ -120,7 +120,7 @@ export function FirstSignInSteps() {
               </span>
               <div>
                 <h2 className="text-[20px] font-bold tracking-tight">{t("Set a password")}</h2>
-                <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{t("Your account is in. With a password, your phone and your other computers sign in at once, without waiting for a code. Optional — you can set one later under Account.")}</p>
+                <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{t("Your account is in. With a password, your phone and your other computers sign in at once, without waiting for a code. Optional; you can set one later under Account.")}</p>
               </div>
             </div>
             <div className="space-y-2">
@@ -171,7 +171,7 @@ export function FirstSignInSteps() {
                   <span className="font-medium">{t("I have my own API key")}</span>
                   <span className="block text-muted">
                     {way.preset === "qwen"
-                      ? t("Alibaba Cloud Bailian first — one key covers chat, the hands, pictures and clips — then DeepSeek, Kimi, Zhipu, OpenAI, OpenRouter and any OpenAI-compatible endpoint. The key stays on this device.")
+                      ? t("Alibaba Cloud Bailian first (one key covers chat, the hands, pictures and clips), then DeepSeek, Kimi, Zhipu, OpenAI, OpenRouter and any OpenAI-compatible endpoint. The key stays on this device.")
                       : t("OpenRouter first (one account, one key, pay as you go), then OpenAI, Anthropic, Gemini, DeepSeek and any OpenAI-compatible endpoint. The key stays on this device.")}
                   </span>
                 </span>

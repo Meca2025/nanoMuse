@@ -26,15 +26,15 @@ const zhCN: Record<string, string> = {
 
   // ── Chat ──────────────────────────────────────────────────────────────────────────
   "Hi, I'm {name}.": "你好，我是 {name}。",
-  "I don't just answer — I get things done: research, plans, files, code, email, long-running goals. Everything I do shows up here, and anything hard to undo waits for your approval.":
+  "I don't just answer; I get things done: research, plans, files, code, email, long-running goals. Everything I do shows up here, and anything hard to undo waits for your approval.":
     "我不只是回答问题，而是把事情做完：调研、计划、文件、代码、邮件、长期目标。我做的每件事都会显示在这里，任何难以撤销的操作都会先等你批准。",
   "What can you do for me?": "你能为我做什么？",
-  "Plan my week — ask me what's on my plate": "帮我规划这一周——先问问我手头有什么",
+  "Plan my week: ask me what's on my plate": "帮我规划这一周：先问问我手头有什么",
   "Research and compare two options for me": "帮我调研并比较两个选项",
   "Set up a long-term goal and track it": "建立一个长期目标并持续跟进",
   "Answer {name}…": "回复 {name}…",
   "Reply below to continue.": "在下方回复以继续。",
-  "{name} is working — anything you send now is picked up right away.": "{name} 正在工作——你现在发的消息会马上接着处理。",
+  "{name} is working; anything you send now is picked up right away.": "{name} 正在工作，你现在发的消息会马上接着处理。",
   "Working…": "处理中…",
   "On it": "正在处理",
   "Show the agent's steps": "显示执行步骤",
@@ -42,7 +42,7 @@ const zhCN: Record<string, string> = {
     "每用一个工具就在对话里多一个小标签。关闭时对话只保留对话本身，名字下方的一行字说明它正在做什么。仅本设备。",
   "On it: {request}": "正在处理：{request}",
   "A star on GitHub helps": "GitHub 上的一颗 Star 帮得上忙",
-  "Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.":
+  "Welcome. nanoMuse is free, open source and non-profit, a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.":
     "欢迎。nanoMuse 免费、开源、非营利，做的是一个属于每个人的个人智能体。如果你认同，GitHub 上的一颗 Star 能让下一个人也找到这里。",
   "Three tasks done. If nanoMuse is useful, a star on GitHub helps the next person find it.":
     "三个任务完成了。如果 nanoMuse 用得上，到 GitHub 点一颗 Star，下一个人也能找到它。",
@@ -60,7 +60,7 @@ const zhCN: Record<string, string> = {
     "已经一起完成十个任务了。如果 nanoMuse 成了你日常的一部分，一颗 Star 会让更多人愿意试一试。",
   "A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.":
     "一张为你画的新面孔。如果你喜欢 nanoMuse 现在的样子，到 GitHub 点一颗 Star，更多人就能遇见它。",
-  "The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.":
+  "The free allowance is used up. Thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.":
     "免费额度用完了，谢谢你一路用到这里。如果 nanoMuse 值得，到 GitHub 点一颗 Star，下一个人也能找到它。",
   "Load earlier messages": "加载更早的消息",
   "New side chat": "新建旁聊",
@@ -154,13 +154,13 @@ const zhCN: Record<string, string> = {
 
   // ── Holds (your turn) ─────────────────────────────────────────────────────────────
   "Your turn": "该你了",
-  "Your turn — {reason}": "该你了——{reason}",
+  "Your turn: {reason}": "该你了：{reason}",
   "You took over {thing}": "你接管了{thing}",
   "the browser": "浏览器",
   "the phone": "手机",
   "The browser": "浏览器",
   "The phone": "手机",
-  "Do this part yourself, then press Done — {name} looks again and carries on from there.": "这一步请你自己来，做完按「完成」——{name} 会重新看一眼屏幕，从那里接着做。",
+  "Do this part yourself, then press Done. {name} looks again and carries on from there.": "这一步请你自己来，做完按「完成」。{name} 会重新看一眼屏幕，从那里接着做。",
   "{name} waits. Press Done when you are finished and it looks again.": "{name} 在等。你弄完后按「完成」，它会重新看一眼。",
   "{name} waited ten minutes and went on without you.": "{name} 等了十分钟，没等到你，先继续了。",
   "Ended when the runtime restarted.": "运行时重启，这次接管结束。",
@@ -187,7 +187,7 @@ const zhCN: Record<string, string> = {
   "No goal has a next step to work on.": "没有目标有可执行的下一步。",
   "Add one": "添加一个",
   "Working now": "正在进行",
-  "Quiet hours — after {time}": "免打扰时段——{time} 之后",
+  "Quiet hours after {time}": "免打扰时段，{time} 之后",
   "Around {time}": "大约 {time}",
   Soon: "即将",
   overdue: "已逾期",
@@ -205,7 +205,7 @@ const zhCN: Record<string, string> = {
   "Coming up: {title}": "即将开始：{title}",
   "Webhook: {title}": "Webhook：{title}",
   "Tidied memory": "整理了记忆",
-  "{label} — nothing new": "{label}——没有新进展",
+  "{label}: nothing new": "{label}：没有新进展",
   "Open chat": "打开对话",
   Today: "今天",
   Yesterday: "昨天",
@@ -227,7 +227,7 @@ const zhCN: Record<string, string> = {
   // the goals page's folded list and the model pickers share this one (the Models contract's wording)
   "Show {n} more": "还有 {n} 个",
   Cancelled: "已取消",
-  "Starter ideas — refresh once {name} knows you better.": "入门灵感——等 {name} 更了解你之后再刷新。",
+  "Starter ideas. Refresh once {name} knows you better.": "入门灵感。等 {name} 更了解你之后再刷新。",
   "Generated {when}": "生成于 {when}",
   "Could not refresh ideas: {error}": "无法刷新灵感：{error}",
   "Do it for me": "帮我做",
@@ -243,11 +243,7 @@ const zhCN: Record<string, string> = {
   Travel: "旅行",
   Creative: "创作",
   Other: "其他",
-  All: "全部",
   "New goal": "新目标",
-  "I want to set up a long-term goal. Ask me about it, then create it with concrete steps using the goals tool.":
-    "我想建立一个长期目标。先问问我相关情况，然后用 goals 工具创建它并拆分成具体步骤。",
-  Active: "进行中",
   Paused: "已暂停",
   Finished: "已完成",
   active: "进行中",
@@ -267,6 +263,8 @@ const zhCN: Record<string, string> = {
   "No target date": "没有目标日期",
   "No category": "未分类",
   "Every day": "每天",
+  "Once a week": "每周一次",
+  "Once a month": "每月一次",
   Weekdays: "工作日",
   Weekly: "每周",
   Monthly: "每月",
@@ -311,16 +309,13 @@ const zhCN: Record<string, string> = {
   "Why it matters, constraints (optional)": "为什么重要、有哪些限制（可选）",
   "Area of life": "生活领域",
   "Target date": "目标日期",
-  "Steps, one per line (optional — or let {name} plan them)": "步骤，每行一个（可选——也可以让 {name} 来规划）",
+  "Steps, one per line (optional, or let {name} plan them)": "步骤，每行一个（可选，也可以让 {name} 来规划）",
   "Let {name} plan it": "让 {name} 来规划",
   "Create a goal for me: \"{title}\"{description}{extras}. Break it into concrete steps with the goals tool, then tell me the plan.":
     "帮我创建一个目标：“{title}”{description}{extras}。用 goals 工具把它拆成具体步骤，然后告诉我计划。",
   "Day {d}": "第 {d} 天",
 
   // ── Library ───────────────────────────────────────────────────────────────────────
-  Pages: "页面",
-  Documents: "文档",
-  Images: "图片",
   "Search files": "搜索文件",
   "No files match.": "没有匹配的文件。",
   Latest: "最新",
@@ -328,17 +323,16 @@ const zhCN: Record<string, string> = {
 
   // ── Memory ────────────────────────────────────────────────────────────────────────
   Memory: "记忆",
-  "What {name} remembers about you": "{name} 记得你的哪些事",
-  "What {name} remembers about you. Read it, add to it, or make {name} forget — nothing here is hidden from you.":
-    "{name} 对你的了解都在这里。你可以翻看、补充，或让 {name} 忘掉——没有什么是瞒着你的。",
+  "What {name} remembers about you. Read it, add to it, or make {name} forget; nothing here is hidden from you.":
+    "{name} 对你的了解都在这里。你可以翻看、补充，或让 {name} 忘掉，没有什么是瞒着你的。",
   "Tell {name} something to remember, e.g. “I'm vegetarian” or “My sister's birthday is 14 May”":
     "告诉 {name} 要记住的事，例如“我是素食者”或“我妹妹的生日是 5 月 14 日”",
   Remember: "记住",
   Forget: "忘掉",
   "Forget “{text}”?": "忘掉“{text}”？",
   "Nothing remembered yet": "还没有记住任何内容",
-  "{name} saves durable facts you share in chat — preferences, people, routines — and never secrets.":
-    "{name} 会保存你在对话中分享的长期事实——偏好、人物、习惯——绝不保存密钥或密码。",
+  "{name} saves durable facts you share in chat (preferences, people, routines) and never secrets.":
+    "{name} 会保存你在对话中分享的长期事实（偏好、人物、习惯），绝不保存密钥或密码。",
   "added by you": "由你添加",
   "saved by {name}": "由 {name} 保存",
   "updated {when}": "更新于{when}",
@@ -346,7 +340,7 @@ const zhCN: Record<string, string> = {
   "Tidying…": "整理中…",
   "Merge lines that say the same thing and drop what was never a fact about you. Every change can be undone.":
     "把意思相同的条目合并，删掉那些并不是你本人情况的内容。每处改动都能撤销。",
-  "Nothing to tidy — {n} memories, all distinct.": "无需整理——{n} 条记忆，互不重复。",
+  "Nothing to tidy: {n} memories, all distinct.": "无需整理：{n} 条记忆，互不重复。",
   "Tidied: {merged} merged, {dropped} dropped. Undo below if needed.":
     "已整理：合并 {merged} 条，去掉 {dropped} 条。如有需要可在下方撤销。",
   "Recent changes": "最近的改动",
@@ -368,19 +362,15 @@ const zhCN: Record<string, string> = {
   waiting: "等待中",
   Activity: "活动",
   Approvals: "审批",
-  Permissions: "权限",
-  Upcoming: "日程",
-  "Background work is off": "后台工作已关闭",
   Connections: "连接",
   Settings: "设置",
   "Nothing is waiting for you.": "没有需要你处理的事项。",
-  "Nothing yet.": "暂时没有内容。",
   "{n} events": "{n} 个事件",
   failed: "失败",
   updated: "已更新",
   "background check": "后台检查",
-  "Every tool call goes through the Sentinel and is written to the audit log — including the ones it refused.":
-    "每一次工具调用都经过 Sentinel 审查并写入审计日志——包括被拒绝的那些。",
+  "Every tool call goes through the Sentinel and is written to the audit log, including the ones it refused.":
+    "每一次工具调用都经过 Sentinel 审查并写入审计日志，包括被拒绝的那些。",
   "Sentinel mode:": "Sentinel 模式：",
   balanced: "平衡",
   cautious: "谨慎",
@@ -409,14 +399,14 @@ const zhCN: Record<string, string> = {
   "Creates a goal": "会创建一个目标",
   "Create routine": "创建例程",
   "Start goal": "开始这个目标",
-  "Routine set — every day at {time}. It is listed under Goals.": "例程已设好——每天 {time}。在「目标」页可以看到。",
+  "Routine set: every day at {time}. It is listed under Goals.": "例程已设好：每天 {time}。在「目标」页可以看到。",
   "A morning brief": "早间简报",
   "Before you leave each morning: the weather, the first thing on your plate and anything new worth knowing.": "每天出门前：天气、今天的第一件事，以及值得知道的新消息。",
   "Morning brief: check today's weather, read my calendar and reminders for today, and tell me in five lines what matters.": "早间简报：查今天的天气，读我今天的日程和提醒，用五行告诉我要紧的事。",
   "drawn from the picture you attached": "按你附的图片来画",
   "Share my avatar": "分享我的虚拟形象",
   "Pick a card. It goes out through the system share sheet, or saves as a picture where there is none.": "选一张卡片，用系统分享发出去；没有系统分享的浏览器会保存为图片。",
-  "Hi, I'm {name}, a personal AI agent. Meet nanoMuse — open source, runs on your phone.": "你好，我是你的个人 AI 智能体 {name}。nanoMuse——开源、在手机上本地运行。",
+  "Hi, I'm {name}, a personal AI agent. Meet nanoMuse: open source, runs on your phone.": "你好，我是你的个人 AI 智能体 {name}。认识一下 nanoMuse：开源，在手机上本地运行。",
   "Your personal AI agent, open source · {repo}": "你的个人 AI 智能体，开源 · {repo}",
   "Later": "以后再说",
   "Share": "分享",
@@ -471,8 +461,8 @@ const zhCN: Record<string, string> = {
   "Each time it happens {name} does the work in the chat it was set from and reports in the Feed. A mail or a request is treated as data, never as instructions.":
     "每次触发时，{name} 会在设定它的那个对话里把事做完，再到动态里汇报。邮件和请求的内容只当资料看，绝不当作指令执行。",
   "Webhook ready": "Webhook 已就绪",
-  "POST anything to this URL and the work starts. The key is in the URL — share it only with the program that will call it.":
-    "向这个地址 POST 任意内容即可开始工作。密钥就在地址里——只交给要调用它的程序。",
+  "POST anything to this URL and the work starts. The key is in the URL; share it only with the program that will call it.":
+    "向这个地址 POST 任意内容即可开始工作。密钥就在地址里，只交给要调用它的程序。",
   Copy: "复制",
   "New mail": "新邮件",
   "Before an event": "日程开始前",
@@ -510,18 +500,16 @@ const zhCN: Record<string, string> = {
 
   // ── Settings ──────────────────────────────────────────────────────────────────────
   You: "你",
-  "Your nanoMuse": "你的 nanoMuse",
   "Its name and look, how careful it is, how often it speaks up.": "名字和形象，有多谨慎，多主动。",
   Name: "名字",
   Avatar: "头像",
-  Colour: "颜色",
   "What it calls you": "它怎么称呼你",
   "Safety · Sentinel": "安全 · Sentinel",
   "A separate gatekeeper reviews every action. Pick how often it should check in with you.":
     "一个独立的守门人审查每一次操作。选择它多久向你确认一次。",
   Balanced: "平衡",
-  "Browse, read and write files freely; stop for anything hard to undo — email, purchases, shell commands.":
-    "自由浏览、读写文件；遇到难以撤销的操作时停下——邮件、购买、终端命令。",
+  "Browse, read and write files freely; stop for anything hard to undo: email, purchases, shell commands.":
+    "自由浏览、读写文件；遇到难以撤销的操作时停下：邮件、购买、终端命令。",
   Cautious: "谨慎",
   "Also ask before moderate actions like fetching web pages or writing files.": "对抓取网页或写入文件等中等风险操作也先询问。",
   "Hands-off": "放手",
@@ -555,9 +543,9 @@ const zhCN: Record<string, string> = {
   "1 device subscribed": "1 台设备已订阅",
   "{n} devices subscribed": "{n} 台设备已订阅",
   "Send a test": "发送测试",
-  "Sent — it should arrive in a moment": "已发送——应该马上就到",
-  "Notifications need https:// (or localhost). Over plain http on your LAN the app works, this part stays off — see docs/deployment.md.":
-    "通知需要 https://（或 localhost）。在局域网的普通 http 上应用可以使用，但这部分功能保持关闭——参见 docs/deployment.md。",
+  "Sent. It should arrive in a moment": "已发送，应该马上就到",
+  "Notifications need https:// (or localhost). Over plain http on your LAN the app works, this part stays off; see docs/deployment.md.":
+    "通知需要 https://（或 localhost）。在局域网的普通 http 上应用可以使用，但这部分功能保持关闭，参见 docs/deployment.md。",
   "This browser cannot receive push notifications.": "这个浏览器无法接收推送通知。",
   "This browser has no push service (embedded browsers often don't). Use Chrome, Edge, Firefox or Safari 16.4+ on the phone.":
     "这个浏览器没有推送服务（内嵌浏览器通常没有）。请在手机上使用 Chrome、Edge、Firefox 或 Safari 16.4+。",
@@ -583,7 +571,7 @@ const zhCN: Record<string, string> = {
   "nanoMuse {version}": "nanoMuse {version}",
   "Tell {name} something to remember": "在对话里告诉 {name} 一件值得记住的事",
   "Write one": "写一个",
-  "Latest {version} — you have it": "最新版 {version}，你已经在用了",
+  "Latest {version}; you have it": "最新版 {version}，你已经在用了",
   Update: "更新",
   "Check now": "现在检查",
   "Checking…": "正在检查…",
@@ -612,7 +600,7 @@ const zhCN: Record<string, string> = {
   "{n} calendars": "{n} 个日历",
   "read {when}": "{when}读取",
   "Calendar connected": "日历已连接",
-  "Reads your calendar from its private .ics link — the link stays in the vault. It never changes your calendar; an event it proposes comes as a file you add with a tap.":
+  "Reads your calendar from its private .ics link; the link stays in the vault. It never changes your calendar; an event it proposes comes as a file you add with a tap.":
     "通过私密 .ics 链接读取你的日历，链接存在保险库里。它不会改动你的日历；它建议的日程会做成文件给你，点一下就能加进去。",
   "not read yet": "尚未读取",
   "Where is the link?": "链接在哪里？",
@@ -621,10 +609,11 @@ const zhCN: Record<string, string> = {
   "Share Calendar → Public Calendar → copy the webcal:// link": "共享日历 → 公共日历 → 复制 webcal:// 链接",
   "Settings → Calendars → Export → Calendar URL": "设置 → 日历 → 导出 → 日历 URL",
   "A path on the machine where nanoMuse runs, for example ~/calendar.ics": "nanoMuse 所在机器上的文件路径，例如 ~/calendar.ics",
+  ".ics file": ".ics 文件",
   Work: "工作",
   "Private .ics link or file path": "私密 .ics 链接或文件路径",
   "Stored encrypted in the vault as CALENDAR_{name}.": "加密保存在保险库中，名为 CALENDAR_{name}。",
-  "nanoMuse fetches whatever address you put here, from this machine — only paste links you trust.": "nanoMuse 会从这台机器上去取你填的任何地址——只粘贴你信任的链接。",
+  "nanoMuse fetches whatever address you put here, from this machine; only paste links you trust.": "nanoMuse 会从这台机器上去取你填的任何地址，只粘贴你信任的链接。",
   "Add a calendar": "添加日历",
   "Added, but it could not be read: {error}": "已添加，但读取失败：{error}",
   // contacts
@@ -721,7 +710,7 @@ const zhCN: Record<string, string> = {
   "A remote server over Streamable HTTP.": "通过 Streamable HTTP 连接的远程服务器。",
   "Risk of its tools": "其工具的风险级别",
   "Add a server": "添加服务器",
-  "Connected on {device} — sign in here to use it on this device": "已在 {device} 上连接——在这台设备上登录后即可使用",
+  "Connected on {device}; sign in here to use it on this device": "已在 {device} 上连接，在这台设备上登录后即可使用",
   "Sign in here": "在这里登录",
   "Stored in the vault": "已存入保险库",
   Vault: "保险库",
@@ -743,23 +732,18 @@ const zhCN: Record<string, string> = {
   "Connect your mail, calendar and contacts": "连接你的邮箱、日历和通讯录",
   "Optional. With a mailbox connected it can read what came in and draft replies; it will always ask before sending. With a calendar it knows your day and finds free time. With your contacts it knows who is who. The browser and MCP servers are under Connections later.":
     "可选。连上邮箱，它能读新邮件、起草回复，发之前一定先问你。连上日历，它知道你这一天的安排，也能找出空档。连上通讯录，它知道谁是谁。浏览器和 MCP 服务器之后在「连接」里设置。",
-  "Approvals.": "审批。",
-  "Goals.": "目标。",
-  "Library.": "文件库。",
   Back: "返回",
   "Get started": "开始",
-  Continue: "继续",
   Skip: "跳过",
   "Save a model to continue": "保存模型后继续",
   "Skip for now": "暂时跳过",
-  "Open the chat": "打开对话",
 
   // ── Time (util.ts) ────────────────────────────────────────────────────────────────
   "just now": "刚刚",
   "any moment": "随时",
   "in {span}": "{span}后",
   "{span} ago": "{span}前",
-  "Checked on {label} — nothing new": "已检查 {label}——没有新进展",
+  "Checked on {label}: nothing new": "已检查 {label}：没有新进展",
   "Notes from {name}": "来自 {name} 的笔记",
   "Reminders from {name}": "来自 {name} 的提醒",
   Once: "一次",
@@ -778,15 +762,14 @@ const zhCN: Record<string, string> = {
   "Files that come with it": "随附文件",
   "Folders that could not be read": "无法读取的文件夹",
   "Nothing of your own yet": "还没有你自己的技能",
-  "How {name} does a job, written down once": "把 {name} 做某件事的方法写下来，一次就够",
-  "How {name} does a job, written down once. Start one in chat with /name, or just ask — it picks the skill that fits.":
-    "把 {name} 做某件事的方法写下来，一次就够。在聊天里输入 /名称 直接开始，或者直接提要求——它会自己挑合适的技能。",
-  "After a job went well, tell {name} “save this as a skill” — it writes the steps down and asks you first. Or write one here, or paste a link to a SKILL.md.":
-    "一件事做得顺利之后，对 {name} 说“把这个存成技能”——它会把步骤写下来，并先征求你的同意。也可以在这里手写一个，或粘贴一个 SKILL.md 的链接。",
+  "How {name} does a job, written down once. Start one in chat with /name, or just ask; it picks the skill that fits.":
+    "把 {name} 做某件事的方法写下来，一次就够。在聊天里输入 /名称 直接开始，或者直接提要求，它会自己挑合适的技能。",
+  "After a job went well, tell {name} “save this as a skill”; it writes the steps down and asks you first. Or write one here, or paste a link to a SKILL.md.":
+    "一件事做得顺利之后，对 {name} 说“把这个存成技能”，它会把步骤写下来，并先征求你的同意。也可以在这里手写一个，或粘贴一个 SKILL.md 的链接。",
   "Switch one off to keep it out of {name}'s list. A skill of yours with the same name replaces it.":
     "关掉某一项，它就不会出现在 {name} 的清单里。你的同名技能会替代内置的那一个。",
-  "Yours live in {dir}, one folder each with a SKILL.md — the Agent Skills format, so recipes written for other agents work here too.":
-    "你的技能保存在 {dir}，每个一个文件夹，里面是一份 SKILL.md——这是 Agent Skills 通用格式，为其他智能体写的技能在这里同样可用。",
+  "Yours live in {dir}, one folder each with a SKILL.md, the Agent Skills format, so recipes written for other agents work here too.":
+    "你的技能保存在 {dir}，每个一个文件夹，里面是一份 SKILL.md。这是 Agent Skills 通用格式，为其他智能体写的技能在这里同样可用。",
   "Delete the skill “{name}”? Its folder goes with it.": "删除技能“{name}”？它的文件夹会一并删除。",
   "Saving makes a copy of yours with the same name; it replaces the built-in one.": "保存后会生成一份你的同名技能，替代内置的那一个。",
   "A SKILL.md: a name and a one-line description up top, then the steps in Markdown.": "一份 SKILL.md：开头是名称和一行说明，下面用 Markdown 写步骤。",
@@ -803,7 +786,7 @@ const zhCN: Record<string, string> = {
   "Web search": "网页搜索",
   "Not set up": "未设置",
   "{provider} at {host}": "{provider}（{host}）",
-  "{provider} needs {what} — searches use DuckDuckGo until then": "{provider}还需要{what}——在此之前搜索走 DuckDuckGo",
+  "{provider} needs {what}; searches use DuckDuckGo until then": "{provider}还需要{what}，在此之前搜索走 DuckDuckGo",
   "a key": "一个密钥",
   "an instance URL": "实例地址",
   "DuckDuckGo needs nothing, but it is scraped and rate-limits now and then. For searches that always work, use a provider with an API. Whichever you pick, a failed search falls back to DuckDuckGo with a note.":
@@ -828,36 +811,36 @@ const zhCN: Record<string, string> = {
   "{model} at {host}": "{model}（{host}）",
   "{model} · {n} of {total} memories indexed": "{model} · 已索引 {n}/{total} 条记忆",
   "{model} · {dims} dims · {n} memories indexed · {ms} ms": "{model} · {dims} 维 · 已索引 {n} 条记忆 · {ms} 毫秒",
-  "Memories are embedded once and a message finds the ones that mean the same thing, in any language — “写邮件给房东” finds “the landlord is Bob Li”. Keyword recall stays; the two are fused.":
-    "每条记忆只做一次向量化，一句话就能找到含义相同的记忆，不分语言——“写邮件给房东”能找到“the landlord is Bob Li”。关键词召回仍然保留，两者合并排序。",
+  "Memories are embedded once and a message finds the ones that mean the same thing, in any language: “写邮件给房东” finds “the landlord is Bob Li”. Keyword recall stays; the two are fused.":
+    "每条记忆只做一次向量化，一句话就能找到含义相同的记忆，不分语言：“写邮件给房东”能找到“the landlord is Bob Li”。关键词召回仍然保留，两者合并排序。",
   "Auto uses the model's endpoint when it has embeddings and falls back to keywords when it does not. On insists and warns. Off: keywords only.":
     "自动：模型接口支持向量化就用，不支持就退回关键词。开：坚持使用，失败时给出警告。关：只用关键词。",
   "Any OpenAI-compatible /embeddings: Ollama with an embedding model pulled, OpenAI, a gateway.":
     "任何 OpenAI 兼容的 /embeddings 接口：拉取了向量模型的 Ollama、OpenAI、网关。",
-  "The model's endpoint and key. DeepSeek has no embeddings — pick another endpoint.":
-    "使用模型自己的接口和密钥。DeepSeek 没有向量化接口——请选另一个接口。",
+  "The model's endpoint and key. DeepSeek has no embeddings; pick another endpoint.":
+    "使用模型自己的接口和密钥。DeepSeek 没有向量化接口，请选另一个接口。",
   "Stored encrypted in the vault as EMBEDDINGS_API_KEY. Ollama needs none.": "加密存在保险库里，名为 EMBEDDINGS_API_KEY。Ollama 不需要密钥。",
   "Blank uses the endpoint's default: {model}. On Ollama: ollama pull qwen3-embedding:0.6b (reads Chinese and English).":
     "留空则用该接口的默认模型：{model}。Ollama 上：ollama pull qwen3-embedding:0.6b（中英文都能读）。",
   "Phone": "手机",
   "{name} is connected": "{name} 已连接",
   "A phone": "一台手机",
-  "No phone connected — open the app on the phone": "没有连接的手机——在手机上打开 App",
+  "No phone connected. Open the app on the phone": "没有连接的手机。在手机上打开 App",
   "Tap, type and swipe in the apps on your phone": "在你手机上的 App 里点击、输入、滑动",
   "Waiting": "等待中",
   "Operate the phone": "操作手机",
-  "When on, the agent can read the screen and act in the apps on the connected phone — 12306, WeChat, Alipay… It asks before paying, sending or deleting.": "打开后，Agent 可以读取已连接手机的屏幕，并在上面的 App 里操作——12306、微信、支付宝……付款、发送、删除之前会先问你。",
+  "When on, the agent can read the screen and act in the apps on the connected phone: 12306, WeChat, Alipay… It asks before paying, sending or deleting.": "打开后，智能体可以读取已连接手机的屏幕，并在上面的 App 里操作：12306、微信、支付宝……付款、发送、删除之前会先问你。",
   "{name} ({platform}), {n} apps": "{name}（{platform}），{n} 个 App",
   "Ready": "就绪",
   "Not yet": "还没开",
   "Not on this Android": "这个安卓版本不支持",
   "Operating the screen needs Android 11 or newer; this phone can still be used for everything else.": "操作屏幕需要 Android 11 或更新；其他功能这台手机都能用。",
-  "Turn on the nanoMuse accessibility service — that is how it sees the screen and taps for you, only while a task runs, with a Stop button on screen.": "打开 nanoMuse 的无障碍服务——它靠这个看屏幕、替你点击，只在任务进行时工作，屏幕上始终有停止按钮。",
+  "Turn on the nanoMuse accessibility service; that is how it sees the screen and taps for you, only while a task runs, with a Stop button on screen.": "打开 nanoMuse 的无障碍服务，它靠这个看屏幕、替你点击，只在任务进行时工作，屏幕上始终有停止按钮。",
   "Open Accessibility settings": "打开无障碍设置",
   "App settings": "应用设置",
   "Greyed out with “Restricted setting”? Android 13+ does that for apps installed from a download: in App settings tap ⋮ → Allow restricted settings, then come back.": "灰色且提示「受限设置」？Android 13+ 对下载安装的应用会这样：在应用设置里点 ⋮ → 允许受限设置，再回来。",
   "Android may switch the service off after an update or a battery clean-up; if the phone stops answering, come back here.": "系统更新或电池清理后安卓可能会把服务关掉；手机不再响应时回到这里看看。",
-  "On the phone's screen: {gui} of {total} steps ({pct}%). The screen is the last resort — a skill, a fetch or the browser comes first.": "在手机屏幕上操作：{total} 步里有 {gui} 步（{pct}%）。屏幕是最后一招——技能、抓取、浏览器优先。",
+  "On the phone's screen: {gui} of {total} steps ({pct}%). The screen is the last resort; a skill, a fetch or the browser comes first.": "在手机屏幕上操作：{total} 步里有 {gui} 步（{pct}%）。屏幕是最后一招，技能、抓取、浏览器优先。",
   "last seen in {app}": "上次看到在 {app}",
   "The operator's model looks at screens step by step: a small, fast model that takes pictures. The Hands model row under Chat model picks one on the same endpoint and key; the fields here are for a different endpoint. Empty = {model}.":
     "操作屏幕的模型一步步看截图：选一个小而快、能看图的模型。「对话模型」卡片里的「动手模型」一行在同一个接口和 key 上选；这里的字段用于另一个接口。留空 = {model}。",
@@ -866,8 +849,8 @@ const zhCN: Record<string, string> = {
   "Chat model": "对话模型",
   "Hands model": "动手模型",
   "Currently {value}": "当前为 {value}",
-  "The model that looks at screens when the hands run — the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.":
-    "动手时看屏幕的模型——手机、这台电脑、浏览器读不了的页面。你账号的动手模型是 {model}；上面的对话模型是另一项选择。",
+  "The model that looks at screens when the hands run: the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.":
+    "动手时看屏幕的模型：手机、这台电脑、浏览器读不了的页面。你账号的动手模型是 {model}；上面的对话模型是另一项选择。",
   "The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: this provider's own hands model.":
     "动手时看屏幕的模型：小而快、能看图，用同一个接口和 key。默认：这个服务商自己的动手模型。",
   "The model that looks at screens when the hands run. This provider has no model that sees, so the hands use your account's, {model}, unless you pick one here.":
@@ -881,17 +864,17 @@ const zhCN: Record<string, string> = {
   // ---- first run: the list, the naming page, the model form
   "A personal agent of your own. Three things to know:": "一个属于你自己的个人智能体。三件事：",
   "It does things for you.": "它替你把事情做完。",
-  "Searches, browses, writes, books, reads mail — and hands you the result, not a list of links.": "搜索、浏览、写作、预订、读邮件——交给你的是结果，不是一堆链接。",
+  "Searches, browses, writes, books, reads mail, and hands you the result, not a list of links.": "搜索、浏览、写作、预订、读邮件，交给你的是结果，不是一堆链接。",
   "It keeps working when you close the app.": "你关掉应用，它还在干活。",
   "Goals move forward between your visits; it reports in the Feed and notifies you when something is worth it.": "目标在你不在的时候继续推进；它在动态里汇报，值得打扰你时才通知你。",
   "It asks you first where it matters.": "要紧的事，它先问你。",
-  "A separate Sentinel reviews every action. Sending, paying, deleting — it stops and asks; your keys stay in a vault the model cannot read.": "独立的 Sentinel 审查每一个动作。发送、付款、删除——它会停下来问你；你的密钥放在模型读不到的保险库里。",
+  "A separate Sentinel reviews every action. Sending, paying, deleting: it stops and asks; your keys stay in a vault the model cannot read.": "独立的 Sentinel 审查每一个动作。发送、付款、删除：它会停下来问你；你的密钥放在模型读不到的保险库里。",
   "Set it up": "设置一下",
   "Add a model": "添加模型",
   "Pick a provider and paste a key. Yours, stored in the vault.": "选一个服务商，粘贴密钥。密钥是你的，存在保险库里。",
   "Connect mail, calendar, contacts": "连接邮箱、日历、通讯录",
   "Connected. Tap to add more.": "已连接。点击添加更多。",
-  "Optional — it can read what came in, know your day, and who is who.": "可选——它就能读到来信、知道你的日程、认得谁是谁。",
+  "Optional. It can read what came in, know your day, and who is who.": "可选。它就能读到来信、知道你的日程、认得谁是谁。",
   "Start": "开始",
   "Needs a model first.": "先要有一个模型。",
   "Add a model to start": "添加模型后开始",
@@ -983,16 +966,16 @@ const zhCN: Record<string, string> = {
   "privacy policy": "隐私政策",
   "Free, open source, non-profit": "免费、开源、非营利",
   "Chat apps": "聊天入口",
-  "nanoMuse is a non-profit open-source community project — free, forever. Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, use your own key (Alibaba Cloud Bailian in mainland China, OpenRouter elsewhere). Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours. Delete the account whenever you like.":
+  "nanoMuse is a non-profit open-source community project, free forever. Sign in with a phone number or an e-mail and the model comes with a free allowance, paid by the developer; when it is gone, use your own key (Alibaba Cloud Bailian in mainland China, OpenRouter elsewhere). Nothing is sold; what the relay keeps is in the privacy policy, and Settings → Data controls is yours. Delete the account whenever you like.":
     "nanoMuse 是非营利的开源社区项目，永久免费。用手机号或邮箱登录，模型自带一份免费额度，费用由开发者承担；用完可以换自己的 key（中国大陆用阿里云百炼，海外用 OpenRouter）。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。账号随时可以删除。",
-  "This is a preview; the people building it use it every day. Report a bug, ask for a feature, send a pull request — that is what moves the project. A star on GitHub helps others find it.": "现在还是预览版，做它的人每天都在用。欢迎反馈问题、提需求、贡献代码——项目就是这样往前走的。在 GitHub 点个 Star，能让更多人找到它。",
+  "This is a preview; the people building it use it every day. Report a bug, ask for a feature, send a pull request: that is what moves the project. A star on GitHub helps others find it.": "现在还是预览版，做它的人每天都在用。欢迎反馈问题、提需求、贡献代码，项目就是这样往前走的。在 GitHub 点个 Star，能让更多人找到它。",
   "Star on GitHub": "去 GitHub 点个 Star",
   "Report a bug or ask for a feature": "反馈问题 / 提需求",
   // -- data controls (relay 0.9): the one switch over what the relay keeps --
   "Data controls": "数据控制",
   "Help improve nanoMuse's AI models": "帮助改进 nanoMuse 的 AI 模型",
-  "While this is on, the text of your chats with the nanoMuse Cloud models — what you wrote, what it answered and the tools it chose to call — is kept on the relay to train the community's own open model. Not your memory or SOUL (the system prompt), not what tools returned, not pictures, and never next to who you are. Your own API key never passes through the relay.":
-    "开启后，你与 nanoMuse Cloud 模型对话的文字——你写的、它回答的，以及它选择调用的工具——会保存在中继上，用来训练社区自己的开源模型。不保存你的记忆和 SOUL（系统提示）、工具返回的内容和图片，也不和你的身份放在一起。用自己的 API key 时，对话不经过中继。",
+  "While this is on, the text of your chats with the nanoMuse Cloud models (what you wrote, what it answered and the tools it chose to call) is kept on the relay to train the community's own open model. Not your memory or SOUL (the system prompt), not what tools returned, not pictures, and never next to who you are. Your own API key never passes through the relay.":
+    "开启后，你与 nanoMuse Cloud 模型对话的文字（你写的、它回答的，以及它选择调用的工具）会保存在中继上，用来训练社区自己的开源模型。不保存你的记忆和 SOUL（系统提示）、工具返回的内容和图片，也不和你的身份放在一起。用自己的 API key 时，对话不经过中继。",
   "New accounts start with it on.": "新账号默认开启。",
   "New accounts start with it off.": "新账号默认关闭。",
   "Sign in to nanoMuse Cloud to use it.": "登录 nanoMuse Cloud 后可用。",
@@ -1007,8 +990,8 @@ const zhCN: Record<string, string> = {
   "{n} turns deleted": "已删除 {n} 轮",
   // -- the first-sign-in steps: a password, which model answers (relay 0.5) --
   "Set a password": "设一个密码",
-  "Your account is in. With a password, your phone and your other computers sign in at once, without waiting for a code. Optional — you can set one later under Account.":
-    "账号已登录。设了密码，手机和其他电脑就能直接登录，不用再等验证码。可选——以后也可以在「账号」里设置。",
+  "Your account is in. With a password, your phone and your other computers sign in at once, without waiting for a code. Optional; you can set one later under Account.":
+    "账号已登录。设了密码，手机和其他电脑就能直接登录，不用再等验证码。可选，以后也可以在「账号」里设置。",
   "At least 8 characters": "至少 8 个字符",
   "Set the password": "设置密码",
   "Not now": "以后再说",
@@ -1017,33 +1000,33 @@ const zhCN: Record<string, string> = {
   "left of ¥{grant}": "剩余 / 共 ¥{grant}",
   "¥{spent} used{usd}; the allowance does not reset.": "已用 ¥{spent}{usd}；额度不按天重置。",
   "No limit on this account.": "这个账号不限额度。",
-  "¥{allowance} to start, +¥{invite} for each friend you invite — and +¥{invite} for them; after that, your own key keeps the model going.": "起始 ¥{allowance}，每邀请一位朋友你 +¥{invite}、对方也 +¥{invite}；用完后换自己的 key 继续。",
+  "¥{allowance} to start, +¥{invite} for each friend you invite, and +¥{invite} for them; after that, your own key keeps the model going.": "起始 ¥{allowance}，每邀请一位朋友你 +¥{invite}、对方也 +¥{invite}；用完后换自己的 key 继续。",
   "The free allowance is used up.": "免费额度已用完。",
   "The image provider is busy right now — try again in a minute.": "生图服务现在有点忙，请过一分钟再试。",
   "Nearly used up: ¥{left} of ¥{grant} left.": "额度快用完了：还剩 ¥{left}（共 ¥{grant}）。",
-  "Invite a friend (+¥{invite} for each of you) or bring your own key — your sign-in keeps working either way.":
-    "邀请一位新用户（你和对方各 +¥{invite}），或者换成自己的 key——无论哪种，登录都不受影响。",
+  "Invite a friend (+¥{invite} for each of you) or bring your own key; your sign-in keeps working either way.":
+    "邀请一位新用户（你和对方各 +¥{invite}），或者换成自己的 key；无论哪种，登录都不受影响。",
   "See the ways": "看看怎么办",
   Dismiss: "关闭",
-  "Three ways on — your sign-in and your devices keep working whichever you pick.": "三个办法继续用——无论选哪个，登录和多设备功能都不受影响。",
+  "Three ways on; your sign-in and your devices keep working whichever you pick.": "三个办法继续用；无论选哪个，登录和多设备功能都不受影响。",
   "Use your own model key": "换成自己的 key",
   "Alibaba Cloud Bailian is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, the hands, pictures and clips.":
     "推荐阿里云百炼：新用户有免费额度，开通约 2 分钟，一个 key 就能对话、动手、画图、生成视频。",
-  "Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go — chat, the hands and pictures; clips need Bailian.":
-    "海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费——对话、动手、画图都行；生成视频需要百炼。",
+  "Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go, for chat, the hands and pictures; clips need Bailian.":
+    "海外用户用不了百炼，推荐 OpenRouter：一个账号一把 key，按量付费，对话、动手、画图都行；生成视频需要百炼。",
   "Other providers and what each key covers": "其他服务商，以及各自的 key 能做什么",
   "Get a key": "去申请 key",
   "covers {list}": "支持{list}",
   ", ": "、",
   " or ": "或",
   "Sign in with a plan you already pay for": "用你已经在付费的套餐登录",
-  "{plans} — the plan's models answer here, no key to make. ChatGPT works on every device, the others on the phones. A ChatGPT sign-in covers chat and the hands; pictures and clips still want a key.":
-    "{plans}——套餐里的模型直接在这里回答，不用申请 key。ChatGPT 在每台设备上都可以，其他的在手机上。ChatGPT 登录只覆盖对话和动手；画图和生成视频仍需要一把 key。",
+  "{plans}: the plan's models answer here, no key to make. ChatGPT works on every device, the others on the phones. A ChatGPT sign-in covers chat and the hands; pictures and clips still want a key.":
+    "{plans}：套餐里的模型直接在这里回答，不用申请 key。ChatGPT 在每台设备上都可以，其他的在手机上。ChatGPT 登录只覆盖对话和动手；画图和生成视频仍需要一把 key。",
   // the ChatGPT sign-in card
   "Sign in with ChatGPT": "用 ChatGPT 登录",
   "Or sign in with a ChatGPT plan": "或者用 ChatGPT 套餐登录",
-  "Covers chat and the hands. Pictures and clips are not part of it — those need a provider with image or video models.":
-    "覆盖对话和动手。画图和生成视频不在其中——那两项需要一个有图像或视频模型的服务商。",
+  "Covers chat and the hands. Pictures and clips are not part of it; those need a provider with image or video models.":
+    "覆盖对话和动手。画图和生成视频不在其中，那两项需要一个有图像或视频模型的服务商。",
   "OpenAI's terms cover using a ChatGPT plan inside OpenAI's own Codex; other apps have had this access cut off before (OpenCode, January 2026). If it stops working, an API key does.":
     "OpenAI 的条款只允许在它自家的 Codex 里使用 ChatGPT 套餐；其他应用曾被切断过这条路（OpenCode，2026 年 1 月）。哪天它不能用了，API key 仍然可以。",
   "This nanoMuse has no sign-in route yet. In a terminal on this computer, run": "这个 nanoMuse 还没有登录接口。在这台电脑的终端里运行",
@@ -1061,10 +1044,10 @@ const zhCN: Record<string, string> = {
   "That address belongs to another sign-in attempt. Open the page again and paste the address it ends on.": "这个地址属于另一次登录尝试。再次打开页面，粘贴它最后停在的地址。",
   "ChatGPT answers the chat now.": "现在由 ChatGPT 回答对话。",
   // the one sentence for a feature no configured provider covers (contract C11)
-  "Pictures need a provider with image models — {providers}.": "画图需要一个有图像模型的服务商——{providers}。",
-  "Clips need a provider with video models — {providers}.": "生成视频需要一个有视频模型的服务商——{providers}。",
-  "The hands need a model that sees pictures — {providers}.": "动手需要一个能看图的模型——{providers}。",
-  "Chat needs a model — {providers}.": "对话需要一个模型——{providers}。",
+  "Pictures need a provider with image models: {providers}.": "画图需要一个有图像模型的服务商：{providers}。",
+  "Clips need a provider with video models: {providers}.": "生成视频需要一个有视频模型的服务商：{providers}。",
+  "The hands need a model that sees pictures: {providers}.": "动手需要一个能看图的模型：{providers}。",
+  "Chat needs a model: {providers}.": "对话需要一个模型：{providers}。",
   How: "怎么做",
   "Automatic · {model}": "自动 · {model}",
   "E-mail (or a mainland China phone number)": "邮箱（或中国大陆手机号）",
@@ -1072,18 +1055,18 @@ const zhCN: Record<string, string> = {
   "Step-by-step guide": "图文教程",
   "Invite a friend: +¥{bonus} for you and +¥{bonus} for them, for each new person who signs up with your link.": "邀请朋友：每有一位新用户通过你的链接注册，你 +¥{bonus}，对方也 +¥{bonus}。",
   "Your invite link is under Account": "邀请链接在「账号」页",
-  "Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my link: {link}": "来和我一起用 nanoMuse——完全开源的个人智能体，免费使用。用我的链接注册：{link}",
+  "Try nanoMuse with me, a fully open-source personal agent, free to use. Sign up with my link: {link}": "来和我一起用 nanoMuse，完全开源的个人智能体，免费使用。用我的链接注册：{link}",
   // -- invitations (relay 0.4/0.5) --
   "Invite code (optional)": "邀请码（选填）",
   "A friend's code counts for a new account: you both get ¥{invite} more allowance.": "朋友的邀请码只对新账号有效：你和对方的额度各 +¥{invite}。",
   "Have an invite code?": "有邀请码？",
   "Invite a friend": "邀请朋友",
-  "Each new person who signs up with your code adds ¥{bonus} to your allowance — and ¥{bonus} to theirs. It never expires.": "每有一位新用户用你的邀请码注册，你的额度 +¥{bonus}，对方也 +¥{bonus}，不过期。",
+  "Each new person who signs up with your code adds ¥{bonus} to your allowance, and ¥{bonus} to theirs. It never expires.": "每有一位新用户用你的邀请码注册，你的额度 +¥{bonus}，对方也 +¥{bonus}，不过期。",
   "Your code": "邀请码",
   "Copied": "已复制",
   "Share the link": "分享链接",
   "Copy the link": "复制链接",
-  "Try nanoMuse with me — a fully open-source personal agent, free to use. Sign up with my code {code}: {link}": "来和我一起用 nanoMuse——完全开源的个人智能体，免费使用。用我的邀请码 {code} 注册：{link}",
+  "Try nanoMuse with me, a fully open-source personal agent, free to use. Sign up with my code {code}: {link}": "来和我一起用 nanoMuse，完全开源的个人智能体，免费使用。用我的邀请码 {code} 注册：{link}",
   "{n} friends joined": "已邀请 {n} 位",
   "¥{amount} added by invitations": "邀请带来 ¥{amount}",
   "The code you received": "收到的验证码",
@@ -1103,12 +1086,11 @@ const zhCN: Record<string, string> = {
   "Refused": "被拒绝",
   "Connecting…": "连接中…",
   "Connecting to the hub…": "正在连接中继…",
-  "The hub refused this device — sign in again.": "中继拒绝了这台设备——请重新登录。",
+  "The hub refused this device. Sign in again.": "中继拒绝了这台设备。请重新登录。",
   "The hub is off on this device.": "这台设备没有开启中继。",
   "Sign in above to see them.": "先在上面登录，就能看到。",
   "{n} online": "{n} 台在线",
   "online": "在线",
-  "offline": "离线",
   "Ask": "去问它",
   "Ask one of your devices": "让某台设备去做",
   // the Devices page as cards (0.1.37)
@@ -1141,8 +1123,8 @@ const zhCN: Record<string, string> = {
   "Hands on this computer": "操作这台电脑",
   "On the screen now": "正在操作屏幕",
   "Nothing can drive this screen yet.": "目前没有能驱动这块屏幕的组件。",
-  "On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black. The first action in each app asks you once — \"Let {name} use Safari?\" — and the answer is kept under Permissions.":
-    "Mac 上，macOS 弹窗询问时请在「系统设置 → 隐私与安全性」的「辅助功能」和「屏幕录制」里允许 nanoMuse；不允许的话点击没有反应，截图也是黑的。每个应用的第一步会先问你一次——「让 {name} 使用 Safari 吗？」——答复记在「权限」里。",
+  "On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black. The first action in each app asks you once (\"Let {name} use Safari?\") and the answer is kept under Permissions.":
+    "Mac 上，macOS 弹窗询问时请在「系统设置 → 隐私与安全性」的「辅助功能」和「屏幕录制」里允许 nanoMuse；不允许的话点击没有反应，截图也是黑的。每个应用的第一步会先问你一次（「让 {name} 使用 Safari 吗？」），答复记在「权限」里。",
   "Where": "范围",
   "One window": "单个窗口",
   "Whole screen": "整个屏幕",
@@ -1181,15 +1163,15 @@ const zhCN: Record<string, string> = {
   "E-mail, calendar, browser, MCP servers": "邮件、日历、浏览器、MCP 服务器",
   "Rename this device": "给这台设备改名",
   "Use my own API key or a plan I pay for": "用我自己的 API key，或我在付费的套餐",
-  "{first} first — {others}": "首选 {first}——{others}",
+  "{first} first, then {others}": "首选 {first}，其次 {others}",
   "DeepSeek, Kimi, OpenAI, ChatGPT…": "DeepSeek、Kimi、OpenAI、ChatGPT…",
   "OpenAI, ChatGPT, Gemini, DeepSeek…": "OpenAI、ChatGPT、Gemini、DeepSeek…",
   "Which model answers?": "让哪个模型来回答？",
   "Your account already brings one. You can add your own API key as well and switch at any time.": "你的账号已经自带了一个。也可以加上自己的 API key，随时切换。",
   "DeepSeek for the chat and Qwen for the hands, with a free allowance per account paid by the developer. Nothing to configure.": "对话用 DeepSeek，动手用 Qwen；每个账号都有一份由开发者承担的免费额度，不用配置。",
   "I have my own API key": "我有自己的 API key",
-  "Alibaba Cloud Bailian first — one key covers chat, the hands, pictures and clips — then DeepSeek, Kimi, Zhipu, OpenAI, OpenRouter and any OpenAI-compatible endpoint. The key stays on this device.":
-    "首选阿里云百炼——一个 key 就能对话、动手、画图、生成视频——其次是 DeepSeek、Kimi、智谱、OpenAI、OpenRouter，以及任何兼容 OpenAI 接口的服务。key 只留在这台设备上。",
+  "Alibaba Cloud Bailian first (one key covers chat, the hands, pictures and clips), then DeepSeek, Kimi, Zhipu, OpenAI, OpenRouter and any OpenAI-compatible endpoint. The key stays on this device.":
+    "首选阿里云百炼（一个 key 就能对话、动手、画图、生成视频），其次是 DeepSeek、Kimi、智谱、OpenAI、OpenRouter，以及任何兼容 OpenAI 接口的服务。key 只留在这台设备上。",
   "OpenRouter first (one account, one key, pay as you go), then OpenAI, Anthropic, Gemini, DeepSeek and any OpenAI-compatible endpoint. The key stays on this device.":
     "首选 OpenRouter（一个账号一把 key，按量付费），其次是 OpenAI、Anthropic、Gemini、DeepSeek，以及任何兼容 OpenAI 接口的服务。key 只留在这台设备上。",
   "A ChatGPT plan signs in from Connections and answers the chat and the hands. Pictures and clips still want a key.": "ChatGPT 套餐可在「连接」里登录，回答对话并驱动双手。画图和生成视频仍需要一把 key。",
@@ -1226,8 +1208,8 @@ const zhCN: Record<string, string> = {
   "Pick from the list": "从列表里选",
   "{n} models your account may use: the menu first, then everything else the provider lists under the Cloud key. Pick one; the ones beyond the menu are priced as the dearest menu model of their kind.":
     "账号可用的模型共 {n} 个：先是菜单，然后是服务商在 Cloud 这把 key 下列出的其他模型。直接选就行；菜单之外的按同类里最贵的菜单模型计费。",
-  "Your account may name any model the provider has, not only these: type its id — a chat model here, a picture or clip model below — and it goes through as typed.":
-    "你的账号可以使用服务商的任意模型，不限于这几个：直接输入模型 id——对话模型填在这里，图片或短片模型填在下面——会原样转发。",
+  "Your account may name any model the provider has, not only these: type its id (a chat model here, a picture or clip model below) and it goes through as typed.":
+    "你的账号可以使用服务商的任意模型，不限于这几个：直接输入模型 id（对话模型填在这里，图片或短片模型填在下面），会原样转发。",
   Automatic: "自动",
   "{n} pictures": "{n} 张图",
   "{n} pictures and {c} clips": "{n} 张图加 {c} 段短片",
@@ -1235,22 +1217,22 @@ const zhCN: Record<string, string> = {
   "The cost could not be checked: {error}": "费用暂时查不到：{error}",
   "Checking the cost…": "正在查费用…",
   "About ¥{cny} for {what}; your account has no limit.": "{what}约 ¥{cny}；你的账号没有额度限制。",
-  "About ¥{cny} for {what} — more than the ¥{left} left in your allowance.": "{what}约 ¥{cny}——超过了额度里剩下的 ¥{left}。",
+  "About ¥{cny} for {what}, more than the ¥{left} left in your allowance.": "{what}约 ¥{cny}，超过了额度里剩下的 ¥{left}。",
   "About ¥{cny} for {what}; ¥{left} left in your allowance.": "{what}约 ¥{cny}；额度还剩 ¥{left}。",
   "A new look for {name}": "给{name}换个形象",
   "Drawing four to choose from…": "正在画四个供你挑选…",
-  "Pick one — tap it, or say which": "选一个——点它，或者说第几个",
+  "Pick one: tap it, or say which": "选一个：点它，或者说第几个",
   "Drawing the poses…": "正在画各种姿态…",
-  "The new look is on — making the clips…": "新形象已经换上——正在做短片…",
+  "The new look is on; making the clips…": "新形象已经换上，正在做短片…",
   "The new look is on": "新形象已经换上",
   "Not this time": "这次先不换",
   "That did not work": "没成功",
   "Candidate {n}": "第 {n} 个",
   Redraw: "重画一组",
-  "Idle, working, waiting, happy, sorry — the face follows what {name} is doing.": "待机、工作、等待、开心、抱歉——形象会跟着{name}正在做的事变化。",
+  "Idle, working, waiting, happy, sorry: the face follows what {name} is doing.": "待机、工作、等待、开心、抱歉：形象会跟着 {name} 正在做的事变化。",
   "Four more pictures from the one you picked; this takes a minute or two.": "根据你选的这张再画四张；需要一两分钟。",
   "Some poses could not be drawn and show the idle picture instead.": "有几个姿态没画出来，先用待机图代替。",
-  "The face is already on; four short clips are being made from the poses — a few minutes.": "形象已经换上了；正在根据这几张姿态图做四段短片，需要几分钟。",
+  "The face is already on; four short clips are being made from the poses, a few minutes.": "形象已经换上了；正在根据这几张姿态图做四段短片，需要几分钟。",
   "Some clips could not be made; those moods stay still.": "有几段短片没做出来，这些状态就用静态图。",
   "The new look is on; the clips are being made.": "新形象已经换上；短片正在做。",
   "The new look is on.": "新形象已经换上。",
@@ -1258,7 +1240,7 @@ const zhCN: Record<string, string> = {
   "New look: {description}. Say what to change any time, or pick another under Settings.": "新形象：{description}。想改随时说，也可以在「设置」里换别的。",
   "Join the hub": "加入中继",
   "This chat goes to {device}.": "这个对话发给 {device}。",
-  "Whatever you ask here, the {name} on {device} does where it is — its shell, its files, its screen. Every step shows up here, and anything that needs an approval asks you here.": "在这里说的每件事，都由 {device} 上的 {name} 在它那边完成——它的命令行、它的文件、它的屏幕。每一步都显示在这里，需要批准的事也在这里问你。",
+  "Whatever you ask here, the {name} on {device} does where it is: its shell, its files, its screen. Every step shows up here, and anything that needs an approval asks you here.": "在这里说的每件事，都由 {device} 上的 {name} 在它那边完成：它的命令行、它的文件、它的屏幕。每一步都显示在这里，需要批准的事也在这里问你。",
   "What is on your screen right now?": "你屏幕上现在是什么？",
   "Which folder are you in, and what is in it?": "你在哪个目录，里面有什么？",
   "Check for updates and tell me what needs a restart": "检查一下更新，告诉我哪些需要重启",
@@ -1352,7 +1334,7 @@ const zhCN: Record<string, string> = {
   "{n} d ago": "{n} 天前",
   "Use the nanoMuse Cloud model": "使用 nanoMuse Cloud 模型",
   "Signed in as {hint}. A free allowance, nothing to paste. Recommended to start.": "已登录 {hint}。自带免费额度，无需粘贴任何 key，推荐先用它。",
-  "Your account brings a model with a free allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.":
+  "Your account brings a model with a free allowance, the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.":
     "你的账号自带一个有免费额度的模型，起步最快。也可以粘贴自己的 key：它加密存在服务端的保险库里，不会给模型看到，你说的内容也不经过中继。",
 
   // ── Voice input (the browser's own speech recognition) ───────────────────────────
@@ -1364,7 +1346,7 @@ const zhCN: Record<string, string> = {
 
   // ── Coding agents ─────────────────────────────────────────────────────────────────
   "Coding agents": "编程助手",
-  "Cursor, Codex and Claude Code — see what they are doing, and tell them things from anywhere.": "Cursor、Codex 和 Claude Code：随时看它们在做什么，在任何地方给它们发消息。",
+  "Cursor, Codex and Claude Code: see what they are doing, and tell them things from anywhere.": "Cursor、Codex 和 Claude Code：随时看它们在做什么，在任何地方给它们发消息。",
   Coding: "编程",
   "This computer": "这台电脑",
   "This one · {name}": "本机 · {name}",
@@ -1400,7 +1382,7 @@ const zhCN: Record<string, string> = {
   "Hide details": "收起详情",
   "Today's share of the free allowance is used up; it comes back at midnight, Beijing time. Your own model key under Connections keeps you going now.": "今天的免费额度用完了，北京时间零点恢复。在「连接」里填上你自己的模型 key，现在就能继续。",
   "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key under Connections — your sign-in and your devices keep working either way.":
-    "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者在「连接」里填上自己的模型 key——无论选哪个，登录和多设备功能都不受影响。",
+    "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者在「连接」里填上自己的模型 key；无论选哪个，登录和多设备功能都不受影响。",
   "The account's free allowance is used up. Add your own model key under Connections to keep going.": "这个账号的免费额度已经用完。在「连接」里填上你自己的模型 key 就能继续。",
   "Too many requests at once; wait a moment and try again.": "请求太密集了，稍等一下再试。",
   "The model provider is busy; try again in a moment.": "模型服务商正忙，稍后再试。",
@@ -1443,7 +1425,7 @@ const zhCN: Record<string, string> = {
   "That model is not offered here.": "这里不提供这个模型。",
   "Too many requests; slow down a little.": "请求太频繁了，稍微慢一点。",
   "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key — your sign-in and your devices keep working either way.":
-    "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者换成自己的 key——无论选哪个，登录和多设备功能都不受影响。",
+    "免费额度已用完。邀请一位新用户（你和对方的额度都会增加），或者换成自己的 key；无论选哪个，登录和多设备功能都不受影响。",
   "Today's token quota is used up; it comes back tomorrow.": "今天的 token 配额用完了，明天恢复。",
   "The model provider did not answer.": "模型服务商没有响应。",
   "nanoMuse Cloud has no model key configured.": "nanoMuse Cloud 还没有配置模型 key。",
@@ -1499,11 +1481,11 @@ const zhCN: Record<string, string> = {
   "Pick one": "挑一张",
   "Draw four more any time; the old ones stay until you do.": "随时可以再画四张；没重画之前旧的会留着。",
   "Use this one": "就用这个",
-  "Next, its poses are drawn from it in the background — working, waiting for you, done, something wrong.": "接下来会在后台以它为底画出各个状态——干活、等你、搞定、出错。",
+  "Next, its poses are drawn from it in the background: working, waiting for you, done, something wrong.": "接下来会在后台以它为底画出各个状态：干活、等你、搞定、出错。",
   "Keep the current look": "先不换了",
   "Nothing came back.": "什么也没生成出来。",
-  "The pictures stay in this computer's workspace under avatar/. Each new look asks your provider for eight pictures — four to choose from and four poses — and four short clips where there is a video model.":
-    "图片存在这台电脑的工作区 avatar/ 下。每换一次形象会向你的提供方要八张图——四张供你挑选，四个状态——有视频模型时还会生成四段短动画。",
+  "The pictures stay in this computer's workspace under avatar/. Each new look asks your provider for eight pictures (four to choose from and four poses) and four short clips where there is a video model.":
+    "图片存在这台电脑的工作区 avatar/ 下。每换一次形象会向你的服务商要八张图（四张供你挑选，四个状态），有视频模型时还会生成四段短动画。",
   "Or just say it in the chat: “change your avatar to a corgi”.": "也可以直接在对话里说：“把虚拟形象改成一只柯基”。",
   "Change your avatar to ": "把虚拟形象改成",
   "Alibaba Cloud Bailian": "阿里云百炼",
@@ -1524,7 +1506,7 @@ const zhCN: Record<string, string> = {
   "Report a bug": "报告问题",
   "Developer tools": "开发者工具",
   Developer: "开发者",
-  "The Coding screen — Cursor, Codex and the other coding agents on this computer — in the sidebar, and the runtime's address below. This device only.":
+  "The Coding screen (Cursor, Codex and the other coding agents on this computer) in the sidebar, and the runtime's address below. This device only.":
     "在侧栏显示「编程」（这台电脑上的 Cursor、Codex 等编程智能体），并在下面显示运行时的地址。仅此设备。",
   "Runtime:": "运行时：",
   "the token is in the server_token file in the data folder": "令牌在数据目录的 server_token 文件里",
@@ -1542,21 +1524,21 @@ const zhCN: Record<string, string> = {
   // the Feed the way the Android app draws it
   "Feed settings": "动态设置",
   "About the feed": "动态版块说明",
-  "Your feed is driven by the instruction below. Any edit you make here applies to every post from now on.": "你的动态版块由以下指示驱动。你对此提示做出的任何编辑都将应用于今后的动态帖子。",
+  "Your feed is driven by the instruction below. Any edit you make here applies to every post from now on.": "动态由下面这句话来定。在这里改动它，今后的每一条帖子都会照着来。",
   "Build me a feed about what I care about. Keep it short and direct, easy to skim, no clickbait.": "给我做一个关于我关心的事的动态。短一点、直接一点，扫一眼就能看完，别搞标题党。",
   "Got it": "知道了",
   "Write it now": "现在写一版",
   "Nothing in the feed yet": "动态里还没有内容",
-  "As we get to know each other, new posts will show up here. Every day at {time} I read what I remember about you — your memory files, the last week of diary, your goals — and write a few short posts.":
-    "随着我们相互了解，新的帖子会显示在这里。每天 {time}，我会读一遍记得的关于你的东西——记忆文件、最近一周的日记、你的目标——然后写几条简短的帖子。",
+  "As we get to know each other, new posts will show up here. Every day at {time} I read what I remember about you (your memory files, the last week of diary, your goals) and write a few short posts.":
+    "随着我们相互了解，新的帖子会显示在这里。每天 {time}，我会读一遍记得的关于你的东西（记忆文件、最近一周的日记、你的目标），然后写几条简短的帖子。",
   "Steer it with one sentence": "一句话就能调整",
   "Tap the sliders at the top right to tell me what you want more of, switch the daily routine off, or have me write the first day now.":
     "点右上角的滑杆，告诉我你想多看什么、关掉每天的例程，或者让我现在就写第一天。",
-  "Short posts your agent writes for you from what it remembers — your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time.":
-    "这里是你的智能体为你写的短帖子，取材于它记得的东西——记忆文件、最近一周的日记、你的目标。下面这句话决定今后每一条帖子的方向，随时可以改。",
+  "Short posts your agent writes for you from what it remembers: your memory files, the last week of diary, your goals. The sentence below steers every post from now on; edit it any time.":
+    "这里是你的智能体为你写的短帖子，取材于它记得的东西：记忆文件、最近一周的日记、你的目标。下面这句话决定今后每一条帖子的方向，随时可以改。",
   "Write it every day": "每天自动写",
   "Time of day": "时间",
-  "Add a model first — the feed is written by your agent.": "先添加一个模型——动态由你的 agent 来写。",
+  "Add a model first; the feed is written by your agent.": "先添加一个模型，动态由你的智能体来写。",
   Discuss: "讨论",
   "About this post": "这条帖子的信息",
   "Delete this post": "删除这条",
@@ -1578,12 +1560,12 @@ const zhCN: Record<string, string> = {
   // Goals, the phone's page
   "Nothing tracked yet": "尚未追踪任何内容",
   "Create a goal": "创建目标",
-  "Pick a category and tell me the goal you have in mind. I'll shape a plan with you and keep improving it as you go.": "选择一个类别，告诉我你想要的目标，我将为你量身定制一个计划，并随着你的成长不断改进。",
+  "Pick a category and tell me the goal you have in mind. I'll shape a plan with you and keep improving it as you go.": "选一个类别，告诉我你心里的目标。我会和你一起定出计划，并在推进过程中不断调整。",
   "Create a {category} goal": "创建{category}目标",
   "First, we'll shape the goal together in the chat. I'll ask a few questions so I understand exactly what you're after.": "首先，我们将在聊天中一起完善目标。我会问几个问题，准确了解你的目标。",
   "Once it's set, I'll track your progress here.": "目标设置后，我会在这里追踪你的进度。",
-  "I'd like to create a {category} goal. Ask me a few short questions, one at a time — what exactly I want, why and by when, how often to check in — then create it with concrete steps using the goals tool.":
-    "我想创建一个{category}目标。请一次问我一个简短的问题——我具体想达成什么、为什么以及什么时候、多久检查一次——然后用 goals 工具把它建成带具体步骤的目标。",
+  "I'd like to create a {category} goal. Ask me a few short questions, one at a time (what exactly I want, why and by when, how often to check in), then create it with concrete steps using the goals tool.":
+    "我想创建一个{category}目标。请一次问我一个简短的问题（我具体想达成什么、为什么以及什么时候、多久检查一次），然后用 goals 工具把它建成带具体步骤的目标。",
   "Mark as done": "标记为已完成",
   "Mark as not done": "标记为未完成",
 
@@ -1592,7 +1574,7 @@ const zhCN: Record<string, string> = {
   "Tell me what's on your plate and I'll turn it into a realistic plan with the important things first.": "告诉我你手头有什么，我把它排成一份切实可行的计划，重要的事放前面。",
   "Help me plan my week. Ask me what I need to get done, then propose a schedule.": "帮我规划这一周。先问我有哪些事要做，然后给出一份日程安排。",
   "Research & compare options": "调研并比较选项",
-  "Laptops, flights, insurance, a new phone plan — I'll gather the facts and compare them for you.": "笔记本、机票、保险、新的手机套餐——我帮你收集事实并逐项比较。",
+  "Laptops, flights, insurance, a new phone plan — I'll gather the facts and compare them for you.": "笔记本、机票、保险、新的手机套餐，我帮你收集事实并逐项比较。",
   "I need to make a purchase decision. Ask me what I'm choosing between, then research and compare the options.": "我想买个东西，拿不定主意。先问我在哪几个里面挑，然后帮我查一查、比一比。",
   "Set up a long-term goal": "建立一个长期目标",
   "Share a goal (learn a language, run a 10k, save for a trip) and I'll break it into steps and keep track.": "说一个目标（学一门语言、跑完 10 公里、攒一次旅行的钱），我把它拆成步骤并持续跟进。",
@@ -1601,7 +1583,7 @@ const zhCN: Record<string, string> = {
   "The more I know about your preferences, routines and constraints, the more useful I get. I'll remember what matters.": "我越了解你的偏好、作息和限制，就越能帮上忙。重要的事我会记住。",
   "Ask me a few questions about myself so you can help me better, and remember the answers.": "问我几个关于我的问题，好更了解我，然后把答案记住。",
   "Build a quick tracker": "做一个简单的追踪表",
-  "Spending, habits, workouts, reading — I can write a small script or document to track it for you.": "开支、习惯、锻炼、阅读——我可以写一个小脚本或文档帮你记录。",
+  "Spending, habits, workouts, reading — I can write a small script or document to track it for you.": "开支、习惯、锻炼、阅读，我可以写一个小脚本或文档帮你记录。",
   "Build me a simple tracker. Ask me what I want to track and how, then create it in the workspace.": "帮我做一个简单的追踪表。先问我想记录什么、怎么记，然后在工作区里建好。",
 
   // Library, the phone's two-way split
@@ -1614,7 +1596,7 @@ const zhCN: Record<string, string> = {
 
   // Settings, the phone's list of rows
   "No model yet": "还没有模型",
-  "Add a provider and pick its models": "添加一个提供商并选择模型",
+  "Add a provider and pick its models": "添加一个服务商并选择模型",
   "Image & video models": "图像与视频模型",
   "Name & personality": "名字与人格",
   "About nanoMuse": "关于 nanoMuse",

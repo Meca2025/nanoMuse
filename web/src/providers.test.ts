@@ -27,9 +27,9 @@ describe("the own-key catalogue (contract C11)", () => {
 
   it("writes the one sentence with the region's providers, four at most", () => {
     const line = unavailableLine(t, "image", "global", "en");
-    expect(line).toMatch(/^Pictures need a provider with image models — .+ or .+\.$/);
+    expect(line).toMatch(/^Pictures need a provider with image models: .+ or .+\.$/);
     expect(line.split(", ").length).toBeLessThanOrEqual(4);
-    expect(unavailableLine(t, "video", "cn", "en")).toBe("Clips need a provider with video models — Alibaba Cloud Bailian.");
+    expect(unavailableLine(t, "video", "cn", "en")).toBe("Clips need a provider with video models: Alibaba Cloud Bailian.");
   });
 
   it("maps the catalogue's ids to the runtime's presets and back", () => {
