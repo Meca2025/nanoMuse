@@ -52,6 +52,84 @@ LANGUAGE_FIXED = (
     "Everything addressed to the user, progress notes, questions and the final summary, is "
     "written in {language}, whatever language the user or the tool output uses."
 )
+# The client said which language its screens are in (the `language` field of a sent message):
+# that is the language the person reads, so it wins over the script of one message.
+LANGUAGE_UI = (
+    "The user's app is set to {language}, so everything addressed to the user (progress notes, "
+    "questions and the final summary, every `step` included) is written in {language}. The "
+    "user's latest message is written in {detected}; tool output, screens and web pages may be "
+    "in other languages. None of that changes the language of your own sentences: a message, "
+    "a screen or a skill's text you quote keeps its own language, and everything around it is "
+    "in {language}."
+)
+
+# BCP-47 tags the clients send (the web console, the hub's `task` call) to the names the rule
+# uses. Region and script subtags only matter for Chinese; anything unknown returns "" and
+# the rule falls back to the script of the message.
+_LANGUAGE_NAMES: dict[str, str] = {
+    "en": "English",
+    "zh": "Chinese (Simplified)",
+    "zh-cn": "Chinese (Simplified)",
+    "zh-sg": "Chinese (Simplified)",
+    "zh-hans": "Chinese (Simplified)",
+    "zh-tw": "Chinese (Traditional)",
+    "zh-hk": "Chinese (Traditional)",
+    "zh-mo": "Chinese (Traditional)",
+    "zh-hant": "Chinese (Traditional)",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "de": "German",
+    "fr": "French",
+    "es": "Spanish",
+    "pt": "Portuguese",
+    "it": "Italian",
+    "nl": "Dutch",
+    "pl": "Polish",
+    "ro": "Romanian",
+    "ru": "Russian",
+    "tr": "Turkish",
+    "ar": "Arabic",
+    "he": "Hebrew",
+    "hi": "Hindi",
+    "th": "Thai",
+    "vi": "Vietnamese",
+    "id": "Indonesian",
+    "in": "Indonesian",
+    "ms": "Malay",
+    "fil": "Filipino",
+    "tl": "Filipino",
+    "uk": "Ukrainian",
+    "el": "Greek",
+    "cs": "Czech",
+    "sv": "Swedish",
+    "da": "Danish",
+    "fi": "Finnish",
+    "nb": "Norwegian",
+    "no": "Norwegian",
+    "hu": "Hungarian",
+    "fa": "Persian",
+    "bn": "Bengali",
+}
+
+
+def language_name(tag: str) -> str:
+    """The language a BCP-47 tag names, as the language rule writes it: ``zh-CN`` and
+    ``zh-Hans`` are "Chinese (Simplified)", ``zh-TW`` "Chinese (Traditional)", ``pt-BR``
+    "Portuguese". Android's ``in``/``tl`` and ``_`` separators are taken too. Empty or
+    unknown returns "" and the caller falls back to the message's script."""
+    t = str(tag or "").strip().replace("_", "-").lower()
+    if not t or len(t) > 20 or not all(ch.isalnum() or ch == "-" for ch in t):
+        return ""
+    if t in _LANGUAGE_NAMES:
+        return _LANGUAGE_NAMES[t]
+    parts = t.split("-")
+    if parts[0] == "zh" and len(parts) > 1:
+        # zh-Hant-TW, zh-Hans-CN: the script subtag decides, then the region
+        for p in parts[1:]:
+            if p in ("hant", "hans", "tw", "hk", "mo", "cn", "sg"):
+                return _LANGUAGE_NAMES[f"zh-{p}"]
+    return _LANGUAGE_NAMES.get(parts[0], "")
+
 
 _SCRIPTS: list[tuple[str, str]] = [
     ("Japanese", "\u3040-\u30ff"),  # hiragana / katakana take precedence over kanji
@@ -257,6 +335,7 @@ __all__ = [
     "GOALS_SECTION",
     "LANGUAGE_AUTO",
     "LANGUAGE_FIXED",
+    "LANGUAGE_UI",
     "MAX_STEPS_PROMPT",
     "MEMORY_SECTION",
     "QUIET_MARKER",
@@ -268,5 +347,6 @@ __all__ = [
     "TRIGGER_PROMPT",
     "USER_PROFILE_SECTION",
     "detect_language",
+    "language_name",
     "split_quiet",
 ]

@@ -240,8 +240,9 @@ export const api = {
     request<{ thread: ThreadMeta; events: TimelineEvent[]; has_more: boolean }>(
       `/api/threads/${thread}/events?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ""}`,
     ),
-  send: (thread: string, text: string, files: string[] = []) =>
-    request<{ event: TimelineEvent; thread: ThreadMeta }>(`/api/threads/${thread}/send`, json({ text, files })),
+  /** `language` is the locale of this console's screens; the reply is written in it. */
+  send: (thread: string, text: string, files: string[] = [], language = "") =>
+    request<{ event: TimelineEvent; thread: ThreadMeta }>(`/api/threads/${thread}/send`, json({ text, files, language })),
   /** A file to attach: the bytes as the body, the name in the query. */
   upload: (file: File) =>
     request<AttachmentInfo>(`/api/files/upload?name=${encodeURIComponent(file.name || "photo.jpg")}`, {

@@ -374,6 +374,28 @@ def test_websocket_hello_and_live_events(server):
         assert seen == ["hello over ws", "ws reply"]
 
 
+def test_send_carries_the_clients_language(server):
+    """`language` on REST and on the socket names the reply language in the system prompt;
+    without it the message's script decides (older clients send none)."""
+    client, service, llm = server
+    llm.script.extend([LLMResponse(content="r1"), LLMResponse(content="r2")])
+    r = client.post("/api/threads/main/send", json={"text": "ok 谢谢", "language": "en"})
+    assert r.status_code == 200
+    wait_for(lambda: [e for e in events_of(client, kind="assistant") if e["text"] == "r1"])
+    system = llm.calls[0]["messages"][0].content
+    assert "app is set to English" in system
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"kind": "auth", "token": "secret-token"})
+        ws.receive_json()
+        ws.send_json({"kind": "send", "thread": "main", "text": "ok 谢谢", "language": "zh-CN"})
+        wait_for(lambda: [e for e in events_of(client, kind="assistant") if e["text"] == "r2"])
+    assert "app is set to Chinese (Simplified)" in llm.calls[1]["messages"][0].content
+    assert (
+        client.post("/api/threads/main/send", json={"text": "x", "language": "x" * 30}).status_code
+        == 422
+    )
+
+
 def test_stream_that_was_not_a_reply_is_discarded(server):
     """MockLLM streams the whole content; when the reply is a prompt-mode tool call the
     parser removes, the phone must drop the bubble it was filling."""

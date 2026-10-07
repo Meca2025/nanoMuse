@@ -33,11 +33,20 @@ from nanomuse.llm.vision import content_parts, has_images, model_takes_images, w
 from nanomuse.logger import logger
 from nanomuse.schema import Function, LLMResponse, Message, ToolCall, new_id
 
+
+class EmptyCompletion(RuntimeError):
+    """A 200 with no `choices`: the endpoint had nothing to say (a filter, an overload).
+    The ``code`` lets the server word it as a provider failure, not a crash."""
+
+    code = "upstream_empty"
+
+
 _RETRYABLE = (
     openai.APIConnectionError,
     openai.APITimeoutError,
     openai.RateLimitError,
     openai.InternalServerError,
+    EmptyCompletion,
 )
 
 
@@ -149,6 +158,9 @@ class OpenAIChatLLM(BaseLLM):
     # ------------------------------------------------------------------ internals
     async def _ask_once(self, params: dict[str, Any]) -> LLMResponse:
         completion = await self.client.chat.completions.create(**params, stream=False)
+        if not completion.choices:
+            # some gateways answer a content filter or an overload with a 200 and no choices
+            raise EmptyCompletion("the endpoint answered with no choices")
         choice = completion.choices[0]
         msg = choice.message
         content, think_reasoning = split_think(msg.content)

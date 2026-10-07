@@ -113,3 +113,23 @@ async def test_tools_rejection_becomes_tools_unsupported():
     # an unrelated 400 stays what it is
     with pytest.raises(openai.BadRequestError):
         await llm_raising("maximum context length is 8192 tokens").ask([Message.user("hi")], tools)
+
+
+async def test_a_completion_with_no_choices_is_a_provider_failure():
+    """Some gateways answer a filter or an overload with a 200 and `choices: []`; that is
+    retried like a 5xx and, when it stays, told as the provider having trouble."""
+    import pytest
+
+    from nanomuse.llm.openai_chat import EmptyCompletion
+    from nanomuse.server.failures import describe_failure
+
+    llm = OpenAIChatLLM(LLMSettings(api_key="x", base_url="http://localhost"))
+
+    async def fake_create(**_):
+        return NS(choices=[], usage=None, model="m")
+
+    llm.client.chat.completions.create = fake_create  # type: ignore[method-assign]
+    with pytest.raises(EmptyCompletion) as info:
+        await llm._ask_once({"model": "m", "messages": []})
+    code, text = describe_failure(info.value)
+    assert code == "provider" and "having trouble" in text

@@ -47,8 +47,11 @@ Two kinds of request travel over the hub:
   phone's ShellGuard, the desktop's `guard.py`): reads and builds go quietly,
   deleting / sending / paying / system commands wait for the approval card on
   the device that asked.
-- **Tasks** — `task {text}`: a whole job in words for the target device's own
-  Muse, in a conversation of its own. It may take minutes. When that Muse hits
+- **Tasks** — `task {text, conversation?, language?}`: a whole job in words for the target device's own
+  Muse, in a conversation of its own (`conversation` names it; the sender's id
+  when absent). `language` (runtime 0.1.42, optional) is the BCP-47 tag of the
+  asking device's screens; the target answers in it instead of guessing from
+  the text. It may take minutes. When that Muse hits
   something that needs approval, it does not decide alone: the question travels
   back as an `event {stage:"approval"}` and the asking device shows its usual
   card (RiskGate on the phone, the terminal prompt on the desktop, a card in the

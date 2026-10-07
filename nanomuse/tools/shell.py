@@ -188,6 +188,28 @@ def programs_of(command: str) -> str | None:
     return ",".join(sorted(names)) if names else None
 
 
+# the most of a command's stdout (and, separately, stderr) kept in memory; the model sees
+# 20k characters of it anyway, and `cat` of a disk image must not be the runtime's memory
+MAX_OUTPUT_BYTES = 2 * 1024 * 1024
+
+
+async def _read_capped(stream: asyncio.StreamReader, cap: int) -> tuple[bytes, int]:
+    """Read a pipe to its end, keeping the first ``cap`` bytes; returns them and how many
+    bytes there were in all. The rest is drained so the child never blocks on a full pipe."""
+    chunks: list[bytes] = []
+    kept = total = 0
+    while True:
+        chunk = await stream.read(65536)
+        if not chunk:
+            break
+        total += len(chunk)
+        if kept < cap:
+            piece = chunk[: cap - kept]
+            chunks.append(piece)
+            kept += len(piece)
+    return b"".join(chunks), total
+
+
 async def _run(
     cmd: list[str] | str,
     cwd: Path,
@@ -232,7 +254,15 @@ async def _run(
                 start_new_session=own_session,
             )
         try:
-            out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            assert proc.stdout is not None and proc.stderr is not None
+            (out, out_total), (err, err_total), _ = await asyncio.wait_for(
+                asyncio.gather(
+                    _read_capped(proc.stdout, MAX_OUTPUT_BYTES),
+                    _read_capped(proc.stderr, MAX_OUTPUT_BYTES),
+                    proc.wait(),
+                ),
+                timeout=timeout,
+            )
         except TimeoutError:
             kill_tree(proc)
             await proc.wait()
@@ -245,8 +275,12 @@ async def _run(
     stdout = out.decode("utf-8", errors="replace")
     stderr = err.decode("utf-8", errors="replace")
     text = stdout
+    if out_total > MAX_OUTPUT_BYTES:
+        text += f"\n[stdout cut: {out_total} bytes in all, the first {MAX_OUTPUT_BYTES} kept]"
     if stderr.strip():
         text += ("\n" if text else "") + f"[stderr]\n{stderr}"
+    if err_total > MAX_OUTPUT_BYTES:
+        text += f"\n[stderr cut: {err_total} bytes in all, the first {MAX_OUTPUT_BYTES} kept]"
     text += f"\n[exit code {proc.returncode}]"
     if proc.returncode != 0:
         if without_network and _NO_NETWORK.search(stderr + stdout):

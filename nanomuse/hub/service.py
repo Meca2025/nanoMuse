@@ -807,7 +807,15 @@ class HubService:
         self._incoming[call.id] = thread.id
         queue = self.svc.bus.subscribe()
         try:
-            self.svc.send(thread.id, text, source="device", label=call.sender_name)
+            # `language`: the asking device's UI language (optional, docs/hub.md); the
+            # answer is written in it rather than guessed from the text
+            self.svc.send(
+                thread.id,
+                text,
+                source="device",
+                label=call.sender_name,
+                language=str(call.args.get("language") or "")[:20],
+            )
             final = await asyncio.wait_for(
                 self._relay_run(thread, call, queue), timeout=TASK_TIMEOUT_S
             )
@@ -1059,11 +1067,16 @@ class HubService:
                     }
                 )
 
+        args: dict[str, Any] = {"text": text, "from": self.device_name, "conversation": tid}
+        if thread.agent.ui_language:
+            # the person reads this chat in that language; the other device's runtime
+            # answers in it (docs/hub.md, `task`)
+            args["language"] = thread.agent.ui_language
         try:
             result = await self.call(
                 device_id,
                 "task",
-                {"text": text, "from": self.device_name, "conversation": tid},
+                args,
                 timeout=REMOTE_TASK_TIMEOUT_S,
                 on_event=on_event,
             )

@@ -496,6 +496,15 @@ _POINTED_KINDS = (
 
 # how far apart two taps may land and still count as the same tap for the loop check
 _SAME_TAP_PX = 24.0
+# steps in a row that acted on nothing before the run is called failed (see `_steps`)
+MAX_IDLE_STEPS = 6
+
+
+def _idle_message(noun: str) -> str:
+    return (
+        f"the operator made no usable move on the {noun} in {MAX_IDLE_STEPS} steps in a row "
+        "(an unknown action, or the same action again and again); the task was stopped"
+    )
 
 
 def _same_action(a: dict[str, Any], b: dict[str, Any]) -> bool:
@@ -798,6 +807,10 @@ class PhoneOperator:
             return
 
         refusals = 0
+        # steps in a row that moved nothing on the screen (an unknown function, an action the
+        # dialect refused, the same action again): each costs a model call and acts on
+        # nothing, and with no step cap a run nobody watches would go on until Stop
+        idle = 0
         # No step cap unless configured: the task runs until it is done, asks, is stopped
         # or fails. A cap (max_steps > 0) still ends with status "max_steps".
         step_numbers = (
@@ -845,6 +858,11 @@ class PhoneOperator:
             if step.name != self.dialect.name:
                 steps.append(f"{entry}; Result: only the {self.dialect.name} function is available")
                 trace.step(step_no, screen, step=step, raw=raw, latency_ms=latency_ms)
+                idle += 1
+                if idle >= MAX_IDLE_STEPS:
+                    outcome.status = "failed"
+                    outcome.message = _idle_message(self.dialect.noun)
+                    break
                 continue
 
             kind = step.kind
@@ -899,6 +917,11 @@ class PhoneOperator:
                 trace.step(
                     step_no, screen, step=step, raw=raw, latency_ms=latency_ms, error=str(exc)
                 )
+                idle += 1
+                if idle >= MAX_IDLE_STEPS:
+                    outcome.status = "failed"
+                    outcome.message = _idle_message(self.dialect.noun)
+                    break
                 continue
             assert params is not None
 
@@ -910,8 +933,14 @@ class PhoneOperator:
                 )
                 recent.clear()
                 trace.step(step_no, screen, step=step, raw=raw, latency_ms=latency_ms, error="loop")
+                idle += 1
+                if idle >= MAX_IDLE_STEPS:
+                    outcome.status = "failed"
+                    outcome.message = _idle_message(self.dialect.noun)
+                    break
                 continue
 
+            idle = 0
             result = await self._act(params, outcome)
             trace.step(
                 step_no,

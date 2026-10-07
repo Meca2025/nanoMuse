@@ -181,7 +181,16 @@ class Sentinel:
             # The arguments never parsed (cut off in transit): there is nothing to assess,
             # nothing to approve and nothing to run. The result tells the model what happened.
             return await safe_execute(tool, args)
-        assessment = tool.assess(args)
+        try:
+            assessment = tool.assess(args)
+        except Exception as exc:  # noqa: BLE001
+            # assess() reads the model's arguments before anything is approved or run; an
+            # argument of the wrong shape (a list for a path, a dict for a number) must be
+            # one failed call the model can correct, not the end of the turn.
+            logger.warning("{} assess() refused the arguments: {}", tool.name, exc)
+            return ToolResult.fail(
+                f"bad arguments for {tool.name}: {type(exc).__name__}: {str(exc)[:200]}"
+            )
         target = assessment.target if assessment.target is not None else assessment.egress_target
         key = grant_key(tool.name, target)
         task = _current_task.get()
