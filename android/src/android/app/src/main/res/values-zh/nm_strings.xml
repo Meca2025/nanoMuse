@@ -936,6 +936,8 @@
     <string name="nm_connectors_client_copy">复制</string>
     <string name="nm_connectors_client_id">OAuth 客户端 ID</string>
     <string name="nm_connectors_client_secret">OAuth 客户端密钥（如有）</string>
+    <string name="nm_secret_show">显示密钥</string>
+    <string name="nm_secret_hide">隐藏密钥</string>
     <string name="nm_connectors_connected_sub">已作为 MCP 服务器“%1$s”连接。它的工具在每个对话里都可用。</string>
     <string name="nm_connectors_cat_work">工作</string>
     <string name="nm_connectors_cat_talk">沟通</string>

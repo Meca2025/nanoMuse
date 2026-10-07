@@ -983,6 +983,8 @@
     <string name="nm_connectors_client_copy">Kopyala</string>
     <string name="nm_connectors_client_id">OAuth istemci kimliği</string>
     <string name="nm_connectors_client_secret">OAuth istemci gizli anahtarı (varsa)</string>
+    <string name="nm_secret_show">Anahtarı göster</string>
+    <string name="nm_secret_hide">Anahtarı gizle</string>
     <string name="nm_connectors_connected_sub">“%1$s” MCP sunucusu olarak bağlı. Araçları her sohbette kullanılabilir.</string>
     <string name="nm_connectors_cat_work">İş</string>
     <string name="nm_connectors_cat_talk">Mesajlaşma</string>

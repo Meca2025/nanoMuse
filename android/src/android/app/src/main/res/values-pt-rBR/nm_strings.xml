@@ -983,6 +983,8 @@
     <string name="nm_connectors_client_copy">Copiar</string>
     <string name="nm_connectors_client_id">Client ID OAuth</string>
     <string name="nm_connectors_client_secret">Client secret OAuth (se houver)</string>
+    <string name="nm_secret_show">Mostrar a chave</string>
+    <string name="nm_secret_hide">Ocultar a chave</string>
     <string name="nm_connectors_connected_sub">Conectado como servidor MCP “%1$s”. Suas ferramentas estão disponíveis em toda conversa.</string>
     <string name="nm_connectors_cat_work">Trabalho</string>
     <string name="nm_connectors_cat_talk">Mensagens</string>

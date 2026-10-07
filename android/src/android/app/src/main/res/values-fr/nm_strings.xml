@@ -983,6 +983,8 @@
     <string name="nm_connectors_client_copy">Copier</string>
     <string name="nm_connectors_client_id">ID client OAuth</string>
     <string name="nm_connectors_client_secret">Secret client OAuth (le cas échéant)</string>
+    <string name="nm_secret_show">Afficher la clé</string>
+    <string name="nm_secret_hide">Masquer la clé</string>
     <string name="nm_connectors_connected_sub">Connecté comme serveur MCP « %1$s ». Ses outils sont disponibles dans chaque discussion.</string>
     <string name="nm_connectors_cat_work">Travail</string>
     <string name="nm_connectors_cat_talk">Messagerie</string>

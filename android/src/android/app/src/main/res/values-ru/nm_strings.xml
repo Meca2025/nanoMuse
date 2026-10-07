@@ -991,6 +991,8 @@
     <string name="nm_connectors_client_copy">Копировать</string>
     <string name="nm_connectors_client_id">ID клиента OAuth</string>
     <string name="nm_connectors_client_secret">Секрет клиента OAuth (если есть)</string>
+    <string name="nm_secret_show">Показать ключ</string>
+    <string name="nm_secret_hide">Скрыть ключ</string>
     <string name="nm_connectors_connected_sub">Подключено как MCP-сервер «%1$s». Его инструменты доступны в каждом чате.</string>
     <string name="nm_connectors_cat_work">Работа</string>
     <string name="nm_connectors_cat_talk">Сообщения</string>

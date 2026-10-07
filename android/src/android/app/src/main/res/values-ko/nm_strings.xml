@@ -979,6 +979,8 @@
     <string name="nm_connectors_client_copy">복사</string>
     <string name="nm_connectors_client_id">OAuth 클라이언트 ID</string>
     <string name="nm_connectors_client_secret">OAuth 클라이언트 시크릿(있다면)</string>
+    <string name="nm_secret_show">키 표시</string>
+    <string name="nm_secret_hide">키 숨기기</string>
     <string name="nm_connectors_connected_sub">MCP 서버 “%1$s”(으)로 연결됨. 그 도구를 모든 채팅에서 쓸 수 있습니다.</string>
     <string name="nm_connectors_cat_work">업무</string>
     <string name="nm_connectors_cat_talk">메시징</string>

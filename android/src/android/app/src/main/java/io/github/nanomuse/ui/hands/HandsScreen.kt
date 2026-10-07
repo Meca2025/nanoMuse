@@ -19,7 +19,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -54,7 +53,8 @@ fun HandsScreen(onBack: () -> Unit, onOpenProviders: () -> Unit, onOpenHandsMode
     val context = LocalContext.current
     val repo = (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
     val config = repo?.config?.collectAsState()?.value
-    var enabled by remember { mutableStateOf(Hands.enabled(context)) }
+    // Follows the preference itself, so a change made elsewhere while this page is open shows here.
+    val enabled by remember(context) { Hands.enabledFlow(context) }.collectAsState(initial = Hands.enabled(context))
     var tick by remember { mutableIntStateOf(0) }
     val active by Hands.active.collectAsState()
 
@@ -87,7 +87,7 @@ fun HandsScreen(onBack: () -> Unit, onOpenProviders: () -> Unit, onOpenHandsMode
                     else -> stringResource(R.string.nm_hands_status_off)
                 },
                 checked = enabled,
-                onCheckedChange = { enabled = it; Hands.setEnabled(context, it) },
+                onCheckedChange = { Hands.setEnabled(context, it) },
                 icon = Icons.Outlined.PhoneAndroid,
                 iconColor = if (enabled) MuseTones.action else MaterialTheme.colorScheme.onSurfaceVariant,
                 showDivider = active,

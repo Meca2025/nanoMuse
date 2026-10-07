@@ -53,6 +53,13 @@ Two kinds of request travel over the hub:
   back as an `event {stage:"approval"}` and the asking device shows its usual
   card (RiskGate on the phone, the terminal prompt on the desktop, a card in the
   web console). The answer goes back as `approve {approval_id, allow}`.
+  The asking device may end a task it started with `stop {call}` (the id of
+  its `task` frame) or `stop {conversation}` (the conversation it named, or
+  its own per-device one when it named none): the target cancels the run
+  after the step in flight, answers `{stopped: true}`, and the `task` call
+  itself then fails with `cancelled`. `{stopped: false}` means there was
+  nothing of the caller's to stop; a device never stops another device's
+  task. The runtime, the desktop app and the phone all do this.
 
   While a task runs the target sends `event` frames whose `body.stage` tells
   the caller what to draw, so the run reads the same in the caller's chat as in

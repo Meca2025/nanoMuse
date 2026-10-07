@@ -983,6 +983,8 @@
     <string name="nm_connectors_client_copy">Kopieren</string>
     <string name="nm_connectors_client_id">OAuth-Client-ID</string>
     <string name="nm_connectors_client_secret">OAuth-Client-Secret (falls vorhanden)</string>
+    <string name="nm_secret_show">Schlüssel anzeigen</string>
+    <string name="nm_secret_hide">Schlüssel verbergen</string>
     <string name="nm_connectors_connected_sub">Verbunden als MCP-Server „%1$s“. Seine Werkzeuge stehen in jedem Chat zur Verfügung.</string>
     <string name="nm_connectors_cat_work">Arbeit</string>
     <string name="nm_connectors_cat_talk">Nachrichten</string>
