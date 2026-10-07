@@ -18,6 +18,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### iOS
 
+- **A swipe in from the left edge of the main chat opens the drawer** with the side chats, Devices and the settings, as on Android; the round button still does. A side chat pushed over the main one keeps the system's back swipe.
+
 ### Project
 
 ## [0.1.41] - 2026-10-07 · Choice

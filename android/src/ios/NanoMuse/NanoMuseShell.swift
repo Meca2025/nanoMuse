@@ -620,6 +620,9 @@ struct NanoMuseHomeView: View {
                 }
             }
             .background(ChatColors.background.ignoresSafeArea())
+            // Android: a swipe in from the leading edge opens the drawer on the Chat tab; here too,
+            // on the main chat (a pushed side chat keeps the system's back swipe).
+            .background(NanoMuseEdgeSwipe(enabled: tab == .chat && chatPath.isEmpty && !drawerOpen) { drawerOpen = true })
             .nmRenameAlert(rename)
             // The system bar stays out of the main chat; side chats pushed from here keep theirs.
             .toolbar(.hidden, for: .navigationBar)
