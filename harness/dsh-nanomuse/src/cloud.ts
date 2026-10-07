@@ -55,7 +55,7 @@ import { RemoteStore, SyncEngine, SyncRelay, type RemoteLine, type SessionInfo, 
 import { AvatarMotion, ANIMATED, type MotionMood, type MotionView } from './motion.ts'
 import { DEFAULT_VIDEO_MODEL, hostOf, KNOWN_DASHSCOPE_MODELS, looksLikeVideoModel, probe as probeVideoModel, speaksDashScope, type VideoEndpoint } from './video.ts'
 import { editImage as ownEditImage, generateImage as ownGenerateImage, imageShapeOf, type ImageEndpoint } from './images.ts'
-import { checkMove, checkScreenshot, displayInfo, isBlack, runtimeInfo, type MoveCheck, type RuntimeInfo, type ScreenshotCheck } from './hands-check.ts'
+import { checkMove, checkScreenshot, displayInfo, isBlack, runtimeInfo, screenHead, type MoveCheck, type RuntimeInfo, type ScreenshotCheck } from './hands-check.ts'
 import { apiOf, baseUrlFor, CAPABILITIES, capabilitiesForAuth, capabilitiesOf, CHATGPT_KEY_REF, CHATGPT_PROVIDER, ChatGptDesk, keyRefFor, listModels, loadCatalogue, modelsOf, ownProviderRow, regionOf, type Capability, type ChatGptState, type LoginView, type OwnModel, type OwnProvider, type ProviderEntry, type Region } from './providers.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -431,7 +431,6 @@ function trustedOf(raw: Record<string, unknown>): Record<string, { name: string;
   return out
 }
 
-/** The `confirmed` field of a hands call, when it is one (a ticket or the legacy `true`). */
 /** The own-key rows as `cloud.json` has them: malformed ones dropped, never a key (the credential store has those). */
 function ownProvidersOf(raw: Record<string, unknown>): Record<string, OwnProvider> {
   const out: Record<string, OwnProvider> = {}
@@ -453,6 +452,7 @@ function ownProvidersOf(raw: Record<string, unknown>): Record<string, OwnProvide
   return out
 }
 
+/** The `confirmed` field of a hands call, when it is one (a ticket or the legacy `true`). */
 export function confirmationOf(args: unknown): string | true | undefined {
   if (!args || typeof args !== 'object' || Array.isArray(args)) return undefined
   const value = (args as Record<string, unknown>).confirmed
@@ -3167,7 +3167,6 @@ export default class NanomuseCloud extends Service {
   }
 }
 
-/** `$DSH_HOME`, or `~/.dsh` — the same rule the launcher applies. */
 /** The `nanomuse` provider row for a relay's OpenAI root and its model list (see `providerRow`). */
 export function providerRowFor(openaiBase: string, models: RelayModel[]): Record<string, unknown> {
   const chat = models.filter((m) => modelFor(m).includes('chat'))
@@ -3185,14 +3184,13 @@ export function providerRowFor(openaiBase: string, models: RelayModel[]): Record
   }
 }
 
+/** `$DSH_HOME`, or `~/.dsh`: the same rule the launcher applies. */
 export function dshHome(): string {
   const configured = process.env.DSH_HOME
   if (configured) return configured
   return join(process.env.HOME ?? process.env.USERPROFILE ?? '.', '.dsh')
 }
 
-/** The few arguments the capsule shows, as short strings. */
-/** The hands' arguments as the stage shows them: what kind of step, aimed where. */
 /** The reason of a `hand_over` action (the agent gives the screen to the person), or nothing. */
 export function handOverOf(args: unknown): string | undefined {
   if (!args || typeof args !== 'object') return undefined
@@ -3201,6 +3199,7 @@ export function handOverOf(args: unknown): string | undefined {
   return String(a.reason ?? a.label ?? a.text ?? '').trim().slice(0, 200) || 'Your turn'
 }
 
+/** The hands' arguments as the stage shows them: what kind of step, aimed where. */
 export function stageAction(args: unknown): StageAction {
   const a = (args && typeof args === 'object' ? args : {}) as Record<string, unknown>
   const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : -1)
@@ -3231,36 +3230,13 @@ export function stageAction(args: unknown): StageAction {
   }
 }
 
-/** A `<WxH>` part of the screen head (`1596×1204`, `1920x1080`). */
-const SIZE_PART = /^(\d{2,5})[×x](\d{2,5})$/
 /** The grant target 0.1.37 wrote when it took `computer_act`'s first line for the window title. */
 export const MISREAD_GRANT = /^computer_app:Done\. Screen now:?$/
 
-/**
- * The head line of what `computer_screen` / `computer_act` say: `<window in front> · <WxH> · …`
- * → title and size. It is the line that carries the size, wherever it stands: `computer_act`
- * puts "Done. Screen now:" first, and 0.1.37 took that for the window's title (so the stage
- * was titled "Done. Screen now:" and an "always allow" was kept for that "app").
- */
-export function screenHead(text: string): { title: string; width: number; height: number; mode: 'screen' | 'window' } {
-  const lines = text.split('\n').filter((l) => l.trim())
-  const line = lines.find((l) => l.split(' · ').some((p) => SIZE_PART.test(p.trim()))) ?? ''
-  const parts = line.split(' · ').map((p) => p.trim())
-  let width = 0
-  let height = 0
-  let mode: 'screen' | 'window' = 'screen'
-  const rest: string[] = []
-  for (const part of parts) {
-    const m = SIZE_PART.exec(part)
-    if (m) {
-      width = Number(m[1])
-      height = Number(m[2])
-    } else if (/^window(?: mode)?$/i.test(part)) mode = 'window'
-    else if (!/^keyboard (shown|hidden)$/.test(part)) rest.push(part)
-  }
-  return { title: (rest[0] ?? '').slice(0, 120), width, height, mode }
-}
+/** The screen head reader lives with the hands' checks (hands-check.ts); the tests import it from here. */
+export { screenHead }
 
+/** The few arguments the capsule shows, as short strings. */
 export function pickArgs(args: unknown): Record<string, string> {
   const out: Record<string, string> = {}
   if (!args || typeof args !== 'object') return out

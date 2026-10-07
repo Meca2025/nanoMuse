@@ -15,20 +15,30 @@ import { delimiter, extname, isAbsolute, join } from 'node:path'
 
 const SIZE_PART = /^(\d{2,5})[×x](\d{2,5})$/
 
-/** The head line of what `computer_screen` says (the one with the size): `<window in front> · <WxH> · …`. */
-function screenHead(text: string): { title: string; width: number; height: number } {
-  const line = text.split('\n').find((l) => l.split(' · ').some((p) => SIZE_PART.test(p.trim()))) ?? ''
+/**
+ * The head line of what `computer_screen` / `computer_act` say: `<window in front> · <WxH> · …`
+ * → title, size and whether the hands are in window mode. It is the line that carries the
+ * size, wherever it stands: `computer_act` puts "Done. Screen now:" first, and 0.1.37 took
+ * that for the window's title (so the stage was titled "Done. Screen now:" and an "always
+ * allow" was kept for that "app"). The stage (cloud.ts) and the checks here share it.
+ */
+export function screenHead(text: string): { title: string; width: number; height: number; mode: 'screen' | 'window' } {
+  const lines = text.split('\n').filter((l) => l.trim())
+  const line = lines.find((l) => l.split(' · ').some((p) => SIZE_PART.test(p.trim()))) ?? ''
+  const parts = line.split(' · ').map((p) => p.trim())
   let width = 0
   let height = 0
+  let mode: 'screen' | 'window' = 'screen'
   const rest: string[] = []
-  for (const part of line.split(' · ').map((p) => p.trim())) {
+  for (const part of parts) {
     const m = SIZE_PART.exec(part)
     if (m) {
       width = Number(m[1])
       height = Number(m[2])
-    } else if (!/^window(?: mode)?$/i.test(part) && !/^keyboard (shown|hidden)$/.test(part)) rest.push(part)
+    } else if (/^window(?: mode)?$/i.test(part)) mode = 'window'
+    else if (!/^keyboard (shown|hidden)$/.test(part)) rest.push(part)
   }
-  return { title: (rest[0] ?? '').slice(0, 120), width, height }
+  return { title: (rest[0] ?? '').slice(0, 120), width, height, mode }
 }
 
 /** Which binary the hands run, and whether it is really there. */

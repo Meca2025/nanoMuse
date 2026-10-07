@@ -15,7 +15,7 @@
  * emoji and its colour, the description and style, and the pictures.
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { SharedConnector } from './desk.ts'
@@ -220,7 +220,7 @@ function decode(value: string | undefined): Buffer | undefined {
 
 async function exists(path: string): Promise<boolean> {
   try {
-    await readFile(path)
+    await access(path)
     return true
   } catch {
     return false

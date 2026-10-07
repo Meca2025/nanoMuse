@@ -48,7 +48,7 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { RelayError } from './relay.ts'
+import { RELAY_TIMEOUT_MS, RelayError, type TimedFetch, withTimeout } from './relay.ts'
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -130,12 +130,14 @@ export interface PushResult {
   rejected: Array<{ cid?: string; mid?: string; reason: string; cid_main?: string }>
 }
 
-/** `/v1/sync/*` as the engine needs them; `fetchImpl` is swapped in tests. */
+/** `/v1/sync/*` as the engine needs them; `fetchImpl` is swapped in tests. Every call has a deadline (relay.ts `withTimeout`), so a hung connection does not stall the sync for good. */
 export class SyncRelay {
   readonly origin: string
+  private readonly fetchImpl: TimedFetch
 
-  constructor(origin: string, private readonly fetchImpl: typeof fetch = fetch) {
+  constructor(origin: string, fetchImpl: typeof fetch = fetch, timeoutMs = RELAY_TIMEOUT_MS) {
     this.origin = origin.replace(/\/+$/, '')
+    this.fetchImpl = withTimeout(fetchImpl, timeoutMs)
   }
 
   async state(apiKey: string): Promise<SyncRelayState> {

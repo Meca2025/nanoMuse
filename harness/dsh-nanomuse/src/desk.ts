@@ -414,15 +414,22 @@ export function compareVersions(a: string, b: string): number {
   return x.pre < y.pre ? -1 : 1
 }
 
-/** The desktop installer for this computer, when the release has one. */
-export function pickAsset(assets: ReleaseAsset[], platform: string, arch: string): ReleaseAsset | undefined {
+/**
+ * The desktop installer for this computer, when the release has one. Linux gets the `.deb`
+ * first, the one docs/desktop.md prefers, unless the running app is an AppImage (`appImage`,
+ * from the shell's `info()`): then the AppImage, so the person stays on what they chose.
+ */
+export function pickAsset(assets: ReleaseAsset[], platform: string, arch: string, appImage = false): ReleaseAsset | undefined {
   const cpu = arch === 'arm64' ? 'arm64' : 'x64'
+  const linux = [new RegExp(`^nanoMuse-Desktop-.*-linux-${cpu}\\.deb$`, 'i'), new RegExp(`^nanoMuse-Desktop-.*-linux-${cpu}\\.AppImage$`, 'i')]
   const wanted: RegExp[] =
     platform === 'darwin'
       ? [new RegExp(`^nanoMuse-Desktop-.*-mac-${cpu}\\.dmg$`, 'i'), new RegExp(`^nanoMuse-Desktop-.*-mac-${cpu}\\.zip$`, 'i')]
       : platform === 'win32'
         ? [/^nanoMuse-Desktop-.*-win-x64\.exe$/i]
-        : [new RegExp(`^nanoMuse-Desktop-.*-linux-${cpu}\\.AppImage$`, 'i'), new RegExp(`^nanoMuse-Desktop-.*-linux-${cpu}\\.deb$`, 'i')]
+        : appImage
+          ? linux.reverse()
+          : linux
   for (const re of wanted) {
     const hit = assets.find((a) => re.test(a.name))
     if (hit) return hit

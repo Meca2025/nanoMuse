@@ -9,9 +9,31 @@
  * an adapter of ours; nothing here touches a model request.
  */
 
-/** A relay error, with the relay's own code when it sent one. */
 import { readSharedConnectors, type SharedConnector } from './desk.ts'
 
+/** How long one relay call may take before it is given up: a connection that hangs must not stall a sign-in, a models list or the sync for good. */
+export const RELAY_TIMEOUT_MS = 30_000
+/** The budget for a picture made or edited through the relay: the model behind it takes its time. */
+export const RELAY_IMAGE_TIMEOUT_MS = 180_000
+
+/** A `fetch` init that may name its own budget; the wrapped fetch takes it off before the call. */
+export type TimedInit = RequestInit & { timeoutMs?: number }
+export type TimedFetch = (input: string | URL | Request, init?: TimedInit) => Promise<Response>
+
+/**
+ * `fetchImpl` with a deadline on every call: `init.timeoutMs`, else `defaultMs`. A signal
+ * the caller passed still cancels; the deadline is added to it, not put in its place.
+ */
+export function withTimeout(fetchImpl: typeof fetch, defaultMs: number): TimedFetch {
+  return (input, init) => {
+    const { timeoutMs, ...rest } = init ?? {}
+    const deadline = AbortSignal.timeout(timeoutMs ?? defaultMs)
+    const signal = rest.signal ? AbortSignal.any([rest.signal, deadline]) : deadline
+    return fetchImpl(input, { ...rest, signal })
+  }
+}
+
+/** A relay error, with the relay's own code when it sent one. */
 export class RelayError extends Error {
   constructor(
     readonly status: number,
@@ -231,9 +253,11 @@ function toAccount(me: Record<string, unknown>): Account {
 /** A client for one relay origin, e.g. `https://cloud.nanomuse.cn`. */
 export class Relay {
   readonly origin: string
+  private readonly fetchImpl: TimedFetch
 
-  constructor(origin: string, private readonly fetchImpl: typeof fetch = fetch) {
+  constructor(origin: string, fetchImpl: typeof fetch = fetch, timeoutMs = RELAY_TIMEOUT_MS) {
     this.origin = origin.replace(/\/+$/, '')
+    this.fetchImpl = withTimeout(fetchImpl, timeoutMs)
   }
 
   /** The OpenAI-compatible root the model adapter is pointed at. */
@@ -351,6 +375,7 @@ export class Relay {
       headers: { ...this.auth(apiKey), ...JSON_HEADERS },
       body: JSON.stringify({ model, prompt, n: 1, size: '1024x1024', response_format: 'b64_json' }),
       signal: signal ?? null,
+      timeoutMs: RELAY_IMAGE_TIMEOUT_MS,
     })
     if (!res.ok) await fail(res)
     return this.imageOf(await res.json())
@@ -365,7 +390,7 @@ export class Relay {
     form.set('size', '1024x1024')
     form.set('response_format', 'b64_json')
     form.set('image', new Blob([new Uint8Array(image)], { type: 'image/png' }), 'idle.png')
-    const res = await this.fetchImpl(`${this.origin}/v1/images/edits`, { method: 'POST', headers: this.auth(apiKey), body: form, signal: signal ?? null })
+    const res = await this.fetchImpl(`${this.origin}/v1/images/edits`, { method: 'POST', headers: this.auth(apiKey), body: form, signal: signal ?? null, timeoutMs: RELAY_IMAGE_TIMEOUT_MS })
     if (!res.ok) await fail(res)
     return this.imageOf(await res.json())
   }

@@ -627,9 +627,11 @@ nowhere else.
 - **Ways to get a model, by region.** With a Chinese UI, a phone sign-in or a relay
   account in the mainland, the account page lists Bailian first and OpenRouter second;
   elsewhere the other way round, each with *Get a key*.
-- **Updates.** Once a day, and on *Check for updates* in About, the host asks GitHub's
-  releases API (falling back to `nanomuse.cn/dl/index.json`) and compares versions; a
-  newer one shows as a dot, an *Update to 0.1.x* menu item and a *Download* button for
-  this platform's asset in About.
+- **Updates.** Once a day, and on *Check for updates* in About, the host reads the
+  mirror's index at `nanomuse.cn/dl/index.json` first (reachable from the mainland, no
+  rate limit) and GitHub's releases API when the index does not answer, then compares
+  versions; a newer one shows as a dot, an *Update to 0.1.x* menu item and a *Download*
+  button for this platform's asset in About (on Linux the `.deb`, or the AppImage when
+  the running app is one).
 - **Open source, no closed component.** The bundle is GPL-3.0-or-later; the harness is
   MIT and travels with its notice; the About row says so.

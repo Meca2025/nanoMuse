@@ -260,7 +260,10 @@ function open(): void {
     if (snapshot.streaming) publish({ ...snapshot, streaming: false })
     if (es.readyState === 2) {
       source = undefined
-      setTimeout(open, 3000)
+      // only while someone still listens: the last unsubscribe may land inside these 3 s
+      setTimeout(() => {
+        if (listeners.size > 0) open()
+      }, 3000)
     }
   }
 }

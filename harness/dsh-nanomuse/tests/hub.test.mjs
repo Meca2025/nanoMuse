@@ -204,3 +204,60 @@ test('the sync frame carries the cursor and the device; the working frame (C9) r
   assert.equal(working.length, 3)
   h.client.stop()
 })
+
+test('a restart while the key is still being read opens one socket, not two', async () => {
+  // The key comes from the vault asynchronously; a sign-in's restart() landing in that
+  // window used to leave the first attempt's socket open next to the new one.
+  let release
+  const gate = new Promise((r) => (release = r))
+  const sockets = []
+  const client = new HubClient({
+    url: 'ws://relay/v1/hub',
+    key: async () => {
+      await gate
+      return 'nm_test'
+    },
+    device: () => DEVICE,
+    socket: (url) => {
+      const s = new FakeSocket(url)
+      sockets.push(s)
+      return s
+    },
+    backoffMs: { min: 5, max: 20 },
+    pingMs: 100_000,
+  })
+  client.start()
+  await tick()
+  client.restart()
+  await tick()
+  assert.equal(sockets.length, 0)
+  release()
+  await tick()
+  await tick()
+  assert.equal(sockets.length, 1, 'the attempt that lost the race opens nothing')
+  client.stop()
+})
+
+test('hub_paused waits well beyond the normal back-off; a refused device stays closed without signing out', async () => {
+  const h = harness()
+  const s = await connected(h)
+  s.drop(4003, 'hub_paused')
+  assert.equal(h.client.lastError, 'the hub is paused on the relay')
+  await wait(60)
+  assert.equal(h.sockets.length, 1, 'no reconnect within the normal back-off')
+  h.client.stop()
+
+  const h2 = harness()
+  let unauthorized = 0
+  h2.client.onUnauthorized(() => (unauthorized += 1))
+  const s2 = await connected(h2)
+  s2.drop(4002, 'bad device')
+  await wait(60)
+  assert.equal(h2.sockets.length, 1, 'the same device again would be refused again')
+  assert.equal(h2.client.lastError, 'the relay refused this device')
+  assert.equal(unauthorized, 0, 'a refused device is not a refused key')
+  h2.client.restart()
+  await tick()
+  assert.equal(h2.sockets.length, 2, 'a restart (a new sign-in, a rename) tries again')
+  h2.client.stop()
+})

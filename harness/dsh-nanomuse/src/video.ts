@@ -177,18 +177,22 @@ export function textToVideoBody(model: string, prompt: string, seconds: number, 
   return { model, input: { prompt }, parameters }
 }
 
+/** How long the probe waits for Model Studio before it answers "could not be asked". */
+const PROBE_TIMEOUT_MS = 15_000
+
 /**
  * Whether `model` exists for this key, without making a video: an empty task is submitted
  * and Model Studio answers 404 "Model not exist" for an unknown name, or accepts the task
  * (which then fails at once on the missing prompt — nothing is billed). `undefined` when
  * the host could not be asked (offline, a refused key).
  */
-export async function probe(host: string, apiKey: string, model: string, fetchImpl: typeof fetch = fetch): Promise<boolean | undefined> {
+export async function probe(host: string, apiKey: string, model: string, fetchImpl: typeof fetch = fetch, timeoutMs = PROBE_TIMEOUT_MS): Promise<boolean | undefined> {
   try {
     const res = await fetchImpl(`${host}/api/v1/services/aigc/video-generation/video-synthesis`, {
       method: 'POST',
       headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json', 'X-DashScope-Async': 'enable' },
       body: JSON.stringify({ model, input: {}, parameters: {} }),
+      signal: AbortSignal.timeout(timeoutMs),
     })
     const text = await res.text().catch(() => '')
     if (res.ok) return true

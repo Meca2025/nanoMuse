@@ -545,7 +545,9 @@ export default class NanomuseConnectors extends Service {
   private async callback(url: URL, res: ServerResponse): Promise<void> {
     const state = url.searchParams.get('state') ?? ''
     const flow = [...this.flows.values()].find((f) => f.state === state && f.status === 'pending')
-    const zh = (this.ctx.get('nanomuseRooms') as { lang?: string } | undefined)?.lang?.startsWith('zh') ?? true
+    // The page's language: the agent's, when the rooms know it; else the system's. Never Chinese by assumption.
+    const lang = (this.ctx.get('nanomuseRooms') as { lang?: string } | undefined)?.lang ?? Intl.DateTimeFormat().resolvedOptions().locale
+    const zh = lang.toLowerCase().startsWith('zh')
     if (!flow || Date.now() - flow.createdAt > FLOW_TTL_MS) {
       return page(res, 400, zh ? '这次授权已经过期' : 'This authorization has expired', zh ? '回到 nanoMuse，再点一次「连接」。' : 'Go back to nanoMuse and press Connect again.')
     }
