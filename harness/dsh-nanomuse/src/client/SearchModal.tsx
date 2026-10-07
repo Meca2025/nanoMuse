@@ -7,6 +7,7 @@
 import { createElement as h, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconChat, IconSearch } from './icons.tsx'
+import { composing } from './keys.ts'
 import { useSyncList, type ChatActions, type UseSessionList } from './MuseChats.tsx'
 import { useRooms } from './rooms.ts'
 import { ago } from './ui.tsx'
@@ -71,7 +72,7 @@ function Modal({ t, useSessions, actions }: SearchModalProps): ReactNode {
     if (event.key === 'Escape') { event.preventDefault(); close() }
     else if (event.key === 'ArrowDown') { event.preventDefault(); setIndex((i) => Math.min(hits.length - 1, i + 1)) }
     else if (event.key === 'ArrowUp') { event.preventDefault(); setIndex((i) => Math.max(0, i - 1)) }
-    else if (event.key === 'Enter') { event.preventDefault(); pick(hits[index]) }
+    else if (event.key === 'Enter' && !composing(event)) { event.preventDefault(); pick(hits[index]) }
   }
 
   return h('div', { className: 'nm-search-backdrop', onMouseDown: (e: React.MouseEvent) => { if (e.target === e.currentTarget) close() } },

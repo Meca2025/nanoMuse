@@ -16,6 +16,7 @@ import { createElement as h, Fragment, useCallback, useEffect, useRef, useState,
 import { CATALOGUE, CATEGORY_ORDER, catalogueEntry, type CatalogueEntry, type Category } from '../connectors-catalogue.ts'
 import type { ConnectionView, ConnectorsView, FlowView, RegistryHit } from '../connectors.ts'
 import type { Translate } from './api.ts'
+import { composing } from './keys.ts'
 import { MARKS } from './brand-marks.ts'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
@@ -550,7 +551,7 @@ function KeySheet({ t, pending, onClose, onKey }: { t: Translate; pending: Extra
       h('span', { className: 'nm-cn-hero-mark' }, entry.mark),
       h('p', { className: 'nm-cn-consent-lead' }, entry.about)),
     h('p', { className: 'nm-cn-key-where' }, where || t('cnKeyWhereGeneric'), docs ? h(Fragment, null, ' ', h('a', { href: docs, onClick: (e: Event) => { e.preventDefault(); openLink(docs) } }, t('cnVendorDocs', { name: entry.title }))) : null),
-    h('input', { className: 'nm-field nm-cn-key', type: 'password', autoComplete: 'off', spellCheck: false, value: key, placeholder: t('cnKeyPlaceholder'), 'aria-label': t('cnKeyPlaceholder'), onChange: (e: { currentTarget: HTMLInputElement }) => setKey(e.currentTarget.value), onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter') submit() } }),
+    h('input', { className: 'nm-field nm-cn-key', type: 'password', autoComplete: 'off', spellCheck: false, value: key, placeholder: t('cnKeyPlaceholder'), 'aria-label': t('cnKeyPlaceholder'), onChange: (e: { currentTarget: HTMLInputElement }) => setKey(e.currentTarget.value), onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' && !composing(e)) submit() } }),
     error ? h('p', { className: 'nm-cn-warn' }, error) : null,
     h('p', { className: 'nm-fine' }, t('cnKeyFine')))
 }
@@ -564,7 +565,7 @@ function ClientSheet({ t, pending, onClose, onClient }: { t: Translate; pending:
   const submit = () => { if (clientId.trim() && !busy) onClient(clientId.trim(), clientSecret.trim()) }
   const copy = () => { void navigator.clipboard?.writeText(redirectUri).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1500) }).catch(() => undefined) }
   const field = (value: string, set: (v: string) => void, placeholder: string, type = 'text') =>
-    h('input', { className: 'nm-field nm-cn-field', type, autoComplete: 'off', spellCheck: false, value, placeholder, 'aria-label': placeholder, onChange: (e: { currentTarget: HTMLInputElement }) => set(e.currentTarget.value), onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter') submit() } })
+    h('input', { className: 'nm-field nm-cn-field', type, autoComplete: 'off', spellCheck: false, value, placeholder, 'aria-label': placeholder, onChange: (e: { currentTarget: HTMLInputElement }) => set(e.currentTarget.value), onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' && !composing(e)) submit() } })
   return h(Sheet, { title: t('cnConnectTitle', { name: entry.title }), onClose, closeLabel: t('close'), footer: h(Fragment, null,
     h('button', { type: 'button', className: 'nm-pill nm-pill-ghost', onClick: onClose }, t('cancel')),
     h('button', { type: 'button', className: 'nm-pill', disabled: !clientId.trim() || busy, onClick: submit }, busy ? h('span', { className: 'nm-spinner nm-spinner-sm nm-cn-pill-spin' }) : null, t('cnConnect'))) },
@@ -592,7 +593,7 @@ function CustomSheet({ t, pending, onClose, onCustom }: { t: Translate; pending:
   const valid = /^https?:\/\/\S+$/i.test(url.trim())
   const submit = () => { if (valid && !pending.busy) onCustom(url.trim(), label.trim(), key.trim(), clientId.trim(), clientSecret.trim()) }
   const field = (value: string, set: (v: string) => void, placeholder: string, type = 'text') =>
-    h('input', { className: 'nm-field nm-cn-field', type, autoComplete: 'off', spellCheck: false, value, placeholder, 'aria-label': placeholder, onChange: (e: { currentTarget: HTMLInputElement }) => set(e.currentTarget.value), onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter') submit() } })
+    h('input', { className: 'nm-field nm-cn-field', type, autoComplete: 'off', spellCheck: false, value, placeholder, 'aria-label': placeholder, onChange: (e: { currentTarget: HTMLInputElement }) => set(e.currentTarget.value), onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' && !composing(e)) submit() } })
   return h(Sheet, { title: t('cnCustomTitle'), onClose, closeLabel: t('close'), footer: h(Fragment, null,
     h('button', { type: 'button', className: 'nm-pill nm-pill-ghost', onClick: onClose }, t('cancel')),
     h('button', { type: 'button', className: 'nm-pill', disabled: !valid || pending.busy, onClick: submit }, pending.busy ? h('span', { className: 'nm-spinner nm-spinner-sm nm-cn-pill-spin' }) : null, t('cnConnect'))) },

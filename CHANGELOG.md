@@ -58,6 +58,11 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **About offers the right Linux package.** The update row offered the AppImage to everyone; it now offers the `.deb` (the one the docs prefer) and the AppImage only when the running app is one.
 - **The connectors' sign-in page follows the system language** when the agent has no language yet; it assumed Chinese.
 - A live stream that failed is reopened only while something on the page still listens to it; the docs now say the update check reads the mirror's index first and GitHub second, as the app does.
+- **The sign-in fine print and the Legal page no longer link to a page that does not exist.** Both pointed at `docs/terms.md`, which was never written; they now link the privacy policy at `nanomuse.cn/privacy/`, the page every other client links, and the Legal page lost its *Terms* row.
+- **First run says where the code goes.** The sign-in page of the first run now carries the same line as Settings: a mainland China number gets an SMS, anything else an e-mail.
+- **Enter while an input method is composing no longer sends.** The coding panel's composer, a chat's rename field, the search box and the connectors' key fields treated the Enter that picks a candidate (Chinese, Japanese, Korean) as a send; they now wait for the text.
+- **Renaming a chat: Escape discards, Enter commits once.** Escape used to leave the field but the rename still went through when the field lost focus, and Enter followed by that blur renamed twice.
+- The *Manage permissions* row of the profile drawer opens with Enter and Space; the Help page's *Docs* row opens the desktop page of the docs site instead of a developer page on GitHub.
 
 ### Android
 

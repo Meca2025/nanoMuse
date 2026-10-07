@@ -59,8 +59,8 @@ type SignInView = 'identifier' | 'code' | 'password'
 
 /** How long Start may take to open the main chat before we stop waiting. */
 const START_MS = 12_000
-const PRIVACY_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md'
-const TERMS_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/terms.md'
+/** The privacy policy as every client links it (the relay, the web console and the phones agree). */
+const PRIVACY_URL = 'https://nanomuse.cn/privacy/'
 const HANDS_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/sentinel.md'
 
 function Pill({ children, onClick, disabled, type = 'button', ghost = false, small = false, className = '' }: {
@@ -288,7 +288,9 @@ export function makeOnboarding(t: Translate, _actions: OnboardingActions) {
         h(BrandMark, { size: 72, className: 'nm-fr-hero-mark' }),
         h('h1', { className: 'nm-ob-title' }, t('obSignInTitle')),
         h('input', { className: 'nm-field', value: identifier, placeholder: t('obIdentifier'), autoComplete: 'username', autoFocus: true, 'aria-label': t('obIdentifier'), onChange: (e: FormEvent<HTMLInputElement>) => setIdentifier(e.currentTarget.value) }),
-        h('p', { className: 'nm-ob-fine' }, t('obTermsLead'), ' ', link(TERMS_URL, t('obTerms')), t('obTermsAnd'), link(PRIVACY_URL, t('obPrivacy')), t('obTermsEnd')),
+        // SMS codes reach mainland-China numbers only; everyone else gets an e-mail (the Settings sign-in says the same)
+        h('p', { className: 'nm-ob-fine' }, t('identifierHint')),
+        h('p', { className: 'nm-ob-fine' }, t('obTermsLead'), ' ', link(PRIVACY_URL, t('obPrivacy')), t('obTermsEnd')),
         error ? h('div', { className: 'nm-ob-error', role: 'alert' }, error) : null,
         h(Pill, { type: 'submit', disabled: busy || identifier.trim().length < 3, className: 'nm-ob-wide' }, busy ? t('sending') : t('obContinue')),
         h('button', { type: 'button', className: 'nm-ob-link', onClick: () => { setError(undefined); setSignIn(null) } }, t('obBack')))

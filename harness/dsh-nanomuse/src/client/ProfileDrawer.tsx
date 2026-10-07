@@ -225,7 +225,8 @@ function Activity({ t, name, stop, useSessions, open }: { t: Translate; name: st
 
 function Approvals({ t, name, approvals, grants }: { t: Translate; name: string; approvals: { at: number; toolName: string; reason: string; outcome: 'allowed' | 'rejected' }[]; grants: { id: string; target: string; at: number }[] }): ReactNode {
   const [openRow, setOpenRow] = useState<number | null>(null)
-  const manage = h('div', { className: 'nm-pf-row nm-clickable', role: 'button', tabIndex: 0, onClick: () => { profileBus.close(); settingsBus.openSection?.(COMPUTER_SECTION) } },
+  const openPermissions = () => { profileBus.close(); settingsBus.openSection?.(COMPUTER_SECTION) }
+  const manage = h('div', { className: 'nm-pf-row nm-clickable', role: 'button', tabIndex: 0, onClick: openPermissions, onKeyDown: (e: { key: string; preventDefault(): void }) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPermissions() } } },
     h('span', { className: 'nm-pf-row-icon' }, h(IconShield, { size: 18 })),
     h('div', { className: 'nm-pf-row-main' }, h('div', { className: 'nm-pf-row-title' }, t('pfManagePermissions'))),
     h('span', { className: 'nm-pf-row-chev' }, h(IconChevronRight, { size: 16 })))

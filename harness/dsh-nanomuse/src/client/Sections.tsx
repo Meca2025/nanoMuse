@@ -16,14 +16,13 @@ import { usePermissions } from './permissions.ts'
 import { settingsBus } from './bus.ts'
 import { IconBug, IconCheck, IconChevronRight, IconFile, IconHeart, IconLink, IconList, IconPlay, IconScale, IconShield } from './icons.tsx'
 import { useLive } from './live.ts'
-import { ISSUES_URL, REPO_URL } from './panels.ts'
+import { DOCS_URL, ISSUES_URL, REPO_URL } from './panels.ts'
 import { setPrefs, usePrefs } from './prefs.ts'
 
 const SITE_URL = 'https://nanomuse.cn/'
-const DOCS_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/harness.md'
 const DISCUSS_URL = 'https://github.com/nano-muse/nanoMuse/discussions'
-const PRIVACY_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/privacy.md'
-const TERMS_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/docs/terms.md'
+/** The privacy policy as every client links it (the relay, the web console and the phones agree). */
+const PRIVACY_URL = 'https://nanomuse.cn/privacy/'
 const LICENSE_URL = 'https://github.com/nano-muse/nanoMuse/blob/main/LICENSE'
 
 function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange(next: boolean): void; label: string; disabled?: boolean }): ReactNode {
@@ -148,7 +147,6 @@ export function makeLegalSection(t: Translate) {
             h('span', { className: 'nm-row-sub nm-wrap' }, t('legalThanksText'))))),
       h('div', { className: 'nm-card' },
         h(LinkRow, { icon: h(IconFile, { size: 18 }), title: t('legalPrivacy'), onClick: () => openLink(PRIVACY_URL) }),
-        h(LinkRow, { icon: h(IconFile, { size: 18 }), title: t('legalTerms'), onClick: () => openLink(TERMS_URL) }),
         h(LinkRow, { icon: h(IconScale, { size: 18 }), title: 'GPL-3.0-or-later', onClick: () => openLink(LICENSE_URL) })))
   }
 }

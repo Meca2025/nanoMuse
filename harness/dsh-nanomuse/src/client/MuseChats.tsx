@@ -19,6 +19,7 @@
 import { createElement as h, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { call, type Translate } from './api.ts'
 import { IconMore, IconPlus, IconSearch } from './icons.tsx'
+import { composing } from './keys.ts'
 import { useLive } from './live.ts'
 
 const MAIN_KEY = 'nanomuse.mainChat'
@@ -173,20 +174,30 @@ function ChatRow({ t, chat, label, main, pinned, selected, useSessionStatus, act
   const [draft, setDraft] = useState(label)
   const more = useRef<HTMLButtonElement | null>(null)
 
+  // One outcome per edit: Enter commits (the blur that follows must not commit again), Escape
+  // discards (the blur that follows must not commit at all); an IME's Enter picks a candidate.
+  const settled = useRef(false)
+  const begin = () => { settled.current = false; setDraft(label); setEditing(true) }
   const commit = () => {
+    if (settled.current) return
+    settled.current = true
     const title = draft.trim()
     setEditing(false)
     if (title && title !== label) void actions.renameSession(chat.id, title).catch(() => undefined)
   }
+  const cancel = () => {
+    settled.current = true
+    setEditing(false)
+  }
   const onKey = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') { event.preventDefault(); commit() }
-    if (event.key === 'Escape') { event.preventDefault(); setEditing(false) }
+    if (event.key === 'Enter' && !composing(event)) { event.preventDefault(); commit() }
+    if (event.key === 'Escape') { event.preventDefault(); cancel() }
   }
   // Muse's row menu: pin, rename, archive (Muse says delete; the harness keeps
   // archived chats under the column's menu) — and ours: make this the main chat.
   const items: MenuItem[] = [
     ...(main ? [] : [{ id: 'pin', label: pinned ? t('chUnpin') : t('chPin'), onSelect: () => { void (pinned ? actions.unpinSession(chat.id) : actions.pinSession(chat.id)).catch(() => undefined) } }]),
-    { id: 'rename', label: t('chRename'), onSelect: () => { setDraft(label); setEditing(true) } },
+    { id: 'rename', label: t('chRename'), onSelect: begin },
     ...(main ? [] : [{ id: 'archive', label: t('chArchive'), onSelect: () => { void actions.archiveSession(chat.id).catch(() => undefined) } }]),
     ...(main ? [] : [{ id: 'main', label: t('chMakeMain'), onSelect: onMakeMain }]),
   ]
@@ -194,7 +205,7 @@ function ChatRow({ t, chat, label, main, pinned, selected, useSessionStatus, act
   return h('div', { className: `nm-chat-row${selected ? ' nm-selected' : ''}${main ? ' nm-main' : ''}`, 'data-session-id': chat.id },
     editing
       ? h('input', { className: 'nm-chat-edit', value: draft, autoFocus: true, 'aria-label': t('chRename'), onChange: (e: FormEvent<HTMLInputElement>) => setDraft(e.currentTarget.value), onBlur: commit, onKeyDown: onKey })
-      : h('button', { type: 'button', className: 'nm-chat-open', 'aria-current': selected ? 'page' : undefined, onClick: () => actions.openSession(chat.id), onDoubleClick: () => { setDraft(label); setEditing(true) } },
+      : h('button', { type: 'button', className: 'nm-chat-open', 'aria-current': selected ? 'page' : undefined, onClick: () => actions.openSession(chat.id), onDoubleClick: begin },
           h('span', { className: 'nm-chat-title' }, label),
           waiting
             ? h('span', { className: 'nm-chat-mark nm-wait', title: t('chWaiting'), 'aria-label': t('chWaiting') }, 'ℹ')
