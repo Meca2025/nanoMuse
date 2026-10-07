@@ -82,7 +82,6 @@ struct NanoMuseFirstRunView: View {
     @State private var passwordAnswered = false
     @State private var showSignIn = false
     @State private var showOwnKey = false
-    @State private var showAddProvider = false
     @State private var showGroups = false
     @State private var agentName = SoulStore.cachedMetadata.name
 
@@ -138,7 +137,6 @@ struct NanoMuseFirstRunView: View {
         .background(NanoMuseTones.surface.ignoresSafeArea())
         .sheet(isPresented: $showSignIn) { NavigationStack { NanoMuseCloudView() } }
         .sheet(isPresented: $showOwnKey) { NanoMuseOwnKeySheet { _ in } }
-        .sheet(isPresented: $showAddProvider) { AddProviderView() }
         .sheet(isPresented: $showGroups) { NavigationStack { ModelGroupsView() } }
         .onReceive(NotificationCenter.default.publisher(for: .soulMdChanged)) { _ in
             agentName = SoulStore.cachedMetadata.name
@@ -326,6 +324,14 @@ struct NanoMuseSetupPage<Hero: View, Content: View>: View {
     var busy: Bool = false
     @ViewBuilder var content: () -> Content
 
+    /// The fine print as one paragraph, *Learn more* a link at its end.
+    private var finePrintText: Text {
+        guard let learnMore else { return Text(verbatim: finePrint) }
+        let label = AppLocalized("Learn more")
+        let link = (try? AttributedString(markdown: "[\(label)](\(learnMore.absoluteString))")) ?? AttributedString(label)
+        return Text(verbatim: finePrint + " ") + Text(link)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -367,15 +373,13 @@ struct NanoMuseSetupPage<Hero: View, Content: View>: View {
                         .font(.subheadline.weight(.medium))
                         .disabled(busy)
                 }
-                HStack(spacing: 4) {
-                    Text(finePrint)
-                    if let learnMore {
-                        Link(AppLocalized("Learn more"), destination: learnMore)
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+                // One paragraph with the link at its end, so a long fine print wraps as text
+                // instead of sitting beside a "Learn more" column.
+                finePrintText
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .tint(NanoMuseTones.action)
+                    .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 24)
             .padding(.top, 8)
@@ -778,7 +782,7 @@ struct NanoMuseNamingCardView: View {
                         .font(.body.weight(.medium))
                         .foregroundStyle(NanoMuseTones.action)
                 } else {
-                    HStack(spacing: 8) {
+                    NanoMuseFlowLayout(spacing: 8) {
                         ForEach(card.suggestions, id: \.self) { name in
                             Button {
                                 choose(name)

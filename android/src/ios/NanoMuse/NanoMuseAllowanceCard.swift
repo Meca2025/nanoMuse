@@ -172,7 +172,7 @@ struct NanoMuseAllowanceCard: View {
                 inviteURL: refused.facts.inviteURL,
                 inviteBonusCny: refused.facts.inviteBonusCny,
                 inviteeBonusCny: refused.facts.inviteeBonusCny,
-                docs: refused.facts.ownKeyDocs.isEmpty ? (ways.docs.isEmpty ? "https://nanomuse.cn/own-key" : ways.docs) : refused.facts.ownKeyDocs,
+                docs: refused.facts.ownKeyDocs.isEmpty ? (ways.docs.isEmpty ? NanoMuseLinks.ownKeyDocs : ways.docs) : refused.facts.ownKeyDocs,
                 compact: true
             ) { pick = $0 }
             HStack(spacing: 10) {

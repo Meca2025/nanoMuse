@@ -17,4 +17,10 @@
 "NSSpeechRecognitionUsageDescription" = "nanoMuse utilise la reconnaissance vocale pour convertir votre voix en messages texte.";
 "NSHomeKitUsageDescription" = "nanoMuse accède à HomeKit pour que l'agent AI puisse interroger et contrôler vos accessoires domotiques.";
 "NSAlarmKitUsageDescription" = "nanoMuse utilise AlarmKit pour que l'agent AI puisse régler des alarmes et des minuteries en votre nom.";
-"NSLocalNetworkUsageDescription" = "La machine virtuelle nécessite un accès réseau pour le réseau SLIRP";
+"NSLocalNetworkUsageDescription" = "nanoMuse utilise le réseau local pour le serveur de débogage et pour que l'agent IA puisse joindre les services de votre propre réseau."; /* nanoMuse: the app has no VM; the sentence matches Info.plist */
+
+/* nanoMuse: the keys Info.plist declares but this file lacked, so the prompt is in the person's language */
+"NFCReaderUsageDescription" = "nanoMuse utilise le NFC pour que l'agent IA puisse lire et écrire des tags NFC en votre nom.";
+"NSBluetoothAlwaysUsageDescription" = "nanoMuse utilise le Bluetooth pour que l'agent IA puisse rechercher, connecter et communiquer avec des appareils BLE à proximité en votre nom.";
+"NSBluetoothPeripheralUsageDescription" = "nanoMuse utilise le Bluetooth pour que l'agent IA puisse rechercher, connecter et communiquer avec des appareils BLE à proximité en votre nom.";
+"NSFaceIDUsageDescription" = "nanoMuse utilise Face ID pour protéger les sessions de discussion verrouillées afin que vous seul puissiez en voir le contenu.";

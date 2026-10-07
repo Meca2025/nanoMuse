@@ -231,8 +231,6 @@ enum NanoMuseOwnKeyPreset: String, CaseIterable, Identifiable {
         NanoMuseRegion.isMainland ? [.bailian, .openrouter] : [.openrouter, .bailian]
     }
 
-    /// Mainland: "Outside, OpenRouter is the easy way"; elsewhere the same sentence, since it is true everywhere.
-    static let regionNote = AppLocalized("Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go.")
 
     /// The instance of this preset already on the phone, if any.
     @MainActor

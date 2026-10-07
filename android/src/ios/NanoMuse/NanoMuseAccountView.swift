@@ -106,7 +106,7 @@ struct NanoMuseAccountSections: View {
                 inviteBonusCny: spend.inviteBonusCny ?? sheet?.invite?.bonusCny ?? 5,
                 inviteeBonusCny: spend.inviteeBonusCny,
                 inviteBelow: sheet?.invite != nil,
-                docs: spend.ownKeyDocs ?? (ways.docs.isEmpty ? "https://nanomuse.cn/own-key" : ways.docs),
+                docs: spend.ownKeyDocs ?? (ways.docs.isEmpty ? NanoMuseLinks.ownKeyDocs : ways.docs),
                 compact: false
             ) { pick = $0 }
             // nanoMuse: the policy's gate (NanoMuseStar / contract C1), not a bare "starred" check
