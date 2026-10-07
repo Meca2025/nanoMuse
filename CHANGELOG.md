@@ -6,6 +6,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Cloud
 
+- **The allowance is counted the way the provider bills.** The relay charged every prompt token at the full input price and DeepSeek at its daytime price around the clock, so a long conversation drained the free allowance several times faster than it cost the operator. Now the part of a prompt the provider served from its cache (`usage.prompt_tokens_details.cached_tokens`) is counted at the provider's cached rate (10 % of the input price on `deepseek-v4.1-flash`, 20 % on the Qwen models), and a DeepSeek turn charged between 22:00 and 8:00 Beijing time is counted at the night price (¥1 in / ¥4 out per million tokens instead of ¥2 / ¥8); the ledger line says when either applied. The other prices on the menu were checked against Model Studio's page and were right. Two small undercounts were closed the same way: an edit counts the picture sent in (¥0.02) next to the one drawn, and a clip asked for at 720P or 1080P is priced at that resolution instead of 480P. When a provider sends no usage at all, a streamed reply is now estimated by the same rule as a whole one (CJK at a token a character), and an empty `usage` object counts as none rather than as nothing to charge. New per-model fields for `CLOUD_MODELS`: `price_in_idle`, `price_out_idle`, `idle_hours`, `cached_in_rate`, `price_image_in`, `price_second_res`; `/v1/models` carries them under `nanomuse.price_cny`.
+
 ### Runtime
 
 ### Web
@@ -16,8 +18,11 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Android
 
+- **The model picker stays short with a provider of hundreds of models.** Each group of *Settings › Models* shows eight models (the catalogue's default for the row first, then the one in use, then the rest as the provider lists them) and a *Show N more* row expands it; once the groups hold more than eight models in all, a *Search models* field above them filters every group live by model id or display name, and *No model matches* says when nothing does.
+
 ### iOS
 
+- **The model pickers fold long groups and can be searched.** Each provider group on *Settings › Models* shows at most eight models (the provider's catalogue default for that job first, then the one chosen, then the rest as the provider lists them) and ends in *Show n more* when it has more; once the groups together hold more than eight, a *Search models* field under the Automatic row filters every group live by model id or display name, shows every match, hides groups without one, and says *No model matches* when nothing fits. A key like OpenRouter or SiliconFlow no longer turns the picker into an endless list.
 - **A swipe in from the left edge of the main chat opens the drawer** with the side chats, Devices and the settings, as on Android; the round button still does. A side chat pushed over the main one keeps the system's back swipe.
 
 ### Project

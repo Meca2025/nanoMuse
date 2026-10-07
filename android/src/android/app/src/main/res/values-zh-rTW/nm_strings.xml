@@ -1057,4 +1057,7 @@
     <string name="nm_hands_why_chat_provider">你對話服務商的動手預設模型</string>
     <string name="nm_models_auto">自動</string>
     <string name="nm_models_auto_currently">目前為 %1$s</string>
+    <string name="nm_models_show_more">還有 %1$d 個</string>
+    <string name="nm_models_search">搜尋模型</string>
+    <string name="nm_models_no_match">沒有符合的模型</string>
 </resources>

@@ -1900,8 +1900,10 @@ async def test_admin_health_is_aggregates_only(stack):
     assert health["last_hour"]["requests"] == 1 and health["last_hour"]["upstream_errors"] == 0
     assert health["last_hour"]["sign_ins"] == 1 and health["db"]["writable"] is True
     assert health["hub"]["online"] == 0 and health["hub"]["dropped_frames"] == 0
-    # nothing in it names an account
-    assert data["account"]["id"] not in r.text and "138" not in r.text
+    # nothing in it names an account (not the id, not the number, not its hint;
+    # a bare "138" would also match the epoch in "time" for part of each day)
+    assert data["account"]["id"] not in r.text
+    assert "13800138000" not in r.text and data["account"]["hint"] not in r.text
 
 
 async def test_session_keys_expire_on_their_own(stack):
@@ -2006,26 +2008,19 @@ async def test_reasoning_passes_through_and_is_paid_for(stack):
     back in the history go upstream as they are, the reasoning in the reply (whole or as
     stream deltas) comes back untouched, and the reasoning tokens are counted as completion
     tokens whichever way the provider reports them."""
-    from nanomuse_cloud.service import usage_from_json
+    from nanomuse_cloud.service import Usage, usage_from_json
 
     # the counting rule on its own: OpenAI's shape has them inside, DashScope's apart
     assert usage_from_json(
         {"usage": {"prompt_tokens": 10, "completion_tokens": 50, "completion_tokens_details": {"reasoning_tokens": 30}}}
-    ) == (
-        10,
-        50,
-    )
-    assert usage_from_json({"usage": {"prompt_tokens": 10, "completion_tokens": 6, "output_tokens_details": {"reasoning_tokens": 20}}}) == (
-        10,
-        26,
-    )
-    assert usage_from_json({"usage": {"prompt_tokens": 10, "completion_tokens": 6, "completion_tokens_details": {}}}) == (10, 6)
+    ) == Usage(10, 50)
+    assert usage_from_json(
+        {"usage": {"prompt_tokens": 10, "completion_tokens": 6, "output_tokens_details": {"reasoning_tokens": 20}}}
+    ) == Usage(10, 26)
+    assert usage_from_json({"usage": {"prompt_tokens": 10, "completion_tokens": 6, "completion_tokens_details": {}}}) == Usage(10, 6)
     assert usage_from_json(
         {"usage": {"prompt_tokens": 10, "completion_tokens": 0, "completion_tokens_details": {"reasoning_tokens": 7}}}
-    ) == (
-        10,
-        7,
-    )
+    ) == Usage(10, 7)
 
     app, client, sender, up, cloud = stack
     data = await sign_up(client, sender)

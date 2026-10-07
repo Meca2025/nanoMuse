@@ -4,9 +4,10 @@
 //
 //  Settings › Models (0.1.41 "Choice"): the four slots as four rows, each saying which
 //  provider and model holds it; a picker per slot, grouped nanoMuse Cloud first and then
-//  one group per provider of the person's own; "Add a provider" at the bottom. The
-//  "Use it for" card that follows a saved key lives here too. Android: ui/models/
-//  ModelsScreen.kt and UseItForSheet.kt; desktop: client/ModelsPage.tsx.
+//  one group per provider of the person's own, each folded to eight rows with a "Show n
+//  more" row and a search field once there is more than that (NanoMusePickerList); "Add a
+//  provider" at the bottom. The "Use it for" card that follows a saved key lives here too.
+//  Android: ui/models/ModelsScreen.kt and UseItForSheet.kt; desktop: client/ModelsPage.tsx.
 //
 
 import SwiftUI
@@ -127,7 +128,9 @@ private struct NanoMuseSlotRow: View {
 
 /// The models that can hold `slot`: nanoMuse Cloud's group first when signed in (the relay's
 /// recommended one marked), then one group per provider of the person's own that covers the
-/// slot. A tap sets the slot and goes back.
+/// slot. A group shows at most `NanoMusePickerList.fold` rows until its *Show n more* row is
+/// tapped; once the groups together hold more than that, a search field under the Automatic
+/// row filters every group live. A tap on a model sets the slot and goes back.
 struct NanoMuseSlotPickerView: View {
     let slot: NanoMuseSlot
     var onPick: () -> Void = {}
@@ -140,10 +143,24 @@ struct NanoMuseSlotPickerView: View {
     @State private var videoOff = false
     @State private var automaticLine: String?
     @State private var adding = false
+    /// What the person typed in the search field.
+    @State private var query = ""
+    /// The groups whose *Show n more* row was tapped; kept while the picker is open.
+    @State private var expanded: Set<String> = []
 
     private var able: [NanoMuseSlotProvider] { providers.filter { $0.has(slot) } }
     /// Pictures and clips can go back to the automatic order; chat is the anchor.
     private var offersAutomatic: Bool { slot == .image || slot == .video }
+    /// The query as the filter reads it; empty when there is none.
+    private var needle: String { NanoMusePickerList.normalized(query) }
+    /// The search field shows once the groups together hold more rows than one fold.
+    private var offersSearch: Bool {
+        NanoMusePickerList.offersSearch(total: able.reduce(0) { $0 + ordered($1).count })
+    }
+    /// The groups with something to show: all of them, or, with a query, those with a match.
+    private var visible: [NanoMuseSlotProvider] {
+        needle.isEmpty ? able : able.filter { !rows($0).shown.isEmpty }
+    }
 
     var body: some View {
         NanoMusePage(title: slot.title) {
@@ -162,15 +179,25 @@ struct NanoMuseSlotPickerView: View {
             } else if able.isEmpty {
                 NanoMuseCaption(text: emptyLine)
             }
-            ForEach(able, id: \.id) { provider in
+            if offersSearch {
+                NanoMuseSearchField(text: $query, placeholder: AppLocalized("Search models"))
+            }
+            if !needle.isEmpty, visible.isEmpty {
+                NanoMuseCaption(text: AppLocalized("No model matches"))
+            }
+            ForEach(visible, id: \.id) { provider in
+                let group = rows(provider)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(provider.label)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 32)
-                    NanoMuseModelList(provider: provider, slot: slot, current: chosen ? current : nil) { model in
-                        pick(provider, model)
-                    }
+                    NanoMuseModelList(
+                        provider: provider, slot: slot, current: chosen ? current : nil,
+                        models: group.shown, hidden: group.hidden,
+                        onPick: { model in pick(provider, model) },
+                        onMore: { expanded.insert(provider.id) }
+                    )
                 }
             }
             NanoMuseCard {
@@ -182,6 +209,24 @@ struct NanoMuseSlotPickerView: View {
         .sheet(isPresented: $adding) {
             NanoMuseOwnKeySheet { _ in reload() }
         }
+    }
+
+    /// A group's rows in the picker's order: the provider's default for the slot, the chosen
+    /// model, then the rest as listed. Cloud without a menu on the phone: one row, the
+    /// relay's own choice.
+    private func ordered(_ provider: NanoMuseSlotProvider) -> [String] {
+        let list = provider.models(for: slot)
+        if list.isEmpty, provider.isCloud { return [""] }
+        let mine = chosen && current?.providerId == provider.id ? current?.model : nil
+        return NanoMusePickerList.ordered(list, preferred: provider.defaultModel(for: slot), chosen: mine)
+    }
+
+    /// What a group shows right now: every match while a query is present, else the first
+    /// fold with the count behind its *Show n more* row.
+    private func rows(_ provider: NanoMuseSlotProvider) -> (shown: [String], hidden: Int) {
+        let all = ordered(provider)
+        if !needle.isEmpty { return (NanoMusePickerList.filtered(all, names: provider.names, query: needle), 0) }
+        return NanoMusePickerList.collapsed(all, expanded: expanded.contains(provider.id))
     }
 
     private var emptyLine: String {
@@ -287,18 +332,47 @@ private struct NanoMuseChoiceRow: View {
     }
 }
 
-/// One provider's models for a slot, the chosen one ticked, the recommended one marked.
+/// The picker's search field: a magnifier, the text, a clear button while there is text.
+private struct NanoMuseSearchField: View {
+    @Binding var text: String
+    let placeholder: String
+
+    var body: some View {
+        NanoMuseCard {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                TextField(placeholder, text: $text)
+                    .font(.body)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                if !text.isEmpty {
+                    Button { text = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(AppLocalized("Clear")))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+        }
+    }
+}
+
+/// One provider's rows for a slot as the picker hands them over: the chosen one ticked, the
+/// recommended one marked, and a *Show n more* row when `hidden` rows wait behind it.
 private struct NanoMuseModelList: View {
     let provider: NanoMuseSlotProvider
     let slot: NanoMuseSlot
     let current: NanoMuseSlotChoice?
+    let models: [String]
+    let hidden: Int
     let onPick: (String) -> Void
-
-    private var models: [String] {
-        let list = provider.models(for: slot)
-        // Cloud without a menu on the phone: one row, the relay's own choice
-        return list.isEmpty && provider.isCloud ? [""] : list
-    }
+    let onMore: () -> Void
 
     var body: some View {
         NanoMuseCard {
@@ -328,6 +402,10 @@ private struct NanoMuseModelList: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+            }
+            if hidden > 0 {
+                if !models.isEmpty { NanoMuseRowDivider() }
+                NanoMuseActionRow(title: String(format: AppLocalized("Show %lld more"), hidden), titleColor: NanoMuseTones.action, chevron: false, action: onMore)
             }
         }
     }

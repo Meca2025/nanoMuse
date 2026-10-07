@@ -75,9 +75,26 @@ class ModelSpec:
     # 2k tier for anything wider than 1k. Video: per output second.
     price_in: float = 0.0
     price_out: float = 0.0
+    # A model priced by the hour (DeepSeek on Model Studio): what a token costs in the
+    # idle hours, `idle_hours` (start, end) in Beijing time, the provider's clock — 0 means
+    # the day price all day. A request is priced at the hour it is charged (the reply in).
+    price_in_idle: float = 0.0
+    price_out_idle: float = 0.0
+    idle_hours: tuple[int, int] = (22, 8)
+    # What an input token the provider served from its cache costs, as a share of a fresh
+    # one (`usage.prompt_tokens_details.cached_tokens`, a part of prompt_tokens). Model
+    # Studio's implicit cache is on for every model and cannot be turned off: 0.2 for the
+    # Qwen models, 0.1 for deepseek-v4.1-flash; 1 = no discount, cached tokens at full price.
+    cached_in_rate: float = 1.0
     price_image: float = 0.0
     price_image_2k: float = 0.0
+    # What the provider charges for a picture sent *in* (an edit's source picture).
+    price_image_in: float = 0.0
     price_second: float = 0.0
+    # Per output second at the resolutions above the base one, by the provider's name for
+    # them (("720P", 0.2), ("1080P", 0.48); a JSON object in CLOUD_MODELS); `price_second`
+    # is the base, the resolution the apps ask for (480P).
+    price_second_res: tuple[tuple[str, float], ...] = ()
     # The clip length when the app does not say (`parameters.duration` absent):
     # Wan 2.2 always makes five seconds, MiniMax four at the least.
     clip_seconds: float = 4.0
@@ -97,6 +114,17 @@ class ModelSpec:
             raise ValueError(f"{self.id}: recommended_for needs recommended: true")
         if any(lane not in self.lanes for lane in self.recommended_for):
             raise ValueError(f"{self.id}: recommended_for names a lane the model is not for")
+        # the prices by resolution may arrive as a JSON object; keep a tuple (the spec is hashable)
+        res = self.price_second_res
+        if isinstance(res, dict):
+            res = tuple(res.items())
+        object.__setattr__(self, "price_second_res", tuple((str(k).upper(), float(v)) for k, v in res))
+        hours = tuple(int(h) for h in self.idle_hours)
+        if len(hours) != 2 or not all(0 <= h <= 24 for h in hours):
+            raise ValueError(f"{self.id}: idle_hours is [start, end] in hours of the day, Beijing time")
+        object.__setattr__(self, "idle_hours", hours)
+        if not 0 <= self.cached_in_rate <= 1:
+            raise ValueError(f"{self.id}: cached_in_rate is a share of the input price, between 0 and 1")
 
     @property
     def lanes(self) -> tuple[str, ...]:
@@ -138,26 +166,66 @@ class ModelSpec:
                 "price_cny": {
                     "per_m_input": self.price_in,
                     "per_m_output": self.price_out,
+                    "per_m_input_idle": self.price_in_idle,
+                    "per_m_output_idle": self.price_out_idle,
+                    "idle_hours": list(self.idle_hours),
+                    "per_m_cached_input": round(self.price_in * self.cached_in_rate, 6),
                     "per_image": self.price_image,
                     "per_image_2k": self.price_image_2k,
+                    "per_image_in": self.price_image_in,
                     "per_second": self.price_second,
+                    "per_second_res": dict(self.price_second_res),
                 },
             },
         }
 
     # -- what one request costs, in micro-yuan (1e-6 CNY; integers in the ledger) --
 
-    def chat_cost_uy(self, prompt_tokens: int, completion_tokens: int) -> int:
-        return round(max(0, prompt_tokens) * self.price_in + max(0, completion_tokens) * self.price_out)
+    def idle_at(self, t: int | float) -> bool:
+        """Whether the UNIX time `t` falls in the model's idle hours (Beijing time), when it
+        has an idle price at all."""
+        if not (self.price_in_idle or self.price_out_idle):
+            return False
+        start, end = self.idle_hours
+        hour = (int(t) + BEIJING_OFFSET_S) // 3600 % 24
+        if start == end:
+            return False
+        if start < end:
+            return start <= hour < end
+        return hour >= start or hour < end
 
-    def image_cost_uy(self, size: str | None = None) -> int:
+    def chat_prices(self, at: int | float | None = None) -> tuple[float, float]:
+        """The input and output price per million tokens at `at` (None: the day price)."""
+        if at is not None and self.idle_at(at):
+            return self.price_in_idle or self.price_in, self.price_out_idle or self.price_out
+        return self.price_in, self.price_out
+
+    def chat_cost_uy(self, prompt_tokens: int, completion_tokens: int, cached_tokens: int = 0, at: int | float | None = None) -> int:
+        """Prompt tokens at the input price — the cached part of them (a part of
+        prompt_tokens, as the provider reports it) at `cached_in_rate` of it — and completion
+        tokens (the reasoning included) at the output price, both as in force at `at`."""
+        prompt = max(0, prompt_tokens)
+        cached = min(prompt, max(0, cached_tokens))
+        price_in, price_out = self.chat_prices(at)
+        fresh = (prompt - cached) * price_in + cached * price_in * self.cached_in_rate
+        return round(fresh + max(0, completion_tokens) * price_out)
+
+    def image_cost_uy(self, size: str | None = None, inputs: int = 0) -> int:
+        """One picture out at the tier `size` falls in, plus `inputs` pictures sent in."""
         price = self.price_image
         if self.price_image_2k and size and _max_side(size) > 1400:
             price = self.price_image_2k
-        return round(price * 1_000_000)
+        return round((price + max(0, inputs) * self.price_image_in) * 1_000_000)
 
-    def video_cost_uy(self, seconds: float) -> int:
-        return round(max(0.0, seconds) * self.price_second * 1_000_000)
+    def video_cost_uy(self, seconds: float, resolution: str | None = None) -> int:
+        """`seconds` of output at `resolution` ("480P", "720P", "1080P"; None or an unknown
+        one: the base price)."""
+        price = dict(self.price_second_res).get((resolution or "").upper(), self.price_second)
+        return round(max(0.0, seconds) * price * 1_000_000)
+
+
+# The provider's clock for by-the-hour prices (DeepSeek's idle hours are Beijing time).
+BEIJING_OFFSET_S = 8 * 3600
 
 
 def _max_side(size: str) -> int:
@@ -175,13 +243,16 @@ def _max_side(size: str) -> int:
 # qwen3.8-27b is the hands model (the GUI model that reads screenshots and drives a
 # phone or a computer; usable for chat too), qwen-image-3.0 draws, Wan 2.2 makes clips
 # through the video API (which the provider does not list; the app probes it). Prices
-# are the provider's Beijing list prices (help.aliyun.com/zh/model-studio/model-pricing,
-# 2026-09/10): DeepSeek V4.1 Flash ¥2 / ¥8 per million tokens in busy hours (¥1 / ¥4
-# idle; the busy figure is what the ledger counts), 27B ¥3 / ¥12, Flash ¥0.8 / ¥2.7,
-# qwen-image-3.0 ¥0.18 a picture at 1k and 2k alike (the Pro tier is ¥0.25 / ¥0.5),
-# wan2.2-i2v-flash ¥0.10 a second at 480P for a fixed five seconds (MiniMax-H3, the 0.3
-# default, was ¥0.5 a second: a new face cost ¥8 in clips, now ¥2). wan2.2-t2v-plus is
-# the sibling the app asks for when a clip starts from words: ¥0.14 a second.
+# are the provider's Beijing list prices (help.aliyun.com/zh/model-studio/model-pricing
+# and /context-cache, read 2026-10-07): DeepSeek V4.1 Flash ¥2 / ¥8 per million tokens
+# from 8:00 to 22:00 Beijing time and ¥1 / ¥4 the rest of the night, cached input at 10 %;
+# 27B ¥3 / ¥12 and Flash ¥0.8 / ¥2.7, cached input at 20 % (the usual Model Studio rate;
+# the page says Flash's exact figure is in the console); qwen-image-3.0 ¥0.18 a picture
+# out at 1k and 2k alike and ¥0.02 a picture in (the Pro tier is ¥0.25 / ¥0.5);
+# wan2.2-i2v-flash ¥0.10 a second at 480P (¥0.20 at 720P, ¥0.48 at 1080P) for a fixed
+# five seconds (MiniMax-H3, the 0.3 default, was ¥0.5 a second: a new face cost ¥8 in
+# clips, now ¥2). wan2.2-t2v-plus is the sibling the app asks for when a clip starts
+# from words: ¥0.14 a second at 480P, ¥0.70 at 1080P.
 DEFAULT_MODELS: tuple[ModelSpec, ...] = (
     ModelSpec(
         id="deepseek-v4.1-flash",
@@ -195,6 +266,10 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
         out_mult=0.7,
         price_in=2.0,
         price_out=8.0,
+        price_in_idle=1.0,
+        price_out_idle=4.0,
+        idle_hours=(22, 8),
+        cached_in_rate=0.1,
     ),
     ModelSpec(
         id="qwen3.8-27b",
@@ -206,6 +281,7 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
         recommended_for=("gui",),
         price_in=3.0,
         price_out=12.0,
+        cached_in_rate=0.2,
     ),
     ModelSpec(
         id="qwen3.8-flash",
@@ -216,6 +292,7 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
         out_mult=0.3,
         price_in=0.8,
         price_out=2.7,
+        cached_in_rate=0.2,
     ),
     ModelSpec(
         id="qwen-image-3.0",
@@ -227,6 +304,7 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
         recommended=True,
         price_image=0.18,
         price_image_2k=0.18,
+        price_image_in=0.02,
     ),
     ModelSpec(
         id="wan2.2-i2v-flash",
@@ -238,6 +316,7 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
         per_clip=200_000,
         recommended=True,
         price_second=0.10,
+        price_second_res=(("720P", 0.20), ("1080P", 0.48)),
         clip_seconds=5.0,
     ),
     ModelSpec(
@@ -249,6 +328,7 @@ DEFAULT_MODELS: tuple[ModelSpec, ...] = (
         output_modalities=("video",),
         per_clip=200_000,
         price_second=0.14,
+        price_second_res=(("1080P", 0.70),),
         clip_seconds=5.0,
     ),
 )
@@ -596,11 +676,15 @@ class Settings:
             out_mult=dearest.out_mult,
             per_image=dearest.per_image,
             per_clip=dearest.per_clip,
+            # the dearest's day prices and surcharges, none of its discounts (idle hours,
+            # cached input): an unknown model is priced high, not low
             price_in=dearest.price_in,
             price_out=dearest.price_out,
             price_image=dearest.price_image,
             price_image_2k=dearest.price_image_2k,
+            price_image_in=dearest.price_image_in,
             price_second=dearest.price_second,
+            price_second_res=dearest.price_second_res,
             clip_seconds=dearest.clip_seconds,
         )
 

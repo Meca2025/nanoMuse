@@ -100,7 +100,7 @@ from .geo import Geo, collect_ips, group_places
 from .github_stats import GitHubCollector
 from .hub import Hub
 from .identifiers import BadIdentifier, parse
-from .service import Caller, Cloud, CloudError, dumps, estimate_tokens, prompt_chars, usage_from_json
+from .service import Caller, Cloud, CloudError, Usage, dumps, estimate_tokens, prompt_chars, usage_from_json
 from .stats import Stats, api_group
 from .sync import DEFAULT_PAGE, SyncStore
 
@@ -753,21 +753,23 @@ def create_app(
                 usage = usage_from_json(obj)
                 text = _reply_text(obj)
                 if usage is None:
-                    usage = (fallback_prompt_tokens, estimate_tokens(text))
-                charged = cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
+                    usage = Usage(fallback_prompt_tokens, estimate_tokens(text))
+                charged = cloud.charge_chat(caller, spec, usage.prompt, usage.completion, request_id, cached_tokens=usage.cached)
             finally:
                 cloud.settle(caller, request_id)
             if sample_meta is not None:
-                cloud.keep_sample(caller, spec.id, sample_messages, text, usage[0], usage[1], sample_meta)
+                cloud.keep_sample(caller, spec.id, sample_messages, text, usage.prompt, usage.completion, sample_meta)
             if isinstance(obj, dict):
                 obj["model"] = spec.id
                 obj.setdefault("nanomuse", {})["charged"] = charged
             return JSONResponse(content=obj, headers={"x-nanomuse-charged": str(charged), "x-nanomuse-request": request_id})
 
         async def gen() -> AsyncIterator[bytes]:
-            usage: tuple[int, int] | None = None
+            usage: Usage | None = None
             text_len = 0
-            reply: list[str] = []  # the assistant's words, kept only for a contributing account
+            # the assistant's words: the estimate when the provider sends no usage, and the
+            # kept turn of a contributing account
+            reply: list[str] = []
             # A request the provider refused, or dropped before a single token, costs the
             # account nothing; a stream that broke off midway is charged for what arrived.
             failed = False
@@ -798,8 +800,7 @@ def create_app(
                                         d = ch.get("delta") if isinstance(ch, dict) else None
                                         if isinstance(d, dict) and isinstance(d.get("content"), str):
                                             text_len += len(d["content"])
-                                            if sample_meta is not None:
-                                                reply.append(d["content"])
+                                            reply.append(d["content"])
                                     obj["model"] = spec.id
                                     payload = dumps(obj)
                             yield f"data: {payload}\n\n".encode()
@@ -817,10 +818,10 @@ def create_app(
             finally:
                 if not failed:
                     if usage is None:
-                        usage = (fallback_prompt_tokens, math.ceil(text_len / 3))
-                    cloud.charge_chat(caller, spec, usage[0], usage[1], request_id)
+                        usage = Usage(fallback_prompt_tokens, estimate_tokens("".join(reply)))
+                    cloud.charge_chat(caller, spec, usage.prompt, usage.completion, request_id, cached_tokens=usage.cached)
                     if sample_meta is not None:
-                        cloud.keep_sample(caller, spec.id, sample_messages, "".join(reply), usage[0], usage[1], sample_meta)
+                        cloud.keep_sample(caller, spec.id, sample_messages, "".join(reply), usage.prompt, usage.completion, sample_meta)
                 cloud.settle(caller, request_id)
 
         return StreamingResponse(
@@ -948,16 +949,17 @@ def create_app(
         params = {"size": _size_param(size), "prompt_extend": False, "watermark": False} if three_x else {"n": 1, "watermark": False}
         content = [{"image": f"data:{mime};base64," + base64.b64encode(data).decode()}, {"text": prompt}]
         request_id = uuid.uuid4().hex[:16]
+        # the picture sent in is billed too (price_image_in), on top of the one drawn
         cloud.check_budget(
             caller,
             minimum=spec.per_image,
-            cost_uy=spec.image_cost_uy(_size_param(size)),
+            cost_uy=spec.image_cost_uy(_size_param(size), inputs=1),
             request_id=request_id,
             place=client_place(request),
         )
         try:
             png = await _dashscope_image(edit_model, content, params)
-            charged = cloud.charge_image(caller, spec, 1, request_id, size=_size_param(size))
+            charged = cloud.charge_image(caller, spec, 1, request_id, size=_size_param(size), inputs=1)
         finally:
             cloud.settle(caller, request_id)
         return JSONResponse(
@@ -995,13 +997,29 @@ def create_app(
         except (TypeError, ValueError):
             return spec.clip_seconds
 
+    def _clip_resolution(body: dict) -> str | None:
+        """The resolution the app asked for — Wan's `parameters.resolution` ("480P"), else
+        the tier a `parameters.size` ("1280*720") falls in; None when neither is said."""
+        params = body.get("parameters") if isinstance(body.get("parameters"), dict) else {}
+        res = params.get("resolution")
+        if isinstance(res, str) and res.strip():
+            return res.strip().upper()
+        size = params.get("size")
+        if isinstance(size, str) and size.strip():
+            try:
+                short = min(int(p) for p in size.lower().replace("*", "x").split("x")[:2])
+            except ValueError:
+                return None
+            return "1080P" if short >= 1080 else "720P" if short >= 720 else "480P"
+        return None
+
     @app.post("/api/v1" + VIDEO_PATH)
     async def video_synthesis(request: Request, caller: Caller = Depends(caller_dep)) -> Response:
         body = await _json(request)
         spec = cloud.model_for(str(body.get("model", "")), "video", caller)
         # A probe (no input) costs nothing upstream and is not priced here either.
         probe = not body.get("input")
-        clip_cost = 0 if probe else spec.video_cost_uy(_clip_seconds(body, spec))
+        clip_cost = 0 if probe else spec.video_cost_uy(_clip_seconds(body, spec), _clip_resolution(body))
         # reserved while the submission runs; once accepted, the task row holds the clip's
         # price against the allowance (db.pending_video_cost) until the clip is charged
         request_id = uuid.uuid4().hex[:16]

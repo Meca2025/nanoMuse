@@ -166,6 +166,71 @@ final class NanoMuseModelSlotsTests: XCTestCase {
         XCTAssertTrue(NanoMuseRelayMenu.cached.isEmpty)
     }
 
+    // MARK: - The picker's groups: order, fold, search
+
+    /// Twenty chat models as a key with many of them lists them, `m01` … `m20`.
+    private let many: [String] = (1...20).map { $0 < 10 ? "m0\($0)" : "m\($0)" }
+
+    func testGroupPutsTheDefaultThenTheChoiceFirstAndKeepsTheRestInOrder() {
+        let got = NanoMusePickerList.ordered(many, preferred: "m07", chosen: "m15")
+        XCTAssertEqual(Array(got.prefix(3)), ["m07", "m15", "m01"])
+        XCTAssertEqual(got.count, many.count, "nothing is added, nothing is lost")
+        XCTAssertEqual(Set(got), Set(many))
+        XCTAssertEqual(got.filter { $0 != "m07" && $0 != "m15" }, many.filter { $0 != "m07" && $0 != "m15" }, "the rest keep the list's order")
+    }
+
+    func testGroupDoesNotRepeatAChoiceThatIsTheDefaultNorInventOneThatIsMissing() {
+        XCTAssertEqual(Array(NanoMusePickerList.ordered(many, preferred: "m03", chosen: "m03").prefix(2)), ["m03", "m01"])
+        XCTAssertEqual(NanoMusePickerList.ordered(many, preferred: "not-here", chosen: "neither"), many, "a default the key does not list changes nothing")
+        XCTAssertEqual(NanoMusePickerList.ordered(many, preferred: nil, chosen: nil), many)
+        XCTAssertEqual(NanoMusePickerList.ordered([], preferred: "m01", chosen: "m02"), [])
+    }
+
+    func testCloudGroupKeepsTheRecommendedFirst() {
+        // the relay's list already leads with the recommended one, and the provider's default names it
+        let got = NanoMusePickerList.ordered(cloud.models(for: .chat), preferred: cloud.defaultModel(for: .chat), chosen: "qwen3.8-27b")
+        XCTAssertEqual(got, ["deepseek-v4.1-flash", "qwen3.8-27b"])
+        let prefixed = NanoMusePickerList.ordered(openrouter.models(for: .chat), preferred: openrouter.defaultModel(for: .chat), chosen: nil)
+        XCTAssertEqual(prefixed.first, "deepseek/deepseek-v4.1-flash", "the catalogue's bare default finds its prefixed id")
+    }
+
+    func testGroupFoldsToEightRowsUntilExpanded() {
+        XCTAssertEqual(NanoMusePickerList.fold, 8)
+        let folded = NanoMusePickerList.collapsed(many, expanded: false)
+        XCTAssertEqual(folded.shown, Array(many.prefix(8)))
+        XCTAssertEqual(folded.hidden, 12, "the Show n more row counts what is behind it")
+        let open = NanoMusePickerList.collapsed(many, expanded: true)
+        XCTAssertEqual(open.shown, many)
+        XCTAssertEqual(open.hidden, 0)
+    }
+
+    func testAGroupOfEightOrFewerHasNoMoreRow() {
+        let eight = Array(many.prefix(8))
+        let got = NanoMusePickerList.collapsed(eight, expanded: false)
+        XCTAssertEqual(got.shown, eight)
+        XCTAssertEqual(got.hidden, 0)
+        let nine = Array(many.prefix(9))
+        XCTAssertEqual(NanoMusePickerList.collapsed(nine, expanded: false).hidden, 1)
+    }
+
+    func testSearchAppearsOnlyAboveEightRowsAcrossAllGroups() {
+        XCTAssertFalse(NanoMusePickerList.offersSearch(total: 0))
+        XCTAssertFalse(NanoMusePickerList.offersSearch(total: 8))
+        XCTAssertTrue(NanoMusePickerList.offersSearch(total: 9))
+    }
+
+    func testSearchMatchesIdAndDisplayNameWithoutCaseAndWithoutACap() {
+        let names = ["m02": "Claude Sonnet", "m19": "GPT Mini"]
+        XCTAssertEqual(NanoMusePickerList.normalized("  SoNNet \n"), "sonnet")
+        XCTAssertEqual(NanoMusePickerList.filtered(many, names: names, query: "sonnet"), ["m02"], "the display name counts")
+        XCTAssertEqual(NanoMusePickerList.filtered(many, names: names, query: "M1"), [], "the query is normalized by the caller; a raw upper-case one matches nothing here")
+        XCTAssertEqual(NanoMusePickerList.filtered(many, names: names, query: "m1"), (10...19).map { "m\($0)" }, "every match shows, more than a fold of them")
+        XCTAssertEqual(NanoMusePickerList.filtered(many, names: names, query: "nothing"), [])
+        XCTAssertEqual(NanoMusePickerList.filtered(many, names: names, query: ""), many, "no query keeps everything")
+        XCTAssertTrue(NanoMusePickerList.matches("deepseek/deepseek-v4.1-flash", name: nil, query: "v4.1"))
+        XCTAssertFalse(NanoMusePickerList.matches("qwen-plus", name: "Qwen Plus", query: "max"))
+    }
+
     // MARK: - The slots' words
 
     func testEverySlotNamesItsCapability() {
