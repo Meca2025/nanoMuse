@@ -31,6 +31,7 @@ import { makeMicButton, makeQuoteAction } from './ComposerExtras.tsx'
 import { makeDocEditor } from './DocEditor.tsx'
 import { renderTrajectory } from './Trajectory.tsx'
 import { makeCloudSection } from './CloudSection.tsx'
+import { CODING_SECTION, makeCodingPanel } from './CodingPanel.tsx'
 import { makeDevicesPanel } from './DevicesPanel.tsx'
 import { makeFeedPanel } from './FeedPanel.tsx'
 import { makeGoalsPanel } from './GoalsPanel.tsx'
@@ -532,6 +533,10 @@ export function apply(ctx: ClientContext): void {
   }, GeneralSection))
   slots.inject('settings.section', () =>
     slots.register({ name: 'settings.section', id: DEVICES_PANEL, order: 25, label: () => t('railDevices'), locale: 'nanomuse' }, DevicesPanel))
+  // Settings → Coding agents: this computer's Cursor / Codex / Claude Code chats and the other computers' (docs/coding-agents.md)
+  const CodingPanel = makeCodingPanel(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: CODING_SECTION, order: 25.5, label: () => t('capCoding'), locale: 'nanomuse' }, CodingPanel))
 
   // The first run: meet the agent, sign in or use your own key — in the shipped
   // step's seat, below its priority so ours renders whichever registers first.

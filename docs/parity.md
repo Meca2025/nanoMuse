@@ -67,7 +67,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Connections shared across the account's devices (the profile's `connectors`; never a credential) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 *(18)* |
 | Chat apps: Feishu · DingTalk · WeCom · Telegram answer as the agent (pairing codes, allowlists, deliver here) | — *(22)* | — *(22)* | ✓ 0.1.34 the web screen | ✓ 0.1.34 *Settings → Chat apps* |
 | Skills | ✓ upstream | ✓ upstream | — *(8)* | ✓ |
-| Coding agents (Cursor, Codex, Claude Code on the computers) | ✓ | ✓ 0.1.34 over the hub *(9)* | — *(8)* | ✓ |
+| Coding agents (Cursor, Codex, Claude Code on the computers) | ✓ | ✓ 0.1.34 over the hub *(9)* | ✓ *Settings → Coding agents*, this computer first; announces and serves `coding.*` *(8)* | ✓ |
 | Devices of the account, remote control, rename, forget | ✓ | ◐ list, Reach sheet 0.1.33 | ✓ | ✓ |
 | Hub, outbound: the model reaches the account's other devices (`devices`, `device_*`, `delegate`, `@<device>`) | ✓ *Computers*, the reach offload | ◐ the Reach sheet by hand and `@device` to the hub — since round 9 also a tap on an online device in the account's Devices list, as on Android; no tool in the model's hands *(29)* | ✓ `reach.ts` | ✓ the runtime's `tools/devices.py` |
 | Hub, inbound: the device answers the others (shell · files · open · screen · notify · task) | ✓ `HubActions` | ◐ info · open · notify · task; shell, files and screen answer *not supported* *(10)* | ✓ `actions.ts` | ✓ the runtime; a browser tab is not a device |
@@ -135,9 +135,11 @@ notes above; a settled item keeps its number and says how it went.
    (the desktop does it in the harness host). The web app has MCP servers by hand. *Decision: run
    the flow in the runtime (`nanomuse mcp` already bridges connectors), or point the web app at a
    desktop on the account?*
-8. **Desktop · Skills and coding agents pages.** The harness has its own skills; the coding agents
-   live on the computer the desktop runs on, so a page would show the local CLIs. *Recommendation:
-   coding agents page yes (the web app has one), skills no (duplicate).*
+8. **Desktop · Skills and coding agents pages.** The harness has its own skills, so a skills page
+   would duplicate them: not done. The coding agents page is done: *Settings → Coding agents* shows
+   this computer's CLIs and chats first, the account's other computers after, and the desktop
+   announces and answers the `coding.*` hub actions itself (`src/coding.ts`), so a phone sees a
+   computer with only the desktop app as a coding computer too.
 9. **iOS · Coding agents** — done in 0.1.34 (`NanoMuseCoding.swift`, the hub's `coding.*`).
 10. **iOS · Hands.** iOS does not let an app drive another; App Intents / Shortcuts are the door.
     Not planned as "hands". Settled in 0.1.36: the Settings row is there (*Hands — Not on iPhone*)

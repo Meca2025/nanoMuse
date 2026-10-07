@@ -13,6 +13,8 @@ import { Button, Input, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useState, type FormEvent, type ReactNode } from 'react'
 import { call, errorStyle, type Translate } from './api.ts'
 import { openLink } from './bridge.ts'
+import { settingsBus } from './bus.ts'
+import { CODING_SECTION, codingNav } from './CodingPanel.tsx'
 import { IconDevices, IconGlobe, IconLaptop, IconPencil, IconPhone, IconRefresh } from './icons.tsx'
 import { useLive, type LiveDevice } from './live.ts'
 import { MoreButton } from './ui.tsx'
@@ -58,9 +60,19 @@ function Dot({ on }: { on: boolean }): ReactNode {
   return h('span', { className: `nm-status-dot${on ? ' nm-on' : ''}`, style: { display: 'inline-block', verticalAlign: 'middle' } })
 }
 
-function Chips({ items }: { items: string[] }): ReactNode {
+/** The capability chips; the *Coding agents* one opens Settings → Coding agents on that computer (`onCoding`). */
+function Chips({ items, coding, onCoding }: { items: string[]; coding?: string; onCoding?: () => void }): ReactNode {
   if (items.length === 0) return null
-  return h('div', { className: 'nm-dv-chips' }, items.map((c) => h('span', { key: c, className: 'nm-dv-chip' }, c)))
+  return h('div', { className: 'nm-dv-chips' }, items.map((c) =>
+    c === coding && onCoding
+      ? h('button', { key: c, type: 'button', className: 'nm-dv-chip nm-dv-chip-button', onClick: onCoding }, c)
+      : h('span', { key: c, className: 'nm-dv-chip' }, c)))
+}
+
+/** Settings → Coding agents, looking at `deviceId` ('' = this computer). */
+function openCoding(deviceId: string): void {
+  codingNav.device = deviceId || undefined
+  settingsBus.openSection?.(CODING_SECTION)
 }
 
 /** OS · version, whichever the relay knows. */
@@ -121,7 +133,7 @@ export function makeDevicesPanel(t: Translate) {
                     h('span', { className: 'nm-dv-name' }, hub.deviceName || t('thisComputer')),
                     h('button', { type: 'button', className: 'nm-icon-btn nm-icon-btn-sm', title: t('rename'), 'aria-label': t('rename'), onClick: () => { setName(hub.deviceName); setRenaming(true) } }, h(IconPencil, { size: 14 }))),
               h('span', { className: 'nm-dv-sub' }, h(Dot, { on: hub.connected }), ' ', [stateLine, osLine(self)].filter(Boolean).join(' · ')),
-              h(Chips, { items: capabilities(t, ownActions) }))),
+              h(Chips, { items: capabilities(t, ownActions), coding: t('capCoding'), onCoding: () => openCoding('') }))),
           h('div', { className: 'nm-dv-rows' },
             h('div', { className: 'nm-row' },
               h('div', { className: 'nm-row-main' },
@@ -161,7 +173,7 @@ function DeviceCard({ t, device: d, busy, onForget }: { t: Translate; device: Li
         h('span', { className: 'nm-dv-name' }, d.name),
         // the glyph says phone or computer; the line says when and what it runs
         h('span', { className: 'nm-dv-sub', title: osLine(d) }, h(Dot, { on: d.online }), ' ', [presence(t, d), osLine(d)].filter(Boolean).join(' · ')),
-        h(Chips, { items: chips }),
+        h(Chips, { items: chips, coding: t('capCoding'), ...(d.online && d.kind === 'computer' ? { onCoding: () => openCoding(d.id) } : {}) }),
         takesTasks ? h('span', { className: 'nm-dv-hint' }, t('deviceMentionHint', { name: d.name })) : null),
       h(MoreButton, { label: t('deviceMore', { name: d.name }), size: 28, items: [{ id: 'forget', label: t('forgetDevice'), danger: true, onSelect: () => { if (!busy) onForget() } }] })))
 }

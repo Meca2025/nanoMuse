@@ -44,6 +44,7 @@ import type {} from '@deepseek-ai/dsh-user-approval'
 import z from '@deepseek-ai/schemastery'
 import { mountGuarded } from './admit.ts'
 import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './actions.ts'
+import { CODING_ACTIONS, CodingService, codingBrief, GATED_CODING_ACTIONS } from './coding.ts'
 import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
 import { relayFailure, type RelayRefusal } from './refusals.ts'
@@ -507,6 +508,8 @@ export default class NanomuseCloud extends Service {
   private catalogue: ProviderEntry[] = []
   /** The ChatGPT sign-in and its proxy (C11), over the runtime's `nanomuse chatgpt`. */
   readonly chatgpt: ChatGptDesk
+  /** The Cursor, Codex and Claude Code sessions on this computer, for the page and the other devices (`docs/coding-agents.md`). */
+  readonly coding: CodingService
 
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'nanomuseCloud')
@@ -542,6 +545,11 @@ export default class NanomuseCloud extends Service {
         version: VERSION,
         actions: this.actions(),
       }),
+      log: (level, text) => this.ctx.logger[level](text),
+    })
+    this.coding = new CodingService({
+      storePath: join(this.dir(), 'coding', 'runs.json'),
+      hub: this.hub,
       log: (level, text) => this.ctx.logger[level](text),
     })
   }
@@ -583,6 +591,16 @@ export default class NanomuseCloud extends Service {
     for (const action of REMOTE_ACTIONS) {
       this.hub.handle(action, (args, call) => this.remote(action, args, call.from))
     }
+    // The coding agents on this computer, for the other devices (`docs/coding-agents.md`): the
+    // lists are read-only and answer at once; a message into an agent edits files here, so it
+    // is agreed to like a `shell` command — the card on this screen unless remote control is on.
+    for (const action of CODING_ACTIONS) {
+      this.hub.handle(action, async (args, call) => {
+        if (GATED_CODING_ACTIONS.has(action)) await this.permit(call.from, action, codingBrief(action, args))
+        return this.coding.handle(action, args, call)
+      })
+    }
+    void this.coding.load()
     // A task from another device runs in a dsh session here; needs the session API, so only once it is up.
     this.ctx.inject(['sessionController', 'approval'], (ctx) => {
       // The stage answers approvals too; registered before the task runner so a task from another
@@ -774,6 +792,7 @@ export default class NanomuseCloud extends Service {
     })
     this.ctx.effect(() => () => {
       this.hub.stop('shutting down')
+      this.coding.close()
       this.chatgpt.stop()
       for (const res of this.streams) res.end()
       this.streams.clear()
@@ -2154,10 +2173,16 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
-  /** The actions this computer announces: `info` and `notify`, the remote ones (the person here agrees to each unless remote control is on), a task once sessions are up. */
+  /**
+   * The actions this computer announces: `info` and `notify`, the remote ones (the person here
+   * agrees to each unless remote control is on), a task once sessions are up, and the coding
+   * agents — always, as the runtime does: a computer without any of the CLIs answers with empty
+   * lists, and installing one later needs no new hello.
+   */
   private actions(): string[] {
     const out = [...ACTIONS, ...REMOTE_ACTIONS]
     if (this.tasks) out.push('approve', 'task', 'stop')
+    out.push(...CODING_ACTIONS)
     return out
   }
 
@@ -2657,6 +2682,10 @@ export default class NanomuseCloud extends Service {
         this.blackScreenAt = 0
         this.broadcast()
         return send(res, 204)
+      }
+      // Settings → Coding agents: this computer's agents and, with `device`, another computer's over the hub
+      if (route === '/coding' || route.startsWith('/coding/')) {
+        if (await this.coding.http(route.slice('/coding'.length), req, res, url, () => json(req), send)) return
       }
       return send(res, 404, { error: { code: 'not_found', message: `No ${req.method ?? ''} ${route}` } })
     } catch (error: unknown) {

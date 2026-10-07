@@ -67,6 +67,11 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
   `device_notify` and `delegate` for the phone and the other computers; the phone's
   `delegate` landing here as a dsh session "From <device>" with its approvals relayed
   back; remote control (`shell`, `files`, `open`, `screen`) behind a switch;
+- **Coding agents**: *Settings → Coding agents* — this computer's Cursor, Codex and
+  Claude Code chats (read from disk, a message starts the agent's own CLI, the run
+  streams in with its tools, *Stop* ends it) and then the account's other computers',
+  over the `coding.*` hub actions this computer announces too; a device card's *Coding
+  agents* chip opens the page on that computer ([coding-agents.md](coding-agents.md)).
 - **Network** (Settings → nanoMuse Cloud → Network): one proxy for what the app sends out —
   `http://host:port`, `https://`, `socks5://` or `socks5h://`, a `user:pass@` allowed and
   shown masked. Everything the dsh Host sends goes through it: your own keys, the ChatGPT

@@ -29,6 +29,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Desktop
 
+- **Coding agents page** under *Settings → Coding agents*, also opened from the *Coding agents* chip on a device card: this computer's Cursor, Codex and Claude Code chats first (version, how many run now, recent chats), the account's other computers after; open a chat to read it, send a message and watch the run stream with its tools, stop it. A computer with none of the three installed says so. The desktop now announces and answers the `coding.*` hub actions itself — a phone sees a computer with only the desktop app as a coding computer — with `coding.send` and `coding.stop` behind the same remote-control gate as `shell` and `files`.
 - **The other device's name in "… is working"** under its prompt, instead of a fixed word.
 - **The Cloud page is called *nanoMuse Cloud* everywhere** — in the settings sidebar and in every sentence that points to it; the *Upgrade* link left the usage card (nothing is sold).
 - **Corrected sentences** about where chats live (sync is on by default), where the look is changed and which site the update check reads first; the UI-TARS-desktop operator is credited under Thanks. Chinese wording follows the phone (在线, 快捷聊天, 非营利, 形象工坊, 操作屏幕) and uses 「」 quotes.
