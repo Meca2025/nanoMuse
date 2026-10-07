@@ -6,6 +6,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Cloud
 
+- **The allowance is counted the way the provider bills.** The relay charged every prompt token at the full input price and DeepSeek at its daytime price around the clock, so a long conversation drained the free allowance several times faster than it cost the operator. Now the part of a prompt the provider served from its cache (`usage.prompt_tokens_details.cached_tokens`) is counted at the provider's cached rate (10 % of the input price on `deepseek-v4.1-flash`, 20 % on the Qwen models), and a DeepSeek turn charged between 22:00 and 8:00 Beijing time is counted at the night price (¥1 in / ¥4 out per million tokens instead of ¥2 / ¥8); the ledger line says when either applied. The other prices on the menu were checked against Model Studio's page and were right. Two small undercounts were closed the same way: an edit counts the picture sent in (¥0.02) next to the one drawn, and a clip asked for at 720P or 1080P is priced at that resolution instead of 480P. When a provider sends no usage at all, a streamed reply is now estimated by the same rule as a whole one (CJK at a token a character), and an empty `usage` object counts as none rather than as nothing to charge. New per-model fields for `CLOUD_MODELS`: `price_in_idle`, `price_out_idle`, `idle_hours`, `cached_in_rate`, `price_image_in`, `price_second_res`; `/v1/models` carries them under `nanomuse.price_cny`.
+
 ### Runtime
 
 ### Web

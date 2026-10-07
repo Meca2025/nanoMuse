@@ -2006,26 +2006,19 @@ async def test_reasoning_passes_through_and_is_paid_for(stack):
     back in the history go upstream as they are, the reasoning in the reply (whole or as
     stream deltas) comes back untouched, and the reasoning tokens are counted as completion
     tokens whichever way the provider reports them."""
-    from nanomuse_cloud.service import usage_from_json
+    from nanomuse_cloud.service import Usage, usage_from_json
 
     # the counting rule on its own: OpenAI's shape has them inside, DashScope's apart
     assert usage_from_json(
         {"usage": {"prompt_tokens": 10, "completion_tokens": 50, "completion_tokens_details": {"reasoning_tokens": 30}}}
-    ) == (
-        10,
-        50,
-    )
-    assert usage_from_json({"usage": {"prompt_tokens": 10, "completion_tokens": 6, "output_tokens_details": {"reasoning_tokens": 20}}}) == (
-        10,
-        26,
-    )
-    assert usage_from_json({"usage": {"prompt_tokens": 10, "completion_tokens": 6, "completion_tokens_details": {}}}) == (10, 6)
+    ) == Usage(10, 50)
+    assert usage_from_json(
+        {"usage": {"prompt_tokens": 10, "completion_tokens": 6, "output_tokens_details": {"reasoning_tokens": 20}}}
+    ) == Usage(10, 26)
+    assert usage_from_json({"usage": {"prompt_tokens": 10, "completion_tokens": 6, "completion_tokens_details": {}}}) == Usage(10, 6)
     assert usage_from_json(
         {"usage": {"prompt_tokens": 10, "completion_tokens": 0, "completion_tokens_details": {"reasoning_tokens": 7}}}
-    ) == (
-        10,
-        7,
-    )
+    ) == Usage(10, 7)
 
     app, client, sender, up, cloud = stack
     data = await sign_up(client, sender)
