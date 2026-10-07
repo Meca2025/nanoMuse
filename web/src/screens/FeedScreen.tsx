@@ -26,7 +26,7 @@ import { intlLocale, localLabel, t, useLocale, useT } from "../i18n";
 import { useStore } from "../store";
 import type { CalendarData, CalendarEvent, FeedItem, FeedPost, FeedPostsData, UpcomingData } from "../types";
 import { Toggle } from "../components/Form";
-import { cx, relativeTime, timeShort } from "../util";
+import { cx, readStorage, relativeTime, timeShort, writeStorage } from "../util";
 
 /**
  * The Feed, the way Muse does it: posts written for you from what it knows, steered by
@@ -81,10 +81,10 @@ export function FeedScreen() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoPost, setInfoPost] = useState<FeedPost | null>(null);
-  const [introAck, setIntroAck] = useState(() => localStorage.getItem(INTRO_ACK_KEY) === "1");
+  const [introAck, setIntroAck] = useState(() => readStorage(INTRO_ACK_KEY) === "1");
   const [writing, setWriting] = useState(false);
   const ackIntro = () => {
-    localStorage.setItem(INTRO_ACK_KEY, "1");
+    writeStorage(INTRO_ACK_KEY, "1");
     setIntroAck(true);
   };
   const writeNow = async () => {
@@ -513,7 +513,7 @@ function NextUp({
 }) {
   const t = useT();
   const next = data.queue[0];
-  const active = data.reminders.filter((r) => r.status === "active" && r.next_at);
+  const active = data.reminders.filter((r): r is typeof r & { next_at: string } => r.status === "active" && !!r.next_at);
   const nextReminder = active[0];
   const activeReminders = active.length;
   return (
@@ -559,7 +559,7 @@ function NextUp({
       {nextReminder && (
         <div className="mt-1.5 text-[12.5px] text-muted">
           {nextReminder.kind === "task" ? t("Routine") : t("Reminder")} <span className="font-medium text-fg">{nextReminder.text}</span>{" "}
-          {relativeTime(nextReminder.next_at!)}
+          {relativeTime(nextReminder.next_at)}
           {activeReminders > 1 && ` · ${t("{n} more", { n: activeReminders - 1 })}`}
         </div>
       )}

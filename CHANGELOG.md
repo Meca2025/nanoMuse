@@ -46,6 +46,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **Sending from an idea, a goal or a feed post reports a failure** as a toast instead of failing silently; a reply with a malformed link (a stray `%`) no longer takes the chat down; an HTTP error without a status text reads `HTTP 502` rather than nothing.
 - **One sign-in form.** The nanoMuse Cloud card under Devices and Connections uses the app's sign-in (code or password, the invite code, the note that SMS codes reach mainland numbers only) instead of a code-only copy of it.
 - **Keyboard and screen readers.** The chats drawer and the file viewer are dialogs that keep focus inside and give it back on close; the Sentinel mode and proactivity buttons announce which is selected; a skill's switch names the skill.
+- **The Goals screen loads on its own.** Its life areas, cadence words and due-date line moved to a module of their own (`web/src/goals.tsx`, with tests, one of which checks that every label has a Chinese twin), so the screen is a chunk the first page no longer carries; the leftovers of the removed call screen (state, frame type, styles) are gone; two copies of "3 min ago" for Unix timestamps are one `relativeSeconds` in `util.ts`; a browser with storage switched off no longer throws on the token, the feed watermark or the first-visit notes.
 
 ### Desktop
 

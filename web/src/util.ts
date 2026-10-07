@@ -53,6 +53,38 @@ export function relativeTime(ts: string | null | undefined): string {
   return diff >= 0 ? t("{span} ago", { span }) : t("in {span}", { span });
 }
 
+/** The same for a Unix timestamp in seconds, the past only: "3 min ago", "2 h ago", "5 d ago", then the date. */
+export function relativeSeconds(ts: number): string {
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (s < 60) return t("just now");
+  if (s < 3600) return t("{n} min ago", { n: Math.floor(s / 60) });
+  if (s < 86400) return t("{n} h ago", { n: Math.floor(s / 3600) });
+  if (s < 86400 * 7) return t("{n} d ago", { n: Math.floor(s / 86400) });
+  return new Date(ts * 1000).toLocaleDateString(intlLocale());
+}
+
+/**
+ * `localStorage` that never throws: a browser with storage off (private mode on some, a strict
+ * policy) answers `null` and forgets, and the page goes on. For one key read or written in passing;
+ * modules with a few keys of their own keep their own try/catch.
+ */
+export function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function writeStorage(key: string, value: string | null): void {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    /* storage is off: the value lasts for this page */
+  }
+}
+
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }

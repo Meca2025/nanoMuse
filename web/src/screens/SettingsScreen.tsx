@@ -491,11 +491,6 @@ type SectionId = "who" | "sentinel" | "proactivity" | "notifications" | "keep-ru
 const SECTION_IDS: SectionId[] = ["who", "sentinel", "proactivity", "notifications", "keep-running", "model", "appearance", "desktop", "data", "developer", "about"];
 
 /**
- * The phone's Settings: Muse's bar, then white cards of outlined-glyph rows on the grey
- * canvas, grouped the way the Android app groups them — the model, the agent, how it
- * behaves, the app, about — each row opening its own page or screen.
- */
-/**
  * The Version card (contract C2): the installed release, and the latest one as the runtime
  * found it on nanomuse.cn/dl or GitHub — "you have it", "x is out" with Update, or "could
  * not check" with a try again. Permanent: both lines are there whatever the answer. A phone
@@ -535,6 +530,11 @@ function VersionRows({ installed, release, checking, onCheck }: { installed: str
   );
 }
 
+/**
+ * The phone's Settings: Muse's bar, then white cards of outlined-glyph rows on the grey
+ * canvas, grouped the way the Android app groups them — the model, the agent, how it
+ * behaves, the app, about — each row opening its own page or screen.
+ */
 function SettingsHome({ release, onOpen }: { release: UpdateView | null; onOpen: (id: SectionId) => void }) {
   const { state, setTab } = useStore();
   const t = useT();

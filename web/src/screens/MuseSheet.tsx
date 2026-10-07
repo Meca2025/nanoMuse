@@ -42,7 +42,7 @@ import type {
   UpcomingData,
 } from "../types";
 import { cx, relativeTime, timeShort } from "../util";
-import { describeCadence } from "./GoalsScreen";
+import { describeCadence } from "../goals";
 
 type Pane = 0 | 1 | 2 | 3;
 

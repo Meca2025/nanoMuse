@@ -454,8 +454,7 @@ export function Notice({ event }: { event: NoticeEvent }) {
   );
 }
 
-// ------------------------------------------------------------------ artifact
-/** A file the agent made. Opens in the in-app viewer (pages render sandboxed, never with the app's origin). */
+// ------------------------------------------------------------------ browser
 /** The agent's browser, as a card: the latest frame, where it is, what it just did. */
 export function BrowserCard({ event, onOpen }: { event: BrowserEvent; onOpen: (id: string) => void }) {
   const [gone, setGone] = useState(false);
@@ -754,6 +753,8 @@ export function describeHandsStep(last: NonNullable<HandsEvent["last"]>, t: (s: 
   }
 }
 
+// ------------------------------------------------------------------ artifact
+/** A file the agent made. Opens in the in-app viewer (pages render sandboxed, never with the app's origin). */
 export function ArtifactCard({ event, onOpen }: { event: ArtifactEvent; onOpen: (path: string) => void }) {
   const t = useT();
   const kind = fileKind(event.name);

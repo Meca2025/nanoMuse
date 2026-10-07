@@ -51,6 +51,7 @@ import type {
   WsMessage,
 } from "./types";
 import { signedParams } from "./ticket";
+import { readStorage, writeStorage } from "./util";
 
 const TOKEN_KEY = "nanomuse_token";
 
@@ -85,15 +86,14 @@ export function getToken(): string {
   const url = new URL(window.location.href);
   const fromUrl = tokenFromLink(url);
   if (fromUrl) {
-    localStorage.setItem(TOKEN_KEY, fromUrl);
+    writeStorage(TOKEN_KEY, fromUrl);
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
   }
-  return localStorage.getItem(TOKEN_KEY) ?? "";
+  return readStorage(TOKEN_KEY) ?? "";
 }
 
 export function setToken(token: string): void {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  writeStorage(TOKEN_KEY, token || null);
 }
 
 /** A workspace file for an `<img>`, `<video>`, `<iframe>` or a download link: signed with
@@ -193,7 +193,6 @@ export const api = {
   avatarCancel: (session: string) => request<StudioSession>("/api/avatar/cancel", json({ session })),
   /** the poses (and clips) of the face the profile wears, drawn again from its idle still */
   avatarMoods: () => request<StudioSession>("/api/avatar/moods", json({})),
-  // ---- calls (voice / video, in real time)
   // ---- coding agents, here or on another computer of yours
   coding: (device = "") => request<{ agents: CodingAgent[]; runs: CodingRun[]; device?: string }>(`/api/coding${device ? `?device=${encodeURIComponent(device)}` : ""}`),
   codingSessions: (q: { agent?: string; limit?: number; workspace?: string; device?: string } = {}) => {
@@ -237,7 +236,7 @@ export const api = {
   stopThread: (id: string) => request<{ ok: boolean }>(`/api/threads/${id}/stop`, { method: "POST" }),
   events: (thread: string, limit = 200, before?: string) =>
     request<{ thread: ThreadMeta; events: TimelineEvent[]; has_more: boolean }>(
-      `/api/threads/${thread}/events?limit=${limit}${before ? `&before=${before}` : ""}`,
+      `/api/threads/${thread}/events?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ""}`,
     ),
   send: (thread: string, text: string, files: string[] = []) =>
     request<{ event: TimelineEvent; thread: ThreadMeta }>(`/api/threads/${thread}/send`, json({ text, files })),

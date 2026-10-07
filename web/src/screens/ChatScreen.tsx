@@ -673,7 +673,7 @@ function Composer({
   };
   const remove = (key: string) => setPending((cur) => cur.filter((p) => p.key !== key));
   const uploading = pending.some((p) => !p.info && !p.error);
-  const attached = pending.filter((p) => p.info).map((p) => p.info!.path);
+  const attached = pending.flatMap((p) => (p.info ? [p.info.path] : []));
 
   useEffect(() => {
     const el = ref.current;

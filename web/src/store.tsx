@@ -13,6 +13,7 @@ import { t } from "./i18n";
 import { liveWorking } from "./presence";
 import { registerWorker, setAppBadge } from "./push";
 import { useTheme } from "./theme";
+import { readStorage, writeStorage } from "./util";
 import type {
   ApprovalEvent,
   AttachmentInfo,
@@ -131,9 +132,6 @@ export interface AppState {
   hub: HubView | null;
   /** Coding runs followed live, newest last (kept for this page only). */
   codingLive: Record<string, CodingLive>;
-  /** A call in progress, as the runtime reports it (null when none). */
-  call: { state: string; turns: number; cost_cny: number; video: boolean; source: string } | null;
-  /** Open the call screen (set by the chat header; cleared when the call screen closes). */
   /** This computer's own screen and hands. */
   hands: HandsStatus | null;
   /** The holds that are on (contract C1): the person has the browser, the screen or the phone. */
@@ -226,7 +224,7 @@ const initial: AppState = {
   calendarVersion: 0,
   pendingApprovals: [],
   feedVersion: 0,
-  feedSeenAt: localStorage.getItem(FEED_SEEN_KEY) ?? "",
+  feedSeenAt: readStorage(FEED_SEEN_KEY) ?? "",
   viewer: null,
   draft: null,
   draftFiles: null,
@@ -241,7 +239,6 @@ const initial: AppState = {
   hub: null,
   codingLive: {},
   lite: liteFromUrl(),
-  call: null,
   hands: null,
   holds: [],
   handsLive: null,
@@ -371,7 +368,7 @@ function reducer(state: AppState, action: Action): AppState {
     case "drawer":
       return { ...state, drawer: action.open };
     case "feedSeen":
-      localStorage.setItem(FEED_SEEN_KEY, action.at);
+      writeStorage(FEED_SEEN_KEY, action.at);
       return { ...state, feedSeenAt: action.at };
     case "viewer":
       return { ...state, viewer: action.path };
@@ -533,19 +530,6 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       if (ids.length > 20) for (const old of ids.sort((a, b) => live[a].run.started_at - live[b].run.started_at).slice(0, ids.length - 20)) delete live[old];
       return { ...state, codingLive: live };
     }
-    case "call": {
-      if (msg.state === "ended") return { ...state, call: null };
-      return {
-        ...state,
-        call: {
-          state: msg.state,
-          turns: msg.turns ?? state.call?.turns ?? 0,
-          cost_cny: msg.cost_cny ?? state.call?.cost_cny ?? 0,
-          video: msg.video ?? state.call?.video ?? false,
-          source: msg.source ?? state.call?.source ?? "",
-        },
-      };
-    }
     case "hands_state":
       return { ...state, hands: msg.hands };
     case "studio":
@@ -596,7 +580,7 @@ interface StoreValue {
   draft: (text: string | null) => void;
   draftFiles: (files: AttachmentInfo[] | null) => void;
   dismissOnboarding: () => void;
-  /** open (voice / video) or close the call screen */
+  /** A short message at the bottom of the page. */
   toast: (text: string) => void;
 }
 
