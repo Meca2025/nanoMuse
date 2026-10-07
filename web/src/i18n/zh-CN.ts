@@ -864,15 +864,13 @@ const zhCN: Record<string, string> = {
   "the chat model": "对话模型",
   "Chat model": "对话模型",
   "Hands model": "动手模型",
-  "Default — {model}": "默认——{model}",
-  "Default — the chat model": "默认——对话模型",
+  "Currently {value}": "当前为 {value}",
   "The model that looks at screens when the hands run — the phone, this computer, a page the browser cannot read. Your account's hands model is {model}; the chat model above is a different pick.":
     "动手时看屏幕的模型——手机、这台电脑、浏览器读不了的页面。你账号的动手模型是 {model}；上面的对话模型是另一项选择。",
   "The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: this provider's own hands model.":
     "动手时看屏幕的模型：小而快、能看图，用同一个接口和 key。默认：这个服务商自己的动手模型。",
   "The model that looks at screens when the hands run. This provider has no model that sees, so the hands use your account's, {model}, unless you pick one here.":
     "动手时看屏幕的模型。这个服务商没有能看图的模型，所以不在这里选的话，双手用你账号里的 {model}。",
-  "Default — nanoMuse Cloud · {model}": "默认——nanoMuse Cloud · {model}",
   "{model} does not take pictures, so the hands would be blind with it. Pick a model that sees for them.": "{model} 不能看图，动手时会是盲的。给它选一个能看图的模型。",
   "A key is in the vault; leave empty to keep it.": "保险库里已有密钥；留空则保留。",
   "Set in config.toml.": "在 config.toml 里设置。",

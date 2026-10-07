@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLOUD_ID, currentChoice, entryFor, mediaChoices, providerLabel, slotValue } from "./models";
+import { CLOUD_ID, currentChoice, entryFor, handsValue, mediaChoices, providerLabel, slotValue } from "./models";
 import type { MediaSlotData } from "./types";
 
 const BAILIAN = "https://dashscope.aliyuncs.com/compatible-mode/v1";
@@ -60,6 +60,30 @@ describe("the model slots (the Models contract)", () => {
     // the relay as the chat model is not an own provider; nothing in the chat group
     const cloud = mediaChoices("video", { signedIn: true, chat: { provider: "openai", base_url: "https://relay.example/v1", cloud: true }, region: "global", locale: "en" });
     expect(cloud.map((c) => c.value)).toEqual([CLOUD_ID, "custom"]);
+  });
+
+  it("writes the hands row's value from the effective fields, so Automatic shows what it resolves to", () => {
+    const gui = { provider: "openai", provider_id: "", base_url: "" };
+    const bailian = { provider: "openai", base_url: BAILIAN, cloud: false };
+    // the chat provider's own hands model
+    expect(handsValue({ ...gui, effective_model: "qwen3.8-27b", effective_source: "chat" }, bailian, "en")).toBe("Alibaba Cloud Bailian · qwen3.8-27b");
+    expect(handsValue({ ...gui, effective_model: "qwen3.8-27b", effective_source: "chat" }, bailian, "zh-CN")).toBe("阿里云百炼 · qwen3.8-27b");
+    // the account's, while the chat model is elsewhere or is the relay
+    const deepseek = { provider: "openai", base_url: "https://api.deepseek.com", cloud: false };
+    expect(handsValue({ ...gui, effective_model: "qwen3.8-27b", effective_source: "cloud" }, deepseek, "en")).toBe("nanoMuse Cloud · qwen3.8-27b");
+    expect(handsValue({ ...gui, effective_model: "qwen3.8-27b", effective_source: "cloud" }, { provider: "openai", base_url: "https://relay.example/v1", cloud: true }, "en")).toBe(
+      "nanoMuse Cloud · qwen3.8-27b",
+    );
+    // a model picked by hand: on the chat endpoint, on a catalogue provider of its own, on an unlisted host
+    expect(handsValue({ ...gui, effective_model: "glm-4.6v", effective_source: "gui" }, { provider: "zhipu", base_url: "", cloud: false }, "en")).toBe("Zhipu GLM · glm-4.6v");
+    expect(handsValue({ provider: "bailian", provider_id: "bailian", base_url: "", effective_model: "qwen3.8-27b", effective_source: "gui" }, deepseek, "en")).toBe(
+      "Alibaba Cloud Bailian · qwen3.8-27b",
+    );
+    expect(handsValue({ provider: "openai", provider_id: "", base_url: "https://gateway.example.com/v1", effective_model: "ui-tars", effective_source: "gui" }, deepseek, "en")).toBe(
+      "gateway.example.com · ui-tars",
+    );
+    expect(handsValue({ ...gui, effective_model: "", effective_source: "chat" }, deepseek, "en")).toBe("");
+    expect(handsValue({ ...gui, effective_model: "gpt-5.6", effective_source: "chat" }, { provider: "chatgpt", base_url: "", cloud: false }, "en")).toBe("ChatGPT · gpt-5.6");
   });
 
   it("reads the picker's value back from what the runtime reports", () => {

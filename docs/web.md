@@ -42,8 +42,7 @@ Models contract (0.1.41), one card each under the chat model. The value is
 `image` / `video`: the slot as set and its `effective_*`): an explicit choice,
 else the chat provider's own picture model when it has one, else your account's
 when signed in, else the one sentence and an *Add a provider* button. The
-picker offers *Automatic* (what that resolves to today), a *nanoMuse Cloud*
-group when signed in, *The chat model's provider* when it has the capability
+picker offers *Automatic* first, a *nanoMuse Cloud* group when signed in, *The chat model's provider* when it has the capability
 (its key serves, nothing to paste), and under *Add a provider* every catalogue
 provider with the capability for your region, plus *Other OpenAI-compatible
 endpoint* with a base URL; a provider without the capability is not offered.
@@ -53,7 +52,12 @@ account's other models on nanoMuse Cloud) or left to the catalogue's default.
 catalogue id, or `openai` with a `base_url`), `model`, `base_url`, `api_key`
 (into the vault as `IMAGE_API_KEY` / `VIDEO_API_KEY`; the relay's row names the
 account key, the chat provider's row leaves it to the chat key); *Automatic*
-sends all four empty, which clears the slot. A runtime without these routes
+sends all four empty, which clears the slot. The three dependent slots share
+one shape: *Automatic* is the first option of the *Hands model* select and of
+both media rows' provider select, saving it returns the slot to the resolution
+order (the hands with `PUT /api/connections/gui {"model": ""}`), and a
+*Currently provider · model* line under the control says what that resolves to
+today, from the runtime's `effective_*` fields. A runtime without these routes
 shows no media rows. `web/src/models.ts` is the module (the row's value, the
 picker's choices); `web/src/models.test.ts` checks it.
 
