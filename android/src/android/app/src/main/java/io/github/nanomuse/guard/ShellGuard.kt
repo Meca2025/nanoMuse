@@ -18,7 +18,32 @@ object ShellGuard {
     const val SHARED = "/var/minis/shared"
 
     private val scratchPrefixes = listOf("/tmp/", "/var/tmp/", "/dev/shm/", "\$TMPDIR/", "\${TMPDIR}/")
-    private val wrappers = setOf("sudo", "doas", "nohup", "exec", "time", "env", "command", "busybox", "nice", "ionice", "stdbuf", "unbuffer")
+    /**
+     * Programs that run another program: each with the options that take a separate value, so
+     * `sudo -u root rm`, `nice -n 19 rm`, `timeout -k 5 10 rm` are judged by the `rm`.
+     * `timeout` also takes a duration before the program; `env` is followed by assignments.
+     */
+    private val wrappers: Map<String, Set<String>> = mapOf(
+        "sudo" to setOf("-u", "-g", "-h", "-p", "-C", "-r", "-t", "-T", "-U", "-D", "--user", "--group", "--host", "--prompt", "--chdir"),
+        "doas" to setOf("-u", "-C"),
+        "nohup" to emptySet(),
+        "exec" to setOf("-a"),
+        "time" to setOf("-f", "-o", "--format", "--output"),
+        "env" to setOf("-u", "-C", "-S", "--unset", "--chdir", "--split-string"),
+        "command" to emptySet(),
+        "busybox" to emptySet(),
+        "nice" to setOf("-n", "--adjustment"),
+        "ionice" to setOf("-c", "-n", "-p", "-t", "--class", "--classdata", "--pid"),
+        "stdbuf" to setOf("-i", "-o", "-e", "--input", "--output", "--error"),
+        "unbuffer" to emptySet(),
+        "timeout" to setOf("-s", "-k", "--signal", "--kill-after"),
+        "chrt" to setOf("-p"),
+        "taskset" to setOf("-c", "-p", "--cpu-list"),
+        "setsid" to emptySet(),
+        "caffeinate" to setOf("-t", "-w"),
+    )
+    private val xargsValueOptions = setOf("-I", "-i", "-n", "-L", "-l", "-P", "-d", "-E", "-e", "-s", "-a", "--replace", "--max-args", "--max-lines", "--max-procs", "--delimiter", "--eof", "--max-chars", "--arg-file")
+    private val envAssignment = Regex("^[A-Za-z_][A-Za-z0-9_]*=")
     private val shells = setOf("sh", "bash", "ash", "dash", "zsh", "ksh", "fish")
     private val interpreters = setOf("python", "python3", "python2", "perl", "ruby", "node", "nodejs", "php", "lua")
     private val readOnlyVerbs = Regex("^\\+?(list|ls|get|search|read|show|status|help|download|fetch|export|whoami|agenda|consume|view|info|cat|describe|check|history|query|find|stat|watch|tail|log|logs|diff|open|print|version|doctor)(\\b|$)", RegexOption.IGNORE_CASE)
@@ -71,13 +96,7 @@ object ShellGuard {
         val head = if (heredoc != null) text.substring(0, heredoc.range.first) else text
         val body = if (heredoc != null) text.substring(heredoc.range.last + 1).substringBefore("\n" + heredoc.groupValues[1]) else null
 
-        var tokens = tokenize(head)
-        // Drop env assignments and wrappers to reach the real program.
-        while (tokens.isNotEmpty() && (Regex("^[A-Za-z_][A-Za-z0-9_]*=").containsMatchIn(tokens[0]) || basename(tokens[0]) in wrappers)) {
-            if (basename(tokens[0]) == "timeout" || basename(tokens[0]) == "nice") tokens = tokens.drop(1)
-            tokens = tokens.drop(1)
-            if (tokens.isNotEmpty() && basename(tokens.getOrNull(0) ?: "") == "timeout") tokens = tokens.drop(2)
-        }
+        val tokens = unwrap(tokenize(head))
         if (tokens.isEmpty()) return if (body != null) assessInline(body, depth) else RiskAssessment.SAFE
         val program = basename(tokens[0])
         val args = tokens.drop(1)
@@ -86,7 +105,7 @@ object ShellGuard {
         val own = when {
             program in shells -> shellWrapper(args, depth)
             program in interpreters -> interpreterInline(args, depth)
-            program == "xargs" -> assessSimple(args.dropWhile { it.startsWith("-") }.joinToString(" ") + " ?", depth)
+            program == "xargs" -> assessSimple(dropOptions(args, xargsValueOptions).joinToString(" ") { quote(it) } + " ?", depth)
             program == "rm" -> rm(args)
             program == "find" -> find(args)
             program in setOf("shred", "wipe", "srm") -> RiskAssessment(RiskClass.DESTRUCTIVE, "destroys files", folderOf(args.lastOrNull { !it.startsWith("-") }))
@@ -234,7 +253,7 @@ object ShellGuard {
             args.indexOf(f).takeIf { it >= 0 }?.let { args.getOrNull(it + 1) } ?: args.firstOrNull { it.startsWith("$f=") }?.substringAfter("=")
         }
         val target = recipient?.let { "lark:$it" } ?: "lark:$domain"
-        return RiskAssessment(RiskClass.OUTBOUND, "$program ${verbs.joinToString(" ")} — writes to Lark/Feishu", target)
+        return RiskAssessment(RiskClass.OUTBOUND, "$program ${verbs.joinToString(" ")}: writes to Lark/Feishu", target)
     }
 
     private fun gh(args: List<String>): RiskAssessment {
@@ -340,6 +359,41 @@ object ShellGuard {
     }
 
     private fun basename(token: String): String = token.trim('"', '\'').substringAfterLast('/')
+
+    /**
+     * Strips leading environment assignments and wrappers so [tokens] starts at the program
+     * that does the work. A wrapper's options are skipped, with their values for the ones that
+     * take one; `--` ends them. `timeout` also drops its duration.
+     */
+    internal fun unwrap(tokens: List<String>): List<String> {
+        var rest = tokens
+        while (rest.isNotEmpty()) {
+            val head = basename(rest[0])
+            rest = when {
+                envAssignment.containsMatchIn(rest[0]) -> rest.drop(1)
+                head in wrappers -> {
+                    val after = dropOptions(rest.drop(1), wrappers.getValue(head))
+                    if (head == "timeout") after.drop(1) else after
+                }
+                else -> return rest
+            }
+        }
+        return rest
+    }
+
+    /** Drops leading `-x` / `--xx` options; the ones in [withValue] take the next token too. */
+    private fun dropOptions(args: List<String>, withValue: Set<String>): List<String> {
+        var i = 0
+        while (i < args.size) {
+            val a = args[i]
+            when {
+                a == "--" -> return args.drop(i + 1)
+                a.startsWith("-") && a.length > 1 -> i += if (a in withValue) 2 else 1
+                else -> return args.drop(i)
+            }
+        }
+        return emptyList()
+    }
 
     private fun quote(s: String): String = if (s.any { it.isWhitespace() || it == '"' || it == '\'' }) "'" + s.replace("'", "'\\''") + "'" else s
 

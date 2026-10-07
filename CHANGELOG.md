@@ -31,6 +31,12 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 ### Android
 
 - **The model picker stays short with a provider of hundreds of models.** Each group of *Settings › Models* shows eight models (the catalogue's default for the row first, then the one in use, then the rest as the provider lists them) and a *Show N more* row expands it; once the groups hold more than eight models in all, a *Search models* field above them filters every group live by model id or display name, and *No model matches* says when nothing does.
+- **The shell guard sees through wrappers with options.** `timeout 10 rm -rf …`, `nice -n 19 rm …`, `sudo -u root rm …`, `ionice -c3 …`, `env -i …` and `xargs -I {} rm …` were judged safe because the program was read from the wrong word; each wrapper's options and their values are now skipped and the real program is judged.
+- **Enter in a field whose hint says Message, Send, Chat, Reply or Comment asks before sending.** The pattern had a typo that made those English hints never match; Chinese hints and the messenger list were unaffected.
+- **A hands run's Stop takes effect while an approval card is waiting**: the card is denied and the run ends, instead of waiting for the card's answer or its three-minute timeout. The capsule's Allow and Deny answer only the hands' own card, never a shell or browser card of another conversation.
+- **An approval card whose asker went away is withdrawn.** When the conversation that asked is stopped or closed, its card disappears and the next request in line comes up; before, the card stayed until the three-minute timeout.
+- **Two `nanomuse-hands run` arriving together cannot both start**; the second is told the hands are busy.
+- Reasons kept as grant labels (*taps "Pay": looks like a payment*) no longer carry a dash.
 
 ### iOS
 

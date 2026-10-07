@@ -22,6 +22,7 @@ import io.github.nanomuse.guard.RiskAssessment
 import io.github.nanomuse.guard.RiskClass
 import io.github.nanomuse.guard.RiskDecision
 import io.github.nanomuse.guard.RiskGate
+import io.github.nanomuse.guard.RiskRequest
 import io.github.nanomuse.guard.TapWords
 import io.github.nanomuse.status.KeepAwake
 import kotlinx.coroutines.runBlocking
@@ -87,10 +88,24 @@ class HandsOperator(private val context: Context) {
     private val userSignal = AtomicReference<CountDownLatch?>(null)
     private val capsule = HandsCapsule(context)
 
-    /** Ends the run after the action in flight; from the capsule, the chat or the settings page. */
+    /** The session this run's approval cards are filed under; see [ownPendingRequest]. */
+    @Volatile private var gateSession: String? = null
+
+    /**
+     * The approval card waiting on this run, if the one on top is ours: a tap or an Enter the
+     * hands asked about, not a shell or browser request of some other conversation.
+     */
+    private fun ownPendingRequest(): RiskRequest? =
+        RiskGate.pending.value?.takeIf { it.kind == GuardKind.SCREEN && it.sessionId == gateSession }
+
+    /**
+     * Ends the run after the action in flight; from the capsule, the chat or the settings page.
+     * A card the run is waiting on is answered with Deny, so Stop takes effect at once.
+     */
     fun requestStop(reason: String = "the user tapped Stop") {
         stopReason.compareAndSet(null, reason)
         stop.set(true)
+        ownPendingRequest()?.let { RiskGate.decide(it.id, RiskDecision.DENY) }
         userSignal.get()?.countDown()
     }
 
@@ -103,13 +118,15 @@ class HandsOperator(private val context: Context) {
         val model = Hands.screenModel(context)
         Hands.setActive(true)
         Hands.current = this
+        gateSession = opts.sessionId ?: "hands"
         SessionActivityTracker.setCameraSuppressActive(true) // one capsule at a time: ours, not OpenMinis'
         capsule.onStop = { requestStop() }
         capsule.onContinue = { userSignal.get()?.countDown() }
         capsule.onOpenApp = { capsule.bringAppToFront(opts.sessionId) }
-        // the approval answered where the person is: the same request the chat card shows
-        capsule.onAllow = { RiskGate.pending.value?.let { RiskGate.decide(it.id, RiskDecision.ALLOW_ONCE) } }
-        capsule.onDeny = { RiskGate.pending.value?.let { RiskGate.decide(it.id, RiskDecision.DENY) } }
+        // the approval answered where the person is: the same request the chat card shows,
+        // and only ours (a shell or browser card of another conversation is not the capsule's to answer)
+        capsule.onAllow = { ownPendingRequest()?.let { RiskGate.decide(it.id, RiskDecision.ALLOW_ONCE) } }
+        capsule.onDeny = { ownPendingRequest()?.let { RiskGate.decide(it.id, RiskDecision.DENY) } }
         val started = System.currentTimeMillis()
         try {
             val svc = MinisAccessibilityService.getInstance()
@@ -401,7 +418,7 @@ class HandsOperator(private val context: Context) {
         if (!TapWords.entersSend(pkg, hint)) return TapGate()
         val appLabel = HandsApps.labelOf(context, pkg)
         val where = appLabel ?: context.getString(com.openminis.app.R.string.nm_hands_this_phone)
-        val assessment = RiskAssessment(RiskClass.OUTBOUND, "presses Enter in a message field — that sends it ($where)", appLabel?.let { "app:$it" })
+        val assessment = RiskAssessment(RiskClass.OUTBOUND, "presses Enter in a message field, which sends it ($where)", appLabel?.let { "app:$it" })
         capsule.approval(context.getString(com.openminis.app.R.string.nm_hands_approval_here, context.getString(com.openminis.app.R.string.nm_hands_fx_enter)), decidable = true)
         val outcome = runBlocking {
             RiskGate.check(sessionId ?: "hands", GuardKind.SCREEN, assessment, preview = "Enter → send", pageUrl = appLabel, elementText = context.getString(com.openminis.app.R.string.nm_hands_fx_enter))

@@ -13,9 +13,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 /** One thing the agent wants to do and is waiting on. */
 data class RiskRequest(
@@ -85,7 +85,12 @@ object RiskGate {
     private val _recent = MutableStateFlow<List<Pair<RiskRequest, RiskDecision>>>(emptyList())
     val recent: StateFlow<List<Pair<RiskRequest, RiskDecision>>> = _recent.asStateFlow()
 
-    suspend fun ask(request: RiskRequest): RiskDecision = suspendCoroutine { cont ->
+    /**
+     * Waits for the person's answer. Cancelling the caller (the chat was stopped, the session
+     * closed) withdraws the request: the card goes away and the next one in line comes up,
+     * instead of a stale card living on until the timeout.
+     */
+    suspend fun ask(request: RiskRequest): RiskDecision = suspendCancellableCoroutine { cont ->
         scope.launch {
             mutex.withLock {
                 awaiters[request.id] = cont
@@ -102,6 +107,7 @@ object RiskGate {
                 }
             }
         }
+        cont.invokeOnCancellation { scope.launch { resolve(request.id, RiskDecision.DENY, record = false) } }
     }
 
     fun decide(id: String, decision: RiskDecision) {
@@ -112,7 +118,8 @@ object RiskGate {
         _pending.value?.let { notifyIfBackgrounded(it) }
     }
 
-    private suspend fun resolve(id: String, decision: RiskDecision) {
+    /** A withdrawn request ([record] false) leaves the card and the queue but is not a decision anyone took. */
+    private suspend fun resolve(id: String, decision: RiskDecision, record: Boolean = true) {
         var cont: Continuation<RiskDecision>? = null
         var advancedTo: RiskRequest? = null
         var resolved: RiskRequest? = null
@@ -134,9 +141,14 @@ object RiskGate {
         }
         val c = cont ?: return
         cancelNotification?.invoke(id)
-        resolved?.let { r -> _recent.value = (listOf(r to decision) + _recent.value).take(20) }
-        AppLogger.info(TAG, "request $id → $decision")
+        if (record) {
+            resolved?.let { r -> _recent.value = (listOf(r to decision) + _recent.value).take(20) }
+            AppLogger.info(TAG, "request $id → $decision")
+        } else {
+            AppLogger.info(TAG, "request $id withdrawn (caller cancelled)")
+        }
         advancedTo?.let { notifyIfBackgrounded(it) }
+        // A cancelled continuation ignores the resume; the others get their answer.
         c.resume(decision)
     }
 

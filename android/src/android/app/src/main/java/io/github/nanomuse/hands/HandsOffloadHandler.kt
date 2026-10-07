@@ -71,7 +71,6 @@ class HandsOffloadHandler(private val context: Context) : NativeOffloadHandler {
             }
             return refused("not_ready", missing.joinToString("; ") + ".")
         }
-        if (Hands.active.value) return refused("busy", "The hands are already working on something; wait for it to finish or stop it.")
         // No cap unless the caller asks for one: the run ends when the task is done, the person
         // stops it, or the time limit is hit.
         val maxSteps = args.get("max-steps")?.toIntOrNull()?.coerceAtLeast(0) ?: HandsOperator.DEFAULT_MAX_STEPS
@@ -83,8 +82,10 @@ class HandsOffloadHandler(private val context: Context) : NativeOffloadHandler {
             agentName = NanoMuseIdentity.name(context),
             language = Locale.getDefault().getDisplayLanguage(Locale.ENGLISH).ifBlank { "the user's language" },
         )
+        // Taken atomically, so two runs arriving together cannot both start; given back when the run ends.
+        if (!Hands.claim()) return refused("busy", "The hands are already working on something; wait for it to finish or stop it.")
         AppLogger.info(TAG, "run: ${task.take(80)} app=${opts.appHint} maxSteps=$maxSteps")
-        val result = HandsOperator(context).run(opts)
+        val result = try { HandsOperator(context).run(opts) } finally { Hands.setActive(false) }
         val body = JSONObject()
             .put("ok", result.outcome is HandsOperator.Outcome.Done)
             .put("outcome", result.outcome.code)
