@@ -207,8 +207,10 @@ is one of your own and has a model for the job (its catalogue default); else nan
 Cloud while signed in; else the first of your providers that can. The three rows that
 follow this order have *Automatic* as their first entry, with the row saying what it gives
 right now (*Currently nanoMuse Cloud · qwen3.8-27b*, say); pick it to drop a choice you
-made and let the row follow the order again. A chat change applies to
-new chats. Pictures through your own key go straight to that provider — Model Studio's
+made and let the row follow the order again. A chat pick is the default for new chats and
+moves the main chat with it (*Applies to the main chat and to new chats; a side chat keeps
+its model.*); a side chat keeps the model it was given, and the same pick twice writes
+nothing. The phones follow the same rule. Pictures through your own key go straight to that provider — Model Studio's
 native image API, OpenRouter's image API, or the OpenAI shape for the rest — and nothing
 is billed to the account; the avatar studio says so in place of the cost line. Clips come
 from Model Studio only, through the account or your own Bailian key.
@@ -217,7 +219,8 @@ After you save a key, a small card asks *Use it for* with a toggle per thing the
 handle, all on; *Use it* switches those rows to that provider, *Not now* changes nothing.
 When a model of your own fails under a turn, the card offers *Use nanoMuse Cloud this
 time* while signed in: that one message is sent again through the account and the chat
-goes back to its model when the turn ends; the Models page stays as it was. Nothing falls
+goes back to its model when the turn ends; the Models page stays as it was. *Use it* with
+chat ticked moves the main chat too. Nothing falls
 back on its own. The same button follows a failed studio round and a failed set of clips.
 
 While signed in, the page starts with one switch, *Use nanoMuse Cloud models*. Off, the

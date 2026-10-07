@@ -1468,6 +1468,7 @@ export default class NanomuseCloud extends Service {
       const model = entry?.defaults.chat && row.models.some((m) => m.id === entry.defaults.chat) ? entry.defaults.chat : pick.id
       await svc.saveSelection({ provider: id, model })
       this.ctx.logger.info('nanomuse: new sessions answer through %s/%s', id, model)
+      await this.mainChatFollows(id, model)
     } catch (error: unknown) {
       this.ctx.logger.warn('nanomuse: could not make the own key the default: %s', message(error))
     }
@@ -1651,8 +1652,51 @@ export default class NanomuseCloud extends Service {
     const svc = this.defaultModelService()
     if (!svc) throw new RelayError(503, 'no_models', 'Not available yet')
     await svc.saveSelection({ provider, model: id })
+    await this.mainChatFollows(provider, id).catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: the main chat did not follow the chat model: %s', message(error)))
     await this.writeHands().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: hands model not written: %s', message(error)))
     this.broadcast()
+  }
+
+  /**
+   * The main chat follows the chat slot. Every session keeps the model it was given, and the
+   * slot (`agentDefaultModel`) is the default for new ones; but the main chat is the one
+   * conversation the Chat tab always shows and is never new, so on 0.1.41 the Models page could
+   * not move it off the provider it started on: a person who saved a key of their own saw their
+   * side chats answer through it while the main chat kept nanoMuse Cloud under the face. The
+   * main chat's own selection now moves with the slot (the same `selectModel` the chat's own
+   * picker makes); side chats are left as they are; nothing is written when the session already
+   * says so. A main chat under *Use nanoMuse Cloud this time* finishes that turn on the account
+   * and comes back to the pick. True when the session was moved (or will be after the turn).
+   */
+  async mainChatFollows(provider: string, model: string): Promise<boolean> {
+    const main = this.syncMainSession()
+    const ctx = this.sessionCtx
+    if (!main || !ctx) return false
+    const held = this.cloudOnce.get(main)
+    if (held) {
+      if (held.provider === provider && held.model === model) return false
+      this.cloudOnce.set(main, { provider, model, at: held.at })
+      return true
+    }
+    const current = await this.sessionSelection(main).catch(() => undefined)
+    if (current && current.provider === provider && current.model === model) return false
+    await ctx.sessionController.selectModel({ sessionId: main as SessionId, provider, model })
+    this.ctx.logger.info('nanomuse: the main chat follows the chat model, %s/%s', provider, model)
+    return true
+  }
+
+  /** A session's model as dsh resolves it: a pending choice, else the last request's, else the slot. */
+  private async sessionSelection(sessionId: string): Promise<{ provider: string; model: string; reasoningEffort?: string } | undefined> {
+    const ctx = this.sessionCtx
+    if (!ctx) return undefined
+    const resolved = await ctx.sessionController.resolveAgent(sessionId as SessionId)
+    if ('error' in resolved) throw new RelayError(404, 'not_found', String(resolved.error))
+    type Selection = { provider: string; model: string; reasoningEffort?: string }
+    const session = resolved.agent.session as unknown as { requestHeader?(): { config?: Selection } | undefined }
+    const projections = (ctx as unknown as { get(name: string): unknown }).get('sessionProjections') as { stateOf(session: unknown, key: string): { pending?: Selection | null } | undefined } | undefined
+    const pending = projections?.stateOf(resolved.agent.session, 'modelSelection')?.pending ?? undefined
+    const logged = session.requestHeader?.()?.config
+    return pending ?? (logged?.provider && logged.model ? logged : this.defaultModelService()?.currentSelection())
   }
 
   /** The chat slot as the Models page shows it: the provider's label next to the id. */
@@ -1706,15 +1750,7 @@ export default class NanomuseCloud extends Service {
     const ctx = this.sessionCtx
     if (!ctx) throw new RelayError(503, 'not_ready', 'The session API is not up yet')
     const slot = this.defaultModelService()?.currentSelection()
-    const resolved = await ctx.sessionController.resolveAgent(sessionId as SessionId)
-    if ('error' in resolved) throw new RelayError(404, 'not_found', String(resolved.error))
-    // the session's model as dsh resolves it: a pending choice, else the last request's, else the default
-    type Selection = { provider: string; model: string; reasoningEffort?: string }
-    const session = resolved.agent.session as unknown as { requestHeader?(): { config?: Selection } | undefined }
-    const projections = (ctx as unknown as { get(name: string): unknown }).get('sessionProjections') as { stateOf(session: unknown, key: string): { pending?: Selection | null } | undefined } | undefined
-    const pending = projections?.stateOf(resolved.agent.session, 'modelSelection')?.pending ?? undefined
-    const logged = session.requestHeader?.()?.config
-    const was: Selection | undefined = pending ?? (logged?.provider && logged.model ? logged : slot)
+    const was = await this.sessionSelection(sessionId)
     const before: CloudOnce | undefined = was ? { provider: was.provider, model: was.model, ...(was.reasoningEffort ? { reasoningEffort: was.reasoningEffort } : {}), at: Date.now() } : undefined
     await ctx.sessionController.selectModel({ sessionId: sessionId as SessionId, provider: PROVIDER_ID, model: pick.id })
     // dsh saves a session's selection as the default in the background; the slot stays what it was
