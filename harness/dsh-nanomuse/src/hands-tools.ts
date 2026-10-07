@@ -46,26 +46,58 @@ export function clientConfig(hands: Record<string, string>, env: NodeJS.ProcessE
   }
 }
 
+/**
+ * The sentence for a mount that failed, for the log and the UI: the error's message, and the
+ * cause's behind a colon when there is one (the MCP client wraps the spawn or startup error
+ * in `cause`), with the harness's `mcp-client(nanomuse): ` prefix dropped.
+ */
+export function mountError(error: unknown): string {
+  const text = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^mcp-client\([^)]*\):\s*/, '').trim()
+  const message = text(error) || 'the hands did not mount'
+  const cause = error instanceof Error && error.cause !== undefined ? text(error.cause) : ''
+  return cause && !message.includes(cause) ? `${message}: ${cause}` : message
+}
+
 export function apply(ctx: Context): void {
   const cloud = ctx.nanomuseCloud
   let mounted: { key: string; fiber: Fiber } | undefined
   let disposed = false
   let pending: Promise<void> = Promise.resolve()
 
+  // the Computer-use page and the Connectors row say why the hands are off: the mount's own words
+  const failed = (error: unknown) => {
+    const reason = mountError(error)
+    ctx.logger.warn('nanomuse hands: mount: %s', reason)
+    cloud.handsMounted({ ok: false, reason })
+  }
+
   const mount = (hands: Record<string, string>, key: string) => {
+    let fiber: Fiber
     try {
-      const fiber = ctx.plugin(mcpClient as unknown as Parameters<Context['plugin']>[0], clientConfig(hands))
-      mounted = { key, fiber }
-      ctx.logger.info('nanomuse hands: runtime started%s', hands.NANOMUSE_GUI_MODEL ? ` with ${hands.NANOMUSE_GUI_PROVIDER === 'chatgpt' ? 'chatgpt' : hands.NANOMUSE_GUI_BASE_URL || 'openai'} · ${hands.NANOMUSE_GUI_MODEL}` : ' without a hands model')
+      fiber = ctx.plugin(mcpClient as unknown as Parameters<Context['plugin']>[0], clientConfig(hands))
     } catch (error) {
-      ctx.logger.warn('nanomuse hands: mount: %s', error instanceof Error ? error.message : String(error))
+      failed(error)
+      return
     }
+    mounted = { key, fiber }
+    ctx.logger.info('nanomuse hands: runtime started%s', hands.NANOMUSE_GUI_MODEL ? ` with ${hands.NANOMUSE_GUI_PROVIDER === 'chatgpt' ? 'chatgpt' : hands.NANOMUSE_GUI_BASE_URL || 'openai'} · ${hands.NANOMUSE_GUI_MODEL}` : ' without a hands model')
+    // the client's start settles later: a config it refused, or a startup it was told to fail on
+    void fiber.await().then(
+      () => {
+        if (mounted?.fiber === fiber) cloud.handsMounted({ ok: true })
+      },
+      (error: unknown) => {
+        if (mounted?.fiber === fiber) failed(error)
+      },
+    )
   }
 
   const sync = async () => {
     if (disposed) return
     const hands = await cloud.handsEnv().catch((error: unknown) => {
       ctx.logger.warn('nanomuse hands: environment: %s', error instanceof Error ? error.message : String(error))
+      // nothing mounted yet: this is why the hands are off
+      if (!mounted) cloud.handsMounted({ ok: false, reason: `the hands' environment could not be read: ${error instanceof Error ? error.message : String(error)}` })
       return undefined
     })
     if (!hands || disposed) return

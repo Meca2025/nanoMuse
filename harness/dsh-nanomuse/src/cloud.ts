@@ -301,6 +301,14 @@ export interface ModelOption {
   recommended?: boolean
 }
 
+/** How the last mount of the hands' MCP client went (`hands-tools.ts`); `at` 0 before the first. */
+export interface HandsMount {
+  at: number
+  ok: boolean
+  /** Empty when the mount went well; else the error, in the host's words. */
+  reason: string
+}
+
 /** The four slots of Settings → Models (0.1.41). */
 export type Slot = 'chat' | 'hands' | 'image' | 'video'
 export const SLOTS: readonly Slot[] = ['chat', 'hands', 'image', 'video']
@@ -557,6 +565,7 @@ export default class NanomuseCloud extends Service {
   /** The face's clips (desk-b). */
   readonly motion: AvatarMotion
   private blackScreenAt = 0
+  private handsMount: HandsMount = { at: 0, ok: true, reason: '' }
   /** The own-key catalogue (C11), from `assets/providers.json`. */
   private catalogue: ProviderEntry[] = []
   /** The ChatGPT sign-in and its proxy (C11), over the runtime's `nanomuse chatgpt`. */
@@ -1207,6 +1216,21 @@ export default class NanomuseCloud extends Service {
   handsBusy(): boolean {
     for (const call of this.calls.values()) if (call.name.startsWith('mcp__nanomuse__')) return true
     return false
+  }
+
+  /**
+   * `hands-tools.ts` says how its last mount of the hands' MCP client went: the Computer-use
+   * page and the Connectors row show the reason when the hands are off. `at` 0 before the
+   * first mount.
+   */
+  handsMounted(outcome: { ok: boolean; reason?: string }): void {
+    this.handsMount = { at: Date.now(), ok: outcome.ok, reason: outcome.ok ? '' : (outcome.reason ?? 'the hands did not mount').slice(0, 300) }
+    this.broadcast()
+  }
+
+  /** The last mount of the hands' MCP client: `reason` is empty when it went well, else why it did not. */
+  handsStatus(): HandsMount {
+    return { ...this.handsMount }
   }
 
   /**
@@ -2176,11 +2200,11 @@ export default class NanomuseCloud extends Service {
     return result
   }
 
-  /** Which binary the hands run — and on Linux the display session they would work on (Settings → Computer use). */
-  async runtime(): Promise<RuntimeInfo> {
+  /** Which binary the hands run, how its last mount went, and on Linux the display session they would work on (Settings → Computer use). */
+  async runtime(): Promise<RuntimeInfo & { mount: HandsMount }> {
     const info = await runtimeInfo()
     const display = displayInfo()
-    return display ? { ...info, display } : info
+    return { ...info, ...(display ? { display } : {}), mount: this.handsStatus() }
   }
 
   private sawBlackScreen(): void {

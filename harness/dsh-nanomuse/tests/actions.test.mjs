@@ -5,7 +5,7 @@ import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { brief, expand, fileGet, filePut, files, open, pngSize, run, screen, shell } from '../lib/actions.js'
+import { brief, expand, fileGet, filePut, files, open, pngSize, run, screen, shell, windowsOpener } from '../lib/actions.js'
 
 const posix = process.platform !== 'win32'
 
@@ -100,6 +100,19 @@ test('open: a URL goes to the platform opener, a missing path is refused', async
 
   await assert.rejects(open({ url: '' }, fake), (e) => e.code === 'usage')
   await assert.rejects(open({ url: '/definitely/not/here/nanomuse' }, fake), (e) => e.code === 'not_found')
+
+  // Windows: PowerShell's Start-Process with the target as an encoded literal, so cmd never reads %NAME% or & in a URL
+  const winCalls = []
+  const win = { platform: 'win32', env: {}, run: async (file, args) => { winCalls.push([file, ...args]); return 0 } }
+  const url = "https://example.invalid/?q=%USERNAME%&x='1'"
+  assert.equal((await open({ url }, win)).ok, true)
+  const [file, ...args] = winCalls[0]
+  assert.equal(file, 'powershell.exe')
+  assert.ok(args.includes('-NonInteractive') && args.includes('-EncodedCommand'))
+  const script = Buffer.from(args[args.length - 1], 'base64').toString('utf16le')
+  assert.equal(script, "Start-Process -FilePath 'https://example.invalid/?q=%USERNAME%&x=''1'''")
+  const local = windowsOpener("C:\\Users\\me\\it's.pdf")
+  assert.equal(Buffer.from(local.args[local.args.length - 1], 'base64').toString('utf16le'), "Start-Process -FilePath 'C:\\Users\\me\\it''s.pdf'")
 })
 
 test('screen: no display means no_screen; a tool that writes a PNG is read back', async () => {

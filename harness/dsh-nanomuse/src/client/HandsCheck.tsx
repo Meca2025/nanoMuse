@@ -44,6 +44,19 @@ export interface RuntimeInfo {
   problem?: 'missing' | 'not-executable' | 'not-found'
   /** Linux: the display session (`hands-check.ts` `displayInfo`); absent elsewhere. */
   display?: { session: 'x11' | 'wayland' | 'none'; reason: string }
+  /** How the last mount of the hands' MCP client went (`hands-tools.ts`); `at` 0 before the first. Absent on an older host. */
+  mount?: { at: number; ok: boolean; reason: string }
+}
+
+/**
+ * Why this computer has no hands, in one sentence, from `hands/runtime`: the runtime is not
+ * there (three ways), or it is there and its mount failed. Empty when nothing is known to be
+ * wrong, so the caller keeps its own wording.
+ */
+export function handsOffReason(t: Translate, info: RuntimeInfo): string {
+  if (!info.ok) return info.problem === 'missing' ? t('pmRuntimeMissing', { path: info.path }) : info.problem === 'not-executable' ? t('pmRuntimeNotExec', { path: info.path }) : t('pmRuntimeNone')
+  if (info.mount && !info.mount.ok) return t('pmRuntimeMountFailed', { path: info.path, reason: info.mount.reason })
+  return ''
 }
 
 /** `hands/runtime` once per mount; `null` until it answers. */
@@ -181,19 +194,14 @@ function ShotResult({ t, shot, perms }: { t: Translate; shot: ScreenshotResult; 
 export function RuntimeRow({ t }: { t: Translate }): ReactNode {
   const info = useRuntimeInfo()
   if (!info) return null
-  const sub = info.ok
-    ? `${info.path} · ${info.source === 'env' ? t('pmRuntimeBundled') : t('pmRuntimeOnPath')}`
-    : info.problem === 'missing'
-      ? t('pmRuntimeMissing', { path: info.path })
-      : info.problem === 'not-executable'
-        ? t('pmRuntimeNotExec', { path: info.path })
-        : t('pmRuntimeNone')
+  const problem = handsOffReason(t, info)
+  const sub = problem || `${info.path} · ${info.source === 'env' ? t('pmRuntimeBundled') : t('pmRuntimeOnPath')}`
   return h(
     'div',
-    { className: `nm-row${info.ok ? '' : ' nm-hc-runtime-bad'}` },
+    { className: `nm-row${problem ? ' nm-hc-runtime-bad' : ''}` },
     h('span', { className: 'nm-row-icon' }, h(IconMonitor, { size: 18 })),
     h('div', { className: 'nm-row-main' }, h('span', { className: 'nm-row-title' }, t('pmRuntime')), h('span', { className: 'nm-row-sub nm-wrap nm-hc-mono' }, sub)),
-    info.ok ? h('span', { className: 'nm-ob-granted', 'aria-label': t('obAllowed') }, h(IconCheck, { size: 16 })) : null,
+    problem ? null : h('span', { className: 'nm-ob-granted', 'aria-label': t('obAllowed') }, h(IconCheck, { size: 16 })),
   )
 }
 

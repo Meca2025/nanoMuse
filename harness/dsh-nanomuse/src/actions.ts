@@ -210,16 +210,34 @@ export async function filePut(args: Args): Promise<Result> {
   if (info?.isDirectory()) throw new HubError('is_dir', `${path} is a folder`)
   if (info && !args.force) throw new HubError('exists', `${path} already exists; force replaces it`)
   await mkdir(dirname(path), { recursive: true })
+  // written next to the target and renamed into place, so a reader never sees half a file; a
+  // write or rename that fails takes its part file with it
   const part = join(dirname(path), `${basename(path)}.nanomuse-part`)
-  await writeFile(part, raw)
-  await rename(part, path)
+  try {
+    await writeFile(part, raw)
+    await rename(part, path)
+  } catch (error) {
+    await rm(part, { force: true }).catch(() => undefined)
+    throw error
+  }
   return { path, bytes: raw.length }
+}
+
+/**
+ * Windows opens a URL or a file through `Start-Process`, the target a PowerShell literal in an
+ * encoded command: nothing between here and the shell's API reads it, so a `%NAME%` in a URL
+ * stays as typed (cmd's `start` expanded it to the variable), as do `&`, `^` and quotes.
+ */
+export function windowsOpener(target: string): { file: string; args: string[] } {
+  const script = `Start-Process -FilePath '${target.replace(/'/g, "''")}'`
+  return { file: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')] }
 }
 
 /** `open {url}` → `{ok, url}`: a URL in the browser, a path with whatever opens it here. */
 export async function open(args: Args, platform: Platform = nodePlatform()): Promise<Result> {
   let url = typeof args.url === 'string' ? args.url.trim() : ''
   if (!url) throw new HubError('usage', 'a URL or a path is required')
+  let local: string | undefined
   if (!url.includes('://')) {
     const path = expand(url)
     try {
@@ -227,13 +245,16 @@ export async function open(args: Args, platform: Platform = nodePlatform()): Pro
     } catch {
       throw new HubError('not_found', `${path} does not exist`)
     }
+    local = path
     url = pathToFileURL(path).href
   }
   let ok = false
   try {
     if (platform.platform === 'darwin') ok = (await platform.run('open', [url], 20_000)) === 0
-    else if (platform.platform === 'win32') ok = (await platform.run('cmd.exe', ['/d', '/s', '/c', `start "" "${url.replace(/"/g, '')}"`], 20_000)) === 0
-    else ok = (await platform.run('xdg-open', [url], 20_000)) === 0
+    else if (platform.platform === 'win32') {
+      const opener = windowsOpener(local ?? url)
+      ok = (await platform.run(opener.file, opener.args, 20_000)) === 0
+    } else ok = (await platform.run('xdg-open', [url], 20_000)) === 0
   } catch {
     ok = false
   }
