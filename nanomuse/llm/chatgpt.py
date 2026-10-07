@@ -23,8 +23,8 @@ import os
 import secrets
 import sys
 import time
-from collections.abc import Awaitable, Callable, Mapping
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import IO, Any
@@ -538,22 +538,44 @@ class TokenStore:
     @contextmanager
     def lock(self) -> Any:
         """An exclusive lock on ``chatgpt.lock`` (``fcntl`` on POSIX; a best effort elsewhere)."""
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        fh: IO[str] = open(self.path.with_suffix(".lock"), "a+", encoding="utf-8")
-        locked = False
+        fh = self._open_lock()
         try:
-            # `sys.platform` itself, so mypy on Windows drops the fcntl branch
+            self._flock(fh)
+            yield
+        finally:
+            self._unlock(fh)
+
+    @asynccontextmanager
+    async def alock(self) -> AsyncIterator[None]:
+        """:meth:`lock` for a coroutine: the wait for another process is spent in a worker
+        thread, so the event loop keeps serving while a sibling refreshes the token."""
+        fh = self._open_lock()
+        try:
+            await asyncio.to_thread(self._flock, fh)
+            yield
+        finally:
+            self._unlock(fh)
+
+    def _open_lock(self) -> IO[str]:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        return open(self.path.with_suffix(".lock"), "a+", encoding="utf-8")
+
+    @staticmethod
+    def _flock(fh: IO[str]) -> None:
+        # `sys.platform` itself, so mypy on Windows drops the fcntl branch
+        if sys.platform != "win32":
+            import fcntl
+
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+
+    @staticmethod
+    def _unlock(fh: IO[str]) -> None:
+        try:
             if sys.platform != "win32":
                 import fcntl
 
-                fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-                locked = True
-            yield
-        finally:
-            if locked and sys.platform != "win32":
-                import fcntl
-
                 fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        finally:
             fh.close()
 
 
@@ -603,7 +625,7 @@ class Auth:
         current = current or self.store.load()
         if current is None:
             raise ChatGPTError("not_signed_in", "not signed in; run `nanomuse chatgpt login`")
-        with self.store.lock():
+        async with self.store.alock():
             # another process may have refreshed while we waited for the lock
             latest = self.store.load()
             if latest is not None and latest.access != current.access:

@@ -1477,10 +1477,31 @@ def test_push_keys_subscriptions_and_gone_endpoints(settings: Settings, monkeypa
 
     monkeypatch.setattr(pywebpush, "webpush", fake_webpush)
     monkeypatch.setattr(pywebpush, "WebPushException", Gone)
-    svc._send_all({"title": "t", "body": "b", "tag": "x", "url": "/", "badge": 1, "kind": "test"})
+    # no loop: sent inline, and the endpoint the push service reported gone is forgotten
+    svc.notify("t", "b", tag="x", url="/", badge=1, kind="test")
     assert [e for e, _ in sent] == ["https://push.example/sub/1"]
     assert sent[0][1]["title"] == "t" and sent[0][1]["badge"] == 1
-    # the endpoint the push service reported gone is forgotten
+    assert [s["endpoint"] for s in svc.subscriptions] == ["https://push.example/sub/1"]
+    # on a loop: the network runs in a thread, the list changes on the loop only
+    assert svc.subscribe({**FAKE_SUB, "endpoint": "https://push.example/sub/2"}) == 2
+    loop_thread = threading.get_ident()
+    seen_threads: list[int] = []
+
+    def thread_aware_webpush(subscription_info, data, **_kw):  # noqa: ANN001
+        seen_threads.append(threading.get_ident())
+        return fake_webpush(subscription_info, data)
+
+    monkeypatch.setattr(pywebpush, "webpush", thread_aware_webpush)
+
+    async def on_loop() -> None:
+        svc.notify("t2", "b", tag="y")
+        for _ in range(200):
+            if len(svc.subscriptions) == 1:
+                break
+            await asyncio.sleep(0.01)
+
+    asyncio.run(on_loop())
+    assert seen_threads and all(t != loop_thread for t in seen_threads)
     assert [s["endpoint"] for s in svc.subscriptions] == ["https://push.example/sub/1"]
     assert svc.unsubscribe("https://push.example/sub/1") and svc.subscriptions == []
     assert push_mod.available()

@@ -153,6 +153,54 @@ async def test_a_refused_refresh_clears_the_store(tmp_path: Path):
     assert not auth.signed_in()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the lock is fcntl's")
+@pytest.mark.asyncio
+async def test_the_loop_keeps_turning_while_another_process_holds_the_lock(tmp_path: Path):
+    """A sibling process refreshing the token holds ``chatgpt.lock``; the wait for it must
+    not stall the event loop (other chats keep streaming), and the token it wrote is used."""
+    import threading
+
+    store = TokenStore.in_dir(tmp_path)
+    store.save(token(expires_in=10, nonce="old"))
+    held = threading.Event()
+    release = threading.Event()
+
+    def other_process() -> None:
+        with store.lock():  # the same lock, from a thread: the kernel sees another holder
+            held.set()
+            release.wait(5)
+            store.save(token(expires_in=3600, nonce="theirs"))
+
+    threading.Thread(target=other_process, daemon=True).start()
+    assert held.wait(5)
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(500)
+
+    ticks = 0
+
+    async def ticker() -> None:
+        nonlocal ticks
+        while True:
+            await asyncio.sleep(0.01)
+            ticks += 1
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        auth = Auth(store, http=http, token_url=TOKEN_URL)
+        beat = asyncio.create_task(ticker())
+        refresh = asyncio.create_task(auth.token())
+        await asyncio.sleep(0.3)
+        assert not refresh.done() and ticks >= 10, "the wait for the lock blocked the loop"
+        release.set()
+        fresh = await asyncio.wait_for(refresh, 5)
+        beat.cancel()
+    # the other process's token is taken as it is: no second refresh over the wire
+    assert fresh.access == token(nonce="theirs").access and calls == 0
+
+
 # ----------------------------------------------------------------------------- translation
 def test_chat_completions_to_the_codex_responses_body():
     body = {
