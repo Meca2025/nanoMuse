@@ -32,8 +32,9 @@ export default function MusePage() {
     const params = new URLSearchParams(location.search);
     const url = new URL(serverUrl);
     url.pathname = '/';
-    // the web app stores the token on first load and removes it from its own URL
-    if (token) url.searchParams.set('token', token);
+    // the web app stores the token on first load and removes it from its own URL; it travels
+    // in the fragment (web/src/api.ts tokenFromLink), which never reaches the gateway or a log
+    if (token) url.hash = `token=${encodeURIComponent(token)}`;
     const thread = params.get('thread');
     const tab = params.get('tab');
     if (thread) url.searchParams.set('thread', thread);

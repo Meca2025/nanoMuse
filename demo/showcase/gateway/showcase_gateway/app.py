@@ -228,10 +228,14 @@ def create_app(
             return JSONResponse(
                 {"error": exc.code, "message": exc.message},
                 status_code=exc.status,
-                headers={"Retry-After": "3"},
+                headers={"Retry-After": "3", **cors},
             )
         except Refused as exc:
-            return _refused(exc)
+            # with the CORS headers too, so the phone's page reads the reason, not a bare failure
+            response = _refused(exc)
+            for name, value in cors.items():
+                response.headers[name] = value
+            return response
         if target is None:
             if "text/html" in request.headers.get("accept", ""):
                 return HTMLResponse(ENDED_PAGE, status_code=404)

@@ -96,6 +96,24 @@ async def test_a_visitor_gets_a_private_muse(world):
         assert info["active_sessions"] == 1 and info["demo_model"] == "demo-model"
 
 
+async def test_a_dead_container_is_logged_without_the_query(world, caplog):
+    settings, runner, upstream, clock, manager, app = world
+    async with app.router.lifespan_context(app):
+        c = await client_for(app)
+        r = await c.post("/api/demo/session", json={}, headers={"x-forwarded-for": "1.2.3.4"})
+        sess = body(r)
+        host = sess["server_url"].split("//")[1]
+
+        upstream.down = True
+        with caplog.at_level("INFO", logger="showcase.proxy"):
+            r = await c.get("/?token=secret-token&ui=lite", headers={"host": host})
+        upstream.down = False
+        assert r.status_code == 502
+        # the path is in the log; an older ?token= link's query is not
+        lines = [rec.getMessage() for rec in caplog.records if "upstream" in rec.getMessage()]
+        assert lines and all("/" in line and "secret-token" not in line for line in lines)
+
+
 async def test_the_showcase_is_full_and_the_daily_count(world):
     settings, runner, upstream, clock, manager, app = world
     async with app.router.lifespan_context(app):

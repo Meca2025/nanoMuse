@@ -170,6 +170,7 @@ class Upstream:
         self.drawn: list[dict] = []  # Model Studio's picture requests
         self.draw_busy = 0  # how many 429s the drawing endpoint answers first
         self.animated: list[httpx.Request] = []  # Model Studio's video tasks, as submitted
+        self.down = False  # the containers do not answer (a session whose runtime died)
         self.polls: dict[str, int] = {}  # task id → how often it was asked about
         self.animate_busy = 0  # how many 429s the video endpoint answers first
 
@@ -303,6 +304,8 @@ class Upstream:
         if request.url.path == "/api/health":
             return wire(200, '{"ok": true}', **{"content-type": "application/json"})
         if request.url.host.startswith("10.0."):
+            if self.down:
+                raise httpx.ConnectError("refused", request=request)
             return wire(200, f"container says {request.url.path}", **{"x-upstream": "yes"})
         if request.url.host == "cloud.example":
             return self.relay(request)
