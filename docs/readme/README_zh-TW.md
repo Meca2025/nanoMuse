@@ -30,11 +30,9 @@
 *nano* 的意思是完整的一套，小到你自己就能跑、能部署：手機 App、桌面 App、網頁主控台，還有把它們連在一起的中繼，都在這個儲存庫裡，GPL-3.0-or-later。**[免費、開源、非營利——一起把它做好。](../../CONTRIBUTING.md)** 登入就有一份免費的模型額度，走社群中繼，錢是開發者出的；用完可以[換成自己的 key](../own-key.md)。同一套中繼也能跑在你自己的伺服器上，資料不必出門。最新版本：**0.1.40 Clear**——[發行說明](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [線上體驗](https://demo.nanomuse.dev/)。
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/chat-approval.png" width="23%" alt="對話：刪除工作區裡的東西之前停下來問你——只此一次、本次對話、對工作區總是允許，或者拒絕">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/feed.png" width="23%" alt="動態：今天早上寫給你的幾則">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/goals.png" width="23%" alt="目標：按時檢查，還有例行工作">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/zh/avatar.png" width="23%" alt="形象：描述一句，你的圖像模型來畫，你挑一張喜歡的">
+  <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-zh.png" alt="nanoMuse 宣傳片，74 秒"></a>
 </p>
+<p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ 最新消息
 
