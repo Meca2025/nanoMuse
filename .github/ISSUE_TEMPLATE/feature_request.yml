@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         nanoMuse follows Meta's Muse closely. If your request is "Muse does X", say so and link to
-        where it is described — those are the requests most likely to land. Ideas outside Muse are
+        where it is described; those are the requests most likely to land. Ideas outside Muse are
         welcome too; just say what problem they solve.
   - type: textarea
     id: problem
