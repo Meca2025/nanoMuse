@@ -102,7 +102,9 @@ final class NanoMuseEdgeSwipeView: UIView, UIGestureRecognizerDelegate {
 
     // MARK: UIGestureRecognizerDelegate
 
-    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    /// UIView has this hook for its own recognizers, hence `override`; the window's recognizer
+    /// reaches it as its delegate.
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard enabled, let window else { return false }
         // Something presented over the window (a sheet, the OpenMinis layout) owns the edge.
         if window.rootViewController?.presentedViewController != nil { return false }
