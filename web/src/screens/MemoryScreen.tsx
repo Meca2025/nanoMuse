@@ -68,7 +68,7 @@ export function MemoryScreen() {
       const report = await api.tidyMemory();
       toast(
         report.changed === 0
-          ? t("Nothing to tidy — {n} memories, all distinct.", { n: report.considered })
+          ? t("Nothing to tidy: {n} memories, all distinct.", { n: report.considered })
           : t("Tidied: {merged} merged, {dropped} dropped. Undo below if needed.", {
               merged: report.merged.length,
               dropped: report.dropped.length,
@@ -95,7 +95,7 @@ export function MemoryScreen() {
     <div className="flex h-full flex-col">
       <PageBar
         title={t("Memory")}
-        description={t("What {name} remembers about you. Read it, add to it, or make {name} forget — nothing here is hidden from you.", { name })}
+        description={t("What {name} remembers about you. Read it, add to it, or make {name} forget; nothing here is hidden from you.", { name })}
         actions={
           items.length >= 2 && (
             <button
@@ -150,7 +150,7 @@ export function MemoryScreen() {
             <Brain className="mx-auto text-accent" />
             <div className="mt-2 font-semibold">{t("Nothing remembered yet")}</div>
             <p className="mt-1 text-[13.5px] text-muted">
-              {t("{name} saves durable facts you share in chat — preferences, people, routines — and never secrets.", { name })}
+              {t("{name} saves durable facts you share in chat (preferences, people, routines) and never secrets.", { name })}
             </p>
             <button
               type="button"

@@ -132,7 +132,7 @@ export function starText(t: (s: string, vars?: Record<string, string | number>) 
   switch (m) {
     case "signed_in":
       return t(
-        "Welcome. nanoMuse is free, open source and non-profit — a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.",
+        "Welcome. nanoMuse is free, open source and non-profit, a personal agent for anyone who runs it. If that is worth something to you, a star on GitHub is how the next person finds it.",
       );
     case "tasks":
       return n === 3
@@ -143,7 +143,7 @@ export function starText(t: (s: string, vars?: Record<string, string | number>) 
     case "new_look":
       return t("A new face, drawn for you. If you like where nanoMuse is going, a star on GitHub helps more people find it.");
     case "exhausted":
-      return t("The free allowance is used up — thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.");
+      return t("The free allowance is used up. Thank you for coming this far. If nanoMuse has earned it, a star on GitHub keeps the project in view for the next person.");
     case "days_used":
       return n === 7
         ? t("A week with nanoMuse. If it has earned a place in your day, a star on GitHub helps the next person find it.")

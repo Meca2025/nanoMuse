@@ -59,7 +59,7 @@ const MODES: Array<{ id: "ask" | "strict" | "auto"; title: string; text: string;
   {
     id: "ask",
     title: "Balanced",
-    text: "Browse, read and write files freely; stop for anything hard to undo — email, purchases, shell commands.",
+    text: "Browse, read and write files freely; stop for anything hard to undo: email, purchases, shell commands.",
     icon: <ShieldCheck size={18} />,
   },
   {
@@ -329,7 +329,7 @@ export function SettingsScreen() {
             <button type="button" onClick={() => openOwnKeySetup(setTab, ownKeyWay(state.hub?.account).preset)} className="w-full text-[13.5px] flex items-center justify-between">
               <span className="text-muted">{t("Use my own API key or a plan I pay for")}</span>
               <span className="text-[12.5px] text-muted flex items-center gap-1">
-                {t("{first} first — {others}", { first: ownKeyWay(state.hub?.account).label, others: isMainland(state.hub?.account) ? t("DeepSeek, Kimi, OpenAI, ChatGPT…") : t("OpenAI, ChatGPT, Gemini, DeepSeek…") })} <ChevronRight size={14} />
+                {t("{first} first, then {others}", { first: ownKeyWay(state.hub?.account).label, others: isMainland(state.hub?.account) ? t("DeepSeek, Kimi, OpenAI, ChatGPT…") : t("OpenAI, ChatGPT, Gemini, DeepSeek…") })} <ChevronRight size={14} />
               </span>
             </button>
           )}
@@ -430,7 +430,7 @@ export function SettingsScreen() {
         <Section title={t("Developer")} id="developer" plain={!wide}>
           <Toggle
             label={t("Developer tools")}
-            hint={t("The Coding screen — Cursor, Codex and the other coding agents on this computer — in the sidebar, and the runtime's address below. This device only.")}
+            hint={t("The Coding screen (Cursor, Codex and the other coding agents on this computer) in the sidebar, and the runtime's address below. This device only.")}
             checked={developer}
             onChange={setDeveloperTools}
           />
@@ -522,7 +522,7 @@ function VersionRows({ installed, release, checking, onCheck }: { installed: str
         </a>
       </>
     );
-  else if (release?.latest) latest = <>{t("Latest {version} — you have it", { version: release.latest })} · {checkNow}</>;
+  else if (release?.latest) latest = <>{t("Latest {version}; you have it", { version: release.latest })} · {checkNow}</>;
   else latest = <>{t("Could not check")} · {checkNow}</>;
   return (
     <div className="rounded-2xl bg-surface-2/60 px-3.5 py-2.5 text-[13px]">
@@ -838,7 +838,7 @@ function PushSettings({ name }: { name: string }) {
   const test = async () => {
     try {
       const r = await api.pushTest();
-      toast(r.ok ? t("Sent — it should arrive in a moment") : r.error ?? t("Could not send"));
+      toast(r.ok ? t("Sent. It should arrive in a moment") : r.error ?? t("Could not send"));
     } catch (e) {
       toast((e as Error).message);
     }
@@ -848,7 +848,7 @@ function PushSettings({ name }: { name: string }) {
     status === "unsupported"
       ? t("This browser cannot receive push notifications.")
       : status === "insecure"
-        ? t("Notifications need https:// (or localhost). Over plain http on your LAN the app works, this part stays off — see docs/deployment.md.")
+        ? t("Notifications need https:// (or localhost). Over plain http on your LAN the app works, this part stays off; see docs/deployment.md.")
         : status === "denied"
           ? t("Blocked for this site. Allow notifications in the browser's site settings, then try again.")
           : info && !info.available

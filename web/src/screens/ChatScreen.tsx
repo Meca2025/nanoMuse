@@ -501,7 +501,7 @@ function QuietLine({ text, about, ts }: { text: string; about?: string; ts?: str
     <div className="rise flex justify-center px-6">
       <button type="button" onClick={() => setOpen((o) => !o)} className="max-w-full rounded-2xl px-3 py-1.5 text-[12px] text-muted text-center leading-snug">
         <span className="inline-flex items-center gap-1.5">
-          <Moon size={12} /> {t("Checked on {label} — nothing new", { label })}{ts ? ` · ${timeShort(ts)}` : ""}
+          <Moon size={12} /> {t("Checked on {label}: nothing new", { label })}{ts ? ` · ${timeShort(ts)}` : ""}
         </span>
         {open && <span className="block mt-1 text-left whitespace-pre-wrap text-[12.5px]">{text}</span>}
       </button>
@@ -562,7 +562,7 @@ function EmptyChat({ name, device, onSend }: { name: string; device?: string; on
     ? [t("What is on your screen right now?"), t("Which folder are you in, and what is in it?"), t("Check for updates and tell me what needs a restart")]
     : [
         t("What can you do for me?"),
-        t("Plan my week — ask me what's on my plate"),
+        t("Plan my week: ask me what's on my plate"),
         t("Research and compare two options for me"),
         t("Set up a long-term goal and track it"),
       ];
@@ -572,8 +572,8 @@ function EmptyChat({ name, device, onSend }: { name: string; device?: string; on
       <div className="text-[20px] font-semibold">{device ? t("This chat goes to {device}.", { device }) : t("Hi, I'm {name}.", { name })}</div>
       <p className="text-muted text-[14.5px] leading-snug max-w-sm">
         {device
-          ? t("Whatever you ask here, the {name} on {device} does where it is — its shell, its files, its screen. Every step shows up here, and anything that needs an approval asks you here.", { name, device })
-          : t("I don't just answer — I get things done: research, plans, files, code, email, long-running goals. Everything I do shows up here, and anything hard to undo waits for your approval.")}
+          ? t("Whatever you ask here, the {name} on {device} does where it is: its shell, its files, its screen. Every step shows up here, and anything that needs an approval asks you here.", { name, device })
+          : t("I don't just answer; I get things done: research, plans, files, code, email, long-running goals. Everything I do shows up here, and anything hard to undo waits for your approval.")}
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         {starters.map((s) => (
@@ -740,7 +740,7 @@ function Composer({
   return (
     <form onSubmit={submit} className="shrink-0 bg-bg px-3 pt-1.5 pb-1">
       {busy && !waiting && (
-        <div className="px-2 pb-1 text-[12px] text-muted">{t("{name} is working — anything you send now is picked up right away.", { name })}</div>
+        <div className="px-2 pb-1 text-[12px] text-muted">{t("{name} is working; anything you send now is picked up right away.", { name })}</div>
       )}
       {matches.length > 0 && (
         <ul className="mb-2 max-h-72 overflow-y-auto rounded-3xl border border-border/70 bg-surface shadow-lg divide-y divide-border/70" role="listbox" aria-label={t("Skills")}>

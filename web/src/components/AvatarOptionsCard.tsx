@@ -45,7 +45,7 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
     if (cost.unlimited) return t("About ¥{cny} for {what}; your account has no limit.", { cny: cost.cny.toFixed(2), what });
     const left = typeof cost.left_cny === "number" ? cost.left_cny.toFixed(2) : "?";
     return cost.affordable === false
-      ? t("About ¥{cny} for {what} — more than the ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), what, left })
+      ? t("About ¥{cny} for {what}, more than the ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), what, left })
       : t("About ¥{cny} for {what}; ¥{left} left in your allowance.", { cny: cost.cny.toFixed(2), what, left });
   })();
 
@@ -60,9 +60,9 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
             <div className="text-[12.5px] font-medium text-muted">
               {event.stage === "estimate" && t("A new look for {name}", { name })}
               {event.stage === "drawing" && t("Drawing four to choose from…")}
-              {event.stage === "choose" && t("Pick one — tap it, or say which")}
+              {event.stage === "choose" && t("Pick one: tap it, or say which")}
               {event.stage === "posing" && t("Drawing the poses…")}
-              {event.stage === "animating" && t("The new look is on — making the clips…")}
+              {event.stage === "animating" && t("The new look is on; making the clips…")}
               {event.stage === "done" && t("The new look is on")}
               {event.stage === "cancelled" && t("Not this time")}
               {event.stage === "failed" && t("That did not work")}
@@ -165,10 +165,10 @@ export function AvatarOptionsCard({ event, name = "nanoMuse" }: { event: AvatarE
             </div>
             {event.stage === "done" ? (
               <p className="flex items-center gap-1.5 text-[12.5px] text-muted">
-                <Check size={14} className="text-emerald-600" /> {t("Idle, working, waiting, happy, sorry — the face follows what {name} is doing.", { name })}
+                <Check size={14} className="text-emerald-600" /> {t("Idle, working, waiting, happy, sorry: the face follows what {name} is doing.", { name })}
               </p>
             ) : event.stage === "animating" ? (
-              <p className="text-[12.5px] text-muted">{t("The face is already on; four short clips are being made from the poses — a few minutes.")}</p>
+              <p className="text-[12.5px] text-muted">{t("The face is already on; four short clips are being made from the poses, a few minutes.")}</p>
             ) : (
               <p className="text-[12.5px] text-muted">{t("Four more pictures from the one you picked; this takes a minute or two.")}</p>
             )}

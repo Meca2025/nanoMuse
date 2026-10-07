@@ -72,7 +72,7 @@ export function ownKeyWay(account?: Pick<CloudAccount, "channel" | "region" | "s
 export function ownKeyLine(t: (s: string) => string, account?: Pick<CloudAccount, "channel" | "region" | "signed_in"> | null): string {
   return isMainland(account)
     ? t("Alibaba Cloud Bailian is a good start: a new account comes with a free quota, set-up takes about two minutes, and one key covers chat, the hands, pictures and clips.")
-    : t("Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go — chat, the hands and pictures; clips need Bailian.");
+    : t("Alibaba Cloud Bailian only signs up accounts from mainland China. Outside, OpenRouter is the easy way: one account, one key, pay as you go, for chat, the hands and pictures; clips need Bailian.");
 }
 
 /** Whether a model id says it sees pictures (the runtime's rule, mirrored for the pickers). */

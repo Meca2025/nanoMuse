@@ -152,7 +152,7 @@ export function ChatGptSignIn({ compact, onChanged }: { compact?: boolean; onCha
     }
   };
 
-  const covers = t("Covers chat and the hands. Pictures and clips are not part of it — those need a provider with image or video models.");
+  const covers = t("Covers chat and the hands. Pictures and clips are not part of it; those need a provider with image or video models.");
 
   return (
     <div className={cx("space-y-2", !compact && "rounded-2xl bg-surface-2/60 p-3")}>

@@ -72,7 +72,7 @@ export function IdeasScreen() {
     const time = idea.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(idea.time) ? idea.time : "09:00";
     try {
       await api.createReminder({ text: idea.prompt, kind: "task", repeat: `daily ${time}` });
-      toast(t("Routine set — every day at {time}. It is listed under Goals.", { time }));
+      toast(t("Routine set: every day at {time}. It is listed under Goals.", { time }));
     } catch (e) {
       toast((e as Error).message);
     }
@@ -81,7 +81,7 @@ export function IdeasScreen() {
   const startGoal = (idea: Idea) => {
     setSelected(null);
     const category = CATEGORIES.find((c) => c.id === idea.category) ?? CATEGORIES[CATEGORIES.length - 1];
-    const opener = t("I'd like to create a {category} goal. Ask me a few short questions, one at a time — what exactly I want, why and by when, how often to check in — then create it with concrete steps using the goals tool.", {
+    const opener = t("I'd like to create a {category} goal. Ask me a few short questions, one at a time (what exactly I want, why and by when, how often to check in), then create it with concrete steps using the goals tool.", {
       category: t(category.label),
     });
     void send("main", `${opener} ${idea.prompt}`);
@@ -127,7 +127,7 @@ export function IdeasScreen() {
         ))}
         {data && (
           <div className="px-5 pt-4 text-[12.5px] text-muted">
-            {data.source === "model" ? t("Generated {when}", { when: relativeTime(data.generated_at) }) : t("Starter ideas — refresh once {name} knows you better.", { name })}
+            {data.source === "model" ? t("Generated {when}", { when: relativeTime(data.generated_at) }) : t("Starter ideas. Refresh once {name} knows you better.", { name })}
           </div>
         )}
       </div>

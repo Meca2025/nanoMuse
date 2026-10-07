@@ -638,7 +638,7 @@ function holdThing(tool: string, t: (s: string) => string): string {
 
 /** The one line of a hold: "Your turn — sign in to Gmail" or "You took over the browser". */
 export function holdLine(hold: HoldEvent, t: (s: string, v?: Record<string, string | number>) => string): string {
-  if (hold.by === "agent") return hold.reason ? t("Your turn — {reason}", { reason: hold.reason }) : t("Your turn");
+  if (hold.by === "agent") return hold.reason ? t("Your turn: {reason}", { reason: hold.reason }) : t("Your turn");
   return t("You took over {thing}", { thing: holdThing(hold.tool, t) });
 }
 
@@ -690,7 +690,7 @@ export function HoldCard({ event, name = "nanoMuse" }: { event: HoldEvent; name?
             <div className="mt-1.5 text-[12.5px] leading-snug text-muted">
               {on
                 ? event.by === "agent"
-                  ? t("Do this part yourself, then press Done — {name} looks again and carries on from there.", { name })
+                  ? t("Do this part yourself, then press Done. {name} looks again and carries on from there.", { name })
                   : t("{name} waits. Press Done when you are finished and it looks again.", { name })
                 : ended}
             </div>

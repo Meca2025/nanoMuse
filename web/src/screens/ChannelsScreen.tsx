@@ -47,14 +47,14 @@ const ZH: Record<string, string> = {
   "Saved.": "已保存。",
   Save: "保存",
   Saving: "保存中",
-  "Set — leave blank to keep": "已设置 — 留空则保持不变",
+  "Set; leave blank to keep": "已设置，留空则保持不变",
   "Clear the saved value": "清除已保存的值",
   "In groups, reply": "在群里回复",
   "only when @-mentioned": "只在被 @ 时",
   "to every message": "每条消息",
   "Always allowed (ids, one per line)": "免配对的 ID（每行一个）",
-  "People listed here never need a pairing code. A lone * lets anyone in — only on a bot nobody else can reach.":
-    "列在这里的人不需要配对码。单独一个 * 表示放行所有人——只在别人找不到的机器人上这样做。",
+  "People listed here never need a pairing code. A lone * lets anyone in; do that only on a bot nobody else can reach.":
+    "列在这里的人不需要配对码。单独一个 * 表示放行所有人，只在别人找不到的机器人上这样做。",
   "Paired chats": "已配对的聊天",
   "Nobody yet. Write to the bot from the app; a pairing code comes back, approve it here.":
     "还没有人。在聊天软件里给机器人发条消息，会收到配对码，在这里通过即可。",
@@ -417,7 +417,7 @@ function ChannelCard({
                 <span className="mb-1 block text-[13px] text-muted">{tr("Always allowed (ids, one per line)")}</span>
                 <textarea className={cx(inputCls, "min-h-[56px] font-mono text-[13px]")} value={allowText} onChange={(e) => setAllow(e.target.value)} rows={2} />
                 <span className="mt-1 block text-[12.5px] leading-[17px] text-muted">
-                  {tr("People listed here never need a pairing code. A lone * lets anyone in — only on a bot nobody else can reach.")}
+                  {tr("People listed here never need a pairing code. A lone * lets anyone in; do that only on a bot nobody else can reach.")}
                 </span>
               </label>
               <div className="flex flex-wrap gap-2">
@@ -562,7 +562,7 @@ function FieldInput({
           autoComplete="off"
           className={inputCls}
           value={value ?? (secret ? "" : String(f.value ?? ""))}
-          placeholder={secret && f.has_value ? tr("Set — leave blank to keep") : f.help}
+          placeholder={secret && f.has_value ? tr("Set; leave blank to keep") : f.help}
           onChange={(e) => onChange(e.target.value)}
         />
         {secret && f.has_value && (

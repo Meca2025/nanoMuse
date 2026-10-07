@@ -125,7 +125,7 @@ export function coversLine(t: (s: string, v?: Record<string, string | number>) =
 
 /**
  * The one sentence for a feature nobody configured can do (contract C11):
- * *Pictures need a provider with image models — Bailian, OpenAI, Gemini or OpenRouter (how).*
+ * *Pictures need a provider with image models: Bailian, OpenAI, Gemini or OpenRouter (how).*
  * The names are the region's providers with the capability, four at most.
  */
 export function unavailableLine(t: (s: string, v?: Record<string, string | number>) => string, cap: Capability, region: Region, locale: string, list: CatalogueProvider[] = CATALOGUE): string {
@@ -136,13 +136,13 @@ export function unavailableLine(t: (s: string, v?: Record<string, string | numbe
   const joined = names.length ? `${names.join(t(", "))}${t(" or ")}${last}` : last;
   switch (cap) {
     case "image":
-      return t("Pictures need a provider with image models — {providers}.", { providers: joined });
+      return t("Pictures need a provider with image models: {providers}.", { providers: joined });
     case "video":
-      return t("Clips need a provider with video models — {providers}.", { providers: joined });
+      return t("Clips need a provider with video models: {providers}.", { providers: joined });
     case "vision":
-      return t("The hands need a model that sees pictures — {providers}.", { providers: joined });
+      return t("The hands need a model that sees pictures: {providers}.", { providers: joined });
     case "chat":
-      return t("Chat needs a model — {providers}.", { providers: joined });
+      return t("Chat needs a model: {providers}.", { providers: joined });
   }
 }
 

@@ -499,7 +499,7 @@ function HandsCard({ hands, onChange }: { hands: HandsStatus; onChange: () => vo
         )}
       </MuseCard>
       {hands.enabled && hands.device?.platform === "darwin" && (
-        <MuseCaption>{t("On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black. The first action in each app asks you once — \"Let {name} use Safari?\" — and the answer is kept under Permissions.", { name: museName })}</MuseCaption>
+        <MuseCaption>{t("On a Mac, allow nanoMuse under System Settings → Privacy & Security → Accessibility and Screen Recording when macOS asks; without them clicks do nothing and the screenshot is black. The first action in each app asks you once (\"Let {name} use Safari?\") and the answer is kept under Permissions.", { name: museName })}</MuseCaption>
       )}
     </>
   );
@@ -526,7 +526,7 @@ export function hubStateLabel(state: string, t: (s: string) => string): string {
     case "disconnected":
       return t("Connecting to the hub…");
     case "refused":
-      return t("The hub refused this device — sign in again.");
+      return t("The hub refused this device. Sign in again.");
     case "signed_out":
       return t("Not signed in.");
     case "off":

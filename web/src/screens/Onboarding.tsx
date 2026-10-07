@@ -120,9 +120,9 @@ export function Onboarding() {
             <h1 className="mt-6 text-[28px] font-bold tracking-tight">{t("Meet your nanoMuse")}</h1>
             <p className="mt-2 text-[15px] text-muted">{t("A personal agent of your own. Three things to know:")}</p>
             <ul className="mt-6 w-full max-w-sm space-y-2.5 text-left">
-              <Point n={1} title={t("It does things for you.")} body={t("Searches, browses, writes, books, reads mail — and hands you the result, not a list of links.")} />
+              <Point n={1} title={t("It does things for you.")} body={t("Searches, browses, writes, books, reads mail, and hands you the result, not a list of links.")} />
               <Point n={2} title={t("It keeps working when you close the app.")} body={t("Goals move forward between your visits; it reports in the Feed and notifies you when something is worth it.")} />
-              <Point n={3} title={t("It asks you first where it matters.")} body={t("A separate Sentinel reviews every action. Sending, paying, deleting — it stops and asks; your keys stay in a vault the model cannot read.")} />
+              <Point n={3} title={t("It asks you first where it matters.")} body={t("A separate Sentinel reviews every action. Sending, paying, deleting: it stops and asks; your keys stay in a vault the model cannot read.")} />
             </ul>
             <p className="mt-5 max-w-sm text-[13px] text-muted">{t("There is no form to fill in: once it has a model, it introduces itself in the chat and asks what to call you.")}</p>
           </div>
@@ -152,7 +152,7 @@ export function Onboarding() {
                 }
                 onClick={() => setStep("model")}
               />
-              <Item done={connected} optional title={t("Connect mail, calendar, contacts")} body={connected ? t("Connected. Tap to add more.") : t("Optional — it can read what came in, know your day, and who is who.")} onClick={() => setStep("connect")} />
+              <Item done={connected} optional title={t("Connect mail, calendar, contacts")} body={connected ? t("Connected. Tap to add more.") : t("Optional. It can read what came in, know your day, and who is who.")} onClick={() => setStep("connect")} />
               <Item locked={!modelReady} done={false} title={t("Start")} body={modelReady ? t("Open the chat. It introduces itself and asks your name.") : t("Needs a model first.")} onClick={() => modelReady && !starting && void start()} />
             </ol>
           </div>
@@ -167,7 +167,7 @@ export function Onboarding() {
                   ? conn?.llm.cloud
                     ? t("Your account's model, with its free allowance. Keep it, or switch to a key of your own here.")
                     : t("A model is already set up on the server. Keep it, or switch here.")
-                  : t("Your account brings a model with a free allowance — the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
+                  : t("Your account brings a model with a free allowance, the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
               </p>
             </div>
             {conn ? (
