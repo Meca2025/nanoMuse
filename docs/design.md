@@ -33,8 +33,9 @@ A study of Muse's screens — the announcement, the walkthrough and sizzle video
 ## The red panda
 
 > Since 0.1.11 the default face is the bundled dragon (the same on the phone, the desktop and
-> the web); the red panda below stayed as an optional avatar and as the record of how a face
-> that poses from state was first drawn.
+> the web); the red panda below stayed as an optional avatar until 0.1.23, when it retired with
+> the six dolls, and remains here as the record of how a face that poses from state was first
+> drawn.
 
 Muse's doll says "there is someone here, and it is busy" without a spinner. nanoMuse's answer is a red panda — a round head with two small ringed ears, a cream face that comes down in two cheek lobes to a dark nose, big dark eyes with a catchlight, a ringed tail — drawn as an SVG so that it can be posed from the app's state instead of swapped between photographs.
 

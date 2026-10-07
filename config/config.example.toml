@@ -185,7 +185,7 @@ provider = "duckduckgo"               # duckduckgo | brave | tavily | searxng
 
 [skills]
 # How a job is done, written down once: folders with a SKILL.md (the Agent Skills format).
-# Nine are built in; yours go in <data_dir>/skills (or `dir`), and a folder with the same
+# Eleven are built in; yours go in <data_dir>/skills (or `dir`), and a folder with the same
 # name as a built-in replaces it. In chat, "/trip-plan Kyoto in November" runs one.
 enabled = true
 # dir = "~/my-skills"

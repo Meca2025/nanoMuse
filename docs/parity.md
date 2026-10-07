@@ -79,7 +79,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Report a problem: one tap opens a GitHub issue | ✓ Settings → Account | ✓ About → *Report an issue* | ✓ the corner menu; under the shell a screenshot goes to Downloads and the issue opens filled in | ✓ Settings → Feedback |
 | Installed and latest version, side by side (`nanomuse.cn/dl/index.json` first, GitHub second, a day's cache) | ✓ 0.1.35 Settings → Version | ✓ 0.1.35 Settings → Version | ✓ 0.1.35 About, Settings row | ✓ 0.1.35 Settings |
 | A black capture is an error with the fix (Screen Recording, Wayland), never a picture | n/a | n/a | ✓ 0.1.33 | n/a |
-| macOS permissions read back live; *Open System Settings* after an ask; Screen Recording relaunch notice | n/a | n/a | ✓ 0.1.33; 0.1.35: only *nanoMuse Desktop* has to be switched on, *Try it* rows, a restart dialog when Screen Recording flips on *(26)* | n/a |
+| macOS permissions read back live; *Open System Settings* after an ask; Screen Recording relaunch notice | n/a | n/a | ✓ 0.1.33; 0.1.35: one row to switch on, *Try it* rows, a restart dialog when Screen Recording flips on; since 0.1.38 the row is *nanoMuse Computer Use*, the helper app *(26)* | n/a |
 | Mini-Linux sandbox on the device | ✓ | ✓ upstream (iSH) | n/a — the runtime's own sandbox | n/a |
 
 ## Face, rooms, look
@@ -236,7 +236,8 @@ notes above; a settled item keeps its number and says how it went.
     session only.
 26. **Desktop · macOS permissions** — re-audited in 0.1.35: TCC attributes the bundled runtime to
     the responsible process, so only *nanoMuse Desktop* has to be switched on (the words say so
-    now; the runtime no longer appears as a second entry to hunt for). Left to try on a Mac: the
+    now; the runtime no longer appears as a second entry to hunt for). Since 0.1.38 the two grants
+    belong to the helper app *nanoMuse Computer Use* instead ([desktop.md](desktop.md#macos-permissions)). Left to try on a Mac: the
     *Try it* rows after a fresh grant, the restart dialog when Screen Recording flips on, the
     capsule's `showInactive` (17), window mode's AX-less clicks and Retina mapping (19), the
     face click after 0.1.36's change (no drag region under the face at all; the face below the

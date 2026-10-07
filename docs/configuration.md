@@ -18,7 +18,7 @@ These win over the file. They cover the settings people change most often and wh
 
 | Variable | Setting |
 |---|---|
-| `NANOMUSE_LLM_PROVIDER`, `NANOMUSE_LLM_MODEL`, `NANOMUSE_LLM_BASE_URL`, `NANOMUSE_LLM_API_KEY`, `NANOMUSE_LLM_TOOL_MODE`, `NANOMUSE_LLM_IMAGE_MODEL`, `NANOMUSE_LLM_VIDEO_MODEL`, `NANOMUSE_LLM_VIDEO_BASE_URL` | `[llm]` (`video_base_url`: the asynchronous video API on another host than the chat model's — a relaying host such as the showcase gateway names itself here) |
+| `NANOMUSE_LLM_PROVIDER`, `NANOMUSE_LLM_MODEL`, `NANOMUSE_LLM_BASE_URL`, `NANOMUSE_LLM_API_KEY`, `NANOMUSE_LLM_TOOL_MODE`, `NANOMUSE_LLM_VISION`, `NANOMUSE_LLM_IMAGE_MODEL`, `NANOMUSE_LLM_VIDEO_MODEL`, `NANOMUSE_LLM_VIDEO_BASE_URL` | `[llm]` (`video_base_url`: the asynchronous video API on another host than the chat model's — a relaying host such as the showcase gateway names itself here) |
 | `DEEPSEEK_API_KEY`, `OPENAI_API_KEY` | used as `llm.api_key` when it is empty — DeepSeek's for a `*.deepseek.com` `base_url`, OpenAI's for every other host (OpenAI itself, OpenRouter, a gateway, vLLM) |
 | `NANOMUSE_DATA_DIR` | `data_dir` (default `~/.nanomuse`) |
 | `NANOMUSE_WORKSPACE` | `agent.workspace` (default: `./workspace` when the current directory has one, else `<data_dir>/workspace`) |
@@ -383,7 +383,7 @@ api_key          = "{{vault:GUI_API_KEY}}"
 max_steps        = 0                 # the most one phone_task may take; 0 = no cap
 device_timeout_s = 20.0              # how long to wait for the phone to answer
 reconnect_grace_s = 30.0             # how long a running task waits for a phone whose connection dropped; 0 = give up at once
-sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first
+sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first; a shortened sample, the default has 22 words
 ```
 
 `base_url` and `api_key` fall back to `[llm]` when empty. An empty `model` follows one order (the Models contract, 0.1.41): with the relay as the chat model, the relay's hands model (`qwen3.8-27b` unless `/v1/models` names another), not the chat model — the chat default reads pictures, but the hands want the model trained to point at things on a screen; with an own provider the catalogue lists with `vision`, that provider's own hands model (`defaults.hands`, `qwen3.8-27b` on Bailian, `glm-4.6v` on Zhipu) on the chat key; with a provider that cannot see (a local server by its catalogue id or host) and an account signed in, the relay's hands model under the account key, the chat model staying where it is; else the chat model, as on a host the catalogue does not list. An explicit `model` always wins. A key is only needed when the operator's `base_url` is a different service. Traces of every phone task go to `<data_dir>/phone-traces/` (the last 200 are kept; `nanomuse phone traces`).

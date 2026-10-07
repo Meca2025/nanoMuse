@@ -117,7 +117,6 @@ const understandIt: DefaultTheme.SidebarItem[] = [
   { text: 'The app, as designed', link: '/app' },
   { text: 'The local runtime on the phone', link: '/local-runtime' },
   { text: 'Brand', link: '/brand' },
-  { text: 'Calls (removed)', link: '/calls' },
 ]
 
 const contribute: DefaultTheme.SidebarItem[] = [

@@ -18,7 +18,7 @@ nanoMuse 只读一个 TOML 文件。`nanomuse config init` 把带注释的 [`con
 
 | 变量 | 设置 |
 |---|---|
-| `NANOMUSE_LLM_PROVIDER`、`NANOMUSE_LLM_MODEL`、`NANOMUSE_LLM_BASE_URL`、`NANOMUSE_LLM_API_KEY`、`NANOMUSE_LLM_TOOL_MODE`、`NANOMUSE_LLM_IMAGE_MODEL`、`NANOMUSE_LLM_VIDEO_MODEL`、`NANOMUSE_LLM_VIDEO_BASE_URL` | `[llm]`（`video_base_url`：异步视频 API 在聊天模型以外的另一台主机上——转发用的主机，比如展示站的网关，会在这里报上自己的名字） |
+| `NANOMUSE_LLM_PROVIDER`、`NANOMUSE_LLM_MODEL`、`NANOMUSE_LLM_BASE_URL`、`NANOMUSE_LLM_API_KEY`、`NANOMUSE_LLM_TOOL_MODE`、`NANOMUSE_LLM_VISION`、`NANOMUSE_LLM_IMAGE_MODEL`、`NANOMUSE_LLM_VIDEO_MODEL`、`NANOMUSE_LLM_VIDEO_BASE_URL` | `[llm]`（`video_base_url`：异步视频 API 在聊天模型以外的另一台主机上——转发用的主机，比如展示站的网关，会在这里报上自己的名字） |
 | `DEEPSEEK_API_KEY`、`OPENAI_API_KEY` | `llm.api_key` 为空时顶上——`base_url` 是 `*.deepseek.com` 用 DeepSeek 的，其他所有主机（OpenAI 自己、OpenRouter、网关、vLLM）用 OpenAI 的 |
 | `NANOMUSE_DATA_DIR` | `data_dir`（默认 `~/.nanomuse`） |
 | `NANOMUSE_WORKSPACE` | `agent.workspace`（默认：当前目录下有 `./workspace` 就用它，否则 `<data_dir>/workspace`） |
@@ -383,7 +383,7 @@ api_key          = "{{vault:GUI_API_KEY}}"
 max_steps        = 0                 # 一次 phone_task 最多走多少步；0 = 不设上限
 device_timeout_s = 20.0              # how long to wait for the phone to answer
 reconnect_grace_s = 30.0             # 手机掉线后，进行中的任务等它回来多久；0 = 立刻放弃
-sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first
+sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first; 这里是节选，默认列表有 22 个词
 ```
 
 `base_url` 和 `api_key` 为空时回退到 `[llm]`。空的 `model` 按一个顺序来（模型约定，0.1.41）：以中继为聊天模型时，是中继的手的模型（`qwen3.8-27b`，除非 `/v1/models` 另有指定），而不是聊天模型——聊天的默认模型看得懂图片，但手需要的是训练过、会在屏幕上指东西的模型；聊天服务商是目录里带 `vision` 的自有服务商时，是它自己的手的模型（`defaults.hands`，百炼是 `qwen3.8-27b`，智谱是 `glm-4.6v`），用聊天的 key；聊天服务商看不了图（按目录 id 或主机识别出的本地服务器）而账号已登录时，是中继的手的模型，用账号的 key，聊天模型留在原处；其余情况是聊天模型，目录里没有的主机也是。明确写了 `model` 总是优先。只有操作器的 `base_url` 是另一个服务时才需要 key。每次手机任务的轨迹都进 `<data_dir>/phone-traces/`（保留最近 200 条；`nanomuse phone traces`）。

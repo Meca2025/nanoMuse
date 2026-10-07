@@ -11,7 +11,7 @@
 一个 APK，一种架构：`nanoMuse-<version>-arm64.apk`（arm64-v8a，Android 8.0 / API 26 及以上，
 `targetSdk` 35）。每个版本都用同一把签名密钥，所以新 APK 直接覆盖旧的，数据保留。没有上架
 Play 商店：「设置 → 版本」把已安装的构建和最新版本并排显示（先查 `nanomuse.cn/dl/index.json`，
-再查这个仓库的 GitHub Releases——「最新 0.1.x——你已经是了」/「0.1.x 已发布——点一下更新」），
+再查这个仓库的 GitHub Releases——「最新 0.1.x，你用的就是它」/「0.1.x 已发布，点此更新」），
 并提供下载。
 
 ## 安装 {#install}
@@ -75,7 +75,7 @@ Play 商店：「设置 → 版本」把已安装的构建和最新版本并排�
 | **账号**（`ui/cloud/`） | 谁登录了、密码、每台持有 key 的设备、按类别和按模型的用量、退出的方式。免费额度用完或超过 80 % 时，账号页和被拒绝的那一轮都会显示接下来的路：自己的 key——目录里的服务商，所在地区的排前面（中国大陆的人看到阿里云百炼：判断依据是界面语言为简体中文、用手机号登录，或者中继这么说；其他地方是 OpenRouter 和 OpenAI），每一家都写明它覆盖什么——你已经在付费的套餐（ChatGPT、Claude、Kimi、OpenRouter 用登录代替 key），还有邀请。见下面的[自己的 key](#your-own-key)。手机只显示、只同步当前登录账号的对话——从 0.1.40 起每个聊天都有一个归属者，同步与否都是；退出登录时会问「在这台设备上保留这个账号的聊天」（默认关：这个账号的聊天、记忆、动态、目标、例程和形象都离开手机；开：先收起来，等它回来）；删除账号会把这些全部删除；中继拒绝的 key（`401 bad_key`）会像「保留」那样把账号的数据收起来，登录页会一直说明，直到下次登录——只有 `401 account_deleted` 会删除；退出登录状态下，只显示退出后产生的聊天（[sync.md](sync.md)）。 |
 | **交到你手里的浏览器**（`browser/`） | 需要你亲自处理的页面——登录、验证码、付款、人机验证——会直接交到你手里，而不是用文字描述：`browser_use` 的 `hand_over` 动作把智能体自己的标签页（同一个 WebView、同一个会话）在浏览器面板里打开，智能体松手；输入框上方的**轮到你了**卡片说明页面要你做什么，带「打开页面」和「完成，继续」，面板上是同一句话和同一个按钮，工具调用会等到「完成」（最多十五分钟），然后智能体从页面当前的样子接着往下做。`io.github.nanomuse.browser.BrowserHandOver`。 |
 | **连接器**（`connectors/`、`ui/connectors/`） | 智能体可以被放进去的那些服务——桌面版那份 75 个远程 MCP 服务器的目录（Notion、Linear、GitHub、GitLab、Slack、Stripe、Miro……），以 `assets/nanomuse/connectors.json` 随 App 发布。设置里管这一切的只有一行：「连接器」；上游的 MCP 编辑器（按地址、按命令、导入 JSON）是页面末尾的「你自己的服务器」。开放的服务点一下就加上；要 key 的服务填 key；OAuth 服务走 MCP 授权流程（发现、动态客户端注册、在 Custom Tab 里做 PKCE），令牌进入该条目的 `Authorization` 头，供沙箱内的 MCP 客户端使用，App 启动时刷新；授权服务器不接受注册客户端的服务（`clientIdRequired`——GitHub、Slack、Discord、HubSpot、Render、Bitrise、PagerDuty、Box）会要你在厂商的开发者页面用 App 的回调地址创建一对 OAuth client id 和 secret，面板会显示并复制这个回调地址。连接好的服务就是同一个 id 下的一个 MCP 服务器条目——「你自己的服务器」也能管它。连接了什么，会通过中继的 profile 分享给账号的其他设备——只有条目（id、名称、地址、认证方式、哪台设备、何时），从不包含令牌——所以页面还会列出「在你的其他设备上」：在桌面上连接的服务显示为「已在 <device> 上连接——在这里登录即可在这台手机上使用」，点一下进入同一个面板。 |
-| **聊天，不花哨** | 智能体工作时，形象下面那一行写的是正在进行的步骤——「nanoMuse 正在用 Shell」「正在写回复」「在做了：订餐桌」——从不写心情。工具小标签、「电脑」面板和浮动的步骤条**默认关闭**；「设置 → 外观 → 显示智能体的步骤」打开它们。打开后，完成的步骤显示为「nanoMuse 用过 Shell · 完成」，它的面板点 ×、滑动或返回键都能关。 |
+| **聊天，不花哨** | 智能体工作时，形象下面那一行写的是正在进行的步骤——「nanoMuse 正在用 Shell」「正在写回复」「在做了：订餐桌」——从不写心情。工具小标签、「电脑」面板和浮动的步骤条从 0.1.37 起**默认打开**；「设置 → 外观 → 显示智能体的步骤」可以关掉它们。打开时，完成的步骤显示为「nanoMuse 用过 Shell · 完成」，它的面板点 ×、滑动或返回键都能关。 |
 
 同一个账号的网页控制台在中继上（`/app`），桌面版见 [desktop.md](desktop.md)；手机、桌面和网页共用
 [brand.md](brand.md) 里描述的设计语言。
@@ -175,6 +175,7 @@ JDK 17 或 21（CI 用 21）和 Android SDK（Android Studio 会把两个都装�
 设好环境。工程在 `android/src/android` 下：
 
 ```bash
+bash scripts/android/build-natives.sh   # 只需一次：proot、Alpine rootfs 和 rclone.aar（NDK r27c，Go 1.25+）
 cd android/src/android
 ./gradlew :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:assembleRelease      # signed with android/keystore.properties when present
