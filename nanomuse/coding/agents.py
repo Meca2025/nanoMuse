@@ -5,7 +5,7 @@ Cursor
     ``~/.cursor/projects/<slug>/agent-transcripts/<id>/<id>.jsonl`` (one JSON object a
     line: ``{"role": "user"|"assistant", "message": {"content": [{"type": "text", ...}]}}``,
     ``{"type": "turn_ended"}``); ``<slug>`` is the workspace path with ``/`` turned into
-    ``-``. CLI chats also have ``~/.cursor/chats/<hash>/<id>/meta.json`` with the ``cwd``.
+    ``-`` (on Windows ``C:\\Users\\me\\app`` becomes ``C-Users-me-app``). CLI chats also have ``~/.cursor/chats/<hash>/<id>/meta.json`` with the ``cwd``.
 Codex
     ``~/.codex/sessions/YYYY/MM/DD/rollout-<time>-<id>.jsonl``: a ``session_meta`` line
     (id, cwd, originator), ``response_item`` messages (``payload.role`` user / assistant,
@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -290,25 +291,45 @@ def _title(text: str, limit: int = 80) -> str:
     return line if len(line) <= limit else line[: limit - 1] + "…"
 
 
-def _slug_to_path(slug: str) -> str:
+def _is_dir(path: str) -> bool:
+    try:
+        return os.path.isdir(path)
+    except (OSError, ValueError):
+        return False
+
+
+def _slug_to_path(
+    slug: str, platform: str | None = None, is_dir: Callable[[str], bool] = _is_dir
+) -> str:
     """``ssd-code-appagent-openmuse`` → ``/ssd/code/appagent/openmuse`` when such a
     directory exists; hyphenated names are tried as one component when the split does not
-    exist. Falls back to the slug itself."""
+    exist. Falls back to the slug itself.
+
+    On Windows the slug starts with the drive: Cursor drops the colon (``C:\\Users\\me\\app``
+    → ``C-Users-me-app``), Claude Code turns it into a dash too (``C--Users-me-app``), and
+    either may lower-case the letter. Both read back as ``C:\\Users\\me\\app``. ``platform``
+    and ``is_dir`` are taken so the tests can run both shapes on every OS."""
+    platform = platform or sys.platform
     parts = slug.split("-")
+    sep = "\\" if platform == "win32" else "/"
     path = ""
     i = 0
+    if platform == "win32" and len(parts) > 1 and re.fullmatch(r"[A-Za-z]", parts[0]):
+        path = parts[0].upper() + ":"
+        i = 2 if parts[1] == "" else 1
+    start = i
     while i < len(parts):
         # the longest run of parts (joined with "-") that is an existing directory
         chosen = None
         for j in range(len(parts), i, -1):
-            candidate = path + "/" + "-".join(parts[i:j])
-            if os.path.isdir(candidate):
+            candidate = path + sep + "-".join(parts[i:j])
+            if is_dir(candidate):
                 chosen = (candidate, j)
                 break
         if chosen is None:
-            return slug if not path else path + "/" + "-".join(parts[i:])
+            return path + sep + "-".join(parts[i:]) if i > start else slug
         path, i = chosen
-    return path or slug
+    return path if i > start else slug
 
 
 def _status(updated_at: float, open_turn: bool) -> str:
