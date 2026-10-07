@@ -53,13 +53,23 @@ catalogue id, or `openai` with a `base_url`), `model`, `base_url`, `api_key`
 (into the vault as `IMAGE_API_KEY` / `VIDEO_API_KEY`; the relay's row names the
 account key, the chat provider's row leaves it to the chat key); *Automatic*
 sends all four empty, which clears the slot. The three dependent slots share
-one shape: *Automatic* is the first option of the *Hands model* select and of
+one shape: *Automatic* is the first entry of the *Hands model* picker and of
 both media rows' provider select, saving it returns the slot to the resolution
 order (the hands with `PUT /api/connections/gui {"model": ""}`), and a
 *Currently provider · model* line under the control says what that resolves to
 today, from the runtime's `effective_*` fields. A runtime without these routes
 shows no media rows. `web/src/models.ts` is the module (the row's value, the
 picker's choices); `web/src/models.test.ts` checks it.
+
+The *Hands model*, *Picture model* and *Clip model* controls are one picker
+(`web/src/components/ModelPicker.tsx`): a button reading `provider · model`
+that opens a panel with *Automatic* first. A provider with a long list
+(OpenRouter, SiliconFlow) shows eight models at first, its catalogue default
+for that slot and your current choice first, with *Show {n} more* at the foot
+of the group; once the rows pass eight in all, a *Search models* field filters
+every group by model id or name as you type (*No model matches* when nothing
+does). Esc or a click outside closes it. The folding and the search are
+`web/src/model-list.ts`, checked by `web/src/model-list.test.ts`.
 
 **Connections → Or sign in with a ChatGPT plan.** The card asks the runtime to
 start the Codex sign-in (`POST /api/chatgpt/login` → `{url}`), opens the page

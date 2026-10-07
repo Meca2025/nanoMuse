@@ -12,7 +12,11 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Web
 
+- **The model pickers fold long lists and can be searched.** The *Hands model*, *Picture model* and *Clip model* controls on the Connections page became one picker: a button reading `provider · model` opens a panel with *Automatic* first; a provider with a long list (OpenRouter, SiliconFlow) shows eight models at first, its catalogue default for the slot and your current choice first, with *Show {n} more* at the foot of the group; once the rows pass eight in all, a *Search models* field filters every group by model id or name as you type, and *No model matches* says when nothing does. Esc or a click outside closes it. What each control saves is unchanged.
+
 ### Desktop
+
+- **The model pickers fold long lists and can be searched.** The pickers of Settings → Models and Settings → Media became a button reading `provider · model` that opens a panel: *Automatic* (and *Off* for clips) first, then nanoMuse Cloud with its recommended model marked and first, then one group per provider; a provider with a long list (OpenRouter, SiliconFlow) shows eight models at first, its catalogue default for the row and your current choice first, with *Show {n} more* at the foot of the group; once the lists hold more than eight models in all, a *Search models* field filters every group by model id or name as you type, and *No model matches* says when nothing does. Esc or a click outside closes it. What each row saves, the *Currently* line and the hands' live update are unchanged.
 
 ### Android
 

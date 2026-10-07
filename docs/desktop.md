@@ -181,6 +181,15 @@ that row's job (the screen needs a model that sees images; the hands speak OpenA
 so an Anthropic or native Gemini key is named under the row but not listed). A row nothing
 can do shows one sentence naming who could and *Add a provider*.
 
+The picker is a button reading `provider · model` that opens a panel. A provider with a
+long list (OpenRouter, SiliconFlow) shows eight models at first, its catalogue default for
+that row and your current choice first, with *Show {n} more* at the foot of the group; once
+the lists hold more than eight models in all, a *Search models* field at the top filters
+every group by model id or name as you type (*No model matches* when nothing does). Esc
+or a click outside closes the panel; the same picker serves Settings → Media. The folding
+and the search live in `harness/dsh-nanomuse/src/client/model-list.ts`, checked by
+`tests/model-list.test.mjs`.
+
 What a row uses when you have not chosen: the provider new chats answer through, when it
 is one of your own and has a model for the job (its catalogue default); else nanoMuse
 Cloud while signed in; else the first of your providers that can. The three rows that

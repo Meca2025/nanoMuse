@@ -1090,6 +1090,30 @@ html[data-nm-platform='darwin']:not([data-nm-fullscreen]) .nm-lib-col-top { heig
 .nm-ask-sub { font-size: 11.5px; color: var(--dsw-alias-label-tertiary); }
 
 .nm-select { width: auto; max-width: 240px; }
+
+/* ---- the model picker (ModelPicker.tsx): a button, a panel with search and folded groups ---- */
+.nm-mp { position: relative; flex: none; max-width: 100%; }
+.nm-mp-btn { display: inline-flex; align-items: center; gap: 6px; max-width: 240px; padding: 0 10px 0 14px; cursor: pointer; text-align: left; }
+.nm-mp-btn:disabled { opacity: 0.55; cursor: default; }
+.nm-mp-btn svg { flex: none; color: var(--dsw-alias-label-tertiary); }
+.nm-mp-btn-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.nm-mp-panel { position: fixed; z-index: 80; box-sizing: border-box; display: flex; flex-direction: column; padding: 6px; border-radius: 12px; background: var(--dsw-alias-bg-layer-3, var(--nm-base)); color: var(--dsw-alias-label-primary); box-shadow: 0 12px 40px rgba(0,0,0,0.28), 0 0 0 1px var(--nm-divider); overflow: hidden; }
+.nm-mp-heads { flex: none; display: flex; flex-direction: column; gap: 1px; padding-bottom: 4px; margin-bottom: 4px; border-bottom: 1px solid var(--nm-divider); }
+.nm-mp-search { flex: none; display: flex; align-items: center; gap: 6px; height: 32px; margin: 0 0 6px; padding: 0 10px; border-radius: 9px; background: var(--nm-field); border: 1px solid var(--nm-field-border); color: var(--dsw-alias-label-tertiary); }
+.nm-mp-search:focus-within { border-color: var(--nm-blue); }
+.nm-mp-search input { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13.5px; outline: none; }
+.nm-mp-search input::placeholder { color: var(--dsw-alias-label-tertiary); }
+.nm-mp-search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.nm-mp-list { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 1px; }
+.nm-mp-group + .nm-mp-group { margin-top: 6px; }
+.nm-mp-group-label { padding: 6px 10px 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm-mp-row { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; text-align: left; padding: 7px 10px; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 13.5px; cursor: pointer; }
+.nm-mp-row:hover, .nm-mp-row:focus-visible, .nm-mp-more:hover, .nm-mp-more:focus-visible { background: var(--nm-hover); outline: none; }
+.nm-mp-row.nm-selected { color: var(--nm-blue); }
+.nm-mp-row svg { flex: none; }
+.nm-mp-row-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nm-mp-more { display: block; width: 100%; border: 0; text-align: left; padding: 6px 10px; border-radius: 8px; background: transparent; color: var(--nm-blue); font: inherit; font-size: 12.5px; cursor: pointer; }
+.nm-mp-none { padding: 10px; font-size: 13px; color: var(--dsw-alias-label-tertiary); }
 .nm-menu-dot { display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--nm-accent); vertical-align: middle; }
 
 /* ---- the look changed from the chat (AvatarChat.tsx) ------------------ */
