@@ -30,7 +30,7 @@ struct NanoMuseModelsView: View {
                 }
             }
             if chatChanged {
-                NanoMuseCaption(text: AppLocalized("Applies to new chats."))
+                NanoMuseCaption(text: AppLocalized("Applies to the main chat and to new chats; a side chat keeps its model."))
             }
             NanoMuseCard {
                 NanoMuseActionRow(title: AppLocalized("Add a provider"), titleColor: NanoMuseTones.action, chevron: false) { adding = true }
@@ -147,6 +147,8 @@ struct NanoMuseSlotPickerView: View {
     @State private var query = ""
     /// The groups whose *Show n more* row was tapped; kept while the picker is open.
     @State private var expanded: Set<String> = []
+    /// Own providers the catalogue says could serve the slot but the iPhone cannot drive for it.
+    @State private var notDriven: [String] = []
 
     private var able: [NanoMuseSlotProvider] { providers.filter { $0.has(slot) } }
     /// Pictures and clips can go back to the automatic order; chat is the anchor.
@@ -200,6 +202,9 @@ struct NanoMuseSlotPickerView: View {
                     )
                 }
             }
+            if needle.isEmpty, !notDriven.isEmpty {
+                NanoMuseCaption(text: String(format: notDrivenLine, notDriven.joined(separator: ", ")))
+            }
             NanoMuseCard {
                 NanoMuseActionRow(title: AppLocalized("Add a provider"), titleColor: NanoMuseTones.action, chevron: false) { adding = true }
             }
@@ -237,6 +242,14 @@ struct NanoMuseSlotPickerView: View {
         }
     }
 
+    /// The sentence naming the providers the iPhone cannot draw or film through (`%@`), and why.
+    private var notDrivenLine: String {
+        switch slot {
+        case .video: return AppLocalized("Not offered here: %@. Clips go through Alibaba Cloud Model Studio's video API, which nanoMuse Cloud relays too.")
+        default: return AppLocalized("Not offered here: %@. On the iPhone, pictures with a key of your own go through Alibaba Cloud Model Studio's image API; the desktop app also draws through providers that speak the OpenAI images API.")
+        }
+    }
+
     private func load() async {
         reload()
         // a Model Studio key is asked once which video models it has; the list grows when it answers
@@ -251,6 +264,7 @@ struct NanoMuseSlotPickerView: View {
     private func reload() {
         let list = NanoMuseModelSlots.providers()
         providers = list
+        notDriven = NanoMuseModelSlots.notDriven(for: slot)
         chosen = NanoMuseModelSlots.hasChoice(slot)
         videoOff = slot == .video && NanoMuseMediaModels.videoChoice() == .off
         automaticLine = offersAutomatic ? NanoMuseModelSlots.automaticLine(slot, providers: list) : nil

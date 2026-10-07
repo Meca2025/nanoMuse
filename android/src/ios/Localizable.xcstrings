@@ -147980,61 +147980,179 @@
         }
       }
     },
-    "Applies to new chats." : {
+    "Applies to the main chat and to new chats; a side chat keeps its model." : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Applies to new chats."
+            "value" : "Applies to the main chat and to new chats; a side chat keeps its model."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新对话起生效。"
+            "value" : "对主要聊天和新对话生效；旁聊保留自己的模型。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新對話起生效。"
+            "value" : "對主要聊天和新對話生效；旁聊保留自己的模型。"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新しいチャットから適用されます。"
+            "value" : "メインチャットと新しいチャットに適用されます。サイドチャットは各自のモデルを保ちます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 채팅부터 적용됩니다."
+            "value" : "메인 채팅과 새 채팅에 적용됩니다. 사이드 채팅은 각자의 모델을 유지합니다."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gilt für neue Chats."
+            "value" : "Gilt für den Hauptchat und für neue Chats; ein Nebenchat behält sein Modell."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "S’applique aux nouvelles discussions."
+            "value" : "S’applique à la discussion principale et aux nouvelles discussions ; une discussion secondaire garde son modèle."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se aplica a los chats nuevos."
+            "value" : "Se aplica al chat principal y a los chats nuevos; un chat secundario conserva su modelo."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Действует для новых чатов."
+            "value" : "Действует для основного чата и новых чатов; побочный чат сохраняет свою модель."
+          }
+        }
+      }
+    },
+    "Not offered here: %@. On the iPhone, pictures with a key of your own go through Alibaba Cloud Model Studio's image API; the desktop app also draws through providers that speak the OpenAI images API." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not offered here: %@. On the iPhone, pictures with a key of your own go through Alibaba Cloud Model Studio's image API; the desktop app also draws through providers that speak the OpenAI images API."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此处不提供：%@。在 iPhone 上，用自己的密钥生成图片只走阿里云百炼的图片接口；桌面应用还能通过支持 OpenAI 图片接口的服务商绘图。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此處不提供：%@。在 iPhone 上，用自己的金鑰產生圖片只走阿里雲百煉的圖片介面；桌面應用程式還能透過支援 OpenAI 圖片介面的服務商繪圖。"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ここでは選べません：%@。iPhone では、自分のキーによる画像生成は Alibaba Cloud Model Studio の画像 API のみを使います。デスクトップアプリは OpenAI 画像 API に対応したプロバイダーでも描画できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여기서는 제공되지 않음: %@. iPhone에서 자신의 키로 만드는 그림은 Alibaba Cloud Model Studio의 이미지 API만 사용합니다. 데스크톱 앱은 OpenAI 이미지 API를 지원하는 제공자로도 그립니다."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier nicht angeboten: %@. Auf dem iPhone laufen Bilder mit einem eigenen Schlüssel nur über die Bild-API von Alibaba Cloud Model Studio; die Desktop-App zeichnet auch über Anbieter, die die OpenAI-Bild-API sprechen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non proposé ici : %@. Sur l’iPhone, les images avec une clé à vous passent uniquement par l’API d’images d’Alibaba Cloud Model Studio ; l’application de bureau dessine aussi via les fournisseurs qui parlent l’API d’images OpenAI."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ofrece aquí: %@. En el iPhone, las imágenes con una clave propia pasan solo por la API de imágenes de Alibaba Cloud Model Studio; la aplicación de escritorio también dibuja con proveedores que hablan la API de imágenes de OpenAI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь не предлагается: %@. На iPhone картинки со своим ключом идут только через API изображений Alibaba Cloud Model Studio; настольное приложение рисует и через провайдеров, говорящих на API изображений OpenAI."
+          }
+        }
+      }
+    },
+    "Not offered here: %@. Clips go through Alibaba Cloud Model Studio's video API, which nanoMuse Cloud relays too." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not offered here: %@. Clips go through Alibaba Cloud Model Studio's video API, which nanoMuse Cloud relays too."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此处不提供：%@。短片只走阿里云百炼的视频接口，nanoMuse Cloud 也会转发它。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此處不提供：%@。短片只走阿里雲百煉的影片介面，nanoMuse Cloud 也會轉發它。"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ここでは選べません：%@。クリップは Alibaba Cloud Model Studio の動画 API のみを使います。nanoMuse Cloud もそれを中継します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여기서는 제공되지 않음: %@. 클립은 Alibaba Cloud Model Studio의 동영상 API만 사용하며, nanoMuse Cloud도 이를 중계합니다."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier nicht angeboten: %@. Clips laufen über die Video-API von Alibaba Cloud Model Studio, die auch nanoMuse Cloud weiterreicht."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non proposé ici : %@. Les clips passent par l’API vidéo d’Alibaba Cloud Model Studio, que nanoMuse Cloud relaie aussi."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ofrece aquí: %@. Los clips pasan por la API de vídeo de Alibaba Cloud Model Studio, que nanoMuse Cloud también retransmite."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь не предлагается: %@. Клипы идут через видео-API Alibaba Cloud Model Studio, которое nanoMuse Cloud тоже передаёт."
           }
         }
       }

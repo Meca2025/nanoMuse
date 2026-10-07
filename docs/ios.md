@@ -149,10 +149,15 @@ Ours, in `NanoMuse/`:
   `<provider> · <model>` and opening a picker grouped *nanoMuse Cloud* first (the relay's
   recommended one marked *Recommended*) and then one group per provider of your own that can do
   it; an empty row says what is missing and offers *Add a provider*, and so does the page's last
-  row. Picking a chat model sets the default group for new chats (a group of ours for that
-  provider, the pick first; a mixed group you made becomes the default as it is) and the page
-  says *Applies to new chats.*; a pick made in a chat's own picker sticks the same way, for any
-  provider, not only Cloud. Pictures and clips resolve in one order — your choice, else the chat
+  row; under the pictures and clips pickers a key the catalogue says can draw but the phone
+  cannot drive (`NanoMuseModelSlots.notDriven`: only a DashScope host is) is named in one
+  sentence, *Not offered here: …*, with where it does work. Picking a chat model sets the default group for new chats (a group of ours for that
+  provider, the pick first; a mixed group you made becomes the default as it is) and moves the
+  main chat's binding with it (`NanoMuseModelSlots.mainChatFollows`: the main chat is never a
+  new chat, so on 0.1.41 it stayed on nanoMuse Cloud after a key of your own was chosen while
+  side chats answered through the key); the page says *Applies to the main chat and to new
+  chats; a side chat keeps its model.*; a pick made in a chat's own picker sticks the same way,
+  for any provider, not only Cloud. Pictures and clips resolve in one order — your choice, else the chat
   provider's own default when it is a Model Studio key that draws, else nanoMuse Cloud when
   signed in, else the first key that can — so Cloud is no longer passed over for a Bailian key
   you did not pick; the image and video models come from the catalogue's `defaults`, not from
