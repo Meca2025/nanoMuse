@@ -358,9 +358,11 @@ account's password; `demo/showcase/gateway/showcase_gateway/visitors.py`), so
 the project knows who is trying it and the same account is there on the day
 the app is installed. The page says so plainly: this is a demo, a long way from
 the Android app, and where the apps are. The homepage at
-[nanomuse.cn](https://nanomuse.cn/) shows the same page in a frame (`?embed=1`:
-no header of its own, and the phone waits for a tap rather than turning itself
-on, so opening the homepage starts nothing).
+[nanomuse.cn](https://nanomuse.cn/) shows the same page in a frame (`?embed=1`,
+no header of its own). The phone turns itself on; the Muse behind it is started
+once the page has reason to think a person is looking (a few seconds in view,
+or a pointer, key or wheel), never for a scripted browser, and never before the
+sign-in the showcase asks for.
 
 The earlier shape of the web — a kept Muse per Cloud account, with named
 volumes and a seat on the hub like any other device (`accounts.py`,

@@ -13,7 +13,7 @@ metadata:
 
 ## Is it there?
 
-Look for `kuaidi100__query_trace` in your tools. If it is not there, say so in one line, give the user the lines to add, and stop — no browsing 快递100's website instead:
+Look for `kuaidi100__query_trace` in your tools (the tools list is the only place it can be: no shell command or script to check). If it is not there, say so in one line, give the user the lines to add, and stop — no browsing 快递100's website instead:
 
 ```toml
 [[mcp.servers]]

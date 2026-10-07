@@ -4,6 +4,7 @@ import { dragonIdle, IcBack, IcChat, IcCloud, IcHands, IcKey, IcReach, IcRetry }
 import { parseServerInput, useNanoMuseStore } from '../state';
 import { useNanoMuseGestures } from '../hooks/useNanoMuseGestures';
 import { NANOMUSE_CONFIG } from '../data';
+import { setStarter } from '../host';
 import {
   DemoError,
   fetchDemoInfo,
@@ -84,13 +85,14 @@ function ShowcaseFlow({ gateway, onOwnServer }: { gateway: string; onOwnServer: 
   const signinRequired = info?.signin_required ?? false;
   const signedIn = Boolean(ticket);
 
-  const start = async (withProvider?: DemoProvider) => {
+  const start = async (withProvider?: DemoProvider): Promise<boolean> => {
     setPhase('starting');
     setMessage('');
     try {
       const session = await startDemoSession(gateway, withProvider, ticket || undefined);
       configure(session.serverUrl, session.token, { id: session.id, expiresAt: session.expiresAt, byok: session.byok });
       go('muse.open');
+      return true;
     } catch (err) {
       setPhase('failed');
       if (err instanceof DemoError) {
@@ -106,8 +108,22 @@ function ShowcaseFlow({ gateway, onOwnServer }: { gateway: string; onOwnServer: 
       } else {
         setMessage(s.hosted_failed);
       }
+      return false;
     }
   };
+
+  // The page around the phone may press Start itself (host.ts `start()`), once it has
+  // reason to think a person is looking: only while the pill is the one on the screen, with
+  // the showcase's own model, and never past a sign-in the showcase asks for or after a try
+  // that failed (the person reads the message and taps Try again).
+  const startable =
+    info !== null && step !== 'signin' && !(signinRequired && !signedIn) && !ownKey && phase === 'idle';
+  const startRef = useRef(start);
+  startRef.current = start;
+  useEffect(() => {
+    setStarter(startable ? () => startRef.current() : null);
+    return () => setStarter(null);
+  }, [startable]);
 
   const signOutHere = () => {
     const old = ticket;

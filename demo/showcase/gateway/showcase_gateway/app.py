@@ -194,7 +194,32 @@ def create_app(
 
     signin_url = f"{settings.site_origin()}/web/"
 
+    # The phone in the browser runs on the site's origin while its Muse answers on the
+    # session's host, so what the nanoMuse app module posts from the phone itself — Allow
+    # once / Deny on the capsule (POST /api/approvals/{id}), Done on a hold, the reply
+    # language from the page's (PUT /api/settings) — is a cross-origin request with a JSON body and a bearer header: the browser asks first
+    # (OPTIONS), and the runtime inside the container knows nothing of this origin and
+    # answers 405, so the answer never leaves the phone. The gateway speaks for the sessions
+    # here: the preflight is answered for the site's origin alone, and a relayed response
+    # to a request from it is stamped so the browser hands it over. The web app in the frame
+    # is on the session's own origin and needs none of this.
+    site_origin = settings.site_origin()
+
+    def cors_headers(request: Request) -> dict[str, str]:
+        if request.headers.get("origin") != site_origin:
+            return {}
+        return {
+            "Access-Control-Allow-Origin": site_origin,
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type",
+            "Access-Control-Max-Age": "600",
+            "Vary": "Origin",
+        }
+
     async def session_http(request: Request) -> Response:
+        cors = cors_headers(request)
+        if request.method == "OPTIONS" and cors:
+            return Response(status_code=204, headers=cors)
         try:
             target, touch = await _behind(request.path_params["sid"], proof_from_http(request))
         except Asleep as exc:
@@ -211,9 +236,14 @@ def create_app(
             if "text/html" in request.headers.get("accept", ""):
                 return HTMLResponse(ENDED_PAGE, status_code=404)
             return JSONResponse(
-                {"error": "no_session", "message": "This demo session has ended."}, status_code=404
+                {"error": "no_session", "message": "This demo session has ended."},
+                status_code=404,
+                headers=cors,
             )
-        return await proxy_http(request, http, target.http_base)
+        response = await proxy_http(request, http, target.http_base)
+        for name, value in cors.items():
+            response.headers[name] = value
+        return response
 
     async def session_wake(request: Request) -> Response:
         """The wake page's request: the token in the header wakes the account's Muse (or

@@ -22,7 +22,7 @@ from nanomuse.llm.catalogue import Provider
 from nanomuse.logger import logger, setup_logging
 from nanomuse.memory import Embedder, MemoryIndex, MemoryStore
 from nanomuse.phone import PhoneLink
-from nanomuse.phone.operator import COMPUTER, PhoneOperator
+from nanomuse.phone.operator import AUTO_LANGUAGE, COMPUTER, PhoneOperator
 from nanomuse.reminders import ReminderStore
 from nanomuse.runtime import device, device_mcp_server
 from nanomuse.sandbox import Sandbox
@@ -368,7 +368,7 @@ class NanoMuseApp:
 
         def language() -> str:
             lang = self.settings.agent.language
-            return "the language of the query" if lang in ("", "auto") else lang
+            return AUTO_LANGUAGE if lang in ("", "auto") else lang
 
         operator = PhoneOperator(
             self.phone,
@@ -403,7 +403,7 @@ class NanoMuseApp:
 
         def language() -> str:
             lang = self.settings.agent.language
-            return "the language of the query" if lang in ("", "auto") else lang
+            return AUTO_LANGUAGE if lang in ("", "auto") else lang
 
         operator = PhoneOperator(
             self.computer,  # type: ignore[arg-type]  # the same face as the phone link

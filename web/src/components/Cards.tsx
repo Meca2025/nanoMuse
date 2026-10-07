@@ -31,7 +31,7 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, fileUrl, frameUrl } from "../api";
 import { AllowanceWays } from "./AllowanceWays";
-import { t, useT } from "../i18n";
+import { localLabel, t, useT } from "../i18n";
 import { useStore } from "../store";
 import type {
   ApprovalEvent,
@@ -414,6 +414,16 @@ export function QuestionCard({ event, name }: { event: QuestionEvent; name: stri
 // ------------------------------------------------------------------ notice
 /** A line from the runtime — in the person's language when the sentence is one we know;
  * a failed run's raw exception stays one tap away for bug reports. */
+/**
+ * A notice's sentence in the UI language. A reminder, a routine or a tidy-up opens with the
+ * run's label ("Reminder: <title>"), a fixed English part and the person's own words: the
+ * fixed part is translated and the words stay as written.
+ */
+function noticeText(event: NoticeEvent): string {
+  if (event.source === "reminder" || event.source === "memory") return localLabel(event.text);
+  return t(event.text, event.vars);
+}
+
 export function Notice({ event }: { event: NoticeEvent }) {
   const t = useT();
   const [showDetail, setShowDetail] = useState(false);
@@ -439,7 +449,7 @@ export function Notice({ event }: { event: NoticeEvent }) {
           event.level === "error" && "bg-rose-500/12 text-rose-700 dark:text-rose-300",
         )}
       >
-        {t(event.text, event.vars)}
+        {noticeText(event)}
         {detail && (
           <>
             {" "}

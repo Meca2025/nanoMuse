@@ -521,6 +521,35 @@ def test_to_device_action_maps_the_dialect_onto_the_phone():
 
 
 # ----------------------------------------------------------------------------- the operator
+async def test_operator_speaks_the_users_language_not_the_goals(settings: Settings):
+    """The goal is often in the app's language (a skill's 微信 phrases) while the user writes
+    another; the capsule's sentences follow the user, which phone_task knows from `step`."""
+    link = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
+    FakePhone(link, [HOME_SCREEN])
+    ui = AutoApproveUI(approve=True)
+    llm = MockLLM([labelled("Report", "answer", text="done")])
+    operator, _ = make_operator(settings, link, llm, ui, max_steps=2)
+    assert "in the language of the query" in operator.system_prompt()
+    await operator.run("打开微信，读张伟的最后一条消息", language="English")
+    assert "in English:" in operator.system_prompt()
+    await operator.run("打开微信，读张伟的最后一条消息")
+    assert "in the language of the query" in operator.system_prompt()
+    # a fixed setting wins over the run's
+    fixed, _ = make_operator(settings, link, llm, ui, max_steps=2)
+    fixed._language = lambda: "zh"
+    await fixed.run("open WeChat", language="English")
+    assert "in zh:" in fixed.system_prompt()
+
+
+def test_detect_language_names_english_outright():
+    from nanomuse.prompts import detect_language
+
+    assert detect_language("Open WeChat and tell me what Zhang Wei said") == "English"
+    assert detect_language("打开微信") == "Chinese"
+    # Latin script that is not clearly English keeps the hedge
+    assert detect_language("Abre WeChat y dime qué dijo Zhang Wei").startswith("English (or")
+
+
 async def test_operator_runs_until_done_and_asks_before_paying(settings: Settings):
     link = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
     phone = FakePhone(link, [HOME_SCREEN, PAY_SCREEN, PAY_SCREEN])
@@ -845,6 +874,19 @@ async def test_operator_handles_bad_replies_step_limits_and_loops(settings: Sett
     assert outcome.status == "abort" and len(phone.acts) == 2
     assert "taken three times" in looping.calls[3]["messages"][1].content
 
+    # a new sentence and a point a few pixels off each time is still the same tap
+    phone = FakePhone(PhoneLink(shots_dir=shots), [HOME_SCREEN])
+    nearly = [
+        labelled("Tap the checkbox", "click", coordinate=[100, 100]),
+        labelled("Tap the box to the left of the text", "click", coordinate=[104, 101]),
+        labelled("Click the checkbox icon", "click", coordinate=[97, 99]),
+    ]
+    drifting = MockLLM([*nearly, labelled("Stop", "terminate", status="failure", text="stuck")])
+    operator, _ = make_operator(settings, phone.link, drifting, ui, max_steps=6)
+    outcome = await operator.run("tap")
+    assert outcome.status == "abort" and len(phone.acts) == 2
+    assert "taken three times" in drifting.calls[3]["messages"][1].content
+
 
 async def test_operator_starts_in_the_app_and_needs_pictures(settings: Settings):
     link = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
@@ -883,6 +925,23 @@ async def test_phone_task_tool_reports_the_outcome(settings: Settings):
     assert "another tool does exactly" in task.description
     result = await task.execute(goal="check the chat")
     assert result.ok and "nothing to do" in result.output
+    # the capsule speaks the user's language: the `step`'s when there is one, else the goal's
+    seen: list[str | None] = []
+    original = operator.run
+
+    async def spy(goal: str, **kw: object) -> object:
+        seen.append(kw.get("language"))  # type: ignore[arg-type]
+        return await original(goal, **kw)  # type: ignore[arg-type]
+
+    operator.run = spy  # type: ignore[method-assign]
+    llm.script.extend([labelled("Report", "answer", text="done")] * 2)
+    await task.execute(
+        goal="打开微信，读张伟的最后一条消息",
+        step="Open WeChat and read the last message from Zhang Wei",
+    )
+    await task.execute(goal="打开微信，读张伟的最后一条消息")
+    assert seen == ["English", "Chinese"]
+    operator.run = original  # type: ignore[method-assign]
     assert not (await task.execute()).ok
     link.detach("conn-1")
     assert "no phone is connected" in (await task.execute(goal="x")).error

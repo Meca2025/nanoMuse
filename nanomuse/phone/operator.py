@@ -263,6 +263,10 @@ COMPUTER_USE_TOOL: dict[str, Any] = {
     },
 }
 
+# what the `language` callable says when the setting is auto: the run then takes the user's
+# language from the caller when it knows it (`run(language=)`), else the query's
+AUTO_LANGUAGE = "the language of the query"
+
 SYSTEM_PROMPT = """# Tools
 
 You may call one or more functions to assist with the user query.
@@ -293,7 +297,7 @@ Rules:
 - Use action=ask_user only for an answer in words (a choice, a missing fact); use action=hand_over for a step done on the screen.
 - Do only what the query asks: do not send, buy, delete or post anything it did not name.
 - When the query asks for information, put everything you read that answers it (names, times, prices, seat numbers, order state) in action=answer, exactly as shown on the screen, before terminating.
-- Write `text` for answer, ask_user and hand_over in {language}.
+- Write the Action sentence, and `text` for answer, ask_user and hand_over, in {language}: the Action sentence is shown to the user on the phone while you work.
 """
 
 USER_TEMPLATE = """
@@ -490,6 +494,30 @@ _POINTED_KINDS = (
 )
 
 
+# how far apart two taps may land and still count as the same tap for the loop check
+_SAME_TAP_PX = 24.0
+
+
+def _same_action(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """Whether two device actions are "the same" for the loop check: the kind and what they
+    carry, with points within a finger's width of each other and the Action sentence left
+    out. A model that taps a checkbox that does nothing writes a new sentence and a point a
+    pixel off each time; the check should still see one tap repeated."""
+    if a.get("action") != b.get("action"):
+        return False
+    for key in ("text", "direction", "key", "app", "seconds"):
+        if a.get(key) != b.get(key):
+            return False
+    for key in ("x", "y", "x2", "y2"):
+        va, vb = a.get(key), b.get(key)
+        if isinstance(va, (int, float)) and isinstance(vb, (int, float)):
+            if abs(float(va) - float(vb)) > _SAME_TAP_PX:
+                return False
+        elif va != vb:
+            return False
+    return True
+
+
 def to_device_action(step: Step, screen: Screen) -> dict[str, Any] | None:
     """The ``phone_act`` arguments for a ``mobile_use`` step; None for the ones that end the
     loop (answer, terminate, ask_user) or pause it (hand_over)."""
@@ -669,7 +697,10 @@ class PhoneOperator:
         self.ui = ui
         self._make_llm = make_llm
         self._llm: BaseLLM | None = None
-        self._language = language or (lambda: "the language of the query")
+        self._language = language or (lambda: AUTO_LANGUAGE)
+        # the language of the run in progress, when the setting is auto and the caller knows it
+        # (phone_task passes the language of the agent's `step`, written in the user's language)
+        self._run_language: str | None = None
         self.traces_dir = traces_dir
         # how many times a reply that is not a step is asked again before giving up
         self.parse_retries = 3
@@ -688,15 +719,24 @@ class PhoneOperator:
         self._llm = None
 
     def system_prompt(self) -> str:
+        language = self._language()
+        if language == AUTO_LANGUAGE and self._run_language:
+            language = self._run_language
         prompt = SYSTEM_PROMPT.format(
             tool=json.dumps(self.dialect.tool, ensure_ascii=False),
             tool_name=self.dialect.name,
-            language=self._language(),
+            language=language,
         )
         return prompt.rstrip("\n") + "\n" + self.dialect.rules if self.dialect.rules else prompt
 
     # ------------------------------------------------------------------ the loop
-    async def run(self, goal: str, context: str = "", app: str = "") -> Outcome:
+    async def run(
+        self, goal: str, context: str = "", app: str = "", language: str | None = None
+    ) -> Outcome:
+        """``language``: the user's, when the caller knows it. The goal is often written in
+        the app's own language (a skill's 微信 phrases) while the user writes another; what
+        the capsule shows should be the user's."""
+        self._run_language = language
         outcome = Outcome(status="failed", noun=self.dialect.noun)
         instruction = goal.strip()
         if context.strip():
@@ -743,7 +783,7 @@ class PhoneOperator:
     async def _steps(self, instruction: str, app: str, outcome: Outcome, trace: Trace) -> None:
         """The loop itself: ``outcome`` is filled in whichever way it ends."""
         steps: list[str] = []  # the "Action:" sentences, with results appended
-        recent: list[str] = []  # the last tool calls, to notice loops
+        recent: list[dict[str, Any]] = []  # the last device actions, to notice loops
         try:
             if app:
                 await self._act({"action": "open_app", "app": app, "label": f"open {app}"}, outcome)
@@ -862,9 +902,8 @@ class PhoneOperator:
                 continue
             assert params is not None
 
-            signature = json.dumps(step.arguments, sort_keys=True, ensure_ascii=False)
-            recent.append(signature)
-            if len(recent) >= 3 and len(set(recent[-3:])) == 1:
+            recent.append(params)
+            if len(recent) >= 3 and all(_same_action(recent[-3], r) for r in recent[-2:]):
                 steps.append(
                     f"{entry}; Note: this same action was taken three times with no visible "
                     "change — try another way, or terminate with status failure"

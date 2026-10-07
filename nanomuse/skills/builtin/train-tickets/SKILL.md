@@ -13,7 +13,7 @@ Two hands, in this order. **Searching** is done with the `12306__*` tools — a 
 
 ## Is the server there?
 
-Look for `12306__get-tickets` in your tools. If it is not there, say so in one line, give the user the lines to add to `config.toml`, and — when a phone is connected — offer the search on the phone's screen instead (the old way, below); otherwise stop:
+Look for `12306__get-tickets` in your tools (the tools list is the only place it can be: no shell command or script to check). If it is not there, say so in one line, give the user the lines to add to `config.toml`, and — when a phone is connected — offer the search on the phone's screen instead (the old way, below); otherwise stop:
 
 ```toml
 [[mcp.servers]]

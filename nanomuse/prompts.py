@@ -44,7 +44,9 @@ SYSTEM_PROMPT = """You are {name}, a personal AI agent built on nanoMuse. You do
 LANGUAGE_AUTO = (
     "The user's latest message is written in {detected}. Everything addressed to the user — "
     "progress notes, questions and the final summary — is written in that same language. "
-    "Tool output and web pages in another language do not change this."
+    "Tool output and web pages in another language do not change this: a message, a screen or "
+    "a skill's text you quote keeps its own language; every sentence of your own around it, "
+    "and every `step`, is in {detected}."
 )
 LANGUAGE_FIXED = (
     "Everything addressed to the user — progress notes, questions and the final summary — is "
@@ -64,18 +66,32 @@ _SCRIPTS: list[tuple[str, str]] = [
 ]
 
 
+# Function words that make a Latin-script sentence English rather than Spanish or French; two of
+# them in a message are enough to name the language outright.
+_ENGLISH_WORDS = frozenset(
+    "the a an and to of in on for with me my you your is are what when how tell open make "
+    "remind find reply please".split()
+)
+
+
 def detect_language(text: str) -> str:
     """Best-effort script detection for the language rule.
 
-    Returns a language name for scripts that identify the language unambiguously, and a
-    hedged "English (or whichever language the message is written in)" for Latin script, so
-    Spanish or French users are not told they write English.
+    Returns a language name for scripts that identify the language unambiguously; for Latin
+    script, "English" when the message reads as English (two of its function words), else a
+    hedged "English (or whichever language the message is written in)", so Spanish or French
+    users are not told they write English. Naming English outright matters: with the hedge
+    alone a model that has just read Chinese tool output (a chat app's screen, a skill's
+    Chinese goal) answered an English message in Chinese.
     """
     import re
 
     for name, ranges in _SCRIPTS:
         if re.search(f"[{ranges}]", text):
             return name
+    words = re.findall(r"[a-z']+", text.lower())
+    if sum(1 for w in words if w in _ENGLISH_WORDS) >= 2:
+        return "English"
     return "English (or whichever language the message is actually written in)"
 
 

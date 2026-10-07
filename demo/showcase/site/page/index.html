@@ -15,7 +15,7 @@
     <script>
       // the language before the first paint, so nothing flashes: the page that embeds this one
       // (?lang=), else a remembered choice, else the browser's. ?embed=1 is the frame on the
-      // project site: no header of its own, and the phone waits for a tap (page.js).
+      // project site: no header of its own (page.js).
       (function () {
         try {
           var q = new URLSearchParams(location.search);
@@ -90,12 +90,32 @@
           </h1>
           <div class="notice" role="note">
             <p>
-              <i class="en"><b>A demo in a simulator.</b> The phone and its apps are MobileGym's re-creations and this nanoMuse is the lite web app — a long way from the Android app. For the real thing, install it.</i>
-              <i class="zh"><b>这是模拟器里的演示。</b>手机和应用是 MobileGym 重做的，nanoMuse 是精简版网页应用，和 Android App 差得不少。想要完整体验，请安装 App。</i>
+              <i class="en"><b>A demo in a simulator.</b> The phone and its apps are MobileGym's re-creations, and this nanoMuse is the lite web app. The apps for your own devices do far more; install one of them.</i>
+              <i class="zh"><b>这是模拟器里的演示。</b>手机和应用是 MobileGym 重做的，这个 nanoMuse 是精简版网页应用。装在你自己设备上的 App 能做的多得多，请安装一个。</i>
+            </p>
+            <!-- every platform the project ships; the links go to GitHub's "latest" release and to
+                 the docs, never to one version's own files, so they do not go stale -->
+            <p class="platforms">
+              <i class="en">
+                <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Android (APK)</a> ·
+                iPhone and iPad (TestFlight; the public link is not open yet, <a href="https://nanomuse.cn/docs/ios">the iOS page of the docs</a> says where it stands) ·
+                <a href="https://github.com/nano-muse/nanoMuse/releases/latest">macOS (Apple Silicon and Intel)</a> ·
+                <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Windows</a> ·
+                <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Linux</a> ·
+                <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse">Docker image</a> with the web console, for a server of yours (<a href="https://nanomuse.cn/docs/self-hosting">self-hosting</a>)
+              </i>
+              <i class="zh">
+                <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Android（APK）</a> ·
+                iPhone 和 iPad（TestFlight，公开链接还没有开放，进展见<a href="https://nanomuse.cn/docs/zh/ios">文档的 iOS 一页</a>） ·
+                <a href="https://github.com/nano-muse/nanoMuse/releases/latest">macOS（Apple Silicon 和 Intel）</a> ·
+                <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Windows</a> ·
+                <a href="https://github.com/nano-muse/nanoMuse/releases/latest">Linux</a> ·
+                <a href="https://github.com/nano-muse/nanoMuse/pkgs/container/nanomuse">Docker 镜像</a>，带网页控制台，跑在你自己的服务器上（<a href="https://nanomuse.cn/docs/zh/self-hosting">自部署</a>）
+              </i>
             </p>
             <div class="notice-actions">
-              <a class="btn primary" href="https://nanomuse.cn/#download"><i class="en">Get the Android app</i><i class="zh">下载 Android App</i></a>
-              <a class="btn" href="https://nanomuse.cn/#download"><i class="en">Desktop</i><i class="zh">桌面版</i></a>
+              <a class="btn primary" href="https://nanomuse.cn/#download"><i class="en">All downloads</i><i class="zh">全部下载</i></a>
+              <a class="btn" href="https://github.com/nano-muse/nanoMuse/releases/latest"><i class="en">Latest release</i><i class="zh">最新版本</i></a>
             </div>
           </div>
 
@@ -110,8 +130,8 @@
             <h2><i class="en">Let it use the phone</i><i class="zh">让它操作这台手机</i></h2>
             <button class="chip" type="button" data-en="Open WeChat and tell me what Zhang Wei's latest message says" data-zh="打开微信，看看张伟最新发来的消息说了什么"><i class="en">Open WeChat and tell me what Zhang Wei's latest message says</i><i class="zh">打开微信，看看张伟最新发来的消息说了什么</i></button>
             <button class="chip" type="button" data-en="Reply to Zhang Wei on WeChat: sure, what time?" data-zh="在微信里回复张伟：好啊，几点？"><i class="en">Reply to Zhang Wei on WeChat: sure, what time?</i><i class="zh">在微信里回复张伟：好啊，几点？</i></button>
-            <button class="chip" type="button" data-en="Use 12306 to find the earliest high-speed train from Shanghai to Nanjing tomorrow" data-zh="用 12306 查一下明天上海到南京最早的高铁"><i class="en">Use 12306 to find the earliest high-speed train from Shanghai to Nanjing tomorrow</i><i class="zh">用 12306 查一下明天上海到南京最早的高铁</i></button>
-            <button class="chip" type="button" data-en="Open the Weather app and tell me about Beijing tomorrow" data-zh="打开天气，看看北京明天怎么样"><i class="en">Open the Weather app and tell me about Beijing tomorrow</i><i class="zh">打开天气，看看北京明天怎么样</i></button>
+            <button class="chip" type="button" data-en="Use 12306 to find the earliest train from Shanghai to Nanjing tomorrow" data-zh="用 12306 查一下明天上海到南京最早的车次"><i class="en">Use 12306 to find the earliest train from Shanghai to Nanjing tomorrow</i><i class="zh">用 12306 查一下明天上海到南京最早的车次</i></button>
+            <button class="chip" type="button" data-en="Open the Weather app: will it rain in Beijing tomorrow?" data-zh="打开天气，看看北京明天会不会下雨"><i class="en">Open the Weather app: will it rain in Beijing tomorrow?</i><i class="zh">打开天气，看看北京明天会不会下雨</i></button>
             <button class="chip" type="button" data-en="Make a note on this phone: meeting Friday at 3 pm" data-zh="在手机的笔记里新建一条：周五下午三点开会"><i class="en">Make a note on this phone: meeting Friday at 3 pm</i><i class="zh">在手机的笔记里新建一条：周五下午三点开会</i></button>
           </div>
 

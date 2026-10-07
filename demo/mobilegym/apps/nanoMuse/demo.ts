@@ -142,6 +142,33 @@ export async function startDemoSession(
   return { id: raw.id, serverUrl: raw.server_url, token: raw.token, expiresAt: raw.expires_at, byok: raw.byok };
 }
 
+/** The reply language the runtime understands (its *Settings › Reply language* values). */
+export type ReplyLanguage = 'English' | '中文';
+
+/**
+ * The hosted Muse answers in the language of the page it sits in: the showcase sets the
+ * runtime's reply language (what *Settings › Reply language* does) from the visitor's choice,
+ * so a Chinese chat read on an English page is reported in English, and the capsule's
+ * sentences follow. The fresh container may still be coming up: tried for a while.
+ */
+export async function setReplyLanguage(serverUrl: string, token: string, language: ReplyLanguage): Promise<boolean> {
+  for (let attempt = 0; attempt < 15; attempt++) {
+    try {
+      const res = await fetch(`${serverUrl}/api/settings`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ language }),
+      });
+      if (res.ok) return true;
+      if (res.status === 401 || res.status === 403 || res.status === 404) return false;
+    } catch {
+      // not up yet
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return false;
+}
+
 export async function endDemoSession(gateway: string, id: string, token: string): Promise<void> {
   try {
     await call<void>(gateway, `/session/${encodeURIComponent(id)}`, {

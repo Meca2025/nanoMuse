@@ -45,7 +45,7 @@ i.en, i.zh { font-style: normal; }
 html[data-lang="en"] .zh, html[data-lang="zh"] .en { display: none; }
 
 /* ---- ?embed=1: the frame on the project site (nanomuse.cn). The site has the header; this
-   page shows the stage alone, from the top edge, and the phone waits for a tap (page.js). */
+   page shows the stage alone, from the top edge (page.js). */
 html[data-embed] { --top-h: 0px; }
 html[data-embed] .top { display: none; }
 
@@ -64,6 +64,13 @@ html[data-theme="dark"] {
 }
 html[data-theme="dark"] .status.warn { color: #f0b35b; }
 html[data-theme="dark"] .btn.primary { color: #121212; }
+/* their stage is paper-light once booted, and their guide and dock are white cards; in the
+   dark theme the stage is the page's own dark and the cards go dark with it, so the text colours
+   below have something to sit on */
+html[data-theme="dark"] .hero-demo.is-booted { background: var(--bg); }
+html[data-theme="dark"] .gesture-guide,
+html[data-theme="dark"] .state-dock { background: rgba(31, 31, 31, 0.92); border-color: rgba(255, 255, 255, 0.1); }
+html[data-theme="dark"] .gesture-guide-icon { background: #2a2a2a; border-color: rgba(255, 255, 255, 0.14); color: #e8e8e8; }
 html[data-theme="dark"] .gesture-guide,
 html[data-theme="dark"] .gesture-guide-label,
 html[data-theme="dark"] .state-dock-tab,
@@ -127,7 +134,9 @@ html[data-theme="dark"] .nm-dock-app[aria-pressed="true"] { background: #e8e8e8;
    Their .hero-demo is a full-height centred flex column; .demo-layout the centred row holding the
    phone wrap. Here the hero is the rest of the screen under the top bar, and the row holds the
    phone (with the room its chrome needs) and the panel. */
-.hero-demo { flex: 1; min-height: 0; padding: var(--stage-pad) 20px; }
+/* their stage names its own text colour (a light theme's); the headings in the column inherit it,
+   so the page's colour is said again here for the dark theme */
+.hero-demo { flex: 1; min-height: 0; padding: var(--stage-pad) 20px; color: var(--fg); }
 .hero-demo .demo-layout {
   position: relative;
   display: flex;
@@ -250,6 +259,18 @@ html[data-theme="dark"] .nm-dock-app[aria-pressed="true"] { background: #e8e8e8;
   transition: opacity 540ms cubic-bezier(0.4, 0, 0.2, 1) 320ms;
 }
 .hero-demo.is-booted .side { opacity: 1; }
+/* the column is taller than the screen on most laptops: a fade along its lower edge says there
+   is more, and goes at the end (page.js sets the class) */
+.side.more::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  flex: none;
+  height: 36px;
+  margin-top: -36px;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}
 .status {
   margin: 0 0 6px;
   min-height: 1.4em;
@@ -276,6 +297,10 @@ html[data-theme="dark"] .nm-dock-app[aria-pressed="true"] { background: #e8e8e8;
 }
 .notice p { margin: 0 0 7px; font-size: 12.5px; line-height: 1.4; color: var(--fg); }
 .notice b { font-weight: 700; }
+/* every platform the project ships, in one run of text */
+.notice .platforms { font-size: 12px; line-height: 1.45; color: var(--fg-2); }
+.notice .platforms a { color: var(--fg); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--fg) 30%, transparent); text-underline-offset: 2px; }
+.notice .platforms a:hover { color: var(--action); text-decoration-color: currentColor; }
 .notice-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .notice .btn { padding: 5px 11px; font-size: 12.5px; text-decoration: none; }
 .btn.primary { color: #fff; background: var(--action); border-color: var(--action); }
@@ -335,6 +360,7 @@ html[data-theme="dark"] .nm-dock-app[aria-pressed="true"] { background: #e8e8e8;
   .group { padding: 8px 10px 8px; margin-bottom: 8px; border-radius: 14px; }
   .notice { padding: 7px 10px; margin-bottom: 8px; border-radius: 14px; }
   .notice p { font-size: 12px; margin-bottom: 5px; }
+  .notice .platforms { font-size: 11.5px; }
   .notice .btn { padding: 4px 10px; font-size: 12px; }
   .group h2 { font-size: 13.5px; }
   .chip { margin-top: 4px; padding: 5px 10px; font-size: 13px; }
@@ -363,6 +389,9 @@ html[data-theme="dark"] .nm-dock-app[aria-pressed="true"] { background: #e8e8e8;
   .hero-demo .demo-layout > .side { flex: none; width: min(560px, 100%); max-height: none; overflow: visible; }
   .state-drawer { position: relative; width: min(420px, calc(100vw - 32px)); max-height: 70svh; }
   .where { display: none; }
+  /* the phone fills the width here: Power off takes a row of its own above it, not the status bar */
+  .hero-demo { padding-top: calc(var(--stage-pad) + 28px); }
+  .rig-actions { top: 4px; right: 12px; }
 }
 @media (max-width: 480px) {
   .top { padding: 0 12px; }
