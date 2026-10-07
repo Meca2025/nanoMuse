@@ -10,6 +10,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The web console says why the relay refused**, in Chinese and English: sign-ups paused, service paused, sync paused, device hub paused, account deleted, too many requests under way, rate limited; a paused free allowance is told apart from a spent one; a deleted account signs the page out, and a paused hub is shown as such.
 - **The console's files are revalidated on every load**, so a deploy reaches the next reload; both console pages set the document language to the one they draw.
 - **The star card's sentence can be set from the console.** The nudges policy gained `star.text` (English) and `star.text_zh` (简体中文), each at most 200 characters, empty by default; *Settings › Star asks* has the two inputs with a remaining-character count. An app in Chinese shows `text_zh`, else `text`, else its own sentence; other languages show `text`, else their own; only the sentence changes, not the card's title or buttons. Apps built against relay 0.22 and earlier ignore the two fields.
+- **The visitor's address is read from `X-Forwarded-For` only behind a proxy.** The relay took the header's first hop from any peer, so a relay reached directly (the local compose file with `RELAY_BIND=0.0.0.0`, or no Caddy in front) let a request name its own address and so sidestep the per-address limits on codes and sign-ins. It is honoured only when the socket's peer is a loopback, private or otherwise non-global address (or one named in the new `TRUSTED_PROXIES`); from the open internet the peer itself counts — uvicorn's own `forwarded_allow_ips` is set to the same list instead of `*`. The self-host `Caddyfile` carries the production one's body limit (20 MB, above the relay's 16 MiB), security headers and ten-minute stream timeouts.
+- **`cloud/.env.example` lists every setting the relay reads** — the code and password limits, the upstream timeout and in-flight cap, the members' catalogue, the geolocation files, the operator-page sources — each commented with its default; the README had called it the full list.
 
 ### Runtime
 
@@ -19,6 +21,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The runtime owns the first conversation** (contract C4, as on the phones and the desktop): `GET /api/firstrun`, `POST /api/firstrun/start` · `pick` · `dismiss`, the `firstrun` socket frame, the state in `firstrun.json`. It tells the model about the ritual only in the chat the conversation is bound to — never in a routine, a feed post or another chat — reads the model's `nanomuse-naming` block when a reply ends, writes what to call you to the profile and to memory (*Call them: …*) and the agent's name to the profile.
 - **`PUT /api/connections/llm` takes `proxy`** (`http://`, `https://`, `socks5://`, `socks5h://` host and port; `""` clears it) and writes `[llm] proxy`; the connections view shows it with any password as dots. A SOCKS address is refused with the package to install when `socksio` is missing.
 - **`/api/nudges` keeps the relay's `star.text` and `star.text_zh`** (200 characters at most) for the star card's sentence.
+- **A file whose name is not ASCII can be downloaded from the web console again.** `/api/files/…?download=1` failed with 500 for a name such as 报告.md; the download header is now encoded.
+- **`nanomuse config init` writes the `[cloud]` and `[hub]` blocks and `gui.reconnect_grace_s`** with their defaults explained; the configuration page documents them too.
 
 ### Web
 
@@ -26,6 +30,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **A *Proxy (optional)* field** on the own-key model form, for that provider's requests only; nanoMuse Cloud never goes through it.
 - **The star card's sentence can come from the relay** (`star.text`, `star.text_zh` for a Chinese UI); the title and buttons stay the app's.
 - **The unit tests no longer depend on the developer machine's language.**
+- **Chinese copy writes 非营利** (not 非盈利) in the welcome notice and the account page; 89 dictionary entries no key referred to any more were dropped.
 
 ### Desktop
 
@@ -36,6 +41,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **A proxy for the model providers.** Settings → nanoMuse Cloud → Network takes one address (`http://host:port`, `https://`, `socks5://`, `socks5h://`; a `user:pass@` is shown masked). The shell puts it on the host process's environment at the next start, so your own keys, the ChatGPT sign-in, *List models* and the hands' runtime go through it while nanoMuse Cloud and loopback never do; *Restart now* under the row restarts the host without closing the window.
 - **The Permissions page lists every standing grant by risk tier.** A *Standing grants* section groups what this computer remembers — the remote-control switch, the devices allowed without asking, the hands' per-app grants — under *Runs without asking*, *Remembered from the card* and *Runs, then tells you*, each row with what was allowed, for whom or where, when, and *Revoke*; one host route lists them and one revokes any of them.
 - **The star card's sentence may come from the relay.** When the nudge policy carries `star.text` / `star.text_zh` (up to 200 characters), the card and the header line show that sentence — `text_zh` in a Chinese UI, else `text` — and the app's own words otherwise; the title and the buttons stay the app's.
+- ***Report a bug* fills in the issue form's own fields** (where, version, platform, the screenshot's name); the facts had travelled as a plain `body`, which the form drops.
 
 ### Android
 
@@ -43,6 +49,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The first run's Hands page shows the app's mark.**
 - **The first conversation says where your messages go with sync on:** to the model, and — signed in — to your other devices through nanoMuse Cloud, which Data controls switches off.
 - **The star card showed the sentence set in the relay's console** (`star.text`, `star.text_zh` for a Chinese UI) when the operator set one; without one, the app's own line for the moment as before. The title and the buttons stay the app's.
+- **Chinese copy writes 非营利** (not 非盈利) in the welcome and Cloud notices.
 
 ### iOS
 
@@ -51,6 +58,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **In the account's Devices list** an offline device shows when it was last seen, and a tap on an online one starts a message to it in the chat.
 - **A fresh install no longer shows the home screen for an instant** before the welcome page; the first conversation says where your messages go with sync on, as on Android.
 - **The star card showed the sentence set in the relay's console** (`star.text`, `star.text_zh` for a Chinese UI) when the operator set one, as on Android; the title and the buttons stay the app's.
+- **Chinese copy writes 非营利 / 非營利** (not 非盈利) in the welcome and Cloud notices.
+- ***Report a bug* fills in the issue form's own fields** (where, version, iOS version and model) instead of a plain `body`, which the form drops.
 
 ### Project
 
@@ -63,6 +72,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The privacy page** says that the operator's page shows an address's country, province and city from an offline copy of ip2region, computed when drawn and not stored; `docs/cloud.md` says the star policy sets when an ask may appear, not its words; docs/parity.md, docs/ios.md and docs/roadmap.md describe 0.1.40's behaviour and the paper's roadmap.
 - **CI runs the relay's `ruff check` and `pytest`** on every change under `cloud/`; it never had.
 
+- **`THIRD_PARTY_NOTICES.md` covers the iOS app**, which it said had been removed: iSH, FFmpeg and LAME, rclone, cppjieba, the tiktoken vocabulary, the models.dev snapshot and the Swift packages, with their licenses. `docs/cloud.md` describes how each app is pointed at another relay as the apps do it today; test fixtures use `.example` addresses only.
+- **One bug form for every surface but Android**: *Where* offers the web console, the desktop app, the iPhone app, the relay, the terminal, the daemon, Docker, the library and the showcase; the repository has the `android`, `ios` and `desktop` labels the forms apply, and the Android form no longer claims to be pre-filled by the app (its link opens the chooser, for bugs and ideas alike). Dependabot watches the packages where they are (`harness/desktop`, `harness/dsh-nanomuse`, `website`); it had pointed at a directory that no longer exists.
 ## [0.1.40] - 2026-10-06 · Clear
 
 Clear: the iPhone's input field is in the clear again — it sat behind the bottom bar, a safe-area inset the chat stopped keeping clear of once the keyboard had come and gone; the bar and the composer are plain rows now, and a page in Settings shows where the app laid them out. Every chat on a phone belongs to the account that made it, so a shared device keeps accounts' chats clearly apart, and signing out asks one question. Every refusal from the relay is one clear sentence, or a card, on every client, and the operator of a relay can close the door with a switch on a *Controls* page, with *Stats* and *Site* beside it. The Mac takes a true picture of the screen with ScreenCaptureKit or says why it cannot, Windows starts again after the update that moved the app, and the desktop's lights, glow and capsule move as the phone's do.

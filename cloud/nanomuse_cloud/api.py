@@ -311,10 +311,7 @@ def create_app(
     SERVICE_PAUSED_MESSAGE = "nanoMuse Cloud is paused by its operator for now; your sign-in and your data are kept. Try again later."
 
     def client_ip(request: Request) -> str:
-        fwd = request.headers.get("x-forwarded-for")
-        if fwd:
-            return fwd.split(",")[0].strip()
-        return request.client.host if request.client else ""
+        return client_info.visitor_ip(request.headers, request.client.host if request.client else None)
 
     def client_place(request: Request):
         """Where the request came from (geo.py), for the region in /v1/me and the "ways on"

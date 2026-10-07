@@ -1,5 +1,5 @@
 name: App bug report (Android)
-description: Something in the nanoMuse Android app does not work. Settings → Feedback opens this form pre-filled.
+description: Something in the nanoMuse Android app does not work. (The iPhone app, the desktop app and the web console use the other form.)
 labels: ["bug", "android"]
 body:
   - type: markdown

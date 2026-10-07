@@ -13,6 +13,7 @@ empty default and writes empty strings.
 
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import Mapping
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
@@ -48,11 +49,37 @@ def reset(token: Token) -> None:
     _current.reset(token)
 
 
+def _is_proxy_peer(peer_host: str | None) -> bool:
+    """A socket peer that may be the reverse proxy in front: loopback, a private or
+    otherwise non-global address (Caddy on the same box, the same Docker network, a
+    tailnet). A peer on the open internet is the visitor themselves, and their
+    ``X-Forwarded-For`` is just a header they typed."""
+    if not peer_host:
+        return False
+    try:
+        addr = ipaddress.ip_address(peer_host.split("%")[0])
+    except ValueError:
+        return False
+    return not addr.is_global
+
+
+def visitor_ip(headers: Mapping[str, str], peer_host: str | None) -> str:
+    """The visitor's address: the first hop of ``X-Forwarded-For`` when the request came
+    through a proxy on this box or network, else the socket's peer. A relay exposed
+    directly cannot be told a different address by the request itself — the per-address
+    limits on codes and sign-ins key on this."""
+    fwd = headers.get("x-forwarded-for") or ""
+    if fwd and _is_proxy_peer(peer_host):
+        first = fwd.split(",")[0].strip()
+        if first:
+            return first
+    return peer_host or ""
+
+
 def from_headers(headers: Mapping[str, str], peer_host: str | None) -> ClientInfo:
     """What the proxy in front (Caddy) says the visitor's address is — the first hop of
     ``X-Forwarded-For`` — else the socket's peer; the two headers that name the client."""
-    fwd = headers.get("x-forwarded-for") or ""
-    ip = fwd.split(",")[0].strip() if fwd else (peer_host or "")
+    ip = visitor_ip(headers, peer_host)
     return ClientInfo(
         ip=ip[:64],
         ua=(headers.get("user-agent") or "")[:UA_MAX],

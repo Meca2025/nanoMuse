@@ -36,8 +36,11 @@ def _serve(args: argparse.Namespace) -> None:
         host=args.host,
         port=args.port,
         log_level=args.log_level,
+        # X-Forwarded-For is believed from the proxy in front only (TRUSTED_PROXIES, else
+        # every non-global address); "*" had let a request to an exposed relay name its own
+        # address and so sidestep the per-address limits.
         proxy_headers=True,
-        forwarded_allow_ips="*",
+        forwarded_allow_ips=settings.trusted_proxy_list,
         ws_max_size=settings.hub_frame_limit,
         ws_ping_interval=25.0,
         ws_ping_timeout=60.0,

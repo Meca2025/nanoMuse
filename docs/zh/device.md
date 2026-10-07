@@ -77,7 +77,7 @@ nanoMuse 在系统分享面板里接收文字、链接和文件。一次分享�
 
 ## connect 模式 {#connect-mode}
 
-connect 构建（把手机当成电脑上 `nanomuse serve` 的遥控器）有同一套 Kotlin 工具，但服务器够不到手机上的 `127.0.0.1`；这需要经由手机的 WebSocket 做一次中转。这在计划里（P1，[launch-checklist.md](launch-checklist.md)）；在那之前，设备工具是跑在手机上才有的功能。
+connect 构建（把手机当成电脑上 `nanomuse serve` 的遥控器）有同一套 Kotlin 工具，但服务器够不到手机上的 `127.0.0.1`；这需要经由手机的 WebSocket 做一次中转。这在计划里（P1，[launch-checklist.md](../launch-checklist.md)）；在那之前，设备工具是跑在手机上才有的功能。
 
 ## 没有手机怎么测 {#testing-without-a-phone}
 

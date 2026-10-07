@@ -602,7 +602,7 @@
     <string name="nm_welcome_feat_hands_sub">订车票、点外卖、在应用里查东西——你全程看着，随时可以停</string>
     <string name="nm_welcome_feat_reach">Reach：从手机使用你的电脑</string>
     <string name="nm_welcome_feat_reach_sub">配对一台 Mac、Windows 或 Linux 电脑，在手机上派活给它</string>
-    <string name="nm_welcome_notice">nanoMuse 是非盈利的开源社区项目，永久免费。模型自带一份由开发者承担的免费额度，用完换自己的 key。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。</string>
+    <string name="nm_welcome_notice">nanoMuse 是非营利的开源社区项目，永久免费。模型自带一份由开发者承担的免费额度，用完换自己的 key。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。</string>
     <string name="nm_welcome_hands_title">让它替你操作手机</string>
     <string name="nm_welcome_hands_sub">开启两项权限后，它就能替你打开应用、点按和输入。屏幕上始终有显示当前步骤和「停止」的胶囊；登录、密码和验证码永远由你自己来。</string>
     <string name="nm_welcome_hands_turn_on">去开启</string>
@@ -846,9 +846,9 @@
     <string name="nm_cloud_allowance_left">剩余 ¥%1$s · $%2$s</string>
     <string name="nm_cloud_allowance_why">起始 ¥%1$s，每邀请一位新用户你 +¥%2$s、对方也 +¥%2$s；用完后换自己的 key 继续。</string>
     <string name="nm_cloud_tokens_line">累计 %1$s tokens · 今天 %2$s</string>
-    <string name="nm_cloud_notice_title">免费 · 开源 · 非盈利</string>
+    <string name="nm_cloud_notice_title">免费 · 开源 · 非营利</string>
     <string name="nm_cloud_notice_closing">发现问题、想要新功能、愿意改代码，都欢迎到 GitHub 上提。</string>
-    <string name="nm_cloud_notice">nanoMuse 是非盈利的开源社区项目，永久免费。模型自带一份由开发者承担的免费额度，用完换自己的 key。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定；随时可以删除账号。</string>
+    <string name="nm_cloud_notice">nanoMuse 是非营利的开源社区项目，永久免费。模型自带一份由开发者承担的免费额度，用完换自己的 key。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定；随时可以删除账号。</string>
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">来自你其他设备的消息</string>
     <string name="nm_hub_service_channel">与你的设备保持连接</string>

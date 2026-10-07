@@ -226,6 +226,7 @@ model = ""               # empty → the main [llm] model operates the phone
 # api_key = "{{vault:GUI_API_KEY}}"
 max_steps = 30           # the most one phone task may take
 device_timeout_s = 20.0  # how long to wait for the phone to answer one request
+reconnect_grace_s = 30.0  # how long a running task waits for a phone whose connection dropped to come back; 0 = give up at once
 
 # ------------------------------------------------------------------------------
 # Pictures and clips — where the avatar studio draws when it is not the chat model's
@@ -310,3 +311,20 @@ start_grace = 4          # seconds the tools/MCP servers/cloud account may take 
 # account and the other devices' come here. The person's choice in *Data
 # controls → Also sync side chats* is kept in sync.json; this is its default.
 side_chats = false
+
+# ------------------------------------------------------------------------------
+# nanoMuse Cloud — the relay this runtime signs in to (docs/cloud.md)
+# ------------------------------------------------------------------------------
+[cloud]
+base_url = "https://cloud.nanomuse.cn"   # a relay you run yourself: its public address (docs/self-hosting.md)
+required = true          # the first run does not finish without an account; false for a runtime with no relay at all
+sync = true              # default for the account-wide Data controls → Sync switch (the person's choice, once made, counts)
+
+# ------------------------------------------------------------------------------
+# The hub — this computer as one of the account's devices (docs/hub.md)
+# ------------------------------------------------------------------------------
+[hub]
+enabled = true           # join the hub whenever the Cloud account is signed in
+remote_control = true    # false: other devices get `info` from this one and nothing else
+name = ""                # what the other devices call this one; empty = the host name
+# device_id is per installation and written by the app; leave it alone

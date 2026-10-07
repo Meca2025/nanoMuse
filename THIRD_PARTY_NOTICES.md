@@ -1,12 +1,12 @@
 # Third-party notices
 
-nanoMuse is licensed under the GNU General Public License, version 3 or later ([LICENSE](LICENSE), [NOTICE](NOTICE)). It stands on other people's work; this file says whose, and on what terms. Three lists: what the Android app is built from, what our own runtime, relay and web code include, and projects we learned from without taking code.
+nanoMuse is licensed under the GNU General Public License, version 3 or later ([LICENSE](LICENSE), [NOTICE](NOTICE)). It stands on other people's work; this file says whose, and on what terms. Three lists: what the phone apps are built from, what our own runtime, relay, desktop and web code include, and projects we learned from without taking code.
 
-## The Android app (`android/`)
+## The phone apps (`android/`: Android and iOS)
 
 ### OpenMinis — GPL-3.0
 
-The app is a modified copy of [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 (tag `1.13`, commit `4ef2900`), Copyright (C) the OpenMinis authors, imported with `git subtree` so that its history is in ours. Modifications since 2026-09-24 are recorded in `git log -- android/`, and every edit inside an upstream file carries a `// nanoMuse:` comment. The OpenMinis name and logo are theirs and are not used for this application. What follows is OpenMinis's own third-party list, kept to the parts that remain in this tree (the iOS half was removed).
+The app is a modified copy of [OpenMinis](https://github.com/OpenMinis/OpenMinis) 1.13 (tag `1.13`, commit `4ef2900`), Copyright (C) the OpenMinis authors, imported with `git subtree` so that its history is in ours. Modifications since 2026-09-24 are recorded in `git log -- android/`, and every edit inside an upstream file carries a `// nanoMuse:` comment. The OpenMinis name and logo are theirs and are not used for this application. Both phone apps come from that subtree: the Android app in `android/src/android`, the iOS app in `android/src/ios`. What follows is OpenMinis's own third-party list for the parts this tree builds; upstream's full inventory with versions is [android/THIRD_PARTY_LICENSES.md](android/THIRD_PARTY_LICENSES.md).
 
 ### Native code (`android/deps/`)
 
@@ -42,6 +42,19 @@ Test-only: JUnit 4.13.2 (**EPL-1.0**), MockWebServer 4.12.0 (**Apache-2.0**), ko
 | KaTeX | `app/src/main/assets/katex/` | **MIT** |
 | jieba dictionaries | `app/src/main/assets/jieba/` | **MIT** (cppjieba distribution) |
 | models.dev registry snapshot | `app/src/main/assets/models-dev-api.json` | **MIT** ([models.dev](https://models.dev)) |
+
+### The iOS app (`android/src/ios`)
+
+| Component | Source | License | Notes |
+|---|---|---|---|
+| [iSH](https://github.com/OpenMinis/ish-arm64) (arm64 fork) | git submodule `android/deps/ish` | **GPL-3.0** (later contributions also GPL-2.0), with an App Store distribution exception (`LICENSE.IOS`) | x86 Linux user-mode emulation: the sandbox on iOS |
+| [FFmpeg](https://ffmpeg.org) 6.1.2 with [LAME](https://lame.sourceforge.io) 3.100 | built by `android/deps/build_ffmpeg.sh` (LAME vendored at `android/deps/lame-3.100`) | **LGPL-2.1-or-later** (FFmpeg, built without `--enable-gpl`/`--enable-nonfree`), **LGPL-2.0-or-later** (LAME) | Dynamic frameworks; keep the LGPL configuration |
+| [rclone](https://github.com/rclone/rclone) | `android/deps/rclone-mobile`, built by `android/deps/build_rclone_ios.sh` with gomobile | **MIT** | Remote destinations for backup |
+| Alpine Linux minirootfs | downloaded at build time by `android/deps/prepare_alpine_rootfs.sh` | aggregate of package licenses | The sandbox's root file system; not stored in this repository |
+| [cppjieba](https://github.com/yanyiwu/cppjieba) and its dictionaries | `android/src/ios/Vendor/cppjieba`, `Resources/jieba.dict.utf8`, `Resources/hmm_model.utf8` | **MIT** | Chinese word segmentation |
+| `cl100k_base` vocabulary (OpenAI [tiktoken](https://github.com/openai/tiktoken)) | `android/src/ios/Shared/cl100k_base.tiktoken`, read by `BPETokenizer.swift` | **MIT** | Token counting |
+| models.dev registry snapshot | `android/src/ios/Resources/models-dev-api.json` | **MIT** ([models.dev](https://models.dev)) | |
+| Swift packages — SwiftAnthropic (**MIT**), swift-cmark (**BSD-2-Clause**), SwiftMath (**MIT**), RealTimeCutVADLibrary (**MIT**) and the Apache-2.0 Swift Server packages they pull in | `Minis.xcodeproj`, pinned in `Package.resolved` | as listed | Versions in upstream's inventory |
 
 ### The nanoMuse mark
 

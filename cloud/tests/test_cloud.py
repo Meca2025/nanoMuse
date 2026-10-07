@@ -274,20 +274,20 @@ async def test_signup_grants_and_lists_models(stack):
 
 async def test_wrong_code_and_expiry_rules(stack):
     app, client, sender, up, cloud = stack
-    r = await client.post("/v1/auth/code", json={"identifier": "a@b.co"})
+    r = await client.post("/v1/auth/code", json={"identifier": "a@mail.example"})
     assert r.status_code == 204
-    r = await client.post("/v1/auth/verify", json={"identifier": "a@b.co", "code": "000000"})
+    r = await client.post("/v1/auth/verify", json={"identifier": "a@mail.example", "code": "000000"})
     assert r.status_code == 400 and r.json()["error"]["code"] == "code_wrong"
-    r = await client.post("/v1/auth/verify", json={"identifier": "a@b.co", "code": "12"})
+    r = await client.post("/v1/auth/verify", json={"identifier": "a@mail.example", "code": "12"})
     assert r.status_code == 400
-    r = await client.post("/v1/auth/verify", json={"identifier": "nobody@b.co", "code": "123456"})
+    r = await client.post("/v1/auth/verify", json={"identifier": "nobody@mail.example", "code": "123456"})
     assert r.json()["error"]["code"] == "code_expired"
     r = await client.post("/v1/auth/code", json={"identifier": "garbage"})
     assert r.status_code == 400 and r.json()["error"]["code"] == "bad_identifier"
     # Three codes in ten minutes is the ceiling per identifier.
     for _ in range(2):
-        assert (await client.post("/v1/auth/code", json={"identifier": "a@b.co"})).status_code == 204
-    r = await client.post("/v1/auth/code", json={"identifier": "a@b.co"})
+        assert (await client.post("/v1/auth/code", json={"identifier": "a@mail.example"})).status_code == 204
+    r = await client.post("/v1/auth/code", json={"identifier": "a@mail.example"})
     assert r.status_code == 429 and r.json()["error"]["code"] == "code_too_often"
 
 

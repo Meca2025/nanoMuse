@@ -1788,13 +1788,15 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
                 if target.suffix.lower() != ".json"
                 else "application/json"
             )
-        headers = (
-            {"Content-Disposition": f'attachment; filename="{target.name}"'} if download else {}
-        )
+        headers: dict[str, str] = {}
         if media.startswith("text/html") or media == "image/svg+xml":
             # Files the agent wrote never run with the app's origin: no token, no API.
             headers["Content-Security-Policy"] = "sandbox allow-scripts allow-popups"
-        return FileResponse(target, media_type=media, headers=headers)
+        # ``filename=`` lets Starlette write the Content-Disposition header itself, which
+        # encodes a name that is not ASCII (报告.txt) instead of failing on it.
+        return FileResponse(
+            target, media_type=media, headers=headers, filename=target.name if download else None
+        )
 
     # ------------------------------------------------------------------ websocket
     @app.websocket("/ws")

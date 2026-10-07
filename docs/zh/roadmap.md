@@ -26,7 +26,7 @@ Meta 的 Muse 定下了这类智能体的样子；下面是我们还落后于它
 
 ### 对话 {#the-conversation}
 
-一切都在聊天里发生，而它现在仍然像一个聊天客户端。存在感——智能体干活时形象有反应、状态栏用人话说它在做什么——在各客户端之间参差不齐；自 0.1.22 去掉通话（[calls.md](calls.md)）之后，语音只有输入，会回答的声音还是个没定的问题；手的舞台（桌面的 `harness/dsh-nanomuse/src/client/Trajectory.tsx` 和外壳的 `glow.html`，Android 的 `HandsStage.kt`）展示手的动作，桌面上还会在每一步之前显示智能体的话，但还没有在每个客户端上都做到让人跟得上。
+一切都在聊天里发生，而它现在仍然像一个聊天客户端。存在感——智能体干活时形象有反应、状态栏用人话说它在做什么——在各客户端之间参差不齐；自 0.1.22 去掉通话（[calls.md](../calls.md)）之后，语音只有输入，会回答的声音还是个没定的问题；手的舞台（桌面的 `harness/dsh-nanomuse/src/client/Trajectory.tsx` 和外壳的 `glow.html`，Android 的 `HandsStage.kt`）展示手的动作，桌面上还会在每一步之前显示智能体的话，但还没有在每个客户端上都做到让人跟得上。
 
 - 模块：`harness/dsh-nanomuse/src/client/`（`AvatarChat.tsx`、`Trajectory.tsx`、`Capsule.tsx`），Android 的 `io.github.nanomuse.chat` 和 `hands`，iOS 的 `NanoMuseChatCards.swift`、`NanoMuseComposer.swift`。
 - 阅读：[desktop-muse.md](desktop-muse.md)、[parity.md](parity.md)——各客户端之间还没合上的项。

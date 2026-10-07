@@ -30,8 +30,8 @@ import org.json.JSONObject
 /**
  * nanoMuse Cloud: the "start now" path. An e-mail address, a code, and the
  * app has a provider with a starter allowance — no key of one's own needed. The server is the
- * relay in `cloud/` of the repository; anyone can run one, and a debug build can be pointed at
- * a different one.
+ * relay in `cloud/` of the repository; anyone can run one, and "Use a different server" on the
+ * sign-in screen points the phone at it ([RelayAddress]).
  *
  * To the rest of the app the relay is an ordinary OpenAI-compatible provider: an API-key
  * [ProviderInstance] on the relay's base URL, whose key is the `nm_…` token the relay issued.

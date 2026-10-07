@@ -12,6 +12,7 @@ import json
 import secrets
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -322,7 +323,22 @@ def make_app(
     client = CodexClient(auth, http=http, url=responses_url or RESPONSES_URL, proxy=proxy)
     models = ModelList(auth, http=http, url=models_url or MODELS_URL, proxy=proxy)
     usage = Usage(auth, client, http=http, url=usage_url or USAGE_URL)
-    app = FastAPI(title="nanoMuse ChatGPT proxy", docs_url=None, redoc_url=None, openapi_url=None)
+
+    @asynccontextmanager
+    async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            await client.close()
+            await auth.close()
+
+    app = FastAPI(
+        title="nanoMuse ChatGPT proxy",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=_lifespan,
+    )
     app.include_router(build_router(auth, client, models, bearer_check(token), usage))
 
     @app.exception_handler(HTTPException)
@@ -330,11 +346,6 @@ def make_app(
         detail: Any = exc.detail
         body = detail if isinstance(detail, dict) else {"message": str(detail)}
         return JSONResponse({"error": body}, status_code=exc.status_code)
-
-    @app.on_event("shutdown")
-    async def _close() -> None:
-        await client.close()
-        await auth.close()
 
     logger.debug("ChatGPT proxy app built for {}", store.path)
     return app

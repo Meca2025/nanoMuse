@@ -797,20 +797,17 @@ async function reportBug(): Promise<{ screenshot: string; url: string }> {
       screenshot = "";
     }
   }
-  const body = [
-    "## What happened",
-    "",
-    "",
-    "## What I expected",
-    "",
-    "",
-    "## Where",
-    "",
-    ...facts,
-    "",
-    screenshot ? `(Drag the screenshot nanoMuse saved to Downloads — ${screenshot.split(/[\\/]/).pop()} — in here.)` : "",
-  ].join("\n");
-  const url = `${ISSUES_PAGE}/new?labels=desktop&body=${encodeURIComponent(body)}`;
+  // The issue form's fields, by id (.github/ISSUE_TEMPLATE/bug_report.yml): a bare `body`
+  // would be dropped on the way to the form.
+  const params = new URLSearchParams({
+    template: "bug_report.yml",
+    labels: "bug,desktop",
+    surface: "Desktop app",
+    version: app.getVersion(),
+    os: facts.join(" · "),
+    what: screenshot ? `\n\n(Drag the screenshot nanoMuse saved to Downloads — ${screenshot.split(/[\\/]/).pop()} — in here.)` : "",
+  });
+  const url = `${ISSUES_PAGE}/new?${params.toString()}`;
   void shell.openExternal(url);
   return { screenshot, url };
 }

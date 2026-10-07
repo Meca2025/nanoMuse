@@ -176,6 +176,24 @@ side_chats = false   # off: only the main conversation travels between devices
 
 整个账号的同步开关在 App 里（「数据控制 → 同步」）；这里是「同时同步旁聊」在这台设备上的默认值。关着时只推送、拉取主要聊天；旁聊留在创建它的设备上，别的设备的也不会过来。开着时这台设备的旁聊进入账号，其他设备的也到这里来。你在 App 里的选择保存在 `sync.json`，优先于这个文件。全貌见 [every-device.md](every-device.md#the-same-conversations-everywhere)。
 
+## `[cloud]` 与 `[hub]` {#cloud-and-hub}
+
+```toml
+[cloud]
+base_url = "https://cloud.nanomuse.cn"   # 自己架的中继写在这里
+required = true
+sync = true
+
+[hub]
+enabled = true
+remote_control = true
+name = ""            # 空：用主机名
+```
+
+`[cloud]` 是这个运行时登录的中继（[cloud.md](cloud.md)）：`base_url` 是它的公网地址（按 [self-hosting.md](self-hosting.md) 自己架一台后填这里）；`required = false` 允许首次运行不登录账号就完成，适合完全不用中继的运行时；`sync` 是整个账号「数据控制 → 同步」开关的默认值，人一旦选过，以选择为准。账号密钥本身是保险库里的 `NANOMUSE_CLOUD_KEY`。
+
+`[hub]` 是把这台电脑当作账号的一台设备（[hub.md](hub.md)）：`enabled` 表示账号登录后就加入 hub；`remote_control = false` 时，其他设备只能从这台拿到 `info`，别的什么都做不了；`name` 是其他设备对它的称呼（空：用主机名）。`device_id` 按安装生成，由 App 写入。
+
 ## `[sentinel]` {#sentinel}
 
 ```toml
@@ -361,6 +379,7 @@ base_url         = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 api_key          = "{{vault:GUI_API_KEY}}"
 max_steps        = 30                # the most one phone_task may take
 device_timeout_s = 20.0              # how long to wait for the phone to answer
+reconnect_grace_s = 30.0             # 手机掉线后，进行中的任务等它回来多久；0 = 立刻放弃
 sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first
 ```
 

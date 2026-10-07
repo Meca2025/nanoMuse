@@ -176,6 +176,24 @@ side_chats = false   # off: only the main conversation travels between devices
 
 The account-wide sync switch is in the app (*Data controls → Sync*); this is the per-device default for *Also sync side chats*. Off, only the main conversation is pushed and pulled; side chats stay on the device that made them and no other device's arrive. On, this device's side chats go to the account and the other devices' come here. The person's choice in the app is kept in `sync.json` and wins over this file. [every-device.md](every-device.md#the-same-conversations-everywhere) has the whole picture.
 
+## `[cloud]` and `[hub]`
+
+```toml
+[cloud]
+base_url = "https://cloud.nanomuse.cn"   # a relay you run yourself goes here
+required = true
+sync = true
+
+[hub]
+enabled = true
+remote_control = true
+name = ""            # empty: the host name
+```
+
+`[cloud]` is the relay this runtime signs in to ([cloud.md](cloud.md)): `base_url` is its public address (your own relay's, after [self-hosting.md](self-hosting.md)); `required = false` lets the first run finish without an account, for a runtime that uses no relay at all; `sync` is the default of the account-wide *Data controls → Sync* switch, and the person's choice, once made, is what counts. The account key itself is `NANOMUSE_CLOUD_KEY` in the vault.
+
+`[hub]` is this computer as one of the account's devices ([hub.md](hub.md)): `enabled` joins the hub whenever the account is signed in; `remote_control = false` answers other devices with `info` and nothing else; `name` is what the other devices call this one (empty: the host name). `device_id` is per installation and written by the app.
+
 ## `[sentinel]`
 
 ```toml
@@ -361,6 +379,7 @@ base_url         = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 api_key          = "{{vault:GUI_API_KEY}}"
 max_steps        = 30                # the most one phone_task may take
 device_timeout_s = 20.0              # how long to wait for the phone to answer
+reconnect_grace_s = 30.0             # how long a running task waits for a phone whose connection dropped; 0 = give up at once
 sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first
 ```
 
