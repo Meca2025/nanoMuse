@@ -5,10 +5,11 @@ Mac runner 上构建后交给 TestFlight。这一页说的是：源码树里有�
 流水线需要什么、还有哪些要从 Android App 移植过来。
 
 **现状。** 源码树、品牌、nanoMuse Cloud 登录、hub 客户端和流水线都是在一台 Linux 机器上
-写的。这个 App **能构建、能签名、已经上了 TestFlight**：构建 0.1.31 (2) 于 2026-10-03 走完
-*iOS · TestFlight* 工作流，经 App Store Connect 处理，现在在内部测试员手里（见下文
-*现状*）。维护者自己还没有在 iPhone 上跑过它，所以登录流程、「设备」区和来自其他设备的
-通知在第一位测试员反馈之前，运行时的表现都未经验证。第一次归档教会了流水线一件事：
+写的。这个 App **能构建、能签名、已经上了 TestFlight**：第一个构建 0.1.31 (2) 于 2026-10-03 走完
+*iOS · TestFlight* 工作流；0.1.40 是构建 13，在内部测试员手里，并已提交 Apple 的 beta 审核，
+为的是公开链接（`https://testflight.apple.com/join/ZHexbDqc`，审核通过后这个链接就能装——见
+下文*现状*）。测试员的反馈推动了发布说明里的那些修复（输入框、引导、退出登录）；「设备」区
+和来自其他设备的通知仍是真机上跑得最少的部分。第一次归档教会了流水线一件事：
 自动签名需要一台已注册的设备，这就是它现在改为手动签名的原因。
 
 ## 它在哪里 {#where-it-lives}
@@ -292,6 +293,18 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   （`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`，从不进 iCloud 钥匙串）；没有标记、
   没有服务商、没有聊天的全新安装会清掉上一次安装留下的仅限本机的钥匙串条目。完整的表格
   在 [sync.md](sync.md)。
+- **审计里的小事（第 9 轮）**（`NanoMuseCloudView.swift`、`NanoMuseFirstRun.swift`、
+  `NanoMuseAvatarFlow.swift`、`NanoMuseDevicesSection.swift`、`NanoMuseShell.swift`）：登录面板
+  打开时输入框上方是 App 的标志，输入框写着*中国大陆手机号或邮箱*，输入其他国家区号的号码时，
+  *短信验证码只发中国大陆号码……*一边输一边就出现在输入框下面，而不是点了之后才出现；脚注用
+  Android 的那段小字（中继保存什么——账号 id、一个打码的标识、用量计数、智能体的名字和形象），
+  链到隐私政策而不是 GitHub 页面。首次运行的「通知」页显示标志，和欢迎页、登录页一样。设了
+  视频模型时选了新形象之后，回复会说四段短片随后在后台生成（Android 的那句话）。账号的设备
+  列表里，离线设备显示最后一次在线的时间，点一台在线设备会打开主聊天并在输入框里填好
+  `@〈名字〉 `（Reach 面板的*问这台设备*）。`NanoMuseRoot` 在知道是否需要引导之前什么都不画，
+  所以全新安装绝不会在欢迎页之前闪过一帧主界面。第一次对话的第四句话不再说消息*只*发给
+  模型：登录后，主对话也会跟着人到他的其他设备上，*数据控制*可以关掉——和 Android 同样的
+  话，每种语言都有。
 
 ## 在 Mac 上构建 {#building-on-a-mac}
 
@@ -324,8 +337,8 @@ open src/ios/Minis.xcodeproj
 
 分发方式是 TestFlight 的**内部测试员**：你加为 App Store Connect 团队用户的那些人（最多
 100 个），每个构建处理完几分钟后他们就能拿到，不经 App Review。外部测试组（公开链接，
-最多 10,000 名测试员）每个版本要过一次 Apple 的 beta 审核——那是我们不等的那一步；以后
-可以在 App Store Connect 里打开，不用动流水线。
+最多 10,000 名测试员）每个版本要过一次 Apple 的 beta 审核；*nanoMuse Beta* 这个组和它的公开
+链接已经有了，每个构建在内部测试员用过之后加进去并提交审核。两种情况下流水线是同一条。
 
 ### 现状 {#where-it-stands}
 
@@ -348,12 +361,13 @@ open src/ios/Minis.xcodeproj
   （`VALID`，出口合规由 Info.plist 的键回答），正在内部组里做 beta 测试——第一个能从
   TestFlight 装上的东西；
 - 外部组需要的测试信息，英文和简体中文各一份：beta App 描述、反馈地址、营销和隐私政策链接，
-  以及构建 2 的 *What to Test*（没有一处提到别的产品）；还有外部组 *nanoMuse Beta*，创建时
-  **没有**公开链接、没有构建；
-- 没做的：*Beta App Review Information* 里的 beta 审核联系人（姓名、电话）和演示账号的决定，
-  这些要账号持有人来填，然后把构建 2 加进外部组——那一步就是提交给 Apple 的 beta 审核；
-  审核通过后的公开链接；以及任何通往 App Store 的事（这个 App 不上架）。维护者这边还没有
-  在实体 iPhone 上跑过这个 App：冒烟测试是内部测试员的第一项工作。
+  以及每个构建的 *What to Test*（没有一处提到别的产品）；外部组 *nanoMuse Beta* 和它的公开
+  链接 `https://testflight.apple.com/join/ZHexbDqc`；*Beta App Review Information* 里的 beta
+  审核联系人和中继上的一个审核账号；
+- **构建 13（0.1.40）** 在内部测试员手里，2026-10-06 加进了 *nanoMuse Beta* 并提交 Apple 的
+  beta 审核；公开链接只在审核通过后才会给出构建，在那之前它显示的是一个没有 App 的
+  TestFlight 页面。以后每个版本都要重复这一步（审核按版本进行）。任何通往 App Store 的事
+  都没有：这个 App 不上架。
 
 ### 在 App Store Connect 里做一次的事 {#once-in-app-store-connect}
 
