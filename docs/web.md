@@ -26,15 +26,36 @@ region's first pick first (Alibaba Cloud Bailian on the mainland, OpenRouter
 elsewhere — [region.ts](../web/src/region.ts)). Under the tiles the chosen
 provider's line from the catalogue says what its key covers and what to know
 about it (the Kimi editions, the OpenRouter Image API, the ChatGPT caveat). The
-*Hands model* picker lists models that see; a provider without `vision` gets
-the one sentence instead of a blind hands model. Under *Pictures and clips*,
-a provider without `image` or `video` shows the sentence in place of the
-picker; one with them shows *Automatic — the catalogue's default* so you know
-what *Automatic* will draw with. A *Proxy (optional)* field under them takes an
+*Hands model* picker lists models that see; its default is the provider's own
+hands model from the catalogue (`defaults.hands`), or your account's hands
+model when the provider has no model that sees and you are signed in; a
+provider without `vision` and no account gets the one sentence instead of a
+blind hands model. A *Proxy (optional)* field under them takes an
 `http://host:port`, `https://` or `socks5://` address for this provider's
 requests only (`[llm] proxy`; nanoMuse Cloud never goes through it, a SOCKS
 address needs `httpx[socks]` on the runtime); a saved password comes back as
 dots, and an emptied field clears it.
+
+**Connections → Making pictures, Making clips.** The two media rows of the
+Models contract (0.1.41), one card each under the chat model. The value is
+`provider · model` as the runtime resolves it (`GET /api/connections` →
+`image` / `video`: the slot as set and its `effective_*`): an explicit choice,
+else the chat provider's own picture model when it has one, else your account's
+when signed in, else the one sentence and an *Add a provider* button. The
+picker offers *Automatic* (what that resolves to today), a *nanoMuse Cloud*
+group when signed in, *The chat model's provider* when it has the capability
+(its key serves, nothing to paste), and under *Add a provider* every catalogue
+provider with the capability for your region, plus *Other OpenAI-compatible
+endpoint* with a base URL; a provider without the capability is not offered.
+A model may be picked from what the endpoint lists (the relay's menu and the
+account's other models on nanoMuse Cloud) or left to the catalogue's default.
+*Save* calls `PUT /api/connections/image` or `/video` with `provider` (a
+catalogue id, or `openai` with a `base_url`), `model`, `base_url`, `api_key`
+(into the vault as `IMAGE_API_KEY` / `VIDEO_API_KEY`; the relay's row names the
+account key, the chat provider's row leaves it to the chat key); *Automatic*
+sends all four empty, which clears the slot. A runtime without these routes
+shows no media rows. `web/src/models.ts` is the module (the row's value, the
+picker's choices); `web/src/models.test.ts` checks it.
 
 **Connections → Or sign in with a ChatGPT plan.** The card asks the runtime to
 start the Codex sign-in (`POST /api/chatgpt/login` → `{url}`), opens the page

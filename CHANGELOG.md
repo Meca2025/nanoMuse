@@ -32,6 +32,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The star card's sentence can come from the relay** (`star.text`, `star.text_zh` for a Chinese UI); the title and buttons stay the app's.
 - **The unit tests no longer depend on the developer machine's language.**
 - **Chinese copy writes 非营利** (not 非盈利) in the welcome notice and the account page; 89 dictionary entries no key referred to any more were dropped.
+- **Connections has a *Making pictures* and a *Making clips* row.** Each shows `provider · model` as the runtime resolves it and opens a picker with nanoMuse Cloud when signed in, the chat model's provider when it has the capability, and every catalogue provider that has it under *Add a provider*; a provider without it is not offered. A row nothing covers shows the one sentence and *Add a provider*. The *Pictures and clips* field under the chat model is gone; the *Hands model* default is the provider's own hands model, or the account's when the provider cannot see.
 
 ### Desktop
 

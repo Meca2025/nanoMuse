@@ -962,6 +962,26 @@ export interface ProviderPreset {
   region?: string;
 }
 
+/** One of the `image` / `video` slots: as set, and what it resolves to today. */
+export interface MediaSlotData {
+  /** a catalogue id, or `openai` / `openai_responses` with a `base_url`; "" when not set */
+  provider: string;
+  /** the catalogue entry that means, by id or by the URL's host; "" when unlisted or not set */
+  provider_id: string;
+  /** "" = the catalogue's default for the provider */
+  model: string;
+  base_url: string;
+  key_source: "none" | "vault" | "config" | "missing";
+  /** something is set here (an explicit choice) */
+  configured: boolean;
+  from_app: boolean;
+  /** what the slot resolves to: a catalogue id, `nanomuse_cloud`, `custom`; "" when nothing draws */
+  effective_provider: string;
+  effective_model: string;
+  /** `app` / `config` for a choice, `chat` for the chat provider's own model, `cloud` for the relay, "" for none */
+  effective_source: "app" | "config" | "chat" | "cloud" | "";
+}
+
 export interface ConnectionsData {
   llm: {
     provider: string;
@@ -1028,10 +1048,15 @@ export interface ConnectionsData {
   /** Operating the phone through its screen (the GUI agent) and the operator's model. */
   gui: {
     enabled: boolean;
+    /** a protocol (`openai` / `openai_responses`) or a catalogue id, as for the chat model */
     provider: string;
+    /** the catalogue entry `provider` means, by id or by the URL's host; "" when unlisted (0.1.41) */
+    provider_id?: string;
     model: string;
     /** the model the hands use right now: `model`, else the default below */
     effective_model?: string;
+    /** where that comes from: `gui` (set here), `chat` (the chat provider's hands model), `cloud` (the relay's) */
+    effective_source?: "gui" | "chat" | "cloud";
     /** what the hands use when `model` is empty: the relay's hands model with the account, the chat model otherwise */
     default_model?: string;
     /** the chat model is the account (the relay) */
@@ -1041,6 +1066,10 @@ export interface ConnectionsData {
     max_steps: number;
     phone: PhoneStatus;
   };
+  /** Where pictures come from (`[image]`); absent on a runtime before 0.1.41. */
+  image?: MediaSlotData;
+  /** Where clips come from (`[video]`); absent on a runtime before 0.1.41. */
+  video?: MediaSlotData;
   calendar: {
     enabled: boolean;
     configured: boolean;

@@ -23,6 +23,7 @@ import type {
   HoldEvent,
   HubView,
   IdeasData,
+  MediaSlotData,
   MemoryChange,
   MemoryItem,
   NudgesView,
@@ -395,6 +396,11 @@ export const api = {
   importSkill: (url: string) => request<SkillDetail>("/api/skills/import", json({ url })),
   setGui: (body: Record<string, unknown>) => request<ConnectionsData["gui"]>("/api/connections/gui", { method: "PUT", body: JSON.stringify(body) }),
   testGui: () => request<TestResult & { model?: string }>("/api/connections/gui/test", { method: "POST" }),
+  /** where pictures (`image`) or clips (`video`) come from: the slot as set and what it resolves to (0.1.41) */
+  media: (slot: "image" | "video") => request<MediaSlotData>(`/api/connections/${slot}`),
+  /** provider (a catalogue id), model, base_url, api_key; all "" clears the slot */
+  setMedia: (slot: "image" | "video", body: Record<string, unknown>) =>
+    request<MediaSlotData>(`/api/connections/${slot}`, { method: "PUT", body: JSON.stringify(body) }),
   setBrowser: (enabled: boolean) =>
     request<ConnectionsData["browser"]>("/api/connections/browser", { method: "PUT", body: JSON.stringify({ enabled }) }),
   addMCP: (body: Record<string, unknown>) => request<ConnectionsData>("/api/connections/mcp", json(body)),
