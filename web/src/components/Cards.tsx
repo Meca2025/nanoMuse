@@ -232,11 +232,19 @@ export function ApprovalCard({
 }: {
   event: ApprovalEvent;
   name?: string;
-  onDecide: (approved: boolean, scope: string) => void;
+  onDecide: (approved: boolean, scope: string) => void | Promise<void>;
 }) {
   const [showArgs, setShowArgs] = useState(false);
   const [more, setMore] = useState(false);
   const [overflows, setOverflows] = useState(false);
+  // one decision at a time: the buttons go quiet until the runtime has answered (or the call failed),
+  // so a second tap while the first is in flight cannot approve twice or approve and then deny
+  const [deciding, setDeciding] = useState(false);
+  const decide = (approved: boolean, scope: string) => {
+    if (deciding) return;
+    setDeciding(true);
+    void Promise.resolve(onDecide(approved, scope)).finally(() => setDeciding(false));
+  };
   const cardRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const t = useT();
@@ -323,8 +331,9 @@ export function ApprovalCard({
           <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
             <button
               type="button"
-              onClick={() => onDecide(true, "once")}
-              className="h-[46px] w-full rounded-full bg-accent text-[15px] font-semibold text-accent-fg transition active:scale-[0.98]"
+              onClick={() => decide(true, "once")}
+              disabled={deciding}
+              className="h-[46px] w-full rounded-full bg-accent text-[15px] font-semibold text-accent-fg transition active:scale-[0.98] disabled:opacity-60"
             >
               {t("Allow once")}
             </button>
@@ -335,16 +344,18 @@ export function ApprovalCard({
                 <button
                   key={scope}
                   type="button"
-                  onClick={() => onDecide(true, scope)}
-                  className="h-11 w-full truncate rounded-full bg-surface-2 px-4 text-[15px] font-medium transition active:scale-[0.98]"
+                  onClick={() => decide(true, scope)}
+                  disabled={deciding}
+                  className="h-11 w-full truncate rounded-full bg-surface-2 px-4 text-[15px] font-medium transition active:scale-[0.98] disabled:opacity-60"
                 >
                   {scopeLabel(scope, event.tool, event.target, event.args)}
                 </button>
               ))}
             <button
               type="button"
-              onClick={() => onDecide(false, "once")}
-              className="h-11 w-full rounded-full bg-surface-2 text-[15px] font-medium transition active:scale-[0.98]"
+              onClick={() => decide(false, "once")}
+              disabled={deciding}
+              className="h-11 w-full rounded-full bg-surface-2 text-[15px] font-medium transition active:scale-[0.98] disabled:opacity-60"
             >
               {t("Deny")}
             </button>

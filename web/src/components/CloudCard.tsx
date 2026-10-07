@@ -4,14 +4,14 @@ import { api } from "../api";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import type { CloudAccount } from "../types";
-import { cx } from "../util";
-import { Card, inputCls, primaryBtn, secondaryBtn } from "./Form";
-import { identifierInputMode } from "./SignIn";
+import { Card, primaryBtn, secondaryBtn } from "./Form";
+import { SignIn } from "./SignIn";
 
 /**
  * nanoMuse Cloud: the free account that gives every device of yours one place to meet
- * (the hub) and a model to start with (the relay). Sign in with a phone number or an
- * e-mail address and a code; the key lands in the vault on this machine.
+ * (the hub) and a model to start with (the relay). The sign-in is the one form the whole
+ * app uses (`SignIn`: a code or the password, the invite code, the SMS note); the key lands
+ * in the vault on this machine.
  */
 export function CloudCard({
   account,
@@ -28,49 +28,9 @@ export function CloudCard({
   const { toast } = useStore();
   const t = useT();
   const [open, setOpen] = useState(compact || !account?.signed_in);
-  const [identifier, setIdentifier] = useState("");
-  const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState<"code" | "verify" | "model" | "out" | null>(null);
+  const [busy, setBusy] = useState<"model" | "out" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const signedIn = !!account?.signed_in;
-
-  const sendCode = async () => {
-    const id = identifier.trim();
-    if (!id) return;
-    setBusy("code");
-    setError(null);
-    try {
-      await api.cloudCode(id);
-      setSent(true);
-    } catch (e) {
-      setError(t((e as Error).message));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const verify = async () => {
-    const id = identifier.trim();
-    if (!id || code.trim().length < 4) return;
-    setBusy("verify");
-    setError(null);
-    try {
-      await api.cloudVerify(id, code.trim());
-      if (useAsModel) {
-        setBusy("model");
-        await api.cloudUseAsModel();
-      }
-      setCode("");
-      setSent(false);
-      toast(t("Signed in to nanoMuse Cloud."));
-      onChange();
-    } catch (e) {
-      setError(t((e as Error).message));
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const makeModel = async () => {
     setBusy("model");
@@ -133,62 +93,14 @@ export function CloudCard({
           {error && <ErrorLine text={error} />}
         </div>
       ) : (
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void (sent ? verify() : sendCode());
+        <SignIn
+          useAsModel={useAsModel}
+          autoFocus={false}
+          onSignedIn={() => {
+            toast(t("Signed in to nanoMuse Cloud."));
+            onChange();
           }}
-        >
-          <p className="text-[13px] text-muted leading-relaxed">
-            {t("A code goes to your phone or inbox; the key stays in the vault on this machine.")}
-          </p>
-          <div>
-            <label className="text-[12px] text-muted">{t("Mainland China phone number or e-mail")}</label>
-            <input
-              value={identifier}
-              onChange={(e) => {
-                setIdentifier(e.target.value);
-                setSent(false);
-              }}
-              inputMode={identifierInputMode(identifier)}
-              autoComplete="username"
-              placeholder={t("138 0000 0000 or you@example.com")}
-              className={cx(inputCls, "mt-1")}
-            />
-          </div>
-          {sent && (
-            <div>
-              <label className="text-[12px] text-muted">{t("The code you received")}</label>
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="123456"
-                autoFocus
-                className={cx(inputCls, "mt-1 tracking-[0.3em]")}
-              />
-            </div>
-          )}
-          {error && <ErrorLine text={error} />}
-          <div className="flex gap-2">
-            {sent ? (
-              <>
-                <button type="button" disabled={busy !== null} onClick={() => void sendCode()} className={secondaryBtn}>
-                  {t("Send again")}
-                </button>
-                <button type="submit" disabled={busy !== null || code.trim().length < 4} className={cx(primaryBtn, "flex-1")}>
-                  {busy ? <Loader2 size={15} className="animate-spin" /> : null} {useAsModel ? t("Sign in and use its model") : t("Sign in")}
-                </button>
-              </>
-            ) : (
-              <button type="submit" disabled={busy !== null || !identifier.trim()} className={cx(primaryBtn, "flex-1")}>
-                {busy === "code" ? <Loader2 size={15} className="animate-spin" /> : null} {t("Send me a code")}
-              </button>
-            )}
-          </div>
-        </form>
+        />
       )}
     </Card>
   );

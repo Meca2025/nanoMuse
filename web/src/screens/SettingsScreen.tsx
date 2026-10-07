@@ -228,6 +228,7 @@ export function SettingsScreen() {
                 key={m.id}
                 type="button"
                 onClick={() => void update({ sentinel_mode: m.id })}
+                aria-pressed={s?.sentinel.mode === m.id}
                 className={cx(
                   "w-full text-left rounded-2xl border px-3.5 py-3 flex items-start gap-3 transition",
                   s?.sentinel.mode === m.id ? "border-accent bg-accent/8" : "border-border",
@@ -903,6 +904,7 @@ export function ProactivityDial({ value, onChange }: { value: Proactivity; onCha
             key={l.id}
             type="button"
             onClick={() => onChange(l.id)}
+            aria-pressed={value === l.id}
             className={cx(
               "rounded-xl py-1.5 text-[13px] font-medium transition",
               value === l.id ? "bg-surface shadow-sm text-accent" : "text-muted",

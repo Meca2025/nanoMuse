@@ -1,4 +1,4 @@
-import { Check, ExternalLink, MessageSquare, QrCode, RefreshCw, Send, Trash2, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, MessageSquare, QrCode, RefreshCw, Send, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   channelsApi,
@@ -10,6 +10,7 @@ import {
 } from "../channels-api";
 import { PageBar } from "../components/BackBar";
 import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
+import { LoadError } from "../components/LoadError";
 import { MuseCaption, MuseCard, MuseDivider, MuseRow, MuseSectionLabel, MuseSwitchRow } from "../components/MuseList";
 import { useLocale } from "../i18n";
 import { useStore } from "../store";
@@ -163,12 +164,15 @@ export function ChannelsScreen() {
   const { toast } = useStore();
   const tr = useTr();
   const [view, setView] = useState<ChannelsView | null>(null);
+  // the first failure is shown with a retry; the poll every five seconds does not toast on each miss
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const reload = async () => {
     try {
       setView(await channelsApi.view());
+      setLoadError(null);
     } catch (e) {
-      toast((e as Error).message);
+      setLoadError((e as Error).message || "Could not load.");
     }
   };
   useEffect(() => {
@@ -199,6 +203,12 @@ export function ChannelsScreen() {
         description={tr("Talk to your Muse from the chat apps you already use. Nothing needs a public address: each app keeps a long connection open.")}
       />
       <div className="flex-1 overflow-y-auto pb-8">
+        {view === null && loadError && <LoadError message={loadError} onRetry={() => void reload()} />}
+        {view === null && !loadError && (
+          <div className="flex justify-center py-10 text-muted">
+            <Loader2 className="animate-spin" size={20} />
+          </div>
+        )}
         {view && view.pending.length > 0 && (
           <>
             <MuseSectionLabel>{tr("Waiting for a yes")}</MuseSectionLabel>

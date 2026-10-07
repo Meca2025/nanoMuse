@@ -191,12 +191,12 @@ export function GoalsScreen() {
   /** The category sheet's "Start": the goal is shaped in the chat, the way Muse does it. */
   const startGoal = (c: (typeof CATEGORIES)[number]) => {
     setSheetCategory(null);
-    void send(
+    send(
       "main",
       t("I'd like to create a {category} goal. Ask me a few short questions, one at a time (what exactly I want, why and by when, how often to check in), then create it with concrete steps using the goals tool.", {
         category: t(c.label),
       }),
-    );
+    ).catch((e: Error) => toast(e.message || t("Could not send")));
     openThread("main");
   };
 
@@ -666,7 +666,7 @@ function GoalDetail({
             <button
               type="button"
               onClick={() => {
-                void send("main", t("About my goal “{title}” ({id}): what's the status, and what should we do next?", { title: goal.title, id: goal.id }));
+                send("main", t("About my goal “{title}” ({id}): what's the status, and what should we do next?", { title: goal.title, id: goal.id })).catch((e: Error) => toast(e.message || t("Could not send")));
                 openThread("main");
                 onClose();
               }}
@@ -735,14 +735,14 @@ function NewGoalSheet({ open, onClose, onCreated }: { open: boolean; onClose: ()
       due ? `target date: ${due}` : "",
       checkIn ? `check_in "${checkIn}"` : "",
     ].filter(Boolean);
-    void send(
+    send(
       "main",
       t('Create a goal for me: "{title}"{description}{extras}. Break it into concrete steps with the goals tool, then tell me the plan.', {
         title: title.trim(),
         description: description.trim() ? ` (${description.trim()})` : "",
         extras: extras.length ? ` (${extras.join(", ")})` : "",
       }),
-    );
+    ).catch((e: Error) => toast(e.message || t("Could not send")));
     reset();
     onClose();
     openThread("main");

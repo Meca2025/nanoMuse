@@ -277,7 +277,7 @@ function EventView({
   event: TimelineEvent;
   prev?: TimelineEvent;
   name: string;
-  onDecide: (approved: boolean, scope: string) => void;
+  onDecide: (approved: boolean, scope: string) => void | Promise<void>;
   onOpenFile: (path: string) => void;
   onOpenBrowser: (id: string) => void;
   files: readonly string[];

@@ -1,10 +1,11 @@
 import { FileText, Home, MessageSquare, Monitor, MonitorSmartphone, Search, Settings, Smartphone, SquarePen, Terminal, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { useStore } from "../store";
 import type { HubDevice, ThreadMeta } from "../types";
 import { intlLocale, useT } from "../i18n";
 import { cx } from "../util";
+import { useFocusTrap } from "./useFocusTrap";
 
 /**
  * The chats drawer the Android app slides in from the left: the agent's name, the main chat,
@@ -18,6 +19,8 @@ export function ChatsDrawer() {
   const open = state.drawer;
   const [query, setQuery] = useState("");
   const [confirm, setConfirm] = useState<string | null>(null);
+  const panel = useRef<HTMLElement>(null);
+  useFocusTrap(panel, open);
 
   useEffect(() => {
     if (!open) return;
@@ -83,7 +86,7 @@ export function ChatsDrawer() {
   return (
     <div className="fixed inset-0 z-50">
       <div className="rise absolute inset-0 bg-black/40" onClick={() => setDrawer(false)} />
-      <nav aria-label={t("Chats")} className="drawer-in safe-top safe-bottom absolute inset-y-0 left-0 flex w-[82vw] max-w-[320px] flex-col bg-bg shadow-2xl">
+      <nav ref={panel} role="dialog" aria-modal="true" aria-label={t("Chats")} className="drawer-in safe-top safe-bottom absolute inset-y-0 left-0 flex w-[82vw] max-w-[320px] flex-col bg-bg shadow-2xl">
         <div className="px-5 pt-5 pb-2 text-[24px] font-bold leading-7 tracking-tight">{name}</div>
 
         {/* the main chat, Devices and the coding agents: rows, one tap away like a chat */}
